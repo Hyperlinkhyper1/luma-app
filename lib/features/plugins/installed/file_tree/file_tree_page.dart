@@ -42,6 +42,10 @@ class _FileTreePageState extends State<FileTreePage> {
   bool _detailed = false;
   List<FileNode> _crumbs = const [];
 
+  // Detected once: probing drive letters does blocking I/O (a not-ready drive
+  // can stall for seconds), so it must never run on every rebuild.
+  late final List<String> _drives = _detectDrives();
+
   @override
   void dispose() {
     _cleanupScan();
@@ -158,6 +162,7 @@ class _FileTreePageState extends State<FileTreePage> {
             scanning: _scanning,
             root: _root,
             detailed: _detailed,
+            drives: _drives,
             onPick: _pickAndScan,
             onScanPath: _scan,
             onSetView: _setView,
@@ -227,6 +232,7 @@ class _ScanBar extends StatelessWidget {
     required this.scanning,
     required this.root,
     required this.detailed,
+    required this.drives,
     required this.onPick,
     required this.onScanPath,
     required this.onSetView,
@@ -235,6 +241,7 @@ class _ScanBar extends StatelessWidget {
   final bool scanning;
   final FileNode? root;
   final bool detailed;
+  final List<String> drives;
   final VoidCallback onPick;
   final ValueChanged<String> onScanPath;
   final ValueChanged<bool> onSetView;
@@ -292,7 +299,10 @@ class _ScanBar extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          _DriveRow(onScanPath: scanning ? null : onScanPath),
+          _DriveRow(
+            drives: drives,
+            onScanPath: scanning ? null : onScanPath,
+          ),
           if (root != null) ...[
             const SizedBox(height: 14),
             Divider(color: luma.border, height: 1),
@@ -399,30 +409,17 @@ class _ViewToggleButton extends StatelessWidget {
   }
 }
 
-/// Quick buttons for every fixed drive Windows currently has mounted.
+/// Quick buttons for every fixed drive Windows currently has mounted. The
+/// drive list is detected once by the parent and passed in — probing drive
+/// letters is blocking I/O and must not run on every rebuild.
 class _DriveRow extends StatelessWidget {
-  const _DriveRow({required this.onScanPath});
+  const _DriveRow({required this.drives, required this.onScanPath});
+  final List<String> drives;
   final ValueChanged<String>? onScanPath;
-
-  List<String> _drives() {
-    final found = <String>[];
-    for (var c = 'A'.codeUnitAt(0); c <= 'Z'.codeUnitAt(0); c++) {
-      final path = '${String.fromCharCode(c)}:\\';
-      try {
-        // existsSync throws (not returns false) for a mapped-but-not-ready
-        // drive — an empty card reader or optical drive, etc. Skip those.
-        if (Directory(path).existsSync()) found.add(path);
-      } catch (_) {
-        // Drive letter present but not ready; ignore it.
-      }
-    }
-    return found;
-  }
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final drives = _drives();
     if (drives.isEmpty) return const SizedBox.shrink();
     return Wrap(
       spacing: 8,
@@ -650,8 +647,8 @@ class _MoonProgressBarState extends State<_MoonProgressBar>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1600),
-  )..repeat(reverse: true);
+    duration: const Duration(milliseconds: 1300),
+  )..repeat(); // forward-only sweep (no reverse), so it doesn't bounce back.
 
   @override
   void dispose() {
@@ -664,8 +661,7 @@ class _MoonProgressBarState extends State<_MoonProgressBar>
     if (widget.fraction != null) return _bar(context, widget.fraction!);
     return AnimatedBuilder(
       animation: _ctrl,
-      builder: (context, _) =>
-          _bar(context, 0.06 + Curves.easeInOut.transform(_ctrl.value) * 0.88),
+      builder: (context, _) => _bar(context, 0.04 + _ctrl.value * 0.92),
     );
   }
 
@@ -935,26 +931,6 @@ class _TreemapView extends StatelessWidget {
   final ValueChanged<FileNode> onDrill;
   final ValueChanged<int> onCrumb;
 
-  /// Children of [node], capped so the canvas never renders thousands of
-  /// slivers — the long tail is folded into one aggregate tile.
-  List<FileNode> _tileChildren(FileNode node) {
-    final ch = node.children.where((c) => c.totalSize > 0).toList();
-    if (ch.length <= 160) return ch;
-    final head = ch.sublist(0, 159);
-    final restSize =
-        ch.sublist(159).fold<int>(0, (s, c) => s + c.totalSize);
-    head.add(FileNode(
-      name: '(${ch.length - 159} smaller items)',
-      path: '${node.path}::more',
-      isDir: false,
-      totalSize: restSize,
-      fileCount: 0,
-      dirCount: 0,
-      children: const [],
-    ));
-    return head;
-  }
-
   @override
   Widget build(BuildContext context) {
     final node = crumbs.last;
@@ -966,42 +942,36 @@ class _TreemapView extends StatelessWidget {
         Expanded(
           child: LumaCard(
             padding: const EdgeInsets.all(6),
-            child: LayoutBuilder(
-              builder: (context, c) {
-                final children = _tileChildren(node);
-                if (children.isEmpty) {
-                  return const Center(
-                    child: Text('No files to map in this folder.'),
-                  );
-                }
-                final size = Size(c.maxWidth, c.maxHeight);
-                final tiles = _squarify(children, size);
-                return SizedBox(
-                  width: size.width,
-                  height: size.height,
-                  child: Stack(
-                    children: [
-                      for (final t in tiles)
-                        Positioned(
-                          left: t.rect.left + 1,
-                          top: t.rect.top + 1,
-                          width: math.max(0, t.rect.width - 2),
-                          height: math.max(0, t.rect.height - 2),
-                          child: _Tile(
-                            node: t.node,
-                            onTap: () => onDrill(t.node),
-                          ),
-                        ),
-                    ],
+            child: node.children.isEmpty
+                ? const Center(child: Text('No files to map in this folder.'))
+                : ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: _TreemapNode(node: node, depth: 0, onDrill: onDrill),
                   ),
-                );
-              },
-            ),
           ),
         ),
       ],
     );
   }
+}
+
+/// Children of [node] for the treemap, capped so the canvas never renders
+/// thousands of slivers — the long tail is folded into one aggregate tile.
+List<FileNode> _tileChildren(FileNode node) {
+  final ch = node.children.where((c) => c.totalSize > 0).toList();
+  if (ch.length <= 80) return ch;
+  final head = ch.sublist(0, 79);
+  final restSize = ch.sublist(79).fold<int>(0, (s, c) => s + c.totalSize);
+  head.add(FileNode(
+    name: '(${ch.length - 79} smaller items)',
+    path: '${node.path}::more',
+    isDir: false,
+    totalSize: restSize,
+    fileCount: 0,
+    dirCount: 0,
+    children: const [],
+  ));
+  return head;
 }
 
 class _Breadcrumb extends StatelessWidget {
@@ -1065,55 +1035,152 @@ class _CrumbButton extends StatelessWidget {
   }
 }
 
-class _Tile extends StatefulWidget {
-  const _Tile({required this.node, required this.onTap});
+/// Deepest level of nesting drawn. Recursion also stops earlier when tiles get
+/// too small to be worth subdividing, so this is just a safety bound.
+const int _maxTreemapDepth = 7;
+
+/// One node of the WizTree-style nested treemap. A directory that's large
+/// enough is drawn as its folder color with a small header, then its children
+/// are squarified into the remaining area and drawn recursively — so the whole
+/// hierarchy is visible at once. Small nodes and files render as solid tiles.
+class _TreemapNode extends StatelessWidget {
+  const _TreemapNode({
+    required this.node,
+    required this.depth,
+    required this.onDrill,
+  });
+
   final FileNode node;
-  final VoidCallback onTap;
-
-  @override
-  State<_Tile> createState() => _TileState();
-}
-
-class _TileState extends State<_Tile> {
-  bool _hovering = false;
+  final int depth;
+  final ValueChanged<FileNode> onDrill;
 
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
+    return LayoutBuilder(
+      builder: (context, c) {
+        final w = c.maxWidth;
+        final h = c.maxHeight;
+        if (w < 2 || h < 2) return const SizedBox.shrink();
+
+        final hasKids = node.isDir && node.children.isNotEmpty;
+        final canNest =
+            hasKids && depth < _maxTreemapDepth && w > 70 && h > 58;
+
+        if (!canNest) {
+          return _LeafTile(
+            node: node,
+            color: _tileColor(node, brightness),
+            onTap: hasKids ? () => onDrill(node) : null,
+          );
+        }
+
+        final fill = _tileColor(node, brightness);
+        final onFill = _onColor(fill);
+        final headerH = depth == 0 ? 0.0 : (h > 70 ? 20.0 : 0.0);
+        const pad = 2.0;
+        final tiles = _squarify(
+          _tileChildren(node),
+          Size(w - pad * 2, h - headerH - pad * 2),
+        );
+
+        return Container(
+          decoration: BoxDecoration(
+            color: fill,
+            borderRadius: BorderRadius.circular(depth == 0 ? 0 : 4),
+            border: Border.all(
+              color: Colors.black.withValues(alpha: 0.22),
+              width: 0.5,
+            ),
+          ),
+          clipBehavior: Clip.hardEdge,
+          child: Stack(
+            children: [
+              if (headerH > 0)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  height: headerH,
+                  child: _FolderHeader(
+                    node: node,
+                    onColor: onFill,
+                    onTap: () => onDrill(node),
+                  ),
+                ),
+              for (final t in tiles)
+                Positioned(
+                  left: pad + t.rect.left,
+                  top: headerH + pad + t.rect.top,
+                  width: math.max(0, t.rect.width),
+                  height: math.max(0, t.rect.height),
+                  child: _TreemapNode(
+                    node: t.node,
+                    depth: depth + 1,
+                    onDrill: onDrill,
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// A solid leaf tile (a file, or a folder too small to subdivide further).
+class _LeafTile extends StatefulWidget {
+  const _LeafTile({
+    required this.node,
+    required this.color,
+    required this.onTap,
+  });
+  final FileNode node;
+  final Color color;
+  final VoidCallback? onTap;
+
+  @override
+  State<_LeafTile> createState() => _LeafTileState();
+}
+
+class _LeafTileState extends State<_LeafTile> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
     final node = widget.node;
-    final canDrill = node.isDir && node.children.isNotEmpty;
-    final fill = _tileColor(node, brightness);
-    final onFill = fill.computeLuminance() > 0.5
-        ? const Color(0xFF1A1526)
-        : Colors.white;
+    final onFill = _onColor(widget.color);
 
     return Tooltip(
       message: '${node.name}\n${_formatBytes(node.totalSize)}',
       waitDuration: const Duration(milliseconds: 400),
       child: MouseRegion(
-        cursor:
-            canDrill ? SystemMouseCursors.click : SystemMouseCursors.basic,
+        cursor: widget.onTap == null
+            ? SystemMouseCursors.basic
+            : SystemMouseCursors.click,
         onEnter: (_) => setState(() => _hovering = true),
         onExit: (_) => setState(() => _hovering = false),
         child: GestureDetector(
-          onTap: canDrill ? widget.onTap : null,
+          onTap: widget.onTap,
           child: Container(
             decoration: BoxDecoration(
-              color: fill,
-              borderRadius: BorderRadius.circular(4),
+              color: widget.color,
+              borderRadius: BorderRadius.circular(3),
               border: Border.all(
-                color: _hovering ? Colors.white : Colors.black.withValues(alpha: 0.18),
+                color: _hovering
+                    ? Colors.white
+                    : Colors.black.withValues(alpha: 0.18),
                 width: _hovering ? 1.5 : 0.5,
               ),
             ),
             clipBehavior: Clip.hardEdge,
             child: LayoutBuilder(
               builder: (context, c) {
-                if (c.maxWidth < 46 || c.maxHeight < 26) {
+                if (c.maxWidth < 40 || c.maxHeight < 22) {
                   return const SizedBox.shrink();
                 }
                 return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1123,7 +1190,7 @@ class _TileState extends State<_Tile> {
                             node.isDir
                                 ? Icons.folder_rounded
                                 : Icons.insert_drive_file_rounded,
-                            size: 13,
+                            size: 12,
                             color: onFill.withValues(alpha: 0.9),
                           ),
                           const SizedBox(width: 4),
@@ -1134,20 +1201,20 @@ class _TileState extends State<_Tile> {
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: onFill,
-                                fontSize: 11.5,
+                                fontSize: 11,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
                           ),
                         ],
                       ),
-                      if (c.maxHeight > 42) ...[
-                        const SizedBox(height: 2),
+                      if (c.maxHeight > 38) ...[
+                        const SizedBox(height: 1),
                         Text(
                           _formatBytes(node.totalSize),
                           style: TextStyle(
                             color: onFill.withValues(alpha: 0.85),
-                            fontSize: 10.5,
+                            fontSize: 10,
                           ),
                         ),
                       ],
@@ -1162,6 +1229,74 @@ class _TileState extends State<_Tile> {
     );
   }
 }
+
+/// The title strip on top of a nested folder tile.
+class _FolderHeader extends StatefulWidget {
+  const _FolderHeader({
+    required this.node,
+    required this.onColor,
+    required this.onTap,
+  });
+  final FileNode node;
+  final Color onColor;
+  final VoidCallback onTap;
+
+  @override
+  State<_FolderHeader> createState() => _FolderHeaderState();
+}
+
+class _FolderHeaderState extends State<_FolderHeader> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final onColor = widget.onColor;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          color: _hovering
+              ? Colors.white.withValues(alpha: 0.18)
+              : Colors.black.withValues(alpha: 0.10),
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          child: Row(
+            children: [
+              Icon(Icons.folder_rounded,
+                  size: 12, color: onColor.withValues(alpha: 0.9)),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  widget.node.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: onColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                _formatBytes(widget.node.totalSize),
+                style: TextStyle(
+                  color: onColor.withValues(alpha: 0.85),
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+Color _onColor(Color fill) =>
+    fill.computeLuminance() > 0.5 ? const Color(0xFF1A1526) : Colors.white;
 
 /// Stable per-name hue so the same folder always gets the same tile color,
 /// tuned for legible text in both themes (folders read a touch brighter).
@@ -1426,8 +1561,50 @@ FileNode _measure(Directory dir, String name, _Holder h) {
     totalSize: total,
     fileCount: files,
     dirCount: dirs,
-    children: children,
+    children: _capChildren(children, dir.path),
   );
+}
+
+/// The biggest source of the post-scan freeze is shipping the whole node graph
+/// back across the isolate boundary — millions of file nodes take minutes to
+/// deserialize on the UI thread. We only ever display a directory's largest
+/// children, so we keep the top [_maxChildrenPerDir] by size and fold the long
+/// tail into a single aggregate node. The directory's own totals were already
+/// rolled up from every entry, so sizes and percentages stay exact.
+const int _maxChildrenPerDir = 200;
+
+List<FileNode> _capChildren(List<FileNode> sorted, String parentPath) {
+  if (sorted.length <= _maxChildrenPerDir) return sorted;
+  final head = sorted.sublist(0, _maxChildrenPerDir - 1);
+  final rest = sorted.sublist(_maxChildrenPerDir - 1);
+  final restSize = rest.fold<int>(0, (s, c) => s + c.totalSize);
+  head.add(FileNode(
+    name: '(${rest.length} more items)',
+    path: '$parentPath::more',
+    isDir: false,
+    totalSize: restSize,
+    fileCount: 0,
+    dirCount: 0,
+    children: const [],
+  ));
+  return head;
+}
+
+/// Probes A:–Z: for mounted drives. Synchronous and potentially slow (a
+/// not-ready drive can stall), so call this once and cache the result.
+List<String> _detectDrives() {
+  final found = <String>[];
+  for (var c = 'A'.codeUnitAt(0); c <= 'Z'.codeUnitAt(0); c++) {
+    final path = '${String.fromCharCode(c)}:\\';
+    try {
+      // existsSync throws (not returns false) for a mapped-but-not-ready
+      // drive — an empty card reader or optical drive, etc. Skip those.
+      if (Directory(path).existsSync()) found.add(path);
+    } catch (_) {
+      // Drive letter present but not ready; ignore it.
+    }
+  }
+  return found;
 }
 
 String _displayName(String path) {
