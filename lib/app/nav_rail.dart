@@ -43,6 +43,7 @@ class NavRail extends StatelessWidget {
         icon: Icons.account_balance_wallet_rounded, label: 'Finance'),
     NavDestination(
         icon: Icons.lock_rounded, label: 'Password Manager'),
+    NavDestination(icon: Icons.sticky_note_2_rounded, label: 'Notes'),
   ];
 
   static const NavDestination _pluginsDestination =
@@ -52,10 +53,10 @@ class NavRail extends StatelessWidget {
       NavDestination(icon: Icons.settings_rounded, label: 'Settings');
 
   /// Index of the Plugins destination (pinned above Settings).
-  static const int pluginsIndex = 4;
+  static const int pluginsIndex = 5;
 
   /// Index of the Settings destination (pinned to the bottom-left).
-  static const int settingsIndex = 5;
+  static const int settingsIndex = 6;
 
   @override
   Widget build(BuildContext context) {

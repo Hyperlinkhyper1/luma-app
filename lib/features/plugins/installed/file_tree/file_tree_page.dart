@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:math' as math;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -8,9 +9,10 @@ import '../../../../app/widgets.dart';
 import '../../../../theme/luma_theme.dart';
 
 /// The File Tree plugin: point it at a drive or folder and it scans every file
-/// underneath, then shows what's eating the space — directories and files
-/// sorted largest-first, each with a size bar showing its share of the scan.
-/// Think WizTree, living inside luma. Nothing is stored; each scan is live.
+/// underneath, then shows what's eating the space. Two views: a sortable tree
+/// (directories/files largest-first with size bars) and a WizTree-style
+/// treemap where each tile's area maps to its size. Nothing is stored; each
+/// scan is live, and runs in a background isolate that streams progress.
 class FileTreePage extends StatefulWidget {
   const FileTreePage({super.key});
 
@@ -23,8 +25,35 @@ class _FileTreePageState extends State<FileTreePage> {
   String? _error;
   FileNode? _root;
 
-  /// Paths the user has expanded in the tree. The root starts expanded.
+  // Live progress, fed from the scan isolate.
+  int _phase = 0; // 0 = indexing, 1 = measuring.
+  int _scanned = 0;
+  int _total = 0;
+  int _bytes = 0;
+  String _currentPath = '';
+
+  // Running isolate handles, so a scan can be cancelled or cleaned up.
+  Isolate? _iso;
+  ReceivePort? _rp;
+
+  // List view: paths the user has expanded. Treemap view: the drill-down path
+  // from the scan root to the folder currently filling the canvas.
   final Set<String> _expanded = {};
+  bool _detailed = false;
+  List<FileNode> _crumbs = const [];
+
+  @override
+  void dispose() {
+    _cleanupScan();
+    super.dispose();
+  }
+
+  Future<void> _cleanupScan() async {
+    _rp?.close();
+    _rp = null;
+    _iso?.kill(priority: Isolate.immediate);
+    _iso = null;
+  }
 
   Future<void> _pickAndScan() async {
     final dir = await FilePicker.getDirectoryPath(
@@ -35,34 +64,87 @@ class _FileTreePageState extends State<FileTreePage> {
   }
 
   Future<void> _scan(String path) async {
+    await _cleanupScan();
     setState(() {
       _scanning = true;
       _error = null;
+      _phase = 0;
+      _scanned = 0;
+      _total = 0;
+      _bytes = 0;
+      _currentPath = path;
     });
-    try {
-      final root = await Isolate.run(() => _scanDirectory(path));
-      if (!mounted) return;
-      setState(() {
-        _root = root;
-        _expanded
-          ..clear()
-          ..add(root.path);
-      });
-    } catch (e) {
-      if (mounted) setState(() => _error = '$e');
-    } finally {
-      if (mounted) setState(() => _scanning = false);
-    }
-  }
 
-  void _toggle(FileNode node) {
-    setState(() {
-      if (_expanded.contains(node.path)) {
-        _expanded.remove(node.path);
-      } else {
-        _expanded.add(node.path);
+    final rp = ReceivePort();
+    _rp = rp;
+    try {
+      _iso = await Isolate.spawn(_scanIsolate, _ScanArgs(rp.sendPort, path));
+    } catch (e) {
+      rp.close();
+      if (mounted) {
+        setState(() {
+          _scanning = false;
+          _error = '$e';
+        });
+      }
+      return;
+    }
+
+    rp.listen((msg) {
+      if (!mounted) return;
+      if (msg is _ScanProgress) {
+        setState(() {
+          _phase = msg.phase;
+          _scanned = msg.scanned;
+          _total = msg.total;
+          _bytes = msg.bytes;
+          _currentPath = msg.path;
+        });
+      } else if (msg is _ScanResult) {
+        setState(() {
+          _root = msg.root;
+          _crumbs = [msg.root];
+          _expanded
+            ..clear()
+            ..add(msg.root.path);
+          _scanning = false;
+        });
+        _cleanupScan();
+      } else if (msg is _ScanError) {
+        setState(() {
+          _error = msg.message;
+          _scanning = false;
+        });
+        _cleanupScan();
       }
     });
+  }
+
+  void _cancelScan() {
+    _cleanupScan();
+    if (mounted) setState(() => _scanning = false);
+  }
+
+  void _toggleExpand(FileNode node) {
+    setState(() {
+      if (!_expanded.remove(node.path)) _expanded.add(node.path);
+    });
+  }
+
+  void _setView(bool detailed) {
+    setState(() {
+      _detailed = detailed;
+      if (detailed && _crumbs.isEmpty && _root != null) _crumbs = [_root!];
+    });
+  }
+
+  void _drill(FileNode node) {
+    if (!node.isDir || node.children.isEmpty) return;
+    setState(() => _crumbs = [..._crumbs, node]);
+  }
+
+  void _crumbTo(int index) {
+    setState(() => _crumbs = _crumbs.sublist(0, index + 1));
   }
 
   @override
@@ -75,8 +157,10 @@ class _FileTreePageState extends State<FileTreePage> {
           _ScanBar(
             scanning: _scanning,
             root: _root,
+            detailed: _detailed,
             onPick: _pickAndScan,
             onScanPath: _scan,
+            onSetView: _setView,
           ),
           if (_error != null) ...[
             const SizedBox(height: 12),
@@ -84,31 +168,27 @@ class _FileTreePageState extends State<FileTreePage> {
                 style: TextStyle(color: context.luma.danger, fontSize: 13)),
           ],
           const SizedBox(height: 16),
-          Expanded(child: _body(context)),
+          Expanded(child: _body()),
+          if (_scanning)
+            _ScanProgressBar(
+              phase: _phase,
+              scanned: _scanned,
+              total: _total,
+              bytes: _bytes,
+              path: _currentPath,
+              onCancel: _cancelScan,
+            ),
         ],
       ),
     );
   }
 
-  Widget _body(BuildContext context) {
-    if (_scanning) {
-      return const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 26,
-              height: 26,
-              child: CircularProgressIndicator(strokeWidth: 2.6),
-            ),
-            SizedBox(height: 14),
-            Text('Scanning… this can take a moment on large drives.'),
-          ],
-        ),
-      );
-    }
+  Widget _body() {
     final root = _root;
     if (root == null) {
+      if (_scanning) {
+        return const _ScanningPlaceholder();
+      }
       return const LumaEmptyState(
         icon: Icons.account_tree_rounded,
         title: 'Nothing scanned yet',
@@ -123,49 +203,41 @@ class _FileTreePageState extends State<FileTreePage> {
         subtitle: 'No files were found, or they couldn\'t be read.',
       );
     }
-
-    final rows = <_TreeRow>[];
-    _flatten(root, 0, root.totalSize, rows);
-
-    return LumaCard(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: ListView.builder(
-        itemCount: rows.length,
-        itemBuilder: (context, i) {
-          final row = rows[i];
-          return _TreeTile(
-            row: row,
-            expanded: _expanded.contains(row.node.path),
-            onToggle: () => _toggle(row.node),
-          );
-        },
-      ),
+    if (_detailed) {
+      return _TreemapView(
+        crumbs: _crumbs.isEmpty ? [root] : _crumbs,
+        onDrill: _drill,
+        onCrumb: _crumbTo,
+      );
+    }
+    return _ListView(
+      root: root,
+      expanded: _expanded,
+      onToggle: _toggleExpand,
     );
   }
-
-  /// Walks the visible (expanded) tree into a flat, indented row list so the
-  /// list can be virtualized. Children are already sorted largest-first.
-  void _flatten(FileNode node, int depth, int rootTotal, List<_TreeRow> out) {
-    out.add(_TreeRow(node: node, depth: depth, fraction: rootTotal == 0 ? 0 : node.totalSize / rootTotal));
-    if (!_expanded.contains(node.path)) return;
-    for (final child in node.children) {
-      _flatten(child, depth + 1, rootTotal, out);
-    }
-  }
 }
+
+// ---------------------------------------------------------------------------
+// Top bar: title, drive shortcuts, view toggle and scan summary.
+// ---------------------------------------------------------------------------
 
 class _ScanBar extends StatelessWidget {
   const _ScanBar({
     required this.scanning,
     required this.root,
+    required this.detailed,
     required this.onPick,
     required this.onScanPath,
+    required this.onSetView,
   });
 
   final bool scanning;
   final FileNode? root;
+  final bool detailed;
   final VoidCallback onPick;
   final ValueChanged<String> onScanPath;
+  final ValueChanged<bool> onSetView;
 
   @override
   Widget build(BuildContext context) {
@@ -232,10 +304,96 @@ class _ScanBar extends StatelessWidget {
                 _Stat(label: 'Files', value: _formatCount(root!.fileCount)),
                 const SizedBox(width: 28),
                 _Stat(label: 'Folders', value: _formatCount(root!.dirCount)),
+                const Spacer(),
+                _ViewToggle(detailed: detailed, onSetView: onSetView),
               ],
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// Two-segment List / Detailed switch.
+class _ViewToggle extends StatelessWidget {
+  const _ViewToggle({required this.detailed, required this.onSetView});
+  final bool detailed;
+  final ValueChanged<bool> onSetView;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: luma.background,
+        borderRadius: BorderRadius.circular(11),
+        border: Border.all(color: luma.border),
+      ),
+      child: Row(
+        children: [
+          _ViewToggleButton(
+            label: 'List',
+            icon: Icons.format_list_bulleted_rounded,
+            selected: !detailed,
+            onTap: () => onSetView(false),
+          ),
+          const SizedBox(width: 3),
+          _ViewToggleButton(
+            label: 'Detailed',
+            icon: Icons.grid_view_rounded,
+            selected: detailed,
+            onTap: () => onSetView(true),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ViewToggleButton extends StatelessWidget {
+  const _ViewToggleButton({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: selected ? luma.accent : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon,
+                  size: 15,
+                  color: selected ? luma.onAccent : luma.textSecondary),
+              const SizedBox(width: 6),
+              Text(label,
+                  style: TextStyle(
+                    color: selected ? luma.onAccent : luma.textSecondary,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  )),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -346,7 +504,288 @@ class _Stat extends StatelessWidget {
   }
 }
 
-/// A node flattened for rendering, carrying its depth and share of the scan.
+class _ScanningPlaceholder extends StatelessWidget {
+  const _ScanningPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.bedtime_rounded, size: 34, color: luma.accent),
+          const SizedBox(height: 14),
+          Text('Mapping your files…',
+              style: TextStyle(
+                  color: luma.textPrimary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600)),
+          const SizedBox(height: 6),
+          Text('Progress is shown at the bottom.',
+              style: TextStyle(color: luma.textMuted, fontSize: 13)),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Bottom scan progress bar with the moon-tipped fill.
+// ---------------------------------------------------------------------------
+
+class _ScanProgressBar extends StatelessWidget {
+  const _ScanProgressBar({
+    required this.phase,
+    required this.scanned,
+    required this.total,
+    required this.bytes,
+    required this.path,
+    required this.onCancel,
+  });
+
+  final int phase;
+  final int scanned;
+  final int total;
+  final int bytes;
+  final String path;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final indexing = phase == 0 || total <= 0;
+    final fraction = indexing ? null : (scanned / total).clamp(0.0, 1.0);
+
+    return Container(
+      margin: const EdgeInsets.only(top: 14),
+      padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+      decoration: BoxDecoration(
+        color: luma.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: luma.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Text(
+                indexing ? 'Indexing files…' : 'Measuring sizes…',
+                style: TextStyle(
+                  color: luma.textPrimary,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                indexing
+                    ? '${_formatCount(scanned)} items found'
+                    : '${_formatCount(scanned)} / ${_formatCount(total)} items',
+                style: TextStyle(
+                  color: luma.textSecondary,
+                  fontSize: 12.5,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${_formatBytes(bytes)} scanned',
+                style: TextStyle(
+                  color: luma.textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+              const SizedBox(width: 6),
+              IconButton(
+                tooltip: 'Cancel scan',
+                visualDensity: VisualDensity.compact,
+                icon: Icon(Icons.close_rounded, size: 18, color: luma.textMuted),
+                onPressed: onCancel,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _MoonProgressBar(fraction: fraction),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(Icons.description_outlined, size: 14, color: luma.textMuted),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  path,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textDirection: TextDirection.rtl, // keep the file name visible
+                  style: TextStyle(
+                    color: luma.textMuted,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A horizontal progress track whose loaded/unloaded boundary is marked by a
+/// glowing moon. With a [fraction] it's determinate; with null it sweeps as an
+/// indeterminate scanning animation.
+class _MoonProgressBar extends StatefulWidget {
+  const _MoonProgressBar({required this.fraction});
+  final double? fraction;
+
+  @override
+  State<_MoonProgressBar> createState() => _MoonProgressBarState();
+}
+
+class _MoonProgressBarState extends State<_MoonProgressBar>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1600),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.fraction != null) return _bar(context, widget.fraction!);
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, _) =>
+          _bar(context, 0.06 + Curves.easeInOut.transform(_ctrl.value) * 0.88),
+    );
+  }
+
+  Widget _bar(BuildContext context, double f) {
+    final luma = context.luma;
+    const moon = 22.0;
+    const h = 24.0;
+    return SizedBox(
+      height: h,
+      child: LayoutBuilder(
+        builder: (context, c) {
+          final w = c.maxWidth;
+          final fillW = (f.clamp(0.0, 1.0)) * w;
+          final moonLeft = (fillW - moon / 2).clamp(0.0, w - moon);
+          return Stack(
+            children: [
+              // Track.
+              Positioned(
+                left: 0,
+                right: 0,
+                top: (h - 8) / 2,
+                child: Container(
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: luma.border,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+              // Filled portion.
+              Positioned(
+                left: 0,
+                top: (h - 8) / 2,
+                child: Container(
+                  height: 8,
+                  width: fillW,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [luma.accent, luma.accentHover],
+                    ),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+              // The moon at the boundary.
+              Positioned(
+                left: moonLeft,
+                top: (h - moon) / 2,
+                child: Container(
+                  width: moon,
+                  height: moon,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: luma.accent.withValues(alpha: 0.55),
+                        blurRadius: 9,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.bedtime_rounded,
+                      size: moon, color: Color(0xFFFDF3C7)),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// List view (sortable expandable tree).
+// ---------------------------------------------------------------------------
+
+class _ListView extends StatelessWidget {
+  const _ListView({
+    required this.root,
+    required this.expanded,
+    required this.onToggle,
+  });
+
+  final FileNode root;
+  final Set<String> expanded;
+  final ValueChanged<FileNode> onToggle;
+
+  void _flatten(FileNode node, int depth, int rootTotal, List<_TreeRow> out) {
+    out.add(_TreeRow(
+        node: node,
+        depth: depth,
+        fraction: rootTotal == 0 ? 0 : node.totalSize / rootTotal));
+    if (!expanded.contains(node.path)) return;
+    for (final child in node.children) {
+      _flatten(child, depth + 1, rootTotal, out);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = <_TreeRow>[];
+    _flatten(root, 0, root.totalSize, rows);
+    return LumaCard(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: ListView.builder(
+        itemCount: rows.length,
+        itemBuilder: (context, i) {
+          final row = rows[i];
+          return _TreeTile(
+            row: row,
+            expanded: expanded.contains(row.node.path),
+            onToggle: () => onToggle(row.node),
+          );
+        },
+      ),
+    );
+  }
+}
+
 class _TreeRow {
   const _TreeRow({
     required this.node,
@@ -381,7 +820,7 @@ class _TreeTileState extends State<_TreeTile> {
     final node = widget.row.node;
     final isDir = node.isDir;
     final hasChildren = node.children.isNotEmpty;
-    final pct = (widget.row.fraction * 100);
+    final pct = widget.row.fraction * 100;
 
     return MouseRegion(
       cursor: hasChildren ? SystemMouseCursors.click : SystemMouseCursors.basic,
@@ -431,7 +870,6 @@ class _TreeTileState extends State<_TreeTile> {
                 ),
               ),
               const SizedBox(width: 12),
-              // Size bar.
               Expanded(
                 flex: 4,
                 child: Row(
@@ -470,6 +908,7 @@ class _TreeTileState extends State<_TreeTile> {
                     color: luma.textSecondary,
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
               ),
@@ -482,7 +921,344 @@ class _TreeTileState extends State<_TreeTile> {
 }
 
 // ---------------------------------------------------------------------------
-// Scan model + worker (runs in a background isolate via Isolate.run).
+// Treemap view (WizTree-style: tile area maps to file size).
+// ---------------------------------------------------------------------------
+
+class _TreemapView extends StatelessWidget {
+  const _TreemapView({
+    required this.crumbs,
+    required this.onDrill,
+    required this.onCrumb,
+  });
+
+  final List<FileNode> crumbs;
+  final ValueChanged<FileNode> onDrill;
+  final ValueChanged<int> onCrumb;
+
+  /// Children of [node], capped so the canvas never renders thousands of
+  /// slivers — the long tail is folded into one aggregate tile.
+  List<FileNode> _tileChildren(FileNode node) {
+    final ch = node.children.where((c) => c.totalSize > 0).toList();
+    if (ch.length <= 160) return ch;
+    final head = ch.sublist(0, 159);
+    final restSize =
+        ch.sublist(159).fold<int>(0, (s, c) => s + c.totalSize);
+    head.add(FileNode(
+      name: '(${ch.length - 159} smaller items)',
+      path: '${node.path}::more',
+      isDir: false,
+      totalSize: restSize,
+      fileCount: 0,
+      dirCount: 0,
+      children: const [],
+    ));
+    return head;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final node = crumbs.last;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _Breadcrumb(crumbs: crumbs, onCrumb: onCrumb),
+        const SizedBox(height: 10),
+        Expanded(
+          child: LumaCard(
+            padding: const EdgeInsets.all(6),
+            child: LayoutBuilder(
+              builder: (context, c) {
+                final children = _tileChildren(node);
+                if (children.isEmpty) {
+                  return const Center(
+                    child: Text('No files to map in this folder.'),
+                  );
+                }
+                final size = Size(c.maxWidth, c.maxHeight);
+                final tiles = _squarify(children, size);
+                return SizedBox(
+                  width: size.width,
+                  height: size.height,
+                  child: Stack(
+                    children: [
+                      for (final t in tiles)
+                        Positioned(
+                          left: t.rect.left + 1,
+                          top: t.rect.top + 1,
+                          width: math.max(0, t.rect.width - 2),
+                          height: math.max(0, t.rect.height - 2),
+                          child: _Tile(
+                            node: t.node,
+                            onTap: () => onDrill(t.node),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _Breadcrumb extends StatelessWidget {
+  const _Breadcrumb({required this.crumbs, required this.onCrumb});
+  final List<FileNode> crumbs;
+  final ValueChanged<int> onCrumb;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Wrap(
+      spacing: 2,
+      runSpacing: 4,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        for (var i = 0; i < crumbs.length; i++) ...[
+          _CrumbButton(
+            label: crumbs[i].name,
+            isLast: i == crumbs.length - 1,
+            onTap: i == crumbs.length - 1 ? null : () => onCrumb(i),
+          ),
+          if (i != crumbs.length - 1)
+            Icon(Icons.chevron_right_rounded,
+                size: 16, color: luma.textMuted),
+        ],
+      ],
+    );
+  }
+}
+
+class _CrumbButton extends StatelessWidget {
+  const _CrumbButton({
+    required this.label,
+    required this.isLast,
+    required this.onTap,
+  });
+  final String label;
+  final bool isLast;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return MouseRegion(
+      cursor: onTap == null ? SystemMouseCursors.basic : SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isLast ? luma.textPrimary : luma.accent,
+              fontSize: 13,
+              fontWeight: isLast ? FontWeight.w700 : FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Tile extends StatefulWidget {
+  const _Tile({required this.node, required this.onTap});
+  final FileNode node;
+  final VoidCallback onTap;
+
+  @override
+  State<_Tile> createState() => _TileState();
+}
+
+class _TileState extends State<_Tile> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+    final node = widget.node;
+    final canDrill = node.isDir && node.children.isNotEmpty;
+    final fill = _tileColor(node, brightness);
+    final onFill = fill.computeLuminance() > 0.5
+        ? const Color(0xFF1A1526)
+        : Colors.white;
+
+    return Tooltip(
+      message: '${node.name}\n${_formatBytes(node.totalSize)}',
+      waitDuration: const Duration(milliseconds: 400),
+      child: MouseRegion(
+        cursor:
+            canDrill ? SystemMouseCursors.click : SystemMouseCursors.basic,
+        onEnter: (_) => setState(() => _hovering = true),
+        onExit: (_) => setState(() => _hovering = false),
+        child: GestureDetector(
+          onTap: canDrill ? widget.onTap : null,
+          child: Container(
+            decoration: BoxDecoration(
+              color: fill,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(
+                color: _hovering ? Colors.white : Colors.black.withValues(alpha: 0.18),
+                width: _hovering ? 1.5 : 0.5,
+              ),
+            ),
+            clipBehavior: Clip.hardEdge,
+            child: LayoutBuilder(
+              builder: (context, c) {
+                if (c.maxWidth < 46 || c.maxHeight < 26) {
+                  return const SizedBox.shrink();
+                }
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            node.isDir
+                                ? Icons.folder_rounded
+                                : Icons.insert_drive_file_rounded,
+                            size: 13,
+                            color: onFill.withValues(alpha: 0.9),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              node.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: onFill,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (c.maxHeight > 42) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          _formatBytes(node.totalSize),
+                          style: TextStyle(
+                            color: onFill.withValues(alpha: 0.85),
+                            fontSize: 10.5,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Stable per-name hue so the same folder always gets the same tile color,
+/// tuned for legible text in both themes (folders read a touch brighter).
+Color _tileColor(FileNode node, Brightness brightness) {
+  final hue = (node.name.hashCode % 360).abs().toDouble();
+  final dark = brightness == Brightness.dark;
+  final sat = dark ? 0.42 : 0.55;
+  final light = dark ? (node.isDir ? 0.52 : 0.40) : (node.isDir ? 0.60 : 0.72);
+  return HSLColor.fromAHSL(1, hue, sat, light).toColor();
+}
+
+class _TileLayout {
+  const _TileLayout(this.node, this.rect);
+  final FileNode node;
+  final Rect rect;
+}
+
+/// Squarified treemap: lays [nodes] (sorted largest-first) into [size] so tile
+/// area is proportional to size while keeping aspect ratios close to square.
+List<_TileLayout> _squarify(List<FileNode> nodes, Size size) {
+  final out = <_TileLayout>[];
+  final items = nodes.where((n) => n.totalSize > 0).toList();
+  if (items.isEmpty || size.width <= 0 || size.height <= 0) return out;
+
+  final totalSize = items.fold<double>(0, (s, n) => s + n.totalSize);
+  final totalArea = size.width * size.height;
+  final areas =
+      items.map((n) => n.totalSize / totalSize * totalArea).toList();
+
+  var rect = Rect.fromLTWH(0, 0, size.width, size.height);
+  var start = 0;
+  while (start < areas.length) {
+    final shortSide = math.min(rect.width, rect.height);
+    if (shortSide <= 0) break;
+
+    var end = start;
+    var rowSum = 0.0;
+    var rowMin = double.infinity;
+    var rowMax = 0.0;
+    var bestWorst = double.infinity;
+    var chosenEnd = start;
+    var chosenSum = 0.0;
+
+    while (end < areas.length) {
+      final a = areas[end];
+      final nSum = rowSum + a;
+      final nMin = math.min(rowMin, a);
+      final nMax = math.max(rowMax, a);
+      final s2 = shortSide * shortSide;
+      final worst = math.max(s2 * nMax / (nSum * nSum), nSum * nSum / (s2 * nMin));
+      if (end == start || worst <= bestWorst) {
+        bestWorst = worst;
+        rowSum = nSum;
+        rowMin = nMin;
+        rowMax = nMax;
+        end++;
+        chosenEnd = end;
+        chosenSum = rowSum;
+      } else {
+        break;
+      }
+    }
+
+    rect = _placeRow(items, areas, start, chosenEnd, chosenSum, rect, out);
+    start = chosenEnd;
+  }
+  return out;
+}
+
+Rect _placeRow(List<FileNode> items, List<double> areas, int start, int end,
+    double sum, Rect rect, List<_TileLayout> out) {
+  if (sum <= 0) return rect;
+  if (rect.width >= rect.height) {
+    final colW = sum / rect.height;
+    var y = rect.top;
+    for (var i = start; i < end; i++) {
+      final h = areas[i] / colW;
+      out.add(_TileLayout(items[i], Rect.fromLTWH(rect.left, y, colW, h)));
+      y += h;
+    }
+    return Rect.fromLTWH(
+        rect.left + colW, rect.top, rect.width - colW, rect.height);
+  } else {
+    final rowH = sum / rect.width;
+    var x = rect.left;
+    for (var i = start; i < end; i++) {
+      final w = areas[i] / rowH;
+      out.add(_TileLayout(items[i], Rect.fromLTWH(x, rect.top, w, rowH)));
+      x += w;
+    }
+    return Rect.fromLTWH(
+        rect.left, rect.top + rowH, rect.width, rect.height - rowH);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Scan model + worker (runs in a background isolate, streaming progress).
 // ---------------------------------------------------------------------------
 
 /// One entry in the scanned tree: a file or a directory with its rolled-up
@@ -507,14 +1283,95 @@ class FileNode {
   final List<FileNode> children;
 }
 
-/// Recursively measures [path]. Runs inside an isolate, so it uses the
-/// synchronous IO APIs for speed and swallows entries it isn't allowed to read.
-FileNode _scanDirectory(String path) {
-  final dir = Directory(path);
-  return _measure(dir, _displayName(path));
+class _ScanArgs {
+  const _ScanArgs(this.sendPort, this.path);
+  final SendPort sendPort;
+  final String path;
 }
 
-FileNode _measure(Directory dir, String name) {
+class _ScanProgress {
+  const _ScanProgress({
+    required this.phase,
+    required this.scanned,
+    required this.total,
+    required this.bytes,
+    required this.path,
+  });
+  final int phase; // 0 = indexing, 1 = measuring.
+  final int scanned;
+  final int total;
+  final int bytes;
+  final String path;
+}
+
+class _ScanResult {
+  const _ScanResult(this.root);
+  final FileNode root;
+}
+
+class _ScanError {
+  const _ScanError(this.message);
+  final String message;
+}
+
+/// Mutable counters shared across the recursive walk, plus throttled posting
+/// so the port isn't flooded (progress is sent at most ~every 50ms).
+class _Holder {
+  _Holder(this.send);
+  final SendPort send;
+  int total = 0;
+  int scanned = 0;
+  int bytes = 0;
+  final Stopwatch sw = Stopwatch()..start();
+  int lastMs = -1000;
+
+  void maybePost(int phase, String path) {
+    final ms = sw.elapsedMilliseconds;
+    if (ms - lastMs < 50) return;
+    lastMs = ms;
+    send.send(_ScanProgress(
+      phase: phase,
+      scanned: phase == 0 ? total : scanned,
+      total: total,
+      bytes: bytes,
+      path: path,
+    ));
+  }
+}
+
+void _scanIsolate(_ScanArgs a) {
+  final h = _Holder(a.sendPort);
+  try {
+    a.sendPort.send(_ScanProgress(
+        phase: 0, scanned: 0, total: 0, bytes: 0, path: a.path));
+    // Phase 1: count items (no per-file stat, so it's cheap) for a real total.
+    _count(Directory(a.path), h);
+    // Phase 2: measure sizes and build the tree, streaming determinate progress.
+    h.lastMs = -1000;
+    final root = _measure(Directory(a.path), _displayName(a.path), h);
+    a.sendPort.send(_ScanResult(root));
+  } catch (e) {
+    a.sendPort.send(_ScanError('$e'));
+  }
+}
+
+void _count(Directory dir, _Holder h) {
+  List<FileSystemEntity> entries;
+  try {
+    entries = dir.listSync(followLinks: false);
+  } catch (_) {
+    return;
+  }
+  for (final e in entries) {
+    h.total++;
+    if (e is Directory) {
+      h.maybePost(0, e.path);
+      _count(e, h);
+    }
+  }
+}
+
+FileNode _measure(Directory dir, String name, _Holder h) {
   final children = <FileNode>[];
   var total = 0;
   var files = 0;
@@ -529,6 +1386,7 @@ FileNode _measure(Directory dir, String name) {
 
   for (final entity in entries) {
     if (entity is File) {
+      h.scanned++;
       int size;
       try {
         size = entity.lengthSync();
@@ -537,6 +1395,8 @@ FileNode _measure(Directory dir, String name) {
       }
       total += size;
       files += 1;
+      h.bytes += size;
+      h.maybePost(1, entity.path);
       children.add(FileNode(
         name: _displayName(entity.path),
         path: entity.path,
@@ -547,7 +1407,9 @@ FileNode _measure(Directory dir, String name) {
         children: const [],
       ));
     } else if (entity is Directory) {
-      final child = _measure(entity, _displayName(entity.path));
+      h.scanned++;
+      h.maybePost(1, entity.path);
+      final child = _measure(entity, _displayName(entity.path), h);
       total += child.totalSize;
       files += child.fileCount;
       dirs += 1 + child.dirCount;
@@ -570,7 +1432,6 @@ FileNode _measure(Directory dir, String name) {
 
 String _displayName(String path) {
   var p = path;
-  // Drop a single trailing separator so "C:\" still shows as "C:\".
   while (p.length > 3 && (p.endsWith('\\') || p.endsWith('/'))) {
     p = p.substring(0, p.length - 1);
   }

@@ -1,0 +1,8 @@
+{
+  "id": "bulletin-board",
+  "name": "Bulletin Board",
+  "version": "1.0.0",
+  "description": "A freeform corkboard where you can pin notes, quick ideas, images, and checklists.",
+  "icon": "dashboard",
+  "category": "Productivity"
+}
