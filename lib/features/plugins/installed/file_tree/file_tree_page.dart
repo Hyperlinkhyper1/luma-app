@@ -250,7 +250,13 @@ class _DriveRow extends StatelessWidget {
     final found = <String>[];
     for (var c = 'A'.codeUnitAt(0); c <= 'Z'.codeUnitAt(0); c++) {
       final path = '${String.fromCharCode(c)}:\\';
-      if (Directory(path).existsSync()) found.add(path);
+      try {
+        // existsSync throws (not returns false) for a mapped-but-not-ready
+        // drive — an empty card reader or optical drive, etc. Skip those.
+        if (Directory(path).existsSync()) found.add(path);
+      } catch (_) {
+        // Drive letter present but not ready; ignore it.
+      }
     }
     return found;
   }
