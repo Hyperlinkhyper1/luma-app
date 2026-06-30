@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../features/converter/converter_page.dart';
 import '../features/home/home_page.dart';
 import '../features/passwords/passwords_page.dart';
+import '../features/plugins/installed/file_tree/file_tree_page.dart';
 import '../features/plugins/installed/qr_code_generator/qr_code_generator_page.dart';
 import '../features/plugins/plugin_repository.dart';
 import '../features/plugins/plugin_scope.dart';
@@ -124,6 +125,7 @@ class _AppShellState extends State<AppShell> {
 
   static Widget _pluginPageFor(String pluginId) => switch (pluginId) {
         'qr-code-generator' => const QrCodeGeneratorPage(),
+        'file-tree' => const FileTreePage(),
         _ => const LumaEmptyState(
             icon: Icons.extension_off_rounded,
             title: 'Plugin unavailable',

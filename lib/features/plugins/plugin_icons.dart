@@ -7,6 +7,8 @@ IconData pluginIconFor(String? name) {
   switch (name) {
     case 'qr_code_2':
       return Icons.qr_code_2_rounded;
+    case 'account_tree':
+      return Icons.account_tree_rounded;
     default:
       return Icons.extension_rounded;
   }

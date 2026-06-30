@@ -1,0 +1,8 @@
+{
+  "id": "file-tree",
+  "name": "File Tree",
+  "version": "1.0.0",
+  "description": "Scan a drive or folder and see exactly what's using your space — every directory and file rolled up and sorted largest-first, with size bars. Like WizTree, inside luma.",
+  "icon": "account_tree",
+  "category": "Utility"
+}
