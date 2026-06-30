@@ -6,6 +6,13 @@ import 'features/passwords/data/password_database.dart';
 import 'features/passwords/password_crypto.dart';
 import 'features/passwords/password_repository.dart';
 import 'features/passwords/password_scope.dart';
+import 'features/plugins/data/plugin_database.dart';
+import 'features/plugins/installed/qr_code_generator/data/qr_code_database.dart';
+import 'features/plugins/installed/qr_code_generator/qr_code_repository.dart';
+import 'features/plugins/installed/qr_code_generator/qr_code_scope.dart';
+import 'features/plugins/plugin_catalog_service.dart';
+import 'features/plugins/plugin_repository.dart';
+import 'features/plugins/plugin_scope.dart';
 import 'finance/data/database.dart';
 import 'finance/finance_repository.dart';
 import 'finance/finance_scope.dart';
@@ -40,6 +47,11 @@ class _LumaAppState extends State<LumaApp> {
   late final PasswordDatabase _passwordDb = PasswordDatabase();
   late final PasswordRepository _passwordRepository =
       PasswordRepository(_passwordDb, widget.passwordCrypto);
+  late final PluginDatabase _pluginDb = PluginDatabase();
+  late final PluginRepository _pluginRepository =
+      PluginRepository(_pluginDb, PluginCatalogService());
+  late final QrCodeDatabase _qrCodeDb = QrCodeDatabase();
+  late final QrCodeRepository _qrCodeRepository = QrCodeRepository(_qrCodeDb);
 
   // The real startup work the splash covers: catch up any recurring entries /
   // allocations that came due while closed. Errors are swallowed so a storage
@@ -51,6 +63,8 @@ class _LumaAppState extends State<LumaApp> {
   void dispose() {
     _db.close();
     _passwordDb.close();
+    _pluginDb.close();
+    _qrCodeDb.close();
     super.dispose();
   }
 
@@ -62,19 +76,26 @@ class _LumaAppState extends State<LumaApp> {
         repository: _repository,
         child: PasswordScope(
           repository: _passwordRepository,
-          child: ListenableBuilder(
-            listenable: widget.settings,
-            builder: (context, _) {
-              final s = widget.settings;
-              return MaterialApp(
-                title: 'luma',
-                debugShowCheckedModeBanner: false,
-                theme: LumaTheme.from(Brightness.light, s.accentSeed),
-                darkTheme: LumaTheme.from(Brightness.dark, s.accentSeed),
-                themeMode: s.themeMode,
-                home: _BootGate(bootstrap: _bootstrap, accentSeed: s.accentSeed),
-              );
-            },
+          child: PluginScope(
+            repository: _pluginRepository,
+            child: QrCodeScope(
+              repository: _qrCodeRepository,
+              child: ListenableBuilder(
+                listenable: widget.settings,
+                builder: (context, _) {
+                  final s = widget.settings;
+                  return MaterialApp(
+                    title: 'luma',
+                    debugShowCheckedModeBanner: false,
+                    theme: LumaTheme.from(Brightness.light, s.accentSeed),
+                    darkTheme: LumaTheme.from(Brightness.dark, s.accentSeed),
+                    themeMode: s.themeMode,
+                    home: _BootGate(
+                        bootstrap: _bootstrap, accentSeed: s.accentSeed),
+                  );
+                },
+              ),
+            ),
           ),
         ),
       ),

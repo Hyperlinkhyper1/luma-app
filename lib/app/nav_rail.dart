@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../features/plugins/plugin_icons.dart';
+import '../features/plugins/plugin_repository.dart';
 import '../theme/luma_theme.dart';
 
 /// A single destination shown in the [NavRail].
@@ -18,10 +20,19 @@ class NavRail extends StatelessWidget {
     super.key,
     required this.selectedIndex,
     required this.onSelect,
+    this.installedPlugins = const [],
+    this.selectedPluginId,
+    required this.onSelectPlugin,
   });
 
   final int selectedIndex;
   final ValueChanged<int> onSelect;
+
+  /// Downloaded plugins, each rendered as its own icon between the fixed
+  /// destinations and the pinned Plugins/Settings group.
+  final List<InstalledPluginRecord> installedPlugins;
+  final String? selectedPluginId;
+  final ValueChanged<String> onSelectPlugin;
 
   /// Top destinations, in index order. [settingsIndex] is pinned separately at
   /// the bottom of the rail.
@@ -73,6 +84,22 @@ class NavRail extends StatelessWidget {
               onTap: () => onSelect(i),
             ),
             const SizedBox(height: 8),
+          ],
+          if (installedPlugins.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Container(height: 1, width: 36, color: luma.border),
+            const SizedBox(height: 10),
+            for (final plugin in installedPlugins) ...[
+              _RailButton(
+                destination: NavDestination(
+                  icon: pluginIconFor(plugin.icon),
+                  label: plugin.name,
+                ),
+                selected: selectedPluginId == plugin.pluginId,
+                onTap: () => onSelectPlugin(plugin.pluginId),
+              ),
+              const SizedBox(height: 8),
+            ],
           ],
           const Spacer(),
           // Plugins and Settings sit at the bottom-left of the rail.

@@ -1,0 +1,8 @@
+{
+  "id": "qr-code-generator",
+  "name": "QR Code Generator",
+  "version": "1.0.0",
+  "description": "Turn any URL into a scannable QR code. Every code you generate is saved locally so you can reopen it later.",
+  "icon": "qr_code_2",
+  "category": "Utility"
+}
