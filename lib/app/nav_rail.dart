@@ -69,15 +69,7 @@ class NavRail extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const SizedBox(height: 16),
-          const _BrandMark(),
-          const SizedBox(height: 18),
-          Container(
-            height: 1,
-            width: 36,
-            color: luma.border,
-          ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           Expanded(
             child: SingleChildScrollView(
               child: Column(
@@ -125,35 +117,6 @@ class NavRail extends StatelessWidget {
           const SizedBox(height: 14),
         ],
       ),
-    );
-  }
-}
-
-class _BrandMark extends StatelessWidget {
-  const _BrandMark();
-
-  @override
-  Widget build(BuildContext context) {
-    final luma = context.luma;
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [luma.accentHover, luma.accent],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: luma.accent.withValues(alpha: 0.35),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Icon(Icons.auto_awesome_rounded, color: luma.onAccent, size: 22),
     );
   }
 }

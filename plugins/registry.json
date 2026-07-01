@@ -31,6 +31,14 @@
       "icon": "show_chart",
       "category": "Utility",
       "version": "1.0.0"
+    },
+    {
+      "id": "calendar",
+      "name": "Calendar",
+      "description": "Plan your days with a full month view and an upcoming-agenda list. Add color-coded events with times, all-day toggles, locations, notes, reminders and repeat rules — daily, weekly, monthly or yearly. Everything is searchable and stored locally.",
+      "icon": "calendar_month",
+      "category": "Productivity",
+      "version": "1.0.0"
     }
   ]
 }

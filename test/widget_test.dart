@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:luma/app/top_bar.dart';
+import 'package:luma/app/window_title_bar.dart';
 import 'package:luma/features/converter/converter_page.dart';
 import 'package:luma/theme/luma_theme.dart';
 
@@ -48,11 +48,16 @@ void main() {
     expect(find.text('Pick a tool to get started.'), findsOneWidget);
   });
 
-  testWidgets('top bar renders the active section title', (tester) async {
+  testWidgets('title bar renders the active section title', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: LumaTheme.dark,
-        home: const Scaffold(body: TopBar(title: 'File Converter')),
+        home: Scaffold(
+          body: WindowTitleBar(
+            title: 'File Converter',
+            showWindowControls: false,
+          ),
+        ),
       ),
     );
 

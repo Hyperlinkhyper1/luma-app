@@ -13,6 +13,8 @@ IconData pluginIconFor(String? name) {
       return Icons.dashboard_rounded;
     case 'show_chart':
       return Icons.show_chart_rounded;
+    case 'calendar_month':
+      return Icons.calendar_month_rounded;
     default:
       return Icons.extension_rounded;
   }

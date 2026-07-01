@@ -4,6 +4,7 @@ import '../features/converter/converter_page.dart';
 import '../features/home/home_page.dart';
 import '../features/notes/notes_page.dart';
 import '../features/passwords/passwords_page.dart';
+import '../features/plugins/installed/calendar/calendar_page.dart';
 import '../features/plugins/installed/file_tree/file_tree_page.dart';
 import '../features/plugins/installed/bulletin_board/bulletin_board_page.dart';
 import '../features/plugins/installed/price_tracker/price_tracker_page.dart';
@@ -17,8 +18,8 @@ import '../settings/settings_page.dart';
 import '../settings/settings_scope.dart';
 import '../theme/luma_theme.dart';
 import 'nav_rail.dart';
-import 'top_bar.dart';
 import 'widgets.dart';
+import 'window_title_bar.dart';
 
 /// The top-level layout: a fixed left icon rail (Modrinth-style) next to the
 /// active content area, which has its own top bar.
@@ -79,23 +80,24 @@ class _AppShellState extends State<AppShell> {
         final title = showingPlugin ? activePlugin.name : _titles[index];
 
         return Scaffold(
-          body: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          body: Column(
             children: [
-              NavRail(
-                selectedIndex: showingPlugin ? -1 : index,
-                selectedPluginId: showingPlugin ? activePlugin.pluginId : null,
-                installedPlugins: installed,
-                onSelect: _selectFixed,
-                onSelectPlugin: _selectPlugin,
-              ),
+              WindowTitleBar(title: title),
               Expanded(
-                child: Container(
-                  color: luma.background,
-                  child: Column(
-                    children: [
-                      TopBar(title: title),
-                      Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    NavRail(
+                      selectedIndex: showingPlugin ? -1 : index,
+                      selectedPluginId:
+                          showingPlugin ? activePlugin.pluginId : null,
+                      installedPlugins: installed,
+                      onSelect: _selectFixed,
+                      onSelectPlugin: _selectPlugin,
+                    ),
+                    Expanded(
+                      child: Container(
+                        color: luma.background,
                         child: showingPlugin
                             ? _pluginPageFor(activePlugin.pluginId)
                             : IndexedStack(
@@ -111,8 +113,8 @@ class _AppShellState extends State<AppShell> {
                                 ],
                               ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -133,6 +135,7 @@ class _AppShellState extends State<AppShell> {
         'file-tree' => const FileTreePage(),
         'bulletin-board' => const BulletinBoardPage(),
         'price-tracker' => const PriceTrackerPage(),
+        'calendar' => const CalendarPage(),
         _ => const LumaEmptyState(
             icon: Icons.extension_off_rounded,
             title: 'Plugin unavailable',

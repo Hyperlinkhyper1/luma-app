@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 
 import 'app/app_shell.dart';
 import 'app/splash_screen.dart';
+import 'app/window_controls.dart';
 import 'features/passwords/data/password_database.dart';
 import 'features/passwords/password_crypto.dart';
 import 'features/passwords/password_repository.dart';
 import 'features/passwords/password_scope.dart';
 import 'features/plugins/data/plugin_database.dart';
+import 'features/plugins/installed/calendar/calendar_repository.dart';
+import 'features/plugins/installed/calendar/calendar_scope.dart';
+import 'features/plugins/installed/calendar/data/calendar_database.dart';
 import 'features/plugins/installed/bulletin_board/bulletin_board_repository.dart';
 import 'features/plugins/installed/bulletin_board/bulletin_board_scope.dart';
 import 'features/plugins/installed/bulletin_board/data/bulletin_board_database.dart';
@@ -27,6 +31,7 @@ import 'theme/luma_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initWindowChrome();
   final settings = await SettingsController.load();
   final passwordCrypto = await PasswordCrypto.load();
   runApp(LumaApp(settings: settings, passwordCrypto: passwordCrypto));
@@ -60,6 +65,9 @@ class _LumaAppState extends State<LumaApp> {
   late final BulletinBoardDatabase _bulletinBoardDb = BulletinBoardDatabase();
   late final BulletinBoardRepository _bulletinBoardRepository = BulletinBoardRepository(_bulletinBoardDb);
   late final PriceTrackerRepository _priceTrackerRepository = PriceTrackerRepository();
+  late final CalendarDatabase _calendarDb = CalendarDatabase();
+  late final CalendarRepository _calendarRepository =
+      CalendarRepository(_calendarDb);
 
   // The real startup work the splash covers: catch up any recurring entries /
   // allocations that came due while closed. Errors are swallowed so a storage
@@ -74,6 +82,7 @@ class _LumaAppState extends State<LumaApp> {
     _pluginDb.close();
     _qrCodeDb.close();
     _bulletinBoardDb.close();
+    _calendarDb.close();
     super.dispose();
   }
 
@@ -93,6 +102,8 @@ class _LumaAppState extends State<LumaApp> {
                 repository: _bulletinBoardRepository,
                 child: PriceTrackerScope(
                   repository: _priceTrackerRepository,
+                  child: CalendarScope(
+                  repository: _calendarRepository,
                   child: ListenableBuilder(
                     listenable: widget.settings,
                     builder: (context, _) {
@@ -108,6 +119,7 @@ class _LumaAppState extends State<LumaApp> {
                             bootstrap: _bootstrap, accentSeed: s.accentSeed),
                       );
                     },
+                  ),
                   ),
                 ),
               ),
