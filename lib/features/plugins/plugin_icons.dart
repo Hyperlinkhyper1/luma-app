@@ -11,6 +11,8 @@ IconData pluginIconFor(String? name) {
       return Icons.account_tree_rounded;
     case 'dashboard':
       return Icons.dashboard_rounded;
+    case 'show_chart':
+      return Icons.show_chart_rounded;
     default:
       return Icons.extension_rounded;
   }

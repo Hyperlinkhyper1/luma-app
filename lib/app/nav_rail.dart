@@ -78,31 +78,38 @@ class NavRail extends StatelessWidget {
             color: luma.border,
           ),
           const SizedBox(height: 14),
-          for (var i = 0; i < _destinations.length; i++) ...[
-            _RailButton(
-              destination: _destinations[i],
-              selected: i == selectedIndex,
-              onTap: () => onSelect(i),
-            ),
-            const SizedBox(height: 8),
-          ],
-          if (installedPlugins.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Container(height: 1, width: 36, color: luma.border),
-            const SizedBox(height: 10),
-            for (final plugin in installedPlugins) ...[
-              _RailButton(
-                destination: NavDestination(
-                  icon: pluginIconFor(plugin.icon),
-                  label: plugin.name,
-                ),
-                selected: selectedPluginId == plugin.pluginId,
-                onTap: () => onSelectPlugin(plugin.pluginId),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  for (var i = 0; i < _destinations.length; i++) ...[
+                    _RailButton(
+                      destination: _destinations[i],
+                      selected: i == selectedIndex,
+                      onTap: () => onSelect(i),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  if (installedPlugins.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Container(height: 1, width: 36, color: luma.border),
+                    const SizedBox(height: 10),
+                    for (final plugin in installedPlugins) ...[
+                      _RailButton(
+                        destination: NavDestination(
+                          icon: pluginIconFor(plugin.icon),
+                          label: plugin.name,
+                        ),
+                        selected: selectedPluginId == plugin.pluginId,
+                        onTap: () => onSelectPlugin(plugin.pluginId),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                  ],
+                ],
               ),
-              const SizedBox(height: 8),
-            ],
-          ],
-          const Spacer(),
+            ),
+          ),
           // Plugins and Settings sit at the bottom-left of the rail.
           _RailButton(
             destination: _pluginsDestination,

@@ -6,6 +6,7 @@ import '../features/notes/notes_page.dart';
 import '../features/passwords/passwords_page.dart';
 import '../features/plugins/installed/file_tree/file_tree_page.dart';
 import '../features/plugins/installed/bulletin_board/bulletin_board_page.dart';
+import '../features/plugins/installed/price_tracker/price_tracker_page.dart';
 import '../features/plugins/installed/qr_code_generator/qr_code_generator_page.dart';
 import '../features/plugins/plugin_repository.dart';
 import '../features/plugins/plugin_scope.dart';
@@ -131,6 +132,7 @@ class _AppShellState extends State<AppShell> {
         'qr-code-generator' => const QrCodeGeneratorPage(),
         'file-tree' => const FileTreePage(),
         'bulletin-board' => const BulletinBoardPage(),
+        'price-tracker' => const PriceTrackerPage(),
         _ => const LumaEmptyState(
             icon: Icons.extension_off_rounded,
             title: 'Plugin unavailable',

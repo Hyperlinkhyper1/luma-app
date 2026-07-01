@@ -10,6 +10,8 @@ import 'features/plugins/data/plugin_database.dart';
 import 'features/plugins/installed/bulletin_board/bulletin_board_repository.dart';
 import 'features/plugins/installed/bulletin_board/bulletin_board_scope.dart';
 import 'features/plugins/installed/bulletin_board/data/bulletin_board_database.dart';
+import 'features/plugins/installed/price_tracker/price_tracker_repository.dart';
+import 'features/plugins/installed/price_tracker/price_tracker_scope.dart';
 import 'features/plugins/installed/qr_code_generator/data/qr_code_database.dart';
 import 'features/plugins/installed/qr_code_generator/qr_code_repository.dart';
 import 'features/plugins/installed/qr_code_generator/qr_code_scope.dart';
@@ -57,6 +59,7 @@ class _LumaAppState extends State<LumaApp> {
   late final QrCodeRepository _qrCodeRepository = QrCodeRepository(_qrCodeDb);
   late final BulletinBoardDatabase _bulletinBoardDb = BulletinBoardDatabase();
   late final BulletinBoardRepository _bulletinBoardRepository = BulletinBoardRepository(_bulletinBoardDb);
+  late final PriceTrackerRepository _priceTrackerRepository = PriceTrackerRepository();
 
   // The real startup work the splash covers: catch up any recurring entries /
   // allocations that came due while closed. Errors are swallowed so a storage
@@ -88,20 +91,24 @@ class _LumaAppState extends State<LumaApp> {
               repository: _qrCodeRepository,
               child: BulletinBoardScope(
                 repository: _bulletinBoardRepository,
-                child: ListenableBuilder(
-                  listenable: widget.settings,
-                  builder: (context, _) {
-                    final s = widget.settings;
-                    return MaterialApp(
-                      title: 'luma',
-                      debugShowCheckedModeBanner: false,
-                      theme: LumaTheme.from(Brightness.light, s.accentSeed),
-                      darkTheme: LumaTheme.from(Brightness.dark, s.accentSeed),
-                      themeMode: s.themeMode,
-                      home: _BootGate(
-                          bootstrap: _bootstrap, accentSeed: s.accentSeed),
-                    );
-                  },
+                child: PriceTrackerScope(
+                  repository: _priceTrackerRepository,
+                  child: ListenableBuilder(
+                    listenable: widget.settings,
+                    builder: (context, _) {
+                      final s = widget.settings;
+                      return MaterialApp(
+                        title: 'luma',
+                        debugShowCheckedModeBanner: false,
+                        theme: LumaTheme.from(Brightness.light, s.accentSeed),
+                        darkTheme:
+                            LumaTheme.from(Brightness.dark, s.accentSeed),
+                        themeMode: s.themeMode,
+                        home: _BootGate(
+                            bootstrap: _bootstrap, accentSeed: s.accentSeed),
+                      );
+                    },
+                  ),
                 ),
               ),
             ),

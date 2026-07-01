@@ -44,6 +44,7 @@ class _ImportReviewDialogState extends State<ImportReviewDialog> {
   @override
   void initState() {
     super.initState();
+    _potId = widget.pots.isNotEmpty ? widget.pots.first.id : null;
     _autofillFromExisting();
   }
 
@@ -101,7 +102,7 @@ class _ImportReviewDialogState extends State<ImportReviewDialog> {
     }
     setState(() {
       _index++;
-      _potId = null;
+      _potId = widget.pots.isNotEmpty ? widget.pots.first.id : null;
       _categoryId = null;
       _merchant = null;
       _saving = false;
@@ -352,6 +353,11 @@ class _PotDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    // Every expense must be assigned to a pot; if nothing has been picked
+    // yet, fall back to the first pot the user has.
+    final effectiveValue = (value != null && pots.any((p) => p.id == value))
+        ? value
+        : (pots.isNotEmpty ? pots.first.id : null);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
@@ -362,16 +368,9 @@ class _PotDropdown extends StatelessWidget {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<int?>(
           isExpanded: true,
-          value: value,
+          value: effectiveValue,
           dropdownColor: luma.surface,
-          hint: Text('From main balance',
-              style: TextStyle(color: luma.textMuted, fontSize: 14)),
           items: [
-            DropdownMenuItem<int?>(
-              value: null,
-              child: Text('From main balance',
-                  style: TextStyle(color: luma.textMuted)),
-            ),
             for (final p in pots)
               DropdownMenuItem<int?>(
                 value: p.id,

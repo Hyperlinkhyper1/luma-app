@@ -38,6 +38,20 @@ Future<void> showImportFlow(
   if (entries == null || entries.isEmpty) return;
   if (!context.mounted) return;
 
+  // Every imported entry must land in a pot. If the user hasn't created one
+  // yet, give them a default "Main" pot rather than blocking the import.
+  var availablePots = pots;
+  if (availablePots.isEmpty) {
+    await repo.createPot(
+      name: 'Main',
+      colorValue: 0xFF7C5AD9,
+      iconCodepoint: Icons.savings_rounded.codePoint,
+    );
+    availablePots = await repo.allPots();
+  }
+
+  if (!context.mounted) return;
+
   await showDialog<void>(
     context: context,
     builder: (dialogContext) => Dialog(
@@ -54,7 +68,7 @@ Future<void> showImportFlow(
         child: ImportReviewDialog(
           repo: repo,
           entries: entries,
-          pots: pots,
+          pots: availablePots,
           categories: categories,
           merchants: merchants,
         ),

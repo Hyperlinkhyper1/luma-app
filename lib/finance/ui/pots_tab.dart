@@ -8,6 +8,7 @@ import '../finance_scope.dart';
 import '../logic/finance_logic.dart';
 import '../logic/money.dart';
 import 'lookups.dart';
+import 'pot_detail_page.dart';
 
 const _potColors = <int>[
   0xFF7C5AD9, 0xFF4CAF50, 0xFF2196F3, 0xFFFF9800,
@@ -38,62 +39,71 @@ class PotsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final repo = FinanceScope.of(context);
-    return StreamData<List<Pot>>(
-      stream: repo.watchPots(),
-      builder: (context, pots) => StreamData<List<FinanceTransaction>>(
-        stream: repo.watchTransactions(),
-        builder: (context, txns) {
-          final balances = computeBalances(txns);
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
+    return StreamData<List<Category>>(
+      stream: repo.watchCategories(),
+      builder: (context, categories) => StreamData<List<Merchant>>(
+        stream: repo.watchMerchants(),
+        builder: (context, merchants) => StreamData<List<Pot>>(
+          stream: repo.watchPots(),
+          builder: (context, pots) => StreamData<List<FinanceTransaction>>(
+            stream: repo.watchTransactions(),
+            builder: (context, txns) {
+              final balances = computeBalances(txns);
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      'Available to allocate: ${formatCents(balances.mainCents)}',
-                      style: TextStyle(
-                          color: context.luma.textSecondary, fontSize: 13),
+                    Row(
+                      children: [
+                        Text(
+                          'Available to allocate: ${formatCents(balances.mainCents)}',
+                          style: TextStyle(
+                              color: context.luma.textSecondary, fontSize: 13),
+                        ),
+                        const Spacer(),
+                        LumaPrimaryButton(
+                          label: 'New pot',
+                          icon: Icons.add_rounded,
+                          onTap: () => _openEditor(context, repo),
+                        ),
+                      ],
                     ),
-                    const Spacer(),
-                    LumaPrimaryButton(
-                      label: 'New pot',
-                      icon: Icons.add_rounded,
-                      onTap: () => _openEditor(context, repo),
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: pots.isEmpty
+                          ? LumaEmptyState(
+                              icon: Icons.savings_rounded,
+                              title: 'No pots yet',
+                              subtitle:
+                                  'Create pots like "Rent", "Groceries" or "Holiday" to divide your money.',
+                            )
+                          : ListView(
+                              children: [
+                                Wrap(
+                                  spacing: 14,
+                                  runSpacing: 14,
+                                  children: [
+                                    for (final pot in pots)
+                                      _PotCard(
+                                        pot: pot,
+                                        balanceCents: balances.balanceForPot(pot.id),
+                                        repo: repo,
+                                        allTxns: txns,
+                                        categories: categories,
+                                        merchants: merchants,
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: pots.isEmpty
-                      ? LumaEmptyState(
-                          icon: Icons.savings_rounded,
-                          title: 'No pots yet',
-                          subtitle:
-                              'Create pots like "Rent", "Groceries" or "Holiday" to divide your money.',
-                        )
-                      : ListView(
-                          children: [
-                            Wrap(
-                              spacing: 14,
-                              runSpacing: 14,
-                              children: [
-                                for (final pot in pots)
-                                  _PotCard(
-                                    pot: pot,
-                                    balanceCents: balances.balanceForPot(pot.id),
-                                    repo: repo,
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ),
-                ),
-              ],
-            ),
-          );
-        },
+              );
+            },
+          ),
+        ),
       ),
     );
   }
@@ -104,81 +114,99 @@ class _PotCard extends StatelessWidget {
     required this.pot,
     required this.balanceCents,
     required this.repo,
+    required this.allTxns,
+    required this.categories,
+    required this.merchants,
   });
   final Pot pot;
   final int balanceCents;
   final FinanceRepository repo;
+  final List<FinanceTransaction> allTxns;
+  final List<Category> categories;
+  final List<Merchant> merchants;
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    return Container(
-      width: 260,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: luma.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: luma.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => showPotDetail(
+          context,
+          pot: pot,
+          allTxns: allTxns,
+          categories: categories,
+          merchants: merchants,
+        ),
+        child: Container(
+          width: 260,
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: luma.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: luma.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              LumaIconBadge(
-                icon: materialIcon(pot.iconCodepoint),
-                color: Color(pot.colorValue),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  pot.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: luma.textPrimary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
+              Row(
+                children: [
+                  LumaIconBadge(
+                    icon: materialIcon(pot.iconCodepoint),
+                    color: Color(pot.colorValue),
                   ),
-                ),
-              ),
-              PopupMenuButton<String>(
-                icon: Icon(Icons.more_vert_rounded,
-                    size: 18, color: luma.textMuted),
-                color: luma.surface,
-                onSelected: (v) {
-                  switch (v) {
-                    case 'add':
-                      _openAddMoney(context, repo, pot);
-                    case 'edit':
-                      _openEditor(context, repo, pot: pot);
-                    case 'delete':
-                      _confirmDelete(context, repo, pot);
-                  }
-                },
-                itemBuilder: (context) => [
-                  _menuItem('add', Icons.add_rounded, 'Add money', luma),
-                  _menuItem('edit', Icons.edit_rounded, 'Edit', luma),
-                  _menuItem('delete', Icons.delete_outline_rounded, 'Delete',
-                      luma,
-                      danger: true),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      pot.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: luma.textPrimary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  PopupMenuButton<String>(
+                    icon: Icon(Icons.more_vert_rounded,
+                        size: 18, color: luma.textMuted),
+                    color: luma.surface,
+                    onSelected: (v) {
+                      switch (v) {
+                        case 'add':
+                          _openAddMoney(context, repo, pot);
+                        case 'edit':
+                          _openEditor(context, repo, pot: pot);
+                        case 'delete':
+                          _confirmDelete(context, repo, pot);
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      _menuItem('add', Icons.add_rounded, 'Add money', luma),
+                      _menuItem('edit', Icons.edit_rounded, 'Edit', luma),
+                      _menuItem('delete', Icons.delete_outline_rounded, 'Delete',
+                          luma,
+                          danger: true),
+                    ],
+                  ),
                 ],
+              ),
+              const SizedBox(height: 16),
+              Text('Balance',
+                  style: TextStyle(color: luma.textMuted, fontSize: 12)),
+              const SizedBox(height: 2),
+              Text(
+                formatCents(balanceCents),
+                style: TextStyle(
+                  color: balanceCents < 0 ? luma.danger : luma.textPrimary,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Text('Balance',
-              style: TextStyle(color: luma.textMuted, fontSize: 12)),
-          const SizedBox(height: 2),
-          Text(
-            formatCents(balanceCents),
-            style: TextStyle(
-              color: balanceCents < 0 ? luma.danger : luma.textPrimary,
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

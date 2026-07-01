@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../theme/luma_theme.dart';
 import 'tools/downscaler_view.dart';
+import 'tools/image_editor_view.dart';
 import 'tools/media_converter_view.dart';
 import 'tools/picture_converter_view.dart';
 import 'tools/video_downscaler_view.dart';
 
 /// The converter tools, surfaced as tiles on the hub.
-enum ConverterTool { audio, picture, video, downscaler, videoDownscaler }
+enum ConverterTool { audio, picture, video, downscaler, videoDownscaler, imageEditor }
 
 /// File Converter section: a hub of four tools, each opening its own screen.
 class ConverterPage extends StatefulWidget {
@@ -36,6 +37,8 @@ class _ConverterPageState extends State<ConverterPage> {
         return DownscalerView(onBack: _back);
       case ConverterTool.videoDownscaler:
         return VideoDownscalerView(onBack: _back);
+      case ConverterTool.imageEditor:
+        return ImageEditorView(onBack: _back);
       case null:
         return _ConverterHub(onOpen: _open);
     }
@@ -141,6 +144,13 @@ class _ConverterHub extends StatelessWidget {
           subtitle: 'Compress & shrink video files',
           badge: 'OPTIMIZE',
           onTap: () => onOpen(ConverterTool.videoDownscaler),
+        ),
+        _ToolTile(
+          icon: Icons.photo_filter_outlined,
+          title: 'Image editor',
+          subtitle: 'Remove white backgrounds from images',
+          badge: 'EDIT',
+          onTap: () => onOpen(ConverterTool.imageEditor),
         ),
       ];
 }

@@ -64,10 +64,10 @@ class PriceScraper {
 
   static ScrapedPrice? _tryOpenGraph(String html) {
     final priceRe = RegExp(
-        r'<meta[^>]+property=["\'](?:og|product):price:amount["\'][^>]+content=["\']([0-9]+[.,][0-9]{1,2})["\']',
+        r'<meta[^>]+property=[\x22\x27](?:og|product):price:amount[\x22\x27][^>]+content=[\x22\x27]([0-9]+[.,][0-9]{1,2})[\x22\x27]',
         caseSensitive: false);
     final currencyRe = RegExp(
-        r'<meta[^>]+property=["\'](?:og|product):price:currency["\'][^>]+content=["\']([A-Z]{3})["\']',
+        r'<meta[^>]+property=[\x22\x27](?:og|product):price:currency[\x22\x27][^>]+content=[\x22\x27]([A-Z]{3})[\x22\x27]',
         caseSensitive: false);
 
     final m = priceRe.firstMatch(html);
@@ -82,7 +82,7 @@ class PriceScraper {
 
   static ScrapedPrice? _tryJsonLd(String html) {
     final scriptRe = RegExp(
-        r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>([\s\S]*?)</script>',
+        r'<script[^>]+type=[\x22\x27]application/ld\+json[\x22\x27][^>]*>([\s\S]*?)</script>',
         caseSensitive: false);
 
     for (final m in scriptRe.allMatches(html)) {
@@ -133,10 +133,10 @@ class PriceScraper {
 
   static ScrapedPrice? _tryMetaItemprop(String html) {
     final priceRe = RegExp(
-        r'<[^>]+itemprop=["\']price["\'][^>]+content=["\']([0-9]+[.,][0-9]{1,2})["\']',
+        r'<[^>]+itemprop=[\x22\x27]price[\x22\x27][^>]+content=[\x22\x27]([0-9]+[.,][0-9]{1,2})[\x22\x27]',
         caseSensitive: false);
     final currencyRe = RegExp(
-        r'<[^>]+itemprop=["\']priceCurrency["\'][^>]+content=["\']([A-Z]{3})["\']',
+        r'<[^>]+itemprop=[\x22\x27]priceCurrency[\x22\x27][^>]+content=[\x22\x27]([A-Z]{3})[\x22\x27]',
         caseSensitive: false);
 
     final m = priceRe.firstMatch(html);
@@ -157,7 +157,6 @@ class PriceScraper {
       RegExp(r'([0-9]{1,4}(?:[.,][0-9]{3})*[.,][0-9]{2})\s*(?:USD|EUR|GBP)'),
     ];
 
-    final symbols = [r'$', r'€', r'£', ''];
     final currencies = ['USD', 'EUR', 'GBP', '?'];
 
     for (var i = 0; i < patterns.length; i++) {

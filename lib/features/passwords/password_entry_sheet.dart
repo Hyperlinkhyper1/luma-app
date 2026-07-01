@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image/image.dart' as img;
@@ -104,6 +105,31 @@ class _PasswordEntryFormState extends State<_PasswordEntryForm> {
     if (mounted) Navigator.of(context).pop();
   }
 
+  void _generatePassword() {
+    const lower = 'abcdefghijklmnopqrstuvwxyz';
+    const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const digits = '0123456789';
+    const symbols = '!@#\$%^&*()-_=+[]{}?';
+    const all = lower + upper + digits + symbols;
+    final random = Random.secure();
+
+    final chars = <String>[
+      lower[random.nextInt(lower.length)],
+      upper[random.nextInt(upper.length)],
+      digits[random.nextInt(digits.length)],
+      symbols[random.nextInt(symbols.length)],
+    ];
+    for (var i = chars.length; i < 18; i++) {
+      chars.add(all[random.nextInt(all.length)]);
+    }
+    chars.shuffle(random);
+
+    setState(() {
+      _password.text = chars.join();
+      _obscure = false;
+    });
+  }
+
   Future<void> _pickIconImage() async {
     try {
       final result = await FilePicker.pickFiles(
@@ -194,16 +220,32 @@ class _PasswordEntryFormState extends State<_PasswordEntryForm> {
               decoration: pwInputDecoration(
                 luma,
                 hint: 'Password',
-                suffix: IconButton(
-                  icon: Icon(
-                    _obscure
-                        ? Icons.visibility_rounded
-                        : Icons.visibility_off_rounded,
-                    size: 18,
-                    color: luma.textSecondary,
-                  ),
-                  tooltip: _obscure ? 'Show' : 'Hide',
-                  onPressed: () => setState(() => _obscure = !_obscure),
+                suffix: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Tooltip(
+                      message: 'Generate random password',
+                      child: IconButton(
+                        icon: Icon(
+                          Icons.autorenew_rounded,
+                          size: 18,
+                          color: luma.textSecondary,
+                        ),
+                        onPressed: _generatePassword,
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        _obscure
+                            ? Icons.visibility_rounded
+                            : Icons.visibility_off_rounded,
+                        size: 18,
+                        color: luma.textSecondary,
+                      ),
+                      tooltip: _obscure ? 'Show' : 'Hide',
+                      onPressed: () => setState(() => _obscure = !_obscure),
+                    ),
+                  ],
                 ),
               ),
               onSubmitted: (_) => _save(),
