@@ -647,7 +647,7 @@ class _MoonProgressBarState extends State<_MoonProgressBar>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1300),
+    duration: const Duration(milliseconds: 2600),
   )..repeat(); // forward-only sweep (no reverse), so it doesn't bounce back.
 
   @override
@@ -661,7 +661,12 @@ class _MoonProgressBarState extends State<_MoonProgressBar>
     if (widget.fraction != null) return _bar(context, widget.fraction!);
     return AnimatedBuilder(
       animation: _ctrl,
-      builder: (context, _) => _bar(context, 0.04 + _ctrl.value * 0.92),
+      builder: (context, _) {
+        // Smoothly ease across the sweep, then a quick invisible reset at the
+        // very end so the loop doesn't read as an abrupt snap-back.
+        final t = Curves.easeInOutSine.transform(_ctrl.value.clamp(0.0, 0.94) / 0.94);
+        return _bar(context, 0.04 + t * 0.92);
+      },
     );
   }
 
