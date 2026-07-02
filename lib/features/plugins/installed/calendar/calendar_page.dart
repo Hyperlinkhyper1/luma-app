@@ -479,6 +479,33 @@ class _DayCellState extends State<_DayCell> {
     final dayEvents =
         widget.occurrences.where((o) => o.coversDay(day)).toList();
 
+    // Every day is a real surface tile so the grid reads as blocks rather than
+    // blending into the background. In-month days sit on the full surface;
+    // adjacent-month days recede on a dimmer surface but stay tiles.
+    final Color cellColor;
+    if (isSelected) {
+      cellColor = luma.accentSubtle;
+    } else if (_hovering) {
+      cellColor = luma.surfaceHover;
+    } else if (inMonth) {
+      cellColor = luma.surface;
+    } else {
+      cellColor = Color.lerp(luma.surface, luma.background, 0.6)!;
+    }
+
+    final Color borderColor;
+    final double borderWidth;
+    if (isSelected) {
+      borderColor = luma.accent;
+      borderWidth = 1.5;
+    } else if (isToday) {
+      borderColor = luma.accent.withValues(alpha: 0.55);
+      borderWidth = 1.5;
+    } else {
+      borderColor = luma.border;
+      borderWidth = 1;
+    }
+
     return MouseRegion(
       onEnter: (_) => setState(() => _hovering = true),
       onExit: (_) => setState(() => _hovering = false),
@@ -487,17 +514,13 @@ class _DayCellState extends State<_DayCell> {
         onTap: () => widget.onSelectDay(day),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
-          margin: const EdgeInsets.all(2),
+          margin: const EdgeInsets.all(3),
           decoration: BoxDecoration(
-            color: isSelected
-                ? luma.accentSubtle
-                : (_hovering ? luma.surfaceHover : Colors.transparent),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: isSelected ? luma.accent : Colors.transparent,
-            ),
+            color: cellColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: borderColor, width: borderWidth),
           ),
-          padding: const EdgeInsets.all(5),
+          padding: const EdgeInsets.all(7),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -514,14 +537,13 @@ class _DayCellState extends State<_DayCell> {
                     _AddDot(
                       onTap: () => showEventEditor(context, widget.repo,
                           initialDate: day),
-                    )
-                  else if (dayEvents.isNotEmpty && !inMonth)
-                    const SizedBox.shrink(),
+                    ),
                 ],
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 5),
               Expanded(
-                child: _CellEvents(events: dayEvents, day: day, repo: widget.repo),
+                child:
+                    _CellEvents(events: dayEvents, day: day, repo: widget.repo),
               ),
             ],
           ),
@@ -588,8 +610,9 @@ class _CellEvents extends StatelessWidget {
     if (events.isEmpty) return const SizedBox.shrink();
     return LayoutBuilder(
       builder: (context, constraints) {
-        const chipExtent = 19.0; // chip height + spacing
-        final capacity = (constraints.maxHeight / chipExtent).floor().clamp(0, 6);
+        const chipExtent = 27.0; // chip height + spacing
+        final capacity =
+            (constraints.maxHeight / chipExtent).floor().clamp(0, 8);
         if (capacity <= 0) {
           return _MoreDots(count: events.length);
         }
@@ -601,15 +624,18 @@ class _CellEvents extends StatelessWidget {
           children: [
             for (var i = 0; i < showChips; i++) ...[
               _MiniChip(occurrence: events[i], repo: repo),
-              const SizedBox(height: 3),
+              const SizedBox(height: 4),
             ],
             if (hidden > 0)
-              Text(
-                '+$hidden more',
-                style: TextStyle(
-                  color: context.luma.textMuted,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
+              Padding(
+                padding: const EdgeInsets.only(left: 2, top: 1),
+                child: Text(
+                  '+$hidden more',
+                  style: TextStyle(
+                    color: context.luma.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
           ],
@@ -639,9 +665,12 @@ class _MiniChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final luma = context.luma;
     final color = Color(occurrence.color);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Solid colored block; text flips to dark on light event colors so it
+    // always meets contrast.
+    final onColor = color.computeLuminance() > 0.6
+        ? const Color(0xFF1A1526)
+        : Colors.white;
     final time = occurrence.allDay
         ? null
         : DateFormat('HH:mm').format(occurrence.start);
@@ -651,36 +680,23 @@ class _MiniChip extends StatelessWidget {
         onTap: () =>
             showEventEditor(context, repo, existing: occurrence.event),
         child: Container(
-          height: 16,
-          padding: const EdgeInsets.symmetric(horizontal: 5),
+          height: 23,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          alignment: Alignment.centerLeft,
           decoration: BoxDecoration(
-            color: color.withValues(alpha: isDark ? 0.30 : 0.16),
-            borderRadius: BorderRadius.circular(5),
+            color: color,
+            borderRadius: BorderRadius.circular(7),
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 5,
-                height: 5,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-              ),
-              const SizedBox(width: 5),
-              Expanded(
-                child: Text(
-                  time == null
-                      ? occurrence.title
-                      : '$time ${occurrence.title}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: luma.textPrimary,
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w600,
-                    height: 1.0,
-                  ),
-                ),
-              ),
-            ],
+          child: Text(
+            time == null ? occurrence.title : '$time · ${occurrence.title}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: onColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              height: 1.05,
+            ),
           ),
         ),
       ),

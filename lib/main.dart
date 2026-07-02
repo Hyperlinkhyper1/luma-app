@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'app/app_shell.dart';
 import 'app/splash_screen.dart';
+import 'app/update/update_gate.dart';
 import 'app/window_controls.dart';
 import 'features/passwords/data/password_database.dart';
 import 'features/passwords/password_crypto.dart';
@@ -156,7 +157,14 @@ class _BootGateState extends State<_BootGate> {
           SplashScreen(
             bootstrap: widget.bootstrap,
             accent: widget.accentSeed ?? const Color(0xFFB49DF5),
-            onDone: () => setState(() => _showSplash = false),
+            onDone: () {
+              setState(() => _showSplash = false);
+              // Check for updates once the app is visible; the prompt (if any)
+              // then layers over the warm app.
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) checkAndPromptForUpdate(context);
+              });
+            },
           ),
       ],
     );
