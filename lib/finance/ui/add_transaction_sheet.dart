@@ -91,7 +91,7 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
       note: _noteController.text.trim().isEmpty
           ? null
           : _noteController.text.trim(),
-      potId: _kind == TxnKind.expense ? _potId : null,
+      potId: _potId,
       merchantId: _kind == TxnKind.expense ? _merchant?.id : null,
       categoryId: _kind == TxnKind.expense ? _categoryId : null,
     );
@@ -155,14 +155,15 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
               value: _categoryId,
               onChanged: (v) => setState(() => _categoryId = v),
             ),
-            const SizedBox(height: 14),
-            _FieldLabel('Pot'),
-            _PotDropdown(
-              pots: widget.pots,
-              value: _potId,
-              onChanged: (v) => setState(() => _potId = v),
-            ),
           ],
+          const SizedBox(height: 14),
+          _FieldLabel('Pot'),
+          _PotDropdown(
+            pots: widget.pots,
+            value: _potId,
+            hintNull: isExpense ? 'From main balance' : 'To main balance',
+            onChanged: (v) => setState(() => _potId = v),
+          ),
           const SizedBox(height: 14),
           _FieldLabel('Note (optional)'),
           TextField(
@@ -445,10 +446,12 @@ class _PotDropdown extends StatelessWidget {
     required this.pots,
     required this.value,
     required this.onChanged,
+    this.hintNull = 'From main balance',
   });
   final List<Pot> pots;
   final int? value;
   final ValueChanged<int?> onChanged;
+  final String hintNull;
 
   @override
   Widget build(BuildContext context) {
@@ -468,7 +471,7 @@ class _PotDropdown extends StatelessWidget {
           items: [
             DropdownMenuItem<int?>(
               value: null,
-              child: Text('From main balance',
+              child: Text(hintNull,
                   style: TextStyle(color: luma.textMuted)),
             ),
             for (final p in pots)

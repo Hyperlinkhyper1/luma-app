@@ -40,7 +40,13 @@ class Note {
 }
 
 class NotesRepository extends ChangeNotifier {
-  NotesRepository() {
+  /// Shared instance: the notes page and the sync engine must see the same
+  /// in-memory list, so this is a singleton.
+  factory NotesRepository() => instance;
+
+  static final NotesRepository instance = NotesRepository._();
+
+  NotesRepository._() {
     _load();
   }
 
@@ -103,6 +109,23 @@ class NotesRepository extends ChangeNotifier {
 
   Future<void> delete(String id) async {
     _notes.removeWhere((n) => n.id == id);
+    notifyListeners();
+    await _persist();
+  }
+
+  // ---- Sync support ---------------------------------------------------------
+
+  /// Snapshots all notes as a JSON-encodable list.
+  Future<Object?> exportData() async =>
+      _notes.map((n) => n.toJson()).toList();
+
+  /// Replaces all notes with a previously exported snapshot.
+  Future<void> importData(Object? data) async {
+    if (data is! List) throw const FormatException('Invalid notes snapshot.');
+    _notes = data
+        .map((e) => Note.fromJson(e as Map<String, dynamic>))
+        .toList()
+      ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
     notifyListeners();
     await _persist();
   }

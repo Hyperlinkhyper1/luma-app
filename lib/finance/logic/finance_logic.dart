@@ -37,7 +37,7 @@ class Balances {
 }
 
 /// Folds the full ledger into main + pot balances using these rules:
-/// income -> +main; expense -> -(pot or main); allocation -> main to pot.
+/// income -> +(pot or main); expense -> -(pot or main); allocation -> main to pot.
 Balances computeBalances(Iterable<FinanceTransaction> txns) {
   var main = 0;
   final pots = <int, int>{};
@@ -46,7 +46,11 @@ Balances computeBalances(Iterable<FinanceTransaction> txns) {
   for (final t in txns) {
     switch (t.kind) {
       case TxnKind.income:
-        main += t.amountCents;
+        if (t.potId != null) {
+          addPot(t.potId!, t.amountCents);
+        } else {
+          main += t.amountCents;
+        }
       case TxnKind.expense:
         if (t.potId != null) {
           addPot(t.potId!, -t.amountCents);

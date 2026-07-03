@@ -4,6 +4,9 @@ import 'app/app_shell.dart';
 import 'app/splash_screen.dart';
 import 'app/update/update_gate.dart';
 import 'app/window_controls.dart';
+import 'features/plugins/installed/data_management/data/data_management_database.dart';
+import 'features/plugins/installed/data_management/data_management_repository.dart';
+import 'features/plugins/installed/data_management/data_management_scope.dart';
 import 'features/passwords/data/password_database.dart';
 import 'features/passwords/password_crypto.dart';
 import 'features/passwords/password_repository.dart';
@@ -23,11 +26,17 @@ import 'features/plugins/installed/qr_code_generator/qr_code_scope.dart';
 import 'features/plugins/plugin_catalog_service.dart';
 import 'features/plugins/plugin_repository.dart';
 import 'features/plugins/plugin_scope.dart';
+import 'features/notes/notes_repository.dart';
+import 'features/plugins/installed/cloud_files/cloud_files_controller.dart';
+import 'features/plugins/installed/cloud_files/cloud_files_scope.dart';
 import 'finance/data/database.dart';
 import 'finance/finance_repository.dart';
 import 'finance/finance_scope.dart';
 import 'settings/settings_controller.dart';
 import 'settings/settings_scope.dart';
+import 'sync/sync_collections.dart';
+import 'sync/sync_scope.dart';
+import 'sync/sync_service.dart';
 import 'theme/luma_theme.dart';
 
 Future<void> main() async {
@@ -67,8 +76,67 @@ class _LumaAppState extends State<LumaApp> {
   late final BulletinBoardRepository _bulletinBoardRepository = BulletinBoardRepository(_bulletinBoardDb);
   late final PriceTrackerRepository _priceTrackerRepository = PriceTrackerRepository();
   late final CalendarDatabase _calendarDb = CalendarDatabase();
-  late final CalendarRepository _calendarRepository =
-      CalendarRepository(_calendarDb);
+  late final CalendarRepository _calendarRepository = CalendarRepository(_calendarDb);
+  late final DataManagementDatabase _dataManagementDb = DataManagementDatabase();
+  late final DataManagementRepository _dataManagementRepository = DataManagementRepository(_dataManagementDb);
+
+  // Optional server sync: every feature registers an adapter; nothing is
+  // uploaded unless the user signs in AND enables the feature in Settings.
+  late final SyncService _sync = SyncService(collections: [
+    JsonStoreSyncCollection(
+      id: 'notes',
+      label: 'Notes',
+      icon: Icons.sticky_note_2_rounded,
+      listenable: NotesRepository(),
+      exporter: () => NotesRepository().exportData(),
+      importer: (data) => NotesRepository().importData(data),
+    ),
+    DriftSyncCollection(
+      id: 'finance',
+      label: 'Finance',
+      icon: Icons.account_balance_wallet_rounded,
+      db: _db,
+    ),
+    PasswordVaultSyncCollection(
+      db: _passwordDb,
+      crypto: widget.passwordCrypto,
+    ),
+    DriftSyncCollection(
+      id: 'calendar',
+      label: 'Calendar',
+      icon: Icons.calendar_month_rounded,
+      db: _calendarDb,
+    ),
+    DriftSyncCollection(
+      id: 'bulletin_board',
+      label: 'Bulletin board',
+      icon: Icons.push_pin_rounded,
+      db: _bulletinBoardDb,
+    ),
+    DriftSyncCollection(
+      id: 'qr_codes',
+      label: 'QR codes',
+      icon: Icons.qr_code_rounded,
+      db: _qrCodeDb,
+    ),
+    DriftSyncCollection(
+      id: 'data_management',
+      label: 'Data management',
+      icon: Icons.table_chart_rounded,
+      db: _dataManagementDb,
+    ),
+    JsonStoreSyncCollection(
+      id: 'price_tracker',
+      label: 'Price tracker',
+      icon: Icons.trending_down_rounded,
+      listenable: _priceTrackerRepository,
+      exporter: () => _priceTrackerRepository.exportData(),
+      importer: (data) => _priceTrackerRepository.importData(data),
+    ),
+  ]);
+
+  // The Cloud Files plugin stores encrypted files on the same sync server.
+  late final CloudFilesController _cloudFiles = CloudFilesController(_sync);
 
   // The real startup work the splash covers: catch up any recurring entries /
   // allocations that came due while closed. Errors are swallowed so a storage
@@ -77,19 +145,32 @@ class _LumaAppState extends State<LumaApp> {
       _repository.applyDue(DateTime.now()).catchError((_) => 0).then((_) {});
 
   @override
+  void initState() {
+    super.initState();
+    _sync.init();
+  }
+
+  @override
   void dispose() {
+    _cloudFiles.dispose();
+    _sync.dispose();
     _db.close();
     _passwordDb.close();
     _pluginDb.close();
     _qrCodeDb.close();
     _bulletinBoardDb.close();
     _calendarDb.close();
+    _dataManagementDb.close();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return SettingsScope(
+    return SyncScope(
+      service: _sync,
+      child: CloudFilesScope(
+      controller: _cloudFiles,
+      child: SettingsScope(
       controller: widget.settings,
       child: FinanceScope(
         repository: _repository,
@@ -105,21 +186,24 @@ class _LumaAppState extends State<LumaApp> {
                   repository: _priceTrackerRepository,
                   child: CalendarScope(
                   repository: _calendarRepository,
-                  child: ListenableBuilder(
-                    listenable: widget.settings,
-                    builder: (context, _) {
-                      final s = widget.settings;
-                      return MaterialApp(
-                        title: 'luma',
-                        debugShowCheckedModeBanner: false,
-                        theme: LumaTheme.from(Brightness.light, s.accentSeed),
-                        darkTheme:
-                            LumaTheme.from(Brightness.dark, s.accentSeed),
-                        themeMode: s.themeMode,
-                        home: _BootGate(
-                            bootstrap: _bootstrap, accentSeed: s.accentSeed),
-                      );
-                    },
+                  child: DataManagementScope(
+                    repository: _dataManagementRepository,
+                    child: ListenableBuilder(
+                      listenable: widget.settings,
+                      builder: (context, _) {
+                        final s = widget.settings;
+                        return MaterialApp(
+                          title: 'luma',
+                          debugShowCheckedModeBanner: false,
+                          theme: LumaTheme.from(Brightness.light, s.accentSeed),
+                          darkTheme:
+                              LumaTheme.from(Brightness.dark, s.accentSeed),
+                          themeMode: s.themeMode,
+                          home: _BootGate(
+                              bootstrap: _bootstrap, accentSeed: s.accentSeed),
+                        );
+                      },
+                    ),
                   ),
                   ),
                 ),
@@ -127,6 +211,8 @@ class _LumaAppState extends State<LumaApp> {
             ),
           ),
         ),
+      ),
+      ),
       ),
     );
   }

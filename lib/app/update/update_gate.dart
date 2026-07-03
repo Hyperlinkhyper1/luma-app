@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
+import '../../theme/luma_theme.dart';
 import 'app_version.dart';
 import 'update_service.dart';
+import 'updating_screen.dart';
 
 /// Runs a background update check and, if a newer release exists, prompts the
 /// user to install it. Call once after the app has settled (e.g. when the
@@ -47,53 +51,61 @@ Future<void> checkAndPromptForUpdate(BuildContext context) async {
   await _runInstall(context, service, info);
 }
 
-/// Shows a non-dismissible progress dialog while the update downloads. On
-/// success the app relaunches (this process exits inside [applyUpdate]); on
-/// failure the dialog closes and a message is shown.
+/// Shows a full-screen, non-dismissible "Updating luma" experience while the
+/// installer downloads. It is guaranteed to stay up for a minimum of ~6s
+/// (see [UpdatingScreen]) so the update always feels like a deliberate,
+/// polished step rather than a flash of a dialog. On success the app
+/// relaunches (this process exits once the installer is handed off); on
+/// failure the screen closes and a message is shown.
 Future<void> _runInstall(
   BuildContext context,
   UpdateService service,
   UpdateInfo info,
 ) async {
   final progress = ValueNotifier<double>(0);
-  showDialog<void>(
-    context: context,
-    barrierDismissible: false,
-    builder: (_) => PopScope(
-      canPop: false,
-      child: AlertDialog(
-        title: const Text('Downloading update'),
-        content: ValueListenableBuilder<double>(
-          valueListenable: progress,
-          builder: (_, value, child) => Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              LinearProgressIndicator(value: value == 0 ? null : value),
-              const SizedBox(height: 12),
-              Text(value == 0
-                  ? 'Starting…'
-                  : '${(value * 100).toStringAsFixed(0)}%'),
-            ],
-          ),
+  String? installerPath;
+  final downloadDone = service
+      .downloadInstaller(info, onProgress: (p) => progress.value = p)
+      .then((path) {
+    installerPath = path;
+    return path != null;
+  });
+
+  final accent = context.luma.accent;
+
+  await Navigator.of(context, rootNavigator: true).push(
+    PageRouteBuilder<void>(
+      opaque: true,
+      barrierDismissible: false,
+      transitionDuration: const Duration(milliseconds: 350),
+      reverseTransitionDuration: const Duration(milliseconds: 250),
+      pageBuilder: (_, _, _) => PopScope(
+        canPop: false,
+        child: UpdatingScreen(
+          currentVersion: AppVersion.current,
+          newVersion: info.version,
+          progress: progress,
+          downloadDone: downloadDone,
+          accent: accent,
+          onFinished: (_) => Navigator.of(context, rootNavigator: true).pop(),
         ),
       ),
+      transitionsBuilder: (_, anim, _, child) =>
+          FadeTransition(opacity: anim, child: child),
     ),
   );
 
-  final ok = await service.applyUpdate(
-    info,
-    onProgress: (p) => progress.value = p,
-  );
+  final ok = await downloadDone;
+  if (ok && installerPath != null) {
+    await service.launchInstaller(installerPath!);
+    exit(0);
+  }
 
-  // If applyUpdate succeeded it called exit(0) and we never get here. Reaching
-  // this point means it failed to hand off.
+  // Reaching here means the download failed — the screen already closed
+  // itself via onFinished(false).
   if (context.mounted) {
-    Navigator.of(context, rootNavigator: true).pop();
-    if (!ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Update failed. Please try again later.')),
-      );
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Update failed. Please try again later.')),
+    );
   }
 }

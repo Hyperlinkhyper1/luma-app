@@ -39,6 +39,14 @@
       "icon": "calendar_month",
       "category": "Productivity",
       "version": "1.0.0"
+    },
+    {
+      "id": "cloud-files",
+      "name": "Cloud Files",
+      "description": "Upload files to your own sync server and get them back on every device. Everything is end-to-end encrypted on your device before upload — the server only ever stores unreadable data. Files count against your account's 3 GB storage quota, shown as a usage bar. Requires signing in under Settings → Sync & account.",
+      "icon": "cloud",
+      "category": "Utility",
+      "version": "1.0.0"
     }
   ]
 }

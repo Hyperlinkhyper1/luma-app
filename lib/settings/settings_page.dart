@@ -8,6 +8,7 @@ import '../app/widgets.dart';
 import '../theme/luma_theme.dart';
 import 'settings_controller.dart';
 import 'settings_scope.dart';
+import 'sync_section.dart';
 
 /// The Settings destination: appearance (theme + accent), behavior and an
 /// about section. Reads and mutates the app-wide [SettingsController].
@@ -94,6 +95,17 @@ class SettingsPage extends StatelessWidget {
                   ],
                 ),
               ),
+
+              const SizedBox(height: 24),
+
+              // ---- Sync & account -----------------------------------------
+              _SectionHeader(
+                icon: Icons.cloud_sync_rounded,
+                title: 'Sync & account',
+                subtitle: 'Your data on every device — encrypted, on your own server.',
+              ),
+              const SizedBox(height: 12),
+              const SyncSection(),
 
               const SizedBox(height: 24),
 

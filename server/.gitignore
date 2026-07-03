@@ -1,0 +1,10 @@
+# Dart
+.dart_tool/
+
+# Compiled server binary (build it locally / in Docker)
+luma_server.exe
+luma_server
+
+# Runtime data and secrets — never commit these
+data/
+.env

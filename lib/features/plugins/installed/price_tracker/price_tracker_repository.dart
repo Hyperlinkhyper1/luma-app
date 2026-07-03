@@ -124,4 +124,22 @@ class PriceTrackerRepository extends ChangeNotifier {
     notifyListeners();
     await _persist();
   }
+
+  // ---- Sync support ---------------------------------------------------------
+
+  /// Snapshots all tracked items as a JSON-encodable list.
+  Future<Object?> exportData() async =>
+      _items.map((i) => i.toJson()).toList();
+
+  /// Replaces all tracked items with a previously exported snapshot.
+  Future<void> importData(Object? data) async {
+    if (data is! List) {
+      throw const FormatException('Invalid price tracker snapshot.');
+    }
+    _items = data
+        .map((e) => TrackedItem.fromJson(e as Map<String, dynamic>))
+        .toList();
+    notifyListeners();
+    await _persist();
+  }
 }

@@ -26,8 +26,9 @@ class _NotesPageState extends State<NotesPage> {
 
   @override
   void dispose() {
+    // NotesRepository is a shared singleton (also used by the sync engine),
+    // so the page must NOT dispose it — only detach its own listener.
     _repo.removeListener(_onRepoChanged);
-    _repo.dispose();
     _titleController.dispose();
     _contentController.dispose();
     super.dispose();

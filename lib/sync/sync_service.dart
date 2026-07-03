@@ -1,0 +1,608 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:crypto/crypto.dart' show sha256;
+import 'package:flutter/foundation.dart';
+
+import 'sync_api.dart';
+import 'sync_collections.dart';
+import 'sync_crypto.dart';
+import 'sync_state.dart';
+
+enum SyncStatus { idle, syncing, error }
+
+/// Orchestrates account state and synchronization.
+///
+/// Flow per enabled collection: snapshot the local data, compare against the
+/// last synced state, then push, pull, or — when both sides changed — let the
+/// newest edit win. Snapshots are end-to-end encrypted before upload; the
+/// server only ever sees ciphertext.
+class SyncService extends ChangeNotifier {
+  SyncService({required this.collections});
+
+  final List<SyncCollection> collections;
+
+  SyncStateStore? _state;
+  SyncApi? _api;
+  RemoteAccount? _account;
+
+  SyncStatus _status = SyncStatus.idle;
+  String? _lastError;
+  bool _requiresReauth = false;
+  bool _importing = false;
+  Future<void> _syncTail = Future.value();
+
+  Timer? _debounce;
+  Timer? _periodic;
+  final List<StreamSubscription<void>> _subscriptions = [];
+
+  static const _debounceDelay = Duration(seconds: 8);
+  static const _periodicInterval = Duration(minutes: 15);
+
+  // ---- Public state ----------------------------------------------------------
+
+  bool get ready => _state != null;
+  bool get signedIn => _state?.signedIn ?? false;
+  bool get requiresReauth => _requiresReauth;
+  String? get email => _state?.email;
+  String? get serverUrl => _state?.serverUrl;
+  SyncStatus get status => _status;
+  String? get lastError => _lastError;
+  DateTime? get lastSyncAt => _state?.lastSyncAt;
+
+  /// Latest known storage usage / quota, refreshed on every sync.
+  RemoteAccount? get account => _account;
+
+  bool isEnabled(String collectionId) =>
+      _state?.collection(collectionId).enabled ?? false;
+
+  // ---- Lifecycle -------------------------------------------------------------
+
+  /// Loads persisted state and starts background syncing when signed in.
+  Future<void> init() async {
+    _state = await SyncStateStore.load();
+    final s = _state!;
+    if (s.signedIn) {
+      _api = SyncApi(s.serverUrl!, token: s.token);
+    }
+    for (final collection in collections) {
+      _subscriptions.add(
+          collection.changes.listen((_) => _onLocalChange(collection.id)));
+    }
+    _periodic = Timer.periodic(_periodicInterval, (_) {
+      if (signedIn) syncNow(silent: true);
+    });
+    notifyListeners();
+    if (signedIn) {
+      // Initial sync shortly after startup, off the critical path.
+      Timer(const Duration(seconds: 3), () => syncNow(silent: true));
+    }
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _periodic?.cancel();
+    for (final sub in _subscriptions) {
+      sub.cancel();
+    }
+    _api?.close();
+    super.dispose();
+  }
+
+  void _onLocalChange(String collectionId) {
+    if (_importing) return;
+    final s = _state;
+    if (s == null) return;
+    final st = s.collection(collectionId);
+    st.localChangedAt = DateTime.now();
+    // Persist lazily along with the debounced sync.
+    if (!signedIn || !st.enabled) return;
+    _debounce?.cancel();
+    _debounce = Timer(_debounceDelay, () => syncNow(silent: true));
+  }
+
+  // ---- Account management ------------------------------------------------------
+
+  /// Signs in to an existing account and starts syncing.
+  Future<void> signIn({
+    required String serverUrl,
+    required String email,
+    required String password,
+  }) async {
+    final s = _state ?? (_state = await SyncStateStore.load());
+    final api = SyncApi(serverUrl);
+    try {
+      final normalizedEmail = email.trim().toLowerCase();
+      final params = await api.authParams(normalizedEmail);
+      final keys = await SyncCrypto.deriveKeys(
+        password: password,
+        kdfSalt: params.kdfSalt,
+        iterations: params.kdfIterations,
+      );
+      final token =
+          await api.login(email: normalizedEmail, authKey: keys.authKey);
+      api.token = token;
+
+      _api?.close();
+      _api = api;
+      s
+        ..serverUrl = api.baseUrl
+        ..email = normalizedEmail
+        ..token = token
+        ..encryptionKey = keys.encryptionKey
+        ..kdfSalt = params.kdfSalt
+        ..kdfIterations = params.kdfIterations;
+      // Fresh account on this device: forget previous sync bookkeeping.
+      for (final st in s.collections.values) {
+        st.lastSyncedVersion = null;
+        st.lastSyncedHash = null;
+      }
+      _requiresReauth = false;
+      _lastError = null;
+      await s.save();
+      notifyListeners();
+      unawaited(syncNow(silent: true));
+    } catch (_) {
+      if (api != _api) api.close();
+      rethrow;
+    }
+  }
+
+  /// Creates a new account on the server.
+  Future<void> register({
+    required String serverUrl,
+    required String email,
+    required String password,
+  }) async {
+    final s = _state ?? (_state = await SyncStateStore.load());
+    final api = SyncApi(serverUrl);
+    try {
+      final normalizedEmail = email.trim().toLowerCase();
+      final kdfSalt = SyncCrypto.randomBytes(16);
+      const iterations = SyncCrypto.defaultKdfIterations;
+      final keys = await SyncCrypto.deriveKeys(
+        password: password,
+        kdfSalt: kdfSalt,
+        iterations: iterations,
+      );
+      final token = await api.register(
+        email: normalizedEmail,
+        authKey: keys.authKey,
+        kdfSalt: kdfSalt,
+        kdfIterations: iterations,
+      );
+      api.token = token;
+
+      _api?.close();
+      _api = api;
+      s
+        ..serverUrl = api.baseUrl
+        ..email = normalizedEmail
+        ..token = token
+        ..encryptionKey = keys.encryptionKey
+        ..kdfSalt = kdfSalt
+        ..kdfIterations = iterations;
+      for (final st in s.collections.values) {
+        st.lastSyncedVersion = null;
+        st.lastSyncedHash = null;
+      }
+      _requiresReauth = false;
+      _lastError = null;
+      await s.save();
+      notifyListeners();
+      unawaited(syncNow(silent: true));
+    } catch (_) {
+      if (api != _api) api.close();
+      rethrow;
+    }
+  }
+
+  /// Signs out of this device. Data already on the server stays there.
+  Future<void> signOut() async {
+    final s = _state;
+    if (s == null) return;
+    try {
+      await _api?.logout();
+    } catch (_) {
+      // Token may already be invalid; local sign-out proceeds regardless.
+    }
+    _api?.close();
+    _api = null;
+    _account = null;
+    _requiresReauth = false;
+    s.clearAccount();
+    await s.save();
+    notifyListeners();
+  }
+
+  /// Changes the account password. Requires the current password (to prove
+  /// identity) and re-encrypts every server-side snapshot under the new key.
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final s = _state;
+    final api = _api;
+    if (s == null || api == null || !s.signedIn) {
+      throw StateError('Not signed in.');
+    }
+
+    final currentKeys = await SyncCrypto.deriveKeys(
+      password: currentPassword,
+      kdfSalt: s.kdfSalt!,
+      iterations: s.kdfIterations!,
+    );
+    final newSalt = SyncCrypto.randomBytes(16);
+    const newIterations = SyncCrypto.defaultKdfIterations;
+    final newKeys = await SyncCrypto.deriveKeys(
+      password: newPassword,
+      kdfSalt: newSalt,
+      iterations: newIterations,
+    );
+
+    await api.changePassword(
+      currentAuthKey: currentKeys.authKey,
+      newAuthKey: newKeys.authKey,
+      newKdfSalt: newSalt,
+      newKdfIterations: newIterations,
+    );
+
+    final oldEncryptionKey = s.encryptionKey!;
+    s
+      ..encryptionKey = newKeys.encryptionKey
+      ..kdfSalt = newSalt
+      ..kdfIterations = newIterations;
+    await s.save();
+
+    // Re-encrypt every snapshot the server holds so other devices (which
+    // will derive the new key) can still read them.
+    final remote = await api.account();
+    for (final meta in remote.collections.values) {
+      try {
+        final blob = await api.getBlob(meta.name);
+        if (blob == null) continue;
+        final payload =
+            await SyncCrypto.openPayload(blob.bytes, oldEncryptionKey);
+        final sealed =
+            await SyncCrypto.sealPayload(payload!, newKeys.encryptionKey);
+        final newVersion = await api.putBlob(
+          meta.name,
+          sealed,
+          baseVersion: blob.version,
+          payloadSavedAt: blob.payloadSavedAt,
+        );
+        final st = s.collection(meta.name);
+        if (st.lastSyncedVersion == blob.version) {
+          st.lastSyncedVersion = newVersion;
+        }
+      } catch (_) {
+        // Snapshot stays under the old key; the next push from this device
+        // replaces it.
+      }
+    }
+    await s.save();
+    notifyListeners();
+  }
+
+  /// Permanently deletes the account and everything stored on the server.
+  Future<void> deleteAccount({required String password}) async {
+    final s = _state;
+    final api = _api;
+    if (s == null || api == null || !s.signedIn) {
+      throw StateError('Not signed in.');
+    }
+    final keys = await SyncCrypto.deriveKeys(
+      password: password,
+      kdfSalt: s.kdfSalt!,
+      iterations: s.kdfIterations!,
+    );
+    await api.deleteAccount(authKey: keys.authKey);
+    _api?.close();
+    _api = null;
+    _account = null;
+    s.clearAccount();
+    await s.save();
+    notifyListeners();
+  }
+
+  // ---- Collection toggles --------------------------------------------------------
+
+  /// Turns syncing on for a collection and uploads it right away.
+  Future<void> enableCollection(String id) async {
+    final s = _state;
+    if (s == null) return;
+    s.collection(id).enabled = true;
+    await s.save();
+    notifyListeners();
+    if (signedIn) unawaited(syncNow(silent: true));
+  }
+
+  /// Turns syncing off. With [removeRemote], the server's copy is deleted
+  /// too (other devices that still sync this collection may re-upload it).
+  Future<void> disableCollection(String id, {bool removeRemote = false}) async {
+    final s = _state;
+    if (s == null) return;
+    final st = s.collection(id)
+      ..enabled = false
+      ..lastSyncedVersion = null
+      ..lastSyncedHash = null;
+    if (removeRemote && signedIn) {
+      try {
+        await _api!.deleteBlob(id);
+        await _refreshAccount();
+      } catch (e) {
+        _lastError = 'Could not remove the server copy: $e';
+      }
+    }
+    st.localChangedAt ??= DateTime.now();
+    await s.save();
+    notifyListeners();
+  }
+
+  // ---- Cloud storage primitives (used by the Cloud Files plugin) ---------------
+  //
+  // These let a feature manage its own server-side blobs (files) using the
+  // same account, token and end-to-end encryption key as sync. They do NOT go
+  // through the auto-sync collection loop, and their blobs count against the
+  // account's storage quota just like everything else.
+
+  /// Refreshes the storage usage / quota snapshot and notifies listeners.
+  Future<void> refreshCloudAccount() async {
+    await _refreshAccount();
+    notifyListeners();
+  }
+
+  /// Uploads [bytes] as an encrypted object under [collection] (optimistic
+  /// locking via [baseVersion]; 0 = create). Returns the new server version.
+  Future<int> putObject(String collection, Uint8List bytes,
+      {int baseVersion = 0}) async {
+    final api = _api, s = _state;
+    if (api == null || s == null || !s.signedIn) {
+      throw StateError('Not signed in.');
+    }
+    final sealed = await SyncCrypto.sealBytes(bytes, s.encryptionKey!);
+    return api.putBlob(collection, sealed,
+        baseVersion: baseVersion, payloadSavedAt: DateTime.now());
+  }
+
+  /// Fetches and decrypts a raw object, or null if it does not exist.
+  Future<Uint8List?> getObject(String collection) async {
+    final api = _api, s = _state;
+    if (api == null || s == null || !s.signedIn) {
+      throw StateError('Not signed in.');
+    }
+    final blob = await api.getBlob(collection);
+    if (blob == null) return null;
+    return SyncCrypto.openBytes(blob.bytes, s.encryptionKey!);
+  }
+
+  /// Fetches and decrypts a JSON object with its current version, or null.
+  Future<({Object? data, int version})?> getJsonObject(
+      String collection) async {
+    final api = _api, s = _state;
+    if (api == null || s == null || !s.signedIn) {
+      throw StateError('Not signed in.');
+    }
+    final blob = await api.getBlob(collection);
+    if (blob == null) return null;
+    final data = await SyncCrypto.openPayload(blob.bytes, s.encryptionKey!);
+    return (data: data, version: blob.version);
+  }
+
+  /// Uploads a JSON object with optimistic locking. Returns the new version.
+  Future<int> putJsonObject(String collection, Object payload,
+      {int baseVersion = 0}) async {
+    final api = _api, s = _state;
+    if (api == null || s == null || !s.signedIn) {
+      throw StateError('Not signed in.');
+    }
+    final sealed = await SyncCrypto.sealPayload(payload, s.encryptionKey!);
+    return api.putBlob(collection, sealed,
+        baseVersion: baseVersion, payloadSavedAt: DateTime.now());
+  }
+
+  /// Deletes a server object (no-op if it doesn't exist).
+  Future<void> deleteObject(String collection) async {
+    final api = _api, s = _state;
+    if (api == null || s == null || !s.signedIn) {
+      throw StateError('Not signed in.');
+    }
+    await api.deleteBlob(collection);
+  }
+
+  // ---- Sync ---------------------------------------------------------------------
+
+  /// Synchronizes all enabled collections. Safe to call at any time —
+  /// concurrent calls are serialized, and awaiting the future always means
+  /// "my run has completed".
+  Future<void> syncNow({bool silent = false}) {
+    final run = _syncTail.then((_) => _syncOnce(silent: silent));
+    // The tail swallows errors so one failed run can't poison the chain.
+    _syncTail = run.catchError((_) {});
+    return run;
+  }
+
+  Future<void> _syncOnce({required bool silent}) async {
+    final s = _state;
+    final api = _api;
+    if (s == null || api == null || !s.signedIn) return;
+
+    _status = SyncStatus.syncing;
+    if (!silent) _lastError = null;
+    notifyListeners();
+
+    final errors = <String>[];
+    try {
+      final remote = await api.account();
+      _account = remote;
+      for (final collection in collections) {
+        final st = s.collection(collection.id);
+        if (!st.enabled) continue;
+        try {
+          await _syncCollection(collection, remote.collections[collection.id]);
+        } on SyncApiException catch (e) {
+          if (e.isUnauthorized) rethrow;
+          errors.add('${collection.label}: ${e.message}');
+        } catch (e) {
+          errors.add('${collection.label}: $e');
+        }
+      }
+      s.lastSyncAt = DateTime.now();
+      await _refreshAccount();
+    } on SyncApiException catch (e) {
+      if (e.isUnauthorized) {
+        // Token expired or revoked: require a fresh sign-in.
+        _requiresReauth = true;
+        s.token = null;
+        errors.add('Session expired — please sign in again.');
+      } else {
+        errors.add(e.message);
+      }
+    } catch (e) {
+      errors.add('$e');
+    }
+
+    await s.save();
+    _status = errors.isEmpty ? SyncStatus.idle : SyncStatus.error;
+    _lastError = errors.isEmpty ? null : errors.join('\n');
+    notifyListeners();
+  }
+
+  Future<void> _syncCollection(
+      SyncCollection collection, RemoteCollectionMeta? meta) async {
+    final s = _state!;
+    final st = s.collection(collection.id);
+
+    final exported = await collection.export();
+    final encoded = jsonEncode(exported);
+    final hash = sha256.convert(utf8.encode(encoded)).toString();
+
+    // First time this device links a collection that already exists on the
+    // server: the server copy wins. Without this, a fresh install's default
+    // (seed) data would count as the "newest edit" and overwrite real data.
+    if (st.lastSyncedVersion == null && meta != null) {
+      await _pull(collection, meta);
+      return;
+    }
+
+    final localChanged = st.lastSyncedHash != hash;
+    final serverVersion = meta?.version ?? 0;
+    final serverChanged = serverVersion != (st.lastSyncedVersion ?? 0);
+
+    if (!localChanged && !serverChanged) return;
+
+    if (localChanged && !serverChanged) {
+      await _push(collection, exported, hash, baseVersion: serverVersion);
+      return;
+    }
+    if (!localChanged && serverChanged) {
+      if (meta == null) {
+        // The server copy was deleted elsewhere; keep local data and
+        // re-upload so nothing is lost.
+        await _push(collection, exported, hash, baseVersion: 0);
+      } else {
+        await _pull(collection, meta);
+      }
+      return;
+    }
+
+    // Both sides changed since the last sync: the newest edit wins.
+    final localAt =
+        st.localChangedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+    if (meta == null || localAt.isAfter(meta.payloadSavedAt)) {
+      await _push(collection, exported, hash, baseVersion: serverVersion);
+    } else {
+      await _pull(collection, meta);
+    }
+  }
+
+  Future<void> _push(
+    SyncCollection collection,
+    Object? exported,
+    String hash, {
+    required int baseVersion,
+    bool isRetry = false,
+  }) async {
+    final s = _state!;
+    final st = s.collection(collection.id);
+    final payload = {
+      'v': 1,
+      'collection': collection.id,
+      'savedAtMs': (st.localChangedAt ?? DateTime.now()).millisecondsSinceEpoch,
+      'data': exported,
+    };
+    final sealed = await SyncCrypto.sealPayload(payload, s.encryptionKey!);
+    try {
+      final version = await _api!.putBlob(
+        collection.id,
+        sealed,
+        baseVersion: baseVersion,
+        payloadSavedAt: st.localChangedAt ?? DateTime.now(),
+      );
+      st.lastSyncedVersion = version;
+      st.lastSyncedHash = hash;
+    } on SyncApiException catch (e) {
+      if (!e.isConflict || isRetry) rethrow;
+      // Someone uploaded in between: re-resolve newest-wins once.
+      final conflictVersion = e.extra?['version'] as int? ?? 0;
+      final conflictSavedAt = DateTime.fromMillisecondsSinceEpoch(
+          e.extra?['payloadSavedAtMs'] as int? ?? 0);
+      final localAt =
+          st.localChangedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      if (localAt.isAfter(conflictSavedAt)) {
+        await _push(collection, exported, hash,
+            baseVersion: conflictVersion, isRetry: true);
+      } else {
+        final blob = await _api!.getBlob(collection.id);
+        if (blob != null) {
+          await _importBlob(collection, blob);
+        }
+      }
+    }
+  }
+
+  Future<void> _pull(
+      SyncCollection collection, RemoteCollectionMeta meta) async {
+    final blob = await _api!.getBlob(collection.id);
+    if (blob == null) return;
+    await _importBlob(collection, blob);
+  }
+
+  Future<void> _importBlob(SyncCollection collection, RemoteBlob blob) async {
+    final s = _state!;
+    final st = s.collection(collection.id);
+
+    final payload =
+        await SyncCrypto.openPayload(blob.bytes, s.encryptionKey!);
+    if (payload is! Map<String, dynamic> ||
+        payload['collection'] != collection.id) {
+      // Binding the collection name inside the ciphertext prevents a
+      // (compromised) server from swapping snapshots between collections.
+      throw const SyncCryptoException('Snapshot does not match collection.');
+    }
+
+    _importing = true;
+    try {
+      await collection.import(payload['data']);
+    } finally {
+      // Import triggers the change streams; swallow those events briefly.
+      Timer(const Duration(seconds: 2), () => _importing = false);
+    }
+
+    // Hash the state as imported so it doesn't read as a fresh local edit.
+    final reExported = await collection.export();
+    st.lastSyncedHash =
+        sha256.convert(utf8.encode(jsonEncode(reExported))).toString();
+    st.lastSyncedVersion = blob.version;
+    st.localChangedAt = null;
+  }
+
+  Future<void> _refreshAccount() async {
+    try {
+      _account = await _api!.account();
+    } catch (_) {
+      // Usage display just stays stale.
+    }
+  }
+}

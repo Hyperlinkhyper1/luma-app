@@ -340,7 +340,7 @@ class _RecurringEditorState extends State<_RecurringEditor> {
       amountCents: cents,
       cadence: _cadence,
       nextDue: _firstDue,
-      potId: Value(_kind == TxnKind.expense ? _potId : null),
+      potId: Value(_potId),
       categoryId: Value(_kind == TxnKind.expense ? _categoryId : null),
     ));
     if (mounted) Navigator.pop(context);
@@ -382,17 +382,17 @@ class _RecurringEditorState extends State<_RecurringEditor> {
           const SizedBox(height: 12),
           _label(luma, 'First due date'),
           _DateRow(date: _firstDue, onChanged: (d) => setState(() => _firstDue = d)),
+          const SizedBox(height: 12),
+          _label(luma, 'Pot (optional)'),
+          _SimpleDropdown<int?>(
+            value: _potId,
+            hintNull: isExpense ? 'From main balance' : 'To main balance',
+            items: {
+              for (final p in widget.pots) p.id: p.name,
+            },
+            onChanged: (v) => setState(() => _potId = v),
+          ),
           if (isExpense) ...[
-            const SizedBox(height: 12),
-            _label(luma, 'Pot (optional)'),
-            _SimpleDropdown<int?>(
-              value: _potId,
-              hintNull: 'From main balance',
-              items: {
-                for (final p in widget.pots) p.id: p.name,
-              },
-              onChanged: (v) => setState(() => _potId = v),
-            ),
             const SizedBox(height: 12),
             _label(luma, 'Category (optional)'),
             _SimpleDropdown<int?>(

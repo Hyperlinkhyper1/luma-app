@@ -1,0 +1,11 @@
+# Caddy terminates HTTPS with an automatic Let's Encrypt certificate for
+# LUMA_DOMAIN (set in .env) and proxies everything to the sync server.
+{$LUMA_DOMAIN} {
+	reverse_proxy luma-sync:8080
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		-Server
+	}
+}

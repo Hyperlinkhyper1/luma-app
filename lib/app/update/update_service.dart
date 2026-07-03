@@ -91,25 +91,43 @@ class UpdateService {
     UpdateInfo info, {
     void Function(double progress)? onProgress,
   }) async {
-    try {
-      final installerPath =
-          '${Directory.systemTemp.path}/${info.assetName}';
-      final bytes = await _download(info.downloadUrl, onProgress);
-      if (bytes == null) return false;
-      await File(installerPath).writeAsBytes(bytes);
+    final installerPath = await downloadInstaller(info, onProgress: onProgress);
+    if (installerPath == null) return false;
+    await launchInstaller(installerPath);
+    exit(0);
+  }
 
-      // /VERYSILENT: no UI. /SUPPRESSMSGBOXES: no prompts. /NORESTART: never
-      // reboot. CloseApplications=yes (set in the .iss) handles closing the
-      // running luma.exe, and the [Run] entry relaunches it afterward.
-      await Process.start(
-        installerPath,
-        ['/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART'],
-        mode: ProcessStartMode.detached,
-      );
-      exit(0);
+  /// Downloads the installer to a temp file and returns its path, or null on
+  /// failure. Split out from [applyUpdate] so callers can control exactly
+  /// when the process actually exits (e.g. to hold a progress screen up for a
+  /// minimum duration).
+  Future<String?> downloadInstaller(
+    UpdateInfo info, {
+    void Function(double progress)? onProgress,
+  }) async {
+    try {
+      final installerPath = '${Directory.systemTemp.path}/${info.assetName}';
+      final bytes = await _download(info.downloadUrl, onProgress);
+      if (bytes == null) return null;
+      await File(installerPath).writeAsBytes(bytes);
+      return installerPath;
     } catch (_) {
-      return false;
+      return null;
     }
+  }
+
+  /// Launches the downloaded installer silently. Does not exit the process —
+  /// callers must do that themselves once ready.
+  ///
+  /// /VERYSILENT: no UI. /SUPPRESSMSGBOXES: no prompts. /NORESTART: never
+  /// reboot. CloseApplications=yes (set in the .iss) handles closing the
+  /// running luma.exe, and the [Run] entry relaunches it afterward.
+  Future<void> launchInstaller(String installerPath) async {
+    await Process.start(
+      installerPath,
+      ['/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART'],
+      mode: ProcessStartMode.detached,
+    );
   }
 
   Future<List<int>?> _download(

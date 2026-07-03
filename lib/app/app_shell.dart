@@ -4,7 +4,9 @@ import '../features/converter/converter_page.dart';
 import '../features/home/home_page.dart';
 import '../features/notes/notes_page.dart';
 import '../features/passwords/passwords_page.dart';
+import '../features/plugins/installed/data_management/data_management_page.dart';
 import '../features/plugins/installed/calendar/calendar_page.dart';
+import '../features/plugins/installed/cloud_files/cloud_files_page.dart';
 import '../features/plugins/installed/file_tree/file_tree_page.dart';
 import '../features/plugins/installed/bulletin_board/bulletin_board_page.dart';
 import '../features/plugins/installed/price_tracker/price_tracker_page.dart';
@@ -136,6 +138,8 @@ class _AppShellState extends State<AppShell> {
         'bulletin-board' => const BulletinBoardPage(),
         'price-tracker' => const PriceTrackerPage(),
         'calendar' => const CalendarPage(),
+        'cloud-files' => const CloudFilesPage(),
+        'data-management' => const DataManagementPage(),
         _ => const LumaEmptyState(
             icon: Icons.extension_off_rounded,
             title: 'Plugin unavailable',

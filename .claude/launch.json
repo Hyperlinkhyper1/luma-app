@@ -4,8 +4,8 @@
     {
       "name": "luma-web",
       "runtimeExecutable": "flutter",
-      "runtimeArgs": ["run", "-d", "web-server", "--web-port", "8080", "--web-hostname", "127.0.0.1"],
-      "port": 8080
+      "runtimeArgs": ["run", "-d", "web-server", "--web-port", "8090", "--web-hostname", "127.0.0.1"],
+      "port": 8090
     }
   ]
 }

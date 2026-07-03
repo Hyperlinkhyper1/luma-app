@@ -1,0 +1,39 @@
+services:
+  luma-sync:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Caddy sits in front of us, so the forwarded client IP is trustworthy.
+      LUMA_TRUST_PROXY: "true"
+    volumes:
+      - luma_data:/data
+    # No "ports:" on purpose — only Caddy may reach the app, over the
+    # internal network. Never expose 8080 to the internet (plain HTTP).
+    networks:
+      - internal
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      LUMA_DOMAIN: ${LUMA_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - internal
+    depends_on:
+      - luma-sync
+
+volumes:
+  luma_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  internal:
