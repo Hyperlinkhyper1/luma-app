@@ -47,6 +47,14 @@
       "icon": "cloud",
       "category": "Utility",
       "version": "1.0.0"
+    },
+    {
+      "id": "data-management",
+      "name": "Data Management",
+      "description": "Create custom datasets, edit tables with typed columns, and build interactive charts — bar, line, area, and pie. Import and export CSV too.",
+      "icon": "table_chart",
+      "category": "Productivity",
+      "version": "1.0.0"
     }
   ]
 }
