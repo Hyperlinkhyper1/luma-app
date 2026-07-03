@@ -390,18 +390,20 @@ class _SectionHeader extends StatelessWidget {
       children: [
         Icon(icon, size: 18, color: luma.accent),
         const SizedBox(width: 10),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title,
-                style: TextStyle(
-                    color: luma.textPrimary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700)),
-            if (subtitle != null)
-              Text(subtitle!,
-                  style: TextStyle(color: luma.textMuted, fontSize: 12)),
-          ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title,
+                  style: TextStyle(
+                      color: luma.textPrimary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700)),
+              if (subtitle != null)
+                Text(subtitle!,
+                    style: TextStyle(color: luma.textMuted, fontSize: 12)),
+            ],
+          ),
         ),
       ],
     );

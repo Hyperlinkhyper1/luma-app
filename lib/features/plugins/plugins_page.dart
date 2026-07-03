@@ -159,86 +159,95 @@ class _PluginsPageState extends State<PluginsPage> {
     required Set<String> installedIds,
     required PluginRepository repo,
   }) {
-    return Column(
+    // A single scrollable (instead of a pinned header Column next to a
+    // separately-scrolling ListView) so the search/filter controls scroll
+    // away with the tiles rather than clipping them behind a static bar.
+    return CustomScrollView(
       key: const ValueKey('list'),
-      children: [
-        Padding(
+      slivers: [
+        SliverPadding(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _SearchField(
-                controller: _searchController,
-                onChanged: (v) => setState(() => _query = v),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  _SortDropdown(
-                    value: _sort,
-                    onChanged: (v) => setState(() => _sort = v),
-                  ),
-                  const SizedBox(width: 10),
-                  _PriceFilterPills(
-                    value: _priceFilter,
-                    onChanged: (v) => setState(() => _priceFilter = v),
-                  ),
-                  const Spacer(),
-                  Text(
-                    '${plugins.length} plugin${plugins.length == 1 ? '' : 's'}',
-                    style: TextStyle(
-                      color: context.luma.textMuted,
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-              if (allTags.isNotEmpty) ...[
-                const SizedBox(height: 10),
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _SearchField(
+                  controller: _searchController,
+                  onChanged: (v) => setState(() => _query = v),
+                ),
+                const SizedBox(height: 12),
                 Wrap(
-                  spacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 10,
                   runSpacing: 8,
                   children: [
-                    for (final tag in allTags)
-                      _TagFilterChip(
-                        label: tag,
-                        selected: _selectedTags.contains(tag),
-                        onTap: () => setState(() {
-                          if (!_selectedTags.remove(tag)) {
-                            _selectedTags.add(tag);
-                          }
-                        }),
+                    _SortDropdown(
+                      value: _sort,
+                      onChanged: (v) => setState(() => _sort = v),
+                    ),
+                    _PriceFilterPills(
+                      value: _priceFilter,
+                      onChanged: (v) => setState(() => _priceFilter = v),
+                    ),
+                    Text(
+                      '${plugins.length} plugin${plugins.length == 1 ? '' : 's'}',
+                      style: TextStyle(
+                        color: context.luma.textMuted,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
                       ),
+                    ),
                   ],
                 ),
+                if (allTags.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final tag in allTags)
+                        _TagFilterChip(
+                          label: tag,
+                          selected: _selectedTags.contains(tag),
+                          onTap: () => setState(() {
+                            if (!_selectedTags.remove(tag)) {
+                              _selectedTags.add(tag);
+                            }
+                          }),
+                        ),
+                    ],
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
-        Expanded(
-          child: plugins.isEmpty
-              ? const LumaEmptyState(
-                  icon: Icons.search_off_rounded,
-                  title: 'No plugins match your filters',
-                )
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-                  itemCount: plugins.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 12),
-                  itemBuilder: (context, i) {
-                    final entry = plugins[i];
-                    return _PluginTile(
-                      entry: entry,
-                      installed: installedIds.contains(entry.id),
-                      repo: repo,
-                      onOpen: () => widget.onOpenPlugin(entry.id),
-                      onOpenDetail: () => setState(() => _detailEntry = entry),
-                    );
-                  },
-                ),
-        ),
+        if (plugins.isEmpty)
+          const SliverFillRemaining(
+            hasScrollBody: false,
+            child: LumaEmptyState(
+              icon: Icons.search_off_rounded,
+              title: 'No plugins match your filters',
+            ),
+          )
+        else
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+            sliver: SliverList.separated(
+              itemCount: plugins.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
+              itemBuilder: (context, i) {
+                final entry = plugins[i];
+                return _PluginTile(
+                  entry: entry,
+                  installed: installedIds.contains(entry.id),
+                  repo: repo,
+                  onOpen: () => widget.onOpenPlugin(entry.id),
+                  onOpenDetail: () => setState(() => _detailEntry = entry),
+                );
+              },
+            ),
+          ),
       ],
     );
   }
@@ -508,6 +517,31 @@ class _PluginTileState extends State<_PluginTile> {
     final luma = context.luma;
     final entry = widget.entry;
 
+    final actionButton = widget.installed
+        ? LumaGhostButton(
+            label: 'Open',
+            icon: Icons.open_in_new_rounded,
+            onTap: widget.onOpen,
+          )
+        : LumaPrimaryButton(
+            label: 'Download',
+            icon: Icons.download_rounded,
+            loading: _installing,
+            onTap: _install,
+          );
+
+    final deleteButton = Tooltip(
+      message: 'Remove plugin',
+      child: IconButton(
+        icon: Icon(
+          Icons.delete_outline_rounded,
+          color: luma.textMuted,
+          size: 20,
+        ),
+        onPressed: () => widget.repo.uninstall(entry.id),
+      ),
+    );
+
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovering = true),
@@ -527,94 +561,102 @@ class _PluginTileState extends State<_PluginTile> {
                   : luma.border,
             ),
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              LumaIconBadge(
-                icon: pluginIconFor(entry.icon),
-                color: luma.accent,
-                size: 64,
-              ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 10,
-                      runSpacing: 6,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // A fixed 64px icon + a fixed 140px button leaves almost no
+              // room for the name/description on a phone-width card, so
+              // below this width the action row drops beneath the text
+              // instead of squeezing it.
+              final narrow = constraints.maxWidth < 420;
+
+              final header = Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  LumaIconBadge(
+                    icon: pluginIconFor(entry.icon),
+                    color: luma.accent,
+                    size: narrow ? 48 : 64,
+                  ),
+                  SizedBox(width: narrow ? 14 : 20),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 10,
+                          runSpacing: 6,
+                          children: [
+                            Text(
+                              entry.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: luma.textPrimary,
+                                fontSize: 19,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            for (final tag in entry.tags)
+                              _CategoryChip(label: tag, luma: luma),
+                            if (!entry.free)
+                              _CategoryChip(label: 'Paid', luma: luma),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
                         Text(
-                          entry.name,
-                          maxLines: 1,
+                          entry.description,
+                          maxLines: 3,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: luma.textPrimary,
-                            fontSize: 19,
-                            fontWeight: FontWeight.w700,
+                            color: luma.textSecondary,
+                            fontSize: 13.5,
+                            height: 1.45,
                           ),
                         ),
-                        for (final tag in entry.tags)
-                          _CategoryChip(label: tag, luma: luma),
-                        if (!entry.free)
-                          _CategoryChip(label: 'Paid', luma: luma),
+                        if (_error != null) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            _error!,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style:
+                                TextStyle(color: luma.danger, fontSize: 11),
+                          ),
+                        ],
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      entry.description,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: luma.textSecondary,
-                        fontSize: 13.5,
-                        height: 1.45,
-                      ),
-                    ),
-                    if (_error != null) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        _error!,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: luma.danger, fontSize: 11),
-                      ),
+                  ),
+                  if (!narrow) ...[
+                    const SizedBox(width: 20),
+                    SizedBox(width: 140, child: actionButton),
+                    if (widget.installed) ...[
+                      const SizedBox(width: 8),
+                      deleteButton,
                     ],
                   ],
-                ),
-              ),
-              const SizedBox(width: 20),
-              SizedBox(
-                width: 140,
-                child: widget.installed
-                    ? LumaGhostButton(
-                        label: 'Open',
-                        icon: Icons.open_in_new_rounded,
-                        onTap: widget.onOpen,
-                      )
-                    : LumaPrimaryButton(
-                        label: 'Download',
-                        icon: Icons.download_rounded,
-                        loading: _installing,
-                        onTap: _install,
-                      ),
-              ),
-              if (widget.installed) ...[
-                const SizedBox(width: 8),
-                Tooltip(
-                  message: 'Remove plugin',
-                  child: IconButton(
-                    icon: Icon(
-                      Icons.delete_outline_rounded,
-                      color: luma.textMuted,
-                      size: 20,
-                    ),
-                    onPressed: () => widget.repo.uninstall(entry.id),
+                ],
+              );
+
+              if (!narrow) return header;
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  header,
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(child: actionButton),
+                      if (widget.installed) ...[
+                        const SizedBox(width: 8),
+                        deleteButton,
+                      ],
+                    ],
                   ),
-                ),
-              ],
-            ],
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -732,62 +774,79 @@ class _PluginDetailViewState extends State<_PluginDetailView> {
                 ),
               ),
               const SizedBox(height: 20),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  LumaIconBadge(
-                    icon: pluginIconFor(entry.icon),
-                    color: luma.accent,
-                    size: 72,
-                  ),
-                  const SizedBox(width: 20),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          entry.name,
-                          style: TextStyle(
-                            color: luma.textPrimary,
-                            fontSize: 24,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final narrow = constraints.maxWidth < 420;
+                  final actionButton = widget.installed
+                      ? LumaGhostButton(
+                          label: 'Open',
+                          icon: Icons.open_in_new_rounded,
+                          onTap: widget.onOpen,
+                        )
+                      : LumaPrimaryButton(
+                          label: 'Download',
+                          icon: Icons.download_rounded,
+                          loading: _installing,
+                          onTap: _install,
+                        );
+
+                  final header = Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      LumaIconBadge(
+                        icon: pluginIconFor(entry.icon),
+                        color: luma.accent,
+                        size: narrow ? 56 : 72,
+                      ),
+                      SizedBox(width: narrow ? 14 : 20),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            for (final tag in entry.tags)
-                              _CategoryChip(label: tag, luma: luma),
-                            if (!entry.free)
-                              _CategoryChip(label: 'Paid', luma: luma),
-                            _CategoryChip(
-                              label: 'v${entry.version}',
-                              luma: luma,
+                            Text(
+                              entry.name,
+                              style: TextStyle(
+                                color: luma.textPrimary,
+                                fontSize: narrow ? 20 : 24,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                for (final tag in entry.tags)
+                                  _CategoryChip(label: tag, luma: luma),
+                                if (!entry.free)
+                                  _CategoryChip(label: 'Paid', luma: luma),
+                                _CategoryChip(
+                                  label: 'v${entry.version}',
+                                  luma: luma,
+                                ),
+                              ],
                             ),
                           ],
                         ),
+                      ),
+                      if (!narrow) ...[
+                        const SizedBox(width: 20),
+                        SizedBox(width: 160, child: actionButton),
                       ],
-                    ),
-                  ),
-                  const SizedBox(width: 20),
-                  SizedBox(
-                    width: 160,
-                    child: widget.installed
-                        ? LumaGhostButton(
-                            label: 'Open',
-                            icon: Icons.open_in_new_rounded,
-                            onTap: widget.onOpen,
-                          )
-                        : LumaPrimaryButton(
-                            label: 'Download',
-                            icon: Icons.download_rounded,
-                            loading: _installing,
-                            onTap: _install,
-                          ),
-                  ),
-                ],
+                    ],
+                  );
+
+                  if (!narrow) return header;
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      header,
+                      const SizedBox(height: 14),
+                      actionButton,
+                    ],
+                  );
+                },
               ),
               if (_error != null) ...[
                 const SizedBox(height: 10),

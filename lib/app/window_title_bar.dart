@@ -93,42 +93,50 @@ class _WindowTitleBarState extends State<WindowTitleBar> {
       ],
     );
 
+    // On phones the status bar (clock, battery, signal) is drawn by the OS on
+    // top of our own window; pad the bar down by that inset so the two never
+    // overlap. Desktop windows report zero top inset, so this is a no-op there.
+    final topInset = MediaQuery.paddingOf(context).top;
+
     return Container(
-      height: WindowTitleBar.height,
+      padding: EdgeInsets.only(top: topInset),
       decoration: BoxDecoration(
         color: luma.background,
         border: Border(bottom: BorderSide(color: luma.border)),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: widget.showWindowControls
-                ? _DragRegion(child: content)
-                : content,
-          ),
-          if (widget.showWindowControls) ...[
-            _CaptionButton(
-              icon: Icons.remove_rounded,
-              tooltip: 'Minimize',
-              onPressed: windowMinimize,
+      child: SizedBox(
+        height: WindowTitleBar.height,
+        child: Row(
+          children: [
+            Expanded(
+              child: widget.showWindowControls
+                  ? _DragRegion(child: content)
+                  : content,
             ),
-            _CaptionButton(
-              icon: _maximized
-                  ? Icons.filter_none_rounded
-                  : Icons.crop_square_rounded,
-              iconSize: _maximized ? 13 : 15,
-              tooltip: _maximized ? 'Restore' : 'Maximize',
-              onPressed: windowToggleMaximize,
-            ),
-            _CaptionButton(
-              icon: Icons.close_rounded,
-              tooltip: 'Close',
-              danger: true,
-              onPressed: windowClose,
-            ),
-          ] else
-            const SizedBox(width: 8),
-        ],
+            if (widget.showWindowControls) ...[
+              _CaptionButton(
+                icon: Icons.remove_rounded,
+                tooltip: 'Minimize',
+                onPressed: windowMinimize,
+              ),
+              _CaptionButton(
+                icon: _maximized
+                    ? Icons.filter_none_rounded
+                    : Icons.crop_square_rounded,
+                iconSize: _maximized ? 13 : 15,
+                tooltip: _maximized ? 'Restore' : 'Maximize',
+                onPressed: windowToggleMaximize,
+              ),
+              _CaptionButton(
+                icon: Icons.close_rounded,
+                tooltip: 'Close',
+                danger: true,
+                onPressed: windowClose,
+              ),
+            ] else
+              const SizedBox(width: 8),
+          ],
+        ),
       ),
     );
   }

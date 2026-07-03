@@ -19,9 +19,14 @@ import '../settings/settings_controller.dart';
 import '../settings/settings_page.dart';
 import '../settings/settings_scope.dart';
 import '../theme/luma_theme.dart';
+import 'bottom_nav.dart';
 import 'nav_rail.dart';
 import 'widgets.dart';
 import 'window_title_bar.dart';
+
+/// Below this width the vertical icon rail is replaced with a bottom nav bar,
+/// since a fixed 72px-wide rail leaves too little room for phone content.
+const _phoneBreakpoint = 700.0;
 
 /// The top-level layout: a fixed left icon rail (Modrinth-style) next to the
 /// active content area, which has its own top bar.
@@ -80,47 +85,60 @@ class _AppShellState extends State<AppShell> {
         }
         final showingPlugin = activePlugin != null;
         final title = showingPlugin ? activePlugin.name : _titles[index];
+        final isPhone = MediaQuery.sizeOf(context).width < _phoneBreakpoint;
+
+        final content = Container(
+          color: luma.background,
+          child: showingPlugin
+              ? _pluginPageFor(activePlugin.pluginId)
+              : IndexedStack(
+                  index: index,
+                  children: [
+                    HomePage(onNavigate: _selectFixed),
+                    const ConverterPage(),
+                    const FinancePage(),
+                    const PasswordsPage(),
+                    const NotesPage(),
+                    PluginsPage(onOpenPlugin: _selectPlugin),
+                    const SettingsPage(),
+                  ],
+                ),
+        );
 
         return Scaffold(
           body: Column(
             children: [
               WindowTitleBar(title: title),
               Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    NavRail(
-                      selectedIndex: showingPlugin ? -1 : index,
-                      selectedPluginId:
-                          showingPlugin ? activePlugin.pluginId : null,
-                      installedPlugins: installed,
-                      onSelect: _selectFixed,
-                      onSelectPlugin: _selectPlugin,
-                    ),
-                    Expanded(
-                      child: Container(
-                        color: luma.background,
-                        child: showingPlugin
-                            ? _pluginPageFor(activePlugin.pluginId)
-                            : IndexedStack(
-                                index: index,
-                                children: [
-                                  HomePage(onNavigate: _selectFixed),
-                                  const ConverterPage(),
-                                  const FinancePage(),
-                                  const PasswordsPage(),
-                                  const NotesPage(),
-                                  PluginsPage(onOpenPlugin: _selectPlugin),
-                                  const SettingsPage(),
-                                ],
-                              ),
+                child: isPhone
+                    ? content
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          NavRail(
+                            selectedIndex: showingPlugin ? -1 : index,
+                            selectedPluginId:
+                                showingPlugin ? activePlugin.pluginId : null,
+                            installedPlugins: installed,
+                            onSelect: _selectFixed,
+                            onSelectPlugin: _selectPlugin,
+                          ),
+                          Expanded(child: content),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
               ),
             ],
           ),
+          bottomNavigationBar: isPhone
+              ? BottomNav(
+                  selectedIndex: showingPlugin ? -1 : index,
+                  selectedPluginId:
+                      showingPlugin ? activePlugin.pluginId : null,
+                  installedPlugins: installed,
+                  onSelect: _selectFixed,
+                  onSelectPlugin: _selectPlugin,
+                )
+              : null,
         );
       },
     );

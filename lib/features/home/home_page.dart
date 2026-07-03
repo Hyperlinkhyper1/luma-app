@@ -84,102 +84,139 @@ class _HomeBody extends StatelessWidget {
       if (t.kind == TxnKind.expense) monthExpense += t.amountCents;
     }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _GreetingCard(now: now, netWorthLabel: money(netWorth)),
-          const SizedBox(height: 20),
-          _SectionTitle('At a glance'),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _StatCard(
-                  label: 'Income this month',
-                  value: money(monthIncome),
-                  color: luma.success,
-                  icon: Icons.south_west_rounded,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _StatCard(
-                  label: 'Spent this month',
-                  value: money(monthExpense),
-                  color: luma.danger,
-                  icon: Icons.north_east_rounded,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _StatCard(
-                  label: 'In pots',
-                  value: money(balances.potsTotalCents),
-                  color: luma.accent,
-                  icon: Icons.savings_rounded,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _StatCard(
-                  label: 'Investments',
-                  value: money(portfolio),
-                  color: luma.accent,
-                  icon: Icons.trending_up_rounded,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 28),
-          _SectionTitle('Jump back in'),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _QuickAction(
-                  icon: Icons.account_balance_wallet_rounded,
-                  title: 'Finance',
-                  subtitle: 'Budgets, pots & stocks',
-                  onTap: () => onNavigate(2),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _QuickAction(
-                  icon: Icons.swap_horiz_rounded,
-                  title: 'File Converter',
-                  subtitle: 'Convert images & files',
-                  onTap: () => onNavigate(1),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _QuickAction(
-                  icon: Icons.settings_rounded,
-                  title: 'Settings',
-                  subtitle: 'Theme, colors & more',
-                  onTap: () => onNavigate(4),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 28),
-          _SectionTitle('Recent activity'),
-          const SizedBox(height: 12),
-          _RecentActivity(
-            txns: txns,
-            categories: categories,
-            pots: pots,
-            hide: hide,
-          ),
-        ],
+    final statCards = [
+      _StatCard(
+        label: 'Income this month',
+        value: money(monthIncome),
+        color: luma.success,
+        icon: Icons.south_west_rounded,
       ),
+      _StatCard(
+        label: 'Spent this month',
+        value: money(monthExpense),
+        color: luma.danger,
+        icon: Icons.north_east_rounded,
+      ),
+      _StatCard(
+        label: 'In pots',
+        value: money(balances.potsTotalCents),
+        color: luma.accent,
+        icon: Icons.savings_rounded,
+      ),
+      _StatCard(
+        label: 'Investments',
+        value: money(portfolio),
+        color: luma.accent,
+        icon: Icons.trending_up_rounded,
+      ),
+    ];
+
+    final quickActions = [
+      _QuickAction(
+        icon: Icons.account_balance_wallet_rounded,
+        title: 'Finance',
+        subtitle: 'Budgets, pots & stocks',
+        onTap: () => onNavigate(2),
+      ),
+      _QuickAction(
+        icon: Icons.swap_horiz_rounded,
+        title: 'File Converter',
+        subtitle: 'Convert images & files',
+        onTap: () => onNavigate(1),
+      ),
+      _QuickAction(
+        icon: Icons.settings_rounded,
+        title: 'Settings',
+        subtitle: 'Theme, colors & more',
+        onTap: () => onNavigate(4),
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Below this the two-column grids get squeezed too tight to hold
+        // "Income this month" etc. without ugly mid-word wrapping, so switch
+        // to a single column that gives each card the full width.
+        final narrow = constraints.maxWidth < 480;
+        final hPadding = narrow ? 16.0 : 24.0;
+
+        return SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(hPadding, 12, hPadding, 40),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _GreetingCard(now: now, netWorthLabel: money(netWorth)),
+              const SizedBox(height: 20),
+              _SectionTitle('At a glance'),
+              const SizedBox(height: 12),
+              _ResponsiveGrid(
+                narrow: narrow,
+                desktopColumns: 2,
+                children: statCards,
+              ),
+              const SizedBox(height: 28),
+              _SectionTitle('Jump back in'),
+              const SizedBox(height: 12),
+              _ResponsiveGrid(narrow: narrow, children: quickActions),
+              const SizedBox(height: 28),
+              _SectionTitle('Recent activity'),
+              const SizedBox(height: 12),
+              _RecentActivity(
+                txns: txns,
+                categories: categories,
+                pots: pots,
+                hide: hide,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Lays [children] out as a fixed-column grid on wide screens, or as a single
+/// stacked column when [narrow] — avoids squeezing card text into a column so
+/// thin that words wrap letter-by-letter.
+class _ResponsiveGrid extends StatelessWidget {
+  const _ResponsiveGrid({
+    required this.narrow,
+    required this.children,
+    this.desktopColumns,
+  });
+
+  final bool narrow;
+  final List<Widget> children;
+  final int? desktopColumns;
+
+  static const _spacing = 16.0;
+
+  @override
+  Widget build(BuildContext context) {
+    if (narrow) {
+      return Column(
+        children: [
+          for (var i = 0; i < children.length; i++) ...[
+            if (i > 0) const SizedBox(height: _spacing),
+            children[i],
+          ],
+        ],
+      );
+    }
+
+    final columns = desktopColumns ?? children.length;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width =
+            (constraints.maxWidth - _spacing * (columns - 1)) / columns;
+        return Wrap(
+          spacing: _spacing,
+          runSpacing: _spacing,
+          children: [
+            for (final child in children) SizedBox(width: width, child: child),
+          ],
+        );
+      },
     );
   }
 }
@@ -266,9 +303,12 @@ class _StatCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label,
-                    style:
-                        TextStyle(color: luma.textSecondary, fontSize: 13)),
+                Text(
+                  label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: luma.textSecondary, fontSize: 13),
+                ),
                 const SizedBox(height: 4),
                 Text(
                   value,
