@@ -96,13 +96,13 @@ Future<void> _runInstall(
   );
 
   final ok = await downloadDone;
-  if (ok && installerPath != null) {
-    await service.launchInstaller(installerPath!);
+  if (ok && installerPath != null && await service.launchInstaller(installerPath!)) {
     exit(0);
   }
 
-  // Reaching here means the download failed — the screen already closed
-  // itself via onFinished(false).
+  // Reaching here means either the download or the installer hand-off
+  // failed — see update.log (next to the app databases, in the app support
+  // directory) for the underlying exception.
   if (context.mounted) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Update failed. Please try again later.')),

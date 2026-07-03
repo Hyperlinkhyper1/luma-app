@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 
 import 'app_version.dart';
 
@@ -78,7 +79,8 @@ class UpdateService {
         downloadUrl: installerAsset['browser_download_url'] as String,
         assetName: installerAsset['name'] as String,
       );
-    } catch (_) {
+    } catch (e, st) {
+      await _logError('checkForUpdate', e, st);
       return null;
     }
   }
@@ -93,7 +95,7 @@ class UpdateService {
   }) async {
     final installerPath = await downloadInstaller(info, onProgress: onProgress);
     if (installerPath == null) return false;
-    await launchInstaller(installerPath);
+    if (!await launchInstaller(installerPath)) return false;
     exit(0);
   }
 
@@ -111,23 +113,31 @@ class UpdateService {
       if (bytes == null) return null;
       await File(installerPath).writeAsBytes(bytes);
       return installerPath;
-    } catch (_) {
+    } catch (e, st) {
+      await _logError('downloadInstaller', e, st);
       return null;
     }
   }
 
   /// Launches the downloaded installer silently. Does not exit the process —
-  /// callers must do that themselves once ready.
+  /// callers must do that themselves once ready. Returns false (and logs) if
+  /// the OS refuses to start it (e.g. blocked by SmartScreen/AV).
   ///
   /// /VERYSILENT: no UI. /SUPPRESSMSGBOXES: no prompts. /NORESTART: never
   /// reboot. CloseApplications=yes (set in the .iss) handles closing the
   /// running luma.exe, and the [Run] entry relaunches it afterward.
-  Future<void> launchInstaller(String installerPath) async {
-    await Process.start(
-      installerPath,
-      ['/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART'],
-      mode: ProcessStartMode.detached,
-    );
+  Future<bool> launchInstaller(String installerPath) async {
+    try {
+      await Process.start(
+        installerPath,
+        ['/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART'],
+        mode: ProcessStartMode.detached,
+      );
+      return true;
+    } catch (e, st) {
+      await _logError('launchInstaller', e, st);
+      return false;
+    }
   }
 
   Future<List<int>?> _download(
@@ -136,7 +146,10 @@ class UpdateService {
   ) async {
     final req = http.Request('GET', Uri.parse(url));
     final res = await _client.send(req);
-    if (res.statusCode != 200) return null;
+    if (res.statusCode != 200) {
+      await _logError('download', 'HTTP ${res.statusCode} for $url');
+      return null;
+    }
     final total = res.contentLength ?? 0;
     final bytes = <int>[];
     await for (final chunk in res.stream) {
@@ -144,5 +157,23 @@ class UpdateService {
       if (total > 0) onProgress?.call(bytes.length / total);
     }
     return bytes;
+  }
+
+  /// Appends a timestamped line to `update.log` in the app's support
+  /// directory so update failures — normally swallowed so a bad network
+  /// doesn't crash the app — are still diagnosable after the fact.
+  static Future<void> _logError(String context, Object error,
+      [StackTrace? stackTrace]) async {
+    try {
+      final dir = await getApplicationSupportDirectory();
+      final file = File('${dir.path}/update.log');
+      final line = StringBuffer()
+        ..writeln('${DateTime.now().toIso8601String()} [$context] $error');
+      if (stackTrace != null) line.writeln(stackTrace);
+      await file.writeAsString(line.toString(),
+          mode: FileMode.append, flush: true);
+    } catch (_) {
+      // Logging must never throw back into the update flow.
+    }
   }
 }
