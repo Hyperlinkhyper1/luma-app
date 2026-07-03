@@ -47,6 +47,18 @@ class $DataDatasetsTable extends DataDatasets
     requiredDuringInsert: false,
     defaultValue: const Constant('[]'),
   );
+  static const VerificationMeta _tagsJsonMeta = const VerificationMeta(
+    'tagsJson',
+  );
+  @override
+  late final GeneratedColumn<String> tagsJson = GeneratedColumn<String>(
+    'tags_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -76,6 +88,7 @@ class $DataDatasetsTable extends DataDatasets
     id,
     name,
     columnsJson,
+    tagsJson,
     createdAt,
     updatedAt,
   ];
@@ -111,6 +124,12 @@ class $DataDatasetsTable extends DataDatasets
         ),
       );
     }
+    if (data.containsKey('tags_json')) {
+      context.handle(
+        _tagsJsonMeta,
+        tagsJson.isAcceptableOrUnknown(data['tags_json']!, _tagsJsonMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -144,6 +163,10 @@ class $DataDatasetsTable extends DataDatasets
         DriftSqlType.string,
         data['${effectivePrefix}columns_json'],
       )!,
+      tagsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tags_json'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -165,12 +188,14 @@ class DataDataset extends DataClass implements Insertable<DataDataset> {
   final int id;
   final String name;
   final String columnsJson;
+  final String tagsJson;
   final DateTime createdAt;
   final DateTime updatedAt;
   const DataDataset({
     required this.id,
     required this.name,
     required this.columnsJson,
+    required this.tagsJson,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -180,6 +205,7 @@ class DataDataset extends DataClass implements Insertable<DataDataset> {
     map['id'] = Variable<int>(id);
     map['name'] = Variable<String>(name);
     map['columns_json'] = Variable<String>(columnsJson);
+    map['tags_json'] = Variable<String>(tagsJson);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -190,6 +216,7 @@ class DataDataset extends DataClass implements Insertable<DataDataset> {
       id: Value(id),
       name: Value(name),
       columnsJson: Value(columnsJson),
+      tagsJson: Value(tagsJson),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -204,6 +231,7 @@ class DataDataset extends DataClass implements Insertable<DataDataset> {
       id: serializer.fromJson<int>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       columnsJson: serializer.fromJson<String>(json['columnsJson']),
+      tagsJson: serializer.fromJson<String>(json['tagsJson']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -215,6 +243,7 @@ class DataDataset extends DataClass implements Insertable<DataDataset> {
       'id': serializer.toJson<int>(id),
       'name': serializer.toJson<String>(name),
       'columnsJson': serializer.toJson<String>(columnsJson),
+      'tagsJson': serializer.toJson<String>(tagsJson),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -224,12 +253,14 @@ class DataDataset extends DataClass implements Insertable<DataDataset> {
     int? id,
     String? name,
     String? columnsJson,
+    String? tagsJson,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => DataDataset(
     id: id ?? this.id,
     name: name ?? this.name,
     columnsJson: columnsJson ?? this.columnsJson,
+    tagsJson: tagsJson ?? this.tagsJson,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -240,6 +271,7 @@ class DataDataset extends DataClass implements Insertable<DataDataset> {
       columnsJson: data.columnsJson.present
           ? data.columnsJson.value
           : this.columnsJson,
+      tagsJson: data.tagsJson.present ? data.tagsJson.value : this.tagsJson,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -251,6 +283,7 @@ class DataDataset extends DataClass implements Insertable<DataDataset> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('columnsJson: $columnsJson, ')
+          ..write('tagsJson: $tagsJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -258,7 +291,8 @@ class DataDataset extends DataClass implements Insertable<DataDataset> {
   }
 
   @override
-  int get hashCode => Object.hash(id, name, columnsJson, createdAt, updatedAt);
+  int get hashCode =>
+      Object.hash(id, name, columnsJson, tagsJson, createdAt, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -266,6 +300,7 @@ class DataDataset extends DataClass implements Insertable<DataDataset> {
           other.id == this.id &&
           other.name == this.name &&
           other.columnsJson == this.columnsJson &&
+          other.tagsJson == this.tagsJson &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -274,12 +309,14 @@ class DataDatasetsCompanion extends UpdateCompanion<DataDataset> {
   final Value<int> id;
   final Value<String> name;
   final Value<String> columnsJson;
+  final Value<String> tagsJson;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const DataDatasetsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.columnsJson = const Value.absent(),
+    this.tagsJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -287,6 +324,7 @@ class DataDatasetsCompanion extends UpdateCompanion<DataDataset> {
     this.id = const Value.absent(),
     required String name,
     this.columnsJson = const Value.absent(),
+    this.tagsJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : name = Value(name);
@@ -294,6 +332,7 @@ class DataDatasetsCompanion extends UpdateCompanion<DataDataset> {
     Expression<int>? id,
     Expression<String>? name,
     Expression<String>? columnsJson,
+    Expression<String>? tagsJson,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -301,6 +340,7 @@ class DataDatasetsCompanion extends UpdateCompanion<DataDataset> {
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (columnsJson != null) 'columns_json': columnsJson,
+      if (tagsJson != null) 'tags_json': tagsJson,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -310,6 +350,7 @@ class DataDatasetsCompanion extends UpdateCompanion<DataDataset> {
     Value<int>? id,
     Value<String>? name,
     Value<String>? columnsJson,
+    Value<String>? tagsJson,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -317,6 +358,7 @@ class DataDatasetsCompanion extends UpdateCompanion<DataDataset> {
       id: id ?? this.id,
       name: name ?? this.name,
       columnsJson: columnsJson ?? this.columnsJson,
+      tagsJson: tagsJson ?? this.tagsJson,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -334,6 +376,9 @@ class DataDatasetsCompanion extends UpdateCompanion<DataDataset> {
     if (columnsJson.present) {
       map['columns_json'] = Variable<String>(columnsJson.value);
     }
+    if (tagsJson.present) {
+      map['tags_json'] = Variable<String>(tagsJson.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -349,6 +394,7 @@ class DataDatasetsCompanion extends UpdateCompanion<DataDataset> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('columnsJson: $columnsJson, ')
+          ..write('tagsJson: $tagsJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -397,6 +443,18 @@ class $DataRowsTable extends DataRows with TableInfo<$DataRowsTable, DataRow> {
     requiredDuringInsert: false,
     defaultValue: const Constant('{}'),
   );
+  static const VerificationMeta _tagsJsonMeta = const VerificationMeta(
+    'tagsJson',
+  );
+  @override
+  late final GeneratedColumn<String> tagsJson = GeneratedColumn<String>(
+    'tags_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
   static const VerificationMeta _orderIndexMeta = const VerificationMeta(
     'orderIndex',
   );
@@ -410,7 +468,13 @@ class $DataRowsTable extends DataRows with TableInfo<$DataRowsTable, DataRow> {
     defaultValue: const Constant(0),
   );
   @override
-  List<GeneratedColumn> get $columns => [id, datasetId, valuesJson, orderIndex];
+  List<GeneratedColumn> get $columns => [
+    id,
+    datasetId,
+    valuesJson,
+    tagsJson,
+    orderIndex,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -440,6 +504,12 @@ class $DataRowsTable extends DataRows with TableInfo<$DataRowsTable, DataRow> {
         valuesJson.isAcceptableOrUnknown(data['values_json']!, _valuesJsonMeta),
       );
     }
+    if (data.containsKey('tags_json')) {
+      context.handle(
+        _tagsJsonMeta,
+        tagsJson.isAcceptableOrUnknown(data['tags_json']!, _tagsJsonMeta),
+      );
+    }
     if (data.containsKey('order_index')) {
       context.handle(
         _orderIndexMeta,
@@ -467,6 +537,10 @@ class $DataRowsTable extends DataRows with TableInfo<$DataRowsTable, DataRow> {
         DriftSqlType.string,
         data['${effectivePrefix}values_json'],
       )!,
+      tagsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tags_json'],
+      )!,
       orderIndex: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}order_index'],
@@ -484,11 +558,13 @@ class DataRow extends DataClass implements Insertable<DataRow> {
   final int id;
   final int datasetId;
   final String valuesJson;
+  final String tagsJson;
   final int orderIndex;
   const DataRow({
     required this.id,
     required this.datasetId,
     required this.valuesJson,
+    required this.tagsJson,
     required this.orderIndex,
   });
   @override
@@ -497,6 +573,7 @@ class DataRow extends DataClass implements Insertable<DataRow> {
     map['id'] = Variable<int>(id);
     map['dataset_id'] = Variable<int>(datasetId);
     map['values_json'] = Variable<String>(valuesJson);
+    map['tags_json'] = Variable<String>(tagsJson);
     map['order_index'] = Variable<int>(orderIndex);
     return map;
   }
@@ -506,6 +583,7 @@ class DataRow extends DataClass implements Insertable<DataRow> {
       id: Value(id),
       datasetId: Value(datasetId),
       valuesJson: Value(valuesJson),
+      tagsJson: Value(tagsJson),
       orderIndex: Value(orderIndex),
     );
   }
@@ -519,6 +597,7 @@ class DataRow extends DataClass implements Insertable<DataRow> {
       id: serializer.fromJson<int>(json['id']),
       datasetId: serializer.fromJson<int>(json['datasetId']),
       valuesJson: serializer.fromJson<String>(json['valuesJson']),
+      tagsJson: serializer.fromJson<String>(json['tagsJson']),
       orderIndex: serializer.fromJson<int>(json['orderIndex']),
     );
   }
@@ -529,6 +608,7 @@ class DataRow extends DataClass implements Insertable<DataRow> {
       'id': serializer.toJson<int>(id),
       'datasetId': serializer.toJson<int>(datasetId),
       'valuesJson': serializer.toJson<String>(valuesJson),
+      'tagsJson': serializer.toJson<String>(tagsJson),
       'orderIndex': serializer.toJson<int>(orderIndex),
     };
   }
@@ -537,11 +617,13 @@ class DataRow extends DataClass implements Insertable<DataRow> {
     int? id,
     int? datasetId,
     String? valuesJson,
+    String? tagsJson,
     int? orderIndex,
   }) => DataRow(
     id: id ?? this.id,
     datasetId: datasetId ?? this.datasetId,
     valuesJson: valuesJson ?? this.valuesJson,
+    tagsJson: tagsJson ?? this.tagsJson,
     orderIndex: orderIndex ?? this.orderIndex,
   );
   DataRow copyWithCompanion(DataRowsCompanion data) {
@@ -551,6 +633,7 @@ class DataRow extends DataClass implements Insertable<DataRow> {
       valuesJson: data.valuesJson.present
           ? data.valuesJson.value
           : this.valuesJson,
+      tagsJson: data.tagsJson.present ? data.tagsJson.value : this.tagsJson,
       orderIndex: data.orderIndex.present
           ? data.orderIndex.value
           : this.orderIndex,
@@ -563,13 +646,15 @@ class DataRow extends DataClass implements Insertable<DataRow> {
           ..write('id: $id, ')
           ..write('datasetId: $datasetId, ')
           ..write('valuesJson: $valuesJson, ')
+          ..write('tagsJson: $tagsJson, ')
           ..write('orderIndex: $orderIndex')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, datasetId, valuesJson, orderIndex);
+  int get hashCode =>
+      Object.hash(id, datasetId, valuesJson, tagsJson, orderIndex);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -577,6 +662,7 @@ class DataRow extends DataClass implements Insertable<DataRow> {
           other.id == this.id &&
           other.datasetId == this.datasetId &&
           other.valuesJson == this.valuesJson &&
+          other.tagsJson == this.tagsJson &&
           other.orderIndex == this.orderIndex);
 }
 
@@ -584,29 +670,34 @@ class DataRowsCompanion extends UpdateCompanion<DataRow> {
   final Value<int> id;
   final Value<int> datasetId;
   final Value<String> valuesJson;
+  final Value<String> tagsJson;
   final Value<int> orderIndex;
   const DataRowsCompanion({
     this.id = const Value.absent(),
     this.datasetId = const Value.absent(),
     this.valuesJson = const Value.absent(),
+    this.tagsJson = const Value.absent(),
     this.orderIndex = const Value.absent(),
   });
   DataRowsCompanion.insert({
     this.id = const Value.absent(),
     required int datasetId,
     this.valuesJson = const Value.absent(),
+    this.tagsJson = const Value.absent(),
     this.orderIndex = const Value.absent(),
   }) : datasetId = Value(datasetId);
   static Insertable<DataRow> custom({
     Expression<int>? id,
     Expression<int>? datasetId,
     Expression<String>? valuesJson,
+    Expression<String>? tagsJson,
     Expression<int>? orderIndex,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (datasetId != null) 'dataset_id': datasetId,
       if (valuesJson != null) 'values_json': valuesJson,
+      if (tagsJson != null) 'tags_json': tagsJson,
       if (orderIndex != null) 'order_index': orderIndex,
     });
   }
@@ -615,12 +706,14 @@ class DataRowsCompanion extends UpdateCompanion<DataRow> {
     Value<int>? id,
     Value<int>? datasetId,
     Value<String>? valuesJson,
+    Value<String>? tagsJson,
     Value<int>? orderIndex,
   }) {
     return DataRowsCompanion(
       id: id ?? this.id,
       datasetId: datasetId ?? this.datasetId,
       valuesJson: valuesJson ?? this.valuesJson,
+      tagsJson: tagsJson ?? this.tagsJson,
       orderIndex: orderIndex ?? this.orderIndex,
     );
   }
@@ -637,6 +730,9 @@ class DataRowsCompanion extends UpdateCompanion<DataRow> {
     if (valuesJson.present) {
       map['values_json'] = Variable<String>(valuesJson.value);
     }
+    if (tagsJson.present) {
+      map['tags_json'] = Variable<String>(tagsJson.value);
+    }
     if (orderIndex.present) {
       map['order_index'] = Variable<int>(orderIndex.value);
     }
@@ -649,6 +745,7 @@ class DataRowsCompanion extends UpdateCompanion<DataRow> {
           ..write('id: $id, ')
           ..write('datasetId: $datasetId, ')
           ..write('valuesJson: $valuesJson, ')
+          ..write('tagsJson: $tagsJson, ')
           ..write('orderIndex: $orderIndex')
           ..write(')'))
         .toString();
@@ -673,6 +770,7 @@ typedef $$DataDatasetsTableCreateCompanionBuilder =
       Value<int> id,
       required String name,
       Value<String> columnsJson,
+      Value<String> tagsJson,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -681,6 +779,7 @@ typedef $$DataDatasetsTableUpdateCompanionBuilder =
       Value<int> id,
       Value<String> name,
       Value<String> columnsJson,
+      Value<String> tagsJson,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -706,6 +805,11 @@ class $$DataDatasetsTableFilterComposer
 
   ColumnFilters<String> get columnsJson => $composableBuilder(
     column: $table.columnsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tagsJson => $composableBuilder(
+    column: $table.tagsJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -744,6 +848,11 @@ class $$DataDatasetsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get tagsJson => $composableBuilder(
+    column: $table.tagsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -774,6 +883,9 @@ class $$DataDatasetsTableAnnotationComposer
     column: $table.columnsJson,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get tagsJson =>
+      $composableBuilder(column: $table.tagsJson, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -822,12 +934,14 @@ class $$DataDatasetsTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String> columnsJson = const Value.absent(),
+                Value<String> tagsJson = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => DataDatasetsCompanion(
                 id: id,
                 name: name,
                 columnsJson: columnsJson,
+                tagsJson: tagsJson,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -836,12 +950,14 @@ class $$DataDatasetsTableTableManager
                 Value<int> id = const Value.absent(),
                 required String name,
                 Value<String> columnsJson = const Value.absent(),
+                Value<String> tagsJson = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => DataDatasetsCompanion.insert(
                 id: id,
                 name: name,
                 columnsJson: columnsJson,
+                tagsJson: tagsJson,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -879,6 +995,7 @@ typedef $$DataRowsTableCreateCompanionBuilder =
       Value<int> id,
       required int datasetId,
       Value<String> valuesJson,
+      Value<String> tagsJson,
       Value<int> orderIndex,
     });
 typedef $$DataRowsTableUpdateCompanionBuilder =
@@ -886,6 +1003,7 @@ typedef $$DataRowsTableUpdateCompanionBuilder =
       Value<int> id,
       Value<int> datasetId,
       Value<String> valuesJson,
+      Value<String> tagsJson,
       Value<int> orderIndex,
     });
 
@@ -910,6 +1028,11 @@ class $$DataRowsTableFilterComposer
 
   ColumnFilters<String> get valuesJson => $composableBuilder(
     column: $table.valuesJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tagsJson => $composableBuilder(
+    column: $table.tagsJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -943,6 +1066,11 @@ class $$DataRowsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get tagsJson => $composableBuilder(
+    column: $table.tagsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get orderIndex => $composableBuilder(
     column: $table.orderIndex,
     builder: (column) => ColumnOrderings(column),
@@ -968,6 +1096,9 @@ class $$DataRowsTableAnnotationComposer
     column: $table.valuesJson,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get tagsJson =>
+      $composableBuilder(column: $table.tagsJson, builder: (column) => column);
 
   GeneratedColumn<int> get orderIndex => $composableBuilder(
     column: $table.orderIndex,
@@ -1009,11 +1140,13 @@ class $$DataRowsTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<int> datasetId = const Value.absent(),
                 Value<String> valuesJson = const Value.absent(),
+                Value<String> tagsJson = const Value.absent(),
                 Value<int> orderIndex = const Value.absent(),
               }) => DataRowsCompanion(
                 id: id,
                 datasetId: datasetId,
                 valuesJson: valuesJson,
+                tagsJson: tagsJson,
                 orderIndex: orderIndex,
               ),
           createCompanionCallback:
@@ -1021,11 +1154,13 @@ class $$DataRowsTableTableManager
                 Value<int> id = const Value.absent(),
                 required int datasetId,
                 Value<String> valuesJson = const Value.absent(),
+                Value<String> tagsJson = const Value.absent(),
                 Value<int> orderIndex = const Value.absent(),
               }) => DataRowsCompanion.insert(
                 id: id,
                 datasetId: datasetId,
                 valuesJson: valuesJson,
+                tagsJson: tagsJson,
                 orderIndex: orderIndex,
               ),
           withReferenceMapper: (p0) => p0
