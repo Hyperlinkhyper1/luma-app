@@ -4,5 +4,7 @@
   "version": "1.0.0",
   "description": "Create custom datasets, edit tables with typed columns, and build interactive charts — bar, line, area, and pie. Import and export CSV too.",
   "icon": "table_chart",
-  "category": "Productivity"
+  "category": "Productivity",
+  "details": "Build your own tables from scratch: text, number, and date columns, tag any row with a name and color, then chart the result.\n\nCharts support bar, line, area, pie, and donut, grouped by any column or by tag, aggregated as sum/average/count/min/max, and filtered by date range — handy for something like tracking income sources and seeing which one earned the most over the last month. CSV import and export round it out.",
+  "screenshots": ["table-editor.png", "chart.png"]
 }

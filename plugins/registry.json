@@ -6,6 +6,8 @@
       "description": "Turn any URL into a scannable QR code. Every code you generate is saved locally so you can reopen it later.",
       "icon": "qr_code_2",
       "category": "Utility",
+      "tags": ["Utility"],
+      "free": true,
       "version": "1.0.0"
     },
     {
@@ -14,6 +16,8 @@
       "description": "Scan a drive or folder and see exactly what's using your space — every directory and file rolled up and sorted largest-first, with size bars. Like WizTree, inside luma.",
       "icon": "account_tree",
       "category": "Utility",
+      "tags": ["Utility", "System"],
+      "free": true,
       "version": "1.0.0"
     },
     {
@@ -22,6 +26,8 @@
       "description": "A freeform corkboard where you can pin notes, quick ideas, images, and checklists.",
       "icon": "dashboard",
       "category": "Productivity",
+      "tags": ["Productivity"],
+      "free": true,
       "version": "1.0.0"
     },
     {
@@ -30,6 +36,8 @@
       "description": "Paste a product URL and luma checks the price for you. Every check is saved so you get a full price-history graph — great for watching deals on Amazon, bol.com, and more.",
       "icon": "show_chart",
       "category": "Utility",
+      "tags": ["Utility", "Shopping"],
+      "free": true,
       "version": "1.0.0"
     },
     {
@@ -38,6 +46,8 @@
       "description": "Plan your days with a full month view and an upcoming-agenda list. Add color-coded events with times, all-day toggles, locations, notes, reminders and repeat rules — daily, weekly, monthly or yearly. Everything is searchable and stored locally.",
       "icon": "calendar_month",
       "category": "Productivity",
+      "tags": ["Productivity"],
+      "free": true,
       "version": "1.0.0"
     },
     {
@@ -46,6 +56,8 @@
       "description": "Upload files to your own sync server and get them back on every device. Everything is end-to-end encrypted on your device before upload — the server only ever stores unreadable data. Files count against your account's 3 GB storage quota, shown as a usage bar. Requires signing in under Settings → Sync & account.",
       "icon": "cloud",
       "category": "Utility",
+      "tags": ["Utility", "Sync"],
+      "free": true,
       "version": "1.0.0"
     },
     {
@@ -54,6 +66,8 @@
       "description": "Create custom datasets, edit tables with typed columns, and build interactive charts — bar, line, area, and pie. Import and export CSV too.",
       "icon": "table_chart",
       "category": "Productivity",
+      "tags": ["Productivity", "Data"],
+      "free": true,
       "version": "1.0.0"
     }
   ]

@@ -4,5 +4,7 @@
   "version": "1.0.0",
   "description": "Upload files to your own sync server and get them back on every device. Everything is end-to-end encrypted on your device before upload — the server only ever stores unreadable data. Files count against your account's 3 GB storage quota, shown as a usage bar. Requires signing in under Settings → Sync & account.",
   "icon": "cloud",
-  "category": "Utility"
+  "category": "Utility",
+  "details": "Upload files to your own sync server and pull them back down on any other device signed into the same account.\n\nEverything is encrypted on-device before it ever leaves your machine, so the server only ever holds unreadable data. Files count against your account's 3 GB quota, shown as a usage bar in the plugin. Requires signing in under Settings → Sync & account.",
+  "screenshots": ["file-list.png", "usage-bar.png"]
 }

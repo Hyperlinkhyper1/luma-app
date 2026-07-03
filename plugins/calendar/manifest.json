@@ -4,5 +4,7 @@
   "version": "1.0.0",
   "description": "Plan your days with a full month view and an upcoming-agenda list. Add color-coded events with times, all-day toggles, locations, notes, reminders and repeat rules — daily, weekly, monthly or yearly. Everything is searchable and stored locally.",
   "icon": "calendar_month",
-  "category": "Productivity"
+  "category": "Productivity",
+  "details": "A full month grid alongside an upcoming-agenda list, so you can see both the big picture and what's coming up next.\n\nEvents support times, all-day toggles, locations, notes, reminders, and repeat rules (daily, weekly, monthly, yearly) — and everything is searchable and stored entirely on-device.",
+  "screenshots": ["month-view.png", "event-editor.png"]
 }

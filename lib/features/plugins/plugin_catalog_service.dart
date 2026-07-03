@@ -20,6 +20,8 @@ class PluginCatalogEntry {
     required this.icon,
     required this.category,
     required this.version,
+    this.tags = const [],
+    this.free = true,
   });
 
   final String id;
@@ -29,35 +31,63 @@ class PluginCatalogEntry {
   final String category;
   final String version;
 
-  factory PluginCatalogEntry.fromJson(Map<String, dynamic> json) =>
-      PluginCatalogEntry(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        description: json['description'] as String? ?? '',
-        icon: json['icon'] as String? ?? 'extension',
-        category: json['category'] as String? ?? 'Utility',
-        version: json['version'] as String? ?? '1.0.0',
-      );
+  /// Filterable tags (e.g. "Utility", "Games"). Falls back to [category]
+  /// when the registry entry doesn't list any.
+  final List<String> tags;
+
+  /// Whether the plugin is free to download. Reserved for a future paid
+  /// plugin tier; every plugin in the official registry is free today.
+  final bool free;
+
+  factory PluginCatalogEntry.fromJson(Map<String, dynamic> json) {
+    final category = json['category'] as String? ?? 'Utility';
+    final tags = (json['tags'] as List?)?.cast<String>();
+    return PluginCatalogEntry(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      description: json['description'] as String? ?? '',
+      icon: json['icon'] as String? ?? 'extension',
+      category: category,
+      version: json['version'] as String? ?? '1.0.0',
+      tags: tags == null || tags.isEmpty ? [category] : tags,
+      free: json['free'] as bool? ?? true,
+    );
+  }
 }
 
-/// A single plugin's manifest, fetched on demand when the user downloads it.
+/// A single plugin's manifest, fetched on demand when the user downloads it
+/// or opens its detail page. Carries the richer content (long-form details
+/// and screenshots) that doesn't fit in the lightweight `registry.json`.
 class PluginManifest {
   const PluginManifest({
     required this.name,
     required this.version,
     required this.icon,
+    this.details,
+    this.screenshots = const [],
   });
 
   final String name;
   final String version;
   final String icon;
 
-  factory PluginManifest.fromJson(Map<String, dynamic> json) =>
-      PluginManifest(
-        name: json['name'] as String,
-        version: json['version'] as String? ?? '1.0.0',
-        icon: json['icon'] as String? ?? 'extension',
-      );
+  /// Long-form write-up shown on the plugin's detail page. Paragraphs are
+  /// separated by a blank line. Falls back to the registry description when
+  /// absent.
+  final String? details;
+
+  /// Screenshot filenames, resolved against
+  /// `plugins/<id>/screenshots/<filename>` in the catalog repo — see
+  /// [PluginCatalogService.screenshotUrl].
+  final List<String> screenshots;
+
+  factory PluginManifest.fromJson(Map<String, dynamic> json) => PluginManifest(
+    name: json['name'] as String,
+    version: json['version'] as String? ?? '1.0.0',
+    icon: json['icon'] as String? ?? 'extension',
+    details: json['details'] as String?,
+    screenshots: (json['screenshots'] as List?)?.cast<String>() ?? const [],
+  );
 }
 
 /// Talks to the `plugins/` folder of the luma-app GitHub repo. The catalog
@@ -79,17 +109,24 @@ class PluginCatalogService {
     return PluginManifest.fromJson(body);
   }
 
+  /// Resolves a screenshot filename (as listed in a manifest) to the raw
+  /// GitHub URL it's served from.
+  static String screenshotUrl(String pluginId, String filename) =>
+      '$_rawBase/$pluginId/screenshots/$filename';
+
   Future<Map<String, dynamic>> _getJson(String url) async {
     final http.Response res;
     try {
       res = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 12));
     } catch (_) {
       throw PluginCatalogException(
-          'Could not reach the plugin repo. Check your connection.');
+        'Could not reach the plugin repo. Check your connection.',
+      );
     }
     if (res.statusCode != 200) {
       throw PluginCatalogException(
-          'Plugin repo returned an error (${res.statusCode}).');
+        'Plugin repo returned an error (${res.statusCode}).',
+      );
     }
     return jsonDecode(res.body) as Map<String, dynamic>;
   }

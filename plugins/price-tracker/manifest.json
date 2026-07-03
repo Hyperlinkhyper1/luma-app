@@ -4,5 +4,7 @@
   "version": "1.0.0",
   "description": "Paste a product URL and luma checks the price for you. Every check is saved so you get a full price-history graph — great for watching deals on Amazon, bol.com, and more.",
   "icon": "show_chart",
-  "category": "Utility"
+  "category": "Utility",
+  "details": "Paste a product page URL and Price Tracker checks the listed price, saving every check to build a history graph over time.\n\nUse it to catch a deal before it disappears, or just to confirm a \"sale\" price is actually lower than what the item has cost in the past.",
+  "screenshots": ["tracker.png", "history-graph.png"]
 }
