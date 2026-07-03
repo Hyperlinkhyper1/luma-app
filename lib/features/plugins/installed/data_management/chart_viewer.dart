@@ -309,7 +309,7 @@ class _CartesianChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final maxY = data.map((d) => d.value).fold<double>(0, (a, b) => max(a, b).toDouble());
-    final double topY = maxY == 0 ? 10 : maxY * 1.15;
+    final topY = maxY == 0 ? 10.0 : maxY * 1.15;
 
     Widget chart;
     if (type == 'bar') {
