@@ -1,8 +1,8 @@
-name: Release Windows build
+name: Release build
 
-# Builds the Windows app and publishes a GitHub Release on every push to
-# master. The in-app updater (lib/app/update/) checks these releases and can
-# self-update the installed build.
+# Builds the Windows and Android apps and publishes a GitHub Release on every
+# push to master. The in-app updater (lib/app/update/) checks these releases
+# and can self-update the installed build.
 on:
   push:
     branches: [master]
@@ -57,3 +57,43 @@ jobs:
           name: luma ${{ steps.ver.outputs.version }}
           generate_release_notes: true
           files: dist/luma-setup.exe
+
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Derive version
+        id: ver
+        shell: bash
+        run: |
+          VERSION="1.0.${{ github.run_number }}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      # Gradle/AGP 8.7 (pinned in android/settings.gradle.kts) doesn't support
+      # the very newest JDKs yet, same reason the local build pins JDK 21.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - run: flutter pub get
+
+      - name: Build APK
+        run: flutter build apk --release --dart-define=APP_VERSION=${{ steps.ver.outputs.version }}
+
+      - name: Rename APK
+        run: cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/luma-${{ steps.ver.outputs.version }}.apk
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: luma ${{ steps.ver.outputs.version }}
+          generate_release_notes: true
+          files: build/app/outputs/flutter-apk/luma-${{ steps.ver.outputs.version }}.apk

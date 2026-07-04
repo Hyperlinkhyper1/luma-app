@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Lets the app hand a downloaded APK straight to the system installer
+         (see lib/app/update/) instead of the user having to dig it out of
+         Downloads and enable "install from this source" manually each time. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <application
         android:label="luma"
         android:name="${applicationName}"

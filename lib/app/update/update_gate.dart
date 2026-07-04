@@ -96,8 +96,15 @@ Future<void> _runInstall(
   );
 
   final ok = await downloadDone;
-  if (ok && installerPath != null && await service.launchInstaller(installerPath!)) {
-    exit(0);
+  if (ok &&
+      installerPath != null &&
+      await service.launchInstaller(installerPath!)) {
+    // Windows relaunches the app itself once the silent installer finishes,
+    // so this process needs to get out of its way. Android instead just
+    // opened the system installer's own confirmation screen on top of us —
+    // this process must keep running until the user taps "Install" there.
+    if (Platform.isWindows) exit(0);
+    return;
   }
 
   // Reaching here means either the download or the installer hand-off

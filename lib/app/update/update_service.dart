@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'app_version.dart';
@@ -23,14 +24,18 @@ class UpdateInfo {
   final String assetName;
 }
 
-/// Checks GitHub Releases for a newer build and, on Windows, downloads and
-/// silently runs the Inno Setup installer to update in place.
+/// Checks GitHub Releases for a newer build and downloads the right asset for
+/// the running platform.
 ///
-/// luma installs per-user (to `%LOCALAPPDATA%\Programs\luma`, see
-/// `windows/installer/luma.iss`), so the installer needs no admin rights and
-/// can be re-run silently by the app itself: `luma-setup.exe /VERYSILENT`
-/// closes the running app, overwrites its files, and relaunches it — no
-/// manual file copying or elevation needed.
+/// On Windows this can update fully silently: luma installs per-user (to
+/// `%LOCALAPPDATA%\Programs\luma`, see `windows/installer/luma.iss`), so the
+/// installer needs no admin rights and `luma-setup.exe /VERYSILENT` closes
+/// the running app, overwrites its files, and relaunches it on its own.
+///
+/// On Android there is no silent-install path — Android always shows its own
+/// package-installer confirmation before applying an APK, sideloaded or not.
+/// [applyUpdate] downloads the APK and hands it to that system installer;
+/// the user still has to tap "Install" themselves.
 class UpdateService {
   UpdateService({http.Client? client}) : _client = client ?? http.Client();
 
@@ -42,7 +47,10 @@ class UpdateService {
   /// running build, otherwise null. Never throws — network/parse failures just
   /// mean "no update right now".
   Future<UpdateInfo?> checkForUpdate() async {
-    if (!AppVersion.isReleaseBuild || !Platform.isWindows) return null;
+    if (!AppVersion.isReleaseBuild ||
+        !(Platform.isWindows || Platform.isAndroid)) {
+      return null;
+    }
     try {
       final uri = Uri.parse(
         '$_apiBase/repos/${AppVersion.repoOwner}/${AppVersion.repoName}/releases/latest',
@@ -60,12 +68,12 @@ class UpdateService {
       if (tag.isEmpty) return null;
       if (AppVersion.compare(tag, AppVersion.current) <= 0) return null;
 
+      final suffix = Platform.isAndroid ? '.apk' : 'setup.exe';
       final assets = (json['assets'] as List?) ?? const [];
       Map<String, dynamic>? installerAsset;
       for (final a in assets) {
         if (a is Map<String, dynamic> &&
-            (a['name'] as String?)?.toLowerCase().endsWith('setup.exe') ==
-                true) {
+            (a['name'] as String?)?.toLowerCase().endsWith(suffix) == true) {
           installerAsset = a;
           break;
         }
@@ -85,10 +93,14 @@ class UpdateService {
     }
   }
 
-  /// Downloads the installer and launches it silently. On success this calls
-  /// [exit] and does not return — the installer closes this process, updates
-  /// the files, and relaunches the app on its own. Returns false if anything
-  /// fails before the hand-off.
+  /// Downloads the installer/APK and hands it to the platform installer.
+  ///
+  /// On Windows this calls [exit] and does not return on success — the
+  /// installer closes this process, updates the files, and relaunches the
+  /// app on its own. On Android it returns after opening the system
+  /// installer's confirmation screen; this process keeps running until the
+  /// user taps "Install" there. Returns false if anything fails before the
+  /// hand-off.
   Future<bool> applyUpdate(
     UpdateInfo info, {
     void Function(double progress)? onProgress,
@@ -96,7 +108,8 @@ class UpdateService {
     final installerPath = await downloadInstaller(info, onProgress: onProgress);
     if (installerPath == null) return false;
     if (!await launchInstaller(installerPath)) return false;
-    exit(0);
+    if (Platform.isWindows) exit(0);
+    return true;
   }
 
   /// Downloads the installer to a temp file and returns its path, or null on
@@ -119,15 +132,26 @@ class UpdateService {
     }
   }
 
-  /// Launches the downloaded installer silently. Does not exit the process —
-  /// callers must do that themselves once ready. Returns false (and logs) if
-  /// the OS refuses to start it (e.g. blocked by SmartScreen/AV).
-  ///
-  /// /VERYSILENT: no UI. /SUPPRESSMSGBOXES: no prompts. /NORESTART: never
-  /// reboot. CloseApplications=yes (set in the .iss) handles closing the
-  /// running luma.exe, and the [Run] entry relaunches it afterward.
+  /// Launches the downloaded installer. On Windows this runs silently and
+  /// does not exit the process — callers must do that themselves once ready.
+  /// On Android it opens the system package-installer's confirmation screen
+  /// (via [OpenFile], which wraps the APK in a `content://` URI through a
+  /// FileProvider — Android refuses a raw `file://` path here). Returns false
+  /// (and logs) if the OS refuses to start it (e.g. blocked by SmartScreen/AV
+  /// on Windows).
   Future<bool> launchInstaller(String installerPath) async {
     try {
+      if (Platform.isAndroid) {
+        final result = await OpenFile.open(
+          installerPath,
+          type: 'application/vnd.android.package-archive',
+        );
+        return result.type == ResultType.done;
+      }
+
+      // /VERYSILENT: no UI. /SUPPRESSMSGBOXES: no prompts. /NORESTART: never
+      // reboot. CloseApplications=yes (set in the .iss) handles closing the
+      // running luma.exe, and the [Run] entry relaunches it afterward.
       await Process.start(
         installerPath,
         ['/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART'],
