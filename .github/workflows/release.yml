@@ -38,7 +38,7 @@ jobs:
       - run: flutter pub get
 
       - name: Build Windows release
-        run: flutter build windows --release --dart-define=APP_VERSION=${{ steps.ver.outputs.version }}
+        run: flutter build windows --release --no-tree-shake-icons --dart-define=APP_VERSION=${{ steps.ver.outputs.version }}
 
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
@@ -85,7 +85,7 @@ jobs:
       - run: flutter pub get
 
       - name: Build APK
-        run: flutter build apk --release --dart-define=APP_VERSION=${{ steps.ver.outputs.version }}
+        run: flutter build apk --release --no-tree-shake-icons --dart-define=APP_VERSION=${{ steps.ver.outputs.version }}
 
       - name: Rename APK
         run: cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/luma-${{ steps.ver.outputs.version }}.apk
