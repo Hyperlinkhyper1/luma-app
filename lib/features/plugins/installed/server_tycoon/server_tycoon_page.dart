@@ -1,6 +1,8 @@
 // Auto-ported from Roblox Server Hosting Tycoon
 // Main game UI: canvas, inspector, shop, modals.
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart' hide Router;
 import 'package:flutter/services.dart';
 
@@ -21,12 +23,46 @@ class ServerTycoonPage extends StatefulWidget {
 }
 
 class _ServerTycoonPageState extends State<ServerTycoonPage> {
+  // Node dimensions, kept in sync with _RigNode / _RouterNode so wires can
+  // attach to tile edges and drags stay aligned under the pointer.
+  static const Size _rigSize = Size(160, 74);
+  static const Size _routerSize = Size(120, 58);
+
   String? _selectedRigId;
   String? _selectedRouterId;
   bool _showContracts = false;
   bool _showResearch = false;
   bool _showLicenses = false;
   bool _showDayReport = false;
+
+  final TransformationController _canvasController = TransformationController();
+
+  // Transient drag state — while a node is being dragged we render it (and its
+  // wires) from this local position and only commit to the repo on drag end.
+  String? _dragKind;
+  String? _dragId;
+  Offset? _dragPos;
+
+  @override
+  void dispose() {
+    _canvasController.dispose();
+    super.dispose();
+  }
+
+  Offset _effectivePos(String kind, String id, double x, double y) =>
+      (_dragKind == kind && _dragId == id) ? _dragPos! : Offset(x, y);
+
+  /// Intersection of the segment [rect.center → target] with rect's border,
+  /// so wires start/end on the tile edge instead of its center.
+  Offset _edgePoint(Rect rect, Offset target) {
+    final c = rect.center;
+    final dir = target - c;
+    if (dir.dx == 0 && dir.dy == 0) return c;
+    final sx = dir.dx != 0 ? (rect.width / 2) / dir.dx.abs() : double.infinity;
+    final sy = dir.dy != 0 ? (rect.height / 2) / dir.dy.abs() : double.infinity;
+    final s = math.min(sx, sy);
+    return c + dir * s;
+  }
 
   Widget _buildMain(BuildContext context) {
     final luma = context.luma;
@@ -149,6 +185,7 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> {
     final luma = context.luma;
 
     return InteractiveViewer(
+      transformationController: _canvasController,
       boundaryMargin: const EdgeInsets.all(2000),
       minScale: 0.1,
       maxScale: 2.0,
@@ -161,11 +198,33 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> {
           children: [
             // Grid background
             CustomPaint(size: const Size(4000, 3000), painter: _GridPainter(color: luma.border)),
+            // Connection lines (drawn behind nodes, attached to tile edges)
+            for (final rig in state.rigs.values)
+              if (state.routers.containsKey(rig.routerId))
+                Builder(builder: (_) {
+                  final rigPos = _effectivePos('rig', rig.rigId, rig.pos.x, rig.pos.y);
+                  final router = state.routers[rig.routerId]!;
+                  final routerPos = _effectivePos('router', rig.routerId, router.pos.x, router.pos.y);
+                  final rigRect = rigPos & _rigSize;
+                  final routerRect = routerPos & _routerSize;
+                  return CustomPaint(
+                    size: const Size(4000, 3000),
+                    painter: _WirePainter(
+                      from: _edgePoint(rigRect, routerRect.center),
+                      to: _edgePoint(routerRect, rigRect.center),
+                      color: load.rigs[rig.rigId]?.localFactor == 1 && load.routers[rig.routerId]?.bandwidthFactor == 1
+                          ? Colors.green.shade400
+                          : Colors.red.shade400,
+                    ),
+                  );
+                }),
             // Router nodes
             for (final entry in state.routers.entries)
-              Positioned(
-                left: entry.value.pos.x,
-                top: entry.value.pos.y,
+              _draggableNode(
+                kind: 'router',
+                id: entry.key,
+                x: entry.value.pos.x,
+                y: entry.value.pos.y,
                 child: _RouterNode(
                   router: entry.value,
                   loadResult: load.routers[entry.key],
@@ -178,9 +237,11 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> {
               ),
             // Rig nodes
             for (final entry in state.rigs.entries)
-              Positioned(
-                left: entry.value.pos.x,
-                top: entry.value.pos.y,
+              _draggableNode(
+                kind: 'rig',
+                id: entry.key,
+                x: entry.value.pos.x,
+                y: entry.value.pos.y,
                 child: _RigNode(
                   rig: entry.value,
                   loadResult: load.rigs[entry.key],
@@ -191,21 +252,47 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> {
                   }),
                 ),
               ),
-            // Connection lines (simple)
-            for (final rig in state.rigs.values)
-              if (state.routers.containsKey(rig.routerId))
-                CustomPaint(
-                  size: const Size(4000, 3000),
-                  painter: _WirePainter(
-                    from: Offset(rig.pos.x + 80, rig.pos.y + 40),
-                    to: Offset(state.routers[rig.routerId]!.pos.x + 60, state.routers[rig.routerId]!.pos.y + 30),
-                    color: load.rigs[rig.rigId]?.localFactor == 1 && load.routers[rig.routerId]?.bandwidthFactor == 1
-                        ? Colors.green.shade400
-                        : Colors.red.shade400,
-                  ),
-                ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _draggableNode({
+    required String kind,
+    required String id,
+    required double x,
+    required double y,
+    required Widget child,
+  }) {
+    final pos = _effectivePos(kind, id, x, y);
+    return Positioned(
+      left: pos.dx,
+      top: pos.dy,
+      child: GestureDetector(
+        behavior: HitTestBehavior.deferToChild,
+        onPanStart: (_) => setState(() {
+          _dragKind = kind;
+          _dragId = id;
+          _dragPos = Offset(x, y);
+        }),
+        onPanUpdate: (details) {
+          if (_dragPos == null) return;
+          final scale = _canvasController.value.getMaxScaleOnAxis();
+          setState(() => _dragPos = _dragPos! + details.delta / scale);
+        },
+        onPanEnd: (_) {
+          final drop = _dragPos;
+          if (drop != null) {
+            ServerTycoonScope.of(context).moveNode(kind, id, drop.dx, drop.dy);
+          }
+          setState(() {
+            _dragKind = null;
+            _dragId = null;
+            _dragPos = null;
+          });
+        },
+        child: child,
       ),
     );
   }
@@ -816,7 +903,10 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> {
         if (_showDayReport && repo.lastDayReport != null)
           _DayReportModal(
             report: repo.lastDayReport!,
-            onClose: () => setState(() => _showDayReport = false),
+            onClose: () {
+              repo.clearDayReport();
+              setState(() => _showDayReport = false);
+            },
           ),
       ],
     );
@@ -969,7 +1059,8 @@ class _WirePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _WirePainter oldDelegate) =>
+      from != oldDelegate.from || to != oldDelegate.to || color != oldDelegate.color;
 }
 
 // ── Modals ──

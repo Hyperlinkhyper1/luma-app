@@ -158,6 +158,12 @@ class ServerTycoonRepository extends ChangeNotifier {
     return _lastDayReport;
   }
 
+  /// Dismisses the pending end-of-day report so the modal can close.
+  void clearDayReport() {
+    _lastDayReport = null;
+    notifyListeners();
+  }
+
   AccountLoadResult _calculateLoad() {
     final rigs = <String, RigInput>{};
     for (final entry in _state.rigs.entries) {
