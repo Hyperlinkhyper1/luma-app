@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Network security configuration for luma.
+
+     Android's network-security-config <domain> element only matches an
+     exact hostname or a literal IP address — it has NO support for CIDR
+     ranges. A <domain>10.0.0.0/8</domain> entry (an earlier version of this
+     file) never matches a real device IP like 192.168.1.50, so it silently
+     grants nothing. There is no declarative way to say "any private-LAN
+     address" here.
+
+     Cleartext is instead permitted globally, and the actual restriction to
+     localhost/private-LAN hosts is enforced one layer up in
+     SyncApi.validateServerUrl, which rejects any non-HTTPS URL whose host
+     isn't localhost or an RFC 1918 address BEFORE a request is ever made.
+     The app itself never attempts a cleartext request to a public host,
+     regardless of what this file allows.
+
+     The P2P peer-to-peer TCP connections are LAN-only by design and do not
+     need special handling here because they use raw sockets (Socket.connect /
+     ServerSocket.bind) rather than Android's network security stack.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

@@ -34,6 +34,8 @@ import 'features/plugins/installed/cloud_files/cloud_files_scope.dart';
 import 'finance/data/database.dart';
 import 'finance/finance_repository.dart';
 import 'finance/finance_scope.dart';
+import 'p2p/peer_sync_controller.dart';
+import 'p2p/peer_sync_scope.dart';
 import 'settings/settings_controller.dart';
 import 'settings/settings_scope.dart';
 import 'sync/sync_collections.dart';
@@ -141,6 +143,9 @@ class _LumaAppState extends State<LumaApp> {
   // The Cloud Files plugin stores encrypted files on the same sync server.
   late final CloudFilesController _cloudFiles = CloudFilesController(_sync);
 
+  // Optional peer-to-peer (Wi-Fi/LAN) sync between same-account devices.
+  late final PeerSyncController _peerSync = PeerSyncController(sync: _sync);
+
   // The real startup work the splash covers: catch up any recurring entries /
   // allocations that came due while closed. Errors are swallowed so a storage
   // hiccup never blocks (or hangs) startup.
@@ -151,10 +156,12 @@ class _LumaAppState extends State<LumaApp> {
   void initState() {
     super.initState();
     _sync.init();
+    _peerSync.init();
   }
 
   @override
   void dispose() {
+    _peerSync.dispose();
     _cloudFiles.dispose();
     _sync.dispose();
     _db.close();
@@ -172,6 +179,8 @@ class _LumaAppState extends State<LumaApp> {
   Widget build(BuildContext context) {
     return SyncScope(
       service: _sync,
+      child: PeerSyncScope(
+      controller: _peerSync,
       child: CloudFilesScope(
       controller: _cloudFiles,
       child: SettingsScope(
@@ -218,6 +227,7 @@ class _LumaAppState extends State<LumaApp> {
             ),
           ),
         ),
+      ),
       ),
       ),
       ),

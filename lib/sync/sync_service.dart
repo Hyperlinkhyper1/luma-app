@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:crypto/crypto.dart' show sha256;
+import 'package:crypto/crypto.dart' show sha256, Hmac;
 import 'package:flutter/foundation.dart';
 
 import 'sync_api.dart';
@@ -30,6 +30,10 @@ class SyncService extends ChangeNotifier {
   String? _lastError;
   bool _requiresReauth = false;
   bool _importing = false;
+  // One serialized chain for ALL mutations of synced collections, whether the
+  // trigger is a cloud sync or a peer-to-peer import. `_syncTail` swallows
+  // errors so one failed run can't poison the chain; each caller awaits its
+  // own `run` future to observe its own outcome.
   Future<void> _syncTail = Future.value();
 
   Timer? _debounce;
@@ -38,6 +42,23 @@ class SyncService extends ChangeNotifier {
 
   static const _debounceDelay = Duration(seconds: 8);
   static const _periodicInterval = Duration(minutes: 15);
+
+  /// Tag bound into the ciphertext of every sealed snapshot, identifying the
+  /// collection. P2P receivers reuse [applyPeerSnapshot] which checks this.
+  static const _peerHandshakeTag = 'luma-p2p-handshake-v1';
+
+  /// A deterministic, account-scoped token a peer presents to prove it is on
+  /// the same account — derived (HMAC) from the encryption key. Revealing it
+  /// gains nothing: blobs still need the real key, and the cloud server uses
+  /// a separately derived auth key.
+  String? peerHandshakeToken() {
+    final key = _state?.encryptionKey;
+    if (key == null) return null;
+    final mac = Hmac(sha256, key)
+        .convert(utf8.encode(_peerHandshakeTag))
+        .bytes;
+    return _hexEncode(mac);
+  }
 
   // ---- Public state ----------------------------------------------------------
 
@@ -605,4 +626,131 @@ class SyncService extends ChangeNotifier {
       // Usage display just stays stale.
     }
   }
+
+  // ---- Peer-to-peer sync seams ----------------------------------------------
+  //
+  // The transport coupling of cloud sync lives in `SyncApi`. These methods
+  // expose the transport-AGNOSTIC parts (sealing, collection-binding check,
+  // newest-edit-wins merge) so a peer link can ship the same sealed blobs
+  // directly between two same-account devices, with no server in the loop.
+
+  /// State to advertise to a peer: for every enabled collection, our last
+  /// agreed cloud version and the timestamp of the freshest local edit. The
+  /// peer compares against its own state to decide what to request.
+  Map<String, ({int cloudVersion, int savedAtMs})> peerState() {
+    final s = _state;
+    if (s == null) return const {};
+    final out = <String, ({int cloudVersion, int savedAtMs})>{};
+    for (final c in collections) {
+      final st = s.collection(c.id);
+      if (!st.enabled) continue;
+      out[c.id] = (
+        cloudVersion: st.lastSyncedVersion ?? 0,
+        savedAtMs:
+            (st.localChangedAt ?? DateTime.fromMillisecondsSinceEpoch(0))
+                .millisecondsSinceEpoch,
+      );
+    }
+    return out;
+  }
+
+  /// Builds a sealed snapshot of [collectionId] for a peer. Returns null when
+  /// the collection is disabled, unknown, or we're not signed in. The
+  /// returned [savedAtMs] is the local edit time the peer should compare
+  /// against.
+  Future<({Uint8List sealed, int savedAtMs})?> buildPeerSnapshot(
+      String collectionId) async {
+    final s = _state;
+    if (s == null || !s.signedIn) return null;
+    final collection = collections.cast<SyncCollection?>().firstWhere(
+        (c) => c?.id == collectionId,
+        orElse: () => null);
+    if (collection == null) return null;
+    final st = s.collection(collectionId);
+    if (!st.enabled) return null;
+
+    final exported = await collection.export();
+    final savedAt = st.localChangedAt ?? DateTime.now();
+    final payload = {
+      'v': 1,
+      'collection': collectionId,
+      'savedAtMs': savedAt.millisecondsSinceEpoch,
+      'data': exported,
+    };
+    final sealed = await SyncCrypto.sealPayload(payload, s.encryptionKey!);
+    return (sealed: sealed, savedAtMs: savedAt.millisecondsSinceEpoch);
+  }
+
+  /// Applies a sealed snapshot received from a peer. Performs the SAME crypto
+  /// open + collection-binding check as cloud `_importBlob`, then decides via
+  /// newest-edit-wins whether our local data is older.
+  ///
+  /// Returns true if applied, false if declined (we're newer or equal, or the
+  /// collection is disabled here). On a successful apply the import is
+  /// recorded as a LOCAL EDIT so the change fans out to the cloud and to any
+  /// other connected peers via the normal change triggers.
+  Future<bool> applyPeerSnapshot(
+      String collectionId, Uint8List sealed, int peerSavedAtMs) async {
+    final s = _state;
+    if (s == null || !s.signedIn) return false;
+    final collection = collections.cast<SyncCollection?>().firstWhere(
+        (c) => c?.id == collectionId,
+        orElse: () => null);
+    if (collection == null) return false;
+    final st = s.collection(collectionId);
+    if (!st.enabled) return false;
+
+    // Serialize against cloud sync and any other concurrent peer import so
+    // two writers can't interleave on the same collection.
+    final run = _syncTail.then((_) =>
+        _applyPeerLocked(collection, st, sealed, peerSavedAtMs));
+    _syncTail = run.catchError((_) => false);
+    return run;
+  }
+
+  Future<bool> _applyPeerLocked(SyncCollection collection,
+      CollectionSyncState st, Uint8List sealed, int peerSavedAtMs) async {
+    final s = _state!;
+    final payload =
+        await SyncCrypto.openPayload(sealed, s.encryptionKey!);
+    if (payload is! Map<String, dynamic> ||
+        payload['collection'] != collection.id) {
+      // Same collection-binding check as cloud sync: a malicious peer can't
+      // swap a blob from another collection in.
+      throw const SyncCryptoException('Snapshot does not match collection.');
+    }
+
+    // Newest-edit-wins, mirroring `_syncCollection`.
+    final localAt =
+        st.localChangedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+    final peerAt = DateTime.fromMillisecondsSinceEpoch(peerSavedAtMs);
+    if (!peerAt.isAfter(localAt) && st.lastSyncedHash != null) {
+      // We are at least as new as the peer — decline to avoid clobbering a
+      // local edit that hasn't propagated yet.
+      return false;
+    }
+
+    _importing = true;
+    try {
+      await collection.import(payload['data']);
+    } finally {
+      // The import re-triggers change streams; swallow them briefly so they
+      // don't immediately fire off a fresh (lossy) push.
+      Timer(const Duration(seconds: 2), () => _importing = false);
+    }
+
+    // Record as a local edit so it fans out to the cloud and other peers.
+    st.localChangedAt = DateTime.now();
+    final reExported = await collection.export();
+    st.lastSyncedHash =
+        sha256.convert(utf8.encode(jsonEncode(reExported))).toString();
+    await s.save();
+    notifyListeners();
+    return true;
+  }
 }
+
+/// Lowercase-hex encoder (avoids pulling in a hex package).
+String _hexEncode(List<int> bytes) => bytes
+    .map((b) => b.toRadixString(16).padLeft(2, '0'))
+    .join();

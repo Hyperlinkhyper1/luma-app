@@ -6,6 +6,7 @@ import '../app/pin_dialog.dart';
 
 import '../app/widgets.dart';
 import '../theme/luma_theme.dart';
+import 'devices_section.dart';
 import 'settings_controller.dart';
 import 'settings_scope.dart';
 import 'sync_section.dart';
@@ -106,6 +107,18 @@ class SettingsPage extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               const SyncSection(),
+
+              const SizedBox(height: 24),
+
+              // ---- Devices (P2P) -----------------------------------------
+              _SectionHeader(
+                icon: Icons.devices_other_rounded,
+                title: 'Devices',
+                subtitle:
+                    'Sync directly with other devices on your Wi-Fi — no server needed.',
+              ),
+              const SizedBox(height: 12),
+              const DevicesSection(),
 
               const SizedBox(height: 24),
 
