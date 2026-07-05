@@ -11,6 +11,7 @@ import '../features/plugins/installed/file_tree/file_tree_page.dart';
 import '../features/plugins/installed/bulletin_board/bulletin_board_page.dart';
 import '../features/plugins/installed/price_tracker/price_tracker_page.dart';
 import '../features/plugins/installed/qr_code_generator/qr_code_generator_page.dart';
+import '../features/plugins/installed/server_tycoon/server_tycoon_page.dart';
 import '../features/plugins/plugin_repository.dart';
 import '../features/plugins/plugin_scope.dart';
 import '../features/plugins/plugins_page.dart';
@@ -158,6 +159,7 @@ class _AppShellState extends State<AppShell> {
         'calendar' => const CalendarPage(),
         'cloud-files' => const CloudFilesPage(),
         'data-management' => const DataManagementPage(),
+        'server-tycoon' => const ServerTycoonPage(),
         _ => const LumaEmptyState(
             icon: Icons.extension_off_rounded,
             title: 'Plugin unavailable',

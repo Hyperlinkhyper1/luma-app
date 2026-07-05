@@ -1,0 +1,201 @@
+// Auto-ported from Roblox Server Hosting Tycoon
+
+import 'motherboards.dart';
+
+class RAMStick {
+  final String id;
+  final String name;
+  final RAMType ramType;
+  final int capacityGB;
+  final int speedMHz;
+  final bool ecc;
+  final bool registered;
+  final int price;
+
+  const RAMStick({
+    required this.id,
+    required this.name,
+    required this.ramType,
+    required this.capacityGB,
+    required this.speedMHz,
+    required this.ecc,
+    required this.registered,
+    required this.price,
+  });
+}
+
+final Map<String, RAMStick> ramById = {
+  'DDR3_8GB': const RAMStick(
+    id: 'DDR3_8GB',
+    name: 'Generic DDR3 8GB 1600MHz',
+    ramType: RAMType.ddr3,
+    capacityGB: 8,
+    speedMHz: 1600,
+    ecc: false,
+    registered: false,
+    price: 0,
+  ),
+  'DDR3_16GB': const RAMStick(
+    id: 'DDR3_16GB',
+    name: 'Kingston DDR3 16GB 1866MHz',
+    ramType: RAMType.ddr3,
+    capacityGB: 16,
+    speedMHz: 1866,
+    ecc: false,
+    registered: false,
+    price: 220,
+  ),
+  'DDR4_8GB': const RAMStick(
+    id: 'DDR4_8GB',
+    name: 'Corsair Vengeance DDR4 8GB 3200MHz',
+    ramType: RAMType.ddr4,
+    capacityGB: 8,
+    speedMHz: 3200,
+    ecc: false,
+    registered: false,
+    price: 180,
+  ),
+  'DDR4_16GB': const RAMStick(
+    id: 'DDR4_16GB',
+    name: 'Corsair Vengeance DDR4 16GB 3200MHz',
+    ramType: RAMType.ddr4,
+    capacityGB: 16,
+    speedMHz: 3200,
+    ecc: false,
+    registered: false,
+    price: 340,
+  ),
+  'DDR4_32GB': const RAMStick(
+    id: 'DDR4_32GB',
+    name: 'G.Skill Ripjaws DDR4 32GB 3600MHz',
+    ramType: RAMType.ddr4,
+    capacityGB: 32,
+    speedMHz: 3600,
+    ecc: false,
+    registered: false,
+    price: 680,
+  ),
+  'DDR4_32GB_ECC': const RAMStick(
+    id: 'DDR4_32GB_ECC',
+    name: 'Samsung DDR4 32GB ECC 2933MHz',
+    ramType: RAMType.ddr4,
+    capacityGB: 32,
+    speedMHz: 2933,
+    ecc: true,
+    registered: false,
+    price: 950,
+  ),
+  'DDR4_64GB_RDIMM': const RAMStick(
+    id: 'DDR4_64GB_RDIMM',
+    name: 'Micron DDR4 64GB ECC RDIMM 2933MHz',
+    ramType: RAMType.ddr4,
+    capacityGB: 64,
+    speedMHz: 2933,
+    ecc: true,
+    registered: true,
+    price: 2100,
+  ),
+  'DDR5_32GB': const RAMStick(
+    id: 'DDR5_32GB',
+    name: 'Corsair Dominator DDR5 32GB 6000MHz',
+    ramType: RAMType.ddr5,
+    capacityGB: 32,
+    speedMHz: 6000,
+    ecc: false,
+    registered: false,
+    price: 1050,
+  ),
+  'DDR5_64GB': const RAMStick(
+    id: 'DDR5_64GB',
+    name: 'G.Skill Trident Z5 DDR5 64GB 6000MHz',
+    ramType: RAMType.ddr5,
+    capacityGB: 64,
+    speedMHz: 6000,
+    ecc: false,
+    registered: false,
+    price: 2200,
+  ),
+  'DDR5_128GB_RDIMM': const RAMStick(
+    id: 'DDR5_128GB_RDIMM',
+    name: 'SK Hynix DDR5 128GB ECC RDIMM 4800MHz',
+    ramType: RAMType.ddr5,
+    capacityGB: 128,
+    speedMHz: 4800,
+    ecc: true,
+    registered: true,
+    price: 5400,
+  ),
+  'DDR3_8GB_ECC': const RAMStick(
+    id: 'DDR3_8GB_ECC',
+    name: 'Hynix DDR3 8GB ECC 1600MHz',
+    ramType: RAMType.ddr3,
+    capacityGB: 8,
+    speedMHz: 1600,
+    ecc: true,
+    registered: false,
+    price: 140,
+  ),
+  'DDR4_16GB_ECC': const RAMStick(
+    id: 'DDR4_16GB_ECC',
+    name: 'Kingston DDR4 16GB ECC 3200MHz',
+    ramType: RAMType.ddr4,
+    capacityGB: 16,
+    speedMHz: 3200,
+    ecc: true,
+    registered: false,
+    price: 480,
+  ),
+  'DDR4_32GB_RDIMM2': const RAMStick(
+    id: 'DDR4_32GB_RDIMM2',
+    name: 'Samsung DDR4 32GB ECC RDIMM 3200MHz',
+    ramType: RAMType.ddr4,
+    capacityGB: 32,
+    speedMHz: 3200,
+    ecc: true,
+    registered: true,
+    price: 1100,
+  ),
+  'DDR4_128GB_LRDIMM': const RAMStick(
+    id: 'DDR4_128GB_LRDIMM',
+    name: 'Micron DDR4 128GB ECC LRDIMM 2933MHz',
+    ramType: RAMType.ddr4,
+    capacityGB: 128,
+    speedMHz: 2933,
+    ecc: true,
+    registered: true,
+    price: 4300,
+  ),
+  'DDR5_48GB': const RAMStick(
+    id: 'DDR5_48GB',
+    name: 'Corsair Vengeance DDR5 48GB 5600MHz',
+    ramType: RAMType.ddr5,
+    capacityGB: 48,
+    speedMHz: 5600,
+    ecc: false,
+    registered: false,
+    price: 1550,
+  ),
+  'DDR5_96GB_RDIMM': const RAMStick(
+    id: 'DDR5_96GB_RDIMM',
+    name: 'Samsung DDR5 96GB ECC RDIMM 5600MHz',
+    ramType: RAMType.ddr5,
+    capacityGB: 96,
+    speedMHz: 5600,
+    ecc: true,
+    registered: true,
+    price: 4200,
+  ),
+  'DDR5_256GB_RDIMM': const RAMStick(
+    id: 'DDR5_256GB_RDIMM',
+    name: 'Micron DDR5 256GB ECC RDIMM 4800MHz',
+    ramType: RAMType.ddr5,
+    capacityGB: 256,
+    speedMHz: 4800,
+    ecc: true,
+    registered: true,
+    price: 11800,
+  ),
+};
+
+late final List<RAMStick> ramList = ramById.values.toList()
+  ..sort((a, b) => a.price.compareTo(b.price));

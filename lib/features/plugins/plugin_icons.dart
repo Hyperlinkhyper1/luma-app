@@ -19,6 +19,8 @@ IconData pluginIconFor(String? name) {
       return Icons.cloud_rounded;
     case 'table_chart':
       return Icons.table_chart_rounded;
+    case 'dns':
+      return Icons.dns_rounded;
     default:
       return Icons.extension_rounded;
   }

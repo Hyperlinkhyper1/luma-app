@@ -6,6 +6,8 @@ import 'app/update/update_gate.dart';
 import 'app/window_controls.dart';
 import 'features/plugins/installed/data_management/data/data_management_database.dart';
 import 'features/plugins/installed/data_management/data_management_repository.dart';
+import 'features/plugins/installed/server_tycoon/server_tycoon_repository.dart';
+import 'features/plugins/installed/server_tycoon/server_tycoon_scope.dart';
 import 'features/plugins/installed/data_management/data_management_scope.dart';
 import 'features/passwords/data/password_database.dart';
 import 'features/passwords/password_crypto.dart';
@@ -79,6 +81,7 @@ class _LumaAppState extends State<LumaApp> {
   late final CalendarRepository _calendarRepository = CalendarRepository(_calendarDb);
   late final DataManagementDatabase _dataManagementDb = DataManagementDatabase();
   late final DataManagementRepository _dataManagementRepository = DataManagementRepository(_dataManagementDb);
+  late final ServerTycoonRepository _serverTycoonRepository = ServerTycoonRepository();
 
   // Optional server sync: every feature registers an adapter; nothing is
   // uploaded unless the user signs in AND enables the feature in Settings.
@@ -161,6 +164,7 @@ class _LumaAppState extends State<LumaApp> {
     _bulletinBoardDb.close();
     _calendarDb.close();
     _dataManagementDb.close();
+    _serverTycoonRepository.dispose();
     super.dispose();
   }
 
@@ -188,7 +192,9 @@ class _LumaAppState extends State<LumaApp> {
                   repository: _calendarRepository,
                   child: DataManagementScope(
                     repository: _dataManagementRepository,
-                    child: ListenableBuilder(
+                    child: ServerTycoonScope(
+                      repository: _serverTycoonRepository,
+                      child: ListenableBuilder(
                       listenable: widget.settings,
                       builder: (context, _) {
                         final s = widget.settings;
@@ -204,6 +210,7 @@ class _LumaAppState extends State<LumaApp> {
                         );
                       },
                     ),
+                  ),
                   ),
                   ),
                 ),

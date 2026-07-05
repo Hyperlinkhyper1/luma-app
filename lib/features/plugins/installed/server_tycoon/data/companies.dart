@@ -1,0 +1,168 @@
+// Auto-ported from Roblox Server Hosting Tycoon
+
+class Company {
+  final String id;
+  final String name;
+  final String blurb;
+  final int minReputation;
+  final List<String> serviceTypeIds;
+  final double payoutMultiplier;
+  final int minDurationDays;
+  final int maxDurationDays;
+  final int capacityMin;
+  final int capacityMax;
+
+  const Company({
+    required this.id,
+    required this.name,
+    required this.blurb,
+    required this.minReputation,
+    required this.serviceTypeIds,
+    required this.payoutMultiplier,
+    required this.minDurationDays,
+    required this.maxDurationDays,
+    required this.capacityMin,
+    required this.capacityMax,
+  });
+}
+
+final Map<String, Company> companiesById = {
+  'BLOXBURG_BAKERY': const Company(
+    id: 'BLOXBURG_BAKERY',
+    name: 'Bloxburg Bakery',
+    blurb: 'A family bakery that just wants its menu online without the site falling over.',
+    minReputation: 0,
+    serviceTypeIds: ['STATIC_WEBSITE'],
+    payoutMultiplier: 1.4,
+    minDurationDays: 3,
+    maxDurationDays: 5,
+    capacityMin: 2,
+    capacityMax: 5,
+  ),
+  'PIXEL_PALS': const Company(
+    id: 'PIXEL_PALS',
+    name: 'Pixel Pals Studio',
+    blurb: 'Indie game studio needing bot hosting for their community Discord.',
+    minReputation: 0,
+    serviceTypeIds: ['DISCORD_BOT', 'MONITORING_SERVER'],
+    payoutMultiplier: 1.5,
+    minDurationDays: 3,
+    maxDurationDays: 6,
+    capacityMin: 3,
+    capacityMax: 8,
+  ),
+  'STREAMFORGE': const Company(
+    id: 'STREAMFORGE',
+    name: 'StreamForge Collective',
+    blurb: 'A streamer collective that needs rock-solid voice servers for podcast night.',
+    minReputation: 5,
+    serviceTypeIds: ['VOICE_SERVER'],
+    payoutMultiplier: 1.6,
+    minDurationDays: 3,
+    maxDurationDays: 6,
+    capacityMin: 5,
+    capacityMax: 15,
+  ),
+  'NIMBUS_SOFT': const Company(
+    id: 'NIMBUS_SOFT',
+    name: 'NimbusSoft',
+    blurb: 'A SaaS startup outsourcing their staging API environment to you.',
+    minReputation: 10,
+    serviceTypeIds: ['DYNAMIC_WEBSITE_API'],
+    payoutMultiplier: 1.7,
+    minDurationDays: 4,
+    maxDurationDays: 7,
+    capacityMin: 4,
+    capacityMax: 10,
+  ),
+  'DATAVAULT': const Company(
+    id: 'DATAVAULT',
+    name: 'DataVault Inc.',
+    blurb: 'Backup resellers hunting for cheap-but-reliable cloud storage capacity.',
+    minReputation: 10,
+    serviceTypeIds: ['CLOUD_STORAGE'],
+    payoutMultiplier: 1.6,
+    minDurationDays: 4,
+    maxDurationDays: 8,
+    capacityMin: 2,
+    capacityMax: 6,
+  ),
+  'CRAFTED_REALMS': const Company(
+    id: 'CRAFTED_REALMS',
+    name: 'Crafted Realms Network',
+    blurb: 'A Minecraft community network renting overflow player slots.',
+    minReputation: 15,
+    serviceTypeIds: ['MINECRAFT_SERVER', 'GENERIC_GAME_SERVER'],
+    payoutMultiplier: 1.8,
+    minDurationDays: 3,
+    maxDurationDays: 6,
+    capacityMin: 6,
+    capacityMax: 16,
+  ),
+  'QUANTUM_QUARRY': const Company(
+    id: 'QUANTUM_QUARRY',
+    name: 'Quantum Quarry Analytics',
+    blurb: 'Data analytics firm that wants managed databases without the ops team.',
+    minReputation: 20,
+    serviceTypeIds: ['DATABASE_HOSTING'],
+    payoutMultiplier: 1.8,
+    minDurationDays: 4,
+    maxDurationDays: 8,
+    capacityMin: 3,
+    capacityMax: 8,
+  ),
+  'AEGIS_SECURE': const Company(
+    id: 'AEGIS_SECURE',
+    name: 'Aegis Secure',
+    blurb: 'Privacy company reselling VPN endpoints under their own brand.',
+    minReputation: 25,
+    serviceTypeIds: ['VPN_PROVIDER'],
+    payoutMultiplier: 1.9,
+    minDurationDays: 4,
+    maxDurationDays: 8,
+    capacityMin: 6,
+    capacityMax: 14,
+  ),
+  'GLOBEX_MEDIA': const Company(
+    id: 'GLOBEX_MEDIA',
+    name: 'Globex Media Group',
+    blurb: 'A media conglomerate that needs CDN edge capacity near its viewers.',
+    minReputation: 35,
+    serviceTypeIds: ['CDN_EDGE'],
+    payoutMultiplier: 2.0,
+    minDurationDays: 5,
+    maxDurationDays: 9,
+    capacityMin: 3,
+    capacityMax: 8,
+  ),
+  'HELIOS_AI': const Company(
+    id: 'HELIOS_AI',
+    name: 'Helios AI Labs',
+    blurb: 'AI lab renting inference capacity while their own cluster is on backorder.',
+    minReputation: 50,
+    serviceTypeIds: ['AI_INFERENCE'],
+    payoutMultiplier: 2.2,
+    minDurationDays: 4,
+    maxDurationDays: 7,
+    capacityMin: 2,
+    capacityMax: 5,
+  ),
+  'OMNICORP': const Company(
+    id: 'OMNICORP',
+    name: 'OmniCorp Global',
+    blurb: 'Enterprise giant. Demanding, but the checks clear and they never bounce.',
+    minReputation: 65,
+    serviceTypeIds: ['DATABASE_HOSTING', 'CLOUD_STORAGE', 'DYNAMIC_WEBSITE_API', 'CDN_EDGE'],
+    payoutMultiplier: 2.5,
+    minDurationDays: 6,
+    maxDurationDays: 10,
+    capacityMin: 8,
+    capacityMax: 20,
+  ),
+};
+
+late final List<Company> companyList = companiesById.values.toList()
+  ..sort((a, b) {
+    if (a.minReputation != b.minReputation) return a.minReputation.compareTo(b.minReputation);
+    return a.name.compareTo(b.name);
+  });

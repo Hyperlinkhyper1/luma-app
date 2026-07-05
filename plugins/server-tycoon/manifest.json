@@ -1,0 +1,11 @@
+{
+  "id": "server-tycoon",
+  "name": "Server Hosting Tycoon",
+  "version": "1.0.0",
+  "description": "Build a server-hosting empire right inside luma. Buy rigs and routers, spec them with real CPUs, motherboards, RAM and cooling, host services, accept contracts, and manage power and bandwidth as you grow day by day.",
+  "icon": "dns",
+  "category": "Games",
+  "tags": ["Games", "Simulation"],
+  "details": "A compact datacenter tycoon. Start with a single rig and a starter budget, then grow a hosting business one day at a time.\n\nSpec every machine from a real catalog of CPUs, motherboards, RAM, storage, PSUs, cooling and NICs — with socket, RAM-type and power validation so builds actually have to make sense. Host services, accept company contracts for steady income, keep an eye on CPU/RAM/bandwidth bottlenecks and thermals, buy licenses and research upgrades, and press End Day to simulate income, costs and reputation. Everything saves automatically.",
+  "screenshots": []
+}
