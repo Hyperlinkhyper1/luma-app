@@ -210,6 +210,30 @@ final Map<String, Drive> storageById = {
     failureRatePerYear: 0.002,
     price: 36000,
   ),
+  'GENERIC_128GB_SSD': const Drive(
+    id: 'GENERIC_128GB_SSD',
+    name: 'Generic 128GB SATA SSD',
+    storageType: StorageType.sataSSD,
+    interfaceType: StorageInterface.sata,
+    capacityGB: 128,
+    readSpeedMBs: 500,
+    writeSpeedMBs: 400,
+    powerDrawWatts: 2,
+    failureRatePerYear: 0.01,
+    price: 30,
+  ),
+  'SAMSUNG_990_EVO_PLUS_1TB': const Drive(
+    id: 'SAMSUNG_990_EVO_PLUS_1TB',
+    name: 'Samsung 990 EVO Plus 1TB NVMe',
+    storageType: StorageType.nvmeSSD,
+    interfaceType: StorageInterface.nvme,
+    capacityGB: 1000,
+    readSpeedMBs: 7250,
+    writeSpeedMBs: 6300,
+    powerDrawWatts: 6,
+    failureRatePerYear: 0.006,
+    price: 460,
+  ),
 };
 
 late final List<Drive> storageList = storageById.values.toList()

@@ -27,9 +27,10 @@ class ServiceInstance {
 class RigInput {
   final Build build;
   final List<ServiceInstance> services;
+  final RigKind kind;
   String routerId;
 
-  RigInput({required this.build, required this.services, required this.routerId});
+  RigInput({required this.build, required this.services, required this.kind, required this.routerId});
 }
 
 class RouterInput {
@@ -75,6 +76,8 @@ class RigLoadResult {
   final double nicCapFactor;
   final double localFactor;
   final String? localBottleneck;
+  final bool incompatible;
+  final List<String> incompatibilityReasons;
 
   const RigLoadResult({
     required this.rigId,
@@ -87,6 +90,8 @@ class RigLoadResult {
     required this.nicCapFactor,
     required this.localFactor,
     this.localBottleneck,
+    this.incompatible = false,
+    this.incompatibilityReasons = const [],
   });
 }
 
@@ -167,9 +172,11 @@ RequiredResources _sumRequired(List<ServiceInstance> services) {
   return RequiredResources(cpu: cpu, ramGB: ramGB, storageGB: storageGB, bandwidthMbps: bandwidthMbps);
 }
 
-RigLoadResult calculateRigLoad(String rigId, Build build, List<ServiceInstance> services) {
+RigLoadResult calculateRigLoad(String rigId, Build build, List<ServiceInstance> services, RigKind kind) {
   final req = _sumRequired(services);
   final capacity = getCapacity(build);
+  final (incompatibilityReasons, compatible) = validateBuild(build, rigKind: kind);
+  final incompatible = !compatible;
 
   final double nominalCPULoadFactor = capacity.cpuScore > 0 ? (req.cpu / capacity.cpuScore).clamp(0, 1).toDouble() : 1.0;
   final (throttleFactor, tempRatio) = getThermals(build, nominalCPULoadFactor);
@@ -192,9 +199,12 @@ RigLoadResult calculateRigLoad(String rigId, Build build, List<ServiceInstance> 
     nicCapFactor = 0;
   }
 
-  final localFactor = [degradationCpu, degradationRam, degradationStorage, nicCapFactor].reduce((a, b) => a < b ? a : b);
+  final localFactorRaw = [degradationCpu, degradationRam, degradationStorage, nicCapFactor].reduce((a, b) => a < b ? a : b);
+  final localFactor = incompatible ? 0.0 : localFactorRaw;
   String? bottleneck;
-  if (localFactor < 1) {
+  if (incompatible) {
+    bottleneck = 'incompatible';
+  } else if (localFactor < 1) {
     if (degradationCpu == localFactor) bottleneck = 'cpu';
     else if (degradationRam == localFactor) bottleneck = 'ram';
     else if (degradationStorage == localFactor) bottleneck = 'storage';
@@ -212,6 +222,8 @@ RigLoadResult calculateRigLoad(String rigId, Build build, List<ServiceInstance> 
     nicCapFactor: nicCapFactor,
     localFactor: localFactor,
     localBottleneck: bottleneck,
+    incompatible: incompatible,
+    incompatibilityReasons: incompatibilityReasons,
   );
 }
 
@@ -236,7 +248,7 @@ AccountLoadResult calculateAccountLoad(Map<String, RigInput> rigs, Map<String, R
   var totalBandwidthCapacity = 0.0;
 
   for (final entry in rigs.entries) {
-    final result = calculateRigLoad(entry.key, entry.value.build, entry.value.services);
+    final result = calculateRigLoad(entry.key, entry.value.build, entry.value.services, entry.value.kind);
     rigResults[entry.key] = result;
     totalRequiredBandwidth += result.required.bandwidthMbps;
 

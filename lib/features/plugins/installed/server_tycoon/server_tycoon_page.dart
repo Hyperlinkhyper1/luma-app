@@ -25,8 +25,8 @@ class ServerTycoonPage extends StatefulWidget {
 class _ServerTycoonPageState extends State<ServerTycoonPage> {
   // Node dimensions, kept in sync with _RigNode / _RouterNode so wires can
   // attach to tile edges and drags stay aligned under the pointer.
-  static const Size _rigSize = Size(160, 74);
-  static const Size _routerSize = Size(120, 58);
+  static const Size _rigSize = Size(220, 88);
+  static const Size _routerSize = Size(170, 76);
 
   String? _selectedRigId;
   String? _selectedRouterId;
@@ -339,6 +339,23 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> {
                 children: [
                   // Status
                   if (rigLoad != null) ...[
+                    if (rigLoad.incompatible)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(color: Colors.orange.shade900.withOpacity(0.3), borderRadius: BorderRadius.circular(8)),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('INCOMPATIBLE HARDWARE -- EARNING \$0/DAY', style: TextStyle(color: Colors.orange.shade300, fontSize: 11, fontWeight: FontWeight.w700)),
+                            for (final reason in rigLoad.incompatibilityReasons)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text('• $reason', style: TextStyle(color: Colors.orange.shade200, fontSize: 10)),
+                              ),
+                          ],
+                        ),
+                      ),
                     _statBar(context, 'CPU', rigLoad.utilization.cpu, rigLoad.localBottleneck == 'cpu'),
                     _statBar(context, 'RAM', rigLoad.utilization.ramGB, rigLoad.localBottleneck == 'ram'),
                     _statBar(context, 'Storage', rigLoad.utilization.storageGB, rigLoad.localBottleneck == 'storage'),
@@ -697,6 +714,8 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> {
   void _showResult(BuildContext context, ActionResult result) {
     if (!result.ok && result.errors != null) {
       _showToast(context, result.errors!.join('\n'));
+    } else if (result.warning != null) {
+      _showToast(context, '⚠ ${result.warning}');
     }
   }
 
@@ -749,33 +768,32 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> {
       backgroundColor: luma.surface,
       isScrollControlled: true,
       builder: (ctx) {
-        // Each entry: (id, name, price). Component slots are filtered to hardware
-        // that fits this rig's grade; add-on slots (ram/storage) list everything.
-        final List<(String, String, int)> items;
+        // Each entry: (id, name, price, fitsGrade). Nothing is filtered out any
+        // more -- any part can be bought for any rig, but items that don't fit
+        // this rig's grade are flagged so the player knows the rig won't earn
+        // money until the build is fixed (see buyComponent/addRAM/addStorage).
+        final List<(String, String, int, bool)> items;
         switch (slot) {
           case 'ram':
-            items = ramList
-                .where((r) => gradeFits('ram', r.id, rig.kind))
-                .map((r) => (r.id, r.name, r.price))
-                .toList();
+            items = ramList.map((r) => (r.id, r.name, r.price, gradeFits('ram', r.id, rig.kind))).toList();
             break;
           case 'storage':
-            items = storageList.map((d) => (d.id, d.name, d.price)).toList();
+            items = storageList.map((d) => (d.id, d.name, d.price, true)).toList();
             break;
           case 'cpu':
-            items = cpuList.where((c) => gradeFits('cpu', c.id, rig.kind)).map((c) => (c.id, c.name, c.price)).toList();
+            items = cpuList.map((c) => (c.id, c.name, c.price, gradeFits('cpu', c.id, rig.kind))).toList();
             break;
           case 'motherboard':
-            items = motherboardList.where((m) => gradeFits('motherboard', m.id, rig.kind)).map((m) => (m.id, m.name, m.price)).toList();
+            items = motherboardList.map((m) => (m.id, m.name, m.price, gradeFits('motherboard', m.id, rig.kind))).toList();
             break;
           case 'psu':
-            items = psuList.where((p) => gradeFits('psu', p.id, rig.kind)).map((p) => (p.id, p.name, p.price)).toList();
+            items = psuList.map((p) => (p.id, p.name, p.price, gradeFits('psu', p.id, rig.kind))).toList();
             break;
           case 'cooling':
-            items = coolingList.where((c) => gradeFits('cooling', c.id, rig.kind)).map((c) => (c.id, c.name, c.price)).toList();
+            items = coolingList.map((c) => (c.id, c.name, c.price, gradeFits('cooling', c.id, rig.kind))).toList();
             break;
           case 'nic':
-            items = nicList.where((n) => gradeFits('nic', n.id, rig.kind)).map((n) => (n.id, n.name, n.price)).toList();
+            items = nicList.map((n) => (n.id, n.name, n.price, gradeFits('nic', n.id, rig.kind))).toList();
             break;
           default:
             items = const [];
@@ -795,13 +813,29 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> {
                   controller: scrollController,
                   itemCount: items.length,
                   itemBuilder: (ctx, i) {
-                    final (itemId, name, price) = items[i];
+                    final (itemId, name, price, fits) = items[i];
                     final canAfford = repo.state.money >= price;
 
                     return ListTile(
                       dense: true,
                       title: Text(name, style: TextStyle(color: luma.textPrimary, fontSize: 13)),
-                      subtitle: Text('\$$price', style: TextStyle(color: canAfford ? Colors.green.shade400 : Colors.red.shade400, fontSize: 12)),
+                      subtitle: Row(
+                        children: [
+                          Text('\$$price', style: TextStyle(color: canAfford ? Colors.green.shade400 : Colors.red.shade400, fontSize: 12)),
+                          if (!fits) ...[
+                            const SizedBox(width: 6),
+                            Icon(Icons.warning_amber_rounded, size: 12, color: Colors.orange.shade400),
+                            const SizedBox(width: 2),
+                            Expanded(
+                              child: Text(
+                                'Incompatible with this ${rig.kind.name} rig -- won\'t earn money',
+                                style: TextStyle(color: Colors.orange.shade400, fontSize: 11),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                       trailing: TextButton(
                         onPressed: canAfford ? () {
                           switch (slot) {
@@ -933,12 +967,12 @@ class _RigNode extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 160,
-        padding: const EdgeInsets.all(10),
+        width: 220,
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: selected ? luma.accent.withOpacity(0.15) : luma.surface,
           border: Border.all(color: selected ? luma.accent : luma.border, width: selected ? 2 : 1),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4)],
         ),
         child: Column(
@@ -948,24 +982,35 @@ class _RigNode extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  width: 8,
-                  height: 8,
+                  width: 10,
+                  height: 10,
                   decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 8),
                 Expanded(
-                  child: Text(rig.name, style: TextStyle(color: luma.textPrimary, fontSize: 12, fontWeight: FontWeight.w700), overflow: TextOverflow.ellipsis),
+                  child: Text(rig.name, style: TextStyle(color: luma.textPrimary, fontSize: 15, fontWeight: FontWeight.w700), overflow: TextOverflow.ellipsis),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                  decoration: BoxDecoration(color: rig.kind == RigKind.server ? Colors.purple.shade900.withOpacity(0.3) : Colors.blue.shade900.withOpacity(0.3), borderRadius: BorderRadius.circular(4)),
-                  child: Text(rig.kind == RigKind.server ? 'SERVER' : 'PC', style: TextStyle(color: rig.kind == RigKind.server ? Colors.purple.shade300 : Colors.blue.shade300, fontSize: 8, fontWeight: FontWeight.w700)),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: rig.kind == RigKind.server ? Colors.purple.shade900.withOpacity(0.3) : Colors.blue.shade900.withOpacity(0.3), borderRadius: BorderRadius.circular(5)),
+                  child: Text(rig.kind == RigKind.server ? 'SERVER' : 'PC', style: TextStyle(color: rig.kind == RigKind.server ? Colors.purple.shade300 : Colors.blue.shade300, fontSize: 10, fontWeight: FontWeight.w700)),
                 ),
               ],
             ),
-            const SizedBox(height: 4),
-            Text(cpu?.name ?? rig.build.cpuId, style: TextStyle(color: luma.textMuted, fontSize: 10), overflow: TextOverflow.ellipsis, maxLines: 1),
-            Text('${rig.services.length} services', style: TextStyle(color: luma.textMuted, fontSize: 10)),
+            const SizedBox(height: 6),
+            Text(cpu?.name ?? rig.build.cpuId, style: TextStyle(color: luma.textMuted, fontSize: 12), overflow: TextOverflow.ellipsis, maxLines: 1),
+            Text('${rig.services.length} services', style: TextStyle(color: luma.textMuted, fontSize: 12)),
+            if (loadResult?.incompatible == true)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, size: 12, color: Colors.orange.shade400),
+                    const SizedBox(width: 4),
+                    Text('Incompatible', style: TextStyle(color: Colors.orange.shade400, fontSize: 11, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
@@ -991,12 +1036,12 @@ class _RouterNode extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 120,
-        padding: const EdgeInsets.all(8),
+        width: 170,
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: selected ? luma.accent.withOpacity(0.15) : luma.surface,
           border: Border.all(color: selected ? luma.accent : luma.border, width: selected ? 2 : 1),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(10),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4)],
         ),
         child: Column(
@@ -1005,14 +1050,14 @@ class _RouterNode extends StatelessWidget {
           children: [
             Row(
               children: [
-                Container(width: 8, height: 8, decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle)),
-                const SizedBox(width: 6),
-                Expanded(child: Text(router.name, style: TextStyle(color: luma.textPrimary, fontSize: 11, fontWeight: FontWeight.w700), overflow: TextOverflow.ellipsis)),
+                Container(width: 10, height: 10, decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle)),
+                const SizedBox(width: 8),
+                Expanded(child: Text(router.name, style: TextStyle(color: luma.textPrimary, fontSize: 14, fontWeight: FontWeight.w700), overflow: TextOverflow.ellipsis)),
               ],
             ),
-            const SizedBox(height: 2),
-            Text(plan?.name ?? router.internetPlanId, style: TextStyle(color: luma.textMuted, fontSize: 9), overflow: TextOverflow.ellipsis),
-            Text('${loadResult?.rigCount ?? 0} rigs', style: TextStyle(color: luma.textMuted, fontSize: 9)),
+            const SizedBox(height: 4),
+            Text(plan?.name ?? router.internetPlanId, style: TextStyle(color: luma.textMuted, fontSize: 11), overflow: TextOverflow.ellipsis),
+            Text('${loadResult?.rigCount ?? 0} rigs', style: TextStyle(color: luma.textMuted, fontSize: 11)),
           ],
         ),
       ),
@@ -1410,7 +1455,7 @@ String _fmt(double n) {
 AccountLoadResult _calculateLoad(GameState state) {
   final rigs = <String, RigInput>{};
   for (final entry in state.rigs.entries) {
-    rigs[entry.key] = RigInput(build: entry.value.build, services: entry.value.services, routerId: entry.value.routerId);
+    rigs[entry.key] = RigInput(build: entry.value.build, services: entry.value.services, kind: entry.value.kind, routerId: entry.value.routerId);
   }
   final routers = <String, RouterInput>{};
   for (final entry in state.routers.entries) {

@@ -47,6 +47,14 @@ class SyncService extends ChangeNotifier {
   /// collection. P2P receivers reuse [applyPeerSnapshot] which checks this.
   static const _peerHandshakeTag = 'luma-p2p-handshake-v1';
 
+  /// Tags for the LOCAL (serverless) account: the salt is derived from the
+  /// email alone (not random) so any device that types the same email
+  /// reproduces the same salt with no server to hand one out. Only the
+  /// password's secrecy matters for security here — the email just keeps
+  /// two different people's derivations from colliding.
+  static const _localAccountSaltTag = 'luma-local-account-salt-v1';
+  static const _localVerifierTag = 'luma-local-account-verify-v1';
+
   /// A deterministic, account-scoped token a peer presents to prove it is on
   /// the same account — derived (HMAC) from the encryption key. Revealing it
   /// gains nothing: blobs still need the real key, and the cloud server uses
@@ -70,6 +78,15 @@ class SyncService extends ChangeNotifier {
   SyncStatus get status => _status;
   String? get lastError => _lastError;
   DateTime? get lastSyncAt => _state?.lastSyncAt;
+
+  /// True once there's an encryption key at all — via a cloud account
+  /// ([signedIn]) or a local-only, serverless identity ([isLocalOnly]). This
+  /// is the actual gate for P2P: peers only need a shared key, not a server.
+  bool get p2pReady => _state?.encryptionKey != null;
+
+  /// True when [p2pReady] but the key did NOT come from a cloud account —
+  /// i.e. set up purely for device-to-device sync via [setLocalAccount].
+  bool get isLocalOnly => p2pReady && !signedIn;
 
   /// Latest known storage usage / quota, refreshed on every sync.
   RemoteAccount? get account => _account;
@@ -180,7 +197,13 @@ class SyncService extends ChangeNotifier {
     final api = SyncApi(serverUrl);
     try {
       final normalizedEmail = email.trim().toLowerCase();
-      final kdfSalt = SyncCrypto.randomBytes(16);
+      // If this device already has a local-only (serverless) identity for
+      // the SAME email, reuse its salt so the resulting key comes out
+      // identical (given the same password) — devices already paired over
+      // P2P aren't orphaned by this device also gaining a cloud account.
+      final reuseLocalSalt =
+          isLocalOnly && s.email == normalizedEmail && s.kdfSalt != null;
+      final kdfSalt = reuseLocalSalt ? s.kdfSalt! : SyncCrypto.randomBytes(16);
       const iterations = SyncCrypto.defaultKdfIterations;
       final keys = await SyncCrypto.deriveKeys(
         password: password,
@@ -233,6 +256,65 @@ class SyncService extends ChangeNotifier {
     _account = null;
     _requiresReauth = false;
     s.clearAccount();
+    await s.save();
+    notifyListeners();
+  }
+
+  /// Sets up (or re-enters) a LOCAL, serverless identity for peer-to-peer
+  /// sync: the encryption key is derived from [email] + [password] alone —
+  /// no network call, no server. Entering the same email and password on
+  /// another device derives the exact same key, which is how two devices
+  /// recognize each other as "the same account" over Wi-Fi.
+  ///
+  /// Throws [StateError] if this device already has a local identity and
+  /// [password] doesn't reproduce it — the only mistyped-password check
+  /// possible without a server, and only effective on the SAME device.
+  Future<void> setLocalAccount({
+    required String email,
+    required String password,
+  }) async {
+    final s = _state ?? (_state = await SyncStateStore.load());
+    final normalizedEmail = email.trim().toLowerCase();
+    final kdfSalt = Uint8List.fromList(sha256
+        .convert(utf8.encode('$_localAccountSaltTag:$normalizedEmail'))
+        .bytes);
+    const iterations = SyncCrypto.defaultKdfIterations;
+    final keys = await SyncCrypto.deriveKeys(
+      password: password,
+      kdfSalt: kdfSalt,
+      iterations: iterations,
+    );
+    final verifier = _hexEncode(Hmac(sha256, keys.encryptionKey)
+        .convert(utf8.encode(_localVerifierTag))
+        .bytes);
+
+    if (isLocalOnly && s.localVerifier != null && s.localVerifier != verifier) {
+      throw StateError('Wrong password for this device\'s existing '
+          'device-sync identity.');
+    }
+
+    s
+      ..email = normalizedEmail
+      ..encryptionKey = keys.encryptionKey
+      ..kdfSalt = kdfSalt
+      ..kdfIterations = iterations
+      ..localVerifier = verifier;
+    await s.save();
+    notifyListeners();
+  }
+
+  /// Removes the local-only identity set up by [setLocalAccount], stopping
+  /// P2P. Refuses (no-op) if the current identity is actually a signed-in
+  /// cloud account — sign out of that from Sync & account instead.
+  Future<void> clearLocalAccount() async {
+    final s = _state;
+    if (s == null || !isLocalOnly) return;
+    s
+      ..email = null
+      ..encryptionKey = null
+      ..kdfSalt = null
+      ..kdfIterations = null
+      ..localVerifier = null;
     await s.save();
     notifyListeners();
   }
@@ -661,7 +743,7 @@ class SyncService extends ChangeNotifier {
   Future<({Uint8List sealed, int savedAtMs})?> buildPeerSnapshot(
       String collectionId) async {
     final s = _state;
-    if (s == null || !s.signedIn) return null;
+    if (s == null || s.encryptionKey == null) return null;
     final collection = collections.cast<SyncCollection?>().firstWhere(
         (c) => c?.id == collectionId,
         orElse: () => null);
@@ -692,7 +774,7 @@ class SyncService extends ChangeNotifier {
   Future<bool> applyPeerSnapshot(
       String collectionId, Uint8List sealed, int peerSavedAtMs) async {
     final s = _state;
-    if (s == null || !s.signedIn) return false;
+    if (s == null || s.encryptionKey == null) return false;
     final collection = collections.cast<SyncCollection?>().firstWhere(
         (c) => c?.id == collectionId,
         orElse: () => null);

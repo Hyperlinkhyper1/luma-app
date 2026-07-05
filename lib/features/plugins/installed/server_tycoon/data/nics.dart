@@ -101,6 +101,22 @@ final Map<String, NIC> nicsById = {
     powerDrawWatts: 60,
     price: 52000,
   ),
+  'GENERIC_100M_ONBOARD': const NIC(
+    id: 'GENERIC_100M_ONBOARD',
+    name: 'Generic Fast Ethernet (onboard)',
+    throughputMbps: 100,
+    interfaceType: NICInterfaceType.onboard,
+    powerDrawWatts: 1,
+    price: 0,
+  ),
+  'INTEL_X710_40G': const NIC(
+    id: 'INTEL_X710_40G',
+    name: 'Intel X710 40GbE QSFP+ Dual Port',
+    throughputMbps: 80000,
+    interfaceType: NICInterfaceType.pcie,
+    powerDrawWatts: 14,
+    price: 4200,
+  ),
 };
 
 late final List<NIC> nicList = nicsById.values.toList()

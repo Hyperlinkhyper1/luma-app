@@ -20,8 +20,9 @@ import 'sim/service_sim.dart';
 class ActionResult {
   final bool ok;
   final List<String>? errors;
+  final String? warning;
 
-  const ActionResult({required this.ok, this.errors});
+  const ActionResult({required this.ok, this.errors, this.warning});
 }
 
 class ServerTycoonRepository extends ChangeNotifier {
@@ -170,6 +171,7 @@ class ServerTycoonRepository extends ChangeNotifier {
       rigs[entry.key] = RigInput(
         build: entry.value.build,
         services: entry.value.services,
+        kind: entry.value.kind,
         routerId: entry.value.routerId,
       );
     }
@@ -543,11 +545,6 @@ class ServerTycoonRepository extends ChangeNotifier {
     final price = (item as dynamic).price as int;
     if (_state.money < price) return const ActionResult(ok: false, errors: ['Not enough money']);
 
-    if (!gradeFits(slot, itemId, rig.kind)) {
-      final grade = getComponentGrade(slot, itemId);
-      return ActionResult(ok: false, errors: ['${(item as dynamic).name} is ${grade.name} hardware -- it does not fit a ${rig.kind.name} rig']);
-    }
-
     final trialBuild = rig.build.copyWith();
     switch (buildKey) {
       case 'cpuId': trialBuild.cpuId = itemId; break;
@@ -557,13 +554,20 @@ class ServerTycoonRepository extends ChangeNotifier {
       case 'nicId': trialBuild.nicId = itemId; break;
     }
 
+    // Incompatible parts are still allowed to be installed -- the rig just
+    // won't generate income until the build is fixed (see calculateRigLoad).
     final (errors, ok) = validateBuild(trialBuild, rigKind: rig.kind);
-    if (!ok) return ActionResult(ok: false, errors: errors);
 
     _state.money -= price;
     rig.build = trialBuild;
     _save();
     notifyListeners();
+
+    if (!ok) {
+      final msg = '${(item as dynamic).name} installed, but it doesn\'t work: ${errors.join('; ')}. This rig will not generate income until fixed.';
+      _lastNotification = msg;
+      return ActionResult(ok: true, warning: msg);
+    }
     return const ActionResult(ok: true);
   }
 
@@ -583,18 +587,20 @@ class ServerTycoonRepository extends ChangeNotifier {
     final stick = ramById[itemId];
     if (stick == null) return const ActionResult(ok: false, errors: ['Unknown RAM stick']);
     if (_state.money < stick.price) return const ActionResult(ok: false, errors: ['Not enough money']);
-    if (!gradeFits('ram', itemId, rig.kind)) {
-      return ActionResult(ok: false, errors: ['${stick.name} is ${getComponentGrade('ram', itemId).name} hardware -- it does not fit a ${rig.kind.name} rig']);
-    }
 
     final trialBuild = rig.build.copyWith(ramIds: [...rig.build.ramIds, itemId]);
     final (errors, ok) = validateBuild(trialBuild, rigKind: rig.kind);
-    if (!ok) return ActionResult(ok: false, errors: errors);
 
     _state.money -= stick.price;
     rig.build = trialBuild;
     _save();
     notifyListeners();
+
+    if (!ok) {
+      final msg = '${stick.name} installed, but it doesn\'t work: ${errors.join('; ')}. This rig will not generate income until fixed.';
+      _lastNotification = msg;
+      return ActionResult(ok: true, warning: msg);
+    }
     return const ActionResult(ok: true);
   }
 
@@ -620,12 +626,17 @@ class ServerTycoonRepository extends ChangeNotifier {
 
     final trialBuild = rig.build.copyWith(storageIds: [...rig.build.storageIds, itemId]);
     final (errors, ok) = validateBuild(trialBuild, rigKind: rig.kind);
-    if (!ok) return ActionResult(ok: false, errors: errors);
 
     _state.money -= drive.price;
     rig.build = trialBuild;
     _save();
     notifyListeners();
+
+    if (!ok) {
+      final msg = '${drive.name} installed, but it doesn\'t work: ${errors.join('; ')}. This rig will not generate income until fixed.';
+      _lastNotification = msg;
+      return ActionResult(ok: true, warning: msg);
+    }
     return const ActionResult(ok: true);
   }
 

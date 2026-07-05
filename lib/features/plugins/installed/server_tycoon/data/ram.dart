@@ -195,6 +195,36 @@ final Map<String, RAMStick> ramById = {
     registered: true,
     price: 11800,
   ),
+  'DDR3_4GB': const RAMStick(
+    id: 'DDR3_4GB',
+    name: 'Generic DDR3 4GB 1333MHz',
+    ramType: RAMType.ddr3,
+    capacityGB: 4,
+    speedMHz: 1333,
+    ecc: false,
+    registered: false,
+    price: 40,
+  ),
+  'DDR5_16GB': const RAMStick(
+    id: 'DDR5_16GB',
+    name: 'Kingston Fury DDR5 16GB 5200MHz',
+    ramType: RAMType.ddr5,
+    capacityGB: 16,
+    speedMHz: 5200,
+    ecc: false,
+    registered: false,
+    price: 620,
+  ),
+  'DDR5_32GB_ECC': const RAMStick(
+    id: 'DDR5_32GB_ECC',
+    name: 'Crucial DDR5 32GB ECC UDIMM 4800MHz',
+    ramType: RAMType.ddr5,
+    capacityGB: 32,
+    speedMHz: 4800,
+    ecc: true,
+    registered: false,
+    price: 1200,
+  ),
 };
 
 late final List<RAMStick> ramList = ramById.values.toList()

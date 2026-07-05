@@ -101,6 +101,30 @@ final Map<String, PSU> psusById = {
     efficiencyPercent: 0.97,
     price: 17000,
   ),
+  'GENERIC_300W': const PSU(
+    id: 'GENERIC_300W',
+    name: 'Generic OEM 300W',
+    wattage: 300,
+    efficiencyRating: EfficiencyRating.white,
+    efficiencyPercent: 0.65,
+    price: 20,
+  ),
+  'CORSAIR_SF750': const PSU(
+    id: 'CORSAIR_SF750',
+    name: 'Corsair SF750 Platinum (SFX)',
+    wattage: 750,
+    efficiencyRating: EfficiencyRating.platinum,
+    efficiencyPercent: 0.93,
+    price: 700,
+  ),
+  'SERVER_PSU_1200_REDUNDANT': const PSU(
+    id: 'SERVER_PSU_1200_REDUNDANT',
+    name: 'Redundant Server PSU 1200W (dual)',
+    wattage: 1200,
+    efficiencyRating: EfficiencyRating.gold,
+    efficiencyPercent: 0.92,
+    price: 1800,
+  ),
 };
 
 late final List<PSU> psuList = psusById.values.toList()

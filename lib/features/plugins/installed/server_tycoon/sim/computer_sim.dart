@@ -80,7 +80,7 @@ final Set<Socket> _serverSockets = {
 };
 
 final Set<String> _serverPsuIds = {
-  'SERVER_PSU_2000_REDUNDANT', 'SERVER_PSU_3000_TITANIUM', 'HYPERSCALE_PSU_5000',
+  'SERVER_PSU_1200_REDUNDANT', 'SERVER_PSU_2000_REDUNDANT', 'SERVER_PSU_3000_TITANIUM', 'HYPERSCALE_PSU_5000',
 };
 
 final Set<String> _serverCoolerIds = {

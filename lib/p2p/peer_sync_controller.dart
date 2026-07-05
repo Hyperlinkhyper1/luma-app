@@ -100,8 +100,8 @@ class PeerSyncController extends ChangeNotifier {
   /// Turns discovery + listening on. Idempotent.
   Future<void> start() async {
     if (_running) return;
-    if (!_sync.signedIn) {
-      _lastError = 'Sign in to your account first.';
+    if (!_sync.p2pReady) {
+      _lastError = 'Set up device sync first.';
       notifyListeners();
       return;
     }

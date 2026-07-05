@@ -18,7 +18,7 @@ class SyncSection extends StatelessWidget {
     return ListenableBuilder(
       listenable: sync,
       builder: (context, _) => LumaCard(
-        child: sync.signedIn
+        child: sync.p2pReady
             ? _SignedInBody(sync: sync)
             : _SignedOutBody(sync: sync),
       ),
@@ -50,7 +50,9 @@ class _SignedOutBody extends StatelessWidget {
           'Sign in to a luma sync server to back up features to your own '
           'server and see them on other devices. Everything is encrypted on '
           'this device before it is uploaded — the server can never read '
-          'your data. Nothing is synced until you turn it on per feature.',
+          'your data. Nothing is synced until you turn it on per feature.\n\n'
+          'Don\'t want a server? The Devices section below can sync straight '
+          'between devices over Wi-Fi with just an email and password.',
           style: TextStyle(color: luma.textMuted, fontSize: 12, height: 1.5),
         ),
         if (sync.requiresReauth) ...[
@@ -87,12 +89,15 @@ class _SignedInBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final account = sync.account;
+    final cloud = sync.signedIn;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
           children: [
-            LumaIconBadge(icon: Icons.cloud_done_rounded, color: luma.accent),
+            LumaIconBadge(
+                icon: cloud ? Icons.cloud_done_rounded : Icons.wifi_rounded,
+                color: luma.accent),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -103,24 +108,41 @@ class _SignedInBody extends StatelessWidget {
                           color: luma.textPrimary,
                           fontSize: 14,
                           fontWeight: FontWeight.w600)),
-                  Text(sync.serverUrl ?? '',
-                      style: TextStyle(color: luma.textMuted, fontSize: 12),
-                      overflow: TextOverflow.ellipsis),
+                  Text(
+                    cloud
+                        ? (sync.serverUrl ?? '')
+                        : 'Local only — syncs directly between your devices, '
+                            'no server',
+                    style: TextStyle(color: luma.textMuted, fontSize: 12),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
               ),
             ),
             const SizedBox(width: 12),
-            LumaGhostButton(
-              label: 'Sign out',
-              icon: Icons.logout_rounded,
-              onTap: () => sync.signOut(),
-            ),
+            if (cloud)
+              LumaGhostButton(
+                label: 'Sign out',
+                icon: Icons.logout_rounded,
+                onTap: () => sync.signOut(),
+              )
+            else
+              LumaGhostButton(
+                label: 'Back up to a server…',
+                icon: Icons.cloud_upload_rounded,
+                onTap: () => showDialog<void>(
+                  context: context,
+                  builder: (_) => _AccountDialog(sync: sync),
+                ),
+              ),
           ],
         ),
 
         // ---- Storage usage ------------------------------------------------
-        Divider(color: luma.border, height: 32),
-        _StorageBar(account: account),
+        if (cloud) ...[
+          Divider(color: luma.border, height: 32),
+          _StorageBar(account: account),
+        ],
 
         // ---- Per-feature toggles -------------------------------------------
         Divider(color: luma.border, height: 32),
@@ -166,44 +188,53 @@ class _SignedInBody extends StatelessWidget {
           ),
 
         // ---- Actions & status ----------------------------------------------
-        Divider(color: luma.border, height: 32),
-        Row(
-          children: [
-            LumaPrimaryButton(
-              label: 'Sync now',
-              icon: Icons.sync_rounded,
-              loading: sync.status == SyncStatus.syncing,
-              onTap: sync.status == SyncStatus.syncing
-                  ? null
-                  : () => sync.syncNow(),
-            ),
-            const SizedBox(width: 14),
-            Expanded(child: _StatusText(sync: sync)),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            TextButton(
-              onPressed: () => showDialog<void>(
-                context: context,
-                builder: (_) => _ChangePasswordDialog(sync: sync),
+        if (cloud) ...[
+          Divider(color: luma.border, height: 32),
+          Row(
+            children: [
+              LumaPrimaryButton(
+                label: 'Sync now',
+                icon: Icons.sync_rounded,
+                loading: sync.status == SyncStatus.syncing,
+                onTap: sync.status == SyncStatus.syncing
+                    ? null
+                    : () => sync.syncNow(),
               ),
-              child: Text('Change password',
-                  style: TextStyle(color: luma.textSecondary, fontSize: 13)),
-            ),
-            const Spacer(),
-            TextButton(
-              onPressed: () => showDialog<void>(
-                context: context,
-                builder: (_) => _DeleteAccountDialog(sync: sync),
+              const SizedBox(width: 14),
+              Expanded(child: _StatusText(sync: sync)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              TextButton(
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  builder: (_) => _ChangePasswordDialog(sync: sync),
+                ),
+                child: Text('Change password',
+                    style: TextStyle(color: luma.textSecondary, fontSize: 13)),
               ),
-              child: Text('Delete account…',
-                  style:
-                      TextStyle(color: Colors.red.shade400, fontSize: 13)),
-            ),
-          ],
-        ),
+              const Spacer(),
+              TextButton(
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  builder: (_) => _DeleteAccountDialog(sync: sync),
+                ),
+                child: Text('Delete account…',
+                    style:
+                        TextStyle(color: Colors.red.shade400, fontSize: 13)),
+              ),
+            ],
+          ),
+        ] else ...[
+          const SizedBox(height: 4),
+          Text(
+            'This data syncs directly with paired devices — see Devices '
+            'below to connect one and turn it off.',
+            style: TextStyle(color: luma.textMuted, fontSize: 12),
+          ),
+        ],
       ],
     );
   }
@@ -379,6 +410,11 @@ class _AccountDialogState extends State<_AccountDialog> {
   final _password = TextEditingController();
   final _confirm = TextEditingController();
 
+  // Existing users editing an already-configured server see the field right
+  // away; everyone else sees a button first — most people get here via a
+  // local (serverless) account and don't need a server field at all.
+  late bool _showServerField = _server.text.isNotEmpty;
+
   int _mode = 0; // 0 = sign in, 1 = create account
   bool _busy = false;
   String? _error;
@@ -393,9 +429,19 @@ class _AccountDialogState extends State<_AccountDialog> {
   }
 
   Future<void> _submit() async {
+    if (!_showServerField || _server.text.trim().isEmpty) {
+      setState(() {
+        _showServerField = true;
+        _error = 'Add a cloud server first.';
+      });
+      return;
+    }
     final urlError = SyncApi.validateServerUrl(_server.text);
     if (urlError != null) {
-      setState(() => _error = urlError);
+      setState(() {
+        _showServerField = true;
+        _error = urlError;
+      });
       return;
     }
     if (_email.text.trim().isEmpty || !_email.text.contains('@')) {
@@ -474,13 +520,38 @@ class _AccountDialogState extends State<_AccountDialog> {
                 }),
               ),
               const SizedBox(height: 16),
-              TextField(
-                controller: _server,
-                enabled: !_busy,
-                style: TextStyle(color: luma.textPrimary, fontSize: 14),
-                decoration: _fieldDecoration(context, 'Server address',
-                    hint: 'https://sync.example.com'),
-              ),
+              if (_showServerField) ...[
+                TextField(
+                  controller: _server,
+                  enabled: !_busy,
+                  autofocus: true,
+                  style: TextStyle(color: luma.textPrimary, fontSize: 14),
+                  decoration: _fieldDecoration(context, 'Server address',
+                          hint: 'https://sync.example.com')
+                      .copyWith(
+                    suffixIcon: _busy
+                        ? null
+                        : IconButton(
+                            tooltip: 'Remove server',
+                            icon: Icon(Icons.close_rounded,
+                                size: 18, color: luma.textMuted),
+                            onPressed: () => setState(() {
+                              _server.clear();
+                              _showServerField = false;
+                              _error = null;
+                            }),
+                          ),
+                  ),
+                ),
+              ] else
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: LumaGhostButton(
+                    label: 'Add cloud server',
+                    icon: Icons.add_rounded,
+                    onTap: () => setState(() => _showServerField = true),
+                  ),
+                ),
               const SizedBox(height: 12),
               TextField(
                 controller: _email,

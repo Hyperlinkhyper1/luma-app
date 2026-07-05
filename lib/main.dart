@@ -4,6 +4,9 @@ import 'app/app_shell.dart';
 import 'app/splash_screen.dart';
 import 'app/update/update_gate.dart';
 import 'app/window_controls.dart';
+import 'features/plugins/installed/mood_journal/data/mood_journal_database.dart';
+import 'features/plugins/installed/mood_journal/mood_journal_repository.dart';
+import 'features/plugins/installed/mood_journal/mood_journal_scope.dart';
 import 'features/plugins/installed/data_management/data/data_management_database.dart';
 import 'features/plugins/installed/data_management/data_management_repository.dart';
 import 'features/plugins/installed/server_tycoon/server_tycoon_repository.dart';
@@ -84,6 +87,8 @@ class _LumaAppState extends State<LumaApp> {
   late final DataManagementDatabase _dataManagementDb = DataManagementDatabase();
   late final DataManagementRepository _dataManagementRepository = DataManagementRepository(_dataManagementDb);
   late final ServerTycoonRepository _serverTycoonRepository = ServerTycoonRepository();
+  late final MoodJournalDatabase _moodJournalDb = MoodJournalDatabase();
+  late final MoodJournalRepository _moodJournalRepository = MoodJournalRepository(_moodJournalDb);
 
   // Optional server sync: every feature registers an adapter; nothing is
   // uploaded unless the user signs in AND enables the feature in Settings.
@@ -130,6 +135,12 @@ class _LumaAppState extends State<LumaApp> {
       icon: Icons.table_chart_rounded,
       db: _dataManagementDb,
     ),
+    DriftSyncCollection(
+      id: 'mood_journal',
+      label: 'Mood journal',
+      icon: Icons.mood_rounded,
+      db: _moodJournalDb,
+    ),
     JsonStoreSyncCollection(
       id: 'price_tracker',
       label: 'Price tracker',
@@ -171,6 +182,7 @@ class _LumaAppState extends State<LumaApp> {
     _bulletinBoardDb.close();
     _calendarDb.close();
     _dataManagementDb.close();
+    _moodJournalDb.close();
     _serverTycoonRepository.dispose();
     super.dispose();
   }
@@ -203,6 +215,8 @@ class _LumaAppState extends State<LumaApp> {
                     repository: _dataManagementRepository,
                     child: ServerTycoonScope(
                       repository: _serverTycoonRepository,
+                      child: MoodJournalScope(
+                      repository: _moodJournalRepository,
                       child: ListenableBuilder(
                       listenable: widget.settings,
                       builder: (context, _) {
@@ -218,6 +232,7 @@ class _LumaAppState extends State<LumaApp> {
                               bootstrap: _bootstrap, accentSeed: s.accentSeed),
                         );
                       },
+                    ),
                     ),
                   ),
                   ),

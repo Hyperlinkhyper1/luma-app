@@ -20,36 +20,205 @@ class DevicesSection extends StatelessWidget {
     final sync = SyncScope.of(context);
     final peers = PeerSyncScope.of(context);
     return ListenableBuilder(
-      listenable: peers,
+      listenable: Listenable.merge([sync, peers]),
       builder: (context, _) => LumaCard(
-        child: sync.signedIn
+        child: sync.p2pReady
             ? _SignedInBody(sync: sync, peers: peers)
-            : _SignedOutBody(),
+            : _SetupBody(sync: sync),
       ),
     );
   }
 }
 
-// ---- Signed out -----------------------------------------------------------
+// ---- Not set up yet ---------------------------------------------------------
 
-class _SignedOutBody extends StatelessWidget {
+/// No encryption key at all yet (no cloud account, no local identity). A
+/// switch right here starts local (serverless) setup — no need to visit the
+/// cloud "Sync & account" section at all.
+class _SetupBody extends StatelessWidget {
+  const _SetupBody({required this.sync});
+  final SyncService sync;
+
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    return Column(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Sync directly between devices',
-          style: TextStyle(
-              color: luma.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
+        LumaIconBadge(icon: Icons.devices_other_rounded, color: luma.accent),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Sync directly between devices',
+                style: TextStyle(
+                    color: luma.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'No server needed — just an email + password shared between '
+                'your devices, used only to recognize each other over '
+                'Wi-Fi. Already have a luma cloud account? Sign in above '
+                'instead and this turns on automatically.',
+                style:
+                    TextStyle(color: luma.textMuted, fontSize: 12, height: 1.5),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          'Two devices signed into the same account can sync over Wi-Fi '
-          'without going through your server — faster, and works offline. '
-          'Sign in above to start.',
-          style: TextStyle(color: luma.textMuted, fontSize: 12, height: 1.5),
+        const SizedBox(width: 12),
+        Switch(
+          value: false,
+          onChanged: (_) => showDialog<void>(
+            context: context,
+            builder: (_) => _LocalAccountDialog(sync: sync),
+          ),
+          activeThumbColor: luma.onAccent,
+          activeTrackColor: luma.accent,
+          inactiveThumbColor: luma.textSecondary,
+          inactiveTrackColor: luma.surfaceHover,
+        ),
+      ],
+    );
+  }
+}
+
+class _LocalAccountDialog extends StatefulWidget {
+  const _LocalAccountDialog({required this.sync});
+  final SyncService sync;
+
+  @override
+  State<_LocalAccountDialog> createState() => _LocalAccountDialogState();
+}
+
+class _LocalAccountDialogState extends State<_LocalAccountDialog> {
+  final _email = TextEditingController();
+  final _password = TextEditingController();
+  final _confirm = TextEditingController();
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _email.dispose();
+    _password.dispose();
+    _confirm.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_email.text.trim().isEmpty || !_email.text.contains('@')) {
+      setState(() => _error = 'Enter a valid email address.');
+      return;
+    }
+    if (_password.text.length < 10) {
+      setState(() => _error =
+          'Use at least 10 characters — this password also protects your '
+          'encrypted data.');
+      return;
+    }
+    if (_password.text != _confirm.text) {
+      setState(() => _error = 'Passwords do not match.');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await widget.sync
+          .setLocalAccount(email: _email.text, password: _password.text);
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = '$e';
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return AlertDialog(
+      backgroundColor: luma.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: luma.border),
+      ),
+      title:
+          Text('Enable device sync', style: TextStyle(color: luma.textPrimary)),
+      content: SizedBox(
+        width: 400,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Enter the same email and password on every device you want '
+                'to pair — they never leave this device or touch a server. '
+                'They just prove your devices belong to the same person.',
+                style: TextStyle(color: luma.textMuted, fontSize: 12),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: _email,
+                enabled: !_busy,
+                keyboardType: TextInputType.emailAddress,
+                style: TextStyle(color: luma.textPrimary, fontSize: 14),
+                decoration: _fieldDecoration(context, 'Email'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _password,
+                enabled: !_busy,
+                obscureText: true,
+                style: TextStyle(color: luma.textPrimary, fontSize: 14),
+                decoration: _fieldDecoration(context, 'Password'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _confirm,
+                enabled: !_busy,
+                obscureText: true,
+                style: TextStyle(color: luma.textPrimary, fontSize: 14),
+                decoration: _fieldDecoration(context, 'Confirm password'),
+                onSubmitted: (_) => _submit(),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'If you mistype the password while pairing a second device, '
+                'it just won\'t be recognized as the same account — there\'s '
+                'no server to check against or reset it with.',
+                style: TextStyle(
+                    color: Colors.orange.shade400, fontSize: 12, height: 1.4),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 12),
+                Text(_error!,
+                    style:
+                        TextStyle(color: Colors.red.shade400, fontSize: 12)),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.of(context).pop(),
+          child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+        ),
+        LumaPrimaryButton(
+          label: 'Enable',
+          loading: _busy,
+          onTap: _busy ? null : _submit,
         ),
       ],
     );
@@ -109,6 +278,24 @@ class _SignedInBody extends StatelessWidget {
           Text(peers.lastError!,
               style:
                   TextStyle(color: Colors.orange.shade400, fontSize: 12)),
+        ],
+        if (sync.isLocalOnly) ...[
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Local only — ${sync.email ?? ''} (not backed up anywhere)',
+                  style: TextStyle(color: luma.textMuted, fontSize: 12),
+                ),
+              ),
+              TextButton(
+                onPressed: () => _confirmTurnOff(context, sync, peers),
+                child: Text('Turn off',
+                    style: TextStyle(color: Colors.red.shade400, fontSize: 12)),
+              ),
+            ],
+          ),
         ],
 
         // ---- Connected devices -------------------------------------------
@@ -270,6 +457,45 @@ class _DiscoveredRow extends StatelessWidget {
       ),
     );
   }
+}
+
+// ---- Turn off local device sync --------------------------------------------
+
+Future<void> _confirmTurnOff(
+    BuildContext context, SyncService sync, PeerSyncController peers) async {
+  final luma = context.luma;
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      backgroundColor: luma.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: luma.border),
+      ),
+      title:
+          Text('Turn off device sync?', style: TextStyle(color: luma.textPrimary)),
+      content: Text(
+        'This disconnects every paired device and forgets this device\'s '
+        'sync identity. You can set it up again any time with the same '
+        'email and password.',
+        style: TextStyle(color: luma.textSecondary, fontSize: 14),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(false),
+          child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(true),
+          child:
+              Text('Turn off', style: TextStyle(color: Colors.red.shade400)),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true) return;
+  await peers.stop();
+  await sync.clearLocalAccount();
 }
 
 IconData _platformIcon(String platform) {

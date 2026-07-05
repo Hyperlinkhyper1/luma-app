@@ -79,6 +79,16 @@
       "tags": ["Games", "Simulation"],
       "free": true,
       "version": "1.0.0"
+    },
+    {
+      "id": "mood-journal",
+      "name": "Mood Journal",
+      "description": "Track your daily mood and write a short journal entry. See your emotional patterns on a monthly calendar heat-map and spot trends over time.",
+      "icon": "mood",
+      "category": "Productivity",
+      "tags": ["Productivity", "Wellness"],
+      "free": true,
+      "version": "1.0.0"
     }
   ]
 }

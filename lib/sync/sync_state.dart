@@ -65,6 +65,14 @@ class SyncStateStore {
   Uint8List? kdfSalt;
   int? kdfIterations;
   DateTime? lastSyncAt;
+
+  /// HMAC of a fixed tag under [encryptionKey], set only by a LOCAL (no
+  /// server) identity created via `SyncService.setLocalAccount`. Lets this
+  /// device catch a mistyped password when re-entering credentials, since
+  /// there is no server to check against. Cleared on any full sign-out so a
+  /// stale value can never reject a genuinely new identity.
+  String? localVerifier;
+
   final Map<String, CollectionSyncState> collections = {};
 
   bool get signedIn =>
@@ -101,6 +109,7 @@ class SyncStateStore {
         store.kdfSalt = Uint8List.fromList(base64Decode(salt));
       }
       store.kdfIterations = data['kdfIterations'] as int?;
+      store.localVerifier = data['localVerifier'] as String?;
       if (data['lastSyncAt'] is int) {
         store.lastSyncAt =
             DateTime.fromMillisecondsSinceEpoch(data['lastSyncAt'] as int);
@@ -131,6 +140,7 @@ class SyncStateStore {
             encryptionKey == null ? null : base64Encode(encryptionKey!),
         'kdfSalt': kdfSalt == null ? null : base64Encode(kdfSalt!),
         'kdfIterations': kdfIterations,
+        'localVerifier': localVerifier,
         'lastSyncAt': lastSyncAt?.millisecondsSinceEpoch,
         'collections':
             collections.map((id, s) => MapEntry(id, s.toJson())),
@@ -153,6 +163,7 @@ class SyncStateStore {
     encryptionKey = null;
     kdfSalt = null;
     kdfIterations = null;
+    localVerifier = null;
     lastSyncAt = null;
     for (final s in collections.values) {
       s.lastSyncedVersion = null;
