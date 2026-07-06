@@ -263,18 +263,19 @@ double getActualPowerDrawWatts(Build build, double loadFactor) {
   return componentDraw / psu.efficiencyPercent;
 }
 
-(double throttleFactor, double tempRatio) getThermals(Build build, double loadFactor) {
+(double throttleFactor, double tempRatio) getThermals(Build build, double loadFactor, {double coolingCapacityMultiplier = 1.0}) {
   final cpu = cpusById[build.cpuId];
   final cooling = coolingById[build.coolingId];
   if (cpu == null || cooling == null) return (1.0, 0.0);
 
   loadFactor = loadFactor.clamp(0, 1);
   final heatWatts = cpu.tdpWatts * loadFactor;
-  final tempRatio = heatWatts / cooling.coolingCapacityWatts;
+  final effectiveCoolingCapacity = cooling.coolingCapacityWatts * coolingCapacityMultiplier;
+  final tempRatio = heatWatts / effectiveCoolingCapacity;
 
   var throttleFactor = 1.0;
   if (tempRatio > 1) {
-    throttleFactor = (cooling.coolingCapacityWatts / math.max(heatWatts, 1)).clamp(0.3, 1.0);
+    throttleFactor = (effectiveCoolingCapacity / math.max(heatWatts, 1)).clamp(0.3, 1.0);
   }
 
   return (throttleFactor, tempRatio);

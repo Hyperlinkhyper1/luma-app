@@ -172,14 +172,22 @@ RequiredResources _sumRequired(List<ServiceInstance> services) {
   return RequiredResources(cpu: cpu, ramGB: ramGB, storageGB: storageGB, bandwidthMbps: bandwidthMbps);
 }
 
-RigLoadResult calculateRigLoad(String rigId, Build build, List<ServiceInstance> services, RigKind kind) {
+RigLoadResult calculateRigLoad(
+  String rigId,
+  Build build,
+  List<ServiceInstance> services,
+  RigKind kind, {
+  double overheatThrottlePenalty = 0.0,
+  double coolingCapacityReduction = 0.0,
+}) {
   final req = _sumRequired(services);
   final capacity = getCapacity(build);
   final (incompatibilityReasons, compatible) = validateBuild(build, rigKind: kind);
   final incompatible = !compatible;
 
   final double nominalCPULoadFactor = capacity.cpuScore > 0 ? (req.cpu / capacity.cpuScore).clamp(0, 1).toDouble() : 1.0;
-  final (throttleFactor, tempRatio) = getThermals(build, nominalCPULoadFactor);
+  final (thermalThrottleFactor, tempRatio) = getThermals(build, nominalCPULoadFactor, coolingCapacityMultiplier: 1 - coolingCapacityReduction);
+  final throttleFactor = thermalThrottleFactor * (1 - overheatThrottlePenalty);
   final effectiveCPUCapacity = capacity.cpuScore * throttleFactor;
 
   final util = Utilization(
@@ -227,17 +235,25 @@ RigLoadResult calculateRigLoad(String rigId, Build build, List<ServiceInstance> 
   );
 }
 
-AccountLoadResult calculateAccountLoad(Map<String, RigInput> rigs, Map<String, RouterInput> routers) {
+AccountLoadResult calculateAccountLoad(
+  Map<String, RigInput> rigs,
+  Map<String, RouterInput> routers, {
+  Map<String, double> rigOverheatPenalties = const {},
+  Map<String, double> rigCoolingReductions = const {},
+  Map<String, double> routerBandwidthMultipliers = const {},
+  Map<String, double> instanceIncomeMultipliers = const {},
+}) {
   final rigResults = <String, RigLoadResult>{};
   final routerResults = <String, RouterLoadResult>{};
 
   for (final entry in routers.entries) {
     final plan = internetPlansById[entry.value.internetPlanId];
+    final bandwidthMultiplier = routerBandwidthMultipliers[entry.key] ?? 1.0;
     routerResults[entry.key] = RouterLoadResult(
       routerId: entry.key,
       internetPlanId: entry.value.internetPlanId,
       requiredBandwidth: 0,
-      bandwidthCapacity: plan?.upMbps ?? 0,
+      bandwidthCapacity: ((plan?.upMbps ?? 0) * bandwidthMultiplier).round(),
       bandwidthFactor: 1.0,
       latencyMs: plan?.maxLatencyMs ?? 999,
       rigCount: 0,
@@ -248,7 +264,14 @@ AccountLoadResult calculateAccountLoad(Map<String, RigInput> rigs, Map<String, R
   var totalBandwidthCapacity = 0.0;
 
   for (final entry in rigs.entries) {
-    final result = calculateRigLoad(entry.key, entry.value.build, entry.value.services, entry.value.kind);
+    final result = calculateRigLoad(
+      entry.key,
+      entry.value.build,
+      entry.value.services,
+      entry.value.kind,
+      overheatThrottlePenalty: rigOverheatPenalties[entry.key] ?? 0.0,
+      coolingCapacityReduction: rigCoolingReductions[entry.key] ?? 0.0,
+    );
     rigResults[entry.key] = result;
     totalRequiredBandwidth += result.required.bandwidthMbps;
 
@@ -301,7 +324,8 @@ AccountLoadResult calculateAccountLoad(Map<String, RigInput> rigs, Map<String, R
         bottleneck = 'latency';
       }
 
-      final incomePerDay = serviceType.incomePerUnitPerDay * inst.capacity * satisfaction;
+      final incomeMultiplier = instanceIncomeMultipliers[inst.instanceId] ?? 1.0;
+      final incomePerDay = serviceType.incomePerUnitPerDay * inst.capacity * satisfaction * incomeMultiplier;
 
       instances.add(InstanceResult(
         instanceId: inst.instanceId,

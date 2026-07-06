@@ -12,3 +12,6 @@ export 'services.dart';
 export 'licenses.dart';
 export 'research.dart';
 export 'companies.dart';
+export 'achievements.dart';
+export 'staff.dart';
+export 'incidents.dart';

@@ -38,6 +38,14 @@ class ServerTycoonRepository extends ChangeNotifier {
   int _secondsElapsed = 0;
   bool _awaitingConfirmation = false;
 
+  // Live incidents -- session-only, not persisted (see ActiveIncident docs).
+  final List<ActiveIncident> _activeIncidents = [];
+  int _cooldownsUsedToday = 0;
+  final math.Random _incidentRng = math.Random();
+  static const double _incidentChancePerSecond = 0.03;
+  static const int _maxConcurrentIncidents = 2;
+  static const int _maxEmergencyCooldownsPerDay = 2;
+
   GameState get state => _state;
   List<ContractOffer> get contractOffers => List.unmodifiable(_contractOffers);
   DayReport? get lastDayReport => _lastDayReport;
@@ -45,6 +53,7 @@ class ServerTycoonRepository extends ChangeNotifier {
   double get dayProgress => _secondsElapsed / 30.0;
   int get secondsRemaining => 30 - _secondsElapsed;
   bool get awaitingConfirmation => _awaitingConfirmation;
+  List<ActiveIncident> get activeIncidents => List.unmodifiable(_activeIncidents);
 
   ServerTycoonRepository() : _state = GameState.newDefault() {
     _load();
@@ -96,6 +105,7 @@ class ServerTycoonRepository extends ChangeNotifier {
   void _tick() {
     if (_awaitingConfirmation) return;
     _secondsElapsed++;
+    _maybeRollIncident();
     if (_secondsElapsed >= 30) {
       _secondsElapsed = 30;
       _awaitingConfirmation = true;
@@ -114,8 +124,9 @@ class ServerTycoonRepository extends ChangeNotifier {
   // ── Day Processing ──
 
   DayReport? processDay() {
-    final load = _calculateLoad();
+    final load = calculateLoad();
     final effects = getResearchEffects(_state.research);
+    final staffEffects = getStaffEffects(_state.hiredStaffIds);
 
     var totalWatts = 0.0;
     for (final entry in _state.rigs.entries) {
@@ -126,16 +137,25 @@ class ServerTycoonRepository extends ChangeNotifier {
     }
 
     final electricityPrice = Economy.getFluctuatedPrice(Economy.baseElectricityPricePerKWh, _state.dayCount);
-    final electricityCost = Economy.calculateElectricityCost(totalWatts, pricePerKWh: electricityPrice) * (1 - effects.electricityDiscount);
+    final totalElectricityDiscount = (effects.electricityDiscount + staffEffects.electricityDiscount).clamp(0, 1);
+    final electricityCost = Economy.calculateElectricityCost(totalWatts, pricePerKWh: electricityPrice) * (1 - totalElectricityDiscount);
     final internetCost = _getDailyInternetCost();
-    final (contractIncome, contractEvents) = _processContracts(load);
+    final (contractIncome, contractEvents, anyContractFailed) = _processContracts(load);
 
-    var income = load.totalIncomePerDay + contractIncome;
-    final netProfit = income - electricityCost - internetCost;
+    var staffSalaryCost = 0.0;
+    for (final id in _state.hiredStaffIds) {
+      staffSalaryCost += staffDefsById[id]?.dailySalary ?? 0;
+    }
+
+    var income = (load.totalIncomePerDay + contractIncome) * _state.incomeMultiplier;
+    final netProfit = income - electricityCost - internetCost - staffSalaryCost;
 
     _state.money += netProfit;
     _state.dayCount++;
     _state.peakPowerDrawWatts = math.max(_state.peakPowerDrawWatts, totalWatts);
+    _state.totalMoneyEverEarned += income;
+    _state.peakBandwidthServed = math.max(_state.peakBandwidthServed, load.totalRequiredBandwidth);
+    _state.uptimeStreakDays = (!load.overloaded && !anyContractFailed) ? _state.uptimeStreakDays + 1 : 0;
 
     _pushHistory(_state.powerHistory, totalWatts);
     _pushHistory(_state.incomeHistory, netProfit);
@@ -151,7 +171,14 @@ class ServerTycoonRepository extends ChangeNotifier {
     final repDelta = Economy.calculateReputationDelta(avgSatisfaction);
     _state.reputation = (_state.reputation + repDelta).clamp(Economy.reputationMin, Economy.reputationMax);
 
+    // Incidents are for "the rest of the day" -- clear everything at rollover
+    // except unresolved drive failures, which are a real hardware loss that
+    // persists (via the Build mutation already made) until actually repaired.
+    _activeIncidents.removeWhere((i) => i.type != IncidentType.driveFailure);
+    _cooldownsUsedToday = 0;
+
     _regenerateContractOffers();
+    _checkAchievements();
     _save();
 
     _lastDayReport = DayReport(
@@ -161,6 +188,7 @@ class ServerTycoonRepository extends ChangeNotifier {
       contractEvents: contractEvents,
       electricityCost: electricityCost,
       internetCost: internetCost,
+      staffSalaryCost: staffSalaryCost,
       netProfit: netProfit,
       avgSatisfaction: avgSatisfaction,
       reputation: _state.reputation,
@@ -177,7 +205,7 @@ class ServerTycoonRepository extends ChangeNotifier {
     notifyListeners();
   }
 
-  AccountLoadResult _calculateLoad() {
+  AccountLoadResult calculateLoad() {
     final rigs = <String, RigInput>{};
     for (final entry in _state.rigs.entries) {
       rigs[entry.key] = RigInput(
@@ -191,7 +219,40 @@ class ServerTycoonRepository extends ChangeNotifier {
     for (final entry in _state.routers.entries) {
       routers[entry.key] = RouterInput(internetPlanId: entry.value.internetPlanId);
     }
-    return calculateAccountLoad(rigs, routers);
+
+    final rigOverheatPenalties = <String, double>{};
+    final rigCoolingReductions = <String, double>{};
+    final routerBandwidthMultipliers = <String, double>{};
+    final instanceIncomeMultipliers = <String, double>{};
+    for (final incident in _activeIncidents) {
+      switch (incident.type) {
+        case IncidentType.rigOverheatSpike:
+          rigOverheatPenalties[incident.targetId] = incident.severity;
+          break;
+        case IncidentType.coolingLeak:
+          rigCoolingReductions[incident.targetId] = incident.severity;
+          break;
+        case IncidentType.routerDdos:
+          routerBandwidthMultipliers[incident.targetId] = 1 - incident.severity;
+          break;
+        case IncidentType.viralDemandSpike:
+          if (incident.affectedInstanceId != null) {
+            instanceIncomeMultipliers[incident.affectedInstanceId!] = 1 + incident.severity;
+          }
+          break;
+        case IncidentType.driveFailure:
+          break;
+      }
+    }
+
+    return calculateAccountLoad(
+      rigs,
+      routers,
+      rigOverheatPenalties: rigOverheatPenalties,
+      rigCoolingReductions: rigCoolingReductions,
+      routerBandwidthMultipliers: routerBandwidthMultipliers,
+      instanceIncomeMultipliers: instanceIncomeMultipliers,
+    );
   }
 
   double _getDailyInternetCost() {
@@ -203,7 +264,7 @@ class ServerTycoonRepository extends ChangeNotifier {
     return total;
   }
 
-  (double income, List<String> events) _processContracts(AccountLoadResult load) {
+  (double income, List<String> events, bool anyFailed) _processContracts(AccountLoadResult load) {
     final servedByType = <String, double>{};
     for (final inst in load.instances) {
       servedByType[inst.serviceTypeId] = (servedByType[inst.serviceTypeId] ?? 0) + inst.capacity * inst.satisfaction;
@@ -211,6 +272,7 @@ class ServerTycoonRepository extends ChangeNotifier {
 
     var contractIncome = 0.0;
     final events = <String>[];
+    var anyFailed = false;
 
     for (var i = _state.contracts.length - 1; i >= 0; i--) {
       final contract = _state.contracts[i];
@@ -224,17 +286,228 @@ class ServerTycoonRepository extends ChangeNotifier {
         if (contract.daysRemaining <= 0) {
           contractIncome += contract.completionBonus;
           _state.reputation = (_state.reputation + contract.repBonus).clamp(Economy.reputationMin, Economy.reputationMax);
+          _state.contractsCompletedCount++;
           events.add('$companyName contract completed: +\$${contract.completionBonus.toStringAsFixed(0)} bonus, +${contract.repBonus} rep');
           _state.contracts.removeAt(i);
         }
       } else {
+        anyFailed = true;
         _state.reputation = (_state.reputation - contract.repPenalty).clamp(Economy.reputationMin, Economy.reputationMax);
         events.add('$companyName contract FAILED (needed ${contract.minCapacity} served capacity): -${contract.repPenalty} rep');
         _state.contracts.removeAt(i);
       }
     }
 
-    return (contractIncome, events);
+    return (contractIncome, events, anyFailed);
+  }
+
+  // ── Achievements ──
+
+  final List<String> _pendingAchievementUnlocks = [];
+  List<String> get pendingAchievementUnlocks => List.unmodifiable(_pendingAchievementUnlocks);
+
+  void clearAchievementUnlock(String id) {
+    _pendingAchievementUnlocks.remove(id);
+    notifyListeners();
+  }
+
+  double metricValueFor(AchievementMetric metric) => switch (metric) {
+    AchievementMetric.totalMoneyEarned => _state.totalMoneyEverEarned,
+    AchievementMetric.reputation => _state.reputation,
+    AchievementMetric.dayCount => _state.dayCount.toDouble(),
+    AchievementMetric.peakBandwidthServed => _state.peakBandwidthServed,
+    AchievementMetric.contractsCompleted => _state.contractsCompletedCount.toDouble(),
+    AchievementMetric.uptimeStreakDays => _state.uptimeStreakDays.toDouble(),
+    AchievementMetric.rigCount => _state.rigs.length.toDouble(),
+    AchievementMetric.prestigeLevel => _state.prestigeLevel.toDouble(),
+  };
+
+  void _checkAchievements() {
+    for (final def in achievementDefList) {
+      if (_state.unlockedAchievements.contains(def.id)) continue;
+      if (metricValueFor(def.metric) >= def.threshold) {
+        _state.unlockedAchievements.add(def.id);
+        _pendingAchievementUnlocks.add(def.id);
+      }
+    }
+  }
+
+  // ── Incidents ──
+
+  void _maybeRollIncident() {
+    if (_activeIncidents.length >= _maxConcurrentIncidents) return;
+    if (_incidentRng.nextDouble() >= _incidentChancePerSecond) return;
+    _spawnIncident();
+  }
+
+  String _weightedDriveFailureTarget(List<Rig> candidates) {
+    final weights = <double>[];
+    var totalWeight = 0.0;
+    for (final rig in candidates) {
+      var w = 0.0;
+      for (final driveId in rig.build.storageIds) {
+        w += storageById[driveId]?.failureRatePerYear ?? 0.01;
+      }
+      if (w <= 0) w = 0.01;
+      weights.add(w);
+      totalWeight += w;
+    }
+    var roll = _incidentRng.nextDouble() * totalWeight;
+    for (var i = 0; i < candidates.length; i++) {
+      roll -= weights[i];
+      if (roll <= 0) return candidates[i].rigId;
+    }
+    return candidates.last.rigId;
+  }
+
+  void _spawnIncident() {
+    final eligible = <IncidentType>[];
+    if (_state.routers.isNotEmpty) eligible.add(IncidentType.routerDdos);
+    if (_state.rigs.isNotEmpty) eligible.add(IncidentType.rigOverheatSpike);
+
+    final rigsWithStorage = _state.rigs.values.where((r) => r.build.storageIds.isNotEmpty).toList();
+    if (rigsWithStorage.isNotEmpty) eligible.add(IncidentType.driveFailure);
+
+    final waterCooledRigs = _state.rigs.values.where((r) {
+      final cooler = coolingById[r.build.coolingId];
+      return cooler != null && cooler.requiresWater;
+    }).toList();
+    if (waterCooledRigs.isNotEmpty) eligible.add(IncidentType.coolingLeak);
+
+    final load = calculateLoad();
+    final slackInstances = load.instances.where((i) => i.satisfaction >= 0.98).toList();
+    if (slackInstances.isNotEmpty) eligible.add(IncidentType.viralDemandSpike);
+
+    if (eligible.isEmpty) return;
+    final type = eligible[_incidentRng.nextInt(eligible.length)];
+
+    late String targetKind;
+    late String targetId;
+    late double severity;
+    String? affectedInstanceId;
+
+    switch (type) {
+      case IncidentType.routerDdos:
+        targetKind = 'router';
+        targetId = _state.routers.keys.elementAt(_incidentRng.nextInt(_state.routers.length));
+        severity = 0.5;
+        break;
+      case IncidentType.rigOverheatSpike:
+        targetKind = 'rig';
+        targetId = _state.rigs.keys.elementAt(_incidentRng.nextInt(_state.rigs.length));
+        severity = 0.3 + _incidentRng.nextDouble() * 0.2;
+        break;
+      case IncidentType.driveFailure:
+        targetKind = 'rig';
+        targetId = _weightedDriveFailureTarget(rigsWithStorage);
+        severity = 1.0;
+        break;
+      case IncidentType.coolingLeak:
+        targetKind = 'rig';
+        targetId = waterCooledRigs[_incidentRng.nextInt(waterCooledRigs.length)].rigId;
+        severity = 0.4;
+        break;
+      case IncidentType.viralDemandSpike:
+        targetKind = 'rig';
+        final inst = slackInstances[_incidentRng.nextInt(slackInstances.length)];
+        targetId = inst.rigId;
+        affectedInstanceId = inst.instanceId;
+        severity = 0.5 + _incidentRng.nextDouble();
+        break;
+    }
+
+    // A drive failure permanently destroys a real, persisted storage slot --
+    // the existing incompatibility/bottleneck machinery in service_sim then
+    // organically reflects the loss, no separate sim parameter needed.
+    if (type == IncidentType.driveFailure) {
+      final rig = _state.rigs[targetId];
+      if (rig == null || rig.build.storageIds.isEmpty) return;
+      final removeIdx = _incidentRng.nextInt(rig.build.storageIds.length);
+      rig.build = rig.build.copyWith(storageIds: [...rig.build.storageIds]..removeAt(removeIdx));
+      _save();
+    }
+
+    // A hired Sysadmin may silently auto-resolve minor (non-drive, non-positive) incidents.
+    if (type != IncidentType.driveFailure && type != IncidentType.viralDemandSpike) {
+      final staffEffects = getStaffEffects(_state.hiredStaffIds);
+      if (_incidentRng.nextDouble() < staffEffects.sysadminAutoResolveChance) {
+        notifyListeners();
+        return;
+      }
+    }
+
+    _activeIncidents.add(ActiveIncident(
+      incidentId: '${_state.dayCount}_${_secondsElapsed}_${_incidentRng.nextInt(999999)}',
+      type: type,
+      targetKind: targetKind,
+      targetId: targetId,
+      spawnedAtSecond: _secondsElapsed,
+      severity: severity,
+      affectedInstanceId: affectedInstanceId,
+    ));
+    notifyListeners();
+  }
+
+  ActionResult mitigateIncident(String incidentId) {
+    final incident = _activeIncidents.where((i) => i.incidentId == incidentId).firstOrNull;
+    if (incident == null) return const ActionResult(ok: false, errors: ['Incident not found']);
+    if (incident.type != IncidentType.routerDdos) return const ActionResult(ok: false, errors: ['This incident cannot be mitigated']);
+
+    final router = _state.routers[incident.targetId];
+    final plan = router != null ? internetPlansById[router.internetPlanId] : null;
+    final cost = 50 + (plan?.upMbps ?? 0) * 0.05;
+    if (_state.money < cost) return ActionResult(ok: false, errors: ['Not enough money (needs \$${cost.toStringAsFixed(0)})']);
+
+    _state.money -= cost;
+    _activeIncidents.remove(incident);
+    _save();
+    notifyListeners();
+    return const ActionResult(ok: true);
+  }
+
+  ActionResult emergencyCooldown(String incidentId) {
+    final incident = _activeIncidents.where((i) => i.incidentId == incidentId).firstOrNull;
+    if (incident == null) return const ActionResult(ok: false, errors: ['Incident not found']);
+    if (incident.type != IncidentType.rigOverheatSpike) return const ActionResult(ok: false, errors: ['This incident cannot be cooled down']);
+    if (_cooldownsUsedToday >= _maxEmergencyCooldownsPerDay) {
+      return const ActionResult(ok: false, errors: ['Emergency cooldown already used twice today']);
+    }
+
+    _cooldownsUsedToday++;
+    _activeIncidents.remove(incident);
+    notifyListeners();
+    return const ActionResult(ok: true);
+  }
+
+  ActionResult repairIncident(String incidentId) {
+    final incident = _activeIncidents.where((i) => i.incidentId == incidentId).firstOrNull;
+    if (incident == null) return const ActionResult(ok: false, errors: ['Incident not found']);
+    if (incident.type != IncidentType.coolingLeak) return const ActionResult(ok: false, errors: ['This incident cannot be repaired']);
+
+    final rig = _state.rigs[incident.targetId];
+    final cooler = rig != null ? coolingById[rig.build.coolingId] : null;
+    final cost = (cooler?.maintenanceCostPerWeek ?? 20) * 2.0;
+    if (_state.money < cost) return ActionResult(ok: false, errors: ['Not enough money (needs \$${cost.toStringAsFixed(0)})']);
+
+    _state.money -= cost;
+    _activeIncidents.remove(incident);
+    _save();
+    notifyListeners();
+    return const ActionResult(ok: true);
+  }
+
+  ActionResult ignoreIncident(String incidentId) {
+    final incident = _activeIncidents.where((i) => i.incidentId == incidentId).firstOrNull;
+    if (incident == null) return const ActionResult(ok: false, errors: ['Incident not found']);
+    incident.acknowledged = true;
+    notifyListeners();
+    return const ActionResult(ok: true);
+  }
+
+  void _reconcileIncidents(String rigId) {
+    final rig = _state.rigs[rigId];
+    if (rig == null || rig.build.storageIds.isEmpty) return;
+    _activeIncidents.removeWhere((i) => i.type == IncidentType.driveFailure && i.targetId == rigId);
   }
 
   void _pushHistory(List<double> history, double value) {
@@ -246,6 +519,8 @@ class ServerTycoonRepository extends ChangeNotifier {
 
   void _regenerateContractOffers() {
     final rng = math.Random(_state.dayCount * 31 + 7919);
+    final staffEffects = getStaffEffects(_state.hiredStaffIds);
+    final maxOffers = _maxOffersPerDay + staffEffects.offerSlotBonus;
     final eligible = <Company>[];
     for (final company in companyList) {
       if (_state.reputation < company.minReputation) continue;
@@ -259,7 +534,7 @@ class ServerTycoonRepository extends ChangeNotifier {
     }
 
     final offers = <ContractOffer>[];
-    final count = math.min(_maxOffersPerDay, eligible.length);
+    final count = math.min(maxOffers, eligible.length);
     for (var i = 0; i < count; i++) {
       final idx = rng.nextInt(eligible.length);
       final company = eligible.removeAt(idx);
@@ -277,6 +552,7 @@ class ServerTycoonRepository extends ChangeNotifier {
       final minCapacity = company.capacityMin + rng.nextInt(company.capacityMax - company.capacityMin + 1);
       final durationDays = company.minDurationDays + rng.nextInt(company.maxDurationDays - company.minDurationDays + 1);
       var payoutPerDay = serviceType.incomePerUnitPerDay * minCapacity * (company.payoutMultiplier - 1);
+      payoutPerDay *= (1 + staffEffects.payoutBonusMultiplier);
       payoutPerDay = (payoutPerDay * 100).round() / 100;
       final completionBonus = (payoutPerDay * durationDays * 0.5).round();
 
@@ -496,6 +772,36 @@ class ServerTycoonRepository extends ChangeNotifier {
     return const ActionResult(ok: true);
   }
 
+  ActionResult hireStaff(String staffId) {
+    final def = staffDefsById[staffId];
+    if (def == null) return const ActionResult(ok: false, errors: ['Unknown staff member']);
+    if (_state.hiredStaffIds.contains(staffId)) return const ActionResult(ok: false, errors: ['Already hired']);
+    if (_state.reputation < def.minReputation) {
+      return ActionResult(ok: false, errors: ['Requires ${def.minReputation} reputation']);
+    }
+    if (def.requiresLicense != null && !_state.licenses.contains(def.requiresLicense)) {
+      return ActionResult(ok: false, errors: ['Requires the ${def.requiresLicense} license']);
+    }
+    if (def.requiresResearch != null && !_state.research.contains(def.requiresResearch)) {
+      return ActionResult(ok: false, errors: ['Requires the ${def.requiresResearch} research']);
+    }
+    if (_state.money < def.cost) return const ActionResult(ok: false, errors: ['Not enough money']);
+
+    _state.money -= def.cost;
+    _state.hiredStaffIds.add(staffId);
+    _save();
+    notifyListeners();
+    return const ActionResult(ok: true);
+  }
+
+  ActionResult fireStaff(String staffId) {
+    if (!_state.hiredStaffIds.contains(staffId)) return const ActionResult(ok: false, errors: ['Not currently hired']);
+    _state.hiredStaffIds.remove(staffId);
+    _save();
+    notifyListeners();
+    return const ActionResult(ok: true);
+  }
+
   ActionResult acceptContract(String offerId) {
     if (_acceptedOfferIds.contains(offerId)) {
       return const ActionResult(ok: false, errors: ['Offer already accepted']);
@@ -692,6 +998,7 @@ class ServerTycoonRepository extends ChangeNotifier {
       _state.money -= drive.price;
     }
     rig.build = trialBuild;
+    _reconcileIncidents(rigId);
     _save();
     notifyListeners();
 
@@ -717,12 +1024,50 @@ class ServerTycoonRepository extends ChangeNotifier {
   }
 
   void resetGame() {
-    _state = GameState.newDefault();
+    // prestigeLevel/incomeMultiplier/unlockedAchievements/totalMoneyEverEarned
+    // survive an ordinary reset — see rebirth() below for the distinct,
+    // opt-in "Scale Up" action that also carries these forward.
+    _state = GameState.newDefault(
+      prestigeLevel: _state.prestigeLevel,
+      incomeMultiplier: _state.incomeMultiplier,
+      unlockedAchievements: _state.unlockedAchievements,
+      totalMoneyEverEarned: _state.totalMoneyEverEarned,
+    );
     _contractOffers = [];
     _acceptedOfferIds.clear();
     _lastDayReport = null;
+    _activeIncidents.clear();
+    _cooldownsUsedToday = 0;
     _regenerateContractOffers();
     _save();
     notifyListeners();
+  }
+
+  // ── Prestige / Rebirth ──
+
+  double get rebirthThreshold => 50000 * math.pow(2.2, _state.prestigeLevel).toDouble();
+  bool get canRebirth => _state.money >= rebirthThreshold;
+
+  ActionResult rebirth() {
+    if (!canRebirth) {
+      return ActionResult(ok: false, errors: ['Need \$${rebirthThreshold.toStringAsFixed(0)} net worth to scale up']);
+    }
+    final newLevel = _state.prestigeLevel + 1;
+    final newMultiplier = 1 + 2 * (1 - math.exp(-0.3 * newLevel));
+    _state = GameState.newDefault(
+      prestigeLevel: newLevel,
+      incomeMultiplier: newMultiplier,
+      unlockedAchievements: _state.unlockedAchievements,
+      totalMoneyEverEarned: _state.totalMoneyEverEarned,
+    );
+    _contractOffers = [];
+    _acceptedOfferIds.clear();
+    _lastDayReport = null;
+    _activeIncidents.clear();
+    _cooldownsUsedToday = 0;
+    _regenerateContractOffers();
+    _save();
+    notifyListeners();
+    return const ActionResult(ok: true);
   }
 }

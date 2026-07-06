@@ -1,8 +1,33 @@
 // Auto-ported from Roblox Server Hosting Tycoon
 // The full serializable state for one player's hosting business.
 
+import 'data/incidents.dart';
 import 'sim/computer_sim.dart';
 import 'sim/service_sim.dart';
+
+/// A live, mid-day incident. Deliberately NOT part of GameState/persistence --
+/// it's repository-private, session-only state (see ServerTycoonRepository).
+class ActiveIncident {
+  final String incidentId;
+  final IncidentType type;
+  final String targetKind; // 'rig' | 'router'
+  final String targetId;
+  final int spawnedAtSecond;
+  final double severity;
+  bool acknowledged;
+  final String? affectedInstanceId;
+
+  ActiveIncident({
+    required this.incidentId,
+    required this.type,
+    required this.targetKind,
+    required this.targetId,
+    required this.spawnedAtSecond,
+    required this.severity,
+    this.acknowledged = false,
+    this.affectedInstanceId,
+  });
+}
 
 class NodePos {
   double x;
@@ -168,6 +193,7 @@ class DayReport {
   final List<String> contractEvents;
   final double electricityCost;
   final double internetCost;
+  final double staffSalaryCost;
   final double netProfit;
   final double avgSatisfaction;
   final double reputation;
@@ -181,6 +207,7 @@ class DayReport {
     required this.contractEvents,
     required this.electricityCost,
     required this.internetCost,
+    this.staffSalaryCost = 0,
     required this.netProfit,
     required this.avgSatisfaction,
     required this.reputation,
@@ -206,6 +233,20 @@ class GameState {
   List<double> powerHistory;
   List<double> incomeHistory;
   Map<String, int> inventory;
+
+  // Achievement tracking counters.
+  double totalMoneyEverEarned;
+  int contractsCompletedCount;
+  int uptimeStreakDays;
+  double peakBandwidthServed;
+  Set<String> unlockedAchievements;
+
+  // Prestige / rebirth — deliberately survives resetGame(), see repository.
+  int prestigeLevel;
+  double incomeMultiplier;
+
+  // Hired staff.
+  Set<String> hiredStaffIds;
 
   static const int historyLength = 30;
   static const int newRigCost = 300;
@@ -233,9 +274,30 @@ class GameState {
     required this.powerHistory,
     required this.incomeHistory,
     Map<String, int>? inventory,
-  }) : inventory = inventory ?? {};
+    double? totalMoneyEverEarned,
+    int? contractsCompletedCount,
+    int? uptimeStreakDays,
+    double? peakBandwidthServed,
+    Set<String>? unlockedAchievements,
+    int? prestigeLevel,
+    double? incomeMultiplier,
+    Set<String>? hiredStaffIds,
+  }) : inventory = inventory ?? {},
+       totalMoneyEverEarned = totalMoneyEverEarned ?? 0,
+       contractsCompletedCount = contractsCompletedCount ?? 0,
+       uptimeStreakDays = uptimeStreakDays ?? 0,
+       peakBandwidthServed = peakBandwidthServed ?? 0,
+       unlockedAchievements = unlockedAchievements ?? {},
+       prestigeLevel = prestigeLevel ?? 0,
+       incomeMultiplier = incomeMultiplier ?? 1.0,
+       hiredStaffIds = hiredStaffIds ?? {};
 
-  factory GameState.newDefault() {
+  factory GameState.newDefault({
+    double totalMoneyEverEarned = 0,
+    Set<String>? unlockedAchievements,
+    int prestigeLevel = 0,
+    double incomeMultiplier = 1.0,
+  }) {
     const firstRigId = '1';
     const firstRouterId = '1';
     return GameState(
@@ -271,6 +333,10 @@ class GameState {
       peakPowerDrawWatts: 0,
       powerHistory: [],
       incomeHistory: [],
+      totalMoneyEverEarned: totalMoneyEverEarned,
+      unlockedAchievements: unlockedAchievements,
+      prestigeLevel: prestigeLevel,
+      incomeMultiplier: incomeMultiplier,
     );
   }
 
@@ -291,6 +357,14 @@ class GameState {
     'powerHistory': powerHistory,
     'incomeHistory': incomeHistory,
     'inventory': inventory,
+    'totalMoneyEverEarned': totalMoneyEverEarned,
+    'contractsCompletedCount': contractsCompletedCount,
+    'uptimeStreakDays': uptimeStreakDays,
+    'peakBandwidthServed': peakBandwidthServed,
+    'unlockedAchievements': unlockedAchievements.toList(),
+    'prestigeLevel': prestigeLevel,
+    'incomeMultiplier': incomeMultiplier,
+    'hiredStaffIds': hiredStaffIds.toList(),
   };
 
   factory GameState.fromJson(Map<String, dynamic> json) => GameState(
@@ -310,5 +384,13 @@ class GameState {
     powerHistory: (json['powerHistory'] as List).map((e) => (e as num).toDouble()).toList(),
     incomeHistory: (json['incomeHistory'] as List).map((e) => (e as num).toDouble()).toList(),
     inventory: (json['inventory'] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as int)) ?? {},
+    totalMoneyEverEarned: (json['totalMoneyEverEarned'] as num?)?.toDouble() ?? 0,
+    contractsCompletedCount: json['contractsCompletedCount'] as int? ?? 0,
+    uptimeStreakDays: json['uptimeStreakDays'] as int? ?? 0,
+    peakBandwidthServed: (json['peakBandwidthServed'] as num?)?.toDouble() ?? 0,
+    unlockedAchievements: (json['unlockedAchievements'] as List?)?.cast<String>().toSet() ?? {},
+    prestigeLevel: json['prestigeLevel'] as int? ?? 0,
+    incomeMultiplier: (json['incomeMultiplier'] as num?)?.toDouble() ?? 1.0,
+    hiredStaffIds: (json['hiredStaffIds'] as List?)?.cast<String>().toSet() ?? {},
   );
 }

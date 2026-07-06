@@ -22,7 +22,7 @@ class ServerTycoonPage extends StatefulWidget {
   State<ServerTycoonPage> createState() => _ServerTycoonPageState();
 }
 
-class _ServerTycoonPageState extends State<ServerTycoonPage> {
+class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerProviderStateMixin {
   // Node dimensions, kept in sync with _RigNode / _RouterNode so wires can
   // attach to tile edges and drags stay aligned under the pointer.
   static const Size _rigSize = Size(220, 88);
@@ -34,8 +34,16 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> {
   bool _showResearch = false;
   bool _showLicenses = false;
   bool _showDayReport = false;
+  bool _showAchievements = false;
+  bool _showStaff = false;
 
   final TransformationController _canvasController = TransformationController();
+
+  // Drives fan-spin/glow pulse on nodes and packet-flow on wires. Deliberately
+  // NOT routed through setState/notifyListeners -- each node/wire scopes its
+  // own AnimatedBuilder around this so a 60fps pulse doesn't cascade a
+  // full-canvas rebuild the way the 1s repository tick does.
+  late final AnimationController _pulseController = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat();
 
   // Transient drag state — while a node is being dragged we render it (and its
   // wires) from this local position and only commit to the repo on drag end.
@@ -45,6 +53,7 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> {
 
   @override
   void dispose() {
+    _pulseController.dispose();
     _canvasController.dispose();
     super.dispose();
   }
@@ -72,7 +81,7 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> {
       listenable: repo,
       builder: (context, _) {
         final state = repo.state;
-        final load = _calculateLoad(state);
+        final load = repo.calculateLoad();
         final effects = getResearchEffects(state.research);
 
         // Check for day report to auto-show
@@ -141,6 +150,8 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> {
           const SizedBox(width: 8),
           Text('Server Hosting Tycoon', style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700, fontSize: 15)),
           const Spacer(),
+          if (state.prestigeLevel > 0)
+            _topStat(context, Icons.military_tech_rounded, _prestigeTierName(state.prestigeLevel), luma.accent),
           _topStat(context, Icons.attach_money_rounded, '\$${_fmt(state.money)}', Colors.green.shade400),
           _topStat(context, Icons.star_rounded, '${state.reputation.toStringAsFixed(1)} rep', Colors.amber.shade400),
           _topStat(context, Icons.calendar_today_rounded, 'Day ${state.dayCount}', luma.textMuted),
@@ -149,6 +160,8 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> {
           _topStat(context, Icons.network_check_rounded, '${load.totalRequiredBandwidth.toStringAsFixed(0)} / ${load.totalBandwidthCapacity.toStringAsFixed(0)} Mbps', load.overloaded ? Colors.red.shade400 : Colors.green.shade400),
           const SizedBox(width: 12),
           _topStat(context, Icons.description_rounded, '${state.contracts.length} / ${effects.contractSlots} contracts', luma.textMuted),
+          if (state.hiredStaffIds.isNotEmpty)
+            _topStat(context, Icons.badge_rounded, '${state.hiredStaffIds.length} staff', luma.textMuted),
           const SizedBox(width: 12),
           if (!awaiting)
             SizedBox(
@@ -208,6 +221,11 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> {
 
   Widget _buildCanvas(BuildContext context, GameState state, AccountLoadResult load) {
     final luma = context.luma;
+    final repo = ServerTycoonScope.of(context);
+    final incidentsByTarget = <String, List<ActiveIncident>>{};
+    for (final incident in repo.activeIncidents) {
+      incidentsByTarget.putIfAbsent(incident.targetId, () => []).add(incident);
+    }
 
     return InteractiveViewer(
       transformationController: _canvasController,
@@ -240,6 +258,8 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> {
                       color: load.rigs[rig.rigId]?.localFactor == 1 && load.routers[rig.routerId]?.bandwidthFactor == 1
                           ? Colors.green.shade400
                           : Colors.red.shade400,
+                      pulse: _pulseController,
+                      utilization: 1 - (load.routers[rig.routerId]?.bandwidthFactor ?? 1.0),
                     ),
                   );
                 }),
@@ -254,6 +274,8 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> {
                   router: entry.value,
                   loadResult: load.routers[entry.key],
                   selected: _selectedRouterId == entry.key,
+                  hasActiveIncident: incidentsByTarget.containsKey(entry.key),
+                  pulse: _pulseController,
                   onTap: () => setState(() {
                     _selectedRouterId = entry.key;
                     _selectedRigId = null;
@@ -271,6 +293,9 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> {
                   rig: entry.value,
                   loadResult: load.rigs[entry.key],
                   selected: _selectedRigId == entry.key,
+                  hasActiveIncident: incidentsByTarget.containsKey(entry.key),
+                  incidentIsPositive: incidentsByTarget[entry.key]?.every((i) => incidentDefsByType[i.type]?.isPositive == true) ?? false,
+                  pulse: _pulseController,
                   onTap: () => setState(() {
                     _selectedRigId = entry.key;
                     _selectedRouterId = null;
@@ -551,6 +576,7 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> {
 
   Widget _buildToolbar(BuildContext context, GameState state, ResearchEffects effects) {
     final luma = context.luma;
+    final repo = ServerTycoonScope.of(context);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -567,9 +593,25 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> {
           _toolButton(context, Icons.science_rounded, 'Research', () => setState(() => _showResearch = true)),
           _toolButton(context, Icons.assignment_rounded, 'Contracts', () => setState(() => _showContracts = true)),
           _toolButton(context, Icons.verified_rounded, 'Licenses', () => setState(() => _showLicenses = true)),
+          _toolButton(context, Icons.emoji_events_rounded, 'Achievements', () => setState(() => _showAchievements = true)),
+          _toolButton(context, Icons.badge_rounded, 'Staff', () => setState(() => _showStaff = true)),
           VerticalDivider(color: luma.border, width: 24),
           _toolButton(context, Icons.shopping_cart_rounded, 'Shop', () => _showShopCatalog(context)),
           const Spacer(),
+          if (repo.canRebirth) ...[
+            FilledButton.icon(
+              onPressed: () => _confirmRebirth(context),
+              icon: const Icon(Icons.trending_up_rounded, size: 16),
+              label: const Text('Scale Up'),
+              style: FilledButton.styleFrom(
+                backgroundColor: luma.accent,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+            ),
+            const SizedBox(width: 12),
+          ],
           TextButton.icon(
             onPressed: () => _confirmReset(context),
             icon: Icon(Icons.restart_alt_rounded, size: 14, color: luma.danger),
@@ -776,6 +818,42 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> {
               });
             },
             child: Text('Reset', style: TextStyle(color: luma.danger)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmRebirth(BuildContext context) {
+    final luma = context.luma;
+    final repo = ServerTycoonScope.of(context);
+    final nextLevel = repo.state.prestigeLevel + 1;
+    final nextMultiplier = 1 + 2 * (1 - math.exp(-0.3 * nextLevel));
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: luma.surface,
+        title: Text('Scale Up to ${_prestigeTierName(nextLevel)}?', style: TextStyle(color: luma.textPrimary)),
+        content: Text(
+          'You will keep: prestige tier, lifetime income multiplier (now ${nextMultiplier.toStringAsFixed(2)}x), '
+          'achievements, and your lifetime earnings record.\n\n'
+          'You will lose: all rigs, routers, staff, research, licenses, active contracts, inventory, '
+          'current cash, reputation, and day count -- you restart from Day 0 with \$250.',
+          style: TextStyle(color: luma.textMuted),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel', style: TextStyle(color: luma.textMuted))),
+          FilledButton(
+            onPressed: () {
+              repo.rebirth();
+              Navigator.pop(ctx);
+              setState(() {
+                _selectedRigId = null;
+                _selectedRouterId = null;
+              });
+            },
+            style: FilledButton.styleFrom(backgroundColor: luma.accent),
+            child: const Text('Scale Up'),
           ),
         ],
       ),
@@ -1104,6 +1182,29 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> {
           _LicensesModal(
             onClose: () => setState(() => _showLicenses = false),
           ),
+        // Achievements Modal
+        if (_showAchievements)
+          _AchievementsModal(
+            onClose: () => setState(() => _showAchievements = false),
+          ),
+        // Staff Modal
+        if (_showStaff)
+          _StaffModal(
+            onClose: () => setState(() => _showStaff = false),
+          ),
+        // Achievement unlock toasts
+        _AchievementToastStack(),
+        // Live incident banners
+        _IncidentBannerStack(
+          onSelectRig: (id) => setState(() {
+            _selectedRigId = id;
+            _selectedRouterId = null;
+          }),
+          onSelectRouter: (id) => setState(() {
+            _selectedRouterId = id;
+            _selectedRigId = null;
+          }),
+        ),
         // Day Report Modal
         if (_showDayReport && repo.lastDayReport != null)
           _DayReportModal(
@@ -1124,9 +1225,20 @@ class _RigNode extends StatelessWidget {
   final Rig rig;
   final RigLoadResult? loadResult;
   final bool selected;
+  final bool hasActiveIncident;
+  final bool incidentIsPositive;
+  final Animation<double> pulse;
   final VoidCallback onTap;
 
-  const _RigNode({required this.rig, this.loadResult, required this.selected, required this.onTap});
+  const _RigNode({
+    required this.rig,
+    this.loadResult,
+    required this.selected,
+    this.hasActiveIncident = false,
+    this.incidentIsPositive = false,
+    required this.pulse,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1134,18 +1246,34 @@ class _RigNode extends StatelessWidget {
     final cpu = cpusById[rig.build.cpuId];
     final isHealthy = loadResult?.localFactor == 1.0;
     final statusColor = isHealthy ? Colors.green.shade400 : Colors.red.shade400;
+    final incidentColor = incidentIsPositive ? Colors.amber.shade400 : Colors.red.shade400;
+    final highLoad = (loadResult?.utilization.cpu ?? 0) > 0.7;
 
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: 220,
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: selected ? luma.accent.withOpacity(0.15) : luma.surface,
-          border: Border.all(color: selected ? luma.accent : luma.border, width: selected ? 2 : 1),
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4)],
-        ),
+      child: AnimatedBuilder(
+        animation: pulse,
+        builder: (context, child) {
+          final t = math.sin(pulse.value * 2 * math.pi) * 0.5 + 0.5;
+          return Container(
+            width: 220,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: selected ? luma.accent.withOpacity(0.15) : luma.surface,
+              border: Border.all(
+                color: hasActiveIncident ? incidentColor : (selected ? luma.accent : luma.border),
+                width: hasActiveIncident ? 2.5 : (selected ? 2 : 1),
+              ),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4),
+                if (hasActiveIncident) BoxShadow(color: incidentColor.withOpacity(0.35 + 0.35 * t), blurRadius: 8 + 8 * t, spreadRadius: 0.5 + t),
+                if (!hasActiveIncident && highLoad) BoxShadow(color: Colors.orange.withOpacity(0.15 + 0.15 * t), blurRadius: 3 + 4 * t),
+              ],
+            ),
+            child: child,
+          );
+        },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -1193,9 +1321,18 @@ class _RouterNode extends StatelessWidget {
   final Router router;
   final RouterLoadResult? loadResult;
   final bool selected;
+  final bool hasActiveIncident;
+  final Animation<double> pulse;
   final VoidCallback onTap;
 
-  const _RouterNode({required this.router, this.loadResult, required this.selected, required this.onTap});
+  const _RouterNode({
+    required this.router,
+    this.loadResult,
+    required this.selected,
+    this.hasActiveIncident = false,
+    required this.pulse,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1206,15 +1343,28 @@ class _RouterNode extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: 170,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: selected ? luma.accent.withOpacity(0.15) : luma.surface,
-          border: Border.all(color: selected ? luma.accent : luma.border, width: selected ? 2 : 1),
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4)],
-        ),
+      child: AnimatedBuilder(
+        animation: pulse,
+        builder: (context, child) {
+          final t = math.sin(pulse.value * 2 * math.pi) * 0.5 + 0.5;
+          return Container(
+            width: 170,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: selected ? luma.accent.withOpacity(0.15) : luma.surface,
+              border: Border.all(
+                color: hasActiveIncident ? Colors.red.shade400 : (selected ? luma.accent : luma.border),
+                width: hasActiveIncident ? 2.5 : (selected ? 2 : 1),
+              ),
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4),
+                if (hasActiveIncident) BoxShadow(color: Colors.red.shade400.withOpacity(0.35 + 0.35 * t), blurRadius: 8 + 8 * t, spreadRadius: 0.5 + t),
+              ],
+            ),
+            child: child,
+          );
+        },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -1264,7 +1414,18 @@ class _WirePainter extends CustomPainter {
   final Offset from;
   final Offset to;
   final Color color;
-  _WirePainter({required this.from, required this.to, required this.color});
+  final Animation<double> pulse;
+  final double utilization;
+
+  // repaint: pulse makes this painter re-run paint() on every animation tick
+  // without rebuilding the surrounding widget tree.
+  _WirePainter({
+    required this.from,
+    required this.to,
+    required this.color,
+    required this.pulse,
+    this.utilization = 0,
+  }) : super(repaint: pulse);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1272,11 +1433,36 @@ class _WirePainter extends CustomPainter {
       ..color = color.withOpacity(0.6)
       ..strokeWidth = 1.5;
     canvas.drawLine(from, to, paint);
+
+    // Animated "packet flow" dashes -- denser and faster the more loaded the link is.
+    final totalLength = (to - from).distance;
+    if (totalLength <= 0) return;
+    final direction = (to - from) / totalLength;
+    final u = utilization.clamp(0, 1).toDouble();
+    const dashLength = 6.0;
+    final gapLength = 14.0 - 8.0 * u;
+    final period = dashLength + gapLength;
+    final speed = 1.0 + 3.0 * u;
+    final dashPaint = Paint()
+      ..color = color.withOpacity(0.9)
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round;
+
+    final offset = (pulse.value * period * speed) % period;
+    var pos = -offset;
+    while (pos < totalLength) {
+      final segStart = pos.clamp(0.0, totalLength);
+      final segEnd = (pos + dashLength).clamp(0.0, totalLength);
+      if (segEnd > segStart) {
+        canvas.drawLine(from + direction * segStart, from + direction * segEnd, dashPaint);
+      }
+      pos += period;
+    }
   }
 
   @override
   bool shouldRepaint(covariant _WirePainter oldDelegate) =>
-      from != oldDelegate.from || to != oldDelegate.to || color != oldDelegate.color;
+      from != oldDelegate.from || to != oldDelegate.to || color != oldDelegate.color || utilization != oldDelegate.utilization;
 }
 
 // ── Modals ──
@@ -1550,6 +1736,413 @@ class _LicensesModal extends StatelessWidget {
   }
 }
 
+class _StaffModal extends StatelessWidget {
+  final VoidCallback onClose;
+  const _StaffModal({required this.onClose});
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final repo = ServerTycoonScope.of(context);
+    final state = repo.state;
+
+    return Material(
+      color: Colors.black54,
+      child: Center(
+        child: Container(
+          width: 500,
+          height: 500,
+          margin: const EdgeInsets.all(24),
+          decoration: BoxDecoration(color: luma.surface, borderRadius: BorderRadius.circular(16)),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(border: Border(bottom: BorderSide(color: luma.border))),
+                child: Row(
+                  children: [
+                    Text('Staff', style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700, fontSize: 16)),
+                    const Spacer(),
+                    IconButton(icon: Icon(Icons.close_rounded, color: luma.textMuted), onPressed: onClose),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: staffDefList.length,
+                  itemBuilder: (ctx, i) {
+                    final def = staffDefList[i];
+                    final hired = state.hiredStaffIds.contains(def.id);
+                    final canAfford = state.money >= def.cost;
+                    final repOk = state.reputation >= def.minReputation;
+                    final licenseOk = def.requiresLicense == null || state.licenses.contains(def.requiresLicense);
+                    final researchOk = def.requiresResearch == null || state.research.contains(def.requiresResearch);
+
+                    return Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: hired ? luma.accent.withOpacity(0.1) : luma.background,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: hired ? luma.accent.withOpacity(0.3) : luma.border),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(def.name, style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
+                              ),
+                              if (hired)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(color: Colors.green.shade900.withOpacity(0.3), borderRadius: BorderRadius.circular(4)),
+                                  child: Text('HIRED', style: TextStyle(color: Colors.green.shade400, fontSize: 9, fontWeight: FontWeight.w700)),
+                                ),
+                            ],
+                          ),
+                          Text(def.description, style: TextStyle(color: luma.textMuted, fontSize: 11)),
+                          const SizedBox(height: 4),
+                          Text('Salary: \$${def.dailySalary.toStringAsFixed(0)}/day', style: TextStyle(color: luma.textMuted, fontSize: 10)),
+                          if (!hired && (!repOk || !licenseOk || !researchOk))
+                            Text('Requirements not met', style: TextStyle(color: Colors.red.shade400, fontSize: 10)),
+                          const SizedBox(height: 6),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: hired
+                                ? TextButton(
+                                    onPressed: () => repo.fireStaff(def.id),
+                                    child: Text('Fire', style: TextStyle(color: luma.danger, fontSize: 12)),
+                                  )
+                                : TextButton(
+                                    onPressed: canAfford && repOk && licenseOk && researchOk ? () => repo.hireStaff(def.id) : null,
+                                    child: Text(
+                                      'Hire \$${def.cost}',
+                                      style: TextStyle(color: canAfford && repOk && licenseOk && researchOk ? luma.accent : luma.textMuted, fontSize: 12),
+                                    ),
+                                  ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AchievementsModal extends StatelessWidget {
+  final VoidCallback onClose;
+  const _AchievementsModal({required this.onClose});
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final repo = ServerTycoonScope.of(context);
+    final state = repo.state;
+
+    return Material(
+      color: Colors.black54,
+      child: Center(
+        child: Container(
+          width: 500,
+          height: 500,
+          margin: const EdgeInsets.all(24),
+          decoration: BoxDecoration(color: luma.surface, borderRadius: BorderRadius.circular(16)),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(border: Border(bottom: BorderSide(color: luma.border))),
+                child: Row(
+                  children: [
+                    Text('Achievements', style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700, fontSize: 16)),
+                    const Spacer(),
+                    Text('${state.unlockedAchievements.length} / ${achievementDefList.length}', style: TextStyle(color: luma.textMuted, fontSize: 12)),
+                    IconButton(icon: Icon(Icons.close_rounded, color: luma.textMuted), onPressed: onClose),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: achievementDefList.length,
+                  itemBuilder: (ctx, i) {
+                    final def = achievementDefList[i];
+                    final unlocked = state.unlockedAchievements.contains(def.id);
+                    final progress = (repo.metricValueFor(def.metric) / def.threshold).clamp(0, 1).toDouble();
+
+                    return Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: unlocked ? Colors.amber.withOpacity(0.1) : luma.background,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: unlocked ? Colors.amber.withOpacity(0.4) : luma.border),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(unlocked ? Icons.emoji_events_rounded : Icons.emoji_events_outlined, size: 16, color: unlocked ? Colors.amber.shade400 : luma.textMuted),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(def.name, style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
+                              ),
+                              if (unlocked)
+                                Icon(Icons.check_circle_rounded, color: Colors.green.shade400, size: 18),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(def.description, style: TextStyle(color: luma.textMuted, fontSize: 11)),
+                          if (!unlocked) ...[
+                            const SizedBox(height: 6),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(3),
+                              child: LinearProgressIndicator(
+                                value: progress,
+                                backgroundColor: luma.border,
+                                valueColor: AlwaysStoppedAnimation(luma.accent),
+                                minHeight: 4,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _IncidentBannerStack extends StatelessWidget {
+  final void Function(String rigId) onSelectRig;
+  final void Function(String routerId) onSelectRouter;
+  const _IncidentBannerStack({required this.onSelectRig, required this.onSelectRouter});
+
+  @override
+  Widget build(BuildContext context) {
+    final repo = ServerTycoonScope.of(context);
+
+    return ListenableBuilder(
+      listenable: repo,
+      builder: (context, _) {
+        final incidents = repo.activeIncidents;
+        if (incidents.isEmpty) return const SizedBox.shrink();
+
+        return Positioned(
+          top: 60,
+          left: 16,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final incident in incidents)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _IncidentCard(
+                    incident: incident,
+                    onSelect: () {
+                      if (incident.targetKind == 'rig') {
+                        onSelectRig(incident.targetId);
+                      } else {
+                        onSelectRouter(incident.targetId);
+                      }
+                    },
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _IncidentCard extends StatelessWidget {
+  final ActiveIncident incident;
+  final VoidCallback onSelect;
+  const _IncidentCard({required this.incident, required this.onSelect});
+
+  void _showResult(BuildContext context, ActionResult result) {
+    final luma = context.luma;
+    if (!result.ok && result.errors != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(result.errors!.join('\n'), style: TextStyle(color: luma.textPrimary, fontSize: 13)),
+        backgroundColor: luma.surface,
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final repo = ServerTycoonScope.of(context);
+    final def = incidentDefsByType[incident.type];
+    final positive = def?.isPositive ?? false;
+    final accentColor = positive ? Colors.amber.shade400 : Colors.red.shade400;
+
+    Widget primaryButton;
+    switch (incident.type) {
+      case IncidentType.routerDdos:
+        primaryButton = TextButton(
+          onPressed: () => _showResult(context, repo.mitigateIncident(incident.incidentId)),
+          child: Text(def?.actionLabel ?? 'Mitigate', style: TextStyle(color: accentColor, fontSize: 12, fontWeight: FontWeight.w600)),
+        );
+        break;
+      case IncidentType.rigOverheatSpike:
+        primaryButton = TextButton(
+          onPressed: () => _showResult(context, repo.emergencyCooldown(incident.incidentId)),
+          child: Text(def?.actionLabel ?? 'Cooldown', style: TextStyle(color: accentColor, fontSize: 12, fontWeight: FontWeight.w600)),
+        );
+        break;
+      case IncidentType.coolingLeak:
+        primaryButton = TextButton(
+          onPressed: () => _showResult(context, repo.repairIncident(incident.incidentId)),
+          child: Text(def?.actionLabel ?? 'Repair', style: TextStyle(color: accentColor, fontSize: 12, fontWeight: FontWeight.w600)),
+        );
+        break;
+      case IncidentType.driveFailure:
+        primaryButton = TextButton(
+          onPressed: onSelect,
+          child: Text(def?.actionLabel ?? 'Replace Drive', style: TextStyle(color: accentColor, fontSize: 12, fontWeight: FontWeight.w600)),
+        );
+        break;
+      case IncidentType.viralDemandSpike:
+        primaryButton = TextButton(
+          onPressed: () => repo.ignoreIncident(incident.incidentId),
+          child: Text(def?.actionLabel ?? 'Nice!', style: TextStyle(color: accentColor, fontSize: 12, fontWeight: FontWeight.w600)),
+        );
+        break;
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onSelect,
+        child: Container(
+          width: 280,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: luma.surface,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: accentColor.withOpacity(0.5)),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8)],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Icon(positive ? Icons.trending_up_rounded : Icons.warning_amber_rounded, color: accentColor, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(def?.name ?? incident.type.name, style: TextStyle(color: luma.textPrimary, fontSize: 13, fontWeight: FontWeight.w700))),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(def?.description ?? '', style: TextStyle(color: luma.textMuted, fontSize: 11)),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (!positive)
+                    TextButton(
+                      onPressed: () => repo.ignoreIncident(incident.incidentId),
+                      child: Text('Ignore', style: TextStyle(color: luma.textMuted, fontSize: 12)),
+                    ),
+                  primaryButton,
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AchievementToastStack extends StatelessWidget {
+  const _AchievementToastStack();
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final repo = ServerTycoonScope.of(context);
+
+    return ListenableBuilder(
+      listenable: repo,
+      builder: (context, _) {
+        final pending = repo.pendingAchievementUnlocks;
+        if (pending.isEmpty) return const SizedBox.shrink();
+
+        return Positioned(
+          top: 60,
+          right: 16,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              for (final id in pending)
+                Builder(builder: (context) {
+                  final def = achievementDefsById[id];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(10),
+                        onTap: () => repo.clearAchievementUnlock(id),
+                        child: Container(
+                          width: 260,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: luma.surface,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.amber.withOpacity(0.5)),
+                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8)],
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.emoji_events_rounded, color: Colors.amber.shade400, size: 22),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text('Achievement Unlocked', style: TextStyle(color: Colors.amber.shade400, fontSize: 10, fontWeight: FontWeight.w700)),
+                                    Text(def?.name ?? id, style: TextStyle(color: luma.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _DayReportModal extends StatelessWidget {
   final DayReport report;
   final VoidCallback onClose;
@@ -1577,6 +2170,8 @@ class _DayReportModal extends StatelessWidget {
               _reportRow('Contract Income', '\$${report.contractIncome.toStringAsFixed(2)}', Colors.green.shade400),
               _reportRow('Electricity', '-\$${report.electricityCost.toStringAsFixed(2)}', Colors.red.shade400),
               _reportRow('Internet', '-\$${report.internetCost.toStringAsFixed(2)}', Colors.red.shade400),
+              if (report.staffSalaryCost > 0)
+                _reportRow('Staff Salaries', '-\$${report.staffSalaryCost.toStringAsFixed(2)}', Colors.red.shade400),
               const Divider(),
               _reportRow('Net Profit', '\$${report.netProfit.toStringAsFixed(2)}', report.netProfit >= 0 ? Colors.green.shade400 : Colors.red.shade400, bold: true),
               const SizedBox(height: 8),
@@ -1623,17 +2218,15 @@ String _fmt(double n) {
   return n.toStringAsFixed(0);
 }
 
-AccountLoadResult _calculateLoad(GameState state) {
-  final rigs = <String, RigInput>{};
-  for (final entry in state.rigs.entries) {
-    rigs[entry.key] = RigInput(build: entry.value.build, services: entry.value.services, kind: entry.value.kind, routerId: entry.value.routerId);
-  }
-  final routers = <String, RouterInput>{};
-  for (final entry in state.routers.entries) {
-    routers[entry.key] = RouterInput(internetPlanId: entry.value.internetPlanId);
-  }
-  return calculateAccountLoad(rigs, routers);
-}
+const List<String> _prestigeTierNames = [
+  'Garage Startup',
+  'Regional Host',
+  'National Provider',
+  'Global Data Empire',
+  'Hyperscale Consortium',
+];
+
+String _prestigeTierName(int level) => _prestigeTierNames[level.clamp(0, _prestigeTierNames.length - 1)];
 
 double _getTotalWatts(GameState state, AccountLoadResult load) {
   var total = 0.0;
