@@ -35,11 +35,16 @@ class ServerTycoonRepository extends ChangeNotifier {
   Timer? _dayTimer;
   DayReport? _lastDayReport;
   String? _lastNotification;
+  int _secondsElapsed = 0;
+  bool _awaitingConfirmation = false;
 
   GameState get state => _state;
   List<ContractOffer> get contractOffers => List.unmodifiable(_contractOffers);
   DayReport? get lastDayReport => _lastDayReport;
   String? get lastNotification => _lastNotification;
+  double get dayProgress => _secondsElapsed / 30.0;
+  int get secondsRemaining => 30 - _secondsElapsed;
+  bool get awaitingConfirmation => _awaitingConfirmation;
 
   ServerTycoonRepository() : _state = GameState.newDefault() {
     _load();
@@ -88,15 +93,22 @@ class ServerTycoonRepository extends ChangeNotifier {
   void pause() => _dayTimer?.cancel();
   void resume() => _startDayTimer();
 
-  double get dayProgress {
-    // In this Flutter port, we use a simpler model:
-    // Each "End Day" button press advances the day.
-    // But we also support auto-advance every 3 minutes if running.
-    return 0; // Placeholder for UI
+  void _tick() {
+    if (_awaitingConfirmation) return;
+    _secondsElapsed++;
+    if (_secondsElapsed >= 30) {
+      _secondsElapsed = 30;
+      _awaitingConfirmation = true;
+      processDay();
+    } else {
+      notifyListeners();
+    }
   }
 
-  void _tick() {
-    // Auto-advance could go here; for now we use manual End Day
+  void confirmNextDay() {
+    _secondsElapsed = 0;
+    _awaitingConfirmation = false;
+    notifyListeners();
   }
 
   // ── Day Processing ──
@@ -516,6 +528,42 @@ class ServerTycoonRepository extends ChangeNotifier {
     return const ActionResult(ok: true);
   }
 
+  Map<String, Map<String, dynamic>> _allCatalogs() => <String, Map<String, dynamic>>{
+    'cpu': cpusById as Map<String, dynamic>,
+    'motherboard': motherboardsById as Map<String, dynamic>,
+    'psu': psusById as Map<String, dynamic>,
+    'cooling': coolingById as Map<String, dynamic>,
+    'nic': nicsById as Map<String, dynamic>,
+    'ram': ramById as Map<String, dynamic>,
+    'storage': storageById as Map<String, dynamic>,
+  };
+
+  int inventoryCount(String itemId) => _state.inventory[itemId] ?? 0;
+
+  void _consumeInventory(String itemId) {
+    final count = _state.inventory[itemId] ?? 0;
+    if (count <= 1) {
+      _state.inventory.remove(itemId);
+    } else {
+      _state.inventory[itemId] = count - 1;
+    }
+  }
+
+  ActionResult buyToInventory(String slot, String itemId) {
+    final catalog = _allCatalogs()[slot];
+    if (catalog == null) return const ActionResult(ok: false, errors: ['Unknown item category']);
+    final item = catalog[itemId];
+    if (item == null) return const ActionResult(ok: false, errors: ['Unknown item']);
+    final price = (item as dynamic).price as int;
+    if (_state.money < price) return const ActionResult(ok: false, errors: ['Not enough money']);
+
+    _state.money -= price;
+    _state.inventory[itemId] = (_state.inventory[itemId] ?? 0) + 1;
+    _save();
+    notifyListeners();
+    return const ActionResult(ok: true);
+  }
+
   ActionResult buyComponent(String rigId, String slot, String itemId) {
     final rig = _state.rigs[rigId];
     if (rig == null) return const ActionResult(ok: false, errors: ['Unknown rig']);
@@ -543,7 +591,8 @@ class ServerTycoonRepository extends ChangeNotifier {
     final item = catalog[itemId];
     if (item == null) return const ActionResult(ok: false, errors: ['Unknown item']);
     final price = (item as dynamic).price as int;
-    if (_state.money < price) return const ActionResult(ok: false, errors: ['Not enough money']);
+    final fromInventory = (_state.inventory[itemId] ?? 0) > 0;
+    if (!fromInventory && _state.money < price) return const ActionResult(ok: false, errors: ['Not enough money']);
 
     final trialBuild = rig.build.copyWith();
     switch (buildKey) {
@@ -558,7 +607,11 @@ class ServerTycoonRepository extends ChangeNotifier {
     // won't generate income until the build is fixed (see calculateRigLoad).
     final (errors, ok) = validateBuild(trialBuild, rigKind: rig.kind);
 
-    _state.money -= price;
+    if (fromInventory) {
+      _consumeInventory(itemId);
+    } else {
+      _state.money -= price;
+    }
     rig.build = trialBuild;
     _save();
     notifyListeners();

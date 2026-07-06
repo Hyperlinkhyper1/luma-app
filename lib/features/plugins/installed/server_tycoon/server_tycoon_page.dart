@@ -122,8 +122,12 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> {
 
   Widget _buildTopBar(BuildContext context, GameState state, AccountLoadResult load, ResearchEffects effects) {
     final luma = context.luma;
+    final repo = ServerTycoonScope.of(context);
     final totalWatts = _getTotalWatts(state, load);
     final internetCost = _getDailyInternetCost(state);
+    final awaiting = repo.awaitingConfirmation;
+    final secs = repo.secondsRemaining;
+    final progress = repo.dayProgress;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -146,22 +150,43 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> {
           const SizedBox(width: 12),
           _topStat(context, Icons.description_rounded, '${state.contracts.length} / ${effects.contractSlots} contracts', luma.textMuted),
           const SizedBox(width: 12),
-          FilledButton.icon(
-            onPressed: () {
-              final report = ServerTycoonScope.of(context).processDay();
-              if (report != null) {
-                setState(() => _showDayReport = true);
-              }
-            },
-            icon: const Icon(Icons.skip_next_rounded, size: 16),
-            label: const Text('End Day'),
-            style: FilledButton.styleFrom(
-              backgroundColor: luma.accent,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          if (!awaiting)
+            SizedBox(
+              width: 140,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text('Next day in ${secs}s', style: TextStyle(color: luma.textMuted, fontSize: 12, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      backgroundColor: luma.border,
+                      valueColor: AlwaysStoppedAnimation<Color>(luma.accent),
+                      minHeight: 6,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            FilledButton.icon(
+              onPressed: repo.lastDayReport != null
+                  ? null
+                  : () {
+                      repo.confirmNextDay();
+                    },
+              icon: const Icon(Icons.check_rounded, size: 16),
+              label: const Text('Next Day'),
+              style: FilledButton.styleFrom(
+                backgroundColor: luma.accent,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
             ),
-          ),
         ],
       ),
     );

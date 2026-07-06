@@ -118,9 +118,9 @@ class PluginCatalogService {
     final http.Response res;
     try {
       res = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 12));
-    } catch (_) {
+    } catch (e) {
       throw PluginCatalogException(
-        'Could not reach the plugin repo. Check your connection.',
+        'Could not reach the plugin repo. Check your connection.\n($e)',
       );
     }
     if (res.statusCode != 200) {

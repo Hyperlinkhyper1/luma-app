@@ -205,6 +205,7 @@ class GameState {
   double peakPowerDrawWatts;
   List<double> powerHistory;
   List<double> incomeHistory;
+  Map<String, int> inventory;
 
   static const int historyLength = 30;
   static const int newRigCost = 300;
@@ -231,7 +232,8 @@ class GameState {
     required this.peakPowerDrawWatts,
     required this.powerHistory,
     required this.incomeHistory,
-  });
+    Map<String, int>? inventory,
+  }) : inventory = inventory ?? {};
 
   factory GameState.newDefault() {
     const firstRigId = '1';
@@ -288,6 +290,7 @@ class GameState {
     'peakPowerDrawWatts': peakPowerDrawWatts,
     'powerHistory': powerHistory,
     'incomeHistory': incomeHistory,
+    'inventory': inventory,
   };
 
   factory GameState.fromJson(Map<String, dynamic> json) => GameState(
@@ -306,5 +309,6 @@ class GameState {
     peakPowerDrawWatts: (json['peakPowerDrawWatts'] as num).toDouble(),
     powerHistory: (json['powerHistory'] as List).map((e) => (e as num).toDouble()).toList(),
     incomeHistory: (json['incomeHistory'] as List).map((e) => (e as num).toDouble()).toList(),
+    inventory: (json['inventory'] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as int)) ?? {},
   );
 }
