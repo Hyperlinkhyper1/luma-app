@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/nav_rail.dart';
 import '../../app/widgets.dart';
 import '../../finance/data/database.dart';
 import '../../finance/finance_scope.dart';
@@ -15,7 +16,7 @@ class HomePage extends StatelessWidget {
   const HomePage({super.key, required this.onNavigate});
 
   /// Jumps the shell to another destination (1 = Converter, 2 = Finance,
-  /// 3 = Password Manager, 4 = Settings).
+  /// 3 = Password Manager, [NavRail.settingsIndex] = Settings).
   final ValueChanged<int> onNavigate;
 
   @override
@@ -128,7 +129,7 @@ class _HomeBody extends StatelessWidget {
         icon: Icons.settings_rounded,
         title: 'Settings',
         subtitle: 'Theme, colors & more',
-        onTap: () => onNavigate(4),
+        onTap: () => onNavigate(NavRail.settingsIndex),
       ),
     ];
 
@@ -198,7 +199,7 @@ class _ResponsiveGrid extends StatelessWidget {
         children: [
           for (var i = 0; i < children.length; i++) ...[
             if (i > 0) const SizedBox(height: _spacing),
-            children[i],
+            SizedBox(width: double.infinity, child: children[i]),
           ],
         ],
       );
