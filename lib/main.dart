@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'app/app_shell.dart';
 import 'app/splash_screen.dart';
+import 'app/update/app_version.dart';
 import 'app/update/update_gate.dart';
 import 'app/window_controls.dart';
 import 'features/plugins/installed/mood_journal/data/mood_journal_database.dart';
@@ -275,6 +276,9 @@ class _BootGateState extends State<_BootGate> {
           SplashScreen(
             bootstrap: widget.bootstrap,
             accent: widget.accentSeed ?? const Color(0xFFB49DF5),
+            version: AppVersion.isReleaseBuild
+                ? 'v${AppVersion.current}'
+                : 'Dev build',
             onDone: () {
               setState(() => _showSplash = false);
               // Check for updates once the app is visible; the prompt (if any)

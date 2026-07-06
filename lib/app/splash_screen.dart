@@ -16,7 +16,7 @@ class SplashScreen extends StatefulWidget {
     required this.bootstrap,
     required this.onDone,
     this.accent = const Color(0xFFB49DF5),
-    this.version = 'v1.0.0',
+    this.version = 'Dev build',
   });
 
   /// Real startup work the splash is covering. The splash will not dismiss

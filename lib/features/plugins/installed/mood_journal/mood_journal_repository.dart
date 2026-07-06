@@ -1,7 +1,5 @@
 import 'dart:convert';
-
 import 'package:drift/drift.dart';
-
 import 'data/mood_journal_database.dart';
 
 class MoodEntryRecord {
@@ -11,6 +9,7 @@ class MoodEntryRecord {
     required this.mood,
     this.note,
     this.tags = const [],
+    this.images = const [],
     required this.createdAt,
   });
 
@@ -19,12 +18,14 @@ class MoodEntryRecord {
   final int mood; // 1–5
   final String? note;
   final List<String> tags;
+  final List<String> images;
   final DateTime createdAt;
 
   MoodEntryRecord copyWith({
     int? mood,
     String? note,
     List<String>? tags,
+    List<String>? images,
   }) =>
       MoodEntryRecord(
         id: id,
@@ -32,6 +33,7 @@ class MoodEntryRecord {
         mood: mood ?? this.mood,
         note: note ?? this.note,
         tags: tags ?? this.tags,
+        images: images ?? this.images,
         createdAt: createdAt,
       );
 }
@@ -43,51 +45,59 @@ class MoodJournalRepository {
 
   Stream<List<MoodEntryRecord>> watchAll() {
     final query = _db.select(_db.moodEntries)
-      ..orderBy([(t) => OrderingTerm.desc(t.date)]);
+      ..orderBy([
+        (t) => OrderingTerm.desc(t.date),
+        (t) => OrderingTerm.desc(t.createdAt),
+      ]);
     return query.watch().map(
           (rows) => rows.map(_toRecord).toList(growable: false),
         );
   }
 
-  Stream<Map<String, MoodEntryRecord>> watchByMonth(int year, int month) {
+  Stream<Map<String, List<MoodEntryRecord>>> watchByMonth(int year, int month) {
     final prefix = '${year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}';
     final query = _db.select(_db.moodEntries)
-      ..where((t) => t.date.like('$prefix%'));
+      ..where((t) => t.date.like('$prefix%'))
+      ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]);
+    
     return query.watch().map((rows) {
-      return {for (final r in rows.map(_toRecord)) r.date: r};
+      final map = <String, List<MoodEntryRecord>>{};
+      for (final r in rows.map(_toRecord)) {
+        map.putIfAbsent(r.date, () => []).add(r);
+      }
+      return map;
     });
   }
 
-  Future<MoodEntryRecord?> getByDate(String date) async {
+  Future<List<MoodEntryRecord>> getByDate(String date) async {
     final query = _db.select(_db.moodEntries)
       ..where((t) => t.date.equals(date))
-      ..limit(1);
+      ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]);
     final rows = await query.get();
-    return rows.isEmpty ? null : _toRecord(rows.first);
+    return rows.map(_toRecord).toList();
   }
 
-  Future<void> upsert({
+  Future<void> save({
+    int? id,
     required String date,
     required int mood,
     String? note,
     List<String> tags = const [],
+    List<String> images = const [],
   }) async {
-    final existing = await getByDate(date);
-    if (existing != null) {
-      await (_db.update(_db.moodEntries)
-            ..where((t) => t.id.equals(existing.id)))
-          .write(MoodEntriesCompanion(
-        mood: Value(mood),
-        note: Value(note),
-        tags: Value(tags.isEmpty ? null : jsonEncode(tags)),
-      ));
+    final companion = MoodEntriesCompanion(
+      date: Value(date),
+      mood: Value(mood),
+      note: Value(note),
+      tags: Value(tags.isEmpty ? null : jsonEncode(tags)),
+      images: Value(images.isEmpty ? null : jsonEncode(images)),
+    );
+
+    if (id != null) {
+      await (_db.update(_db.moodEntries)..where((t) => t.id.equals(id)))
+          .write(companion);
     } else {
-      await _db.into(_db.moodEntries).insert(MoodEntriesCompanion.insert(
-            date: date,
-            mood: mood,
-            note: Value(note),
-            tags: Value(tags.isEmpty ? null : jsonEncode(tags)),
-          ));
+      await _db.into(_db.moodEntries).insert(companion);
     }
   }
 
@@ -103,12 +113,20 @@ class MoodJournalRepository {
         tags = decoded.cast<String>();
       } catch (_) {}
     }
+    List<String> images = [];
+    if (row.images != null) {
+      try {
+        final decoded = jsonDecode(row.images!) as List<dynamic>;
+        images = decoded.cast<String>();
+      } catch (_) {}
+    }
     return MoodEntryRecord(
       id: row.id,
       date: row.date,
       mood: row.mood,
       note: row.note,
       tags: tags,
+      images: images,
       createdAt: row.createdAt,
     );
   }

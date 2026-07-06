@@ -58,6 +58,15 @@ class $MoodEntriesTable extends MoodEntries
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _imagesMeta = const VerificationMeta('images');
+  @override
+  late final GeneratedColumn<String> images = GeneratedColumn<String>(
+    'images',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -71,7 +80,15 @@ class $MoodEntriesTable extends MoodEntries
     defaultValue: currentDateAndTime,
   );
   @override
-  List<GeneratedColumn> get $columns => [id, date, mood, note, tags, createdAt];
+  List<GeneratedColumn> get $columns => [
+    id,
+    date,
+    mood,
+    note,
+    tags,
+    images,
+    createdAt,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -115,6 +132,12 @@ class $MoodEntriesTable extends MoodEntries
         tags.isAcceptableOrUnknown(data['tags']!, _tagsMeta),
       );
     }
+    if (data.containsKey('images')) {
+      context.handle(
+        _imagesMeta,
+        images.isAcceptableOrUnknown(data['images']!, _imagesMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -150,6 +173,10 @@ class $MoodEntriesTable extends MoodEntries
         DriftSqlType.string,
         data['${effectivePrefix}tags'],
       ),
+      images: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}images'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -169,6 +196,7 @@ class MoodEntry extends DataClass implements Insertable<MoodEntry> {
   final int mood;
   final String? note;
   final String? tags;
+  final String? images;
   final DateTime createdAt;
   const MoodEntry({
     required this.id,
@@ -176,6 +204,7 @@ class MoodEntry extends DataClass implements Insertable<MoodEntry> {
     required this.mood,
     this.note,
     this.tags,
+    this.images,
     required this.createdAt,
   });
   @override
@@ -190,6 +219,9 @@ class MoodEntry extends DataClass implements Insertable<MoodEntry> {
     if (!nullToAbsent || tags != null) {
       map['tags'] = Variable<String>(tags);
     }
+    if (!nullToAbsent || images != null) {
+      map['images'] = Variable<String>(images);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -201,6 +233,9 @@ class MoodEntry extends DataClass implements Insertable<MoodEntry> {
       mood: Value(mood),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       tags: tags == null && nullToAbsent ? const Value.absent() : Value(tags),
+      images: images == null && nullToAbsent
+          ? const Value.absent()
+          : Value(images),
       createdAt: Value(createdAt),
     );
   }
@@ -216,6 +251,7 @@ class MoodEntry extends DataClass implements Insertable<MoodEntry> {
       mood: serializer.fromJson<int>(json['mood']),
       note: serializer.fromJson<String?>(json['note']),
       tags: serializer.fromJson<String?>(json['tags']),
+      images: serializer.fromJson<String?>(json['images']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -228,6 +264,7 @@ class MoodEntry extends DataClass implements Insertable<MoodEntry> {
       'mood': serializer.toJson<int>(mood),
       'note': serializer.toJson<String?>(note),
       'tags': serializer.toJson<String?>(tags),
+      'images': serializer.toJson<String?>(images),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -238,6 +275,7 @@ class MoodEntry extends DataClass implements Insertable<MoodEntry> {
     int? mood,
     Value<String?> note = const Value.absent(),
     Value<String?> tags = const Value.absent(),
+    Value<String?> images = const Value.absent(),
     DateTime? createdAt,
   }) => MoodEntry(
     id: id ?? this.id,
@@ -245,6 +283,7 @@ class MoodEntry extends DataClass implements Insertable<MoodEntry> {
     mood: mood ?? this.mood,
     note: note.present ? note.value : this.note,
     tags: tags.present ? tags.value : this.tags,
+    images: images.present ? images.value : this.images,
     createdAt: createdAt ?? this.createdAt,
   );
   MoodEntry copyWithCompanion(MoodEntriesCompanion data) {
@@ -254,6 +293,7 @@ class MoodEntry extends DataClass implements Insertable<MoodEntry> {
       mood: data.mood.present ? data.mood.value : this.mood,
       note: data.note.present ? data.note.value : this.note,
       tags: data.tags.present ? data.tags.value : this.tags,
+      images: data.images.present ? data.images.value : this.images,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -266,13 +306,15 @@ class MoodEntry extends DataClass implements Insertable<MoodEntry> {
           ..write('mood: $mood, ')
           ..write('note: $note, ')
           ..write('tags: $tags, ')
+          ..write('images: $images, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, date, mood, note, tags, createdAt);
+  int get hashCode =>
+      Object.hash(id, date, mood, note, tags, images, createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -282,6 +324,7 @@ class MoodEntry extends DataClass implements Insertable<MoodEntry> {
           other.mood == this.mood &&
           other.note == this.note &&
           other.tags == this.tags &&
+          other.images == this.images &&
           other.createdAt == this.createdAt);
 }
 
@@ -291,6 +334,7 @@ class MoodEntriesCompanion extends UpdateCompanion<MoodEntry> {
   final Value<int> mood;
   final Value<String?> note;
   final Value<String?> tags;
+  final Value<String?> images;
   final Value<DateTime> createdAt;
   const MoodEntriesCompanion({
     this.id = const Value.absent(),
@@ -298,6 +342,7 @@ class MoodEntriesCompanion extends UpdateCompanion<MoodEntry> {
     this.mood = const Value.absent(),
     this.note = const Value.absent(),
     this.tags = const Value.absent(),
+    this.images = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   MoodEntriesCompanion.insert({
@@ -306,6 +351,7 @@ class MoodEntriesCompanion extends UpdateCompanion<MoodEntry> {
     required int mood,
     this.note = const Value.absent(),
     this.tags = const Value.absent(),
+    this.images = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : date = Value(date),
        mood = Value(mood);
@@ -315,6 +361,7 @@ class MoodEntriesCompanion extends UpdateCompanion<MoodEntry> {
     Expression<int>? mood,
     Expression<String>? note,
     Expression<String>? tags,
+    Expression<String>? images,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -323,6 +370,7 @@ class MoodEntriesCompanion extends UpdateCompanion<MoodEntry> {
       if (mood != null) 'mood': mood,
       if (note != null) 'note': note,
       if (tags != null) 'tags': tags,
+      if (images != null) 'images': images,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -333,6 +381,7 @@ class MoodEntriesCompanion extends UpdateCompanion<MoodEntry> {
     Value<int>? mood,
     Value<String?>? note,
     Value<String?>? tags,
+    Value<String?>? images,
     Value<DateTime>? createdAt,
   }) {
     return MoodEntriesCompanion(
@@ -341,6 +390,7 @@ class MoodEntriesCompanion extends UpdateCompanion<MoodEntry> {
       mood: mood ?? this.mood,
       note: note ?? this.note,
       tags: tags ?? this.tags,
+      images: images ?? this.images,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -363,6 +413,9 @@ class MoodEntriesCompanion extends UpdateCompanion<MoodEntry> {
     if (tags.present) {
       map['tags'] = Variable<String>(tags.value);
     }
+    if (images.present) {
+      map['images'] = Variable<String>(images.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -377,6 +430,7 @@ class MoodEntriesCompanion extends UpdateCompanion<MoodEntry> {
           ..write('mood: $mood, ')
           ..write('note: $note, ')
           ..write('tags: $tags, ')
+          ..write('images: $images, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -401,6 +455,7 @@ typedef $$MoodEntriesTableCreateCompanionBuilder =
       required int mood,
       Value<String?> note,
       Value<String?> tags,
+      Value<String?> images,
       Value<DateTime> createdAt,
     });
 typedef $$MoodEntriesTableUpdateCompanionBuilder =
@@ -410,6 +465,7 @@ typedef $$MoodEntriesTableUpdateCompanionBuilder =
       Value<int> mood,
       Value<String?> note,
       Value<String?> tags,
+      Value<String?> images,
       Value<DateTime> createdAt,
     });
 
@@ -444,6 +500,11 @@ class $$MoodEntriesTableFilterComposer
 
   ColumnFilters<String> get tags => $composableBuilder(
     column: $table.tags,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get images => $composableBuilder(
+    column: $table.images,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -487,6 +548,11 @@ class $$MoodEntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get images => $composableBuilder(
+    column: $table.images,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -516,6 +582,9 @@ class $$MoodEntriesTableAnnotationComposer
 
   GeneratedColumn<String> get tags =>
       $composableBuilder(column: $table.tags, builder: (column) => column);
+
+  GeneratedColumn<String> get images =>
+      $composableBuilder(column: $table.images, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -559,6 +628,7 @@ class $$MoodEntriesTableTableManager
                 Value<int> mood = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<String?> tags = const Value.absent(),
+                Value<String?> images = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => MoodEntriesCompanion(
                 id: id,
@@ -566,6 +636,7 @@ class $$MoodEntriesTableTableManager
                 mood: mood,
                 note: note,
                 tags: tags,
+                images: images,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -575,6 +646,7 @@ class $$MoodEntriesTableTableManager
                 required int mood,
                 Value<String?> note = const Value.absent(),
                 Value<String?> tags = const Value.absent(),
+                Value<String?> images = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => MoodEntriesCompanion.insert(
                 id: id,
@@ -582,6 +654,7 @@ class $$MoodEntriesTableTableManager
                 mood: mood,
                 note: note,
                 tags: tags,
+                images: images,
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0

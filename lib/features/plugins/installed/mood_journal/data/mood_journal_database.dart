@@ -10,6 +10,7 @@ class MoodEntries extends Table {
   IntColumn get mood => integer()(); // 1 (terrible) – 5 (great)
   TextColumn get note => text().nullable()();
   TextColumn get tags => text().nullable()(); // JSON-encoded List<String>
+  TextColumn get images => text().nullable()(); // JSON-encoded List<String> (paths)
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
@@ -25,5 +26,5 @@ class MoodJournalDatabase extends _$MoodJournalDatabase {
             ));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 }
