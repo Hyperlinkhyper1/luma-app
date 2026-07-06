@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/update/app_version.dart';
 import '../../app/widgets.dart';
 import '../../theme/luma_theme.dart';
 import 'plugin_catalog_service.dart';
@@ -82,9 +83,10 @@ class _PluginsPageState extends State<PluginsPage> {
     return StreamBuilder<List<InstalledPluginRecord>>(
       stream: repo.watchInstalled(),
       builder: (context, installedSnap) {
-        final installedIds = (installedSnap.data ?? const [])
-            .map((p) => p.pluginId)
-            .toSet();
+        final installedById = {
+          for (final p in installedSnap.data ?? const <InstalledPluginRecord>[])
+            p.pluginId: p,
+        };
 
         return FutureBuilder<List<PluginCatalogEntry>>(
           future: _catalog,
@@ -132,7 +134,7 @@ class _PluginsPageState extends State<PluginsPage> {
                   ? _PluginDetailView(
                       key: ValueKey('detail-${detailEntry.id}'),
                       entry: detailEntry,
-                      installed: installedIds.contains(detailEntry.id),
+                      record: installedById[detailEntry.id],
                       repo: repo,
                       service: _service,
                       onOpen: () => widget.onOpenPlugin(detailEntry.id),
@@ -142,7 +144,7 @@ class _PluginsPageState extends State<PluginsPage> {
                       context,
                       plugins: plugins,
                       allTags: allTags,
-                      installedIds: installedIds,
+                      installedById: installedById,
                       repo: repo,
                     ),
             );
@@ -156,7 +158,7 @@ class _PluginsPageState extends State<PluginsPage> {
     BuildContext context, {
     required List<PluginCatalogEntry> plugins,
     required List<String> allTags,
-    required Set<String> installedIds,
+    required Map<String, InstalledPluginRecord> installedById,
     required PluginRepository repo,
   }) {
     // A single scrollable (instead of a pinned header Column next to a
@@ -240,7 +242,7 @@ class _PluginsPageState extends State<PluginsPage> {
                 final entry = plugins[i];
                 return _PluginTile(
                   entry: entry,
-                  installed: installedIds.contains(entry.id),
+                  record: installedById[entry.id],
                   repo: repo,
                   onOpen: () => widget.onOpenPlugin(entry.id),
                   onOpenDetail: () => setState(() => _detailEntry = entry),
@@ -474,14 +476,17 @@ class _TagFilterChipState extends State<_TagFilterChip> {
 class _PluginTile extends StatefulWidget {
   const _PluginTile({
     required this.entry,
-    required this.installed,
+    required this.record,
     required this.repo,
     required this.onOpen,
     required this.onOpenDetail,
   });
 
   final PluginCatalogEntry entry;
-  final bool installed;
+
+  /// Non-null when the plugin is installed on this device; carries the
+  /// installed version so the tile can offer a per-plugin update.
+  final InstalledPluginRecord? record;
   final PluginRepository repo;
   final VoidCallback onOpen;
 
@@ -495,40 +500,39 @@ class _PluginTile extends StatefulWidget {
 
 class _PluginTileState extends State<_PluginTile> {
   bool _hovering = false;
-  bool _installing = false;
+  bool _actionBusy = false;
   String? _error;
-
-  Future<void> _install() async {
-    setState(() {
-      _installing = true;
-      _error = null;
-    });
-    try {
-      await widget.repo.install(widget.entry);
-    } catch (e) {
-      if (mounted) setState(() => _error = '$e');
-    } finally {
-      if (mounted) setState(() => _installing = false);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
     final entry = widget.entry;
+    final record = widget.record;
+    final installed = record != null;
+    final hasUpdate =
+        installed && AppVersion.compare(entry.version, record.version) > 0;
 
-    final actionButton = widget.installed
-        ? LumaGhostButton(
-            label: 'Open',
-            icon: Icons.open_in_new_rounded,
-            onTap: widget.onOpen,
+    final openButton = LumaGhostButton(
+      label: 'Open',
+      icon: Icons.open_in_new_rounded,
+      onTap: widget.onOpen,
+    );
+
+    // Present while the plugin needs downloading or updating, and kept
+    // mounted while its animation runs even after the install record lands.
+    final actionButton = (!installed || hasUpdate || _actionBusy)
+        ? _PluginActionButton(
+            entry: entry,
+            repo: widget.repo,
+            isUpdate: installed,
+            onError: (e) {
+              if (mounted) setState(() => _error = e);
+            },
+            onBusyChanged: (b) {
+              if (mounted) setState(() => _actionBusy = b);
+            },
           )
-        : LumaPrimaryButton(
-            label: 'Download',
-            icon: Icons.download_rounded,
-            loading: _installing,
-            onTap: _install,
-          );
+        : null;
 
     final deleteButton = Tooltip(
       message: 'Remove plugin',
@@ -601,6 +605,11 @@ class _PluginTileState extends State<_PluginTile> {
                               _CategoryChip(label: tag, luma: luma),
                             if (!entry.free)
                               _CategoryChip(label: 'Paid', luma: luma),
+                            if (hasUpdate)
+                              _CategoryChip(
+                                label: 'Update available',
+                                luma: luma,
+                              ),
                           ],
                         ),
                         const SizedBox(height: 8),
@@ -629,8 +638,23 @@ class _PluginTileState extends State<_PluginTile> {
                   ),
                   if (!narrow) ...[
                     const SizedBox(width: 20),
-                    SizedBox(width: 140, child: actionButton),
-                    if (widget.installed) ...[
+                    SizedBox(
+                      width: 140,
+                      child: actionButton == null
+                          ? openButton
+                          : (installed && !_actionBusy
+                              ? Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    actionButton,
+                                    const SizedBox(height: 8),
+                                    openButton,
+                                  ],
+                                )
+                              : actionButton),
+                    ),
+                    if (installed) ...[
                       const SizedBox(width: 8),
                       deleteButton,
                     ],
@@ -647,8 +671,14 @@ class _PluginTileState extends State<_PluginTile> {
                   const SizedBox(height: 14),
                   Row(
                     children: [
-                      Expanded(child: actionButton),
-                      if (widget.installed) ...[
+                      Expanded(child: actionButton ?? openButton),
+                      if (actionButton != null &&
+                          installed &&
+                          !_actionBusy) ...[
+                        const SizedBox(width: 8),
+                        Expanded(child: openButton),
+                      ],
+                      if (installed) ...[
                         const SizedBox(width: 8),
                         deleteButton,
                       ],
@@ -659,6 +689,234 @@ class _PluginTileState extends State<_PluginTile> {
             },
           ),
         ),
+      ),
+    );
+  }
+}
+
+enum _ActionPhase { idle, busy, done }
+
+/// The Download / Update button on a plugin tile and detail page.
+///
+/// Runs the actual install/update, but always holds an animated in-progress
+/// state on screen for at least 3 seconds (even when the network round trip
+/// is faster) so the action reads as deliberate work, then flashes a success
+/// check before settling. While it runs, [onBusyChanged] lets the parent keep
+/// this button mounted even after the installed record has already landed.
+class _PluginActionButton extends StatefulWidget {
+  const _PluginActionButton({
+    required this.entry,
+    required this.repo,
+    required this.isUpdate,
+    required this.onError,
+    required this.onBusyChanged,
+  });
+
+  final PluginCatalogEntry entry;
+  final PluginRepository repo;
+
+  /// True when the plugin is already installed, making this an update.
+  final bool isUpdate;
+  final ValueChanged<String?> onError;
+  final ValueChanged<bool> onBusyChanged;
+
+  @override
+  State<_PluginActionButton> createState() => _PluginActionButtonState();
+}
+
+class _PluginActionButtonState extends State<_PluginActionButton>
+    with SingleTickerProviderStateMixin {
+  static const _minBusyTime = Duration(seconds: 3);
+
+  late final AnimationController _loop = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  );
+
+  _ActionPhase _phase = _ActionPhase.idle;
+  bool _hovering = false;
+
+  // Latched when a run starts so the label doesn't flip from "Downloading"
+  // to "Updating" mid-animation once the installed record lands.
+  late bool _runIsUpdate = widget.isUpdate;
+
+  @override
+  void dispose() {
+    _loop.dispose();
+    super.dispose();
+  }
+
+  Future<void> _run() async {
+    if (_phase != _ActionPhase.idle) return;
+    widget.onError(null);
+    widget.onBusyChanged(true);
+    setState(() {
+      _runIsUpdate = widget.isUpdate;
+      _phase = _ActionPhase.busy;
+    });
+    _loop.repeat();
+    try {
+      await Future.wait([
+        widget.repo.install(widget.entry),
+        Future<void>.delayed(_minBusyTime),
+      ]);
+      if (mounted) {
+        _loop.stop();
+        setState(() => _phase = _ActionPhase.done);
+        await Future<void>.delayed(const Duration(milliseconds: 1200));
+      }
+    } catch (e) {
+      widget.onError('$e');
+    } finally {
+      _loop.stop();
+      if (mounted) setState(() => _phase = _ActionPhase.idle);
+      widget.onBusyChanged(false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final idle = _phase == _ActionPhase.idle;
+    final isUpdate = idle ? widget.isUpdate : _runIsUpdate;
+
+    final textStyle = TextStyle(
+      color: luma.onAccent,
+      fontSize: 13.5,
+      fontWeight: FontWeight.w600,
+    );
+
+    final Widget content = switch (_phase) {
+      _ActionPhase.idle => Row(
+          key: ValueKey('idle-$isUpdate'),
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isUpdate ? Icons.autorenew_rounded : Icons.download_rounded,
+              color: luma.onAccent,
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Text(isUpdate ? 'Update' : 'Download', style: textStyle),
+          ],
+        ),
+      _ActionPhase.busy => Row(
+          key: const ValueKey('busy'),
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isUpdate)
+              RotationTransition(
+                turns: _loop,
+                child: Icon(
+                  Icons.sync_rounded,
+                  color: luma.onAccent,
+                  size: 17,
+                ),
+              )
+            else
+              _DownloadingIcon(loop: _loop, color: luma.onAccent),
+            const SizedBox(width: 8),
+            Text(isUpdate ? 'Updating…' : 'Downloading…', style: textStyle),
+          ],
+        ),
+      _ActionPhase.done => Row(
+          key: const ValueKey('done'),
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.check_circle_rounded,
+              color: luma.onAccent,
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Text(isUpdate ? 'Updated' : 'Installed', style: textStyle),
+          ],
+        ),
+    };
+
+    return MouseRegion(
+      cursor: idle ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: GestureDetector(
+        onTap: idle ? _run : null,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: idle && _hovering ? luma.accentHover : luma.accent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Center(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              switchInCurve: Curves.easeOut,
+              switchOutCurve: Curves.easeIn,
+              transitionBuilder: (child, anim) => FadeTransition(
+                opacity: anim,
+                child: ScaleTransition(
+                  scale: Tween(begin: 0.85, end: 1.0).animate(anim),
+                  child: child,
+                ),
+              ),
+              child: content,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A download arrow that repeatedly drops toward a baseline "tray" and fades
+/// out, driven by the button's looping controller.
+class _DownloadingIcon extends StatelessWidget {
+  const _DownloadingIcon({required this.loop, required this.color});
+
+  final Animation<double> loop;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 18,
+      height: 18,
+      child: Stack(
+        alignment: Alignment.bottomCenter,
+        children: [
+          ClipRect(
+            child: AnimatedBuilder(
+              animation: loop,
+              builder: (context, _) {
+                final t = loop.value;
+                final opacity = t < 0.2
+                    ? t / 0.2
+                    : (t > 0.75 ? ((1 - t) / 0.25).clamp(0.0, 1.0) : 1.0);
+                return Opacity(
+                  opacity: opacity,
+                  child: Transform.translate(
+                    offset:
+                        Offset(0, -9 + 12 * Curves.easeIn.transform(t)),
+                    child: Icon(
+                      Icons.arrow_downward_rounded,
+                      size: 14,
+                      color: color,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          Container(
+            width: 12,
+            height: 2,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(1),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -700,7 +958,7 @@ class _PluginDetailView extends StatefulWidget {
   const _PluginDetailView({
     super.key,
     required this.entry,
-    required this.installed,
+    required this.record,
     required this.repo,
     required this.service,
     required this.onOpen,
@@ -708,7 +966,10 @@ class _PluginDetailView extends StatefulWidget {
   });
 
   final PluginCatalogEntry entry;
-  final bool installed;
+
+  /// Non-null when the plugin is installed; carries the installed version so
+  /// the detail page can offer a per-plugin update.
+  final InstalledPluginRecord? record;
   final PluginRepository repo;
   final PluginCatalogService service;
   final VoidCallback onOpen;
@@ -722,27 +983,17 @@ class _PluginDetailViewState extends State<_PluginDetailView> {
   late final Future<PluginManifest> _manifest = widget.service.fetchManifest(
     widget.entry.id,
   );
-  bool _installing = false;
+  bool _actionBusy = false;
   String? _error;
-
-  Future<void> _install() async {
-    setState(() {
-      _installing = true;
-      _error = null;
-    });
-    try {
-      await widget.repo.install(widget.entry);
-    } catch (e) {
-      if (mounted) setState(() => _error = '$e');
-    } finally {
-      if (mounted) setState(() => _installing = false);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
     final entry = widget.entry;
+    final record = widget.record;
+    final installed = record != null;
+    final hasUpdate =
+        installed && AppVersion.compare(entry.version, record.version) > 0;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
@@ -777,18 +1028,37 @@ class _PluginDetailViewState extends State<_PluginDetailView> {
               LayoutBuilder(
                 builder: (context, constraints) {
                   final narrow = constraints.maxWidth < 420;
-                  final actionButton = widget.installed
-                      ? LumaGhostButton(
-                          label: 'Open',
-                          icon: Icons.open_in_new_rounded,
-                          onTap: widget.onOpen,
-                        )
-                      : LumaPrimaryButton(
-                          label: 'Download',
-                          icon: Icons.download_rounded,
-                          loading: _installing,
-                          onTap: _install,
-                        );
+                  final openButton = LumaGhostButton(
+                    label: 'Open',
+                    icon: Icons.open_in_new_rounded,
+                    onTap: widget.onOpen,
+                  );
+                  final installButton =
+                      (!installed || hasUpdate || _actionBusy)
+                          ? _PluginActionButton(
+                              entry: entry,
+                              repo: widget.repo,
+                              isUpdate: installed,
+                              onError: (e) {
+                                if (mounted) setState(() => _error = e);
+                              },
+                              onBusyChanged: (b) {
+                                if (mounted) setState(() => _actionBusy = b);
+                              },
+                            )
+                          : null;
+                  final actionButton = installButton == null
+                      ? openButton
+                      : (installed && !_actionBusy
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                installButton,
+                                const SizedBox(height: 8),
+                                openButton,
+                              ],
+                            )
+                          : installButton);
 
                   final header = Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -821,7 +1091,9 @@ class _PluginDetailViewState extends State<_PluginDetailView> {
                                 if (!entry.free)
                                   _CategoryChip(label: 'Paid', luma: luma),
                                 _CategoryChip(
-                                  label: 'v${entry.version}',
+                                  label: hasUpdate
+                                      ? 'v${record.version} → v${entry.version}'
+                                      : 'v${entry.version}',
                                   luma: luma,
                                 ),
                               ],
