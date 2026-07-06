@@ -44,5 +44,11 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Release signing (never commit — losing this means you can't update the
+# installed app without uninstalling it first)
+/android/key.properties
+/android/app/*.jks
+/android/app/*.keystore
+
 # Local output directories
 /graphify-out/
