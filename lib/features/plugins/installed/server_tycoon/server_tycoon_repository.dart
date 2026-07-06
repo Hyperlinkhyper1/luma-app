@@ -639,12 +639,17 @@ class ServerTycoonRepository extends ChangeNotifier {
     if (rig == null) return const ActionResult(ok: false, errors: ['Unknown rig']);
     final stick = ramById[itemId];
     if (stick == null) return const ActionResult(ok: false, errors: ['Unknown RAM stick']);
-    if (_state.money < stick.price) return const ActionResult(ok: false, errors: ['Not enough money']);
+    final fromInventory = (_state.inventory[itemId] ?? 0) > 0;
+    if (!fromInventory && _state.money < stick.price) return const ActionResult(ok: false, errors: ['Not enough money']);
 
     final trialBuild = rig.build.copyWith(ramIds: [...rig.build.ramIds, itemId]);
     final (errors, ok) = validateBuild(trialBuild, rigKind: rig.kind);
 
-    _state.money -= stick.price;
+    if (fromInventory) {
+      _consumeInventory(itemId);
+    } else {
+      _state.money -= stick.price;
+    }
     rig.build = trialBuild;
     _save();
     notifyListeners();
@@ -675,12 +680,17 @@ class ServerTycoonRepository extends ChangeNotifier {
     if (rig == null) return const ActionResult(ok: false, errors: ['Unknown rig']);
     final drive = storageById[itemId];
     if (drive == null) return const ActionResult(ok: false, errors: ['Unknown drive']);
-    if (_state.money < drive.price) return const ActionResult(ok: false, errors: ['Not enough money']);
+    final fromInventory = (_state.inventory[itemId] ?? 0) > 0;
+    if (!fromInventory && _state.money < drive.price) return const ActionResult(ok: false, errors: ['Not enough money']);
 
     final trialBuild = rig.build.copyWith(storageIds: [...rig.build.storageIds, itemId]);
     final (errors, ok) = validateBuild(trialBuild, rigKind: rig.kind);
 
-    _state.money -= drive.price;
+    if (fromInventory) {
+      _consumeInventory(itemId);
+    } else {
+      _state.money -= drive.price;
+    }
     rig.build = trialBuild;
     _save();
     notifyListeners();

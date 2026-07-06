@@ -567,6 +567,8 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> {
           _toolButton(context, Icons.science_rounded, 'Research', () => setState(() => _showResearch = true)),
           _toolButton(context, Icons.assignment_rounded, 'Contracts', () => setState(() => _showContracts = true)),
           _toolButton(context, Icons.verified_rounded, 'Licenses', () => setState(() => _showLicenses = true)),
+          VerticalDivider(color: luma.border, width: 24),
+          _toolButton(context, Icons.shopping_cart_rounded, 'Shop', () => _showShopCatalog(context)),
           const Spacer(),
           TextButton.icon(
             onPressed: () => _confirmReset(context),
@@ -824,6 +826,12 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> {
             items = const [];
         }
 
+        final sortedItems = [...items]..sort((a, b) {
+          final ownedA = repo.inventoryCount(a.$1) > 0 ? 0 : 1;
+          final ownedB = repo.inventoryCount(b.$1) > 0 ? 0 : 1;
+          return ownedA.compareTo(ownedB);
+        });
+
         return DraggableScrollableSheet(
           expand: false,
           initialChildSize: 0.6,
@@ -836,17 +844,21 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> {
               Expanded(
                 child: ListView.builder(
                   controller: scrollController,
-                  itemCount: items.length,
+                  itemCount: sortedItems.length,
                   itemBuilder: (ctx, i) {
-                    final (itemId, name, price, fits) = items[i];
-                    final canAfford = repo.state.money >= price;
+                    final (itemId, name, price, fits) = sortedItems[i];
+                    final owned = repo.inventoryCount(itemId);
+                    final canAfford = owned > 0 || repo.state.money >= price;
 
                     return ListTile(
                       dense: true,
                       title: Text(name, style: TextStyle(color: luma.textPrimary, fontSize: 13)),
                       subtitle: Row(
                         children: [
-                          Text('\$$price', style: TextStyle(color: canAfford ? Colors.green.shade400 : Colors.red.shade400, fontSize: 12)),
+                          if (owned > 0)
+                            Text('In inventory x$owned', style: TextStyle(color: Colors.blue.shade300, fontSize: 12, fontWeight: FontWeight.w600))
+                          else
+                            Text('\$$price', style: TextStyle(color: canAfford ? Colors.green.shade400 : Colors.red.shade400, fontSize: 12)),
                           if (!fits) ...[
                             const SizedBox(width: 6),
                             Icon(Icons.warning_amber_rounded, size: 12, color: Colors.orange.shade400),
@@ -875,7 +887,10 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> {
                           }
                           Navigator.pop(ctx);
                         } : null,
-                        child: Text(slot == 'ram' || slot == 'storage' ? 'Buy' : 'Swap', style: TextStyle(color: canAfford ? luma.accent : luma.textMuted, fontSize: 12)),
+                        child: Text(
+                          owned > 0 ? 'Install' : (slot == 'ram' || slot == 'storage' ? 'Buy' : 'Swap'),
+                          style: TextStyle(color: canAfford ? luma.accent : luma.textMuted, fontSize: 12),
+                        ),
                       ),
                     );
                   },
@@ -883,6 +898,137 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> {
               ),
             ],
           ),
+        );
+      },
+    );
+  }
+
+  void _showShopCatalog(BuildContext context) {
+    final luma = context.luma;
+    final repo = ServerTycoonScope.of(context);
+
+    const categories = <(String, String, IconData)>[
+      ('cpu', 'CPUs', Icons.memory_rounded),
+      ('motherboard', 'Motherboards', Icons.developer_board_rounded),
+      ('psu', 'PSUs', Icons.bolt_rounded),
+      ('cooling', 'Cooling', Icons.ac_unit_rounded),
+      ('nic', 'NICs', Icons.settings_ethernet_rounded),
+      ('ram', 'RAM', Icons.sd_card_rounded),
+      ('storage', 'Storage', Icons.storage_rounded),
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: luma.surface,
+      isScrollControlled: true,
+      builder: (ctx) {
+        var selected = categories.first.$1;
+
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            List<(String, String, int)> items;
+            switch (selected) {
+              case 'cpu':
+                items = cpuList.map((c) => (c.id, c.name, c.price)).toList();
+                break;
+              case 'motherboard':
+                items = motherboardList.map((m) => (m.id, m.name, m.price)).toList();
+                break;
+              case 'psu':
+                items = psuList.map((p) => (p.id, p.name, p.price)).toList();
+                break;
+              case 'cooling':
+                items = coolingList.map((c) => (c.id, c.name, c.price)).toList();
+                break;
+              case 'nic':
+                items = nicList.map((n) => (n.id, n.name, n.price)).toList();
+                break;
+              case 'ram':
+                items = ramList.map((r) => (r.id, r.name, r.price)).toList();
+                break;
+              case 'storage':
+                items = storageList.map((d) => (d.id, d.name, d.price)).toList();
+                break;
+              default:
+                items = const [];
+            }
+
+            return DraggableScrollableSheet(
+              expand: false,
+              initialChildSize: 0.75,
+              maxChildSize: 0.9,
+              builder: (_, scrollController) => Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    child: Row(
+                      children: [
+                        Icon(Icons.shopping_cart_rounded, size: 18, color: luma.accent),
+                        const SizedBox(width: 8),
+                        Text('Shop', style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700, fontSize: 16)),
+                        const Spacer(),
+                        Text('\$${_fmt(repo.state.money)}', style: TextStyle(color: Colors.green.shade400, fontWeight: FontWeight.w700, fontSize: 13)),
+                      ],
+                    ),
+                  ),
+                  SizedBox(
+                    height: 40,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      children: [
+                        for (final cat in categories)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: ChoiceChip(
+                              label: Text(cat.$2, style: const TextStyle(fontSize: 12)),
+                              avatar: Icon(cat.$3, size: 14),
+                              selected: selected == cat.$1,
+                              onSelected: (_) => setSheetState(() => selected = cat.$1),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: ListView.builder(
+                      controller: scrollController,
+                      itemCount: items.length,
+                      itemBuilder: (ctx, i) {
+                        final (itemId, name, price) = items[i];
+                        final owned = repo.inventoryCount(itemId);
+                        final canAfford = repo.state.money >= price;
+
+                        return ListTile(
+                          dense: true,
+                          title: Text(name, style: TextStyle(color: luma.textPrimary, fontSize: 13)),
+                          subtitle: Row(
+                            children: [
+                              Text('\$$price', style: TextStyle(color: canAfford ? Colors.green.shade400 : Colors.red.shade400, fontSize: 12)),
+                              if (owned > 0) ...[
+                                const SizedBox(width: 8),
+                                Text('Owned x$owned', style: TextStyle(color: Colors.blue.shade300, fontSize: 11, fontWeight: FontWeight.w600)),
+                              ],
+                            ],
+                          ),
+                          trailing: TextButton(
+                            onPressed: canAfford
+                                ? () {
+                                    _showResult(context, repo.buyToInventory(selected, itemId));
+                                    setSheetState(() {});
+                                  }
+                                : null,
+                            child: Text('Buy', style: TextStyle(color: canAfford ? luma.accent : luma.textMuted, fontSize: 12)),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
         );
       },
     );
