@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../app/pin_dialog.dart';
 
+import '../app/update/app_version.dart';
+import '../app/update/update_gate.dart';
 import '../app/widgets.dart';
 import '../theme/luma_theme.dart';
 import 'devices_section.dart';
@@ -346,6 +348,9 @@ class _AboutCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final versionLabel = AppVersion.isReleaseBuild
+        ? 'Version ${AppVersion.current} · a clean local utility'
+        : 'Dev build · a clean local utility';
     return LumaCard(
       child: Row(
         children: [
@@ -374,11 +379,16 @@ class _AboutCard extends StatelessWidget {
                         fontSize: 16,
                         fontWeight: FontWeight.w700)),
                 const SizedBox(height: 2),
-                Text('Version 1.0.0 · a clean local utility',
+                Text(versionLabel,
                     style:
                         TextStyle(color: luma.textMuted, fontSize: 12)),
               ],
             ),
+          ),
+          TextButton(
+            onPressed: () =>
+                checkAndPromptForUpdate(context, announceIfUpToDate: true),
+            child: const Text('Check for updates'),
           ),
         ],
       ),

@@ -10,12 +10,37 @@ import 'updating_screen.dart';
 /// Runs a background update check and, if a newer release exists, prompts the
 /// user to install it. Call once after the app has settled (e.g. when the
 /// splash finishes). Safe to call on dev builds — it no-ops there.
-Future<void> checkAndPromptForUpdate(BuildContext context) async {
-  if (!AppVersion.isReleaseBuild) return;
+///
+/// [announceIfUpToDate] shows a snackbar when no update is found. It defaults
+/// to off for the silent boot-time check, but a manual "Check for updates"
+/// action (see Settings > About) should pass true so the tap gets visible
+/// feedback either way — useful on Android, where resuming the app from the
+/// recent-apps switcher doesn't re-run this boot-time check at all; only a
+/// fresh cold launch does.
+Future<void> checkAndPromptForUpdate(
+  BuildContext context, {
+  bool announceIfUpToDate = false,
+}) async {
+  if (!AppVersion.isReleaseBuild) {
+    if (announceIfUpToDate && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Updates aren\'t available on dev builds.')),
+      );
+    }
+    return;
+  }
 
   final service = UpdateService();
   final info = await service.checkForUpdate();
-  if (info == null || !context.mounted) return;
+  if (!context.mounted) return;
+  if (info == null) {
+    if (announceIfUpToDate) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('luma is up to date (${AppVersion.current}).')),
+      );
+    }
+    return;
+  }
 
   final wantsUpdate = await showDialog<bool>(
     context: context,
