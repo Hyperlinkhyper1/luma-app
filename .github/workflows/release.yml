@@ -84,8 +84,43 @@ jobs:
 
       - run: flutter pub get
 
+      # Reconstruct the release keystore from repo secrets so every CI build
+      # is signed with the same persistent key. Without this, Gradle falls
+      # back to a debug keystore that ephemeral runners regenerate per run,
+      # giving every release a different signature — Android then refuses to
+      # install any update over the previous one ("package conflicts with an
+      # existing package").
+      - name: Set up release signing
+        shell: bash
+        run: |
+          if [ -z "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 secret is missing — APK would get a throwaway debug signature and installed apps could never update. See android/key.properties on the dev machine."
+            exit 1
+          fi
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/luma-release.jks
+          cat > android/key.properties <<EOF
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          storeFile=luma-release.jks
+          EOF
+
       - name: Build APK
         run: flutter build apk --release --no-tree-shake-icons --dart-define=APP_VERSION=${{ steps.ver.outputs.version }}
+
+      # Fail loudly if the APK somehow got a debug signature anyway — a
+      # debug-signed release is worse than no release, because phones with
+      # the proper release-signed app installed can never apply it.
+      - name: Verify release signature
+        shell: bash
+        run: |
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
+          CERT=$("$APKSIGNER" verify --print-certs build/app/outputs/flutter-apk/app-release.apk)
+          echo "$CERT"
+          if echo "$CERT" | grep -q "Android Debug"; then
+            echo "::error::APK is debug-signed — signing config was not applied."
+            exit 1
+          fi
 
       - name: Rename APK
         run: cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/luma-${{ steps.ver.outputs.version }}.apk
