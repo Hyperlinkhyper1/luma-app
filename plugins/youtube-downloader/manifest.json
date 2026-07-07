@@ -1,0 +1,10 @@
+{
+  "id": "youtube-downloader",
+  "name": "YouTube Downloader",
+  "version": "1.0.0",
+  "description": "Paste a YouTube link and download the video or just the audio, with full control over resolution, bitrate, and output format. Keeps a history of everything you've downloaded.",
+  "icon": "smart_display",
+  "category": "Utility",
+  "details": "Paste a YouTube URL, luma fetches the video's title, thumbnail, and duration, then lets you choose exactly what to download:\n\n- Video (MP4) at any available resolution, up to the source's best quality\n- Audio only, as MP3, M4A, or Opus, at a bitrate you choose (96–320 kbps)\n\nDownloads run through a locally managed copy of yt-dlp and ffmpeg (fetched automatically on first use, kept in luma's app data folder — nothing is bundled into the app itself). Progress, speed, and ETA are shown live, and every completed download is kept in a history list so you can jump straight to the file.",
+  "screenshots": []
+}

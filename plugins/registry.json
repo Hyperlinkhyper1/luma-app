@@ -89,6 +89,16 @@
       "tags": ["Productivity", "Wellness"],
       "free": true,
       "version": "1.0.0"
+    },
+    {
+      "id": "youtube-downloader",
+      "name": "YouTube Downloader",
+      "description": "Paste a YouTube link and download the video or just the audio, with full control over resolution, bitrate, and output format. Keeps a history of everything you've downloaded.",
+      "icon": "smart_display",
+      "category": "Utility",
+      "tags": ["Utility", "Media"],
+      "free": true,
+      "version": "1.0.0"
     }
   ]
 }

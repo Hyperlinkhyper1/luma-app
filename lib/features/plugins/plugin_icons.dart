@@ -21,6 +21,10 @@ IconData pluginIconFor(String? name) {
       return Icons.table_chart_rounded;
     case 'dns':
       return Icons.dns_rounded;
+    case 'mood':
+      return Icons.mood_rounded;
+    case 'smart_display':
+      return Icons.smart_display_rounded;
     default:
       return Icons.extension_rounded;
   }
