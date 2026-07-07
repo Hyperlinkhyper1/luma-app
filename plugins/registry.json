@@ -101,6 +101,16 @@
       "version": "1.0.0"
     },
     {
+      "id": "space-colony",
+      "name": "Space Colony",
+      "description": "Build and manage a human settlement on an unexplored planet. Balance power, oxygen, water and food, research new tech, automate production, and survive random events like meteor showers and dust storms.",
+      "icon": "rocket_launch",
+      "category": "Games",
+      "tags": ["Games", "Simulation"],
+      "free": true,
+      "version": "1.0.0"
+    },
+    {
       "id": "school",
       "name": "School",
       "description": "Everything for school in one place: homework planner, flashcards with spaced repetition, a formula library, a study timer, an assignment tracker, GPA and grade calculators, citation generator, weekly timetable, and mind maps.",

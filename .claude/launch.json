@@ -6,6 +6,18 @@
       "runtimeExecutable": "flutter",
       "runtimeArgs": ["run", "-d", "web-server", "--web-port", "8090", "--web-hostname", "127.0.0.1"],
       "port": 8090
+    },
+    {
+      "name": "space-colony",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8123", "--directory", "space_colony"],
+      "port": 8123
+    },
+    {
+      "name": "luma-web-built",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8091", "--directory", "build/web"],
+      "port": 8091
     }
   ]
 }

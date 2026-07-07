@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Space Colony</title>
+<style>
+:root{
+  --bg:#0b0e17; --panel:#131829ee; --panel2:#1a2138; --line:#2a3350;
+  --txt:#dfe6f5; --dim:#8b96b5; --acc:#4fc3f7; --ok:#66d98a; --warn:#ffd166; --bad:#ff6b6b;
+  font-family:"Segoe UI",system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);overflow:hidden;user-select:none}
+canvas#world{display:block;cursor:crosshair}
+.hud{position:fixed;z-index:5}
+#topbar{top:0;left:0;right:0;height:44px;background:var(--panel);border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:14px;padding:0 12px;font-size:13px;backdrop-filter:blur(4px)}
+#topbar .res{display:flex;align-items:center;gap:5px;white-space:nowrap}
+#topbar .res b{font-variant-numeric:tabular-nums}
+#topbar .ico{font-size:15px}
+.low{color:var(--bad)!important}
+#clock{margin-left:auto;color:var(--dim)}
+#speed{display:flex;gap:4px}
+#speed button{background:var(--panel2);border:1px solid var(--line);color:var(--txt);width:34px;height:26px;
+  border-radius:5px;cursor:pointer;font-size:12px}
+#speed button.on{background:var(--acc);color:#04121c;border-color:var(--acc)}
+#left{top:52px;left:8px;width:224px;display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 60px)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;backdrop-filter:blur(4px)}
+.panel h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--acc);margin-bottom:8px}
+#buildlist{display:grid;grid-template-columns:1fr 1fr;gap:5px;overflow-y:auto;max-height:38vh}
+#buildlist button{background:var(--panel2);border:1px solid var(--line);border-radius:7px;color:var(--txt);
+  padding:6px 4px;cursor:pointer;font-size:11px;display:flex;flex-direction:column;align-items:center;gap:2px}
+#buildlist button .ic{font-size:17px}
+#buildlist button:hover{border-color:var(--acc)}
+#buildlist button.sel{background:#123a52;border-color:var(--acc)}
+#buildlist button:disabled{opacity:.35;cursor:not-allowed}
+#right{top:52px;right:8px;width:250px;display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 60px)}
+#colonists .col{display:flex;justify-content:space-between;font-size:12px;padding:4px 2px;border-bottom:1px solid var(--line)}
+#colonists .col:last-child{border-bottom:0}
+.bars{display:flex;gap:3px}
+.bars i{width:7px;height:14px;border-radius:2px;background:#2a3350;position:relative;overflow:hidden;display:block}
+.bars i b{position:absolute;bottom:0;left:0;right:0;background:var(--ok)}
+#log{font-size:11px;color:var(--dim);overflow-y:auto;max-height:20vh;display:flex;flex-direction:column-reverse}
+#log div{padding:2px 0;border-bottom:1px solid #1c2340}
+#log .ev{color:var(--warn)} #log .bad{color:var(--bad)} #log .good{color:var(--ok)}
+#alerts{position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:6;display:flex;flex-direction:column;gap:5px}
+.alert{background:#3a1420ee;border:1px solid var(--bad);color:#ffb3b3;padding:6px 14px;border-radius:7px;font-size:13px}
+#minimap{border:1px solid var(--line);border-radius:6px;display:block;width:100%;image-rendering:pixelated}
+#tooltip{position:fixed;z-index:9;background:var(--panel);border:1px solid var(--line);border-radius:7px;
+  padding:8px 10px;font-size:12px;pointer-events:none;display:none;max-width:230px;line-height:1.5}
+#research{position:fixed;inset:60px 15% ;z-index:8;background:var(--panel);border:1px solid var(--line);
+  border-radius:12px;padding:18px;display:none;overflow-y:auto;max-height:80vh}
+#research h2{color:var(--acc);margin-bottom:4px}
+#research .cat{margin-top:14px;font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--dim)}
+#research .tech{display:flex;justify-content:space-between;align-items:center;background:var(--panel2);
+  border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-top:6px;font-size:13px}
+#research .tech.done{border-color:var(--ok)}
+#research .tech button{background:var(--acc);border:0;color:#04121c;padding:5px 12px;border-radius:6px;cursor:pointer;font-weight:600}
+#research .tech button:disabled{opacity:.35;cursor:not-allowed}
+.xbtn{position:absolute;top:12px;right:14px;background:none;border:0;color:var(--dim);font-size:20px;cursor:pointer}
+.smallbtn{background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:6px;
+  padding:5px 8px;cursor:pointer;font-size:12px;width:100%;margin-top:6px}
+.smallbtn:hover{border-color:var(--acc)}
+#help{font-size:11px;color:var(--dim);line-height:1.6}
+#gameover{position:fixed;inset:0;z-index:20;background:#000c;display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px}
+#gameover h1{color:var(--bad);font-size:42px}
+</style>
+</head>
+<body>
+<canvas id="world"></canvas>
+
+<div class="hud" id="topbar">
+  <span class="res" id="rPower"><span class="ico">⚡</span><b>0</b></span>
+  <span class="res" id="rOxy"><span class="ico">🫧</span><b>0</b></span>
+  <span class="res" id="rWater"><span class="ico">💧</span><b>0</b></span>
+  <span class="res" id="rFood"><span class="ico">🌾</span><b>0</b></span>
+  <span class="res" id="rMetal"><span class="ico">🔩</span><b>0</b></span>
+  <span class="res" id="rGlass"><span class="ico">🪟</span><b>0</b></span>
+  <span class="res" id="rElec"><span class="ico">🔌</span><b>0</b></span>
+  <span class="res" id="rCrys"><span class="ico">💎</span><b>0</b></span>
+  <span class="res" id="rSci"><span class="ico">🧪</span><b>0</b></span>
+  <span class="res" id="rPop"><span class="ico">🧑‍🚀</span><b>3</b></span>
+  <span id="clock">Sol 1 · 08:00</span>
+  <div id="speed">
+    <button data-s="0">⏸</button><button data-s="1" class="on">1×</button>
+    <button data-s="2">2×</button><button data-s="4">4×</button>
+  </div>
+</div>
+
+<div class="hud" id="left">
+  <div class="panel">
+    <h3>Build</h3>
+    <div id="buildlist"></div>
+    <button class="smallbtn" id="demolish">🧨 Demolish mode</button>
+  </div>
+  <div class="panel">
+    <h3>Colony</h3>
+    <button class="smallbtn" id="openResearch">🔬 Research</button>
+    <button class="smallbtn" id="saveBtn">💾 Save</button>
+    <button class="smallbtn" id="loadBtn">📂 Load</button>
+    <div id="help" style="margin-top:8px">Drag / WASD to pan · scroll to zoom · click to build · right-click cancels · hover tiles for info. Place mining rigs on ore (orange) or crystal (purple) deposits, water extractors on ice (light blue).</div>
+  </div>
+</div>
+
+<div class="hud" id="right">
+  <div class="panel"><h3>Minimap</h3><canvas id="minimap" width="112" height="112"></canvas></div>
+  <div class="panel"><h3>Colonists</h3><div id="colonists"></div></div>
+  <div class="panel"><h3>Event log</h3><div id="log"></div></div>
+</div>
+
+<div id="alerts"></div>
+<div id="tooltip"></div>
+<div id="research"><button class="xbtn" onclick="document.getElementById('research').style.display='none'">✕</button>
+  <h2>Research</h2><div style="color:var(--dim);font-size:13px">Science points: <b id="sciPts">0</b> (produced by Laboratories)</div>
+  <div id="techlist"></div>
+</div>
+<div id="gameover"><h1>COLONY LOST</h1><div>All colonists have perished.</div>
+  <button class="smallbtn" style="width:auto;padding:10px 24px" onclick="localStorage.removeItem('spacecolony');location.reload()">New Colony</button></div>
+
+<script>
+"use strict";
+// ============================== WORLD ==============================
+const MAP=56, TILE=26;
+const T={ROCK:0,REGOLITH:1,ICE:2,ORE:3,CRYSTAL:4,LAVA:5,DUNE:6};
+const TCOL=["#3c4254","#565d72","#9fd4e8","#c98a3d","#b070e0","#e0552a","#6b7288"];
+const TNAME=["Rock","Regolith","Ice field","Metal deposit","Alien crystals","Lava zone","Dunes"];
+let map=[], seedRand=mulberry32(Date.now()&0xffff);
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function genMap(){
+  map=[];
+  for(let y=0;y<MAP;y++){map[y]=[];for(let x=0;x<MAP;x++){
+    const n=Math.sin(x*.35)*Math.cos(y*.3)+seedRand()*1.4;
+    map[y][x]= n>1.75?T.ROCK : n>1.5?T.DUNE : T.REGOLITH;
+  }}
+  const blob=(t,count,size)=>{for(let i=0;i<count;i++){let x=2+(seedRand()*(MAP-4))|0,y=2+(seedRand()*(MAP-4))|0;
+    for(let j=0;j<size;j++){if(x>1&&y>1&&x<MAP-2&&y<MAP-2)map[y][x]=t;x+=(seedRand()*3|0)-1;y+=(seedRand()*3|0)-1;}}};
+  blob(T.ICE,7,14); blob(T.ORE,9,7); blob(T.CRYSTAL,5,5); blob(T.LAVA,3,9);
+  // clear a landing area at center
+  const c=MAP>>1;
+  for(let y=c-4;y<=c+4;y++)for(let x=c-4;x<=c+4;x++)map[y][x]=T.REGOLITH;
+}
+
+// ============================== BUILDINGS ==============================
+// cost:{metal,glass,elec,crystal}  power +gen/-use per hour, out: per-hour production
+const DEFS={
+  lander:{name:"Landing Module",ic:"🛸",col:"#c9d3e8",cost:{},power:2,oxyCap:200,storage:true,
+    desc:"Your starting home. Generates a trickle of power and shelters colonists.",unique:true,hidden:true,hp:200},
+  solar:{name:"Solar Panel",ic:"🔆",col:"#2f6fb8",cost:{metal:4,glass:2},power:6,daytimeOnly:true,hp:40,
+    desc:"+6 power during the day."},
+  wind:{name:"Wind Turbine",ic:"🌀",col:"#7fb8d8",cost:{metal:8},power:4,hp:50,tech:"wind",
+    desc:"+4 power day and night. Boosted during dust storms."},
+  battery:{name:"Battery",ic:"🔋",col:"#3a9e5f",cost:{metal:5,elec:2},powerCap:120,hp:40,
+    desc:"Stores 120 power for the night."},
+  geo:{name:"Geothermal Plant",ic:"♨️",col:"#d86a3a",cost:{metal:20,elec:6},power:18,needsLava:true,hp:80,tech:"geo",
+    desc:"+18 power. Must be built on a lava zone."},
+  nuclear:{name:"Nuclear Reactor",ic:"☢️",col:"#c9d34a",cost:{metal:35,elec:15,crystal:4},power:45,hp:100,tech:"nuclear",
+    desc:"+45 power, day and night."},
+  oxygen:{name:"Oxygen Generator",ic:"🫧",col:"#4fc3f7",cost:{metal:6,elec:1},power:-3,out:{oxygen:6},water:-.5,hp:50,
+    desc:"Electrolyses water: +6 O₂/h, uses power and a little water."},
+  waterext:{name:"Water Extractor",ic:"🧊",col:"#8fd8e8",cost:{metal:6},power:-2,out:{water:5},needsIce:true,hp:50,
+    desc:"+5 water/h. Must be built on an ice field."},
+  recycler:{name:"Water Recycler",ic:"♻️",col:"#5fae8f",cost:{metal:10,elec:3},power:-2,out:{water:2.5},hp:50,tech:"recycle",
+    desc:"+2.5 water/h anywhere, reclaimed from waste."},
+  greenhouse:{name:"Greenhouse",ic:"🌿",col:"#57b85f",cost:{metal:8,glass:6},power:-2,water:-1,out:{food:3,oxygen:1},hp:45,
+    desc:"+3 food and +1 O₂ per hour. Uses water. Farming skill boosts yield."},
+  hydro:{name:"Hydroponic Farm",ic:"🌾",col:"#8fce5f",cost:{metal:14,glass:8,elec:4},power:-4,water:-1.5,out:{food:7},hp:55,tech:"hydro",
+    desc:"+7 food/h high-density farming."},
+  mine:{name:"Mining Rig",ic:"⛏️",col:"#c98a3d",cost:{metal:6},power:-3,needsOre:true,out:{metal:2.5},hp:55,
+    desc:"+2.5 metal/h. Must be on a metal deposit. Mining skill boosts yield."},
+  crystalmine:{name:"Crystal Extractor",ic:"💎",col:"#b070e0",cost:{metal:12,elec:5},power:-5,needsCrystal:true,out:{crystal:.8},hp:55,tech:"crystaltech",
+    desc:"+0.8 alien crystal/h. Must be on a crystal deposit."},
+  glassworks:{name:"Glassworks",ic:"🪟",col:"#a8c0d8",cost:{metal:8},power:-4,out:{glass:2},hp:50,
+    desc:"Smelts sand: +2 glass/h."},
+  fab:{name:"Electronics Fab",ic:"🔌",col:"#d8a84a",cost:{metal:12,glass:4},power:-5,metal:-1,out:{elec:1.5},hp:50,
+    desc:"+1.5 electronics/h, consumes 1 metal/h."},
+  hab:{name:"Living Quarters",ic:"🏠",col:"#8a93b8",cost:{metal:10,glass:4},power:-1,housing:3,hp:60,
+    desc:"Houses 3 colonists and lets them sleep comfortably."},
+  lab:{name:"Laboratory",ic:"🔬",col:"#6a8ae8",cost:{metal:12,glass:6,elec:4},power:-4,out:{science:1.5},hp:50,
+    desc:"+1.5 science/h. Science skill boosts output."},
+  med:{name:"Medical Bay",ic:"🏥",col:"#e87a8a",cost:{metal:12,glass:4,elec:4},power:-3,heal:true,hp:50,tech:"medbay",
+    desc:"Slowly heals sick and injured colonists."},
+  storage:{name:"Storage Depot",ic:"📦",col:"#a89468",cost:{metal:8},storageBoost:150,hp:60,
+    desc:"+150 capacity for all materials."},
+  dronebay:{name:"Drone Bay",ic:"🤖",col:"#68c8c0",cost:{metal:18,elec:10,crystal:2},power:-6,autobonus:.25,hp:60,tech:"drones",
+    desc:"Automation: +25% output from all producers (stacks)."},
+  beacon:{name:"Trade Beacon",ic:"📡",col:"#e8c86a",cost:{metal:25,elec:12,crystal:3},power:-5,trade:true,hp:60,tech:"trade",
+    desc:"Every 24h, sells 5 crystal to Earth for 20 metal, 10 glass and 6 electronics."},
+};
+const BUILD_ORDER=["solar","wind","battery","geo","nuclear","oxygen","waterext","recycler","greenhouse","hydro",
+  "mine","crystalmine","glassworks","fab","hab","lab","med","storage","dronebay","beacon"];
+
+// ============================== TECH ==============================
+const TECHS={
+  wind:{name:"Wind Turbines",cat:"Energy",cost:15,desc:"Unlocks wind power, works at night."},
+  geo:{name:"Geothermal Power",cat:"Energy",cost:40,desc:"Unlocks geothermal plants on lava zones."},
+  nuclear:{name:"Nuclear Power",cat:"Energy",cost:90,req:"geo",desc:"Unlocks the nuclear reactor."},
+  hydro:{name:"Hydroponics",cat:"Biology",cost:30,desc:"Unlocks high-yield hydroponic farms."},
+  recycle:{name:"Water Recycling",cat:"Biology",cost:25,desc:"Unlocks water recyclers (no ice needed)."},
+  medbay:{name:"Medicine",cat:"Biology",cost:35,desc:"Unlocks the medical bay."},
+  crystaltech:{name:"Crystal Extraction",cat:"Engineering",cost:45,desc:"Unlocks crystal extractors."},
+  batteries2:{name:"Improved Batteries",cat:"Engineering",cost:30,desc:"Batteries store +60 power."},
+  drones:{name:"Robotics",cat:"Robotics",cost:70,req:"crystaltech",desc:"Unlocks drone bays (+25% production)."},
+  trade:{name:"Orbital Trade",cat:"Space",cost:80,req:"crystaltech",desc:"Unlocks the trade beacon."},
+};
+
+// ============================== STATE ==============================
+const CAP0=250;
+let S; // game state
+function newGame(){
+  genMap();
+  const c=MAP>>1;
+  S={res:{oxygen:80,water:40,food:50,metal:40,glass:12,elec:8,crystal:0,science:0},
+     power:30,powerCap:80,hour:8,sol:1,speed:1,techs:{},buildings:[],colonists:[],nextId:1,
+     lastTrade:0, mapSeed:0};
+  addBuilding("lander",c,c);
+  const names=["Ada","Kaito","Zora"];
+  for(let i=0;i<3;i++)S.colonists.push(makeColonist(names[i],c-1+i,c+2));
+  log("Landing successful. Sol 1 begins on an unexplored world.","good");
+  log("Keep oxygen, food and power positive to survive.");
+}
+function makeColonist(name,x,y){
+  const sk={}; ["engineering","science","farming","medicine","mining"].forEach(k=>sk[k]=1+(Math.random()*3|0));
+  return {id:S.nextId++,name,x,y,tx:x,ty:y,hunger:100,oxygen:100,sleep:100,happy:80,health:100,sick:false,skills:sk,xp:0};
+}
+function addBuilding(type,x,y){
+  const b={type,x,y,hp:DEFS[type].hp||50,on:true,broken:false};
+  S.buildings.push(b); return b;
+}
+function buildingAt(x,y){return S.buildings.find(b=>b.x===x&&b.y===y)}
+function storageCap(){return CAP0+S.buildings.reduce((a,b)=>a+(DEFS[b.type].storageBoost||0),0)}
+function housing(){return S.buildings.reduce((a,b)=>a+(DEFS[b.type].housing||0),0)+3}
+
+// ============================== SIMULATION ==============================
+const HOUR_MS=1600; let acc=0,lastT=performance.now();
+function isDay(){return S.hour>=6&&S.hour<20}
+function autoBonus(){let m=1;S.buildings.forEach(b=>{if(b.type==="dronebay"&&b.on&&!b.broken)m+=DEFS.dronebay.autobonus});return m}
+function skillAvg(k){if(!S.colonists.length)return 1;return S.colonists.reduce((a,c)=>a+c.skills[k],0)/S.colonists.length}
+function tickHour(){
+  const day=isDay(), auto=autoBonus();
+  let gen=0,use=0;
+  const cap=storageCap();
+  // power pass
+  S.buildings.forEach(b=>{const d=DEFS[b.type]; if(b.broken)return;
+    if(d.power>0){ if(!d.daytimeOnly||day){let g=d.power; if(b.type==="wind"&&S.storm)g*=2; gen+=g;} }
+  });
+  S.powerCap=80+S.buildings.reduce((a,b)=>a+((DEFS[b.type].powerCap||0)+(b.type==="battery"&&S.techs.batteries2?60:0)),0);
+  if(S.flare){gen*= .2;}
+  // consumers run only if power available
+  let avail=S.power+gen;
+  S.buildings.forEach(b=>{const d=DEFS[b.type]; b.active=false;
+    if(b.broken||!b.on)return;
+    const need=d.power<0?-d.power:0;
+    if(need>0&&avail<need)return; // browns out
+    if(d.water&&S.res.water< -d.water)return;
+    if(d.metal&&S.res.metal< -d.metal)return;
+    avail-=need; use+=need; b.active=true;
+    if(d.water)S.res.water+=d.water;
+    if(d.metal)S.res.metal+=d.metal;
+    if(d.out)for(const[k,v]of Object.entries(d.out)){
+      let mult=auto;
+      if(k==="food")mult*=0.7+skillAvg("farming")*.12;
+      if(k==="science")mult*=0.7+skillAvg("science")*.12;
+      if(k==="metal"||k==="crystal")mult*=0.7+skillAvg("mining")*.12;
+      S.res[k]=Math.min(k==="science"?9999:cap,S.res[k]+v*mult);
+    }
+  });
+  S.power=Math.max(0,Math.min(S.powerCap,S.power+gen-use));
+  S.lastGen=gen;S.lastUse=use;
+  // colonists
+  const med=S.buildings.some(b=>b.type==="med"&&b.active);
+  const overcrowd=S.colonists.length>housing();
+  S.colonists.forEach(col=>{
+    S.res.oxygen-=0.9; S.res.food=Math.max(0,S.res.food);
+    col.oxygen=S.res.oxygen>0?Math.min(100,col.oxygen+15):col.oxygen-18;
+    if(col.hunger<25&&S.res.food>=1){S.res.food-=1;col.hunger=Math.min(100,col.hunger+45)}
+    col.hunger-=2.2;
+    const night=!isDay();
+    col.sleep+= night?9:-2.5;
+    col.sleep=Math.max(0,Math.min(100,col.sleep));
+    col.hunger=Math.max(0,col.hunger);
+    if(col.hunger<=0)col.health-=4;
+    if(col.oxygen<=0)col.health-=10;
+    if(col.sick)col.health-=med?0:2;
+    if(med&&col.health<100)col.health=Math.min(100,col.health+3);
+    if(med&&col.sick&&Math.random()<.25){col.sick=false;log(col.name+" recovered in the medical bay.","good")}
+    else if(!med&&col.sick&&Math.random()<.05){col.sick=false;log(col.name+" recovered.","good")}
+    col.happy=Math.max(0,Math.min(100,col.happy+(S.res.food>10?.5:-2)+(overcrowd?-1:.3)+(col.sick?-1:0)));
+    col.xp+=1;
+    if(col.xp>=120){col.xp=0;const ks=Object.keys(col.skills);const k=ks[Math.random()*ks.length|0];
+      col.skills[k]=Math.min(10,col.skills[k]+1);log(col.name+" improved "+k+" to "+col.skills[k]+".","good")}
+    if(col.health<=0){S.colonists=S.colonists.filter(c=>c!==col);log(col.name+" has died.","bad")}
+  });
+  if(S.res.oxygen<0)S.res.oxygen=0;
+  // arrivals
+  if(S.hour===8&&S.sol%4===0&&S.colonists.length<housing()&&S.res.food>30){
+    const n=["Iris","Malik","Suki","Odin","Vera","Ravi","Nia","Cole","Yuna","Piotr"][Math.random()*10|0];
+    S.colonists.push(makeColonist(n,(MAP>>1),(MAP>>1)+2));
+    log("A new colonist, "+n+", has arrived from Earth!","good");
+  }
+  // trade beacon
+  if(S.buildings.some(b=>b.type==="beacon"&&b.active) && S.sol>S.lastTrade && S.res.crystal>=5){
+    S.res.crystal-=5;S.res.metal=Math.min(cap,S.res.metal+20);S.res.glass=Math.min(cap,S.res.glass+10);
+    S.res.elec=Math.min(cap,S.res.elec+6);S.lastTrade=S.sol;
+    log("Trade beacon: sold 5 crystal → +20 metal, +10 glass, +6 electronics.","good");
+  }
+  // events
+  if(S.storm&&--S.stormLeft<=0){S.storm=false;log("The dust storm has passed.","good")}
+  if(S.flare&&--S.flareLeft<=0){S.flare=false;log("Solar flare over — power generation restored.","good")}
+  if(Math.random()<.02)randomEvent();
+  // clock
+  S.hour++; if(S.hour>=24){S.hour=0;S.sol++;}
+  if(S.colonists.length===0){document.getElementById("gameover").style.display="flex";S.speed=0;}
+  refreshHud();
+}
+function randomEvent(){
+  const r=Math.random();
+  if(r<.2&&!S.storm){S.storm=true;S.stormLeft=8+(Math.random()*10|0);alertMsg("🌪️ Dust storm! Solar output halved.");log("A dust storm rolls in. Solar panels degraded, wind turbines boosted.","ev")}
+  else if(r<.35&&!S.flare){S.flare=true;S.flareLeft=4+(Math.random()*4|0);alertMsg("☀️ Solar flare! Generation −80%.");log("Solar flare detected! All power generation crippled temporarily.","ev")}
+  else if(r<.55){const bs=S.buildings.filter(b=>!b.broken&&b.type!=="lander");if(!bs.length)return;
+    const b=bs[Math.random()*bs.length|0];b.broken=true;
+    alertMsg("🔧 "+DEFS[b.type].name+" broke down!");log(DEFS[b.type].name+" suffered an equipment failure. Click it to repair (2 metal).","ev")}
+  else if(r<.7){const c=S.colonists[Math.random()*S.colonists.length|0];if(c&&!c.sick){c.sick=true;
+    alertMsg("🤒 "+c.name+" fell ill.");log(c.name+" caught an alien microbe. A medical bay would help.","ev")}}
+  else if(r<.85){const bs=S.buildings.filter(b=>b.type!=="lander");if(!bs.length)return;
+    const b=bs[Math.random()*bs.length|0];b.hp-=25;
+    if(b.hp<=0){S.buildings=S.buildings.filter(x=>x!==b);log("A meteor destroyed the "+DEFS[b.type].name+"!","bad");alertMsg("☄️ Meteor strike destroyed "+DEFS[b.type].name+"!")}
+    else{log("Meteor shower damaged the "+DEFS[b.type].name+".","ev");alertMsg("☄️ Meteor shower!")}}
+  else {const gain=2+(Math.random()*4|0);S.res.metal=Math.min(storageCap(),S.res.metal+gain);
+    log("Scavengers found "+gain+" metal in old meteor debris.","good")}
+}
+
+// ============================== BUILD / INPUT ==============================
+let cam={x:0,y:0,z:1}, selBuild=null, demolish=false, hoverTile=null, drag=null;
+const cv=document.getElementById("world"),ctx=cv.getContext("2d");
+function resize(){cv.width=innerWidth;cv.height=innerHeight}
+addEventListener("resize",resize);resize();
+function canAfford(t){const c=DEFS[t].cost;return (!c.metal||S.res.metal>=c.metal)&&(!c.glass||S.res.glass>=c.glass)&&(!c.elec||S.res.elec>=c.elec)&&(!c.crystal||S.res.crystal>=c.crystal)}
+function unlocked(t){const d=DEFS[t];return !d.tech||S.techs[d.tech]}
+function placeOK(t,x,y){
+  if(x<0||y<0||x>=MAP||y>=MAP||buildingAt(x,y))return false;
+  const d=DEFS[t],tt=map[y][x];
+  if(d.needsIce&&tt!==T.ICE)return false;
+  if(d.needsOre&&tt!==T.ORE)return false;
+  if(d.needsCrystal&&tt!==T.CRYSTAL)return false;
+  if(d.needsLava&&tt!==T.LAVA)return false;
+  if(!d.needsLava&&tt===T.LAVA)return false;
+  if(tt===T.ROCK)return false;
+  return true;
+}
+function tryBuild(x,y){
+  if(!selBuild)return;
+  if(!placeOK(selBuild,x,y)){alertMsg("Can't build here.");return}
+  if(!canAfford(selBuild)){alertMsg("Not enough materials.");return}
+  const c=DEFS[selBuild].cost;
+  S.res.metal-=c.metal||0;S.res.glass-=c.glass||0;S.res.elec-=c.elec||0;S.res.crystal-=c.crystal||0;
+  addBuilding(selBuild,x,y);
+  log("Built "+DEFS[selBuild].name+".");
+  refreshHud();refreshBuild();
+}
+cv.addEventListener("mousedown",e=>{drag={x:e.clientX,y:e.clientY,cx:cam.x,cy:cam.y,moved:false}});
+addEventListener("mousemove",e=>{
+  if(drag){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
+    if(Math.abs(dx)+Math.abs(dy)>5)drag.moved=true;
+    cam.x=drag.cx-dx/cam.z;cam.y=drag.cy-dy/cam.z;}
+  const wx=(e.clientX/cam.z+cam.x)/TILE|0, wy=(e.clientY/cam.z+cam.y)/TILE|0;
+  hoverTile=(wx>=0&&wy>=0&&wx<MAP&&wy<MAP)?{x:wx,y:wy}:null;
+  showTooltip(e);
+});
+addEventListener("mouseup",e=>{
+  if(drag&&!drag.moved&&hoverTile&&e.target===cv){
+    const b=buildingAt(hoverTile.x,hoverTile.y);
+    if(demolish){if(b&&b.type!=="lander"){S.buildings=S.buildings.filter(x=>x!==b);
+      S.res.metal=Math.min(storageCap(),S.res.metal+Math.ceil((DEFS[b.type].cost.metal||0)/2));
+      log("Demolished "+DEFS[b.type].name+".")}}
+    else if(b&&b.broken){if(S.res.metal>=2){S.res.metal-=2;b.broken=false;log("Repaired "+DEFS[b.type].name+".","good")}else alertMsg("Need 2 metal to repair.")}
+    else tryBuild(hoverTile.x,hoverTile.y);
+  }
+  drag=null;
+});
+cv.addEventListener("contextmenu",e=>{e.preventDefault();selBuild=null;demolish=false;refreshBuild()});
+addEventListener("wheel",e=>{if(e.target!==cv)return;
+  const f=e.deltaY<0?1.15:1/1.15,nz=Math.max(.4,Math.min(2.5,cam.z*f));
+  cam.x+=e.clientX/cam.z-e.clientX/nz;cam.y+=e.clientY/cam.z-e.clientY/nz;cam.z=nz;});
+const keys={};
+addEventListener("keydown",e=>{keys[e.key.toLowerCase()]=true;
+  if(e.key===" "){e.preventDefault();setSpeed(S.speed?0:1)}
+  if(e.key==="1")setSpeed(1); if(e.key==="2")setSpeed(2); if(e.key==="4")setSpeed(4);
+  if(e.key==="Escape"){selBuild=null;demolish=false;refreshBuild();document.getElementById("research").style.display="none"}});
+addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
+
+// ============================== UI ==============================
+const $=id=>document.getElementById(id);
+function setSpeed(s){S.speed=s;document.querySelectorAll("#speed button").forEach(b=>b.classList.toggle("on",+b.dataset.s===s))}
+document.querySelectorAll("#speed button").forEach(b=>b.onclick=()=>setSpeed(+b.dataset.s));
+function refreshBuild(){
+  const el=$("buildlist");el.innerHTML="";
+  BUILD_ORDER.forEach(t=>{if(!unlocked(t))return;
+    const d=DEFS[t],b=document.createElement("button");
+    b.innerHTML=`<span class="ic">${d.ic}</span>${d.name}`;
+    b.disabled=!canAfford(t);
+    if(selBuild===t)b.classList.add("sel");
+    b.onclick=()=>{selBuild=selBuild===t?null:t;demolish=false;refreshBuild()};
+    b.onmouseenter=e=>tooltipFor(d,e);b.onmousemove=e=>moveTooltip(e);b.onmouseleave=hideTooltip;
+    el.appendChild(b);});
+  $("demolish").style.borderColor=demolish?"var(--bad)":"";
+}
+$("demolish").onclick=()=>{demolish=!demolish;selBuild=null;refreshBuild()};
+function costStr(c){return Object.entries(c).map(([k,v])=>v+" "+({metal:"🔩",glass:"🪟",elec:"🔌",crystal:"💎"}[k])).join("  ")||"free"}
+function tooltipFor(d,e){const tt=$("tooltip");
+  tt.innerHTML=`<b>${d.ic} ${d.name}</b><br>${d.desc}<br><span style="color:var(--dim)">Cost: ${costStr(d.cost)}${d.power?` · Power ${d.power>0?"+":""}${d.power}`:""}</span>`;
+  tt.style.display="block";moveTooltip(e)}
+function moveTooltip(e){const tt=$("tooltip");tt.style.left=Math.min(innerWidth-250,e.clientX+16)+"px";tt.style.top=(e.clientY+14)+"px"}
+function hideTooltip(){$("tooltip").style.display="none"}
+function showTooltip(e){
+  if(e.target!==cv||!hoverTile){if(e.target===cv)hideTooltip();return}
+  const b=buildingAt(hoverTile.x,hoverTile.y);
+  const tt=$("tooltip");
+  if(b){const d=DEFS[b.type];
+    tt.innerHTML=`<b>${d.ic} ${d.name}</b> ${b.broken?'<span style="color:var(--bad)">BROKEN — click to repair (2🔩)</span>':b.active?'<span style="color:var(--ok)">online</span>':'<span style="color:var(--warn)">no power/input</span>'}<br>HP ${b.hp}/${d.hp}`;
+    tt.style.display="block";moveTooltip(e);}
+  else{tt.innerHTML=`<b>${TNAME[map[hoverTile.y][hoverTile.x]]}</b>`;tt.style.display="block";moveTooltip(e);}
+}
+function log(msg,cls){const d=document.createElement("div");if(cls)d.className=cls;
+  d.textContent=`[Sol ${S.sol} ${String(S.hour).padStart(2,"0")}:00] ${msg}`;
+  const el=$("log");el.prepend(d);while(el.children.length>60)el.lastChild.remove()}
+let alertT={};
+function alertMsg(msg){const el=$("alerts");
+  if([...el.children].some(c=>c.textContent===msg))return;
+  const d=document.createElement("div");d.className="alert";d.textContent=msg;el.appendChild(d);
+  setTimeout(()=>d.remove(),6000)}
+function fmt(n){return n>=100?Math.round(n):Math.round(n*10)/10}
+function refreshHud(){
+  const r=S.res;
+  const set=(id,v,low)=>{const el=$(id).querySelector("b");el.textContent=v;$(id).classList.toggle("low",!!low)};
+  set("rPower",fmt(S.power)+"/"+S.powerCap+" ("+(S.lastGen>=S.lastUse?"+":"")+fmt((S.lastGen||0)-(S.lastUse||0))+")",S.power<10);
+  set("rOxy",fmt(r.oxygen),r.oxygen<20);set("rWater",fmt(r.water),r.water<10);set("rFood",fmt(r.food),r.food<10);
+  set("rMetal",fmt(r.metal));set("rGlass",fmt(r.glass));set("rElec",fmt(r.elec));set("rCrys",fmt(r.crystal));
+  set("rSci",fmt(r.science));set("rPop",S.colonists.length+"/"+housing());
+  $("clock").textContent=`Sol ${S.sol} · ${String(S.hour).padStart(2,"0")}:00 ${isDay()?"☀️":"🌙"}${S.storm?" 🌪️":""}${S.flare?" ☢️":""}`;
+  // colonists
+  const cl=$("colonists");cl.innerHTML="";
+  S.colonists.forEach(c=>{
+    const div=document.createElement("div");div.className="col";
+    const bar=(v,color)=>`<i title=""><b style="height:${v}%;background:${color||(v>50?"var(--ok)":v>25?"var(--warn)":"var(--bad)")}"></b></i>`;
+    div.innerHTML=`<span>${c.sick?"🤒":"🧑‍🚀"} ${c.name}</span><span class="bars" title="hunger / O₂ / sleep / happy / health">
+      ${bar(c.hunger)}${bar(c.oxygen)}${bar(c.sleep)}${bar(c.happy)}${bar(c.health)}</span>`;
+    cl.appendChild(div);});
+  if(refreshBuild.t!==S.res.metal+"·"+S.res.glass){refreshBuild();refreshBuild.t=S.res.metal+"·"+S.res.glass}
+  refreshResearch();
+}
+function refreshResearch(){
+  $("sciPts").textContent=fmt(S.res.science);
+  const el=$("techlist");el.innerHTML="";
+  const cats={};Object.entries(TECHS).forEach(([k,t])=>{(cats[t.cat]=cats[t.cat]||[]).push([k,t])});
+  for(const[cat,list]of Object.entries(cats)){
+    const h=document.createElement("div");h.className="cat";h.textContent=cat;el.appendChild(h);
+    list.forEach(([k,t])=>{
+      const div=document.createElement("div");div.className="tech"+(S.techs[k]?" done":"");
+      const locked=t.req&&!S.techs[t.req];
+      div.innerHTML=`<span><b>${t.name}</b> — <span style="color:var(--dim)">${t.desc}${locked?" (requires "+TECHS[t.req].name+")":""}</span></span>`;
+      if(S.techs[k]){div.innerHTML+=`<span style="color:var(--ok)">✔</span>`}
+      else{const b=document.createElement("button");b.textContent=t.cost+" 🧪";
+        b.disabled=S.res.science<t.cost||locked;
+        b.onclick=()=>{S.res.science-=t.cost;S.techs[k]=true;log("Research complete: "+t.name+"!","good");refreshHud()};
+        div.appendChild(b)}
+      el.appendChild(div);});
+  }
+}
+$("openResearch").onclick=()=>{refreshResearch();$("research").style.display="block"};
+$("saveBtn").onclick=()=>{localStorage.setItem("spacecolony",JSON.stringify({S,map}));log("Game saved.","good")};
+$("loadBtn").onclick=()=>{const d=localStorage.getItem("spacecolony");
+  if(d){const o=JSON.parse(d);S=o.S;map=o.map;log("Game loaded.","good");refreshHud();refreshBuild()}else alertMsg("No save found.")};
+
+// ============================== RENDER ==============================
+function draw(){
+  ctx.setTransform(cam.z,0,0,cam.z,-cam.x*cam.z,-cam.y*cam.z);
+  ctx.fillStyle="#06080f";ctx.fillRect(cam.x,cam.y,cv.width/cam.z,cv.height/cam.z);
+  const x0=Math.max(0,cam.x/TILE|0),y0=Math.max(0,cam.y/TILE|0);
+  const x1=Math.min(MAP,((cam.x+cv.width/cam.z)/TILE|0)+1),y1=Math.min(MAP,((cam.y+cv.height/cam.z)/TILE|0)+1);
+  for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){
+    ctx.fillStyle=TCOL[map[y][x]];
+    ctx.fillRect(x*TILE,y*TILE,TILE-1,TILE-1);
+    if(map[y][x]===T.CRYSTAL){ctx.fillStyle="#e0b8ff";ctx.fillRect(x*TILE+9,y*TILE+9,7,7)}
+    if(map[y][x]===T.ORE){ctx.fillStyle="#8a5a20";ctx.fillRect(x*TILE+7,y*TILE+7,5,5);ctx.fillRect(x*TILE+15,y*TILE+13,4,4)}
+  }
+  // buildings
+  S.buildings.forEach(b=>{const d=DEFS[b.type],px=b.x*TILE,py=b.y*TILE;
+    ctx.fillStyle=d.col;ctx.fillRect(px+2,py+2,TILE-5,TILE-5);
+    ctx.strokeStyle=b.broken?"#ff4040":b.active?"#bfffcf":"#0008";
+    ctx.lineWidth=1.5;ctx.strokeRect(px+2,py+2,TILE-5,TILE-5);
+    ctx.font=(TILE-10)+"px serif";ctx.textAlign="center";ctx.textBaseline="middle";
+    ctx.fillText(d.ic,px+TILE/2,py+TILE/2+1);
+    if(b.broken){ctx.fillStyle="#ff4040";ctx.font="10px sans-serif";ctx.fillText("!",px+TILE-6,py+7)}});
+  // colonists (wander animation)
+  S.colonists.forEach((c,i)=>{
+    if(Math.random()<.01){c.tx=Math.max(0,Math.min(MAP-1,c.x+((Math.random()*7|0)-3)));c.ty=Math.max(0,Math.min(MAP-1,c.y+((Math.random()*7|0)-3)))}
+    c.x+=(c.tx-c.x)*.02;c.y+=(c.ty-c.y)*.02;
+    ctx.fillStyle=c.sick?"#ffcf7a":"#fff";
+    ctx.beginPath();ctx.arc(c.x*TILE+TILE/2,c.y*TILE+TILE/2,4.5,0,7);ctx.fill();
+    ctx.strokeStyle="#4fc3f7";ctx.lineWidth=1.5;ctx.stroke();});
+  // ghost
+  if(selBuild&&hoverTile){const ok=placeOK(selBuild,hoverTile.x,hoverTile.y)&&canAfford(selBuild);
+    ctx.fillStyle=ok?"#4fc3f766":"#ff404066";
+    ctx.fillRect(hoverTile.x*TILE,hoverTile.y*TILE,TILE,TILE);}
+  // night / weather overlay
+  ctx.setTransform(1,0,0,1,0,0);
+  const h=S.hour;let dark=0;
+  if(h<5)dark=.55; else if(h<7)dark=.55*(7-h)/2; else if(h>=19&&h<21)dark=.55*(h-19)/2; else if(h>=21)dark=.55;
+  if(dark>0){ctx.fillStyle=`rgba(4,8,25,${dark})`;ctx.fillRect(0,0,cv.width,cv.height)}
+  if(S.storm){ctx.fillStyle="rgba(190,140,70,.16)";ctx.fillRect(0,0,cv.width,cv.height)}
+  if(S.flare){ctx.fillStyle="rgba(255,200,80,.10)";ctx.fillRect(0,0,cv.width,cv.height)}
+  drawMini();
+}
+const mm=$("minimap"),mctx=mm.getContext("2d");
+function drawMini(){
+  const s=mm.width/MAP;
+  for(let y=0;y<MAP;y++)for(let x=0;x<MAP;x++){mctx.fillStyle=TCOL[map[y][x]];mctx.fillRect(x*s,y*s,s,s)}
+  mctx.fillStyle="#fff";S.buildings.forEach(b=>mctx.fillRect(b.x*s,b.y*s,s,s));
+  mctx.strokeStyle="#4fc3f7";mctx.lineWidth=1;
+  mctx.strokeRect(cam.x/TILE*s,cam.y/TILE*s,cv.width/cam.z/TILE*s,cv.height/cam.z/TILE*s);
+}
+mm.onclick=e=>{const r=mm.getBoundingClientRect();
+  cam.x=((e.clientX-r.left)/r.width*MAP)*TILE-cv.width/cam.z/2;
+  cam.y=((e.clientY-r.top)/r.height*MAP)*TILE-cv.height/cam.z/2;};
+
+// ============================== LOOP ==============================
+function frame(t){
+  const dt=t-lastT;lastT=t;
+  const sp=6;
+  if(keys.w)cam.y-=sp;if(keys.s)cam.y+=sp;if(keys.a)cam.x-=sp;if(keys.d)cam.x+=sp;
+  if(S.speed>0){acc+=dt*S.speed;while(acc>=HOUR_MS){acc-=HOUR_MS;tickHour()}}
+  draw();
+  requestAnimationFrame(frame);
+}
+// init
+const saved=localStorage.getItem("spacecolony");
+if(saved){try{const o=JSON.parse(saved);S=o.S;map=o.map;}catch(e){newGame()}}else newGame();
+if(!S)newGame();
+cam.x=(MAP>>1)*TILE-innerWidth/2;cam.y=(MAP>>1)*TILE-innerHeight/2;
+refreshBuild();refreshHud();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "id": "space-colony",
+  "name": "Space Colony",
+  "version": "1.0.0",
+  "description": "Build and manage a human settlement on an unexplored planet. Balance power, oxygen, water and food, research new tech, automate production, and survive random events like meteor showers and dust storms.",
+  "icon": "rocket_launch",
+  "category": "Games",
+  "details": "Land on a procedurally generated planet with 3 colonists, a small battery, a solar panel and basic materials. Expand your base tile by tile: solar, wind, geothermal and nuclear power; oxygen generators, water extractors and recyclers; greenhouses and hydroponic farms; mining and crystal rigs; labs, medical bays and living quarters.\n\nColonists have five skills (engineering, science, farming, medicine, mining) that grow with experience and boost matching production, plus five needs (hunger, oxygen, sleep, happiness, health) you need to keep balanced.\n\nUnlock a 10-tech research tree across Energy, Biology, Engineering, Robotics and Space, automate production with drone bays, and trade surplus crystal with Earth via an orbital trade beacon. Watch out for dust storms, solar flares, meteor strikes, equipment breakdowns and colonist illness — pause or fast-forward time (1x/2x/4x) as needed.",
+  "screenshots": []
+}
