@@ -47,18 +47,16 @@ class _SignedOutBody extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'Sign in to a luma sync server to back up features to your own '
-          'server and see them on other devices. Everything is encrypted on '
-          'this device before it is uploaded — the server can never read '
-          'your data. Nothing is synced until you turn it on per feature.\n\n'
-          'Don\'t want a server? The Devices section below can sync straight '
-          'between devices over Wi-Fi with just an email and password.',
+          'Set up an account to sync features between devices. Just an '
+          'email and password — no server needed. Everything is encrypted '
+          'on this device before it leaves; nothing is synced until you turn '
+          'it on per feature.',
           style: TextStyle(color: luma.textMuted, fontSize: 12, height: 1.5),
         ),
         if (sync.requiresReauth) ...[
           const SizedBox(height: 10),
           Text(
-            'Your session expired — please sign in again.',
+            'Your cloud session expired — please sign in again.',
             style: TextStyle(color: Colors.orange.shade400, fontSize: 12),
           ),
         ],
@@ -66,8 +64,8 @@ class _SignedOutBody extends StatelessWidget {
         Align(
           alignment: Alignment.centerLeft,
           child: LumaPrimaryButton(
-            label: 'Sign in or create account',
-            icon: Icons.cloud_rounded,
+            label: 'Set up account',
+            icon: Icons.person_add_rounded,
             onTap: () => showDialog<void>(
               context: context,
               builder: (_) => _AccountDialog(sync: sync),
@@ -410,12 +408,11 @@ class _AccountDialogState extends State<_AccountDialog> {
   final _password = TextEditingController();
   final _confirm = TextEditingController();
 
-  // Existing users editing an already-configured server see the field right
-  // away; everyone else sees a button first — most people get here via a
-  // local (serverless) account and don't need a server field at all.
-  late bool _showServerField = _server.text.isNotEmpty;
+  // true = cloud mode (server field visible, sign in / register tabs).
+  // false = local mode (no server, just setLocalAccount).
+  late bool _cloudMode = _server.text.isNotEmpty;
 
-  int _mode = 0; // 0 = sign in, 1 = create account
+  int _mode = 0; // 0 = sign in (cloud), 1 = create account (cloud)
   bool _busy = false;
   String? _error;
 
@@ -429,37 +426,26 @@ class _AccountDialogState extends State<_AccountDialog> {
   }
 
   Future<void> _submit() async {
-    if (!_showServerField || _server.text.trim().isEmpty) {
-      setState(() {
-        _showServerField = true;
-        _error = 'Add a cloud server first.';
-      });
-      return;
-    }
-    final urlError = SyncApi.validateServerUrl(_server.text);
-    if (urlError != null) {
-      setState(() {
-        _showServerField = true;
-        _error = urlError;
-      });
-      return;
-    }
+    // ---- Common validation ------------------------------------------------
     if (_email.text.trim().isEmpty || !_email.text.contains('@')) {
       setState(() => _error = 'Enter a valid email address.');
       return;
     }
-    if (_mode == 1) {
-      if (_password.text.length < 10) {
-        setState(() => _error =
-            'Use at least 10 characters — this password also protects your '
-            'encrypted data.');
-        return;
-      }
-      if (_password.text != _confirm.text) {
-        setState(() => _error = 'Passwords do not match.');
-        return;
-      }
-    } else if (_password.text.isEmpty) {
+    if (_password.text.length < 10) {
+      setState(() => _error =
+          'Use at least 10 characters — this password protects your '
+          'encrypted data.');
+      return;
+    }
+    if (!_cloudMode && _password.text != _confirm.text) {
+      setState(() => _error = 'Passwords do not match.');
+      return;
+    }
+    if (_cloudMode && _mode == 1 && _password.text != _confirm.text) {
+      setState(() => _error = 'Passwords do not match.');
+      return;
+    }
+    if (_cloudMode && _mode == 0 && _password.text.isEmpty) {
       setState(() => _error = 'Enter your password.');
       return;
     }
@@ -469,15 +455,29 @@ class _AccountDialogState extends State<_AccountDialog> {
       _error = null;
     });
     try {
-      if (_mode == 0) {
-        await widget.sync.signIn(
-          serverUrl: _server.text,
-          email: _email.text,
-          password: _password.text,
-        );
+      if (_cloudMode) {
+        // ---- Cloud path -------------------------------------------------
+        final urlError = SyncApi.validateServerUrl(_server.text);
+        if (urlError != null) {
+          setState(() => _error = urlError);
+          return;
+        }
+        if (_mode == 0) {
+          await widget.sync.signIn(
+            serverUrl: _server.text,
+            email: _email.text,
+            password: _password.text,
+          );
+        } else {
+          await widget.sync.register(
+            serverUrl: _server.text,
+            email: _email.text,
+            password: _password.text,
+          );
+        }
       } else {
-        await widget.sync.register(
-          serverUrl: _server.text,
+        // ---- Local (serverless) path ------------------------------------
+        await widget.sync.setLocalAccount(
           email: _email.text,
           password: _password.text,
         );
@@ -502,7 +502,9 @@ class _AccountDialogState extends State<_AccountDialog> {
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: luma.border),
       ),
-      title: Text(_mode == 0 ? 'Sign in' : 'Create account',
+      title: Text(_cloudMode
+          ? (_mode == 0 ? 'Sign in' : 'Create account')
+          : 'Set up account',
           style: TextStyle(color: luma.textPrimary)),
       content: SizedBox(
         width: 400,
@@ -511,16 +513,25 @@ class _AccountDialogState extends State<_AccountDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              LumaSegmentedTabs(
-                tabs: const ['Sign in', 'Create account'],
-                selectedIndex: _mode,
-                onSelect: (i) => setState(() {
-                  _mode = i;
-                  _error = null;
-                }),
-              ),
-              const SizedBox(height: 16),
-              if (_showServerField) ...[
+              if (_cloudMode) ...[
+                LumaSegmentedTabs(
+                  tabs: const ['Sign in', 'Create account'],
+                  selectedIndex: _mode,
+                  onSelect: (i) => setState(() {
+                    _mode = i;
+                    _error = null;
+                  }),
+                ),
+                const SizedBox(height: 16),
+              ] else
+                Text(
+                  'Enter an email and password. Use the exact same ones on '
+                  'every device you want to pair — they never leave this '
+                  'device or touch a server.',
+                  style: TextStyle(color: luma.textMuted, fontSize: 12),
+                ),
+
+              if (_cloudMode) ...[
                 TextField(
                   controller: _server,
                   enabled: !_busy,
@@ -537,22 +548,25 @@ class _AccountDialogState extends State<_AccountDialog> {
                                 size: 18, color: luma.textMuted),
                             onPressed: () => setState(() {
                               _server.clear();
-                              _showServerField = false;
+                              _cloudMode = false;
                               _error = null;
                             }),
                           ),
                   ),
                 ),
               ] else
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: LumaGhostButton(
-                    label: 'Add cloud server',
-                    icon: Icons.add_rounded,
-                    onTap: () => setState(() => _showServerField = true),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: LumaGhostButton(
+                      label: 'Use a cloud server instead',
+                      icon: Icons.cloud_rounded,
+                      onTap: () => setState(() => _cloudMode = true),
+                    ),
                   ),
                 ),
-              const SizedBox(height: 12),
+
               TextField(
                 controller: _email,
                 enabled: !_busy,
@@ -567,28 +581,30 @@ class _AccountDialogState extends State<_AccountDialog> {
                 obscureText: true,
                 style: TextStyle(color: luma.textPrimary, fontSize: 14),
                 decoration: _fieldDecoration(context, 'Password'),
-                onSubmitted: (_) => _mode == 0 ? _submit() : null,
+                onSubmitted: (_) =>
+                    _cloudMode && _mode == 0 ? _submit() : null,
               ),
-              if (_mode == 1) ...[
+              // Confirm field: always shown for local mode and cloud register.
+              if (!_cloudMode || _mode == 1) ...[
                 const SizedBox(height: 12),
                 TextField(
                   controller: _confirm,
                   enabled: !_busy,
                   obscureText: true,
-                  style: TextStyle(color: luma.textPrimary, fontSize: 14),
+                  style:
+                      TextStyle(color: luma.textPrimary, fontSize: 14),
                   decoration: _fieldDecoration(context, 'Confirm password'),
+                  onSubmitted: (_) => _submit(),
                 ),
                 const SizedBox(height: 12),
-                Text(
-                  'Your password encrypts everything before it leaves this '
-                  'device. If you forget it, your synced data cannot be '
-                  'recovered — there is no reset.',
-                  style: TextStyle(
-                      color: Colors.orange.shade400,
-                      fontSize: 12,
-                      height: 1.4),
-                ),
               ],
+              Text(
+                'Your password encrypts everything before it leaves this '
+                'device. If you forget it, your synced data cannot be '
+                'recovered — there is no reset.',
+                style: TextStyle(
+                    color: Colors.orange.shade400, fontSize: 12, height: 1.4),
+              ),
               if (_error != null) ...[
                 const SizedBox(height: 12),
                 Text(_error!,
@@ -607,10 +623,13 @@ class _AccountDialogState extends State<_AccountDialog> {
       actions: [
         TextButton(
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
-          child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+          child:
+              Text('Cancel', style: TextStyle(color: luma.textSecondary)),
         ),
         LumaPrimaryButton(
-          label: _mode == 0 ? 'Sign in' : 'Create account',
+          label: _cloudMode
+              ? (_mode == 0 ? 'Sign in' : 'Create account')
+              : 'Set up',
           loading: _busy,
           onTap: _busy ? null : _submit,
         ),
