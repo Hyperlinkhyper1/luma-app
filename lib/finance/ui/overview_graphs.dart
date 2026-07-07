@@ -48,8 +48,8 @@ class CategorySpendingChart extends StatelessWidget {
       topEntries.add(MapEntry(null, otherSum)); // null means 'Other'
     }
 
-    return AspectRatio(
-      aspectRatio: 1.5,
+    return SizedBox(
+      height: 120,
       child: PieChart(
         PieChartData(
           sectionsSpace: 2,
@@ -115,8 +115,8 @@ class IncomeVsExpenseChart extends StatelessWidget {
     // Add 10% padding
     maxY = maxY * 1.1;
 
-    return AspectRatio(
-      aspectRatio: 1.5,
+    return SizedBox(
+      height: 120,
       child: BarChart(
         BarChartData(
           alignment: BarChartAlignment.spaceAround,
@@ -255,8 +255,8 @@ class NetWorthChart extends StatelessWidget {
       maxY += diff * 0.1;
     }
 
-    return AspectRatio(
-      aspectRatio: 1.5,
+    return SizedBox(
+      height: 120,
       child: LineChart(
         LineChartData(
           gridData: FlGridData(
@@ -313,8 +313,8 @@ class _EmptyGraph extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 1.5,
+    return SizedBox(
+      height: 120,
       child: Center(
         child: Text(
           message,
