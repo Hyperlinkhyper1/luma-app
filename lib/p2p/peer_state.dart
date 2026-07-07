@@ -35,6 +35,10 @@ class PeerSyncState {
   /// Last connection time per peer id, for UI display ("last synced 2h ago").
   final Map<String, int> lastSeenMs = {};
 
+  /// The local port this device prefers to listen on. Reused across restarts
+  /// so mDNS caches on other devices remain valid.
+  int listenPort = 0;
+
   Map<String, dynamic> toJson() => {
         'deviceId': deviceId,
         'deviceName': deviceName,
@@ -42,6 +46,7 @@ class PeerSyncState {
         'autoSync': autoSync,
         'trustedPeerIds': trustedPeerIds.toList(),
         'lastSeenMs': lastSeenMs,
+        'listenPort': listenPort,
       };
 
   static Future<PeerSyncState> load({String? fallbackName}) async {
@@ -59,6 +64,7 @@ class PeerSyncState {
     }
 
     final state = PeerSyncState._(file);
+    state.listenPort = data['listenPort'] as int? ?? 0;
     state.deviceId = data['deviceId'] as String? ?? _randomId();
     state.deviceName =
         data['deviceName'] as String? ?? fallbackName ?? _platformLabel();

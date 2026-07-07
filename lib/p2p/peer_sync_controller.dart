@@ -116,7 +116,11 @@ class PeerSyncController extends ChangeNotifier {
     await _state.save();
 
     try {
-      final port = await _listener.start();
+      final port = await _listener.start(_state.listenPort);
+      if (port != _state.listenPort) {
+        _state.listenPort = port;
+        await _state.save();
+      }
       await _discovery.start(
         instanceName: _state.deviceId,
         port: port,

@@ -40,13 +40,27 @@ class PeerListener {
   int get port => _port;
   bool get isRunning => _server != null;
 
-  /// Binds to all interfaces on an OS-assigned port. Returns the port.
-  Future<int> start() async {
+  /// Binds to [preferredPort] if provided and > 0. If that fails, or if it's 0,
+  /// binds to an OS-assigned port. Returns the bound port.
+  Future<int> start([int preferredPort = 0]) async {
     await stop();
     if (_factory == null) {
       throw StateError('PeerListener.factory not set before start()');
     }
-    _server = await ServerSocket.bind(InternetAddress.anyIPv4, 0);
+    try {
+      if (preferredPort > 0) {
+        _server = await ServerSocket.bind(InternetAddress.anyIPv4, preferredPort);
+      } else {
+        _server = await ServerSocket.bind(InternetAddress.anyIPv4, 0);
+      }
+    } catch (_) {
+      // If preferredPort was in use or unavailable, fallback to OS-assigned port.
+      if (preferredPort > 0) {
+        _server = await ServerSocket.bind(InternetAddress.anyIPv4, 0);
+      } else {
+        rethrow;
+      }
+    }
     _port = _server!.port;
     _subscription = _server!.listen(
       (socket) {
