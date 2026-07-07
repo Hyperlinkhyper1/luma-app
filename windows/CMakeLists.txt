@@ -32,6 +32,12 @@ set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_RELEASE}")
 # Use Unicode for all projects.
 add_definitions(-DUNICODE -D_UNICODE)
 
+# flutter_inappwebview_windows still includes <experimental/coroutine>, which
+# newer MSVC toolchains (VS 17.12+/18) hard-error on instead of just warning.
+# This is the escape hatch Microsoft's own error message documents; remove
+# once the plugin migrates to <coroutine>.
+add_definitions(-D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)
+
 # Compilation settings that should be applied to most targets.
 #
 # Be cautious about adding new options here, as plugins use this function by
