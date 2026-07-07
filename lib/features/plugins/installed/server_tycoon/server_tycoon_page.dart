@@ -3,6 +3,7 @@
 
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' hide Router;
 import 'package:flutter/services.dart';
 
@@ -63,14 +64,34 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
 
   /// Intersection of the segment [rect.center → target] with rect's border,
   /// so wires start/end on the tile edge instead of its center.
-  Offset _edgePoint(Rect rect, Offset target) {
-    final c = rect.center;
-    final dir = target - c;
-    if (dir.dx == 0 && dir.dy == 0) return c;
-    final sx = dir.dx != 0 ? (rect.width / 2) / dir.dx.abs() : double.infinity;
-    final sy = dir.dy != 0 ? (rect.height / 2) / dir.dy.abs() : double.infinity;
-    final s = math.min(sx, sy);
-    return c + dir * s;
+  // Orthogonal wire route between two node rects: exits a side, bends at
+  // right angles, and only runs straight when the two ports already line up.
+  List<Offset> _wireRoute(Rect a, Rect b) {
+    const gap = 16.0;
+    // Enough horizontal room: exit the facing left/right sides.
+    if (b.left - a.right >= gap || a.left - b.right >= gap) {
+      final toRight = b.center.dx >= a.center.dx;
+      final start = Offset(toRight ? a.right : a.left, a.center.dy);
+      final end = Offset(toRight ? b.left : b.right, b.center.dy);
+      if ((start.dy - end.dy).abs() < 1) return [start, end];
+      final midX = (start.dx + end.dx) / 2;
+      return [start, Offset(midX, start.dy), Offset(midX, end.dy), end];
+    }
+    // Enough vertical room: exit the facing top/bottom sides.
+    if (b.top - a.bottom >= gap || a.top - b.bottom >= gap) {
+      final below = b.center.dy >= a.center.dy;
+      final start = Offset(a.center.dx, below ? a.bottom : a.top);
+      final end = Offset(b.center.dx, below ? b.top : b.bottom);
+      if ((start.dx - end.dx).abs() < 1) return [start, end];
+      final midY = (start.dy + end.dy) / 2;
+      return [start, Offset(start.dx, midY), Offset(end.dx, midY), end];
+    }
+    // Rects overlap on both axes: loop around the outside with a U-shape.
+    final toRight = b.center.dx >= a.center.dx;
+    final start = Offset(toRight ? a.right : a.left, a.center.dy);
+    final end = Offset(toRight ? b.right : b.left, b.center.dy);
+    final outX = toRight ? math.max(start.dx, end.dx) + gap : math.min(start.dx, end.dx) - gap;
+    return [start, Offset(outX, start.dy), Offset(outX, end.dy), end];
   }
 
   Widget _buildMain(BuildContext context) {
@@ -253,8 +274,7 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
                   return CustomPaint(
                     size: const Size(4000, 3000),
                     painter: _WirePainter(
-                      from: _edgePoint(rigRect, routerRect.center),
-                      to: _edgePoint(routerRect, rigRect.center),
+                      points: _wireRoute(rigRect, routerRect),
                       color: load.rigs[rig.rigId]?.localFactor == 1 && load.routers[rig.routerId]?.bandwidthFactor == 1
                           ? Colors.green.shade400
                           : Colors.red.shade400,
@@ -1411,8 +1431,7 @@ class _GridPainter extends CustomPainter {
 }
 
 class _WirePainter extends CustomPainter {
-  final Offset from;
-  final Offset to;
+  final List<Offset> points;
   final Color color;
   final Animation<double> pulse;
   final double utilization;
@@ -1420,8 +1439,7 @@ class _WirePainter extends CustomPainter {
   // repaint: pulse makes this painter re-run paint() on every animation tick
   // without rebuilding the surrounding widget tree.
   _WirePainter({
-    required this.from,
-    required this.to,
+    required this.points,
     required this.color,
     required this.pulse,
     this.utilization = 0,
@@ -1429,24 +1447,55 @@ class _WirePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (points.length < 2) return;
+    final path = Path()..moveTo(points.first.dx, points.first.dy);
+    for (final p in points.skip(1)) {
+      path.lineTo(p.dx, p.dy);
+    }
+    // Soft neon glow under the wire, then a bright core line.
+    final glowPaint = Paint()
+      ..color = color.withOpacity(0.25)
+      ..strokeWidth = 6
+      ..style = PaintingStyle.stroke
+      ..strokeJoin = StrokeJoin.round
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+    canvas.drawPath(path, glowPaint);
     final paint = Paint()
-      ..color = color.withOpacity(0.6)
-      ..strokeWidth = 1.5;
-    canvas.drawLine(from, to, paint);
+      ..color = color.withOpacity(0.9)
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke
+      ..strokeJoin = StrokeJoin.round;
+    canvas.drawPath(path, paint);
 
-    // Animated "packet flow" dashes -- denser and faster the more loaded the link is.
-    final totalLength = (to - from).distance;
+    // Animated "packet flow" dashes -- denser and faster the more loaded the
+    // link is. Dashes walk the full polyline, wrapping around corners.
+    var totalLength = 0.0;
+    for (var i = 1; i < points.length; i++) {
+      totalLength += (points[i] - points[i - 1]).distance;
+    }
     if (totalLength <= 0) return;
-    final direction = (to - from) / totalLength;
     final u = utilization.clamp(0, 1).toDouble();
     const dashLength = 6.0;
     final gapLength = 14.0 - 8.0 * u;
     final period = dashLength + gapLength;
     final speed = 1.0 + 3.0 * u;
     final dashPaint = Paint()
-      ..color = color.withOpacity(0.9)
-      ..strokeWidth = 2.5
+      ..color = Color.lerp(color, Colors.white, 0.55)!
+      ..strokeWidth = 3
       ..strokeCap = StrokeCap.round;
+
+    Offset pointAt(double d) {
+      var remaining = d;
+      for (var i = 1; i < points.length; i++) {
+        final segLen = (points[i] - points[i - 1]).distance;
+        if (remaining <= segLen || i == points.length - 1) {
+          if (segLen == 0) return points[i];
+          return points[i - 1] + (points[i] - points[i - 1]) * (remaining / segLen).clamp(0.0, 1.0);
+        }
+        remaining -= segLen;
+      }
+      return points.last;
+    }
 
     final offset = (pulse.value * period * speed) % period;
     var pos = -offset;
@@ -1454,7 +1503,7 @@ class _WirePainter extends CustomPainter {
       final segStart = pos.clamp(0.0, totalLength);
       final segEnd = (pos + dashLength).clamp(0.0, totalLength);
       if (segEnd > segStart) {
-        canvas.drawLine(from + direction * segStart, from + direction * segEnd, dashPaint);
+        canvas.drawLine(pointAt(segStart), pointAt(segEnd), dashPaint);
       }
       pos += period;
     }
@@ -1462,7 +1511,7 @@ class _WirePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _WirePainter oldDelegate) =>
-      from != oldDelegate.from || to != oldDelegate.to || color != oldDelegate.color || utilization != oldDelegate.utilization;
+      !listEquals(points, oldDelegate.points) || color != oldDelegate.color || utilization != oldDelegate.utilization;
 }
 
 // ── Modals ──
