@@ -55,6 +55,9 @@ dependencies:
   nsd: ^5.0.1
   network_info_plus: ^6.1.4
   flutter_inappwebview: ^6.1.5
+  win32: ^5.15.0
+  hotkey_manager: ^0.2.3
+  ffi: ^2.2.0
 
 dev_dependencies:
   flutter_test:

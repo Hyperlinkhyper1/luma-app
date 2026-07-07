@@ -5,6 +5,8 @@ import 'app/splash_screen.dart';
 import 'app/update/app_version.dart';
 import 'app/update/update_gate.dart';
 import 'app/window_controls.dart';
+import 'features/plugins/installed/auto_clicker/auto_clicker_repository.dart';
+import 'features/plugins/installed/auto_clicker/auto_clicker_scope.dart';
 import 'features/plugins/installed/mood_journal/data/mood_journal_database.dart';
 import 'features/plugins/installed/mood_journal/mood_journal_repository.dart';
 import 'features/plugins/installed/mood_journal/mood_journal_scope.dart';
@@ -95,6 +97,8 @@ class _LumaAppState extends State<LumaApp> {
   late final MoodJournalRepository _moodJournalRepository = MoodJournalRepository(_moodJournalDb);
   late final SchoolDatabase _schoolDb = SchoolDatabase();
   late final SchoolRepository _schoolRepository = SchoolRepository(_schoolDb);
+  late final AutoClickerRepository _autoClickerRepository =
+      AutoClickerRepository();
 
   // Optional server sync: every feature registers an adapter; nothing is
   // uploaded unless the user signs in AND enables the feature in Settings.
@@ -180,6 +184,7 @@ class _LumaAppState extends State<LumaApp> {
     super.initState();
     _sync.init();
     _peerSync.init();
+    _autoClickerRepository.init();
   }
 
   @override
@@ -197,6 +202,7 @@ class _LumaAppState extends State<LumaApp> {
     _moodJournalDb.close();
     _schoolDb.close();
     _serverTycoonRepository.dispose();
+    _autoClickerRepository.dispose();
     super.dispose();
   }
 
@@ -232,6 +238,8 @@ class _LumaAppState extends State<LumaApp> {
                       repository: _moodJournalRepository,
                       child: SchoolScope(
                       repository: _schoolRepository,
+                      child: AutoClickerScope(
+                      repository: _autoClickerRepository,
                       child: ListenableBuilder(
                       listenable: widget.settings,
                       builder: (context, _) {
@@ -247,6 +255,7 @@ class _LumaAppState extends State<LumaApp> {
                               bootstrap: _bootstrap, accentSeed: s.accentSeed),
                         );
                       },
+                    ),
                     ),
                     ),
                     ),

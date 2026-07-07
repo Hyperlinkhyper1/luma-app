@@ -111,6 +111,16 @@
       "version": "1.0.0"
     },
     {
+      "id": "auto-clicker",
+      "name": "Auto Clicker",
+      "description": "Automate mouse clicks at a set interval, with a global hotkey to start and stop from anywhere. Click at your cursor or a fixed spot, single or double, left/middle/right button, repeat forever or a set number of times.",
+      "icon": "ads_click",
+      "category": "Utility",
+      "tags": ["Utility", "Automation"],
+      "free": true,
+      "version": "1.0.0"
+    },
+    {
       "id": "school",
       "name": "School",
       "description": "Everything for school in one place: homework planner, flashcards with spaced repetition, a formula library, a study timer, an assignment tracker, GPA and grade calculators, citation generator, weekly timetable, and mind maps.",

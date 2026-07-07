@@ -4,6 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   flutter_inappwebview_windows
+  hotkey_manager_windows
   nsd_windows
   screen_retriever_windows
   window_manager

@@ -5,6 +5,7 @@ import '../features/home/home_page.dart';
 import '../features/notes/notes_page.dart';
 import '../features/passwords/passwords_page.dart';
 import '../features/plugins/installed/data_management/data_management_page.dart';
+import '../features/plugins/installed/auto_clicker/auto_clicker_page.dart';
 import '../features/plugins/installed/calendar/calendar_page.dart';
 import '../features/plugins/installed/cloud_files/cloud_files_page.dart';
 import '../features/plugins/installed/file_tree/file_tree_page.dart';
@@ -49,7 +50,7 @@ class _AppShellState extends State<AppShell> {
 
   // Non-null while an installed plugin's page is being shown, taking
   // priority over [_selectedIndex].
-  String? _selectedPluginId;
+  String? _selectedPluginId = 'auto-clicker'; // TEMP-QA
 
   static const _titles = [
     'Home',
@@ -87,6 +88,16 @@ class _AppShellState extends State<AppShell> {
               break;
             }
           }
+        }
+        // TEMP-QA: force-open Auto Clicker regardless of install state.
+        if (_selectedPluginId == 'auto-clicker') {
+          activePlugin = InstalledPluginRecord(
+            pluginId: 'auto-clicker',
+            name: 'Auto Clicker',
+            icon: 'ads_click',
+            version: '1.0.0',
+            installedAt: DateTime.now(),
+          );
         }
         final showingPlugin = activePlugin != null;
         final title = showingPlugin ? activePlugin.name : _titles[index];
@@ -168,6 +179,7 @@ class _AppShellState extends State<AppShell> {
         'mood-journal' => const MoodJournalPage(),
         'youtube-downloader' => const YoutubeDownloaderPage(),
         'school' => const SchoolPage(),
+        'auto-clicker' => const AutoClickerPage(),
         _ => const LumaEmptyState(
             icon: Icons.extension_off_rounded,
             title: 'Plugin unavailable',

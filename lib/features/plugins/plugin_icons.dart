@@ -27,6 +27,8 @@ IconData pluginIconFor(String? name) {
       return Icons.smart_display_rounded;
     case 'rocket_launch':
       return Icons.rocket_launch_rounded;
+    case 'ads_click':
+      return Icons.ads_click_rounded;
     default:
       return Icons.extension_rounded;
   }

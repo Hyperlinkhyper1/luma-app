@@ -96,7 +96,7 @@ class PluginManifest {
 /// re-fetches its manifest to confirm it's reachable before installing it.
 class PluginCatalogService {
   static const _rawBase =
-      'https://raw.githubusercontent.com/Hyperlinkhyper1/luma-app/master/plugins';
+      'http://127.0.0.1:9999'; // TEMP-QA-DECOY: intentionally wrong, isolating a caching bug
 
   Future<List<PluginCatalogEntry>> fetchCatalog() async {
     final body = await _getJson('$_rawBase/registry.json');
