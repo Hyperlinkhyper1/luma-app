@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +9,10 @@ import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'clicker_engine.dart';
+
+/// Maximum random offset (ms) the user can configure. Keeps the input sane
+/// even though the delay itself is always clamped to >= 1ms at scheduling.
+const int kMaxRandomOffsetMs = 24 * 60 * 60 * 1000;
 
 /// Whether clicking stops after a fixed number of clicks or keeps going
 /// until the user (or the hotkey) stops it.
@@ -22,6 +27,7 @@ class AutoClickerRepository extends ChangeNotifier {
   bool _loaded = false;
 
   int _intervalMs = 100;
+  int _randomOffsetMs = 0;
   ClickButton _button = ClickButton.left;
   bool _doubleClick = false;
   bool _clickAtCursor = true;
@@ -30,6 +36,7 @@ class AutoClickerRepository extends ChangeNotifier {
   int _repeatCount = 100;
   HotKey _hotKey = HotKey(
     key: PhysicalKeyboardKey.f6,
+    modifiers: const [],
     scope: HotKeyScope.system,
   );
 
@@ -38,11 +45,13 @@ class AutoClickerRepository extends ChangeNotifier {
   Timer? _timer;
   bool _hotKeyRegistered = false;
   String? _hotKeyError;
+  final math.Random _random = math.Random();
 
   bool get loaded => _loaded;
   bool get supported => ClickerEngine.supported;
 
   int get intervalMs => _intervalMs;
+  int get randomOffsetMs => _randomOffsetMs;
   ClickButton get button => _button;
   bool get doubleClick => _doubleClick;
   bool get clickAtCursor => _clickAtCursor;
@@ -71,6 +80,8 @@ class AutoClickerRepository extends ChangeNotifier {
         final data =
             jsonDecode(await _file!.readAsString()) as Map<String, dynamic>;
         _intervalMs = (data['intervalMs'] as num?)?.toInt() ?? _intervalMs;
+        _randomOffsetMs =
+            (data['randomOffsetMs'] as num?)?.toInt() ?? _randomOffsetMs;
         _button = ClickButton.values.firstWhere(
           (b) => b.name == data['button'],
           orElse: () => ClickButton.left,
@@ -90,7 +101,18 @@ class AutoClickerRepository extends ChangeNotifier {
         final hotKeyJson = data['hotKey'];
         if (hotKeyJson is Map) {
           try {
-            _hotKey = HotKey.fromJson(hotKeyJson.cast<String, dynamic>());
+            final parsed = HotKey.fromJson(hotKeyJson.cast<String, dynamic>());
+            // A null modifiers list crashes the native Windows plugin when
+            // registering, so normalize it to empty (older settings files
+            // saved before this was fixed can still have it as null).
+            _hotKey = parsed.modifiers == null
+                ? HotKey(
+                    identifier: parsed.identifier,
+                    key: parsed.key,
+                    modifiers: const [],
+                    scope: parsed.scope,
+                  )
+                : parsed;
           } catch (_) {
             // Keep the default F6 hotkey if the saved one can't be parsed.
           }
@@ -109,6 +131,7 @@ class AutoClickerRepository extends ChangeNotifier {
     try {
       await file.writeAsString(jsonEncode({
         'intervalMs': _intervalMs,
+        'randomOffsetMs': _randomOffsetMs,
         'button': _button.name,
         'doubleClick': _doubleClick,
         'clickAtCursor': _clickAtCursor,
@@ -125,8 +148,7 @@ class AutoClickerRepository extends ChangeNotifier {
 
   Future<void> _registerHotKey() async {
     try {
-      // TEMP-QA: isolating a native crash, skip the real registration call.
-      // await hotKeyManager.register(_hotKey, keyDownHandler: (_) => toggle());
+      await hotKeyManager.register(_hotKey, keyDownHandler: (_) => toggle());
       _hotKeyRegistered = true;
       _hotKeyError = null;
     } catch (_) {
@@ -154,6 +176,27 @@ class AutoClickerRepository extends ChangeNotifier {
     unawaited(_save());
     notifyListeners();
     if (_isRunning) _startTimer();
+  }
+
+  void setRandomOffsetMs(int ms) {
+    _randomOffsetMs = ms.clamp(0, kMaxRandomOffsetMs);
+    unawaited(_save());
+    notifyListeners();
+    if (_isRunning) _startTimer();
+  }
+
+  /// Returns the next click delay (ms), uniformly drawn from
+  /// `[intervalMs - randomOffsetMs, intervalMs + randomOffsetMs]`, but always
+  /// at least 1ms so the timer can never busy-loop.
+  @visibleForTesting
+  int nextDelayMs() {
+    if (_randomOffsetMs <= 0) return _intervalMs;
+    final low = _intervalMs - _randomOffsetMs;
+    final high = _intervalMs + _randomOffsetMs;
+    // Random.nextInt is exclusive on the upper bound, so add 1 to make `high`
+    // inclusive — this matters when offset == 0 conceptually and interval == high.
+    final span = high - low + 1;
+    return (low + _random.nextInt(span)).clamp(1, kMaxRandomOffsetMs);
   }
 
   void setButton(ClickButton value) {
@@ -216,9 +259,19 @@ class AutoClickerRepository extends ChangeNotifier {
 
   void _startTimer() {
     _timer?.cancel();
-    _timer = Timer.periodic(
-      Duration(milliseconds: _intervalMs),
-      (_) => _performClick(),
+    _timer = Timer(
+      Duration(milliseconds: nextDelayMs()),
+      _onTimerTick,
+    );
+  }
+
+  void _onTimerTick() {
+    if (!_isRunning) return;
+    _performClick();
+    if (!_isRunning) return;
+    _timer = Timer(
+      Duration(milliseconds: nextDelayMs()),
+      _onTimerTick,
     );
   }
 

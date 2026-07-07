@@ -25,6 +25,7 @@ class _AutoClickerPageState extends State<AutoClickerPage> {
   late final TextEditingController _minutesCtrl;
   late final TextEditingController _secondsCtrl;
   late final TextEditingController _millisCtrl;
+  late final TextEditingController _randomOffsetCtrl;
   late final TextEditingController _repeatCountCtrl;
   bool _controllersReady = false;
 
@@ -39,6 +40,7 @@ class _AutoClickerPageState extends State<AutoClickerPage> {
       _minutesCtrl.dispose();
       _secondsCtrl.dispose();
       _millisCtrl.dispose();
+      _randomOffsetCtrl.dispose();
       _repeatCountCtrl.dispose();
     }
     super.dispose();
@@ -54,6 +56,8 @@ class _AutoClickerPageState extends State<AutoClickerPage> {
     _minutesCtrl = TextEditingController(text: minutes == 0 ? '' : '$minutes');
     _secondsCtrl = TextEditingController(text: seconds == 0 ? '' : '$seconds');
     _millisCtrl = TextEditingController(text: '$millis');
+    _randomOffsetCtrl = TextEditingController(
+        text: repo.randomOffsetMs == 0 ? '' : '${repo.randomOffsetMs}');
     _repeatCountCtrl = TextEditingController(text: '${repo.repeatCount}');
     _controllersReady = true;
   }
@@ -65,6 +69,11 @@ class _AutoClickerPageState extends State<AutoClickerPage> {
     final ms = int.tryParse(_millisCtrl.text) ?? 0;
     final total = h * 3600000 + m * 60000 + s * 1000 + ms;
     repo.setIntervalMs(total <= 0 ? 1 : total);
+  }
+
+  void _onRandomOffsetChanged(AutoClickerRepository repo) {
+    final ms = int.tryParse(_randomOffsetCtrl.text) ?? 0;
+    repo.setRandomOffsetMs(ms < 0 ? 0 : ms);
   }
 
   void _pickLocation(AutoClickerRepository repo) {
@@ -252,6 +261,11 @@ class _AutoClickerPageState extends State<AutoClickerPage> {
   }
 
   Widget _intervalCard(LumaPalette luma, AutoClickerRepository repo) {
+    final offset = repo.randomOffsetMs;
+    final lowerBound = repo.intervalMs > offset ? repo.intervalMs - offset : 1;
+    final help = offset == 0
+        ? 'Adds ± randomness to each click delay. Leave 0 for exact timing.'
+        : 'Each click fires between $lowerBound and ${repo.intervalMs + offset} ms (clamped to ≥ 1 ms).';
     return LumaCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -279,6 +293,34 @@ class _AutoClickerPageState extends State<AutoClickerPage> {
                     controller: _millisCtrl, label: 'Millis', repo: repo),
               ),
             ],
+          ),
+          const SizedBox(height: 18),
+          _sectionLabel(luma, 'Random offset'),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 110,
+                child: TextField(
+                  controller: _randomOffsetCtrl,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: luma.textPrimary),
+                  decoration: _inputDecoration(luma)
+                      .copyWith(prefixText: '± ', prefixStyle: TextStyle(color: luma.textMuted)),
+                  onChanged: (_) => _onRandomOffsetChanged(repo),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text('milliseconds',
+                  style: TextStyle(color: luma.textSecondary, fontSize: 13)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            help,
+            style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
         ],
       ),

@@ -1,10 +1,10 @@
 {
   "id": "auto-clicker",
   "name": "Auto Clicker",
-  "version": "1.0.0",
-  "description": "Automate mouse clicks at a set interval, with a global hotkey to start and stop from anywhere. Click at your cursor or a fixed spot, single or double, left/middle/right button, repeat forever or a set number of times.",
+  "version": "1.1.0",
+  "description": "Automate mouse clicks at a set interval, with a global hotkey to start and stop from anywhere. Click at your cursor or a fixed spot, single or double, left/middle/right button, repeat forever or a set number of times. Add a random ± offset to make timing feel human.",
   "icon": "ads_click",
   "category": "Utility",
-  "details": "Set a click interval down to the millisecond, pick left, middle or right mouse button and single or double clicks, then choose where to click: wherever your cursor currently sits, or a fixed point you capture with the on-screen picker. Repeat forever or for an exact number of clicks.\n\nA global hotkey (F6 by default, rebindable) starts and stops clicking even while another window has focus, so you can automate clicks in a game or app without switching back to luma.",
+  "details": "Set a click interval down to the millisecond, pick left, middle or right mouse button and single or double clicks, then choose where to click: wherever your cursor currently sits, or a fixed point you capture with the on-screen picker. Repeat forever or for an exact number of clicks.\n\nAdd a random ± offset to the interval — with a 50 ms base and 30 ms offset each click fires somewhere between 20 and 80 ms — useful for games and apps that detect robotic timing.\n\nA global hotkey (F6 by default, rebindable) starts and stops clicking even while another window has focus, so you can automate clicks in a game or app without switching back to luma.",
   "screenshots": []
 }

@@ -102,6 +102,14 @@ class MetaItems extends Table {
   Set<Column> get primaryKey => {key};
 }
 
+/// User-configured graphs on the overview dashboard.
+class OverviewGraphs extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get graphType => text()();
+  TextColumn get dataSource => text()();
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+}
+
 @DriftDatabase(
   tables: [
     Categories,
@@ -112,6 +120,7 @@ class MetaItems extends Table {
     AllocationRules,
     Holdings,
     MetaItems,
+    OverviewGraphs,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -128,7 +137,7 @@ class AppDatabase extends _$AppDatabase {
             ));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -136,7 +145,30 @@ class AppDatabase extends _$AppDatabase {
           await m.createAll();
           await _seed();
         },
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.createTable(overviewGraphs);
+            await _seedGraphs();
+          }
+        },
       );
+
+  Future<void> _seedGraphs() async {
+    await batch((b) {
+      b.insertAll(
+        overviewGraphs,
+        seedOverviewGraphs
+            .asMap()
+            .entries
+            .map((e) => OverviewGraphsCompanion.insert(
+                  graphType: e.value.graphType,
+                  dataSource: e.value.dataSource,
+                  sortOrder: Value(e.key),
+                ))
+            .toList(),
+      );
+    });
+  }
 
   /// Seeds the default categories and known merchants on first launch.
   Future<void> _seed() async {
@@ -168,5 +200,7 @@ class AppDatabase extends _$AppDatabase {
             .toList(),
       );
     });
+
+    await _seedGraphs();
   }
 }

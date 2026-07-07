@@ -3432,6 +3432,306 @@ class MetaItemsCompanion extends UpdateCompanion<MetaItem> {
   }
 }
 
+class $OverviewGraphsTable extends OverviewGraphs
+    with TableInfo<$OverviewGraphsTable, OverviewGraph> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $OverviewGraphsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _graphTypeMeta = const VerificationMeta(
+    'graphType',
+  );
+  @override
+  late final GeneratedColumn<String> graphType = GeneratedColumn<String>(
+    'graph_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dataSourceMeta = const VerificationMeta(
+    'dataSource',
+  );
+  @override
+  late final GeneratedColumn<String> dataSource = GeneratedColumn<String>(
+    'data_source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, graphType, dataSource, sortOrder];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'overview_graphs';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<OverviewGraph> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('graph_type')) {
+      context.handle(
+        _graphTypeMeta,
+        graphType.isAcceptableOrUnknown(data['graph_type']!, _graphTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_graphTypeMeta);
+    }
+    if (data.containsKey('data_source')) {
+      context.handle(
+        _dataSourceMeta,
+        dataSource.isAcceptableOrUnknown(data['data_source']!, _dataSourceMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dataSourceMeta);
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  OverviewGraph map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return OverviewGraph(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      graphType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}graph_type'],
+      )!,
+      dataSource: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}data_source'],
+      )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+    );
+  }
+
+  @override
+  $OverviewGraphsTable createAlias(String alias) {
+    return $OverviewGraphsTable(attachedDatabase, alias);
+  }
+}
+
+class OverviewGraph extends DataClass implements Insertable<OverviewGraph> {
+  final int id;
+  final String graphType;
+  final String dataSource;
+  final int sortOrder;
+  const OverviewGraph({
+    required this.id,
+    required this.graphType,
+    required this.dataSource,
+    required this.sortOrder,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['graph_type'] = Variable<String>(graphType);
+    map['data_source'] = Variable<String>(dataSource);
+    map['sort_order'] = Variable<int>(sortOrder);
+    return map;
+  }
+
+  OverviewGraphsCompanion toCompanion(bool nullToAbsent) {
+    return OverviewGraphsCompanion(
+      id: Value(id),
+      graphType: Value(graphType),
+      dataSource: Value(dataSource),
+      sortOrder: Value(sortOrder),
+    );
+  }
+
+  factory OverviewGraph.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return OverviewGraph(
+      id: serializer.fromJson<int>(json['id']),
+      graphType: serializer.fromJson<String>(json['graphType']),
+      dataSource: serializer.fromJson<String>(json['dataSource']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'graphType': serializer.toJson<String>(graphType),
+      'dataSource': serializer.toJson<String>(dataSource),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+    };
+  }
+
+  OverviewGraph copyWith({
+    int? id,
+    String? graphType,
+    String? dataSource,
+    int? sortOrder,
+  }) => OverviewGraph(
+    id: id ?? this.id,
+    graphType: graphType ?? this.graphType,
+    dataSource: dataSource ?? this.dataSource,
+    sortOrder: sortOrder ?? this.sortOrder,
+  );
+  OverviewGraph copyWithCompanion(OverviewGraphsCompanion data) {
+    return OverviewGraph(
+      id: data.id.present ? data.id.value : this.id,
+      graphType: data.graphType.present ? data.graphType.value : this.graphType,
+      dataSource: data.dataSource.present
+          ? data.dataSource.value
+          : this.dataSource,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OverviewGraph(')
+          ..write('id: $id, ')
+          ..write('graphType: $graphType, ')
+          ..write('dataSource: $dataSource, ')
+          ..write('sortOrder: $sortOrder')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, graphType, dataSource, sortOrder);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is OverviewGraph &&
+          other.id == this.id &&
+          other.graphType == this.graphType &&
+          other.dataSource == this.dataSource &&
+          other.sortOrder == this.sortOrder);
+}
+
+class OverviewGraphsCompanion extends UpdateCompanion<OverviewGraph> {
+  final Value<int> id;
+  final Value<String> graphType;
+  final Value<String> dataSource;
+  final Value<int> sortOrder;
+  const OverviewGraphsCompanion({
+    this.id = const Value.absent(),
+    this.graphType = const Value.absent(),
+    this.dataSource = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+  });
+  OverviewGraphsCompanion.insert({
+    this.id = const Value.absent(),
+    required String graphType,
+    required String dataSource,
+    this.sortOrder = const Value.absent(),
+  }) : graphType = Value(graphType),
+       dataSource = Value(dataSource);
+  static Insertable<OverviewGraph> custom({
+    Expression<int>? id,
+    Expression<String>? graphType,
+    Expression<String>? dataSource,
+    Expression<int>? sortOrder,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (graphType != null) 'graph_type': graphType,
+      if (dataSource != null) 'data_source': dataSource,
+      if (sortOrder != null) 'sort_order': sortOrder,
+    });
+  }
+
+  OverviewGraphsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? graphType,
+    Value<String>? dataSource,
+    Value<int>? sortOrder,
+  }) {
+    return OverviewGraphsCompanion(
+      id: id ?? this.id,
+      graphType: graphType ?? this.graphType,
+      dataSource: dataSource ?? this.dataSource,
+      sortOrder: sortOrder ?? this.sortOrder,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (graphType.present) {
+      map['graph_type'] = Variable<String>(graphType.value);
+    }
+    if (dataSource.present) {
+      map['data_source'] = Variable<String>(dataSource.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OverviewGraphsCompanion(')
+          ..write('id: $id, ')
+          ..write('graphType: $graphType, ')
+          ..write('dataSource: $dataSource, ')
+          ..write('sortOrder: $sortOrder')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3446,6 +3746,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final $HoldingsTable holdings = $HoldingsTable(this);
   late final $MetaItemsTable metaItems = $MetaItemsTable(this);
+  late final $OverviewGraphsTable overviewGraphs = $OverviewGraphsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3459,6 +3760,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     allocationRules,
     holdings,
     metaItems,
+    overviewGraphs,
   ];
 }
 
@@ -6891,6 +7193,185 @@ typedef $$MetaItemsTableProcessedTableManager =
       MetaItem,
       PrefetchHooks Function()
     >;
+typedef $$OverviewGraphsTableCreateCompanionBuilder =
+    OverviewGraphsCompanion Function({
+      Value<int> id,
+      required String graphType,
+      required String dataSource,
+      Value<int> sortOrder,
+    });
+typedef $$OverviewGraphsTableUpdateCompanionBuilder =
+    OverviewGraphsCompanion Function({
+      Value<int> id,
+      Value<String> graphType,
+      Value<String> dataSource,
+      Value<int> sortOrder,
+    });
+
+class $$OverviewGraphsTableFilterComposer
+    extends Composer<_$AppDatabase, $OverviewGraphsTable> {
+  $$OverviewGraphsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get graphType => $composableBuilder(
+    column: $table.graphType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get dataSource => $composableBuilder(
+    column: $table.dataSource,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$OverviewGraphsTableOrderingComposer
+    extends Composer<_$AppDatabase, $OverviewGraphsTable> {
+  $$OverviewGraphsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get graphType => $composableBuilder(
+    column: $table.graphType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get dataSource => $composableBuilder(
+    column: $table.dataSource,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$OverviewGraphsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $OverviewGraphsTable> {
+  $$OverviewGraphsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get graphType =>
+      $composableBuilder(column: $table.graphType, builder: (column) => column);
+
+  GeneratedColumn<String> get dataSource => $composableBuilder(
+    column: $table.dataSource,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+}
+
+class $$OverviewGraphsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $OverviewGraphsTable,
+          OverviewGraph,
+          $$OverviewGraphsTableFilterComposer,
+          $$OverviewGraphsTableOrderingComposer,
+          $$OverviewGraphsTableAnnotationComposer,
+          $$OverviewGraphsTableCreateCompanionBuilder,
+          $$OverviewGraphsTableUpdateCompanionBuilder,
+          (
+            OverviewGraph,
+            BaseReferences<_$AppDatabase, $OverviewGraphsTable, OverviewGraph>,
+          ),
+          OverviewGraph,
+          PrefetchHooks Function()
+        > {
+  $$OverviewGraphsTableTableManager(
+    _$AppDatabase db,
+    $OverviewGraphsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$OverviewGraphsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$OverviewGraphsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$OverviewGraphsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> graphType = const Value.absent(),
+                Value<String> dataSource = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+              }) => OverviewGraphsCompanion(
+                id: id,
+                graphType: graphType,
+                dataSource: dataSource,
+                sortOrder: sortOrder,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String graphType,
+                required String dataSource,
+                Value<int> sortOrder = const Value.absent(),
+              }) => OverviewGraphsCompanion.insert(
+                id: id,
+                graphType: graphType,
+                dataSource: dataSource,
+                sortOrder: sortOrder,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$OverviewGraphsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $OverviewGraphsTable,
+      OverviewGraph,
+      $$OverviewGraphsTableFilterComposer,
+      $$OverviewGraphsTableOrderingComposer,
+      $$OverviewGraphsTableAnnotationComposer,
+      $$OverviewGraphsTableCreateCompanionBuilder,
+      $$OverviewGraphsTableUpdateCompanionBuilder,
+      (
+        OverviewGraph,
+        BaseReferences<_$AppDatabase, $OverviewGraphsTable, OverviewGraph>,
+      ),
+      OverviewGraph,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -6910,4 +7391,6 @@ class $AppDatabaseManager {
       $$HoldingsTableTableManager(_db, _db.holdings);
   $$MetaItemsTableTableManager get metaItems =>
       $$MetaItemsTableTableManager(_db, _db.metaItems);
+  $$OverviewGraphsTableTableManager get overviewGraphs =>
+      $$OverviewGraphsTableTableManager(_db, _db.overviewGraphs);
 }

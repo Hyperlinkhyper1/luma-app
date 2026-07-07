@@ -102,3 +102,15 @@ final List<SeedMerchant> seedMerchants = [
   const SeedMerchant('IKEA', _shopping),
   const SeedMerchant('Apple', _shopping),
 ];
+
+class SeedOverviewGraph {
+  const SeedOverviewGraph(this.graphType, this.dataSource);
+  final String graphType;
+  final String dataSource;
+}
+
+final List<SeedOverviewGraph> seedOverviewGraphs = [
+  const SeedOverviewGraph('line', 'net_worth'),
+  const SeedOverviewGraph('pie', 'category_spending'),
+  const SeedOverviewGraph('bar', 'income_vs_expense'),
+];

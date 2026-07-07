@@ -7,6 +7,7 @@ import '../finance_scope.dart';
 import '../logic/finance_logic.dart';
 import '../logic/money.dart';
 import 'lookups.dart';
+import 'overview_graphs.dart';
 
 /// The total overview: net worth, this month's flows, pots, weekly spending
 /// review, investments and upcoming recurring entries.
@@ -26,12 +27,16 @@ class OverviewTab extends StatelessWidget {
             stream: repo.watchRecurring(),
             builder: (context, recurring) => StreamData<List<FinanceTransaction>>(
               stream: repo.watchTransactions(),
-              builder: (context, txns) => _OverviewBody(
-                pots: pots,
-                categories: categories,
-                holdings: holdings,
-                recurring: recurring,
-                txns: txns,
+              builder: (context, txns) => StreamData<List<OverviewGraph>>(
+                stream: repo.watchOverviewGraphs(),
+                builder: (context, graphs) => _OverviewBody(
+                  pots: pots,
+                  categories: categories,
+                  holdings: holdings,
+                  recurring: recurring,
+                  txns: txns,
+                  graphs: graphs,
+                ),
               ),
             ),
           ),
@@ -41,13 +46,14 @@ class OverviewTab extends StatelessWidget {
   }
 }
 
-class _OverviewBody extends StatelessWidget {
+class _OverviewBody extends StatefulWidget {
   const _OverviewBody({
     required this.pots,
     required this.categories,
     required this.holdings,
     required this.recurring,
     required this.txns,
+    required this.graphs,
   });
 
   final List<Pot> pots;
@@ -55,24 +61,32 @@ class _OverviewBody extends StatelessWidget {
   final List<Holding> holdings;
   final List<RecurringRule> recurring;
   final List<FinanceTransaction> txns;
+  final List<OverviewGraph> graphs;
+
+  @override
+  State<_OverviewBody> createState() => _OverviewBodyState();
+}
+
+class _OverviewBodyState extends State<_OverviewBody> {
+  bool _isEditing = false;
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final balances = computeBalances(txns);
+    final balances = computeBalances(widget.txns);
 
     final now = DateTime.now();
     final monthStart = DateTime(now.year, now.month, 1);
     final nextMonth = DateTime(now.year, now.month + 1, 1);
     var monthIncome = 0;
     var monthExpense = 0;
-    for (final t in txns) {
+    for (final t in widget.txns) {
       if (t.date.isBefore(monthStart) || !t.date.isBefore(nextMonth)) continue;
       if (t.kind == TxnKind.income) monthIncome += t.amountCents;
       if (t.kind == TxnKind.expense) monthExpense += t.amountCents;
     }
 
-    final portfolio = holdings.fold<int>(0, (sum, h) {
+    final portfolio = widget.holdings.fold<int>(0, (sum, h) {
       final price = h.lastPriceCents ?? h.avgCostCents;
       return sum + (price * h.shares).round();
     });
@@ -112,9 +126,33 @@ class _OverviewBody extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(child: _SectionTitle('Dashboard')),
+              TextButton.icon(
+                onPressed: () => setState(() => _isEditing = !_isEditing),
+                icon: Icon(_isEditing ? Icons.check_rounded : Icons.edit_rounded, size: 16),
+                label: Text(_isEditing ? 'Done' : 'Edit'),
+                style: TextButton.styleFrom(
+                  foregroundColor: luma.textSecondary,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  minimumSize: Size.zero,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _DashboardGraphs(
+            graphs: widget.graphs,
+            txns: widget.txns,
+            categories: widget.categories,
+            holdings: widget.holdings,
+            isEditing: _isEditing,
+          ),
+          const SizedBox(height: 24),
           _SectionTitle('Pots'),
           const SizedBox(height: 12),
-          if (pots.isEmpty)
+          if (widget.pots.isEmpty)
             _MutedHint(
               'No pots yet — create one in the Pots tab to start dividing your money.',
             )
@@ -123,24 +161,174 @@ class _OverviewBody extends StatelessWidget {
               spacing: 12,
               runSpacing: 12,
               children: [
-                for (final pot in pots)
+                for (final pot in widget.pots)
                   _PotChip(pot: pot, balanceCents: balances.balanceForPot(pot.id)),
               ],
             ),
           const SizedBox(height: 24),
           _SectionTitle('This week'),
           const SizedBox(height: 12),
-          _WeeklyReview(txns: txns, categories: categories, now: now),
-          if (holdings.isNotEmpty) ...[
+          _WeeklyReview(txns: widget.txns, categories: widget.categories, now: now),
+          if (widget.holdings.isNotEmpty) ...[
             const SizedBox(height: 24),
             _SectionTitle('Investments'),
             const SizedBox(height: 12),
-            _InvestmentsSummary(holdings: holdings),
+            _InvestmentsSummary(holdings: widget.holdings),
           ],
           const SizedBox(height: 24),
           _SectionTitle('Upcoming'),
           const SizedBox(height: 12),
-          _UpcomingRecurring(recurring: recurring),
+          _UpcomingRecurring(recurring: widget.recurring),
+        ],
+      ),
+    );
+  }
+}
+
+class _DashboardGraphs extends StatelessWidget {
+  const _DashboardGraphs({
+    required this.graphs,
+    required this.txns,
+    required this.categories,
+    required this.holdings,
+    required this.isEditing,
+  });
+
+  final List<OverviewGraph> graphs;
+  final List<FinanceTransaction> txns;
+  final List<Category> categories;
+  final List<Holding> holdings;
+  final bool isEditing;
+
+  @override
+  Widget build(BuildContext context) {
+    if (graphs.isEmpty && !isEditing) {
+      return const SizedBox();
+    }
+
+    return Column(
+      children: [
+        if (isEditing) ...[
+          // Reorderable list inside a finite height or just standard column for simplicity
+          ReorderableListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: graphs.length,
+            onReorder: (oldIndex, newIndex) {
+              if (newIndex > oldIndex) newIndex -= 1;
+              final list = List<OverviewGraph>.from(graphs);
+              final item = list.removeAt(oldIndex);
+              list.insert(newIndex, item);
+              FinanceScope.of(context).reorderOverviewGraphs(list);
+            },
+            itemBuilder: (context, index) {
+              final g = graphs[index];
+              return ListTile(
+                key: ValueKey(g.id),
+                title: Text(_titleFor(g)),
+                subtitle: Text(_subtitleFor(g)),
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  onPressed: () => FinanceScope.of(context).deleteOverviewGraph(g.id),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () => _showAddGraphDialog(context),
+            icon: const Icon(Icons.add),
+            label: const Text('Add Graph'),
+          ),
+        ] else ...[
+          for (final g in graphs) ...[
+            _GraphCard(
+              title: _titleFor(g),
+              child: _buildGraph(g),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ],
+      ],
+    );
+  }
+
+  String _titleFor(OverviewGraph g) {
+    if (g.dataSource == 'net_worth') return 'Net Worth Over Time';
+    if (g.dataSource == 'category_spending') return 'Spending by Category';
+    if (g.dataSource == 'income_vs_expense') return 'Income vs Expense';
+    return 'Unknown Graph';
+  }
+  
+  String _subtitleFor(OverviewGraph g) {
+    if (g.graphType == 'line') return 'Line Chart';
+    if (g.graphType == 'pie') return 'Pie Chart';
+    if (g.graphType == 'bar') return 'Bar Chart';
+    return 'Chart';
+  }
+
+  Widget _buildGraph(OverviewGraph g) {
+    if (g.dataSource == 'net_worth') {
+      return NetWorthChart(txns: txns, holdings: holdings);
+    } else if (g.dataSource == 'category_spending') {
+      return CategorySpendingChart(txns: txns, categories: categories);
+    } else if (g.dataSource == 'income_vs_expense') {
+      return IncomeVsExpenseChart(txns: txns);
+    }
+    return const SizedBox();
+  }
+  
+  void _showAddGraphDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add Graph'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: const Text('Net Worth Over Time'),
+              onTap: () {
+                FinanceScope.of(context).addOverviewGraph(graphType: 'line', dataSource: 'net_worth');
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              title: const Text('Spending by Category'),
+              onTap: () {
+                FinanceScope.of(context).addOverviewGraph(graphType: 'pie', dataSource: 'category_spending');
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              title: const Text('Income vs Expense'),
+              onTap: () {
+                FinanceScope.of(context).addOverviewGraph(graphType: 'bar', dataSource: 'income_vs_expense');
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GraphCard extends StatelessWidget {
+  const _GraphCard({required this.title, required this.child});
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return LumaCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(title,
+              style: TextStyle(color: context.luma.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 16),
+          child,
         ],
       ),
     );

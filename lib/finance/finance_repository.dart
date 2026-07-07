@@ -45,6 +45,10 @@ class FinanceRepository {
       (db.select(db.holdings)..orderBy([(h) => OrderingTerm(expression: h.ticker)]))
           .watch();
 
+  Stream<List<OverviewGraph>> watchOverviewGraphs() =>
+      (db.select(db.overviewGraphs)..orderBy([(g) => OrderingTerm(expression: g.sortOrder)]))
+          .watch();
+
   Future<List<Category>> allCategories() => db.select(db.categories).get();
   Future<List<Merchant>> allMerchants() =>
       (db.select(db.merchants)..orderBy([(m) => OrderingTerm(expression: m.name)]))
@@ -147,6 +151,34 @@ class FinanceRepository {
           lastPriceAt: Value(DateTime.now()),
         ),
       );
+
+  // ---- Overview Graphs ------------------------------------------------------
+
+  Future<int> addOverviewGraph({required String graphType, required String dataSource}) async {
+    final current = await (db.select(db.overviewGraphs)..orderBy([(g) => OrderingTerm(expression: g.sortOrder)])).get();
+    final nextOrder = current.isEmpty ? 0 : current.last.sortOrder + 1;
+    return db.into(db.overviewGraphs).insert(OverviewGraphsCompanion.insert(
+      graphType: graphType,
+      dataSource: dataSource,
+      sortOrder: Value(nextOrder),
+    ));
+  }
+
+  Future<void> deleteOverviewGraph(int id) =>
+      (db.delete(db.overviewGraphs)..where((g) => g.id.equals(id))).go();
+
+  Future<void> reorderOverviewGraphs(List<OverviewGraph> graphs) async {
+    await db.batch((b) {
+      for (var i = 0; i < graphs.length; i++) {
+        final g = graphs[i];
+        b.update(
+          db.overviewGraphs,
+          const OverviewGraphsCompanion().copyWith(sortOrder: Value(i)),
+          where: (t) => t.id.equals(g.id),
+        );
+      }
+    });
+  }
 
   // ---- Derived values -------------------------------------------------------
 
