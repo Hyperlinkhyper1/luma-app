@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../app/widgets.dart';
 import '../../../theme/luma_theme.dart';
-import '../../finance_scope.dart';
+import '../finance_scope.dart';
 import '../data/database.dart';
 import '../logic/finance_logic.dart';
 import '../logic/money.dart';
