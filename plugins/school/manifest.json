@@ -1,0 +1,10 @@
+{
+  "id": "school",
+  "name": "School",
+  "version": "1.0.0",
+  "description": "Everything for school in one place: homework planner, flashcards with spaced repetition, a formula library, a study timer, an assignment tracker, GPA and grade calculators, citation generator, weekly timetable, and mind maps.",
+  "icon": "school",
+  "category": "Productivity",
+  "details": "A single hub for schoolwork. Track homework and assignments by due date and subject, build a weekly class timetable, and log study sessions with a per-subject timer and time-by-subject chart.\n\nFlashcard decks use SM-2 spaced repetition (Again/Hard/Good/Easy) so review scheduling adapts to what you actually remember. The formula library is fully user-editable — add your own categorized formulas as a personal reference.\n\nThe GPA tab tracks term-by-term grade points and shows a trend line, plus a \"what do I need\" calculator that tells you the score required on remaining, weighted grade components to hit a target grade. Round it out with an APA/MLA/Chicago citation generator and a freeform mind map canvas for organizing ideas.",
+  "screenshots": []
+}

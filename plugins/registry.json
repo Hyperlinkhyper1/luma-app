@@ -99,6 +99,16 @@
       "tags": ["Utility", "Media"],
       "free": true,
       "version": "1.0.0"
+    },
+    {
+      "id": "school",
+      "name": "School",
+      "description": "Everything for school in one place: homework planner, flashcards with spaced repetition, a formula library, a study timer, an assignment tracker, GPA and grade calculators, citation generator, weekly timetable, and mind maps.",
+      "icon": "school",
+      "category": "Productivity",
+      "tags": ["Productivity", "Education"],
+      "free": true,
+      "version": "1.0.0"
     }
   ]
 }
