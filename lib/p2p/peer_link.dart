@@ -3,6 +3,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show debugPrint;
+
+import 'peer_debug_log.dart';
 import 'peer_protocol.dart';
 
 /// The lifecycle of one TCP connection to a peer.
@@ -37,10 +40,19 @@ class PeerLink {
     required this.provideSnapshot,
     required this.onClose,
   }) {
+    logP2pDebug('PeerLink: connecting to ${socket.remoteAddress.address}:'
+        '${socket.remotePort} (local device ${localHello.deviceId})');
     _subscription = socket.listen(
       _onData,
-      onError: (Object e) => _fail('Connection error: $e'),
-      onDone: () => _fail(null),
+      onError: (Object e) {
+        logP2pDebug('PeerLink: connection error: $e');
+        _fail('Connection error: $e');
+      },
+      onDone: () {
+        logP2pDebug('PeerLink: connection closed by peer '
+            '(state=$_state, peer=${peer?.deviceId ?? "pre-handshake"})');
+        _fail(null);
+      },
       cancelOnError: true,
     );
     _sendHello();
@@ -151,7 +163,22 @@ class PeerLink {
     final assembled = _pending.takeBytes();
     var remaining = Uint8List.fromList(assembled);
     while (true) {
-      final frame = decodeFrame(remaining);
+      ({Uint8List payload, int consumed})? frame;
+      try {
+        frame = decodeFrame(remaining);
+      } on PeerProtocolException catch (e) {
+        // Previously uncaught: a synchronous throw here escapes the
+        // socket's onData callback entirely (Stream.listen's onError only
+        // covers errors from the source stream, not exceptions thrown by
+        // the data handler itself), so the link never ran onClose and the
+        // controller kept treating it as connected. Fail it cleanly instead.
+        final msg = 'PeerLink: $e (${remaining.length} bytes pending, '
+            'state=$_state, peer=${peer?.deviceId ?? "pre-handshake"})';
+        debugPrint(msg);
+        logP2pDebug(msg);
+        _fail('Invalid frame: $e');
+        return;
+      }
       if (frame == null) {
         // Stash the unconsumed tail for the next chunk.
         if (remaining.isNotEmpty) {
@@ -230,12 +257,14 @@ class PeerLink {
     Object? decoded;
     try {
       decoded = jsonDecode(utf8.decode(payload));
-    } catch (_) {
+    } catch (e) {
+      _debugDumpMalformed(payload, e);
       _fail('Malformed control message.');
       return;
     }
     final j = decoded is Map<String, dynamic> ? decoded : null;
     if (j == null) {
+      _debugDumpMalformed(payload, 'decoded to ${decoded.runtimeType}, not a Map');
       _fail('Malformed control message.');
       return;
     }
@@ -276,7 +305,10 @@ class PeerLink {
   void _onPeerHello(Map<String, dynamic> j) {
     if (peer != null) return; // Already saw the peer's hello.
     final hello = PeerHello.fromJson(j);
+    logP2pDebug('PeerLink: received ${j['type']} from ${hello.deviceId} '
+        '(${hello.collections.length} collections advertised)');
     if (hello.token != expectedToken) {
+      logP2pDebug('PeerLink: token mismatch from ${hello.deviceId}');
       _fail('Handshake failed: not the same account.');
       return;
     }
@@ -292,6 +324,7 @@ class PeerLink {
     }
 
     _state = PeerLinkState.ready;
+    logP2pDebug('PeerLink: ready with ${hello.deviceId}');
     onReady(hello);
   }
 
@@ -302,5 +335,23 @@ class PeerLink {
     _subscription.cancel().catchError((_) {});
     socket.destroy();
     onClose(error);
+  }
+
+  /// Logs forensic detail for a control-frame parse failure: whether we'd
+  /// just been mid-blob (a hint this is the trailing-bytes desync class of
+  /// bug), the payload length, and a hex preview. Printed rather than shown
+  /// in the UI so it doesn't clutter the error message, but visible in
+  /// `flutter run`/`adb logcat` output if this needs diagnosing again.
+  void _debugDumpMalformed(Uint8List payload, Object error) {
+    final preview = payload
+        .take(64)
+        .map((b) => b.toRadixString(16).padLeft(2, '0'))
+        .join(' ');
+    final msg = 'PeerLink: malformed control message ($error). '
+        'state=$_state peer=${peer?.deviceId ?? "pre-handshake"} '
+        'blobBytesRemaining=$_blobBytesRemaining '
+        'payloadLength=${payload.length} bytes=[$preview]';
+    debugPrint(msg);
+    logP2pDebug(msg);
   }
 }

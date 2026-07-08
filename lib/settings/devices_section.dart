@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../app/widgets.dart';
+import '../p2p/peer_debug_log.dart';
 import '../p2p/peer_discovery.dart';
 import '../p2p/peer_sync_controller.dart';
 import '../p2p/peer_sync_scope.dart';
@@ -399,6 +401,14 @@ class _SignedInBody extends StatelessWidget {
           'seconds. Off, you tap a device and choose Sync now.',
           style: TextStyle(color: luma.textMuted, fontSize: 12, height: 1.4),
         ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton(
+            onPressed: () => _showDebugLog(context),
+            child: Text('View debug log',
+                style: TextStyle(color: luma.textMuted, fontSize: 11)),
+          ),
+        ),
       ],
     );
   }
@@ -592,6 +602,69 @@ class _HotspotStep extends StatelessWidget {
       ),
     );
   }
+}
+
+// ---- Debug log ---------------------------------------------------------
+
+/// Shows the rolling P2P debug log (connection attempts, handshake steps,
+/// and any "malformed control message" forensic detail) with a Copy button
+/// — for reporting an issue from a release/installed build with no visible
+/// console.
+void _showDebugLog(BuildContext context) {
+  final luma = context.luma;
+  showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      backgroundColor: luma.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: luma.border),
+      ),
+      title: Text('P2P debug log', style: TextStyle(color: luma.textPrimary)),
+      content: SizedBox(
+        width: 520,
+        height: 400,
+        child: FutureBuilder<String>(
+          future: readP2pDebugLog(),
+          builder: (context, snapshot) {
+            final content = snapshot.data;
+            if (content == null) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            return SingleChildScrollView(
+              child: SelectableText(
+                content,
+                style: TextStyle(
+                    color: luma.textSecondary,
+                    fontSize: 11,
+                    fontFamily: 'monospace'),
+              ),
+            );
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () async {
+            await clearP2pDebugLog();
+            if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+          },
+          child: Text('Clear', style: TextStyle(color: Colors.red.shade400)),
+        ),
+        TextButton(
+          onPressed: () async {
+            final content = await readP2pDebugLog();
+            await Clipboard.setData(ClipboardData(text: content));
+          },
+          child: Text('Copy', style: TextStyle(color: luma.accent)),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: Text('Close', style: TextStyle(color: luma.textSecondary)),
+        ),
+      ],
+    ),
+  );
 }
 
 // ---- Turn off local device sync --------------------------------------------

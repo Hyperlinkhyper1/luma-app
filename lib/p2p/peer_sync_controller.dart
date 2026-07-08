@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 
 import '../sync/sync_service.dart';
+import 'peer_debug_log.dart';
 import 'peer_discovery.dart';
 import 'peer_link.dart';
 import 'peer_listener.dart';
@@ -298,6 +299,9 @@ class PeerSyncController extends ChangeNotifier {
       final iKeep = _state.deviceId.compareTo(peerHello.deviceId) < 0
           ? isOutgoing
           : !isOutgoing;
+      logP2pDebug('PeerSyncController: duplicate link to '
+          '${peerHello.deviceId} (mutual dial) — isOutgoing=$isOutgoing, '
+          'keeping this one=$iKeep');
       if (!iKeep) {
         socket.destroy();
         // Trigger the onClose path so bookkeeping stays consistent; the link
