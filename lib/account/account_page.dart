@@ -172,7 +172,7 @@ class _CollapsibleSection extends StatefulWidget {
 }
 
 class _CollapsibleSectionState extends State<_CollapsibleSection> {
-  bool _expanded = true;
+  bool _expanded = false;
 
   @override
   Widget build(BuildContext context) {
@@ -241,7 +241,7 @@ class _LocalStorageBar extends StatelessWidget {
       listenable: guard,
       builder: (context, _) {
         final used = guard.usedBytes;
-        const limit = StorageGuardService.limitBytes;
+        final limit = guard.limitBytes;
         final fraction = (used / limit).clamp(0.0, 1.0);
         return LumaCard(
           child: Column(

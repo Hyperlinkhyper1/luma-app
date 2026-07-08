@@ -52,7 +52,7 @@ class _AppShellState extends State<AppShell> {
 
   // Non-null while an installed plugin's page is being shown, taking
   // priority over [_selectedIndex].
-  String? _selectedPluginId = 'auto-clicker'; // TEMP-QA
+  String? _selectedPluginId;
 
   static const _titles = [
     'Home',
@@ -97,16 +97,6 @@ class _AppShellState extends State<AppShell> {
               break;
             }
           }
-        }
-        // TEMP-QA: force-open Auto Clicker regardless of install state.
-        if (_selectedPluginId == 'auto-clicker') {
-          activePlugin = InstalledPluginRecord(
-            pluginId: 'auto-clicker',
-            name: 'Auto Clicker',
-            icon: 'ads_click',
-            version: '1.0.0',
-            installedAt: DateTime.now(),
-          );
         }
         final showingPlugin = activePlugin != null;
         final title = showingPlugin ? activePlugin.name : _titles[index];

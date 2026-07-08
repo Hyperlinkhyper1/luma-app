@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'account/plan.dart';
 import 'app/app_shell.dart';
 import 'app/splash_screen.dart';
 import 'app/update/app_version.dart';
@@ -200,6 +201,8 @@ class _LumaAppState extends State<LumaApp> {
   void initState() {
     super.initState();
     StorageGuardService.instance = _storageGuard;
+    _applyPlanLimit();
+    widget.settings.addListener(_onSettingsChanged);
     _storageGuard.refresh();
     _sync.init();
     _peerSync.init();
@@ -208,6 +211,7 @@ class _LumaAppState extends State<LumaApp> {
 
   @override
   void dispose() {
+    widget.settings.removeListener(_onSettingsChanged);
     _peerSync.dispose();
     _cloudFiles.dispose();
     _sync.dispose();
@@ -223,6 +227,26 @@ class _LumaAppState extends State<LumaApp> {
     _serverTycoonRepository.dispose();
     _autoClickerRepository.dispose();
     super.dispose();
+  }
+
+  /// Applies the selected plan's storage cap to the guard. Cheap — no-ops when
+  /// the limit is unchanged (so it's safe to call on every settings change).
+  void _applyPlanLimit() {
+    final plan = planById(widget.settings.selectedPlanId);
+    _storageGuard.setLimitBytes(plan.storageMb * 1024 * 1024);
+  }
+
+  /// Reacts to settings changes — only the plan affects the guard, but this
+  /// fires for any preference mutation; [setLimitBytes] bails out when the
+  /// value is the same, so the cost is a single comparison otherwise.
+  void _onSettingsChanged() {
+    final before = _storageGuard.limitBytes;
+    _applyPlanLimit();
+    if (_storageGuard.limitBytes != before) {
+      // A downgrade may have pushed existing usage over the new (smaller) cap;
+      // re-scan so the banner / write-blocking reflects it right away.
+      _storageGuard.refresh();
+    }
   }
 
   @override

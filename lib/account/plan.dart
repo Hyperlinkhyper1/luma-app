@@ -1,7 +1,6 @@
-/// A displayable plan tier. Purely cosmetic today — there's no billing, so
-/// selecting one only changes which badge is shown; every account still gets
-/// the same [StorageGuardService.limitBytes] local storage cap regardless of
-/// plan.
+/// A displayable plan tier. The selected plan's [storageMb] is what the
+/// app enforces as the local storage cap (see [StorageGuardService]) — the
+/// only thing selecting a plan changes today, since there's no billing yet.
 class Plan {
   const Plan({
     required this.id,
@@ -9,6 +8,7 @@ class Plan {
     required this.shortName,
     required this.priceLabel,
     required this.blurb,
+    required this.storageMb,
     required this.features,
   });
 
@@ -19,6 +19,11 @@ class Plan {
   final String shortName;
   final String priceLabel;
   final String blurb;
+
+  /// Local storage cap, in megabytes, this plan grants. User-generated data
+  /// only (databases + JSON stores); the app's own binaries and logs don't
+  /// count toward it.
+  final int storageMb;
   final List<String> features;
 }
 
@@ -29,8 +34,9 @@ const kPlans = <Plan>[
     shortName: 'Core',
     priceLabel: 'Free',
     blurb: 'Everything you need on this device.',
+    storageMb: 10,
     features: [
-      '1 GB local storage',
+      '10 MB local storage',
       'Local sync only',
       'Free starter plugins',
     ],
@@ -41,8 +47,9 @@ const kPlans = <Plan>[
     shortName: 'Orbit',
     priceLabel: '\$2 / month',
     blurb: 'More room to grow, priority sync.',
+    storageMb: 25,
     features: [
-      'Expanded local storage',
+      '25 MB local storage',
       'Peer-to-peer sync',
       'Priority cloud sync speed',
       'Free advanced plugins',
@@ -55,8 +62,9 @@ const kPlans = <Plan>[
     shortName: 'Nova',
     priceLabel: '\$5 / month',
     blurb: 'The fastest, largest luma yet.',
+    storageMb: 50,
     features: [
-      'Largest local storage',
+      '50 MB local storage',
       'Peer-to-peer sync',
       'Fastest cloud sync',
       'All plugins, free',

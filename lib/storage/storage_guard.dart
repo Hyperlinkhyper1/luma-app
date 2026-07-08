@@ -25,36 +25,48 @@ class StorageLimitExceededException implements Exception {
 /// "create new record" method refuses to write (see [ensureWithinLimit]), and
 /// [SyncService] refuses to push to — or pull from — other devices.
 class StorageGuardService extends ChangeNotifier {
-  /// Single tunable constant — there's only one tier today since paid plans
-  /// don't change behavior yet.
-  static const int limitBytes = 1 * 1024 * 1024 * 1024; // 1 GB
-
-  /// Subdirectories (relative to the app support directory) excluded from the
-  /// sum: one-time tool binaries, not user data.
-  static const _excludedDirNames = {'tools'};
-
   /// Set once from `main.dart` so repositories without a `BuildContext` can
   /// call `StorageGuard.instance.ensureWithinLimit()` directly.
   static late StorageGuardService instance;
 
+  /// Subdirectories (relative to the app support directory) excluded from the
+  /// sum: one-time tool/binary downloads (yt-dlp, ffmpeg, …), not user data.
+  static const _excludedDirNames = {'tools', 'ffmpeg'};
+
+  int _limitBytes = _defaultLimitBytes;
   int _usedBytes = 0;
   bool _refreshing = false;
   Timer? _debounce;
 
+  /// Fallback cap before `main.dart` has applied the selected plan's limit.
+  static const int _defaultLimitBytes = 10 * 1024 * 1024; // 10 MB
+
+  /// The current local storage cap, in bytes — set by [setLimitBytes] from
+  /// the active plan (see `planById`).
+  int get limitBytes => _limitBytes;
   int get usedBytes => _usedBytes;
-  bool get isOverLimit => _usedBytes >= limitBytes;
+  bool get isOverLimit => _usedBytes >= _limitBytes;
+
+  /// Updates the storage cap. Passing a different value notifies listeners so
+  /// the UI (storage bar, over-limit banner) re-evaluates immediately.
+  void setLimitBytes(int bytes) {
+    if (bytes == _limitBytes) return;
+    _limitBytes = bytes;
+    notifyListeners();
+  }
 
   /// Throws [StorageLimitExceededException] if already over the cap. Cheap —
   /// checks the cached usage, no disk I/O.
   void ensureWithinLimit() {
     if (isOverLimit) {
-      throw StorageLimitExceededException(_usedBytes, limitBytes);
+      throw StorageLimitExceededException(_usedBytes, _limitBytes);
     }
   }
 
   /// Recomputes [usedBytes] by summing every file under the app support
   /// directory (every local Drift database, JSON store, etc. already lives
-  /// there, so this stays correct automatically as features are added).
+  /// there, so this stays correct automatically as features are added). Only
+  /// user-generated data counts — app binaries and log files are skipped.
   Future<void> refresh() async {
     if (_refreshing) return;
     _refreshing = true;
@@ -83,6 +95,8 @@ class StorageGuardService extends ChangeNotifier {
   }
 
   bool _isExcluded(String rootPath, String filePath) {
+    // Rotating / append-only logs — not user data.
+    if (filePath.endsWith('.log')) return true;
     final relative = filePath.startsWith(rootPath)
         ? filePath.substring(rootPath.length)
         : filePath;
