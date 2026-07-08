@@ -259,6 +259,23 @@ class _SignedInBody extends StatelessWidget {
                         : peers.state.deviceName,
                     style: TextStyle(color: luma.textMuted, fontSize: 12),
                   ),
+                  if (peers.isRunning && peers.listenPort != 0)
+                    FutureBuilder<List<String>>(
+                      future: peers.localAddresses(),
+                      builder: (context, snapshot) {
+                        final addrs = snapshot.data ?? const <String>[];
+                        if (addrs.isEmpty) return const SizedBox.shrink();
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            'IP: ${addrs.join(', ')} — the other device '
+                            'must be on the same network to find this one.',
+                            style: TextStyle(
+                                color: luma.textMuted, fontSize: 11),
+                          ),
+                        );
+                      },
+                    ),
                 ],
               ),
             ),

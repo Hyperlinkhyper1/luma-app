@@ -68,6 +68,25 @@ class PeerSyncController extends ChangeNotifier {
   /// running.
   int get listenPort => _listener.port;
 
+  /// This device's non-loopback IPv4 addresses, for troubleshooting when
+  /// mDNS discovery doesn't find a peer — the first thing to check is
+  /// whether both devices are even on the same subnet.
+  Future<List<String>> localAddresses() async {
+    try {
+      final interfaces = await NetworkInterface.list(
+        type: InternetAddressType.IPv4,
+        includeLoopback: false,
+        includeLinkLocal: false,
+      );
+      return [
+        for (final i in interfaces)
+          for (final a in i.addresses) a.address,
+      ];
+    } catch (_) {
+      return const [];
+    }
+  }
+
   String? _lastError;
   String? get lastError => _lastError;
 
