@@ -6,8 +6,13 @@ import 'package:luma/features/plugins/installed/school/logic/citation_formatter.
 import 'package:luma/features/plugins/installed/school/logic/gpa_calculator.dart';
 import 'package:luma/features/plugins/installed/school/logic/spaced_repetition.dart';
 import 'package:luma/features/plugins/installed/school/school_repository.dart';
+import 'package:luma/storage/storage_guard.dart';
 
 void main() {
+  // SchoolRepository consults the app-wide storage cap before every write;
+  // outside of main.dart's real startup this static is never set.
+  setUpAll(() => StorageGuardService.instance = StorageGuardService());
+
   late SchoolDatabase db;
   late SchoolRepository repo;
 

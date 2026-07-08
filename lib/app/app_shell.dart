@@ -17,6 +17,7 @@ import '../features/plugins/installed/qr_code_generator/qr_code_generator_page.d
 import '../features/plugins/installed/school/school_page.dart';
 import '../features/plugins/installed/server_tycoon/server_tycoon_page.dart';
 import '../features/plugins/installed/space_colony/space_colony_page.dart';
+import '../features/plugins/installed/usage/usage_page.dart';
 import '../features/plugins/installed/youtube_downloader/youtube_downloader_page.dart';
 import '../features/plugins/plugin_repository.dart';
 import '../features/plugins/plugin_scope.dart';
@@ -193,6 +194,7 @@ class _AppShellState extends State<AppShell> {
         'youtube-downloader' => const YoutubeDownloaderPage(),
         'school' => const SchoolPage(),
         'auto-clicker' => const AutoClickerPage(),
+        'usage' => const UsagePage(),
         _ => const LumaEmptyState(
             icon: Icons.extension_off_rounded,
             title: 'Plugin unavailable',

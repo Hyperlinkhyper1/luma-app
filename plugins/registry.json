@@ -129,6 +129,16 @@
       "tags": ["Productivity", "Education"],
       "free": true,
       "version": "1.0.0"
+    },
+    {
+      "id": "usage",
+      "name": "Usage",
+      "description": "See exactly how you spend your time on your PC. Tracks the app in the foreground throughout the day so you can look back and realize '55 minutes in Chrome, 12 in Spotify'. Filter by day, week, or month and view it as pie and bar charts.",
+      "icon": "insights",
+      "category": "Productivity",
+      "tags": ["Productivity", "Analytics"],
+      "free": true,
+      "version": "1.0.0"
     }
   ]
 }

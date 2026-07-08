@@ -1062,135 +1062,142 @@ class _TableEditorState extends State<_TableEditor> {
             padding: const EdgeInsets.all(0),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
-                  headingRowColor: WidgetStatePropertyAll(luma.surfaceHover),
-                  dataRowMinHeight: 44,
-                  dataRowMaxHeight: 44,
-                  horizontalMargin: 16,
-                  columnSpacing: 24,
-                  columns: [
-                    for (var i = 0; i < widget.dataset.columns.length; i++)
-                      DataColumn(
-                        label: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            GestureDetector(
-                              onTap: () => _tapHeader(i),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    widget.dataset.columns[i].name,
-                                    style: TextStyle(
-                                      color: luma.textPrimary,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  if (_sortColumn == i) ...[
-                                    const SizedBox(width: 2),
-                                    Icon(
-                                      _sortAsc
-                                          ? Icons.arrow_upward_rounded
-                                          : Icons.arrow_downward_rounded,
-                                      size: 12,
-                                      color: luma.accent,
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            GestureDetector(
-                              onTap: () => _editColumn(context, repo, i),
-                              child: Icon(
-                                Icons.edit,
-                                size: 14,
-                                color: luma.textMuted,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    DataColumn(
-                      label: Text(
-                        'Tags',
-                        style: TextStyle(
-                          color: luma.textPrimary,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                    const DataColumn(label: SizedBox()),
-                  ],
-                  rows: [
-                    for (final row in rows)
-                      DataRow(
-                        cells: [
-                          for (
-                            var i = 0;
-                            i < widget.dataset.columns.length;
-                            i++
-                          )
-                            DataCell(
-                              _EditableCell(
-                                value: row.valueAt(i),
-                                type: widget.dataset.columns[i].type,
-                                onChanged: (val) {
-                                  final newValues = Map<String, String>.from(
-                                    row.values,
-                                  );
-                                  newValues[i.toString()] = val;
-                                  repo.updateRow(row.id, newValues);
-                                },
-                              ),
-                            ),
-                          DataCell(
-                            _RowTagsCell(
-                              dataset: widget.dataset,
-                              row: row,
-                              repo: repo,
-                              onManageTags: () => showTagManager(
-                                context,
-                                repo,
-                                widget.dataset,
-                                widget.onDatasetChanged,
-                              ),
-                            ),
-                          ),
-                          DataCell(
-                            Row(
+              child: LayoutBuilder(
+                builder: (context, constraints) => SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                    child: DataTable(
+                      headingRowColor: WidgetStatePropertyAll(luma.surfaceHover),
+                      dataRowMinHeight: 44,
+                      dataRowMaxHeight: 44,
+                      horizontalMargin: 16,
+                      columnSpacing: 24,
+                      columns: [
+                        for (var i = 0; i < widget.dataset.columns.length; i++)
+                          DataColumn(
+                            columnWidth: const FlexColumnWidth(),
+                            label: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Tooltip(
-                                  message: 'Duplicate row',
-                                  child: GestureDetector(
-                                    onTap: () => repo.duplicateRow(row),
-                                    child: Icon(
-                                      Icons.copy_rounded,
-                                      size: 16,
-                                      color: luma.textMuted,
-                                    ),
+                                GestureDetector(
+                                  onTap: () => _tapHeader(i),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        widget.dataset.columns[i].name,
+                                        style: TextStyle(
+                                          color: luma.textPrimary,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                      if (_sortColumn == i) ...[
+                                        const SizedBox(width: 2),
+                                        Icon(
+                                          _sortAsc
+                                              ? Icons.arrow_upward_rounded
+                                              : Icons.arrow_downward_rounded,
+                                          size: 12,
+                                          color: luma.accent,
+                                        ),
+                                      ],
+                                    ],
                                   ),
                                 ),
-                                const SizedBox(width: 10),
+                                const SizedBox(width: 4),
                                 GestureDetector(
-                                  onTap: () => repo.deleteRow(row.id),
+                                  onTap: () => _editColumn(context, repo, i),
                                   child: Icon(
-                                    Icons.delete_outline,
-                                    size: 18,
-                                    color: luma.danger.withValues(alpha: 0.7),
+                                    Icons.edit,
+                                    size: 14,
+                                    color: luma.textMuted,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                        ],
-                      ),
-                  ],
+                        DataColumn(
+                          columnWidth: const FlexColumnWidth(),
+                          label: Text(
+                            'Tags',
+                            style: TextStyle(
+                              color: luma.textPrimary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        DataColumn(label: SizedBox(), columnWidth: FixedColumnWidth(60)),
+                      ],
+                      rows: [
+                        for (final row in rows)
+                          DataRow(
+                            cells: [
+                              for (
+                                var i = 0;
+                                i < widget.dataset.columns.length;
+                                i++
+                              )
+                                DataCell(
+                                  _EditableCell(
+                                    value: row.valueAt(i),
+                                    type: widget.dataset.columns[i].type,
+                                    onChanged: (val) {
+                                      final newValues = Map<String, String>.from(
+                                        row.values,
+                                      );
+                                      newValues[i.toString()] = val;
+                                      repo.updateRow(row.id, newValues);
+                                    },
+                                  ),
+                                ),
+                              DataCell(
+                                _RowTagsCell(
+                                  dataset: widget.dataset,
+                                  row: row,
+                                  repo: repo,
+                                  onManageTags: () => showTagManager(
+                                    context,
+                                    repo,
+                                    widget.dataset,
+                                    widget.onDatasetChanged,
+                                  ),
+                                ),
+                              ),
+                              DataCell(
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Tooltip(
+                                      message: 'Duplicate row',
+                                      child: GestureDetector(
+                                        onTap: () => repo.duplicateRow(row),
+                                        child: Icon(
+                                          Icons.copy_rounded,
+                                          size: 16,
+                                          color: luma.textMuted,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    GestureDetector(
+                                      onTap: () => repo.deleteRow(row.id),
+                                      child: Icon(
+                                        Icons.delete_outline,
+                                        size: 18,
+                                        color: luma.danger.withValues(alpha: 0.7),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),

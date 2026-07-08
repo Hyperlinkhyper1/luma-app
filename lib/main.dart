@@ -35,6 +35,9 @@ import 'features/plugins/installed/qr_code_generator/qr_code_scope.dart';
 import 'features/plugins/installed/school/data/school_database.dart';
 import 'features/plugins/installed/school/school_repository.dart';
 import 'features/plugins/installed/school/school_scope.dart';
+import 'features/plugins/installed/usage/data/usage_database.dart';
+import 'features/plugins/installed/usage/usage_repository.dart';
+import 'features/plugins/installed/usage/usage_scope.dart';
 import 'features/plugins/plugin_catalog_service.dart';
 import 'features/plugins/plugin_repository.dart';
 import 'features/plugins/plugin_scope.dart';
@@ -102,6 +105,8 @@ class _LumaAppState extends State<LumaApp> {
   late final SchoolRepository _schoolRepository = SchoolRepository(_schoolDb);
   late final AutoClickerRepository _autoClickerRepository =
       AutoClickerRepository();
+  late final UsageDatabase _usageDb = UsageDatabase();
+  late final UsageRepository _usageRepository = UsageRepository(_usageDb);
 
   // Global local-storage cap, enforced regardless of which plugins are
   // installed — see StorageGuardService.
@@ -207,6 +212,7 @@ class _LumaAppState extends State<LumaApp> {
     _sync.init();
     _peerSync.init();
     _autoClickerRepository.init();
+    _usageRepository.init();
   }
 
   @override
@@ -226,6 +232,8 @@ class _LumaAppState extends State<LumaApp> {
     _schoolDb.close();
     _serverTycoonRepository.dispose();
     _autoClickerRepository.dispose();
+    _usageRepository.dispose();
+    _usageDb.close();
     super.dispose();
   }
 
@@ -285,6 +293,8 @@ class _LumaAppState extends State<LumaApp> {
                       repository: _schoolRepository,
                       child: AutoClickerScope(
                       repository: _autoClickerRepository,
+                      child: UsageScope(
+                      repository: _usageRepository,
                       child: ListenableBuilder(
                       listenable: widget.settings,
                       builder: (context, _) {
@@ -300,6 +310,7 @@ class _LumaAppState extends State<LumaApp> {
                               bootstrap: _bootstrap, accentSeed: s.accentSeed),
                         );
                       },
+                    ),
                     ),
                     ),
                     ),

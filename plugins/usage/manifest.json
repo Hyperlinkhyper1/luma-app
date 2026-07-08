@@ -1,0 +1,10 @@
+{
+  "id": "usage",
+  "name": "Usage",
+  "version": "1.0.0",
+  "description": "See exactly how you spend your time on your PC. Tracks the app in the foreground throughout the day, so you can look back and realize 'oh, 55 minutes in Chrome, 12 in Spotify'. Filter by day, week, or month, and view it all as pie and bar charts.",
+  "icon": "insights",
+  "category": "Productivity",
+  "details": "Usage runs quietly in the background while luma is open. Every few seconds it samples which window is in the foreground, logs the app and the title, and writes a session to a local database the moment you switch to something else.\n\nOpen the plugin to see a dashboard for any time range — today, yesterday, the last week, the last month, this month, or a custom interval. A pie chart shows your top apps by total time, a stacked bar chart shows daily breakdown, and a list shows every tracked app with minutes, share, and a small bar so you can scan it at a glance.\n\nEverything is stored locally with drift SQLite. You can pause tracking at any time, change the sample interval (2–10 seconds), and clear all stored history from a single confirmation prompt. No network calls, no telemetry — your usage data never leaves the device.",
+  "screenshots": []
+}
