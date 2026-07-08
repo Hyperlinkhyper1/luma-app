@@ -186,6 +186,11 @@ class PeerLink {
         }
         return;
       }
+      logP2pDebug('PeerLink: frame consumed=${frame.consumed} '
+          'payloadLength=${frame.payload.length} '
+          'ofRemaining=${remaining.length} '
+          'peer=${peer?.deviceId ?? "pre-handshake"} '
+          'preview=${_utf8Preview(frame.payload)}');
       _handlePayload(frame.payload);
       if (_closed) return;
       remaining = Uint8List.sublistView(remaining, frame.consumed);
@@ -335,6 +340,16 @@ class PeerLink {
     _subscription.cancel().catchError((_) {});
     socket.destroy();
     onClose(error);
+  }
+
+  /// Best-effort readable preview of a payload for tracing — never throws.
+  String _utf8Preview(Uint8List payload) {
+    try {
+      final s = utf8.decode(payload.take(48).toList(), allowMalformed: true);
+      return payload.length > 48 ? '$s…' : s;
+    } catch (_) {
+      return '<undecodable>';
+    }
   }
 
   /// Logs forensic detail for a control-frame parse failure: whether we'd
