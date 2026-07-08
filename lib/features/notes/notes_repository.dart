@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../storage/storage_guard.dart';
+
 class Note {
   Note({
     required this.id,
@@ -85,6 +87,7 @@ class NotesRepository extends ChangeNotifier {
   }
 
   Future<Note> create() async {
+    StorageGuard.instance.ensureWithinLimit();
     final note = Note(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       title: '',
@@ -94,6 +97,7 @@ class NotesRepository extends ChangeNotifier {
     _notes.insert(0, note);
     notifyListeners();
     await _persist();
+    StorageGuard.instance.scheduleRefresh();
     return note;
   }
 

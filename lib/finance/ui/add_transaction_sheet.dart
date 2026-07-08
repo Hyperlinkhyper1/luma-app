@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/widgets.dart';
+import '../../storage/storage_guard.dart';
 import '../../theme/luma_theme.dart';
 import '../data/database.dart';
 import '../finance_repository.dart';
@@ -84,17 +85,25 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
       _saving = true;
       _error = null;
     });
-    await widget.repo.addTransaction(
-      kind: _kind,
-      amountCents: cents,
-      date: _date,
-      note: _noteController.text.trim().isEmpty
-          ? null
-          : _noteController.text.trim(),
-      potId: _potId,
-      merchantId: _kind == TxnKind.expense ? _merchant?.id : null,
-      categoryId: _kind == TxnKind.expense ? _categoryId : null,
-    );
+    try {
+      await widget.repo.addTransaction(
+        kind: _kind,
+        amountCents: cents,
+        date: _date,
+        note: _noteController.text.trim().isEmpty
+            ? null
+            : _noteController.text.trim(),
+        potId: _potId,
+        merchantId: _kind == TxnKind.expense ? _merchant?.id : null,
+        categoryId: _kind == TxnKind.expense ? _categoryId : null,
+      );
+    } on StorageLimitExceededException catch (e) {
+      if (mounted) setState(() {
+        _saving = false;
+        _error = '$e';
+      });
+      return;
+    }
     if (mounted) Navigator.of(context).pop();
   }
 

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:drift/drift.dart';
 
+import '../../../../storage/storage_guard.dart';
 import 'data/school_database.dart';
 import 'logic/citation_formatter.dart';
 import 'logic/gpa_calculator.dart';
@@ -22,13 +23,16 @@ class SchoolRepository {
   }
 
   Future<int> createSubject(String name, {int? color, double creditHours = 3}) {
-    return _db.into(_db.schoolSubjects).insert(
+    StorageGuard.instance.ensureWithinLimit();
+    final future = _db.into(_db.schoolSubjects).insert(
           SchoolSubjectsCompanion.insert(
             name: name,
             color: color == null ? const Value.absent() : Value(color),
             creditHours: Value(creditHours),
           ),
         );
+    StorageGuard.instance.scheduleRefresh();
+    return future;
   }
 
   Future<void> updateSubject(int id,
@@ -64,7 +68,8 @@ class SchoolRepository {
     required DateTime dueDate,
     int priority = 1,
   }) {
-    return _db.into(_db.assignments).insert(
+    StorageGuard.instance.ensureWithinLimit();
+    final future = _db.into(_db.assignments).insert(
           AssignmentsCompanion.insert(
             subjectId: Value(subjectId),
             title: title,
@@ -73,6 +78,8 @@ class SchoolRepository {
             priority: Value(priority),
           ),
         );
+    StorageGuard.instance.scheduleRefresh();
+    return future;
   }
 
   Future<void> updateAssignment(
@@ -131,7 +138,8 @@ class SchoolRepository {
     String? location,
     String? instructor,
   }) {
-    return _db.into(_db.timetableEntries).insert(
+    StorageGuard.instance.ensureWithinLimit();
+    final future = _db.into(_db.timetableEntries).insert(
           TimetableEntriesCompanion.insert(
             subjectId: subjectId,
             dayOfWeek: dayOfWeek,
@@ -141,6 +149,8 @@ class SchoolRepository {
             instructor: Value(instructor),
           ),
         );
+    StorageGuard.instance.scheduleRefresh();
+    return future;
   }
 
   Future<void> deleteTimetableEntry(int id) =>
@@ -155,12 +165,15 @@ class SchoolRepository {
   }
 
   Future<int> createDeck(String name, {int? subjectId}) {
-    return _db.into(_db.flashcardDecks).insert(
+    StorageGuard.instance.ensureWithinLimit();
+    final future = _db.into(_db.flashcardDecks).insert(
           FlashcardDecksCompanion.insert(
             name: name,
             subjectId: Value(subjectId),
           ),
         );
+    StorageGuard.instance.scheduleRefresh();
+    return future;
   }
 
   Future<void> deleteDeck(int id) async {
@@ -182,9 +195,12 @@ class SchoolRepository {
   }
 
   Future<int> createCard(int deckId, String front, String back) {
-    return _db.into(_db.flashcards).insert(
+    StorageGuard.instance.ensureWithinLimit();
+    final future = _db.into(_db.flashcards).insert(
           FlashcardsCompanion.insert(deckId: deckId, front: front, back: back),
         );
+    StorageGuard.instance.scheduleRefresh();
+    return future;
   }
 
   Future<void> updateCard(int id, {String? front, String? back}) {
@@ -233,7 +249,8 @@ class SchoolRepository {
     String category = 'Custom',
     String? description,
   }) {
-    return _db.into(_db.formulas).insert(
+    StorageGuard.instance.ensureWithinLimit();
+    final future = _db.into(_db.formulas).insert(
           FormulasCompanion.insert(
             name: name,
             expression: expression,
@@ -241,6 +258,8 @@ class SchoolRepository {
             description: Value(description),
           ),
         );
+    StorageGuard.instance.scheduleRefresh();
+    return future;
   }
 
   Future<void> updateFormula(int id,
@@ -273,7 +292,8 @@ class SchoolRepository {
     double scoreTotal = 100,
     double? scoreEarned,
   }) {
-    return _db.into(_db.gradeComponents).insert(
+    StorageGuard.instance.ensureWithinLimit();
+    final future = _db.into(_db.gradeComponents).insert(
           GradeComponentsCompanion.insert(
             subjectId: subjectId,
             name: name,
@@ -282,6 +302,8 @@ class SchoolRepository {
             scoreEarned: Value(scoreEarned),
           ),
         );
+    StorageGuard.instance.scheduleRefresh();
+    return future;
   }
 
   Future<void> updateGradeComponent(
@@ -348,7 +370,8 @@ class SchoolRepository {
     required double gradePoints,
     DateTime? date,
   }) {
-    return _db.into(_db.gpaRecords).insert(
+    StorageGuard.instance.ensureWithinLimit();
+    final future = _db.into(_db.gpaRecords).insert(
           GpaRecordsCompanion.insert(
             subjectId: subjectId,
             termName: termName,
@@ -357,6 +380,8 @@ class SchoolRepository {
             date: date == null ? const Value.absent() : Value(date),
           ),
         );
+    StorageGuard.instance.scheduleRefresh();
+    return future;
   }
 
   Future<void> deleteGpaRecord(int id) =>
@@ -379,8 +404,9 @@ class SchoolRepository {
 
   Future<int> createCitation(
       CitationStyle style, SourceType sourceType, CitationFields fields) {
+    StorageGuard.instance.ensureWithinLimit();
     final formatted = formatCitation(style, sourceType, fields);
-    return _db.into(_db.citations).insert(
+    final future = _db.into(_db.citations).insert(
           CitationsCompanion.insert(
             style: style.name,
             sourceType: sourceType.name,
@@ -388,6 +414,8 @@ class SchoolRepository {
             formattedText: formatted,
           ),
         );
+    StorageGuard.instance.scheduleRefresh();
+    return future;
   }
 
   Future<void> deleteCitation(int id) =>
@@ -403,12 +431,15 @@ class SchoolRepository {
   }
 
   Future<int> startSession({int? subjectId}) {
-    return _db.into(_db.studySessions).insert(
+    StorageGuard.instance.ensureWithinLimit();
+    final future = _db.into(_db.studySessions).insert(
           StudySessionsCompanion.insert(
             subjectId: Value(subjectId),
             startTime: DateTime.now(),
           ),
         );
+    StorageGuard.instance.scheduleRefresh();
+    return future;
   }
 
   Future<void> stopSession(int id, {String? notes}) async {
@@ -449,7 +480,11 @@ class SchoolRepository {
   }
 
   Future<int> createMindMap(String title) {
-    return _db.into(_db.mindMaps).insert(MindMapsCompanion.insert(title: title));
+    StorageGuard.instance.ensureWithinLimit();
+    final future =
+        _db.into(_db.mindMaps).insert(MindMapsCompanion.insert(title: title));
+    StorageGuard.instance.scheduleRefresh();
+    return future;
   }
 
   Future<void> deleteMindMap(int id) async {
@@ -470,6 +505,7 @@ class SchoolRepository {
     int? color,
     int? parentId,
   }) async {
+    StorageGuard.instance.ensureWithinLimit();
     final id = await _db.into(_db.mindMapNodes).insert(
           MindMapNodesCompanion.insert(
             mapId: mapId,
@@ -481,6 +517,7 @@ class SchoolRepository {
           ),
         );
     await _touchMindMap(mapId);
+    StorageGuard.instance.scheduleRefresh();
     return id;
   }
 

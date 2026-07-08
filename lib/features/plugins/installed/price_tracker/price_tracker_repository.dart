@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../storage/storage_guard.dart';
+
 class PriceSnapshot {
   PriceSnapshot({required this.price, required this.checkedAt});
 
@@ -97,6 +99,7 @@ class PriceTrackerRepository extends ChangeNotifier {
   }
 
   Future<TrackedItem> add({required String name, required String url}) async {
+    StorageGuard.instance.ensureWithinLimit();
     final item = TrackedItem(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       name: name,
@@ -106,10 +109,12 @@ class PriceTrackerRepository extends ChangeNotifier {
     _items.add(item);
     notifyListeners();
     await _persist();
+    StorageGuard.instance.scheduleRefresh();
     return item;
   }
 
   Future<void> addSnapshot(String itemId, double price) async {
+    StorageGuard.instance.ensureWithinLimit();
     final idx = _items.indexWhere((i) => i.id == itemId);
     if (idx == -1) return;
     _items[idx].snapshots.add(
@@ -117,6 +122,7 @@ class PriceTrackerRepository extends ChangeNotifier {
         );
     notifyListeners();
     await _persist();
+    StorageGuard.instance.scheduleRefresh();
   }
 
   Future<void> delete(String itemId) async {

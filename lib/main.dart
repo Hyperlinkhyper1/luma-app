@@ -47,6 +47,8 @@ import 'p2p/peer_sync_controller.dart';
 import 'p2p/peer_sync_scope.dart';
 import 'settings/settings_controller.dart';
 import 'settings/settings_scope.dart';
+import 'storage/storage_guard.dart';
+import 'storage/storage_guard_scope.dart';
 import 'sync/sync_collections.dart';
 import 'sync/sync_scope.dart';
 import 'sync/sync_service.dart';
@@ -99,6 +101,10 @@ class _LumaAppState extends State<LumaApp> {
   late final SchoolRepository _schoolRepository = SchoolRepository(_schoolDb);
   late final AutoClickerRepository _autoClickerRepository =
       AutoClickerRepository();
+
+  // Global local-storage cap, enforced regardless of which plugins are
+  // installed — see StorageGuardService.
+  late final StorageGuardService _storageGuard = StorageGuardService();
 
   // Optional server sync: every feature registers an adapter; nothing is
   // uploaded unless the user signs in AND enables the feature in Settings.
@@ -193,6 +199,8 @@ class _LumaAppState extends State<LumaApp> {
   @override
   void initState() {
     super.initState();
+    StorageGuardService.instance = _storageGuard;
+    _storageGuard.refresh();
     _sync.init();
     _peerSync.init();
     _autoClickerRepository.init();
@@ -219,7 +227,9 @@ class _LumaAppState extends State<LumaApp> {
 
   @override
   Widget build(BuildContext context) {
-    return SyncScope(
+    return StorageGuardScope(
+      service: _storageGuard,
+      child: SyncScope(
       service: _sync,
       child: PeerSyncScope(
       controller: _peerSync,
@@ -278,6 +288,7 @@ class _LumaAppState extends State<LumaApp> {
             ),
           ),
         ),
+      ),
       ),
       ),
       ),

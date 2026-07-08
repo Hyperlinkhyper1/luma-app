@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../../../../storage/storage_guard.dart';
 import 'data/bulletin_board_database.dart';
 
 class BoardItemRecord {
@@ -76,8 +77,9 @@ class BulletinBoardRepository {
     double width = 200.0,
     double height = 200.0,
     bool pinned = false,
-  }) {
-    return _db.into(_db.boardItems).insert(
+  }) async {
+    StorageGuard.instance.ensureWithinLimit();
+    await _db.into(_db.boardItems).insert(
           BoardItemsCompanion.insert(
             type: type,
             title: Value(title),
@@ -90,6 +92,7 @@ class BulletinBoardRepository {
             pinned: Value(pinned),
           ),
         );
+    StorageGuard.instance.scheduleRefresh();
   }
 
   Future<void> updateItem(BoardItemRecord record) {

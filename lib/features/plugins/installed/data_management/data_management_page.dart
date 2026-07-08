@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../storage/storage_guard.dart';
 import '../../../../theme/luma_theme.dart';
 import 'chart_viewer.dart';
 import 'csv_import_export.dart';
@@ -78,7 +79,17 @@ class _DatasetListViewState extends State<_DatasetListView> {
     final name = _nameController.text.trim();
     if (name.isEmpty) return;
     setState(() => _creating = true);
-    final id = await repo.createDataset(name);
+    final int id;
+    try {
+      id = await repo.createDataset(name);
+    } on StorageLimitExceededException catch (e) {
+      if (mounted) {
+        setState(() => _creating = false);
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e')));
+      }
+      return;
+    }
     _nameController.clear();
     if (mounted) {
       setState(() => _creating = false);
@@ -1358,7 +1369,14 @@ class _TableEditorState extends State<_TableEditor> {
 
   Future<void> _addRow(DataManagementRepository repo) async {
     // A new row inherits the active tag filter so it stays visible.
-    await repo.addRow(widget.dataset.id, {}, tags: _tagFilter.toList());
+    try {
+      await repo.addRow(widget.dataset.id, {}, tags: _tagFilter.toList());
+    } on StorageLimitExceededException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e')));
+      }
+    }
   }
 }
 

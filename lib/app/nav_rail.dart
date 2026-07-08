@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../account/plan.dart';
 import '../features/plugins/plugin_icons.dart';
 import '../features/plugins/plugin_repository.dart';
+import '../settings/settings_scope.dart';
 import '../theme/luma_theme.dart';
 
 /// A single destination shown in the [NavRail].
@@ -52,15 +54,22 @@ class NavRail extends StatelessWidget {
   static const NavDestination _settingsDestination =
       NavDestination(icon: Icons.settings_rounded, label: 'Settings');
 
+  static const NavDestination _accountDestination =
+      NavDestination(icon: Icons.badge_rounded, label: 'Account');
+
   /// Index of the Plugins destination (pinned above Settings).
   static const int pluginsIndex = 5;
 
   /// Index of the Settings destination (pinned to the bottom-left).
   static const int settingsIndex = 6;
 
+  /// Index of the Account destination (pinned directly below Settings).
+  static const int accountIndex = 7;
+
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final plan = planById(SettingsScope.of(context).selectedPlanId);
     return Container(
       width: 72,
       decoration: BoxDecoration(
@@ -114,8 +123,60 @@ class NavRail extends StatelessWidget {
             selected: selectedIndex == settingsIndex,
             onTap: () => onSelect(settingsIndex),
           ),
+          const SizedBox(height: 8),
+          _RailButton(
+            destination: _accountDestination,
+            selected: selectedIndex == accountIndex,
+            onTap: () => onSelect(accountIndex),
+          ),
+          const SizedBox(height: 8),
+          _PlanBadge(plan: plan, onTap: () => onSelect(accountIndex)),
           const SizedBox(height: 14),
         ],
+      ),
+    );
+  }
+}
+
+/// A small pinned pill at the very bottom of the rail showing which plan is
+/// currently selected — purely cosmetic (see `account/plan.dart`), updates
+/// live and taps straight through to the Account tab's Plan section.
+class _PlanBadge extends StatelessWidget {
+  const _PlanBadge({required this.plan, required this.onTap});
+  final Plan plan;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Tooltip(
+      message: '${plan.name} plan',
+      preferBelow: false,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            height: 22,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            decoration: BoxDecoration(
+              color: luma.accentSubtle,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: luma.accent.withValues(alpha: 0.4)),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              plan.shortName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: luma.accent,
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

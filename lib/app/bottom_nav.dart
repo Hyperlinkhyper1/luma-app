@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../account/plan.dart';
 import '../features/plugins/plugin_icons.dart';
 import '../features/plugins/plugin_repository.dart';
+import '../settings/settings_scope.dart';
 import '../theme/luma_theme.dart';
 import 'nav_rail.dart';
 
@@ -40,7 +42,8 @@ class BottomNav extends StatelessWidget {
       selectedPluginId != null ||
       selectedIndex == 4 ||
       selectedIndex == NavRail.pluginsIndex ||
-      selectedIndex == NavRail.settingsIndex;
+      selectedIndex == NavRail.settingsIndex ||
+      selectedIndex == NavRail.accountIndex;
 
   @override
   Widget build(BuildContext context) {
@@ -79,6 +82,7 @@ class BottomNav extends StatelessWidget {
   }
 
   void _openMoreSheet(BuildContext context) {
+    final plan = planById(SettingsScope.of(context).selectedPlanId);
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: context.luma.surface,
@@ -113,6 +117,15 @@ class BottomNav extends StatelessWidget {
                 onTap: () {
                   Navigator.pop(sheetContext);
                   onSelect(NavRail.settingsIndex);
+                },
+              ),
+              _MoreRow(
+                icon: Icons.badge_rounded,
+                label: 'Account',
+                trailing: '${plan.name} plan',
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  onSelect(NavRail.accountIndex);
                 },
               ),
               if (installedPlugins.isNotEmpty) ...[
@@ -178,11 +191,13 @@ class _MoreRow extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
+    this.trailing,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  final String? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -190,6 +205,9 @@ class _MoreRow extends StatelessWidget {
     return ListTile(
       leading: Icon(icon, color: luma.textSecondary),
       title: Text(label, style: TextStyle(color: luma.textPrimary)),
+      trailing: trailing == null
+          ? null
+          : Text(trailing!, style: TextStyle(color: luma.textMuted, fontSize: 12)),
       onTap: onTap,
     );
   }

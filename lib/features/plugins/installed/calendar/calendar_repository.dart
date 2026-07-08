@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../../../../storage/storage_guard.dart';
 import 'data/calendar_database.dart';
 
 /// Supported recurrence rules. Stored as the lowercase [name] in the DB.
@@ -81,8 +82,9 @@ class CalendarRepository {
     Recurrence recurrence = Recurrence.none,
     DateTime? recurrenceEnd,
     int? reminderMinutes,
-  }) {
-    return _db.into(_db.calendarEvents).insert(
+  }) async {
+    StorageGuard.instance.ensureWithinLimit();
+    final id = await _db.into(_db.calendarEvents).insert(
           CalendarEventsCompanion.insert(
             title: title,
             description: Value(description),
@@ -96,6 +98,8 @@ class CalendarRepository {
             reminderMinutes: Value(reminderMinutes),
           ),
         );
+    StorageGuard.instance.scheduleRefresh();
+    return id;
   }
 
   Future<void> update({

@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:drift/drift.dart';
+
+import '../../../../storage/storage_guard.dart';
 import 'data/mood_journal_database.dart';
 
 class MoodEntryRecord {
@@ -97,7 +99,9 @@ class MoodJournalRepository {
       await (_db.update(_db.moodEntries)..where((t) => t.id.equals(id)))
           .write(companion);
     } else {
+      StorageGuard.instance.ensureWithinLimit();
       await _db.into(_db.moodEntries).insert(companion);
+      StorageGuard.instance.scheduleRefresh();
     }
   }
 

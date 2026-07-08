@@ -36,12 +36,16 @@ class SettingsController extends ChangeNotifier {
     required StartScreen startScreen,
     required bool hideAmounts,
     required String? lockPasswordHash,
+    required String? avatarPath,
+    required String selectedPlanId,
     required File? file,
   })  : _themeMode = themeMode,
         _accentIndex = accentIndex,
         _startScreen = startScreen,
         _hideAmounts = hideAmounts,
         _lockPasswordHash = lockPasswordHash,
+        _avatarPath = avatarPath,
+        _selectedPlanId = selectedPlanId,
         _file = file;
 
   // These fields are deliberately assigned in the initializer list (rather than
@@ -53,6 +57,8 @@ class SettingsController extends ChangeNotifier {
   StartScreen _startScreen;
   bool _hideAmounts;
   String? _lockPasswordHash;
+  String? _avatarPath;
+  String _selectedPlanId;
   final File? _file;
 
   ThemeMode get themeMode => _themeMode;
@@ -64,6 +70,12 @@ class SettingsController extends ChangeNotifier {
 
   /// The hashed lock PIN, if enabled.
   String? get lockPasswordHash => _lockPasswordHash;
+
+  /// Path to the user's chosen profile picture on disk, if any.
+  String? get avatarPath => _avatarPath;
+
+  /// Cosmetic only — no billing exists yet. Defaults to 'core' (free).
+  String get selectedPlanId => _selectedPlanId;
 
   /// The accent seed to feed the theme, or null for the default lavender.
   Color? get accentSeed => kAccentPresets[_accentIndex].seed;
@@ -102,12 +114,26 @@ class SettingsController extends ChangeNotifier {
     _changed();
   }
 
+  void setAvatarPath(String? path) {
+    if (path == _avatarPath) return;
+    _avatarPath = path;
+    _changed();
+  }
+
+  void setSelectedPlanId(String id) {
+    if (id == _selectedPlanId) return;
+    _selectedPlanId = id;
+    _changed();
+  }
+
   void resetToDefaults() {
     _themeMode = ThemeMode.dark;
     _accentIndex = 0;
     _startScreen = StartScreen.home;
     _hideAmounts = false;
     _lockPasswordHash = null;
+    _avatarPath = null;
+    _selectedPlanId = 'core';
     _changed();
   }
 
@@ -127,6 +153,8 @@ class SettingsController extends ChangeNotifier {
         'startScreen': _startScreen.name,
         'hideAmounts': _hideAmounts,
         'lockPasswordHash': _lockPasswordHash,
+        'avatarPath': _avatarPath,
+        'selectedPlanId': _selectedPlanId,
       };
 
   /// Replaces every preference with a previously exported snapshot.
@@ -138,6 +166,8 @@ class SettingsController extends ChangeNotifier {
         _parseEnum(StartScreen.values, data['startScreen'], _startScreen);
     _hideAmounts = data['hideAmounts'] == true;
     _lockPasswordHash = data['lockPasswordHash'] as String?;
+    _avatarPath = data['avatarPath'] as String?;
+    _selectedPlanId = data['selectedPlanId'] as String? ?? 'core';
     notifyListeners();
     await _persist();
   }
@@ -154,6 +184,8 @@ class SettingsController extends ChangeNotifier {
         'startScreen': _startScreen.name,
         'hideAmounts': _hideAmounts,
         'lockPasswordHash': _lockPasswordHash,
+        'avatarPath': _avatarPath,
+        'selectedPlanId': _selectedPlanId,
       }));
     } catch (_) {
       // Ignore — preferences just won't survive a restart.
@@ -183,6 +215,8 @@ class SettingsController extends ChangeNotifier {
           _parseEnum(StartScreen.values, data['startScreen'], StartScreen.home),
       hideAmounts: data['hideAmounts'] == true,
       lockPasswordHash: data['lockPasswordHash'] as String?,
+      avatarPath: data['avatarPath'] as String?,
+      selectedPlanId: data['selectedPlanId'] as String? ?? 'core',
       file: file,
     );
   }

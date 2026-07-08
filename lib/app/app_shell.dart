@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../account/account_page.dart';
 import '../features/converter/converter_page.dart';
 import '../features/home/home_page.dart';
 import '../features/notes/notes_page.dart';
@@ -24,6 +25,7 @@ import '../finance/finance_page.dart';
 import '../settings/settings_controller.dart';
 import '../settings/settings_page.dart';
 import '../settings/settings_scope.dart';
+import '../storage/storage_guard_scope.dart';
 import '../theme/luma_theme.dart';
 import 'bottom_nav.dart';
 import 'nav_rail.dart';
@@ -60,7 +62,13 @@ class _AppShellState extends State<AppShell> {
     'Notes',
     'Plugins',
     'Settings',
+    'Account',
   ];
+
+  // Dismissible per-session; only re-shown if the app is restarted while
+  // still over the limit — the Account tab's Storage section always shows
+  // the live truth regardless of this dismissal.
+  bool _storageBannerDismissed = false;
 
   void _selectFixed(int i) => setState(() {
         _selectedIndex = i;
@@ -74,6 +82,7 @@ class _AppShellState extends State<AppShell> {
     final luma = context.luma;
     final settings = SettingsScope.of(context);
     final pluginRepo = PluginScope.of(context);
+    final storageGuard = StorageGuardScope.of(context);
     final index = _selectedIndex ?? _startIndex(settings.startScreen);
 
     return StreamBuilder<List<InstalledPluginRecord>>(
@@ -117,6 +126,7 @@ class _AppShellState extends State<AppShell> {
                     const NotesPage(),
                     PluginsPage(onOpenPlugin: _selectPlugin),
                     const SettingsPage(),
+                    const AccountPage(),
                   ],
                 ),
         );
@@ -125,6 +135,19 @@ class _AppShellState extends State<AppShell> {
           body: Column(
             children: [
               WindowTitleBar(title: title),
+              ListenableBuilder(
+                listenable: storageGuard,
+                builder: (context, _) {
+                  if (!storageGuard.isOverLimit || _storageBannerDismissed) {
+                    return const SizedBox.shrink();
+                  }
+                  return _StorageLimitBanner(
+                    onManage: () => _selectFixed(NavRail.accountIndex),
+                    onDismiss: () =>
+                        setState(() => _storageBannerDismissed = true),
+                  );
+                },
+              ),
               Expanded(
                 child: isPhone
                     ? content
@@ -185,4 +208,46 @@ class _AppShellState extends State<AppShell> {
             title: 'Plugin unavailable',
           ),
       };
+}
+
+/// App-wide warning shown the moment the local storage cap is hit — covers
+/// every page (and every plugin) with a single reactive banner rather than a
+/// bespoke check on each one. See `StorageGuardService`.
+class _StorageLimitBanner extends StatelessWidget {
+  const _StorageLimitBanner({required this.onManage, required this.onDismiss});
+  final VoidCallback onManage;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      color: Colors.red.shade400.withValues(alpha: 0.15),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline_rounded, size: 18, color: Colors.red.shade400),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              "You've reached your storage limit. New data won't be saved "
+              'or synced until you free up space.',
+              style: TextStyle(color: luma.textPrimary, fontSize: 12.5),
+            ),
+          ),
+          TextButton(
+            onPressed: onManage,
+            child: Text('Manage',
+                style: TextStyle(color: luma.accent, fontWeight: FontWeight.w700)),
+          ),
+          IconButton(
+            tooltip: 'Dismiss',
+            icon: Icon(Icons.close_rounded, size: 18, color: luma.textSecondary),
+            onPressed: onDismiss,
+          ),
+        ],
+      ),
+    );
+  }
 }

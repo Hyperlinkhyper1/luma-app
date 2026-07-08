@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart' show sha256, Hmac;
 import 'package:flutter/foundation.dart';
 
+import '../storage/storage_guard.dart';
 import 'sync_api.dart';
 import 'sync_collections.dart';
 import 'sync_crypto.dart';
@@ -465,6 +466,7 @@ class SyncService extends ChangeNotifier {
     if (api == null || s == null || !s.signedIn) {
       throw StateError('Not signed in.');
     }
+    StorageGuard.instance.ensureWithinLimit();
     final sealed = await SyncCrypto.sealBytes(bytes, s.encryptionKey!);
     return api.putBlob(collection, sealed,
         baseVersion: baseVersion, payloadSavedAt: DateTime.now());
@@ -501,6 +503,7 @@ class SyncService extends ChangeNotifier {
     if (api == null || s == null || !s.signedIn) {
       throw StateError('Not signed in.');
     }
+    StorageGuard.instance.ensureWithinLimit();
     final sealed = await SyncCrypto.sealPayload(payload, s.encryptionKey!);
     return api.putBlob(collection, sealed,
         baseVersion: baseVersion, payloadSavedAt: DateTime.now());
@@ -531,6 +534,14 @@ class SyncService extends ChangeNotifier {
     final s = _state;
     final api = _api;
     if (s == null || api == null || !s.signedIn) return;
+
+    if (StorageGuard.instance.isOverLimit) {
+      _status = SyncStatus.error;
+      _lastError =
+          'Local storage limit reached — sync is paused until you free up space.';
+      notifyListeners();
+      return;
+    }
 
     _status = SyncStatus.syncing;
     if (!silent) _lastError = null;
@@ -793,6 +804,8 @@ class SyncService extends ChangeNotifier {
 
   Future<bool> _applyPeerLocked(SyncCollection collection,
       CollectionSyncState st, Uint8List sealed, int peerSavedAtMs) async {
+    // A peer can't push new data past the cap either.
+    if (StorageGuard.instance.isOverLimit) return false;
     final s = _state!;
     final payload =
         await SyncCrypto.openPayload(sealed, s.encryptionKey!);

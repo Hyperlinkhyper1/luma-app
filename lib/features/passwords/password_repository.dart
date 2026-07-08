@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../../storage/storage_guard.dart';
 import 'data/password_database.dart';
 import 'password_crypto.dart';
 
@@ -66,8 +67,9 @@ class PasswordRepository {
         );
   }
 
-  Future<void> add(PasswordDraft draft) {
-    return _db.into(_db.passwordEntries).insert(
+  Future<void> add(PasswordDraft draft) async {
+    StorageGuard.instance.ensureWithinLimit();
+    await _db.into(_db.passwordEntries).insert(
           PasswordEntriesCompanion.insert(
             service: draft.service,
             email: draft.email,
@@ -78,6 +80,7 @@ class PasswordRepository {
             icon: Value(_clean(draft.icon)),
           ),
         );
+    StorageGuard.instance.scheduleRefresh();
   }
 
   Future<void> update(int id, PasswordDraft draft) {

@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../../../../storage/storage_guard.dart';
 import 'data/qr_code_database.dart';
 
 /// A previously generated QR code, ready for display.
@@ -30,10 +31,12 @@ class QrCodeRepository {
         );
   }
 
-  Future<void> add(String url) {
-    return _db.into(_db.qrCodeEntries).insert(
+  Future<void> add(String url) async {
+    StorageGuard.instance.ensureWithinLimit();
+    await _db.into(_db.qrCodeEntries).insert(
           QrCodeEntriesCompanion.insert(url: url),
         );
+    StorageGuard.instance.scheduleRefresh();
   }
 
   Future<void> delete(int id) {

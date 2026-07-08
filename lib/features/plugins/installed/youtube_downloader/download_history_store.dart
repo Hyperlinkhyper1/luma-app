@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../storage/storage_guard.dart';
+
 class DownloadHistoryEntry {
   DownloadHistoryEntry({
     required this.title,
@@ -60,9 +62,11 @@ class DownloadHistoryStore {
   }
 
   Future<void> add(DownloadHistoryEntry entry) async {
+    StorageGuard.instance.ensureWithinLimit();
     final entries = await load();
     entries.insert(0, entry);
     await _save(entries);
+    StorageGuard.instance.scheduleRefresh();
   }
 
   Future<void> remove(DownloadHistoryEntry entry) async {

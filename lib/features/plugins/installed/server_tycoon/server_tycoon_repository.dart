@@ -9,6 +9,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../storage/storage_guard.dart';
 import 'data/companies.dart';
 import 'data/game_data.dart';
 import 'data/research.dart';
@@ -83,10 +84,15 @@ class ServerTycoonRepository extends ChangeNotifier {
   }
 
   Future<void> _save() async {
+    // Whole-state rewrite is the only persistence choke point this game has
+    // (every action calls _save()) — over the cap, skip writing rather than
+    // let an unawaited exception escape every fire-and-forget call site.
+    if (StorageGuard.instance.isOverLimit) return;
     try {
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/$_saveFileName');
       await file.writeAsString(jsonEncode(_state.toJson()));
+      StorageGuard.instance.scheduleRefresh();
     } catch (e) {
       // ignore save errors
     }

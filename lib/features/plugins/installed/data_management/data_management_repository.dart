@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:drift/drift.dart';
 
+import '../../../../storage/storage_guard.dart';
 import 'data/data_management_database.dart';
 
 // ─── Domain models ───────────────────────────────────────────────────────────
@@ -98,9 +99,12 @@ class DataManagementRepository {
   }
 
   Future<int> createDataset(String name) async {
-    return _db.into(_db.dataDatasets).insert(
+    StorageGuard.instance.ensureWithinLimit();
+    final id = await _db.into(_db.dataDatasets).insert(
           DataDatasetsCompanion.insert(name: name),
         );
+    StorageGuard.instance.scheduleRefresh();
+    return id;
   }
 
   Future<void> renameDataset(int id, String name) async {
@@ -183,12 +187,13 @@ class DataManagementRepository {
 
   Future<int> addRow(int datasetId, Map<String, String> values,
       {List<String> tags = const []}) async {
+    StorageGuard.instance.ensureWithinLimit();
     final maxOrder = await _db.customSelect(
       'SELECT MAX(order_index) as max_order FROM data_rows WHERE dataset_id = ?',
       variables: [Variable.withInt(datasetId)],
     ).getSingleOrNull();
     final nextOrder = (maxOrder?.data['max_order'] as int?) ?? -1;
-    return _db.into(_db.dataRows).insert(
+    final id = await _db.into(_db.dataRows).insert(
           DataRowsCompanion.insert(
             datasetId: datasetId,
             valuesJson: Value(jsonEncode(values)),
@@ -196,6 +201,8 @@ class DataManagementRepository {
             orderIndex: Value(nextOrder + 1),
           ),
         );
+    StorageGuard.instance.scheduleRefresh();
+    return id;
   }
 
   /// Inserts a copy of [row] directly after it (at the end order-wise).
