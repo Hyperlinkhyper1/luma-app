@@ -117,6 +117,31 @@ class SettingsController extends ChangeNotifier {
     _persist();
   }
 
+  // ---- Sync (always-on collection — see SyncService/main.dart) --------------
+
+  /// Snapshot for the "settings" sync collection. Same shape as [_persist]'s
+  /// local file so nothing is lost translating between the two.
+  Map<String, Object?> exportData() => {
+        'themeMode': _themeMode.name,
+        'accentIndex': _accentIndex,
+        'startScreen': _startScreen.name,
+        'hideAmounts': _hideAmounts,
+        'lockPasswordHash': _lockPasswordHash,
+      };
+
+  /// Replaces every preference with a previously exported snapshot.
+  Future<void> importData(Object? data) async {
+    if (data is! Map<String, dynamic>) return;
+    _themeMode = _parseEnum(ThemeMode.values, data['themeMode'], _themeMode);
+    _accentIndex = _parseAccentIndex(data['accentIndex']);
+    _startScreen =
+        _parseEnum(StartScreen.values, data['startScreen'], _startScreen);
+    _hideAmounts = data['hideAmounts'] == true;
+    _lockPasswordHash = data['lockPasswordHash'] as String?;
+    notifyListeners();
+    await _persist();
+  }
+
   // ---- Persistence ----------------------------------------------------------
 
   Future<void> _persist() async {

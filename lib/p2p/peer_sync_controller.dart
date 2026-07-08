@@ -152,9 +152,28 @@ class PeerSyncController extends ChangeNotifier {
 
     _discoverySub ??= _discovery.peers.listen((peers) {
       _discovered = peers;
+      _autoReconnectTrusted(peers);
       notifyListeners();
     });
     notifyListeners();
+  }
+
+  /// Devices we've connected to before (a trusted peer id, from a completed
+  /// handshake) reconnect on their own as soon as they're seen on the network
+  /// again — no need to press Connect a second time. Silent: a background
+  /// reconnect attempt failing (peer briefly offline, still booting, etc.)
+  /// shouldn't surface as a user-facing error.
+  final Set<String> _autoReconnecting = {};
+
+  void _autoReconnectTrusted(List<DiscoveredPeer> peers) {
+    for (final peer in peers) {
+      if (peer.host.isEmpty || peer.port == 0) continue;
+      if (!_state.trustedPeerIds.contains(peer.name)) continue;
+      if (_connected.containsKey(peer.name)) continue;
+      if (!_autoReconnecting.add(peer.name)) continue; // already attempting
+      unawaited(_connectTo(peer.host, peer.port, silent: true)
+          .whenComplete(() => _autoReconnecting.remove(peer.name)));
+    }
   }
 
   /// Turns discovery + listening off and drops all links.
@@ -170,6 +189,7 @@ class PeerSyncController extends ChangeNotifier {
       await link.close();
     }
     _discovered = const [];
+    _autoReconnecting.clear();
     notifyListeners();
   }
 
@@ -201,15 +221,17 @@ class PeerSyncController extends ChangeNotifier {
   Future<void> connectManually(String host, int port) =>
       _connectTo(host, port);
 
-  Future<void> _connectTo(String host, int port) async {
+  Future<void> _connectTo(String host, int port, {bool silent = false}) async {
     if (!_running) return;
     Socket socket;
     try {
       socket = await Socket.connect(host, port,
           timeout: const Duration(seconds: 5));
     } catch (e) {
-      _lastError = 'Could not connect to $host:$port ($e).';
-      notifyListeners();
+      if (!silent) {
+        _lastError = 'Could not connect to $host:$port ($e).';
+        notifyListeners();
+      }
       return;
     }
     _newLink(socket, isOutgoing: true);
@@ -360,11 +382,17 @@ class PeerSyncController extends ChangeNotifier {
       Uint8List sealed, int peerSavedAtMs) async {
     final applied =
         await _sync.applyPeerSnapshot(collectionId, sealed, peerSavedAtMs);
-    // Fan out transitively to OTHER peers (don't echo back to the sender).
+    // Fan out EVERY enabled collection (not just the one that just changed)
+    // transitively to OTHER peers (don't echo back to the sender) — auto-sync
+    // always converges every device on everything selected, not just the
+    // single thing that happened to trigger this round.
     if (applied && _state.autoSync) {
+      final ids = _sync.peerState().keys;
       for (final entry in _linksByDeviceId.entries) {
         if (!identical(entry.value.socket, sender)) {
-          unawaited(entry.value.sendCollection(collectionId));
+          for (final id in ids) {
+            unawaited(entry.value.sendCollection(id));
+          }
         }
       }
     }
@@ -373,12 +401,19 @@ class PeerSyncController extends ChangeNotifier {
 
   // ---- Local change → auto push -------------------------------------------
 
+  /// Any enabled collection changing pushes ALL enabled collections to every
+  /// connected peer — not just the one that changed. A single debounce timer
+  /// (ignoring which collection fired it) still batches rapid successive
+  /// edits across different collections into one round.
   void _onLocalChange(String collectionId) {
     if (!_running || !_state.autoSync) return;
     _autoDebounce?.cancel();
     _autoDebounce = Timer(_autoDebounceDelay, () {
+      final ids = _sync.peerState().keys;
       for (final link in _linksByDeviceId.values) {
-        unawaited(link.sendCollection(collectionId));
+        for (final id in ids) {
+          unawaited(link.sendCollection(id));
+        }
       }
     });
   }

@@ -78,8 +78,11 @@ class SyncStateStore {
   bool get signedIn =>
       token != null && encryptionKey != null && serverUrl != null;
 
-  CollectionSyncState collection(String id) =>
-      collections.putIfAbsent(id, CollectionSyncState.new);
+  /// The 'settings' collection (theme, preferences — see main.dart) always
+  /// syncs and can't be turned off, so it defaults to enabled the first time
+  /// it's touched rather than the usual opt-in default.
+  CollectionSyncState collection(String id) => collections.putIfAbsent(
+      id, () => CollectionSyncState(enabled: id == 'settings'));
 
   static Future<SyncStateStore> load() async {
     File? file;

@@ -172,15 +172,32 @@ class _SignedInBody extends StatelessWidget {
                           fontSize: 14,
                           fontWeight: FontWeight.w500)),
                 ),
-                Switch(
-                  value: sync.isEnabled(collection.id),
-                  onChanged: (enabled) =>
-                      _onToggle(context, collection.id, collection.label, enabled),
-                  activeThumbColor: luma.onAccent,
-                  activeTrackColor: luma.accent,
-                  inactiveThumbColor: luma.textSecondary,
-                  inactiveTrackColor: luma.surfaceHover,
-                ),
+                if (collection.id == 'settings')
+                  Tooltip(
+                    message: 'Theme and preferences always sync — this '
+                        'can\'t be turned off.',
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.lock_rounded,
+                            size: 14, color: luma.textMuted),
+                        const SizedBox(width: 6),
+                        Text('Always on',
+                            style: TextStyle(
+                                color: luma.textMuted, fontSize: 12)),
+                      ],
+                    ),
+                  )
+                else
+                  Switch(
+                    value: sync.isEnabled(collection.id),
+                    onChanged: (enabled) => _onToggle(
+                        context, collection.id, collection.label, enabled),
+                    activeThumbColor: luma.onAccent,
+                    activeTrackColor: luma.accent,
+                    inactiveThumbColor: luma.textSecondary,
+                    inactiveTrackColor: luma.surfaceHover,
+                  ),
               ],
             ),
           ),

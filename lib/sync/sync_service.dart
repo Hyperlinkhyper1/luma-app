@@ -424,6 +424,7 @@ class SyncService extends ChangeNotifier {
   /// Turns syncing off. With [removeRemote], the server's copy is deleted
   /// too (other devices that still sync this collection may re-upload it).
   Future<void> disableCollection(String id, {bool removeRemote = false}) async {
+    if (id == 'settings') return; // always synced — can't be turned off
     final s = _state;
     if (s == null) return;
     final st = s.collection(id)

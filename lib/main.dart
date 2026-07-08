@@ -103,6 +103,17 @@ class _LumaAppState extends State<LumaApp> {
   // Optional server sync: every feature registers an adapter; nothing is
   // uploaded unless the user signs in AND enables the feature in Settings.
   late final SyncService _sync = SyncService(collections: [
+    // Always synced (see SyncStateStore.collection / SyncService — the
+    // 'settings' id defaults to enabled and can't be toggled off), so a
+    // paired device always picks up the same theme/preferences.
+    JsonStoreSyncCollection(
+      id: 'settings',
+      label: 'Settings',
+      icon: Icons.tune_rounded,
+      listenable: widget.settings,
+      exporter: () async => widget.settings.exportData(),
+      importer: (data) => widget.settings.importData(data),
+    ),
     JsonStoreSyncCollection(
       id: 'notes',
       label: 'Notes',
