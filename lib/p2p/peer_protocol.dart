@@ -120,8 +120,16 @@ Uint8List encodeFrame(Map<String, Object?> message) {
 /// Throws [PeerProtocolException] on an oversize or empty frame.
 ({Uint8List payload, int consumed})? decodeFrame(Uint8List pending) {
   if (pending.length < 4) return null;
-  final length =
-      pending.buffer.asByteData().getUint32(0, Endian.big);
+  // `pending` is very often itself a view (Uint8List.sublistView) into a
+  // larger buffer shared with earlier-consumed frames — that's the whole
+  // point of the read loop reslicing it after each frame. `pending.buffer`
+  // returns that SHARED underlying buffer, so `pending.buffer.asByteData()`
+  // (no offset) reads from the buffer's absolute start, NOT from `pending`'s
+  // own logical start. When two different-length frames arrive in one
+  // chunk, this silently re-read the FIRST frame's length for every frame
+  // after it. `ByteData.sublistView` correctly accounts for `pending`'s own
+  // offsetInBytes.
+  final length = ByteData.sublistView(pending, 0, 4).getUint32(0, Endian.big);
   if (length == 0 || length > kMaxFrameBytes) {
     throw PeerProtocolException('Invalid frame length: $length');
   }

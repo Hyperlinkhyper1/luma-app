@@ -30,6 +30,39 @@ void main() {
       bad.buffer.asByteData().setUint32(0, kMaxFrameBytes + 1, Endian.big);
       expect(() => decodeFrame(bad), throwsA(isA<PeerProtocolException>()));
     });
+
+    test(
+        'decodeFrame reads the correct length for a SECOND, DIFFERENT-length '
+        'frame sliced from the same buffer', () {
+      // Reproduces the real bug: PeerLink._absorbControl decodes multiple
+      // frames from one chunk by re-slicing `remaining` with
+      // Uint8List.sublistView after each frame — so the second frame's
+      // buffer is a VIEW with a nonzero offsetInBytes, not a fresh buffer.
+      // `pending.buffer.asByteData()` reads from the absolute start of the
+      // underlying (shared) buffer, ignoring that offset — so if the two
+      // frames differ in length, the second one's length silently comes out
+      // as the FIRST frame's length instead of its own. Frames of the SAME
+      // length mask this completely (the wrong read coincidentally matches
+      // the right answer), which is why the length here must differ.
+      final short = encodeFrame({'type': 'request', 'collection': 'finance'});
+      final long =
+          encodeFrame({'type': 'request', 'collection': 'passwords'});
+      expect(short.length, isNot(long.length)); // guard against a future
+      // change making these equal-length and silently un-covering the bug.
+
+      final combined = Uint8List(short.length + long.length);
+      combined.setRange(0, short.length, short);
+      combined.setRange(short.length, combined.length, long);
+
+      final first = decodeFrame(combined);
+      expect(jsonDecode(utf8.decode(first!.payload))['collection'], 'finance');
+
+      final remaining = Uint8List.sublistView(combined, first.consumed);
+      final second = decodeFrame(remaining);
+      expect(second, isNotNull);
+      expect(jsonDecode(utf8.decode(second!.payload))['collection'],
+          'passwords');
+    });
   });
 
   group('PeerLink over real TCP loopback', () {
