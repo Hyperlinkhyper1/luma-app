@@ -12,6 +12,7 @@ import '../storage/storage_guard.dart';
 import '../storage/storage_guard_scope.dart';
 import '../theme/luma_theme.dart';
 import 'plan.dart';
+import 'plan_selection_page.dart';
 
 /// The Account destination: profile picture, sync & paired devices (moved
 /// here from Settings, now collapsible), local storage usage, and the plan
@@ -76,7 +77,7 @@ class AccountPage extends StatelessWidget {
                 subtitle: "Preview what's coming — nothing can be purchased yet.",
               ),
               const SizedBox(height: 12),
-              const _PlanSection(),
+              const _PlanSummary(),
             ],
           ),
         ),
@@ -291,161 +292,109 @@ class _LocalStorageBar extends StatelessWidget {
 
 // ---- Plan -------------------------------------------------------------------
 
-class _PlanSection extends StatelessWidget {
-  const _PlanSection();
+class _PlanSummary extends StatelessWidget {
+  const _PlanSummary();
 
   @override
   Widget build(BuildContext context) {
     final settings = SettingsScope.of(context);
+    final luma = context.luma;
     return ListenableBuilder(
       listenable: settings,
       builder: (context, _) {
-        final selected = settings.selectedPlanId;
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final wide = constraints.maxWidth >= 640;
-            final cards = [
-              for (final plan in kPlans)
-                _PlanCard(
-                  plan: plan,
-                  selected: plan.id == selected,
-                  onTap: () => _selectPlan(context, settings, plan),
-                ),
-            ];
-            if (!wide) {
-              return Column(
-                children: [
-                  for (var i = 0; i < cards.length; i++) ...[
-                    if (i > 0) const SizedBox(height: 12),
-                    cards[i],
-                  ],
-                ],
-              );
-            }
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (var i = 0; i < cards.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 12),
-                  Expanded(child: cards[i]),
-                ],
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _selectPlan(BuildContext context, SettingsController settings, Plan plan) {
-    settings.setSelectedPlanId(plan.id);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Coming soon — billing isn't live yet.")),
-    );
-  }
-}
-
-class _PlanCard extends StatefulWidget {
-  const _PlanCard({
-    required this.plan,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final Plan plan;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  State<_PlanCard> createState() => _PlanCardState();
-}
-
-class _PlanCardState extends State<_PlanCard> {
-  bool _hovering = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final luma = context.luma;
-    final plan = widget.plan;
-    final selected = widget.selected;
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovering = true),
-      onExit: (_) => setState(() => _hovering = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: _hovering ? luma.surfaceHover : luma.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: selected ? luma.accent : luma.border,
-              width: selected ? 2 : 1,
-            ),
-          ),
+        final plan = planById(settings.selectedPlanId);
+        return LumaCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ---- Plan header row ------------------------------------------
               Row(
                 children: [
-                  Expanded(
-                    child: Text(plan.name,
-                        style: TextStyle(
-                            color: luma.textPrimary,
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700)),
+                  // Accent icon
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: luma.accentSubtle,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.workspace_premium_rounded,
+                        color: luma.accent, size: 22),
                   ),
-                  if (selected)
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          plan.name,
+                          style: TextStyle(
+                            color: luma.textPrimary,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          plan.priceLabel,
+                          style: TextStyle(
+                            color: luma.accent,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  LumaGhostButton(
+                    label: 'Change plan',
+                    icon: Icons.swap_horiz_rounded,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const PlanSelectionPage(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Divider(color: luma.border, height: 1),
+              const SizedBox(height: 16),
+              // ---- Feature pills -------------------------------------------
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final feature in plan.features)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
+                          horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: luma.accentSubtle,
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: Text('Current',
-                          style: TextStyle(
-                              color: luma.accent,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700)),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.check_rounded,
+                              size: 14, color: luma.accent),
+                          const SizedBox(width: 6),
+                          Text(
+                            feature,
+                            style: TextStyle(
+                              color: luma.textSecondary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                 ],
               ),
-              const SizedBox(height: 4),
-              Text(plan.priceLabel,
-                  style: TextStyle(
-                      color: luma.accent,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800)),
-              const SizedBox(height: 6),
-              Text(plan.blurb,
-                  style: TextStyle(
-                      color: luma.textMuted, fontSize: 12, height: 1.4)),
-              const SizedBox(height: 14),
-              Divider(color: luma.border, height: 1),
-              const SizedBox(height: 14),
-              for (final feature in plan.features)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(Icons.check_rounded, size: 16, color: luma.accent),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(feature,
-                            style: TextStyle(
-                                color: luma.textSecondary, fontSize: 13)),
-                      ),
-                    ],
-                  ),
-                ),
             ],
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
