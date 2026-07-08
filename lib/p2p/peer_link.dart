@@ -194,18 +194,24 @@ class PeerLink {
     _blobCollection = null;
     _blobSavedAtMs = 0;
 
+    // Apply + ack asynchronously (this may await real DB I/O) without
+    // blocking the read loop.
+    unawaited(_deliverBlob(collection, sealed, savedAtMs));
+
     // Any trailing bytes from the same chunk start the next control frame.
+    // This MUST happen synchronously, right now — not deferred behind the
+    // async apply above. A later socket chunk can otherwise race ahead of
+    // these already-received bytes (arriving via a fresh `_onData` call
+    // while `_deliverBlob` is still awaiting), which desyncs the frame
+    // boundary and corrupts every message after it ("Malformed control
+    // message").
     if (take < chunk.length) {
-      final tail = Uint8List.sublistView(chunk, take);
-      // Run the import without blocking the read loop, then forward the tail.
-      unawaited(_deliverBlob(collection, sealed, savedAtMs, tail));
-    } else {
-      unawaited(_deliverBlob(collection, sealed, savedAtMs, null));
+      _absorbControl(Uint8List.sublistView(chunk, take));
     }
   }
 
-  Future<void> _deliverBlob(String collection, Uint8List sealed,
-      int savedAtMs, Uint8List? trailing) async {
+  Future<void> _deliverBlob(
+      String collection, Uint8List sealed, int savedAtMs) async {
     bool applied;
     try {
       applied = await onSnapshot(collection, sealed, savedAtMs);
@@ -217,9 +223,6 @@ class PeerLink {
         'type': applied ? 'ack' : 'nack',
         'collection': collection,
       });
-    }
-    if (trailing != null && trailing.isNotEmpty && !_closed) {
-      _absorbControl(trailing);
     }
   }
 

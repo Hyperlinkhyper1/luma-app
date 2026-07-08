@@ -179,7 +179,106 @@ void main() {
       expect(received['a'], blobA);
       expect(received['b'], blobB);
     });
+
+    test(
+        'a slow onSnapshot apply does not corrupt a trailing frame that '
+        'arrived in the same chunk', () async {
+      // Uses a raw socket on the "server" side (not PeerLink) so the test
+      // controls exact chunk boundaries instead of hoping two writes happen
+      // to coalesce — the earlier pipelined-request version of this test
+      // passed even against the bug, because the request/response round
+      // trip didn't reliably land "a" and "b" in the same read.
+      listener = PeerListener(); // unused; keeps tearDown's listener.stop() happy.
+      const token = 'shared-account-token-3';
+      final blobA = Uint8List.fromList(List.generate(20, (i) => i));
+      final blobB = Uint8List.fromList(List.generate(20, (i) => 200 - i));
+      final blobC = Uint8List.fromList(List.generate(20, (i) => i * 2));
+
+      final rawServer = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+      final acceptedSocket = Completer<Socket>();
+      rawServer.listen((s) => acceptedSocket.complete(s));
+
+      final clientSocket =
+          await Socket.connect('127.0.0.1', rawServer.port);
+      final serverSocket =
+          await acceptedSocket.future.timeout(const Duration(seconds: 5));
+
+      final order = <String>[];
+      final received = <String, Uint8List>{};
+      final done = Completer<void>();
+      final clientReady = Completer<void>();
+      // Gate collection "a"'s apply so it's still pending when "c" arrives
+      // as a later, distinct chunk — reproducing the race where a trailing
+      // frame ("b", pipelined in the same chunk as "a") must still be
+      // parsed immediately, not deferred behind "a"'s in-flight apply.
+      final gateA = Completer<void>();
+
+      final clientLink = PeerLink(
+        socket: clientSocket,
+        localHello: _hello('client', token),
+        expectedToken: token,
+        onReady: (_) => clientReady.complete(),
+        onSnapshot: (collectionId, sealed, savedAtMs) async {
+          if (collectionId == 'a') await gateA.future;
+          order.add(collectionId);
+          received[collectionId] = sealed;
+          if (received.length == 3 && !done.isCompleted) done.complete();
+          return true;
+        },
+        provideSnapshot: (_) async => null,
+        onClose: (_) {},
+      );
+
+      serverSocket.add(encodeFrame(_hello('server', token).toJson()));
+      await serverSocket.flush();
+      await clientReady.future.timeout(const Duration(seconds: 5));
+
+      // blobA immediately followed by blobB in a SINGLE write: guaranteed to
+      // arrive as one chunk, exercising the "trailing bytes after a
+      // completed blob" path deterministically.
+      final combined = BytesBuilder()
+        ..add(_blobFrame('a', 1, blobA))
+        ..add(_blobFrame('b', 2, blobB));
+      serverSocket.add(combined.takeBytes());
+      await serverSocket.flush();
+
+      // Give the client time to parse the chunk (and, if fixed, apply "b")
+      // while "a" is stuck on the gate — before "c" arrives separately.
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      serverSocket.add(_blobFrame('c', 3, blobC));
+      await serverSocket.flush();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      gateA.complete();
+
+      await done.future.timeout(const Duration(seconds: 5));
+      expect(received['a'], blobA);
+      expect(received['b'], blobB);
+      expect(received['c'], blobC);
+      // "b" arrived on the wire before "c" and must be parsed (and applied,
+      // since it has no gate) before "c" is — regardless of "a" still being
+      // stuck mid-apply.
+      expect(order.indexOf('b'), lessThan(order.indexOf('c')));
+
+      await clientLink.close();
+      await rawServer.close();
+    });
   });
+}
+
+/// Raw bytes for a `blob` push: the control-frame header followed
+/// immediately by the raw sealed body — exactly what [PeerLink.sendCollection]
+/// writes to the wire.
+Uint8List _blobFrame(String collection, int savedAtMs, Uint8List body) {
+  final header = encodeFrame({
+    'type': 'blob',
+    'collection': collection,
+    'savedAtMs': savedAtMs,
+    'length': body.length,
+  });
+  final out = Uint8List(header.length + body.length);
+  out.setRange(0, header.length, header);
+  out.setRange(header.length, header.length + body.length, body);
+  return out;
 }
 
 PeerHello _hello(String deviceId, String token) => PeerHello(

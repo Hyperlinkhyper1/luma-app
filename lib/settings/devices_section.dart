@@ -347,6 +347,25 @@ class _SignedInBody extends StatelessWidget {
         else
           for (final d in peers.discovered)
             _DiscoveredRow(peer: d, controller: peers),
+        if (peers.isRunning) ...[
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Both devices must be on the same network. On mobile '
+                  'data (5G/4G)? Use a hotspot instead.',
+                  style: TextStyle(color: luma.textMuted, fontSize: 11),
+                ),
+              ),
+              TextButton(
+                onPressed: () => _showHotspotHelp(context),
+                child:
+                    Text('How?', style: TextStyle(color: luma.accent, fontSize: 11)),
+              ),
+            ],
+          ),
+        ],
 
         // ---- Manual connect + auto-sync ----------------------------------
         Divider(color: luma.border, height: 32),
@@ -469,6 +488,105 @@ class _DiscoveredRow extends StatelessWidget {
             label: 'Connect',
             icon: Icons.link_rounded,
             onTap: () => controller.connectToDiscovered(peer),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---- Hotspot fallback help --------------------------------------------------
+
+/// Discovery needs both devices on the same local network. There's no way
+/// around that over plain Wi-Fi/LAN — if a phone is on mobile data (5G/4G)
+/// instead of Wi-Fi, the fix is to put both devices on ONE network via the
+/// phone's own hotspot, which the existing Wi-Fi discovery/connect code
+/// already handles with no changes (it doesn't care whether the network was
+/// created by a router or a phone).
+void _showHotspotHelp(BuildContext context) {
+  final luma = context.luma;
+  showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      backgroundColor: luma.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: luma.border),
+      ),
+      title: Text('No shared Wi-Fi? Use a hotspot',
+          style: TextStyle(color: luma.textPrimary)),
+      content: SizedBox(
+        width: 400,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Discovery only finds devices on the same network. If your '
+              'phone is on mobile data instead of Wi-Fi, there\'s no LAN to '
+              'find each other on — turn on the phone\'s own hotspot instead '
+              'and have the other device join it. Once both are on that one '
+              'network, everything here works exactly the same.',
+              style: TextStyle(color: luma.textSecondary, fontSize: 13, height: 1.5),
+            ),
+            const SizedBox(height: 14),
+            _HotspotStep(
+                number: '1',
+                text: 'On the phone: Settings → Network & internet → '
+                    'Hotspot & tethering → turn on Wi-Fi hotspot.'),
+            _HotspotStep(
+                number: '2',
+                text: 'On the other device: connect to that hotspot\'s '
+                    'Wi-Fi network like any other.'),
+            _HotspotStep(
+                number: '3',
+                text: 'Come back here and turn discovery on (or off and '
+                    'back on) on both devices.'),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: Text('Got it', style: TextStyle(color: luma.accent)),
+        ),
+      ],
+    ),
+  );
+}
+
+class _HotspotStep extends StatelessWidget {
+  const _HotspotStep({required this.number, required this.text});
+  final String number;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 20,
+            height: 20,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: luma.accent.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Text(number,
+                style: TextStyle(
+                    color: luma.accent,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(text,
+                style: TextStyle(
+                    color: luma.textSecondary, fontSize: 12, height: 1.4)),
           ),
         ],
       ),
