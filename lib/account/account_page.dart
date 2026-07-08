@@ -74,7 +74,7 @@ class AccountPage extends StatelessWidget {
               _SectionHeader(
                 icon: Icons.workspace_premium_rounded,
                 title: 'Plan',
-                subtitle: "Preview what's coming — nothing can be purchased yet.",
+                subtitle: 'Your active plan and what it includes.',
               ),
               const SizedBox(height: 12),
               const _PlanSummary(),

@@ -31,8 +31,8 @@ const kPlans = <Plan>[
     blurb: 'Everything you need on this device.',
     features: [
       '1 GB local storage',
-      'Local + peer-to-peer sync',
-      'Every plugin, unlocked',
+      'Local sync only',
+      'Free starter plugins',
     ],
   ),
   Plan(
@@ -43,7 +43,9 @@ const kPlans = <Plan>[
     blurb: 'More room to grow, priority sync.',
     features: [
       'Expanded local storage',
+      'Peer-to-peer sync',
       'Priority cloud sync speed',
+      'Free advanced plugins',
       'Custom accent themes',
     ],
   ),
@@ -55,7 +57,9 @@ const kPlans = <Plan>[
     blurb: 'The fastest, largest luma yet.',
     features: [
       'Largest local storage',
+      'Peer-to-peer sync',
       'Fastest cloud sync',
+      'All plugins, free',
       'Early access to new features',
     ],
   ),
