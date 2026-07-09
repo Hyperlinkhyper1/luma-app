@@ -41,6 +41,7 @@ class BottomNav extends StatelessWidget {
   bool get _moreSelected =>
       selectedPluginId != null ||
       selectedIndex == 4 ||
+      selectedIndex == 5 ||
       selectedIndex == NavRail.pluginsIndex ||
       selectedIndex == NavRail.settingsIndex ||
       selectedIndex == NavRail.accountIndex;
@@ -101,6 +102,14 @@ class BottomNav extends StatelessWidget {
                 onTap: () {
                   Navigator.pop(sheetContext);
                   onSelect(4);
+                },
+              ),
+              _MoreRow(
+                icon: Icons.smart_toy_rounded,
+                label: 'Assistant',
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  onSelect(5);
                 },
               ),
               _MoreRow(

@@ -16,7 +16,7 @@ class HomePage extends StatelessWidget {
   const HomePage({super.key, required this.onNavigate});
 
   /// Jumps the shell to another destination (1 = Converter, 2 = Finance,
-  /// 3 = Password Manager, [NavRail.settingsIndex] = Settings).
+  /// 3 = Password Manager, 5 = Assistant, [NavRail.settingsIndex] = Settings).
   final ValueChanged<int> onNavigate;
 
   @override
@@ -113,6 +113,12 @@ class _HomeBody extends StatelessWidget {
     ];
 
     final quickActions = [
+      _QuickAction(
+        icon: Icons.smart_toy_rounded,
+        title: 'Ask Assistant',
+        subtitle: 'Chat with the AI assistant',
+        onTap: () => onNavigate(5),
+      ),
       _QuickAction(
         icon: Icons.account_balance_wallet_rounded,
         title: 'Finance',

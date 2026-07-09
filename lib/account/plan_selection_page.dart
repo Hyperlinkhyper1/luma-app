@@ -5,6 +5,7 @@ import '../settings/settings_controller.dart';
 import '../settings/settings_scope.dart';
 import '../theme/luma_theme.dart';
 import 'plan.dart';
+import 'plan_code_dialog.dart';
 
 /// Per-plan tier icon to give each card its own identity.
 const _planIcons = <String, IconData>{
@@ -137,6 +138,7 @@ class _PlanGrid extends StatelessWidget {
       listenable: settings,
       builder: (context, _) {
         final selectedId = settings.selectedPlanId;
+        final expiresAt = settings.planExpiresAt;
         return LayoutBuilder(
           builder: (context, constraints) {
             final wide = constraints.maxWidth >= 720;
@@ -145,6 +147,7 @@ class _PlanGrid extends StatelessWidget {
                 _PlanCard(
                   plan: plan,
                   selected: plan.id == selectedId,
+                  expiresAt: plan.id == selectedId ? expiresAt : null,
                   onTap: () => _selectPlan(context, settings, plan),
                 ),
             ];
@@ -175,9 +178,23 @@ class _PlanGrid extends StatelessWidget {
     );
   }
 
-  void _selectPlan(
-      BuildContext context, SettingsController settings, Plan plan) {
-    settings.setSelectedPlanId(plan.id);
+  Future<void> _selectPlan(
+      BuildContext context, SettingsController settings, Plan plan) async {
+    if (!plan.requiresCode) {
+      settings.setSelectedPlanId(plan.id);
+      Navigator.of(context).pop();
+      return;
+    }
+    final code = await showPlanCodeDialog(context, plan: plan);
+    if (code == null || !context.mounted) return;
+    final granted = settings.redeemPlanCode(code);
+    if (!context.mounted) return;
+    if (granted == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('That access code is invalid.')),
+      );
+      return;
+    }
     Navigator.of(context).pop();
   }
 }
@@ -189,11 +206,15 @@ class _PlanCard extends StatefulWidget {
     required this.plan,
     required this.selected,
     required this.onTap,
+    this.expiresAt,
   });
 
   final Plan plan;
   final bool selected;
   final VoidCallback onTap;
+
+  /// When this (selected) plan reverts to Core, if it was code-redeemed.
+  final DateTime? expiresAt;
 
   @override
   State<_PlanCard> createState() => _PlanCardState();
@@ -328,6 +349,18 @@ class _PlanCardState extends State<_PlanCard> {
                         height: 1.5,
                       ),
                     ),
+                    if (widget.expiresAt != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'Reverts to Core in ${_daysLeft(widget.expiresAt!)} '
+                        'day${_daysLeft(widget.expiresAt!) == 1 ? '' : 's'}',
+                        style: TextStyle(
+                          color: luma.accent,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -432,5 +465,9 @@ class _PlanCardState extends State<_PlanCard> {
         ),
       ),
     );
+  }
+
+  int _daysLeft(DateTime expiresAt) {
+    return expiresAt.difference(DateTime.now()).inDays.clamp(0, 1 << 30);
   }
 }

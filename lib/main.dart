@@ -6,6 +6,9 @@ import 'app/splash_screen.dart';
 import 'app/update/app_version.dart';
 import 'app/update/update_gate.dart';
 import 'app/window_controls.dart';
+import 'features/chat/data/chat_database.dart';
+import 'features/chat/data/chat_repository.dart';
+import 'features/chat/chat_scope.dart';
 import 'features/plugins/installed/auto_clicker/auto_clicker_repository.dart';
 import 'features/plugins/installed/auto_clicker/auto_clicker_scope.dart';
 import 'features/plugins/installed/mood_journal/data/mood_journal_database.dart';
@@ -91,6 +94,8 @@ class _LumaAppState extends State<LumaApp> {
       PluginRepository(_pluginDb, PluginCatalogService());
   late final QrCodeDatabase _qrCodeDb = QrCodeDatabase();
   late final QrCodeRepository _qrCodeRepository = QrCodeRepository(_qrCodeDb);
+  late final ChatDatabase _chatDb = ChatDatabase();
+  late final ChatRepository _chatRepository = ChatRepository(_chatDb);
   late final BulletinBoardDatabase _bulletinBoardDb = BulletinBoardDatabase();
   late final BulletinBoardRepository _bulletinBoardRepository = BulletinBoardRepository(_bulletinBoardDb);
   late final PriceTrackerRepository _priceTrackerRepository = PriceTrackerRepository();
@@ -225,6 +230,7 @@ class _LumaAppState extends State<LumaApp> {
     _passwordDb.close();
     _pluginDb.close();
     _qrCodeDb.close();
+    _chatDb.close();
     _bulletinBoardDb.close();
     _calendarDb.close();
     _dataManagementDb.close();
@@ -277,6 +283,8 @@ class _LumaAppState extends State<LumaApp> {
             repository: _pluginRepository,
             child: QrCodeScope(
               repository: _qrCodeRepository,
+              child: ChatScope(
+              repository: _chatRepository,
               child: BulletinBoardScope(
                 repository: _bulletinBoardRepository,
                 child: PriceTrackerScope(
@@ -319,6 +327,7 @@ class _LumaAppState extends State<LumaApp> {
                   ),
                   ),
                 ),
+              ),
               ),
             ),
           ),

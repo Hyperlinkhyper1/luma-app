@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../account/account_page.dart';
+import '../features/chat/chat_page.dart';
 import '../features/converter/converter_page.dart';
 import '../features/home/home_page.dart';
 import '../features/notes/notes_page.dart';
@@ -61,6 +62,7 @@ class _AppShellState extends State<AppShell> {
     'Finance',
     'Password Manager',
     'Notes',
+    'Assistant',
     'Plugins',
     'Settings',
     'Account',
@@ -115,6 +117,11 @@ class _AppShellState extends State<AppShell> {
                     const FinancePage(),
                     const PasswordsPage(),
                     const NotesPage(),
+                    ChatPage(
+                      onOpenSettings: () =>
+                          _selectFixed(NavRail.settingsIndex),
+                      onOpenPlugin: _selectPlugin,
+                    ),
                     PluginsPage(onOpenPlugin: _selectPlugin),
                     const SettingsPage(),
                     const AccountPage(),

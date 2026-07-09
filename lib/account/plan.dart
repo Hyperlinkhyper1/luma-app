@@ -25,6 +25,10 @@ class Plan {
   /// count toward it.
   final int storageMb;
   final List<String> features;
+
+  /// Whether picking this plan requires redeeming an access code (see
+  /// [SettingsController.redeemPlanCode]). False for the free default plan.
+  bool get requiresCode => id != 'core';
 }
 
 const kPlans = <Plan>[

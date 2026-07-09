@@ -7,6 +7,7 @@ import '../app/pin_dialog.dart';
 import '../app/update/app_version.dart';
 import '../app/update/update_gate.dart';
 import '../app/widgets.dart';
+import '../features/chat/ai_settings_section.dart';
 import '../theme/luma_theme.dart';
 import 'settings_controller.dart';
 import 'settings_scope.dart';
@@ -95,6 +96,16 @@ class SettingsPage extends StatelessWidget {
                     ),
                   ],
                 ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // ---- AI Assistant (collapsible) -----------------------------
+              const LumaCollapsibleSection(
+                icon: Icons.smart_toy_rounded,
+                title: 'AI Assistant',
+                subtitle: 'Connect your own Anthropic API key.',
+                child: AiSettingsSection(),
               ),
 
               const SizedBox(height: 24),

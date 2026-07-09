@@ -310,6 +310,86 @@ class LumaIconBadge extends StatelessWidget {
   }
 }
 
+/// A section header + body that starts collapsed and expands on tap, with an
+/// animated chevron. Used for secondary settings blocks that shouldn't be
+/// open by default (e.g. Account's "Sync & account", Settings' "AI
+/// Assistant").
+class LumaCollapsibleSection extends StatefulWidget {
+  const LumaCollapsibleSection({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.child,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final Widget child;
+
+  @override
+  State<LumaCollapsibleSection> createState() =>
+      _LumaCollapsibleSectionState();
+}
+
+class _LumaCollapsibleSectionState extends State<LumaCollapsibleSection> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Row(
+              children: [
+                Icon(widget.icon, size: 18, color: luma.accent),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(widget.title,
+                          style: TextStyle(
+                              color: luma.textPrimary,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700)),
+                      if (widget.subtitle != null)
+                        Text(widget.subtitle!,
+                            style:
+                                TextStyle(color: luma.textMuted, fontSize: 12)),
+                    ],
+                  ),
+                ),
+                AnimatedRotation(
+                  turns: _expanded ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 150),
+                  child: Icon(Icons.expand_more_rounded,
+                      color: luma.textSecondary),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+          alignment: Alignment.topCenter,
+          child: _expanded
+              ? widget.child
+              : const SizedBox(width: double.infinity, height: 0),
+        ),
+      ],
+    );
+  }
+}
+
 /// Centered placeholder for an empty list/section.
 class LumaEmptyState extends StatelessWidget {
   const LumaEmptyState({

@@ -42,7 +42,7 @@ class AccountPage extends StatelessWidget {
               const SizedBox(height: 24),
 
               // ---- Sync & account (collapsible) ----------------------------
-              _CollapsibleSection(
+              LumaCollapsibleSection(
                 icon: Icons.cloud_sync_rounded,
                 title: 'Sync & account',
                 subtitle:
@@ -149,82 +149,6 @@ class _ProfileSection extends StatelessWidget {
     final result = await FilePicker.pickFiles(type: FileType.image);
     final path = result?.files.single.path;
     if (path != null) settings.setAvatarPath(path);
-  }
-}
-
-// ---- Collapsible section wrapper -----------------------------------------
-
-class _CollapsibleSection extends StatefulWidget {
-  const _CollapsibleSection({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.child,
-  });
-
-  final IconData icon;
-  final String title;
-  final String? subtitle;
-  final Widget child;
-
-  @override
-  State<_CollapsibleSection> createState() => _CollapsibleSectionState();
-}
-
-class _CollapsibleSectionState extends State<_CollapsibleSection> {
-  bool _expanded = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final luma = context.luma;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: () => setState(() => _expanded = !_expanded),
-            child: Row(
-              children: [
-                Icon(widget.icon, size: 18, color: luma.accent),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(widget.title,
-                          style: TextStyle(
-                              color: luma.textPrimary,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700)),
-                      if (widget.subtitle != null)
-                        Text(widget.subtitle!,
-                            style:
-                                TextStyle(color: luma.textMuted, fontSize: 12)),
-                    ],
-                  ),
-                ),
-                AnimatedRotation(
-                  turns: _expanded ? 0.5 : 0,
-                  duration: const Duration(milliseconds: 150),
-                  child: Icon(Icons.expand_more_rounded,
-                      color: luma.textSecondary),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
-          alignment: Alignment.topCenter,
-          child: _expanded
-              ? widget.child
-              : const SizedBox(width: double.infinity, height: 0),
-        ),
-      ],
-    );
   }
 }
 

@@ -1,8 +1,19 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+
+/// Access codes that unlock paid plans without billing. Only the SHA-256
+/// hash is kept in source so the codes aren't sitting in plain text — see
+/// [SettingsController.redeemPlanCode]. Each redemption grants the mapped
+/// plan for [SettingsController.planCodeDurationDays] days before the user
+/// is bumped back to Core.
+const Map<String, String> _kPlanCodeHashes = {
+  '485f3bb7ac90f976fa41d61715313e92ab62db7aed502d4f197e0c61e32ab749': 'orbit',
+  'fa28c62aa8e08a2e98cccdff56f36c3ffed110c37355240d44429e538f9b649b': 'nova',
+};
 
 /// Which destination the app opens on when launched.
 enum StartScreen { home, converter, finance }
@@ -38,6 +49,10 @@ class SettingsController extends ChangeNotifier {
     required String? lockPasswordHash,
     required String? avatarPath,
     required String selectedPlanId,
+    required String? planExpiresAt,
+    required int aiCallsToday,
+    required String? aiCallsResetDate,
+    required String aiProviderId,
     required File? file,
   })  : _themeMode = themeMode,
         _accentIndex = accentIndex,
@@ -46,6 +61,10 @@ class SettingsController extends ChangeNotifier {
         _lockPasswordHash = lockPasswordHash,
         _avatarPath = avatarPath,
         _selectedPlanId = selectedPlanId,
+        _planExpiresAt = planExpiresAt,
+        _aiCallsToday = aiCallsToday,
+        _aiCallsResetDate = aiCallsResetDate,
+        _aiProviderId = aiProviderId,
         _file = file;
 
   // These fields are deliberately assigned in the initializer list (rather than
@@ -59,7 +78,16 @@ class SettingsController extends ChangeNotifier {
   String? _lockPasswordHash;
   String? _avatarPath;
   String _selectedPlanId;
+
+  /// ISO-8601 timestamp of when a code-redeemed plan reverts to Core, or
+  /// null if the current plan doesn't expire (Core, or never redeemed).
+  String? _planExpiresAt;
+  int _aiCallsToday;
+  String? _aiCallsResetDate;
+  String _aiProviderId;
   final File? _file;
+
+  static const _aiDailyCallLimit = 10;
 
   ThemeMode get themeMode => _themeMode;
   int get accentIndex => _accentIndex;
@@ -74,11 +102,102 @@ class SettingsController extends ChangeNotifier {
   /// Path to the user's chosen profile picture on disk, if any.
   String? get avatarPath => _avatarPath;
 
-  /// Cosmetic only — no billing exists yet. Defaults to 'core' (free).
-  String get selectedPlanId => _selectedPlanId;
+  /// Number of days a redeemed plan code grants before reverting to Core.
+  static const planCodeDurationDays = 30;
+
+  /// No billing exists yet — Orbit/Nova are unlocked only via
+  /// [redeemPlanCode] and expire automatically after
+  /// [planCodeDurationDays]. Defaults to 'core' (free).
+  String get selectedPlanId {
+    _rolloverPlanExpiryIfNeeded();
+    return _selectedPlanId;
+  }
+
+  /// When the current plan reverts to Core, or null if it doesn't expire.
+  DateTime? get planExpiresAt {
+    _rolloverPlanExpiryIfNeeded();
+    return _planExpiresAt == null ? null : DateTime.tryParse(_planExpiresAt!);
+  }
+
+  void _rolloverPlanExpiryIfNeeded() {
+    final expiresAt = _planExpiresAt;
+    if (expiresAt == null) return;
+    final parsed = DateTime.tryParse(expiresAt);
+    if (parsed != null && DateTime.now().isBefore(parsed)) return;
+    _selectedPlanId = 'core';
+    _planExpiresAt = null;
+    _changed();
+  }
+
+  /// Validates [code] against the known plan-code hashes and, if it
+  /// matches, switches to the corresponding plan for
+  /// [planCodeDurationDays] days. Returns the granted plan id, or null if
+  /// the code is invalid.
+  String? redeemPlanCode(String code) {
+    final trimmed = code.trim();
+    if (trimmed.isEmpty) return null;
+    final hash = sha256.convert(utf8.encode(trimmed)).toString();
+    final planId = _kPlanCodeHashes[hash];
+    if (planId == null) return null;
+    _selectedPlanId = planId;
+    _planExpiresAt = DateTime.now()
+        .add(const Duration(days: planCodeDurationDays))
+        .toIso8601String();
+    _changed();
+    return planId;
+  }
+
+  /// Which AI provider (`AiProviderId.name`) the Assistant tab talks to.
+  /// Local-device-only — each device has its own set of saved API keys, so
+  /// this isn't synced (see [exportData]).
+  String get aiProviderId => _aiProviderId;
+
+  void setAiProviderId(String id) {
+    if (id == _aiProviderId) return;
+    _aiProviderId = id;
+    _changed();
+  }
 
   /// The accent seed to feed the theme, or null for the default lavender.
   Color? get accentSeed => kAccentPresets[_accentIndex].seed;
+
+  /// How many AI assistant messages remain today, out of [_aiDailyCallLimit].
+  /// Resets the counter as a side effect if the stored date has rolled over.
+  int get aiCallsRemainingToday {
+    _rolloverAiCallsIfNeeded();
+    return (_aiDailyCallLimit - _aiCallsToday).clamp(0, _aiDailyCallLimit);
+  }
+
+  /// Whether another AI assistant message can be sent today. This is a
+  /// client-side spend guard on the user's own API key, not a security
+  /// boundary — there's no server to enforce it against.
+  bool get canSendAiMessage {
+    _rolloverAiCallsIfNeeded();
+    return _aiCallsToday < _aiDailyCallLimit;
+  }
+
+  /// Records that an AI assistant message was successfully sent. Call this
+  /// only after a successful send — a failed/errored call shouldn't burn the
+  /// user's daily budget.
+  void recordAiCall() {
+    _rolloverAiCallsIfNeeded();
+    _aiCallsToday++;
+    _changed();
+  }
+
+  void _rolloverAiCallsIfNeeded() {
+    final today = _todayIso();
+    if (_aiCallsResetDate != today) {
+      _aiCallsResetDate = today;
+      _aiCallsToday = 0;
+    }
+  }
+
+  static String _todayIso() {
+    final now = DateTime.now();
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${now.year}-${two(now.month)}-${two(now.day)}';
+  }
 
   // ---- Mutations ------------------------------------------------------------
 
@@ -120,9 +239,12 @@ class SettingsController extends ChangeNotifier {
     _changed();
   }
 
+  /// Switches directly to a plan that doesn't require a code (only Core
+  /// today). Orbit/Nova must go through [redeemPlanCode].
   void setSelectedPlanId(String id) {
-    if (id == _selectedPlanId) return;
+    if (id == _selectedPlanId && _planExpiresAt == null) return;
     _selectedPlanId = id;
+    _planExpiresAt = null;
     _changed();
   }
 
@@ -134,6 +256,10 @@ class SettingsController extends ChangeNotifier {
     _lockPasswordHash = null;
     _avatarPath = null;
     _selectedPlanId = 'core';
+    _planExpiresAt = null;
+    _aiCallsToday = 0;
+    _aiCallsResetDate = null;
+    _aiProviderId = 'anthropic';
     _changed();
   }
 
@@ -155,6 +281,7 @@ class SettingsController extends ChangeNotifier {
         'lockPasswordHash': _lockPasswordHash,
         'avatarPath': _avatarPath,
         'selectedPlanId': _selectedPlanId,
+        'planExpiresAt': _planExpiresAt,
       };
 
   /// Replaces every preference with a previously exported snapshot.
@@ -168,6 +295,7 @@ class SettingsController extends ChangeNotifier {
     _lockPasswordHash = data['lockPasswordHash'] as String?;
     _avatarPath = data['avatarPath'] as String?;
     _selectedPlanId = data['selectedPlanId'] as String? ?? 'core';
+    _planExpiresAt = data['planExpiresAt'] as String?;
     notifyListeners();
     await _persist();
   }
@@ -186,6 +314,12 @@ class SettingsController extends ChangeNotifier {
         'lockPasswordHash': _lockPasswordHash,
         'avatarPath': _avatarPath,
         'selectedPlanId': _selectedPlanId,
+        'planExpiresAt': _planExpiresAt,
+        // Local-device-only — deliberately not part of exportData/importData
+        // (sync), since this is a per-device spend guard, not a preference.
+        'aiCallsToday': _aiCallsToday,
+        'aiCallsResetDate': _aiCallsResetDate,
+        'aiProviderId': _aiProviderId,
       }));
     } catch (_) {
       // Ignore — preferences just won't survive a restart.
@@ -217,6 +351,10 @@ class SettingsController extends ChangeNotifier {
       lockPasswordHash: data['lockPasswordHash'] as String?,
       avatarPath: data['avatarPath'] as String?,
       selectedPlanId: data['selectedPlanId'] as String? ?? 'core',
+      planExpiresAt: data['planExpiresAt'] as String?,
+      aiCallsToday: data['aiCallsToday'] as int? ?? 0,
+      aiCallsResetDate: data['aiCallsResetDate'] as String?,
+      aiProviderId: data['aiProviderId'] as String? ?? 'anthropic',
       file: file,
     );
   }
