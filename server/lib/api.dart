@@ -19,7 +19,6 @@ class ServerConfig {
     required this.port,
     required this.dataDir,
     required this.allowRegistration,
-    required this.quotaBytes,
     required this.maxBlobBytes,
     required this.tokenTtl,
     required this.corsOrigin,
@@ -32,7 +31,6 @@ class ServerConfig {
   final int port;
   final String dataDir;
   final bool allowRegistration;
-  final int quotaBytes;
   final int maxBlobBytes;
   final Duration tokenTtl;
   final String corsOrigin;
@@ -65,8 +63,6 @@ class ServerConfig {
       // Registration is open unless explicitly disabled.
       allowRegistration:
           (env['LUMA_ALLOW_REGISTRATION'] ?? 'true').toLowerCase() != 'false',
-      // 3 GiB per account by default.
-      quotaBytes: intOf('LUMA_QUOTA_BYTES', 3 * 1024 * 1024 * 1024),
       // A single collection snapshot may not exceed this (protects disk/RAM).
       maxBlobBytes: intOf('LUMA_MAX_BLOB_BYTES', 256 * 1024 * 1024),
       tokenTtl: Duration(days: intOf('LUMA_TOKEN_TTL_DAYS', 90)),
@@ -133,7 +129,8 @@ class Api {
       ..get('/admin/users', _requireAdmin(_adminUsers))
       ..get('/admin/stats', _requireAdmin(_adminStats))
       ..get('/admin/metrics', _requireAdmin(_adminMetrics))
-      ..post('/admin/verify', _requireAdmin(_adminVerifyUser));
+      ..post('/admin/verify', _requireAdmin(_adminVerifyUser))
+      ..post('/admin/plan', _requireAdmin(_adminSetPlan));
 
     return const Pipeline()
         .addMiddleware(_recover)
@@ -355,7 +352,9 @@ class Api {
         authSalt: base64Encode(authSalt),
         kdfSalt: base64Encode(kdfSalt),
         kdfIterations: iterations,
-        quotaBytes: config.quotaBytes,
+        // New accounts start on the free 'core' plan; quota comes from the
+        // plan map, not LUMA_QUOTA_BYTES — see kPlanQuotaBytes.
+        quotaBytes: kPlanQuotaBytes[kDefaultPlanId]!,
         createdAtMs: DateTime.now().millisecondsSinceEpoch,
         status: requireVerification ? 'pending' : 'active',
       );
@@ -725,6 +724,7 @@ class Api {
   Map<String, dynamic> _adminUserJson(StoredUser user) => {
         'email': user.email,
         'status': user.status,
+        'planId': user.planId,
         'createdAtMs': user.createdAtMs,
         'usedBytes': store.usedBytes(user.id),
         'quotaBytes': user.quotaBytes,
@@ -743,6 +743,7 @@ class Api {
     var pending = 0;
     var usedTotal = 0;
     var quotaTotal = 0;
+    final planCounts = <String, int>{for (final id in kPlanQuotaBytes.keys) id: 0};
     for (final u in users) {
       if (u.isPending) {
         pending++;
@@ -751,6 +752,7 @@ class Api {
       }
       usedTotal += store.usedBytes(u.id);
       quotaTotal += u.quotaBytes;
+      planCounts[u.planId] = (planCounts[u.planId] ?? 0) + 1;
     }
     return {
       'totalAccounts': users.length,
@@ -758,6 +760,7 @@ class Api {
       'pendingAccounts': pending,
       'usedBytesTotal': usedTotal,
       'quotaBytesTotal': quotaTotal,
+      'planCounts': planCounts,
     };
   }
 
@@ -800,6 +803,43 @@ class Api {
     });
   }
 
+  /// Grants (or revokes, by setting planId='core') a plan for an account —
+  /// the "Products" tab on the dashboard. Storage quota is updated to match
+  /// the plan immediately (see kPlanQuotaBytes).
+  Future<Response> _adminSetPlan(Request request) async {
+    final raw = await request.readAsString();
+    Map<String, String> form = const {};
+    try {
+      form = Uri.splitQueryString(raw);
+    } catch (_) {}
+    final email = form['email']?.trim().toLowerCase();
+    final planId = form['planId'];
+    if (email == null || email.isEmpty) {
+      return _error(400, 'bad_request', 'email is required.');
+    }
+    if (planId == null || !kPlanQuotaBytes.containsKey(planId)) {
+      return _error(400, 'bad_plan',
+          'planId must be one of: ${kPlanQuotaBytes.keys.join(', ')}.');
+    }
+    return store.lock.synchronized(() async {
+      final userId = store.userIdByEmail[email];
+      final user = userId == null ? null : store.usersById[userId];
+      if (user == null) {
+        return _error(404, 'not_found', 'No account with that email.');
+      }
+      user.planId = planId;
+      user.quotaBytes = kPlanQuotaBytes[planId]!;
+      await store.saveUsers();
+      final key = request.url.queryParameters['key'];
+      if (key != null) {
+        return Response.found(
+            '/admin?key=${Uri.encodeQueryComponent(key)}#products');
+      }
+      return _json(
+          200, {'ok': true, 'planId': planId, 'quotaBytes': user.quotaBytes});
+    });
+  }
+
   Response _adminDashboard(Request request) {
     final stats = _adminStatsJson();
     final users = store.usersById.values.toList()
@@ -824,6 +864,12 @@ class Api {
       return '${d.year}-${two(d.month)}-${two(d.day)} ${two(d.hour)}:${two(d.minute)} UTC';
     }
 
+    const planLabels = {
+      'core': 'Core (Free)',
+      'orbit': 'Orbit (\$2/mo)',
+      'nova': 'Nova (\$5/mo)',
+    };
+
     final rows = users.map((u) {
       final used = store.usedBytes(u.id);
       final pct = u.quotaBytes > 0
@@ -843,6 +889,7 @@ class Api {
       return '<tr>'
           '<td>${_htmlEscape(u.email)}</td>'
           '<td><span style="color:$statusColor">${_htmlEscape(u.status)}</span></td>'
+          '<td>${_htmlEscape(planLabels[u.planId] ?? u.planId)}</td>'
           '<td>'
           '<div style="background:#241f33;border-radius:4px;overflow:hidden;width:120px;height:8px;display:inline-block;vertical-align:middle;margin-right:8px">'
           '<div style="background:#8a7ee0;height:100%;width:${pct.toStringAsFixed(0)}%"></div>'
@@ -855,18 +902,55 @@ class Api {
           '</tr>';
     }).join();
 
+    final subscriptionRows = users.where((u) => u.planId != kDefaultPlanId).map((u) {
+      final label = planLabels[u.planId] ?? u.planId;
+      return '<tr>'
+          '<td>${_htmlEscape(u.email)}</td>'
+          '<td>${_htmlEscape(label)}</td>'
+          '<td><form method="post" action="/admin/plan?key=${Uri.encodeQueryComponent(key)}" '
+          'style="margin:0" onsubmit="return confirm(\'Remove '
+          '${_htmlEscape(u.email)}\\\'s $label plan? They revert to Core.\')">'
+          '<input type="hidden" name="email" value="${_htmlEscape(u.email)}">'
+          '<input type="hidden" name="planId" value="$kDefaultPlanId">'
+          '<button type="submit" style="background:transparent;color:#e07e7e;'
+          'border:1px solid #402c2c;border-radius:6px;padding:4px 10px;'
+          'font-size:12px;cursor:pointer">Remove</button>'
+          '</form></td>'
+          '</tr>';
+    }).join();
+
+    final planOptions = kPlanQuotaBytes.keys.map((id) {
+      final selected = id == 'orbit' ? ' selected' : '';
+      return '<option value="$id"$selected>${_htmlEscape(planLabels[id] ?? id)}</option>';
+    }).join();
+
     final body = '<!doctype html><html><head><meta charset="utf-8">'
         '<title>luma admin</title>'
         '<style>body{background:#161320;color:#e8e4f3;font-family:system-ui,'
         'sans-serif;margin:0;padding:32px}h1{font-size:20px;margin:0 0 24px}'
-        'h2{font-size:15px;margin:40px 0 16px;color:#e8e4f3}'
-        '.stats{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:32px}'
+        'h2{font-size:15px;margin:0 0 16px;color:#e8e4f3}'
+        '.stats{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:28px}'
         '.stat{background:#1e1a2b;border-radius:8px;padding:16px 20px;min-width:140px}'
         '.stat .n{font-size:22px;font-weight:600}.stat .l{font-size:12px;'
         'color:#a49fb8;margin-top:4px}table{border-collapse:collapse;width:100%;'
         'font-size:13px}th{text-align:left;color:#a49fb8;font-weight:500;'
         'padding:8px 12px;border-bottom:1px solid #2c2640}'
         'td{padding:8px 12px;border-bottom:1px solid #201c2c}'
+        '.tabs{display:flex;gap:8px;margin-bottom:24px}'
+        '.tab-btn{background:#1e1a2b;color:#a49fb8;border:1px solid #2c2640;'
+        'border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer;'
+        'font-family:inherit}'
+        '.tab-btn.active{background:#8a7ee0;color:#161320;border-color:#8a7ee0;'
+        'font-weight:600}'
+        '.tab-panel{display:none}.tab-panel.active{display:block}'
+        '.product-form{display:flex;gap:10px;flex-wrap:wrap;align-items:center;'
+        'margin-bottom:28px}'
+        '.product-form select,.product-form input{background:#1e1a2b;'
+        'color:#e8e4f3;border:1px solid #2c2640;border-radius:8px;'
+        'padding:8px 12px;font-size:13px;font-family:inherit}'
+        '.product-form button{background:#8a7ee0;color:#161320;border:none;'
+        'border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;'
+        'cursor:pointer}'
         '.metrics-grid{display:flex;gap:16px;flex-wrap:wrap}'
         '.metric-card{background:#1e1a2b;border-radius:8px;padding:16px 20px;'
         'min-width:240px;flex:1}'
@@ -882,10 +966,28 @@ class Api {
         '<div class="stat"><div class="n">${fmtBytes(stats['usedBytesTotal'] as int)}</div><div class="l">Storage used</div></div>'
         '<div class="stat"><div class="n">${fmtBytes(stats['quotaBytesTotal'] as int)}</div><div class="l">Storage capacity</div></div>'
         '</div>'
-        '<table><thead><tr><th>Email</th><th>Status</th><th>Storage</th>'
-        '<th>Created</th><th>Last login</th><th></th></tr></thead>'
+        '<div class="tabs">'
+        '<button class="tab-btn" data-tab="users">Users</button>'
+        '<button class="tab-btn" data-tab="products">Products</button>'
+        '<button class="tab-btn" data-tab="metrics">Metrics</button>'
+        '</div>'
+        '<div class="tab-panel" id="panel-users">'
+        '<table><thead><tr><th>Email</th><th>Status</th><th>Plan</th>'
+        '<th>Storage</th><th>Created</th><th>Last login</th><th></th></tr></thead>'
         '<tbody>$rows</tbody></table>'
-        '<h2>Live server metrics</h2>'
+        '</div>'
+        '<div class="tab-panel" id="panel-products">'
+        '<h2>Grant a plan</h2>'
+        '<form class="product-form" method="post" action="/admin/plan?key=${Uri.encodeQueryComponent(key)}">'
+        '<select name="planId">$planOptions</select>'
+        '<input type="email" name="email" placeholder="user@example.com" required>'
+        '<button type="submit">Grant</button>'
+        '</form>'
+        '<h2>Active subscriptions</h2>'
+        '<table><thead><tr><th>Email</th><th>Plan</th><th></th></tr></thead>'
+        '<tbody>${subscriptionRows.isEmpty ? '<tr><td colspan="3" style="color:#a49fb8">No paid subscriptions yet.</td></tr>' : subscriptionRows}</tbody></table>'
+        '</div>'
+        '<div class="tab-panel" id="panel-metrics">'
         '<div id="metricsUnsupported" style="display:none;color:#a49fb8;'
         'font-size:13px">Live metrics aren\'t available on this server\'s '
         'OS/platform.</div>'
@@ -901,16 +1003,44 @@ class Api {
         '<span style="color:#7ee08a">&#8593; up</span>)</div>'
         '<canvas id="netGraph" width="280" height="120"></canvas>'
         '<div class="metric-value" id="netValue">–</div></div>'
-        '<div class="metric-card"><div class="metric-title">Power draw</div>'
-        '<canvas id="powerGraph" width="280" height="120"></canvas>'
-        '<div class="metric-value" id="powerValue">–</div></div>'
+        '<div class="metric-card"><div class="metric-title">SSD '
+        '(<span style="color:#8a7ee0">&#8595; read</span> / '
+        '<span style="color:#7ee08a">&#8593; write</span>)</div>'
+        '<canvas id="diskGraph" width="280" height="120"></canvas>'
+        '<div class="metric-value" id="diskValue">–</div></div>'
         '</div>'
+        '</div>'
+        '<script>$_adminTabScript</script>'
         '<script>$_adminMetricsScript</script>'
         '</body></html>';
 
     return Response(200,
         body: body, headers: {'Content-Type': 'text/html; charset=utf-8'});
   }
+
+  /// Tiny vanilla-JS tab switcher for the Users / Products / Metrics panels,
+  /// keeping the selected tab in the URL hash so it survives a form POST's
+  /// redirect back to the page (see _adminSetPlan/_adminVerifyUser).
+  static const _adminTabScript = r'''
+(function () {
+  const buttons = document.querySelectorAll('.tab-btn');
+  const panels = {
+    users: document.getElementById('panel-users'),
+    products: document.getElementById('panel-products'),
+    metrics: document.getElementById('panel-metrics'),
+  };
+  function activate(tab) {
+    if (!panels[tab]) tab = 'users';
+    buttons.forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
+    Object.entries(panels).forEach(([k, el]) => el.classList.toggle('active', k === tab));
+  }
+  buttons.forEach((b) => b.addEventListener('click', () => {
+    activate(b.dataset.tab);
+    history.replaceState(null, '', '#' + b.dataset.tab);
+  }));
+  activate((location.hash || '#users').slice(1));
+})();
+''';
 
   /// Vanilla JS (no external deps, per the self-contained-dashboard style):
   /// polls /admin/metrics every 2s and draws rolling line graphs on plain
@@ -919,7 +1049,7 @@ class Api {
 (function () {
   const key = new URLSearchParams(location.search).get('key') || '';
   const MAX_POINTS = 30;
-  const history = { cpu: [], ram: [], rx: [], tx: [], power: [] };
+  const history = { cpu: [], ram: [], rx: [], tx: [], diskRead: [], diskWrite: [] };
 
   function push(arr, v) {
     arr.push(v);
@@ -938,10 +1068,29 @@ class Api {
     return v == null ? '–' : fmtBytes(v) + '/s';
   }
 
+  // Backs each canvas with a devicePixelRatio-scaled bitmap (drawn in CSS
+  // pixel coordinates via ctx.scale) so lines stay crisp on HiDPI displays
+  // instead of being upscaled/blurred by the browser.
+  function ensureHiDPI(canvas) {
+    if (canvas._ctx) return canvas._ctx;
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    const cssW = rect.width || canvas.width;
+    const cssH = rect.height || canvas.height;
+    canvas.width = Math.round(cssW * dpr);
+    canvas.height = Math.round(cssH * dpr);
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    canvas._cssW = cssW;
+    canvas._cssH = cssH;
+    canvas._ctx = ctx;
+    return ctx;
+  }
+
   function drawGraph(canvas, series, maxValue) {
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const w = canvas.width, h = canvas.height;
+    const ctx = ensureHiDPI(canvas);
+    const w = canvas._cssW, h = canvas._cssH;
     ctx.clearRect(0, 0, w, h);
     ctx.strokeStyle = '#2c2640';
     ctx.lineWidth = 1;
@@ -964,14 +1113,25 @@ class Api {
     for (const s of series) {
       const values = s.values;
       if (values.length < 2) continue;
+      const pts = values.map((v, i) => ({
+        x: (w * i) / (MAX_POINTS - 1),
+        y: h - (Math.min(v, max) / max) * h,
+      }));
       ctx.strokeStyle = s.color;
       ctx.lineWidth = 2;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
       ctx.beginPath();
-      values.forEach((v, i) => {
-        const x = (w * i) / (MAX_POINTS - 1);
-        const y = h - (Math.min(v, max) / max) * h;
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      });
+      ctx.moveTo(pts[0].x, pts[0].y);
+      // Smooth the polyline into a curve by drawing a quadratic segment
+      // through the midpoint of each pair of points — avoids the jagged,
+      // "low-res" look of a raw point-to-point line with no extra libs.
+      for (let i = 1; i < pts.length - 1; i++) {
+        const mx = (pts[i].x + pts[i + 1].x) / 2;
+        const my = (pts[i].y + pts[i + 1].y) / 2;
+        ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+      }
+      ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
       ctx.stroke();
     }
   }
@@ -1019,18 +1179,28 @@ class Api {
       ], null);
     }
 
-    if (m.powerWatts != null) {
-      push(history.power, m.powerWatts);
-      document.getElementById('powerValue').textContent = m.powerWatts.toFixed(1) + ' W';
-      drawGraph(document.getElementById('powerGraph'),
-          [{ values: history.power, color: '#e0c87e' }], null);
+    if (m.diskReadBytesPerSec != null && m.diskWriteBytesPerSec != null) {
+      push(history.diskRead, m.diskReadBytesPerSec);
+      push(history.diskWrite, m.diskWriteBytesPerSec);
+      document.getElementById('diskValue').textContent =
+          '↓ ' + fmtRate(m.diskReadBytesPerSec) + '   ↑ ' + fmtRate(m.diskWriteBytesPerSec);
+      drawGraph(document.getElementById('diskGraph'), [
+        { values: history.diskRead, color: '#8a7ee0' },
+        { values: history.diskWrite, color: '#7ee08a' },
+      ], null);
     } else {
-      document.getElementById('powerValue').textContent = 'Not available on this host';
+      document.getElementById('diskValue').textContent = 'Not available on this host';
     }
   }
 
   poll();
   setInterval(poll, 2000);
+  window.addEventListener('resize', () => {
+    for (const id of ['cpuGraph', 'ramGraph', 'netGraph', 'diskGraph']) {
+      const c = document.getElementById(id);
+      if (c) c._ctx = null; // force a HiDPI re-measure on next draw
+    }
+  });
 })();
 ''';
 

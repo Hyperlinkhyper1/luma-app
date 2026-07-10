@@ -3,8 +3,7 @@ import 'dart:io';
 
 /// A best-effort snapshot of host resource usage for the admin dashboard.
 /// Every field is nullable — when a metric can't be read on this platform
-/// (or at all, as with power draw on most machines) it's simply omitted
-/// rather than faked.
+/// it's simply omitted rather than faked.
 class SystemMetrics {
   const SystemMetrics({
     required this.platformSupported,
@@ -13,7 +12,8 @@ class SystemMetrics {
     this.ramTotalBytes,
     this.netRxBytesPerSec,
     this.netTxBytesPerSec,
-    this.powerWatts,
+    this.diskReadBytesPerSec,
+    this.diskWriteBytesPerSec,
   });
 
   /// False when this OS has no metrics support at all (nothing below is
@@ -24,7 +24,8 @@ class SystemMetrics {
   final int? ramTotalBytes;
   final double? netRxBytesPerSec;
   final double? netTxBytesPerSec;
-  final double? powerWatts;
+  final double? diskReadBytesPerSec;
+  final double? diskWriteBytesPerSec;
 
   Map<String, dynamic> toJson() => {
         'platformSupported': platformSupported,
@@ -33,11 +34,12 @@ class SystemMetrics {
         'ramTotalBytes': ramTotalBytes,
         'netRxBytesPerSec': netRxBytesPerSec,
         'netTxBytesPerSec': netTxBytesPerSec,
-        'powerWatts': powerWatts,
+        'diskReadBytesPerSec': diskReadBytesPerSec,
+        'diskWriteBytesPerSec': diskWriteBytesPerSec,
       };
 
   /// Takes ~[interval] to complete on platforms that need two samples to
-  /// derive a rate (CPU %, network throughput, RAPL power on Linux).
+  /// derive a rate (CPU %, network and disk throughput on Linux).
   static Future<SystemMetrics> sample(
       {Duration interval = const Duration(milliseconds: 400)}) async {
     try {
@@ -54,10 +56,11 @@ class SystemMetrics {
   static Future<SystemMetrics> _sampleLinux(Duration interval) async {
     final cpu1 = _readProcStatTotals();
     final net1 = await _readNetTotals();
+    final disk1 = _readDiskTotals();
     await Future.delayed(interval);
     final cpu2 = _readProcStatTotals();
     final net2 = await _readNetTotals();
-    final power = await _readRaplPower(interval);
+    final disk2 = _readDiskTotals();
 
     double? cpuPercent;
     if (cpu1 != null && cpu2 != null) {
@@ -70,12 +73,18 @@ class SystemMetrics {
     }
 
     final mem = _readMemInfo();
+    final seconds = interval.inMicroseconds / 1e6;
 
     double? rxRate, txRate;
     if (net1 != null && net2 != null) {
-      final seconds = interval.inMicroseconds / 1e6;
       rxRate = (net2.rx - net1.rx) / seconds;
       txRate = (net2.tx - net1.tx) / seconds;
+    }
+
+    double? readRate, writeRate;
+    if (disk1 != null && disk2 != null) {
+      readRate = (disk2.readBytes - disk1.readBytes) / seconds;
+      writeRate = (disk2.writeBytes - disk1.writeBytes) / seconds;
     }
 
     return SystemMetrics(
@@ -85,7 +94,8 @@ class SystemMetrics {
       ramTotalBytes: mem?.totalBytes,
       netRxBytesPerSec: rxRate,
       netTxBytesPerSec: txRate,
-      powerWatts: power,
+      diskReadBytesPerSec: readRate,
+      diskWriteBytesPerSec: writeRate,
     );
   }
 
@@ -150,20 +160,27 @@ class SystemMetrics {
     }
   }
 
-  /// Intel RAPL energy counters, present on most bare-metal x86 hosts (not
-  /// typically exposed inside a VPS/VM) — the only widely-available source
-  /// of real power-draw data without extra hardware or root tools.
-  static Future<double?> _readRaplPower(Duration interval) async {
-    final file = File('/sys/class/powercap/intel-rapl:0/energy_uj');
+  /// Sums sectors read/written across whole-disk devices from
+  /// /proc/diskstats (fields 6 and 10, 1-indexed; sectors are always 512
+  /// bytes regardless of the disk's real block size). Skips partitions
+  /// (trailing digits after a letter device name, e.g. sda1) and virtual
+  /// devices (loop/ram/dm/md) so a single physical write isn't double
+  /// counted via both the disk and its partition.
+  static ({int readBytes, int writeBytes})? _readDiskTotals() {
     try {
-      if (!await file.exists()) return null;
-      final e1 = int.parse((await file.readAsString()).trim());
-      await Future.delayed(interval);
-      final e2 = int.parse((await file.readAsString()).trim());
-      final deltaUj = e2 - e1;
-      if (deltaUj < 0) return null; // counter wrapped around
-      final seconds = interval.inMicroseconds / 1e6;
-      return deltaUj / 1e6 / seconds;
+      final file = File('/proc/diskstats');
+      if (!file.existsSync()) return null;
+      var readSectors = 0, writeSectors = 0;
+      final wholeDisk = RegExp(r'^(sd[a-z]+|vd[a-z]+|xvd[a-z]+|nvme\d+n\d+)$');
+      for (final line in file.readAsLinesSync()) {
+        final parts = line.trim().split(RegExp(r'\s+'));
+        if (parts.length < 14) continue;
+        final name = parts[2];
+        if (!wholeDisk.hasMatch(name)) continue;
+        readSectors += int.tryParse(parts[5]) ?? 0;
+        writeSectors += int.tryParse(parts[9]) ?? 0;
+      }
+      return (readBytes: readSectors * 512, writeBytes: writeSectors * 512);
     } catch (_) {
       return null;
     }
@@ -184,12 +201,16 @@ $net = Get-CimInstance Win32_PerfFormattedData_Tcpip_NetworkInterface |
     Where-Object { $_.Name -notmatch 'Loopback|isatap|Teredo' }
 $rx = ($net | Measure-Object -Property BytesReceivedPersec -Sum).Sum
 $tx = ($net | Measure-Object -Property BytesSentPersec -Sum).Sum
+$disk = Get-CimInstance Win32_PerfFormattedData_PerfDisk_PhysicalDisk |
+    Where-Object { $_.Name -eq '_Total' }
 [PSCustomObject]@{
   cpu = $cpu
   totalKb = $os.TotalVisibleMemorySize
   freeKb = $os.FreePhysicalMemory
   rx = $rx
   tx = $tx
+  diskRead = $disk.DiskReadBytesPersec
+  diskWrite = $disk.DiskWriteBytesPersec
 } | ConvertTo-Json -Compress
 ''';
     final result = await Process.run(
@@ -214,8 +235,8 @@ $tx = ($net | Measure-Object -Property BytesSentPersec -Sum).Sum
           (totalKb == null || freeKb == null) ? null : (totalKb - freeKb) * 1024,
       netRxBytesPerSec: asDouble(decoded['rx']),
       netTxBytesPerSec: asDouble(decoded['tx']),
-      // No reliable cross-vendor watts sensor on Windows.
-      powerWatts: null,
+      diskReadBytesPerSec: asDouble(decoded['diskRead']),
+      diskWriteBytesPerSec: asDouble(decoded['diskWrite']),
     );
   }
 }

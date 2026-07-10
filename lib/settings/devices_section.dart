@@ -241,57 +241,7 @@ class _SignedInBody extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // ---- Discovery toggle + status -----------------------------------
-        Row(
-          children: [
-            LumaIconBadge(
-                icon: Icons.devices_other_rounded, color: luma.accent),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('This device',
-                      style: TextStyle(
-                          color: luma.textPrimary,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600)),
-                  Text(
-                    peers.isRunning && peers.listenPort != 0
-                        ? '${peers.state.deviceName} · listening on port ${peers.listenPort}'
-                        : peers.state.deviceName,
-                    style: TextStyle(color: luma.textMuted, fontSize: 12),
-                  ),
-                  if (peers.isRunning && peers.listenPort != 0)
-                    FutureBuilder<List<String>>(
-                      future: peers.localAddresses(),
-                      builder: (context, snapshot) {
-                        final addrs = snapshot.data ?? const <String>[];
-                        if (addrs.isEmpty) return const SizedBox.shrink();
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Text(
-                            'IP: ${addrs.join(', ')} — the other device '
-                            'must be on the same network to find this one.',
-                            style: TextStyle(
-                                color: luma.textMuted, fontSize: 11),
-                          ),
-                        );
-                      },
-                    ),
-                ],
-              ),
-            ),
-            Switch(
-              value: peers.isRunning,
-              onChanged: (on) =>
-                  on ? peers.start() : peers.stop(),
-              activeThumbColor: luma.onAccent,
-              activeTrackColor: luma.accent,
-              inactiveThumbColor: luma.textSecondary,
-              inactiveTrackColor: luma.surfaceHover,
-            ),
-          ],
-        ),
+        _ThisDeviceHeader(peers: peers),
         if (peers.lastError != null) ...[
           const SizedBox(height: 8),
           Text(peers.lastError!,
@@ -408,6 +358,110 @@ class _SignedInBody extends StatelessWidget {
             child: Text('View debug log',
                 style: TextStyle(color: luma.textMuted, fontSize: 11)),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The "This device" row: the discovery toggle stays visible, but the device
+/// name / listening port / IP details collapse behind a chevron and start
+/// collapsed every time this widget is (re)built — e.g. each time Settings
+/// is reopened — rather than showing that detail unconditionally.
+class _ThisDeviceHeader extends StatefulWidget {
+  const _ThisDeviceHeader({required this.peers});
+  final PeerSyncController peers;
+
+  @override
+  State<_ThisDeviceHeader> createState() => _ThisDeviceHeaderState();
+}
+
+class _ThisDeviceHeaderState extends State<_ThisDeviceHeader> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final peers = widget.peers;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            LumaIconBadge(
+                icon: Icons.devices_other_rounded, color: luma.accent),
+            const SizedBox(width: 12),
+            Expanded(
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: () => setState(() => _expanded = !_expanded),
+                  child: Row(
+                    children: [
+                      Text('This device',
+                          style: TextStyle(
+                              color: luma.textPrimary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600)),
+                      const SizedBox(width: 6),
+                      AnimatedRotation(
+                        turns: _expanded ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 150),
+                        child: Icon(Icons.expand_more_rounded,
+                            size: 18, color: luma.textMuted),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Switch(
+              value: peers.isRunning,
+              onChanged: (on) => on ? peers.start() : peers.stop(),
+              activeThumbColor: luma.onAccent,
+              activeTrackColor: luma.accent,
+              inactiveThumbColor: luma.textSecondary,
+              inactiveTrackColor: luma.surfaceHover,
+            ),
+          ],
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+          alignment: Alignment.topCenter,
+          child: !_expanded
+              ? const SizedBox(width: double.infinity, height: 0)
+              : Padding(
+                  padding: const EdgeInsets.only(top: 6, left: 44),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        peers.isRunning && peers.listenPort != 0
+                            ? '${peers.state.deviceName} · listening on port ${peers.listenPort}'
+                            : peers.state.deviceName,
+                        style: TextStyle(color: luma.textMuted, fontSize: 12),
+                      ),
+                      if (peers.isRunning && peers.listenPort != 0)
+                        FutureBuilder<List<String>>(
+                          future: peers.localAddresses(),
+                          builder: (context, snapshot) {
+                            final addrs = snapshot.data ?? const <String>[];
+                            if (addrs.isEmpty) return const SizedBox.shrink();
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                'IP: ${addrs.join(', ')} — the other device '
+                                'must be on the same network to find this one.',
+                                style: TextStyle(
+                                    color: luma.textMuted, fontSize: 11),
+                              ),
+                            );
+                          },
+                        ),
+                    ],
+                  ),
+                ),
         ),
       ],
     );

@@ -59,7 +59,10 @@ class SyncService extends ChangeNotifier {
   final List<StreamSubscription<void>> _subscriptions = [];
 
   static const _debounceDelay = Duration(seconds: 8);
-  static const _periodicInterval = Duration(minutes: 15);
+  // Without this, a device that hasn't edited anything itself only picks up
+  // another device's changes on its next restart or a 15-minute wait — this
+  // pulls much sooner so two signed-in devices converge close to live.
+  static const _periodicInterval = Duration(seconds: 10);
 
   /// Tag bound into the ciphertext of every sealed snapshot, identifying the
   /// collection. P2P receivers reuse [applyPeerSnapshot] which checks this.

@@ -4,6 +4,19 @@ import 'dart:typed_data';
 
 import 'util.dart';
 
+/// Storage quota granted by each plan tier, in bytes. Mirrors the
+/// client-side `Plan.storageMb` values in lib/account/plan.dart — keep the
+/// two in sync if either changes. Granted/revoked by an admin (see
+/// Api._adminSetPlan); 'core' is the default, free tier every account
+/// starts on.
+const kPlanQuotaBytes = <String, int>{
+  'core': 10 * 1024 * 1024,
+  'orbit': 25 * 1024 * 1024,
+  'nova': 50 * 1024 * 1024,
+};
+
+const kDefaultPlanId = 'core';
+
 /// A registered account. The server never sees the user's real password:
 /// [authHash] is a slow hash of the *derived* login key the client sends,
 /// and [kdfSalt]/[kdfIterations] are the public parameters the client needs
@@ -22,6 +35,7 @@ class StoredUser {
     this.verificationTokenHash,
     this.verificationExpiresAtMs,
     this.lastLoginAtMs,
+    this.planId = kDefaultPlanId,
   });
 
   final String id;
@@ -32,6 +46,11 @@ class StoredUser {
   int kdfIterations;
   int quotaBytes;
   final int createdAtMs;
+
+  /// 'core' (free), 'orbit', or 'nova' — see [kPlanQuotaBytes]. Granted by
+  /// an admin via the /admin/plan endpoint; [quotaBytes] is kept in sync
+  /// with whatever this is set to (see Store.open's migration pass).
+  String planId;
 
   /// Set each time a login succeeds; null if the account has never logged in
   /// since this field was added.
@@ -61,6 +80,7 @@ class StoredUser {
         'verificationTokenHash': verificationTokenHash,
         'verificationExpiresAtMs': verificationExpiresAtMs,
         'lastLoginAtMs': lastLoginAtMs,
+        'planId': planId,
       };
 
   factory StoredUser.fromJson(Map<String, dynamic> j) => StoredUser(
@@ -76,6 +96,7 @@ class StoredUser {
         verificationTokenHash: j['verificationTokenHash'] as String?,
         verificationExpiresAtMs: j['verificationExpiresAtMs'] as int?,
         lastLoginAtMs: j['lastLoginAtMs'] as int?,
+        planId: j['planId'] as String? ?? kDefaultPlanId,
       );
 }
 
@@ -180,11 +201,21 @@ class Store {
     }
 
     final users = await _readJsonList(store._usersFile);
+    var quotasMigrated = false;
     for (final u in users) {
       final user = StoredUser.fromJson(u as Map<String, dynamic>);
+      // Keep quota in sync with the plan map — covers accounts created
+      // before plans existed, and lets changing kPlanQuotaBytes apply
+      // retroactively to everyone on the next restart.
+      final planQuota = kPlanQuotaBytes[user.planId];
+      if (planQuota != null && user.quotaBytes != planQuota) {
+        user.quotaBytes = planQuota;
+        quotasMigrated = true;
+      }
       store.usersById[user.id] = user;
       store.userIdByEmail[user.email.toLowerCase()] = user.id;
     }
+    if (quotasMigrated) await store.saveUsers();
 
     final sessions = await _readJsonList(store._sessionsFile);
     final now = DateTime.now().millisecondsSinceEpoch;

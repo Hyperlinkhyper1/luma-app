@@ -120,7 +120,7 @@ class _SignedInBody extends StatelessWidget {
                           fontWeight: FontWeight.w600)),
                   Text(
                     cloud
-                        ? (sync.serverUrl ?? '')
+                        ? 'Synced to the cloud'
                         : 'Local only — syncs directly between your devices, '
                             'no server',
                     style: TextStyle(color: luma.textMuted, fontSize: 12),
@@ -361,7 +361,7 @@ class _StorageBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final used = account?.usedBytes ?? 0;
-    final quota = account?.quotaBytes ?? (3 * 1024 * 1024 * 1024);
+    final quota = account?.quotaBytes ?? (10 * 1024 * 1024);
     final fraction = quota == 0 ? 0.0 : (used / quota).clamp(0.0, 1.0);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -377,7 +377,7 @@ class _StorageBar extends StatelessWidget {
             Text(
               account == null
                   ? 'Sync to see usage'
-                  : '${formatBytes(used)} of ${formatBytes(quota)} used',
+                  : '${(fraction * 100).toStringAsFixed(fraction * 100 >= 10 ? 0 : 1)}% used',
               style: TextStyle(color: luma.textMuted, fontSize: 12),
             ),
           ],
@@ -395,17 +395,6 @@ class _StorageBar extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  static String formatBytes(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) {
-      return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    }
-    if (bytes < 1024 * 1024 * 1024) {
-      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-    }
-    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
   }
 }
 
