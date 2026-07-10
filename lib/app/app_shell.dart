@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../account/account_page.dart';
 import '../features/chat/chat_page.dart';
+import '../l10n/app_localizations.dart';
 import '../features/converter/converter_page.dart';
 import '../features/home/home_page.dart';
 import '../features/notes/notes_page.dart';
@@ -56,17 +57,17 @@ class _AppShellState extends State<AppShell> {
   // priority over [_selectedIndex].
   String? _selectedPluginId;
 
-  static const _titles = [
-    'Home',
-    'File Converter',
-    'Finance',
-    'Password Manager',
-    'Notes',
-    'Assistant',
-    'Plugins',
-    'Settings',
-    'Account',
-  ];
+  static List<String> _titles(L t) => [
+        t.navHome,
+        t.navFileConverter,
+        t.navFinance,
+        t.navPasswordManager,
+        t.navNotes,
+        t.navAssistant,
+        t.navPlugins,
+        t.navSettings,
+        t.navAccount,
+      ];
 
   // Dismissible per-session; only re-shown if the app is restarted while
   // still over the limit — the Account tab's Storage section always shows
@@ -83,10 +84,12 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final settings = SettingsScope.of(context);
     final pluginRepo = PluginScope.of(context);
     final storageGuard = StorageGuardScope.of(context);
     final index = _selectedIndex ?? _startIndex(settings.startScreen);
+    final titles = _titles(t);
 
     return StreamBuilder<List<InstalledPluginRecord>>(
       stream: pluginRepo.watchInstalled(),
@@ -102,13 +105,13 @@ class _AppShellState extends State<AppShell> {
           }
         }
         final showingPlugin = activePlugin != null;
-        final title = showingPlugin ? activePlugin.name : _titles[index];
+        final title = showingPlugin ? activePlugin.name : titles[index];
         final isPhone = MediaQuery.sizeOf(context).width < _phoneBreakpoint;
 
         final content = Container(
           color: luma.background,
           child: showingPlugin
-              ? _pluginPageFor(activePlugin.pluginId)
+              ? _pluginPageFor(activePlugin.pluginId, t)
               : IndexedStack(
                   index: index,
                   children: [
@@ -187,7 +190,7 @@ class _AppShellState extends State<AppShell> {
         StartScreen.finance => 2,
       };
 
-  static Widget _pluginPageFor(String pluginId) => switch (pluginId) {
+  static Widget _pluginPageFor(String pluginId, L t) => switch (pluginId) {
         'qr-code-generator' => const QrCodeGeneratorPage(),
         'file-tree' => const FileTreePage(),
         'bulletin-board' => const BulletinBoardPage(),
@@ -202,9 +205,9 @@ class _AppShellState extends State<AppShell> {
         'school' => const SchoolPage(),
         'auto-clicker' => const AutoClickerPage(),
         'usage' => const UsagePage(),
-        _ => const LumaEmptyState(
+        _ => LumaEmptyState(
             icon: Icons.extension_off_rounded,
-            title: 'Plugin unavailable',
+            title: t.shellPluginUnavailable,
           ),
       };
 }
@@ -220,6 +223,7 @@ class _StorageLimitBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -230,18 +234,17 @@ class _StorageLimitBanner extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              "You've reached your storage limit. New data won't be saved "
-              'or synced until you free up space.',
+              t.shellStorageLimitMsg,
               style: TextStyle(color: luma.textPrimary, fontSize: 12.5),
             ),
           ),
           TextButton(
             onPressed: onManage,
-            child: Text('Manage',
+            child: Text(t.shellStorageManage,
                 style: TextStyle(color: luma.accent, fontWeight: FontWeight.w700)),
           ),
           IconButton(
-            tooltip: 'Dismiss',
+            tooltip: t.shellStorageDismiss,
             icon: Icon(Icons.close_rounded, size: 18, color: luma.textSecondary),
             onPressed: onDismiss,
           ),

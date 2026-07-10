@@ -8,6 +8,7 @@ import '../app/update/app_version.dart';
 import '../app/update/update_gate.dart';
 import '../app/widgets.dart';
 import '../features/chat/ai_settings_section.dart';
+import '../l10n/app_localizations.dart';
 import '../theme/luma_theme.dart';
 import 'settings_controller.dart';
 import 'settings_scope.dart';
@@ -21,6 +22,7 @@ class SettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final settings = SettingsScope.of(context);
     final luma = context.luma;
+    final t = L.of(context);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
@@ -33,24 +35,28 @@ class SettingsPage extends StatelessWidget {
               // ---- Appearance --------------------------------------------
               _SectionHeader(
                 icon: Icons.palette_rounded,
-                title: 'Appearance',
-                subtitle: 'Make luma feel like yours.',
+                title: t.settingsAppearance,
+                subtitle: t.settingsAppearanceSub,
               ),
               const SizedBox(height: 12),
               LumaCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _RowLabel('Theme'),
+                    _RowLabel(t.settingsTheme),
                     const SizedBox(height: 10),
                     LumaSegmentedTabs(
-                      tabs: const ['System', 'Light', 'Dark'],
+                      tabs: [
+                        t.settingsSystem,
+                        t.settingsLight,
+                        t.settingsDark,
+                      ],
                       selectedIndex: _themeIndex(settings.themeMode),
                       onSelect: (i) =>
                           settings.setThemeMode(_themeModeFor(i)),
                     ),
                     Divider(color: luma.border, height: 32),
-                    _RowLabel('Accent color'),
+                    _RowLabel(t.settingsAccentColor),
                     const SizedBox(height: 14),
                     _AccentPicker(settings: settings),
                   ],
@@ -59,40 +65,47 @@ class SettingsPage extends StatelessWidget {
 
               const SizedBox(height: 24),
 
-              // ---- Behavior ----------------------------------------------
+              // ---- General -----------------------------------------------
               _SectionHeader(
                 icon: Icons.tune_rounded,
-                title: 'General',
-                subtitle: 'How the app behaves.',
+                title: t.settingsGeneral,
+                subtitle: t.settingsGeneralSub,
               ),
               const SizedBox(height: 12),
               LumaCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _RowLabel('Open on launch'),
+                    _RowLabel(t.settingsLanguage),
+                    const SizedBox(height: 10),
+                    _LanguageDropdown(settings: settings, t: t),
+                    Divider(color: luma.border, height: 32),
+                    _RowLabel(t.settingsOpenOnLaunch),
                     const SizedBox(height: 10),
                     LumaSegmentedTabs(
-                      tabs: const ['Home', 'Converter', 'Finance'],
+                      tabs: [
+                        t.navHome,
+                        t.navFileConverter,
+                        t.navFinance,
+                      ],
                       selectedIndex: settings.startScreen.index,
                       onSelect: (i) => settings
                           .setStartScreen(StartScreen.values[i]),
                     ),
                     Divider(color: luma.border, height: 32),
                     _ToggleRow(
-                      title: 'Hide amounts on Home',
-                      subtitle:
-                          'Mask balances on the dashboard for shoulder-surfers.',
+                      title: t.settingsHideAmounts,
+                      subtitle: t.settingsHideAmountsSub,
                       value: settings.hideAmounts,
                       onChanged: settings.setHideAmounts,
                     ),
                     Divider(color: luma.border, height: 32),
                     _ToggleRow(
-                      title: 'Lock Passwords',
-                      subtitle:
-                          'Require an 8-digit PIN to view or edit saved credentials.',
+                      title: t.settingsLockPasswords,
+                      subtitle: t.settingsLockPasswordsSub,
                       value: settings.lockPasswordHash != null,
-                      onChanged: (enabled) => _toggleLockPassword(context, settings, enabled),
+                      onChanged: (enabled) =>
+                          _toggleLockPassword(context, settings, enabled),
                     ),
                   ],
                 ),
@@ -101,11 +114,11 @@ class SettingsPage extends StatelessWidget {
               const SizedBox(height: 24),
 
               // ---- AI Assistant (collapsible) -----------------------------
-              const LumaCollapsibleSection(
+              LumaCollapsibleSection(
                 icon: Icons.smart_toy_rounded,
-                title: 'AI Assistant',
-                subtitle: 'Connect your own Anthropic API key.',
-                child: AiSettingsSection(),
+                title: t.settingsAiAssistant,
+                subtitle: t.settingsAiAssistantSub,
+                child: const AiSettingsSection(),
               ),
 
               const SizedBox(height: 24),
@@ -113,7 +126,7 @@ class SettingsPage extends StatelessWidget {
               // ---- About -------------------------------------------------
               _SectionHeader(
                 icon: Icons.info_outline_rounded,
-                title: 'About',
+                title: t.settingsAbout,
                 subtitle: null,
               ),
               const SizedBox(height: 12),
@@ -123,7 +136,7 @@ class SettingsPage extends StatelessWidget {
               Align(
                 alignment: Alignment.centerLeft,
                 child: LumaGhostButton(
-                  label: 'Reset to defaults',
+                  label: t.settingsResetDefaults,
                   icon: Icons.restart_alt_rounded,
                   onTap: () => _confirmReset(context, settings),
                 ),
@@ -137,16 +150,17 @@ class SettingsPage extends StatelessWidget {
 
   static Future<void> _toggleLockPassword(
       BuildContext context, SettingsController settings, bool enable) async {
+    final t = L.of(context);
     if (enable) {
-      final pin1 = await showPinDialog(context, title: 'Enter new 8-digit PIN');
+      final pin1 = await showPinDialog(context, title: t.pinEnterNew);
       if (pin1 == null) return;
       if (!context.mounted) return;
-      final pin2 = await showPinDialog(context, title: 'Verify new PIN');
+      final pin2 = await showPinDialog(context, title: t.pinVerify);
       if (pin2 == null) return;
       if (pin1 != pin2) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('PINs do not match.')),
+            SnackBar(content: Text(t.pinNotMatch)),
           );
         }
         return;
@@ -154,7 +168,7 @@ class SettingsPage extends StatelessWidget {
       final hash = sha256.convert(utf8.encode(pin1)).toString();
       settings.setLockPasswordHash(hash);
     } else {
-      final pin = await showPinDialog(context, title: 'Enter PIN to disable');
+      final pin = await showPinDialog(context, title: t.pinEnterDisable);
       if (pin == null) return;
       final hash = sha256.convert(utf8.encode(pin)).toString();
       if (hash == settings.lockPasswordHash) {
@@ -162,7 +176,7 @@ class SettingsPage extends StatelessWidget {
       } else {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Incorrect PIN.')),
+            SnackBar(content: Text(t.pinIncorrect)),
           );
         }
       }
@@ -171,6 +185,7 @@ class SettingsPage extends StatelessWidget {
 
   static void _confirmReset(BuildContext context, SettingsController settings) {
     final luma = context.luma;
+    final t = L.of(context);
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
@@ -179,17 +194,16 @@ class SettingsPage extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(color: luma.border),
         ),
-        title: Text('Reset settings?',
+        title: Text(t.settingsResetTitle,
             style: TextStyle(color: luma.textPrimary)),
         content: Text(
-          'This restores the theme, accent color and other preferences to '
-          'their defaults.',
+          t.settingsResetContent,
           style: TextStyle(color: luma.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text('Cancel',
+            child: Text(t.settingsResetCancel,
                 style: TextStyle(color: luma.textSecondary)),
           ),
           TextButton(
@@ -197,7 +211,8 @@ class SettingsPage extends StatelessWidget {
               settings.resetToDefaults();
               Navigator.of(context).pop();
             },
-            child: Text('Reset', style: TextStyle(color: luma.accent)),
+            child: Text(t.settingsResetConfirm,
+                style: TextStyle(color: luma.accent)),
           ),
         ],
       ),
@@ -225,6 +240,56 @@ class _AccentPicker extends StatelessWidget {
             onTap: () => settings.setAccentIndex(i),
           ),
       ],
+    );
+  }
+}
+
+class _LanguageDropdown extends StatelessWidget {
+  const _LanguageDropdown({required this.settings, required this.t});
+  final SettingsController settings;
+  final L t;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final entries = [
+      (AppLanguage.system, t.langSystemDefault),
+      (AppLanguage.english, t.langEnglish),
+      (AppLanguage.dutch, t.langDutch),
+      (AppLanguage.chinese, t.langChinese),
+      (AppLanguage.spanish, t.langSpanish),
+      (AppLanguage.french, t.langFrench),
+    ];
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      decoration: BoxDecoration(
+        color: luma.surfaceHover,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: luma.border),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<AppLanguage>(
+          value: settings.appLanguage,
+          isExpanded: true,
+          icon: Icon(Icons.expand_more_rounded, color: luma.textSecondary),
+          style: TextStyle(
+            color: luma.textPrimary,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+          dropdownColor: luma.surface,
+          items: [
+            for (final e in entries)
+              DropdownMenuItem(
+                value: e.$1,
+                child: Text(e.$2),
+              ),
+          ],
+          onChanged: (v) {
+            if (v != null) settings.setAppLanguage(v);
+          },
+        ),
+      ),
     );
   }
 }
@@ -334,9 +399,10 @@ class _AboutCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final versionLabel = AppVersion.isReleaseBuild
-        ? 'Version ${AppVersion.current} · a clean local utility'
-        : 'Dev build · a clean local utility';
+        ? t.aboutVersionRelease(AppVersion.current)
+        : t.aboutVersionDev;
     return LumaCard(
       child: Row(
         children: [
@@ -374,7 +440,7 @@ class _AboutCard extends StatelessWidget {
           TextButton(
             onPressed: () =>
                 checkAndPromptForUpdate(context, announceIfUpToDate: true),
-            child: const Text('Check for updates'),
+            child: Text(t.settingsCheckUpdates),
           ),
         ],
       ),

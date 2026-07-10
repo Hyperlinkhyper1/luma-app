@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'account/plan.dart';
 import 'app/app_shell.dart';
@@ -24,6 +25,7 @@ import 'features/passwords/password_crypto.dart';
 import 'features/passwords/password_repository.dart';
 import 'features/passwords/password_scope.dart';
 import 'features/plugins/data/plugin_database.dart';
+import 'l10n/app_localizations.dart';
 import 'features/plugins/installed/calendar/calendar_repository.dart';
 import 'features/plugins/installed/calendar/calendar_scope.dart';
 import 'features/plugins/installed/calendar/data/calendar_database.dart';
@@ -318,6 +320,14 @@ class _LumaAppState extends State<LumaApp> {
                           darkTheme:
                               LumaTheme.from(Brightness.dark, s.accentSeed),
                           themeMode: s.themeMode,
+                          locale: localeForLanguage(s.appLanguage),
+                          supportedLocales: L.supportedLocales,
+                          localizationsDelegates: [
+                            L.delegate,
+                            GlobalMaterialLocalizations.delegate,
+                            GlobalWidgetsLocalizations.delegate,
+                            GlobalCupertinoLocalizations.delegate,
+                          ],
                           home: _BootGate(
                               bootstrap: _bootstrap, accentSeed: s.accentSeed),
                         );

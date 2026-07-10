@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../account/plan.dart';
 import '../features/plugins/plugin_icons.dart';
 import '../features/plugins/plugin_repository.dart';
+import '../l10n/app_localizations.dart';
 import '../settings/settings_scope.dart';
 import '../theme/luma_theme.dart';
 
@@ -38,25 +39,26 @@ class NavRail extends StatelessWidget {
 
   /// Top destinations, in index order. [settingsIndex] is pinned separately at
   /// the bottom of the rail.
-  static const List<NavDestination> _destinations = [
-    NavDestination(icon: Icons.dashboard_rounded, label: 'Home'),
-    NavDestination(icon: Icons.swap_horiz_rounded, label: 'File Converter'),
-    NavDestination(
-        icon: Icons.account_balance_wallet_rounded, label: 'Finance'),
-    NavDestination(
-        icon: Icons.lock_rounded, label: 'Password Manager'),
-    NavDestination(icon: Icons.sticky_note_2_rounded, label: 'Notes'),
-    NavDestination(icon: Icons.smart_toy_rounded, label: 'Assistant'),
-  ];
+  static List<NavDestination> _destinations(L t) => [
+        NavDestination(icon: Icons.dashboard_rounded, label: t.navHome),
+        NavDestination(
+            icon: Icons.swap_horiz_rounded, label: t.navFileConverter),
+        NavDestination(
+            icon: Icons.account_balance_wallet_rounded, label: t.navFinance),
+        NavDestination(
+            icon: Icons.lock_rounded, label: t.navPasswordManager),
+        NavDestination(icon: Icons.sticky_note_2_rounded, label: t.navNotes),
+        NavDestination(icon: Icons.smart_toy_rounded, label: t.navAssistant),
+      ];
 
-  static const NavDestination _pluginsDestination =
-      NavDestination(icon: Icons.extension_rounded, label: 'Plugins');
+  static NavDestination _pluginsDestination(L t) =>
+      NavDestination(icon: Icons.extension_rounded, label: t.navPlugins);
 
-  static const NavDestination _settingsDestination =
-      NavDestination(icon: Icons.settings_rounded, label: 'Settings');
+  static NavDestination _settingsDestination(L t) =>
+      NavDestination(icon: Icons.settings_rounded, label: t.navSettings);
 
-  static const NavDestination _accountDestination =
-      NavDestination(icon: Icons.badge_rounded, label: 'Account');
+  static NavDestination _accountDestination(L t) =>
+      NavDestination(icon: Icons.badge_rounded, label: t.navAccount);
 
   /// Index of the Plugins destination (pinned above Settings).
   static const int pluginsIndex = 6;
@@ -70,7 +72,9 @@ class NavRail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final plan = planById(SettingsScope.of(context).selectedPlanId);
+    final destinations = _destinations(t);
     return Container(
       width: 72,
       decoration: BoxDecoration(
@@ -84,9 +88,9 @@ class NavRail extends StatelessWidget {
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  for (var i = 0; i < _destinations.length; i++) ...[
+                  for (var i = 0; i < destinations.length; i++) ...[
                     _RailButton(
-                      destination: _destinations[i],
+                      destination: destinations[i],
                       selected: i == selectedIndex,
                       onTap: () => onSelect(i),
                     ),
@@ -114,19 +118,19 @@ class NavRail extends StatelessWidget {
           ),
           // Plugins and Settings sit at the bottom-left of the rail.
           _RailButton(
-            destination: _pluginsDestination,
+            destination: _pluginsDestination(t),
             selected: selectedIndex == pluginsIndex,
             onTap: () => onSelect(pluginsIndex),
           ),
           const SizedBox(height: 8),
           _RailButton(
-            destination: _settingsDestination,
+            destination: _settingsDestination(t),
             selected: selectedIndex == settingsIndex,
             onTap: () => onSelect(settingsIndex),
           ),
           const SizedBox(height: 8),
           _RailButton(
-            destination: _accountDestination,
+            destination: _accountDestination(t),
             selected: selectedIndex == accountIndex,
             onTap: () => onSelect(accountIndex),
           ),
@@ -150,8 +154,9 @@ class _PlanBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Tooltip(
-      message: '${plan.name} plan',
+      message: t.planSuffix(plan.name),
       preferBelow: false,
       child: MouseRegion(
         cursor: SystemMouseCursors.click,

@@ -7,6 +7,7 @@ import '../../finance/finance_scope.dart';
 import '../../finance/logic/finance_logic.dart';
 import '../../finance/logic/money.dart';
 import '../../finance/ui/lookups.dart';
+import '../../l10n/app_localizations.dart';
 import '../../settings/settings_scope.dart';
 import '../../theme/luma_theme.dart';
 
@@ -63,6 +64,7 @@ class _HomeBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final settings = SettingsScope.of(context);
     final hide = settings.hideAmounts;
     String money(int cents) => hide ? '••••••' : formatCents(cents);
@@ -79,33 +81,33 @@ class _HomeBody extends StatelessWidget {
     final nextMonth = DateTime(now.year, now.month + 1, 1);
     var monthIncome = 0;
     var monthExpense = 0;
-    for (final t in txns) {
-      if (t.date.isBefore(monthStart) || !t.date.isBefore(nextMonth)) continue;
-      if (t.kind == TxnKind.income) monthIncome += t.amountCents;
-      if (t.kind == TxnKind.expense) monthExpense += t.amountCents;
+    for (final txn in txns) {
+      if (txn.date.isBefore(monthStart) || !txn.date.isBefore(nextMonth)) continue;
+      if (txn.kind == TxnKind.income) monthIncome += txn.amountCents;
+      if (txn.kind == TxnKind.expense) monthExpense += txn.amountCents;
     }
 
     final statCards = [
       _StatCard(
-        label: 'Income this month',
+        label: t.homeIncomeMonth,
         value: money(monthIncome),
         color: luma.success,
         icon: Icons.south_west_rounded,
       ),
       _StatCard(
-        label: 'Spent this month',
+        label: t.homeSpentMonth,
         value: money(monthExpense),
         color: luma.danger,
         icon: Icons.north_east_rounded,
       ),
       _StatCard(
-        label: 'In pots',
+        label: t.homeInPots,
         value: money(balances.potsTotalCents),
         color: luma.accent,
         icon: Icons.savings_rounded,
       ),
       _StatCard(
-        label: 'Investments',
+        label: t.homeInvestments,
         value: money(portfolio),
         color: luma.accent,
         icon: Icons.trending_up_rounded,
@@ -115,35 +117,32 @@ class _HomeBody extends StatelessWidget {
     final quickActions = [
       _QuickAction(
         icon: Icons.smart_toy_rounded,
-        title: 'Ask Assistant',
-        subtitle: 'Chat with the AI assistant',
+        title: t.homeAskAssistant,
+        subtitle: t.homeAskAssistantSub,
         onTap: () => onNavigate(5),
       ),
       _QuickAction(
         icon: Icons.account_balance_wallet_rounded,
-        title: 'Finance',
-        subtitle: 'Budgets, pots & stocks',
+        title: t.homeFinance,
+        subtitle: t.homeFinanceSub,
         onTap: () => onNavigate(2),
       ),
       _QuickAction(
         icon: Icons.swap_horiz_rounded,
-        title: 'File Converter',
-        subtitle: 'Convert images & files',
+        title: t.homeFileConverter,
+        subtitle: t.homeFileConverterSub,
         onTap: () => onNavigate(1),
       ),
       _QuickAction(
         icon: Icons.settings_rounded,
-        title: 'Settings',
-        subtitle: 'Theme, colors & more',
+        title: t.homeSettings,
+        subtitle: t.homeSettingsSub,
         onTap: () => onNavigate(NavRail.settingsIndex),
       ),
     ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Below this the two-column grids get squeezed too tight to hold
-        // "Income this month" etc. without ugly mid-word wrapping, so switch
-        // to a single column that gives each card the full width.
         final narrow = constraints.maxWidth < 480;
         final hPadding = narrow ? 16.0 : 24.0;
 
@@ -154,7 +153,7 @@ class _HomeBody extends StatelessWidget {
             children: [
               _GreetingCard(now: now, netWorthLabel: money(netWorth)),
               const SizedBox(height: 20),
-              _SectionTitle('At a glance'),
+              _SectionTitle(t.homeAtAGlance),
               const SizedBox(height: 12),
               _ResponsiveGrid(
                 narrow: narrow,
@@ -162,11 +161,11 @@ class _HomeBody extends StatelessWidget {
                 children: statCards,
               ),
               const SizedBox(height: 28),
-              _SectionTitle('Jump back in'),
+              _SectionTitle(t.homeJumpBackIn),
               const SizedBox(height: 12),
               _ResponsiveGrid(narrow: narrow, children: quickActions),
               const SizedBox(height: 28),
-              _SectionTitle('Recent activity'),
+              _SectionTitle(t.homeRecentActivity),
               const SizedBox(height: 12),
               _RecentActivity(
                 txns: txns,
@@ -236,6 +235,7 @@ class _GreetingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -254,7 +254,7 @@ class _GreetingCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            _greeting(now.hour),
+            _greeting(now.hour, t),
             style: TextStyle(
               color: luma.textPrimary,
               fontSize: 26,
@@ -264,11 +264,11 @@ class _GreetingCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            _longDate(now),
+            _longDate(now, t),
             style: TextStyle(color: luma.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 20),
-          Text('Net worth',
+          Text(t.homeNetWorth,
               style: TextStyle(color: luma.textSecondary, fontSize: 13)),
           const SizedBox(height: 4),
           Text(
@@ -415,13 +415,13 @@ class _RecentActivity extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final recent = txns.take(5).toList();
 
     if (recent.isEmpty) {
       return LumaCard(
         child: Text(
-          'Nothing here yet — add a transaction in the Finance tab and it will '
-          'show up here.',
+          t.homeNoTransactions,
           style: TextStyle(color: luma.textMuted, fontSize: 13),
         ),
       );
@@ -464,6 +464,7 @@ class _ActivityRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
 
     final IconData icon;
     final Color color;
@@ -483,7 +484,7 @@ class _ActivityRow extends StatelessWidget {
 
     final title = txn.note?.isNotEmpty == true
         ? txn.note!
-        : (category?.name ?? pot?.name ?? _kindLabel(txn.kind));
+        : (category?.name ?? pot?.name ?? _kindLabel(txn.kind, t));
 
     final signed = switch (txn.kind) {
       TxnKind.income => txn.amountCents,
@@ -511,7 +512,7 @@ class _ActivityRow extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                _shortDate(txn.date),
+                _shortDate(txn.date, t),
                 style: TextStyle(color: luma.textMuted, fontSize: 12),
               ),
             ],
@@ -540,27 +541,30 @@ class _SectionTitle extends StatelessWidget {
       );
 }
 
-String _greeting(int hour) {
-  if (hour < 12) return 'Good morning';
-  if (hour < 18) return 'Good afternoon';
-  return 'Good evening';
+String _greeting(int hour, L t) {
+  if (hour < 12) return t.homeGreetingMorning;
+  if (hour < 18) return t.homeGreetingAfternoon;
+  return t.homeGreetingEvening;
 }
 
-String _kindLabel(TxnKind kind) => switch (kind) {
-      TxnKind.income => 'Income',
-      TxnKind.expense => 'Expense',
-      TxnKind.allocation => 'Allocation',
+String _kindLabel(TxnKind kind, L t) => switch (kind) {
+      TxnKind.income => t.homeIncome,
+      TxnKind.expense => t.homeExpense,
+      TxnKind.allocation => t.homeAllocation,
     };
 
-const _months = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-];
-const _weekdays = [
-  'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
-];
+List<String> _months(L t) => [
+      t.monthJan, t.monthFeb, t.monthMar, t.monthApr,
+      t.monthMay, t.monthJun, t.monthJul, t.monthAug,
+      t.monthSep, t.monthOct, t.monthNov, t.monthDec,
+    ];
 
-String _shortDate(DateTime d) => '${d.day} ${_months[d.month - 1]}';
+List<String> _weekdays(L t) => [
+      t.weekdayMon, t.weekdayTue, t.weekdayWed, t.weekdayThu,
+      t.weekdayFri, t.weekdaySat, t.weekdaySun,
+    ];
 
-String _longDate(DateTime d) =>
-    '${_weekdays[d.weekday - 1]}, ${d.day} ${_months[d.month - 1]} ${d.year}';
+String _shortDate(DateTime d, L t) => '${d.day} ${_months(t)[d.month - 1]}';
+
+String _longDate(DateTime d, L t) =>
+    '${_weekdays(t)[d.weekday - 1]}, ${d.day} ${_months(t)[d.month - 1]} ${d.year}';

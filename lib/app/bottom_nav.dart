@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../account/plan.dart';
 import '../features/plugins/plugin_icons.dart';
 import '../features/plugins/plugin_repository.dart';
+import '../l10n/app_localizations.dart';
 import '../settings/settings_scope.dart';
 import '../theme/luma_theme.dart';
 import 'nav_rail.dart';
@@ -27,13 +28,13 @@ class BottomNav extends StatelessWidget {
   final String? selectedPluginId;
   final ValueChanged<String> onSelectPlugin;
 
-  static const _primary = [
-    NavDestination(icon: Icons.dashboard_rounded, label: 'Home'),
-    NavDestination(
-        icon: Icons.account_balance_wallet_rounded, label: 'Finance'),
-    NavDestination(icon: Icons.swap_horiz_rounded, label: 'Convert'),
-    NavDestination(icon: Icons.lock_rounded, label: 'Vault'),
-  ];
+  static List<NavDestination> _primary(L t) => [
+        NavDestination(icon: Icons.dashboard_rounded, label: t.navHome),
+        NavDestination(
+            icon: Icons.account_balance_wallet_rounded, label: t.navFinance),
+        NavDestination(icon: Icons.swap_horiz_rounded, label: t.navConvert),
+        NavDestination(icon: Icons.lock_rounded, label: t.navVault),
+      ];
 
   // Index into AppShell's fixed screen list for each primary tab above.
   static const _primaryTargets = [0, 2, 1, 3];
@@ -49,6 +50,8 @@ class BottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
+    final primary = _primary(t);
     return SafeArea(
       top: false,
       child: Container(
@@ -59,10 +62,10 @@ class BottomNav extends StatelessWidget {
         ),
         child: Row(
           children: [
-            for (var i = 0; i < _primary.length; i++)
+            for (var i = 0; i < primary.length; i++)
               Expanded(
                 child: _BottomNavButton(
-                  destination: _primary[i],
+                  destination: primary[i],
                   selected:
                       !_moreSelected && selectedIndex == _primaryTargets[i],
                   onTap: () => onSelect(_primaryTargets[i]),
@@ -71,7 +74,7 @@ class BottomNav extends StatelessWidget {
             Expanded(
               child: _BottomNavButton(
                 destination:
-                    const NavDestination(icon: Icons.more_horiz_rounded, label: 'More'),
+                    NavDestination(icon: Icons.more_horiz_rounded, label: t.navMore),
                 selected: _moreSelected,
                 onTap: () => _openMoreSheet(context),
               ),
@@ -83,6 +86,7 @@ class BottomNav extends StatelessWidget {
   }
 
   void _openMoreSheet(BuildContext context) {
+    final t = L.of(context);
     final plan = planById(SettingsScope.of(context).selectedPlanId);
     showModalBottomSheet<void>(
       context: context,
@@ -98,7 +102,7 @@ class BottomNav extends StatelessWidget {
             children: [
               _MoreRow(
                 icon: Icons.sticky_note_2_rounded,
-                label: 'Notes',
+                label: t.navNotes,
                 onTap: () {
                   Navigator.pop(sheetContext);
                   onSelect(4);
@@ -106,7 +110,7 @@ class BottomNav extends StatelessWidget {
               ),
               _MoreRow(
                 icon: Icons.smart_toy_rounded,
-                label: 'Assistant',
+                label: t.navAssistant,
                 onTap: () {
                   Navigator.pop(sheetContext);
                   onSelect(5);
@@ -114,7 +118,7 @@ class BottomNav extends StatelessWidget {
               ),
               _MoreRow(
                 icon: Icons.extension_rounded,
-                label: 'Plugins',
+                label: t.navPlugins,
                 onTap: () {
                   Navigator.pop(sheetContext);
                   onSelect(NavRail.pluginsIndex);
@@ -122,7 +126,7 @@ class BottomNav extends StatelessWidget {
               ),
               _MoreRow(
                 icon: Icons.settings_rounded,
-                label: 'Settings',
+                label: t.navSettings,
                 onTap: () {
                   Navigator.pop(sheetContext);
                   onSelect(NavRail.settingsIndex);
@@ -130,8 +134,8 @@ class BottomNav extends StatelessWidget {
               ),
               _MoreRow(
                 icon: Icons.badge_rounded,
-                label: 'Account',
-                trailing: '${plan.name} plan',
+                label: t.navAccount,
+                trailing: t.planSuffix(plan.name),
                 onTap: () {
                   Navigator.pop(sheetContext);
                   onSelect(NavRail.accountIndex);

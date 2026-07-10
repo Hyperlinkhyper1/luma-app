@@ -623,31 +623,30 @@ class _AccountDialogState extends State<_AccountDialog> {
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
 
-              if (_cloudMode) ...[
-                TextField(
-                  controller: _server,
-                  enabled: !_busy,
-                  autofocus: true,
-                  style: TextStyle(color: luma.textPrimary, fontSize: 14),
-                  decoration: _fieldDecoration(context, 'Server address',
-                          hint: 'https://sync.example.com')
-                      .copyWith(
-                    suffixIcon: _busy
-                        ? null
-                        : IconButton(
-                            tooltip: 'Remove server',
-                            icon: Icon(Icons.close_rounded,
-                                size: 18, color: luma.textMuted),
-                            onPressed: () => setState(() {
-                              _server.clear();
-                              _cloudMode = false;
-                              _error = null;
-                              _info = null;
-                            }),
-                          ),
+              if (_cloudMode)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () => setState(() {
+                        _cloudMode = false;
+                        _error = null;
+                        _info = null;
+                      }),
+                      icon: Icon(Icons.wifi_rounded,
+                          size: 16, color: luma.textMuted),
+                      label: Text('No server? Use local-only sync instead',
+                          style:
+                              TextStyle(color: luma.textMuted, fontSize: 12)),
+                      style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: const Size(0, 0),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                    ),
                   ),
-                ),
-              ] else
+                )
+              else
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Align(

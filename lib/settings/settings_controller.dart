@@ -18,6 +18,21 @@ const Map<String, String> _kPlanCodeHashes = {
 /// Which destination the app opens on when launched.
 enum StartScreen { home, converter, finance }
 
+/// The app-wide language preference. `system` follows the OS locale,
+/// falling back to English (the template/default) when unsupported.
+enum AppLanguage { system, english, dutch, chinese, spanish, french }
+
+/// Maps [AppLanguage] to a [Locale], or null for `system` (let MaterialApp
+/// resolve from the platform).
+Locale? localeForLanguage(AppLanguage lang) => switch (lang) {
+      AppLanguage.english => const Locale('en'),
+      AppLanguage.dutch => const Locale('nl'),
+      AppLanguage.chinese => const Locale('zh'),
+      AppLanguage.spanish => const Locale('es'),
+      AppLanguage.french => const Locale('fr'),
+      AppLanguage.system => null,
+    };
+
 /// A selectable accent color. A null [seed] keeps luma's default lavender.
 class AccentPreset {
   const AccentPreset(this.name, this.seed);
@@ -45,6 +60,7 @@ class SettingsController extends ChangeNotifier {
     required ThemeMode themeMode,
     required int accentIndex,
     required StartScreen startScreen,
+    required AppLanguage appLanguage,
     required bool hideAmounts,
     required String? lockPasswordHash,
     required String? avatarPath,
@@ -57,6 +73,7 @@ class SettingsController extends ChangeNotifier {
   })  : _themeMode = themeMode,
         _accentIndex = accentIndex,
         _startScreen = startScreen,
+        _appLanguage = appLanguage,
         _hideAmounts = hideAmounts,
         _lockPasswordHash = lockPasswordHash,
         _avatarPath = avatarPath,
@@ -74,6 +91,7 @@ class SettingsController extends ChangeNotifier {
   ThemeMode _themeMode;
   int _accentIndex;
   StartScreen _startScreen;
+  AppLanguage _appLanguage;
   bool _hideAmounts;
   String? _lockPasswordHash;
   String? _avatarPath;
@@ -92,6 +110,7 @@ class SettingsController extends ChangeNotifier {
   ThemeMode get themeMode => _themeMode;
   int get accentIndex => _accentIndex;
   StartScreen get startScreen => _startScreen;
+  AppLanguage get appLanguage => _appLanguage;
 
   /// When true, monetary figures on the Home dashboard are masked.
   bool get hideAmounts => _hideAmounts;
@@ -221,6 +240,12 @@ class SettingsController extends ChangeNotifier {
     _changed();
   }
 
+  void setAppLanguage(AppLanguage lang) {
+    if (lang == _appLanguage) return;
+    _appLanguage = lang;
+    _changed();
+  }
+
   void setHideAmounts(bool value) {
     if (value == _hideAmounts) return;
     _hideAmounts = value;
@@ -252,6 +277,7 @@ class SettingsController extends ChangeNotifier {
     _themeMode = ThemeMode.dark;
     _accentIndex = 0;
     _startScreen = StartScreen.home;
+    _appLanguage = AppLanguage.system;
     _hideAmounts = false;
     _lockPasswordHash = null;
     _avatarPath = null;
@@ -277,6 +303,7 @@ class SettingsController extends ChangeNotifier {
         'themeMode': _themeMode.name,
         'accentIndex': _accentIndex,
         'startScreen': _startScreen.name,
+        'appLanguage': _appLanguage.name,
         'hideAmounts': _hideAmounts,
         'lockPasswordHash': _lockPasswordHash,
         'avatarPath': _avatarPath,
@@ -291,6 +318,8 @@ class SettingsController extends ChangeNotifier {
     _accentIndex = _parseAccentIndex(data['accentIndex']);
     _startScreen =
         _parseEnum(StartScreen.values, data['startScreen'], _startScreen);
+    _appLanguage =
+        _parseEnum(AppLanguage.values, data['appLanguage'], _appLanguage);
     _hideAmounts = data['hideAmounts'] == true;
     _lockPasswordHash = data['lockPasswordHash'] as String?;
     _avatarPath = data['avatarPath'] as String?;
@@ -310,6 +339,7 @@ class SettingsController extends ChangeNotifier {
         'themeMode': _themeMode.name,
         'accentIndex': _accentIndex,
         'startScreen': _startScreen.name,
+        'appLanguage': _appLanguage.name,
         'hideAmounts': _hideAmounts,
         'lockPasswordHash': _lockPasswordHash,
         'avatarPath': _avatarPath,
@@ -347,6 +377,8 @@ class SettingsController extends ChangeNotifier {
       accentIndex: _parseAccentIndex(data['accentIndex']),
       startScreen:
           _parseEnum(StartScreen.values, data['startScreen'], StartScreen.home),
+      appLanguage:
+          _parseEnum(AppLanguage.values, data['appLanguage'], AppLanguage.system),
       hideAmounts: data['hideAmounts'] == true,
       lockPasswordHash: data['lockPasswordHash'] as String?,
       avatarPath: data['avatarPath'] as String?,
