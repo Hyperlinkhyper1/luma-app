@@ -8,6 +8,7 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 
 import 'mail.dart';
+import 'metrics.dart';
 import 'rate_limit.dart';
 import 'store.dart';
 import 'util.dart';
@@ -130,7 +131,9 @@ class Api {
       ..delete('/api/v1/sync/<collection>', _requireAuth(_deleteBlobHandler))
       ..get('/admin', _requireAdmin(_adminDashboard))
       ..get('/admin/users', _requireAdmin(_adminUsers))
-      ..get('/admin/stats', _requireAdmin(_adminStats));
+      ..get('/admin/stats', _requireAdmin(_adminStats))
+      ..get('/admin/metrics', _requireAdmin(_adminMetrics))
+      ..post('/admin/verify', _requireAdmin(_adminVerifyUser));
 
     return const Pipeline()
         .addMiddleware(_recover)
@@ -760,10 +763,48 @@ class Api {
 
   Response _adminStats(Request request) => _json(200, _adminStatsJson());
 
+  Future<Response> _adminMetrics(Request request) async {
+    final metrics = await SystemMetrics.sample();
+    return _json(200, metrics.toJson());
+  }
+
+  /// Manually activates a pending account, bypassing email verification —
+  /// the escape hatch for self-hosted servers where SMTP isn't configured
+  /// (or mail just didn't arrive) and the operator needs to unblock a
+  /// legitimate sign-up with no other way to receive the link.
+  Future<Response> _adminVerifyUser(Request request) async {
+    final raw = await request.readAsString();
+    String? email;
+    try {
+      email = Uri.splitQueryString(raw)['email'];
+    } catch (_) {}
+    email = email?.trim().toLowerCase();
+    if (email == null || email.isEmpty) {
+      return _error(400, 'bad_request', 'email is required.');
+    }
+    return store.lock.synchronized(() async {
+      final userId = store.userIdByEmail[email];
+      final user = userId == null ? null : store.usersById[userId];
+      if (user == null) {
+        return _error(404, 'not_found', 'No account with that email.');
+      }
+      user.status = 'active';
+      user.verificationTokenHash = null;
+      user.verificationExpiresAtMs = null;
+      await store.saveUsers();
+      final key = request.url.queryParameters['key'];
+      if (key != null) {
+        return Response.found('/admin?key=${Uri.encodeQueryComponent(key)}');
+      }
+      return _json(200, {'ok': true});
+    });
+  }
+
   Response _adminDashboard(Request request) {
     final stats = _adminStatsJson();
     final users = store.usersById.values.toList()
       ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
+    final key = request.url.queryParameters['key'] ?? '';
 
     String fmtBytes(int bytes) {
       const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -789,6 +830,16 @@ class Api {
           ? (used / u.quotaBytes * 100).clamp(0, 100)
           : 0.0;
       final statusColor = u.status == 'active' ? '#7ee08a' : '#e0c87e';
+      final action = u.isPending
+          ? '<form method="post" action="/admin/verify?key=${Uri.encodeQueryComponent(key)}" '
+              'style="margin:0" onsubmit="return confirm(\'Manually verify '
+              '${_htmlEscape(u.email)}? This skips email verification.\')">'
+              '<input type="hidden" name="email" value="${_htmlEscape(u.email)}">'
+              '<button type="submit" style="background:#8a7ee0;color:#161320;'
+              'border:none;border-radius:6px;padding:4px 10px;font-size:12px;'
+              'font-weight:600;cursor:pointer">Verify</button>'
+              '</form>'
+          : '';
       return '<tr>'
           '<td>${_htmlEscape(u.email)}</td>'
           '<td><span style="color:$statusColor">${_htmlEscape(u.status)}</span></td>'
@@ -800,6 +851,7 @@ class Api {
           '</td>'
           '<td>${fmtDate(u.createdAtMs)}</td>'
           '<td>${fmtDate(u.lastLoginAtMs)}</td>'
+          '<td>$action</td>'
           '</tr>';
     }).join();
 
@@ -807,13 +859,20 @@ class Api {
         '<title>luma admin</title>'
         '<style>body{background:#161320;color:#e8e4f3;font-family:system-ui,'
         'sans-serif;margin:0;padding:32px}h1{font-size:20px;margin:0 0 24px}'
+        'h2{font-size:15px;margin:40px 0 16px;color:#e8e4f3}'
         '.stats{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:32px}'
         '.stat{background:#1e1a2b;border-radius:8px;padding:16px 20px;min-width:140px}'
         '.stat .n{font-size:22px;font-weight:600}.stat .l{font-size:12px;'
         'color:#a49fb8;margin-top:4px}table{border-collapse:collapse;width:100%;'
         'font-size:13px}th{text-align:left;color:#a49fb8;font-weight:500;'
         'padding:8px 12px;border-bottom:1px solid #2c2640}'
-        'td{padding:8px 12px;border-bottom:1px solid #201c2c}</style>'
+        'td{padding:8px 12px;border-bottom:1px solid #201c2c}'
+        '.metrics-grid{display:flex;gap:16px;flex-wrap:wrap}'
+        '.metric-card{background:#1e1a2b;border-radius:8px;padding:16px 20px;'
+        'min-width:240px;flex:1}'
+        '.metric-title{font-size:12px;color:#a49fb8;margin-bottom:8px}'
+        '.metric-value{font-size:16px;font-weight:600;margin-top:8px}'
+        'canvas{display:block;width:100%;height:120px}</style>'
         '</head><body>'
         '<h1>luma admin</h1>'
         '<div class="stats">'
@@ -824,13 +883,156 @@ class Api {
         '<div class="stat"><div class="n">${fmtBytes(stats['quotaBytesTotal'] as int)}</div><div class="l">Storage capacity</div></div>'
         '</div>'
         '<table><thead><tr><th>Email</th><th>Status</th><th>Storage</th>'
-        '<th>Created</th><th>Last login</th></tr></thead>'
+        '<th>Created</th><th>Last login</th><th></th></tr></thead>'
         '<tbody>$rows</tbody></table>'
+        '<h2>Live server metrics</h2>'
+        '<div id="metricsUnsupported" style="display:none;color:#a49fb8;'
+        'font-size:13px">Live metrics aren\'t available on this server\'s '
+        'OS/platform.</div>'
+        '<div class="metrics-grid" id="metricsGrid">'
+        '<div class="metric-card"><div class="metric-title">CPU</div>'
+        '<canvas id="cpuGraph" width="280" height="120"></canvas>'
+        '<div class="metric-value" id="cpuValue">–</div></div>'
+        '<div class="metric-card"><div class="metric-title">RAM</div>'
+        '<canvas id="ramGraph" width="280" height="120"></canvas>'
+        '<div class="metric-value" id="ramValue">–</div></div>'
+        '<div class="metric-card"><div class="metric-title">Network '
+        '(<span style="color:#8a7ee0">&#8595; down</span> / '
+        '<span style="color:#7ee08a">&#8593; up</span>)</div>'
+        '<canvas id="netGraph" width="280" height="120"></canvas>'
+        '<div class="metric-value" id="netValue">–</div></div>'
+        '<div class="metric-card"><div class="metric-title">Power draw</div>'
+        '<canvas id="powerGraph" width="280" height="120"></canvas>'
+        '<div class="metric-value" id="powerValue">–</div></div>'
+        '</div>'
+        '<script>$_adminMetricsScript</script>'
         '</body></html>';
 
     return Response(200,
         body: body, headers: {'Content-Type': 'text/html; charset=utf-8'});
   }
+
+  /// Vanilla JS (no external deps, per the self-contained-dashboard style):
+  /// polls /admin/metrics every 2s and draws rolling line graphs on plain
+  /// <canvas> elements.
+  static const _adminMetricsScript = r'''
+(function () {
+  const key = new URLSearchParams(location.search).get('key') || '';
+  const MAX_POINTS = 30;
+  const history = { cpu: [], ram: [], rx: [], tx: [], power: [] };
+
+  function push(arr, v) {
+    arr.push(v);
+    if (arr.length > MAX_POINTS) arr.shift();
+  }
+
+  function fmtBytes(v) {
+    if (v == null) return '–';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let i = 0, val = v;
+    while (val >= 1024 && i < units.length - 1) { val /= 1024; i++; }
+    return val.toFixed(val >= 10 || i === 0 ? 0 : 1) + ' ' + units[i];
+  }
+
+  function fmtRate(v) {
+    return v == null ? '–' : fmtBytes(v) + '/s';
+  }
+
+  function drawGraph(canvas, series, maxValue) {
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    ctx.strokeStyle = '#2c2640';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 1; i <= 3; i++) {
+      const y = Math.round(h * i / 4) + 0.5;
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+    }
+    ctx.stroke();
+
+    let max = maxValue;
+    if (max == null) {
+      max = 1;
+      for (const s of series) {
+        for (const v of s.values) max = Math.max(max, v);
+      }
+    }
+
+    for (const s of series) {
+      const values = s.values;
+      if (values.length < 2) continue;
+      ctx.strokeStyle = s.color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      values.forEach((v, i) => {
+        const x = (w * i) / (MAX_POINTS - 1);
+        const y = h - (Math.min(v, max) / max) * h;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    }
+  }
+
+  async function poll() {
+    let res;
+    try {
+      res = await fetch('/admin/metrics?key=' + encodeURIComponent(key));
+    } catch (e) {
+      return;
+    }
+    if (!res.ok) return;
+    const m = await res.json();
+
+    if (!m.platformSupported) {
+      document.getElementById('metricsUnsupported').style.display = 'block';
+      document.getElementById('metricsGrid').style.display = 'none';
+      return;
+    }
+
+    if (m.cpuPercent != null) {
+      push(history.cpu, m.cpuPercent);
+      document.getElementById('cpuValue').textContent = m.cpuPercent.toFixed(1) + '%';
+      drawGraph(document.getElementById('cpuGraph'),
+          [{ values: history.cpu, color: '#8a7ee0' }], 100);
+    }
+
+    if (m.ramUsedBytes != null && m.ramTotalBytes) {
+      const pct = (m.ramUsedBytes / m.ramTotalBytes) * 100;
+      push(history.ram, pct);
+      document.getElementById('ramValue').textContent =
+          fmtBytes(m.ramUsedBytes) + ' / ' + fmtBytes(m.ramTotalBytes);
+      drawGraph(document.getElementById('ramGraph'),
+          [{ values: history.ram, color: '#8a7ee0' }], 100);
+    }
+
+    if (m.netRxBytesPerSec != null && m.netTxBytesPerSec != null) {
+      push(history.rx, m.netRxBytesPerSec);
+      push(history.tx, m.netTxBytesPerSec);
+      document.getElementById('netValue').textContent =
+          '↓ ' + fmtRate(m.netRxBytesPerSec) + '   ↑ ' + fmtRate(m.netTxBytesPerSec);
+      drawGraph(document.getElementById('netGraph'), [
+        { values: history.rx, color: '#8a7ee0' },
+        { values: history.tx, color: '#7ee08a' },
+      ], null);
+    }
+
+    if (m.powerWatts != null) {
+      push(history.power, m.powerWatts);
+      document.getElementById('powerValue').textContent = m.powerWatts.toFixed(1) + ' W';
+      drawGraph(document.getElementById('powerGraph'),
+          [{ values: history.power, color: '#e0c87e' }], null);
+    } else {
+      document.getElementById('powerValue').textContent = 'Not available on this host';
+    }
+  }
+
+  poll();
+  setInterval(poll, 2000);
+})();
+''';
 
   // ---- Helpers -------------------------------------------------------------
 
