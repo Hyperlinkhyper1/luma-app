@@ -18,6 +18,10 @@ class StoredUser {
     required this.kdfIterations,
     required this.quotaBytes,
     required this.createdAtMs,
+    this.status = 'active',
+    this.verificationTokenHash,
+    this.verificationExpiresAtMs,
+    this.lastLoginAtMs,
   });
 
   final String id;
@@ -29,6 +33,21 @@ class StoredUser {
   int quotaBytes;
   final int createdAtMs;
 
+  /// Set each time a login succeeds; null if the account has never logged in
+  /// since this field was added.
+  int? lastLoginAtMs;
+
+  /// 'pending' until the email is verified, then 'active'. Accounts created
+  /// before this field existed default to 'active' so they keep working.
+  String status;
+
+  /// SHA-256 of the current email-verification token, or null if there is
+  /// none outstanding (never verified yet, or already verified/used).
+  String? verificationTokenHash;
+  int? verificationExpiresAtMs;
+
+  bool get isPending => status == 'pending';
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'email': email,
@@ -38,6 +57,10 @@ class StoredUser {
         'kdfIterations': kdfIterations,
         'quotaBytes': quotaBytes,
         'createdAtMs': createdAtMs,
+        'status': status,
+        'verificationTokenHash': verificationTokenHash,
+        'verificationExpiresAtMs': verificationExpiresAtMs,
+        'lastLoginAtMs': lastLoginAtMs,
       };
 
   factory StoredUser.fromJson(Map<String, dynamic> j) => StoredUser(
@@ -49,6 +72,10 @@ class StoredUser {
         kdfIterations: j['kdfIterations'] as int,
         quotaBytes: j['quotaBytes'] as int,
         createdAtMs: j['createdAtMs'] as int,
+        status: j['status'] as String? ?? 'active',
+        verificationTokenHash: j['verificationTokenHash'] as String?,
+        verificationExpiresAtMs: j['verificationExpiresAtMs'] as int?,
+        lastLoginAtMs: j['lastLoginAtMs'] as int?,
       );
 }
 

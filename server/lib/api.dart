@@ -7,6 +7,7 @@ import 'package:crypto/crypto.dart' as c;
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 
+import 'mail.dart';
 import 'rate_limit.dart';
 import 'store.dart';
 import 'util.dart';
@@ -22,6 +23,9 @@ class ServerConfig {
     required this.tokenTtl,
     required this.corsOrigin,
     required this.trustProxy,
+    required this.verificationTtl,
+    required this.requireEmailVerification,
+    required this.adminKey,
   });
 
   final int port;
@@ -32,6 +36,20 @@ class ServerConfig {
   final Duration tokenTtl;
   final String corsOrigin;
   final bool trustProxy;
+
+  /// How long an email-verification link stays valid.
+  final Duration verificationTtl;
+
+  /// Whether new accounts must verify their email before they can log in.
+  /// On by default; can be disabled for closed/trusted deployments that
+  /// don't want to configure SMTP.
+  final bool requireEmailVerification;
+
+  /// Shared secret for the /admin/* endpoints. When unset, the admin
+  /// dashboard is disabled entirely rather than left open.
+  final String? adminKey;
+
+  bool get adminEnabled => adminKey != null && adminKey!.isNotEmpty;
 
   /// Whether new accounts may be created. Open by default; set
   /// LUMA_ALLOW_REGISTRATION=false to close it (existing accounts keep working).
@@ -53,6 +71,12 @@ class ServerConfig {
       tokenTtl: Duration(days: intOf('LUMA_TOKEN_TTL_DAYS', 90)),
       corsOrigin: env['LUMA_CORS_ORIGIN'] ?? '*',
       trustProxy: env['LUMA_TRUST_PROXY'] == 'true',
+      verificationTtl:
+          Duration(hours: intOf('LUMA_VERIFICATION_TTL_HOURS', 24)),
+      requireEmailVerification:
+          (env['LUMA_REQUIRE_EMAIL_VERIFICATION'] ?? 'true').toLowerCase() !=
+              'false',
+      adminKey: env['LUMA_ADMIN_KEY'],
     );
   }
 }
@@ -70,16 +94,23 @@ const int _defaultClientIterations = 200000;
 const int _maxJsonBody = 64 * 1024;
 
 class Api {
-  Api(this.store, this.config)
+  Api(this.store, this.config, this.mailer)
       : _authLimiter = RateLimiter(
             maxRequests: 15, window: const Duration(minutes: 10)),
         _generalLimiter = RateLimiter(
-            maxRequests: 300, window: const Duration(minutes: 1));
+            maxRequests: 300, window: const Duration(minutes: 1)),
+        _resendLimiter = RateLimiter(
+            maxRequests: 3, window: const Duration(minutes: 15));
 
   final Store store;
   final ServerConfig config;
+  final Mailer mailer;
   final RateLimiter _authLimiter;
   final RateLimiter _generalLimiter;
+
+  /// Extra, per-email limit on top of [_authLimiter] so someone can't spam
+  /// verification mail to one address from many IPs.
+  final RateLimiter _resendLimiter;
 
   Handler get handler {
     final router = Router()
@@ -87,6 +118,8 @@ class Api {
       ..get('/health', _health)
       ..post('/api/v1/auth/params', _authParams)
       ..post('/api/v1/auth/register', _register)
+      ..get('/api/v1/auth/verify', _verify)
+      ..post('/api/v1/auth/resend-verification', _resendVerification)
       ..post('/api/v1/auth/login', _login)
       ..post('/api/v1/auth/logout', _requireAuth(_logout))
       ..post('/api/v1/auth/change', _requireAuth(_changePassword))
@@ -94,7 +127,10 @@ class Api {
       ..post('/api/v1/account/delete', _requireAuth(_deleteAccount))
       ..get('/api/v1/sync/<collection>', _requireAuth(_getBlob))
       ..put('/api/v1/sync/<collection>', _requireAuth(_putBlob))
-      ..delete('/api/v1/sync/<collection>', _requireAuth(_deleteBlobHandler));
+      ..delete('/api/v1/sync/<collection>', _requireAuth(_deleteBlobHandler))
+      ..get('/admin', _requireAdmin(_adminDashboard))
+      ..get('/admin/users', _requireAdmin(_adminUsers))
+      ..get('/admin/stats', _requireAdmin(_adminStats));
 
     return const Pipeline()
         .addMiddleware(_recover)
@@ -185,6 +221,29 @@ class Api {
         });
       }
       return handler(request, user);
+    };
+  }
+
+  /// Wraps a handler so it only runs with a valid admin key. If no admin key
+  /// is configured, the route behaves as if it doesn't exist (404) rather
+  /// than being left open. Accepts the key via the `X-Admin-Key` header (all
+  /// endpoints) or a `?key=` query parameter (so the HTML dashboard is
+  /// reachable from a plain browser, which cannot set custom headers).
+  Handler _requireAdmin(FutureOr<Response> Function(Request) handler) {
+    return (request) async {
+      if (!config.adminEnabled) {
+        return _error(404, 'not_found', 'Not found.');
+      }
+      final provided = request.headers['x-admin-key'] ??
+          request.url.queryParameters['key'] ??
+          '';
+      final expected = config.adminKey!;
+      final match = constantTimeEquals(
+          utf8.encode(provided), utf8.encode(expected));
+      if (!match) {
+        return _error(401, 'unauthorized', 'Invalid or missing admin key.');
+      }
+      return handler(request);
     };
   }
 
@@ -285,6 +344,7 @@ class Api {
       }
       final authSalt = randomBytes(16);
       final authHash = await _hashAuthKey(authKey, authSalt);
+      final requireVerification = config.requireEmailVerification;
       final user = StoredUser(
         id: base64UrlEncode(randomBytes(12)).replaceAll('=', ''),
         email: email,
@@ -294,15 +354,28 @@ class Api {
         kdfIterations: iterations,
         quotaBytes: config.quotaBytes,
         createdAtMs: DateTime.now().millisecondsSinceEpoch,
+        status: requireVerification ? 'pending' : 'active',
       );
       store.usersById[user.id] = user;
       store.userIdByEmail[email] = user.id;
+
+      if (!requireVerification) {
+        await store.saveUsers();
+        final token = await _createSession(user);
+        return _json(201, {
+          'token': token.$1,
+          'expiresAtMs': token.$2,
+          'quotaBytes': user.quotaBytes,
+        });
+      }
+
+      final verificationToken = await _issueVerificationToken(user);
       await store.saveUsers();
-      final token = await _createSession(user);
+      await _sendVerificationEmail(user, verificationToken);
       return _json(201, {
-        'token': token.$1,
-        'expiresAtMs': token.$2,
-        'quotaBytes': user.quotaBytes,
+        'status': 'pending_verification',
+        'message':
+            'Check your email to verify your account before signing in.',
       });
     });
   }
@@ -330,8 +403,15 @@ class Api {
       return _error(401, 'invalid_credentials', 'Wrong email or password.');
     }
 
+    if (user.isPending) {
+      return _error(403, 'email_not_verified',
+          'Please verify your email address before signing in.');
+    }
+
     return store.lock.synchronized(() async {
       final token = await _createSession(user);
+      user.lastLoginAtMs = DateTime.now().millisecondsSinceEpoch;
+      await store.saveUsers();
       return _json(200, {
         'token': token.$1,
         'expiresAtMs': token.$2,
@@ -339,6 +419,94 @@ class Api {
       });
     });
   }
+
+  /// Confirms a pending account from the link sent by [_sendVerificationEmail].
+  /// Returns a small HTML page (the user opens this in a browser from their
+  /// email client, not the app) mirroring the style of [_root].
+  Future<Response> _verify(Request request) async {
+    final token = request.url.queryParameters['token'];
+    if (token == null || token.isEmpty) {
+      return _verifyPage(400, 'Missing verification token.');
+    }
+    final tokenHash = c.sha256.convert(utf8.encode(token)).toString();
+
+    return store.lock.synchronized(() async {
+      StoredUser? user;
+      for (final u in store.usersById.values) {
+        if (u.verificationTokenHash == tokenHash) {
+          user = u;
+          break;
+        }
+      }
+      final now = DateTime.now().millisecondsSinceEpoch;
+      if (user == null) {
+        return _verifyPage(
+            400, 'This verification link is invalid or has already been used.');
+      }
+      if ((user.verificationExpiresAtMs ?? 0) <= now) {
+        return _verifyPage(400,
+            'This verification link has expired. Request a new one from the app.');
+      }
+      user.status = 'active';
+      user.verificationTokenHash = null;
+      user.verificationExpiresAtMs = null;
+      await store.saveUsers();
+      return _verifyPage(
+          200, 'Your email is verified. You can return to the app and sign in.');
+    });
+  }
+
+  /// Re-sends the verification email. Responds identically whether or not
+  /// the address is registered, so this cannot be used to enumerate accounts.
+  Future<Response> _resendVerification(Request request) async {
+    final body = await _readJson(request);
+    final email = _normalizeEmail(body['email']);
+    if (email == null) return _error(400, 'bad_email', 'Invalid email.');
+
+    if (!_resendLimiter.allow(email)) {
+      return _error(429, 'rate_limited',
+          'Too many verification requests for this address. Try again later.');
+    }
+
+    const genericResponse = {
+      'status': 'pending_verification',
+      'message':
+          'If that email has an unverified account, we just sent a new '
+              'verification link.',
+    };
+
+    return store.lock.synchronized(() async {
+      final userId = store.userIdByEmail[email];
+      final user = userId == null ? null : store.usersById[userId];
+      if (user == null || !user.isPending) {
+        return _json(200, genericResponse);
+      }
+      final verificationToken = await _issueVerificationToken(user);
+      await store.saveUsers();
+      await _sendVerificationEmail(user, verificationToken);
+      return _json(200, genericResponse);
+    });
+  }
+
+  Response _verifyPage(int status, String message) => Response(
+        status,
+        body: '<!doctype html><html><head><meta charset="utf-8">'
+            '<title>luma sync server</title>'
+            '<style>body{background:#161320;color:#e8e4f3;font-family:system-ui,'
+            'sans-serif;display:flex;min-height:100vh;margin:0;align-items:center;'
+            'justify-content:center}main{max-width:420px;padding:32px;text-align:'
+            'center}h1{font-size:20px;margin:0 0 8px}p{color:#a49fb8;line-height:'
+            '1.5;font-size:14px}</style></head><body><main>'
+            '<h1>luma sync server</h1>'
+            '<p>${_htmlEscape(message)}</p>'
+            '</main></body></html>',
+        headers: {'Content-Type': 'text/html; charset=utf-8'},
+      );
+
+  static String _htmlEscape(String s) => s
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;');
 
   Future<Response> _logout(Request request, StoredUser user) async {
     final auth = request.headers['authorization']!;
@@ -546,6 +714,124 @@ class Api {
     });
   }
 
+  // ---- Handlers: admin ------------------------------------------------------
+
+  /// Metadata-only view of one account for the admin endpoints. Never
+  /// includes anything that could help decrypt a user's blobs (authHash,
+  /// authSalt, kdfSalt, session tokens, etc. are all withheld).
+  Map<String, dynamic> _adminUserJson(StoredUser user) => {
+        'email': user.email,
+        'status': user.status,
+        'createdAtMs': user.createdAtMs,
+        'usedBytes': store.usedBytes(user.id),
+        'quotaBytes': user.quotaBytes,
+        'lastLoginAtMs': user.lastLoginAtMs,
+      };
+
+  Response _adminUsers(Request request) {
+    final users = store.usersById.values.toList()
+      ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
+    return _json(200, {'users': users.map(_adminUserJson).toList()});
+  }
+
+  Map<String, dynamic> _adminStatsJson() {
+    final users = store.usersById.values;
+    var active = 0;
+    var pending = 0;
+    var usedTotal = 0;
+    var quotaTotal = 0;
+    for (final u in users) {
+      if (u.isPending) {
+        pending++;
+      } else {
+        active++;
+      }
+      usedTotal += store.usedBytes(u.id);
+      quotaTotal += u.quotaBytes;
+    }
+    return {
+      'totalAccounts': users.length,
+      'activeAccounts': active,
+      'pendingAccounts': pending,
+      'usedBytesTotal': usedTotal,
+      'quotaBytesTotal': quotaTotal,
+    };
+  }
+
+  Response _adminStats(Request request) => _json(200, _adminStatsJson());
+
+  Response _adminDashboard(Request request) {
+    final stats = _adminStatsJson();
+    final users = store.usersById.values.toList()
+      ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
+
+    String fmtBytes(int bytes) {
+      const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+      var value = bytes.toDouble();
+      var unit = 0;
+      while (value >= 1024 && unit < units.length - 1) {
+        value /= 1024;
+        unit++;
+      }
+      return '${value.toStringAsFixed(value >= 10 || unit == 0 ? 0 : 1)} ${units[unit]}';
+    }
+
+    String fmtDate(int? ms) {
+      if (ms == null) return '—';
+      final d = DateTime.fromMillisecondsSinceEpoch(ms).toUtc();
+      String two(int n) => n.toString().padLeft(2, '0');
+      return '${d.year}-${two(d.month)}-${two(d.day)} ${two(d.hour)}:${two(d.minute)} UTC';
+    }
+
+    final rows = users.map((u) {
+      final used = store.usedBytes(u.id);
+      final pct = u.quotaBytes > 0
+          ? (used / u.quotaBytes * 100).clamp(0, 100)
+          : 0.0;
+      final statusColor = u.status == 'active' ? '#7ee08a' : '#e0c87e';
+      return '<tr>'
+          '<td>${_htmlEscape(u.email)}</td>'
+          '<td><span style="color:$statusColor">${_htmlEscape(u.status)}</span></td>'
+          '<td>'
+          '<div style="background:#241f33;border-radius:4px;overflow:hidden;width:120px;height:8px;display:inline-block;vertical-align:middle;margin-right:8px">'
+          '<div style="background:#8a7ee0;height:100%;width:${pct.toStringAsFixed(0)}%"></div>'
+          '</div>'
+          '<span style="font-size:12px;color:#a49fb8">${fmtBytes(used)} / ${fmtBytes(u.quotaBytes)} (${pct.toStringAsFixed(0)}%)</span>'
+          '</td>'
+          '<td>${fmtDate(u.createdAtMs)}</td>'
+          '<td>${fmtDate(u.lastLoginAtMs)}</td>'
+          '</tr>';
+    }).join();
+
+    final body = '<!doctype html><html><head><meta charset="utf-8">'
+        '<title>luma admin</title>'
+        '<style>body{background:#161320;color:#e8e4f3;font-family:system-ui,'
+        'sans-serif;margin:0;padding:32px}h1{font-size:20px;margin:0 0 24px}'
+        '.stats{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:32px}'
+        '.stat{background:#1e1a2b;border-radius:8px;padding:16px 20px;min-width:140px}'
+        '.stat .n{font-size:22px;font-weight:600}.stat .l{font-size:12px;'
+        'color:#a49fb8;margin-top:4px}table{border-collapse:collapse;width:100%;'
+        'font-size:13px}th{text-align:left;color:#a49fb8;font-weight:500;'
+        'padding:8px 12px;border-bottom:1px solid #2c2640}'
+        'td{padding:8px 12px;border-bottom:1px solid #201c2c}</style>'
+        '</head><body>'
+        '<h1>luma admin</h1>'
+        '<div class="stats">'
+        '<div class="stat"><div class="n">${stats['totalAccounts']}</div><div class="l">Total accounts</div></div>'
+        '<div class="stat"><div class="n">${stats['activeAccounts']}</div><div class="l">Active</div></div>'
+        '<div class="stat"><div class="n">${stats['pendingAccounts']}</div><div class="l">Pending</div></div>'
+        '<div class="stat"><div class="n">${fmtBytes(stats['usedBytesTotal'] as int)}</div><div class="l">Storage used</div></div>'
+        '<div class="stat"><div class="n">${fmtBytes(stats['quotaBytesTotal'] as int)}</div><div class="l">Storage capacity</div></div>'
+        '</div>'
+        '<table><thead><tr><th>Email</th><th>Status</th><th>Storage</th>'
+        '<th>Created</th><th>Last login</th></tr></thead>'
+        '<tbody>$rows</tbody></table>'
+        '</body></html>';
+
+    return Response(200,
+        body: body, headers: {'Content-Type': 'text/html; charset=utf-8'});
+  }
+
   // ---- Helpers -------------------------------------------------------------
 
   /// PBKDF2 over the client's already-derived auth key. Kept `async` so the
@@ -568,6 +854,29 @@ class Api {
     );
     await store.saveSessions();
     return (token, expires);
+  }
+
+  /// Generates a fresh verification token, stores only its hash against the
+  /// user (mirroring how session tokens are handled), and returns the raw
+  /// token to send by email. Caller holds the store lock.
+  Future<String> _issueVerificationToken(StoredUser user) async {
+    final token = base64UrlEncode(randomBytes(32)).replaceAll('=', '');
+    user.verificationTokenHash =
+        c.sha256.convert(utf8.encode(token)).toString();
+    user.verificationExpiresAtMs =
+        DateTime.now().millisecondsSinceEpoch + config.verificationTtl.inMilliseconds;
+    return token;
+  }
+
+  /// Best-effort send; a mail outage should not make registration fail
+  /// outright since the user can always request a fresh link.
+  Future<void> _sendVerificationEmail(StoredUser user, String token) async {
+    try {
+      await mailer.sendVerificationEmail(toEmail: user.email, token: token);
+    } catch (e) {
+      stderr.writeln(
+          '[luma] could not send verification email to ${user.email}: $e');
+    }
   }
 
   static String? _normalizeEmail(Object? raw) {

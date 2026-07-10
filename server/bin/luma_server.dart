@@ -3,19 +3,27 @@ import 'dart:io';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 
 import 'package:luma_sync_server/api.dart';
+import 'package:luma_sync_server/mail.dart';
 import 'package:luma_sync_server/store.dart';
 
 Future<void> main() async {
   final config = ServerConfig.fromEnvironment(Platform.environment);
+  final mailConfig = MailConfig.fromEnvironment(Platform.environment);
 
   if (!config.registrationEnabled) {
     stdout.writeln('[luma] NOTE: registration is CLOSED '
         '(LUMA_ALLOW_REGISTRATION=false). Existing accounts still work; no '
         'new accounts can be created. Remove that setting to reopen.');
   }
+  if (config.requireEmailVerification && !mailConfig.enabled) {
+    stdout.writeln('[luma] NOTE: email verification is required but no '
+        'LUMA_SMTP_HOST is set; verification links will be logged to '
+        'stderr instead of emailed. Set the LUMA_SMTP_* variables to send '
+        'real email, or set LUMA_REQUIRE_EMAIL_VERIFICATION=false.');
+  }
 
   final store = await Store.open(config.dataDir);
-  final api = Api(store, config);
+  final api = Api(store, config, Mailer(mailConfig));
 
   final server = await shelf_io.serve(
     api.handler,
