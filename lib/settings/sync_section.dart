@@ -475,8 +475,9 @@ class _AccountDialogState extends State<_AccountDialog> {
   // Server address is always prefilled — from a previously-used one if this
   // device has it, otherwise the built-in default — so it's rare anyone has
   // to type it in.
-  late final _server = TextEditingController(
-      text: widget.sync.serverUrl ?? kDefaultSyncServerUrl);
+  // There is only one luma sync server; its address is a fixed constant, not
+  // something read from (possibly stale, device-specific) saved state.
+  final _server = TextEditingController(text: kDefaultSyncServerUrl);
   late final _email = TextEditingController(text: widget.sync.email ?? '');
   final _password = TextEditingController();
   final _confirm = TextEditingController();
