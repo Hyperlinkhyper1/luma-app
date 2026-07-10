@@ -1069,20 +1069,28 @@ class Api {
   }
 
   // Backs each canvas with a devicePixelRatio-scaled bitmap (drawn in CSS
-  // pixel coordinates via ctx.scale) so lines stay crisp on HiDPI displays
-  // instead of being upscaled/blurred by the browser.
+  // pixel coordinates via ctx.scale) so lines stay crisp instead of being
+  // upscaled/blurred by the browser. Returns null while the canvas isn't
+  // visible (e.g. its tab isn't active — panels start display:none, but
+  // polling runs in the background regardless): getBoundingClientRect is
+  // 0×0 there, and there's no CSS size to size the bitmap to yet. Skipping
+  // the draw in that case (rather than falling back to some other size) is
+  // what makes this self-correcting — the very first draw AFTER the tab
+  // becomes visible sizes the bitmap correctly, once, with no stale cache
+  // or compounding resize to work around.
   function ensureHiDPI(canvas) {
-    if (canvas._ctx) return canvas._ctx;
-    const dpr = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
-    const cssW = rect.width || canvas.width;
-    const cssH = rect.height || canvas.height;
-    canvas.width = Math.round(cssW * dpr);
-    canvas.height = Math.round(cssH * dpr);
+    if (rect.width < 1 || rect.height < 1) return null;
+    if (canvas._ctx && canvas._cssW === rect.width && canvas._cssH === rect.height) {
+      return canvas._ctx;
+    }
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(rect.width * dpr);
+    canvas.height = Math.round(rect.height * dpr);
     const ctx = canvas.getContext('2d');
     ctx.scale(dpr, dpr);
-    canvas._cssW = cssW;
-    canvas._cssH = cssH;
+    canvas._cssW = rect.width;
+    canvas._cssH = rect.height;
     canvas._ctx = ctx;
     return ctx;
   }
@@ -1090,6 +1098,7 @@ class Api {
   function drawGraph(canvas, series, maxValue) {
     if (!canvas) return;
     const ctx = ensureHiDPI(canvas);
+    if (!ctx) return; // hidden right now — history keeps accumulating either way
     const w = canvas._cssW, h = canvas._cssH;
     ctx.clearRect(0, 0, w, h);
     ctx.strokeStyle = '#2c2640';
@@ -1195,12 +1204,6 @@ class Api {
 
   poll();
   setInterval(poll, 2000);
-  window.addEventListener('resize', () => {
-    for (const id of ['cpuGraph', 'ramGraph', 'netGraph', 'diskGraph']) {
-      const c = document.getElementById(id);
-      if (c) c._ctx = null; // force a HiDPI re-measure on next draw
-    }
-  });
 })();
 ''';
 

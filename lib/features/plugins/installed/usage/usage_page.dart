@@ -145,22 +145,23 @@ class _TopBar extends StatelessWidget {
     final statusColor =
         repo.paused ? luma.textMuted : (current != null ? luma.success : luma.textMuted);
 
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      crossAxisAlignment: WrapCrossAlignment.center,
+    return Row(
       children: [
-        LumaSegmentedTabs(
-          tabs: [for (final p in UsageRangePreset.values) p.label],
-          selectedIndex: preset.index,
-          onSelect: (i) => onSelectPreset(UsageRangePreset.values[i]),
+        Flexible(
+          child: LumaSegmentedTabs(
+            tabs: [for (final p in UsageRangePreset.values) p.label],
+            selectedIndex: preset.index,
+            onSelect: (i) => onSelectPreset(UsageRangePreset.values[i]),
+          ),
         ),
-        if (preset == UsageRangePreset.custom && customRange != null)
+        if (preset == UsageRangePreset.custom && customRange != null) ...[
+          const SizedBox(width: 12),
           Text(
             '${DateFormat('MMM d, y').format(customRange!.start)} '
             '– ${DateFormat('MMM d, y').format(customRange!.end)}',
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
+        ],
         const Spacer(),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
