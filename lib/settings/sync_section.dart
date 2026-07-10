@@ -1,11 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../account/plan_selection_page.dart';
 import '../app/widgets.dart';
 import '../sync/sync_api.dart';
 import '../sync/sync_scope.dart';
 import '../sync/sync_service.dart';
 import '../theme/luma_theme.dart';
+
+/// Shows the account setup/sign-in dialog. Used both from the Settings page
+/// and as the app-wide first-run / re-authentication prompt (see
+/// `maybePromptAccountSetup` in main.dart).
+Future<void> showAccountSetupDialog(
+  BuildContext context,
+  SyncService sync, {
+  int initialMode = 1,
+}) {
+  return showDialog<void>(
+    context: context,
+    builder: (_) => _AccountDialog(sync: sync, initialMode: initialMode),
+  );
+}
 
 /// The "Sync & account" block on the Settings page: account sign-in, storage
 /// usage against the quota, and per-feature toggles (all off by default).
@@ -66,10 +81,7 @@ class _SignedOutBody extends StatelessWidget {
           child: LumaPrimaryButton(
             label: 'Set up account',
             icon: Icons.person_add_rounded,
-            onTap: () => showDialog<void>(
-              context: context,
-              builder: (_) => _AccountDialog(sync: sync),
-            ),
+            onTap: () => showAccountSetupDialog(context, sync),
           ),
         ),
       ],
@@ -128,10 +140,7 @@ class _SignedInBody extends StatelessWidget {
               LumaGhostButton(
                 label: 'Back up to a server…',
                 icon: Icons.cloud_upload_rounded,
-                onTap: () => showDialog<void>(
-                  context: context,
-                  builder: (_) => _AccountDialog(sync: sync),
-                ),
+                onTap: () => showAccountSetupDialog(context, sync),
               ),
           ],
         ),
@@ -257,7 +266,11 @@ class _SignedInBody extends StatelessWidget {
   Future<void> _onToggle(BuildContext context, String id, String label,
       bool enabled) async {
     if (enabled) {
-      await sync.enableCollection(id);
+      try {
+        await sync.enableCollection(id);
+      } on SyncLimitExceededException catch (e) {
+        if (context.mounted) await _showLimitReached(context, e.limit);
+      }
       return;
     }
     final removeRemote = await showDialog<bool>(
@@ -300,6 +313,43 @@ class _SignedInBody extends StatelessWidget {
     );
     if (removeRemote == null) return; // cancelled — leave the toggle on
     await sync.disableCollection(id, removeRemote: removeRemote);
+  }
+
+  Future<void> _showLimitReached(BuildContext context, int limit) {
+    final luma = context.luma;
+    return showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: luma.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: luma.border),
+        ),
+        title:
+            Text('Sync limit reached', style: TextStyle(color: luma.textPrimary)),
+        content: Text(
+          'Your plan allows syncing up to $limit feature${limit == 1 ? '' : 's'} '
+          'to the server at once. Turn one off, or upgrade your plan to sync '
+          'more.',
+          style: TextStyle(color: luma.textSecondary, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+          ),
+          LumaPrimaryButton(
+            label: 'Upgrade plan',
+            onTap: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const PlanSelectionPage()),
+              );
+            },
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -411,27 +461,34 @@ InputDecoration _fieldDecoration(BuildContext context, String label,
 }
 
 class _AccountDialog extends StatefulWidget {
-  const _AccountDialog({required this.sync});
+  const _AccountDialog({required this.sync, this.initialMode = 1});
   final SyncService sync;
+
+  /// 0 = sign in (cloud), 1 = create account (cloud).
+  final int initialMode;
 
   @override
   State<_AccountDialog> createState() => _AccountDialogState();
 }
 
 class _AccountDialogState extends State<_AccountDialog> {
-  late final _server =
-      TextEditingController(text: widget.sync.serverUrl ?? '');
+  // Server address is always prefilled — from a previously-used one if this
+  // device has it, otherwise the built-in default — so it's rare anyone has
+  // to type it in.
+  late final _server = TextEditingController(
+      text: widget.sync.serverUrl ?? kDefaultSyncServerUrl);
   late final _email = TextEditingController(text: widget.sync.email ?? '');
   final _password = TextEditingController();
   final _confirm = TextEditingController();
 
   // true = cloud mode (server field visible, sign in / register tabs).
   // false = local mode (no server, just setLocalAccount).
-  late bool _cloudMode = _server.text.isNotEmpty;
+  bool _cloudMode = true;
 
-  int _mode = 0; // 0 = sign in (cloud), 1 = create account (cloud)
+  late int _mode = widget.initialMode;
   bool _busy = false;
   String? _error;
+  String? _info;
 
   @override
   void dispose() {
@@ -470,13 +527,17 @@ class _AccountDialogState extends State<_AccountDialog> {
     setState(() {
       _busy = true;
       _error = null;
+      _info = null;
     });
     try {
       if (_cloudMode) {
         // ---- Cloud path -------------------------------------------------
         final urlError = SyncApi.validateServerUrl(_server.text);
         if (urlError != null) {
-          setState(() => _error = urlError);
+          setState(() {
+            _busy = false;
+            _error = urlError;
+          });
           return;
         }
         if (_mode == 0) {
@@ -486,11 +547,24 @@ class _AccountDialogState extends State<_AccountDialog> {
             password: _password.text,
           );
         } else {
-          await widget.sync.register(
+          final pendingMessage = await widget.sync.register(
             serverUrl: _server.text,
             email: _email.text,
             password: _password.text,
           );
+          if (pendingMessage != null) {
+            // Account created but not signed in yet — needs email
+            // verification first. Stay on the dialog and switch to Sign in
+            // so the user can come back once they've verified.
+            if (mounted) {
+              setState(() {
+                _busy = false;
+                _mode = 0;
+                _info = pendingMessage;
+              });
+            }
+            return;
+          }
         }
       } else {
         // ---- Local (serverless) path ------------------------------------
@@ -537,6 +611,7 @@ class _AccountDialogState extends State<_AccountDialog> {
                   onSelect: (i) => setState(() {
                     _mode = i;
                     _error = null;
+                    _info = null;
                   }),
                 ),
                 const SizedBox(height: 16),
@@ -567,6 +642,7 @@ class _AccountDialogState extends State<_AccountDialog> {
                               _server.clear();
                               _cloudMode = false;
                               _error = null;
+                              _info = null;
                             }),
                           ),
                   ),
@@ -622,6 +698,11 @@ class _AccountDialogState extends State<_AccountDialog> {
                 style: TextStyle(
                     color: Colors.orange.shade400, fontSize: 12, height: 1.4),
               ),
+              if (_info != null) ...[
+                const SizedBox(height: 12),
+                Text(_info!,
+                    style: TextStyle(color: luma.accent, fontSize: 12)),
+              ],
               if (_error != null) ...[
                 const SizedBox(height: 12),
                 Text(_error!,

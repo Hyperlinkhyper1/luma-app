@@ -3,6 +3,10 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
+/// Prefilled as the default "Server address" everywhere the app asks for
+/// one, so most users never have to type it in by hand.
+const kDefaultSyncServerUrl = 'http://192.168.2.158:8080';
+
 /// Metadata the server keeps for one synced collection.
 class RemoteCollectionMeta {
   const RemoteCollectionMeta({
@@ -150,7 +154,13 @@ class SyncApi {
     );
   }
 
-  Future<String> register({
+  /// Registers a new account. The server either signs the account in
+  /// immediately (`token` set) or, when it requires email verification
+  /// first, comes back with no token and a human-readable [message] instead
+  /// — in that case [pendingVerification] is true and the caller must not
+  /// treat this as a successful sign-in.
+  Future<({String? token, bool pendingVerification, String? message})>
+      register({
     required String email,
     required Uint8List authKey,
     required Uint8List kdfSalt,
@@ -162,7 +172,16 @@ class SyncApi {
       'kdfSalt': base64Encode(kdfSalt),
       'kdfIterations': kdfIterations,
     });
-    return body['token'] as String;
+    final token = body['token'] as String?;
+    if (token == null) {
+      return (
+        token: null,
+        pendingVerification: true,
+        message: body['message'] as String? ??
+            'Check your email to verify your account before signing in.',
+      );
+    }
+    return (token: token, pendingVerification: false, message: null);
   }
 
   Future<String> login(

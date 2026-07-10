@@ -12,6 +12,18 @@ import 'sync_state.dart';
 
 enum SyncStatus { idle, syncing, error }
 
+/// Thrown by [SyncService.enableCollection] when the current plan's limit
+/// on the number of synced collections is already reached.
+class SyncLimitExceededException implements Exception {
+  const SyncLimitExceededException(this.limit);
+  final int limit;
+
+  @override
+  String toString() =>
+      'Your plan allows syncing up to $limit feature${limit == 1 ? '' : 's'} '
+      'at once. Upgrade your plan to sync more.';
+}
+
 /// Orchestrates account state and synchronization.
 ///
 /// Flow per enabled collection: snapshot the local data, compare against the
@@ -19,9 +31,14 @@ enum SyncStatus { idle, syncing, error }
 /// newest edit win. Snapshots are end-to-end encrypted before upload; the
 /// server only ever sees ciphertext.
 class SyncService extends ChangeNotifier {
-  SyncService({required this.collections});
+  SyncService({required this.collections, this.syncCollectionLimit});
 
   final List<SyncCollection> collections;
+
+  /// Returns the current plan's cap on how many collections (besides the
+  /// always-on 'settings' one) may be enabled at once, or null for
+  /// unlimited. Read fresh on every check so plan changes apply immediately.
+  final int? Function()? syncCollectionLimit;
 
   SyncStateStore? _state;
   SyncApi? _api;
@@ -101,6 +118,22 @@ class SyncService extends ChangeNotifier {
   Future<void> init() async {
     _state = await SyncStateStore.load();
     final s = _state!;
+    if (!s.localAccountMigrated) {
+      // One-time migration: local-only (serverless) identities predate the
+      // plan-based server sync limits, so any device still using one is
+      // reset back to "no account" and prompted to create a real cloud
+      // account instead. Cloud accounts and fresh installs are unaffected.
+      if (s.localVerifier != null) {
+        s
+          ..email = null
+          ..encryptionKey = null
+          ..kdfSalt = null
+          ..kdfIterations = null
+          ..localVerifier = null;
+      }
+      s.localAccountMigrated = true;
+      await s.save();
+    }
     if (s.signedIn) {
       _api = SyncApi(s.serverUrl!, token: s.token);
     }
@@ -188,8 +221,11 @@ class SyncService extends ChangeNotifier {
     }
   }
 
-  /// Creates a new account on the server.
-  Future<void> register({
+  /// Creates a new account on the server. Returns null when the account is
+  /// signed in immediately; returns a human-readable message when the
+  /// server requires email verification first (the account exists, but the
+  /// caller is NOT signed in yet — the user must verify, then [signIn]).
+  Future<String?> register({
     required String serverUrl,
     required String email,
     required String password,
@@ -211,12 +247,17 @@ class SyncService extends ChangeNotifier {
         kdfSalt: kdfSalt,
         iterations: iterations,
       );
-      final token = await api.register(
+      final result = await api.register(
         email: normalizedEmail,
         authKey: keys.authKey,
         kdfSalt: kdfSalt,
         kdfIterations: iterations,
       );
+      if (result.pendingVerification) {
+        api.close();
+        return result.message;
+      }
+      final token = result.token!;
       api.token = token;
 
       _api?.close();
@@ -237,6 +278,7 @@ class SyncService extends ChangeNotifier {
       await s.save();
       notifyListeners();
       unawaited(syncNow(silent: true));
+      return null;
     } catch (_) {
       if (api != _api) api.close();
       rethrow;
@@ -412,11 +454,28 @@ class SyncService extends ChangeNotifier {
 
   // ---- Collection toggles --------------------------------------------------------
 
-  /// Turns syncing on for a collection and uploads it right away.
+  /// How many non-'settings' collections are currently enabled (the
+  /// always-on 'settings' collection isn't a user choice, so it doesn't
+  /// count against the plan limit).
+  int get enabledSyncCollectionCount => _state?.collections.entries
+          .where((e) => e.key != 'settings' && e.value.enabled)
+          .length ??
+      0;
+
+  /// Turns syncing on for a collection and uploads it right away. Throws
+  /// [SyncLimitExceededException] if the current plan's limit on the number
+  /// of synced collections is already reached.
   Future<void> enableCollection(String id) async {
     final s = _state;
     if (s == null) return;
-    s.collection(id).enabled = true;
+    final st = s.collection(id);
+    if (id != 'settings' && !st.enabled) {
+      final limit = syncCollectionLimit?.call();
+      if (limit != null && enabledSyncCollectionCount >= limit) {
+        throw SyncLimitExceededException(limit);
+      }
+    }
+    st.enabled = true;
     await s.save();
     notifyListeners();
     if (signedIn) unawaited(syncNow(silent: true));

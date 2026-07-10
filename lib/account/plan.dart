@@ -9,6 +9,7 @@ class Plan {
     required this.priceLabel,
     required this.blurb,
     required this.storageMb,
+    required this.maxSyncCollections,
     required this.features,
   });
 
@@ -24,6 +25,12 @@ class Plan {
   /// only (databases + JSON stores); the app's own binaries and logs don't
   /// count toward it.
   final int storageMb;
+
+  /// How many features (besides the always-on Settings sync) this plan may
+  /// sync to the server at once. Null means unlimited. Enforced in
+  /// `SyncService.enableCollection`.
+  final int? maxSyncCollections;
+
   final List<String> features;
 
   /// Whether picking this plan requires redeeming an access code (see
@@ -39,9 +46,10 @@ const kPlans = <Plan>[
     priceLabel: 'Free',
     blurb: 'Everything you need on this device.',
     storageMb: 10,
+    maxSyncCollections: 3,
     features: [
       '10 MB local storage',
-      'Local sync only',
+      'Sync up to 3 features to the server',
       'Free starter plugins',
     ],
   ),
@@ -52,9 +60,10 @@ const kPlans = <Plan>[
     priceLabel: '\$2 / month',
     blurb: 'More room to grow, priority sync.',
     storageMb: 25,
+    maxSyncCollections: 5,
     features: [
       '25 MB local storage',
-      'Peer-to-peer sync',
+      'Sync up to 5 features to the server',
       'Priority cloud sync speed',
       'Free advanced plugins',
       'Custom accent themes',
@@ -67,9 +76,10 @@ const kPlans = <Plan>[
     priceLabel: '\$5 / month',
     blurb: 'The fastest, largest luma yet.',
     storageMb: 50,
+    maxSyncCollections: null,
     features: [
       '50 MB local storage',
-      'Peer-to-peer sync',
+      'Sync unlimited features to the server',
       'Fastest cloud sync',
       'All plugins, free',
       'Early access to new features',

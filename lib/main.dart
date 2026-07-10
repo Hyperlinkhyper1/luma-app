@@ -54,6 +54,7 @@ import 'p2p/peer_sync_controller.dart';
 import 'p2p/peer_sync_scope.dart';
 import 'settings/settings_controller.dart';
 import 'settings/settings_scope.dart';
+import 'settings/sync_section.dart';
 import 'storage/storage_guard.dart';
 import 'storage/storage_guard_scope.dart';
 import 'sync/sync_collections.dart';
@@ -119,7 +120,10 @@ class _LumaAppState extends State<LumaApp> {
 
   // Optional server sync: every feature registers an adapter; nothing is
   // uploaded unless the user signs in AND enables the feature in Settings.
-  late final SyncService _sync = SyncService(collections: [
+  late final SyncService _sync = SyncService(
+    syncCollectionLimit: () =>
+        planById(widget.settings.selectedPlanId).maxSyncCollections,
+    collections: [
     // Always synced (see SyncStateStore.collection / SyncService — the
     // 'settings' id defaults to enabled and can't be toggled off), so a
     // paired device always picks up the same theme/preferences.
@@ -375,6 +379,16 @@ class _BootGateState extends State<_BootGate> {
               // then layers over the warm app.
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted) checkAndPromptForUpdate(context);
+              });
+              // New installs, and devices whose local-only identity was just
+              // migrated away (see SyncService.init), have no account at
+              // all — prompt them to create one.
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                final sync = SyncScope.of(context);
+                if (!sync.p2pReady) {
+                  showAccountSetupDialog(context, sync, initialMode: 1);
+                }
               });
             },
           ),

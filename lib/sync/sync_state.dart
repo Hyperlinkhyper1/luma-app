@@ -73,6 +73,12 @@ class SyncStateStore {
   /// stale value can never reject a genuinely new identity.
   String? localVerifier;
 
+  /// One-time migration flag: the first time this device's state is loaded
+  /// after this field was introduced, any existing local-only (serverless)
+  /// identity is cleared so the user is prompted to create a real cloud
+  /// account instead (see `SyncService.init`). Stays true forever after.
+  bool localAccountMigrated = false;
+
   final Map<String, CollectionSyncState> collections = {};
 
   bool get signedIn =>
@@ -113,6 +119,7 @@ class SyncStateStore {
       }
       store.kdfIterations = data['kdfIterations'] as int?;
       store.localVerifier = data['localVerifier'] as String?;
+      store.localAccountMigrated = data['localAccountMigrated'] == true;
       if (data['lastSyncAt'] is int) {
         store.lastSyncAt =
             DateTime.fromMillisecondsSinceEpoch(data['lastSyncAt'] as int);
@@ -144,6 +151,7 @@ class SyncStateStore {
         'kdfSalt': kdfSalt == null ? null : base64Encode(kdfSalt!),
         'kdfIterations': kdfIterations,
         'localVerifier': localVerifier,
+        'localAccountMigrated': localAccountMigrated,
         'lastSyncAt': lastSyncAt?.millisecondsSinceEpoch,
         'collections':
             collections.map((id, s) => MapEntry(id, s.toJson())),
