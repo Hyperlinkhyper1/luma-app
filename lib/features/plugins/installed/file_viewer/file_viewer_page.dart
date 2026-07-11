@@ -1,11 +1,14 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show compute, kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../../../app/widgets.dart';
 import '../../../../theme/luma_theme.dart';
@@ -55,6 +58,9 @@ class _FileViewerPageState extends State<FileViewerPage> {
   String? _error;
 
   // Parsed content — only the field matching [_kind] is populated.
+  // PDFs render natively (WebView2 on Windows) from a local file path;
+  // extracted page text is the web-platform fallback only.
+  String? _pdfPath;
   List<String>? _pdfPages;
   int _pdfPage = 0;
   List<DocxParagraph>? _docxParagraphs;
@@ -84,6 +90,7 @@ class _FileViewerPageState extends State<FileViewerPage> {
       _size = file.size;
       _kind = kind;
       _error = null;
+      _pdfPath = null;
       _pdfPages = null;
       _pdfPage = 0;
       _docxParagraphs = null;
@@ -98,12 +105,22 @@ class _FileViewerPageState extends State<FileViewerPage> {
     try {
       switch (kind) {
         case _FileKind.pdf:
-          final pages = await compute(extractPdfPages, bytes);
-          if (!mounted || request != _request) return;
-          setState(() {
-            _pdfPages = pages;
-            _loading = false;
-          });
+          if (!kIsWeb) {
+            // Render the actual PDF natively; make sure it exists on disk.
+            final path = _path ?? await _writeTempFile(file.name, bytes);
+            if (!mounted || request != _request) return;
+            setState(() {
+              _pdfPath = path;
+              _loading = false;
+            });
+          } else {
+            final pages = await compute(extractPdfPages, bytes);
+            if (!mounted || request != _request) return;
+            setState(() {
+              _pdfPages = pages;
+              _loading = false;
+            });
+          }
         case _FileKind.docx:
           final paragraphs = await compute(extractDocxParagraphs, bytes);
           if (!mounted || request != _request) return;
@@ -143,6 +160,17 @@ class _FileViewerPageState extends State<FileViewerPage> {
         _error = 'Could not open this file: $e';
       });
     }
+  }
+
+  /// Writes picked bytes to a temp file so file-based renderers (the PDF
+  /// WebView) can load them when the picker didn't supply a path.
+  static Future<String> _writeTempFile(String name, Uint8List bytes) async {
+    final dir = await getTemporaryDirectory();
+    final file = File('${dir.path}${Platform.pathSeparator}luma_file_viewer'
+        '${Platform.pathSeparator}$name');
+    await file.create(recursive: true);
+    await file.writeAsBytes(bytes, flush: true);
+    return file.path;
   }
 
   Future<void> _openExternally() async {
@@ -233,6 +261,8 @@ class _FileViewerPageState extends State<FileViewerPage> {
       case _FileKind.svg:
         return _SvgViewer(bytes: _bytes!);
       case _FileKind.pdf:
+        final path = _pdfPath;
+        if (path != null) return _PdfWebViewer(path: path);
         final pages = _pdfPages;
         if (pages == null) return const SizedBox.shrink();
         return _PdfViewer(
@@ -341,7 +371,81 @@ class _SvgViewer extends StatelessWidget {
   }
 }
 
-/// Per-page extracted PDF text with previous/next navigation.
+/// The real PDF rendered by the platform webview (WebView2 on Windows ships
+/// a full PDF viewer: proper layout, images, zoom, search, page thumbnails).
+class _PdfWebViewer extends StatefulWidget {
+  const _PdfWebViewer({required this.path});
+  final String path;
+
+  @override
+  State<_PdfWebViewer> createState() => _PdfWebViewerState();
+}
+
+class _PdfWebViewerState extends State<_PdfWebViewer> {
+  InAppWebViewController? _controller;
+  bool _loading = true;
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    // The page scrolls vertically, so the viewer gets a generous fixed
+    // height; the PDF scrolls inside it.
+    final height =
+        (MediaQuery.sizeOf(context).height - 240).clamp(420.0, 1200.0);
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        color: luma.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: luma.border),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(15),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            InAppWebView(
+              key: ValueKey(widget.path),
+              initialUrlRequest: URLRequest(
+                url: WebUri(Uri.file(widget.path).toString()),
+              ),
+              initialSettings: InAppWebViewSettings(
+                transparentBackground: true,
+                allowFileAccess: true,
+                allowFileAccessFromFileURLs: true,
+                allowUniversalAccessFromFileURLs: true,
+              ),
+              onWebViewCreated: (controller) => _controller = controller,
+              onLoadStop: (controller, url) {
+                if (mounted) setState(() => _loading = false);
+              },
+            ),
+            if (_loading)
+              Container(
+                color: luma.surface,
+                child: const Center(
+                  child: SizedBox(
+                    width: 26,
+                    height: 26,
+                    child: CircularProgressIndicator(strokeWidth: 2.6),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Per-page extracted PDF text with previous/next navigation — the fallback
+/// for platforms without an embeddable native PDF renderer (web).
 class _PdfViewer extends StatelessWidget {
   const _PdfViewer({
     required this.pages,
@@ -459,7 +563,8 @@ class _DocxViewer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    if (paragraphs.every((p) => p.text.trim().isEmpty)) {
+    if (paragraphs
+        .every((p) => p.text.trim().isEmpty && p.images.isEmpty)) {
       return LumaCard(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 28),
@@ -484,7 +589,9 @@ class _DocxViewer extends StatelessWidget {
   }
 
   Widget _paragraph(DocxParagraph p, LumaPalette luma) {
-    if (p.text.trim().isEmpty) return const SizedBox(height: 12);
+    if (p.text.trim().isEmpty && p.images.isEmpty) {
+      return const SizedBox(height: 12);
+    }
 
     final isHeading = p.headingLevel > 0;
     final style = TextStyle(
@@ -494,8 +601,9 @@ class _DocxViewer extends StatelessWidget {
       fontWeight: isHeading || p.bold ? FontWeight.w700 : FontWeight.w400,
     );
 
-    Widget text = Text(p.text, style: style);
-    if (p.bullet) {
+    Widget? text =
+        p.text.trim().isEmpty ? null : Text(p.text, style: style);
+    if (text != null && p.bullet) {
       text = Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -514,9 +622,26 @@ class _DocxViewer extends StatelessWidget {
         ],
       );
     }
+
     return Padding(
       padding: EdgeInsets.only(top: isHeading ? 14 : 0, bottom: 6),
-      child: text,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ?text,
+          for (final image in p.images)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 480),
+                  child: Image.memory(image, fit: BoxFit.contain),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

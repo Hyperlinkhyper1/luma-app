@@ -28,36 +28,78 @@ List<String> extractPdfPages(Uint8List bytes) {
 // ---- DOCX -------------------------------------------------------------------
 
 /// One paragraph of a Word document with just enough styling to render a
-/// readable approximation: heading level (0 = body), bold, and list bullets.
+/// readable approximation: heading level (0 = body), bold, list bullets, and
+/// any pictures embedded in the paragraph.
 class DocxParagraph {
   const DocxParagraph({
     required this.text,
     this.headingLevel = 0,
     this.bold = false,
     this.bullet = false,
+    this.images = const [],
   });
 
   final String text;
   final int headingLevel;
   final bool bold;
   final bool bullet;
+
+  /// Decoded-format image bytes (png/jpg/...) embedded in this paragraph.
+  final List<Uint8List> images;
+}
+
+/// Resolves `r:embed` relationship ids to image bytes inside the docx zip.
+class _DocxMedia {
+  _DocxMedia(this._relTargets, this._files);
+
+  /// Relationship id -> target path (e.g. "media/image1.png").
+  final Map<String, String> _relTargets;
+
+  /// Archive path -> file, for every entry in the zip.
+  final Map<String, ArchiveFile> _files;
+
+  static const _renderableExts = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'};
+
+  Uint8List? resolve(String relId) {
+    final target = _relTargets[relId];
+    if (target == null) return null;
+    final path =
+        target.startsWith('/') ? target.substring(1) : 'word/$target';
+    final dot = path.lastIndexOf('.');
+    final ext = dot < 0 ? '' : path.substring(dot).toLowerCase();
+    // Flutter can't decode Office vector formats like .emf/.wmf — skip them.
+    if (!_renderableExts.contains(ext)) return null;
+    final file = _files[path];
+    if (file == null) return null;
+    return Uint8List.fromList(file.content as List<int>);
+  }
 }
 
 /// Reads `word/document.xml` out of the docx zip and flattens it into styled
-/// paragraphs. Tables are included row by row with cells joined by tabs.
+/// paragraphs. Tables are included row by row with cells joined by tabs, and
+/// embedded pictures are attached to the paragraph they appear in.
 List<DocxParagraph> extractDocxParagraphs(Uint8List bytes) {
   final archive = ZipDecoder().decodeBytes(bytes);
-  ArchiveFile? entry;
-  for (final f in archive.files) {
-    if (f.name == 'word/document.xml') {
-      entry = f;
-      break;
-    }
-  }
+  final files = {for (final f in archive.files) f.name: f};
+
+  final entry = files['word/document.xml'];
   if (entry == null) {
     throw const FormatException(
         'This file does not look like a Word document.');
   }
+
+  // Relationships map image ids used in the body to files under word/media/.
+  final relTargets = <String, String>{};
+  final rels = files['word/_rels/document.xml.rels'];
+  if (rels != null) {
+    final relDoc = XmlDocument.parse(utf8.decode(rels.content as List<int>));
+    for (final rel in relDoc.findAllElements('Relationship')) {
+      final id = rel.getAttribute('Id');
+      final target = rel.getAttribute('Target');
+      if (id != null && target != null) relTargets[id] = target;
+    }
+  }
+  final media = _DocxMedia(relTargets, files);
 
   final doc = XmlDocument.parse(utf8.decode(entry.content as List<int>));
   final body = doc.findAllElements('w:body').firstOrNull;
@@ -68,7 +110,7 @@ List<DocxParagraph> extractDocxParagraphs(Uint8List bytes) {
   final paragraphs = <DocxParagraph>[];
   for (final el in body.childElements) {
     if (el.name.qualified == 'w:p') {
-      paragraphs.add(_parseParagraph(el));
+      paragraphs.add(_parseParagraph(el, media));
     } else if (el.name.qualified == 'w:tbl') {
       for (final row in el.findAllElements('w:tr')) {
         final cells = [
@@ -82,7 +124,7 @@ List<DocxParagraph> extractDocxParagraphs(Uint8List bytes) {
   return paragraphs;
 }
 
-DocxParagraph _parseParagraph(XmlElement p) {
+DocxParagraph _parseParagraph(XmlElement p, _DocxMedia media) {
   final props = p.getElement('w:pPr');
   final styleId = props?.getElement('w:pStyle')?.getAttribute('w:val') ?? '';
 
@@ -111,11 +153,22 @@ DocxParagraph _parseParagraph(XmlElement p) {
     }
   }
 
+  // Pictures live in <w:drawing> as <a:blip r:embed="rIdN"/> references.
+  final images = <Uint8List>[];
+  for (final blip in p.findAllElements('a:blip')) {
+    final relId =
+        blip.getAttribute('r:embed') ?? blip.getAttribute('r:link');
+    if (relId == null) continue;
+    final data = media.resolve(relId);
+    if (data != null) images.add(data);
+  }
+
   return DocxParagraph(
     text: _paragraphText(p),
     headingLevel: headingLevel,
     bold: bold,
     bullet: bullet,
+    images: images,
   );
 }
 

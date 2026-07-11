@@ -3,9 +3,8 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
-/// Prefilled as the default "Server address" everywhere the app asks for
-/// one, so most users never have to type it in by hand.
-const kDefaultSyncServerUrl = 'http://192.168.2.158:8080';
+/// The one luma sync server. Fixed so no UI ever needs to ask for it.
+const kDefaultSyncServerUrl = 'https://sync.luma-app.cc';
 
 /// Metadata the server keeps for one synced collection.
 class RemoteCollectionMeta {
