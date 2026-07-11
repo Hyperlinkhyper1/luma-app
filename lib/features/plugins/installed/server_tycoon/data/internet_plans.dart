@@ -59,6 +59,15 @@ final Map<String, InternetPlan> internetPlansById = {
     monthlyPrice: 130,
     maxLatencyMs: 15,
   ),
+  'BUSINESS_1G': const InternetPlan(
+    id: 'BUSINESS_1G',
+    name: 'Business Fiber - 1 Gbps',
+    tier: InternetTier.business,
+    downMbps: 1000,
+    upMbps: 1000,
+    monthlyPrice: 200,
+    maxLatencyMs: 12,
+  ),
   'BUSINESS_2G': const InternetPlan(
     id: 'BUSINESS_2G',
     name: 'Business Fiber - 2 Gbps',
@@ -85,6 +94,15 @@ final Map<String, InternetPlan> internetPlansById = {
     upMbps: 10000,
     monthlyPrice: 1600,
     maxLatencyMs: 6,
+  ),
+  'DEDICATED_10G': const InternetPlan(
+    id: 'DEDICATED_10G',
+    name: 'Dedicated Fiber - 10 Gbps',
+    tier: InternetTier.dedicated,
+    downMbps: 10000,
+    upMbps: 10000,
+    monthlyPrice: 2200,
+    maxLatencyMs: 5,
   ),
   'DEDICATED_25G': const InternetPlan(
     id: 'DEDICATED_25G',

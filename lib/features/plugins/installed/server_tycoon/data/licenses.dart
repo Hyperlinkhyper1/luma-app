@@ -83,6 +83,22 @@ final Map<String, License> licensesById = {
     requires: ['DATABASE_HOSTING', 'CLOUD_STORAGE'],
     minReputation: 60,
   ),
+  'CONTAINER_HOSTING': const License(
+    id: 'CONTAINER_HOSTING',
+    name: 'Container Hosting License',
+    description: 'Legally operate Docker/Kubernetes container orchestration platforms for clients.',
+    cost: 2000,
+    requires: [],
+    minReputation: 15,
+  ),
+  'STREAMING_HOSTING': const License(
+    id: 'STREAMING_HOSTING',
+    name: 'Streaming Hosting License',
+    description: 'Run video stream relay and transcoding infrastructure for content creators.',
+    cost: 3500,
+    requires: ['VPN_HOSTING'],
+    minReputation: 20,
+  ),
 };
 
 late final List<License> licenseList = licensesById.values.toList()

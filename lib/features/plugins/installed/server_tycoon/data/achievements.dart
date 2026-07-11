@@ -175,6 +175,48 @@ final Map<String, AchievementDef> achievementDefsById = {
     metric: AchievementMetric.prestigeLevel,
     threshold: 1,
   ),
+  'MEGA_FLEET': const AchievementDef(
+    id: 'MEGA_FLEET',
+    name: 'Mega Fleet',
+    description: 'Own 25 rigs at once.',
+    metric: AchievementMetric.rigCount,
+    threshold: 25,
+  ),
+  'CONTRACT_LEGEND': const AchievementDef(
+    id: 'CONTRACT_LEGEND',
+    name: 'Contract Legend',
+    description: 'Complete 100 contracts.',
+    metric: AchievementMetric.contractsCompleted,
+    threshold: 100,
+  ),
+  'BANDWIDTH_KING': const AchievementDef(
+    id: 'BANDWIDTH_KING',
+    name: 'Bandwidth King',
+    description: 'Serve 100,000 Mbps of bandwidth at once.',
+    metric: AchievementMetric.peakBandwidthServed,
+    threshold: 100000,
+  ),
+  'UNBREAKABLE': const AchievementDef(
+    id: 'UNBREAKABLE',
+    name: 'Unbreakable',
+    description: 'Keep 100 consecutive days of uptime with no overloads or contract failures.',
+    metric: AchievementMetric.uptimeStreakDays,
+    threshold: 100,
+  ),
+  'PRESTIGE_MASTER': const AchievementDef(
+    id: 'PRESTIGE_MASTER',
+    name: 'Prestige Master',
+    description: 'Reach prestige level 5.',
+    metric: AchievementMetric.prestigeLevel,
+    threshold: 5,
+  ),
+  'TEN_MILLION': const AchievementDef(
+    id: 'TEN_MILLION',
+    name: 'Ten Million Club',
+    description: 'Earn a lifetime total of \$10,000,000.',
+    metric: AchievementMetric.totalMoneyEarned,
+    threshold: 10000000,
+  ),
 };
 
 late final List<AchievementDef> achievementDefList = achievementDefsById.values.toList()
