@@ -99,4 +99,57 @@ class Mailer {
       rethrow;
     }
   }
+
+  /// Notifies an invitee that they've been invited to a family. Acceptance
+  /// happens in-app (via the inbox), not through a link in this email — it's
+  /// just a heads-up to open Luma.
+  Future<void> sendFamilyInviteEmail({
+    required String toEmail,
+    required String inviterEmail,
+    required String familyName,
+  }) async {
+    if (!config.enabled) {
+      stderr.writeln('[luma] SMTP not configured; family invite for '
+          '$toEmail: $inviterEmail invited you to join "$familyName"');
+      return;
+    }
+
+    final smtp = SmtpServer(
+      config.host,
+      port: config.port,
+      username: config.username.isEmpty ? null : config.username,
+      password: config.password.isEmpty ? null : config.password,
+      ssl: config.useSsl,
+    );
+
+    final message = Message()
+      ..from = Address(config.fromAddress, config.fromName)
+      ..recipients.add(toEmail)
+      ..subject = 'You\'ve been invited to join "$familyName" on Luma'
+      ..text = '$inviterEmail invited you to join their family, '
+          '"$familyName", on Luma.\n\n'
+          'Open the Luma app and check the inbox icon (top-right) to accept '
+          'or decline.\n\n'
+          'If you don\'t use Luma or weren\'t expecting this, you can ignore '
+          'this email.'
+      ..html = '<p><b>${_htmlEscapeMail(inviterEmail)}</b> invited you to join '
+          'their family, "${_htmlEscapeMail(familyName)}", on Luma.</p>'
+          '<p>Open the Luma app and check the inbox icon (top-right) to '
+          'accept or decline.</p>'
+          '<p>If you don\'t use Luma or weren\'t expecting this, you can '
+          'ignore this email.</p>';
+
+    try {
+      await send(message, smtp);
+    } on MailerException catch (e) {
+      stderr.writeln('[luma] failed to send family invite email to '
+          '$toEmail: $e');
+      rethrow;
+    }
+  }
 }
+
+String _htmlEscapeMail(String s) => s
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');

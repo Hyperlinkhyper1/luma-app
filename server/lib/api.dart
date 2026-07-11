@@ -7,6 +7,7 @@ import 'package:crypto/crypto.dart' as c;
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 
+import 'family_store.dart';
 import 'mail.dart';
 import 'metrics.dart';
 import 'rate_limit.dart';
@@ -91,7 +92,7 @@ const int _defaultClientIterations = 200000;
 const int _maxJsonBody = 64 * 1024;
 
 class Api {
-  Api(this.store, this.config, this.mailer)
+  Api(this.store, this.config, this.mailer, this.familyStore)
       : _authLimiter = RateLimiter(
             maxRequests: 15, window: const Duration(minutes: 10)),
         _generalLimiter = RateLimiter(
@@ -102,6 +103,7 @@ class Api {
   final Store store;
   final ServerConfig config;
   final Mailer mailer;
+  final FamilyStore familyStore;
   final RateLimiter _authLimiter;
   final RateLimiter _generalLimiter;
 
@@ -125,6 +127,23 @@ class Api {
       ..get('/api/v1/sync/<collection>', _requireAuth(_getBlob))
       ..put('/api/v1/sync/<collection>', _requireAuth(_putBlob))
       ..delete('/api/v1/sync/<collection>', _requireAuth(_deleteBlobHandler))
+      ..post('/api/v1/family', _requireAuth(_createFamily))
+      ..get('/api/v1/family', _requireAuth(_getMyFamily))
+      ..post('/api/v1/family/<id>/invite', _requireAuth(_inviteFamilyMember))
+      ..get('/api/v1/family/invites', _requireAuth(_listMyInvites))
+      ..post('/api/v1/family/invites/<inviteId>/accept',
+          _requireAuth(_acceptFamilyInvite))
+      ..post('/api/v1/family/invites/<inviteId>/decline',
+          _requireAuth(_declineFamilyInvite))
+      ..post('/api/v1/family/<id>/members/<userId>/remove',
+          _requireAuth(_removeFamilyMember))
+      ..post('/api/v1/family/<id>/delete', _requireAuth(_deleteFamily))
+      ..post('/api/v1/family/<id>/events', _requireAuth(_addSharedEvent))
+      ..get('/api/v1/family/<id>/events', _requireAuth(_listSharedEvents))
+      ..put('/api/v1/family/<id>/events/<eventId>',
+          _requireAuth(_updateSharedEvent))
+      ..delete('/api/v1/family/<id>/events/<eventId>',
+          _requireAuth(_deleteSharedEvent))
       ..get('/admin', _requireAdmin(_adminDashboard))
       ..get('/admin/users', _requireAdmin(_adminUsers))
       ..get('/admin/stats', _requireAdmin(_adminStats))
@@ -716,6 +735,472 @@ class Api {
     });
   }
 
+  // ---- Handlers: family -----------------------------------------------------
+  //
+  // Unlike /api/v1/sync/<collection>, this data is deliberately readable by
+  // the server in the clear — sharing across accounts is incompatible with
+  // the per-account zero-knowledge key derivation used for everything else,
+  // and the user chose plain server-side storage (secured the same way the
+  // rest of the API is: bearer-token auth + explicit membership checks) over
+  // building a per-family encryption/key-distribution scheme. Every handler
+  // below must verify the caller is a current member before returning or
+  // mutating anything for a family.
+
+  static const _familyInviteTtl = Duration(days: 7);
+
+  int get _nowMs => DateTime.now().millisecondsSinceEpoch;
+
+  String _genId() => base64UrlEncode(randomBytes(12)).replaceAll('=', '');
+
+  int _familyMemberLimitFor(StoredUser owner) =>
+      kFamilyMemberLimit[owner.planId] ?? kFamilyMemberLimit[kDefaultPlanId]!;
+
+  Map<String, dynamic> _familyJson(Family family, StoredUser requester,
+      {required bool includeInvites}) {
+    final owner = store.usersById[family.ownerUserId];
+    final members = familyStore.membersOf(family.id);
+    final now = _nowMs;
+    final json = {
+      'id': family.id,
+      'name': family.name,
+      'ownerUserId': family.ownerUserId,
+      'createdAtMs': family.createdAtMs,
+      'slotLimit': owner == null ? null : _familyMemberLimitFor(owner),
+      'slotsUsed': familyStore.slotsUsed(family.id, now),
+      'members': members
+          .map((m) => {
+                'userId': m.userId,
+                'email': store.usersById[m.userId]?.email ?? '',
+                'role': m.role,
+                'joinedAtMs': m.joinedAtMs,
+              })
+          .toList(),
+    };
+    if (includeInvites && requester.id == family.ownerUserId) {
+      json['pendingInvites'] = familyStore
+          .pendingInvitesForFamily(family.id, now)
+          .map((i) => {
+                'id': i.id,
+                'email': i.inviteeEmail,
+                'createdAtMs': i.createdAtMs,
+                'expiresAtMs': i.expiresAtMs,
+              })
+          .toList();
+    }
+    return json;
+  }
+
+  Map<String, dynamic> _sharedEventJson(FamilySharedEvent e) => {
+        'id': e.id,
+        'familyId': e.familyId,
+        'authorUserId': e.authorUserId,
+        'title': e.title,
+        'description': e.description,
+        'location': e.location,
+        'startMs': e.startMs,
+        'endMs': e.endMs,
+        'allDay': e.allDay,
+        'color': e.color,
+        'recurrence': e.recurrence,
+        'recurrenceEndMs': e.recurrenceEndMs,
+        'reminderMinutes': e.reminderMinutes,
+        'visibility': e.visibility,
+        'visibleMemberUserIds': e.visibleMemberUserIds,
+        'createdAtMs': e.createdAtMs,
+        'updatedAtMs': e.updatedAtMs,
+      };
+
+  Future<Response> _createFamily(Request request, StoredUser user) async {
+    if (familyStore.familyIdByUserId.containsKey(user.id)) {
+      return _error(409, 'already_in_family',
+          'You already belong to a family. Leave it before creating another.');
+    }
+    final body = await _readJson(request);
+    final name = (body['name'] as String?)?.trim() ?? '';
+    if (name.isEmpty || name.length > 60) {
+      return _error(400, 'bad_name', 'Family name must be 1–60 characters.');
+    }
+
+    return store.lock.synchronized(() async {
+      if (familyStore.familyIdByUserId.containsKey(user.id)) {
+        return _error(409, 'already_in_family',
+            'You already belong to a family. Leave it before creating another.');
+      }
+      final now = _nowMs;
+      final family =
+          Family(id: _genId(), name: name, ownerUserId: user.id, createdAtMs: now);
+      familyStore.familiesById[family.id] = family;
+      familyStore.membersByFamilyId[family.id] = {
+        user.id: FamilyMember(
+            familyId: family.id,
+            userId: user.id,
+            role: 'owner',
+            joinedAtMs: now),
+      };
+      familyStore.familyIdByUserId[user.id] = family.id;
+      await familyStore.saveFamilies();
+      await familyStore.saveMembers();
+      return _json(
+          201, _familyJson(family, user, includeInvites: true));
+    });
+  }
+
+  Response _getMyFamily(Request request, StoredUser user) {
+    final family = familyStore.familyForUser(user.id);
+    if (family == null) {
+      return _error(404, 'no_family', 'You are not in a family yet.');
+    }
+    return _json(200, _familyJson(family, user, includeInvites: true));
+  }
+
+  Future<Response> _inviteFamilyMember(Request request, StoredUser user) async {
+    final familyId = request.params['id']!;
+    final family = familyStore.familiesById[familyId];
+    if (family == null) return _error(404, 'not_found', 'Family not found.');
+    if (family.ownerUserId != user.id) {
+      return _error(403, 'forbidden', 'Only the family owner can invite members.');
+    }
+    final body = await _readJson(request);
+    final email = _normalizeEmail(body['email']);
+    if (email == null) return _error(400, 'bad_email', 'Invalid email.');
+
+    return store.lock.synchronized(() async {
+      final now = _nowMs;
+      final existingUserId = store.userIdByEmail[email];
+      if (existingUserId != null && familyStore.isMember(familyId, existingUserId)) {
+        return _error(409, 'already_member', 'That person is already in the family.');
+      }
+      final alreadyPending = familyStore.invitesById.values.any((i) =>
+          i.familyId == familyId && i.inviteeEmail == email && i.isPendingAt(now));
+      if (alreadyPending) {
+        return _error(409, 'invite_pending', 'An invite is already pending for that email.');
+      }
+
+      final owner = store.usersById[user.id]!;
+      final limit = _familyMemberLimitFor(owner);
+      if (familyStore.slotsUsed(familyId, now) >= limit) {
+        return _error(403, 'family_limit_exceeded',
+            'Your plan allows up to $limit family members. Upgrade your plan to invite more.');
+      }
+
+      final invite = FamilyInvite(
+        id: _genId(),
+        familyId: familyId,
+        inviteeEmail: email,
+        invitedByUserId: user.id,
+        createdAtMs: now,
+        expiresAtMs: now + _familyInviteTtl.inMilliseconds,
+      );
+      familyStore.invitesById[invite.id] = invite;
+      await familyStore.saveInvites();
+      await _sendFamilyInviteEmail(
+          toEmail: email, inviterEmail: user.email, familyName: family.name);
+      return _json(201, {
+        'id': invite.id,
+        'email': invite.inviteeEmail,
+        'expiresAtMs': invite.expiresAtMs,
+      });
+    });
+  }
+
+  Response _listMyInvites(Request request, StoredUser user) {
+    final now = _nowMs;
+    final invites =
+        familyStore.pendingInvitesForEmail(user.email.toLowerCase(), now);
+    return _json(200, {
+      'invites': invites.map((i) {
+        final family = familyStore.familiesById[i.familyId];
+        final inviter = store.usersById[i.invitedByUserId];
+        return {
+          'id': i.id,
+          'familyId': i.familyId,
+          'familyName': family?.name ?? 'Family',
+          'inviterEmail': inviter?.email ?? '',
+          'createdAtMs': i.createdAtMs,
+          'expiresAtMs': i.expiresAtMs,
+        };
+      }).toList(),
+    });
+  }
+
+  Future<Response> _acceptFamilyInvite(Request request, StoredUser user) async {
+    final inviteId = request.params['inviteId']!;
+    return store.lock.synchronized(() async {
+      final now = _nowMs;
+      final invite = familyStore.invitesById[inviteId];
+      if (invite == null || invite.inviteeEmail != user.email.toLowerCase()) {
+        return _error(404, 'not_found', 'Invite not found.');
+      }
+      if (!invite.isPendingAt(now)) {
+        return _error(410, 'invite_not_pending', 'This invite is no longer available.');
+      }
+      final family = familyStore.familiesById[invite.familyId];
+      if (family == null) {
+        return _error(404, 'not_found', 'This family no longer exists.');
+      }
+      if (familyStore.familyIdByUserId.containsKey(user.id)) {
+        return _error(409, 'already_in_family',
+            'You already belong to a family. Leave it before accepting a new invite.');
+      }
+      final owner = store.usersById[family.ownerUserId];
+      final limit = owner == null
+          ? kFamilyMemberLimit[kDefaultPlanId]!
+          : _familyMemberLimitFor(owner);
+      if (familyStore.membersOf(family.id).length >= limit) {
+        return _error(403, 'family_limit_exceeded',
+            'This family is full.');
+      }
+
+      familyStore.membersByFamilyId.putIfAbsent(family.id, () => {})[user.id] =
+          FamilyMember(
+              familyId: family.id,
+              userId: user.id,
+              role: 'member',
+              joinedAtMs: now);
+      familyStore.familyIdByUserId[user.id] = family.id;
+      invite.status = 'accepted';
+      invite.respondedAtMs = now;
+      await familyStore.saveMembers();
+      await familyStore.saveInvites();
+      return _json(200, _familyJson(family, user, includeInvites: false));
+    });
+  }
+
+  Future<Response> _declineFamilyInvite(Request request, StoredUser user) async {
+    final inviteId = request.params['inviteId']!;
+    return store.lock.synchronized(() async {
+      final now = _nowMs;
+      final invite = familyStore.invitesById[inviteId];
+      if (invite == null || invite.inviteeEmail != user.email.toLowerCase()) {
+        return _error(404, 'not_found', 'Invite not found.');
+      }
+      if (!invite.isPendingAt(now)) {
+        return _error(410, 'invite_not_pending', 'This invite is no longer available.');
+      }
+      invite.status = 'declined';
+      invite.respondedAtMs = now;
+      await familyStore.saveInvites();
+      return _json(200, {'ok': true});
+    });
+  }
+
+  Future<Response> _removeFamilyMember(Request request, StoredUser user) async {
+    final familyId = request.params['id']!;
+    final targetUserId = request.params['userId']!;
+    final family = familyStore.familiesById[familyId];
+    if (family == null) return _error(404, 'not_found', 'Family not found.');
+    final isOwner = family.ownerUserId == user.id;
+    final isSelf = targetUserId == user.id;
+    if (!isOwner && !isSelf) {
+      return _error(403, 'forbidden', 'Only the family owner can remove other members.');
+    }
+    if (targetUserId == family.ownerUserId) {
+      return _error(409, 'owner_cannot_leave',
+          'The owner cannot leave the family. Delete the family instead.');
+    }
+    return store.lock.synchronized(() async {
+      familyStore.membersByFamilyId[familyId]?.remove(targetUserId);
+      if (familyStore.familyIdByUserId[targetUserId] == familyId) {
+        familyStore.familyIdByUserId.remove(targetUserId);
+      }
+      await familyStore.saveMembers();
+      return _json(200, {'ok': true});
+    });
+  }
+
+  Future<Response> _deleteFamily(Request request, StoredUser user) async {
+    final familyId = request.params['id']!;
+    final family = familyStore.familiesById[familyId];
+    if (family == null) return _error(404, 'not_found', 'Family not found.');
+    if (family.ownerUserId != user.id) {
+      return _error(403, 'forbidden', 'Only the family owner can delete the family.');
+    }
+    return store.lock.synchronized(() async {
+      familyStore.deleteFamilyData(familyId);
+      await familyStore.saveFamilies();
+      await familyStore.saveMembers();
+      await familyStore.saveInvites();
+      await familyStore.saveEvents();
+      return _json(200, {'ok': true});
+    });
+  }
+
+  Future<Response> _addSharedEvent(Request request, StoredUser user) async {
+    final familyId = request.params['id']!;
+    final family = familyStore.familiesById[familyId];
+    if (family == null) return _error(404, 'not_found', 'Family not found.');
+    if (!familyStore.isMember(familyId, user.id)) {
+      return _error(403, 'forbidden', 'You are not a member of this family.');
+    }
+    final body = await _readJson(request);
+    final parsed = _parseSharedEventBody(body, familyId);
+    if (parsed is _ParseError) {
+      return _error(400, parsed.code, parsed.message);
+    }
+    final fields = parsed as _ParsedSharedEvent;
+    if (fields.visibility == 'subset') {
+      for (final id in fields.visibleMemberUserIds) {
+        if (!familyStore.isMember(familyId, id)) {
+          return _error(400, 'bad_member', 'One of the chosen members is not in this family.');
+        }
+      }
+    }
+
+    return store.lock.synchronized(() async {
+      final now = _nowMs;
+      final event = FamilySharedEvent(
+        id: _genId(),
+        familyId: familyId,
+        authorUserId: user.id,
+        title: fields.title,
+        description: fields.description,
+        location: fields.location,
+        startMs: fields.startMs,
+        endMs: fields.endMs,
+        allDay: fields.allDay,
+        color: fields.color,
+        recurrence: fields.recurrence,
+        recurrenceEndMs: fields.recurrenceEndMs,
+        reminderMinutes: fields.reminderMinutes,
+        visibility: fields.visibility,
+        visibleMemberUserIds: fields.visibleMemberUserIds,
+        createdAtMs: now,
+        updatedAtMs: now,
+      );
+      familyStore.sharedEventsByFamilyId
+          .putIfAbsent(familyId, () => {})[event.id] = event;
+      await familyStore.saveEvents();
+      return _json(201, _sharedEventJson(event));
+    });
+  }
+
+  Response _listSharedEvents(Request request, StoredUser user) {
+    final familyId = request.params['id']!;
+    if (familyStore.familiesById[familyId] == null) {
+      return _error(404, 'not_found', 'Family not found.');
+    }
+    if (!familyStore.isMember(familyId, user.id)) {
+      return _error(403, 'forbidden', 'You are not a member of this family.');
+    }
+    final events = familyStore.visibleEvents(familyId, user.id);
+    return _json(200, {'events': events.map(_sharedEventJson).toList()});
+  }
+
+  Future<Response> _updateSharedEvent(Request request, StoredUser user) async {
+    final familyId = request.params['id']!;
+    final eventId = request.params['eventId']!;
+    final family = familyStore.familiesById[familyId];
+    if (family == null) return _error(404, 'not_found', 'Family not found.');
+    final event = familyStore.sharedEventsByFamilyId[familyId]?[eventId];
+    if (event == null) return _error(404, 'not_found', 'Event not found.');
+    if (event.authorUserId != user.id && family.ownerUserId != user.id) {
+      return _error(403, 'forbidden', 'Only the author or family owner can edit this event.');
+    }
+    final body = await _readJson(request);
+    final parsed = _parseSharedEventBody(body, familyId);
+    if (parsed is _ParseError) {
+      return _error(400, parsed.code, parsed.message);
+    }
+    final fields = parsed as _ParsedSharedEvent;
+    if (fields.visibility == 'subset') {
+      for (final id in fields.visibleMemberUserIds) {
+        if (!familyStore.isMember(familyId, id)) {
+          return _error(400, 'bad_member', 'One of the chosen members is not in this family.');
+        }
+      }
+    }
+
+    return store.lock.synchronized(() async {
+      event
+        ..title = fields.title
+        ..description = fields.description
+        ..location = fields.location
+        ..startMs = fields.startMs
+        ..endMs = fields.endMs
+        ..allDay = fields.allDay
+        ..color = fields.color
+        ..recurrence = fields.recurrence
+        ..recurrenceEndMs = fields.recurrenceEndMs
+        ..reminderMinutes = fields.reminderMinutes
+        ..visibility = fields.visibility
+        ..visibleMemberUserIds = fields.visibleMemberUserIds
+        ..updatedAtMs = _nowMs;
+      await familyStore.saveEvents();
+      return _json(200, _sharedEventJson(event));
+    });
+  }
+
+  Future<Response> _deleteSharedEvent(Request request, StoredUser user) async {
+    final familyId = request.params['id']!;
+    final eventId = request.params['eventId']!;
+    final family = familyStore.familiesById[familyId];
+    if (family == null) return _error(404, 'not_found', 'Family not found.');
+    final event = familyStore.sharedEventsByFamilyId[familyId]?[eventId];
+    if (event == null) return _error(404, 'not_found', 'Event not found.');
+    if (event.authorUserId != user.id && family.ownerUserId != user.id) {
+      return _error(403, 'forbidden', 'Only the author or family owner can delete this event.');
+    }
+    return store.lock.synchronized(() async {
+      familyStore.sharedEventsByFamilyId[familyId]?.remove(eventId);
+      await familyStore.saveEvents();
+      return _json(200, {'ok': true});
+    });
+  }
+
+  Object _parseSharedEventBody(Map<String, dynamic> body, String familyId) {
+    final title = (body['title'] as String?)?.trim() ?? '';
+    if (title.isEmpty || title.length > 200) {
+      return const _ParseError('bad_title', 'Title must be 1–200 characters.');
+    }
+    final startMs = body['startMs'];
+    final endMs = body['endMs'];
+    if (startMs is! int || endMs is! int) {
+      return const _ParseError('bad_dates', 'startMs and endMs are required.');
+    }
+    final visibility = body['visibility'] as String? ?? 'all';
+    if (visibility != 'all' && visibility != 'subset') {
+      return const _ParseError('bad_visibility', "visibility must be 'all' or 'subset'.");
+    }
+    final memberIds = (body['memberUserIds'] as List?)
+            ?.map((e) => e as String)
+            .toList() ??
+        const <String>[];
+    if (visibility == 'subset' && memberIds.isEmpty) {
+      return const _ParseError(
+          'bad_members', 'Choose at least one member when sharing with specific people.');
+    }
+    return _ParsedSharedEvent(
+      title: title,
+      description: _nullIfBlank(body['description'] as String?),
+      location: _nullIfBlank(body['location'] as String?),
+      startMs: startMs,
+      endMs: endMs,
+      allDay: body['allDay'] as bool? ?? false,
+      color: body['color'] as int? ?? 0xFF7C5AD9,
+      recurrence: body['recurrence'] as String? ?? 'none',
+      recurrenceEndMs: body['recurrenceEndMs'] as int?,
+      reminderMinutes: body['reminderMinutes'] as int?,
+      visibility: visibility,
+      visibleMemberUserIds: visibility == 'subset' ? memberIds : const [],
+    );
+  }
+
+  /// Best-effort send; a mail outage should not block invites outright since
+  /// the invite still shows up in-app the next time the invitee's client
+  /// polls /api/v1/family/invites.
+  Future<void> _sendFamilyInviteEmail({
+    required String toEmail,
+    required String inviterEmail,
+    required String familyName,
+  }) async {
+    try {
+      await mailer.sendFamilyInviteEmail(
+          toEmail: toEmail, inviterEmail: inviterEmail, familyName: familyName);
+    } catch (e) {
+      stderr.writeln('[luma] could not send family invite email to $toEmail: $e');
+    }
+  }
+
   // ---- Handlers: admin ------------------------------------------------------
 
   /// Metadata-only view of one account for the admin endpoints. Never
@@ -1254,6 +1739,11 @@ class Api {
     }
   }
 
+  static String? _nullIfBlank(String? raw) {
+    final trimmed = raw?.trim();
+    return (trimmed == null || trimmed.isEmpty) ? null : trimmed;
+  }
+
   static String? _normalizeEmail(Object? raw) {
     if (raw is! String) return null;
     final email = raw.trim().toLowerCase();
@@ -1297,4 +1787,42 @@ class Api {
   static Response _error(int status, String code, String message,
           {Map<String, dynamic>? extra}) =>
       _json(status, {'error': code, 'message': message, ...?extra});
+}
+
+/// Result type for [Api._parseSharedEventBody]: either a validated set of
+/// fields or a single validation error to surface to the client.
+class _ParsedSharedEvent {
+  const _ParsedSharedEvent({
+    required this.title,
+    required this.description,
+    required this.location,
+    required this.startMs,
+    required this.endMs,
+    required this.allDay,
+    required this.color,
+    required this.recurrence,
+    required this.recurrenceEndMs,
+    required this.reminderMinutes,
+    required this.visibility,
+    required this.visibleMemberUserIds,
+  });
+
+  final String title;
+  final String? description;
+  final String? location;
+  final int startMs;
+  final int endMs;
+  final bool allDay;
+  final int color;
+  final String recurrence;
+  final int? recurrenceEndMs;
+  final int? reminderMinutes;
+  final String visibility;
+  final List<String> visibleMemberUserIds;
+}
+
+class _ParseError {
+  const _ParseError(this.code, this.message);
+  final String code;
+  final String message;
 }

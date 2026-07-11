@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../account/account_page.dart';
+import '../family/inbox_button.dart';
 import '../features/chat/chat_page.dart';
 import '../l10n/app_localizations.dart';
 import '../features/converter/converter_page.dart';
@@ -136,7 +137,7 @@ class _AppShellState extends State<AppShell> {
         return Scaffold(
           body: Column(
             children: [
-              WindowTitleBar(title: title),
+              WindowTitleBar(title: title, trailing: const InboxButton()),
               ListenableBuilder(
                 listenable: storageGuard,
                 builder: (context, _) {

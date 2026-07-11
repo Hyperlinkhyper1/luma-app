@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../family/family_scope.dart';
 import '../../../../theme/luma_theme.dart';
 import 'calendar_repository.dart';
 import 'calendar_scope.dart';
@@ -59,29 +60,39 @@ class _CalendarPageState extends State<CalendarPage> {
   @override
   Widget build(BuildContext context) {
     final repo = CalendarScope.of(context);
+    final familyRepo = FamilyScope.of(context);
     return StreamData<List<EventRecord>>(
       stream: repo.watchAll(),
-      builder: (context, events) {
-        return StreamData<List<DinnerPlanRecord>>(
-          stream: repo.watchDinners(),
-          builder: (context, dinners) {
-            return Column(
-              children: [
-                _Toolbar(
-                  monthLabel: DateFormat('MMMM yyyy').format(_monthCursor),
-                  view: _view,
-                  search: _search,
-                  searching: _query.isNotEmpty,
-                  onSearch: (v) => setState(() => _query = v.trim()),
-                  onView: (v) => setState(() => _view = v),
-                  onPrev: () => _shiftMonth(-1),
-                  onNext: () => _shiftMonth(1),
-                  onToday: _goToday,
-                  onNew: () => showEventEditor(context, repo,
-                      initialDate: _selectedDay),
-                ),
-                Expanded(child: _body(context, repo, events, dinners)),
-              ],
+      builder: (context, personalEvents) {
+        return ListenableBuilder(
+          listenable: familyRepo,
+          builder: (context, _) {
+            final events = [
+              ...personalEvents,
+              ...familyRepo.sharedEvents.map(familyShareEventToRecord),
+            ]..sort((a, b) => a.start.compareTo(b.start));
+            return StreamData<List<DinnerPlanRecord>>(
+              stream: repo.watchDinners(),
+              builder: (context, dinners) {
+                return Column(
+                  children: [
+                    _Toolbar(
+                      monthLabel: DateFormat('MMMM yyyy').format(_monthCursor),
+                      view: _view,
+                      search: _search,
+                      searching: _query.isNotEmpty,
+                      onSearch: (v) => setState(() => _query = v.trim()),
+                      onView: (v) => setState(() => _view = v),
+                      onPrev: () => _shiftMonth(-1),
+                      onNext: () => _shiftMonth(1),
+                      onToday: _goToday,
+                      onNew: () => showEventEditor(context, repo,
+                          initialDate: _selectedDay),
+                    ),
+                    Expanded(child: _body(context, repo, events, dinners)),
+                  ],
+                );
+              },
             );
           },
         );

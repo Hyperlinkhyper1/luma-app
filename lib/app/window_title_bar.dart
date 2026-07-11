@@ -17,11 +17,17 @@ class WindowTitleBar extends StatefulWidget {
   WindowTitleBar({
     super.key,
     required this.title,
+    this.trailing,
     bool? showWindowControls,
   }) : showWindowControls = showWindowControls ?? hasCustomTitleBar;
 
   /// The active section name shown next to the brand.
   final String title;
+
+  /// Optional widget shown between the draggable title area and the OS
+  /// caption buttons (e.g. the family inbox icon) — visible on every screen,
+  /// since this bar is shared across the whole app.
+  final Widget? trailing;
 
   /// Whether to render the minimize/maximize/close buttons and enable window
   /// dragging. Defaults to whether this platform has an OS window we own.
@@ -113,6 +119,7 @@ class _WindowTitleBarState extends State<WindowTitleBar> {
                   ? _DragRegion(child: content)
                   : content,
             ),
+            if (widget.trailing != null) widget.trailing!,
             if (widget.showWindowControls) ...[
               _CaptionButton(
                 icon: Icons.remove_rounded,

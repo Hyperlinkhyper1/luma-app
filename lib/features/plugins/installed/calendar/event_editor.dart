@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../family/family_api.dart';
+import '../../../../family/family_repository.dart';
+import '../../../../family/family_scope.dart';
 import '../../../../theme/luma_theme.dart';
 import 'calendar_repository.dart';
 
@@ -27,6 +30,9 @@ const List<({String label, int? minutes})> _reminderOptions = [
   (label: '1 hour before', minutes: 60),
   (label: '1 day before', minutes: 1440),
 ];
+
+/// Who a new/edited event is shared with.
+enum _ShareScope { justMe, wholeFamily, chooseMembers }
 
 /// Opens the create/edit sheet. Pass [existing] to edit, or [initialDate] to
 /// pre-fill a new event on a specific day.
@@ -77,7 +83,14 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
   String? _error;
   bool _saving = false;
 
+  _ShareScope _shareScope = _ShareScope.justMe;
+  Set<String> _selectedMemberIds = {};
+
   bool get _isEditing => widget.existing != null;
+
+  /// Whether [widget.existing] is a family-shared event (as opposed to a
+  /// personal, local-only one). Fixed at dialog-open time.
+  bool get _wasShared => widget.existing?.familyShare != null;
 
   @override
   void initState() {
@@ -97,6 +110,27 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
     _recurrence = e?.recurrence ?? Recurrence.none;
     _recurrenceEnd = e?.recurrenceEnd;
     _reminderMinutes = e?.reminderMinutes;
+
+    final share = e?.familyShare;
+    if (share == null) {
+      _shareScope = _ShareScope.justMe;
+    } else if (share.sharedWithWholeFamily) {
+      _shareScope = _ShareScope.wholeFamily;
+    } else {
+      _shareScope = _ShareScope.chooseMembers;
+      _selectedMemberIds = share.visibleMemberUserIds.toSet();
+    }
+  }
+
+  /// Whether the signed-in user may edit/delete this (shared) event — only
+  /// its author or the family owner can. Always true for personal events.
+  bool _canEditSharedEvent(FamilyRepository familyRepo) {
+    final share = widget.existing?.familyShare;
+    if (share == null) return true;
+    final myId = familyRepo.myUserId;
+    if (myId == null) return false;
+    return myId == share.authorUserId ||
+        myId == familyRepo.family?.ownerUserId;
   }
 
   static int _roundHour(DateTime now) => (now.hour + 1).clamp(0, 23);
@@ -168,6 +202,10 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
       setState(() => _error = 'Give the event a title.');
       return;
     }
+    if (_shareScope == _ShareScope.chooseMembers && _selectedMemberIds.isEmpty) {
+      setState(() => _error = 'Choose at least one person to share with.');
+      return;
+    }
     // Normalize: an all-day event spans whole days; a timed event can't end
     // before it starts.
     var start = _start;
@@ -188,107 +226,274 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
     final location = _location.text.trim().isEmpty ? null : _location.text.trim();
     final notes = _notes.text.trim().isEmpty ? null : _notes.text.trim();
     final recEnd = _recurrence == Recurrence.none ? null : _recurrenceEnd;
+    final familyRepo = FamilyScope.of(context);
+    final sharing = _shareScope != _ShareScope.justMe;
 
-    if (_isEditing) {
-      await widget.repo.update(
-        id: widget.existing!.id,
-        title: title,
-        description: notes,
-        location: location,
-        start: start,
-        end: end,
-        allDay: _allDay,
-        color: _color,
-        recurrence: _recurrence,
-        recurrenceEnd: recEnd,
-        reminderMinutes: _reminderMinutes,
-      );
-    } else {
-      await widget.repo.add(
-        title: title,
-        description: notes,
-        location: location,
-        start: start,
-        end: end,
-        allDay: _allDay,
-        color: _color,
-        recurrence: _recurrence,
-        recurrenceEnd: recEnd,
-        reminderMinutes: _reminderMinutes,
-      );
+    try {
+      // Switching stores (personal <-> shared) is a delete-then-create;
+      // otherwise this is a plain update/add within the same store.
+      if (_isEditing && _wasShared && !sharing) {
+        await familyRepo.deleteSharedEvent(widget.existing!.familyShare!.remoteEventId);
+        await widget.repo.add(
+          title: title,
+          description: notes,
+          location: location,
+          start: start,
+          end: end,
+          allDay: _allDay,
+          color: _color,
+          recurrence: _recurrence,
+          recurrenceEnd: recEnd,
+          reminderMinutes: _reminderMinutes,
+        );
+      } else if (_isEditing && !_wasShared && sharing) {
+        await widget.repo.delete(widget.existing!.id);
+        await familyRepo.addSharedEvent(
+          title: title,
+          description: notes,
+          location: location,
+          start: start,
+          end: end,
+          allDay: _allDay,
+          color: _color,
+          recurrence: _recurrence.name,
+          recurrenceEnd: recEnd,
+          reminderMinutes: _reminderMinutes,
+          shareWithWholeFamily: _shareScope == _ShareScope.wholeFamily,
+          memberUserIds: _selectedMemberIds.toList(),
+        );
+      } else if (_isEditing && _wasShared && sharing) {
+        await familyRepo.updateSharedEvent(
+          eventId: widget.existing!.familyShare!.remoteEventId,
+          title: title,
+          description: notes,
+          location: location,
+          start: start,
+          end: end,
+          allDay: _allDay,
+          color: _color,
+          recurrence: _recurrence.name,
+          recurrenceEnd: recEnd,
+          reminderMinutes: _reminderMinutes,
+          shareWithWholeFamily: _shareScope == _ShareScope.wholeFamily,
+          memberUserIds: _selectedMemberIds.toList(),
+        );
+      } else if (_isEditing) {
+        await widget.repo.update(
+          id: widget.existing!.id,
+          title: title,
+          description: notes,
+          location: location,
+          start: start,
+          end: end,
+          allDay: _allDay,
+          color: _color,
+          recurrence: _recurrence,
+          recurrenceEnd: recEnd,
+          reminderMinutes: _reminderMinutes,
+        );
+      } else if (sharing) {
+        await familyRepo.addSharedEvent(
+          title: title,
+          description: notes,
+          location: location,
+          start: start,
+          end: end,
+          allDay: _allDay,
+          color: _color,
+          recurrence: _recurrence.name,
+          recurrenceEnd: recEnd,
+          reminderMinutes: _reminderMinutes,
+          shareWithWholeFamily: _shareScope == _ShareScope.wholeFamily,
+          memberUserIds: _selectedMemberIds.toList(),
+        );
+      } else {
+        await widget.repo.add(
+          title: title,
+          description: notes,
+          location: location,
+          start: start,
+          end: end,
+          allDay: _allDay,
+          color: _color,
+          recurrence: _recurrence,
+          recurrenceEnd: recEnd,
+          reminderMinutes: _reminderMinutes,
+        );
+      }
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _error = '$e';
+        });
+      }
     }
-    if (mounted) Navigator.of(context).pop();
   }
 
   Future<void> _delete() async {
-    await widget.repo.delete(widget.existing!.id);
-    if (mounted) Navigator.of(context).pop();
+    final share = widget.existing!.familyShare;
+    try {
+      if (share != null) {
+        await FamilyScope.of(context).deleteSharedEvent(share.remoteEventId);
+      } else {
+        await widget.repo.delete(widget.existing!.id);
+      }
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) setState(() => _error = '$e');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final familyRepo = FamilyScope.of(context);
+    final readOnly = _isEditing && !_canEditSharedEvent(familyRepo);
     return Dialog(
       backgroundColor: luma.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460, maxHeight: 640),
+        constraints: const BoxConstraints(maxWidth: 460, maxHeight: 680),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             _header(luma),
+            if (readOnly) _readOnlyBanner(luma),
             Flexible(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _titleField(luma),
-                    const SizedBox(height: 16),
-                    _allDayRow(luma),
-                    const SizedBox(height: 12),
-                    _whenSection(luma),
-                    const SizedBox(height: 18),
-                    _label(luma, 'Color'),
-                    const SizedBox(height: 8),
-                    _colorRow(luma),
-                    const SizedBox(height: 18),
-                    _label(luma, 'Repeat'),
-                    const SizedBox(height: 8),
-                    _recurrenceRow(luma),
-                    if (_recurrence != Recurrence.none) ...[
-                      const SizedBox(height: 10),
-                      _recurrenceEndRow(luma),
-                    ],
-                    const SizedBox(height: 18),
-                    _label(luma, 'Reminder'),
-                    const SizedBox(height: 8),
-                    _reminderRow(luma),
-                    const SizedBox(height: 18),
-                    _label(luma, 'Location'),
-                    const SizedBox(height: 8),
-                    _plainField(luma, _location,
-                        hint: 'Add a place', icon: Icons.place_outlined),
-                    const SizedBox(height: 16),
-                    _label(luma, 'Notes'),
-                    const SizedBox(height: 8),
-                    _plainField(luma, _notes,
-                        hint: 'Add details', maxLines: 3),
-                    if (_error != null) ...[
-                      const SizedBox(height: 12),
-                      Text(_error!,
-                          style: TextStyle(color: luma.danger, fontSize: 13)),
-                    ],
-                    const SizedBox(height: 8),
-                  ],
+                child: AbsorbPointer(
+                  absorbing: readOnly,
+                  child: Opacity(
+                    opacity: readOnly ? 0.6 : 1,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _titleField(luma),
+                        const SizedBox(height: 16),
+                        _allDayRow(luma),
+                        const SizedBox(height: 12),
+                        _whenSection(luma),
+                        const SizedBox(height: 18),
+                        _label(luma, 'Color'),
+                        const SizedBox(height: 8),
+                        _colorRow(luma),
+                        const SizedBox(height: 18),
+                        _label(luma, 'Repeat'),
+                        const SizedBox(height: 8),
+                        _recurrenceRow(luma),
+                        if (_recurrence != Recurrence.none) ...[
+                          const SizedBox(height: 10),
+                          _recurrenceEndRow(luma),
+                        ],
+                        if (familyRepo.family != null) ...[
+                          const SizedBox(height: 18),
+                          _label(luma, 'Share'),
+                          const SizedBox(height: 8),
+                          _shareSection(luma, familyRepo),
+                        ],
+                        const SizedBox(height: 18),
+                        _label(luma, 'Reminder'),
+                        const SizedBox(height: 8),
+                        _reminderRow(luma),
+                        const SizedBox(height: 18),
+                        _label(luma, 'Location'),
+                        const SizedBox(height: 8),
+                        _plainField(luma, _location,
+                            hint: 'Add a place', icon: Icons.place_outlined),
+                        const SizedBox(height: 16),
+                        _label(luma, 'Notes'),
+                        const SizedBox(height: 8),
+                        _plainField(luma, _notes,
+                            hint: 'Add details', maxLines: 3),
+                        if (_error != null) ...[
+                          const SizedBox(height: 12),
+                          Text(_error!,
+                              style: TextStyle(color: luma.danger, fontSize: 13)),
+                        ],
+                        const SizedBox(height: 8),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
-            _footer(luma),
+            _footer(luma, readOnly: readOnly),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _readOnlyBanner(LumaPalette luma) {
+    final share = widget.existing!.familyShare!;
+    final familyRepo = FamilyScope.of(context);
+    final authorEmail = familyRepo.family?.members
+            .cast<RemoteFamilyMember?>()
+            .firstWhere((m) => m?.userId == share.authorUserId, orElse: () => null)
+            ?.email ??
+        'a family member';
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: luma.accentSubtle,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.diversity_3_rounded, size: 16, color: luma.accent),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text('Shared by $authorEmail — view only',
+                style: TextStyle(color: luma.textSecondary, fontSize: 12.5)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _shareSection(LumaPalette luma, FamilyRepository familyRepo) {
+    final family = familyRepo.family!;
+    final myId = familyRepo.myUserId;
+    final others = family.members.where((m) => m.userId != myId).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        LumaSegmentedTabs(
+          tabs: const ['Just me', 'Whole family', 'Choose people'],
+          selectedIndex: _shareScope.index,
+          onSelect: (i) => setState(() => _shareScope = _ShareScope.values[i]),
+        ),
+        if (_shareScope == _ShareScope.chooseMembers) ...[
+          const SizedBox(height: 10),
+          if (others.isEmpty)
+            Text('No other family members yet.',
+                style: TextStyle(color: luma.textMuted, fontSize: 12))
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final m in others)
+                  FilterChip(
+                    label: Text(m.email),
+                    selected: _selectedMemberIds.contains(m.userId),
+                    onSelected: (v) => setState(() {
+                      if (v) {
+                        _selectedMemberIds.add(m.userId);
+                      } else {
+                        _selectedMemberIds.remove(m.userId);
+                      }
+                    }),
+                  ),
+              ],
+            ),
+        ],
+      ],
     );
   }
 
@@ -531,7 +736,7 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
             letterSpacing: 0.2),
       );
 
-  Widget _footer(LumaPalette luma) {
+  Widget _footer(LumaPalette luma, {required bool readOnly}) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
       decoration: BoxDecoration(
@@ -539,7 +744,7 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
       ),
       child: Row(
         children: [
-          if (_isEditing)
+          if (_isEditing && !readOnly)
             Tooltip(
               message: 'Delete event',
               child: IconButton(
@@ -549,16 +754,18 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
             ),
           const Spacer(),
           LumaGhostButton(
-            label: 'Cancel',
+            label: readOnly ? 'Close' : 'Cancel',
             onTap: () => Navigator.of(context).pop(),
           ),
-          const SizedBox(width: 10),
-          LumaPrimaryButton(
-            label: _isEditing ? 'Save' : 'Add event',
-            icon: Icons.check_rounded,
-            loading: _saving,
-            onTap: _save,
-          ),
+          if (!readOnly) ...[
+            const SizedBox(width: 10),
+            LumaPrimaryButton(
+              label: _isEditing ? 'Save' : 'Add event',
+              icon: Icons.check_rounded,
+              loading: _saving,
+              onTap: _save,
+            ),
+          ],
         ],
       ),
     );

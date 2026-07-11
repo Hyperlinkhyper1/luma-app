@@ -96,6 +96,11 @@ class SyncService extends ChangeNotifier {
   bool get requiresReauth => _requiresReauth;
   String? get email => _state?.email;
   String? get serverUrl => _state?.serverUrl;
+
+  /// The current bearer token, if signed in. Used by features (e.g. Families)
+  /// that talk to their own, non-encrypted server endpoints rather than the
+  /// zero-knowledge sync/blob ones — see [FamilyApi] in lib/family/family_api.dart.
+  String? get authToken => _state?.token;
   SyncStatus get status => _status;
   String? get lastError => _lastError;
   DateTime? get lastSyncAt => _state?.lastSyncAt;

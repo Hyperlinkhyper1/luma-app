@@ -10,6 +10,7 @@ class Plan {
     required this.blurb,
     required this.storageMb,
     required this.maxSyncCollections,
+    required this.maxFamilyMembers,
     required this.features,
   });
 
@@ -31,6 +32,11 @@ class Plan {
   /// `SyncService.enableCollection`.
   final int? maxSyncCollections;
 
+  /// How many people (including the owner) may belong to one family at once.
+  /// Enforced server-side (see kFamilyMemberLimit in server/lib/family_store.dart,
+  /// which must stay in sync with this).
+  final int maxFamilyMembers;
+
   final List<String> features;
 
   /// Whether picking this plan requires redeeming an access code (see
@@ -47,10 +53,12 @@ const kPlans = <Plan>[
     blurb: 'Everything you need on this device.',
     storageMb: 10,
     maxSyncCollections: 3,
+    maxFamilyMembers: 4,
     features: [
       '10 MB local storage',
       'Sync up to 3 features to the server',
       'Free starter plugins',
+      'Family of up to 4',
     ],
   ),
   Plan(
@@ -61,12 +69,14 @@ const kPlans = <Plan>[
     blurb: 'More room to grow, priority sync.',
     storageMb: 25,
     maxSyncCollections: 5,
+    maxFamilyMembers: 6,
     features: [
       '25 MB local storage',
       'Sync up to 5 features to the server',
       'Priority cloud sync speed',
       'Free advanced plugins',
       'Custom accent themes',
+      'Family of up to 6',
     ],
   ),
   Plan(
@@ -77,12 +87,14 @@ const kPlans = <Plan>[
     blurb: 'The fastest, largest luma yet.',
     storageMb: 50,
     maxSyncCollections: null,
+    maxFamilyMembers: 12,
     features: [
       '50 MB local storage',
       'Sync unlimited features to the server',
       'Fastest cloud sync',
       'All plugins, free',
       'Early access to new features',
+      'Family of up to 12',
     ],
   ),
 ];

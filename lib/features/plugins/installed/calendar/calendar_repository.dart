@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../../../../family/family_api.dart';
 import '../../../../storage/storage_guard.dart';
 import 'data/calendar_database.dart';
 
@@ -21,6 +22,28 @@ extension RecurrenceLabel on Recurrence {
       );
 }
 
+/// Marks an [EventRecord] as a family-shared calendar entry rather than a
+/// personal, local-only one. Present only on events that came from
+/// [FamilyRepository.sharedEvents] — see calendar_page.dart's merge and
+/// event_editor.dart's share controls. Deliberately NOT a Drift column: this
+/// data lives server-side in the (server-readable) family channel, never in
+/// the local, zero-knowledge-synced `CalendarEvents` table.
+class FamilyShareInfo {
+  const FamilyShareInfo({
+    required this.familyId,
+    required this.remoteEventId,
+    required this.authorUserId,
+    required this.sharedWithWholeFamily,
+    required this.visibleMemberUserIds,
+  });
+
+  final String familyId;
+  final String remoteEventId;
+  final String authorUserId;
+  final bool sharedWithWholeFamily;
+  final List<String> visibleMemberUserIds;
+}
+
 /// A stored event (the "template" for recurring events). Concrete dated
 /// instances are produced by `expandOccurrences` in `recurrence.dart`.
 class EventRecord {
@@ -37,6 +60,7 @@ class EventRecord {
     required this.recurrenceEnd,
     required this.reminderMinutes,
     required this.createdAt,
+    this.familyShare,
   });
 
   final int id;
@@ -52,8 +76,41 @@ class EventRecord {
   final int? reminderMinutes;
   final DateTime createdAt;
 
+  /// Null for a personal, local-only event; set for one shared via a family.
+  final FamilyShareInfo? familyShare;
+
   Duration get duration => end.difference(start);
 }
+
+/// Maps a server-side shared event into the same [EventRecord] shape the
+/// Calendar UI already knows how to render, so calendar_page.dart can merge
+/// personal and shared events into one list with no further branching.
+EventRecord familyShareEventToRecord(RemoteSharedEvent e) => EventRecord(
+      // Shared events are identified by [familyShare.remoteEventId] wherever
+      // it matters (edits/deletes); this int id only needs to be a stable,
+      // likely-unique value for widget keys/list diffing.
+      id: e.id.hashCode,
+      title: e.title,
+      description: e.description,
+      location: e.location,
+      start: DateTime.fromMillisecondsSinceEpoch(e.startMs),
+      end: DateTime.fromMillisecondsSinceEpoch(e.endMs),
+      allDay: e.allDay,
+      color: e.color,
+      recurrence: RecurrenceLabel.parse(e.recurrence),
+      recurrenceEnd: e.recurrenceEndMs == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(e.recurrenceEndMs!),
+      reminderMinutes: e.reminderMinutes,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(e.createdAtMs),
+      familyShare: FamilyShareInfo(
+        familyId: e.familyId,
+        remoteEventId: e.id,
+        authorUserId: e.authorUserId,
+        sharedWithWholeFamily: e.visibility == 'all',
+        visibleMemberUserIds: e.visibleMemberUserIds,
+      ),
+    );
 
 /// The dinner planned for one day: a title, its ingredients and (optional)
 /// instructions.

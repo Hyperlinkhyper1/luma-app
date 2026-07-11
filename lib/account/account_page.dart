@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../app/widgets.dart';
+import '../family/family_scope.dart';
 import '../settings/devices_section.dart';
 import '../settings/settings_controller.dart';
 import '../settings/settings_scope.dart';
@@ -11,6 +12,7 @@ import '../settings/sync_section.dart';
 import '../storage/storage_guard.dart';
 import '../storage/storage_guard_scope.dart';
 import '../theme/luma_theme.dart';
+import 'family_page.dart';
 import 'plan.dart';
 import 'plan_selection_page.dart';
 
@@ -78,6 +80,17 @@ class AccountPage extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               const _PlanSummary(),
+
+              const SizedBox(height: 24),
+
+              // ---- Family -------------------------------------------------------
+              _SectionHeader(
+                icon: Icons.diversity_3_rounded,
+                title: 'Family',
+                subtitle: 'Share your calendar with people who matter.',
+              ),
+              const SizedBox(height: 12),
+              const _FamilySummary(),
             ],
           ),
         ),
@@ -314,6 +327,103 @@ class _PlanSummary extends StatelessWidget {
                       ),
                     ),
                 ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ---- Family -----------------------------------------------------------------
+
+class _FamilySummary extends StatelessWidget {
+  const _FamilySummary();
+
+  @override
+  Widget build(BuildContext context) {
+    final familyRepo = FamilyScope.of(context);
+    final luma = context.luma;
+    return ListenableBuilder(
+      listenable: familyRepo,
+      builder: (context, _) {
+        final family = familyRepo.family;
+        if (family == null) {
+          return LumaCard(
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: luma.accentSubtle,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.diversity_3_rounded,
+                      color: luma.accent, size: 22),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('You\'re not in a family yet',
+                          style: TextStyle(
+                              color: luma.textPrimary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 2),
+                      Text('Create one to share your calendar.',
+                          style: TextStyle(color: luma.textMuted, fontSize: 12)),
+                    ],
+                  ),
+                ),
+                LumaPrimaryButton(
+                  label: 'Create a family',
+                  icon: Icons.add_rounded,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const FamilyPage()),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        return LumaCard(
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: luma.accentSubtle,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.diversity_3_rounded,
+                    color: luma.accent, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(family.name,
+                        style: TextStyle(
+                            color: luma.textPrimary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 2),
+                    Text(
+                        '${family.slotsUsed} of ${family.slotLimit ?? '∞'} slots used',
+                        style: TextStyle(color: luma.textMuted, fontSize: 12)),
+                  ],
+                ),
+              ),
+              LumaGhostButton(
+                label: 'Manage family',
+                icon: Icons.arrow_forward_rounded,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const FamilyPage()),
+                ),
               ),
             ],
           ),

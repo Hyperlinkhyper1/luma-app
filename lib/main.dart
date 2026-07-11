@@ -49,6 +49,8 @@ import 'features/plugins/plugin_scope.dart';
 import 'features/notes/notes_repository.dart';
 import 'features/plugins/installed/cloud_files/cloud_files_controller.dart';
 import 'features/plugins/installed/cloud_files/cloud_files_scope.dart';
+import 'family/family_repository.dart';
+import 'family/family_scope.dart';
 import 'finance/data/database.dart';
 import 'finance/finance_repository.dart';
 import 'finance/finance_scope.dart';
@@ -204,6 +206,11 @@ class _LumaAppState extends State<LumaApp> {
   // The Cloud Files plugin stores encrypted files on the same sync server.
   late final CloudFilesController _cloudFiles = CloudFilesController(_sync);
 
+  // Families: invites, roster, and shared calendar entries. Talks to its own
+  // (deliberately non-encrypted) server endpoints rather than the zero-
+  // knowledge sync collections above — see lib/family/family_repository.dart.
+  late final FamilyRepository _familyRepository = FamilyRepository(_sync);
+
   // Optional peer-to-peer (Wi-Fi/LAN) sync between same-account devices.
   late final PeerSyncController _peerSync = PeerSyncController(sync: _sync);
 
@@ -222,6 +229,7 @@ class _LumaAppState extends State<LumaApp> {
     _storageGuard.refresh();
     _sync.init();
     _peerSync.init();
+    _familyRepository.init();
     _autoClickerRepository.init();
     _usageRepository.init();
   }
@@ -231,6 +239,7 @@ class _LumaAppState extends State<LumaApp> {
     widget.settings.removeListener(_onSettingsChanged);
     _peerSync.dispose();
     _cloudFiles.dispose();
+    _familyRepository.dispose();
     _sync.dispose();
     _db.close();
     _passwordDb.close();
@@ -279,6 +288,8 @@ class _LumaAppState extends State<LumaApp> {
       controller: _peerSync,
       child: CloudFilesScope(
       controller: _cloudFiles,
+      child: FamilyScope(
+      repository: _familyRepository,
       child: SettingsScope(
       controller: widget.settings,
       child: FinanceScope(
@@ -346,6 +357,7 @@ class _LumaAppState extends State<LumaApp> {
             ),
           ),
         ),
+      ),
       ),
       ),
       ),

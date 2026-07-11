@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 
 import 'package:luma_sync_server/api.dart';
+import 'package:luma_sync_server/family_store.dart';
 import 'package:luma_sync_server/mail.dart';
 import 'package:luma_sync_server/store.dart';
 
@@ -23,7 +24,8 @@ Future<void> main() async {
   }
 
   final store = await Store.open(config.dataDir);
-  final api = Api(store, config, Mailer(mailConfig));
+  final familyStore = await FamilyStore.open(config.dataDir);
+  final api = Api(store, config, Mailer(mailConfig), familyStore);
 
   final server = await shelf_io.serve(
     api.handler,
