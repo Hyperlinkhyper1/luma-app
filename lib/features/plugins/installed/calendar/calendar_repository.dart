@@ -55,6 +55,30 @@ class EventRecord {
   Duration get duration => end.difference(start);
 }
 
+/// The dinner planned for one day: a title, its ingredients and (optional)
+/// instructions.
+class DinnerPlanRecord {
+  const DinnerPlanRecord({
+    required this.id,
+    required this.date,
+    required this.title,
+    required this.ingredients,
+    required this.instructions,
+    required this.servings,
+    required this.minutes,
+    required this.createdAt,
+  });
+
+  final int id;
+  final DateTime date;
+  final String title;
+  final List<String> ingredients;
+  final String? instructions;
+  final int? servings;
+  final int? minutes;
+  final DateTime createdAt;
+}
+
 /// CRUD over calendar events, backed by [CalendarDatabase].
 class CalendarRepository {
   CalendarRepository(this._db);
@@ -147,6 +171,78 @@ class CalendarRepository {
         recurrence: RecurrenceLabel.parse(row.recurrence),
         recurrenceEnd: row.recurrenceEnd,
         reminderMinutes: row.reminderMinutes,
+        createdAt: row.createdAt,
+      );
+
+  // ── Dinner plans ─────────────────────────────────────────────────────
+
+  /// Streams every planned dinner, one row per day.
+  Stream<List<DinnerPlanRecord>> watchDinners() {
+    final query = _db.select(_db.dinnerPlans)
+      ..orderBy([(t) => OrderingTerm.asc(t.date)]);
+    return query.watch().map(
+          (rows) => rows.map(_toDinnerRecord).toList(growable: false),
+        );
+  }
+
+  /// Sets (or replaces) the dinner planned for [day]. There is at most one
+  /// dinner per day, so this overwrites any existing plan for that date.
+  Future<void> setDinner({
+    required DateTime day,
+    required String title,
+    List<String> ingredients = const [],
+    String? instructions,
+    int? servings,
+    int? minutes,
+  }) async {
+    StorageGuard.instance.ensureWithinLimit();
+    final date = DateTime(day.year, day.month, day.day);
+    final ingredientsText = ingredients.join('\n');
+    final existing = await (_db.select(_db.dinnerPlans)
+          ..where((t) => t.date.equals(date)))
+        .getSingleOrNull();
+    if (existing != null) {
+      await (_db.update(_db.dinnerPlans)..where((t) => t.id.equals(existing.id)))
+          .write(
+        DinnerPlansCompanion(
+          title: Value(title),
+          ingredients: Value(ingredientsText),
+          instructions: Value(instructions),
+          servings: Value(servings),
+          minutes: Value(minutes),
+        ),
+      );
+    } else {
+      await _db.into(_db.dinnerPlans).insert(
+            DinnerPlansCompanion.insert(
+              date: date,
+              title: title,
+              ingredients: Value(ingredientsText),
+              instructions: Value(instructions),
+              servings: Value(servings),
+              minutes: Value(minutes),
+            ),
+          );
+    }
+    StorageGuard.instance.scheduleRefresh();
+  }
+
+  Future<void> deleteDinner(int id) {
+    return (_db.delete(_db.dinnerPlans)..where((t) => t.id.equals(id))).go();
+  }
+
+  DinnerPlanRecord _toDinnerRecord(DinnerPlan row) => DinnerPlanRecord(
+        id: row.id,
+        date: row.date,
+        title: row.title,
+        ingredients: row.ingredients
+            .split('\n')
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty)
+            .toList(growable: false),
+        instructions: row.instructions,
+        servings: row.servings,
+        minutes: row.minutes,
         createdAt: row.createdAt,
       );
 }

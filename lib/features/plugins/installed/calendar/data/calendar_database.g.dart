@@ -720,15 +720,534 @@ class CalendarEventsCompanion extends UpdateCompanion<CalendarEvent> {
   }
 }
 
+class $DinnerPlansTable extends DinnerPlans
+    with TableInfo<$DinnerPlansTable, DinnerPlan> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DinnerPlansTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
+    'date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 200,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _ingredientsMeta = const VerificationMeta(
+    'ingredients',
+  );
+  @override
+  late final GeneratedColumn<String> ingredients = GeneratedColumn<String>(
+    'ingredients',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _instructionsMeta = const VerificationMeta(
+    'instructions',
+  );
+  @override
+  late final GeneratedColumn<String> instructions = GeneratedColumn<String>(
+    'instructions',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _servingsMeta = const VerificationMeta(
+    'servings',
+  );
+  @override
+  late final GeneratedColumn<int> servings = GeneratedColumn<int>(
+    'servings',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _minutesMeta = const VerificationMeta(
+    'minutes',
+  );
+  @override
+  late final GeneratedColumn<int> minutes = GeneratedColumn<int>(
+    'minutes',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    date,
+    title,
+    ingredients,
+    instructions,
+    servings,
+    minutes,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'dinner_plans';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DinnerPlan> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+        _dateMeta,
+        date.isAcceptableOrUnknown(data['date']!, _dateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('ingredients')) {
+      context.handle(
+        _ingredientsMeta,
+        ingredients.isAcceptableOrUnknown(
+          data['ingredients']!,
+          _ingredientsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('instructions')) {
+      context.handle(
+        _instructionsMeta,
+        instructions.isAcceptableOrUnknown(
+          data['instructions']!,
+          _instructionsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('servings')) {
+      context.handle(
+        _servingsMeta,
+        servings.isAcceptableOrUnknown(data['servings']!, _servingsMeta),
+      );
+    }
+    if (data.containsKey('minutes')) {
+      context.handle(
+        _minutesMeta,
+        minutes.isAcceptableOrUnknown(data['minutes']!, _minutesMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DinnerPlan map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DinnerPlan(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      date: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}date'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      ingredients: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}ingredients'],
+      )!,
+      instructions: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}instructions'],
+      ),
+      servings: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}servings'],
+      ),
+      minutes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}minutes'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DinnerPlansTable createAlias(String alias) {
+    return $DinnerPlansTable(attachedDatabase, alias);
+  }
+}
+
+class DinnerPlan extends DataClass implements Insertable<DinnerPlan> {
+  final int id;
+  final DateTime date;
+  final String title;
+
+  /// One ingredient per line.
+  final String ingredients;
+  final String? instructions;
+  final int? servings;
+
+  /// Total prep + cook time, in minutes.
+  final int? minutes;
+  final DateTime createdAt;
+  const DinnerPlan({
+    required this.id,
+    required this.date,
+    required this.title,
+    required this.ingredients,
+    this.instructions,
+    this.servings,
+    this.minutes,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['date'] = Variable<DateTime>(date);
+    map['title'] = Variable<String>(title);
+    map['ingredients'] = Variable<String>(ingredients);
+    if (!nullToAbsent || instructions != null) {
+      map['instructions'] = Variable<String>(instructions);
+    }
+    if (!nullToAbsent || servings != null) {
+      map['servings'] = Variable<int>(servings);
+    }
+    if (!nullToAbsent || minutes != null) {
+      map['minutes'] = Variable<int>(minutes);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  DinnerPlansCompanion toCompanion(bool nullToAbsent) {
+    return DinnerPlansCompanion(
+      id: Value(id),
+      date: Value(date),
+      title: Value(title),
+      ingredients: Value(ingredients),
+      instructions: instructions == null && nullToAbsent
+          ? const Value.absent()
+          : Value(instructions),
+      servings: servings == null && nullToAbsent
+          ? const Value.absent()
+          : Value(servings),
+      minutes: minutes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(minutes),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory DinnerPlan.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DinnerPlan(
+      id: serializer.fromJson<int>(json['id']),
+      date: serializer.fromJson<DateTime>(json['date']),
+      title: serializer.fromJson<String>(json['title']),
+      ingredients: serializer.fromJson<String>(json['ingredients']),
+      instructions: serializer.fromJson<String?>(json['instructions']),
+      servings: serializer.fromJson<int?>(json['servings']),
+      minutes: serializer.fromJson<int?>(json['minutes']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'date': serializer.toJson<DateTime>(date),
+      'title': serializer.toJson<String>(title),
+      'ingredients': serializer.toJson<String>(ingredients),
+      'instructions': serializer.toJson<String?>(instructions),
+      'servings': serializer.toJson<int?>(servings),
+      'minutes': serializer.toJson<int?>(minutes),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  DinnerPlan copyWith({
+    int? id,
+    DateTime? date,
+    String? title,
+    String? ingredients,
+    Value<String?> instructions = const Value.absent(),
+    Value<int?> servings = const Value.absent(),
+    Value<int?> minutes = const Value.absent(),
+    DateTime? createdAt,
+  }) => DinnerPlan(
+    id: id ?? this.id,
+    date: date ?? this.date,
+    title: title ?? this.title,
+    ingredients: ingredients ?? this.ingredients,
+    instructions: instructions.present ? instructions.value : this.instructions,
+    servings: servings.present ? servings.value : this.servings,
+    minutes: minutes.present ? minutes.value : this.minutes,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  DinnerPlan copyWithCompanion(DinnerPlansCompanion data) {
+    return DinnerPlan(
+      id: data.id.present ? data.id.value : this.id,
+      date: data.date.present ? data.date.value : this.date,
+      title: data.title.present ? data.title.value : this.title,
+      ingredients: data.ingredients.present
+          ? data.ingredients.value
+          : this.ingredients,
+      instructions: data.instructions.present
+          ? data.instructions.value
+          : this.instructions,
+      servings: data.servings.present ? data.servings.value : this.servings,
+      minutes: data.minutes.present ? data.minutes.value : this.minutes,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DinnerPlan(')
+          ..write('id: $id, ')
+          ..write('date: $date, ')
+          ..write('title: $title, ')
+          ..write('ingredients: $ingredients, ')
+          ..write('instructions: $instructions, ')
+          ..write('servings: $servings, ')
+          ..write('minutes: $minutes, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    date,
+    title,
+    ingredients,
+    instructions,
+    servings,
+    minutes,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DinnerPlan &&
+          other.id == this.id &&
+          other.date == this.date &&
+          other.title == this.title &&
+          other.ingredients == this.ingredients &&
+          other.instructions == this.instructions &&
+          other.servings == this.servings &&
+          other.minutes == this.minutes &&
+          other.createdAt == this.createdAt);
+}
+
+class DinnerPlansCompanion extends UpdateCompanion<DinnerPlan> {
+  final Value<int> id;
+  final Value<DateTime> date;
+  final Value<String> title;
+  final Value<String> ingredients;
+  final Value<String?> instructions;
+  final Value<int?> servings;
+  final Value<int?> minutes;
+  final Value<DateTime> createdAt;
+  const DinnerPlansCompanion({
+    this.id = const Value.absent(),
+    this.date = const Value.absent(),
+    this.title = const Value.absent(),
+    this.ingredients = const Value.absent(),
+    this.instructions = const Value.absent(),
+    this.servings = const Value.absent(),
+    this.minutes = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  DinnerPlansCompanion.insert({
+    this.id = const Value.absent(),
+    required DateTime date,
+    required String title,
+    this.ingredients = const Value.absent(),
+    this.instructions = const Value.absent(),
+    this.servings = const Value.absent(),
+    this.minutes = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  }) : date = Value(date),
+       title = Value(title);
+  static Insertable<DinnerPlan> custom({
+    Expression<int>? id,
+    Expression<DateTime>? date,
+    Expression<String>? title,
+    Expression<String>? ingredients,
+    Expression<String>? instructions,
+    Expression<int>? servings,
+    Expression<int>? minutes,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (date != null) 'date': date,
+      if (title != null) 'title': title,
+      if (ingredients != null) 'ingredients': ingredients,
+      if (instructions != null) 'instructions': instructions,
+      if (servings != null) 'servings': servings,
+      if (minutes != null) 'minutes': minutes,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  DinnerPlansCompanion copyWith({
+    Value<int>? id,
+    Value<DateTime>? date,
+    Value<String>? title,
+    Value<String>? ingredients,
+    Value<String?>? instructions,
+    Value<int?>? servings,
+    Value<int?>? minutes,
+    Value<DateTime>? createdAt,
+  }) {
+    return DinnerPlansCompanion(
+      id: id ?? this.id,
+      date: date ?? this.date,
+      title: title ?? this.title,
+      ingredients: ingredients ?? this.ingredients,
+      instructions: instructions ?? this.instructions,
+      servings: servings ?? this.servings,
+      minutes: minutes ?? this.minutes,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<DateTime>(date.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (ingredients.present) {
+      map['ingredients'] = Variable<String>(ingredients.value);
+    }
+    if (instructions.present) {
+      map['instructions'] = Variable<String>(instructions.value);
+    }
+    if (servings.present) {
+      map['servings'] = Variable<int>(servings.value);
+    }
+    if (minutes.present) {
+      map['minutes'] = Variable<int>(minutes.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DinnerPlansCompanion(')
+          ..write('id: $id, ')
+          ..write('date: $date, ')
+          ..write('title: $title, ')
+          ..write('ingredients: $ingredients, ')
+          ..write('instructions: $instructions, ')
+          ..write('servings: $servings, ')
+          ..write('minutes: $minutes, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$CalendarDatabase extends GeneratedDatabase {
   _$CalendarDatabase(QueryExecutor e) : super(e);
   $CalendarDatabaseManager get managers => $CalendarDatabaseManager(this);
   late final $CalendarEventsTable calendarEvents = $CalendarEventsTable(this);
+  late final $DinnerPlansTable dinnerPlans = $DinnerPlansTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities => [calendarEvents];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [
+    calendarEvents,
+    dinnerPlans,
+  ];
 }
 
 typedef $$CalendarEventsTableCreateCompanionBuilder =
@@ -1072,10 +1591,267 @@ typedef $$CalendarEventsTableProcessedTableManager =
       CalendarEvent,
       PrefetchHooks Function()
     >;
+typedef $$DinnerPlansTableCreateCompanionBuilder =
+    DinnerPlansCompanion Function({
+      Value<int> id,
+      required DateTime date,
+      required String title,
+      Value<String> ingredients,
+      Value<String?> instructions,
+      Value<int?> servings,
+      Value<int?> minutes,
+      Value<DateTime> createdAt,
+    });
+typedef $$DinnerPlansTableUpdateCompanionBuilder =
+    DinnerPlansCompanion Function({
+      Value<int> id,
+      Value<DateTime> date,
+      Value<String> title,
+      Value<String> ingredients,
+      Value<String?> instructions,
+      Value<int?> servings,
+      Value<int?> minutes,
+      Value<DateTime> createdAt,
+    });
+
+class $$DinnerPlansTableFilterComposer
+    extends Composer<_$CalendarDatabase, $DinnerPlansTable> {
+  $$DinnerPlansTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ingredients => $composableBuilder(
+    column: $table.ingredients,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get instructions => $composableBuilder(
+    column: $table.instructions,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get servings => $composableBuilder(
+    column: $table.servings,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get minutes => $composableBuilder(
+    column: $table.minutes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DinnerPlansTableOrderingComposer
+    extends Composer<_$CalendarDatabase, $DinnerPlansTable> {
+  $$DinnerPlansTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ingredients => $composableBuilder(
+    column: $table.ingredients,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get instructions => $composableBuilder(
+    column: $table.instructions,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get servings => $composableBuilder(
+    column: $table.servings,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get minutes => $composableBuilder(
+    column: $table.minutes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DinnerPlansTableAnnotationComposer
+    extends Composer<_$CalendarDatabase, $DinnerPlansTable> {
+  $$DinnerPlansTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get ingredients => $composableBuilder(
+    column: $table.ingredients,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get instructions => $composableBuilder(
+    column: $table.instructions,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get servings =>
+      $composableBuilder(column: $table.servings, builder: (column) => column);
+
+  GeneratedColumn<int> get minutes =>
+      $composableBuilder(column: $table.minutes, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$DinnerPlansTableTableManager
+    extends
+        RootTableManager<
+          _$CalendarDatabase,
+          $DinnerPlansTable,
+          DinnerPlan,
+          $$DinnerPlansTableFilterComposer,
+          $$DinnerPlansTableOrderingComposer,
+          $$DinnerPlansTableAnnotationComposer,
+          $$DinnerPlansTableCreateCompanionBuilder,
+          $$DinnerPlansTableUpdateCompanionBuilder,
+          (
+            DinnerPlan,
+            BaseReferences<_$CalendarDatabase, $DinnerPlansTable, DinnerPlan>,
+          ),
+          DinnerPlan,
+          PrefetchHooks Function()
+        > {
+  $$DinnerPlansTableTableManager(_$CalendarDatabase db, $DinnerPlansTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DinnerPlansTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DinnerPlansTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DinnerPlansTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<DateTime> date = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> ingredients = const Value.absent(),
+                Value<String?> instructions = const Value.absent(),
+                Value<int?> servings = const Value.absent(),
+                Value<int?> minutes = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => DinnerPlansCompanion(
+                id: id,
+                date: date,
+                title: title,
+                ingredients: ingredients,
+                instructions: instructions,
+                servings: servings,
+                minutes: minutes,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required DateTime date,
+                required String title,
+                Value<String> ingredients = const Value.absent(),
+                Value<String?> instructions = const Value.absent(),
+                Value<int?> servings = const Value.absent(),
+                Value<int?> minutes = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => DinnerPlansCompanion.insert(
+                id: id,
+                date: date,
+                title: title,
+                ingredients: ingredients,
+                instructions: instructions,
+                servings: servings,
+                minutes: minutes,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DinnerPlansTableProcessedTableManager =
+    ProcessedTableManager<
+      _$CalendarDatabase,
+      $DinnerPlansTable,
+      DinnerPlan,
+      $$DinnerPlansTableFilterComposer,
+      $$DinnerPlansTableOrderingComposer,
+      $$DinnerPlansTableAnnotationComposer,
+      $$DinnerPlansTableCreateCompanionBuilder,
+      $$DinnerPlansTableUpdateCompanionBuilder,
+      (
+        DinnerPlan,
+        BaseReferences<_$CalendarDatabase, $DinnerPlansTable, DinnerPlan>,
+      ),
+      DinnerPlan,
+      PrefetchHooks Function()
+    >;
 
 class $CalendarDatabaseManager {
   final _$CalendarDatabase _db;
   $CalendarDatabaseManager(this._db);
   $$CalendarEventsTableTableManager get calendarEvents =>
       $$CalendarEventsTableTableManager(_db, _db.calendarEvents);
+  $$DinnerPlansTableTableManager get dinnerPlans =>
+      $$DinnerPlansTableTableManager(_db, _db.dinnerPlans);
 }

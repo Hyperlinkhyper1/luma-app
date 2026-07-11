@@ -70,6 +70,14 @@ int _overlapSeconds(UsageSession session, DateTime start, DateTime end) {
   return seconds > 0 ? seconds : 0;
 }
 
+/// Process names (as stored, lowercase) whose display name is fixed
+/// regardless of what was recorded when the session started — lets a rename
+/// (e.g. javaw.exe → "Minecraft") apply to sessions tracked before the
+/// rename too, not just new ones.
+const Map<String, String> _appNameOverrides = {
+  'javaw.exe': 'Minecraft',
+};
+
 /// Totals tracked time per app across [sessions], clipped to `[start, end)`,
 /// sorted by descending time.
 List<AppUsageTotal> aggregateByApp(
@@ -94,7 +102,9 @@ List<AppUsageTotal> aggregateByApp(
     for (final entry in secondsByProcess.entries)
       AppUsageTotal(
         processName: entry.key,
-        appName: nameByProcess[entry.key] ?? entry.key,
+        appName: _appNameOverrides[entry.key] ??
+            nameByProcess[entry.key] ??
+            entry.key,
         seconds: entry.value,
       ),
   ];

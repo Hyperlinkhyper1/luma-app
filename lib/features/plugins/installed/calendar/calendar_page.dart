@@ -5,6 +5,7 @@ import '../../../../app/widgets.dart';
 import '../../../../theme/luma_theme.dart';
 import 'calendar_repository.dart';
 import 'calendar_scope.dart';
+import 'dinner_editor.dart';
 import 'event_editor.dart';
 import 'recurrence.dart';
 
@@ -61,30 +62,35 @@ class _CalendarPageState extends State<CalendarPage> {
     return StreamData<List<EventRecord>>(
       stream: repo.watchAll(),
       builder: (context, events) {
-        return Column(
-          children: [
-            _Toolbar(
-              monthLabel: DateFormat('MMMM yyyy').format(_monthCursor),
-              view: _view,
-              search: _search,
-              searching: _query.isNotEmpty,
-              onSearch: (v) => setState(() => _query = v.trim()),
-              onView: (v) => setState(() => _view = v),
-              onPrev: () => _shiftMonth(-1),
-              onNext: () => _shiftMonth(1),
-              onToday: _goToday,
-              onNew: () => showEventEditor(context, repo,
-                  initialDate: _selectedDay),
-            ),
-            Expanded(child: _body(context, repo, events)),
-          ],
+        return StreamData<List<DinnerPlanRecord>>(
+          stream: repo.watchDinners(),
+          builder: (context, dinners) {
+            return Column(
+              children: [
+                _Toolbar(
+                  monthLabel: DateFormat('MMMM yyyy').format(_monthCursor),
+                  view: _view,
+                  search: _search,
+                  searching: _query.isNotEmpty,
+                  onSearch: (v) => setState(() => _query = v.trim()),
+                  onView: (v) => setState(() => _view = v),
+                  onPrev: () => _shiftMonth(-1),
+                  onNext: () => _shiftMonth(1),
+                  onToday: _goToday,
+                  onNew: () => showEventEditor(context, repo,
+                      initialDate: _selectedDay),
+                ),
+                Expanded(child: _body(context, repo, events, dinners)),
+              ],
+            );
+          },
         );
       },
     );
   }
 
-  Widget _body(
-      BuildContext context, CalendarRepository repo, List<EventRecord> events) {
+  Widget _body(BuildContext context, CalendarRepository repo,
+      List<EventRecord> events, List<DinnerPlanRecord> dinners) {
     if (_query.isNotEmpty) {
       return _SearchResults(
         repo: repo,
@@ -99,6 +105,7 @@ class _CalendarPageState extends State<CalendarPage> {
       monthCursor: _monthCursor,
       selectedDay: _selectedDay,
       events: events,
+      dinners: dinners,
       repo: repo,
       onSelectDay: _selectDay,
     );
@@ -292,6 +299,7 @@ class _MonthView extends StatelessWidget {
     required this.monthCursor,
     required this.selectedDay,
     required this.events,
+    required this.dinners,
     required this.repo,
     required this.onSelectDay,
   });
@@ -299,6 +307,7 @@ class _MonthView extends StatelessWidget {
   final DateTime monthCursor;
   final DateTime selectedDay;
   final List<EventRecord> events;
+  final List<DinnerPlanRecord> dinners;
   final CalendarRepository repo;
   final ValueChanged<DateTime> onSelectDay;
 
@@ -320,6 +329,8 @@ class _MonthView extends StatelessWidget {
       onSelectDay: onSelectDay,
     );
 
+    final dinner = _dinnerFor(dinners, selectedDay);
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 820;
@@ -337,6 +348,7 @@ class _MonthView extends StatelessWidget {
                 child: _DayPanel(
                   day: selectedDay,
                   events: events,
+                  dinner: dinner,
                   repo: repo,
                 ),
               ),
@@ -357,6 +369,7 @@ class _MonthView extends StatelessWidget {
               child: _DayPanel(
                 day: selectedDay,
                 events: events,
+                dinner: dinner,
                 repo: repo,
               ),
             ),
@@ -365,6 +378,13 @@ class _MonthView extends StatelessWidget {
       },
     );
   }
+}
+
+DinnerPlanRecord? _dinnerFor(List<DinnerPlanRecord> dinners, DateTime day) {
+  for (final d in dinners) {
+    if (_sameDay(d.date, day)) return d;
+  }
+  return null;
 }
 
 class _MonthGrid extends StatelessWidget {
@@ -732,10 +752,15 @@ class _AddDot extends StatelessWidget {
 // ── Day panel (side / stacked) ─────────────────────────────────────────────
 
 class _DayPanel extends StatelessWidget {
-  const _DayPanel(
-      {required this.day, required this.events, required this.repo});
+  const _DayPanel({
+    required this.day,
+    required this.events,
+    required this.dinner,
+    required this.repo,
+  });
   final DateTime day;
   final List<EventRecord> events;
+  final DinnerPlanRecord? dinner;
   final CalendarRepository repo;
 
   @override
@@ -795,6 +820,10 @@ class _DayPanel extends StatelessWidget {
             ],
           ),
         ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+          child: _DinnerSection(day: day, dinner: dinner, repo: repo),
+        ),
         Container(height: 1, color: luma.border),
         Expanded(
           child: dayEvents.isEmpty
@@ -820,6 +849,102 @@ class _DayPanel extends StatelessWidget {
                 ),
         ),
       ],
+    );
+  }
+}
+
+/// The "what's for dinner" card shown at the top of the day panel: an empty
+/// prompt to set one, or the planned dish that opens the recipe on tap.
+class _DinnerSection extends StatelessWidget {
+  const _DinnerSection(
+      {required this.day, required this.dinner, required this.repo});
+  final DateTime day;
+  final DinnerPlanRecord? dinner;
+  final CalendarRepository repo;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    if (dinner == null) {
+      return MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: () => showDinnerEditor(context, repo, day: day),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: luma.border),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.dinner_dining_outlined,
+                    size: 17, color: luma.textMuted),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Text(
+                    'Set dinner for this day',
+                    style: TextStyle(
+                        color: luma.textSecondary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600),
+                  ),
+                ),
+                Icon(Icons.add_rounded, size: 17, color: luma.textMuted),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    final d = dinner!;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => showDinnerDetail(context, repo, d),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: luma.accentSubtle,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: luma.accent.withValues(alpha: 0.35)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.dinner_dining_rounded, size: 18, color: luma.accent),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Dinner',
+                      style: TextStyle(
+                        color: luma.accent,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                    Text(
+                      d.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: luma.textPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, size: 18, color: luma.accent),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

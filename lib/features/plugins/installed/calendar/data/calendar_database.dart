@@ -36,7 +36,25 @@ class CalendarEvents extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
-@DriftDatabase(tables: [CalendarEvents])
+/// The dinner planned for a given day. At most one row per [date]; setting a
+/// new dinner for a day that already has one overwrites it (see
+/// `CalendarRepository.setDinner`).
+class DinnerPlans extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  DateTimeColumn get date => dateTime()();
+  TextColumn get title => text().withLength(min: 1, max: 200)();
+
+  /// One ingredient per line.
+  TextColumn get ingredients => text().withDefault(const Constant(''))();
+  TextColumn get instructions => text().nullable()();
+  IntColumn get servings => integer().nullable()();
+
+  /// Total prep + cook time, in minutes.
+  IntColumn get minutes => integer().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+@DriftDatabase(tables: [CalendarEvents, DinnerPlans])
 class CalendarDatabase extends _$CalendarDatabase {
   CalendarDatabase([QueryExecutor? executor])
       : super(executor ??
@@ -48,5 +66,15 @@ class CalendarDatabase extends _$CalendarDatabase {
             ));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.createTable(dinnerPlans);
+          }
+        },
+      );
 }

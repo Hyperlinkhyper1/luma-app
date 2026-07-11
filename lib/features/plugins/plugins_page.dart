@@ -567,7 +567,7 @@ class _PluginTileState extends State<_PluginTile> {
           ),
           child: LayoutBuilder(
             builder: (context, constraints) {
-              // A fixed 64px icon + a fixed 140px button leaves almost no
+              // A fixed 64px icon + a fixed 152px button leaves almost no
               // room for the name/description on a phone-width card, so
               // below this width the action row drops beneath the text
               // instead of squeezing it.
@@ -639,7 +639,7 @@ class _PluginTileState extends State<_PluginTile> {
                   if (!narrow) ...[
                     const SizedBox(width: 20),
                     SizedBox(
-                      width: 140,
+                      width: 152,
                       child: actionButton == null
                           ? openButton
                           : (installed && !_actionBusy

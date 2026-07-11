@@ -88,6 +88,13 @@ class UsageTracker {
     }
   }
 
+  /// Executable stems that get a fixed display name instead of the generic
+  /// capitalised-filename fallback — mainly for generic launchers whose exe
+  /// name doesn't say what's actually running (javaw.exe is Minecraft here).
+  static const Map<String, String> _nameOverrides = {
+    'javaw': 'Minecraft',
+  };
+
   /// Best-effort human-readable name for an executable. Falls back to the
   /// raw filename when the file can't be opened (most common case — we run
   /// in user space and don't need the version-info round-trip for the common
@@ -97,6 +104,8 @@ class UsageTracker {
     if (base.endsWith('.exe')) {
       final stem = base.substring(0, base.length - 4);
       if (stem.isEmpty) return fileName;
+      final override = _nameOverrides[stem];
+      if (override != null) return override;
       return stem[0].toUpperCase() + stem.substring(1);
     }
     return fileName;
