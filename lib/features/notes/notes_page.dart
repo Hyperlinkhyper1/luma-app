@@ -11,6 +11,8 @@ class NotesPage extends StatefulWidget {
   State<NotesPage> createState() => _NotesPageState();
 }
 
+final _checklistRegex = RegExp(r'^\[( |x|X)\] (.*)$');
+
 class _NotesPageState extends State<NotesPage> {
   late final NotesRepository _repo = NotesRepository();
   String? _selectedId;
@@ -90,6 +92,33 @@ class _NotesPageState extends State<NotesPage> {
     await _repo.delete(id);
   }
 
+  Future<void> _toggleChecklistLine(Note note, int lineIndex) async {
+    final lines = note.content.split('\n');
+    if (lineIndex < 0 || lineIndex >= lines.length) return;
+    final match = _checklistRegex.firstMatch(lines[lineIndex]);
+    if (match == null) return;
+    final checked = match.group(1)!.toLowerCase() == 'x';
+    final text = match.group(2)!;
+    lines[lineIndex] = '[${checked ? ' ' : 'x'}] $text';
+    await _repo.update(note.id, content: lines.join('\n'));
+  }
+
+  void _insertChecklistItem() {
+    final text = _contentController.text;
+    final selection = _contentController.selection;
+    final insertAt = selection.isValid ? selection.start : text.length;
+    final needsNewline = insertAt > 0 && text[insertAt - 1] != '\n';
+    final insertion = '${needsNewline ? '\n' : ''}[ ] ';
+    final newText =
+        text.replaceRange(insertAt, insertAt, insertion);
+    _contentController.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(
+        offset: insertAt + insertion.length,
+      ),
+    );
+  }
+
   final _titleFocus = FocusNode();
 
   @override
@@ -127,6 +156,9 @@ class _NotesPageState extends State<NotesPage> {
                     _titleController.text = selectedNote.title;
                     _contentController.text = selectedNote.content;
                   },
+                  onInsertChecklistItem: _insertChecklistItem,
+                  onToggleChecklistLine: (i) =>
+                      _toggleChecklistLine(selectedNote, i),
                 ),
         ),
       ],
@@ -308,6 +340,8 @@ class _NoteEditor extends StatelessWidget {
     required this.onEdit,
     required this.onSave,
     required this.onCancel,
+    required this.onInsertChecklistItem,
+    required this.onToggleChecklistLine,
   });
 
   final Note note;
@@ -318,6 +352,8 @@ class _NoteEditor extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onSave;
   final VoidCallback onCancel;
+  final VoidCallback onInsertChecklistItem;
+  final ValueChanged<int> onToggleChecklistLine;
 
   @override
   Widget build(BuildContext context) {
@@ -357,6 +393,12 @@ class _NoteEditor extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               if (editing) ...[
+                _IconBtn(
+                  icon: Icons.checklist_rounded,
+                  tooltip: 'Add checklist item',
+                  onTap: onInsertChecklistItem,
+                ),
+                const SizedBox(width: 4),
                 _TextBtn(label: 'Cancel', onTap: onCancel),
                 const SizedBox(width: 8),
                 _TextBtn(label: 'Save', accent: true, onTap: onSave),
@@ -389,18 +431,19 @@ class _NoteEditor extends StatelessWidget {
                     textAlignVertical: TextAlignVertical.top,
                   )
                 : SingleChildScrollView(
-                    child: Text(
-                      note.content.isEmpty
-                          ? 'Tap Edit to add content.'
-                          : note.content,
-                      style: TextStyle(
-                        color: note.content.isEmpty
-                            ? luma.textMuted
-                            : luma.textPrimary,
-                        fontSize: 14.5,
-                        height: 1.6,
-                      ),
-                    ),
+                    child: note.content.isEmpty
+                        ? Text(
+                            'Tap Edit to add content.',
+                            style: TextStyle(
+                              color: luma.textMuted,
+                              fontSize: 14.5,
+                              height: 1.6,
+                            ),
+                          )
+                        : _ChecklistAwareContent(
+                            content: note.content,
+                            onToggleLine: onToggleChecklistLine,
+                          ),
                   ),
           ),
         ],
@@ -416,6 +459,88 @@ class _NoteEditor extends StatelessWidget {
     if (diff.inHours < 24) return '${diff.inHours}h ago';
     if (diff.inDays < 7) return '${diff.inDays}d ago';
     return '${dt.day}/${dt.month}/${dt.year}';
+  }
+}
+
+class _ChecklistAwareContent extends StatelessWidget {
+  const _ChecklistAwareContent({
+    required this.content,
+    required this.onToggleLine,
+  });
+
+  final String content;
+  final ValueChanged<int> onToggleLine;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final lines = content.split('\n');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < lines.length; i++)
+          Builder(builder: (context) {
+            final match = _checklistRegex.firstMatch(lines[i]);
+            if (match == null) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 1),
+                child: Text(
+                  lines[i],
+                  style: TextStyle(
+                    color: luma.textPrimary,
+                    fontSize: 14.5,
+                    height: 1.6,
+                  ),
+                ),
+              );
+            }
+            final checked = match.group(1)!.toLowerCase() == 'x';
+            final text = match.group(2)!;
+            return GestureDetector(
+              onTap: () => onToggleLine(i),
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: Checkbox(
+                        value: checked,
+                        onChanged: (_) => onToggleLine(i),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                        activeColor: luma.accent,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          text,
+                          style: TextStyle(
+                            color: checked
+                                ? luma.textMuted
+                                : luma.textPrimary,
+                            fontSize: 14.5,
+                            height: 1.6,
+                            decoration: checked
+                                ? TextDecoration.lineThrough
+                                : null,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+      ],
+    );
   }
 }
 
