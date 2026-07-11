@@ -1,0 +1,10 @@
+{
+  "id": "file-viewer",
+  "name": "File Viewer",
+  "version": "1.0.0",
+  "description": "Open documents right inside luma: read PDFs page by page, view Word documents and Excel workbooks, zoom into images and SVGs, and browse any text or code file — no external apps needed.",
+  "icon": "description",
+  "category": "Utility",
+  "details": "File Viewer turns luma into a quick reading pane for almost anything on your disk. Pick a file and it renders right there — no waiting for a heavy external app to start.\n\nPDFs open page by page with selectable text and simple previous/next navigation. Word documents (.docx) are rendered with their headings, bold text, bullet lists and tables intact. Excel workbooks (.xlsx) show up as a scrollable grid with the header row highlighted.\n\nImages (PNG, JPG, GIF, WebP, BMP) and SVGs get a zoomable, pannable canvas with a transparency checkerboard. Plain text and code files — from .txt and .md to .dart, .py and .json — display in a clean monospace view.\n\nAnything the viewer can't render can still be launched in its default app with one click via Open externally.",
+  "screenshots": []
+}

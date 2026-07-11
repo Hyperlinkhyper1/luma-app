@@ -33,6 +33,8 @@ IconData pluginIconFor(String? name) {
       return Icons.insights_rounded;
     case 'school':
       return Icons.school_rounded;
+    case 'description':
+      return Icons.description_rounded;
     default:
       return Icons.extension_rounded;
   }

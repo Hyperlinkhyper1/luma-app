@@ -21,6 +21,16 @@
       "version": "1.0.0"
     },
     {
+      "id": "file-viewer",
+      "name": "File Viewer",
+      "description": "Open documents right inside luma: read PDFs page by page, view Word documents and Excel workbooks, zoom into images and SVGs, and browse any text or code file — no external apps needed.",
+      "icon": "description",
+      "category": "Utility",
+      "tags": ["Utility", "Documents"],
+      "free": true,
+      "version": "1.0.0"
+    },
+    {
       "id": "bulletin-board",
       "name": "Bulletin Board",
       "description": "A freeform corkboard where you can pin notes, quick ideas, images, and checklists.",
