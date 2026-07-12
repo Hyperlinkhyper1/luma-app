@@ -3,6 +3,7 @@ const cors = require('cors');
 
 const { Supermarket, Product } = require('../models');
 const config = require('../config/env');
+const { registerAdminRoutes } = require('./admin');
 
 const VALID_SORTS = new Set(['relevance', 'price_asc', 'price_desc', 'name_asc']);
 const MAX_LIMIT = 100;
@@ -93,6 +94,8 @@ function createApp() {
       next(error);
     }
   });
+
+  registerAdminRoutes(app);
 
   // eslint-disable-next-line no-unused-vars
   app.use((error, req, res, next) => {

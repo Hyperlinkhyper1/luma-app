@@ -11,6 +11,9 @@ function required(name, fallback) {
 
 const config = {
   env: process.env.NODE_ENV || 'development',
+  // Shared secret for the /admin endpoints. When unset, they are disabled
+  // entirely rather than left open (mirrors the sync server's LUMA_ADMIN_KEY).
+  adminKey: process.env.ADMIN_KEY || '',
   db: {
     host: required('DB_HOST', '127.0.0.1'),
     port: Number(process.env.DB_PORT || 3306),

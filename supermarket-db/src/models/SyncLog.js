@@ -38,6 +38,20 @@ class SyncLog {
     );
     return rows;
   }
+
+  // Recent runs across every supermarket, newest first, with the market's
+  // name/slug joined in. Backs the admin control panel's history table.
+  static async findRecent({ limit = 20 } = {}) {
+    const [rows] = await getPool().query(
+      `SELECT sl.*, sm.name AS supermarket_name, sm.slug AS supermarket_slug
+       FROM sync_logs sl
+       INNER JOIN supermarkets sm ON sm.id = sl.supermarket_id
+       ORDER BY sl.started_at DESC, sl.id DESC
+       LIMIT :limit`,
+      { limit }
+    );
+    return rows;
+  }
 }
 
 module.exports = SyncLog;

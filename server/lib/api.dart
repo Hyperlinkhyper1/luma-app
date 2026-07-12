@@ -28,6 +28,8 @@ class ServerConfig {
     required this.requireEmailVerification,
     required this.adminKey,
     required this.mistralApiKey,
+    required this.groceriesUrl,
+    required this.groceriesAdminKey,
   });
 
   final int port;
@@ -61,6 +63,16 @@ class ServerConfig {
   bool get mistralKeyConfigured =>
       mistralApiKey != null && mistralApiKey!.isNotEmpty;
 
+  /// Where the supermarket-db API lives (see supermarket-db/ at the repo
+  /// root) and its admin key, so the dashboard's Control panel tab can
+  /// trigger database syncs by proxy — the groceries key never reaches the
+  /// browser, only this server's own admin key does.
+  final String groceriesUrl;
+  final String? groceriesAdminKey;
+
+  bool get groceriesAdminEnabled =>
+      groceriesAdminKey != null && groceriesAdminKey!.isNotEmpty;
+
   /// Whether new accounts may be created. Open by default; set
   /// LUMA_ALLOW_REGISTRATION=false to close it (existing accounts keep working).
   bool get registrationEnabled => allowRegistration;
@@ -86,6 +98,9 @@ class ServerConfig {
               'false',
       adminKey: env['LUMA_ADMIN_KEY'],
       mistralApiKey: env['LUMA_MISTRAL_API_KEY'],
+      groceriesUrl:
+          env['LUMA_GROCERIES_URL'] ?? 'https://groceries.luma-app.cc',
+      groceriesAdminKey: env['LUMA_GROCERIES_ADMIN_KEY'],
     );
   }
 }
@@ -164,7 +179,9 @@ class Api {
       ..get('/admin/metrics/history', _requireAdmin(_adminMetricsHistory))
       ..get('/admin/activity', _requireAdmin(_adminActivity))
       ..post('/admin/verify', _requireAdmin(_adminVerifyUser))
-      ..post('/admin/plan', _requireAdmin(_adminSetPlan));
+      ..post('/admin/plan', _requireAdmin(_adminSetPlan))
+      ..post('/admin/groceries/sync', _requireAdmin(_adminGroceriesSync))
+      ..get('/admin/groceries/status', _requireAdmin(_adminGroceriesStatus));
 
     return const Pipeline()
         .addMiddleware(_recover)
@@ -1440,6 +1457,84 @@ class Api {
     });
   }
 
+  /// Proxies a "reload the groceries database" click to the supermarket-db
+  /// API's own admin endpoint. Keeping this server in the middle means the
+  /// groceries admin key stays in this process's environment — the dashboard
+  /// page only ever carries this server's admin key.
+  Future<Response> _adminGroceriesSync(Request request) async {
+    if (!config.groceriesAdminEnabled) {
+      return _error(404, 'not_configured',
+          'LUMA_GROCERIES_ADMIN_KEY is not set on this server.');
+    }
+    Map<String, String> form = const {};
+    try {
+      form = Uri.splitQueryString(await request.readAsString());
+    } catch (_) {}
+    final market = form['market'];
+
+    final httpClient = HttpClient();
+    try {
+      final upstream = await httpClient
+          .postUrl(Uri.parse('${config.groceriesUrl}/admin/sync'));
+      upstream.headers.set('x-admin-key', config.groceriesAdminKey!);
+      upstream.headers.contentType =
+          ContentType('application', 'x-www-form-urlencoded');
+      if (market != null && market.isNotEmpty) {
+        upstream.write('market=${Uri.encodeQueryComponent(market)}');
+      }
+      final response =
+          await upstream.close().timeout(const Duration(seconds: 30));
+      final body = await response.transform(utf8.decoder).join();
+      if (response.statusCode >= 400) {
+        return Response(response.statusCode,
+            body: body, headers: {'Content-Type': 'application/json'});
+      }
+      final key = request.url.queryParameters['key'];
+      if (key != null) {
+        return Response.found(
+            '/admin?key=${Uri.encodeQueryComponent(key)}#control');
+      }
+      return Response(200,
+          body: body, headers: {'Content-Type': 'application/json'});
+    } catch (_) {
+      return _error(
+          502, 'upstream_error', 'Could not reach the groceries server.');
+    } finally {
+      httpClient.close();
+    }
+  }
+
+  /// Fetches the groceries server's sync status (product counts + recent
+  /// sync runs) for the Control panel tab, again by proxy so the key stays
+  /// server-side. Reports `configured: false` instead of erroring when the
+  /// operator hasn't wired the groceries server up.
+  Future<Response> _adminGroceriesStatus(Request request) async {
+    if (!config.groceriesAdminEnabled) {
+      return _json(200, {'configured': false});
+    }
+    final httpClient = HttpClient();
+    try {
+      final upstream = await httpClient
+          .getUrl(Uri.parse('${config.groceriesUrl}/admin/sync/status'));
+      upstream.headers.set('x-admin-key', config.groceriesAdminKey!);
+      final response =
+          await upstream.close().timeout(const Duration(seconds: 15));
+      final body = await response.transform(utf8.decoder).join();
+      if (response.statusCode != 200) {
+        return _error(502, 'upstream_error',
+            'Groceries server returned ${response.statusCode}.');
+      }
+      return Response(200,
+          body: '{"configured":true,"status":$body}',
+          headers: {'Content-Type': 'application/json'});
+    } catch (_) {
+      return _error(
+          502, 'upstream_error', 'Could not reach the groceries server.');
+    } finally {
+      httpClient.close();
+    }
+  }
+
   Response _adminDashboard(Request request) {
     final stats = _adminStatsJson();
     final users = store.usersById.values.toList()
@@ -1602,6 +1697,7 @@ class Api {
         '<button class="tab-btn" data-tab="products">Products</button>'
         '<button class="tab-btn" data-tab="activity">Activity</button>'
         '<button class="tab-btn" data-tab="metrics">Metrics</button>'
+        '<button class="tab-btn" data-tab="control">Control panel</button>'
         '</div>'
         '<div class="tab-panel" id="panel-users">'
         '<table><thead><tr><th>Email</th><th>Status</th><th>Plan</th>'
@@ -1653,8 +1749,34 @@ class Api {
         '<div class="metric-value" id="diskValue">–</div></div>'
         '</div>'
         '</div>'
+        '<div class="tab-panel" id="panel-control">'
+        '<h2>Groceries database</h2>'
+        '<div class="product-form">'
+        '<form method="post" action="/admin/groceries/sync?key=${Uri.encodeQueryComponent(key)}" style="margin:0">'
+        '<button type="submit">Sync all markets</button></form>'
+        '<form method="post" action="/admin/groceries/sync?key=${Uri.encodeQueryComponent(key)}" style="margin:0">'
+        '<input type="hidden" name="market" value="jumbo">'
+        '<button type="submit" style="background:#1e1a2b;color:#a49fb8;border:1px solid #2c2640;font-weight:500">Sync Jumbo</button></form>'
+        '<form method="post" action="/admin/groceries/sync?key=${Uri.encodeQueryComponent(key)}" style="margin:0">'
+        '<input type="hidden" name="market" value="ah">'
+        '<button type="submit" style="background:#1e1a2b;color:#a49fb8;border:1px solid #2c2640;font-weight:500">Sync Albert Heijn</button></form>'
+        '<form method="post" action="/admin/groceries/sync?key=${Uri.encodeQueryComponent(key)}" style="margin:0">'
+        '<input type="hidden" name="market" value="lidl">'
+        '<button type="submit" style="background:#1e1a2b;color:#a49fb8;border:1px solid #2c2640;font-weight:500">Sync Lidl</button></form>'
+        '</div>'
+        '<div id="groceriesSummary" style="color:#a49fb8;font-size:13px;'
+        'margin-bottom:16px">Loading groceries status…</div>'
+        '<h2>Recent syncs</h2>'
+        '<table><thead><tr><th>Market</th><th>Status</th><th>Started</th>'
+        '<th>Finished</th><th>Checked</th><th>Added</th><th>Updated</th>'
+        '<th>Failed</th><th>Error</th></tr></thead>'
+        '<tbody id="groceriesSyncRows">'
+        '<tr><td colspan="9" style="color:#a49fb8">Loading…</td></tr>'
+        '</tbody></table>'
+        '</div>'
         '<script>$_adminTabScript</script>'
         '<script>$_adminMetricsScript</script>'
+        '<script>$_adminGroceriesScript</script>'
         '</body></html>';
 
     return Response(200,
@@ -1672,6 +1794,7 @@ class Api {
     products: document.getElementById('panel-products'),
     activity: document.getElementById('panel-activity'),
     metrics: document.getElementById('panel-metrics'),
+    control: document.getElementById('panel-control'),
   };
   function activate(tab) {
     if (!panels[tab]) tab = 'users';
@@ -1683,6 +1806,74 @@ class Api {
     history.replaceState(null, '', '#' + b.dataset.tab);
   }));
   activate((location.hash || '#users').slice(1));
+})();
+''';
+
+  /// Control panel tab: loads the groceries server's sync status through
+  /// this server's /admin/groceries/status proxy and renders it; refreshes
+  /// every 3 seconds while a sync is running so the counters fill in live.
+  static const _adminGroceriesScript = r'''
+(function () {
+  const key = new URLSearchParams(location.search).get('key') || '';
+  const summary = document.getElementById('groceriesSummary');
+  const rows = document.getElementById('groceriesSyncRows');
+  if (!summary || !rows) return;
+
+  function esc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    })[c]);
+  }
+
+  function render(data) {
+    if (data.error) {
+      summary.textContent = 'Could not reach the groceries server ('
+        + (data.message || data.error) + ')';
+      rows.innerHTML = '<tr><td colspan="9" style="color:#a49fb8">—</td></tr>';
+      return false;
+    }
+    if (!data.configured) {
+      summary.textContent = 'Not connected: set LUMA_GROCERIES_ADMIN_KEY '
+        + '(and optionally LUMA_GROCERIES_URL) in this server\'s .env, '
+        + 'then restart.';
+      rows.innerHTML = '<tr><td colspan="9" style="color:#a49fb8">—</td></tr>';
+      return false;
+    }
+    const s = data.status;
+    summary.innerHTML = '<strong>' + s.products.total + '</strong> products ('
+      + s.products.available + ' available), '
+      + s.priceSnapshots + ' price snapshots'
+      + (s.running ? ' — <strong>sync running…</strong>' : '');
+    rows.innerHTML = s.syncs.length === 0
+      ? '<tr><td colspan="9" style="color:#a49fb8">No syncs yet.</td></tr>'
+      : s.syncs.map((r) => {
+          const color = r.status === 'success' ? '#7ee08a'
+            : r.status === 'running' ? '#e0c87e' : '#e07e7e';
+          return '<tr><td>' + esc(r.marketName) + '</td>'
+            + '<td><span style="color:' + color + '">' + esc(r.status) + '</span></td>'
+            + '<td>' + esc(r.startedAt) + '</td>'
+            + '<td>' + esc(r.finishedAt || '—') + '</td>'
+            + '<td>' + r.checked + '</td><td>' + r.added + '</td>'
+            + '<td>' + r.updated + '</td><td>' + r.failed + '</td>'
+            + '<td>' + esc(r.error) + '</td></tr>';
+        }).join('');
+    return s.running;
+  }
+
+  let timer = null;
+  function load() {
+    fetch('/admin/groceries/status?key=' + encodeURIComponent(key))
+      .then((r) => r.json())
+      .then((data) => {
+        const running = render(data);
+        clearTimeout(timer);
+        if (running) timer = setTimeout(load, 3000);
+      })
+      .catch(() => {
+        summary.textContent = 'Could not reach the groceries server.';
+      });
+  }
+  load();
 })();
 ''';
 

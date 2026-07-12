@@ -9,6 +9,10 @@ const MODULES = {
 };
 
 class SyncService {
+  get slugs() {
+    return Object.keys(MODULES);
+  }
+
   getModule(slug) {
     const module = MODULES[slug];
     if (!module) {
