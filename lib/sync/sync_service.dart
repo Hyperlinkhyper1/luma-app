@@ -585,6 +585,23 @@ class SyncService extends ChangeNotifier {
     await api.deleteBlob(collection);
   }
 
+  // ---- AI --------------------------------------------------------------------
+
+  /// Whether the sync server has an operator-configured Mistral key
+  /// available — see AiSettingsSection (status display) and ChatController
+  /// (which then sends chat requests through the server's proxy instead of
+  /// asking for a locally-stored key). The key itself never reaches this
+  /// device; only this yes/no travels here.
+  Future<bool> mistralKeyConfiguredOnServer() async {
+    final api = _api;
+    if (api == null || !signedIn) return false;
+    try {
+      return await api.mistralKeyConfigured();
+    } catch (_) {
+      return false;
+    }
+  }
+
   // ---- Sync ---------------------------------------------------------------------
 
   /// Synchronizes all enabled collections. Safe to call at any time —

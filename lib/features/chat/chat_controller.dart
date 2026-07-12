@@ -1,17 +1,24 @@
 import 'package:flutter/foundation.dart';
 
 import '../../settings/settings_controller.dart';
+import '../../sync/sync_service.dart';
 import 'ai_agent_store.dart';
 import 'ai_key_store.dart';
 import 'ai_tools.dart';
 import 'data/chat_repository.dart';
 import 'providers/ai_client.dart';
 import 'providers/ai_providers.dart';
+import 'providers/mistral_proxy_client.dart';
 
 /// Orchestrates one chat turn: persists the user's message, calls whichever
-/// AI provider is selected in Settings (which internally loops through any
-/// tool calls it requests), and persists the reply — all against the user's
-/// own locally-stored API key for that provider.
+/// AI provider is selected in Settings, and persists the reply — all
+/// internally looping through any tool calls the model requests.
+///
+/// Normally this runs against the user's own locally-stored API key for that
+/// provider. For Mistral/"Luma", when no personal key is saved but the
+/// device is signed into a sync server with an operator-configured key, it
+/// instead routes through that server's proxy (see [MistralProxyClient]) —
+/// the real Mistral key never reaches this device.
 class ChatController extends ChangeNotifier {
   ChatController({
     required ChatRepository repository,
@@ -19,17 +26,20 @@ class ChatController extends ChangeNotifier {
     required AiAgentStore agentStore,
     required AiToolRegistry tools,
     required SettingsController settings,
+    SyncService? syncService,
   })  : _repository = repository,
         _keyStore = keyStore,
         _agentStore = agentStore,
         _tools = tools,
-        _settings = settings;
+        _settings = settings,
+        _syncService = syncService;
 
   final ChatRepository _repository;
   final AiKeyStore _keyStore;
   final AiAgentStore _agentStore;
   final AiToolRegistry _tools;
   final SettingsController _settings;
+  final SyncService? _syncService;
 
   static const _maxHistoryTurns = 20;
 
@@ -51,7 +61,19 @@ class ChatController extends ChangeNotifier {
     if (_sending) return;
 
     final providerId = _settings.aiProviderId;
-    final apiKey = await _keyStore.readKey(providerId);
+    var apiKey = await _keyStore.readKey(providerId);
+    AiClient client = aiProviderById(providerId).client;
+
+    final sync = _syncService;
+    final usingServerKey = apiKey == null &&
+        providerId == AiProviderId.mistral.name &&
+        sync != null &&
+        sync.signedIn;
+    if (usingServerKey) {
+      client = MistralProxyClient(serverUrl: sync.serverUrl!);
+      apiKey = sync.authToken!;
+    }
+
     if (apiKey == null) {
       final provider = aiProviderById(providerId);
       await _repository.addMessage(conversationId, 'error',
@@ -78,7 +100,7 @@ class ChatController extends ChangeNotifier {
       final turns = _toTurns(history);
       final agentId = await _agentStore.activeAgentId(providerId);
 
-      final result = await aiProviderById(providerId).client.chat(
+      final result = await client.chat(
             apiKey: apiKey,
             history: turns,
             systemPrompt: _systemPrompt,

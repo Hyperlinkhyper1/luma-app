@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'activity.dart';
 import 'util.dart';
 
 /// Storage quota granted by each plan tier, in bytes. Mirrors the
@@ -177,6 +178,13 @@ class Store {
   final Map<String, StoredSession> sessionsByTokenHash = {};
   final Map<String, Map<String, CollectionMeta>> collectionsByUser = {};
 
+  /// Admin dashboard's "Activity" feed, newest last. Capped at
+  /// [_maxActivityEvents] so the file can't grow unbounded on a long-lived
+  /// server; callers only ever display the last 24h anyway (see
+  /// Api._adminActivity).
+  final List<ActivityEvent> activity = [];
+  static const _maxActivityEvents = 2000;
+
   /// Random secret used to fabricate stable fake KDF salts for unknown
   /// emails (prevents account enumeration via the params endpoint).
   late final Uint8List serverSecret;
@@ -184,6 +192,7 @@ class Store {
   String get _usersFile => '$rootPath/users.json';
   String get _sessionsFile => '$rootPath/sessions.json';
   String get _collectionsFile => '$rootPath/collections.json';
+  String get _activityFile => '$rootPath/activity.json';
   String get _secretFile => '$rootPath/secret.key';
 
   static Future<Store> open(String path) async {
@@ -236,6 +245,11 @@ class Store {
       store.collectionsByUser[userId] = perUser;
     });
 
+    final activity = await _readJsonList(store._activityFile);
+    for (final a in activity) {
+      store.activity.add(ActivityEvent.fromJson(a as Map<String, dynamic>));
+    }
+
     return store;
   }
 
@@ -265,6 +279,23 @@ class Store {
       _collectionsFile,
       jsonEncode(collectionsByUser.map((userId, perUser) => MapEntry(
           userId, perUser.map((name, m) => MapEntry(name, m.toJson()))))));
+
+  Future<void> saveActivity() => atomicWriteString(
+      _activityFile, jsonEncode(activity.map((a) => a.toJson()).toList()));
+
+  /// Appends one event to the activity feed and persists it. Caller holds
+  /// [lock] (mirrors every other mutation in this class).
+  Future<void> logActivity(String type, String message) async {
+    activity.add(ActivityEvent(
+      type: type,
+      message: message,
+      createdAtMs: DateTime.now().millisecondsSinceEpoch,
+    ));
+    if (activity.length > _maxActivityEvents) {
+      activity.removeRange(0, activity.length - _maxActivityEvents);
+    }
+    await saveActivity();
+  }
 
   // ---- Blobs -------------------------------------------------------------
 

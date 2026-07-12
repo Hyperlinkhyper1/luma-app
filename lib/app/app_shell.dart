@@ -22,6 +22,7 @@ import '../features/plugins/installed/school/school_page.dart';
 import '../features/plugins/installed/server_tycoon/server_tycoon_page.dart';
 import '../features/plugins/installed/space_colony/space_colony_page.dart';
 import '../features/plugins/installed/usage/usage_page.dart';
+import '../features/plugins/installed/wifi_speed_test/wifi_speed_test_page.dart';
 import '../features/plugins/installed/youtube_downloader/youtube_downloader_page.dart';
 import '../features/plugins/plugin_repository.dart';
 import '../features/plugins/plugin_scope.dart';
@@ -208,6 +209,7 @@ class _AppShellState extends State<AppShell> {
         'school' => const SchoolPage(),
         'auto-clicker' => const AutoClickerPage(),
         'usage' => const UsagePage(),
+        'wifi-speed-test' => const WifiSpeedTestPage(),
         _ => LumaEmptyState(
             icon: Icons.extension_off_rounded,
             title: t.shellPluginUnavailable,

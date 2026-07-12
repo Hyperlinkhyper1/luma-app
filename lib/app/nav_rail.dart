@@ -203,8 +203,29 @@ class _RailButton extends StatefulWidget {
   State<_RailButton> createState() => _RailButtonState();
 }
 
-class _RailButtonState extends State<_RailButton> {
+class _RailButtonState extends State<_RailButton>
+    with SingleTickerProviderStateMixin {
   bool _hovering = false;
+  late final AnimationController _scaleCtrl;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _scaleCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 180),
+    );
+    _scale = Tween<double>(begin: 1.0, end: 1.18).animate(
+      CurvedAnimation(parent: _scaleCtrl, curve: Curves.easeOutBack),
+    );
+  }
+
+  @override
+  void dispose() {
+    _scaleCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -241,8 +262,14 @@ class _RailButtonState extends State<_RailButton> {
               ),
             MouseRegion(
               cursor: SystemMouseCursors.click,
-              onEnter: (_) => setState(() => _hovering = true),
-              onExit: (_) => setState(() => _hovering = false),
+              onEnter: (_) {
+                setState(() => _hovering = true);
+                _scaleCtrl.forward();
+              },
+              onExit: (_) {
+                setState(() => _hovering = false);
+                _scaleCtrl.reverse();
+              },
               child: GestureDetector(
                 onTap: widget.onTap,
                 child: AnimatedContainer(
@@ -253,7 +280,10 @@ class _RailButtonState extends State<_RailButton> {
                     color: bg,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(widget.destination.icon, color: fg, size: 24),
+                  child: ScaleTransition(
+                    scale: _scale,
+                    child: Icon(widget.destination.icon, color: fg, size: 24),
+                  ),
                 ),
               ),
             ),

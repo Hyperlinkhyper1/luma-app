@@ -1,0 +1,10 @@
+{
+  "id": "wifi-speed-test",
+  "name": "Wi-Fi Speed Test",
+  "version": "1.0.0",
+  "description": "Test your internet connection speed right inside luma. Measures download speed, upload speed, and latency with a live speedometer gauge. Every test is saved so you can track your connection quality over time.",
+  "icon": "speed",
+  "category": "Utility",
+  "details": "Run a full internet speed test without leaving luma. The test measures latency (ping), download speed, and upload speed using Cloudflare's public speed test endpoints, with a live speedometer gauge showing real-time progress.\n\nEvery test result is saved locally so you can track your connection quality over time with a history graph and a list of past results.",
+  "screenshots": ["gauge.png", "history.png"]
+}

@@ -149,6 +149,16 @@
       "tags": ["Productivity", "Analytics"],
       "free": true,
       "version": "1.0.0"
+    },
+    {
+      "id": "wifi-speed-test",
+      "name": "Wi-Fi Speed Test",
+      "description": "Test your internet connection speed right inside luma. Measures download speed, upload speed, and latency with a live speedometer gauge. Every test is saved so you can track your connection quality over time.",
+      "icon": "speed",
+      "category": "Utility",
+      "tags": ["Utility", "Network"],
+      "free": true,
+      "version": "1.0.0"
     }
   ]
 }

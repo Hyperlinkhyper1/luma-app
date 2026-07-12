@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import '../../app/widgets.dart';
 import '../../settings/settings_controller.dart';
 import '../../settings/settings_scope.dart';
+import '../../sync/sync_scope.dart';
 import '../../theme/luma_theme.dart';
 import 'ai_agent_store.dart';
 import 'ai_key_store.dart';
 import 'providers/ai_client.dart';
 import 'providers/ai_providers.dart';
+import 'providers/mistral_proxy_client.dart';
 
 /// The "AI Assistant" settings block: pick a provider and enter/replace/clear
 /// its API key. Collapsed by default (see [LumaCollapsibleSection]) — this
@@ -133,6 +135,7 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
   bool _testing = false;
   bool _saving = false;
   String? _savedMasked;
+  bool _fromServer = false;
   late final Future<void> _load = _loadSavedKey();
 
   AiProviderInfo get _provider => aiProviderById(widget.providerId);
@@ -143,11 +146,26 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
     super.dispose();
   }
 
+  /// Loads the locally-saved key, or — for the Mistral/"Luma" provider, when
+  /// nothing is saved yet and this device is signed into a sync server —
+  /// checks whether the operator has a shared key configured there. Only a
+  /// yes/no ever comes back; the key itself stays server-side (see
+  /// SyncService.mistralKeyConfiguredOnServer) and chat requests are proxied
+  /// through the server instead (see ChatController, MistralProxyClient).
   Future<void> _loadSavedKey() async {
     final store = await AiKeyStore.load();
     final key = await store.readKey(widget.providerId);
+    var fromServer = false;
+    if (key == null &&
+        widget.providerId == AiProviderId.mistral.name &&
+        mounted) {
+      fromServer = await SyncScope.of(context).mistralKeyConfiguredOnServer();
+    }
     if (!mounted) return;
-    setState(() => _savedMasked = key == null ? null : _mask(key));
+    setState(() {
+      _savedMasked = key == null ? null : _mask(key);
+      _fromServer = fromServer;
+    });
   }
 
   static String _mask(String key) {
@@ -166,22 +184,35 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
     setState(() {
       _saving = false;
       _savedMasked = _mask(value);
+      _fromServer = false;
     });
     _showSnack('API key saved.');
   }
 
   Future<void> _testConnection() async {
-    final store = await AiKeyStore.load();
-    final key = _controller.text.trim().isNotEmpty
-        ? _controller.text.trim()
-        : await store.readKey(widget.providerId);
+    final typed = _controller.text.trim();
+    AiClient client = _provider.client;
+    String? key = typed.isNotEmpty ? typed : null;
+    if (key == null) {
+      final store = await AiKeyStore.load();
+      key = await store.readKey(widget.providerId);
+    }
+    if (key == null && _fromServer && mounted) {
+      final sync = SyncScope.of(context);
+      final serverUrl = sync.serverUrl;
+      final token = sync.authToken;
+      if (serverUrl != null && token != null) {
+        client = MistralProxyClient(serverUrl: serverUrl);
+        key = token;
+      }
+    }
     if (key == null || key.isEmpty) {
       _showSnack('Enter an API key first.');
       return;
     }
     setState(() => _testing = true);
     try {
-      await _provider.client.chat(
+      await client.chat(
         apiKey: key,
         history: const [AiTurn(role: 'user', text: 'Hi')],
         systemPrompt: '',
@@ -232,7 +263,10 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
     final store = await AiKeyStore.load();
     await store.clearKey(widget.providerId);
     if (!mounted) return;
-    setState(() => _savedMasked = null);
+    setState(() {
+      _savedMasked = null;
+      _fromServer = false;
+    });
     _showSnack('API key removed.');
   }
 
@@ -263,6 +297,19 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
                 ],
               ),
               const SizedBox(height: 12),
+            ] else if (_fromServer) ...[
+              Row(
+                children: [
+                  Icon(Icons.cloud_done_rounded, size: 16, color: luma.accent),
+                  const SizedBox(width: 8),
+                  Text('Shared key available from your sync server',
+                      style: TextStyle(
+                          color: luma.textPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600)),
+                ],
+              ),
+              const SizedBox(height: 12),
             ],
             TextField(
               controller: _controller,
@@ -270,9 +317,11 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
               style: TextStyle(color: luma.textPrimary),
               decoration: InputDecoration(
                 isDense: true,
-                hintText: _savedMasked == null
-                    ? _provider.keyHint
-                    : 'Enter a new key to replace it',
+                hintText: _savedMasked != null
+                    ? 'Enter a new key to replace it'
+                    : _fromServer
+                        ? 'Enter your own key to override the shared one'
+                        : _provider.keyHint,
                 hintStyle: TextStyle(color: luma.textMuted),
                 filled: true,
                 fillColor: luma.background,
@@ -327,9 +376,16 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Stored locally on this device only, encrypted at rest. Sent '
-              'directly to ${_provider.displayName} when you chat — never '
-              'to any luma server.',
+              _fromServer
+                  ? 'Your sync server\'s admin has configured a shared '
+                      '${_provider.displayName} key, so you don\'t need one — '
+                      'chats are relayed through your sync server, which '
+                      'holds the key; it\'s never sent to this device. Enter '
+                      'your own key above to bypass the server and talk to '
+                      '${_provider.displayName} directly instead.'
+                  : 'Stored locally on this device only, encrypted at rest. '
+                      'Sent directly to ${_provider.displayName} when you '
+                      'chat — never to any luma server.',
               style: TextStyle(color: luma.textMuted, fontSize: 11.5, height: 1.4),
             ),
           ],

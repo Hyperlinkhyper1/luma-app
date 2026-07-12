@@ -27,6 +27,7 @@ class ServerConfig {
     required this.verificationTtl,
     required this.requireEmailVerification,
     required this.adminKey,
+    required this.mistralApiKey,
   });
 
   final int port;
@@ -50,6 +51,15 @@ class ServerConfig {
   final String? adminKey;
 
   bool get adminEnabled => adminKey != null && adminKey!.isNotEmpty;
+
+  /// A Mistral ("Luma" in the app's UI) API key configured once by the
+  /// operator, so individual users don't each have to paste their own — see
+  /// Api._mistralKey. Optional; when unset, the app falls back to its
+  /// existing per-device key entry.
+  final String? mistralApiKey;
+
+  bool get mistralKeyConfigured =>
+      mistralApiKey != null && mistralApiKey!.isNotEmpty;
 
   /// Whether new accounts may be created. Open by default; set
   /// LUMA_ALLOW_REGISTRATION=false to close it (existing accounts keep working).
@@ -75,6 +85,7 @@ class ServerConfig {
           (env['LUMA_REQUIRE_EMAIL_VERIFICATION'] ?? 'true').toLowerCase() !=
               'false',
       adminKey: env['LUMA_ADMIN_KEY'],
+      mistralApiKey: env['LUMA_MISTRAL_API_KEY'],
     );
   }
 }
@@ -124,6 +135,8 @@ class Api {
       ..post('/api/v1/auth/change', _requireAuth(_changePassword))
       ..get('/api/v1/account', _requireAuth(_accountInfo))
       ..post('/api/v1/account/delete', _requireAuth(_deleteAccount))
+      ..get('/api/v1/ai/mistral-key-configured', _requireAuth(_mistralKeyStatus))
+      ..post('/api/v1/ai/mistral/chat', _requireAuth(_mistralChatProxy))
       ..get('/api/v1/sync/<collection>', _requireAuth(_getBlob))
       ..put('/api/v1/sync/<collection>', _requireAuth(_putBlob))
       ..delete('/api/v1/sync/<collection>', _requireAuth(_deleteBlobHandler))
@@ -148,6 +161,7 @@ class Api {
       ..get('/admin/users', _requireAdmin(_adminUsers))
       ..get('/admin/stats', _requireAdmin(_adminStats))
       ..get('/admin/metrics', _requireAdmin(_adminMetrics))
+      ..get('/admin/activity', _requireAdmin(_adminActivity))
       ..post('/admin/verify', _requireAdmin(_adminVerifyUser))
       ..post('/admin/plan', _requireAdmin(_adminSetPlan));
 
@@ -382,6 +396,7 @@ class Api {
 
       if (!requireVerification) {
         await store.saveUsers();
+        await store.logActivity('account_registered', '$email registered');
         final token = await _createSession(user);
         return _json(201, {
           'token': token.$1,
@@ -392,6 +407,8 @@ class Api {
 
       final verificationToken = await _issueVerificationToken(user);
       await store.saveUsers();
+      await store.logActivity(
+          'account_registered', '$email registered (pending verification)');
       await _sendVerificationEmail(user, verificationToken);
       return _json(201, {
         'status': 'pending_verification',
@@ -433,6 +450,7 @@ class Api {
       final token = await _createSession(user);
       user.lastLoginAtMs = DateTime.now().millisecondsSinceEpoch;
       await store.saveUsers();
+      await store.logActivity('login', '${user.email} logged in');
       return _json(200, {
         'token': token.$1,
         'expiresAtMs': token.$2,
@@ -472,6 +490,7 @@ class Api {
       user.verificationTokenHash = null;
       user.verificationExpiresAtMs = null;
       await store.saveUsers();
+      await store.logActivity('account_verified', '${user.email} verified their email');
       return _verifyPage(
           200, 'Your email is verified. You can return to the app and sign in.');
     });
@@ -594,6 +613,7 @@ class Api {
       return _error(401, 'invalid_credentials', 'Wrong password.');
     }
     return store.lock.synchronized(() async {
+      final email = user.email;
       store.usersById.remove(user.id);
       store.userIdByEmail.remove(user.email.toLowerCase());
       store.sessionsByTokenHash.removeWhere((_, s) => s.userId == user.id);
@@ -602,8 +622,70 @@ class Api {
       await store.saveUsers();
       await store.saveSessions();
       await store.saveCollections();
+      await store.logActivity('account_deleted', '$email deleted their account');
       return _json(200, {'ok': true});
     });
+  }
+
+  // ---- Handlers: AI ---------------------------------------------------------
+
+  /// Whether the operator has configured a shared Mistral key
+  /// (LUMA_MISTRAL_API_KEY) — status only, never the key itself. Lets the
+  /// app show "a key is available" in Settings without exposing the secret;
+  /// the actual key is only ever used server-side, by [_mistralChatProxy].
+  Response _mistralKeyStatus(Request request, StoredUser user) =>
+      _json(200, {'configured': config.mistralKeyConfigured});
+
+  /// Proxies a chat-completion request to Mistral using the
+  /// operator-configured LUMA_MISTRAL_API_KEY, so signed-in users can chat
+  /// through the shared key without it ever being sent to any client — only
+  /// the caller's own bearer token (already required by [_requireAuth])
+  /// leaves their device. The request body is forwarded to Mistral almost
+  /// unchanged (same shape [OpenAiCompatibleClient] sends for a direct call:
+  /// `model`/`agent_id`, `messages`, `max_tokens`, `tools`); only
+  /// `max_tokens` is clamped, since callers no longer hold the key that
+  /// would otherwise cap their own spend.
+  Future<Response> _mistralChatProxy(Request request, StoredUser user) async {
+    if (!config.mistralKeyConfigured) {
+      return _error(404, 'not_configured',
+          'No server-wide Mistral API key is configured.');
+    }
+    Map<String, dynamic> body;
+    try {
+      body = await _readJson(request);
+    } on FormatException {
+      return _error(400, 'bad_request', 'Malformed request.');
+    }
+    if (body['messages'] is! List) {
+      return _error(400, 'bad_request', 'messages is required.');
+    }
+    final maxTokensRaw = body['max_tokens'];
+    final upstreamBody = {
+      ...body,
+      'max_tokens': (maxTokensRaw is int ? maxTokensRaw : 1024).clamp(1, 4096),
+    };
+    final url = body['agent_id'] is String
+        ? 'https://api.mistral.ai/v1/agents/completions'
+        : 'https://api.mistral.ai/v1/chat/completions';
+
+    final httpClient = HttpClient();
+    try {
+      final upstreamRequest = await httpClient.postUrl(Uri.parse(url));
+      upstreamRequest.headers
+          .set(HttpHeaders.authorizationHeader, 'Bearer ${config.mistralApiKey}');
+      upstreamRequest.headers.contentType = ContentType.json;
+      upstreamRequest.write(jsonEncode(upstreamBody));
+      final upstreamResponse =
+          await upstreamRequest.close().timeout(const Duration(seconds: 30));
+      final responseBody =
+          await upstreamResponse.transform(utf8.decoder).join();
+      return Response(upstreamResponse.statusCode,
+          body: responseBody, headers: {'Content-Type': 'application/json'});
+    } catch (e) {
+      return _error(502, 'upstream_error', 'Could not reach Mistral.');
+    } finally {
+      httpClient.close();
+    }
   }
 
   // ---- Handlers: account & sync -------------------------------------------
@@ -1256,6 +1338,19 @@ class Api {
     return _json(200, metrics.toJson());
   }
 
+  /// Persisted activity feed (see Store.logActivity), filtered to the last
+  /// [hours] (default 24) and newest first — unlike /admin/metrics this
+  /// survives a server restart.
+  Response _adminActivity(Request request) {
+    final hours =
+        int.tryParse(request.url.queryParameters['hours'] ?? '') ?? 24;
+    final cutoff = DateTime.now().millisecondsSinceEpoch -
+        Duration(hours: hours).inMilliseconds;
+    final events = store.activity.where((a) => a.createdAtMs >= cutoff).toList()
+      ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
+    return _json(200, {'events': events.map((e) => e.toJson()).toList()});
+  }
+
   /// Manually activates a pending account, bypassing email verification —
   /// the escape hatch for self-hosted servers where SMTP isn't configured
   /// (or mail just didn't arrive) and the operator needs to unblock a
@@ -1280,6 +1375,8 @@ class Api {
       user.verificationTokenHash = null;
       user.verificationExpiresAtMs = null;
       await store.saveUsers();
+      await store.logActivity(
+          'admin_verified', '$email was manually verified by an admin');
       final key = request.url.queryParameters['key'];
       if (key != null) {
         return Response.found('/admin?key=${Uri.encodeQueryComponent(key)}');
@@ -1315,6 +1412,8 @@ class Api {
       user.planId = planId;
       user.quotaBytes = kPlanQuotaBytes[planId]!;
       await store.saveUsers();
+      await store.logActivity(
+          'plan_granted', '$email was granted the $planId plan');
       final key = request.url.queryParameters['key'];
       if (key != null) {
         return Response.found(
@@ -1409,6 +1508,30 @@ class Api {
       return '<option value="$id"$selected>${_htmlEscape(planLabels[id] ?? id)}</option>';
     }).join();
 
+    final activityCutoff = DateTime.now().millisecondsSinceEpoch -
+        const Duration(hours: 24).inMilliseconds;
+    final recentActivity = store.activity
+        .where((a) => a.createdAtMs >= activityCutoff)
+        .toList()
+      ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
+
+    const activityLabels = {
+      'account_registered': 'Registered',
+      'account_verified': 'Verified',
+      'login': 'Login',
+      'account_deleted': 'Account deleted',
+      'admin_verified': 'Admin verified',
+      'plan_granted': 'Plan granted',
+    };
+
+    final activityRows = recentActivity.map((a) {
+      return '<tr>'
+          '<td>${fmtDate(a.createdAtMs)}</td>'
+          '<td>${_htmlEscape(activityLabels[a.type] ?? a.type)}</td>'
+          '<td>${_htmlEscape(a.message)}</td>'
+          '</tr>';
+    }).join();
+
     final body = '<!doctype html><html><head><meta charset="utf-8">'
         '<title>luma admin</title>'
         '<style>body{background:#161320;color:#e8e4f3;font-family:system-ui,'
@@ -1450,10 +1573,12 @@ class Api {
         '<div class="stat"><div class="n">${stats['pendingAccounts']}</div><div class="l">Pending</div></div>'
         '<div class="stat"><div class="n">${fmtBytes(stats['usedBytesTotal'] as int)}</div><div class="l">Storage used</div></div>'
         '<div class="stat"><div class="n">${fmtBytes(stats['quotaBytesTotal'] as int)}</div><div class="l">Storage capacity</div></div>'
+        '<div class="stat"><div class="n">${recentActivity.length}</div><div class="l">Activity (24h)</div></div>'
         '</div>'
         '<div class="tabs">'
         '<button class="tab-btn" data-tab="users">Users</button>'
         '<button class="tab-btn" data-tab="products">Products</button>'
+        '<button class="tab-btn" data-tab="activity">Activity</button>'
         '<button class="tab-btn" data-tab="metrics">Metrics</button>'
         '</div>'
         '<div class="tab-panel" id="panel-users">'
@@ -1471,6 +1596,11 @@ class Api {
         '<h2>Active subscriptions</h2>'
         '<table><thead><tr><th>Email</th><th>Plan</th><th></th></tr></thead>'
         '<tbody>${subscriptionRows.isEmpty ? '<tr><td colspan="3" style="color:#a49fb8">No paid subscriptions yet.</td></tr>' : subscriptionRows}</tbody></table>'
+        '</div>'
+        '<div class="tab-panel" id="panel-activity">'
+        '<h2>Last 24 hours</h2>'
+        '<table><thead><tr><th>Time</th><th>Type</th><th>Detail</th></tr></thead>'
+        '<tbody>${activityRows.isEmpty ? '<tr><td colspan="3" style="color:#a49fb8">No activity in the last 24 hours.</td></tr>' : activityRows}</tbody></table>'
         '</div>'
         '<div class="tab-panel" id="panel-metrics">'
         '<div id="metricsUnsupported" style="display:none;color:#a49fb8;'
@@ -1512,6 +1642,7 @@ class Api {
   const panels = {
     users: document.getElementById('panel-users'),
     products: document.getElementById('panel-products'),
+    activity: document.getElementById('panel-activity'),
     metrics: document.getElementById('panel-metrics'),
   };
   function activate(tab) {

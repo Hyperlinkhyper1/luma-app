@@ -43,6 +43,8 @@ import 'features/plugins/installed/school/school_scope.dart';
 import 'features/plugins/installed/usage/data/usage_database.dart';
 import 'features/plugins/installed/usage/usage_repository.dart';
 import 'features/plugins/installed/usage/usage_scope.dart';
+import 'features/plugins/installed/wifi_speed_test/wifi_speed_test_repository.dart';
+import 'features/plugins/installed/wifi_speed_test/wifi_speed_test_scope.dart';
 import 'features/plugins/plugin_catalog_service.dart';
 import 'features/plugins/plugin_repository.dart';
 import 'features/plugins/plugin_scope.dart';
@@ -117,6 +119,8 @@ class _LumaAppState extends State<LumaApp> {
       AutoClickerRepository();
   late final UsageDatabase _usageDb = UsageDatabase();
   late final UsageRepository _usageRepository = UsageRepository(_usageDb);
+  late final WifiSpeedTestRepository _wifiSpeedTestRepository =
+      WifiSpeedTestRepository();
 
   // Global local-storage cap, enforced regardless of which plugins are
   // installed — see StorageGuardService.
@@ -200,6 +204,14 @@ class _LumaAppState extends State<LumaApp> {
       listenable: _priceTrackerRepository,
       exporter: () => _priceTrackerRepository.exportData(),
       importer: (data) => _priceTrackerRepository.importData(data),
+    ),
+    JsonStoreSyncCollection(
+      id: 'wifi_speed_test',
+      label: 'Wi-Fi speed test',
+      icon: Icons.speed_rounded,
+      listenable: _wifiSpeedTestRepository,
+      exporter: () => _wifiSpeedTestRepository.exportData(),
+      importer: (data) => _wifiSpeedTestRepository.importData(data),
     ),
   ]);
 
@@ -320,6 +332,8 @@ class _LumaAppState extends State<LumaApp> {
                       repository: _autoClickerRepository,
                       child: UsageScope(
                       repository: _usageRepository,
+                      child: WifiSpeedTestScope(
+                      repository: _wifiSpeedTestRepository,
                       child: ListenableBuilder(
                       listenable: widget.settings,
                       builder: (context, _) {
@@ -343,6 +357,7 @@ class _LumaAppState extends State<LumaApp> {
                               bootstrap: _bootstrap, accentSeed: s.accentSeed),
                         );
                       },
+                    ),
                     ),
                     ),
                     ),

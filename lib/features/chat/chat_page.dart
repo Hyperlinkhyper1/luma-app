@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/widgets.dart';
 import '../../settings/settings_controller.dart';
 import '../../settings/settings_scope.dart';
+import '../../sync/sync_scope.dart';
 import '../../theme/luma_theme.dart';
 import '../plugins/plugin_scope.dart';
 import '../plugins/installed/qr_code_generator/qr_code_scope.dart';
@@ -56,6 +57,7 @@ class _ChatPageState extends State<ChatPage> {
         qrCodeRepository: QrCodeScope.of(context),
       ),
       settings: SettingsScope.of(context),
+      syncService: SyncScope.of(context),
     );
   }
 

@@ -214,6 +214,21 @@ class SyncApi {
     await _postJson('/account/delete', {'authKey': base64Encode(authKey)});
   }
 
+  // ---- AI ------------------------------------------------------------------
+
+  /// Whether the operator has configured a shared Mistral ("Luma") API key
+  /// (LUMA_MISTRAL_API_KEY) — status only. The key itself never reaches this
+  /// client; chat requests instead go through POST /api/v1/ai/mistral/chat
+  /// (see [MistralProxyClient]), which uses the key server-side.
+  Future<bool> mistralKeyConfigured() async {
+    final response = await _client
+        .get(Uri.parse('$baseUrl/api/v1/ai/mistral-key-configured'),
+            headers: _authHeaders)
+        .timeout(_jsonTimeout);
+    final body = _decodeOrThrow(response);
+    return body['configured'] == true;
+  }
+
   // ---- Account & blobs -------------------------------------------------------
 
   Future<RemoteAccount> account() async {
