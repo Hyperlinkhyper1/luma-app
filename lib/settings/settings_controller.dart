@@ -69,6 +69,7 @@ class SettingsController extends ChangeNotifier {
     required int aiCallsToday,
     required String? aiCallsResetDate,
     required String aiProviderId,
+    required List<String> navOrder,
     required File? file,
   })  : _themeMode = themeMode,
         _accentIndex = accentIndex,
@@ -82,6 +83,7 @@ class SettingsController extends ChangeNotifier {
         _aiCallsToday = aiCallsToday,
         _aiCallsResetDate = aiCallsResetDate,
         _aiProviderId = aiProviderId,
+        _navOrder = navOrder,
         _file = file;
 
   // These fields are deliberately assigned in the initializer list (rather than
@@ -103,6 +105,7 @@ class SettingsController extends ChangeNotifier {
   int _aiCallsToday;
   String? _aiCallsResetDate;
   String _aiProviderId;
+  List<String> _navOrder;
   final File? _file;
 
   static const _aiDailyCallLimit = 10;
@@ -175,6 +178,29 @@ class SettingsController extends ChangeNotifier {
     if (id == _aiProviderId) return;
     _aiProviderId = id;
     _changed();
+  }
+
+  /// Custom display order of nav-rail items. Each entry is either
+  /// `"fixed:<index>"` (one of the six built-in destinations) or
+  /// `"plugin:<pluginId>"`. An empty list means the default order.
+  List<String> get navOrder => List.unmodifiable(_navOrder);
+
+  void setNavOrder(List<String> order) {
+    if (order.length == _navOrder.length &&
+        _listEquals(order, _navOrder)) {
+      return;
+    }
+    _navOrder = List.of(order);
+    _changed();
+  }
+
+  static bool _listEquals<T>(List<T> a, List<T> b) {
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /// The accent seed to feed the theme, or null for the default lavender.
@@ -286,6 +312,7 @@ class SettingsController extends ChangeNotifier {
     _aiCallsToday = 0;
     _aiCallsResetDate = null;
     _aiProviderId = 'anthropic';
+    _navOrder = const [];
     _changed();
   }
 
@@ -309,6 +336,7 @@ class SettingsController extends ChangeNotifier {
         'avatarPath': _avatarPath,
         'selectedPlanId': _selectedPlanId,
         'planExpiresAt': _planExpiresAt,
+        'navOrder': _navOrder,
       };
 
   /// Replaces every preference with a previously exported snapshot.
@@ -325,6 +353,7 @@ class SettingsController extends ChangeNotifier {
     _avatarPath = data['avatarPath'] as String?;
     _selectedPlanId = data['selectedPlanId'] as String? ?? 'core';
     _planExpiresAt = data['planExpiresAt'] as String?;
+    _navOrder = _parseNavOrder(data['navOrder']);
     notifyListeners();
     await _persist();
   }
@@ -350,6 +379,7 @@ class SettingsController extends ChangeNotifier {
         'aiCallsToday': _aiCallsToday,
         'aiCallsResetDate': _aiCallsResetDate,
         'aiProviderId': _aiProviderId,
+        'navOrder': _navOrder,
       }));
     } catch (_) {
       // Ignore — preferences just won't survive a restart.
@@ -387,6 +417,7 @@ class SettingsController extends ChangeNotifier {
       aiCallsToday: data['aiCallsToday'] as int? ?? 0,
       aiCallsResetDate: data['aiCallsResetDate'] as String?,
       aiProviderId: data['aiProviderId'] as String? ?? 'anthropic',
+      navOrder: _parseNavOrder(data['navOrder']),
       file: file,
     );
   }
@@ -403,5 +434,12 @@ class SettingsController extends ChangeNotifier {
   static int _parseAccentIndex(Object? raw) {
     if (raw is int && raw >= 0 && raw < kAccentPresets.length) return raw;
     return 0;
+  }
+
+  static List<String> _parseNavOrder(Object? raw) {
+    if (raw is List) {
+      return raw.whereType<String>().toList(growable: true);
+    }
+    return const [];
   }
 }

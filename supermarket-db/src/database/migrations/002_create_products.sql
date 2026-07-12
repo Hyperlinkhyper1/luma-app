@@ -1,0 +1,26 @@
+CREATE TABLE IF NOT EXISTS products (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  supermarket_id INT UNSIGNED NOT NULL,
+  external_id VARCHAR(100) NOT NULL,
+  barcode VARCHAR(20) NULL,
+  name VARCHAR(255) NOT NULL,
+  brand VARCHAR(150) NULL,
+  description TEXT NULL,
+  category VARCHAR(150) NULL,
+  subcategory VARCHAR(150) NULL,
+  image_url VARCHAR(500) NULL,
+  product_url VARCHAR(500) NULL,
+  quantity VARCHAR(50) NULL,
+  unit VARCHAR(50) NULL,
+  is_available TINYINT(1) NOT NULL DEFAULT 1,
+  last_seen_at TIMESTAMP NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_products_supermarket FOREIGN KEY (supermarket_id)
+    REFERENCES supermarkets(id) ON DELETE CASCADE,
+  UNIQUE KEY uq_products_supermarket_external (supermarket_id, external_id),
+  KEY idx_products_barcode (barcode),
+  KEY idx_products_name (name),
+  KEY idx_products_category (category),
+  KEY idx_products_supermarket (supermarket_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

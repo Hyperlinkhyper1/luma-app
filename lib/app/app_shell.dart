@@ -14,6 +14,7 @@ import '../features/plugins/installed/calendar/calendar_page.dart';
 import '../features/plugins/installed/cloud_files/cloud_files_page.dart';
 import '../features/plugins/installed/file_tree/file_tree_page.dart';
 import '../features/plugins/installed/file_viewer/file_viewer_page.dart';
+import '../features/plugins/installed/groceries/groceries_page.dart';
 import '../features/plugins/installed/mood_journal/mood_journal_page.dart';
 import '../features/plugins/installed/bulletin_board/bulletin_board_page.dart';
 import '../features/plugins/installed/price_tracker/price_tracker_page.dart';
@@ -210,6 +211,7 @@ class _AppShellState extends State<AppShell> {
         'auto-clicker' => const AutoClickerPage(),
         'usage' => const UsagePage(),
         'wifi-speed-test' => const WifiSpeedTestPage(),
+        'groceries-list' => const GroceriesPage(),
         _ => LumaEmptyState(
             icon: Icons.extension_off_rounded,
             title: t.shellPluginUnavailable,

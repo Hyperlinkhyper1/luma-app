@@ -1,0 +1,10 @@
+{
+  "id": "groceries-list",
+  "name": "Groceries List",
+  "version": "1.0.0",
+  "description": "Search Jumbo, Albert Heijn and Lidl products side by side, filter by store, sort by price, and build shopping lists that split themselves by market and aisle with running totals. A Nova-exclusive plugin.",
+  "icon": "local_grocery_store",
+  "category": "Shopping",
+  "details": "Search products across Jumbo, Albert Heijn and Lidl from one search bar — filter results down to a single store or sort by price, high to low or low to high. Each result shows a picture, name, price, and which market it's from.\n\nAdd anything you find to a shopping list with one tap. As you add items, the list automatically groups itself by supermarket and then by aisle/category, showing a running subtotal per store and a grand total for the whole list. Keep as many separate lists as you want — a weekly shop, a dinner party, whatever.\n\nGroceries List is included free with the Nova plan.",
+  "screenshots": []
+}

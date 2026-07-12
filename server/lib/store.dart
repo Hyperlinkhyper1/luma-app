@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'activity.dart';
+import 'metrics_history.dart';
 import 'util.dart';
 
 /// Storage quota granted by each plan tier, in bytes. Mirrors the
@@ -185,6 +186,10 @@ class Store {
   final List<ActivityEvent> activity = [];
   static const _maxActivityEvents = 2000;
 
+  /// Admin dashboard's "Metrics" graphs history — see MetricsHistory for the
+  /// downsampling/persistence scheme. Set during [open].
+  late final MetricsHistory metricsHistory;
+
   /// Random secret used to fabricate stable fake KDF salts for unknown
   /// emails (prevents account enumeration via the params endpoint).
   late final Uint8List serverSecret;
@@ -249,6 +254,8 @@ class Store {
     for (final a in activity) {
       store.activity.add(ActivityEvent.fromJson(a as Map<String, dynamic>));
     }
+
+    store.metricsHistory = await MetricsHistory.open(path);
 
     return store;
   }

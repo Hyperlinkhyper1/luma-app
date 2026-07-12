@@ -35,6 +35,8 @@ IconData pluginIconFor(String? name) {
       return Icons.school_rounded;
     case 'description':
       return Icons.description_rounded;
+    case 'local_grocery_store':
+      return Icons.local_grocery_store_rounded;
     default:
       return Icons.extension_rounded;
   }

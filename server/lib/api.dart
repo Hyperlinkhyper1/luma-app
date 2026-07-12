@@ -161,6 +161,7 @@ class Api {
       ..get('/admin/users', _requireAdmin(_adminUsers))
       ..get('/admin/stats', _requireAdmin(_adminStats))
       ..get('/admin/metrics', _requireAdmin(_adminMetrics))
+      ..get('/admin/metrics/history', _requireAdmin(_adminMetricsHistory))
       ..get('/admin/activity', _requireAdmin(_adminActivity))
       ..post('/admin/verify', _requireAdmin(_adminVerifyUser))
       ..post('/admin/plan', _requireAdmin(_adminSetPlan));
@@ -1335,7 +1336,22 @@ class Api {
 
   Future<Response> _adminMetrics(Request request) async {
     final metrics = await SystemMetrics.sample();
+    await store.metricsHistory.addSample(metrics);
     return _json(200, metrics.toJson());
+  }
+
+  /// Persisted graph history for the admin dashboard's range selector —
+  /// range is one of 'minute' / 'hour' / 'day' / 'week' (default 'minute').
+  /// Backed by [MetricsHistory], which downsamples raw /admin/metrics
+  /// samples into minute/hour buckets so this survives page reloads and
+  /// server restarts, unlike the old client-only rolling window.
+  Response _adminMetricsHistory(Request request) {
+    final range = request.url.queryParameters['range'] ?? 'minute';
+    final points = store.metricsHistory.pointsForRange(range);
+    return _json(200, {
+      'range': range,
+      'points': points.map((p) => p.toJson()).toList(),
+    });
   }
 
   /// Persisted activity feed (see Store.logActivity), filtered to the last
@@ -1559,6 +1575,12 @@ class Api {
         '.product-form button{background:#8a7ee0;color:#161320;border:none;'
         'border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;'
         'cursor:pointer}'
+        '.range-tabs{display:flex;gap:8px;margin-bottom:16px}'
+        '.range-btn{background:#1e1a2b;color:#a49fb8;border:1px solid #2c2640;'
+        'border-radius:8px;padding:6px 14px;font-size:13px;cursor:pointer;'
+        'font-family:inherit}'
+        '.range-btn.active{background:#8a7ee0;color:#161320;border-color:#8a7ee0;'
+        'font-weight:600}'
         '.metrics-grid{display:flex;gap:16px;flex-wrap:wrap}'
         '.metric-card{background:#1e1a2b;border-radius:8px;padding:16px 20px;'
         'min-width:240px;flex:1}'
@@ -1606,6 +1628,12 @@ class Api {
         '<div id="metricsUnsupported" style="display:none;color:#a49fb8;'
         'font-size:13px">Live metrics aren\'t available on this server\'s '
         'OS/platform.</div>'
+        '<div class="range-tabs" id="rangeTabs">'
+        '<button class="range-btn" data-range="minute">1 minute</button>'
+        '<button class="range-btn" data-range="hour">1 hour</button>'
+        '<button class="range-btn" data-range="day">24 hours</button>'
+        '<button class="range-btn" data-range="week">1 week</button>'
+        '</div>'
         '<div class="metrics-grid" id="metricsGrid">'
         '<div class="metric-card"><div class="metric-title">CPU</div>'
         '<canvas id="cpuGraph" width="280" height="120"></canvas>'
@@ -1659,17 +1687,21 @@ class Api {
 ''';
 
   /// Vanilla JS (no external deps, per the self-contained-dashboard style):
-  /// polls /admin/metrics every 2s and draws rolling line graphs on plain
-  /// <canvas> elements.
+  /// polls /admin/metrics every 2s for a live reading, and separately loads
+  /// persisted history from /admin/metrics/history for whichever range is
+  /// selected (1 minute / 1 hour / 24 hours / 1 week) so the graphs survive
+  /// a page reload or server restart instead of starting blank every time.
   static const _adminMetricsScript = r'''
 (function () {
   const key = new URLSearchParams(location.search).get('key') || '';
-  const MAX_POINTS = 30;
+  const RANGE_CAPS = { minute: 45, hour: 60, day: 24, week: 24 * 7 };
+  let currentRange = 'minute';
+  let cap = RANGE_CAPS[currentRange];
   const history = { cpu: [], ram: [], rx: [], tx: [], diskRead: [], diskWrite: [] };
 
   function push(arr, v) {
     arr.push(v);
-    if (arr.length > MAX_POINTS) arr.shift();
+    if (arr.length > cap) arr.shift();
   }
 
   function fmtBytes(v) {
@@ -1739,7 +1771,7 @@ class Api {
       const values = s.values;
       if (values.length < 2) continue;
       const pts = values.map((v, i) => ({
-        x: (w * i) / (MAX_POINTS - 1),
+        x: (w * i) / (values.length - 1),
         y: h - (Math.min(v, max) / max) * h,
       }));
       ctx.strokeStyle = s.color;
@@ -1761,6 +1793,56 @@ class Api {
     }
   }
 
+  function redrawAll() {
+    drawGraph(document.getElementById('cpuGraph'),
+        [{ values: history.cpu, color: '#8a7ee0' }], 100);
+    drawGraph(document.getElementById('ramGraph'),
+        [{ values: history.ram, color: '#8a7ee0' }], 100);
+    drawGraph(document.getElementById('netGraph'), [
+      { values: history.rx, color: '#8a7ee0' },
+      { values: history.tx, color: '#7ee08a' },
+    ], null);
+    drawGraph(document.getElementById('diskGraph'), [
+      { values: history.diskRead, color: '#8a7ee0' },
+      { values: history.diskWrite, color: '#7ee08a' },
+    ], null);
+  }
+
+  // Rebuilds the `history` arrays (as drawn on the graphs) from a server
+  // history payload — same derived fields poll() computes per live sample
+  // (RAM as a percentage, etc.), just applied to a whole point list at once.
+  function seedHistory(points) {
+    history.cpu = points.map((p) => p.cpuPercent).filter((v) => v != null);
+    history.ram = points
+        .filter((p) => p.ramUsedBytes != null && p.ramTotalBytes)
+        .map((p) => (p.ramUsedBytes / p.ramTotalBytes) * 100);
+    history.rx = points.map((p) => p.netRxBytesPerSec).filter((v) => v != null);
+    history.tx = points.map((p) => p.netTxBytesPerSec).filter((v) => v != null);
+    history.diskRead =
+        points.map((p) => p.diskReadBytesPerSec).filter((v) => v != null);
+    history.diskWrite =
+        points.map((p) => p.diskWriteBytesPerSec).filter((v) => v != null);
+  }
+
+  async function loadRange(range) {
+    currentRange = range;
+    cap = RANGE_CAPS[range];
+    document.querySelectorAll('.range-btn').forEach((b) =>
+        b.classList.toggle('active', b.dataset.range === range));
+    try {
+      const res = await fetch('/admin/metrics/history?range=' + range +
+          '&key=' + encodeURIComponent(key));
+      if (res.ok) {
+        const data = await res.json();
+        seedHistory(data.points || []);
+        redrawAll();
+      }
+    } catch (e) {}
+  }
+
+  document.querySelectorAll('.range-btn').forEach((b) =>
+      b.addEventListener('click', () => loadRange(b.dataset.range)));
+
   async function poll() {
     let res;
     try {
@@ -1778,48 +1860,48 @@ class Api {
     }
 
     if (m.cpuPercent != null) {
-      push(history.cpu, m.cpuPercent);
       document.getElementById('cpuValue').textContent = m.cpuPercent.toFixed(1) + '%';
-      drawGraph(document.getElementById('cpuGraph'),
-          [{ values: history.cpu, color: '#8a7ee0' }], 100);
     }
-
     if (m.ramUsedBytes != null && m.ramTotalBytes) {
-      const pct = (m.ramUsedBytes / m.ramTotalBytes) * 100;
-      push(history.ram, pct);
       document.getElementById('ramValue').textContent =
           fmtBytes(m.ramUsedBytes) + ' / ' + fmtBytes(m.ramTotalBytes);
-      drawGraph(document.getElementById('ramGraph'),
-          [{ values: history.ram, color: '#8a7ee0' }], 100);
     }
-
     if (m.netRxBytesPerSec != null && m.netTxBytesPerSec != null) {
-      push(history.rx, m.netRxBytesPerSec);
-      push(history.tx, m.netTxBytesPerSec);
       document.getElementById('netValue').textContent =
           '↓ ' + fmtRate(m.netRxBytesPerSec) + '   ↑ ' + fmtRate(m.netTxBytesPerSec);
-      drawGraph(document.getElementById('netGraph'), [
-        { values: history.rx, color: '#8a7ee0' },
-        { values: history.tx, color: '#7ee08a' },
-      ], null);
     }
+    document.getElementById('diskValue').textContent =
+        (m.diskReadBytesPerSec != null && m.diskWriteBytesPerSec != null)
+            ? '↓ ' + fmtRate(m.diskReadBytesPerSec) + '   ↑ ' + fmtRate(m.diskWriteBytesPerSec)
+            : 'Not available on this host';
 
-    if (m.diskReadBytesPerSec != null && m.diskWriteBytesPerSec != null) {
-      push(history.diskRead, m.diskReadBytesPerSec);
-      push(history.diskWrite, m.diskWriteBytesPerSec);
-      document.getElementById('diskValue').textContent =
-          '↓ ' + fmtRate(m.diskReadBytesPerSec) + '   ↑ ' + fmtRate(m.diskWriteBytesPerSec);
-      drawGraph(document.getElementById('diskGraph'), [
-        { values: history.diskRead, color: '#8a7ee0' },
-        { values: history.diskWrite, color: '#7ee08a' },
-      ], null);
-    } else {
-      document.getElementById('diskValue').textContent = 'Not available on this host';
+    // The server records this same poll into its own history (see
+    // Api._adminMetrics), so the finest ("1 minute") view can just append
+    // the live reading locally. Coarser ranges are re-fetched wholesale
+    // instead, since a single new sample barely moves a minute/hour bucket.
+    if (currentRange === 'minute') {
+      if (m.cpuPercent != null) push(history.cpu, m.cpuPercent);
+      if (m.ramUsedBytes != null && m.ramTotalBytes) {
+        push(history.ram, (m.ramUsedBytes / m.ramTotalBytes) * 100);
+      }
+      if (m.netRxBytesPerSec != null && m.netTxBytesPerSec != null) {
+        push(history.rx, m.netRxBytesPerSec);
+        push(history.tx, m.netTxBytesPerSec);
+      }
+      if (m.diskReadBytesPerSec != null && m.diskWriteBytesPerSec != null) {
+        push(history.diskRead, m.diskReadBytesPerSec);
+        push(history.diskWrite, m.diskWriteBytesPerSec);
+      }
+      redrawAll();
     }
   }
 
+  loadRange('minute');
   poll();
   setInterval(poll, 2000);
+  setInterval(() => {
+    if (currentRange !== 'minute') loadRange(currentRange);
+  }, 30000);
 })();
 ''';
 

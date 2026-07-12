@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../account/plan.dart';
 import '../features/plugins/plugin_icons.dart';
@@ -14,11 +16,26 @@ class NavDestination {
   final String label;
 }
 
+/// Internal model for one reorderable rail entry.
+class _NavItem {
+  const _NavItem({
+    required this.id,
+    required this.destination,
+    required this.selected,
+    required this.onTap,
+  });
+  final String id;
+  final NavDestination destination;
+  final bool selected;
+  final VoidCallback onTap;
+}
+
 /// The fixed left icon sidebar, modeled on the Modrinth app.
 ///
-/// For now it shows only the file-converter destination beneath the brand
-/// mark. New destinations can be appended to [_destinations] later.
-class NavRail extends StatelessWidget {
+/// The top section (built-in destinations + installed plugins) is
+/// drag-to-reorder: long-press (touch) or click-drag (mouse) an icon to
+/// move it up or down. The order is persisted via [SettingsController].
+class NavRail extends StatefulWidget {
   const NavRail({
     super.key,
     required this.selectedIndex,
@@ -70,11 +87,28 @@ class NavRail extends StatelessWidget {
   static const int accountIndex = 8;
 
   @override
+  State<NavRail> createState() => _NavRailState();
+}
+
+class _NavRailState extends State<NavRail> {
+  @override
   Widget build(BuildContext context) {
     final luma = context.luma;
     final t = L.of(context);
-    final plan = planById(SettingsScope.of(context).selectedPlanId);
-    final destinations = _destinations(t);
+    final settings = SettingsScope.of(context);
+    final plan = planById(settings.selectedPlanId);
+    final destinations = NavRail._destinations(t);
+
+    final effectiveOrder =
+        _reconcileOrder(settings.navOrder, destinations.length);
+    final items = [
+      for (final id in effectiveOrder)
+        _itemForId(id, destinations, widget.installedPlugins),
+    ];
+
+    final isTouch = defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
+
     return Container(
       width: 72,
       decoration: BoxDecoration(
@@ -85,60 +119,128 @@ class NavRail extends StatelessWidget {
         children: [
           const SizedBox(height: 12),
           Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  for (var i = 0; i < destinations.length; i++) ...[
-                    _RailButton(
-                      destination: destinations[i],
-                      selected: i == selectedIndex,
-                      onTap: () => onSelect(i),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                  if (installedPlugins.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Container(height: 1, width: 36, color: luma.border),
-                    const SizedBox(height: 10),
-                    for (final plugin in installedPlugins) ...[
-                      _RailButton(
-                        destination: NavDestination(
-                          icon: pluginIconFor(plugin.icon),
-                          label: plugin.name,
-                        ),
-                        selected: selectedPluginId == plugin.pluginId,
-                        onTap: () => onSelectPlugin(plugin.pluginId),
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                  ],
-                ],
-              ),
+            child: ReorderableListView.builder(
+              buildDefaultDragHandles: false,
+              padding: EdgeInsets.zero,
+              itemCount: items.length,
+              onReorderStart: (_) => HapticFeedback.mediumImpact(),
+              onReorderItem: (oldIndex, newIndex) {
+                final order = List<String>.from(effectiveOrder);
+                final moved = order.removeAt(oldIndex);
+                order.insert(newIndex, moved);
+                settings.setNavOrder(order);
+              },
+              proxyDecorator: (child, index, animation) {
+                return AnimatedBuilder(
+                  animation: animation,
+                  builder: (context, child) {
+                    return Material(
+                      color: Colors.transparent,
+                      elevation: 6 * animation.value,
+                      child: child,
+                    );
+                  },
+                  child: child,
+                );
+              },
+              itemBuilder: (context, index) {
+                final item = items[index];
+                final button = _RailButton(
+                  destination: item.destination,
+                  selected: item.selected,
+                  onTap: item.onTap,
+                );
+                final dragListener = isTouch
+                    ? ReorderableDelayedDragStartListener(
+                        index: index,
+                        child: button,
+                      )
+                    : ReorderableDragStartListener(
+                        index: index,
+                        child: button,
+                      );
+                return Padding(
+                  key: ValueKey(item.id),
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Center(child: dragListener),
+                );
+              },
             ),
           ),
-          // Plugins and Settings sit at the bottom-left of the rail.
           _RailButton(
-            destination: _pluginsDestination(t),
-            selected: selectedIndex == pluginsIndex,
-            onTap: () => onSelect(pluginsIndex),
+            destination: NavRail._pluginsDestination(t),
+            selected: widget.selectedIndex == NavRail.pluginsIndex,
+            onTap: () => widget.onSelect(NavRail.pluginsIndex),
           ),
           const SizedBox(height: 8),
           _RailButton(
-            destination: _settingsDestination(t),
-            selected: selectedIndex == settingsIndex,
-            onTap: () => onSelect(settingsIndex),
+            destination: NavRail._settingsDestination(t),
+            selected: widget.selectedIndex == NavRail.settingsIndex,
+            onTap: () => widget.onSelect(NavRail.settingsIndex),
           ),
           const SizedBox(height: 8),
           _RailButton(
-            destination: _accountDestination(t),
-            selected: selectedIndex == accountIndex,
-            onTap: () => onSelect(accountIndex),
+            destination: NavRail._accountDestination(t),
+            selected: widget.selectedIndex == NavRail.accountIndex,
+            onTap: () => widget.onSelect(NavRail.accountIndex),
           ),
           const SizedBox(height: 8),
-          _PlanBadge(plan: plan, onTap: () => onSelect(accountIndex)),
+          _PlanBadge(plan: plan, onTap: () => widget.onSelect(NavRail.accountIndex)),
           const SizedBox(height: 14),
         ],
       ),
+    );
+  }
+
+  /// Reconciles the persisted [saved] order with the currently available
+  /// items: drops IDs for uninstalled plugins / out-of-range fixed indices
+  /// and appends any new items at the end in their default order.
+  List<String> _reconcileOrder(List<String> saved, int fixedCount) {
+    final fixedIds = [for (var i = 0; i < fixedCount; i++) 'fixed:$i'];
+    final pluginIds = [
+      for (final p in widget.installedPlugins) 'plugin:${p.pluginId}',
+    ];
+    final allIds = [...fixedIds, ...pluginIds];
+    final allIdSet = allIds.toSet();
+
+    final result = <String>[];
+    for (final id in saved) {
+      if (allIdSet.contains(id) && !result.contains(id)) {
+        result.add(id);
+      }
+    }
+    for (final id in allIds) {
+      if (!result.contains(id)) {
+        result.add(id);
+      }
+    }
+    return result;
+  }
+
+  _NavItem _itemForId(
+    String id,
+    List<NavDestination> destinations,
+    List<InstalledPluginRecord> installed,
+  ) {
+    if (id.startsWith('fixed:')) {
+      final i = int.parse(id.substring(6));
+      return _NavItem(
+        id: id,
+        destination: destinations[i],
+        selected: i == widget.selectedIndex,
+        onTap: () => widget.onSelect(i),
+      );
+    }
+    final pluginId = id.substring(7);
+    final plugin = installed.firstWhere((p) => p.pluginId == pluginId);
+    return _NavItem(
+      id: id,
+      destination: NavDestination(
+        icon: pluginIconFor(plugin.icon),
+        label: plugin.name,
+      ),
+      selected: widget.selectedPluginId == pluginId,
+      onTap: () => widget.onSelectPlugin(pluginId),
     );
   }
 }
@@ -245,7 +347,6 @@ class _RailButtonState extends State<_RailButton>
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // Active indicator bar on the left edge.
             if (selected)
               Positioned(
                 left: 0,

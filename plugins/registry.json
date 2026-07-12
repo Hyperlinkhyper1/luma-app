@@ -159,6 +159,16 @@
       "tags": ["Utility", "Network"],
       "free": true,
       "version": "1.0.0"
+    },
+    {
+      "id": "groceries-list",
+      "name": "Groceries List",
+      "description": "Search Jumbo, Albert Heijn and Lidl products side by side, filter by store, sort by price, and build shopping lists that split themselves by market and aisle with running totals. A Nova-exclusive plugin.",
+      "icon": "local_grocery_store",
+      "category": "Shopping",
+      "tags": ["Shopping", "Nova"],
+      "free": false,
+      "version": "1.0.0"
     }
   ]
 }

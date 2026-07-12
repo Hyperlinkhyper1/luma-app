@@ -45,6 +45,10 @@ import 'features/plugins/installed/usage/usage_repository.dart';
 import 'features/plugins/installed/usage/usage_scope.dart';
 import 'features/plugins/installed/wifi_speed_test/wifi_speed_test_repository.dart';
 import 'features/plugins/installed/wifi_speed_test/wifi_speed_test_scope.dart';
+import 'features/plugins/installed/groceries/data/groceries_database.dart';
+import 'features/plugins/installed/groceries/groceries_api.dart';
+import 'features/plugins/installed/groceries/groceries_repository.dart';
+import 'features/plugins/installed/groceries/groceries_scope.dart';
 import 'features/plugins/plugin_catalog_service.dart';
 import 'features/plugins/plugin_repository.dart';
 import 'features/plugins/plugin_scope.dart';
@@ -121,6 +125,10 @@ class _LumaAppState extends State<LumaApp> {
   late final UsageRepository _usageRepository = UsageRepository(_usageDb);
   late final WifiSpeedTestRepository _wifiSpeedTestRepository =
       WifiSpeedTestRepository();
+  late final GroceriesDatabase _groceriesDb = GroceriesDatabase();
+  late final GroceriesRepository _groceriesRepository =
+      GroceriesRepository(_groceriesDb);
+  late final GroceriesApi _groceriesApi = GroceriesApi();
 
   // Global local-storage cap, enforced regardless of which plugins are
   // installed — see StorageGuardService.
@@ -213,6 +221,12 @@ class _LumaAppState extends State<LumaApp> {
       exporter: () => _wifiSpeedTestRepository.exportData(),
       importer: (data) => _wifiSpeedTestRepository.importData(data),
     ),
+    DriftSyncCollection(
+      id: 'groceries',
+      label: 'Groceries',
+      icon: Icons.local_grocery_store_rounded,
+      db: _groceriesDb,
+    ),
   ]);
 
   // The Cloud Files plugin stores encrypted files on the same sync server.
@@ -267,6 +281,8 @@ class _LumaAppState extends State<LumaApp> {
     _autoClickerRepository.dispose();
     _usageRepository.dispose();
     _usageDb.close();
+    _groceriesDb.close();
+    _groceriesApi.dispose();
     super.dispose();
   }
 
@@ -334,6 +350,10 @@ class _LumaAppState extends State<LumaApp> {
                       repository: _usageRepository,
                       child: WifiSpeedTestScope(
                       repository: _wifiSpeedTestRepository,
+                      child: GroceriesScope(
+                      repository: _groceriesRepository,
+                      child: GroceriesApiScope(
+                      api: _groceriesApi,
                       child: ListenableBuilder(
                       listenable: widget.settings,
                       builder: (context, _) {
@@ -357,6 +377,8 @@ class _LumaAppState extends State<LumaApp> {
                               bootstrap: _bootstrap, accentSeed: s.accentSeed),
                         );
                       },
+                    ),
+                    ),
                     ),
                     ),
                     ),
