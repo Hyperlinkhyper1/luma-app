@@ -181,7 +181,9 @@ class Api {
       ..post('/admin/verify', _requireAdmin(_adminVerifyUser))
       ..post('/admin/plan', _requireAdmin(_adminSetPlan))
       ..post('/admin/groceries/sync', _requireAdmin(_adminGroceriesSync))
-      ..get('/admin/groceries/status', _requireAdmin(_adminGroceriesStatus));
+      ..get('/admin/groceries/status', _requireAdmin(_adminGroceriesStatus))
+      ..post('/admin/deploy', _requireAdmin(_adminDeploy))
+      ..get('/admin/deploy/status', _requireAdmin(_adminDeployStatus));
 
     return const Pipeline()
         .addMiddleware(_recover)
@@ -1535,6 +1537,82 @@ class Api {
     }
   }
 
+  /// Triggers a full server update: git pull → pub get → recompile →
+  /// systemctl restart. The command runs in a fully detached process
+  /// (`setsid`) so it survives the service stop that kills *this* process.
+  /// Output is written to `deploy.log` in the data dir; the PID is tracked
+  /// in `deploy.pid` so the status endpoint can tell whether it's still
+  /// running. The endpoint returns immediately with `{"started": true}`.
+  Future<Response> _adminDeploy(Request request) async {
+    final logFile = File('${config.dataDir}/deploy.log');
+    final pidFile = File('${config.dataDir}/deploy.pid');
+
+    if (await pidFile.exists()) {
+      final pid = int.tryParse((await pidFile.readAsString()).trim());
+      if (pid != null && _isProcessAlive(pid)) {
+        return _error(409, 'deploy_running',
+            'A deploy is already in progress. Wait for it to finish.');
+      }
+    }
+
+    await logFile.parent.create(recursive: true);
+
+    const deployCmd = 'cd ~/luma-app && git pull && cd server && '
+        'dart pub get && sudo systemctl stop luma-sync && '
+        'dart compile exe bin/luma_server.dart -o luma_server && '
+        'sudo systemctl start luma-sync && '
+        'sudo systemctl status luma-sync';
+
+    final script = 'echo \$\$ > "${pidFile.path}" && '
+        '{ $deployCmd; } > "${logFile.path}" 2>&1; '
+        'rm -f "${pidFile.path}"';
+
+    try {
+      await Process.start(
+        'setsid',
+        ['bash', '-c', script],
+        mode: ProcessStartMode.detached,
+      );
+    } catch (e) {
+      return _error(500, 'deploy_failed',
+          'Could not start the deploy process: $e');
+    }
+
+    return _json(200, {'started': true});
+  }
+
+  /// Returns the current deploy log contents and whether the deploy process
+  /// is still running. Polled by the Control panel's deploy button JS.
+  Future<Response> _adminDeployStatus(Request request) async {
+    final logFile = File('${config.dataDir}/deploy.log');
+    final pidFile = File('${config.dataDir}/deploy.pid');
+
+    int? pid;
+    if (await pidFile.exists()) {
+      pid = int.tryParse((await pidFile.readAsString()).trim());
+    }
+    final running = pid != null && _isProcessAlive(pid);
+
+    String log = '';
+    if (await logFile.exists()) {
+      try {
+        log = await logFile.readAsString();
+      } catch (_) {}
+    }
+
+    return _json(200, {'running': running, 'log': log});
+  }
+
+  /// Best-effort check whether a process is still alive (POSIX `kill -0`).
+  bool _isProcessAlive(int pid) {
+    try {
+      final result = Process.runSync('kill', ['-0', pid.toString()]);
+      return result.exitCode == 0;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Response _adminDashboard(Request request) {
     final stats = _adminStatsJson();
     final users = store.usersById.values.toList()
@@ -1773,10 +1851,23 @@ class Api {
         '<tbody id="groceriesSyncRows">'
         '<tr><td colspan="9" style="color:#a49fb8">Loading…</td></tr>'
         '</tbody></table>'
+        '<h2>Server update</h2>'
+        '<div class="product-form">'
+        '<button id="deployBtn" type="button" style="background:#8a7ee0;'
+        'color:#161320;border:none;border-radius:8px;padding:8px 16px;'
+        'font-size:13px;font-weight:600;cursor:pointer">'
+        'Update &amp; restart server</button>'
+        '</div>'
+        '<div id="deployStatus" style="color:#a49fb8;font-size:13px;'
+        'margin-bottom:12px"></div>'
+        '<pre id="deployLog" style="background:#1e1a2b;border-radius:8px;'
+        'padding:16px;font-size:12px;max-height:400px;overflow:auto;'
+        'white-space:pre-wrap;word-break:break-all;display:none"></pre>'
         '</div>'
         '<script>$_adminTabScript</script>'
         '<script>$_adminMetricsScript</script>'
         '<script>$_adminGroceriesScript</script>'
+        '<script>$_adminDeployScript</script>'
         '</body></html>';
 
     return Response(200,
@@ -1874,6 +1965,100 @@ class Api {
       });
   }
   load();
+})();
+''';
+
+  /// Control panel tab: the "Update & restart server" button POSTs to
+  /// /admin/deploy, then polls /admin/deploy/status every 2s to stream the
+  /// deploy log into the <pre> below the button. The poll keeps going even
+  /// after the server restarts (the fetch will fail mid-restart and resume
+  /// once the new process is up), so the operator sees the final
+  /// `systemctl status` output without manually refreshing.
+  static const _adminDeployScript = r'''
+(function () {
+  const key = new URLSearchParams(location.search).get('key') || '';
+  const btn = document.getElementById('deployBtn');
+  const status = document.getElementById('deployStatus');
+  const log = document.getElementById('deployLog');
+  if (!btn || !status || !log) return;
+
+  var timer = null;
+  var sawRunning = false;
+
+  function setStatus(text, color) {
+    status.textContent = text;
+    status.style.color = color || '#a49fb8';
+  }
+
+  function poll() {
+    fetch('/admin/deploy/status?key=' + encodeURIComponent(key))
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.log) {
+          log.style.display = 'block';
+          log.textContent = data.log;
+          log.scrollTop = log.scrollHeight;
+        }
+        if (data.running) {
+          sawRunning = true;
+          btn.disabled = true;
+          btn.style.opacity = '0.5';
+          btn.style.cursor = 'not-allowed';
+          setStatus('Deploying… (the server will restart briefly)', '#e0c87e');
+          timer = setTimeout(poll, 2000);
+        } else if (sawRunning) {
+          btn.disabled = false;
+          btn.style.opacity = '';
+          btn.style.cursor = '';
+          var hasLog = !!data.log;
+          var success = hasLog && /Active: active \(running\)/.test(data.log);
+          setStatus(
+            success ? 'Deploy complete — server is running.' :
+            hasLog ? 'Deploy finished — check the log above.' :
+                     'Deploy process ended.',
+            success ? '#7ee08a' : '#a49fb8');
+        }
+      })
+      .catch(function () {
+        if (sawRunning) {
+          setStatus('Server restarting… waiting for it to come back.', '#e0c87e');
+          timer = setTimeout(poll, 2000);
+        }
+      });
+  }
+
+  btn.addEventListener('click', function () {
+    if (btn.disabled) return;
+    if (!confirm('This will git pull, recompile, and restart the luma-sync '
+        + 'service. The server will be briefly unavailable. Continue?')) return;
+    log.style.display = 'block';
+    log.textContent = '';
+    setStatus('Starting deploy…', '#e0c87e');
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+    btn.style.cursor = 'not-allowed';
+    fetch('/admin/deploy?key=' + encodeURIComponent(key), { method: 'POST' })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.error) {
+          btn.disabled = false;
+          btn.style.opacity = '';
+          btn.style.cursor = '';
+          setStatus(data.message || data.error, '#e07e7e');
+          return;
+        }
+        sawRunning = true;
+        poll();
+      })
+      .catch(function () {
+        btn.disabled = false;
+        btn.style.opacity = '';
+        btn.style.cursor = '';
+        setStatus('Could not start the deploy.', '#e07e7e');
+      });
+  });
+
+  poll();
 })();
 ''';
 
