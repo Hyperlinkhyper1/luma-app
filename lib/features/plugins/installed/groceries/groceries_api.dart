@@ -85,15 +85,48 @@ class GroceriesApiException implements Exception {
 }
 
 /// Talks to the supermarket-db HTTP API (search/filter/sort across Jumbo,
-/// Albert Heijn and Lidl). The base URL is user-configurable and persisted
-/// locally, since the API runs on a self-hosted server (see supermarket-db/
-/// at the repo root) rather than a fixed luma-owned endpoint.
+/// Albert Heijn and Lidl). Defaults to the hosted server so it works out of
+/// the box; the address is still user-configurable (gear icon on the search
+/// page) and persisted locally in case someone points it at their own
+/// deployment instead (see supermarket-db/ at the repo root).
 class GroceriesApi extends ChangeNotifier {
   GroceriesApi({http.Client? client}) : _client = client ?? http.Client() {
     _load();
   }
 
-  static const _defaultBaseUrl = 'http://localhost:3000';
+  static const _defaultBaseUrl = 'https://groceries.luma-app.cc';
+
+  /// The old placeholder default, before the hosted server existed. A saved
+  /// settings file holding exactly this value was never a deliberate user
+  /// choice — it's the previous default going stale — so [_load] treats it
+  /// as unset rather than making everyone who ran an earlier build manually
+  /// re-enter the new address.
+  static const _legacyDefaultBaseUrl = 'http://localhost:3000';
+
+  /// Groceries servers must use HTTPS; plain HTTP is only tolerated for
+  /// localhost and private-LAN addresses (matches [SyncApi.validateServerUrl]).
+  static String? validateServerUrl(String raw) {
+    final trimmed = raw.trim();
+    final withoutSlash =
+        trimmed.endsWith('/') ? trimmed.substring(0, trimmed.length - 1) : trimmed;
+    final uri = Uri.tryParse(withoutSlash);
+    if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
+      return 'Enter the full server address, e.g. https://groceries.example.com';
+    }
+    if (uri.scheme == 'https') return null;
+    if (uri.scheme != 'http') return 'Only http(s) addresses are supported.';
+    final host = uri.host;
+    final isPrivate = host == 'localhost' ||
+        host.endsWith('.local') ||
+        RegExp(r'^127\.').hasMatch(host) ||
+        RegExp(r'^10\.').hasMatch(host) ||
+        RegExp(r'^192\.168\.').hasMatch(host) ||
+        RegExp(r'^172\.(1[6-9]|2\d|3[01])\.').hasMatch(host);
+    return isPrivate
+        ? null
+        : 'Plain http is only allowed for local/home-network servers. '
+            'Use https:// for servers on the internet.';
+  }
 
   final http.Client _client;
   String _baseUrl = _defaultBaseUrl;
@@ -114,7 +147,7 @@ class GroceriesApi extends ChangeNotifier {
       if (await file.exists()) {
         final raw = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
         final stored = raw['baseUrl'] as String?;
-        if (stored != null && stored.isNotEmpty) {
+        if (stored != null && stored.isNotEmpty && stored != _legacyDefaultBaseUrl) {
           _baseUrl = stored;
           notifyListeners();
         }

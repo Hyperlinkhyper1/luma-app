@@ -1,0 +1,52 @@
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # The compose network resolves the mysql service by name — overrides
+      # whatever DB_HOST is set to in .env (127.0.0.1 for local dev).
+      DB_HOST: mysql
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - internal
+    # No "ports:" on purpose — only cloudflared may reach the API, over the
+    # internal network. Never expose 3000 directly to the internet.
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    # Outbound-only connection to Cloudflare's edge — no inbound ports, no
+    # port forwarding on your router. The public hostname → api:3000 mapping
+    # is configured in the Cloudflare Zero Trust dashboard, not here.
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    networks:
+      - internal
+    depends_on:
+      - api
+
+volumes:
+  mysql_data:
+
+networks:
+  internal:

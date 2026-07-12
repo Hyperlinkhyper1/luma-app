@@ -272,44 +272,67 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
     final api = GroceriesApiScope.of(context);
     final controller = TextEditingController(text: api.baseUrl);
     final luma = context.luma;
+    String? error;
     final url = await showDialog<String>(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: luma.surface,
-        title: Text('Groceries server address',
-            style: TextStyle(color: luma.textPrimary)),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          style: TextStyle(color: luma.textPrimary),
-          decoration: InputDecoration(
-            isDense: true,
-            hintText: 'http://localhost:3000',
-            hintStyle: TextStyle(color: luma.textMuted),
-            filled: true,
-            fillColor: luma.background,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: luma.border),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            backgroundColor: luma.surface,
+            title: Text('Groceries server address',
+                style: TextStyle(color: luma.textPrimary)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  style: TextStyle(color: luma.textPrimary),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    hintText: 'https://groceries.example.com',
+                    hintStyle: TextStyle(color: luma.textMuted),
+                    filled: true,
+                    fillColor: luma.background,
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: luma.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: luma.accent),
+                    ),
+                  ),
+                ),
+                if (error != null) ...[
+                  const SizedBox(height: 8),
+                  Text(error!, style: TextStyle(color: luma.danger, fontSize: 12)),
+                ],
+              ],
             ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: luma.accent),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, controller.text),
-            child: Text('Save', style: TextStyle(color: luma.accent)),
-          ),
-        ],
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+              ),
+              TextButton(
+                onPressed: () {
+                  final validationError =
+                      GroceriesApi.validateServerUrl(controller.text);
+                  if (validationError != null) {
+                    setDialogState(() => error = validationError);
+                    return;
+                  }
+                  Navigator.pop(context, controller.text);
+                },
+                child: Text('Save', style: TextStyle(color: luma.accent)),
+              ),
+            ],
+          );
+        },
       ),
     );
     if (url == null) return;
