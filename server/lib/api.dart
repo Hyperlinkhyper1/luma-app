@@ -7,6 +7,7 @@ import 'package:crypto/crypto.dart' as c;
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 
+import 'ai_usage_store.dart';
 import 'chat_store.dart';
 import 'family_store.dart';
 import 'mail.dart';
@@ -29,6 +30,8 @@ class ServerConfig {
     required this.requireEmailVerification,
     required this.adminKey,
     required this.mistralApiKey,
+    required this.mistralAgentId,
+    required this.googleApiKey,
     required this.groceriesUrl,
     required this.groceriesAdminKey,
   });
@@ -63,6 +66,25 @@ class ServerConfig {
 
   bool get mistralKeyConfigured =>
       mistralApiKey != null && mistralApiKey!.isNotEmpty;
+
+  /// An optional Mistral Agents API agent id ("ag:...") configured by the
+  /// operator alongside [mistralApiKey]. When set, proxied chats that don't
+  /// pick their own agent are routed to this hosted agent instead of the
+  /// plain chat-completions model — see Api._mistralChatProxy.
+  final String? mistralAgentId;
+
+  bool get mistralAgentConfigured =>
+      mistralAgentId != null && mistralAgentId!.isNotEmpty;
+
+  /// A Google AI Studio key configured once by the operator, powering the
+  /// app's "Luma AI" modes (Aurora/Nebula/Pulsar → Gemini models). Same
+  /// deal as [mistralApiKey]: used only server-side by Api._googleChatProxy,
+  /// never sent to clients. Usage is token-metered per user — see
+  /// [kAiTokens5h] / [kAiTokensWeek].
+  final String? googleApiKey;
+
+  bool get googleKeyConfigured =>
+      googleApiKey != null && googleApiKey!.isNotEmpty;
 
   /// Where the supermarket-db API lives (see supermarket-db/ at the repo
   /// root) and its admin key, so the dashboard's Control panel tab can
@@ -99,6 +121,8 @@ class ServerConfig {
               'false',
       adminKey: env['LUMA_ADMIN_KEY'],
       mistralApiKey: env['LUMA_MISTRAL_API_KEY'],
+      mistralAgentId: env['LUMA_MISTRAL_AGENT_ID'],
+      googleApiKey: env['LUMA_GOOGLE_API_KEY'],
       groceriesUrl:
           env['LUMA_GROCERIES_URL'] ?? 'https://groceries.luma-app.cc',
       groceriesAdminKey: env['LUMA_GROCERIES_ADMIN_KEY'],
@@ -118,8 +142,18 @@ const int _defaultClientIterations = 200000;
 
 const int _maxJsonBody = 64 * 1024;
 
+/// Rolling per-user token budgets for the shared Google key's "Luma AI"
+/// modes. Clients only ever see these as percentages (Api._aiStatus).
+const int kAiTokens5h = 7500;
+const int kAiTokensWeek = 40000;
+
+/// Luma Support (Mistral) messages per rolling day, counted separately
+/// from the token budgets above.
+const int kSupportMessagesPerDay = 15;
+
 class Api {
-  Api(this.store, this.config, this.mailer, this.familyStore, this.chatStore)
+  Api(this.store, this.config, this.mailer, this.familyStore, this.chatStore,
+      this.aiUsage)
       : _authLimiter = RateLimiter(
             maxRequests: 15, window: const Duration(minutes: 10)),
         _generalLimiter = RateLimiter(
@@ -132,6 +166,7 @@ class Api {
   final Mailer mailer;
   final FamilyStore familyStore;
   final ChatStore chatStore;
+  final AiUsageStore aiUsage;
   final RateLimiter _authLimiter;
   final RateLimiter _generalLimiter;
 
@@ -153,7 +188,9 @@ class Api {
       ..get('/api/v1/account', _requireAuth(_accountInfo))
       ..post('/api/v1/account/delete', _requireAuth(_deleteAccount))
       ..get('/api/v1/ai/mistral-key-configured', _requireAuth(_mistralKeyStatus))
+      ..get('/api/v1/ai/status', _requireAuth(_aiStatus))
       ..post('/api/v1/ai/mistral/chat', _requireAuth(_mistralChatProxy))
+      ..post('/api/v1/ai/google/chat', _requireAuth(_googleChatProxy))
       ..get('/api/v1/sync/<collection>', _requireAuth(_getBlob))
       ..put('/api/v1/sync/<collection>', _requireAuth(_putBlob))
       ..delete('/api/v1/sync/<collection>', _requireAuth(_deleteBlobHandler))
@@ -671,6 +708,106 @@ class Api {
   Response _mistralKeyStatus(Request request, StoredUser user) =>
       _json(200, {'configured': config.mistralKeyConfigured});
 
+  /// Which shared AI keys the operator has configured, plus this user's
+  /// usage — expressed only as percentages / message counts, never raw
+  /// token numbers (the budgets are a server-side implementation detail).
+  Response _aiStatus(Request request, StoredUser user) {
+    int pct(int used, int limit) =>
+        ((used * 100) / limit).clamp(0, 100).round();
+    return _json(200, {
+      'mistralConfigured': config.mistralKeyConfigured,
+      'googleConfigured': config.googleKeyConfigured,
+      'usage': {
+        'fiveHourPct':
+            pct(aiUsage.tokensUsed(user.id, const Duration(hours: 5)), kAiTokens5h),
+        'weeklyPct':
+            pct(aiUsage.tokensUsed(user.id, const Duration(days: 7)), kAiTokensWeek),
+        'supportUsed': aiUsage.supportMessagesUsed(user.id),
+        'supportLimit': kSupportMessagesPerDay,
+      },
+    });
+  }
+
+  /// The app's user-facing "Luma AI" modes and the Gemini model each maps
+  /// to. Clients only ever send the mode name; the real model names stay
+  /// server-side so they can be upgraded without an app release.
+  static const _googleModeModels = {
+    'normal': 'gemini-2.5-flash-lite', // Aurora 1.0
+    'smarter': 'gemini-2.5-flash', // Nebula 1.0
+    'smartest': 'gemini-2.5-pro', // Pulsar 1.0
+  };
+
+  /// Proxies a chat-completion request to Google AI Studio's
+  /// OpenAI-compatible endpoint using the operator-configured
+  /// LUMA_GOOGLE_API_KEY — same trust model as [_mistralChatProxy]: the key
+  /// never leaves this server. Each user is token-metered against rolling
+  /// 5-hour and weekly budgets ([kAiTokens5h]/[kAiTokensWeek]) using the
+  /// exact `usage.total_tokens` Google reports per call.
+  Future<Response> _googleChatProxy(Request request, StoredUser user) async {
+    if (!config.googleKeyConfigured) {
+      return _error(404, 'not_configured',
+          'No server-wide Google AI key is configured.');
+    }
+    Map<String, dynamic> body;
+    try {
+      body = await _readJson(request);
+    } on FormatException {
+      return _error(400, 'bad_request', 'Malformed request.');
+    }
+    if (body['messages'] is! List) {
+      return _error(400, 'bad_request', 'messages is required.');
+    }
+    if (aiUsage.tokensUsed(user.id, const Duration(hours: 5)) >= kAiTokens5h) {
+      return _error(429, 'usage_limit',
+          "You've hit your assistant usage limit for now — it frees up again "
+          'over the next few hours.');
+    }
+    if (aiUsage.tokensUsed(user.id, const Duration(days: 7)) >= kAiTokensWeek) {
+      return _error(429, 'usage_limit',
+          "You've hit your weekly assistant usage limit — it frees up again "
+          'over the coming days.');
+    }
+
+    final model = _googleModeModels[body['model']] ??
+        _googleModeModels['normal']!;
+    final maxTokensRaw = body['max_tokens'];
+    final upstreamBody = {
+      ...body,
+      'model': model,
+      'max_tokens': (maxTokensRaw is int ? maxTokensRaw : 1024).clamp(1, 4096),
+    }..remove('agent_id');
+
+    final httpClient = HttpClient();
+    try {
+      final upstreamRequest = await httpClient.postUrl(Uri.parse(
+          'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'));
+      upstreamRequest.headers
+          .set(HttpHeaders.authorizationHeader, 'Bearer ${config.googleApiKey}');
+      upstreamRequest.headers.contentType = ContentType.json;
+      upstreamRequest.write(jsonEncode(upstreamBody));
+      final upstreamResponse =
+          await upstreamRequest.close().timeout(const Duration(seconds: 60));
+      final responseBody =
+          await upstreamResponse.transform(utf8.decoder).join();
+      if (upstreamResponse.statusCode == 200) {
+        var tokens = 0;
+        try {
+          final decoded = jsonDecode(responseBody) as Map<String, dynamic>;
+          tokens = (decoded['usage']?['total_tokens'] as num?)?.toInt() ?? 0;
+        } catch (_) {}
+        // If Google somehow omits usage, charge a conservative flat amount
+        // so metering can't be sidestepped by malformed responses.
+        await aiUsage.recordTokens(user.id, tokens > 0 ? tokens : 500);
+      }
+      return Response(upstreamResponse.statusCode,
+          body: responseBody, headers: {'Content-Type': 'application/json'});
+    } catch (e) {
+      return _error(502, 'upstream_error', 'Could not reach the AI service.');
+    } finally {
+      httpClient.close();
+    }
+  }
+
   /// Proxies a chat-completion request to Mistral using the
   /// operator-configured LUMA_MISTRAL_API_KEY, so signed-in users can chat
   /// through the shared key without it ever being sent to any client — only
@@ -694,12 +831,34 @@ class Api {
     if (body['messages'] is! List) {
       return _error(400, 'bad_request', 'messages is required.');
     }
+    // One "support message" = one user turn. A single turn can trigger
+    // several upstream calls when the model uses tools (the follow-up calls
+    // end with a 'tool' role message), so only count calls that end with a
+    // fresh user message.
+    final messages = body['messages'] as List;
+    final lastMessage = messages.isNotEmpty && messages.last is Map
+        ? messages.last as Map
+        : null;
+    final isNewUserTurn = lastMessage?['role'] == 'user';
+    if (isNewUserTurn &&
+        aiUsage.supportMessagesUsed(user.id) >= kSupportMessagesPerDay) {
+      return _error(429, 'usage_limit',
+          "You've used all $kSupportMessagesPerDay Luma Support messages for "
+          'today — more tomorrow.');
+    }
     final maxTokensRaw = body['max_tokens'];
     final upstreamBody = {
       ...body,
       'max_tokens': (maxTokensRaw is int ? maxTokensRaw : 1024).clamp(1, 4096),
     };
-    final url = body['agent_id'] is String
+    // When the operator configured a hosted agent (LUMA_MISTRAL_AGENT_ID)
+    // and the caller didn't pick their own, route through that agent. The
+    // agents endpoint derives the model from the agent, so `model` must go.
+    if (upstreamBody['agent_id'] is! String && config.mistralAgentConfigured) {
+      upstreamBody['agent_id'] = config.mistralAgentId;
+      upstreamBody.remove('model');
+    }
+    final url = upstreamBody['agent_id'] is String
         ? 'https://api.mistral.ai/v1/agents/completions'
         : 'https://api.mistral.ai/v1/chat/completions';
 
@@ -714,6 +873,9 @@ class Api {
           await upstreamRequest.close().timeout(const Duration(seconds: 30));
       final responseBody =
           await upstreamResponse.transform(utf8.decoder).join();
+      if (upstreamResponse.statusCode == 200 && isNewUserTurn) {
+        await aiUsage.recordSupportMessage(user.id);
+      }
       return Response(upstreamResponse.statusCode,
           body: responseBody, headers: {'Content-Type': 'application/json'});
     } catch (e) {

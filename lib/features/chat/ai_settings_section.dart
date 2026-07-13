@@ -9,6 +9,7 @@ import 'ai_agent_store.dart';
 import 'ai_key_store.dart';
 import 'providers/ai_client.dart';
 import 'providers/ai_providers.dart';
+import 'providers/google_client.dart';
 import 'providers/mistral_proxy_client.dart';
 
 /// The "AI Assistant" settings block: pick a provider and enter/replace/clear
@@ -146,12 +147,12 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
     super.dispose();
   }
 
-  /// Loads the locally-saved key, or — for the Mistral/"Luma" provider, when
-  /// nothing is saved yet and this device is signed into a sync server —
-  /// checks whether the operator has a shared key configured there. Only a
-  /// yes/no ever comes back; the key itself stays server-side (see
-  /// SyncService.mistralKeyConfiguredOnServer) and chat requests are proxied
-  /// through the server instead (see ChatController, MistralProxyClient).
+  /// Loads the locally-saved key, or — for the Luma Support (Mistral) and
+  /// Luma AI (Google) providers, when nothing is saved yet and this device
+  /// is signed into a sync server — checks whether the operator has a
+  /// shared key configured there. Only a yes/no ever comes back; the key
+  /// itself stays server-side and chat requests are proxied through the
+  /// server instead (see ChatController).
   Future<void> _loadSavedKey() async {
     final store = await AiKeyStore.load();
     final key = await store.readKey(widget.providerId);
@@ -160,6 +161,11 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
         widget.providerId == AiProviderId.mistral.name &&
         mounted) {
       fromServer = await SyncScope.of(context).mistralKeyConfiguredOnServer();
+    } else if (key == null &&
+        widget.providerId == AiProviderId.google.name &&
+        mounted) {
+      final status = await SyncScope.of(context).aiStatus();
+      fromServer = status?.googleConfigured ?? false;
     }
     if (!mounted) return;
     setState(() {
@@ -202,7 +208,9 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
       final serverUrl = sync.serverUrl;
       final token = sync.authToken;
       if (serverUrl != null && token != null) {
-        client = MistralProxyClient(serverUrl: serverUrl);
+        client = widget.providerId == AiProviderId.google.name
+            ? GoogleProxyClient(serverUrl: serverUrl)
+            : MistralProxyClient(serverUrl: serverUrl);
         key = token;
       }
     }

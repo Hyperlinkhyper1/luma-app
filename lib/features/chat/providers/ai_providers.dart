@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 
 import 'ai_client.dart';
 import 'anthropic_client.dart';
+import 'google_client.dart';
 import 'mistral_client.dart';
 import 'openai_client.dart';
 
-enum AiProviderId { anthropic, openai, mistral }
+enum AiProviderId { anthropic, openai, mistral, google }
 
 /// One selectable AI provider in Settings: its display identity plus the
 /// [AiClient] that actually talks to it.
@@ -29,9 +30,11 @@ class AiProviderInfo {
 
 /// Every provider the assistant can talk to.
 ///
-/// Mistral is presented to the user as "Luma" with a moon icon — a product
-/// decision, not a technical one — while [MistralClient] still speaks
-/// Mistral's actual API underneath.
+/// Two of these wear luma branding — product decisions, not technical ones:
+/// Mistral is presented as "Luma Support" with a moon icon, and Google AI
+/// (Gemini) as "Luma AI" with three selectable intelligence modes (Aurora /
+/// Nebula / Pulsar — see `providers/ai_modes.dart`). The clients still
+/// speak each vendor's actual API underneath.
 final List<AiProviderInfo> kAiProviders = [
   AiProviderInfo(
     id: AiProviderId.anthropic,
@@ -49,10 +52,17 @@ final List<AiProviderInfo> kAiProviders = [
   ),
   AiProviderInfo(
     id: AiProviderId.mistral,
-    displayName: 'Luma',
-    icon: Icons.nightlight_round,
+    displayName: 'Luma Support',
+    icon: Icons.support_agent_rounded,
     keyHint: 'API key...',
     client: MistralClient(),
+  ),
+  AiProviderInfo(
+    id: AiProviderId.google,
+    displayName: 'Luma AI',
+    icon: Icons.nightlight_round,
+    keyHint: 'AIza...',
+    client: GoogleClient(),
   ),
 ];
 

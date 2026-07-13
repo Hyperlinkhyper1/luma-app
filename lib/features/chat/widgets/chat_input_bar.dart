@@ -2,19 +2,23 @@ import 'package:flutter/material.dart';
 
 import '../../../theme/luma_theme.dart';
 
-/// Multiline input + send button, with a small "N messages left today"
-/// caption tied to the local daily rate limit.
+/// Multiline input + send button, with a small usage caption underneath —
+/// the caller decides what that says (a local "N messages left today"
+/// counter, server-metered usage percentages, ...) and whether sending is
+/// currently blocked.
 class ChatInputBar extends StatefulWidget {
   const ChatInputBar({
     super.key,
     required this.onSend,
     required this.sending,
-    required this.remainingToday,
+    required this.enabled,
+    required this.caption,
   });
 
   final ValueChanged<String> onSend;
   final bool sending;
-  final int remainingToday;
+  final bool enabled;
+  final String caption;
 
   @override
   State<ChatInputBar> createState() => _ChatInputBarState();
@@ -31,7 +35,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
 
   void _submit() {
     final text = _controller.text.trim();
-    if (text.isEmpty || widget.sending || widget.remainingToday <= 0) return;
+    if (text.isEmpty || widget.sending || !widget.enabled) return;
     _controller.clear();
     widget.onSend(text);
   }
@@ -39,7 +43,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final blocked = widget.remainingToday <= 0;
+    final blocked = !widget.enabled;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -56,7 +60,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
                 decoration: InputDecoration(
                   isDense: true,
                   hintText:
-                      blocked ? "You're out of messages for today" : 'Ask the assistant…',
+                      blocked ? "You're out of messages for now" : 'Ask the assistant…',
                   hintStyle: TextStyle(color: luma.textMuted),
                   filled: true,
                   fillColor: luma.background,
@@ -99,11 +103,13 @@ class _ChatInputBarState extends State<ChatInputBar> {
             ),
           ],
         ),
-        const SizedBox(height: 6),
-        Text(
-          '${widget.remainingToday} messages left today',
-          style: TextStyle(color: luma.textMuted, fontSize: 11),
-        ),
+        if (widget.caption.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            widget.caption,
+            style: TextStyle(color: luma.textMuted, fontSize: 11),
+          ),
+        ],
       ],
     );
   }
