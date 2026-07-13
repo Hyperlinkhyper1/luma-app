@@ -108,18 +108,29 @@ window.addEventListener("mouseup", e => {
 
 canvas.addEventListener("wheel", e => {
   e.preventDefault();
-  // vloeiend zoomen, verankerd op de cursor
   const rect = canvas.getBoundingClientRect();
-  const before = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+  const px = e.clientX - rect.left, py = e.clientY - rect.top;
+  // normaliseer de delta (pixels/regels/pagina's) en maak de zoomstap
+  // proportioneel: trackpads sturen veel kleine events, muiswielen grote
+  let d = e.deltaY;
+  if (e.deltaMode === 1) d *= 16; else if (e.deltaMode === 2) d *= 120;
+  d = Math.max(-120, Math.min(120, d));
   // Sommige (Windows) trackpads sturen deltaY omgekeerd bij "reverse scroll
-  // direction"-instellingen, waardoor inzoomen altijd uitzoomde. deltaY > 0
-  // is hier dus de zoom-in richting.
-  const f = e.deltaY > 0 ? 1.18 : 1 / 1.18;
-  cam.tzoom = Math.max(1.1, Math.min(44, cam.tzoom * f));
-  // richt het doel zo dat het punt onder de cursor blijft
-  const zAfter = cam.tzoom;
-  cam.tx = before.x - (e.clientX - rect.left - rect.width / 2) / zAfter;
-  cam.ty = before.y - (e.clientY - rect.top - rect.height / 2) / zAfter;
+  // direction"-instellingen; deltaY > 0 is hier dus de zoom-in richting.
+  // Pinch-zoom (ctrl+wheel) krijgt een hogere gevoeligheid.
+  const f = Math.exp(d * (e.ctrlKey ? 0.0045 : 0.0022));
+  // niet verder uitzoomen dan het punt waarop de hele kaart ruim in beeld is
+  const minZoom = Math.max(1.1, (Math.min(rect.width, rect.height) / Math.max(W, H)) * 0.9);
+  const zNew = Math.max(minZoom, Math.min(44, cam.tzoom * f));
+  // verankeren op de cursor in dóel-ruimte: reken het wereldpunt onder de
+  // muis uit t.o.v. de doelcamera (niet de nog animerende werkelijke camera),
+  // anders drijft het punt onder de cursor weg tijdens het zoomen
+  const wx = cam.tx + (px - rect.width / 2) / cam.tzoom;
+  const wy = cam.ty + (py - rect.height / 2) / cam.tzoom;
+  cam.tzoom = zNew;
+  cam.tx = wx - (px - rect.width / 2) / zNew;
+  cam.ty = wy - (py - rect.height / 2) / zNew;
+  cam.vx = cam.vy = 0; // pan-inertie stopt zodra je zoomt
 }, { passive: false });
 
 window.addEventListener("keydown", e => {
@@ -388,7 +399,7 @@ function saveGame(slot = "auto", silent = false) {
   try {
     localStorage.setItem(saveKey(slot), JSON.stringify(data));
     localStorage.setItem(saveKey(slot) + "_meta", JSON.stringify(meta));
-    if (!silent) UI.toast("💾 Spel opgeslagen.", "good");
+    if (!silent) UI.toast("Spel opgeslagen.", "good");
     return true;
   } catch (e) {
     UI.toast("Opslaan mislukt: " + e.message, "bad");
@@ -443,7 +454,7 @@ function loadGame(slot = "auto", silent = false) {
   gameStarted = true;
   setSpeed(1);
   UI.refreshTools(); UI.refreshTop(); UI.refreshRight();
-  UI.toast("📂 Spel geladen.", "good");
+  UI.toast("Spel geladen.", "good");
   return true;
 }
 
@@ -455,9 +466,9 @@ function startNewGame(mode) {
   Cars.pool.length = 0;
   UI.refreshTools(); UI.refreshTop(); UI.refreshRight();
   if (mode === "sandbox")
-    UI.toast("⬜ Sandbox! Een leeg wit canvas: onbeperkt geld, alles ontgrendeld. Bouw je droomstad.", "good");
+    UI.toast("Sandbox! Een leeg wit canvas: onbeperkt geld, alles ontgrendeld. Bouw je droomstad.", "good");
   else
-    UI.toast("🗺 Nieuwe kaart! Begin met een weg, huizen, een akker en een waterpomp.", "good");
+    UI.toast("Nieuwe kaart! Begin met een weg, huizen, een akker en een waterpomp.", "good");
 }
 
 document.getElementById("btn-save").onclick = () => UI.showSaveScreen();
