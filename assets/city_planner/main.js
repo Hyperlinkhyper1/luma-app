@@ -112,7 +112,7 @@ canvas.addEventListener("wheel", e => {
   const rect = canvas.getBoundingClientRect();
   const before = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
   const f = e.deltaY < 0 ? 1.18 : 1 / 1.18;
-  cam.tzoom = Math.max(2, Math.min(44, cam.tzoom * f));
+  cam.tzoom = Math.max(1.1, Math.min(44, cam.tzoom * f));
   // richt het doel zo dat het punt onder de cursor blijft
   const zAfter = cam.tzoom;
   cam.tx = before.x - (e.clientX - rect.left - rect.width / 2) / zAfter;
@@ -172,8 +172,8 @@ function finishRoad() {
     cost += rd.kosten * (isWater(ter) ? 3 : ter === TERRAIN.HEUVEL ? 1.5 : 1);
   }
   if (blocked > tiles.size * 0.4) { UI.toast("Bergen blokkeren dit tracé.", "warn"); return; }
-  if (G.money < cost) { UI.toast(`Onvoldoende geld: ${fmtGeld(cost)} nodig.`, "bad"); return; }
-  G.money -= cost;
+  if (!canPay(cost)) { UI.toast(`Onvoldoende geld: ${fmtGeld(cost)} nodig.`, "bad"); return; }
+  pay(cost);
   G.roadPaths.push(path);
   applyPathToGrid(path);
   UI.refreshTop();
@@ -196,8 +196,8 @@ function placeRoundabout(wx, wy, type) {
     if (G.road[i] > 0 && G.roadCover[i] > 0) continue;
     cost += rd.kosten * (isWater(G.terrain[i]) ? 3 : 1);
   }
-  if (G.money < cost) { UI.toast(`Onvoldoende geld: ${fmtGeld(cost)} nodig.`, "bad"); return; }
-  G.money -= cost;
+  if (!canPay(cost)) { UI.toast(`Onvoldoende geld: ${fmtGeld(cost)} nodig.`, "bad"); return; }
+  pay(cost);
   G.roadPaths.push(path);
   applyPathToGrid(path);
   UI.refreshTop();
@@ -245,7 +245,7 @@ function commitPaint() {
     let cost = 0;
     for (const i of cells) {
       if (G.bld[i] > 0 || G.road[i] > 0) continue;
-      if (G.money < cost + tool.kosten) break;
+      if (!canPay(cost + tool.kosten)) break;
       cost += tool.kosten;
       switch (t.terrain) {
         case "egaliseren":
@@ -257,7 +257,7 @@ function commitPaint() {
       }
       markDirty(i);
     }
-    G.money -= cost;
+    pay(cost);
     UI.refreshTop();
   } else if (t.kind === "building") {
     placeBuilding(t.type, cells, anchor.ox, anchor.oy);
@@ -285,11 +285,11 @@ function placeBuilding(type, cells, ox = 0, oy = 0) {
     UI.toast(`${def.naam} moet aan het water gebouwd worden.`, "warn"); return;
   }
   const cost = def.kosten * comp.length * def.verd * buildCostFactor();
-  if (G.money < cost) { UI.toast(`Onvoldoende geld: ${fmtGeld(cost)} nodig.`, "bad"); return; }
+  if (!canPay(cost)) { UI.toast(`Onvoldoende geld: ${fmtGeld(cost)} nodig.`, "bad"); return; }
   if (!comp.some(i => adjacentRoad(i) >= 0)) {
     UI.toast("Let op: dit gebouw heeft (nog) geen weg. Het werkt pas als er een weg naast ligt.", "warn");
   }
-  G.money -= cost;
+  pay(cost);
   const b = makeBuilding(type, comp, ox, oy);
   markDirtyCells(comp);
   recomputeCapacities();
@@ -303,8 +303,8 @@ function addTransitStop(i) {
   if (G.road[i] === 0) { UI.toast("Haltes moeten op een weg liggen.", "warn"); return; }
   if (!Input.lineDraft) Input.lineDraft = { type: t.type, stops: [] };
   const tt = TRANSIT_TYPES[t.type];
-  if (G.money < tt.kostenHalte) { UI.toast("Onvoldoende geld voor deze halte.", "bad"); return; }
-  G.money -= tt.kostenHalte;
+  if (!canPay(tt.kostenHalte)) { UI.toast("Onvoldoende geld voor deze halte.", "bad"); return; }
+  pay(tt.kostenHalte);
   Input.lineDraft.stops.push(i);
   UI.refreshTop();
 }
@@ -334,18 +334,42 @@ function setSpeed(s) {
 }
 for (let k = 0; k <= 3; k++) document.getElementById("spd" + k).onclick = () => setSpeed(k);
 
-// ── Opslaan / laden ─────────────────────────────────────────
-const SAVE_KEY = "metroplan_save_v1";
-function saveGame(silent) {
+// ── Opslaan / laden (meerdere slots + save-scherm) ──────────
+const SAVE_PREFIX = "metroplan_v3_";
+const SAVE_SLOTS = ["1", "2", "3", "auto"];
+const saveKey = slot => SAVE_PREFIX + "slot_" + slot;
+function saveMeta(slot) {
+  try { return JSON.parse(localStorage.getItem(saveKey(slot) + "_meta")); } catch { return null; }
+}
+function deleteSave(slot) {
+  localStorage.removeItem(saveKey(slot));
+  localStorage.removeItem(saveKey(slot) + "_meta");
+}
+// tegel-lagen als base64-bytes: houdt saves van de 384×384-kaart ruim
+// binnen de localStorage-limiet (JSON-arrays zouden die overschrijden)
+function packU8(arr) {
+  let s = "";
+  for (let i = 0; i < arr.length; i += 0x8000)
+    s += String.fromCharCode.apply(null, arr.subarray(i, Math.min(arr.length, i + 0x8000)));
+  return btoa(s);
+}
+function unpackU8(b64, out) {
+  const s = atob(b64);
+  const n = Math.min(s.length, out.length);
+  for (let i = 0; i < n; i++) out[i] = s.charCodeAt(i);
+  return s.length;
+}
+function saveGame(slot = "auto", silent = false) {
   const buildings = [];
   eachBuilding(b => buildings.push({
     id: b.id, type: b.type, cells: b.cells, naam: b.naam, jaar: b.jaar,
     floors: b.floors, bezet: b.bezet, ox: b.ox || 0, oy: b.oy || 0,
   }));
+  const q8 = f => Uint8Array.from(f, v => Math.max(0, Math.min(255, Math.round(v * 255))));
   const data = {
-    v: 2, seed: G.seed,
-    terrain: Array.from(G.terrain), height: Array.from(G.height), fert: Array.from(G.fert),
-    road: Array.from(G.road),
+    v: 3, seed: G.seed, mode: G.mode, worldW: W, worldH: H,
+    terrain: packU8(G.terrain), height: packU8(q8(G.height)), fert: packU8(q8(G.fert)),
+    road: packU8(G.road),
     roadPaths: G.roadPaths.map(p => ({
       id: p.id, type: p.type,
       pts: p.pts.map(q => ({ x: Math.round(q.x * 100) / 100, y: Math.round(q.y * 100) / 100 })),
@@ -357,21 +381,33 @@ function saveGame(silent) {
     fase: G.fase, rp: G.rp, techs: G.techs, policies: G.policies, taxes: G.taxes,
     pop: G.pop, happy: G.happy, settings: G.settings,
   };
+  const meta = { ts: Date.now(), mode: G.mode, pop: G.pop, year: G.year, money: Math.round(G.money), fase: G.fase };
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    localStorage.setItem(saveKey(slot), JSON.stringify(data));
+    localStorage.setItem(saveKey(slot) + "_meta", JSON.stringify(meta));
     if (!silent) UI.toast("💾 Spel opgeslagen.", "good");
+    return true;
   } catch (e) {
     UI.toast("Opslaan mislukt: " + e.message, "bad");
+    return false;
   }
 }
 
-function loadGame() {
-  const raw = localStorage.getItem(SAVE_KEY);
-  if (!raw) { UI.toast("Geen opgeslagen spel gevonden.", "warn"); return false; }
+function loadGame(slot = "auto", silent = false) {
+  const raw = localStorage.getItem(saveKey(slot));
+  if (!raw) { if (!silent) UI.toast("Geen opgeslagen spel gevonden.", "warn"); return false; }
   let d;
   try { d = JSON.parse(raw); } catch { UI.toast("Save-bestand beschadigd.", "bad"); return false; }
-  newGame(d.seed || 1);
-  G.terrain.set(d.terrain); G.height.set(d.height); G.fert.set(d.fert); G.road.set(d.road);
+  if (d.v !== 3 || (d.worldW || 192) !== W || (d.worldH || 192) !== H) {
+    UI.toast("Deze save komt van een oudere versie of andere kaartgrootte en kan niet geladen worden.", "bad");
+    return false;
+  }
+  newGame(d.seed || 1, d.mode || "classic");
+  unpackU8(d.terrain, G.terrain);
+  unpackU8(d.road, G.road);
+  const tmp = new Uint8Array(N);
+  unpackU8(d.height, tmp); for (let i = 0; i < N; i++) G.height[i] = tmp[i] / 255;
+  unpackU8(d.fert, tmp); for (let i = 0; i < N; i++) G.fert[i] = tmp[i] / 255;
   G.bld.fill(0);
   G.buildings = []; G.freeBldIds = [];
   for (const sb of d.buildings) {
@@ -406,17 +442,19 @@ function loadGame() {
   return true;
 }
 
-document.getElementById("btn-save").onclick = () => saveGame(false);
-document.getElementById("btn-load").onclick = () => loadGame();
-document.getElementById("btn-new").onclick = () => {
-  if (confirm("Nieuwe kaart starten? Niet-opgeslagen voortgang gaat verloren.")) {
-    newGame((Math.random() * 1e9) | 0);
-    UI.selected = null;
-    Cars.pool.length = 0;
-    UI.refreshTools(); UI.refreshTop(); UI.refreshRight();
+function startNewGame(mode) {
+  newGame(((Math.random() * 1e9) | 0) || 1, mode);
+  UI.selected = null;
+  Cars.pool.length = 0;
+  UI.refreshTools(); UI.refreshTop(); UI.refreshRight();
+  if (mode === "sandbox")
+    UI.toast("⬜ Sandbox! Een leeg wit canvas: onbeperkt geld, alles ontgrendeld. Bouw je droomstad.", "good");
+  else
     UI.toast("🗺 Nieuwe kaart! Begin met een weg, huizen, een akker en een waterpomp.", "good");
-  }
-};
+}
+
+document.getElementById("btn-save").onclick = () => UI.showSaveScreen();
+document.getElementById("btn-new").onclick = () => UI.showNewGameScreen();
 
 // ── Gameloop ────────────────────────────────────────────────
 const DAY_RATE = [0, 0.8, 2.4, 6];
@@ -435,7 +473,7 @@ function loop(now) {
     if (UI.tab === "inspect" && UI.selected && !Input.dragging) UI.refreshRight();
   }
   autosaveAcc += dt;
-  if (autosaveAcc > 120) { autosaveAcc = 0; saveGame(true); }
+  if (autosaveAcc > 120) { autosaveAcc = 0; saveGame("auto", true); }
   draw();
   drawMinimap();
   requestAnimationFrame(loop);
@@ -443,7 +481,7 @@ function loop(now) {
 
 // ── Start ───────────────────────────────────────────────────
 resizeCanvas();
-if (!loadGame()) {
+if (!loadGame("auto", true)) {
   newGame(((Math.random() * 1e9) | 0) || 1);
   UI.refreshTools(); UI.refreshTop(); UI.refreshRight();
   UI.toast("Welkom, stadsplanner! Teken vrij een weg (sleep een vloeiende lijn), zet er huizen naast, een akker, een waterpomp aan de rivier en een basisschool.", "good");

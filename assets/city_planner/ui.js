@@ -37,7 +37,7 @@ UI.buildTools = function () {
     const b = el("button", "toolbtn");
     if (opts.kleur) b.append(Object.assign(el("span", "sw"), { style: `background:${opts.kleur}` }));
     b.append(el("span", "", label));
-    if (opts.prijs !== undefined) b.append(el("span", "price", opts.locked ? `🔒 ${opts.lockLabel || ""}` : fmtGeld(opts.prijs)));
+    if (opts.prijs !== undefined) b.append(el("span", "price", opts.locked ? `🔒 ${opts.lockLabel || ""}` : sandbox() ? "gratis" : fmtGeld(opts.prijs)));
     if (opts.locked) b.classList.add("locked");
     b.onclick = () => {
       if (opts.locked) { UI.toast(opts.lockMsg || "Nog niet ontgrendeld — zie Onderzoek.", "warn"); return; }
@@ -263,8 +263,8 @@ UI.renderInspector = function (body) {
   add.onclick = () => {
     if (b.floors.length >= def.maxVerd) { UI.toast(`Maximaal ${def.maxVerd} verdiepingen voor dit type.`, "warn"); return; }
     const cost = def.kosten * b.cells.length * buildCostFactor();
-    if (G.money < cost) { UI.toast("Onvoldoende geld.", "bad"); return; }
-    G.money -= cost;
+    if (!canPay(cost)) { UI.toast("Onvoldoende geld.", "bad"); return; }
+    pay(cost);
     b.floors.push({ use: def.use });
     recomputeCapacities(); UI.refreshRight(); UI.refreshTop();
   };
@@ -299,6 +299,10 @@ function buildingFloorSummary(b, f) {
 // ── Onderzoek ───────────────────────────────────────────────
 UI.renderResearch = function (body) {
   body.innerHTML = "";
+  if (sandbox()) {
+    body.append(el("div", "card", "<b>⬜ Sandbox</b><br><span class='muted'>Alle technologie en fasen zijn al ontgrendeld — er valt niets te onderzoeken. Bouw erop los!</span>"));
+    return;
+  }
   const head = el("div", "card");
   head.append(el("div", "kv", `<span class="k">Onderzoekspunten</span><span class="v">🔬 ${fmtNum(G.rp)} (+${G.rpPerDag}/dag)</span>`));
   head.append(el("div", "muted", "Punten komen uit bevolking, universiteiten en technologiebedrijven."));
@@ -495,14 +499,14 @@ UI.renderStats = function (body) {
 const MAANDEN = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
 UI.refreshTop = function () {
   $("#ui-date").textContent = `${G.day} ${MAANDEN[G.month - 1]} ${G.year}`;
-  $("#ui-money").textContent = fmtGeld(G.money);
-  $("#ui-money").style.color = G.money < 0 ? "var(--bad)" : "";
+  $("#ui-money").textContent = sandbox() ? "∞" : fmtGeld(G.money);
+  $("#ui-money").style.color = !sandbox() && G.money < 0 ? "var(--bad)" : "";
   const s = G.lastBudget.saldo;
   $("#ui-cashflow").textContent = s ? (s > 0 ? `+${fmtGeld(s)}/mnd` : `${fmtGeld(s)}/mnd`) : "";
   $("#ui-cashflow").style.color = s >= 0 ? "var(--good)" : "var(--bad)";
   $("#ui-pop").textContent = fmtNum(G.pop);
   $("#ui-rp").textContent = fmtNum(G.rp);
-  $("#ui-phase").textContent = `Fase ${G.fase} · ${PHASES[G.fase].naam}`;
+  $("#ui-phase").textContent = sandbox() ? "⬜ Sandbox" : `Fase ${G.fase} · ${PHASES[G.fase].naam}`;
 };
 
 UI.refreshChips = function () {
@@ -574,6 +578,69 @@ UI.updateTooltip = function (px, py) {
   const wrap = canvas.parentElement.getBoundingClientRect();
   tip.style.left = Math.min(px + 14, wrap.width - 250) + "px";
   tip.style.top = Math.min(py + 14, wrap.height - 90) + "px";
+};
+
+// ── Modal (save-scherm / nieuw spel) ────────────────────────
+UI.showModal = function (title, contentFn) {
+  $("#modal-title").textContent = title;
+  const body = $("#modal-body");
+  body.innerHTML = "";
+  contentFn(body);
+  $("#modal").classList.add("open");
+};
+UI.hideModal = function () { $("#modal").classList.remove("open"); };
+$("#modal-close").onclick = () => UI.hideModal();
+$("#modal").addEventListener("mousedown", e => { if (e.target.id === "modal") UI.hideModal(); });
+
+UI.showSaveScreen = function () {
+  UI.showModal("💾 Opslaan & laden", body => {
+    body.append(el("div", "muted", "Drie handmatige slots + de autosave (elke 2 minuten). Laden vervangt je huidige stad."));
+    body.append(el("div", "", "&nbsp;"));
+    for (const slot of SAVE_SLOTS) {
+      const meta = saveMeta(slot);
+      const c = el("div", "card");
+      c.append(el("div", "", `<b>${slot === "auto" ? "⏱ Autosave" : "📁 Slot " + slot}</b>`));
+      if (meta) {
+        const mode = meta.mode === "sandbox" ? "⬜ Sandbox" : "🏙 Klassiek";
+        const geld = meta.mode === "sandbox" ? "∞" : fmtGeld(meta.money);
+        c.append(el("div", "muted", `${mode} · ${fmtNum(meta.pop)} inwoners · jaar ${meta.year} · ${geld}`));
+        c.append(el("div", "muted", "Opgeslagen: " + new Date(meta.ts).toLocaleString("nl-NL")));
+      } else {
+        c.append(el("div", "muted", "Leeg"));
+      }
+      const row = el("div", "row");
+      if (slot !== "auto") {
+        const sv = el("button", "", "💾 Opslaan");
+        sv.onclick = () => { if (saveGame(slot, false)) UI.showSaveScreen(); };
+        row.append(sv);
+      }
+      const ld = el("button", "", "📂 Laden");
+      ld.disabled = !meta;
+      ld.onclick = () => { if (loadGame(slot)) { Cars.pool.length = 0; UI.selected = null; UI.hideModal(); } };
+      row.append(ld);
+      const del = el("button", "", "🗑");
+      del.disabled = !meta;
+      del.onclick = () => { if (confirm("Deze save verwijderen?")) { deleteSave(slot); UI.showSaveScreen(); } };
+      row.append(del);
+      c.append(row);
+      body.append(c);
+    }
+  });
+};
+
+UI.showNewGameScreen = function () {
+  UI.showModal("🗺 Nieuwe kaart", body => {
+    body.append(el("div", "muted", "Niet-opgeslagen voortgang gaat verloren — sla eerst op via 💾 als je verder wilt spelen."));
+    body.append(el("div", "", "&nbsp;"));
+    const klassiek = el("button", "modebtn",
+      `<b>🏙 Klassiek</b><span class="muted">Begin als dorp op een gegenereerde kaart met rivieren, bossen en bergen. Beheer geld, groei door fasen en onderzoek technologie.</span>`);
+    klassiek.onclick = () => { startNewGame("classic"); UI.hideModal(); };
+    body.append(klassiek);
+    const sandboxBtn = el("button", "modebtn",
+      `<b>⬜ Sandbox</b><span class="muted">Een leeg wit canvas. Onbeperkt geld, alles direct ontgrendeld, geen fasen of onderzoekseisen — bouw alles vanaf nul zoals jij wilt.</span>`);
+    sandboxBtn.onclick = () => { startNewGame("sandbox"); UI.hideModal(); };
+    body.append(sandboxBtn);
+  });
 };
 
 // heatmap-dropdown

@@ -618,7 +618,7 @@ function simMonth() {
   });
   G.stats.materiaal = { prod: matProd, balans: matProd - G.pop * 0.004 };
 
-  if (G.money < -50000 && !G.gameOver) {
+  if (G.money < -50000 && !G.gameOver && !sandbox()) {
     addNews("💸 De stad is failliet aan het gaan! Verlaag uitgaven of verhoog belastingen.", "bad");
   }
   UI.refreshRight();

@@ -10,8 +10,8 @@ const BASE_URL = 'https://api.ah.nl';
 let cachedToken = null;
 let cachedTokenExpiresAt = 0;
 
-async function getAccessToken() {
-  if (cachedToken && Date.now() < cachedTokenExpiresAt) {
+async function getAccessToken({ forceRefresh = false } = {}) {
+  if (!forceRefresh && cachedToken && Date.now() < cachedTokenExpiresAt) {
     return cachedToken;
   }
   const response = await fetch(`${BASE_URL}/mobile-auth/v1/auth/token/anonymous`, {
@@ -29,7 +29,7 @@ async function getAccessToken() {
   return cachedToken;
 }
 
-async function authedGet(path, params = {}) {
+async function authedGet(path, params = {}, { _retried = false } = {}) {
   const token = await getAccessToken();
   const url = new URL(`${BASE_URL}${path}`);
   for (const [key, value] of Object.entries(params)) {
@@ -43,6 +43,14 @@ async function authedGet(path, params = {}) {
       'x-application': 'AHWEBSHOP',
     },
   });
+  if (response.status === 401 && !_retried) {
+    // The anonymous token can get invalidated server-side before its
+    // advertised expiry (e.g. after a very large burst of requests, like a
+    // full-catalog sync) — get a fresh one and try exactly once more rather
+    // than failing the whole sync.
+    await getAccessToken({ forceRefresh: true });
+    return authedGet(path, params, { _retried: true });
+  }
   if (!response.ok) {
     throw new Error(`AH request failed: HTTP ${response.status} for ${path}`);
   }

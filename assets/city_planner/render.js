@@ -75,6 +75,12 @@ function renderChunk(ci) {
       if (wx >= W) break;
       const i = idx(wx, wy);
       const t = G.terrain[i];
+      // sandbox: onbebouwd terrein is een strak wit canvas
+      if (sandbox() && t === TERRAIN.GRAS) {
+        c.fillStyle = "#f2f3f5";
+        c.fillRect(x * P, y * P, P, P);
+        continue;
+      }
       c.fillStyle = TERRAIN_DEF[t].kleur;
       c.fillRect(x * P, y * P, P, P);
       const h = hash2(wx, wy);
@@ -486,7 +492,7 @@ function draw() {
   cam.zoom += (cam.tzoom - cam.zoom) * k;
 
   const cw = canvas.width, ch = canvas.height;
-  ctx.fillStyle = "#0a0d12";
+  ctx.fillStyle = sandbox() ? "#dfe2e6" : "#0a0d12";
   ctx.fillRect(0, 0, cw, ch);
   const z = cam.zoom * devicePixelRatio;
   const ox = cw / 2 - cam.x * z, oy = ch / 2 - cam.y * z;
@@ -583,7 +589,7 @@ function draw() {
   // grid-overlay (hulpmiddel, optioneel)
   if (G.settings.grid && cam.zoom >= 7 && Input.buildToolActive()) {
     const gs = G.settings.gridSize;
-    ctx.strokeStyle = "rgba(255,255,255,.06)";
+    ctx.strokeStyle = sandbox() ? "rgba(0,0,0,.08)" : "rgba(255,255,255,.06)";
     ctx.lineWidth = 1;
     ctx.beginPath();
     for (let x = Math.ceil(wx0 / gs) * gs; x <= wx1; x += gs) { ctx.moveTo(ox + x * z, oy + wy0 * z); ctx.lineTo(ox + x * z, oy + wy1 * z); }
@@ -656,7 +662,7 @@ function draw() {
   // geselecteerd gebouw
   if (UI.selected && G.buildings[UI.selected.id]) {
     const b = UI.selected;
-    ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
+    ctx.strokeStyle = sandbox() ? "#1a2230" : "#fff"; ctx.lineWidth = 2;
     const pulse = 1 + Math.sin(animT * 4) * 0.5;
     ctx.globalAlpha = 0.55 + pulse * 0.25;
     for (const i of b.cells)
@@ -666,7 +672,7 @@ function draw() {
 
   // hover
   if (hoverTile >= 0 && cam.zoom > 3 && UI.tool.kind !== "road") {
-    ctx.strokeStyle = "rgba(255,255,255,.45)"; ctx.lineWidth = 1;
+    ctx.strokeStyle = sandbox() ? "rgba(0,0,0,.45)" : "rgba(255,255,255,.45)"; ctx.lineWidth = 1;
     ctx.strokeRect(ox + (hoverTile % W) * z, oy + ((hoverTile / W) | 0) * z, z, z);
   }
 }
@@ -683,8 +689,9 @@ function drawMinimap() {
       const wx = ((x / 150) * W) | 0, wy = ((y / 150) * H) | 0;
       const i = idx(wx, wy);
       let col;
-      if (G.bld[i] > 0) col = [220, 220, 230];
+      if (G.bld[i] > 0) col = sandbox() ? [90, 96, 108] : [220, 220, 230];
       else if (G.road[i] > 0) col = [130, 138, 150];
+      else if (sandbox() && G.terrain[i] === TERRAIN.GRAS) col = [242, 243, 245];
       else {
         const hex = TERRAIN_DEF[G.terrain[i]].kleur;
         col = [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
