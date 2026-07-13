@@ -2090,13 +2090,21 @@ class Api {
         '</div>'
         '<div id="groceriesSummary" style="color:#a49fb8;font-size:13px;'
         'margin-bottom:16px">Loading groceries status…</div>'
-        '<h2>Recent syncs</h2>'
+        '<div class="product-form">'
+        '<button id="groceriesLogBtn" type="button" style="background:#1e1a2b;'
+        'color:#a49fb8;border:1px solid #2c2640;border-radius:8px;'
+        'padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer">'
+        'Show sync log</button>'
+        '</div>'
+        '<div id="groceriesLog" style="display:none;max-height:400px;'
+        'overflow:auto">'
         '<table><thead><tr><th>Market</th><th>Status</th><th>Started</th>'
         '<th>Finished</th><th>Checked</th><th>Added</th><th>Updated</th>'
         '<th>Failed</th><th>Error</th></tr></thead>'
         '<tbody id="groceriesSyncRows">'
         '<tr><td colspan="9" style="color:#a49fb8">Loading…</td></tr>'
         '</tbody></table>'
+        '</div>'
         '<h2>Server update</h2>'
         '<div class="product-form">'
         '<button id="deployBtn" type="button" style="background:#8a7ee0;'
@@ -2155,6 +2163,16 @@ class Api {
   const summary = document.getElementById('groceriesSummary');
   const rows = document.getElementById('groceriesSyncRows');
   if (!summary || !rows) return;
+
+  const logBtn = document.getElementById('groceriesLogBtn');
+  const logBox = document.getElementById('groceriesLog');
+  if (logBtn && logBox) {
+    logBtn.addEventListener('click', () => {
+      const open = logBox.style.display !== 'none';
+      logBox.style.display = open ? 'none' : 'block';
+      logBtn.textContent = open ? 'Show sync log' : 'Hide sync log';
+    });
+  }
 
   function esc(v) {
     return String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({

@@ -135,6 +135,26 @@
   #news { flex: 1; min-width: 120px; color: var(--muted); font-size: 12px; white-space: nowrap;
     overflow: hidden; text-overflow: ellipsis; text-align: right; }
 
+  /* ── Modal (save-scherm / nieuw spel) ─────── */
+  #modal { position: fixed; inset: 0; z-index: 20; display: none; align-items: center;
+    justify-content: center; background: rgba(5,8,12,.6); backdrop-filter: blur(2px); }
+  #modal.open { display: flex; }
+  #modal-box { width: 440px; max-width: 92vw; max-height: 84vh; display: flex; flex-direction: column;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    box-shadow: 0 18px 50px rgba(0,0,0,.5); overflow: hidden; }
+  #modal-head { display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; border-bottom: 1px solid var(--border); font-weight: 700; }
+  #modal-body { padding: 12px 14px; overflow-y: auto; font-size: 12.5px; }
+  #modal-body .card { background: var(--panel2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px 11px; margin-bottom: 8px; }
+  #modal-body .row { display: flex; gap: 6px; margin-top: 7px; }
+  #modal-body .row > button { flex: 1; }
+  .modebtn { display: block; width: 100%; text-align: left; padding: 12px 14px; margin-bottom: 10px;
+    border-radius: 10px; border: 1px solid var(--border); background: var(--panel2); }
+  .modebtn:hover { border-color: var(--accent); }
+  .modebtn b { font-size: 14px; }
+  .modebtn .muted { display: block; margin-top: 3px; }
+
   ::-webkit-scrollbar { width: 9px; height: 9px; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -157,8 +177,7 @@
     <div class="tstat" id="ui-phase" title="Stadsfase">Fase 1 · Dorp</div>
     <div class="spacer"></div>
     <select id="heatmapsel" title="Data-weergave (heatmap)"></select>
-    <button id="btn-save" title="Opslaan">💾</button>
-    <button id="btn-load" title="Laden">📂</button>
+    <button id="btn-save" title="Opslaan & laden">💾</button>
     <button id="btn-new" title="Nieuwe kaart">🗺</button>
   </div>
 
@@ -196,6 +215,12 @@
     <div class="chip" id="chip-water" title="Drinkwater">💧 <b>–</b></div>
     <div class="chip" id="chip-food" title="Voedsel">🌾 <b>–</b></div>
     <div id="news"></div>
+  </div>
+</div>
+<div id="modal">
+  <div id="modal-box">
+    <div id="modal-head"><span id="modal-title"></span><button id="modal-close">✕</button></div>
+    <div id="modal-body"></div>
   </div>
 </div>
 <script src="data.js"></script>

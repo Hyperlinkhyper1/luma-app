@@ -4,7 +4,7 @@
 "use strict";
 
 const TILE = 1; // logische tegelgrootte (px komt uit camera-zoom)
-const WORLD_W = 192, WORLD_H = 192;
+const WORLD_W = 384, WORLD_H = 384;
 const CHUNK = 32; // tegels per render-chunk
 
 // Terreintypes (index in terrain-array)

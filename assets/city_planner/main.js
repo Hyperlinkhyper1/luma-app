@@ -111,10 +111,7 @@ canvas.addEventListener("wheel", e => {
   // vloeiend zoomen, verankerd op de cursor
   const rect = canvas.getBoundingClientRect();
   const before = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
-  // Sommige (Windows) trackpads sturen deltaY omgekeerd bij "reverse scroll
-  // direction"-instellingen, waardoor inzoomen altijd uitzoomde. deltaY > 0
-  // is hier dus de zoom-in richting.
-  const f = e.deltaY > 0 ? 1.18 : 1 / 1.18;
+  const f = e.deltaY < 0 ? 1.18 : 1 / 1.18;
   cam.tzoom = Math.max(2, Math.min(44, cam.tzoom * f));
   // richt het doel zo dat het punt onder de cursor blijft
   const zAfter = cam.tzoom;

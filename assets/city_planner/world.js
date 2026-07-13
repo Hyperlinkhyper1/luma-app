@@ -10,6 +10,7 @@ const inWorld = (x, y) => x >= 0 && y >= 0 && x < W && y < H;
 // Globale spelstaat. Wordt gevuld door newGame()/loadGame().
 const G = {
   seed: 1,
+  mode: "classic",        // "classic" | "sandbox"
   // tegel-lagen (typed arrays voor grote steden)
   terrain: new Uint8Array(N),
   height: new Float32Array(N),
@@ -234,6 +235,11 @@ function eachBuilding(fn) {
   for (const b of G.buildings) if (b) fn(b);
 }
 
+// ── Spelmodus & geld ──
+function sandbox() { return G.mode === "sandbox"; }
+function canPay(cost) { return sandbox() || G.money >= cost; }
+function pay(cost) { if (!sandbox()) G.money -= cost; }
+
 function buildCostFactor() {
   let f = 1;
   if (G.techs.beton) f *= 0.9;
@@ -246,7 +252,7 @@ function buildCostFactor() {
 const CHUNKS_X = Math.ceil(W / CHUNK), CHUNKS_Y = Math.ceil(H / CHUNK);
 const chunkCanvas = [];
 const chunkDirty = [];
-const CHUNK_PX = 16; // px per tegel in chunk-cache (bitmap wordt geschaald)
+const CHUNK_PX = 12; // px per tegel in chunk-cache (bitmap wordt geschaald; 12 houdt het geheugen van de 384×384-kaart in toom)
 for (let i = 0; i < CHUNKS_X * CHUNKS_Y; i++) { chunkCanvas.push(null); chunkDirty.push(true); }
 
 function markDirty(i) {
@@ -406,7 +412,8 @@ function snapEndpoint(pt, maxDist = 1.6) {
 }
 
 // ── Nieuw spel ──
-function newGame(seed) {
+function newGame(seed, mode = "classic") {
+  G.mode = mode;
   G.terrain.fill(0); G.height.fill(0); G.fert.fill(0); G.road.fill(0); G.bld.fill(0);
   G.traffic.fill(0); G.pollution.fill(0); G.noise.fill(0); G.landValue.fill(0);
   G.powerOk.fill(0); G.waterOk.fill(0);
@@ -423,6 +430,18 @@ function newGame(seed) {
   G.demand = { wonen: 15, commercieel: 0, industrie: 0 };
   G.lastBudget = { in: {}, uit: {}, saldo: 0 };
   G.weerFactor = 0.8; G.news = []; G.gameOver = false;
-  genWorld(seed);
+  if (mode === "sandbox") {
+    // blanco witte kaart: alles bouwbaar, alles ontgrendeld
+    G.seed = seed;
+    RNG = mulberry(seed);
+    G.terrain.fill(TERRAIN.GRAS);
+    G.height.fill(0.5);
+    G.fert.fill(0.8);
+    G.fase = PHASES.length - 1;
+    for (const t of TECHS) G.techs[t.id] = true;
+  } else {
+    genWorld(seed);
+  }
+  invalidateWaterCache();
   markAllDirty();
 }
