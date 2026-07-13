@@ -445,9 +445,6 @@ function drawRoads(ox, oy, z, wx0, wy0, wx1, wy1) {
       const rd = ROADS[p.type];
       if (!rd.streep) continue;
       strokePath(p.pts, ox, oy, z, Math.max(1, z * 0.055), "rgba(240,240,235,.65)", [z * 0.55, z * 0.5]);
-      if (p.type === 4) { // snelweg: doorgetrokken kantstrepen
-        strokePath(p.pts, ox, oy, z, rd.w * z * 0.92, "rgba(0,0,0,0)"); // reset dash-state
-      }
     }
   }
   // 4: kruispunten schoonvegen
