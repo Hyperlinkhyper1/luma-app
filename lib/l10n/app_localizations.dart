@@ -271,6 +271,18 @@ abstract class L {
   /// **'Require an 8-digit PIN to view or edit saved credentials.'**
   String get settingsLockPasswordsSub;
 
+  /// No description provided for @settingsAmericanGpa.
+  ///
+  /// In en, this message translates to:
+  /// **'American GPA scale'**
+  String get settingsAmericanGpa;
+
+  /// No description provided for @settingsAmericanGpaSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the US 4.0 GPA system in the School plugin instead of the Dutch 1-10 grading scale.'**
+  String get settingsAmericanGpaSub;
+
   /// No description provided for @settingsAiAssistant.
   ///
   /// In en, this message translates to:

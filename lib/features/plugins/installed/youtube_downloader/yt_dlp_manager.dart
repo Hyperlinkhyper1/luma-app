@@ -97,15 +97,22 @@ class YtDlpException implements Exception {
 
 /// Downloads, locates, and drives the yt-dlp / ffmpeg binaries used by the
 /// YouTube Downloader plugin. Nothing is bundled with the app: on first use
-/// the current yt-dlp.exe is pulled from its GitHub release and a static
-/// ffmpeg.exe build is pulled and unzipped, both cached under the app's
-/// support directory so this only happens once (until the user clears it).
+/// the current yt-dlp binary is pulled from its GitHub release and (on
+/// Windows) a static ffmpeg build is pulled and unzipped, both cached under
+/// the app's support directory so this only happens once. On Linux ffmpeg is
+/// expected on the system PATH (install via package manager).
 class YtDlpManager {
   YtDlpManager._();
   static final YtDlpManager instance = YtDlpManager._();
 
-  static const _ytDlpUrl =
-      'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe';
+  static bool get _isWindows => Platform.isWindows;
+
+  static String get _ytDlpExe => _isWindows ? 'yt-dlp.exe' : 'yt-dlp';
+  static String get _ffmpegExe => _isWindows ? 'ffmpeg.exe' : 'ffmpeg';
+
+  static String get _ytDlpUrl => _isWindows
+      ? 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe'
+      : 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp';
   static const _ffmpegZipUrl =
       'https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip';
 
@@ -117,46 +124,70 @@ class YtDlpManager {
   }
 
   Future<String> get _ytDlpPath async =>
-      '${(await _toolsDir()).path}${Platform.pathSeparator}yt-dlp.exe';
+      '${(await _toolsDir()).path}${Platform.pathSeparator}$_ytDlpExe';
   Future<String> get _ffmpegPath async =>
-      '${(await _toolsDir()).path}${Platform.pathSeparator}ffmpeg.exe';
+      '${(await _toolsDir()).path}${Platform.pathSeparator}$_ffmpegExe';
 
   Future<bool> get toolsReady async {
     final ytDlpExists = await File(await _ytDlpPath).exists();
-    final ffmpegExists = await File(await _ffmpegPath).exists();
-    return ytDlpExists && ffmpegExists;
+    if (!ytDlpExists) return false;
+    if (_isWindows) {
+      return File(await _ffmpegPath).exists();
+    }
+    return _ffmpegOnPath;
+  }
+
+  Future<bool> get _ffmpegOnPath async {
+    try {
+      final result = await Process.run(_ffmpegExe, const ['-version']);
+      return result.exitCode == 0;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Downloads whichever of yt-dlp / ffmpeg are missing, reporting progress.
   Future<void> ensureTools(void Function(ToolSetupProgress) onProgress) async {
     final ytDlpFile = File(await _ytDlpPath);
-    final ffmpegFile = File(await _ffmpegPath);
 
     if (!await ytDlpFile.exists()) {
       onProgress(ToolSetupProgress('Downloading yt-dlp…', fraction: 0));
       await _downloadFile(_ytDlpUrl, ytDlpFile, (frac) {
         onProgress(ToolSetupProgress('Downloading yt-dlp…', fraction: frac));
       });
+      if (!_isWindows) {
+        await Process.run('chmod', ['+x', await _ytDlpPath]);
+      }
     }
 
-    if (!await ffmpegFile.exists()) {
-      onProgress(ToolSetupProgress('Downloading ffmpeg…', fraction: 0));
-      final zipBytes = await _downloadBytes(_ffmpegZipUrl, (frac) {
-        onProgress(ToolSetupProgress('Downloading ffmpeg…', fraction: frac));
-      });
-      onProgress(ToolSetupProgress('Extracting ffmpeg…', fraction: null));
-      final archive = ZipDecoder().decodeBytes(zipBytes);
-      ArchiveFile? ffmpegEntry;
-      for (final entry in archive) {
-        if (entry.isFile && entry.name.toLowerCase().endsWith('/ffmpeg.exe')) {
-          ffmpegEntry = entry;
-          break;
+    if (_isWindows) {
+      final ffmpegFile = File(await _ffmpegPath);
+      if (!await ffmpegFile.exists()) {
+        onProgress(ToolSetupProgress('Downloading ffmpeg…', fraction: 0));
+        final zipBytes = await _downloadBytes(_ffmpegZipUrl, (frac) {
+          onProgress(ToolSetupProgress('Downloading ffmpeg…', fraction: frac));
+        });
+        onProgress(ToolSetupProgress('Extracting ffmpeg…', fraction: null));
+        final archive = ZipDecoder().decodeBytes(zipBytes);
+        ArchiveFile? ffmpegEntry;
+        for (final entry in archive) {
+          if (entry.isFile && entry.name.toLowerCase().endsWith('/ffmpeg.exe')) {
+            ffmpegEntry = entry;
+            break;
+          }
         }
+        if (ffmpegEntry == null) {
+          throw YtDlpException('Could not find ffmpeg.exe inside the download.');
+        }
+        await ffmpegFile.writeAsBytes(ffmpegEntry.content as List<int>);
       }
-      if (ffmpegEntry == null) {
-        throw YtDlpException('Could not find ffmpeg.exe inside the download.');
+    } else {
+      if (!await _ffmpegOnPath) {
+        throw YtDlpException(
+          'ffmpeg was not found on your PATH. Install it via your package '
+          'manager (e.g. sudo apt install ffmpeg) and try again.',
+        );
       }
-      await ffmpegFile.writeAsBytes(ffmpegEntry.content as List<int>);
     }
 
     onProgress(ToolSetupProgress('Ready', fraction: 1));
@@ -170,6 +201,9 @@ class YtDlpManager {
     await _downloadFile(_ytDlpUrl, file, (frac) {
       onProgress(ToolSetupProgress('Updating yt-dlp…', fraction: frac));
     });
+    if (!_isWindows) {
+      await Process.run('chmod', ['+x', await _ytDlpPath]);
+    }
     onProgress(ToolSetupProgress('Ready', fraction: 1));
   }
 
@@ -277,13 +311,12 @@ class YtDlpManager {
       if (!await toolsReady) {
         throw YtDlpException('Tools are not set up yet.');
       }
-      final toolsPath = (await _toolsDir()).path;
       final outputTemplate =
           '$outputDir${Platform.pathSeparator}%(title)s [%(id)s].%(ext)s';
 
       final args = <String>[
         url,
-        '--ffmpeg-location', toolsPath,
+        if (_isWindows) ...['--ffmpeg-location', (await _toolsDir()).path],
         '--no-playlist',
         '--no-warnings',
         '--newline',

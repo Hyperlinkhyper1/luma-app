@@ -1902,6 +1902,67 @@ class $FlashcardsTable extends Flashcards
         type: DriftSqlType.dateTime,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _reviewCountMeta = const VerificationMeta(
+    'reviewCount',
+  );
+  @override
+  late final GeneratedColumn<int> reviewCount = GeneratedColumn<int>(
+    'review_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _correctCountMeta = const VerificationMeta(
+    'correctCount',
+  );
+  @override
+  late final GeneratedColumn<int> correctCount = GeneratedColumn<int>(
+    'correct_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _totalTimeMsMeta = const VerificationMeta(
+    'totalTimeMs',
+  );
+  @override
+  late final GeneratedColumn<int> totalTimeMs = GeneratedColumn<int>(
+    'total_time_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastAnswerCorrectMeta = const VerificationMeta(
+    'lastAnswerCorrect',
+  );
+  @override
+  late final GeneratedColumn<bool> lastAnswerCorrect = GeneratedColumn<bool>(
+    'last_answer_correct',
+    aliasedName,
+    true,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("last_answer_correct" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _lastAnswerTimeMsMeta = const VerificationMeta(
+    'lastAnswerTimeMs',
+  );
+  @override
+  late final GeneratedColumn<int> lastAnswerTimeMs = GeneratedColumn<int>(
+    'last_answer_time_ms',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1913,6 +1974,11 @@ class $FlashcardsTable extends Flashcards
     repetitions,
     nextReviewDate,
     lastReviewedAt,
+    reviewCount,
+    correctCount,
+    totalTimeMs,
+    lastAnswerCorrect,
+    lastAnswerTimeMs,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1995,6 +2061,51 @@ class $FlashcardsTable extends Flashcards
         ),
       );
     }
+    if (data.containsKey('review_count')) {
+      context.handle(
+        _reviewCountMeta,
+        reviewCount.isAcceptableOrUnknown(
+          data['review_count']!,
+          _reviewCountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('correct_count')) {
+      context.handle(
+        _correctCountMeta,
+        correctCount.isAcceptableOrUnknown(
+          data['correct_count']!,
+          _correctCountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('total_time_ms')) {
+      context.handle(
+        _totalTimeMsMeta,
+        totalTimeMs.isAcceptableOrUnknown(
+          data['total_time_ms']!,
+          _totalTimeMsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_answer_correct')) {
+      context.handle(
+        _lastAnswerCorrectMeta,
+        lastAnswerCorrect.isAcceptableOrUnknown(
+          data['last_answer_correct']!,
+          _lastAnswerCorrectMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_answer_time_ms')) {
+      context.handle(
+        _lastAnswerTimeMsMeta,
+        lastAnswerTimeMs.isAcceptableOrUnknown(
+          data['last_answer_time_ms']!,
+          _lastAnswerTimeMsMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -2040,6 +2151,26 @@ class $FlashcardsTable extends Flashcards
         DriftSqlType.dateTime,
         data['${effectivePrefix}last_reviewed_at'],
       ),
+      reviewCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}review_count'],
+      )!,
+      correctCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}correct_count'],
+      )!,
+      totalTimeMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total_time_ms'],
+      )!,
+      lastAnswerCorrect: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}last_answer_correct'],
+      ),
+      lastAnswerTimeMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_answer_time_ms'],
+      ),
     );
   }
 
@@ -2059,6 +2190,11 @@ class Flashcard extends DataClass implements Insertable<Flashcard> {
   final int repetitions;
   final DateTime nextReviewDate;
   final DateTime? lastReviewedAt;
+  final int reviewCount;
+  final int correctCount;
+  final int totalTimeMs;
+  final bool? lastAnswerCorrect;
+  final int? lastAnswerTimeMs;
   const Flashcard({
     required this.id,
     required this.deckId,
@@ -2069,6 +2205,11 @@ class Flashcard extends DataClass implements Insertable<Flashcard> {
     required this.repetitions,
     required this.nextReviewDate,
     this.lastReviewedAt,
+    required this.reviewCount,
+    required this.correctCount,
+    required this.totalTimeMs,
+    this.lastAnswerCorrect,
+    this.lastAnswerTimeMs,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2083,6 +2224,15 @@ class Flashcard extends DataClass implements Insertable<Flashcard> {
     map['next_review_date'] = Variable<DateTime>(nextReviewDate);
     if (!nullToAbsent || lastReviewedAt != null) {
       map['last_reviewed_at'] = Variable<DateTime>(lastReviewedAt);
+    }
+    map['review_count'] = Variable<int>(reviewCount);
+    map['correct_count'] = Variable<int>(correctCount);
+    map['total_time_ms'] = Variable<int>(totalTimeMs);
+    if (!nullToAbsent || lastAnswerCorrect != null) {
+      map['last_answer_correct'] = Variable<bool>(lastAnswerCorrect);
+    }
+    if (!nullToAbsent || lastAnswerTimeMs != null) {
+      map['last_answer_time_ms'] = Variable<int>(lastAnswerTimeMs);
     }
     return map;
   }
@@ -2100,6 +2250,15 @@ class Flashcard extends DataClass implements Insertable<Flashcard> {
       lastReviewedAt: lastReviewedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(lastReviewedAt),
+      reviewCount: Value(reviewCount),
+      correctCount: Value(correctCount),
+      totalTimeMs: Value(totalTimeMs),
+      lastAnswerCorrect: lastAnswerCorrect == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastAnswerCorrect),
+      lastAnswerTimeMs: lastAnswerTimeMs == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastAnswerTimeMs),
     );
   }
 
@@ -2118,6 +2277,11 @@ class Flashcard extends DataClass implements Insertable<Flashcard> {
       repetitions: serializer.fromJson<int>(json['repetitions']),
       nextReviewDate: serializer.fromJson<DateTime>(json['nextReviewDate']),
       lastReviewedAt: serializer.fromJson<DateTime?>(json['lastReviewedAt']),
+      reviewCount: serializer.fromJson<int>(json['reviewCount']),
+      correctCount: serializer.fromJson<int>(json['correctCount']),
+      totalTimeMs: serializer.fromJson<int>(json['totalTimeMs']),
+      lastAnswerCorrect: serializer.fromJson<bool?>(json['lastAnswerCorrect']),
+      lastAnswerTimeMs: serializer.fromJson<int?>(json['lastAnswerTimeMs']),
     );
   }
   @override
@@ -2133,6 +2297,11 @@ class Flashcard extends DataClass implements Insertable<Flashcard> {
       'repetitions': serializer.toJson<int>(repetitions),
       'nextReviewDate': serializer.toJson<DateTime>(nextReviewDate),
       'lastReviewedAt': serializer.toJson<DateTime?>(lastReviewedAt),
+      'reviewCount': serializer.toJson<int>(reviewCount),
+      'correctCount': serializer.toJson<int>(correctCount),
+      'totalTimeMs': serializer.toJson<int>(totalTimeMs),
+      'lastAnswerCorrect': serializer.toJson<bool?>(lastAnswerCorrect),
+      'lastAnswerTimeMs': serializer.toJson<int?>(lastAnswerTimeMs),
     };
   }
 
@@ -2146,6 +2315,11 @@ class Flashcard extends DataClass implements Insertable<Flashcard> {
     int? repetitions,
     DateTime? nextReviewDate,
     Value<DateTime?> lastReviewedAt = const Value.absent(),
+    int? reviewCount,
+    int? correctCount,
+    int? totalTimeMs,
+    Value<bool?> lastAnswerCorrect = const Value.absent(),
+    Value<int?> lastAnswerTimeMs = const Value.absent(),
   }) => Flashcard(
     id: id ?? this.id,
     deckId: deckId ?? this.deckId,
@@ -2158,6 +2332,15 @@ class Flashcard extends DataClass implements Insertable<Flashcard> {
     lastReviewedAt: lastReviewedAt.present
         ? lastReviewedAt.value
         : this.lastReviewedAt,
+    reviewCount: reviewCount ?? this.reviewCount,
+    correctCount: correctCount ?? this.correctCount,
+    totalTimeMs: totalTimeMs ?? this.totalTimeMs,
+    lastAnswerCorrect: lastAnswerCorrect.present
+        ? lastAnswerCorrect.value
+        : this.lastAnswerCorrect,
+    lastAnswerTimeMs: lastAnswerTimeMs.present
+        ? lastAnswerTimeMs.value
+        : this.lastAnswerTimeMs,
   );
   Flashcard copyWithCompanion(FlashcardsCompanion data) {
     return Flashcard(
@@ -2180,6 +2363,21 @@ class Flashcard extends DataClass implements Insertable<Flashcard> {
       lastReviewedAt: data.lastReviewedAt.present
           ? data.lastReviewedAt.value
           : this.lastReviewedAt,
+      reviewCount: data.reviewCount.present
+          ? data.reviewCount.value
+          : this.reviewCount,
+      correctCount: data.correctCount.present
+          ? data.correctCount.value
+          : this.correctCount,
+      totalTimeMs: data.totalTimeMs.present
+          ? data.totalTimeMs.value
+          : this.totalTimeMs,
+      lastAnswerCorrect: data.lastAnswerCorrect.present
+          ? data.lastAnswerCorrect.value
+          : this.lastAnswerCorrect,
+      lastAnswerTimeMs: data.lastAnswerTimeMs.present
+          ? data.lastAnswerTimeMs.value
+          : this.lastAnswerTimeMs,
     );
   }
 
@@ -2194,7 +2392,12 @@ class Flashcard extends DataClass implements Insertable<Flashcard> {
           ..write('intervalDays: $intervalDays, ')
           ..write('repetitions: $repetitions, ')
           ..write('nextReviewDate: $nextReviewDate, ')
-          ..write('lastReviewedAt: $lastReviewedAt')
+          ..write('lastReviewedAt: $lastReviewedAt, ')
+          ..write('reviewCount: $reviewCount, ')
+          ..write('correctCount: $correctCount, ')
+          ..write('totalTimeMs: $totalTimeMs, ')
+          ..write('lastAnswerCorrect: $lastAnswerCorrect, ')
+          ..write('lastAnswerTimeMs: $lastAnswerTimeMs')
           ..write(')'))
         .toString();
   }
@@ -2210,6 +2413,11 @@ class Flashcard extends DataClass implements Insertable<Flashcard> {
     repetitions,
     nextReviewDate,
     lastReviewedAt,
+    reviewCount,
+    correctCount,
+    totalTimeMs,
+    lastAnswerCorrect,
+    lastAnswerTimeMs,
   );
   @override
   bool operator ==(Object other) =>
@@ -2223,7 +2431,12 @@ class Flashcard extends DataClass implements Insertable<Flashcard> {
           other.intervalDays == this.intervalDays &&
           other.repetitions == this.repetitions &&
           other.nextReviewDate == this.nextReviewDate &&
-          other.lastReviewedAt == this.lastReviewedAt);
+          other.lastReviewedAt == this.lastReviewedAt &&
+          other.reviewCount == this.reviewCount &&
+          other.correctCount == this.correctCount &&
+          other.totalTimeMs == this.totalTimeMs &&
+          other.lastAnswerCorrect == this.lastAnswerCorrect &&
+          other.lastAnswerTimeMs == this.lastAnswerTimeMs);
 }
 
 class FlashcardsCompanion extends UpdateCompanion<Flashcard> {
@@ -2236,6 +2449,11 @@ class FlashcardsCompanion extends UpdateCompanion<Flashcard> {
   final Value<int> repetitions;
   final Value<DateTime> nextReviewDate;
   final Value<DateTime?> lastReviewedAt;
+  final Value<int> reviewCount;
+  final Value<int> correctCount;
+  final Value<int> totalTimeMs;
+  final Value<bool?> lastAnswerCorrect;
+  final Value<int?> lastAnswerTimeMs;
   const FlashcardsCompanion({
     this.id = const Value.absent(),
     this.deckId = const Value.absent(),
@@ -2246,6 +2464,11 @@ class FlashcardsCompanion extends UpdateCompanion<Flashcard> {
     this.repetitions = const Value.absent(),
     this.nextReviewDate = const Value.absent(),
     this.lastReviewedAt = const Value.absent(),
+    this.reviewCount = const Value.absent(),
+    this.correctCount = const Value.absent(),
+    this.totalTimeMs = const Value.absent(),
+    this.lastAnswerCorrect = const Value.absent(),
+    this.lastAnswerTimeMs = const Value.absent(),
   });
   FlashcardsCompanion.insert({
     this.id = const Value.absent(),
@@ -2257,6 +2480,11 @@ class FlashcardsCompanion extends UpdateCompanion<Flashcard> {
     this.repetitions = const Value.absent(),
     this.nextReviewDate = const Value.absent(),
     this.lastReviewedAt = const Value.absent(),
+    this.reviewCount = const Value.absent(),
+    this.correctCount = const Value.absent(),
+    this.totalTimeMs = const Value.absent(),
+    this.lastAnswerCorrect = const Value.absent(),
+    this.lastAnswerTimeMs = const Value.absent(),
   }) : deckId = Value(deckId),
        front = Value(front),
        back = Value(back);
@@ -2270,6 +2498,11 @@ class FlashcardsCompanion extends UpdateCompanion<Flashcard> {
     Expression<int>? repetitions,
     Expression<DateTime>? nextReviewDate,
     Expression<DateTime>? lastReviewedAt,
+    Expression<int>? reviewCount,
+    Expression<int>? correctCount,
+    Expression<int>? totalTimeMs,
+    Expression<bool>? lastAnswerCorrect,
+    Expression<int>? lastAnswerTimeMs,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2281,6 +2514,11 @@ class FlashcardsCompanion extends UpdateCompanion<Flashcard> {
       if (repetitions != null) 'repetitions': repetitions,
       if (nextReviewDate != null) 'next_review_date': nextReviewDate,
       if (lastReviewedAt != null) 'last_reviewed_at': lastReviewedAt,
+      if (reviewCount != null) 'review_count': reviewCount,
+      if (correctCount != null) 'correct_count': correctCount,
+      if (totalTimeMs != null) 'total_time_ms': totalTimeMs,
+      if (lastAnswerCorrect != null) 'last_answer_correct': lastAnswerCorrect,
+      if (lastAnswerTimeMs != null) 'last_answer_time_ms': lastAnswerTimeMs,
     });
   }
 
@@ -2294,6 +2532,11 @@ class FlashcardsCompanion extends UpdateCompanion<Flashcard> {
     Value<int>? repetitions,
     Value<DateTime>? nextReviewDate,
     Value<DateTime?>? lastReviewedAt,
+    Value<int>? reviewCount,
+    Value<int>? correctCount,
+    Value<int>? totalTimeMs,
+    Value<bool?>? lastAnswerCorrect,
+    Value<int?>? lastAnswerTimeMs,
   }) {
     return FlashcardsCompanion(
       id: id ?? this.id,
@@ -2305,6 +2548,11 @@ class FlashcardsCompanion extends UpdateCompanion<Flashcard> {
       repetitions: repetitions ?? this.repetitions,
       nextReviewDate: nextReviewDate ?? this.nextReviewDate,
       lastReviewedAt: lastReviewedAt ?? this.lastReviewedAt,
+      reviewCount: reviewCount ?? this.reviewCount,
+      correctCount: correctCount ?? this.correctCount,
+      totalTimeMs: totalTimeMs ?? this.totalTimeMs,
+      lastAnswerCorrect: lastAnswerCorrect ?? this.lastAnswerCorrect,
+      lastAnswerTimeMs: lastAnswerTimeMs ?? this.lastAnswerTimeMs,
     );
   }
 
@@ -2338,6 +2586,21 @@ class FlashcardsCompanion extends UpdateCompanion<Flashcard> {
     if (lastReviewedAt.present) {
       map['last_reviewed_at'] = Variable<DateTime>(lastReviewedAt.value);
     }
+    if (reviewCount.present) {
+      map['review_count'] = Variable<int>(reviewCount.value);
+    }
+    if (correctCount.present) {
+      map['correct_count'] = Variable<int>(correctCount.value);
+    }
+    if (totalTimeMs.present) {
+      map['total_time_ms'] = Variable<int>(totalTimeMs.value);
+    }
+    if (lastAnswerCorrect.present) {
+      map['last_answer_correct'] = Variable<bool>(lastAnswerCorrect.value);
+    }
+    if (lastAnswerTimeMs.present) {
+      map['last_answer_time_ms'] = Variable<int>(lastAnswerTimeMs.value);
+    }
     return map;
   }
 
@@ -2352,7 +2615,12 @@ class FlashcardsCompanion extends UpdateCompanion<Flashcard> {
           ..write('intervalDays: $intervalDays, ')
           ..write('repetitions: $repetitions, ')
           ..write('nextReviewDate: $nextReviewDate, ')
-          ..write('lastReviewedAt: $lastReviewedAt')
+          ..write('lastReviewedAt: $lastReviewedAt, ')
+          ..write('reviewCount: $reviewCount, ')
+          ..write('correctCount: $correctCount, ')
+          ..write('totalTimeMs: $totalTimeMs, ')
+          ..write('lastAnswerCorrect: $lastAnswerCorrect, ')
+          ..write('lastAnswerTimeMs: $lastAnswerTimeMs')
           ..write(')'))
         .toString();
   }
@@ -7106,6 +7374,11 @@ typedef $$FlashcardsTableCreateCompanionBuilder =
       Value<int> repetitions,
       Value<DateTime> nextReviewDate,
       Value<DateTime?> lastReviewedAt,
+      Value<int> reviewCount,
+      Value<int> correctCount,
+      Value<int> totalTimeMs,
+      Value<bool?> lastAnswerCorrect,
+      Value<int?> lastAnswerTimeMs,
     });
 typedef $$FlashcardsTableUpdateCompanionBuilder =
     FlashcardsCompanion Function({
@@ -7118,6 +7391,11 @@ typedef $$FlashcardsTableUpdateCompanionBuilder =
       Value<int> repetitions,
       Value<DateTime> nextReviewDate,
       Value<DateTime?> lastReviewedAt,
+      Value<int> reviewCount,
+      Value<int> correctCount,
+      Value<int> totalTimeMs,
+      Value<bool?> lastAnswerCorrect,
+      Value<int?> lastAnswerTimeMs,
     });
 
 final class $$FlashcardsTableReferences
@@ -7188,6 +7466,31 @@ class $$FlashcardsTableFilterComposer
 
   ColumnFilters<DateTime> get lastReviewedAt => $composableBuilder(
     column: $table.lastReviewedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get reviewCount => $composableBuilder(
+    column: $table.reviewCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get correctCount => $composableBuilder(
+    column: $table.correctCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get totalTimeMs => $composableBuilder(
+    column: $table.totalTimeMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get lastAnswerCorrect => $composableBuilder(
+    column: $table.lastAnswerCorrect,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastAnswerTimeMs => $composableBuilder(
+    column: $table.lastAnswerTimeMs,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7264,6 +7567,31 @@ class $$FlashcardsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get reviewCount => $composableBuilder(
+    column: $table.reviewCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get correctCount => $composableBuilder(
+    column: $table.correctCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get totalTimeMs => $composableBuilder(
+    column: $table.totalTimeMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get lastAnswerCorrect => $composableBuilder(
+    column: $table.lastAnswerCorrect,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastAnswerTimeMs => $composableBuilder(
+    column: $table.lastAnswerTimeMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$FlashcardDecksTableOrderingComposer get deckId {
     final $$FlashcardDecksTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -7331,6 +7659,31 @@ class $$FlashcardsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get reviewCount => $composableBuilder(
+    column: $table.reviewCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get correctCount => $composableBuilder(
+    column: $table.correctCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get totalTimeMs => $composableBuilder(
+    column: $table.totalTimeMs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get lastAnswerCorrect => $composableBuilder(
+    column: $table.lastAnswerCorrect,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get lastAnswerTimeMs => $composableBuilder(
+    column: $table.lastAnswerTimeMs,
+    builder: (column) => column,
+  );
+
   $$FlashcardDecksTableAnnotationComposer get deckId {
     final $$FlashcardDecksTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -7392,6 +7745,11 @@ class $$FlashcardsTableTableManager
                 Value<int> repetitions = const Value.absent(),
                 Value<DateTime> nextReviewDate = const Value.absent(),
                 Value<DateTime?> lastReviewedAt = const Value.absent(),
+                Value<int> reviewCount = const Value.absent(),
+                Value<int> correctCount = const Value.absent(),
+                Value<int> totalTimeMs = const Value.absent(),
+                Value<bool?> lastAnswerCorrect = const Value.absent(),
+                Value<int?> lastAnswerTimeMs = const Value.absent(),
               }) => FlashcardsCompanion(
                 id: id,
                 deckId: deckId,
@@ -7402,6 +7760,11 @@ class $$FlashcardsTableTableManager
                 repetitions: repetitions,
                 nextReviewDate: nextReviewDate,
                 lastReviewedAt: lastReviewedAt,
+                reviewCount: reviewCount,
+                correctCount: correctCount,
+                totalTimeMs: totalTimeMs,
+                lastAnswerCorrect: lastAnswerCorrect,
+                lastAnswerTimeMs: lastAnswerTimeMs,
               ),
           createCompanionCallback:
               ({
@@ -7414,6 +7777,11 @@ class $$FlashcardsTableTableManager
                 Value<int> repetitions = const Value.absent(),
                 Value<DateTime> nextReviewDate = const Value.absent(),
                 Value<DateTime?> lastReviewedAt = const Value.absent(),
+                Value<int> reviewCount = const Value.absent(),
+                Value<int> correctCount = const Value.absent(),
+                Value<int> totalTimeMs = const Value.absent(),
+                Value<bool?> lastAnswerCorrect = const Value.absent(),
+                Value<int?> lastAnswerTimeMs = const Value.absent(),
               }) => FlashcardsCompanion.insert(
                 id: id,
                 deckId: deckId,
@@ -7424,6 +7792,11 @@ class $$FlashcardsTableTableManager
                 repetitions: repetitions,
                 nextReviewDate: nextReviewDate,
                 lastReviewedAt: lastReviewedAt,
+                reviewCount: reviewCount,
+                correctCount: correctCount,
+                totalTimeMs: totalTimeMs,
+                lastAnswerCorrect: lastAnswerCorrect,
+                lastAnswerTimeMs: lastAnswerTimeMs,
               ),
           withReferenceMapper: (p0) => p0
               .map(

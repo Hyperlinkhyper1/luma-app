@@ -59,6 +59,11 @@ class Flashcards extends Table {
   DateTimeColumn get nextReviewDate =>
       dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get lastReviewedAt => dateTime().nullable()();
+  IntColumn get reviewCount => integer().withDefault(const Constant(0))();
+  IntColumn get correctCount => integer().withDefault(const Constant(0))();
+  IntColumn get totalTimeMs => integer().withDefault(const Constant(0))();
+  BoolColumn get lastAnswerCorrect => boolean().nullable()();
+  IntColumn get lastAnswerTimeMs => integer().nullable()();
 }
 
 /// A user-maintained formula reference entry (math, physics, etc).
@@ -87,7 +92,7 @@ class GpaRecords extends Table {
   IntColumn get subjectId => integer().references(SchoolSubjects, #id)();
   TextColumn get termName => text().withLength(min: 1, max: 80)();
   RealColumn get creditHours => real()();
-  RealColumn get gradePoints => real()(); // 0.0 - 4.0 scale
+  RealColumn get gradePoints => real()(); // Dutch 1-10 by default, US 0.0-4.0 if enabled in settings
   DateTimeColumn get date => dateTime().withDefault(currentDateAndTime)();
 }
 
@@ -154,5 +159,19 @@ class SchoolDatabase extends _$SchoolDatabase {
             ));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.addColumn(flashcards, flashcards.reviewCount);
+            await m.addColumn(flashcards, flashcards.correctCount);
+            await m.addColumn(flashcards, flashcards.totalTimeMs);
+            await m.addColumn(flashcards, flashcards.lastAnswerCorrect);
+            await m.addColumn(flashcards, flashcards.lastAnswerTimeMs);
+          }
+        },
+      );
 }

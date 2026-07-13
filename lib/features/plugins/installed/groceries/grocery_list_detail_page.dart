@@ -5,128 +5,121 @@ import '../../../../theme/luma_theme.dart';
 import 'groceries_repository.dart';
 import 'groceries_scope.dart';
 import 'market_style.dart';
-import 'product_search_page.dart';
 
 /// One shopping list: items auto-grouped by supermarket, then by
 /// category/aisle within each, with per-market and grand totals.
 class GroceryListDetailPage extends StatelessWidget {
-  const GroceryListDetailPage({super.key, required this.listId});
+  const GroceryListDetailPage({
+    super.key,
+    required this.listId,
+    required this.onBack,
+    required this.onOpenSearch,
+  });
 
   final int listId;
+  final VoidCallback onBack;
+  final VoidCallback onOpenSearch;
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
     final repo = GroceriesScope.of(context);
 
-    return Scaffold(
-      backgroundColor: luma.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 24, 8),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.arrow_back_rounded, color: luma.textPrimary),
-                    tooltip: 'Back to lists',
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                  Expanded(
-                    child: StreamData<String?>(
-                      stream: repo.watchListName(listId),
-                      builder: (context, name) => Text(
-                        name ?? 'List',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: luma.textPrimary,
-                          fontSize: 19,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 8, 24, 8),
+          child: Row(
+            children: [
+              IconButton(
+                icon: Icon(Icons.arrow_back_rounded, color: luma.textPrimary),
+                tooltip: 'Back to lists',
+                onPressed: onBack,
+              ),
+              Expanded(
+                child: StreamData<String?>(
+                  stream: repo.watchListName(listId),
+                  builder: (context, name) => Text(
+                    name ?? 'List',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: luma.textPrimary,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  LumaPrimaryButton(
-                    label: 'Add products',
-                    icon: Icons.search_rounded,
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => ProductSearchPage(listId: listId),
-                      ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              LumaPrimaryButton(
+                label: 'Add products',
+                icon: Icons.search_rounded,
+                onTap: onOpenSearch,
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: StreamData<List<GroceryListItemRecord>>(
+            stream: repo.watchItems(listId),
+            builder: (context, items) {
+              if (items.isEmpty) {
+                return Center(
+                  child: LumaEmptyState(
+                    icon: Icons.shopping_basket_outlined,
+                    title: 'No items yet',
+                    subtitle:
+                        'Search products to add them to this list.',
+                    action: LumaPrimaryButton(
+                      label: 'Add products',
+                      icon: Icons.search_rounded,
+                      onTap: onOpenSearch,
+                    ),
+                  ),
+                );
+              }
+
+              final groups = _groupByMarket(items);
+              final grandTotal =
+                  items.fold<double>(0, (sum, i) => sum + i.lineTotal);
+
+              return ListView(
+                padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
+                children: [
+                  for (final group in groups) ...[
+                    _MarketSection(group: group, repo: repo),
+                    const SizedBox(height: 16),
+                  ],
+                  LumaCard(
+                    child: Row(
+                      children: [
+                        Text(
+                          'Total',
+                          style: TextStyle(
+                            color: luma.textPrimary,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          '€${grandTotal.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            color: luma.textPrimary,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
-              ),
-            ),
-            Expanded(
-              child: StreamData<List<GroceryListItemRecord>>(
-                stream: repo.watchItems(listId),
-                builder: (context, items) {
-                  if (items.isEmpty) {
-                    return Center(
-                      child: LumaEmptyState(
-                        icon: Icons.shopping_basket_outlined,
-                        title: 'No items yet',
-                        subtitle:
-                            'Search products to add them to this list.',
-                        action: LumaPrimaryButton(
-                          label: 'Add products',
-                          icon: Icons.search_rounded,
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => ProductSearchPage(listId: listId),
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }
-
-                  final groups = _groupByMarket(items);
-                  final grandTotal =
-                      items.fold<double>(0, (sum, i) => sum + i.lineTotal);
-
-                  return ListView(
-                    padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
-                    children: [
-                      for (final group in groups) ...[
-                        _MarketSection(group: group, repo: repo),
-                        const SizedBox(height: 16),
-                      ],
-                      LumaCard(
-                        child: Row(
-                          children: [
-                            Text(
-                              'Total',
-                              style: TextStyle(
-                                color: luma.textPrimary,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const Spacer(),
-                            Text(
-                              '€${grandTotal.toStringAsFixed(2)}',
-                              style: TextStyle(
-                                color: luma.textPrimary,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ),
-          ],
+              );
+            },
+          ),
         ),
-      ),
+      ],
     );
   }
 }

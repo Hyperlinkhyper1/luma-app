@@ -93,6 +93,12 @@ class LZh extends L {
   String get settingsLockPasswordsSub => '需要 8 位 PIN 码才能查看或编辑已保存的凭据。';
 
   @override
+  String get settingsAmericanGpa => '美式 GPA 制度';
+
+  @override
+  String get settingsAmericanGpaSub => '在“学校”插件中使用美国 4.0 GPA 制度，而不是荷兰 1-10 分制。';
+
+  @override
   String get settingsAiAssistant => 'AI 助手';
 
   @override

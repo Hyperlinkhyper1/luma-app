@@ -107,6 +107,13 @@ class SettingsPage extends StatelessWidget {
                       onChanged: (enabled) =>
                           _toggleLockPassword(context, settings, enabled),
                     ),
+                    Divider(color: luma.border, height: 32),
+                    _ToggleRow(
+                      title: t.settingsAmericanGpa,
+                      subtitle: t.settingsAmericanGpaSub,
+                      value: settings.useAmericanGpaScale,
+                      onChanged: settings.setUseAmericanGpaScale,
+                    ),
                   ],
                 ),
               ),

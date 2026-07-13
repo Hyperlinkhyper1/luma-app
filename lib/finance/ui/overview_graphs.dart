@@ -30,7 +30,8 @@ class CategorySpendingChart extends StatelessWidget {
     for (final t in txns) {
       if (t.kind != TxnKind.expense) continue;
       if (t.date.isBefore(monthStart)) continue;
-      byCategory[t.categoryId] = (byCategory[t.categoryId] ?? 0) + t.amountCents;
+      byCategory[t.categoryId] =
+          (byCategory[t.categoryId] ?? 0) + t.amountCents;
       total += t.amountCents;
     }
 
@@ -42,36 +43,49 @@ class CategorySpendingChart extends StatelessWidget {
     final entries = byCategory.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
     final topEntries = entries.take(5).toList();
-    
+
     final otherSum = entries.skip(5).fold<int>(0, (sum, e) => sum + e.value);
     if (otherSum > 0) {
       topEntries.add(MapEntry(null, otherSum)); // null means 'Other'
     }
 
     return SizedBox(
-      height: 120,
-      child: PieChart(
-        PieChartData(
-          sectionsSpace: 2,
-          centerSpaceRadius: 40,
-          sections: topEntries.map((e) {
-            final cat = e.key != null ? catById[e.key] : null;
-            final color = cat != null ? Color(cat.colorValue) : luma.textMuted;
-            final value = e.value.toDouble();
-            final percentage = (e.value / total * 100).toStringAsFixed(1);
-            return PieChartSectionData(
-              color: color,
-              value: value,
-              title: '$percentage%',
-              radius: 50,
-              titleStyle: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            );
-          }).toList(),
-        ),
+      height: 190,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // The ring's outer diameter must not exceed the shorter of the
+          // box's two dimensions, otherwise it gets clipped by the card —
+          // deriving the radii from the actual available space (instead of
+          // hard-coding them) keeps the donut fully visible at any size.
+          final outerRadius = constraints.biggest.shortestSide / 2;
+          final centerSpaceRadius = outerRadius * 0.45;
+          final sectionRadius = outerRadius - centerSpaceRadius;
+          return PieChart(
+            PieChartData(
+              sectionsSpace: 2,
+              centerSpaceRadius: centerSpaceRadius,
+              sections: topEntries.map((e) {
+                final cat = e.key != null ? catById[e.key] : null;
+                final color = cat != null
+                    ? Color(cat.colorValue)
+                    : luma.textMuted;
+                final value = e.value.toDouble();
+                final percentage = (e.value / total * 100).toStringAsFixed(1);
+                return PieChartSectionData(
+                  color: color,
+                  value: value,
+                  title: '$percentage%',
+                  radius: sectionRadius,
+                  titleStyle: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                );
+              }).toList(),
+            ),
+          );
+        },
       ),
     );
   }
@@ -86,7 +100,7 @@ class IncomeVsExpenseChart extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final now = DateTime.now();
-    
+
     // Last 6 months
     final data = <DateTime, _IncExp>{};
     for (var i = 5; i >= 0; i--) {
@@ -111,7 +125,7 @@ class IncomeVsExpenseChart extends StatelessWidget {
       if (v.income > maxY) maxY = v.income.toDouble();
       if (v.expense > maxY) maxY = v.expense.toDouble();
     }
-    
+
     // Add 10% padding
     maxY = maxY * 1.1;
 
@@ -129,9 +143,23 @@ class IncomeVsExpenseChart extends StatelessWidget {
                 showTitles: true,
                 getTitlesWidget: (value, meta) {
                   final index = value.toInt();
-                  if (index < 0 || index >= months.length) return const SizedBox();
+                  if (index < 0 || index >= months.length)
+                    return const SizedBox();
                   final month = months[index];
-                  const m = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
+                  const m = [
+                    'J',
+                    'F',
+                    'M',
+                    'A',
+                    'M',
+                    'J',
+                    'J',
+                    'A',
+                    'S',
+                    'O',
+                    'N',
+                    'D',
+                  ];
                   return Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(
@@ -142,24 +170,16 @@ class IncomeVsExpenseChart extends StatelessWidget {
                 },
               ),
             ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            rightTitles: AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            topTitles: AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
+            leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
           ),
           gridData: FlGridData(
             show: true,
             drawVerticalLine: false,
             horizontalInterval: (maxY / 4).clamp(1.0, double.infinity),
-            getDrawingHorizontalLine: (value) => FlLine(
-              color: luma.border,
-              strokeWidth: 1,
-            ),
+            getDrawingHorizontalLine: (value) =>
+                FlLine(color: luma.border, strokeWidth: 1),
           ),
           borderData: FlBorderData(show: false),
           barGroups: months.asMap().entries.map((e) {
@@ -171,13 +191,17 @@ class IncomeVsExpenseChart extends StatelessWidget {
                   toY: val.income.toDouble(),
                   color: luma.success,
                   width: 12,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(4),
+                  ),
                 ),
                 BarChartRodData(
                   toY: val.expense.toDouble(),
                   color: luma.danger,
                   width: 12,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(4),
+                  ),
                 ),
               ],
             );
@@ -195,11 +219,7 @@ class _IncExp {
 }
 
 class NetWorthChart extends StatelessWidget {
-  const NetWorthChart({
-    super.key,
-    required this.txns,
-    required this.holdings,
-  });
+  const NetWorthChart({super.key, required this.txns, required this.holdings});
 
   final List<FinanceTransaction> txns;
   final List<Holding> holdings;
@@ -208,7 +228,7 @@ class NetWorthChart extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final now = DateTime.now();
-    
+
     // Very simplified net worth history:
     // Just show points for the last 6 months based on current balance
     // minus transactions that happened since then.
@@ -217,19 +237,19 @@ class NetWorthChart extends StatelessWidget {
       final price = h.lastPriceCents ?? h.avgCostCents;
       return sum + (price * h.shares).round();
     });
-    
+
     int currentNetWorth = currentBalances.totalCents + portfolioValue;
-    
+
     final points = <FlSpot>[];
     int runningNw = currentNetWorth;
-    
+
     // Start with today
     points.add(FlSpot(5, runningNw.toDouble()));
-    
+
     for (var i = 4; i >= 0; i--) {
       final dStart = DateTime(now.year, now.month - (4 - i), 1);
       final dEnd = DateTime(now.year, now.month - (4 - i) + 1, 1);
-      
+
       int delta = 0;
       for (final t in txns) {
         if (t.date.isAfter(dStart) && t.date.isBefore(dEnd)) {
@@ -240,12 +260,12 @@ class NetWorthChart extends StatelessWidget {
       runningNw -= delta;
       points.add(FlSpot(i.toDouble(), runningNw.toDouble()));
     }
-    
+
     points.sort((a, b) => a.x.compareTo(b.x));
-    
+
     var minY = points.map((p) => p.y).reduce((a, b) => a < b ? a : b);
     var maxY = points.map((p) => p.y).reduce((a, b) => a > b ? a : b);
-    
+
     if (minY == maxY) {
       minY -= 10000;
       maxY += 10000;
@@ -262,25 +282,15 @@ class NetWorthChart extends StatelessWidget {
           gridData: FlGridData(
             show: true,
             drawVerticalLine: false,
-            getDrawingHorizontalLine: (value) => FlLine(
-              color: luma.border,
-              strokeWidth: 1,
-            ),
+            getDrawingHorizontalLine: (value) =>
+                FlLine(color: luma.border, strokeWidth: 1),
           ),
           titlesData: FlTitlesData(
             show: true,
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            rightTitles: AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            topTitles: AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
+            bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
           ),
           borderData: FlBorderData(show: false),
           minX: 0,

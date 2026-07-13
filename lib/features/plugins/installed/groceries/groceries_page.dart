@@ -8,11 +8,34 @@ import '../../../../theme/luma_theme.dart';
 import 'grocery_list_detail_page.dart';
 import 'groceries_repository.dart';
 import 'groceries_scope.dart';
+import 'product_search_page.dart';
 
 /// Entry point for the Groceries List plugin — a Nova-exclusive feature.
 /// Shows an upgrade prompt for other plans, otherwise the list overview.
-class GroceriesPage extends StatelessWidget {
+class GroceriesPage extends StatefulWidget {
   const GroceriesPage({super.key});
+
+  @override
+  State<GroceriesPage> createState() => _GroceriesPageState();
+}
+
+class _GroceriesPageState extends State<GroceriesPage> {
+  int? _activeListId;
+  bool _showSearch = false;
+
+  void _openList(int id) => setState(() {
+        _activeListId = id;
+        _showSearch = false;
+      });
+
+  void _backToLists() => setState(() {
+        _activeListId = null;
+        _showSearch = false;
+      });
+
+  void _openSearch() => setState(() => _showSearch = true);
+
+  void _backToDetail() => setState(() => _showSearch = false);
 
   @override
   Widget build(BuildContext context) {
@@ -39,12 +62,29 @@ class GroceriesPage extends StatelessWidget {
       );
     }
 
-    return const _GroceriesOverview();
+    if (_showSearch && _activeListId != null) {
+      return ProductSearchPage(
+        listId: _activeListId!,
+        onBack: _backToDetail,
+      );
+    }
+
+    if (_activeListId != null) {
+      return GroceryListDetailPage(
+        listId: _activeListId!,
+        onBack: _backToLists,
+        onOpenSearch: _openSearch,
+      );
+    }
+
+    return _GroceriesOverview(onOpenList: _openList);
   }
 }
 
 class _GroceriesOverview extends StatelessWidget {
-  const _GroceriesOverview();
+  const _GroceriesOverview({required this.onOpenList});
+
+  final ValueChanged<int> onOpenList;
 
   @override
   Widget build(BuildContext context) {
@@ -120,7 +160,7 @@ class _GroceriesOverview extends StatelessWidget {
                           childAspectRatio: 2.1,
                         ),
                         itemBuilder: (context, i) =>
-                            _ListCard(list: lists[i], repo: repo),
+                            _ListCard(list: lists[i], repo: repo, onOpenList: onOpenList),
                       );
                     },
                   );
@@ -138,17 +178,16 @@ class _GroceriesOverview extends StatelessWidget {
     if (name == null || name.trim().isEmpty) return;
     final id = await repo.createList(name.trim());
     if (!context.mounted) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => GroceryListDetailPage(listId: id)),
-    );
+    onOpenList(id);
   }
 }
 
 class _ListCard extends StatelessWidget {
-  const _ListCard({required this.list, required this.repo});
+  const _ListCard({required this.list, required this.repo, required this.onOpenList});
 
   final GroceryListRecord list;
   final GroceriesRepository repo;
+  final ValueChanged<int> onOpenList;
 
   @override
   Widget build(BuildContext context) {
@@ -156,11 +195,7 @@ class _ListCard extends StatelessWidget {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => GroceryListDetailPage(listId: list.id),
-          ),
-        ),
+        onTap: () => onOpenList(list.id),
         child: LumaCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

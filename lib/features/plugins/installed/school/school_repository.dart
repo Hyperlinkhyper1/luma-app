@@ -215,8 +215,14 @@ class SchoolRepository {
   Future<void> deleteCard(int id) =>
       (_db.delete(_db.flashcards)..where((t) => t.id.equals(id))).go();
 
-  /// Applies an SM-2 review rating to [card] and persists the new schedule.
-  Future<void> reviewCard(Flashcard card, ReviewRating rating) {
+  /// Applies an SM-2 review rating to [card] and persists the new schedule,
+  /// along with whether the typed answer was [correct] and how long it took.
+  Future<void> reviewCard(
+    Flashcard card,
+    ReviewRating rating, {
+    bool correct = true,
+    Duration timeTaken = Duration.zero,
+  }) {
     final result = computeNextReview(
       easeFactor: card.easeFactor,
       intervalDays: card.intervalDays,
@@ -230,6 +236,11 @@ class SchoolRepository {
         repetitions: Value(result.repetitions),
         nextReviewDate: Value(result.nextReviewDate),
         lastReviewedAt: Value(DateTime.now()),
+        reviewCount: Value(card.reviewCount + 1),
+        correctCount: Value(card.correctCount + (correct ? 1 : 0)),
+        totalTimeMs: Value(card.totalTimeMs + timeTaken.inMilliseconds),
+        lastAnswerCorrect: Value(correct),
+        lastAnswerTimeMs: Value(timeTaken.inMilliseconds),
       ),
     );
   }

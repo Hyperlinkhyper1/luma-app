@@ -207,9 +207,12 @@ class _YoutubeDownloaderPageState extends State<YoutubeDownloaderPage> {
   }
 
   Future<void> _openFolder(String filePath) async {
-    if (!Platform.isWindows) return;
     final dir = File(filePath).parent.path;
-    await Process.run('explorer', [dir]);
+    if (Platform.isWindows) {
+      await Process.run('explorer', [dir]);
+    } else {
+      await Process.run('xdg-open', [dir]);
+    }
   }
 
   @override

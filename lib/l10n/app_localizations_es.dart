@@ -96,6 +96,13 @@ class LEs extends L {
       'Requiere un PIN de 8 dígitos para ver o editar las credenciales guardadas.';
 
   @override
+  String get settingsAmericanGpa => 'Escala GPA americana';
+
+  @override
+  String get settingsAmericanGpaSub =>
+      'Usa el sistema GPA estadounidense de 4.0 en el plugin de Escuela en lugar de la escala holandesa de 1-10.';
+
+  @override
   String get settingsAiAssistant => 'Asistente IA';
 
   @override

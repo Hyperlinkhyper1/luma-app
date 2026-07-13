@@ -121,6 +121,16 @@
       "version": "1.0.0"
     },
     {
+      "id": "city-planner",
+      "name": "City Planner",
+      "description": "Een diepgaande 2D stadsplanning-simulator: begin als planner van een klein dorp en groei naar een metropool. Teken je eigen gebouwen vorm-voor-vorm, beheer verkeer, OV, energie, water, voedsel, onderwijs, zorg en belastingen — met heatmaps, een technologieboom en beleid.",
+      "icon": "location_city",
+      "category": "Games",
+      "tags": ["Games", "Simulation"],
+      "free": true,
+      "version": "1.0.0"
+    },
+    {
       "id": "auto-clicker",
       "name": "Auto Clicker",
       "description": "Automate mouse clicks at a set interval, with a global hotkey to start and stop from anywhere. Click at your cursor or a fixed spot, single or double, left/middle/right button, repeat forever or a set number of times.",

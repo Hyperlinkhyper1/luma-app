@@ -96,6 +96,13 @@ class LEn extends L {
       'Require an 8-digit PIN to view or edit saved credentials.';
 
   @override
+  String get settingsAmericanGpa => 'American GPA scale';
+
+  @override
+  String get settingsAmericanGpaSub =>
+      'Use the US 4.0 GPA system in the School plugin instead of the Dutch 1-10 grading scale.';
+
+  @override
   String get settingsAiAssistant => 'AI Assistant';
 
   @override

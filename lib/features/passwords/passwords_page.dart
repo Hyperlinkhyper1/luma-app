@@ -38,13 +38,17 @@ class _PasswordsPageState extends State<PasswordsPage> {
               Expanded(
                 child: TextField(
                   style: TextStyle(color: luma.textPrimary),
-                  decoration: pwInputDecoration(
-                    luma,
-                    hint: 'Search by service, email or username',
-                  ).copyWith(
-                    prefixIcon: Icon(Icons.search_rounded,
-                        size: 18, color: luma.textMuted),
-                  ),
+                  decoration:
+                      pwInputDecoration(
+                        luma,
+                        hint: 'Search by service, email or username',
+                      ).copyWith(
+                        prefixIcon: Icon(
+                          Icons.search_rounded,
+                          size: 18,
+                          color: luma.textMuted,
+                        ),
+                      ),
                   onChanged: (v) => setState(() => _query = v.trim()),
                 ),
               ),
@@ -81,10 +85,8 @@ class _PasswordsPageState extends State<PasswordsPage> {
                 padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
                 itemCount: records.length,
                 separatorBuilder: (_, _) => const SizedBox(height: 12),
-                itemBuilder: (context, i) => _CredentialCard(
-                  record: records[i],
-                  repo: repo,
-                ),
+                itemBuilder: (context, i) =>
+                    _CredentialCard(record: records[i], repo: repo),
               );
             },
           ),
@@ -97,10 +99,12 @@ class _PasswordsPageState extends State<PasswordsPage> {
     if (query.isEmpty) return all;
     final q = query.toLowerCase();
     return all
-        .where((r) =>
-            r.service.toLowerCase().contains(q) ||
-            r.email.toLowerCase().contains(q) ||
-            (r.username?.toLowerCase().contains(q) ?? false))
+        .where(
+          (r) =>
+              r.service.toLowerCase().contains(q) ||
+              r.email.toLowerCase().contains(q) ||
+              (r.username?.toLowerCase().contains(q) ?? false),
+        )
         .toList(growable: false);
   }
 }
@@ -120,13 +124,13 @@ class _CredentialCardState extends State<_CredentialCard> {
   Future<bool> _requirePin() async {
     final settings = SettingsScope.of(context);
     if (settings.lockPasswordHash == null) return true;
-    
+
     final pin = await showPinDialog(context, title: 'Enter PIN to unlock');
     if (pin == null) return false;
-    
+
     final hash = sha256.convert(utf8.encode(pin)).toString();
     if (hash == settings.lockPasswordHash) return true;
-    
+
     if (mounted) {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
@@ -152,8 +156,10 @@ class _CredentialCardState extends State<_CredentialCard> {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: luma.surface,
-        title: Text('Delete credential?',
-            style: TextStyle(color: luma.textPrimary)),
+        title: Text(
+          'Delete credential?',
+          style: TextStyle(color: luma.textPrimary),
+        ),
         content: Text(
           'This will permanently remove the saved credential for "${widget.record.service}".',
           style: TextStyle(color: luma.textSecondary),
@@ -255,7 +261,7 @@ class _CredentialCardState extends State<_CredentialCard> {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           _Field(
             label: 'Password',
             value: _revealed ? r.password : '•' * (r.password.isEmpty ? 8 : 10),
@@ -329,16 +335,14 @@ class _Field extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     return Padding(
-      padding: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.only(top: 6),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 36),
+        constraints: const BoxConstraints(minHeight: 32),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-          SizedBox(
-            width: 76,
-            child: Padding(
-              padding: const EdgeInsets.only(top: 2),
+            SizedBox(
+              width: 76,
               child: Text(
                 label,
                 style: TextStyle(
@@ -348,10 +352,7 @@ class _Field extends StatelessWidget {
                 ),
               ),
             ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 1),
+            Expanded(
               child: SelectableText(
                 value,
                 style: TextStyle(
@@ -364,12 +365,11 @@ class _Field extends StatelessWidget {
                 ),
               ),
             ),
-          ),
-          if (trailing != null) trailing!,
-        ],
+            if (trailing != null) trailing!,
+          ],
+        ),
       ),
-    ),
-  );
+    );
   }
 }
 
@@ -392,8 +392,8 @@ class _IconAction extends StatelessWidget {
       message: tooltip,
       child: IconButton(
         icon: Icon(icon, size: 18, color: color ?? luma.textSecondary),
-        splashRadius: 18,
-        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+        splashRadius: 16,
+        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
         padding: EdgeInsets.zero,
         onPressed: onTap,
       ),

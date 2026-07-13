@@ -12,9 +12,9 @@ import 'util.dart';
 /// Api._adminSetPlan); 'core' is the default, free tier every account
 /// starts on.
 const kPlanQuotaBytes = <String, int>{
-  'core': 10 * 1024 * 1024,
-  'orbit': 25 * 1024 * 1024,
-  'nova': 50 * 1024 * 1024,
+  'core': 5 * 1024 * 1024,
+  'orbit': 15 * 1024 * 1024,
+  'nova': 30 * 1024 * 1024,
 };
 
 const kDefaultPlanId = 'core';

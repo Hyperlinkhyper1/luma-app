@@ -96,6 +96,13 @@ class LFr extends L {
       'Exige un code PIN à 8 chiffres pour consulter ou modifier les identifiants enregistrés.';
 
   @override
+  String get settingsAmericanGpa => 'Échelle GPA américaine';
+
+  @override
+  String get settingsAmericanGpaSub =>
+      'Utiliser le système GPA américain sur 4.0 dans le plugin École au lieu de l\'échelle néerlandaise de 1 à 10.';
+
+  @override
   String get settingsAiAssistant => 'Assistant IA';
 
   @override

@@ -31,6 +31,8 @@
   "settingsHideAmountsSub": "Mask balances on the dashboard for shoulder-surfers.",
   "settingsLockPasswords": "Lock Passwords",
   "settingsLockPasswordsSub": "Require an 8-digit PIN to view or edit saved credentials.",
+  "settingsAmericanGpa": "American GPA scale",
+  "settingsAmericanGpaSub": "Use the US 4.0 GPA system in the School plugin instead of the Dutch 1-10 grading scale.",
   "settingsAiAssistant": "AI Assistant",
   "settingsAiAssistantSub": "Connect your own Anthropic API key.",
   "settingsAbout": "About",

@@ -31,6 +31,8 @@
   "settingsHideAmountsSub": "Masque les solds sur le tableau de bord contre les regards indiscrets.",
   "settingsLockPasswords": "Verrouiller les mots de passe",
   "settingsLockPasswordsSub": "Exige un code PIN à 8 chiffres pour consulter ou modifier les identifiants enregistrés.",
+  "settingsAmericanGpa": "Échelle GPA américaine",
+  "settingsAmericanGpaSub": "Utiliser le système GPA américain sur 4.0 dans le plugin École au lieu de l'échelle néerlandaise de 1 à 10.",
   "settingsAiAssistant": "Assistant IA",
   "settingsAiAssistantSub": "Connectez votre propre clé API Anthropic.",
   "settingsAbout": "À propos",

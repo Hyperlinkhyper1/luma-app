@@ -126,7 +126,10 @@ class SpeedTestEngine {
     );
   }
 
+  static const _minTestDuration = Duration(seconds: 5);
+
   Stream<SpeedTestProgress> runTest() async* {
+    final sw = Stopwatch()..start();
     yield const SpeedTestProgress(phase: SpeedTestPhase.latency);
     final latency = await _measureLatency();
 
@@ -143,6 +146,11 @@ class SpeedTestEngine {
         downloadMbps: downloadMbps,
       );
       if (p.uploadMbps != null) uploadMbps = p.uploadMbps;
+    }
+
+    final remaining = _minTestDuration - sw.elapsed;
+    if (remaining > Duration.zero) {
+      await Future.delayed(remaining);
     }
 
     yield SpeedTestProgress(

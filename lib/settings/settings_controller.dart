@@ -70,6 +70,7 @@ class SettingsController extends ChangeNotifier {
     required String? aiCallsResetDate,
     required String aiProviderId,
     required List<String> navOrder,
+    required bool useAmericanGpaScale,
     required File? file,
   })  : _themeMode = themeMode,
         _accentIndex = accentIndex,
@@ -84,6 +85,7 @@ class SettingsController extends ChangeNotifier {
         _aiCallsResetDate = aiCallsResetDate,
         _aiProviderId = aiProviderId,
         _navOrder = navOrder,
+        _useAmericanGpaScale = useAmericanGpaScale,
         _file = file;
 
   // These fields are deliberately assigned in the initializer list (rather than
@@ -106,6 +108,7 @@ class SettingsController extends ChangeNotifier {
   String? _aiCallsResetDate;
   String _aiProviderId;
   List<String> _navOrder;
+  bool _useAmericanGpaScale;
   final File? _file;
 
   static const _aiDailyCallLimit = 10;
@@ -123,6 +126,10 @@ class SettingsController extends ChangeNotifier {
 
   /// Path to the user's chosen profile picture on disk, if any.
   String? get avatarPath => _avatarPath;
+
+  /// When true, the School plugin's GPA calculator uses the US 4.0 scale
+  /// instead of the Dutch 1-10 grading scale, which is the default.
+  bool get useAmericanGpaScale => _useAmericanGpaScale;
 
   /// Number of days a redeemed plan code grants before reverting to Core.
   static const planCodeDurationDays = 30;
@@ -290,6 +297,12 @@ class SettingsController extends ChangeNotifier {
     _changed();
   }
 
+  void setUseAmericanGpaScale(bool value) {
+    if (value == _useAmericanGpaScale) return;
+    _useAmericanGpaScale = value;
+    _changed();
+  }
+
   /// Switches directly to a plan that doesn't require a code (only Core
   /// today). Orbit/Nova must go through [redeemPlanCode].
   void setSelectedPlanId(String id) {
@@ -313,6 +326,7 @@ class SettingsController extends ChangeNotifier {
     _aiCallsResetDate = null;
     _aiProviderId = 'anthropic';
     _navOrder = const [];
+    _useAmericanGpaScale = false;
     _changed();
   }
 
@@ -337,6 +351,7 @@ class SettingsController extends ChangeNotifier {
         'selectedPlanId': _selectedPlanId,
         'planExpiresAt': _planExpiresAt,
         'navOrder': _navOrder,
+        'useAmericanGpaScale': _useAmericanGpaScale,
       };
 
   /// Replaces every preference with a previously exported snapshot.
@@ -354,6 +369,7 @@ class SettingsController extends ChangeNotifier {
     _selectedPlanId = data['selectedPlanId'] as String? ?? 'core';
     _planExpiresAt = data['planExpiresAt'] as String?;
     _navOrder = _parseNavOrder(data['navOrder']);
+    _useAmericanGpaScale = data['useAmericanGpaScale'] == true;
     notifyListeners();
     await _persist();
   }
@@ -380,6 +396,7 @@ class SettingsController extends ChangeNotifier {
         'aiCallsResetDate': _aiCallsResetDate,
         'aiProviderId': _aiProviderId,
         'navOrder': _navOrder,
+        'useAmericanGpaScale': _useAmericanGpaScale,
       }));
     } catch (_) {
       // Ignore — preferences just won't survive a restart.
@@ -418,6 +435,7 @@ class SettingsController extends ChangeNotifier {
       aiCallsResetDate: data['aiCallsResetDate'] as String?,
       aiProviderId: data['aiProviderId'] as String? ?? 'anthropic',
       navOrder: _parseNavOrder(data['navOrder']),
+      useAmericanGpaScale: data['useAmericanGpaScale'] == true,
       file: file,
     );
   }

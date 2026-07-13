@@ -12,6 +12,7 @@ import '../features/plugins/installed/data_management/data_management_page.dart'
 import '../features/plugins/installed/auto_clicker/auto_clicker_page.dart';
 import '../features/plugins/installed/calendar/calendar_page.dart';
 import '../features/plugins/installed/cloud_files/cloud_files_page.dart';
+import '../features/plugins/installed/city_planner/city_planner_page.dart';
 import '../features/plugins/installed/file_tree/file_tree_page.dart';
 import '../features/plugins/installed/file_viewer/file_viewer_page.dart';
 import '../features/plugins/installed/groceries/groceries_page.dart';
@@ -205,6 +206,7 @@ class _AppShellState extends State<AppShell> {
         'data-management' => const DataManagementPage(),
         'server-tycoon' => const ServerTycoonPage(),
         'space-colony' => const SpaceColonyPage(),
+        'city-planner' => const CityPlannerPage(),
         'mood-journal' => const MoodJournalPage(),
         'youtube-downloader' => const YoutubeDownloaderPage(),
         'school' => const SchoolPage(),

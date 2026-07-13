@@ -14,6 +14,12 @@
       "port": 8123
     },
     {
+      "name": "city-planner",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8124", "--directory", "assets/city_planner"],
+      "port": 8124
+    },
+    {
       "name": "luma-web-built",
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "8091", "--directory", "build/web"],

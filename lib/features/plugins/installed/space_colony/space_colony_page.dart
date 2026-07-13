@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+
+import '../../../../app/widgets.dart';
 
 /// Space Colony is a self-contained HTML5/canvas game (bundled as
 /// `assets/space_colony/index.html`) rather than a native Dart rewrite, so it
@@ -18,6 +22,16 @@ class _SpaceColonyPageState extends State<SpaceColonyPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (Platform.isLinux) {
+      return const Center(
+        child: LumaEmptyState(
+          icon: Icons.videogame_asset_off_outlined,
+          title: 'Not available on Linux',
+          subtitle: 'Space Colony requires an embedded WebView that is '
+              'not yet supported on this platform.',
+        ),
+      );
+    }
     return Stack(
       children: [
         Positioned.fill(

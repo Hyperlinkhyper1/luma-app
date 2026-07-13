@@ -262,7 +262,7 @@ class _FileViewerPageState extends State<FileViewerPage> {
         return _SvgViewer(bytes: _bytes!);
       case _FileKind.pdf:
         final path = _pdfPath;
-        if (path != null) return _PdfWebViewer(path: path);
+        if (path != null && !Platform.isLinux) return _PdfWebViewer(path: path);
         final pages = _pdfPages;
         if (pages == null) return const SizedBox.shrink();
         return _PdfViewer(

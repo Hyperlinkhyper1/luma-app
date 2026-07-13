@@ -16,9 +16,10 @@ const _sortLabels = ['Relevance', 'Price ↑', 'Price ↓'];
 /// Search Jumbo/AH/Lidl products (via the supermarket-db API), filter by
 /// store, sort by price, and add results straight onto [listId].
 class ProductSearchPage extends StatefulWidget {
-  const ProductSearchPage({super.key, required this.listId});
+  const ProductSearchPage({super.key, required this.listId, required this.onBack});
 
   final int listId;
+  final VoidCallback onBack;
 
   @override
   State<ProductSearchPage> createState() => _ProductSearchPageState();
@@ -103,105 +104,100 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
   Widget build(BuildContext context) {
     final luma = context.luma;
 
-    return Scaffold(
-      backgroundColor: luma.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 24, 0),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.arrow_back_rounded, color: luma.textPrimary),
-                    tooltip: 'Back to list',
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                  Text(
-                    'Add products',
-                    style: TextStyle(
-                      color: luma.textPrimary,
-                      fontSize: 19,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: Icon(Icons.settings_outlined, color: luma.textMuted, size: 20),
-                    tooltip: 'Groceries server address',
-                    onPressed: () => _editServerUrl(context),
-                  ),
-                ],
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 8, 24, 0),
+          child: Row(
+            children: [
+              IconButton(
+                icon: Icon(Icons.arrow_back_rounded, color: luma.textPrimary),
+                tooltip: 'Back to list',
+                onPressed: widget.onBack,
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-              child: TextField(
-                controller: _queryController,
-                autofocus: true,
-                style: TextStyle(color: luma.textPrimary),
-                onChanged: _onQueryChanged,
-                onSubmitted: (_) => _runSearch(),
-                decoration: InputDecoration(
-                  isDense: true,
-                  hintText: 'Search products…',
-                  hintStyle: TextStyle(color: luma.textMuted),
-                  prefixIcon: Icon(Icons.search_rounded, color: luma.textMuted, size: 20),
-                  filled: true,
-                  fillColor: luma.surface,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(color: luma.border),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(color: luma.accent),
-                  ),
+              Text(
+                'Add products',
+                style: TextStyle(
+                  color: luma.textPrimary,
+                  fontSize: 19,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: LumaSegmentedTabs(
-                      tabs: _marketFilterLabels,
-                      selectedIndex: _marketIndex,
-                      onSelect: (i) {
-                        setState(() => _marketIndex = i);
-                        _runSearch();
-                      },
-                    ),
-                  ),
-                ],
+              const Spacer(),
+              IconButton(
+                icon: Icon(Icons.settings_outlined, color: luma.textMuted, size: 20),
+                tooltip: 'Groceries server address',
+                onPressed: () => _editServerUrl(context),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 10, 24, 0),
-              child: Row(
-                children: [
-                  Text('Sort', style: TextStyle(color: luma.textMuted, fontSize: 12)),
-                  const SizedBox(width: 10),
-                  LumaSegmentedTabs(
-                    tabs: _sortLabels,
-                    selectedIndex: _sortIndex,
-                    onSelect: (i) {
-                      setState(() => _sortIndex = i);
-                      _runSearch();
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Expanded(child: _buildBody(context)),
-          ],
+            ],
+          ),
         ),
-      ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+          child: TextField(
+            controller: _queryController,
+            autofocus: true,
+            style: TextStyle(color: luma.textPrimary),
+            onChanged: _onQueryChanged,
+            onSubmitted: (_) => _runSearch(),
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: 'Search products…',
+              hintStyle: TextStyle(color: luma.textMuted),
+              prefixIcon: Icon(Icons.search_rounded, color: luma.textMuted, size: 20),
+              filled: true,
+              fillColor: luma.surface,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: luma.border),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: luma.accent),
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: LumaSegmentedTabs(
+                  tabs: _marketFilterLabels,
+                  selectedIndex: _marketIndex,
+                  onSelect: (i) {
+                    setState(() => _marketIndex = i);
+                    _runSearch();
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 10, 24, 0),
+          child: Row(
+            children: [
+              Text('Sort', style: TextStyle(color: luma.textMuted, fontSize: 12)),
+              const SizedBox(width: 10),
+              LumaSegmentedTabs(
+                tabs: _sortLabels,
+                selectedIndex: _sortIndex,
+                onSelect: (i) {
+                  setState(() => _sortIndex = i);
+                  _runSearch();
+                },
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Expanded(child: _buildBody(context)),
+      ],
     );
   }
 

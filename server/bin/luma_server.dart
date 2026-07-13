@@ -39,7 +39,7 @@ Future<void> main() async {
   stdout.writeln('[luma] data directory: ${Directory(config.dataDir).absolute.path}');
   stdout.writeln(
       '[luma] registration: ${config.allowRegistration ? 'open' : 'closed'}');
-  stdout.writeln('[luma] plan quotas: core 10 MB · orbit 25 MB · nova 50 MB');
+  stdout.writeln('[luma] plan quotas: core 5 MB · orbit 15 MB · nova 30 MB');
   stdout.writeln('[luma] accounts: ${store.usersById.length}');
 
   // Graceful shutdown so in-flight writes complete.

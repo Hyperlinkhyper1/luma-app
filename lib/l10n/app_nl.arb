@@ -31,6 +31,8 @@
   "settingsHideAmountsSub": "Verberg saldo's op het dashboard voor meekijkers.",
   "settingsLockPasswords": "Wachtwoorden vergrendelen",
   "settingsLockPasswordsSub": "Vereis een 8-cijferige PIN om opgeslagen inloggegevens te bekijken of bewerken.",
+  "settingsAmericanGpa": "Amerikaanse GPA-schaal",
+  "settingsAmericanGpaSub": "Gebruik het Amerikaanse 4.0 GPA-systeem in de School-plugin in plaats van de Nederlandse cijferschaal van 1-10.",
   "settingsAiAssistant": "AI-assistent",
   "settingsAiAssistantSub": "Verbind je eigen Anthropic API-sleutel.",
   "settingsAbout": "Over",

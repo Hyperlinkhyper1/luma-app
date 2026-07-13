@@ -31,6 +31,8 @@
   "settingsHideAmountsSub": "Oculta los saldos del panel para curiosos.",
   "settingsLockPasswords": "Bloquear contraseñas",
   "settingsLockPasswordsSub": "Requiere un PIN de 8 dígitos para ver o editar las credenciales guardadas.",
+  "settingsAmericanGpa": "Escala GPA americana",
+  "settingsAmericanGpaSub": "Usa el sistema GPA estadounidense de 4.0 en el plugin de Escuela en lugar de la escala holandesa de 1-10.",
   "settingsAiAssistant": "Asistente IA",
   "settingsAiAssistantSub": "Conecta tu propia clave API de Anthropic.",
   "settingsAbout": "Acerca de",

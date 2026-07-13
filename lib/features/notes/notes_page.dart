@@ -66,8 +66,9 @@ class _NotesPageState extends State<NotesPage> {
       note = await _repo.create();
     } on StorageLimitExceededException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$e')));
       }
       return;
     }
@@ -109,13 +110,10 @@ class _NotesPageState extends State<NotesPage> {
     final insertAt = selection.isValid ? selection.start : text.length;
     final needsNewline = insertAt > 0 && text[insertAt - 1] != '\n';
     final insertion = '${needsNewline ? '\n' : ''}[ ] ';
-    final newText =
-        text.replaceRange(insertAt, insertAt, insertion);
+    final newText = text.replaceRange(insertAt, insertAt, insertion);
     _contentController.value = TextEditingValue(
       text: newText,
-      selection: TextSelection.collapsed(
-        offset: insertAt + insertion.length,
-      ),
+      selection: TextSelection.collapsed(offset: insertAt + insertion.length),
     );
   }
 
@@ -129,6 +127,42 @@ class _NotesPageState extends State<NotesPage> {
         ? notes.where((n) => n.id == _selectedId).firstOrNull
         : null;
 
+    // Below this width a fixed 240px sidebar next to the editor leaves too
+    // little room for either pane, so phones get a single-pane master/detail
+    // flow instead: the list fills the screen until a note is opened, then
+    // the editor takes over with a back button to return to the list.
+    final isNarrow = MediaQuery.sizeOf(context).width < 640;
+
+    if (isNarrow) {
+      return selectedNote == null
+          ? _NotesList(
+              notes: notes,
+              selectedId: _selectedId,
+              onSelect: _selectNote,
+              onNew: _newNote,
+              onDelete: _deleteNote,
+            )
+          : _NoteEditor(
+              key: ValueKey(selectedNote.id),
+              note: selectedNote,
+              editing: _editing,
+              titleController: _titleController,
+              contentController: _contentController,
+              titleFocus: _titleFocus,
+              onBack: () => setState(() => _selectedId = null),
+              onEdit: () => setState(() => _editing = true),
+              onSave: _saveEdits,
+              onCancel: () {
+                setState(() => _editing = false);
+                _titleController.text = selectedNote.title;
+                _contentController.text = selectedNote.content;
+              },
+              onInsertChecklistItem: _insertChecklistItem,
+              onToggleChecklistLine: (i) =>
+                  _toggleChecklistLine(selectedNote, i),
+            );
+    }
+
     return Row(
       children: [
         _NotesList(
@@ -137,6 +171,7 @@ class _NotesPageState extends State<NotesPage> {
           onSelect: _selectNote,
           onNew: _newNote,
           onDelete: _deleteNote,
+          width: 240,
         ),
         Container(width: 1, color: luma.border),
         Expanded(
@@ -173,6 +208,7 @@ class _NotesList extends StatelessWidget {
     required this.onSelect,
     required this.onNew,
     required this.onDelete,
+    this.width,
   });
 
   final List<Note> notes;
@@ -181,62 +217,64 @@ class _NotesList extends StatelessWidget {
   final VoidCallback onNew;
   final ValueChanged<String> onDelete;
 
+  /// Fixed sidebar width for the two-pane desktop/tablet layout; null when
+  /// this list is shown full-width as its own screen on a phone.
+  final double? width;
+
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    return SizedBox(
-      width: 240,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
-            child: Row(
-              children: [
-                Text(
-                  'Notes',
-                  style: TextStyle(
-                    color: luma.textPrimary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
+    final column = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+          child: Row(
+            children: [
+              Text(
+                'Notes',
+                style: TextStyle(
+                  color: luma.textPrimary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
                 ),
-                const Spacer(),
-                _IconBtn(
-                  icon: Icons.add_rounded,
-                  tooltip: 'New note',
-                  onTap: onNew,
-                ),
-              ],
-            ),
+              ),
+              const Spacer(),
+              _IconBtn(
+                icon: Icons.add_rounded,
+                tooltip: 'New note',
+                onTap: onNew,
+              ),
+            ],
           ),
-          Container(height: 1, color: luma.border),
-          Expanded(
-            child: notes.isEmpty
-                ? Center(
-                    child: Text(
-                      'No notes yet',
-                      style: TextStyle(color: luma.textMuted, fontSize: 13),
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    itemCount: notes.length,
-                    itemBuilder: (context, i) {
-                      final note = notes[i];
-                      final selected = note.id == selectedId;
-                      return _NoteListTile(
-                        note: note,
-                        selected: selected,
-                        onTap: () => onSelect(note.id),
-                        onDelete: () => onDelete(note.id),
-                      );
-                    },
+        ),
+        Container(height: 1, color: luma.border),
+        Expanded(
+          child: notes.isEmpty
+              ? Center(
+                  child: Text(
+                    'No notes yet',
+                    style: TextStyle(color: luma.textMuted, fontSize: 13),
                   ),
-          ),
-        ],
-      ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  itemCount: notes.length,
+                  itemBuilder: (context, i) {
+                    final note = notes[i];
+                    final selected = note.id == selectedId;
+                    return _NoteListTile(
+                      note: note,
+                      selected: selected,
+                      onTap: () => onSelect(note.id),
+                      onDelete: () => onDelete(note.id),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
+    return width == null ? column : SizedBox(width: width, child: column);
   }
 }
 
@@ -266,8 +304,7 @@ class _NoteListTileState extends State<_NoteListTile> {
     final note = widget.note;
     final selected = widget.selected;
 
-    final title =
-        note.title.isEmpty ? 'Untitled' : note.title;
+    final title = note.title.isEmpty ? 'Untitled' : note.title;
     final preview = note.content.replaceAll('\n', ' ');
 
     return MouseRegion(
@@ -307,8 +344,7 @@ class _NoteListTileState extends State<_NoteListTile> {
                         preview,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style:
-                            TextStyle(color: luma.textMuted, fontSize: 11.5),
+                        style: TextStyle(color: luma.textMuted, fontSize: 11.5),
                       ),
                     ],
                   ],
@@ -342,6 +378,7 @@ class _NoteEditor extends StatelessWidget {
     required this.onCancel,
     required this.onInsertChecklistItem,
     required this.onToggleChecklistLine,
+    this.onBack,
   });
 
   final Note note;
@@ -355,6 +392,10 @@ class _NoteEditor extends StatelessWidget {
   final VoidCallback onInsertChecklistItem;
   final ValueChanged<int> onToggleChecklistLine;
 
+  /// Non-null on the phone single-pane layout, where the editor replaces
+  /// the list instead of sitting next to it — lets the user return to it.
+  final VoidCallback? onBack;
+
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
@@ -366,6 +407,14 @@ class _NoteEditor extends StatelessWidget {
         children: [
           Row(
             children: [
+              if (onBack != null) ...[
+                _IconBtn(
+                  icon: Icons.arrow_back_rounded,
+                  tooltip: 'Back to notes',
+                  onTap: onBack!,
+                ),
+                const SizedBox(width: 8),
+              ],
               Expanded(
                 child: editing
                     ? TextField(
@@ -479,66 +528,69 @@ class _ChecklistAwareContent extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         for (var i = 0; i < lines.length; i++)
-          Builder(builder: (context) {
-            final match = _checklistRegex.firstMatch(lines[i]);
-            if (match == null) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 1),
-                child: Text(
-                  lines[i],
-                  style: TextStyle(
-                    color: luma.textPrimary,
-                    fontSize: 14.5,
-                    height: 1.6,
-                  ),
-                ),
-              );
-            }
-            final checked = match.group(1)!.toLowerCase() == 'x';
-            final text = match.group(2)!;
-            return GestureDetector(
-              onTap: () => onToggleLine(i),
-              behavior: HitTestBehavior.opaque,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: Checkbox(
-                        value: checked,
-                        onChanged: (_) => onToggleLine(i),
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        visualDensity: VisualDensity.compact,
-                        activeColor: luma.accent,
-                      ),
+          Builder(
+            builder: (context) {
+              final match = _checklistRegex.firstMatch(lines[i]);
+              if (match == null) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 1),
+                  child: Text(
+                    lines[i],
+                    style: TextStyle(
+                      color: luma.textPrimary,
+                      fontSize: 14.5,
+                      height: 1.6,
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Text(
-                          text,
-                          style: TextStyle(
-                            color: checked
-                                ? luma.textMuted
-                                : luma.textPrimary,
-                            fontSize: 14.5,
-                            height: 1.6,
-                            decoration: checked
-                                ? TextDecoration.lineThrough
-                                : null,
+                  ),
+                );
+              }
+              final checked = match.group(1)!.toLowerCase() == 'x';
+              final text = match.group(2)!;
+              return GestureDetector(
+                onTap: () => onToggleLine(i),
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: Checkbox(
+                          value: checked,
+                          onChanged: (_) => onToggleLine(i),
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                          visualDensity: VisualDensity.compact,
+                          activeColor: luma.accent,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            text,
+                            style: TextStyle(
+                              color: checked
+                                  ? luma.textMuted
+                                  : luma.textPrimary,
+                              fontSize: 14.5,
+                              height: 1.6,
+                              decoration: checked
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            );
-          }),
+              );
+            },
+          ),
       ],
     );
   }
@@ -560,9 +612,10 @@ class _EmptyState extends StatelessWidget {
           Text(
             'No note selected',
             style: TextStyle(
-                color: luma.textSecondary,
-                fontSize: 15,
-                fontWeight: FontWeight.w500),
+              color: luma.textSecondary,
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -616,8 +669,11 @@ class _IconBtnState extends State<_IconBtn> {
               color: _hovering ? luma.surfaceHover : Colors.transparent,
               borderRadius: BorderRadius.circular(6),
             ),
-            child: Icon(widget.icon,
-                size: widget.size, color: luma.textSecondary),
+            child: Icon(
+              widget.icon,
+              size: widget.size,
+              color: luma.textSecondary,
+            ),
           ),
         ),
       ),
@@ -660,8 +716,8 @@ class _TextBtnState extends State<_TextBtn> {
           decoration: BoxDecoration(
             color: widget.accent
                 ? (_hovering
-                    ? luma.accentHover.withValues(alpha: 0.15)
-                    : luma.accentSubtle)
+                      ? luma.accentHover.withValues(alpha: 0.15)
+                      : luma.accentSubtle)
                 : (_hovering ? luma.surfaceHover : Colors.transparent),
             borderRadius: BorderRadius.circular(8),
           ),

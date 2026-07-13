@@ -2,7 +2,8 @@
 // easy to reason about and reuse from the repository and the UI alike.
 
 /// One term's finished result for a subject: how many credit hours it was
-/// worth and the grade points (0.0-4.0) it earned.
+/// worth and the grade points it earned. Interpreted on the Dutch 1-10
+/// scale by default, or the US 0.0-4.0 scale when that setting is enabled.
 class GpaWeighting {
   const GpaWeighting({required this.creditHours, required this.gradePoints});
   final double creditHours;

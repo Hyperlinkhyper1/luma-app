@@ -39,7 +39,7 @@ class StorageGuardService extends ChangeNotifier {
   Timer? _debounce;
 
   /// Fallback cap before `main.dart` has applied the selected plan's limit.
-  static const int _defaultLimitBytes = 10 * 1024 * 1024; // 10 MB
+  static const int _defaultLimitBytes = 5 * 1024 * 1024; // 5 MB
 
   /// The current local storage cap, in bytes — set by [setLimitBytes] from
   /// the active plan (see `planById`).

@@ -114,44 +114,49 @@ class _ProfileSection extends StatelessWidget {
         final path = settings.avatarPath;
         final hasImage = path != null && File(path).existsSync();
         return LumaCard(
-          child: Row(
-            children: [
-              MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: () => _pickAvatar(settings),
-                  child: CircleAvatar(
-                    radius: 32,
-                    backgroundColor: luma.accentSubtle,
-                    backgroundImage: hasImage ? FileImage(File(path)) : null,
-                    child: hasImage
-                        ? null
-                        : Icon(Icons.person_rounded, color: luma.accent, size: 32),
+          child: _AdaptiveCardRow(
+            leading: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: () => _pickAvatar(settings),
+                child: CircleAvatar(
+                  radius: 32,
+                  backgroundColor: luma.accentSubtle,
+                  backgroundImage: hasImage ? FileImage(File(path)) : null,
+                  child: hasImage
+                      ? null
+                      : Icon(
+                          Icons.person_rounded,
+                          color: luma.accent,
+                          size: 32,
+                        ),
+                ),
+              ),
+            ),
+            content: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Profile picture',
+                  style: TextStyle(
+                    color: luma.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Profile picture',
-                        style: TextStyle(
-                            color: luma.textPrimary,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 2),
-                    Text('Shown on this device only.',
-                        style: TextStyle(color: luma.textMuted, fontSize: 12)),
-                  ],
+                const SizedBox(height: 2),
+                Text(
+                  'Shown on this device only.',
+                  style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
-              ),
-              LumaGhostButton(
-                label: hasImage ? 'Change photo' : 'Choose photo',
-                icon: Icons.image_rounded,
-                onTap: () => _pickAvatar(settings),
-              ),
-            ],
+              ],
+            ),
+            actionBuilder: (expand) => LumaGhostButton(
+              label: hasImage ? 'Change photo' : 'Choose photo',
+              icon: Icons.image_rounded,
+              expand: expand,
+              onTap: () => _pickAvatar(settings),
+            ),
           ),
         );
       },
@@ -186,11 +191,14 @@ class _LocalStorageBar extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Text('Local storage',
-                      style: TextStyle(
-                          color: luma.textSecondary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600)),
+                  Text(
+                    'Local storage',
+                    style: TextStyle(
+                      color: luma.textSecondary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const Spacer(),
                   Text(
                     '${StorageGuardService.formatBytes(used)} of '
@@ -207,7 +215,8 @@ class _LocalStorageBar extends StatelessWidget {
                   minHeight: 8,
                   backgroundColor: luma.surfaceHover,
                   valueColor: AlwaysStoppedAnimation(
-                      fraction > 0.9 ? Colors.red.shade400 : luma.accent),
+                    fraction > 0.9 ? Colors.red.shade400 : luma.accent,
+                  ),
                 ),
               ),
               if (guard.isOverLimit) ...[
@@ -216,7 +225,10 @@ class _LocalStorageBar extends StatelessWidget {
                   "You've reached your storage limit — new data won't be "
                   'saved, and sync is paused, until you free up space.',
                   style: TextStyle(
-                      color: Colors.red.shade400, fontSize: 12, height: 1.4),
+                    color: Colors.red.shade400,
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
                 ),
               ],
             ],
@@ -245,53 +257,52 @@ class _PlanSummary extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ---- Plan header row ------------------------------------------
-              Row(
-                children: [
-                  // Accent icon
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: luma.accentSubtle,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(Icons.workspace_premium_rounded,
-                        color: luma.accent, size: 22),
+              _AdaptiveCardRow(
+                spacing: 14,
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: luma.accentSubtle,
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          plan.name,
-                          style: TextStyle(
-                            color: luma.textPrimary,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          plan.priceLabel,
-                          style: TextStyle(
-                            color: luma.accent,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
+                  child: Icon(
+                    Icons.workspace_premium_rounded,
+                    color: luma.accent,
+                    size: 22,
                   ),
-                  LumaGhostButton(
-                    label: 'Change plan',
-                    icon: Icons.swap_horiz_rounded,
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const PlanSelectionPage(),
+                ),
+                content: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      plan.name,
+                      style: TextStyle(
+                        color: luma.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
+                    const SizedBox(height: 2),
+                    Text(
+                      plan.priceLabel,
+                      style: TextStyle(
+                        color: luma.accent,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                actionBuilder: (expand) => LumaGhostButton(
+                  label: 'Change plan',
+                  icon: Icons.swap_horiz_rounded,
+                  expand: expand,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const PlanSelectionPage(),
+                    ),
                   ),
-                ],
+                ),
               ),
               const SizedBox(height: 16),
               Divider(color: luma.border, height: 1),
@@ -304,7 +315,9 @@ class _PlanSummary extends StatelessWidget {
                   for (final feature in plan.features)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: luma.accentSubtle,
                         borderRadius: BorderRadius.circular(20),
@@ -312,8 +325,11 @@ class _PlanSummary extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.check_rounded,
-                              size: 14, color: luma.accent),
+                          Icon(
+                            Icons.check_rounded,
+                            size: 14,
+                            color: luma.accent,
+                          ),
                           const SizedBox(width: 6),
                           Text(
                             feature,
@@ -351,81 +367,90 @@ class _FamilySummary extends StatelessWidget {
         final family = familyRepo.family;
         if (family == null) {
           return LumaCard(
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: luma.accentSubtle,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(Icons.diversity_3_rounded,
-                      color: luma.accent, size: 22),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('You\'re not in a family yet',
-                          style: TextStyle(
-                              color: luma.textPrimary,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 2),
-                      Text('Create one to share your calendar.',
-                          style: TextStyle(color: luma.textMuted, fontSize: 12)),
-                    ],
-                  ),
-                ),
-                LumaPrimaryButton(
-                  label: 'Create a family',
-                  icon: Icons.add_rounded,
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const FamilyPage()),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-        return LumaCard(
-          child: Row(
-            children: [
-              Container(
+            child: _AdaptiveCardRow(
+              spacing: 14,
+              leading: Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: luma.accentSubtle,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(Icons.diversity_3_rounded,
-                    color: luma.accent, size: 22),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(family.name,
-                        style: TextStyle(
-                            color: luma.textPrimary,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 2),
-                    Text(
-                        '${family.slotsUsed} of ${family.slotLimit ?? '∞'} slots used',
-                        style: TextStyle(color: luma.textMuted, fontSize: 12)),
-                  ],
+                child: Icon(
+                  Icons.diversity_3_rounded,
+                  color: luma.accent,
+                  size: 22,
                 ),
               ),
-              LumaGhostButton(
-                label: 'Manage family',
-                icon: Icons.arrow_forward_rounded,
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const FamilyPage()),
-                ),
+              content: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'You\'re not in a family yet',
+                    style: TextStyle(
+                      color: luma.textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Create one to share your calendar.',
+                    style: TextStyle(color: luma.textMuted, fontSize: 12),
+                  ),
+                ],
               ),
-            ],
+              actionBuilder: (expand) => LumaPrimaryButton(
+                label: 'Create a family',
+                icon: Icons.add_rounded,
+                expand: expand,
+                onTap: () => Navigator.of(
+                  context,
+                ).push(MaterialPageRoute(builder: (_) => const FamilyPage())),
+              ),
+            ),
+          );
+        }
+        return LumaCard(
+          child: _AdaptiveCardRow(
+            spacing: 14,
+            leading: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: luma.accentSubtle,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.diversity_3_rounded,
+                color: luma.accent,
+                size: 22,
+              ),
+            ),
+            content: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  family.name,
+                  style: TextStyle(
+                    color: luma.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${family.slotsUsed} of ${family.slotLimit ?? '∞'} slots used',
+                  style: TextStyle(color: luma.textMuted, fontSize: 12),
+                ),
+              ],
+            ),
+            actionBuilder: (expand) => LumaGhostButton(
+              label: 'Manage family',
+              icon: Icons.arrow_forward_rounded,
+              expand: expand,
+              onTap: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const FamilyPage())),
+            ),
           ),
         );
       },
@@ -456,18 +481,72 @@ class _SectionHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title,
-                  style: TextStyle(
-                      color: luma.textPrimary,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700)),
+              Text(
+                title,
+                style: TextStyle(
+                  color: luma.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
               if (subtitle != null)
-                Text(subtitle!,
-                    style: TextStyle(color: luma.textMuted, fontSize: 12)),
+                Text(
+                  subtitle!,
+                  style: TextStyle(color: luma.textMuted, fontSize: 12),
+                ),
             ],
           ),
         ),
       ],
+    );
+  }
+}
+
+/// A leading icon/avatar + flexible text column + trailing action button.
+///
+/// A fixed-width button competing with the text column for space in a plain
+/// [Row] is what collapses the text into a near-vertical stack of one word
+/// per line on phone-width screens. Below [_narrowBreakpoint] this instead
+/// stacks the button under a full-width text row, so the text always keeps
+/// its full share of the available width.
+class _AdaptiveCardRow extends StatelessWidget {
+  const _AdaptiveCardRow({
+    required this.leading,
+    required this.content,
+    required this.actionBuilder,
+    this.spacing = 16,
+  });
+
+  final Widget leading;
+  final Widget content;
+  final Widget Function(bool expand) actionBuilder;
+  final double spacing;
+
+  static const _narrowBreakpoint = 380.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final narrow = constraints.maxWidth < _narrowBreakpoint;
+        final headerRow = Row(
+          children: [
+            leading,
+            SizedBox(width: spacing),
+            Expanded(child: content),
+            if (!narrow) actionBuilder(false),
+          ],
+        );
+        if (!narrow) return headerRow;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            headerRow,
+            const SizedBox(height: 12),
+            actionBuilder(true),
+          ],
+        );
+      },
     );
   }
 }

@@ -144,10 +144,12 @@ class LumaGhostButton extends StatefulWidget {
     required this.label,
     required this.onTap,
     this.icon,
+    this.expand = false,
   });
   final String label;
   final VoidCallback? onTap;
   final IconData? icon;
+  final bool expand;
 
   @override
   State<LumaGhostButton> createState() => _LumaGhostButtonState();
@@ -168,28 +170,31 @@ class _LumaGhostButtonState extends State<LumaGhostButton> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           height: 44,
+          width: widget.expand ? double.infinity : null,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
             color: _hovering ? luma.surfaceHover : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: luma.border),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (widget.icon != null) ...[
-                Icon(widget.icon, color: luma.textSecondary, size: 18),
-                const SizedBox(width: 8),
-              ],
-              Text(
-                widget.label,
-                style: TextStyle(
-                  color: luma.textPrimary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
+          child: Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.icon != null) ...[
+                  Icon(widget.icon, color: luma.textSecondary, size: 18),
+                  const SizedBox(width: 8),
+                ],
+                Text(
+                  widget.label,
+                  style: TextStyle(
+                    color: luma.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -329,8 +334,7 @@ class LumaCollapsibleSection extends StatefulWidget {
   final Widget child;
 
   @override
-  State<LumaCollapsibleSection> createState() =>
-      _LumaCollapsibleSectionState();
+  State<LumaCollapsibleSection> createState() => _LumaCollapsibleSectionState();
 }
 
 class _LumaCollapsibleSectionState extends State<LumaCollapsibleSection> {
@@ -354,23 +358,29 @@ class _LumaCollapsibleSectionState extends State<LumaCollapsibleSection> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(widget.title,
-                          style: TextStyle(
-                              color: luma.textPrimary,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700)),
+                      Text(
+                        widget.title,
+                        style: TextStyle(
+                          color: luma.textPrimary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                       if (widget.subtitle != null)
-                        Text(widget.subtitle!,
-                            style:
-                                TextStyle(color: luma.textMuted, fontSize: 12)),
+                        Text(
+                          widget.subtitle!,
+                          style: TextStyle(color: luma.textMuted, fontSize: 12),
+                        ),
                     ],
                   ),
                 ),
                 AnimatedRotation(
                   turns: _expanded ? 0.5 : 0,
                   duration: const Duration(milliseconds: 150),
-                  child: Icon(Icons.expand_more_rounded,
-                      color: luma.textSecondary),
+                  child: Icon(
+                    Icons.expand_more_rounded,
+                    color: luma.textSecondary,
+                  ),
                 ),
               ],
             ),

@@ -203,21 +203,40 @@ class _PluginsPageState extends State<PluginsPage> {
                 ),
                 if (allTags.isNotEmpty) ...[
                   const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final tag in allTags)
-                        _TagFilterChip(
-                          label: tag,
-                          selected: _selectedTags.contains(tag),
-                          onTap: () => setState(() {
-                            if (!_selectedTags.remove(tag)) {
-                              _selectedTags.add(tag);
-                            }
-                          }),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      // A full Wrap of every category tag can run to 5-6
+                      // rows on a phone-width screen, burying the actual
+                      // plugin list below the fold. Below this width, show
+                      // the tags as a single horizontally-scrolling row
+                      // instead so filters stay reachable without the
+                      // clutter.
+                      final compact = constraints.maxWidth < 640;
+                      final chips = [
+                        for (final tag in allTags)
+                          _TagFilterChip(
+                            label: tag,
+                            selected: _selectedTags.contains(tag),
+                            onTap: () => setState(() {
+                              if (!_selectedTags.remove(tag)) {
+                                _selectedTags.add(tag);
+                              }
+                            }),
+                          ),
+                      ];
+                      if (!compact) {
+                        return Wrap(spacing: 8, runSpacing: 8, children: chips);
+                      }
+                      return SizedBox(
+                        height: 36,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: chips.length,
+                          separatorBuilder: (_, _) => const SizedBox(width: 8),
+                          itemBuilder: (context, i) => chips[i],
                         ),
-                    ],
+                      );
+                    },
                   ),
                 ],
               ],
@@ -629,8 +648,7 @@ class _PluginTileState extends State<_PluginTile> {
                             _error!,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style:
-                                TextStyle(color: luma.danger, fontSize: 11),
+                            style: TextStyle(color: luma.danger, fontSize: 11),
                           ),
                         ],
                       ],
@@ -643,21 +661,18 @@ class _PluginTileState extends State<_PluginTile> {
                       child: actionButton == null
                           ? openButton
                           : (installed && !_actionBusy
-                              ? Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    actionButton,
-                                    const SizedBox(height: 8),
-                                    openButton,
-                                  ],
-                                )
-                              : actionButton),
+                                ? Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      actionButton,
+                                      const SizedBox(height: 8),
+                                      openButton,
+                                    ],
+                                  )
+                                : actionButton),
                     ),
-                    if (installed) ...[
-                      const SizedBox(width: 8),
-                      deleteButton,
-                    ],
+                    if (installed) ...[const SizedBox(width: 8), deleteButton],
                   ],
                 ],
               );
@@ -788,50 +803,42 @@ class _PluginActionButtonState extends State<_PluginActionButton>
 
     final Widget content = switch (_phase) {
       _ActionPhase.idle => Row(
-          key: ValueKey('idle-$isUpdate'),
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isUpdate ? Icons.autorenew_rounded : Icons.download_rounded,
-              color: luma.onAccent,
-              size: 18,
-            ),
-            const SizedBox(width: 8),
-            Text(isUpdate ? 'Update' : 'Download', style: textStyle),
-          ],
-        ),
+        key: ValueKey('idle-$isUpdate'),
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isUpdate ? Icons.autorenew_rounded : Icons.download_rounded,
+            color: luma.onAccent,
+            size: 18,
+          ),
+          const SizedBox(width: 8),
+          Text(isUpdate ? 'Update' : 'Download', style: textStyle),
+        ],
+      ),
       _ActionPhase.busy => Row(
-          key: const ValueKey('busy'),
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (isUpdate)
-              RotationTransition(
-                turns: _loop,
-                child: Icon(
-                  Icons.sync_rounded,
-                  color: luma.onAccent,
-                  size: 17,
-                ),
-              )
-            else
-              _DownloadingIcon(loop: _loop, color: luma.onAccent),
-            const SizedBox(width: 8),
-            Text(isUpdate ? 'Updating…' : 'Downloading…', style: textStyle),
-          ],
-        ),
+        key: const ValueKey('busy'),
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isUpdate)
+            RotationTransition(
+              turns: _loop,
+              child: Icon(Icons.sync_rounded, color: luma.onAccent, size: 17),
+            )
+          else
+            _DownloadingIcon(loop: _loop, color: luma.onAccent),
+          const SizedBox(width: 8),
+          Text(isUpdate ? 'Updating…' : 'Downloading…', style: textStyle),
+        ],
+      ),
       _ActionPhase.done => Row(
-          key: const ValueKey('done'),
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.check_circle_rounded,
-              color: luma.onAccent,
-              size: 18,
-            ),
-            const SizedBox(width: 8),
-            Text(isUpdate ? 'Updated' : 'Installed', style: textStyle),
-          ],
-        ),
+        key: const ValueKey('done'),
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.check_circle_rounded, color: luma.onAccent, size: 18),
+          const SizedBox(width: 8),
+          Text(isUpdate ? 'Updated' : 'Installed', style: textStyle),
+        ],
+      ),
     };
 
     return MouseRegion(
@@ -896,8 +903,7 @@ class _DownloadingIcon extends StatelessWidget {
                 return Opacity(
                   opacity: opacity,
                   child: Transform.translate(
-                    offset:
-                        Offset(0, -9 + 12 * Curves.easeIn.transform(t)),
+                    offset: Offset(0, -9 + 12 * Curves.easeIn.transform(t)),
                     child: Icon(
                       Icons.arrow_downward_rounded,
                       size: 14,
@@ -1033,32 +1039,31 @@ class _PluginDetailViewState extends State<_PluginDetailView> {
                     icon: Icons.open_in_new_rounded,
                     onTap: widget.onOpen,
                   );
-                  final installButton =
-                      (!installed || hasUpdate || _actionBusy)
-                          ? _PluginActionButton(
-                              entry: entry,
-                              repo: widget.repo,
-                              isUpdate: installed,
-                              onError: (e) {
-                                if (mounted) setState(() => _error = e);
-                              },
-                              onBusyChanged: (b) {
-                                if (mounted) setState(() => _actionBusy = b);
-                              },
-                            )
-                          : null;
+                  final installButton = (!installed || hasUpdate || _actionBusy)
+                      ? _PluginActionButton(
+                          entry: entry,
+                          repo: widget.repo,
+                          isUpdate: installed,
+                          onError: (e) {
+                            if (mounted) setState(() => _error = e);
+                          },
+                          onBusyChanged: (b) {
+                            if (mounted) setState(() => _actionBusy = b);
+                          },
+                        )
+                      : null;
                   final actionButton = installButton == null
                       ? openButton
                       : (installed && !_actionBusy
-                          ? Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                installButton,
-                                const SizedBox(height: 8),
-                                openButton,
-                              ],
-                            )
-                          : installButton);
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  installButton,
+                                  const SizedBox(height: 8),
+                                  openButton,
+                                ],
+                              )
+                            : installButton);
 
                   final header = Row(
                     crossAxisAlignment: CrossAxisAlignment.start,

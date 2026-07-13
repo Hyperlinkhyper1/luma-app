@@ -27,6 +27,8 @@ IconData pluginIconFor(String? name) {
       return Icons.smart_display_rounded;
     case 'rocket_launch':
       return Icons.rocket_launch_rounded;
+    case 'location_city':
+      return Icons.location_city_rounded;
     case 'ads_click':
       return Icons.ads_click_rounded;
     case 'insights':
@@ -37,6 +39,8 @@ IconData pluginIconFor(String? name) {
       return Icons.description_rounded;
     case 'local_grocery_store':
       return Icons.local_grocery_store_rounded;
+    case 'speed':
+      return Icons.speed_rounded;
     default:
       return Icons.extension_rounded;
   }

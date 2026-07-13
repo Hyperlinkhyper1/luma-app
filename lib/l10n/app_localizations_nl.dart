@@ -96,6 +96,13 @@ class LNl extends L {
       'Vereis een 8-cijferige PIN om opgeslagen inloggegevens te bekijken of bewerken.';
 
   @override
+  String get settingsAmericanGpa => 'Amerikaanse GPA-schaal';
+
+  @override
+  String get settingsAmericanGpaSub =>
+      'Gebruik het Amerikaanse 4.0 GPA-systeem in de School-plugin in plaats van de Nederlandse cijferschaal van 1-10.';
+
+  @override
   String get settingsAiAssistant => 'AI-assistent';
 
   @override

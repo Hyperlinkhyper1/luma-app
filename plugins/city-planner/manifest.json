@@ -1,0 +1,10 @@
+{
+  "id": "city-planner",
+  "name": "City Planner",
+  "version": "1.0.0",
+  "description": "Een diepgaande 2D stadsplanning-simulator: begin als planner van een klein dorp en groei naar een metropool. Teken je eigen gebouwen vorm-voor-vorm, beheer verkeer, OV, energie, water, voedsel, onderwijs, zorg en belastingen — met heatmaps, een technologieboom en beleid.",
+  "icon": "location_city",
+  "category": "Games",
+  "details": "Begin op een procedureel gegenereerde kaart met rivieren, bossen, heuvels en meren. Teken zelf de vorm van elk gebouw op het grid — rechthoeken of vrije polygonen — en stel per verdieping de functie in: winkel onderin, appartementen erboven, een kantoor op de top.\n\nDe simulatie is volledig data-gebaseerd en geoptimaliseerd voor grote steden: inwoners worden als cohorten gesimuleerd (kinderen, studenten, werkenden, ouderen), verkeer als geaggregeerde pendelstromen over het wegennet, en de wereld wordt in chunks gerenderd.\n\nBeheer alles wat een echte stad nodig heeft: wegen van straat tot snelweg, buslijnen tot metro's, parkeren, elektriciteitsnet (kolen tot fusie, met batterijopslag), drinkwater en riolering, afvalverwerking, voedselproductie of -import, scholen, ziekenhuizen, politie en brandweer.\n\nGroei door vijf fasen — Dorp, Gemeente, Stad, Metropool, Toekomststad — via een technologieboom met 30+ onderzoeken. Stel beleid in (CO₂-belasting, OV-subsidie, benzinetaks...), bekijk 12 heatmaps (verkeer, geluid, luchtkwaliteit, grondwaarde, geluk...) en overleef crises als stroomuitval, droogte en voedseltekorten. Er is geen perfecte speelstijl: elke keuze heeft voor- en nadelen.",
+  "screenshots": []
+}

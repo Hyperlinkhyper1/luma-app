@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../settings/settings_scope.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/school_database.dart';
 import '../logic/gpa_calculator.dart';
@@ -50,6 +51,8 @@ class _GpaSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final repo = SchoolScope.of(context);
     final luma = context.luma;
+    final useAmerican = SettingsScope.of(context).useAmericanGpaScale;
+    final maxScale = useAmerican ? 4.0 : 10.0;
     return StreamData<List<SchoolSubject>>(
       stream: repo.watchSubjects(),
       builder: (context, subjects) {
@@ -73,8 +76,9 @@ class _GpaSection extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Overall GPA', style: TextStyle(color: luma.textMuted, fontSize: 12)),
-                            Text(gpa?.toStringAsFixed(2) ?? '--',
+                            Text(useAmerican ? 'Overall GPA' : 'Overall grade',
+                                style: TextStyle(color: luma.textMuted, fontSize: 12)),
+                            Text(gpa?.toStringAsFixed(useAmerican ? 2 : 1) ?? '--',
                                 style: TextStyle(
                                     color: luma.textPrimary, fontSize: 32, fontWeight: FontWeight.w700)),
                             const SizedBox(height: 12),
@@ -101,7 +105,7 @@ class _GpaSection extends StatelessWidget {
                             child: LineChart(
                               LineChartData(
                                 minY: 0,
-                                maxY: 4,
+                                maxY: maxScale,
                                 gridData: const FlGridData(show: false),
                                 borderData: FlBorderData(show: false),
                                 titlesData: const FlTitlesData(
@@ -164,7 +168,9 @@ class _GpaSection extends StatelessWidget {
                                             style: TextStyle(
                                                 color: luma.textPrimary, fontWeight: FontWeight.w600)),
                                         Text(
-                                          '${r.termName} · ${r.creditHours.toStringAsFixed(1)} credits · ${r.gradePoints.toStringAsFixed(2)} pts',
+                                          useAmerican
+                                              ? '${r.termName} · ${r.creditHours.toStringAsFixed(1)} credits · ${r.gradePoints.toStringAsFixed(2)} pts'
+                                              : '${r.termName} · ${r.creditHours.toStringAsFixed(1)} credits · ${r.gradePoints.toStringAsFixed(1)}',
                                           style: TextStyle(color: luma.textMuted, fontSize: 12),
                                         ),
                                       ],
@@ -211,20 +217,23 @@ class _GpaRecordDialogState extends State<_GpaRecordDialog> {
   late int _subjectId = widget.subjects.first.id;
   final _termController = TextEditingController();
   final _creditsController = TextEditingController(text: '3');
-  final _percentController = TextEditingController();
+  final _gradeController = TextEditingController();
 
   @override
   void dispose() {
     _termController.dispose();
     _creditsController.dispose();
-    _percentController.dispose();
+    _gradeController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final percent = double.tryParse(_percentController.text.trim());
-    final points = percent == null ? null : percentTo4Point(percent);
+    final useAmerican = SettingsScope.of(context).useAmericanGpaScale;
+    final grade = double.tryParse(_gradeController.text.trim());
+    // American mode converts a percentage into 4.0-scale GPA points; the
+    // Dutch scale (the default) is stored as-is, matching how it's reported.
+    final points = grade == null ? null : (useAmerican ? percentTo4Point(grade) : grade);
     return AlertDialog(
       title: const Text('Add GPA record'),
       content: SingleChildScrollView(
@@ -251,12 +260,13 @@ class _GpaRecordDialogState extends State<_GpaRecordDialog> {
               decoration: const InputDecoration(labelText: 'Credit hours'),
             ),
             TextField(
-              controller: _percentController,
+              controller: _gradeController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
-                labelText: 'Final percentage grade',
-                helperText: points == null ? null : '= ${points.toStringAsFixed(2)} GPA points',
+                labelText: useAmerican ? 'Final percentage grade' : 'Final grade (1-10)',
+                helperText:
+                    points == null || !useAmerican ? null : '= ${points.toStringAsFixed(2)} GPA points',
               ),
             ),
           ],

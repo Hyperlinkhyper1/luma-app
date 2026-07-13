@@ -172,7 +172,14 @@ class _DeckDetailView extends StatefulWidget {
 }
 
 class _DeckDetailViewState extends State<_DeckDetailView> {
-  bool _studying = false;
+  // A frozen snapshot of the due cards at the moment "Study now" is tapped.
+  // Studying against a live stream-filtered list caused the in-progress
+  // session's card list to shrink out from under it mid-review (a card
+  // leaving the "due" set as soon as it was reviewed), which could push
+  // the session's current index past the end of the new list and crash
+  // the build with a RangeError. Freezing the list for the session's
+  // lifetime avoids that entirely.
+  List<Flashcard>? _sessionCards;
 
   @override
   Widget build(BuildContext context) {
@@ -180,16 +187,14 @@ class _DeckDetailViewState extends State<_DeckDetailView> {
       stream: widget.repo.watchCards(widget.deckId),
       builder: (context, cards) {
         final due = cards.where((c) => !c.nextReviewDate.isAfter(DateTime.now())).toList();
-        if (_studying) {
-          if (due.isEmpty) {
-            _studying = false;
-          } else {
-            return _StudySession(
-              repo: widget.repo,
-              cards: due,
-              onDone: () => setState(() => _studying = false),
-            );
-          }
+        final sessionCards = _sessionCards;
+        if (sessionCards != null) {
+          return _StudySession(
+            key: ValueKey('session-${sessionCards.map((c) => c.id).join('-')}'),
+            repo: widget.repo,
+            cards: sessionCards,
+            onDone: () => setState(() => _sessionCards = null),
+          );
         }
         return _ManageCardsView(
           deckId: widget.deckId,
@@ -197,7 +202,7 @@ class _DeckDetailViewState extends State<_DeckDetailView> {
           cards: cards,
           dueCount: due.length,
           onClose: widget.onClose,
-          onStudy: due.isEmpty ? null : () => setState(() => _studying = true),
+          onStudy: due.isEmpty ? null : () => setState(() => _sessionCards = due),
         );
       },
     );
@@ -269,6 +274,11 @@ class _ManageCardsViewState extends State<_ManageCardsView> {
                     separatorBuilder: (_, _) => const SizedBox(height: 10),
                     itemBuilder: (context, i) {
                       final c = widget.cards[i];
+                      final accuracy =
+                          c.reviewCount == 0 ? null : (c.correctCount / c.reviewCount * 100).round();
+                      final avgSeconds = c.reviewCount == 0
+                          ? null
+                          : (c.totalTimeMs / c.reviewCount / 1000).toStringAsFixed(1);
                       return LumaCard(
                         child: Row(
                           children: [
@@ -281,6 +291,13 @@ class _ManageCardsViewState extends State<_ManageCardsView> {
                                           color: luma.textPrimary, fontWeight: FontWeight.w600)),
                                   const SizedBox(height: 2),
                                   Text(c.back, style: TextStyle(color: luma.textMuted, fontSize: 13)),
+                                  if (accuracy != null) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${c.reviewCount} reviews · $accuracy% correct · avg ${avgSeconds}s',
+                                      style: TextStyle(color: luma.textMuted, fontSize: 11),
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
@@ -374,7 +391,7 @@ class _CardDialogState extends State<_CardDialog> {
 }
 
 class _StudySession extends StatefulWidget {
-  const _StudySession({required this.repo, required this.cards, required this.onDone});
+  const _StudySession({super.key, required this.repo, required this.cards, required this.onDone});
   final SchoolRepository repo;
   final List<Flashcard> cards;
   final VoidCallback onDone;
@@ -385,18 +402,49 @@ class _StudySession extends StatefulWidget {
 
 class _StudySessionState extends State<_StudySession> {
   int _index = 0;
-  bool _revealed = false;
+  bool _checked = false;
+  bool _correct = false;
+  DateTime _cardShownAt = DateTime.now();
+  final _answerController = TextEditingController();
+  final _answerFocus = FocusNode();
+
+  @override
+  void dispose() {
+    _answerController.dispose();
+    _answerFocus.dispose();
+    super.dispose();
+  }
+
+  void _checkAnswer() {
+    if (_checked) return;
+    final typed = _answerController.text.trim().toLowerCase();
+    final expected = widget.cards[_index].back.trim().toLowerCase();
+    setState(() {
+      _checked = true;
+      _correct = typed.isNotEmpty && typed == expected;
+    });
+  }
 
   Future<void> _rate(ReviewRating rating) async {
-    await widget.repo.reviewCard(widget.cards[_index], rating);
+    final elapsed = DateTime.now().difference(_cardShownAt);
+    await widget.repo.reviewCard(
+      widget.cards[_index],
+      rating,
+      correct: _correct,
+      timeTaken: elapsed,
+    );
     if (_index + 1 >= widget.cards.length) {
       widget.onDone();
       return;
     }
     setState(() {
       _index++;
-      _revealed = false;
+      _checked = false;
+      _correct = false;
+      _answerController.clear();
+      _cardShownAt = DateTime.now();
     });
+    _answerFocus.requestFocus();
   }
 
   @override
@@ -412,38 +460,63 @@ class _StudySessionState extends State<_StudySession> {
           const SizedBox(height: 24),
           Expanded(
             child: Center(
-              child: GestureDetector(
-                onTap: () => setState(() => _revealed = !_revealed),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 480),
-                  child: LumaCard(
-                    padding: const EdgeInsets.all(32),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(card.front,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: LumaCard(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(card.front,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              color: luma.textPrimary, fontSize: 20, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 20),
+                      TextField(
+                        controller: _answerController,
+                        focusNode: _answerFocus,
+                        autofocus: true,
+                        enabled: !_checked,
+                        textAlign: TextAlign.center,
+                        decoration: const InputDecoration(hintText: 'Type your answer'),
+                        onSubmitted: (_) => _checkAnswer(),
+                      ),
+                      if (_checked) ...[
+                        const SizedBox(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              _correct ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                              color: _correct ? luma.success : luma.danger,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _correct ? 'Correct' : 'Not quite',
+                              style: TextStyle(
+                                color: _correct ? luma.success : luma.danger,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Text('Answer: ${card.back}',
                             textAlign: TextAlign.center,
-                            style: TextStyle(
-                                color: luma.textPrimary, fontSize: 20, fontWeight: FontWeight.w600)),
-                        if (_revealed) ...[
-                          Divider(color: luma.border, height: 32),
-                          Text(card.back,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(color: luma.textSecondary, fontSize: 16)),
-                        ] else ...[
-                          const SizedBox(height: 16),
-                          Text('Tap to reveal answer',
-                              style: TextStyle(color: luma.textMuted, fontSize: 12)),
-                        ],
+                            style: TextStyle(color: luma.textSecondary, fontSize: 16)),
+                      ] else ...[
+                        const SizedBox(height: 16),
+                        LumaGhostButton(label: 'Check answer', onTap: _checkAnswer),
                       ],
-                    ),
+                    ],
                   ),
                 ),
               ),
             ),
           ),
           const SizedBox(height: 16),
-          if (_revealed)
+          if (_checked)
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
