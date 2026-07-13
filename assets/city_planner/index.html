@@ -6,16 +6,22 @@
 <title>MetroPlan — Stadsplanner</title>
 <style>
   :root {
-    --bg: #0e1116;
-    --panel: #161b23;
-    --panel2: #1d2430;
-    --border: #2a3342;
-    --text: #dbe3ee;
-    --muted: #8494ab;
+    --bg: #0d1117;
+    --panel: #141a22;
+    --panel2: #1b222d;
+    --panel3: #222b38;
+    --border: #28313f;
+    --border-soft: #202834;
+    --text: #dce4ef;
+    --muted: #8391a6;
     --accent: #4da3ff;
+    --accent-ink: #06121f;
     --good: #4ecb71;
     --warn: #f3b13e;
     --bad: #ef5b5b;
+    --r-sm: 6px;
+    --r-md: 8px;
+    --r-lg: 12px;
     font-size: 14px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
@@ -23,66 +29,90 @@
     color: var(--text); font-family: "Segoe UI", system-ui, sans-serif; }
   #app { display: flex; flex-direction: column; width: 100%; height: 100%; }
 
+  /* ── Iconen ────────────────────────────────── */
+  .ic { width: 14px; height: 14px; flex: 0 0 auto; stroke: currentColor; fill: none;
+    stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vertical-align: -2px; }
+  .ic.lg { width: 16px; height: 16px; }
+
   /* ── Bovenbalk ─────────────────────────────── */
-  #topbar { display: flex; align-items: center; gap: 10px; padding: 6px 10px;
+  #topbar { display: flex; align-items: center; gap: 8px; padding: 6px 10px;
     background: var(--panel); border-bottom: 1px solid var(--border); flex: 0 0 auto; }
-  #topbar .logo { font-weight: 700; color: var(--accent); letter-spacing: .5px; margin-right: 4px; }
-  .tstat { display: flex; align-items: center; gap: 5px; background: var(--panel2);
-    border: 1px solid var(--border); border-radius: 6px; padding: 3px 9px; font-size: 12.5px; white-space: nowrap; }
-  .tstat b { font-weight: 600; }
+  #topbar .logo { display: flex; align-items: center; gap: 6px; font-weight: 700;
+    color: var(--accent); letter-spacing: .4px; margin-right: 4px; }
+  .tstat { display: flex; align-items: center; gap: 6px; background: var(--panel2);
+    border: 1px solid var(--border-soft); border-radius: var(--r-sm); padding: 4px 9px;
+    font-size: 12.5px; white-space: nowrap; }
+  .tstat b { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .tstat .ic { color: var(--muted); }
   .tstat .lbl { color: var(--muted); font-size: 11px; }
-  #speedctl { display: flex; gap: 2px; }
-  #speedctl button { width: 28px; }
-  button { background: var(--panel2); color: var(--text); border: 1px solid var(--border);
-    border-radius: 6px; padding: 4px 9px; font-size: 12.5px; cursor: pointer; font-family: inherit; }
+  #speedctl { display: flex; background: var(--panel2); border: 1px solid var(--border-soft);
+    border-radius: var(--r-sm); overflow: hidden; }
+  #speedctl button { width: 30px; border: none; border-radius: 0; padding: 4px 0;
+    display: flex; align-items: center; justify-content: center; background: transparent; }
+  #speedctl button + button { border-left: 1px solid var(--border-soft); }
+  #speedctl button.active { background: var(--accent); color: var(--accent-ink); }
+  button { display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    background: var(--panel2); color: var(--text); border: 1px solid var(--border);
+    border-radius: var(--r-sm); padding: 4px 9px; font-size: 12.5px; cursor: pointer;
+    font-family: inherit; transition: border-color .12s, background .12s; }
   button:hover { border-color: var(--accent); }
-  button.active { background: var(--accent); color: #06121f; border-color: var(--accent); font-weight: 600; }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
   button:disabled { opacity: .4; cursor: default; }
   select { background: var(--panel2); color: var(--text); border: 1px solid var(--border);
-    border-radius: 6px; padding: 4px 6px; font-size: 12.5px; font-family: inherit; }
+    border-radius: var(--r-sm); padding: 4px 6px; font-size: 12.5px; font-family: inherit; }
   input[type=text], input[type=number] { background: var(--panel2); color: var(--text);
-    border: 1px solid var(--border); border-radius: 6px; padding: 4px 6px; font-size: 12.5px;
-    font-family: inherit; width: 100%; user-select: text; }
+    border: 1px solid var(--border); border-radius: var(--r-sm); padding: 4px 7px;
+    font-size: 12.5px; font-family: inherit; width: 100%; user-select: text; }
+  input[type=text]:focus, input[type=number]:focus { outline: none; border-color: var(--accent); }
   .spacer { flex: 1; }
 
   /* ── Hoofdgebied ───────────────────────────── */
   #main { display: flex; flex: 1 1 auto; min-height: 0; }
 
   /* Linker gereedschap */
-  #left { width: 200px; flex: 0 0 auto; background: var(--panel); border-right: 1px solid var(--border);
-    overflow-y: auto; padding: 6px; }
-  .toolcat { margin-bottom: 4px; }
-  .toolcat > .cathead { display: flex; align-items: center; gap: 6px; padding: 6px 6px;
-    font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; border-radius: 6px; }
-  .toolcat > .cathead:hover { background: var(--panel2); }
-  .toolcat .catbody { display: none; padding: 2px 0 4px; }
+  #left { width: 208px; flex: 0 0 auto; background: var(--panel); border-right: 1px solid var(--border);
+    overflow-y: auto; padding: 8px 6px; }
+  .toolcat { margin-bottom: 2px; }
+  .toolcat > .cathead { display: flex; align-items: center; gap: 7px; padding: 6px 8px;
+    font-size: 11.5px; font-weight: 600; letter-spacing: .3px; color: var(--muted);
+    cursor: pointer; border-radius: var(--r-sm); }
+  .toolcat > .cathead:hover { background: var(--panel2); color: var(--text); }
+  .toolcat > .cathead .chev { margin-left: auto; opacity: .6; transition: transform .15s; }
+  .toolcat.open > .cathead .chev { transform: rotate(180deg); }
+  .toolcat .catbody { display: none; padding: 2px 0 6px; }
   .toolcat.open .catbody { display: block; }
   .toolbtn { display: flex; align-items: center; gap: 7px; width: 100%; text-align: left;
-    padding: 5px 8px; margin: 1px 0; border: 1px solid transparent; background: transparent;
-    border-radius: 6px; font-size: 12.5px; }
-  .toolbtn:hover { background: var(--panel2); }
-  .toolbtn.active { background: var(--accent); color: #06121f; font-weight: 600; }
+    justify-content: flex-start; padding: 5px 8px; margin: 1px 0; border: 1px solid transparent;
+    background: transparent; border-radius: var(--r-sm); font-size: 12.5px; }
+  .toolbtn:hover { background: var(--panel2); border-color: transparent; }
+  .toolbtn.active { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
   .toolbtn .sw { width: 12px; height: 12px; border-radius: 3px; flex: 0 0 auto; border: 1px solid rgba(255,255,255,.25); }
-  .toolbtn .price { margin-left: auto; font-size: 10.5px; color: var(--muted); }
-  .toolbtn.active .price { color: #06121f; }
+  .toolbtn .price { margin-left: auto; font-size: 10.5px; color: var(--muted); display: inline-flex; align-items: center; gap: 3px; }
+  .toolbtn .price .ic { width: 10px; height: 10px; }
+  .toolbtn.active .price { color: var(--accent-ink); }
   .toolbtn.locked { opacity: .38; }
   .toolbtn.locked .price { color: var(--warn); }
 
   /* Canvas */
   #canvaswrap { position: relative; flex: 1 1 auto; min-width: 0; overflow: hidden; background: #0a0d12; }
   #canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; }
-  #tooltip { position: absolute; pointer-events: none; background: rgba(14,17,22,.94);
-    border: 1px solid var(--border); border-radius: 6px; padding: 6px 9px; font-size: 11.5px;
-    line-height: 1.45; display: none; z-index: 5; max-width: 240px; }
-  #hint { position: absolute; left: 10px; bottom: 10px; background: rgba(14,17,22,.85);
-    border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; font-size: 11.5px;
-    color: var(--muted); pointer-events: none; z-index: 4; }
+  #tooltip { position: absolute; pointer-events: none; background: rgba(13,17,23,.95);
+    border: 1px solid var(--border); border-radius: var(--r-sm); padding: 6px 9px; font-size: 11.5px;
+    line-height: 1.45; display: none; z-index: 5; max-width: 240px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.35); }
+  #hint { position: absolute; left: 10px; bottom: 10px; background: rgba(13,17,23,.82);
+    border: 1px solid var(--border-soft); border-radius: var(--r-sm); padding: 5px 10px;
+    font-size: 11px; color: var(--muted); pointer-events: none; z-index: 4; }
+  #hint b { color: var(--text); font-weight: 600; }
   #minimap { position: absolute; right: 10px; bottom: 10px; border: 1px solid var(--border);
-    border-radius: 6px; background: #000; z-index: 4; opacity: .92; cursor: pointer; }
+    border-radius: var(--r-md); background: #000; z-index: 4; opacity: .92; cursor: pointer;
+    box-shadow: 0 4px 16px rgba(0,0,0,.35); }
   #toasts { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 8;
     display: flex; flex-direction: column; gap: 6px; align-items: center; pointer-events: none; }
-  .toast { background: rgba(20,26,35,.96); border: 1px solid var(--border); border-left: 3px solid var(--accent);
-    border-radius: 6px; padding: 7px 14px; font-size: 12.5px; max-width: 460px; animation: fadein .2s; }
+  .toast { background: rgba(19,25,34,.96); border: 1px solid var(--border); border-left: 3px solid var(--accent);
+    border-radius: var(--r-sm); padding: 7px 14px; font-size: 12.5px; max-width: 460px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.35); animation: fadein .2s; }
   .toast.warn { border-left-color: var(--warn); }
   .toast.bad { border-left-color: var(--bad); }
   .toast.good { border-left-color: var(--good); }
@@ -92,62 +122,68 @@
   #right { width: 300px; flex: 0 0 auto; background: var(--panel); border-left: 1px solid var(--border);
     display: flex; flex-direction: column; min-height: 0; }
   #righttabs { display: flex; flex-wrap: wrap; border-bottom: 1px solid var(--border); }
-  #righttabs button { flex: 1 1 auto; border: none; border-radius: 0; padding: 7px 4px; font-size: 11.5px;
+  #righttabs button { flex: 1 1 auto; border: none; border-radius: 0; padding: 8px 4px; font-size: 11.5px;
     background: transparent; color: var(--muted); border-bottom: 2px solid transparent; }
+  #righttabs button:hover { color: var(--text); }
   #righttabs button.active { background: transparent; color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
   #rightbody { flex: 1 1 auto; overflow-y: auto; padding: 10px; font-size: 12.5px; }
-  #rightbody h3 { font-size: 13px; margin: 10px 0 6px; color: var(--text); }
+  #rightbody h3 { font-size: 11.5px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase;
+    margin: 14px 0 6px; color: var(--muted); }
   #rightbody h3:first-child { margin-top: 0; }
   .kv { display: flex; justify-content: space-between; gap: 8px; padding: 2.5px 0; font-size: 12px; }
   .kv .k { color: var(--muted); }
   .kv .v { text-align: right; font-variant-numeric: tabular-nums; }
-  .card { background: var(--panel2); border: 1px solid var(--border); border-radius: 8px;
-    padding: 8px 10px; margin-bottom: 8px; }
-  .bar { height: 6px; border-radius: 3px; background: #0a0d12; overflow: hidden; margin-top: 3px; }
+  .card { background: var(--panel2); border: 1px solid var(--border-soft); border-radius: var(--r-md);
+    padding: 9px 11px; margin-bottom: 8px; }
+  .card h3 { margin-top: 0; }
+  .bar { height: 6px; border-radius: 3px; background: #0a0d12; overflow: hidden; margin-top: 4px; }
   .bar > div { height: 100%; border-radius: 3px; background: var(--accent); }
   .muted { color: var(--muted); font-size: 11.5px; }
   .row { display: flex; gap: 6px; align-items: center; }
   .row > * { flex: 1; }
-  .techn { border: 1px solid var(--border); border-radius: 8px; padding: 7px 9px; margin-bottom: 6px;
-    background: var(--panel2); }
-  .techn.done { border-color: var(--good); opacity: .75; }
+  .techn { border: 1px solid var(--border-soft); border-radius: var(--r-md); padding: 8px 10px;
+    margin-bottom: 6px; background: var(--panel2); }
+  .techn.done { border-color: var(--good); opacity: .7; }
   .techn.avail { border-color: var(--accent); }
   .techn .tname { font-weight: 600; font-size: 12.5px; }
   .techn .tdesc { color: var(--muted); font-size: 11px; margin: 2px 0 5px; }
   .polrow { display: flex; align-items: center; justify-content: space-between; gap: 8px;
-    padding: 6px 0; border-bottom: 1px solid var(--border); }
+    padding: 7px 0; border-bottom: 1px solid var(--border-soft); }
   .polrow:last-child { border-bottom: none; }
   .floorrow { display: flex; gap: 5px; align-items: center; margin: 3px 0; }
   .floorrow .fnum { width: 26px; color: var(--muted); font-size: 11px; flex: 0 0 auto; }
   .floorrow select { flex: 1; }
   .taxrow { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
   .taxrow .k { flex: 1; color: var(--muted); font-size: 12px; }
-  .taxrow input[type=range] { flex: 1.4; }
-  .taxrow .v { width: 38px; text-align: right; font-size: 12px; }
+  .taxrow input[type=range] { flex: 1.4; accent-color: var(--accent); }
+  .taxrow .v { width: 38px; text-align: right; font-size: 12px; font-variant-numeric: tabular-nums; }
 
   /* Onderbalk */
   #bottombar { display: flex; align-items: center; gap: 6px; padding: 5px 10px;
     background: var(--panel); border-top: 1px solid var(--border); flex: 0 0 auto; overflow-x: auto; }
-  .chip { display: flex; align-items: center; gap: 5px; background: var(--panel2);
-    border: 1px solid var(--border); border-radius: 14px; padding: 3px 10px; font-size: 12px;
+  .chip { display: flex; align-items: center; gap: 6px; background: var(--panel2);
+    border: 1px solid var(--border); border-radius: 999px; padding: 3px 11px; font-size: 12px;
     white-space: nowrap; cursor: default; }
-  .chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); }
+  .chip .ic { width: 12px; height: 12px; color: var(--muted); }
+  .chip b { font-weight: 600; font-variant-numeric: tabular-nums; }
   #news { flex: 1; min-width: 120px; color: var(--muted); font-size: 12px; white-space: nowrap;
     overflow: hidden; text-overflow: ellipsis; text-align: right; }
 
   /* ── Modal (save-scherm / nieuw spel) ─────── */
   #modal { position: fixed; inset: 0; z-index: 20; display: none; align-items: center;
-    justify-content: center; background: rgba(5,8,12,.6); backdrop-filter: blur(2px); }
+    justify-content: center; background: rgba(4,7,11,.6); backdrop-filter: blur(3px); }
   #modal.open { display: flex; }
   #modal-box { width: 440px; max-width: 92vw; max-height: 84vh; display: flex; flex-direction: column;
-    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-lg);
     box-shadow: 0 18px 50px rgba(0,0,0,.5); overflow: hidden; }
   #modal-head { display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 14px; border-bottom: 1px solid var(--border); font-weight: 700; }
-  #modal-body { padding: 12px 14px; overflow-y: auto; font-size: 12.5px; }
-  #modal-body .card { background: var(--panel2); border: 1px solid var(--border);
-    border-radius: 8px; padding: 9px 11px; margin-bottom: 8px; }
-  #modal-body .row { display: flex; gap: 6px; margin-top: 7px; }
+    padding: 11px 14px; border-bottom: 1px solid var(--border); font-weight: 700; }
+  #modal-head button { border: none; background: transparent; color: var(--muted); padding: 4px; }
+  #modal-head button:hover { color: var(--text); }
+  #modal-body { padding: 13px 14px; overflow-y: auto; font-size: 12.5px; }
+  #modal-body .card { background: var(--panel2); border: 1px solid var(--border-soft);
+    border-radius: var(--r-md); padding: 10px 12px; margin-bottom: 8px; }
+  #modal-body .row { display: flex; gap: 6px; margin-top: 8px; }
   #modal-body .row > button { flex: 1; }
   .modebtn { display: block; width: 100%; text-align: left; padding: 12px 14px; margin-bottom: 10px;
     border-radius: 10px; border: 1px solid var(--border); background: var(--panel2); }
@@ -155,30 +191,72 @@
   .modebtn b { font-size: 14px; }
   .modebtn .muted { display: block; margin-top: 3px; }
 
-  ::-webkit-scrollbar { width: 9px; height: 9px; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--panel3); }
   ::-webkit-scrollbar-track { background: transparent; }
 </style>
 </head>
 <body>
+<!-- Icon-sprite (Lucide-stijl, 24×24, stroke=currentColor) -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <symbol id="i-building" viewBox="0 0 24 24"><path d="M3 22h18M6 22V5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v17"/><path d="M10 8h1M13 8h1M10 12h1M13 12h1M10 16h1M13 16h1"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="i-banknote" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75M22 21v-2a4 4 0 0 0-3-3.87"/></symbol>
+  <symbol id="i-flask" viewBox="0 0 24 24"><path d="M10 2v7L4.3 19.6A1.6 1.6 0 0 0 5.7 22h12.6a1.6 1.6 0 0 0 1.4-2.4L14 9V2"/><path d="M8.5 2h7M7 16h10"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14" stroke-width="2.5"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5 19 12 7 19.5Z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-ff2" viewBox="0 0 24 24"><path d="m5 6 6 6-6 6M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-ff3" viewBox="0 0 24 24"><path d="m3 6 6 6-6 6M9.5 6l6 6-6 6M16 6l6 6-6 6"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="M9 3 3.6 4.9A1 1 0 0 0 3 5.8v13.4a1 1 0 0 0 1.3.9L9 18l6 3 5.4-1.9a1 1 0 0 0 .6-.9V4.8a1 1 0 0 0-1.3-.9L15 6 9 3Z"/><path d="M9 3v15M15 6v15"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-cursor" viewBox="0 0 24 24"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3Z"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></symbol>
+  <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="19" r="3"/><circle cx="18" cy="5" r="3"/><path d="M12 19h4.5a3.5 3.5 0 0 0 0-7h-9a3.5 3.5 0 0 1 0-7H12"/></symbol>
+  <symbol id="i-bus" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="15" rx="2"/><path d="M4 9h16M7 18v2M17 18v2M8.5 14h.01M15.5 14h.01"/></symbol>
+  <symbol id="i-mountain" viewBox="0 0 24 24"><path d="m8 4 5 9 3-4 6 12H2L8 4Z"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 11 9-8 9 8"/><path d="M5 9.7V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.7"/></symbol>
+  <symbol id="i-store" viewBox="0 0 24 24"><path d="m2 7 2-4h16l2 4M3 7v13a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V7M2 7h20M9 21v-8h6v8"/></symbol>
+  <symbol id="i-factory" viewBox="0 0 24 24"><path d="M2 20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8l-7 5V8l-7 5V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M7 18h1M12 18h1M17 18h1"/></symbol>
+  <symbol id="i-sprout" viewBox="0 0 24 24"><path d="M12 20v-8"/><path d="M12 12c0-3-2.5-5-6-5 0 3.5 2.5 5 6 5Z"/><path d="M12 12c0-3 2.5-5 6-5 0 3.5-2.5 5-6 5Z"/><path d="M5 20h14"/></symbol>
+  <symbol id="i-landmark" viewBox="0 0 24 24"><path d="M2 8.5 12 3l10 5.5M4 8.5h16"/><path d="M6 12v6M10 12v6M14 12v6M18 12v6M3 21h18"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24"><path d="M13 2 3 14h7l-1 8 11-12h-8l1-8Z"/></symbol>
+  <symbol id="i-droplet" viewBox="0 0 24 24"><path d="M12 2.7S6 10 6 14a6 6 0 0 0 12 0c0-4-6-11.3-6-11.3Z"/></symbol>
+  <symbol id="i-parking" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 17V7h4a3 3 0 0 1 0 6H9"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M8 17v-4M13 17V8M18 17v-7"/></symbol>
+  <symbol id="i-smile" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></symbol>
+  <symbol id="i-car" viewBox="0 0 24 24"><path d="M3 17v-4l2.2-5.1A2 2 0 0 1 7 6.7h10a2 2 0 0 1 1.8 1.2L21 13v4"/><path d="M3 13h18M6.5 17h.01M17.5 17h.01"/><path d="M4 17v2M20 17v2"/></symbol>
+  <symbol id="i-school" viewBox="0 0 24 24"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12.5V17c3 2.5 9 2.5 12 0v-4.5"/></symbol>
+  <symbol id="i-health" viewBox="0 0 24 24"><path d="M11 3a1 1 0 0 0-1 1v5H5a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h5v5a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-5h5a1 1 0 0 0 1-1v-4a1 1 0 0 0-1-1h-5V4a1 1 0 0 0-1-1h-2Z"/></symbol>
+  <symbol id="i-tree" viewBox="0 0 24 24"><path d="M12 2 5 13h4l-3 6h12l-3-6h4L12 2Z"/><path d="M12 19v3"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="i-square" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/></symbol>
+  <symbol id="i-check-square" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m8.5 12 2.5 2.5 5-5"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M10 11v6M14 11v6"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M4 20a2 2 0 0 1-2-2V5a1 1 0 0 1 1-1h6l2 3h10a1 1 0 0 1 1 1v10a2 2 0 0 1-2 2H4Z"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+</svg>
 <div id="app">
   <div id="topbar">
-    <span class="logo">🏙 MetroPlan</span>
-    <div class="tstat"><span class="lbl">📅</span><b id="ui-date">1 jan 1925</b></div>
+    <span class="logo"><svg class="ic lg"><use href="#i-building"/></svg>MetroPlan</span>
+    <div class="tstat"><svg class="ic"><use href="#i-calendar"/></svg><b id="ui-date">1 jan 1925</b></div>
     <div id="speedctl">
-      <button id="spd0" title="Pauze">⏸</button>
-      <button id="spd1" class="active" title="Normaal">▶</button>
-      <button id="spd2" title="Snel">▶▶</button>
-      <button id="spd3" title="Zeer snel">▶▶▶</button>
+      <button id="spd0" title="Pauze"><svg class="ic"><use href="#i-pause"/></svg></button>
+      <button id="spd1" class="active" title="Normaal"><svg class="ic"><use href="#i-play"/></svg></button>
+      <button id="spd2" title="Snel"><svg class="ic"><use href="#i-ff2"/></svg></button>
+      <button id="spd3" title="Zeer snel"><svg class="ic"><use href="#i-ff3"/></svg></button>
     </div>
-    <div class="tstat"><span class="lbl">💰</span><b id="ui-money">€ 0</b><span class="lbl" id="ui-cashflow"></span></div>
-    <div class="tstat"><span class="lbl">👥</span><b id="ui-pop">0</b></div>
-    <div class="tstat"><span class="lbl">🔬</span><b id="ui-rp">0</b></div>
+    <div class="tstat"><svg class="ic"><use href="#i-banknote"/></svg><b id="ui-money">€ 0</b><span class="lbl" id="ui-cashflow"></span></div>
+    <div class="tstat"><svg class="ic"><use href="#i-users"/></svg><b id="ui-pop">0</b></div>
+    <div class="tstat"><svg class="ic"><use href="#i-flask"/></svg><b id="ui-rp">0</b></div>
     <div class="tstat" id="ui-phase" title="Stadsfase">Fase 1 · Dorp</div>
     <div class="spacer"></div>
     <select id="heatmapsel" title="Data-weergave (heatmap)"></select>
-    <button id="btn-save" title="Opslaan & laden">💾</button>
-    <button id="btn-new" title="Nieuwe kaart">🗺</button>
+    <button id="btn-save" title="Opslaan &amp; laden"><svg class="ic"><use href="#i-save"/></svg></button>
+    <button id="btn-new" title="Nieuwe kaart"><svg class="ic"><use href="#i-map"/></svg></button>
   </div>
 
   <div id="main">
@@ -186,7 +264,7 @@
     <div id="canvaswrap">
       <canvas id="canvas"></canvas>
       <div id="tooltip"></div>
-      <div id="hint">Rechtermuisknop = schuiven (met inertie) · scroll = zoomen · G = grid · S = snappen · Alt = tijdelijk vrij plaatsen</div>
+      <div id="hint"><b>Rechtermuisknop</b> schuiven · <b>scroll</b> zoomen · <b>G</b> grid · <b>S</b> snappen · <b>Alt</b> vrij plaatsen</div>
       <canvas id="minimap" width="150" height="150"></canvas>
       <div id="toasts"></div>
     </div>
@@ -204,22 +282,22 @@
   </div>
 
   <div id="bottombar">
-    <div class="chip" id="chip-happy" title="Gemiddelde tevredenheid">😊 <b>–</b></div>
-    <div class="chip" id="chip-budget" title="Maandelijks saldo">💰 <b>–</b></div>
-    <div class="chip" id="chip-housing" title="Woningmarkt">🏠 <b>–</b></div>
-    <div class="chip" id="chip-traffic" title="Verkeersdrukte">🚗 <b>–</b></div>
-    <div class="chip" id="chip-edu" title="Onderwijsdekking">🏫 <b>–</b></div>
-    <div class="chip" id="chip-health" title="Zorgdekking">🏥 <b>–</b></div>
-    <div class="chip" id="chip-env" title="Milieu / luchtkwaliteit">🌳 <b>–</b></div>
-    <div class="chip" id="chip-power" title="Elektriciteit">⚡ <b>–</b></div>
-    <div class="chip" id="chip-water" title="Drinkwater">💧 <b>–</b></div>
-    <div class="chip" id="chip-food" title="Voedsel">🌾 <b>–</b></div>
+    <div class="chip" id="chip-happy" title="Gemiddelde tevredenheid"><svg class="ic"><use href="#i-smile"/></svg><b>–</b></div>
+    <div class="chip" id="chip-budget" title="Maandelijks saldo"><svg class="ic"><use href="#i-banknote"/></svg><b>–</b></div>
+    <div class="chip" id="chip-housing" title="Woningmarkt"><svg class="ic"><use href="#i-home"/></svg><b>–</b></div>
+    <div class="chip" id="chip-traffic" title="Verkeersdrukte"><svg class="ic"><use href="#i-car"/></svg><b>–</b></div>
+    <div class="chip" id="chip-edu" title="Onderwijsdekking"><svg class="ic"><use href="#i-school"/></svg><b>–</b></div>
+    <div class="chip" id="chip-health" title="Zorgdekking"><svg class="ic"><use href="#i-health"/></svg><b>–</b></div>
+    <div class="chip" id="chip-env" title="Milieu / luchtkwaliteit"><svg class="ic"><use href="#i-tree"/></svg><b>–</b></div>
+    <div class="chip" id="chip-power" title="Elektriciteit"><svg class="ic"><use href="#i-zap"/></svg><b>–</b></div>
+    <div class="chip" id="chip-water" title="Drinkwater"><svg class="ic"><use href="#i-droplet"/></svg><b>–</b></div>
+    <div class="chip" id="chip-food" title="Voedsel"><svg class="ic"><use href="#i-sprout"/></svg><b>–</b></div>
     <div id="news"></div>
   </div>
 </div>
 <div id="modal">
   <div id="modal-box">
-    <div id="modal-head"><span id="modal-title"></span><button id="modal-close">✕</button></div>
+    <div id="modal-head"><span id="modal-title"></span><button id="modal-close" title="Sluiten"><svg class="ic lg"><use href="#i-x"/></svg></button></div>
     <div id="modal-body"></div>
   </div>
 </div>
