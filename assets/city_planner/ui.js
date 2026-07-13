@@ -18,15 +18,17 @@ const el = (tag, cls, html) => {
 };
 const fmtGeld = v => "€ " + Math.round(v).toLocaleString("nl-NL");
 const fmtNum = v => Math.round(v).toLocaleString("nl-NL");
+// inline SVG-icoon uit de sprite in index.html
+const icon = (name, cls = "ic") => `<svg class="${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 
 // ── Linker gereedschapsbalk ─────────────────────────────────
 UI.buildTools = function () {
   const left = $("#left");
   left.innerHTML = "";
 
-  const cat = (naam, open) => {
+  const cat = (naam, ico, open) => {
     const c = el("div", "toolcat" + (open ? " open" : ""));
-    const head = el("div", "cathead", `<span>${naam}</span>`);
+    const head = el("div", "cathead", `${icon(ico)}<span>${naam}</span>${icon("chevron", "ic chev")}`);
     head.onclick = () => c.classList.toggle("open");
     const body = el("div", "catbody");
     c.append(head, body);
@@ -37,7 +39,7 @@ UI.buildTools = function () {
     const b = el("button", "toolbtn");
     if (opts.kleur) b.append(Object.assign(el("span", "sw"), { style: `background:${opts.kleur}` }));
     b.append(el("span", "", label));
-    if (opts.prijs !== undefined) b.append(el("span", "price", opts.locked ? `🔒 ${opts.lockLabel || ""}` : sandbox() ? "gratis" : fmtGeld(opts.prijs)));
+    if (opts.prijs !== undefined) b.append(el("span", "price", opts.locked ? `${icon("lock")} ${opts.lockLabel || ""}` : sandbox() ? "gratis" : fmtGeld(opts.prijs)));
     if (opts.locked) b.classList.add("locked");
     b.onclick = () => {
       if (opts.locked) { UI.toast(opts.lockMsg || "Nog niet ontgrendeld — zie Onderzoek.", "warn"); return; }
@@ -50,17 +52,17 @@ UI.buildTools = function () {
   };
 
   // Algemeen
-  const alg = cat("🖱 Algemeen", true);
+  const alg = cat("Algemeen", "cursor", true);
   toolBtn(alg, "Selecteren / inspecteren", { key: "select", onpick: () => UI.setTool({ kind: "select" }) });
   toolBtn(alg, "Slopen", { key: "bulldoze", onpick: () => UI.setTool({ kind: "bulldoze" }) });
 
   // Raster & plaatsing: het grid is een hulpmiddel, nooit een verplichting
-  const rst = cat("⊞ Raster & plaatsing", false);
+  const rst = cat("Raster & plaatsing", "grid", false);
   const s = G.settings;
-  toolBtn(rst, (s.grid ? "☑" : "☐") + " Grid tonen (G)", {
+  toolBtn(rst, icon(s.grid ? "check-square" : "square") + " Grid tonen (G)", {
     key: "set-grid", onpick: () => { s.grid = !s.grid; UI.refreshTools(); },
   });
-  toolBtn(rst, (s.snap ? "☑" : "☐") + " Snappen (S)", {
+  toolBtn(rst, icon(s.snap ? "check-square" : "square") + " Snappen (S)", {
     key: "set-snap", onpick: () => { s.snap = !s.snap; UI.refreshTools(); },
   });
   const gsRow = el("div", "row");
@@ -78,7 +80,7 @@ UI.buildTools = function () {
   rst.append(el("div", "muted", `<div style="padding:4px 8px">Houd <b>Alt</b> ingedrukt om snappen tijdelijk om te keren — zo plaats je alles volledig vrij (ook tussen gridcellen).</div>`));
 
   // Wegen — vrij tekenen, de engine maakt er vloeiende bochten van
-  const weg = cat("🛣 Wegen", true);
+  const weg = cat("Wegen", "route", true);
   for (let r = 1; r < ROADS.length; r++) {
     const rd = ROADS[r];
     const locked = rd.fase > G.fase || (rd.tech && !G.techs[rd.tech]);
@@ -100,7 +102,7 @@ UI.buildTools = function () {
   });
 
   // OV
-  const ov = cat("🚌 Openbaar vervoer", false);
+  const ov = cat("Openbaar vervoer", "bus", false);
   for (const [k, tt] of Object.entries(TRANSIT_TYPES)) {
     const locked = tt.fase > G.fase || (tt.tech && !G.techs[tt.tech]);
     toolBtn(ov, tt.naam + " tekenen", {
@@ -111,7 +113,7 @@ UI.buildTools = function () {
   }
 
   // Terrein
-  const ter = cat("⛰ Terrein", false);
+  const ter = cat("Terrein", "mountain", false);
   for (const t of TERRAIN_TOOLS) {
     toolBtn(ter, t.naam, {
       key: "terr" + t.id, prijs: t.kosten,
@@ -121,12 +123,12 @@ UI.buildTools = function () {
 
   // Gebouwcategorieën
   const CATS = [
-    ["wonen", "🏠 Wonen"], ["commercieel", "🏪 Commercieel"], ["industrie", "🏭 Industrie"],
-    ["voedsel", "🌾 Voedsel & landbouw"], ["publiek", "🏛 Publiek"], ["energie", "⚡ Energie"],
-    ["water", "💧 Water & afval"], ["transport", "🅿 Transport & parkeren"],
+    ["wonen", "Wonen", "home"], ["commercieel", "Commercieel", "store"], ["industrie", "Industrie", "factory"],
+    ["voedsel", "Voedsel & landbouw", "sprout"], ["publiek", "Publiek", "landmark"], ["energie", "Energie", "zap"],
+    ["water", "Water & afval", "droplet"], ["transport", "Transport & parkeren", "parking"],
   ];
-  for (const [catKey, label] of CATS) {
-    const body = cat(label, catKey === "wonen");
+  for (const [catKey, label, ico] of CATS) {
+    const body = cat(label, ico, catKey === "wonen");
     for (const [key, def] of Object.entries(BUILDINGS)) {
       if (def.cat !== catKey) continue;
       const locked = def.fase > G.fase || (def.tech && !G.techs[def.tech]);
@@ -145,7 +147,7 @@ UI.buildTools = function () {
   }
 
   // Analyse
-  const ana = cat("📊 Analyse", false);
+  const ana = cat("Analyse", "chart", false);
   for (const hm of HEATMAPS) {
     toolBtn(ana, hm.naam.replace("Heatmap: ", "").replace("Kaartweergave: ", ""), {
       key: "hm" + hm.id,
@@ -206,7 +208,7 @@ UI.renderInspector = function (body) {
     body.innerHTML = `<div class="muted">Klik op een gebouw om het te inspecteren en aan te passen.<br><br>
       Tips:<br>· Teken gebouwen in elke vorm door cellen te slepen.<br>
       · Gebouwen hebben een weg nodig, en stroom + water via dat wegennet.<br>
-      · Gebruik de heatmaps (📊 of rechtsboven) om problemen te vinden.</div>`;
+      · Gebruik de heatmaps (Analyse of rechtsboven) om problemen te vinden.</div>`;
     return;
   }
   const def = BUILDINGS[b.type];
@@ -278,7 +280,7 @@ UI.renderInspector = function (body) {
   fl.append(btnrow);
   body.append(fl);
 
-  const del = el("button", "", "🗑 Gebouw slopen");
+  const del = el("button", "", icon("trash") + " Gebouw slopen");
   del.style.cssText = "width:100%;margin-top:8px;border-color:var(--bad);color:var(--bad)";
   del.onclick = () => {
     removeBuilding(b);
@@ -300,11 +302,11 @@ function buildingFloorSummary(b, f) {
 UI.renderResearch = function (body) {
   body.innerHTML = "";
   if (sandbox()) {
-    body.append(el("div", "card", "<b>⬜ Sandbox</b><br><span class='muted'>Alle technologie en fasen zijn al ontgrendeld — er valt niets te onderzoeken. Bouw erop los!</span>"));
+    body.append(el("div", "card", "<b>Sandbox</b><br><span class='muted'>Alle technologie en fasen zijn al ontgrendeld — er valt niets te onderzoeken. Bouw erop los!</span>"));
     return;
   }
   const head = el("div", "card");
-  head.append(el("div", "kv", `<span class="k">Onderzoekspunten</span><span class="v">🔬 ${fmtNum(G.rp)} (+${G.rpPerDag}/dag)</span>`));
+  head.append(el("div", "kv", `<span class="k">Onderzoekspunten</span><span class="v">${icon("flask")} ${fmtNum(G.rp)} (+${G.rpPerDag}/dag)</span>`));
   head.append(el("div", "muted", "Punten komen uit bevolking, universiteiten en technologiebedrijven."));
   body.append(head);
 
@@ -313,7 +315,7 @@ UI.renderResearch = function (body) {
   const ph = el("div", "card");
   ph.append(el("div", "", `<b>Fase ${G.fase}: ${PHASES[G.fase].naam}</b>`));
   if (next) {
-    ph.append(el("div", "muted", `Volgende: ${next.naam} — vereist ${fmtNum(next.popEis)} inwoners en ${fmtNum(next.rp || 0)} 🔬`));
+    ph.append(el("div", "muted", `Volgende: ${next.naam} — vereist ${fmtNum(next.popEis)} inwoners en ${fmtNum(next.rp || 0)} onderzoekspunten`));
     const bar = el("div", "bar"); const fill = el("div");
     fill.style.width = Math.min(100, G.pop / next.popEis * 100) + "%";
     bar.append(fill); ph.append(bar);
@@ -327,7 +329,7 @@ UI.renderResearch = function (body) {
   }
   body.append(ph);
 
-  const CATS = { transport: "🚗 Transport", bouw: "🏗 Bouw", energie: "⚡ Energie", milieu: "🌳 Milieu", sociaal: "🏫 Sociaal" };
+  const CATS = { transport: "Transport", bouw: "Bouw", energie: "Energie", milieu: "Milieu", sociaal: "Sociaal" };
   for (const [ck, cl] of Object.entries(CATS)) {
     body.append(el("h3", "", cl));
     for (const t of TECHS) {
@@ -335,7 +337,7 @@ UI.renderResearch = function (body) {
       const done = !!G.techs[t.id];
       const avail = canResearch(t);
       const n = el("div", "techn " + (done ? "done" : avail ? "avail" : ""));
-      n.append(el("div", "tname", (done ? "✔ " : "") + t.naam + ` <span class="muted">(${t.kosten} 🔬)</span>`));
+      n.append(el("div", "tname", (done ? "✔ " : "") + t.naam + ` <span class="muted">(${t.kosten} ${icon("flask")})</span>`));
       n.append(el("div", "tdesc", t.desc + (t.req ? ` Vereist: ${t.req.map(r => (TECHS.find(x => x.id === r) || {}).naam).join(", ")}.` : "") + (t.fase > G.fase ? ` [fase ${t.fase}]` : "")));
       if (!done && avail) {
         const btn = el("button", "", "Onderzoeken");
@@ -383,16 +385,16 @@ UI.renderFinance = function (body) {
     const ok = aanbod >= vraag;
     res.append(el("div", "kv", `<span class="k">${label}</span><span class="v" style="color:${ok ? "var(--good)" : "var(--bad)"}">${fmtNum(aanbod)} / ${fmtNum(vraag)} ${unit}</span>`));
   };
-  if (st.energie) line("⚡ Energie (aanbod/vraag)", st.energie.vraag, st.energie.aanbod, "MW");
-  if (st.water) line("💧 Water", st.water.vraag, st.water.aanbod, "kL");
-  if (st.riool) line("🚽 Riolering", st.riool.vraag, st.riool.cap, "kL");
-  if (st.afval) line("🗑 Afvalverwerking", st.afval.vraag, st.afval.cap, "t");
+  if (st.energie) line("Energie (aanbod/vraag)", st.energie.vraag, st.energie.aanbod, "MW");
+  if (st.water) line("Water", st.water.vraag, st.water.aanbod, "kL");
+  if (st.riool) line("Riolering", st.riool.vraag, st.riool.cap, "kL");
+  if (st.afval) line("Afvalverwerking", st.afval.vraag, st.afval.cap, "t");
   if (st.voedsel) {
-    res.append(el("div", "kv", `<span class="k">🌾 Voedsel lokaal</span><span class="v">${fmtNum(st.voedsel.verwerkt)} / ${fmtNum(st.voedsel.nodig)}</span>`));
+    res.append(el("div", "kv", `<span class="k">Voedsel lokaal</span><span class="v">${fmtNum(st.voedsel.verwerkt)} / ${fmtNum(st.voedsel.nodig)}</span>`));
     if (st.voedsel.importKosten > 0.05) res.append(el("div", "kv", `<span class="k">↳ importkosten</span><span class="v" style="color:var(--warn)">${fmtGeld(st.voedsel.importKosten * 30)}/mnd</span>`));
   }
-  if (st.materiaal) res.append(el("div", "kv", `<span class="k">🧱 Materiaalbalans</span><span class="v" style="color:${st.materiaal.balans >= 0 ? "var(--good)" : "var(--warn)"}">${st.materiaal.balans >= 0 ? "+" : ""}${st.materiaal.balans.toFixed(1)}</span>`));
-  if (st.parkeren) line("🅿 Parkeren", st.parkeren.vraag, st.parkeren.cap, "pl.");
+  if (st.materiaal) res.append(el("div", "kv", `<span class="k">Materiaalbalans</span><span class="v" style="color:${st.materiaal.balans >= 0 ? "var(--good)" : "var(--warn)"}">${st.materiaal.balans >= 0 ? "+" : ""}${st.materiaal.balans.toFixed(1)}</span>`));
+  if (st.parkeren) line("Parkeren", st.parkeren.vraag, st.parkeren.cap, "pl.");
   res.append(el("div", "muted", `Weerfactor hernieuwbaar: ${(G.weerFactor * 100) | 0}% — batterijen dempen dips.`));
   body.append(res);
 };
@@ -445,7 +447,8 @@ UI.renderTransit = function (body) {
     const act = el("button", "", l.actief ? "Actief" : "Gepauzeerd");
     if (l.actief) act.classList.add("active");
     act.onclick = () => { l.actief = !l.actief; UI.refreshRight(); };
-    const del = el("button", "", "🗑");
+    const del = el("button", "", icon("trash"));
+    del.title = "Lijn verwijderen";
     del.onclick = () => { G.transitLines = G.transitLines.filter(x => x !== l); UI.refreshRight(); };
     row.append(freq, act, del);
     c.append(row);
@@ -460,10 +463,10 @@ UI.renderStats = function (body) {
   const c1 = el("div", "card");
   c1.append(el("h3", "", "Bevolking"));
   c1.append(el("div", "kv", `<span class="k">Totaal</span><span class="v">${fmtNum(G.pop)}</span>`));
-  c1.append(el("div", "kv", `<span class="k">👶 Kinderen</span><span class="v">${fmtNum(G.cohorts.kinderen)}</span>`));
-  c1.append(el("div", "kv", `<span class="k">🎓 Studenten</span><span class="v">${fmtNum(G.cohorts.studenten)}</span>`));
-  c1.append(el("div", "kv", `<span class="k">💼 Werkenden</span><span class="v">${fmtNum(G.cohorts.werkenden)}</span>`));
-  c1.append(el("div", "kv", `<span class="k">🧓 Ouderen</span><span class="v">${fmtNum(G.cohorts.ouderen)}</span>`));
+  c1.append(el("div", "kv", `<span class="k">Kinderen</span><span class="v">${fmtNum(G.cohorts.kinderen)}</span>`));
+  c1.append(el("div", "kv", `<span class="k">Studenten</span><span class="v">${fmtNum(G.cohorts.studenten)}</span>`));
+  c1.append(el("div", "kv", `<span class="k">Werkenden</span><span class="v">${fmtNum(G.cohorts.werkenden)}</span>`));
+  c1.append(el("div", "kv", `<span class="k">Ouderen</span><span class="v">${fmtNum(G.cohorts.ouderen)}</span>`));
   c1.append(el("div", "kv", `<span class="k">Migratie vandaag</span><span class="v">${G.stats.migratie > 0 ? "+" : ""}${fmtNum(G.stats.migratie || 0)}</span>`));
   c1.append(el("div", "kv", `<span class="k">Woningcapaciteit</span><span class="v">${fmtNum(G.houseCap || 0)}</span>`));
   body.append(c1);
@@ -506,7 +509,7 @@ UI.refreshTop = function () {
   $("#ui-cashflow").style.color = s >= 0 ? "var(--good)" : "var(--bad)";
   $("#ui-pop").textContent = fmtNum(G.pop);
   $("#ui-rp").textContent = fmtNum(G.rp);
-  $("#ui-phase").textContent = sandbox() ? "⬜ Sandbox" : `Fase ${G.fase} · ${PHASES[G.fase].naam}`;
+  $("#ui-phase").textContent = sandbox() ? "Sandbox" : `Fase ${G.fase} · ${PHASES[G.fase].naam}`;
 };
 
 UI.refreshChips = function () {
@@ -557,16 +560,16 @@ UI.updateTooltip = function (px, py) {
     if (b) {
       const def = BUILDINGS[b.type];
       html = `<b>${b.naam}</b><br>${def.naam} · ${b.floors.length} verd.`;
-      if (b.capBew) html += `<br>👥 ${b.bezet}/${b.capBew} bewoners · 😊 ${Math.round(b.happy)}%`;
-      if (b.capBanen) html += `<br>💼 ${b.werkers}/${b.capBanen} banen`;
-      if (!b.powered) html += `<br><span style="color:var(--bad)">⚡ geen stroom</span>`;
-      if (!b.watered) html += `<br><span style="color:var(--bad)">💧 geen water</span>`;
-      if (!b.roadOk) html += `<br><span style="color:var(--bad)">🛣 geen weg</span>`;
+      if (b.capBew) html += `<br>${b.bezet}/${b.capBew} bewoners · ${Math.round(b.happy)}% tevreden`;
+      if (b.capBanen) html += `<br>${b.werkers}/${b.capBanen} banen`;
+      if (!b.powered) html += `<br><span style="color:var(--bad)">${icon("zap")} geen stroom</span>`;
+      if (!b.watered) html += `<br><span style="color:var(--bad)">${icon("droplet")} geen water</span>`;
+      if (!b.roadOk) html += `<br><span style="color:var(--bad)">${icon("route")} geen weg</span>`;
     }
   } else if (G.road[i] > 0) {
     const rd = ROADS[G.road[i]];
     const cong = G.traffic[i] / (rd.cap * roadCapFactor());
-    html = `<b>${rd.naam}</b><br>🚗 ${Math.round(G.traffic[i])} voertuigen/dag · drukte ${Math.round(cong * 100)}%`;
+    html = `<b>${rd.naam}</b><br>${Math.round(G.traffic[i])} voertuigen/dag · drukte ${Math.round(cong * 100)}%`;
   } else {
     const td = TERRAIN_DEF[G.terrain[i]];
     html = `<b>${td.naam}</b><br>Grondwaarde: ${Math.round(G.landValue[i] * 100)} · Vruchtbaarheid: ${Math.round(G.fert[i] * 100)}%`;
@@ -593,15 +596,15 @@ $("#modal-close").onclick = () => UI.hideModal();
 $("#modal").addEventListener("mousedown", e => { if (e.target.id === "modal") UI.hideModal(); });
 
 UI.showSaveScreen = function () {
-  UI.showModal("💾 Opslaan & laden", body => {
+  UI.showModal("Opslaan & laden", body => {
     body.append(el("div", "muted", "Drie handmatige slots + de autosave (elke 2 minuten). Laden vervangt je huidige stad."));
     body.append(el("div", "", "&nbsp;"));
     for (const slot of SAVE_SLOTS) {
       const meta = saveMeta(slot);
       const c = el("div", "card");
-      c.append(el("div", "", `<b>${slot === "auto" ? "⏱ Autosave" : "📁 Slot " + slot}</b>`));
+      c.append(el("div", "", slot === "auto" ? `${icon("clock")} <b>Autosave</b>` : `${icon("folder")} <b>Slot ${slot}</b>`));
       if (meta) {
-        const mode = meta.mode === "sandbox" ? "⬜ Sandbox" : "🏙 Klassiek";
+        const mode = meta.mode === "sandbox" ? "Sandbox" : "Klassiek";
         const geld = meta.mode === "sandbox" ? "∞" : fmtGeld(meta.money);
         c.append(el("div", "muted", `${mode} · ${fmtNum(meta.pop)} inwoners · jaar ${meta.year} · ${geld}`));
         c.append(el("div", "muted", "Opgeslagen: " + new Date(meta.ts).toLocaleString("nl-NL")));
@@ -610,15 +613,16 @@ UI.showSaveScreen = function () {
       }
       const row = el("div", "row");
       if (slot !== "auto") {
-        const sv = el("button", "", "💾 Opslaan");
+        const sv = el("button", "", icon("save") + " Opslaan");
         sv.onclick = () => { if (saveGame(slot, false)) UI.showSaveScreen(); };
         row.append(sv);
       }
-      const ld = el("button", "", "📂 Laden");
+      const ld = el("button", "", icon("folder") + " Laden");
       ld.disabled = !meta;
       ld.onclick = () => { if (loadGame(slot)) { Cars.pool.length = 0; UI.selected = null; UI.hideModal(); } };
       row.append(ld);
-      const del = el("button", "", "🗑");
+      const del = el("button", "", icon("trash"));
+      del.title = "Save verwijderen";
       del.disabled = !meta;
       del.onclick = () => { if (confirm("Deze save verwijderen?")) { deleteSave(slot); UI.showSaveScreen(); } };
       row.append(del);
@@ -629,15 +633,15 @@ UI.showSaveScreen = function () {
 };
 
 UI.showNewGameScreen = function () {
-  UI.showModal("🗺 Nieuwe kaart", body => {
-    body.append(el("div", "muted", "Niet-opgeslagen voortgang gaat verloren — sla eerst op via 💾 als je verder wilt spelen."));
+  UI.showModal("Nieuwe kaart", body => {
+    body.append(el("div", "muted", "Niet-opgeslagen voortgang gaat verloren — sla eerst op als je verder wilt spelen."));
     body.append(el("div", "", "&nbsp;"));
     const klassiek = el("button", "modebtn",
-      `<b>🏙 Klassiek</b><span class="muted">Begin als dorp op een gegenereerde kaart met rivieren, bossen en bergen. Beheer geld, groei door fasen en onderzoek technologie.</span>`);
+      `<b>${icon("building")} Klassiek</b><span class="muted">Begin als dorp op een gegenereerde kaart met rivieren, bossen en bergen. Beheer geld, groei door fasen en onderzoek technologie.</span>`);
     klassiek.onclick = () => { startNewGame("classic"); UI.hideModal(); };
     body.append(klassiek);
     const sandboxBtn = el("button", "modebtn",
-      `<b>⬜ Sandbox</b><span class="muted">Een leeg wit canvas. Onbeperkt geld, alles direct ontgrendeld, geen fasen of onderzoekseisen — bouw alles vanaf nul zoals jij wilt.</span>`);
+      `<b>${icon("square")} Sandbox</b><span class="muted">Een leeg wit canvas. Onbeperkt geld, alles direct ontgrendeld, geen fasen of onderzoekseisen — bouw alles vanaf nul zoals jij wilt.</span>`);
     sandboxBtn.onclick = () => { startNewGame("sandbox"); UI.hideModal(); };
     body.append(sandboxBtn);
   });
@@ -645,23 +649,23 @@ UI.showNewGameScreen = function () {
 
 // startscherm: altijd zichtbaar bij het openen van de plugin
 UI.showStartScreen = function () {
-  UI.showModal("🏙 MetroPlan", body => {
+  UI.showModal("MetroPlan", body => {
     body.append(el("div", "muted", "Welkom, stadsplanner! Kies hoe je wilt beginnen."));
     body.append(el("div", "", "&nbsp;"));
     const hasSave = SAVE_SLOTS.some(s => saveMeta(s));
     const laden = el("button", "modebtn",
-      `<b>📂 Save laden</b><span class="muted">${hasSave
+      `<b>${icon("folder")} Save laden</b><span class="muted">${hasSave
         ? "Ga verder met een opgeslagen stad uit een van je slots of de autosave."
         : "Nog geen opgeslagen steden gevonden."}</span>`);
     laden.disabled = !hasSave;
     laden.onclick = () => UI.showSaveScreen();
     body.append(laden);
     const klassiek = el("button", "modebtn",
-      `<b>🏙 Nieuwe stad</b><span class="muted">Begin als dorp op een gegenereerde kaart met rivieren, bossen en bergen. Beheer geld, groei door fasen en onderzoek technologie.</span>`);
+      `<b>${icon("building")} Nieuwe stad</b><span class="muted">Begin als dorp op een gegenereerde kaart met rivieren, bossen en bergen. Beheer geld, groei door fasen en onderzoek technologie.</span>`);
     klassiek.onclick = () => { startNewGame("classic"); UI.hideModal(); };
     body.append(klassiek);
     const sandboxBtn = el("button", "modebtn",
-      `<b>⬜ Sandbox-stad</b><span class="muted">Een leeg wit canvas. Onbeperkt geld, alles direct ontgrendeld, geen fasen of onderzoekseisen — bouw zoals jij wilt.</span>`);
+      `<b>${icon("square")} Sandbox-stad</b><span class="muted">Een leeg wit canvas. Onbeperkt geld, alles direct ontgrendeld, geen fasen of onderzoekseisen — bouw zoals jij wilt.</span>`);
     sandboxBtn.onclick = () => { startNewGame("sandbox"); UI.hideModal(); };
     body.append(sandboxBtn);
   });

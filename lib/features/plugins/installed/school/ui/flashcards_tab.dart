@@ -425,26 +425,36 @@ class _StudySessionState extends State<_StudySession> {
     });
   }
 
-  Future<void> _rate(ReviewRating rating) async {
+  Future<void> _next() async {
     final elapsed = DateTime.now().difference(_cardShownAt);
     await widget.repo.reviewCard(
       widget.cards[_index],
-      rating,
+      _correct ? ReviewRating.good : ReviewRating.again,
       correct: _correct,
       timeTaken: elapsed,
     );
-    if (_index + 1 >= widget.cards.length) {
-      widget.onDone();
-      return;
-    }
+    if (!mounted) return;
     setState(() {
-      _index++;
+      _index = (_index + 1) % widget.cards.length;
       _checked = false;
       _correct = false;
       _answerController.clear();
       _cardShownAt = DateTime.now();
     });
     _answerFocus.requestFocus();
+  }
+
+  Future<void> _stop() async {
+    if (_checked) {
+      final elapsed = DateTime.now().difference(_cardShownAt);
+      await widget.repo.reviewCard(
+        widget.cards[_index],
+        _correct ? ReviewRating.good : ReviewRating.again,
+        correct: _correct,
+        timeTaken: elapsed,
+      );
+    }
+    widget.onDone();
   }
 
   @override
@@ -520,35 +530,15 @@ class _StudySessionState extends State<_StudySession> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _RatingButton(label: 'Again', color: luma.danger, onTap: () => _rate(ReviewRating.again)),
+                LumaGhostButton(label: 'Stop', onTap: _stop),
                 const SizedBox(width: 10),
-                _RatingButton(label: 'Hard', color: const Color(0xFFFFB020), onTap: () => _rate(ReviewRating.hard)),
-                const SizedBox(width: 10),
-                _RatingButton(label: 'Good', color: luma.accent, onTap: () => _rate(ReviewRating.good)),
-                const SizedBox(width: 10),
-                _RatingButton(label: 'Easy', color: luma.success, onTap: () => _rate(ReviewRating.easy)),
+                LumaPrimaryButton(label: 'Next', icon: Icons.arrow_forward_rounded, onTap: _next),
               ],
             )
           else
-            LumaGhostButton(label: 'End session', onTap: widget.onDone),
+            LumaGhostButton(label: 'Stop', onTap: _stop),
         ],
       ),
-    );
-  }
-}
-
-class _RatingButton extends StatelessWidget {
-  const _RatingButton({required this.label, required this.color, required this.onTap});
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: onTap,
-      style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: Colors.white),
-      child: Text(label),
     );
   }
 }
