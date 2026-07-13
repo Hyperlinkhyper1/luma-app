@@ -643,6 +643,30 @@ UI.showNewGameScreen = function () {
   });
 };
 
+// startscherm: altijd zichtbaar bij het openen van de plugin
+UI.showStartScreen = function () {
+  UI.showModal("🏙 MetroPlan", body => {
+    body.append(el("div", "muted", "Welkom, stadsplanner! Kies hoe je wilt beginnen."));
+    body.append(el("div", "", "&nbsp;"));
+    const hasSave = SAVE_SLOTS.some(s => saveMeta(s));
+    const laden = el("button", "modebtn",
+      `<b>📂 Save laden</b><span class="muted">${hasSave
+        ? "Ga verder met een opgeslagen stad uit een van je slots of de autosave."
+        : "Nog geen opgeslagen steden gevonden."}</span>`);
+    laden.disabled = !hasSave;
+    laden.onclick = () => UI.showSaveScreen();
+    body.append(laden);
+    const klassiek = el("button", "modebtn",
+      `<b>🏙 Nieuwe stad</b><span class="muted">Begin als dorp op een gegenereerde kaart met rivieren, bossen en bergen. Beheer geld, groei door fasen en onderzoek technologie.</span>`);
+    klassiek.onclick = () => { startNewGame("classic"); UI.hideModal(); };
+    body.append(klassiek);
+    const sandboxBtn = el("button", "modebtn",
+      `<b>⬜ Sandbox-stad</b><span class="muted">Een leeg wit canvas. Onbeperkt geld, alles direct ontgrendeld, geen fasen of onderzoekseisen — bouw zoals jij wilt.</span>`);
+    sandboxBtn.onclick = () => { startNewGame("sandbox"); UI.hideModal(); };
+    body.append(sandboxBtn);
+  });
+};
+
 // heatmap-dropdown
 const hmsel = $("#heatmapsel");
 for (const hm of HEATMAPS) {

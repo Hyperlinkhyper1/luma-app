@@ -454,14 +454,21 @@ class _StatCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: luma.textSecondary, fontSize: 13)),
                 const SizedBox(height: 4),
-                Text(
-                  formatCents(amountCents),
-                  style: TextStyle(
-                    color: luma.textPrimary,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    formatCents(amountCents),
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: luma.textPrimary,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],

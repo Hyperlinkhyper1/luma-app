@@ -22,7 +22,10 @@ Future<void> showAddTransaction(
       backgroundColor: context.luma.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
+        constraints: BoxConstraints(
+          maxWidth: 460,
+          maxHeight: MediaQuery.sizeOf(context).height * 0.9,
+        ),
         child: _AddTransactionForm(
           repo: repo,
           merchants: merchants,
@@ -112,8 +115,13 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
     final luma = context.luma;
     final isExpense = _kind == TxnKind.expense;
 
-    return Padding(
-      padding: const EdgeInsets.all(22),
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(
+        22,
+        22,
+        22,
+        22 + MediaQuery.viewInsetsOf(context).bottom,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
