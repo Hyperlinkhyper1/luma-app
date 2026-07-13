@@ -25,12 +25,13 @@ const TERRAIN_DEF = [
 const isWater = t => t === TERRAIN.RIVIER || t === TERRAIN.MEER || t === TERRAIN.KUST;
 
 // Wegtypes (index 1..n in road-array; 0 = geen weg)
+// w = visuele breedte in tegels (spline-strokes), berm = stoep/berm-rand
 const ROADS = [
   null,
-  { id: 1, naam: "Kleine straat", kosten: 8,   onderhoud: 0.04, cap: 60,   snelheid: 30,  kleur: "#4a4f57", fase: 1 },
-  { id: 2, naam: "Normale weg",   kosten: 18,  onderhoud: 0.08, cap: 160,  snelheid: 50,  kleur: "#565c66", fase: 1 },
-  { id: 3, naam: "Hoofdweg",      kosten: 45,  onderhoud: 0.18, cap: 400,  snelheid: 70,  kleur: "#6a7280", fase: 2 },
-  { id: 4, naam: "Snelweg",       kosten: 120, onderhoud: 0.45, cap: 1200, snelheid: 110, kleur: "#828c9c", fase: 3, tech: "snelwegen" },
+  { id: 1, naam: "Kleine straat", kosten: 8,   onderhoud: 0.04, cap: 60,   snelheid: 30,  kleur: "#3f434b", fase: 1, w: 0.62, berm: "#9aa1ac", streep: false },
+  { id: 2, naam: "Normale weg",   kosten: 18,  onderhoud: 0.08, cap: 160,  snelheid: 50,  kleur: "#43474f", fase: 1, w: 0.85, berm: "#a4abb6", streep: true },
+  { id: 3, naam: "Hoofdweg",      kosten: 45,  onderhoud: 0.18, cap: 400,  snelheid: 70,  kleur: "#484d56", fase: 2, w: 1.25, berm: "#adb4bf", streep: true },
+  { id: 4, naam: "Snelweg",       kosten: 120, onderhoud: 0.45, cap: 1200, snelheid: 110, kleur: "#4e535d", fase: 3, w: 1.7,  berm: "#b6bdc8", streep: true, tech: "snelwegen" },
 ];
 
 // Verdiepingsfuncties. Waarden zijn per cel per verdieping.

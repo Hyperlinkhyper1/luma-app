@@ -171,6 +171,16 @@
       "version": "1.0.0"
     },
     {
+      "id": "secure-chat",
+      "name": "Chat",
+      "description": "Invite another Luma user by email and chat once they accept. Every message is end-to-end encrypted on your device before it's sent — the sync server only ever relays ciphertext it cannot read. Requires signing in under Settings → Sync & account.",
+      "icon": "chat",
+      "category": "Social",
+      "tags": ["Social", "Sync"],
+      "free": true,
+      "version": "1.0.0"
+    },
+    {
       "id": "groceries-list",
       "name": "Groceries List",
       "description": "Search Jumbo, Albert Heijn and Lidl products side by side, filter by store, sort by price, and build shopping lists that split themselves by market and aisle with running totals. A Nova-exclusive plugin.",

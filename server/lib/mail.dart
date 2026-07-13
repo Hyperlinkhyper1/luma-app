@@ -147,6 +147,52 @@ class Mailer {
       rethrow;
     }
   }
+  /// Notifies an invitee that someone wants to start an end-to-end encrypted
+  /// chat with them. Like [sendFamilyInviteEmail], acceptance happens in-app
+  /// (the plugin polls its own invites endpoint) — this is just a heads-up.
+  Future<void> sendChatInviteEmail({
+    required String toEmail,
+    required String inviterEmail,
+  }) async {
+    if (!config.enabled) {
+      stderr.writeln('[luma] SMTP not configured; chat invite for '
+          '$toEmail: $inviterEmail wants to chat with you');
+      return;
+    }
+
+    final smtp = SmtpServer(
+      config.host,
+      port: config.port,
+      username: config.username.isEmpty ? null : config.username,
+      password: config.password.isEmpty ? null : config.password,
+      ssl: config.useSsl,
+    );
+
+    final message = Message()
+      ..from = Address(config.fromAddress, config.fromName)
+      ..recipients.add(toEmail)
+      ..subject = '$inviterEmail wants to chat with you on Luma'
+      ..text = '$inviterEmail invited you to start an end-to-end encrypted '
+          'chat on Luma.\n\n'
+          'Open the Luma app, go to the Chat plugin, and check your invites '
+          'to accept or decline.\n\n'
+          'If you don\'t use Luma or weren\'t expecting this, you can ignore '
+          'this email.'
+      ..html = '<p><b>${_htmlEscapeMail(inviterEmail)}</b> invited you to '
+          'start an end-to-end encrypted chat on Luma.</p>'
+          '<p>Open the Luma app, go to the Chat plugin, and check your '
+          'invites to accept or decline.</p>'
+          '<p>If you don\'t use Luma or weren\'t expecting this, you can '
+          'ignore this email.</p>';
+
+    try {
+      await send(message, smtp);
+    } on MailerException catch (e) {
+      stderr.writeln('[luma] failed to send chat invite email to '
+          '$toEmail: $e');
+      rethrow;
+    }
+  }
 }
 
 String _htmlEscapeMail(String s) => s

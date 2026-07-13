@@ -1,15 +1,27 @@
 // ─────────────────────────────────────────────────────────────
-// MetroPlan — invoer, gameloop, opslaan/laden
+// MetroPlan — invoer 2.0, gameloop, opslaan/laden
+// Vrij tekenen: wegen als vloeiende splines, gebouwen met optionele
+// sub-tegel plaatsing, grid en snappen volledig instelbaar.
 // ─────────────────────────────────────────────────────────────
 "use strict";
 
 const Input = {
   dragging: false, panning: false,
-  lastX: 0, lastY: 0,
-  paintCells: new Set(),   // cellen tijdens slepen (gebouw/weg/terrein)
-  lineDraft: null,         // {type, stops:[]}
-  cancelDrafts() { this.paintCells.clear(); this.lineDraft = null; },
+  lastX: 0, lastY: 0, panT: 0, panDX: 0, panDY: 0,
+  paintCells: new Set(),   // cellen tijdens slepen (gebouw/terrein)
+  roadDraft: null,         // {type, pts:[{x,y}]} tijdens vrij tekenen
+  lineDraft: null,         // OV: {type, stops:[]}
+  altHeld: false,          // Alt = tijdelijk snappen omkeren
+  freeAnchor: null,        // sub-tegel offset bij vrije plaatsing
+  cancelDrafts() { this.paintCells.clear(); this.roadDraft = null; this.lineDraft = null; this.freeAnchor = null; },
+  buildToolActive() {
+    const k = UI.tool.kind;
+    return k === "building" || k === "road" || k === "terrain" || k === "roundabout";
+  },
 };
+
+// effectief snappen = instelling XOR Alt (tijdelijk omkeren)
+function snapActive() { return G.settings.snap !== Input.altHeld; }
 
 // ── Muis & toetsen ──────────────────────────────────────────
 canvas.addEventListener("contextmenu", e => e.preventDefault());
@@ -19,19 +31,35 @@ canvas.addEventListener("mousedown", e => {
   const px = e.clientX - rect.left, py = e.clientY - rect.top;
   if (e.button === 2 || e.button === 1) {
     Input.panning = true; Input.lastX = e.clientX; Input.lastY = e.clientY;
+    Input.panDX = Input.panDY = 0;
+    cam.vx = cam.vy = 0;
     return;
   }
   if (e.button !== 0) return;
+  const w = screenToWorld(px, py);
   const i = screenToTile(px, py);
-  if (i < 0) return;
   const t = UI.tool;
   if (t.kind === "select") {
-    if (G.bld[i] > 0) UI.selectBuilding(G.buildings[G.bld[i] - 1]);
+    if (i >= 0 && G.bld[i] > 0) UI.selectBuilding(G.buildings[G.bld[i] - 1]);
     else { UI.selected = null; UI.refreshRight(); }
   } else if (t.kind === "transit") {
-    addTransitStop(i);
-  } else {
+    if (i >= 0) addTransitStop(i);
+  } else if (t.kind === "road") {
+    // vrij tekenen: startpunt (met slim snappen aan bestaand netwerk)
+    const start = snapActive() ? snapEndpoint({ x: w.x, y: w.y }) : { x: w.x, y: w.y };
+    Input.roadDraft = { type: t.road, pts: [start] };
     Input.dragging = true;
+  } else if (t.kind === "roundabout") {
+    placeRoundabout(w.x, w.y, t.road || 2);
+  } else if (t.kind === "bulldoze") {
+    Input.dragging = true;
+    bulldozeAt(w, i);
+  } else if (i >= 0) {
+    Input.dragging = true;
+    // vrije plaatsing: onthoud sub-tegel offset van het eerste punt
+    Input.freeAnchor = snapActive() ? { ox: 0, oy: 0 }
+      : { ox: Math.max(-0.45, Math.min(0.45, w.x - Math.floor(w.x) - 0.5)),
+          oy: Math.max(-0.45, Math.min(0.45, w.y - Math.floor(w.y) - 0.5)) };
     paintTile(i);
   }
 });
@@ -42,88 +70,177 @@ canvas.addEventListener("mousemove", e => {
   const rect = canvas.getBoundingClientRect();
   const px = e.clientX - rect.left, py = e.clientY - rect.top;
   hoverTile = screenToTile(px, py);
+  hoverWorld = screenToWorld(px, py);
   if (Input.panning) {
-    cam.x -= (e.clientX - Input.lastX) / cam.zoom;
-    cam.y -= (e.clientY - Input.lastY) / cam.zoom;
+    const dx = (e.clientX - Input.lastX) / cam.zoom, dy = (e.clientY - Input.lastY) / cam.zoom;
+    cam.tx -= dx; cam.ty -= dy;
+    cam.x -= dx; cam.y -= dy;
+    Input.panDX = dx; Input.panDY = dy; Input.panT = performance.now();
     Input.lastX = e.clientX; Input.lastY = e.clientY;
-    clampCam();
-  } else if (Input.dragging && hoverTile >= 0) {
-    paintTile(hoverTile);
+  } else if (Input.dragging) {
+    if (Input.roadDraft) {
+      const last = Input.roadDraft.pts[Input.roadDraft.pts.length - 1];
+      if (Math.hypot(hoverWorld.x - last.x, hoverWorld.y - last.y) > 0.35)
+        Input.roadDraft.pts.push({ x: hoverWorld.x, y: hoverWorld.y });
+    } else if (UI.tool.kind === "bulldoze") {
+      bulldozeAt(hoverWorld, hoverTile);
+    } else if (hoverTile >= 0) {
+      paintTile(hoverTile);
+    }
   }
   UI.updateTooltip(px, py);
 });
 
 window.addEventListener("mouseup", e => {
-  if (e.button === 2 || e.button === 1) Input.panning = false;
+  if (e.button === 2 || e.button === 1) {
+    Input.panning = false;
+    // inertie: laatste beweging wordt uitrol-snelheid
+    if (performance.now() - Input.panT < 60) {
+      cam.vx = -Input.panDX * 18; cam.vy = -Input.panDY * 18;
+    }
+  }
   if (e.button === 0 && Input.dragging) {
     Input.dragging = false;
-    commitPaint();
+    if (Input.roadDraft) finishRoad();
+    else commitPaint();
   }
 });
 
 canvas.addEventListener("wheel", e => {
   e.preventDefault();
-  const f = e.deltaY < 0 ? 1.15 : 1 / 1.15;
-  cam.zoom = Math.max(2, Math.min(40, cam.zoom * f));
-  clampCam();
+  // vloeiend zoomen, verankerd op de cursor
+  const rect = canvas.getBoundingClientRect();
+  const before = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+  const f = e.deltaY < 0 ? 1.18 : 1 / 1.18;
+  cam.tzoom = Math.max(2, Math.min(44, cam.tzoom * f));
+  // richt het doel zo dat het punt onder de cursor blijft
+  const zAfter = cam.tzoom;
+  cam.tx = before.x - (e.clientX - rect.left - rect.width / 2) / zAfter;
+  cam.ty = before.y - (e.clientY - rect.top - rect.height / 2) / zAfter;
 }, { passive: false });
 
 window.addEventListener("keydown", e => {
+  if (e.key === "Alt") { Input.altHeld = true; e.preventDefault(); return; }
   if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
   switch (e.key) {
     case " ": setSpeed(G.speed === 0 ? 1 : 0); e.preventDefault(); break;
     case "1": setSpeed(1); break;
     case "2": setSpeed(2); break;
     case "3": setSpeed(3); break;
+    case "g": case "G": G.settings.grid = !G.settings.grid; UI.refreshTools(); break;
+    case "s": case "S": G.settings.snap = !G.settings.snap; UI.refreshTools(); break;
     case "Enter": finishTransitLine(); break;
-    case "Escape": UI.setTool({ kind: "select" }); UI.markActiveTool(document.querySelector('[data-toolkey="select"]')); break;
-    case "ArrowUp": cam.y -= 8 / cam.zoom * 4; clampCam(); break;
-    case "ArrowDown": cam.y += 8 / cam.zoom * 4; clampCam(); break;
-    case "ArrowLeft": cam.x -= 8 / cam.zoom * 4; clampCam(); break;
-    case "ArrowRight": cam.x += 8 / cam.zoom * 4; clampCam(); break;
+    case "Escape": Input.cancelDrafts(); UI.setTool({ kind: "select" }); UI.markActiveTool(document.querySelector('[data-toolkey="select"]')); break;
+    case "ArrowUp": cam.ty -= 24 / cam.zoom; break;
+    case "ArrowDown": cam.ty += 24 / cam.zoom; break;
+    case "ArrowLeft": cam.tx -= 24 / cam.zoom; break;
+    case "ArrowRight": cam.tx += 24 / cam.zoom; break;
   }
 });
+window.addEventListener("keyup", e => { if (e.key === "Alt") Input.altHeld = false; });
 
-function clampCam() {
-  cam.x = Math.max(0, Math.min(W, cam.x));
-  cam.y = Math.max(0, Math.min(H, cam.y));
+// ── Wegen: vrij getekend → vloeiende spline → raster ────────
+function finishRoad() {
+  const d = Input.roadDraft;
+  Input.roadDraft = null;
+  if (!d || d.pts.length < 2) return;
+  let pts = simplifyPts(d.pts, 0.8);
+  if (snapActive()) {
+    // eindpunt slim aan het netwerk knopen
+    pts[pts.length - 1] = snapEndpoint(pts[pts.length - 1]);
+    // korte rechte stukken netjes op het grid uitlijnen
+    if (G.settings.gridSize >= 1 && pts.length === 2) {
+      const a = pts[0], b = pts[1];
+      if (Math.abs(a.x - b.x) < 1.2) b.x = a.x;       // verticaal recht
+      else if (Math.abs(a.y - b.y) < 1.2) b.y = a.y;  // horizontaal recht
+    }
+  }
+  pts = chaikin(pts, 2);
+  const path = { id: G.nextPathId++, type: d.type, pts };
+  pathCumLen(path);
+  if (path.len < 1) return;
+
+  // kosten: per nieuwe wegtegel, bruggen ×3, bergen blokkeren
+  const tiles = pathTiles(path);
+  let cost = 0, blocked = 0;
+  const rd = ROADS[path.type];
+  for (const i of tiles) {
+    if (G.bld[i] > 0) continue;
+    if (G.terrain[i] === TERRAIN.BERG) { blocked++; continue; }
+    if (G.road[i] > 0 && G.roadCover[i] > 0) continue; // al weg (kruising is gratis)
+    const ter = G.terrain[i];
+    cost += rd.kosten * (isWater(ter) ? 3 : ter === TERRAIN.HEUVEL ? 1.5 : 1);
+  }
+  if (blocked > tiles.size * 0.4) { UI.toast("Bergen blokkeren dit tracé.", "warn"); return; }
+  if (G.money < cost) { UI.toast(`Onvoldoende geld: ${fmtGeld(cost)} nodig.`, "bad"); return; }
+  G.money -= cost;
+  G.roadPaths.push(path);
+  applyPathToGrid(path);
+  UI.refreshTop();
 }
 
-// ── Tekenen / plaatsen ──────────────────────────────────────
+function placeRoundabout(wx, wy, type) {
+  const R = 2.2, SEG = 20;
+  const pts = [];
+  for (let k = 0; k <= SEG; k++) {
+    const a = (k / SEG) * Math.PI * 2;
+    pts.push({ x: wx + Math.cos(a) * R, y: wy + Math.sin(a) * R });
+  }
+  const path = { id: G.nextPathId++, type, pts };
+  pathCumLen(path);
+  const tiles = pathTiles(path);
+  const rd = ROADS[type];
+  let cost = 0;
+  for (const i of tiles) {
+    if (G.bld[i] > 0 || G.terrain[i] === TERRAIN.BERG) { UI.toast("Rotonde past hier niet.", "warn"); return; }
+    if (G.road[i] > 0 && G.roadCover[i] > 0) continue;
+    cost += rd.kosten * (isWater(G.terrain[i]) ? 3 : 1);
+  }
+  if (G.money < cost) { UI.toast(`Onvoldoende geld: ${fmtGeld(cost)} nodig.`, "bad"); return; }
+  G.money -= cost;
+  G.roadPaths.push(path);
+  applyPathToGrid(path);
+  UI.refreshTop();
+}
+
+// ── Slopen ──────────────────────────────────────────────────
+function bulldozeAt(w, i) {
+  if (i >= 0 && G.bld[i] > 0) {
+    const b = G.buildings[G.bld[i] - 1];
+    if (b) { removeBuilding(b); if (UI.selected === b) { UI.selected = null; UI.refreshRight(); } }
+    return;
+  }
+  const p = pathAt(w.x, w.y);
+  if (p) {
+    G.roadPaths = G.roadPaths.filter(x => x !== p);
+    rebuildRoadRaster();
+    UI.toast("Wegsegment verwijderd.", "");
+    return;
+  }
+  if (i >= 0 && G.road[i] > 0) { G.road[i] = 0; G.traffic[i] = 0; markDirty(i); }
+}
+
+// ── Gebouwen / terrein schilderen ───────────────────────────
 function paintTile(i) {
   const t = UI.tool;
-  if (t.kind === "bulldoze") { bulldoze(i); return; }
-  if (t.kind === "road" || t.kind === "building" || t.kind === "terrain") {
-    Input.paintCells.add(i);
+  if (t.kind !== "building" && t.kind !== "terrain") return;
+  // gridgrootte: penseel snapt aan blokken wanneer snappen aan staat
+  const gs = snapActive() ? G.settings.gridSize : 1;
+  const x0 = Math.floor((i % W) / gs) * gs, y0 = Math.floor(((i / W) | 0) / gs) * gs;
+  for (let dy = 0; dy < gs; dy++) for (let dx = 0; dx < gs; dx++) {
+    if (inWorld(x0 + dx, y0 + dy)) Input.paintCells.add(idx(x0 + dx, y0 + dy));
   }
 }
 
 function commitPaint() {
   const t = UI.tool;
   const cells = [...Input.paintCells];
+  const anchor = Input.freeAnchor || { ox: 0, oy: 0 };
   Input.paintCells.clear();
+  Input.freeAnchor = null;
   if (!cells.length) return;
 
-  if (t.kind === "road") {
-    const rd = ROADS[t.road];
-    let placed = 0, cost = 0;
-    for (const i of cells) {
-      if (G.bld[i] > 0) continue;
-      const ter = G.terrain[i];
-      const bridge = isWater(ter);
-      const c = rd.kosten * (bridge ? 3 : ter === TERRAIN.HEUVEL ? 1.5 : ter === TERRAIN.BERG ? 4 : 1);
-      if (G.money < cost + c) { UI.toast("Onvoldoende geld voor de hele weg.", "warn"); break; }
-      if (ter === TERRAIN.BERG) continue; // tunnel te duur zonder tech — sla over
-      cost += c;
-      G.road[i] = t.road;
-      markDirty(i);
-      placed++;
-    }
-    G.money -= cost;
-    if (placed) UI.refreshTop();
-  }
-
-  else if (t.kind === "terrain") {
+  if (t.kind === "terrain") {
     const tool = TERRAIN_TOOLS.find(x => x.id === t.terrain);
     let cost = 0;
     for (const i of cells) {
@@ -142,19 +259,15 @@ function commitPaint() {
     }
     G.money -= cost;
     UI.refreshTop();
-  }
-
-  else if (t.kind === "building") {
-    placeBuilding(t.type, cells);
+  } else if (t.kind === "building") {
+    placeBuilding(t.type, cells, anchor.ox, anchor.oy);
   }
 }
 
-function placeBuilding(type, cells) {
+function placeBuilding(type, cells, ox = 0, oy = 0) {
   const def = BUILDINGS[type];
-  // filter op bouwbaar
   const ok = cells.filter(i => tileBuildable(i) && !(def.cat === "voedsel" && type === "akker" && G.fert[i] < 0.15));
   if (!ok.length) { UI.toast("Hier kun je niet bouwen (water, berg, weg of bezet).", "warn"); return; }
-  // samenhang controleren (flood fill binnen selectie)
   const set = new Set(ok);
   const comp = [ok[0]];
   const seen = new Set(comp);
@@ -177,23 +290,14 @@ function placeBuilding(type, cells) {
     UI.toast("Let op: dit gebouw heeft (nog) geen weg. Het werkt pas als er een weg naast ligt.", "warn");
   }
   G.money -= cost;
-  const b = makeBuilding(type, comp);
+  const b = makeBuilding(type, comp, ox, oy);
   markDirtyCells(comp);
   recomputeCapacities();
   UI.refreshTop();
   UI.selectBuilding(b);
 }
 
-function bulldoze(i) {
-  if (G.bld[i] > 0) {
-    const b = G.buildings[G.bld[i] - 1];
-    if (b) { removeBuilding(b); if (UI.selected === b) { UI.selected = null; UI.refreshRight(); } }
-  } else if (G.road[i] > 0) {
-    G.road[i] = 0; G.traffic[i] = 0; markDirty(i);
-  }
-}
-
-// ── OV-lijnen tekenen ───────────────────────────────────────
+// ── OV-lijnen ───────────────────────────────────────────────
 function addTransitStop(i) {
   const t = UI.tool;
   if (G.road[i] === 0) { UI.toast("Haltes moeten op een weg liggen.", "warn"); return; }
@@ -210,7 +314,6 @@ function finishTransitLine() {
   if (!d) return;
   Input.lineDraft = null;
   if (d.stops.length < 2) { UI.toast("Een lijn heeft minstens 2 haltes nodig.", "warn"); return; }
-  // depot-check
   const hasDepot = G.buildings.some(b => b && BUILDINGS[b.type].ovDepot === d.type);
   const tt = TRANSIT_TYPES[d.type];
   const line = {
@@ -224,7 +327,7 @@ function finishTransitLine() {
   UI.refreshRight();
 }
 
-// ── Snelheid & knoppen ──────────────────────────────────────
+// ── Snelheid ────────────────────────────────────────────────
 function setSpeed(s) {
   G.speed = s;
   for (let k = 0; k <= 3; k++) document.getElementById("spd" + k).classList.toggle("active", k === s);
@@ -237,17 +340,22 @@ function saveGame(silent) {
   const buildings = [];
   eachBuilding(b => buildings.push({
     id: b.id, type: b.type, cells: b.cells, naam: b.naam, jaar: b.jaar,
-    floors: b.floors, bezet: b.bezet,
+    floors: b.floors, bezet: b.bezet, ox: b.ox || 0, oy: b.oy || 0,
   }));
   const data = {
-    v: 1, seed: G.seed,
+    v: 2, seed: G.seed,
     terrain: Array.from(G.terrain), height: Array.from(G.height), fert: Array.from(G.fert),
     road: Array.from(G.road),
+    roadPaths: G.roadPaths.map(p => ({
+      id: p.id, type: p.type,
+      pts: p.pts.map(q => ({ x: Math.round(q.x * 100) / 100, y: Math.round(q.y * 100) / 100 })),
+    })),
+    nextPathId: G.nextPathId,
     buildings,
     transitLines: G.transitLines, nextLineId: G.nextLineId,
     money: G.money, day: G.day, month: G.month, year: G.year,
     fase: G.fase, rp: G.rp, techs: G.techs, policies: G.policies, taxes: G.taxes,
-    pop: G.pop, happy: G.happy,
+    pop: G.pop, happy: G.happy, settings: G.settings,
   };
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
@@ -270,21 +378,28 @@ function loadGame() {
     while (G.buildings.length < sb.id) { G.freeBldIds.push(G.buildings.length); G.buildings.push(null); }
     const b = {
       id: sb.id, type: sb.type, cells: sb.cells, naam: sb.naam, jaar: sb.jaar,
-      floors: sb.floors, bezet: sb.bezet || 0,
+      floors: sb.floors, bezet: sb.bezet || 0, ox: sb.ox || 0, oy: sb.oy || 0,
       x: 0, y: 0, bew: 0, banen: 0, werkers: 0, happy: 60, reistijd: 0,
       powered: true, watered: true, roadOk: true,
     };
     let sx = 0, sy = 0;
     for (const c of b.cells) { sx += c % W; sy += (c / W) | 0; G.bld[c] = b.id + 1; }
     b.x = sx / b.cells.length; b.y = sy / b.cells.length;
+    computeBBox(b);
     G.buildings.push(b);
   }
+  // wegen: v2 heeft splines; v1-saves houden alleen hun rastertegels
+  G.roadPaths = (d.roadPaths || []).map(p => { const q = { ...p }; pathCumLen(q); return q; });
+  G.nextPathId = d.nextPathId || 1;
+  if (G.roadPaths.length) rebuildRoadRaster();
   G.transitLines = d.transitLines || []; G.nextLineId = d.nextLineId || 1;
   G.money = d.money; G.day = d.day; G.month = d.month; G.year = d.year;
   G.fase = d.fase; G.rp = d.rp; G.techs = d.techs || {}; G.policies = d.policies || {};
   G.taxes = d.taxes || G.taxes; G.pop = d.pop; G.happy = d.happy || 60;
+  if (d.settings) G.settings = { grid: true, snap: true, gridSize: 1, ...d.settings };
   invalidateWaterCache();
   markAllDirty();
+  computeJunctions();
   recomputeCapacities();
   UI.refreshTools(); UI.refreshTop(); UI.refreshRight();
   UI.toast("📂 Spel geladen.", "good");
@@ -297,13 +412,13 @@ document.getElementById("btn-new").onclick = () => {
   if (confirm("Nieuwe kaart starten? Niet-opgeslagen voortgang gaat verloren.")) {
     newGame((Math.random() * 1e9) | 0);
     UI.selected = null;
+    Cars.pool.length = 0;
     UI.refreshTools(); UI.refreshTop(); UI.refreshRight();
     UI.toast("🗺 Nieuwe kaart! Begin met een weg, huizen, een akker en een waterpomp.", "good");
   }
 };
 
 // ── Gameloop ────────────────────────────────────────────────
-// dagen per seconde per snelheid (frame-onafhankelijk via accumulator)
 const DAY_RATE = [0, 0.8, 2.4, 6];
 let lastT = performance.now(), dayAcc = 0, uiAcc = 0, autosaveAcc = 0;
 
@@ -331,7 +446,7 @@ resizeCanvas();
 if (!loadGame()) {
   newGame(((Math.random() * 1e9) | 0) || 1);
   UI.refreshTools(); UI.refreshTop(); UI.refreshRight();
-  UI.toast("Welkom, stadsplanner! Teken eerst een weg, dan huizen ernaast, een akker, een waterpomp aan de rivier en een basisschool.", "good");
+  UI.toast("Welkom, stadsplanner! Teken vrij een weg (sleep een vloeiende lijn), zet er huizen naast, een akker, een waterpomp aan de rivier en een basisschool.", "good");
 }
 UI.buildTools();
 UI.refreshTop();

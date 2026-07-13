@@ -54,7 +54,30 @@ UI.buildTools = function () {
   toolBtn(alg, "Selecteren / inspecteren", { key: "select", onpick: () => UI.setTool({ kind: "select" }) });
   toolBtn(alg, "Slopen", { key: "bulldoze", onpick: () => UI.setTool({ kind: "bulldoze" }) });
 
-  // Wegen
+  // Raster & plaatsing: het grid is een hulpmiddel, nooit een verplichting
+  const rst = cat("⊞ Raster & plaatsing", false);
+  const s = G.settings;
+  toolBtn(rst, (s.grid ? "☑" : "☐") + " Grid tonen (G)", {
+    key: "set-grid", onpick: () => { s.grid = !s.grid; UI.refreshTools(); },
+  });
+  toolBtn(rst, (s.snap ? "☑" : "☐") + " Snappen (S)", {
+    key: "set-snap", onpick: () => { s.snap = !s.snap; UI.refreshTools(); },
+  });
+  const gsRow = el("div", "row");
+  gsRow.style.cssText = "padding:2px 8px;gap:8px";
+  gsRow.append(el("span", "muted", "Gridgrootte"));
+  const gsSel = el("select");
+  for (const v of [1, 2, 3, 4]) {
+    const o = el("option", "", v + "×" + v); o.value = v;
+    if (s.gridSize === v) o.selected = true;
+    gsSel.append(o);
+  }
+  gsSel.onchange = () => { s.gridSize = +gsSel.value; };
+  gsRow.append(gsSel);
+  rst.append(gsRow);
+  rst.append(el("div", "muted", `<div style="padding:4px 8px">Houd <b>Alt</b> ingedrukt om snappen tijdelijk om te keren — zo plaats je alles volledig vrij (ook tussen gridcellen).</div>`));
+
+  // Wegen — vrij tekenen, de engine maakt er vloeiende bochten van
   const weg = cat("🛣 Wegen", true);
   for (let r = 1; r < ROADS.length; r++) {
     const rd = ROADS[r];
@@ -62,9 +85,19 @@ UI.buildTools = function () {
     toolBtn(weg, rd.naam, {
       key: "road" + r, kleur: rd.kleur, prijs: rd.kosten, locked,
       lockLabel: rd.tech && !G.techs[rd.tech] ? "tech" : `fase ${rd.fase}`,
-      onpick: () => UI.setTool({ kind: "road", road: r }),
+      onpick: () => {
+        UI.setTool({ kind: "road", road: r });
+        UI.toast("Sleep vrij over de kaart — de engine maakt er automatisch een vloeiende weg van. Kruisende wegen worden vanzelf kruispunten.", "");
+      },
     });
   }
+  toolBtn(weg, "Rotonde", {
+    key: "roundabout", prijs: ROADS[2].kosten * 8,
+    locked: !G.techs.rotondes,
+    lockLabel: "tech",
+    lockMsg: "Vereist onderzoek: Rotondes.",
+    onpick: () => { UI.setTool({ kind: "roundabout", road: 2 }); UI.toast("Klik om een rotonde te plaatsen; sluit er wegen op aan.", ""); },
+  });
 
   // OV
   const ov = cat("🚌 Openbaar vervoer", false);

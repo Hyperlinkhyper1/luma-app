@@ -21,6 +21,7 @@ import '../features/plugins/installed/bulletin_board/bulletin_board_page.dart';
 import '../features/plugins/installed/price_tracker/price_tracker_page.dart';
 import '../features/plugins/installed/qr_code_generator/qr_code_generator_page.dart';
 import '../features/plugins/installed/school/school_page.dart';
+import '../features/plugins/installed/secure_chat/secure_chat_page.dart';
 import '../features/plugins/installed/server_tycoon/server_tycoon_page.dart';
 import '../features/plugins/installed/space_colony/space_colony_page.dart';
 import '../features/plugins/installed/usage/usage_page.dart';
@@ -214,6 +215,7 @@ class _AppShellState extends State<AppShell> {
         'usage' => const UsagePage(),
         'wifi-speed-test' => const WifiSpeedTestPage(),
         'groceries-list' => const GroceriesPage(),
+        'secure-chat' => const SecureChatPage(),
         _ => LumaEmptyState(
             icon: Icons.extension_off_rounded,
             title: t.shellPluginUnavailable,

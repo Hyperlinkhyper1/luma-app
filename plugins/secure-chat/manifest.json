@@ -1,0 +1,8 @@
+{
+  "id": "secure-chat",
+  "name": "Chat",
+  "version": "1.0.0",
+  "description": "Invite another Luma user by email and chat once they accept. Every message is end-to-end encrypted on your device before it's sent — the sync server only ever relays ciphertext it cannot read. Requires signing in under Settings → Sync & account.",
+  "icon": "chat",
+  "category": "Social"
+}

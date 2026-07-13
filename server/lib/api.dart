@@ -7,6 +7,7 @@ import 'package:crypto/crypto.dart' as c;
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 
+import 'chat_store.dart';
 import 'family_store.dart';
 import 'mail.dart';
 import 'metrics.dart';
@@ -118,7 +119,7 @@ const int _defaultClientIterations = 200000;
 const int _maxJsonBody = 64 * 1024;
 
 class Api {
-  Api(this.store, this.config, this.mailer, this.familyStore)
+  Api(this.store, this.config, this.mailer, this.familyStore, this.chatStore)
       : _authLimiter = RateLimiter(
             maxRequests: 15, window: const Duration(minutes: 10)),
         _generalLimiter = RateLimiter(
@@ -130,6 +131,7 @@ class Api {
   final ServerConfig config;
   final Mailer mailer;
   final FamilyStore familyStore;
+  final ChatStore chatStore;
   final RateLimiter _authLimiter;
   final RateLimiter _generalLimiter;
 
@@ -172,6 +174,19 @@ class Api {
           _requireAuth(_updateSharedEvent))
       ..delete('/api/v1/family/<id>/events/<eventId>',
           _requireAuth(_deleteSharedEvent))
+      ..put('/api/v1/chat/key', _requireAuth(_putChatKey))
+      ..get('/api/v1/chat/key/<userId>', _requireAuth(_getChatKey))
+      ..post('/api/v1/chat/invite', _requireAuth(_sendChatInvite))
+      ..get('/api/v1/chat/invites', _requireAuth(_listChatInvites))
+      ..post('/api/v1/chat/invites/<inviteId>/accept',
+          _requireAuth(_acceptChatInvite))
+      ..post('/api/v1/chat/invites/<inviteId>/decline',
+          _requireAuth(_declineChatInvite))
+      ..get('/api/v1/chat/conversations', _requireAuth(_listChatConversations))
+      ..get('/api/v1/chat/conversations/<id>/messages',
+          _requireAuth(_listChatMessages))
+      ..post('/api/v1/chat/conversations/<id>/messages',
+          _requireAuth(_sendChatMessage))
       ..get('/admin', _requireAdmin(_adminDashboard))
       ..get('/admin/users', _requireAdmin(_adminUsers))
       ..get('/admin/stats', _requireAdmin(_adminStats))
@@ -1300,6 +1315,237 @@ class Api {
           toEmail: toEmail, inviterEmail: inviterEmail, familyName: familyName);
     } catch (e) {
       stderr.writeln('[luma] could not send family invite email to $toEmail: $e');
+    }
+  }
+
+  // ---- Handlers: chat --------------------------------------------------------
+  //
+  // The server here is a dumb, opaque relay: it stores each user's X25519
+  // public key (needed so others can encrypt *to* them) and, once two users
+  // are connected, opaque ciphertext blobs per message. It never sees a
+  // plaintext message, a private key, or has any way to decrypt what it
+  // stores — see chat_crypto.dart on the client for the sealed-box scheme.
+
+  static const _chatInviteTtl = Duration(days: 14);
+  // A message body carries *two* blobs (one sealed to the recipient, one to
+  // the sender) plus JSON overhead, and the whole request must still fit
+  // under `_maxJsonBody` (64KB) — so each blob gets well under half of that.
+  static const _maxChatBlobLength = 28000; // base64 chars (~20KB plaintext)
+
+  Future<Response> _putChatKey(Request request, StoredUser user) async {
+    final body = await _readJson(request);
+    final key = body['publicKey'];
+    if (key is! String || key.isEmpty || key.length > 200) {
+      return _error(400, 'bad_key', 'Invalid public key.');
+    }
+    return store.lock.synchronized(() async {
+      chatStore.publicKeyByUserId[user.id] = key;
+      await chatStore.saveKeys();
+      return _json(200, {'ok': true});
+    });
+  }
+
+  Response _getChatKey(Request request, StoredUser user) {
+    final userId = request.params['userId']!;
+    final key = chatStore.publicKeyByUserId[userId];
+    if (key == null) return _error(404, 'not_found', 'No public key for that user.');
+    return _json(200, {'userId': userId, 'publicKey': key});
+  }
+
+  Future<Response> _sendChatInvite(Request request, StoredUser user) async {
+    if (!chatStore.publicKeyByUserId.containsKey(user.id)) {
+      return _error(400, 'no_key',
+          'Set up chat encryption on this device first.');
+    }
+    final body = await _readJson(request);
+    final email = _normalizeEmail(body['email']);
+    if (email == null) return _error(400, 'bad_email', 'Invalid email.');
+    if (email == user.email.toLowerCase()) {
+      return _error(400, 'bad_email', 'You cannot invite yourself.');
+    }
+
+    return store.lock.synchronized(() async {
+      final now = _nowMs;
+      final existingUserId = store.userIdByEmail[email];
+      if (existingUserId != null &&
+          chatStore.conversationBetween(user.id, existingUserId) != null) {
+        return _error(409, 'already_chatting', 'You already have a chat with that person.');
+      }
+      final alreadyPending = chatStore.invitesById.values.any((i) =>
+          i.fromUserId == user.id && i.toEmail == email && i.isPendingAt(now));
+      if (alreadyPending) {
+        return _error(409, 'invite_pending', 'An invite is already pending for that email.');
+      }
+
+      final invite = ChatInvite(
+        id: _genId(),
+        fromUserId: user.id,
+        toEmail: email,
+        createdAtMs: now,
+        expiresAtMs: now + _chatInviteTtl.inMilliseconds,
+      );
+      chatStore.invitesById[invite.id] = invite;
+      await chatStore.saveInvites();
+      await _sendChatInviteEmail(toEmail: email, inviterEmail: user.email);
+      return _json(201, {
+        'id': invite.id,
+        'email': invite.toEmail,
+        'expiresAtMs': invite.expiresAtMs,
+      });
+    });
+  }
+
+  Response _listChatInvites(Request request, StoredUser user) {
+    final now = _nowMs;
+    final invites = chatStore.pendingInvitesForEmail(user.email.toLowerCase(), now);
+    return _json(200, {
+      'invites': invites.map((i) {
+        final inviter = store.usersById[i.fromUserId];
+        return {
+          'id': i.id,
+          'inviterEmail': inviter?.email ?? '',
+          'createdAtMs': i.createdAtMs,
+          'expiresAtMs': i.expiresAtMs,
+        };
+      }).toList(),
+    });
+  }
+
+  Future<Response> _acceptChatInvite(Request request, StoredUser user) async {
+    if (!chatStore.publicKeyByUserId.containsKey(user.id)) {
+      return _error(400, 'no_key',
+          'Set up chat encryption on this device first.');
+    }
+    final inviteId = request.params['inviteId']!;
+    return store.lock.synchronized(() async {
+      final now = _nowMs;
+      final invite = chatStore.invitesById[inviteId];
+      if (invite == null || invite.toEmail != user.email.toLowerCase()) {
+        return _error(404, 'not_found', 'Invite not found.');
+      }
+      if (!invite.isPendingAt(now)) {
+        return _error(410, 'invite_not_pending', 'This invite is no longer available.');
+      }
+
+      var conversation = chatStore.conversationBetween(invite.fromUserId, user.id);
+      conversation ??= ChatConversation(
+        id: _genId(),
+        userAId: invite.fromUserId,
+        userBId: user.id,
+        createdAtMs: now,
+      );
+      chatStore.conversationsById[conversation.id] = conversation;
+      invite.status = 'accepted';
+      invite.respondedAtMs = now;
+      await chatStore.saveConversations();
+      await chatStore.saveInvites();
+
+      final peer = store.usersById[invite.fromUserId];
+      return _json(200, _conversationJson(conversation, user.id, peer));
+    });
+  }
+
+  Future<Response> _declineChatInvite(Request request, StoredUser user) async {
+    final inviteId = request.params['inviteId']!;
+    return store.lock.synchronized(() async {
+      final now = _nowMs;
+      final invite = chatStore.invitesById[inviteId];
+      if (invite == null || invite.toEmail != user.email.toLowerCase()) {
+        return _error(404, 'not_found', 'Invite not found.');
+      }
+      invite.status = 'declined';
+      invite.respondedAtMs = now;
+      await chatStore.saveInvites();
+      return _json(200, {'ok': true});
+    });
+  }
+
+  Map<String, dynamic> _conversationJson(
+      ChatConversation c, String meUserId, StoredUser? peer) {
+    final peerId = c.otherUser(meUserId);
+    return {
+      'id': c.id,
+      'peerUserId': peerId,
+      'peerEmail': peer?.email ?? '',
+      'peerPublicKey': chatStore.publicKeyByUserId[peerId],
+      'createdAtMs': c.createdAtMs,
+    };
+  }
+
+  Response _listChatConversations(Request request, StoredUser user) {
+    final conversations = chatStore.conversationsForUser(user.id);
+    return _json(200, {
+      'conversations': conversations.map((c) {
+        final peer = store.usersById[c.otherUser(user.id)];
+        return _conversationJson(c, user.id, peer);
+      }).toList(),
+    });
+  }
+
+  Response _listChatMessages(Request request, StoredUser user) {
+    final conversationId = request.params['id']!;
+    final conversation = chatStore.conversationsById[conversationId];
+    if (conversation == null || !conversation.hasUser(user.id)) {
+      return _error(404, 'not_found', 'Conversation not found.');
+    }
+    final sinceMs = int.tryParse(request.url.queryParameters['since'] ?? '');
+    final messages = chatStore.messagesFor(conversationId, sinceMs: sinceMs);
+    return _json(200, {
+      'messages': messages.map((m) => {
+            'id': m.id,
+            'senderUserId': m.senderUserId,
+            'createdAtMs': m.createdAtMs,
+            'blob': m.senderUserId == user.id ? m.blobForSender : m.blobForRecipient,
+          }).toList(),
+    });
+  }
+
+  Future<Response> _sendChatMessage(Request request, StoredUser user) async {
+    final conversationId = request.params['id']!;
+    final conversation = chatStore.conversationsById[conversationId];
+    if (conversation == null || !conversation.hasUser(user.id)) {
+      return _error(404, 'not_found', 'Conversation not found.');
+    }
+    final body = await _readJson(request);
+    final forRecipient = body['blobForRecipient'];
+    final forSender = body['blobForSender'];
+    if (forRecipient is! String ||
+        forSender is! String ||
+        forRecipient.isEmpty ||
+        forSender.isEmpty ||
+        forRecipient.length > _maxChatBlobLength ||
+        forSender.length > _maxChatBlobLength) {
+      return _error(400, 'bad_message', 'Invalid message payload.');
+    }
+
+    return store.lock.synchronized(() async {
+      final message = ChatMessage(
+        id: _genId(),
+        conversationId: conversationId,
+        senderUserId: user.id,
+        createdAtMs: _nowMs,
+        blobForRecipient: forRecipient,
+        blobForSender: forSender,
+      );
+      chatStore.messagesByConversationId
+          .putIfAbsent(conversationId, () => [])
+          .add(message);
+      await chatStore.saveMessages();
+      return _json(201, {'id': message.id, 'createdAtMs': message.createdAtMs});
+    });
+  }
+
+  /// Best-effort send; a mail outage should not block invites outright since
+  /// the invite still shows up in-app the next time the invitee's client
+  /// polls /api/v1/chat/invites.
+  Future<void> _sendChatInviteEmail({
+    required String toEmail,
+    required String inviterEmail,
+  }) async {
+    try {
+      await mailer.sendChatInviteEmail(toEmail: toEmail, inviterEmail: inviterEmail);
+    } catch (e) {
+      stderr.writeln('[luma] could not send chat invite email to $toEmail: $e');
     }
   }
 

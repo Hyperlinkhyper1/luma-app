@@ -55,6 +55,8 @@ import 'features/plugins/plugin_scope.dart';
 import 'features/notes/notes_repository.dart';
 import 'features/plugins/installed/cloud_files/cloud_files_controller.dart';
 import 'features/plugins/installed/cloud_files/cloud_files_scope.dart';
+import 'features/plugins/installed/secure_chat/chat_repository.dart' as secure_chat;
+import 'features/plugins/installed/secure_chat/secure_chat_scope.dart';
 import 'family/family_repository.dart';
 import 'family/family_scope.dart';
 import 'finance/data/database.dart';
@@ -237,6 +239,12 @@ class _LumaAppState extends State<LumaApp> {
   // knowledge sync collections above — see lib/family/family_repository.dart.
   late final FamilyRepository _familyRepository = FamilyRepository(_sync);
 
+  // Chat: end-to-end encrypted person-to-person messaging. Its own X25519
+  // identity is generated on-device and only the public key ever reaches
+  // the server — see lib/features/plugins/installed/secure_chat/.
+  late final secure_chat.ChatRepository _secureChatRepository =
+      secure_chat.ChatRepository(_sync);
+
   // Optional peer-to-peer (Wi-Fi/LAN) sync between same-account devices.
   late final PeerSyncController _peerSync = PeerSyncController(sync: _sync);
 
@@ -256,6 +264,7 @@ class _LumaAppState extends State<LumaApp> {
     _sync.init();
     _peerSync.init();
     _familyRepository.init();
+    _secureChatRepository.init();
     _autoClickerRepository.init();
     _usageRepository.init();
   }
@@ -266,6 +275,7 @@ class _LumaAppState extends State<LumaApp> {
     _peerSync.dispose();
     _cloudFiles.dispose();
     _familyRepository.dispose();
+    _secureChatRepository.dispose();
     _sync.dispose();
     _db.close();
     _passwordDb.close();
@@ -318,6 +328,8 @@ class _LumaAppState extends State<LumaApp> {
       controller: _cloudFiles,
       child: FamilyScope(
       repository: _familyRepository,
+      child: SecureChatScope(
+      repository: _secureChatRepository,
       child: SettingsScope(
       controller: widget.settings,
       child: FinanceScope(
@@ -394,6 +406,7 @@ class _LumaAppState extends State<LumaApp> {
             ),
           ),
         ),
+      ),
       ),
       ),
       ),
