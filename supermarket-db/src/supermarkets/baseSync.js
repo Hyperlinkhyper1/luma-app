@@ -101,6 +101,12 @@ class BaseSync {
 
     try {
       const rawProducts = await this.fetchProducts();
+      if (rawProducts.length === 0) {
+        // An empty result set means the fetch was silently blocked or the
+        // site markup changed — never a real "the store sells nothing".
+        // Fail the run instead of marking the whole catalog unavailable.
+        throw new Error('fetchProducts returned 0 products; aborting sync to protect existing data');
+      }
       const stats = await this.updateProducts(rawProducts);
       const staleCount = await Product.markStaleAsUnavailable(this.supermarket.id, syncStartedAt);
 

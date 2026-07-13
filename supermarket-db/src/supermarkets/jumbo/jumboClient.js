@@ -78,7 +78,16 @@ async function fetchCategories(page) {
   if (result.errors) {
     throw new Error(`Jumbo categories request failed: ${result.errors.map((e) => e.message).join('; ')}`);
   }
-  return result.data?.categoriesTree || [];
+  const tree = result.data?.categoriesTree || [];
+  if (tree.length === 0) {
+    // A blocked/challenged session comes back as valid JSON with an empty
+    // tree rather than an error — surface the raw response so the sync log
+    // shows what the server actually got instead of a silent empty run.
+    throw new Error(
+      `Jumbo categories request returned an empty tree (likely bot mitigation): ${JSON.stringify(result).slice(0, 300)}`
+    );
+  }
+  return tree;
 }
 
 /**

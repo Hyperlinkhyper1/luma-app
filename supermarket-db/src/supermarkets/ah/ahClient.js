@@ -6,6 +6,9 @@
  */
 
 const BASE_URL = 'https://api.ah.nl';
+// Mimic the official Android app — Node's default "node" user agent is an
+// easy flag for Akamai on IPs it's already suspicious of.
+const USER_AGENT = 'Appie/8.22.3 Model/phone Android/12-API31';
 
 let cachedToken = null;
 let cachedTokenExpiresAt = 0;
@@ -16,11 +19,12 @@ async function getAccessToken({ forceRefresh = false } = {}) {
   }
   const response = await fetch(`${BASE_URL}/mobile-auth/v1/auth/token/anonymous`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'User-Agent': USER_AGENT },
     body: JSON.stringify({ clientId: 'appie' }),
   });
   if (!response.ok) {
-    throw new Error(`AH auth failed: HTTP ${response.status}`);
+    const body = await response.text().catch(() => '');
+    throw new Error(`AH auth failed: HTTP ${response.status} ${body.slice(0, 300)}`);
   }
   const data = await response.json();
   cachedToken = data.access_token;
@@ -41,6 +45,7 @@ async function authedGet(path, params = {}, { _retried = false } = {}) {
       // Required for the mobile-services endpoints to route correctly —
       // without it product/search returns a 500 "ApplicationContextNotFoundException".
       'x-application': 'AHWEBSHOP',
+      'User-Agent': USER_AGENT,
     },
   });
   if (response.status === 401 && !_retried) {
@@ -52,7 +57,8 @@ async function authedGet(path, params = {}, { _retried = false } = {}) {
     return authedGet(path, params, { _retried: true });
   }
   if (!response.ok) {
-    throw new Error(`AH request failed: HTTP ${response.status} for ${path}`);
+    const body = await response.text().catch(() => '');
+    throw new Error(`AH request failed: HTTP ${response.status} for ${path} ${body.slice(0, 300)}`);
   }
   return response.json();
 }
