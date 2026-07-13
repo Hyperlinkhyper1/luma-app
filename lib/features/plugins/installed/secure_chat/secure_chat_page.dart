@@ -9,6 +9,8 @@ import 'data/chat_api.dart';
 import 'secure_chat_scope.dart';
 import 'widgets/chat_invite_dialog.dart';
 
+const _wideBreakpoint = 760.0;
+
 /// The Chat plugin: invite another Luma user by email, they accept from
 /// their own Invites list, and every message after that is end-to-end
 /// encrypted on-device — the sync server only ever relays ciphertext it
@@ -44,31 +46,55 @@ class _SecureChatPageState extends State<SecureChatPage> {
             conversations.every((c) => c.id != _selectedConversationId)) {
           _selectedConversationId = null;
         }
-        return Row(
-          children: [
-            SizedBox(
-              width: 320,
-              child: _ConversationList(
+        final list = _ConversationList(
+          chat: chat,
+          selectedId: _selectedConversationId,
+          onSelect: (id) => setState(() => _selectedConversationId = id),
+        );
+        final thread = _selectedConversationId == null
+            ? const LumaEmptyState(
+                icon: Icons.lock_rounded,
+                title: 'End-to-end encrypted chat',
+                subtitle: 'Pick a conversation, or invite someone new by email.',
+              )
+            : _ChatThread(
                 chat: chat,
-                selectedId: _selectedConversationId,
-                onSelect: (id) => setState(() => _selectedConversationId = id),
-              ),
-            ),
-            VerticalDivider(width: 1, color: context.luma.border),
-            Expanded(
-              child: _selectedConversationId == null
-                  ? const LumaEmptyState(
-                      icon: Icons.lock_rounded,
-                      title: 'End-to-end encrypted chat',
-                      subtitle:
-                          'Pick a conversation, or invite someone new by email.',
-                    )
-                  : _ChatThread(
-                      chat: chat,
-                      conversationId: _selectedConversationId!,
-                    ),
-            ),
-          ],
+                conversationId: _selectedConversationId!,
+              );
+
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final wide = constraints.maxWidth >= _wideBreakpoint;
+            if (!wide) {
+              return _selectedConversationId == null
+                  ? list
+                  : Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              onPressed: () =>
+                                  setState(() => _selectedConversationId = null),
+                              icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                              label: const Text('Chats'),
+                            ),
+                          ),
+                        ),
+                        Expanded(child: thread),
+                      ],
+                    );
+            }
+
+            return Row(
+              children: [
+                SizedBox(width: 320, child: list),
+                VerticalDivider(width: 1, color: context.luma.border),
+                Expanded(child: thread),
+              ],
+            );
+          },
         );
       },
     );
