@@ -85,6 +85,28 @@ class FinanceRepository {
     return id;
   }
 
+  Future<void> updateTransaction({
+    required int id,
+    required TxnKind kind,
+    required int amountCents,
+    required DateTime date,
+    String? note,
+    int? potId,
+    int? merchantId,
+    int? categoryId,
+  }) =>
+      (db.update(db.financeTransactions)..where((t) => t.id.equals(id))).write(
+        FinanceTransactionsCompanion(
+          kind: Value(kind),
+          amountCents: Value(amountCents),
+          date: Value(date),
+          note: Value(note),
+          potId: Value(potId),
+          merchantId: Value(merchantId),
+          categoryId: Value(categoryId),
+        ),
+      );
+
   Future<void> deleteTransaction(int id) =>
       (db.delete(db.financeTransactions)..where((t) => t.id.equals(id))).go();
 

@@ -158,7 +158,6 @@ class SyncStateStore {
       });
       final tmp = File('${file.path}.tmp');
       await tmp.writeAsString(payload, flush: true);
-      if (await file.exists()) await file.delete();
       await tmp.rename(file.path);
     } catch (_) {
       // Best effort — sync state just won't survive a restart.

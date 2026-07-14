@@ -421,7 +421,7 @@ function newGame(seed, mode = "classic") {
   G.happyMap.fill(0);
   G.buildings = []; G.freeBldIds = []; G.transitLines = []; G.nextLineId = 1;
   G.roadPaths = []; G.nextPathId = 1; G.roadCover.fill(0); G.junctions = [];
-  G.settings = { grid: true, snap: true, gridSize: 1 };
+  G.settings = { grid: true, snap: true, gridSize: 1, invertZoom: false };
   G.money = 150000; G.day = 1; G.month = 1; G.year = 1925; G.speed = 1;
   G.fase = 1; G.rp = 0; G.techs = {}; G.policies = {};
   G.taxes = { wonen: 9, bedrijf: 9, verkoop: 6 };

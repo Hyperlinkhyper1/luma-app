@@ -1,0 +1,9 @@
+{
+  "id": "errand-manager",
+  "name": "Errand Manager",
+  "version": "1.0.0",
+  "description": "Turn recurring chores into one simple daily checklist. Set errands to repeat daily, weekly, monthly or every few days, group them into your own categories, and snooze anything you can't get to today.",
+  "icon": "checklist",
+  "category": "Productivity",
+  "details": "Stop keeping the chore schedule in your head. Add each recurring errand once — water the plants, take out the bins, pay the rent — and pick how often it repeats: daily, weekly, monthly, or a custom interval in days.\n\nEvery day the Errand Manager rolls whatever is due into a single checklist, grouped into categories you define yourself (Household, Health, Admin — whatever fits your life), each with its own color. Check things off and watch the day's progress bar fill up; anything you skipped shows how many days late it is.\n\nCan't get to something today? Snooze it — push it to tomorrow, a few days out, next week, or any number of days you choose — without touching its regular schedule. Completing an errand always schedules the next occurrence from today, so a chore done late never comes back early.\n\nEverything is stored locally. Turn on the Errands sync collection under Settings to carry the same checklist across your paired devices."
+}

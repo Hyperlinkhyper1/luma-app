@@ -65,6 +65,7 @@ class AhSync extends BaseSync {
           for (const raw of result.products || []) {
             byId.set(raw.webshopId, mapProduct(raw));
           }
+          await this.reportProgress(byId.size);
         } catch (error) {
           console.error(
             `AH sync: failed on category ${category.name} (id ${category.id}), page ${page}:`,
