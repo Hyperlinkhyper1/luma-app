@@ -8,13 +8,15 @@ import '../finance_repository.dart';
 import '../logic/money.dart';
 import 'lookups.dart';
 
-/// Opens the dialog for adding an expense or income entry.
+/// Opens the dialog for adding an expense or income entry. Pass [existing] to
+/// edit that entry in place instead of creating a new one.
 Future<void> showAddTransaction(
   BuildContext context, {
   required FinanceRepository repo,
   required List<Merchant> merchants,
   required List<Category> categories,
   required List<Pot> pots,
+  FinanceTransaction? existing,
 }) {
   return showDialog<void>(
     context: context,
@@ -31,6 +33,7 @@ Future<void> showAddTransaction(
           merchants: merchants,
           categories: categories,
           pots: pots,
+          existing: existing,
         ),
       ),
     ),
@@ -43,11 +46,13 @@ class _AddTransactionForm extends StatefulWidget {
     required this.merchants,
     required this.categories,
     required this.pots,
+    this.existing,
   });
   final FinanceRepository repo;
   final List<Merchant> merchants;
   final List<Category> categories;
   final List<Pot> pots;
+  final FinanceTransaction? existing;
 
   @override
   State<_AddTransactionForm> createState() => _AddTransactionFormState();
@@ -63,6 +68,31 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
   int? _potId;
   String? _error;
   bool _saving = false;
+
+  bool get _isEditing => widget.existing != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final t = widget.existing;
+    if (t != null) {
+      _kind = t.kind;
+      _amountController.text =
+          (t.amountCents / 100).toStringAsFixed(2).replaceAll('.', ',');
+      _noteController.text = t.note ?? '';
+      _date = t.date;
+      _categoryId = t.categoryId;
+      _potId = t.potId;
+      if (t.merchantId != null) {
+        for (final m in widget.merchants) {
+          if (m.id == t.merchantId) {
+            _merchant = m;
+            break;
+          }
+        }
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -89,22 +119,40 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
       _error = null;
     });
     try {
-      await widget.repo.addTransaction(
-        kind: _kind,
-        amountCents: cents,
-        date: _date,
-        note: _noteController.text.trim().isEmpty
-            ? null
-            : _noteController.text.trim(),
-        potId: _potId,
-        merchantId: _kind == TxnKind.expense ? _merchant?.id : null,
-        categoryId: _kind == TxnKind.expense ? _categoryId : null,
-      );
+      final note = _noteController.text.trim().isEmpty
+          ? null
+          : _noteController.text.trim();
+      final merchantId = _kind == TxnKind.expense ? _merchant?.id : null;
+      final categoryId = _kind == TxnKind.expense ? _categoryId : null;
+      if (_isEditing) {
+        await widget.repo.updateTransaction(
+          id: widget.existing!.id,
+          kind: _kind,
+          amountCents: cents,
+          date: _date,
+          note: note,
+          potId: _potId,
+          merchantId: merchantId,
+          categoryId: categoryId,
+        );
+      } else {
+        await widget.repo.addTransaction(
+          kind: _kind,
+          amountCents: cents,
+          date: _date,
+          note: note,
+          potId: _potId,
+          merchantId: merchantId,
+          categoryId: categoryId,
+        );
+      }
     } on StorageLimitExceededException catch (e) {
-      if (mounted) setState(() {
-        _saving = false;
-        _error = '$e';
-      });
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _error = '$e';
+        });
+      }
       return;
     }
     if (mounted) Navigator.of(context).pop();
@@ -127,7 +175,7 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'New entry',
+            _isEditing ? 'Edit entry' : 'New entry',
             style: TextStyle(
               color: luma.textPrimary,
               fontSize: 18,
@@ -135,12 +183,18 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
             ),
           ),
           const SizedBox(height: 16),
-          LumaSegmentedTabs(
-            tabs: const ['Expense', 'Income'],
-            selectedIndex: isExpense ? 0 : 1,
-            onSelect: (i) =>
-                setState(() => _kind = i == 0 ? TxnKind.expense : TxnKind.income),
-          ),
+          if (_kind == TxnKind.allocation)
+            Text(
+              'Allocation to a pot',
+              style: TextStyle(color: luma.textSecondary, fontSize: 13),
+            )
+          else
+            LumaSegmentedTabs(
+              tabs: const ['Expense', 'Income'],
+              selectedIndex: isExpense ? 0 : 1,
+              onSelect: (i) => setState(
+                  () => _kind = i == 0 ? TxnKind.expense : TxnKind.income),
+            ),
           const SizedBox(height: 16),
           _FieldLabel('Amount'),
           TextField(
@@ -202,7 +256,7 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
               ),
               const SizedBox(width: 10),
               LumaPrimaryButton(
-                label: 'Add entry',
+                label: _isEditing ? 'Save changes' : 'Add entry',
                 icon: Icons.check_rounded,
                 loading: _saving,
                 onTap: _save,

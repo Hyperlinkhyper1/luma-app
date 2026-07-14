@@ -12,6 +12,8 @@ import '../features/plugins/installed/data_management/data_management_page.dart'
 import '../features/plugins/installed/auto_clicker/auto_clicker_page.dart';
 import '../features/plugins/installed/calendar/calendar_page.dart';
 import '../features/plugins/installed/cloud_files/cloud_files_page.dart';
+import '../features/plugins/installed/card_wallet/card_wallet_page.dart';
+import '../features/plugins/installed/errands/errands_page.dart';
 import '../features/plugins/installed/city_planner/city_planner_page.dart';
 import '../features/plugins/installed/file_tree/file_tree_page.dart';
 import '../features/plugins/installed/file_viewer/file_viewer_page.dart';
@@ -198,6 +200,8 @@ class _AppShellState extends State<AppShell> {
 
   static Widget _pluginPageFor(String pluginId, L t) => switch (pluginId) {
         'qr-code-generator' => const QrCodeGeneratorPage(),
+        'card-wallet' => const CardWalletPage(),
+        'errand-manager' => const ErrandsPage(),
         'file-tree' => const FileTreePage(),
         'file-viewer' => const FileViewerPage(),
         'bulletin-board' => const BulletinBoardPage(),

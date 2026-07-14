@@ -65,6 +65,9 @@ UI.buildTools = function () {
   toolBtn(rst, icon(s.snap ? "check-square" : "square") + " Snappen (S)", {
     key: "set-snap", onpick: () => { s.snap = !s.snap; UI.refreshTools(); },
   });
+  toolBtn(rst, icon(s.invertZoom ? "check-square" : "square") + " Zoomrichting omkeren", {
+    key: "set-invert-zoom", onpick: () => { s.invertZoom = !s.invertZoom; UI.refreshTools(); },
+  });
   const gsRow = el("div", "row");
   gsRow.style.cssText = "padding:2px 8px;gap:8px";
   gsRow.append(el("span", "muted", "Gridgrootte"));

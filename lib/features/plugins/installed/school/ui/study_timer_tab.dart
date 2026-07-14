@@ -262,8 +262,13 @@ class _ActiveTimer extends StatefulWidget {
 }
 
 class _ActiveTimerState extends State<_ActiveTimer> {
-  late final Timer _ticker =
-      Timer.periodic(const Duration(seconds: 1), (_) => setState(() {}));
+  late final Timer _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) => setState(() {}));
+  }
 
   @override
   void dispose() {

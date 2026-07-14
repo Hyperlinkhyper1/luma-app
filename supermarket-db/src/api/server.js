@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 
-const { Supermarket, Product } = require('../models');
+const { Supermarket, Product, SyncLog } = require('../models');
 const config = require('../config/env');
 const { registerAdminRoutes } = require('./admin');
 
@@ -109,6 +109,16 @@ function createApp() {
 function start() {
   const app = createApp();
   const port = Number(process.env.PORT || 3000);
+
+  // Syncs run inside this process, so any sync log still 'running' at boot
+  // died with the previous process — mark it failed instead of leaving it
+  // stuck as 'running' forever.
+  SyncLog.failAbandonedRuns()
+    .then((count) => {
+      if (count > 0) console.warn(`Marked ${count} abandoned sync run(s) as failed on startup.`);
+    })
+    .catch((error) => console.error('Failed to clean up abandoned sync runs:', error.message));
+
   app.listen(port, () => {
     console.log(`Supermarket product API listening on port ${port} (env: ${config.env})`);
   });
