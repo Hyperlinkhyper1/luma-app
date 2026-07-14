@@ -11,6 +11,12 @@ class BaseSync {
     this.slug = slug;
     this.defaults = { name, website_url: websiteUrl, logo_url: logoUrl };
     this.supermarket = null;
+    this.activeLogId = null;
+    this.lastProgressWrite = 0;
+  }
+
+  get isRunning() {
+    return this.activeLogId !== null;
   }
 
   async init() {
@@ -32,6 +38,25 @@ class BaseSync {
     throw new Error(`fetchProducts() is not implemented for supermarket "${this.slug}"`);
   }
 
+  /**
+   * Heartbeat for long-running fetches. Subclasses call this from inside
+   * fetchProducts() with a running count of products seen so far; it bumps
+   * the sync log's last_progress_at (throttled to one write per 5s) so a
+   * live crawl never looks stalled. Never throws — a missed heartbeat must
+   * not kill a sync.
+   */
+  async reportProgress(checkedSoFar) {
+    if (!this.activeLogId) return;
+    const now = Date.now();
+    if (now - this.lastProgressWrite < 5000) return;
+    this.lastProgressWrite = now;
+    try {
+      await SyncLog.progress(this.activeLogId, { products_checked: checkedSoFar });
+    } catch (error) {
+      console.error(`Sync heartbeat failed for ${this.slug}:`, error.message);
+    }
+  }
+
   async getProducts(options = {}) {
     await this.init();
     return Product.findBySupermarket(this.supermarket.id, options);
@@ -49,6 +74,9 @@ class BaseSync {
 
     for (const raw of rawProducts) {
       stats.checked += 1;
+      if (stats.checked % 100 === 0) {
+        await this.reportProgress(stats.checked);
+      }
       try {
         const { id: productId, wasInserted } = await Product.upsert(
           this.supermarket.id,
@@ -95,9 +123,14 @@ class BaseSync {
   }
 
   async syncProducts() {
+    if (this.isRunning) {
+      throw new Error(`A ${this.slug} sync is already running; not starting another one.`);
+    }
     await this.init();
     const syncStartedAt = new Date();
     const logId = await SyncLog.start(this.supermarket.id);
+    this.activeLogId = logId;
+    this.lastProgressWrite = 0;
 
     try {
       const rawProducts = await this.fetchProducts();
@@ -125,6 +158,8 @@ class BaseSync {
         error_message: error.message,
       });
       throw error;
+    } finally {
+      this.activeLogId = null;
     }
   }
 }

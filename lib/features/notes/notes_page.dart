@@ -13,12 +13,142 @@ class NotesPage extends StatefulWidget {
 
 final _checklistRegex = RegExp(r'^\[( |x|X)\] (.*)$');
 
+/// Inline formatting markers embedded directly in note content, e.g.
+/// `**bold**`, `_cursive_` (italic), and `[color=#RRGGBB]text[/color]`.
+/// Kept as plain characters in the string so a note stays a simple string —
+/// no separate rich-text document model or migration needed.
+final _inlineFormatRegex = RegExp(
+  r'\*\*(.+?)\*\*'
+  r'|\[color=(#[0-9A-Fa-f]{6})\](.+?)\[/color\]'
+  r'|_(.+?)_',
+);
+
+Color _parseHexColor(String hex) =>
+    Color(int.parse(hex.substring(1), radix: 16) + 0xFF000000);
+
+/// Spans for read-only display: markup characters are stripped, leaving
+/// only the styled text.
+List<InlineSpan> _buildViewSpans(String text, TextStyle base) {
+  final spans = <InlineSpan>[];
+  var start = 0;
+  for (final m in _inlineFormatRegex.allMatches(text)) {
+    if (m.start > start) {
+      spans.add(TextSpan(text: text.substring(start, m.start), style: base));
+    }
+    if (m.group(1) != null) {
+      spans.add(
+        TextSpan(
+          text: m.group(1),
+          style: base.copyWith(fontWeight: FontWeight.bold),
+        ),
+      );
+    } else if (m.group(2) != null) {
+      spans.add(
+        TextSpan(
+          text: m.group(3),
+          style: base.copyWith(color: _parseHexColor(m.group(2)!)),
+        ),
+      );
+    } else if (m.group(4) != null) {
+      spans.add(
+        TextSpan(
+          text: m.group(4),
+          style: base.copyWith(fontStyle: FontStyle.italic),
+        ),
+      );
+    }
+    start = m.end;
+  }
+  if (start < text.length) {
+    spans.add(TextSpan(text: text.substring(start), style: base));
+  }
+  return spans;
+}
+
+/// Spans for the live editor: markers stay in the text (the underlying
+/// string is untouched, so cursor/selection offsets remain valid) but are
+/// rendered invisible — zero color, near-zero size — so the user only ever
+/// sees the styled result, never the raw `**`/`_`/`[color=...]` syntax.
+List<InlineSpan> _buildEditSpans(String text, TextStyle base) {
+  final hidden = base.copyWith(
+    color: Colors.transparent,
+    fontSize: 0.01,
+    height: 0.01,
+  );
+  final spans = <InlineSpan>[];
+  var start = 0;
+  for (final m in _inlineFormatRegex.allMatches(text)) {
+    if (m.start > start) {
+      spans.add(TextSpan(text: text.substring(start, m.start), style: base));
+    }
+    if (m.group(1) != null) {
+      spans.add(TextSpan(text: '**', style: hidden));
+      spans.add(
+        TextSpan(
+          text: m.group(1),
+          style: base.copyWith(fontWeight: FontWeight.bold),
+        ),
+      );
+      spans.add(TextSpan(text: '**', style: hidden));
+    } else if (m.group(2) != null) {
+      spans.add(TextSpan(text: '[color=${m.group(2)}]', style: hidden));
+      spans.add(
+        TextSpan(
+          text: m.group(3),
+          style: base.copyWith(color: _parseHexColor(m.group(2)!)),
+        ),
+      );
+      spans.add(TextSpan(text: '[/color]', style: hidden));
+    } else if (m.group(4) != null) {
+      spans.add(TextSpan(text: '_', style: hidden));
+      spans.add(
+        TextSpan(
+          text: m.group(4),
+          style: base.copyWith(fontStyle: FontStyle.italic),
+        ),
+      );
+      spans.add(TextSpan(text: '_', style: hidden));
+    }
+    start = m.end;
+  }
+  if (start < text.length) {
+    spans.add(TextSpan(text: text.substring(start), style: base));
+  }
+  return spans;
+}
+
+/// Preset swatches offered by the text-color picker: (name, hex, color).
+const _colorSwatches = <(String, String, Color)>[
+  ('Red', '#E5484D', Color(0xFFE5484D)),
+  ('Orange', '#F5A623', Color(0xFFF5A623)),
+  ('Yellow', '#E9C74A', Color(0xFFE9C74A)),
+  ('Green', '#57D9A3', Color(0xFF57D9A3)),
+  ('Blue', '#4A9DE9', Color(0xFF4A9DE9)),
+  ('Purple', '#B49DF5', Color(0xFFB49DF5)),
+];
+
+/// Text field controller that renders [_buildEditSpans] instead of plain
+/// text, so bold/cursive/color markup previews live while typing.
+class _MarkupController extends TextEditingController {
+  @override
+  TextSpan buildTextSpan({
+    required BuildContext context,
+    TextStyle? style,
+    required bool withComposing,
+  }) {
+    final base = style ?? const TextStyle();
+    return TextSpan(
+      children: _buildEditSpans(text, base),
+    );
+  }
+}
+
 class _NotesPageState extends State<NotesPage> {
   late final NotesRepository _repo = NotesRepository();
   String? _selectedId;
 
   final _titleController = TextEditingController();
-  final _contentController = TextEditingController();
+  final _contentController = _MarkupController();
   bool _editing = false;
 
   @override
@@ -117,6 +247,69 @@ class _NotesPageState extends State<NotesPage> {
     );
   }
 
+  void _wrapSelection(String prefix, String suffix) {
+    final text = _contentController.text;
+    final selection = _contentController.selection;
+    final start = selection.isValid ? selection.start : text.length;
+    final end = selection.isValid ? selection.end : text.length;
+    final selected = text.substring(start, end);
+    final newText = text.replaceRange(start, end, '$prefix$selected$suffix');
+    final offset = selected.isEmpty
+        ? start + prefix.length
+        : start + prefix.length + selected.length + suffix.length;
+    _contentController.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: offset),
+    );
+  }
+
+  /// Toggles a symmetric marker (`**` or `_`) around the selection: applies
+  /// it if not already present, removes it if the selection is already
+  /// wrapped — a real on/off button rather than a one-way insert.
+  void _toggleMarker(String marker) {
+    final text = _contentController.text;
+    final selection = _contentController.selection;
+    final start = selection.isValid ? selection.start : text.length;
+    final end = selection.isValid ? selection.end : text.length;
+    final len = marker.length;
+    final wrapped =
+        start >= len &&
+        end + len <= text.length &&
+        text.substring(start - len, start) == marker &&
+        text.substring(end, end + len) == marker;
+
+    if (wrapped) {
+      final newText = text
+          .replaceRange(end, end + len, '')
+          .replaceRange(start - len, start, '');
+      _contentController.value = TextEditingValue(
+        text: newText,
+        selection: TextSelection(
+          baseOffset: start - len,
+          extentOffset: end - len,
+        ),
+      );
+    } else {
+      final selected = text.substring(start, end);
+      final newText = text.replaceRange(start, end, '$marker$selected$marker');
+      final newStart = start + len;
+      _contentController.value = TextEditingValue(
+        text: newText,
+        selection: selected.isEmpty
+            ? TextSelection.collapsed(offset: newStart)
+            : TextSelection(
+                baseOffset: newStart,
+                extentOffset: newStart + selected.length,
+              ),
+      );
+    }
+  }
+
+  void _toggleBold() => _toggleMarker('**');
+  void _toggleCursive() => _toggleMarker('_');
+  void _insertColorMarkup(String hex) =>
+      _wrapSelection('[color=$hex]', '[/color]');
+
   final _titleFocus = FocusNode();
 
   @override
@@ -160,6 +353,9 @@ class _NotesPageState extends State<NotesPage> {
               onInsertChecklistItem: _insertChecklistItem,
               onToggleChecklistLine: (i) =>
                   _toggleChecklistLine(selectedNote, i),
+              onToggleBold: _toggleBold,
+              onToggleCursive: _toggleCursive,
+              onPickColor: _insertColorMarkup,
             );
     }
 
@@ -194,6 +390,9 @@ class _NotesPageState extends State<NotesPage> {
                   onInsertChecklistItem: _insertChecklistItem,
                   onToggleChecklistLine: (i) =>
                       _toggleChecklistLine(selectedNote, i),
+                  onToggleBold: _toggleBold,
+                  onToggleCursive: _toggleCursive,
+                  onPickColor: _insertColorMarkup,
                 ),
         ),
       ],
@@ -378,6 +577,9 @@ class _NoteEditor extends StatelessWidget {
     required this.onCancel,
     required this.onInsertChecklistItem,
     required this.onToggleChecklistLine,
+    required this.onToggleBold,
+    required this.onToggleCursive,
+    required this.onPickColor,
     this.onBack,
   });
 
@@ -391,6 +593,9 @@ class _NoteEditor extends StatelessWidget {
   final VoidCallback onCancel;
   final VoidCallback onInsertChecklistItem;
   final ValueChanged<int> onToggleChecklistLine;
+  final VoidCallback onToggleBold;
+  final VoidCallback onToggleCursive;
+  final ValueChanged<String> onPickColor;
 
   /// Non-null on the phone single-pane layout, where the editor replaces
   /// the list instead of sitting next to it — lets the user return to it.
@@ -442,6 +647,18 @@ class _NoteEditor extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               if (editing) ...[
+                _IconBtn(
+                  icon: Icons.format_bold_rounded,
+                  tooltip: 'Bold',
+                  onTap: onToggleBold,
+                ),
+                _IconBtn(
+                  icon: Icons.format_italic_rounded,
+                  tooltip: 'Cursive',
+                  onTap: onToggleCursive,
+                ),
+                _ColorPickerBtn(onSelected: onPickColor),
+                const SizedBox(width: 6),
                 _IconBtn(
                   icon: Icons.checklist_rounded,
                   tooltip: 'Add checklist item',
@@ -532,15 +749,15 @@ class _ChecklistAwareContent extends StatelessWidget {
             builder: (context) {
               final match = _checklistRegex.firstMatch(lines[i]);
               if (match == null) {
+                final style = TextStyle(
+                  color: luma.textPrimary,
+                  fontSize: 14.5,
+                  height: 1.6,
+                );
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 1),
-                  child: Text(
-                    lines[i],
-                    style: TextStyle(
-                      color: luma.textPrimary,
-                      fontSize: 14.5,
-                      height: 1.6,
-                    ),
+                  child: Text.rich(
+                    TextSpan(children: _buildViewSpans(lines[i], style)),
                   ),
                 );
               }
@@ -570,17 +787,21 @@ class _ChecklistAwareContent extends StatelessWidget {
                       Expanded(
                         child: Padding(
                           padding: const EdgeInsets.only(top: 2),
-                          child: Text(
-                            text,
-                            style: TextStyle(
-                              color: checked
-                                  ? luma.textMuted
-                                  : luma.textPrimary,
-                              fontSize: 14.5,
-                              height: 1.6,
-                              decoration: checked
-                                  ? TextDecoration.lineThrough
-                                  : null,
+                          child: Text.rich(
+                            TextSpan(
+                              children: _buildViewSpans(
+                                text,
+                                TextStyle(
+                                  color: checked
+                                      ? luma.textMuted
+                                      : luma.textPrimary,
+                                  fontSize: 14.5,
+                                  height: 1.6,
+                                  decoration: checked
+                                      ? TextDecoration.lineThrough
+                                      : null,
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -625,6 +846,67 @@ class _EmptyState extends StatelessWidget {
           const SizedBox(height: 20),
           _TextBtn(label: '+ New Note', accent: true, onTap: onNew),
         ],
+      ),
+    );
+  }
+}
+
+/// Icon button that opens a small popup menu of preset text colors; tapping
+/// one reports its hex string via [onSelected].
+class _ColorPickerBtn extends StatelessWidget {
+  const _ColorPickerBtn({required this.onSelected});
+
+  final ValueChanged<String> onSelected;
+
+  Future<void> _open(BuildContext context, TapUpDetails details) async {
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    final position = RelativeRect.fromRect(
+      details.globalPosition & const Size(1, 1),
+      Offset.zero & overlay.size,
+    );
+    final hex = await showMenu<String>(
+      context: context,
+      position: position,
+      items: [
+        for (final swatch in _colorSwatches)
+          PopupMenuItem<String>(
+            value: swatch.$2,
+            child: Row(
+              children: [
+                Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: swatch.$3,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(swatch.$1),
+              ],
+            ),
+          ),
+      ],
+    );
+    if (hex != null) onSelected(hex);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Tooltip(
+      message: 'Text color',
+      child: GestureDetector(
+        onTapUp: (details) => _open(context, details),
+        child: SizedBox(
+          width: 28,
+          height: 28,
+          child: Icon(
+            Icons.format_color_text_rounded,
+            size: 18,
+            color: luma.textSecondary,
+          ),
+        ),
       ),
     );
   }

@@ -11,6 +11,16 @@
       "version": "1.0.0"
     },
     {
+      "id": "card-wallet",
+      "name": "Card Wallet",
+      "description": "Keep your loyalty and membership passes in one place. Save a card's barcode and luma regenerates it on screen to scan at the till, or store an NFC tag's data to copy and carry. Like Stocard, inside luma.",
+      "icon": "wallet",
+      "category": "Utility",
+      "tags": ["Utility", "Shopping"],
+      "free": true,
+      "version": "1.0.0"
+    },
+    {
       "id": "file-tree",
       "name": "File Tree",
       "description": "Scan a drive or folder and see exactly what's using your space — every directory and file rolled up and sorted largest-first, with size bars. Like WizTree, inside luma.",
@@ -27,6 +37,16 @@
       "icon": "description",
       "category": "Utility",
       "tags": ["Utility", "Documents"],
+      "free": true,
+      "version": "1.0.0"
+    },
+    {
+      "id": "errand-manager",
+      "name": "Errand Manager",
+      "description": "Turn recurring chores into one simple daily checklist. Set errands to repeat daily, weekly, monthly or every few days, group them into your own categories, and snooze anything you can't get to today.",
+      "icon": "checklist",
+      "category": "Productivity",
+      "tags": ["Productivity"],
       "free": true,
       "version": "1.0.0"
     },

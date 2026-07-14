@@ -97,6 +97,11 @@ class SyncService extends ChangeNotifier {
   String? get email => _state?.email;
   String? get serverUrl => _state?.serverUrl;
 
+  /// Persists the current sync state (toggles, credentials, bookkeeping) to
+  /// disk. Called automatically on toggle changes and on [dispose], but also
+  /// exposed so the app can flush state on lifecycle events.
+  Future<void> saveState() async => await _state?.save();
+
   /// The current bearer token, if signed in. Used by features (e.g. Families)
   /// that talk to their own, non-encrypted server endpoints rather than the
   /// zero-knowledge sync/blob ones — see [FamilyApi] in lib/family/family_api.dart.
@@ -167,6 +172,7 @@ class SyncService extends ChangeNotifier {
       sub.cancel();
     }
     _api?.close();
+    _state?.save();
     super.dispose();
   }
 

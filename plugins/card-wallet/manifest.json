@@ -1,0 +1,10 @@
+{
+  "id": "card-wallet",
+  "name": "Card Wallet",
+  "version": "1.0.0",
+  "description": "Keep your loyalty and membership passes in one place. Save a card's barcode and luma regenerates it on screen to scan at the till, or store an NFC tag's data to copy and carry. Like Stocard, inside luma.",
+  "icon": "wallet",
+  "category": "Utility",
+  "details": "Stop digging through your keychain of plastic tags. Add each loyalty or membership card once — give it a name, pick the barcode symbology (Code 128, EAN-13, UPC, QR, PDF417, Aztec and more), and type in the number. luma redraws the barcode full-screen and high-contrast so any checkout scanner can read it straight off your display.\n\nGot a card that taps instead of scans? Save its NFC tag data too. On the mobile app that powers tap-to-scan; anywhere else you can copy the payload or fall back to the on-screen QR.\n\nEverything lives locally on your device and colour-codes into a tidy wallet grid. Turn on the Card wallet sync collection under Settings to carry the same cards across your paired devices.",
+  "screenshots": ["wallet.png", "present.png"]
+}

@@ -30,6 +30,9 @@ function requireAdmin(req, res, next) {
 
 async function collectStatus() {
   const pool = getPool();
+  // Self-heal: a 'running' row with no heartbeat for a while belongs to a
+  // dead or wedged run — fail it so the panel doesn't show it forever.
+  await SyncLog.failStaleRuns();
   const [[productCounts]] = await pool.query(
     `SELECT COUNT(*) AS total, COALESCE(SUM(is_available), 0) AS available
      FROM products`
@@ -168,6 +171,16 @@ function registerAdminRoutes(app) {
       : null;
     if (market && !syncService.slugs.includes(market)) {
       res.status(400).json({ error: `Unknown market "${market}".` });
+      return;
+    }
+    if (market && syncService.isRunning(market)) {
+      // The panel already shows the run in progress, so a browser POST just
+      // bounces back to it; API callers get an explicit conflict.
+      if ((req.headers.accept || '').includes('text/html')) {
+        res.redirect(303, `/admin?key=${encodeURIComponent(String(req.query.key || ''))}`);
+      } else {
+        res.status(409).json({ error: `A ${market} sync is already running.` });
+      }
       return;
     }
     startSync(market);

@@ -103,6 +103,8 @@ class JumboSync extends BaseSync {
             byId.set(raw.id, mapProduct(raw, leaf));
           }
 
+          await this.reportProgress(byId.size);
+
           if (items.length < PAGE_SIZE) break; // last page for this category
           offset += PAGE_SIZE;
           pagesFetched += 1;

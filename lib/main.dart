@@ -37,6 +37,12 @@ import 'features/plugins/installed/price_tracker/price_tracker_scope.dart';
 import 'features/plugins/installed/qr_code_generator/data/qr_code_database.dart';
 import 'features/plugins/installed/qr_code_generator/qr_code_repository.dart';
 import 'features/plugins/installed/qr_code_generator/qr_code_scope.dart';
+import 'features/plugins/installed/card_wallet/data/card_wallet_database.dart';
+import 'features/plugins/installed/card_wallet/card_wallet_repository.dart';
+import 'features/plugins/installed/card_wallet/card_wallet_scope.dart';
+import 'features/plugins/installed/errands/data/errands_database.dart';
+import 'features/plugins/installed/errands/errands_repository.dart';
+import 'features/plugins/installed/errands/errands_scope.dart';
 import 'features/plugins/installed/school/data/school_database.dart';
 import 'features/plugins/installed/school/school_repository.dart';
 import 'features/plugins/installed/school/school_scope.dart';
@@ -107,6 +113,12 @@ class _LumaAppState extends State<LumaApp> {
       PluginRepository(_pluginDb, PluginCatalogService());
   late final QrCodeDatabase _qrCodeDb = QrCodeDatabase();
   late final QrCodeRepository _qrCodeRepository = QrCodeRepository(_qrCodeDb);
+  late final CardWalletDatabase _cardWalletDb = CardWalletDatabase();
+  late final CardWalletRepository _cardWalletRepository =
+      CardWalletRepository(_cardWalletDb);
+  late final ErrandsDatabase _errandsDb = ErrandsDatabase();
+  late final ErrandsRepository _errandsRepository =
+      ErrandsRepository(_errandsDb);
   late final ChatDatabase _chatDb = ChatDatabase();
   late final ChatRepository _chatRepository = ChatRepository(_chatDb);
   late final BulletinBoardDatabase _bulletinBoardDb = BulletinBoardDatabase();
@@ -190,6 +202,18 @@ class _LumaAppState extends State<LumaApp> {
       db: _qrCodeDb,
     ),
     DriftSyncCollection(
+      id: 'card_wallet',
+      label: 'Card wallet',
+      icon: Icons.wallet_rounded,
+      db: _cardWalletDb,
+    ),
+    DriftSyncCollection(
+      id: 'errands',
+      label: 'Errands',
+      icon: Icons.checklist_rounded,
+      db: _errandsDb,
+    ),
+    DriftSyncCollection(
       id: 'data_management',
       label: 'Data management',
       icon: Icons.table_chart_rounded,
@@ -254,6 +278,8 @@ class _LumaAppState extends State<LumaApp> {
   late final Future<void> _bootstrap =
       _repository.applyDue(DateTime.now()).catchError((_) => 0).then((_) {});
 
+  AppLifecycleListener? _lifecycleListener;
+
   @override
   void initState() {
     super.initState();
@@ -267,10 +293,14 @@ class _LumaAppState extends State<LumaApp> {
     _secureChatRepository.init();
     _autoClickerRepository.init();
     _usageRepository.init();
+    _lifecycleListener = AppLifecycleListener(
+      onDetach: _sync.saveState,
+    );
   }
 
   @override
   void dispose() {
+    _lifecycleListener?.dispose();
     widget.settings.removeListener(_onSettingsChanged);
     _peerSync.dispose();
     _cloudFiles.dispose();
@@ -281,6 +311,8 @@ class _LumaAppState extends State<LumaApp> {
     _passwordDb.close();
     _pluginDb.close();
     _qrCodeDb.close();
+    _cardWalletDb.close();
+    _errandsDb.close();
     _chatDb.close();
     _bulletinBoardDb.close();
     _calendarDb.close();
@@ -340,6 +372,10 @@ class _LumaAppState extends State<LumaApp> {
             repository: _pluginRepository,
             child: QrCodeScope(
               repository: _qrCodeRepository,
+              child: CardWalletScope(
+              repository: _cardWalletRepository,
+              child: ErrandsScope(
+              repository: _errandsRepository,
               child: ChatScope(
               repository: _chatRepository,
               child: BulletinBoardScope(
@@ -403,9 +439,11 @@ class _LumaAppState extends State<LumaApp> {
                 ),
               ),
               ),
+              ),
             ),
           ),
         ),
+      ),
       ),
       ),
       ),

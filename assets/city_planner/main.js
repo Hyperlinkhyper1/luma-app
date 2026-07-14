@@ -115,10 +115,14 @@ canvas.addEventListener("wheel", e => {
   let d = e.deltaY;
   if (e.deltaMode === 1) d *= 16; else if (e.deltaMode === 2) d *= 120;
   d = Math.max(-120, Math.min(120, d));
-  // Sommige (Windows) trackpads sturen deltaY omgekeerd bij "reverse scroll
-  // direction"-instellingen; deltaY > 0 is hier dus de zoom-in richting.
+  // Standaard: omhoog scrollen (deltaY < 0) zoomt in, zoals in vrijwel elke
+  // andere kaart-/canvasapp. Sommige trackpads voelen desondanks omgekeerd
+  // aan doordat het OS of de webview scrollrichting al omdraait voordat wij
+  // deltaY zien — "Zoomrichting omkeren" (Raster & plaatsing) compenseert
+  // dat per apparaat i.p.v. dat we hier nog eens blind aan het teken sleutelen.
+  const dir = G.settings.invertZoom ? 1 : -1;
   // Pinch-zoom (ctrl+wheel) krijgt een hogere gevoeligheid.
-  const f = Math.exp(d * (e.ctrlKey ? 0.0045 : 0.0022));
+  const f = Math.exp(dir * d * (e.ctrlKey ? 0.0045 : 0.0022));
   // niet verder uitzoomen dan het punt waarop de hele kaart ruim in beeld is
   const minZoom = Math.max(1.1, (Math.min(rect.width, rect.height) / Math.max(W, H)) * 0.9);
   const zNew = Math.max(minZoom, Math.min(44, cam.tzoom * f));
@@ -446,7 +450,7 @@ function loadGame(slot = "auto", silent = false) {
   G.money = d.money; G.day = d.day; G.month = d.month; G.year = d.year;
   G.fase = d.fase; G.rp = d.rp; G.techs = d.techs || {}; G.policies = d.policies || {};
   G.taxes = d.taxes || G.taxes; G.pop = d.pop; G.happy = d.happy || 60;
-  if (d.settings) G.settings = { grid: true, snap: true, gridSize: 1, ...d.settings };
+  if (d.settings) G.settings = { grid: true, snap: true, gridSize: 1, invertZoom: false, ...d.settings };
   invalidateWaterCache();
   markAllDirty();
   computeJunctions();
