@@ -802,6 +802,18 @@ class _CodePreview extends StatelessWidget {
     }
     final barcode = format.barcode!;
     final is2d = format.is2d;
+    final preview = BarcodeWidget(
+      barcode: barcode,
+      data: code,
+      drawText: !is2d,
+      color: Colors.black,
+      backgroundColor: Colors.white,
+      style: const TextStyle(color: Colors.black, fontSize: 12),
+      errorBuilder: (context, _) => Text(
+        "Not valid for ${format.label} yet",
+        style: const TextStyle(color: Colors.black38, fontSize: 12),
+      ),
+    );
     return Container(
       height: is2d ? 150 : 84,
       padding: const EdgeInsets.all(12),
@@ -813,18 +825,9 @@ class _CodePreview extends StatelessWidget {
         child: code.isEmpty
             ? const Text('Preview appears here',
                 style: TextStyle(color: Colors.black38, fontSize: 12))
-            : BarcodeWidget(
-                barcode: barcode,
-                data: code,
-                drawText: !is2d,
-                color: Colors.black,
-                backgroundColor: Colors.white,
-                style: const TextStyle(color: Colors.black, fontSize: 12),
-                errorBuilder: (context, _) => Text(
-                  "Not valid for ${format.label} yet",
-                  style: const TextStyle(color: Colors.black38, fontSize: 12),
-                ),
-              ),
+            : (is2d
+                ? SizedBox(width: 126, height: 126, child: preview)
+                : preview),
       ),
     );
   }
