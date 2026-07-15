@@ -8,12 +8,15 @@ import 'groceries_api.dart';
 import 'groceries_scope.dart';
 import 'market_style.dart';
 
-const _marketFilters = <String?>[null, 'jumbo', 'ah', 'lidl'];
-const _marketFilterLabels = ['All stores', 'Jumbo', 'Albert Heijn', 'Lidl'];
+// Lidl has no real product feed yet (LidlSync is a stub — see
+// supermarket-db/src/supermarkets/lidl/sync.js), so its filter tab would
+// always show zero results. Left out until that catalog actually exists.
+const _marketFilters = <String?>[null, 'jumbo', 'ah'];
+const _marketFilterLabels = ['All stores', 'Jumbo', 'Albert Heijn'];
 const _sortOptions = [ProductSort.relevance, ProductSort.priceAsc, ProductSort.priceDesc];
 const _sortLabels = ['Relevance', 'Price ↑', 'Price ↓'];
 
-/// Search Jumbo/AH/Lidl products (via the supermarket-db API), filter by
+/// Search Jumbo/Albert Heijn products (via the supermarket-db API), filter by
 /// store, sort by price, and add results straight onto [listId].
 class ProductSearchPage extends StatefulWidget {
   const ProductSearchPage({super.key, required this.listId, required this.onBack});
@@ -25,27 +28,39 @@ class ProductSearchPage extends StatefulWidget {
   State<ProductSearchPage> createState() => _ProductSearchPageState();
 }
 
+const _pageSize = 40;
+
 class _ProductSearchPageState extends State<ProductSearchPage> {
   final _queryController = TextEditingController();
+  final _scrollController = ScrollController();
   Timer? _debounce;
 
   int _marketIndex = 0;
   int _sortIndex = 0;
   bool _loading = false;
+  bool _loadingMore = false;
+  bool _hasMore = true;
   String? _error;
   List<RemoteProduct> _results = const [];
   final Set<String> _justAdded = {};
+
+  List<ProductCategory> _categories = const [];
+  String? _categoryFilter;
+  bool _onlyDeals = false;
 
   @override
   void initState() {
     super.initState();
     _runSearch();
+    _fetchCategories();
+    _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
     _queryController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -54,11 +69,21 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
     _debounce = Timer(const Duration(milliseconds: 350), _runSearch);
   }
 
+  void _onScroll() {
+    if (!_hasMore || _loading || _loadingMore) return;
+    if (_scrollController.position.pixels <
+        _scrollController.position.maxScrollExtent - 600) {
+      return;
+    }
+    _loadMore();
+  }
+
   Future<void> _runSearch() async {
     final api = GroceriesApiScope.of(context);
     setState(() {
       _loading = true;
       _error = null;
+      _hasMore = true;
     });
     try {
       final results = await api.search(
@@ -66,16 +91,87 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
         marketSlugs: _marketFilters[_marketIndex] == null
             ? null
             : [_marketFilters[_marketIndex]!],
+        category: _categoryFilter,
+        onlyDeals: _onlyDeals,
         sort: _sortOptions[_sortIndex],
+        limit: _pageSize,
       );
       if (!mounted) return;
-      setState(() => _results = results);
+      setState(() {
+        _results = results;
+        _hasMore = results.length >= _pageSize;
+      });
     } on GroceriesApiException catch (e) {
       if (!mounted) return;
       setState(() => _error = e.message);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  /// Fetches the next page and appends it, for infinite scroll. Uses the
+  /// same filters as the last [_runSearch] — [_results].length is the
+  /// correct next offset since pages are fetched strictly in order.
+  Future<void> _loadMore() async {
+    final api = GroceriesApiScope.of(context);
+    setState(() => _loadingMore = true);
+    try {
+      final more = await api.search(
+        query: _queryController.text,
+        marketSlugs: _marketFilters[_marketIndex] == null
+            ? null
+            : [_marketFilters[_marketIndex]!],
+        category: _categoryFilter,
+        onlyDeals: _onlyDeals,
+        sort: _sortOptions[_sortIndex],
+        limit: _pageSize,
+        offset: _results.length,
+      );
+      if (!mounted) return;
+      setState(() {
+        _results = [..._results, ...more];
+        _hasMore = more.length >= _pageSize;
+      });
+    } on GroceriesApiException {
+      // Leave already-loaded results up; just stop trying to page further.
+      if (mounted) setState(() => _hasMore = false);
+    } finally {
+      if (mounted) setState(() => _loadingMore = false);
+    }
+  }
+
+  /// Sidebar departments, scoped to the current store filter. A failure here
+  /// shouldn't block the product grid itself, so it just leaves the sidebar
+  /// list as-is instead of surfacing an error.
+  Future<void> _fetchCategories() async {
+    final api = GroceriesApiScope.of(context);
+    try {
+      final categories = await api.fetchCategories(
+        marketSlugs: _marketFilters[_marketIndex] == null
+            ? null
+            : [_marketFilters[_marketIndex]!],
+      );
+      if (!mounted) return;
+      setState(() {
+        _categories = categories;
+        if (_categoryFilter != null &&
+            !categories.any((c) => c.name == _categoryFilter)) {
+          _categoryFilter = null;
+        }
+      });
+    } on GroceriesApiException {
+      // Keep whatever categories were already loaded.
+    }
+  }
+
+  void _onCategorySelected(String? category) {
+    setState(() => _categoryFilter = category);
+    _runSearch();
+  }
+
+  void _onToggleOnlyDeals(bool value) {
+    setState(() => _onlyDeals = value);
+    _runSearch();
   }
 
   Future<void> _addToList(RemoteProduct product) async {
@@ -172,6 +268,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
                   onSelect: (i) {
                     setState(() => _marketIndex = i);
                     _runSearch();
+                    _fetchCategories();
                   },
                 ),
               ),
@@ -196,7 +293,22 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
           ),
         ),
         const SizedBox(height: 8),
-        Expanded(child: _buildBody(context)),
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(width: 24),
+              _CategorySidebar(
+                categories: _categories,
+                selected: _categoryFilter,
+                onlyDeals: _onlyDeals,
+                onSelect: _onCategorySelected,
+                onToggleDeals: _onToggleOnlyDeals,
+              ),
+              Expanded(child: _buildBody(context)),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -232,35 +344,68 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
         child: LumaEmptyState(
           icon: Icons.search_off_rounded,
           title: 'No products found',
-          subtitle: 'Try a different search term or store filter.',
+          subtitle: 'Try a different search term, store or category filter.',
         ),
       );
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 900
-            ? 4
-            : (constraints.maxWidth >= 640 ? 3 : (constraints.maxWidth >= 400 ? 2 : 1));
-        return GridView.builder(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-          itemCount: _results.length,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: columns,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 0.6,
+    return CustomScrollView(
+      controller: _scrollController,
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 24, 12),
+          sliver: SliverLayoutBuilder(
+            builder: (context, constraints) {
+              // 5 columns is the normal/wide-window case (matches the AH
+              // reference); narrower windows step down so cards don't get
+              // crushed.
+              final columns = constraints.crossAxisExtent >= 1000
+                  ? 5
+                  : (constraints.crossAxisExtent >= 800
+                      ? 4
+                      : (constraints.crossAxisExtent >= 600
+                          ? 3
+                          : (constraints.crossAxisExtent >= 400 ? 2 : 1)));
+              return SliverGrid(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: columns,
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
+                  // Tuned empirically against the real rendered card (text
+                  // line-height in practice runs taller than the nominal
+                  // fontSize*height math suggests) so there's minimal slack
+                  // under the price/add-button row.
+                  childAspectRatio: 0.85,
+                ),
+                delegate: SliverChildBuilderDelegate(
+                  (context, i) {
+                    final product = _results[i];
+                    return _ProductCard(
+                      product: product,
+                      justAdded: _justAdded.contains(product.id),
+                      onAdd: () => _addToList(product),
+                    );
+                  },
+                  childCount: _results.length,
+                ),
+              );
+            },
           ),
-          itemBuilder: (context, i) {
-            final product = _results[i];
-            return _ProductCard(
-              product: product,
-              justAdded: _justAdded.contains(product.id),
-              onAdd: () => _addToList(product),
-            );
-          },
-        );
-      },
+        ),
+        if (_loadingMore)
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: 24),
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2.2),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -337,6 +482,208 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
   }
 }
 
+/// Left-hand department filter + "only deals" toggle, AH-style. Stays
+/// visible across loading/error/empty states of the grid next to it, since
+/// switching filters is how you'd typically get out of an empty result.
+class _CategorySidebar extends StatelessWidget {
+  const _CategorySidebar({
+    required this.categories,
+    required this.selected,
+    required this.onlyDeals,
+    required this.onSelect,
+    required this.onToggleDeals,
+  });
+
+  final List<ProductCategory> categories;
+  final String? selected;
+  final bool onlyDeals;
+  final ValueChanged<String?> onSelect;
+  final ValueChanged<bool> onToggleDeals;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return SizedBox(
+      width: 180,
+      child: ListView(
+        padding: const EdgeInsets.only(right: 12, top: 2),
+        children: [
+          _DealsToggleRow(value: onlyDeals, onChanged: onToggleDeals),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.only(left: 10, bottom: 6),
+            child: Text(
+              'CATEGORIES',
+              style: TextStyle(
+                color: luma.textMuted,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.4,
+              ),
+            ),
+          ),
+          _CategoryRow(
+            label: 'All products',
+            selected: selected == null,
+            onTap: () => onSelect(null),
+          ),
+          for (final category in categories)
+            _CategoryRow(
+              label: category.name,
+              count: category.count,
+              selected: selected == category.name,
+              onTap: () => onSelect(category.name),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DealsToggleRow extends StatelessWidget {
+  const _DealsToggleRow({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => onChanged(!value),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+          decoration: BoxDecoration(
+            color: value ? _saleBadgeColor.withValues(alpha: 0.14) : luma.surface,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: value ? _saleBadgeColor : luma.border),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.sell_rounded,
+                  size: 15, color: value ? _saleBadgeColor : luma.textMuted),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Only deals',
+                  style: TextStyle(
+                    color: value ? _saleBadgeColor : luma.textSecondary,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              _MiniSwitch(value: value),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MiniSwitch extends StatelessWidget {
+  const _MiniSwitch({required this.value});
+
+  final bool value;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      width: 30,
+      height: 17,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: value ? _saleBadgeColor : luma.border,
+        borderRadius: BorderRadius.circular(9),
+      ),
+      child: AnimatedAlign(
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOut,
+        alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
+          width: 13,
+          height: 13,
+          decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+        ),
+      ),
+    );
+  }
+}
+
+class _CategoryRow extends StatefulWidget {
+  const _CategoryRow({
+    required this.label,
+    this.count,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final int? count;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  State<_CategoryRow> createState() => _CategoryRowState();
+}
+
+class _CategoryRowState extends State<_CategoryRow> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final selected = widget.selected;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          margin: const EdgeInsets.only(bottom: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            color: selected
+                ? luma.accentSubtle
+                : (_hovering ? luma.surfaceHover : Colors.transparent),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  widget.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: selected ? luma.accent : luma.textSecondary,
+                    fontSize: 12.5,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ),
+              if (widget.count != null) ...[
+                const SizedBox(width: 6),
+                Text(
+                  '${widget.count}',
+                  style: TextStyle(color: luma.textMuted, fontSize: 11),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Light, near-white backdrop behind product photography (AH-style "photo
 /// tile"). Fixed rather than theme-derived: almost all catalog photos are
 /// shot on a white/light background, so this keeps them reading as an
@@ -386,10 +733,10 @@ class _ProductCardState extends State<_ProductCard> {
       onExit: (_) => setState(() => _hovering = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(9),
         decoration: BoxDecoration(
           color: luma.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: _hovering ? luma.accent.withValues(alpha: 0.55) : luma.border,
           ),
@@ -397,8 +744,8 @@ class _ProductCardState extends State<_ProductCard> {
               ? [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.22),
-                    blurRadius: 18,
-                    offset: const Offset(0, 8),
+                    blurRadius: 14,
+                    offset: const Offset(0, 6),
                   ),
                 ]
               : const [],
@@ -412,21 +759,21 @@ class _ProductCardState extends State<_ProductCard> {
                 children: [
                   Positioned.fill(
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(8),
                       child: Container(
                         color: _photoTileColor,
                         alignment: Alignment.center,
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(8),
                         child: product.imageUrl == null
                             ? const Icon(Icons.image_not_supported_outlined,
-                                color: _photoTileIconColor, size: 28)
+                                color: _photoTileIconColor, size: 22)
                             : Image.network(
                                 product.imageUrl!,
                                 fit: BoxFit.contain,
                                 errorBuilder: (_, _, _) => const Icon(
                                   Icons.image_not_supported_outlined,
                                   color: _photoTileIconColor,
-                                  size: 28,
+                                  size: 22,
                                 ),
                               ),
                       ),
@@ -437,17 +784,17 @@ class _ProductCardState extends State<_ProductCard> {
                   // discounted item is sorted near the top.
                   if (product.isDiscounted)
                     Positioned(
-                      left: 6,
-                      top: 6,
-                      right: 6,
+                      left: 5,
+                      top: 5,
+                      right: 5,
                       child: Row(
                         children: [
                           Container(
                             padding:
-                                const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                             decoration: BoxDecoration(
                               color: _saleBadgeColor,
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(5),
                             ),
                             child: Text(
                               _discountLabel(product),
@@ -455,7 +802,7 @@ class _ProductCardState extends State<_ProductCard> {
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 10,
+                                fontSize: 9,
                                 fontWeight: FontWeight.w800,
                                 height: 1.2,
                               ),
@@ -467,38 +814,38 @@ class _ProductCardState extends State<_ProductCard> {
                 ],
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
             Row(
               children: [
                 Container(
-                  width: 6,
-                  height: 6,
+                  width: 5,
+                  height: 5,
                   decoration: BoxDecoration(color: marketColor, shape: BoxShape.circle),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 5),
                 Expanded(
                   child: Text(
                     product.market.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: luma.textMuted, fontSize: 11),
+                    style: TextStyle(color: luma.textMuted, fontSize: 10),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 3),
             Text(
               product.name,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: luma.textPrimary,
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
-                height: 1.25,
+                height: 1.2,
               ),
             ),
-            const Spacer(),
+            const SizedBox(height: 6),
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -516,17 +863,17 @@ class _ProductCardState extends State<_ProductCard> {
                                 : '€${product.price!.toStringAsFixed(2)}',
                             style: TextStyle(
                               color: luma.textPrimary,
-                              fontSize: 15,
+                              fontSize: 13.5,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
                           if (product.isDiscounted && product.oldPrice != null) ...[
-                            const SizedBox(width: 6),
+                            const SizedBox(width: 5),
                             Text(
                               '€${product.oldPrice!.toStringAsFixed(2)}',
                               style: TextStyle(
                                 color: luma.textMuted,
-                                fontSize: 12,
+                                fontSize: 10.5,
                                 fontWeight: FontWeight.w600,
                                 decoration: TextDecoration.lineThrough,
                                 decorationColor: luma.textMuted,
@@ -536,25 +883,25 @@ class _ProductCardState extends State<_ProductCard> {
                         ],
                       ),
                       if (product.quantity != null && product.quantity!.isNotEmpty) ...[
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 1),
                         Text(
                           product.quantity!,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: luma.textMuted, fontSize: 11),
+                          style: TextStyle(color: luma.textMuted, fontSize: 10),
                         ),
                       ],
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 MouseRegion(
                   cursor: SystemMouseCursors.click,
                   child: GestureDetector(
                     onTap: widget.onAdd,
                     child: Container(
-                      width: 34,
-                      height: 34,
+                      width: 26,
+                      height: 26,
                       decoration: BoxDecoration(
                         color: widget.justAdded ? luma.success : luma.accent,
                         shape: BoxShape.circle,
@@ -562,7 +909,7 @@ class _ProductCardState extends State<_ProductCard> {
                       child: Icon(
                         widget.justAdded ? Icons.check_rounded : Icons.add_rounded,
                         color: luma.onAccent,
-                        size: 18,
+                        size: 15,
                       ),
                     ),
                   ),

@@ -222,33 +222,6 @@ class LZh extends L {
   String get homeAllocation => '分配';
 
   @override
-  String get homeTabDashboard => '仪表盘';
-
-  @override
-  String get homeTabStats => '统计';
-
-  @override
-  String get homeStatsTitle => '插件下载统计';
-
-  @override
-  String get homeStatsTotalDownloads => '总下载量';
-
-  @override
-  String get homeStatsPluginsInstalled => '已安装插件';
-
-  @override
-  String get homeStatsPlugin => '插件';
-
-  @override
-  String get homeStatsDownloads => '下载量';
-
-  @override
-  String get homeStatsNoPlugins => '尚未安装任何插件。从插件标签页下载插件即可在此查看统计。';
-
-  @override
-  String get homeStatsBrowsePlugins => '浏览插件';
-
-  @override
   String get pinEnterNew => '输入新的 8 位 PIN 码';
 
   @override

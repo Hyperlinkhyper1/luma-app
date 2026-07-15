@@ -1,5 +1,10 @@
-import 'package:drift/drift.dart';
+import 'dart:async';
+import 'dart:convert';
 
+import 'package:drift/drift.dart';
+import 'package:http/http.dart' as http;
+
+import '../../sync/sync_api.dart' show kDefaultSyncServerUrl;
 import 'data/plugin_database.dart';
 import 'plugin_catalog_service.dart';
 
@@ -66,6 +71,28 @@ class PluginRepository {
         version: Value(manifest.version),
         downloadCount: Value(existing.downloadCount + 1),
       ));
+    }
+    unawaited(_reportDownload(entry.id, manifest.name));
+  }
+
+  static const _reportDownloadTimeout = Duration(seconds: 8);
+
+  /// Best-effort ping to the default luma server's admin-only download
+  /// counter (see the admin dashboard's "Plugins" tab). Anonymous — no sync
+  /// account required — and purely for aggregate stats, so any failure
+  /// (offline, a self-hosted server that doesn't have this route yet, etc.)
+  /// is silently ignored.
+  Future<void> _reportDownload(String pluginId, String name) async {
+    try {
+      await http
+          .post(
+            Uri.parse('$kDefaultSyncServerUrl/api/v1/plugins/download'),
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode({'pluginId': pluginId, 'name': name}),
+          )
+          .timeout(_reportDownloadTimeout);
+    } catch (_) {
+      // Stats-only; never let this affect the install flow.
     }
   }
 

@@ -65,6 +65,10 @@ final RegExp emailPattern =
 /// Collection names are chosen by the client but must stay filesystem-safe.
 final RegExp collectionPattern = RegExp(r'^[a-z0-9_]{1,32}$');
 
+/// Plugin ids, as listed in the `plugins/registry.json` catalog (e.g.
+/// `auto-clicker`) — lowercase, hyphenated, no spaces.
+final RegExp pluginIdPattern = RegExp(r'^[a-z0-9-]{1,64}$');
+
 /// Serializes async mutations so two requests never interleave writes.
 class AsyncLock {
   Future<void> _tail = Future.value();

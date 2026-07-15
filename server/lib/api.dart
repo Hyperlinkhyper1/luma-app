@@ -224,6 +224,7 @@ class Api {
           _requireAuth(_listChatMessages))
       ..post('/api/v1/chat/conversations/<id>/messages',
           _requireAuth(_sendChatMessage))
+      ..post('/api/v1/plugins/download', _reportPluginDownload)
       ..get('/admin', _requireAdmin(_adminDashboard))
       ..get('/admin/users', _requireAdmin(_adminUsers))
       ..get('/admin/stats', _requireAdmin(_adminStats))
@@ -1012,6 +1013,34 @@ class Api {
         'usedBytes': store.usedBytes(user.id),
         'quotaBytes': user.quotaBytes,
       });
+    });
+  }
+
+  // ---- Handlers: plugins ---------------------------------------------------
+
+  /// Records one plugin install for the admin dashboard's "Plugins" tab (see
+  /// Api._adminDashboard). Deliberately unauthenticated — plugins can be
+  /// installed without a sync account — and just a best-effort counter, so a
+  /// malformed or missing body is ignored rather than erroring the client's
+  /// install flow.
+  Future<Response> _reportPluginDownload(Request request) async {
+    Map<String, dynamic> body;
+    try {
+      body = await _readJson(request);
+    } on FormatException {
+      return _error(400, 'bad_request', 'Malformed request.');
+    }
+    final pluginId = body['pluginId'];
+    if (pluginId is! String || !pluginIdPattern.hasMatch(pluginId)) {
+      return _error(400, 'bad_plugin_id', 'Invalid plugin id.');
+    }
+    final name = (body['name'] as String?)?.trim();
+    final safeName =
+        (name == null || name.isEmpty || name.length > 80) ? pluginId : name;
+
+    return store.lock.synchronized(() async {
+      await store.recordPluginDownload(pluginId, safeName);
+      return _json(200, {'ok': true});
     });
   }
 
@@ -2130,6 +2159,19 @@ class Api {
           '</tr>';
     }).join();
 
+    final pluginStats = store.pluginDownloadsById.values.toList()
+      ..sort((a, b) => b.count.compareTo(a.count));
+    final pluginDownloadsTotal =
+        pluginStats.fold<int>(0, (sum, p) => sum + p.count);
+    final pluginRows = pluginStats.map((p) {
+      return '<tr>'
+          '<td>${_htmlEscape(p.name)}</td>'
+          '<td>${_htmlEscape(p.pluginId)}</td>'
+          '<td>${p.count}</td>'
+          '<td>${fmtDate(p.lastDownloadedAtMs)}</td>'
+          '</tr>';
+    }).join();
+
     final body = '<!doctype html><html><head><meta charset="utf-8">'
         '<title>luma admin</title>'
         '<style>body{background:#161320;color:#e8e4f3;font-family:system-ui,'
@@ -2183,6 +2225,7 @@ class Api {
         '<button class="tab-btn" data-tab="users">Users</button>'
         '<button class="tab-btn" data-tab="products">Products</button>'
         '<button class="tab-btn" data-tab="activity">Activity</button>'
+        '<button class="tab-btn" data-tab="plugins">Plugins</button>'
         '<button class="tab-btn" data-tab="metrics">Metrics</button>'
         '<button class="tab-btn" data-tab="control">Control panel</button>'
         '</div>'
@@ -2206,6 +2249,14 @@ class Api {
         '<h2>Last 24 hours</h2>'
         '<table><thead><tr><th>Time</th><th>Type</th><th>Detail</th></tr></thead>'
         '<tbody>${activityRows.isEmpty ? '<tr><td colspan="3" style="color:#a49fb8">No activity in the last 24 hours.</td></tr>' : activityRows}</tbody></table>'
+        '</div>'
+        '<div class="tab-panel" id="panel-plugins">'
+        '<div class="stats" style="margin-bottom:20px">'
+        '<div class="stat"><div class="n">$pluginDownloadsTotal</div><div class="l">Total downloads</div></div>'
+        '<div class="stat"><div class="n">${pluginStats.length}</div><div class="l">Plugins tracked</div></div>'
+        '</div>'
+        '<table><thead><tr><th>Plugin</th><th>ID</th><th>Downloads</th><th>Last downloaded</th></tr></thead>'
+        '<tbody>${pluginRows.isEmpty ? '<tr><td colspan="4" style="color:#a49fb8">No plugin downloads reported yet.</td></tr>' : pluginRows}</tbody></table>'
         '</div>'
         '<div class="tab-panel" id="panel-metrics">'
         '<div id="metricsUnsupported" style="display:none;color:#a49fb8;'
@@ -2301,6 +2352,7 @@ class Api {
     users: document.getElementById('panel-users'),
     products: document.getElementById('panel-products'),
     activity: document.getElementById('panel-activity'),
+    plugins: document.getElementById('panel-plugins'),
     metrics: document.getElementById('panel-metrics'),
     control: document.getElementById('panel-control'),
   };

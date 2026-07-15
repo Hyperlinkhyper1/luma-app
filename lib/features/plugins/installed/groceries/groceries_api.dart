@@ -78,6 +78,21 @@ class RemoteProduct {
       );
 }
 
+/// A top-level department (e.g. "Groente, aardappelen"), for the category
+/// sidebar. [count] is how many available products fall under it — also
+/// used to rank the sidebar, biggest department first.
+class ProductCategory {
+  const ProductCategory({required this.name, required this.count});
+
+  final String name;
+  final int count;
+
+  factory ProductCategory.fromJson(Map<String, dynamic> json) => ProductCategory(
+        name: json['name'] as String,
+        count: (json['count'] as num).toInt(),
+      );
+}
+
 enum ProductSort { relevance, priceAsc, priceDesc, nameAsc }
 
 extension on ProductSort {
@@ -224,6 +239,8 @@ class GroceriesApi extends ChangeNotifier {
   Future<List<RemoteProduct>> search({
     String? query,
     List<String>? marketSlugs,
+    String? category,
+    bool onlyDeals = false,
     ProductSort sort = ProductSort.relevance,
     int limit = 40,
     int offset = 0,
@@ -231,6 +248,8 @@ class GroceriesApi extends ChangeNotifier {
     final params = <String, String>{
       if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
       if (marketSlugs != null && marketSlugs.isNotEmpty) 'market': marketSlugs.join(','),
+      if (category != null && category.isNotEmpty) 'category': category,
+      if (onlyDeals) 'onlyDeals': 'true',
       'sort': sort.queryValue,
       'limit': '$limit',
       'offset': '$offset',
@@ -239,6 +258,21 @@ class GroceriesApi extends ChangeNotifier {
       final list = body['products'] as List<dynamic>? ?? const [];
       return list
           .map((e) => RemoteProduct.fromJson(e as Map<String, dynamic>))
+          .toList(growable: false);
+    });
+  }
+
+  /// Top-level departments for the sidebar filter, biggest first. Scoped to
+  /// [marketSlugs] so switching stores shows only categories that store
+  /// actually has.
+  Future<List<ProductCategory>> fetchCategories({List<String>? marketSlugs}) {
+    final params = <String, String>{
+      if (marketSlugs != null && marketSlugs.isNotEmpty) 'market': marketSlugs.join(','),
+    };
+    return _get(_uri('/api/products/categories', params), (body) {
+      final list = body['categories'] as List<dynamic>? ?? const [];
+      return list
+          .map((e) => ProductCategory.fromJson(e as Map<String, dynamic>))
           .toList(growable: false);
     });
   }

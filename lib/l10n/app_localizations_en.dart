@@ -228,34 +228,6 @@ class LEn extends L {
   String get homeAllocation => 'Allocation';
 
   @override
-  String get homeTabDashboard => 'Dashboard';
-
-  @override
-  String get homeTabStats => 'Stats';
-
-  @override
-  String get homeStatsTitle => 'Plugin download stats';
-
-  @override
-  String get homeStatsTotalDownloads => 'Total downloads';
-
-  @override
-  String get homeStatsPluginsInstalled => 'Plugins installed';
-
-  @override
-  String get homeStatsPlugin => 'Plugin';
-
-  @override
-  String get homeStatsDownloads => 'Downloads';
-
-  @override
-  String get homeStatsNoPlugins =>
-      'No plugins installed yet. Download a plugin from the Plugins tab to see stats here.';
-
-  @override
-  String get homeStatsBrowsePlugins => 'Browse plugins';
-
-  @override
   String get pinEnterNew => 'Enter new 8-digit PIN';
 
   @override

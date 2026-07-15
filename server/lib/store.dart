@@ -165,6 +165,39 @@ class CollectionMeta {
       );
 }
 
+/// One plugin's aggregate download count for the admin dashboard's "Plugins"
+/// tab — see Api._reportPluginDownload. [name] is overwritten by whatever the
+/// client last reported, so a plugin rename in the registry updates it here
+/// too without any server-side catalog lookup.
+class PluginDownloadStat {
+  PluginDownloadStat({
+    required this.pluginId,
+    required this.name,
+    required this.count,
+    required this.lastDownloadedAtMs,
+  });
+
+  final String pluginId;
+  String name;
+  int count;
+  int lastDownloadedAtMs;
+
+  Map<String, dynamic> toJson() => {
+        'pluginId': pluginId,
+        'name': name,
+        'count': count,
+        'lastDownloadedAtMs': lastDownloadedAtMs,
+      };
+
+  factory PluginDownloadStat.fromJson(Map<String, dynamic> j) =>
+      PluginDownloadStat(
+        pluginId: j['pluginId'] as String,
+        name: j['name'] as String,
+        count: j['count'] as int,
+        lastDownloadedAtMs: j['lastDownloadedAtMs'] as int,
+      );
+}
+
 /// File-backed store. Everything is held in memory and written through to
 /// JSON files with atomic replace; blobs are stored as individual files.
 /// All mutations must go through [lock] (the API layer does this).
@@ -186,6 +219,11 @@ class Store {
   final List<ActivityEvent> activity = [];
   static const _maxActivityEvents = 2000;
 
+  /// Admin dashboard's "Plugins" tab — per-plugin download counts reported
+  /// by clients on install (see Api._reportPluginDownload). Keyed by
+  /// pluginId.
+  final Map<String, PluginDownloadStat> pluginDownloadsById = {};
+
   /// Admin dashboard's "Metrics" graphs history — see MetricsHistory for the
   /// downsampling/persistence scheme. Set during [open].
   late final MetricsHistory metricsHistory;
@@ -198,6 +236,7 @@ class Store {
   String get _sessionsFile => '$rootPath/sessions.json';
   String get _collectionsFile => '$rootPath/collections.json';
   String get _activityFile => '$rootPath/activity.json';
+  String get _pluginDownloadsFile => '$rootPath/plugin_downloads.json';
   String get _secretFile => '$rootPath/secret.key';
 
   static Future<Store> open(String path) async {
@@ -255,6 +294,12 @@ class Store {
       store.activity.add(ActivityEvent.fromJson(a as Map<String, dynamic>));
     }
 
+    final pluginDownloads = await _readJsonList(store._pluginDownloadsFile);
+    for (final p in pluginDownloads) {
+      final stat = PluginDownloadStat.fromJson(p as Map<String, dynamic>);
+      store.pluginDownloadsById[stat.pluginId] = stat;
+    }
+
     store.metricsHistory = await MetricsHistory.open(path);
 
     return store;
@@ -302,6 +347,30 @@ class Store {
       activity.removeRange(0, activity.length - _maxActivityEvents);
     }
     await saveActivity();
+  }
+
+  Future<void> savePluginDownloads() => atomicWriteString(
+      _pluginDownloadsFile,
+      jsonEncode(pluginDownloadsById.values.map((p) => p.toJson()).toList()));
+
+  /// Records one plugin install/download and persists it. Caller holds
+  /// [lock] (mirrors every other mutation in this class).
+  Future<void> recordPluginDownload(String pluginId, String name) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final existing = pluginDownloadsById[pluginId];
+    if (existing == null) {
+      pluginDownloadsById[pluginId] = PluginDownloadStat(
+        pluginId: pluginId,
+        name: name,
+        count: 1,
+        lastDownloadedAtMs: now,
+      );
+    } else {
+      existing.name = name;
+      existing.count++;
+      existing.lastDownloadedAtMs = now;
+    }
+    await savePluginDownloads();
   }
 
   // ---- Blobs -------------------------------------------------------------

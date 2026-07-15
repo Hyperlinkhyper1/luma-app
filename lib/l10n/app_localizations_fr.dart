@@ -229,34 +229,6 @@ class LFr extends L {
   String get homeAllocation => 'Allocation';
 
   @override
-  String get homeTabDashboard => 'Tableau de bord';
-
-  @override
-  String get homeTabStats => 'Statistiques';
-
-  @override
-  String get homeStatsTitle => 'Statistiques de téléchargement des plugins';
-
-  @override
-  String get homeStatsTotalDownloads => 'Téléchargements totaux';
-
-  @override
-  String get homeStatsPluginsInstalled => 'Plugins installés';
-
-  @override
-  String get homeStatsPlugin => 'Plugin';
-
-  @override
-  String get homeStatsDownloads => 'Téléchargements';
-
-  @override
-  String get homeStatsNoPlugins =>
-      'Aucun plugin installé pour l\'instant. Téléchargez un plugin depuis l\'onglet Plugins pour voir les statistiques ici.';
-
-  @override
-  String get homeStatsBrowsePlugins => 'Parcourir les plugins';
-
-  @override
   String get pinEnterNew => 'Saisissez un nouveau code PIN à 8 chiffres';
 
   @override
