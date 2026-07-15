@@ -640,11 +640,12 @@ function draw() {
 
   // teken-voorbeeld gebouw/terrein (cellen)
   if (Input.paintCells && Input.paintCells.size) {
+    const a = Input.freeAnchor || { ox: 0, oy: 0 };
     ctx.fillStyle = "rgba(77,163,255,.4)";
     ctx.strokeStyle = "rgba(77,163,255,.9)";
     ctx.lineWidth = 1.5;
     for (const i of Input.paintCells) {
-      ctx.fillRect(ox + (i % W) * z, oy + ((i / W) | 0) * z, z, z);
+      ctx.fillRect(ox + ((i % W) + a.ox) * z, oy + (((i / W) | 0) + a.oy) * z, z, z);
     }
   }
 

@@ -11,6 +11,7 @@ class InstalledPluginRecord {
     required this.icon,
     required this.version,
     required this.installedAt,
+    required this.downloadCount,
   });
 
   final String pluginId;
@@ -18,6 +19,7 @@ class InstalledPluginRecord {
   final String icon;
   final String version;
   final DateTime installedAt;
+  final int downloadCount;
 }
 
 /// CRUD over the local "installed plugins" record, backed by [PluginDatabase].
@@ -52,6 +54,7 @@ class PluginRepository {
               name: manifest.name,
               icon: Value(manifest.icon),
               version: Value(manifest.version),
+              downloadCount: const Value(1),
             ),
           );
     } else {
@@ -61,6 +64,7 @@ class PluginRepository {
         name: Value(manifest.name),
         icon: Value(manifest.icon),
         version: Value(manifest.version),
+        downloadCount: Value(existing.downloadCount + 1),
       ));
     }
   }
@@ -77,5 +81,6 @@ class PluginRepository {
         icon: row.icon,
         version: row.version,
         installedAt: row.installedAt,
+        downloadCount: row.downloadCount,
       );
 }

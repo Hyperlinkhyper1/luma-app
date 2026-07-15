@@ -229,6 +229,34 @@ class LNl extends L {
   String get homeAllocation => 'Toewijzing';
 
   @override
+  String get homeTabDashboard => 'Dashboard';
+
+  @override
+  String get homeTabStats => 'Statistieken';
+
+  @override
+  String get homeStatsTitle => 'Plugin downloadstatistieken';
+
+  @override
+  String get homeStatsTotalDownloads => 'Totale downloads';
+
+  @override
+  String get homeStatsPluginsInstalled => 'Geïnstalleerde plugins';
+
+  @override
+  String get homeStatsPlugin => 'Plugin';
+
+  @override
+  String get homeStatsDownloads => 'Downloads';
+
+  @override
+  String get homeStatsNoPlugins =>
+      'Nog geen plugins geïnstalleerd. Download een plugin via het Plugins-tabblad om hier statistieken te zien.';
+
+  @override
+  String get homeStatsBrowsePlugins => 'Plugins bekijken';
+
+  @override
   String get pinEnterNew => 'Voer nieuwe 8-cijferige PIN in';
 
   @override

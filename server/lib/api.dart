@@ -893,6 +893,7 @@ class Api {
       'email': user.email,
       'usedBytes': store.usedBytes(user.id),
       'quotaBytes': user.quotaBytes,
+      'planId': user.planId,
       'collections': collections.values.map((m) => m.toJson()).toList(),
     });
   }

@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../app/nav_rail.dart';
 import '../../app/widgets.dart';
+import '../../features/plugins/plugin_icons.dart';
+import '../../features/plugins/plugin_repository.dart';
+import '../../features/plugins/plugin_scope.dart';
 import '../../finance/data/database.dart';
 import '../../finance/finance_scope.dart';
 import '../../finance/logic/finance_logic.dart';
@@ -12,12 +15,53 @@ import '../../settings/settings_scope.dart';
 import '../../theme/luma_theme.dart';
 
 /// The landing dashboard: a friendly greeting, a live snapshot of finances and
-/// quick shortcuts into the rest of the app.
+/// quick shortcuts into the rest of the app. Includes a "Stats" tab that
+/// tracks per-plugin download counts.
 class HomePage extends StatelessWidget {
   const HomePage({super.key, required this.onNavigate});
 
   /// Jumps the shell to another destination (1 = Converter, 2 = Finance,
   /// 3 = Password Manager, 5 = Assistant, [NavRail.settingsIndex] = Settings).
+  final ValueChanged<int> onNavigate;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final t = L.of(context);
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        children: [
+          Material(
+            color: luma.background,
+            child: TabBar(
+              tabs: [
+                Tab(text: t.homeTabDashboard),
+                Tab(text: t.homeTabStats),
+              ],
+              labelColor: luma.textPrimary,
+              unselectedLabelColor: luma.textSecondary,
+              indicatorColor: luma.accent,
+              indicatorSize: TabBarIndicatorSize.label,
+              dividerColor: luma.border,
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              children: [
+                _DashboardTab(onNavigate: onNavigate),
+                _StatsTab(onNavigate: onNavigate),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DashboardTab extends StatelessWidget {
+  const _DashboardTab({required this.onNavigate});
   final ValueChanged<int> onNavigate;
 
   @override
@@ -42,6 +86,23 @@ class HomePage extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _StatsTab extends StatelessWidget {
+  const _StatsTab({required this.onNavigate});
+  final ValueChanged<int> onNavigate;
+
+  @override
+  Widget build(BuildContext context) {
+    final pluginRepo = PluginScope.of(context);
+    return StreamBuilder<List<InstalledPluginRecord>>(
+      stream: pluginRepo.watchInstalled(),
+      builder: (context, snapshot) {
+        final plugins = snapshot.data ?? const <InstalledPluginRecord>[];
+        return _StatsBody(plugins: plugins, onNavigate: onNavigate);
+      },
     );
   }
 }
@@ -568,3 +629,139 @@ String _shortDate(DateTime d, L t) => '${d.day} ${_months(t)[d.month - 1]}';
 
 String _longDate(DateTime d, L t) =>
     '${_weekdays(t)[d.weekday - 1]}, ${d.day} ${_months(t)[d.month - 1]} ${d.year}';
+
+class _StatsBody extends StatelessWidget {
+  const _StatsBody({required this.plugins, required this.onNavigate});
+
+  final List<InstalledPluginRecord> plugins;
+  final ValueChanged<int> onNavigate;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final t = L.of(context);
+
+    if (plugins.isEmpty) {
+      return LumaEmptyState(
+        icon: Icons.download_rounded,
+        title: t.homeStatsNoPlugins,
+        action: LumaGhostButton(
+          label: t.homeStatsBrowsePlugins,
+          icon: Icons.extension_rounded,
+          onTap: () => onNavigate(NavRail.pluginsIndex),
+        ),
+      );
+    }
+
+    final totalDownloads =
+        plugins.fold<int>(0, (sum, p) => sum + p.downloadCount);
+    final sortedPlugins = [...plugins]
+      ..sort((a, b) => b.downloadCount.compareTo(a.downloadCount));
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final narrow = constraints.maxWidth < 480;
+        final hPadding = narrow ? 16.0 : 24.0;
+
+        return SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(hPadding, 12, hPadding, 40),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _SectionTitle(t.homeStatsTitle),
+              const SizedBox(height: 12),
+              _ResponsiveGrid(
+                narrow: narrow,
+                desktopColumns: 2,
+                children: [
+                  _StatCard(
+                    label: t.homeStatsTotalDownloads,
+                    value: '$totalDownloads',
+                    color: luma.accent,
+                    icon: Icons.download_rounded,
+                  ),
+                  _StatCard(
+                    label: t.homeStatsPluginsInstalled,
+                    value: '${plugins.length}',
+                    color: luma.success,
+                    icon: Icons.extension_rounded,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 28),
+              _SectionTitle(t.homeStatsDownloads),
+              const SizedBox(height: 12),
+              LumaCard(
+                child: Column(
+                  children: [
+                    for (var i = 0; i < sortedPlugins.length; i++) ...[
+                      if (i > 0) Divider(color: luma.border, height: 20),
+                      _PluginStatRow(plugin: sortedPlugins[i]),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _PluginStatRow extends StatelessWidget {
+  const _PluginStatRow({required this.plugin});
+  final InstalledPluginRecord plugin;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Row(
+      children: [
+        LumaIconBadge(icon: pluginIconFor(plugin.icon), color: luma.accent),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                plugin.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    color: luma.textPrimary, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'v${plugin.version}',
+                style: TextStyle(color: luma.textMuted, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: luma.accentSubtle,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.download_rounded, size: 14, color: luma.accent),
+              const SizedBox(width: 6),
+              Text(
+                '${plugin.downloadCount}',
+                style: TextStyle(
+                  color: luma.accent,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}

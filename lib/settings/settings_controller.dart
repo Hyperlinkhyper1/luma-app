@@ -66,6 +66,7 @@ class SettingsController extends ChangeNotifier {
     required String? avatarPath,
     required String selectedPlanId,
     required String? planExpiresAt,
+    required String adminPlanId,
     required int aiCallsToday,
     required String? aiCallsResetDate,
     required String aiProviderId,
@@ -82,6 +83,7 @@ class SettingsController extends ChangeNotifier {
         _avatarPath = avatarPath,
         _selectedPlanId = selectedPlanId,
         _planExpiresAt = planExpiresAt,
+        _adminPlanId = adminPlanId,
         _aiCallsToday = aiCallsToday,
         _aiCallsResetDate = aiCallsResetDate,
         _aiProviderId = aiProviderId,
@@ -106,6 +108,15 @@ class SettingsController extends ChangeNotifier {
   /// ISO-8601 timestamp of when a code-redeemed plan reverts to Core, or
   /// null if the current plan doesn't expire (Core, or never redeemed).
   String? _planExpiresAt;
+
+  /// Plan tier granted to this account by an admin on the dashboard (see
+  /// Api._adminSetPlan server-side), refreshed from /account on every sync.
+  /// Defaults to 'core'. Unlike a code-redeemed plan it never expires, and
+  /// the effective plan is the higher of this and [_selectedPlanId] — so an
+  /// admin-granted subscription can't be lost by picking the free plan.
+  /// Local-only (persisted, not synced): each device learns it from the
+  /// server directly.
+  String _adminPlanId;
   int _aiCallsToday;
   String? _aiCallsResetDate;
   String _aiProviderId;
@@ -139,16 +150,45 @@ class SettingsController extends ChangeNotifier {
 
   /// No billing exists yet — Orbit/Nova are unlocked only via
   /// [redeemPlanCode] and expire automatically after
-  /// [planCodeDurationDays]. Defaults to 'core' (free).
+  /// [planCodeDurationDays]. Defaults to 'core' (free). An admin-granted
+  /// plan ([_adminPlanId]) takes precedence when it's the higher tier, so a
+  /// subscription assigned on the dashboard can't be dropped by picking the
+  /// free plan locally.
   String get selectedPlanId {
     _rolloverPlanExpiryIfNeeded();
-    return _selectedPlanId;
+    return _effectivePlanId;
   }
 
   /// When the current plan reverts to Core, or null if it doesn't expire.
   DateTime? get planExpiresAt {
     _rolloverPlanExpiryIfNeeded();
+    // The admin-granted plan never expires; only surface a reversion date
+    // when the effective plan is the locally-redeemed one.
+    if (_effectivePlanId != _selectedPlanId) return null;
     return _planExpiresAt == null ? null : DateTime.tryParse(_planExpiresAt!);
+  }
+
+  /// The higher of the admin-granted and locally-selected tiers. Tiers:
+  /// core < orbit < nova. Unknown ids fall back to core.
+  String get _effectivePlanId =>
+      _tierIndex(_adminPlanId) > _tierIndex(_selectedPlanId)
+          ? _adminPlanId
+          : _selectedPlanId;
+
+  static int _tierIndex(String id) => switch (id) {
+        'nova' => 2,
+        'orbit' => 1,
+        _ => 0,
+      };
+
+  /// Records the plan tier the server has on file for this account, learned
+  /// from /account on every sync. Idempotent. Passing null/empty clears it
+  /// back to 'core' (covers admin revocation and older servers).
+  void setAdminPlan(String? planId) {
+    final next = (planId == null || planId.isEmpty) ? 'core' : planId;
+    if (next == _adminPlanId) return;
+    _adminPlanId = next;
+    _changed();
   }
 
   void _rolloverPlanExpiryIfNeeded() {
@@ -407,7 +447,8 @@ class SettingsController extends ChangeNotifier {
         'selectedPlanId': _selectedPlanId,
         'planExpiresAt': _planExpiresAt,
         // Local-device-only — deliberately not part of exportData/importData
-        // (sync), since this is a per-device spend guard, not a preference.
+        // (sync): each device learns its admin-granted plan from /account.
+        'adminPlanId': _adminPlanId,
         'aiCallsToday': _aiCallsToday,
         'aiCallsResetDate': _aiCallsResetDate,
         'aiProviderId': _aiProviderId,
@@ -448,6 +489,7 @@ class SettingsController extends ChangeNotifier {
       avatarPath: data['avatarPath'] as String?,
       selectedPlanId: data['selectedPlanId'] as String? ?? 'core',
       planExpiresAt: data['planExpiresAt'] as String?,
+      adminPlanId: data['adminPlanId'] as String? ?? 'core',
       aiCallsToday: data['aiCallsToday'] as int? ?? 0,
       aiCallsResetDate: data['aiCallsResetDate'] as String?,
       aiProviderId: data['aiProviderId'] as String? ?? 'anthropic',

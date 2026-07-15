@@ -229,6 +229,34 @@ class LEs extends L {
   String get homeAllocation => 'Asignación';
 
   @override
+  String get homeTabDashboard => 'Panel';
+
+  @override
+  String get homeTabStats => 'Estadísticas';
+
+  @override
+  String get homeStatsTitle => 'Estadísticas de descarga de plugins';
+
+  @override
+  String get homeStatsTotalDownloads => 'Descargas totales';
+
+  @override
+  String get homeStatsPluginsInstalled => 'Plugins instalados';
+
+  @override
+  String get homeStatsPlugin => 'Plugin';
+
+  @override
+  String get homeStatsDownloads => 'Descargas';
+
+  @override
+  String get homeStatsNoPlugins =>
+      'No hay plugins instalados todavía. Descarga un plugin desde la pestaña de Plugins para ver las estadísticas aquí.';
+
+  @override
+  String get homeStatsBrowsePlugins => 'Explorar plugins';
+
+  @override
   String get pinEnterNew => 'Introduce un nuevo PIN de 8 dígitos';
 
   @override

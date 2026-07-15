@@ -323,7 +323,7 @@ function pathPoint(path, d) {
 // welke tegels bedekt een pad? (samples elke 0.3 tegel, straal ~ breedte)
 function pathTiles(path) {
   const tiles = new Set();
-  const rad = Math.max(0, Math.ceil(ROADS[path.type].w / 2 - 0.05));
+  const rad = ROADS[path.type].w > 1 ? 1 : 0;
   for (let d = 0; d <= path.len; d += 0.3) {
     const p = pathPoint(path, d);
     const cx = Math.round(p.x - 0.5), cy = Math.round(p.y - 0.5);
@@ -409,6 +409,30 @@ function snapEndpoint(pt, maxDist = 1.6) {
       return { x: tx + dx + 0.5, y: ty + dy + 0.5 };
   }
   return pt;
+}
+
+// snap een gebouw-anker aan een nabijgelegen weg: berekent een sub-tegel
+// offset zodat het gebouw visueel flush tegen de weg aan ligt, ook wanneer
+// de weg buiten het grid loopt. Alleen de loodreichte component wordt
+// aangepast — langs de weg blijft het gebouw op het grid.
+function snapAnchorToRoad(wx, wy, maxDist = 1.5) {
+  let best = null, bestD = maxDist, bestAng = 0, bestW = 0;
+  for (const p of G.roadPaths) {
+    for (let d = 0; d <= p.len; d += 0.25) {
+      const q = pathPoint(p, d);
+      const dd = Math.hypot(q.x - wx, q.y - wy);
+      if (dd < bestD) { bestD = dd; best = q; bestAng = q.ang; bestW = ROADS[p.type].w; }
+    }
+  }
+  if (!best) return { ox: 0, oy: 0 };
+  const perpX = -Math.sin(bestAng), perpY = Math.cos(bestAng);
+  const tx = Math.floor(wx), ty = Math.floor(wy);
+  const cx = tx + 0.5, cy = ty + 0.5;
+  const roadToCenter = (cx - best.x) * perpX + (cy - best.y) * perpY;
+  const sign = roadToCenter >= 0 ? 1 : -1;
+  const perpOffset = sign * (bestW / 2 + 0.5) - roadToCenter;
+  if (Math.abs(perpOffset) > 0.45) return { ox: 0, oy: 0 };
+  return { ox: perpOffset * perpX, oy: perpOffset * perpY };
 }
 
 // ── Nieuw spel ──

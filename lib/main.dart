@@ -153,6 +153,7 @@ class _LumaAppState extends State<LumaApp> {
   late final SyncService _sync = SyncService(
     syncCollectionLimit: () =>
         planById(widget.settings.selectedPlanId).maxSyncCollections,
+    onServerPlan: (id) => widget.settings.setAdminPlan(id),
     collections: [
     // Always synced (see SyncStateStore.collection / SyncService — the
     // 'settings' id defaults to enabled and can't be toggled off), so a

@@ -529,6 +529,60 @@ abstract class L {
   /// **'Allocation'**
   String get homeAllocation;
 
+  /// No description provided for @homeTabDashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Dashboard'**
+  String get homeTabDashboard;
+
+  /// No description provided for @homeTabStats.
+  ///
+  /// In en, this message translates to:
+  /// **'Stats'**
+  String get homeTabStats;
+
+  /// No description provided for @homeStatsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Plugin download stats'**
+  String get homeStatsTitle;
+
+  /// No description provided for @homeStatsTotalDownloads.
+  ///
+  /// In en, this message translates to:
+  /// **'Total downloads'**
+  String get homeStatsTotalDownloads;
+
+  /// No description provided for @homeStatsPluginsInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Plugins installed'**
+  String get homeStatsPluginsInstalled;
+
+  /// No description provided for @homeStatsPlugin.
+  ///
+  /// In en, this message translates to:
+  /// **'Plugin'**
+  String get homeStatsPlugin;
+
+  /// No description provided for @homeStatsDownloads.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads'**
+  String get homeStatsDownloads;
+
+  /// No description provided for @homeStatsNoPlugins.
+  ///
+  /// In en, this message translates to:
+  /// **'No plugins installed yet. Download a plugin from the Plugins tab to see stats here.'**
+  String get homeStatsNoPlugins;
+
+  /// No description provided for @homeStatsBrowsePlugins.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse plugins'**
+  String get homeStatsBrowsePlugins;
+
   /// No description provided for @pinEnterNew.
   ///
   /// In en, this message translates to:

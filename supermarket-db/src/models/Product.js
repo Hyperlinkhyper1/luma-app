@@ -100,8 +100,13 @@ class Product {
       });
     }
 
+    // "Relevance" has no text-match ranking to fall back on (name/brand LIKE
+    // gives every match equal weight), so it approximates usefulness with the
+    // one real signal this catalog has: put items on sale first (deepest
+    // discount first when known), then alphabetical.
     const orderBy =
       {
+        relevance: 'latest_price.is_discounted DESC, latest_price.discount_percentage DESC, p.name ASC',
         price_asc: 'latest_price.price ASC',
         price_desc: 'latest_price.price DESC',
         name_asc: 'p.name ASC',

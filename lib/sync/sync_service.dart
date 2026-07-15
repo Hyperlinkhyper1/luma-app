@@ -31,7 +31,7 @@ class SyncLimitExceededException implements Exception {
 /// newest edit win. Snapshots are end-to-end encrypted before upload; the
 /// server only ever sees ciphertext.
 class SyncService extends ChangeNotifier {
-  SyncService({required this.collections, this.syncCollectionLimit});
+  SyncService({required this.collections, this.syncCollectionLimit, this.onServerPlan});
 
   final List<SyncCollection> collections;
 
@@ -39,6 +39,12 @@ class SyncService extends ChangeNotifier {
   /// always-on 'settings' one) may be enabled at once, or null for
   /// unlimited. Read fresh on every check so plan changes apply immediately.
   final int? Function()? syncCollectionLimit;
+
+  /// Invoked with the plan tier the server reports for this account on every
+  /// /account fetch, so an admin-granted subscription is applied locally
+  /// (see SettingsController.setAdminPlan). Null/empty means the server has
+  /// no grant on file (or is older than the planId field).
+  final void Function(String? planId)? onServerPlan;
 
   SyncStateStore? _state;
   SyncApi? _api;
@@ -654,6 +660,7 @@ class SyncService extends ChangeNotifier {
     try {
       final remote = await api.account();
       _account = remote;
+      onServerPlan?.call(remote.planId);
       for (final collection in collections) {
         final st = s.collection(collection.id);
         if (!st.enabled) continue;
@@ -818,7 +825,9 @@ class SyncService extends ChangeNotifier {
 
   Future<void> _refreshAccount() async {
     try {
-      _account = await _api!.account();
+      final remote = await _api!.account();
+      _account = remote;
+      onServerPlan?.call(remote.planId);
     } catch (_) {
       // Usage display just stays stale.
     }

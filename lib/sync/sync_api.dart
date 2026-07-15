@@ -41,12 +41,18 @@ class RemoteAccount {
     required this.usedBytes,
     required this.quotaBytes,
     required this.collections,
+    this.planId,
   });
 
   final String email;
   final int usedBytes;
   final int quotaBytes;
   final Map<String, RemoteCollectionMeta> collections;
+
+  /// The plan tier the server has on file for this account — granted by an
+  /// admin via the dashboard (see Api._adminSetPlan). Null when the server
+  /// is older than the planId field and didn't include it.
+  final String? planId;
 
   factory RemoteAccount.fromJson(Map<String, dynamic> j) {
     final collections = <String, RemoteCollectionMeta>{};
@@ -58,6 +64,7 @@ class RemoteAccount {
       email: j['email'] as String? ?? '',
       usedBytes: j['usedBytes'] as int? ?? 0,
       quotaBytes: j['quotaBytes'] as int? ?? 0,
+      planId: j['planId'] as String?,
       collections: collections,
     );
   }

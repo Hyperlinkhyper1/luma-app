@@ -41,6 +41,9 @@ class RemoteProduct {
     required this.price,
     required this.oldPrice,
     required this.isDiscounted,
+    required this.quantity,
+    required this.discountPercentage,
+    required this.discountText,
   });
 
   final String id;
@@ -53,6 +56,12 @@ class RemoteProduct {
   final double? oldPrice;
   final bool isDiscounted;
 
+  /// Pack size, e.g. "1 l" or "500 g" — already unit-formatted by the source
+  /// market, so there's no separate numeric/unit pair to combine.
+  final String? quantity;
+  final double? discountPercentage;
+  final String? discountText;
+
   factory RemoteProduct.fromJson(Map<String, dynamic> json) => RemoteProduct(
         id: '${json['id']}',
         name: json['name'] as String,
@@ -63,6 +72,9 @@ class RemoteProduct {
         price: (json['price'] as num?)?.toDouble(),
         oldPrice: (json['oldPrice'] as num?)?.toDouble(),
         isDiscounted: json['isDiscounted'] as bool? ?? false,
+        quantity: json['quantity'] as String?,
+        discountPercentage: (json['discountPercentage'] as num?)?.toDouble(),
+        discountText: json['discountText'] as String?,
       );
 }
 
