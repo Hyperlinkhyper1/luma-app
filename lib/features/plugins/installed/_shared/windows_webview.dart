@@ -1,0 +1,71 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:webview_windows/webview_windows.dart';
+
+/// Resolves a Flutter asset's on-disk path for a Windows desktop build.
+///
+/// Flutter's Windows runner ships assets as loose files next to the exe
+/// (`data/flutter_assets/...`), rather than packed into an archive the way
+/// mobile does — so bundled HTML/JS can be pointed at directly with a
+/// `file://` URL instead of needing to be copied out at runtime.
+String windowsAssetPath(String assetPath) {
+  final exeDir = File(Platform.resolvedExecutable).parent.path;
+  return '$exeDir\\data\\flutter_assets\\$assetPath';
+}
+
+/// A minimal Windows-only local-file webview, used in place of
+/// flutter_inappwebview for plugins that just need to render a bundled or
+/// on-disk HTML page — see the comment on the `webview_windows` dependency
+/// in pubspec.yaml for why.
+class WindowsWebview extends StatefulWidget {
+  const WindowsWebview({
+    super.key,
+    required this.fileUrl,
+    this.onLoaded,
+  });
+
+  /// A `file:///...` URL to load.
+  final String fileUrl;
+  final VoidCallback? onLoaded;
+
+  @override
+  State<WindowsWebview> createState() => _WindowsWebviewState();
+}
+
+class _WindowsWebviewState extends State<WindowsWebview> {
+  final _controller = WebviewController();
+  bool _ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_init());
+  }
+
+  Future<void> _init() async {
+    await _controller.initialize();
+    await _controller.setBackgroundColor(Colors.transparent);
+    await _controller.setPopupWindowPolicy(WebviewPopupWindowPolicy.deny);
+    _controller.loadingState
+        .firstWhere((s) => s == LoadingState.navigationCompleted)
+        .then((_) {
+      if (mounted) widget.onLoaded?.call();
+    });
+    await _controller.loadUrl(widget.fileUrl);
+    if (mounted) setState(() => _ready = true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_ready) return const SizedBox.shrink();
+    return Webview(_controller);
+  }
+}

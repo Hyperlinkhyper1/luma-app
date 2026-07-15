@@ -59,6 +59,12 @@ dependencies:
   nsd: ^5.0.1
   network_info_plus: ^6.1.4
   flutter_inappwebview: ^6.1.5
+  # Windows-only fallback for the plugins below: flutter_inappwebview's
+  # Windows implementation has an unfixed static-destruction-order crash
+  # (dcomp.dll, exception 0xE0464645) that fires on every app close once the
+  # plugin has been loaded — see pichillilorenzo/flutter_inappwebview#2512.
+  # webview_windows is a thinner WebView2 wrapper without that bug.
+  webview_windows: ^0.4.0
   win32: ^5.15.0
   hotkey_manager: ^0.2.3
   ffi: ^2.2.0
@@ -76,6 +82,12 @@ dev_dependencies:
   drift_dev: ^2.34.1+1
   build_runner: ^2.15.0
   flutter_launcher_icons: ^0.14.3
+
+# Swaps out flutter_inappwebview's real Windows implementation for a local
+# stub — see third_party/flutter_inappwebview_windows_stub/pubspec.yaml.
+dependency_overrides:
+  flutter_inappwebview_windows:
+    path: third_party/flutter_inappwebview_windows_stub
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
