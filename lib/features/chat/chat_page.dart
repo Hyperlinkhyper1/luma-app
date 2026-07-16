@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/widgets.dart';
 import '../../settings/settings_controller.dart';
 import '../../settings/settings_scope.dart';
+import '../../settings/sync_section.dart';
 import '../../sync/sync_scope.dart';
 import '../../sync/sync_service.dart';
 import '../../theme/luma_theme.dart';
@@ -66,35 +67,72 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<(AiKeyStore, AiAgentStore)>(
-      future: _storesFuture,
-      builder: (context, snap) {
-        if (snap.hasError) {
-          return _LoadError(error: snap.error!);
+    final syncService = SyncScope.of(context);
+    return ListenableBuilder(
+      listenable: syncService,
+      builder: (context, _) {
+        if (!syncService.p2pReady) {
+          return _NoAccountState(syncService: syncService);
         }
-        if (!snap.hasData) {
-          return const Center(
-            child: SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2.4),
-            ),
-          );
-        }
-        final (keyStore, agentStore) = snap.data!;
-        final controller = _controllerFor(keyStore, agentStore);
-        return _ChatBody(
-          controller: controller,
-          keyStore: keyStore,
-          syncService: SyncScope.of(context),
-          settings: SettingsScope.of(context),
-          activeConversationId: _activeConversationId,
-          onSelectConversation: (id) =>
-              setState(() => _activeConversationId = id),
-          onOpenSettings: widget.onOpenSettings,
-          onOpenPlugin: widget.onOpenPlugin,
+        return FutureBuilder<(AiKeyStore, AiAgentStore)>(
+          future: _storesFuture,
+          builder: (context, snap) {
+            if (snap.hasError) {
+              return _LoadError(error: snap.error!);
+            }
+            if (!snap.hasData) {
+              return const Center(
+                child: SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2.4),
+                ),
+              );
+            }
+            final (keyStore, agentStore) = snap.data!;
+            final controller = _controllerFor(keyStore, agentStore);
+            return _ChatBody(
+              controller: controller,
+              keyStore: keyStore,
+              syncService: syncService,
+              settings: SettingsScope.of(context),
+              activeConversationId: _activeConversationId,
+              onSelectConversation: (id) =>
+                  setState(() => _activeConversationId = id),
+              onOpenSettings: widget.onOpenSettings,
+              onOpenPlugin: widget.onOpenPlugin,
+            );
+          },
         );
       },
+    );
+  }
+}
+
+/// Shown in place of the assistant until the user has set up a luma account
+/// (cloud or local-only — see [SyncService.p2pReady]). The assistant talks to
+/// external AI providers, so it's gated behind account creation the same way
+/// the rest of the account-scoped surface is.
+class _NoAccountState extends StatelessWidget {
+  const _NoAccountState({required this.syncService});
+
+  final SyncService syncService;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: LumaEmptyState(
+        icon: Icons.person_add_rounded,
+        title: 'Create an account to continue',
+        subtitle:
+            'Set up a luma account — just an email and password, no server '
+            'required — before chatting with the assistant.',
+        action: LumaPrimaryButton(
+          label: 'Set up account',
+          icon: Icons.person_add_rounded,
+          onTap: () => showAccountSetupDialog(context, syncService),
+        ),
+      ),
     );
   }
 }
@@ -168,39 +206,121 @@ class _ChatBodyState extends State<_ChatBody> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<bool>(
-      future: _keyAvailableFuture,
-      builder: (context, snap) {
-        if (snap.hasError) {
-          return _LoadError(error: snap.error!);
-        }
-        if (snap.connectionState != ConnectionState.done) {
-          return const Center(
-            child: SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2.4),
-            ),
-          );
-        }
-        if (snap.data != true) {
-          return _NoKeyState(
-            onOpenSettings: widget.onOpenSettings,
-            onRecheck: _recheckKey,
-          );
-        }
-        return AnimatedBuilder(
-          animation: widget.controller,
-          builder: (context, _) => _ChatLayout(
-            controller: widget.controller,
-            keyStore: widget.keyStore,
-            syncService: widget.syncService,
-            activeConversationId: widget.activeConversationId,
-            onSelectConversation: widget.onSelectConversation,
-            onOpenPlugin: widget.onOpenPlugin,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: _InlineProviderPicker(settings: widget.settings),
+        ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: FutureBuilder<bool>(
+            future: _keyAvailableFuture,
+            builder: (context, snap) {
+              if (snap.hasError) {
+                return _LoadError(error: snap.error!);
+              }
+              if (snap.connectionState != ConnectionState.done) {
+                return const Center(
+                  child: SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2.4),
+                  ),
+                );
+              }
+              if (snap.data != true) {
+                return _NoKeyState(
+                  onOpenSettings: widget.onOpenSettings,
+                  onRecheck: _recheckKey,
+                );
+              }
+              return AnimatedBuilder(
+                animation: widget.controller,
+                builder: (context, _) => _ChatLayout(
+                  controller: widget.controller,
+                  keyStore: widget.keyStore,
+                  syncService: widget.syncService,
+                  activeConversationId: widget.activeConversationId,
+                  onSelectConversation: widget.onSelectConversation,
+                  onOpenPlugin: widget.onOpenPlugin,
+                ),
+              );
+            },
           ),
-        );
-      },
+        ),
+      ],
+    );
+  }
+}
+
+/// Lets the user switch the active AI provider without leaving the assistant
+/// tab — the same choice as Settings' `_ProviderPicker`, just surfaced where
+/// it's actually used. Switching providers here re-triggers the key-presence
+/// check in [_ChatBodyState] via the settings listener it already has.
+class _InlineProviderPicker extends StatelessWidget {
+  const _InlineProviderPicker({required this.settings});
+  final SettingsController settings;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final active = settings.aiProviderId;
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final provider in kAiProviders) ...[
+            if (provider != kAiProviders.first) const SizedBox(width: 8),
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: () => settings.setAiProviderId(provider.id.name),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: provider.id.name == active
+                        ? luma.accentSubtle
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: provider.id.name == active
+                          ? luma.accent
+                          : luma.border,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        provider.icon,
+                        size: 14,
+                        color: provider.id.name == active
+                            ? luma.accent
+                            : luma.textSecondary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        provider.displayName,
+                        style: TextStyle(
+                          color: provider.id.name == active
+                              ? luma.accent
+                              : luma.textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
