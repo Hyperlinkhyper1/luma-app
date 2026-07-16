@@ -371,11 +371,11 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
                   crossAxisCount: columns,
                   mainAxisSpacing: 8,
                   crossAxisSpacing: 8,
-                  // Tuned empirically against the real rendered card (text
-                  // line-height in practice runs taller than the nominal
-                  // fontSize*height math suggests) so there's minimal slack
-                  // under the price/add-button row.
-                  childAspectRatio: 0.85,
+                  // Tuned empirically against the real rendered card: tall
+                  // enough that a 2-line product name never pushes the
+                  // price/add-button row off the tile, short enough to
+                  // avoid a big empty gap underneath it.
+                  childAspectRatio: 0.72,
                 ),
                 delegate: SliverChildBuilderDelegate(
                   (context, i) {
