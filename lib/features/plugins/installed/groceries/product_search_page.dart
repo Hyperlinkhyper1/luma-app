@@ -294,19 +294,44 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
         ),
         const SizedBox(height: 8),
         Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(width: 24),
-              _CategorySidebar(
-                categories: _categories,
-                selected: _categoryFilter,
-                onlyDeals: _onlyDeals,
-                onSelect: _onCategorySelected,
-                onToggleDeals: _onToggleOnlyDeals,
-              ),
-              Expanded(child: _buildBody(context)),
-            ],
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // Below this, a permanent 180px sidebar leaves the grid too
+              // narrow to be usable (phones, narrow split-screen). Collapse
+              // categories into a sheet instead of reserving space for them.
+              if (constraints.maxWidth < 700) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                      child: _CompactFiltersBar(
+                        categories: _categories,
+                        selected: _categoryFilter,
+                        onlyDeals: _onlyDeals,
+                        onSelect: _onCategorySelected,
+                        onToggleDeals: _onToggleOnlyDeals,
+                      ),
+                    ),
+                    Expanded(child: _buildBody(context)),
+                  ],
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(width: 24),
+                  _CategorySidebar(
+                    categories: _categories,
+                    selected: _categoryFilter,
+                    onlyDeals: _onlyDeals,
+                    onSelect: _onCategorySelected,
+                    onToggleDeals: _onToggleOnlyDeals,
+                  ),
+                  Expanded(child: _buildBody(context)),
+                ],
+              );
+            },
           ),
         ),
       ],
@@ -358,24 +383,31 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
             builder: (context, constraints) {
               // 5 columns is the normal/wide-window case (matches the AH
               // reference); narrower windows step down so cards don't get
-              // crushed.
+              // crushed — down to 2 on a phone.
               final columns = constraints.crossAxisExtent >= 1000
                   ? 5
                   : (constraints.crossAxisExtent >= 800
                       ? 4
                       : (constraints.crossAxisExtent >= 600
                           ? 3
-                          : (constraints.crossAxisExtent >= 400 ? 2 : 1)));
+                          : (constraints.crossAxisExtent >= 300 ? 2 : 1)));
+              const spacing = 8.0;
+              final columnWidth =
+                  (constraints.crossAxisExtent - spacing * (columns - 1)) / columns;
+              // The card's text block (name/price/quantity/button) is a
+              // roughly fixed height regardless of column width, so a
+              // single fixed aspect ratio either overflows on narrow phone
+              // columns or leaves a dead gap on wide desktop ones. Solve
+              // for the ratio that keeps a small, constant margin instead
+              // — 90 is the card's real (measured, not just computed)
+              // fixed overhead below the image.
+              final aspect = (columnWidth / (columnWidth + 90)).clamp(0.45, 0.82);
               return SliverGrid(
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: columns,
-                  mainAxisSpacing: 8,
-                  crossAxisSpacing: 8,
-                  // Tuned empirically against the real rendered card: tall
-                  // enough that a 2-line product name never pushes the
-                  // price/add-button row off the tile, short enough to
-                  // avoid a big empty gap underneath it.
-                  childAspectRatio: 0.72,
+                  mainAxisSpacing: spacing,
+                  crossAxisSpacing: spacing,
+                  childAspectRatio: aspect,
                 ),
                 delegate: SliverChildBuilderDelegate(
                   (context, i) {
@@ -479,6 +511,131 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
     if (url == null) return;
     await api.setBaseUrl(url);
     _runSearch();
+  }
+}
+
+/// Narrow-width stand-in for [_CategorySidebar]: a compact bar that opens
+/// the same category list in a bottom sheet instead of reserving a
+/// permanent 180px column, so the grid keeps enough room for 2 columns on
+/// a phone.
+class _CompactFiltersBar extends StatelessWidget {
+  const _CompactFiltersBar({
+    required this.categories,
+    required this.selected,
+    required this.onlyDeals,
+    required this.onSelect,
+    required this.onToggleDeals,
+  });
+
+  final List<ProductCategory> categories;
+  final String? selected;
+  final bool onlyDeals;
+  final ValueChanged<String?> onSelect;
+  final ValueChanged<bool> onToggleDeals;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Row(
+      children: [
+        Expanded(
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: () => _openCategorySheet(context),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: luma.surface,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: luma.border),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.category_outlined, size: 16, color: luma.textSecondary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        selected ?? 'All products',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: luma.textPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    Icon(Icons.expand_more_rounded, size: 18, color: luma.textMuted),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        SizedBox(width: 132, child: _DealsToggleRow(value: onlyDeals, onChanged: onToggleDeals)),
+      ],
+    );
+  }
+
+  void _openCategorySheet(BuildContext context) {
+    final luma = context.luma;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: luma.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Categories',
+                  style: TextStyle(
+                    color: luma.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        _CategoryRow(
+                          label: 'All products',
+                          selected: selected == null,
+                          onTap: () {
+                            onSelect(null);
+                            Navigator.pop(sheetContext);
+                          },
+                        ),
+                        for (final category in categories)
+                          _CategoryRow(
+                            label: category.name,
+                            count: category.count,
+                            selected: selected == category.name,
+                            onTap: () {
+                              onSelect(category.name);
+                              Navigator.pop(sheetContext);
+                            },
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 
