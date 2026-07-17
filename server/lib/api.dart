@@ -2101,26 +2101,22 @@ class Api {
       final pct = u.quotaBytes > 0
           ? (used / u.quotaBytes * 100).clamp(0, 100)
           : 0.0;
-      final statusColor = u.status == 'active' ? '#7ee08a' : '#e0c87e';
+      final statusClass = u.status == 'active' ? 'ok' : 'warn';
       final action = u.isPending
           ? '<form method="post" action="/admin/verify?key=${Uri.encodeQueryComponent(key)}" '
               'style="margin:0" onsubmit="return confirm(\'Manually verify '
               '${_htmlEscape(u.email)}? This skips email verification.\')">'
               '<input type="hidden" name="email" value="${_htmlEscape(u.email)}">'
-              '<button type="submit" style="background:#8a7ee0;color:#161320;'
-              'border:none;border-radius:6px;padding:4px 10px;font-size:12px;'
-              'font-weight:600;cursor:pointer">Verify</button>'
+              '<button type="submit" class="btn btn-primary btn-sm">Verify</button>'
               '</form>'
           : '';
       return '<tr>'
           '<td>${_htmlEscape(u.email)}</td>'
-          '<td><span style="color:$statusColor">${_htmlEscape(u.status)}</span></td>'
+          '<td><span class="badge $statusClass">${_htmlEscape(u.status)}</span></td>'
           '<td>${_htmlEscape(planLabels[u.planId] ?? u.planId)}</td>'
           '<td>'
-          '<div style="background:#241f33;border-radius:4px;overflow:hidden;width:120px;height:8px;display:inline-block;vertical-align:middle;margin-right:8px">'
-          '<div style="background:#8a7ee0;height:100%;width:${pct.toStringAsFixed(0)}%"></div>'
-          '</div>'
-          '<span style="font-size:12px;color:#a49fb8">${fmtBytes(used)} / ${fmtBytes(u.quotaBytes)} (${pct.toStringAsFixed(0)}%)</span>'
+          '<div class="meter"><div style="width:${pct.toStringAsFixed(0)}%"></div></div>'
+          '<span class="muted" style="font-size:12px">${fmtBytes(used)} / ${fmtBytes(u.quotaBytes)} (${pct.toStringAsFixed(0)}%)</span>'
           '</td>'
           '<td>${fmtDate(u.createdAtMs)}</td>'
           '<td>${fmtDate(u.lastLoginAtMs)}</td>'
@@ -2138,9 +2134,7 @@ class Api {
           '${_htmlEscape(u.email)}\\\'s $label plan? They revert to Core.\')">'
           '<input type="hidden" name="email" value="${_htmlEscape(u.email)}">'
           '<input type="hidden" name="planId" value="$kDefaultPlanId">'
-          '<button type="submit" style="background:transparent;color:#e07e7e;'
-          'border:1px solid #402c2c;border-radius:6px;padding:4px 10px;'
-          'font-size:12px;cursor:pointer">Remove</button>'
+          '<button type="submit" class="btn btn-danger btn-sm">Remove</button>'
           '</form></td>'
           '</tr>';
     }).join();
@@ -2188,46 +2182,12 @@ class Api {
     }).join();
 
     final body = '<!doctype html><html><head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">'
         '<title>luma admin</title>'
-        '<style>body{background:#161320;color:#e8e4f3;font-family:system-ui,'
-        'sans-serif;margin:0;padding:32px}h1{font-size:20px;margin:0 0 24px}'
-        'h2{font-size:15px;margin:0 0 16px;color:#e8e4f3}'
-        '.stats{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:28px}'
-        '.stat{background:#1e1a2b;border-radius:8px;padding:16px 20px;min-width:140px}'
-        '.stat .n{font-size:22px;font-weight:600}.stat .l{font-size:12px;'
-        'color:#a49fb8;margin-top:4px}table{border-collapse:collapse;width:100%;'
-        'font-size:13px}th{text-align:left;color:#a49fb8;font-weight:500;'
-        'padding:8px 12px;border-bottom:1px solid #2c2640}'
-        'td{padding:8px 12px;border-bottom:1px solid #201c2c}'
-        '.tabs{display:flex;gap:8px;margin-bottom:24px}'
-        '.tab-btn{background:#1e1a2b;color:#a49fb8;border:1px solid #2c2640;'
-        'border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer;'
-        'font-family:inherit}'
-        '.tab-btn.active{background:#8a7ee0;color:#161320;border-color:#8a7ee0;'
-        'font-weight:600}'
-        '.tab-panel{display:none}.tab-panel.active{display:block}'
-        '.product-form{display:flex;gap:10px;flex-wrap:wrap;align-items:center;'
-        'margin-bottom:28px}'
-        '.product-form select,.product-form input{background:#1e1a2b;'
-        'color:#e8e4f3;border:1px solid #2c2640;border-radius:8px;'
-        'padding:8px 12px;font-size:13px;font-family:inherit}'
-        '.product-form button{background:#8a7ee0;color:#161320;border:none;'
-        'border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;'
-        'cursor:pointer}'
-        '.range-tabs{display:flex;gap:8px;margin-bottom:16px}'
-        '.range-btn{background:#1e1a2b;color:#a49fb8;border:1px solid #2c2640;'
-        'border-radius:8px;padding:6px 14px;font-size:13px;cursor:pointer;'
-        'font-family:inherit}'
-        '.range-btn.active{background:#8a7ee0;color:#161320;border-color:#8a7ee0;'
-        'font-weight:600}'
-        '.metrics-grid{display:flex;gap:16px;flex-wrap:wrap}'
-        '.metric-card{background:#1e1a2b;border-radius:8px;padding:16px 20px;'
-        'min-width:240px;flex:1}'
-        '.metric-title{font-size:12px;color:#a49fb8;margin-bottom:8px}'
-        '.metric-value{font-size:16px;font-weight:600;margin-top:8px}'
-        'canvas{display:block;width:100%;height:120px}</style>'
-        '</head><body>'
-        '<h1>luma admin</h1>'
+        '<style>$_adminCss</style>'
+        '</head><body><div class="wrap">'
+        '<header class="top"><h1>luma<span class="dot">.</span> admin</h1>'
+        '<span class="sub">server console</span></header>'
         '<div class="stats">'
         '<div class="stat"><div class="n">${stats['totalAccounts']}</div><div class="l">Total accounts</div></div>'
         '<div class="stat"><div class="n">${stats['activeAccounts']}</div><div class="l">Active</div></div>'
@@ -2245,38 +2205,47 @@ class Api {
         '<button class="tab-btn" data-tab="control">Control panel</button>'
         '</div>'
         '<div class="tab-panel" id="panel-users">'
+        '<div class="card table-card">'
         '<table><thead><tr><th>Email</th><th>Status</th><th>Plan</th>'
         '<th>Storage</th><th>Created</th><th>Last login</th><th></th></tr></thead>'
         '<tbody>$rows</tbody></table>'
         '</div>'
+        '</div>'
         '<div class="tab-panel" id="panel-products">'
+        '<div class="card">'
         '<h2>Grant a plan</h2>'
         '<form class="product-form" method="post" action="/admin/plan?key=${Uri.encodeQueryComponent(key)}">'
         '<select name="planId">$planOptions</select>'
         '<input type="email" name="email" placeholder="user@example.com" required>'
-        '<button type="submit">Grant</button>'
+        '<button type="submit" class="btn btn-primary">Grant</button>'
         '</form>'
+        '</div>'
+        '<div class="card table-card">'
         '<h2>Active subscriptions</h2>'
         '<table><thead><tr><th>Email</th><th>Plan</th><th></th></tr></thead>'
-        '<tbody>${subscriptionRows.isEmpty ? '<tr><td colspan="3" style="color:#a49fb8">No paid subscriptions yet.</td></tr>' : subscriptionRows}</tbody></table>'
+        '<tbody>${subscriptionRows.isEmpty ? '<tr><td colspan="3" class="muted">No paid subscriptions yet.</td></tr>' : subscriptionRows}</tbody></table>'
+        '</div>'
         '</div>'
         '<div class="tab-panel" id="panel-activity">'
+        '<div class="card table-card">'
         '<h2>Last 24 hours</h2>'
         '<table><thead><tr><th>Time</th><th>Type</th><th>Detail</th></tr></thead>'
-        '<tbody>${activityRows.isEmpty ? '<tr><td colspan="3" style="color:#a49fb8">No activity in the last 24 hours.</td></tr>' : activityRows}</tbody></table>'
+        '<tbody>${activityRows.isEmpty ? '<tr><td colspan="3" class="muted">No activity in the last 24 hours.</td></tr>' : activityRows}</tbody></table>'
+        '</div>'
         '</div>'
         '<div class="tab-panel" id="panel-plugins">'
         '<div class="stats" style="margin-bottom:20px">'
         '<div class="stat"><div class="n">$pluginDownloadsTotal</div><div class="l">Total downloads</div></div>'
         '<div class="stat"><div class="n">${pluginStats.length}</div><div class="l">Plugins tracked</div></div>'
         '</div>'
+        '<div class="card table-card">'
         '<table><thead><tr><th>Plugin</th><th>ID</th><th>Downloads</th><th>Last downloaded</th></tr></thead>'
-        '<tbody>${pluginRows.isEmpty ? '<tr><td colspan="4" style="color:#a49fb8">No plugin downloads reported yet.</td></tr>' : pluginRows}</tbody></table>'
+        '<tbody>${pluginRows.isEmpty ? '<tr><td colspan="4" class="muted">No plugin downloads reported yet.</td></tr>' : pluginRows}</tbody></table>'
+        '</div>'
         '</div>'
         '<div class="tab-panel" id="panel-metrics">'
-        '<div id="metricsUnsupported" style="display:none;color:#a49fb8;'
-        'font-size:13px">Live metrics aren\'t available on this server\'s '
-        'OS/platform.</div>'
+        '<div id="metricsUnsupported" class="hint" style="display:none">'
+        'Live metrics aren\'t available on this server\'s OS/platform.</div>'
         '<div class="range-tabs" id="rangeTabs">'
         '<button class="range-btn" data-range="minute">1 minute</button>'
         '<button class="range-btn" data-range="hour">1 hour</button>'
@@ -2291,61 +2260,58 @@ class Api {
         '<canvas id="ramGraph" width="280" height="120"></canvas>'
         '<div class="metric-value" id="ramValue">–</div></div>'
         '<div class="metric-card"><div class="metric-title">Network '
-        '(<span style="color:#8a7ee0">&#8595; down</span> / '
-        '<span style="color:#7ee08a">&#8593; up</span>)</div>'
+        '<span class="legend"><span class="k accent">&#8595; down</span>'
+        '<span class="k green">&#8593; up</span></span></div>'
         '<canvas id="netGraph" width="280" height="120"></canvas>'
         '<div class="metric-value" id="netValue">–</div></div>'
         '<div class="metric-card"><div class="metric-title">SSD '
-        '(<span style="color:#8a7ee0">&#8595; read</span> / '
-        '<span style="color:#7ee08a">&#8593; write</span>)</div>'
+        '<span class="legend"><span class="k accent">&#8595; read</span>'
+        '<span class="k green">&#8593; write</span></span></div>'
         '<canvas id="diskGraph" width="280" height="120"></canvas>'
         '<div class="metric-value" id="diskValue">–</div></div>'
         '</div>'
         '</div>'
         '<div class="tab-panel" id="panel-control">'
+        '<div class="card">'
         '<h2>Groceries database</h2>'
         '<div class="product-form">'
         '<form method="post" action="/admin/groceries/sync?key=${Uri.encodeQueryComponent(key)}" style="margin:0">'
-        '<button type="submit">Sync all markets</button></form>'
+        '<button type="submit" class="btn btn-primary">Sync all markets</button></form>'
         '<form method="post" action="/admin/groceries/sync?key=${Uri.encodeQueryComponent(key)}" style="margin:0">'
         '<input type="hidden" name="market" value="jumbo">'
-        '<button type="submit" style="background:#1e1a2b;color:#a49fb8;border:1px solid #2c2640;font-weight:500">Sync Jumbo</button></form>'
+        '<button type="submit" class="btn btn-ghost">Sync Jumbo</button></form>'
         '<form method="post" action="/admin/groceries/sync?key=${Uri.encodeQueryComponent(key)}" style="margin:0">'
         '<input type="hidden" name="market" value="ah">'
-        '<button type="submit" style="background:#1e1a2b;color:#a49fb8;border:1px solid #2c2640;font-weight:500">Sync Albert Heijn</button></form>'
+        '<button type="submit" class="btn btn-ghost">Sync Albert Heijn</button></form>'
         '<form method="post" action="/admin/groceries/sync?key=${Uri.encodeQueryComponent(key)}" style="margin:0">'
         '<input type="hidden" name="market" value="lidl">'
-        '<button type="submit" style="background:#1e1a2b;color:#a49fb8;border:1px solid #2c2640;font-weight:500">Sync Lidl</button></form>'
+        '<button type="submit" class="btn btn-ghost">Sync Lidl</button></form>'
         '</div>'
-        '<div id="groceriesSummary" style="color:#a49fb8;font-size:13px;'
-        'margin-bottom:16px">Loading groceries status…</div>'
-        '<div class="product-form">'
-        '<button id="groceriesLogBtn" type="button" style="background:#1e1a2b;'
-        'color:#a49fb8;border:1px solid #2c2640;border-radius:8px;'
-        'padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer">'
+        '<div id="groceriesSummary" class="hint">Loading groceries status…</div>'
+        '<div class="product-form" style="margin-bottom:0">'
+        '<button id="groceriesLogBtn" type="button" class="btn btn-ghost">'
         'Show sync log</button>'
         '</div>'
         '<div id="groceriesLog" style="display:none;max-height:400px;'
-        'overflow:auto">'
+        'overflow:auto;margin-top:16px">'
         '<table><thead><tr><th>Market</th><th>Status</th><th>Started</th>'
         '<th>Finished</th><th>Checked</th><th>Added</th><th>Updated</th>'
         '<th>Failed</th><th>Error</th></tr></thead>'
         '<tbody id="groceriesSyncRows">'
-        '<tr><td colspan="9" style="color:#a49fb8">Loading…</td></tr>'
+        '<tr><td colspan="9" class="muted">Loading…</td></tr>'
         '</tbody></table>'
         '</div>'
+        '</div>'
+        '<div class="card">'
         '<h2>Server update</h2>'
         '<div class="product-form">'
-        '<button id="deployBtn" type="button" style="background:#8a7ee0;'
-        'color:#161320;border:none;border-radius:8px;padding:8px 16px;'
-        'font-size:13px;font-weight:600;cursor:pointer">'
+        '<button id="deployBtn" type="button" class="btn btn-primary">'
         'Update &amp; restart server</button>'
         '</div>'
-        '<div id="deployStatus" style="color:#a49fb8;font-size:13px;'
-        'margin-bottom:12px"></div>'
-        '<pre id="deployLog" style="background:#1e1a2b;border-radius:8px;'
-        'padding:16px;font-size:12px;max-height:400px;overflow:auto;'
-        'white-space:pre-wrap;word-break:break-all;display:none"></pre>'
+        '<div id="deployStatus" class="hint" style="margin-bottom:12px"></div>'
+        '<pre id="deployLog" class="log" style="display:none"></pre>'
+        '</div>'
+        '</div>'
         '</div>'
         '<script>$_adminTabScript</script>'
         '<script>$_adminMetricsScript</script>'
@@ -2356,6 +2322,72 @@ class Api {
     return Response(200,
         body: body, headers: {'Content-Type': 'text/html; charset=utf-8'});
   }
+
+  /// Embedded stylesheet for the admin dashboard. Self-contained (no external
+  /// fonts or CDNs), dark-only, built around the app's purple accent.
+  static const _adminCss = r'''
+*{box-sizing:border-box}
+body{background:#0f0d17;color:#ece8f7;margin:0;-webkit-font-smoothing:antialiased;
+  font-family:ui-sans-serif,system-ui,"Segoe UI",Roboto,sans-serif;font-size:14px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding:36px 28px 64px}
+header.top{display:flex;align-items:baseline;gap:12px;margin-bottom:26px}
+h1{font-size:19px;font-weight:700;letter-spacing:-.01em;margin:0}
+h1 .dot{color:#8a7ee0}
+.sub{font-size:12px;color:#6f688a}
+h2{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#8d86a8;margin:0 0 14px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:28px}
+.stat{background:linear-gradient(180deg,#1a1628,#151122);border:1px solid #262038;border-radius:12px;padding:16px 18px}
+.stat .n{font-size:24px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.stat .l{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#8d86a8;margin-top:6px}
+.tabs{display:inline-flex;gap:4px;background:#161225;border:1px solid #262038;border-radius:12px;padding:4px;margin-bottom:24px;flex-wrap:wrap}
+.tab-btn{background:transparent;color:#9b94b3;border:0;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:color .15s,background .15s}
+.tab-btn:hover{color:#ece8f7}
+.tab-btn.active{background:#8a7ee0;color:#14111f;font-weight:600}
+.tab-panel{display:none}.tab-panel.active{display:block}
+.card{background:#151122;border:1px solid #241e36;border-radius:14px;padding:20px 22px;margin-bottom:18px}
+.card.table-card{padding:14px 16px}
+.card.table-card h2{padding:6px 6px 0}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{text-align:left;color:#7f7898;font-weight:600;font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:10px 12px;border-bottom:1px solid #262038;white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid #1d1830;font-variant-numeric:tabular-nums}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:#181330}
+.muted{color:#9b94b3}
+.hint{color:#9b94b3;font-size:13px;margin-bottom:16px}
+.badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:600;letter-spacing:.02em}
+.badge.ok{background:rgba(126,224,138,.12);color:#7ee08a}
+.badge.warn{background:rgba(224,200,126,.12);color:#e0c87e}
+.badge.err{background:rgba(224,126,126,.12);color:#e07e7e}
+.meter{background:#241f38;border-radius:99px;overflow:hidden;width:120px;height:6px;display:inline-block;vertical-align:middle;margin-right:8px}
+.meter>div{background:linear-gradient(90deg,#8a7ee0,#a89bf0);height:100%}
+.btn{display:inline-flex;align-items:center;justify-content:center;border-radius:9px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid transparent;transition:background .15s,border-color .15s,color .15s}
+.btn-primary{background:#8a7ee0;color:#14111f}
+.btn-primary:hover{background:#9c91ec}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.btn-ghost{background:#1c1730;color:#b4addc;border-color:#2d2645;font-weight:500}
+.btn-ghost:hover{border-color:#463d6b;color:#ece8f7}
+.btn-danger{background:transparent;color:#e07e7e;border-color:#443030}
+.btn-danger:hover{background:rgba(224,126,126,.08)}
+.btn-sm{padding:4px 12px;font-size:12px;border-radius:7px}
+.btn:focus-visible,.tab-btn:focus-visible,.range-btn:focus-visible{outline:2px solid #8a7ee0;outline-offset:2px}
+.product-form{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
+.product-form select,.product-form input{background:#1a1530;color:#ece8f7;border:1px solid #2d2645;border-radius:9px;padding:8px 12px;font-size:13px;font-family:inherit;outline:none}
+.product-form select:focus,.product-form input:focus{border-color:#8a7ee0}
+.range-tabs{display:inline-flex;gap:4px;background:#161225;border:1px solid #262038;border-radius:10px;padding:4px;margin-bottom:18px}
+.range-btn{background:transparent;color:#9b94b3;border:0;border-radius:7px;padding:6px 12px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;transition:color .15s,background .15s}
+.range-btn:hover{color:#ece8f7}
+.range-btn.active{background:#8a7ee0;color:#14111f;font-weight:600}
+.metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
+.metric-card{background:#151122;border:1px solid #241e36;border-radius:14px;padding:16px 18px}
+.metric-title{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#8d86a8;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.metric-title .legend{display:inline-flex;gap:10px;text-transform:none;letter-spacing:0}
+.metric-title .k.accent{color:#8a7ee0}
+.metric-title .k.green{color:#7ee08a}
+.metric-value{font-size:15px;font-weight:600;margin-top:10px;font-variant-numeric:tabular-nums}
+canvas{display:block;width:100%;height:120px}
+pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:16px;font-size:12px;line-height:1.55;max-height:400px;overflow:auto;white-space:pre-wrap;word-break:break-all;color:#b9b2d4;margin:0}
+@media (max-width:640px){.wrap{padding:24px 16px 48px}.card{padding:16px}}
+''';
 
   /// Tiny vanilla-JS tab switcher for the Users / Products / Metrics panels,
   /// keeping the selected tab in the URL hash so it survives a form POST's
@@ -2414,14 +2446,14 @@ class Api {
     if (data.error) {
       summary.textContent = 'Could not reach the groceries server ('
         + (data.message || data.error) + ')';
-      rows.innerHTML = '<tr><td colspan="9" style="color:#a49fb8">—</td></tr>';
+      rows.innerHTML = '<tr><td colspan="9" class="muted">—</td></tr>';
       return false;
     }
     if (!data.configured) {
       summary.textContent = 'Not connected: set LUMA_GROCERIES_ADMIN_KEY '
         + '(and optionally LUMA_GROCERIES_URL) in this server\'s .env, '
         + 'then restart.';
-      rows.innerHTML = '<tr><td colspan="9" style="color:#a49fb8">—</td></tr>';
+      rows.innerHTML = '<tr><td colspan="9" class="muted">—</td></tr>';
       return false;
     }
     const s = data.status;
@@ -2430,12 +2462,12 @@ class Api {
       + s.priceSnapshots + ' price snapshots'
       + (s.running ? ' — <strong>sync running…</strong>' : '');
     rows.innerHTML = s.syncs.length === 0
-      ? '<tr><td colspan="9" style="color:#a49fb8">No syncs yet.</td></tr>'
+      ? '<tr><td colspan="9" class="muted">No syncs yet.</td></tr>'
       : s.syncs.map((r) => {
-          const color = r.status === 'success' ? '#7ee08a'
-            : r.status === 'running' ? '#e0c87e' : '#e07e7e';
+          const cls = r.status === 'success' ? 'ok'
+            : r.status === 'running' ? 'warn' : 'err';
           return '<tr><td>' + esc(r.marketName) + '</td>'
-            + '<td><span style="color:' + color + '">' + esc(r.status) + '</span></td>'
+            + '<td><span class="badge ' + cls + '">' + esc(r.status) + '</span></td>'
             + '<td>' + esc(r.startedAt) + '</td>'
             + '<td>' + esc(r.finishedAt || '—') + '</td>'
             + '<td>' + r.checked + '</td><td>' + r.added + '</td>'

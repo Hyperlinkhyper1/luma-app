@@ -295,7 +295,7 @@ class _LumaAppState extends State<LumaApp> {
     _autoClickerRepository.init();
     _usageRepository.init();
     _lifecycleListener = AppLifecycleListener(
-      onDetach: _sync.saveState,
+      onDetach: _onAppDetach,
     );
   }
 
@@ -327,6 +327,18 @@ class _LumaAppState extends State<LumaApp> {
     _groceriesDb.close();
     _groceriesApi.dispose();
     super.dispose();
+  }
+
+  /// Runs once when the engine detaches (app closing): purges abandoned empty
+  /// chats and notes, then persists sync state. Fire-and-forget like the
+  /// previous [SyncService.saveState] hook — the work is kicked off in
+  /// parallel so the cheap local deletes have the best chance to finish.
+  Future<void> _onAppDetach() async {
+    await Future.wait([
+      _chatRepository.purgeEmptyConversations(),
+      NotesRepository().purgeEmpty(),
+      _sync.saveState(),
+    ]);
   }
 
   /// Applies the selected plan's storage cap to the guard. Cheap — no-ops when

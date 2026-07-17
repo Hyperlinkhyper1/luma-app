@@ -82,6 +82,23 @@ class ChatRepository {
         .go();
   }
 
+  /// Deletes every conversation that has no messages — i.e. ones that were
+  /// created but never used. Called on app close so the list stays clean.
+  Future<void> purgeEmptyConversations() async {
+    final conversations = await (_db.select(_db.chatConversations)).get();
+    for (final c in conversations) {
+      final messages = await (_db.select(_db.chatMessages)
+            ..where((t) => t.conversationId.equals(c.id))
+            ..limit(1))
+          .get();
+      if (messages.isEmpty) {
+        await (_db.delete(_db.chatConversations)
+              ..where((t) => t.id.equals(c.id)))
+            .go();
+      }
+    }
+  }
+
   Stream<List<ChatMessageRecord>> watchMessages(int conversationId) {
     final query = _db.select(_db.chatMessages)
       ..where((t) => t.conversationId.equals(conversationId))
