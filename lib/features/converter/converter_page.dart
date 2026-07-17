@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/luma_theme.dart';
+import 'tools/audio_editor_view.dart';
 import 'tools/downscaler_view.dart';
 import 'tools/image_editor_view.dart';
 import 'tools/media_converter_view.dart';
@@ -8,7 +9,15 @@ import 'tools/picture_converter_view.dart';
 import 'tools/video_downscaler_view.dart';
 
 /// The converter tools, surfaced as tiles on the hub.
-enum ConverterTool { audio, picture, video, downscaler, videoDownscaler, imageEditor }
+enum ConverterTool {
+  audio,
+  picture,
+  video,
+  downscaler,
+  videoDownscaler,
+  imageEditor,
+  audioEditor,
+}
 
 /// File Converter section: a hub of four tools, each opening its own screen.
 class ConverterPage extends StatefulWidget {
@@ -39,6 +48,8 @@ class _ConverterPageState extends State<ConverterPage> {
         return VideoDownscalerView(onBack: _back);
       case ConverterTool.imageEditor:
         return ImageEditorView(onBack: _back);
+      case ConverterTool.audioEditor:
+        return AudioEditorView(onBack: _back);
       case null:
         return _ConverterHub(onOpen: _open);
     }
@@ -151,6 +162,13 @@ class _ConverterHub extends StatelessWidget {
           subtitle: 'Remove white backgrounds from images',
           badge: 'EDIT',
           onTap: () => onOpen(ConverterTool.imageEditor),
+        ),
+        _ToolTile(
+          icon: Icons.equalizer_rounded,
+          title: 'Audio editor',
+          subtitle: 'Cut, equalize & preview audio',
+          badge: 'EDIT',
+          onTap: () => onOpen(ConverterTool.audioEditor),
         ),
       ];
 }

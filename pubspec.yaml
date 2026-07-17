@@ -68,6 +68,8 @@ dependencies:
   win32: ^5.15.0
   hotkey_manager: ^0.2.3
   ffi: ^2.2.0
+  # Preview playback in the audio editor.
+  audioplayers: ^6.1.0
 
 dev_dependencies:
   flutter_test:
