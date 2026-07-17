@@ -2717,7 +2717,14 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
         if (!values.length) continue;
         const i = Math.round(canvas._hoverFrac * (values.length - 1));
         const px = values.length > 1 ? (w * i) / (values.length - 1) : 0;
-        const py = h - (Math.min(values[i], max) / max) * h;
+        const yOf = (v) => h - (Math.min(v, max) / max) * h;
+        // The line itself is smoothed (quadratic through segment midpoints),
+        // so at interior samples the rendered curve sits at
+        // (prev + 6*this + next) / 8, not at the raw sample — put the marker
+        // on the curve so it never floats off the line at sharp peaks.
+        const py = (i > 0 && i < values.length - 1)
+            ? (yOf(values[i - 1]) + 6 * yOf(values[i]) + yOf(values[i + 1])) / 8
+            : yOf(values[i]);
         ctx.fillStyle = s.color;
         ctx.beginPath();
         ctx.arc(px, py, 3.5, 0, Math.PI * 2);
