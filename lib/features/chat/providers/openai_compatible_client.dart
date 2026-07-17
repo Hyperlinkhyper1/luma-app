@@ -15,6 +15,7 @@ class OpenAiCompatibleClient implements AiClient {
     required this.providerLabel,
     this.agentsBaseUrl,
     this.maxOutputTokens = 1024,
+    this.reasoningEffort,
   });
 
   final String baseUrl;
@@ -28,6 +29,13 @@ class OpenAiCompatibleClient implements AiClient {
   /// `/v1/agents/completions`), if this provider supports them. When null,
   /// an [agentId] passed to [chat] is ignored.
   final String? agentsBaseUrl;
+
+  /// Sent as `reasoning_effort` ("low"/"medium"/"high") on every request,
+  /// for providers/models that support a thinking-effort knob (currently
+  /// only Gemini, via [GoogleClient]'s Pulsar mode). Omitted from the
+  /// request body entirely when null, so providers that don't recognize
+  /// the field never see it.
+  final String? reasoningEffort;
 
   static const _maxToolHops = 5;
 
@@ -108,16 +116,23 @@ class OpenAiCompatibleClient implements AiClient {
   }
 
   /// Extracts a human-readable error message from an error response body —
-  /// either the OpenAI shape `{"error": {"message": ...}}` or the sync
-  /// server's `{"error": code, "message": ...}`.
+  /// either the OpenAI shape `{"error": {"message": ...}}`, the sync
+  /// server's `{"error": code, "message": ...}`, or Google's OpenAI-compat
+  /// endpoint, which wraps that same object shape in a top-level JSON
+  /// array (`[{"error": {...}}]`) — easy to miss since every other
+  /// provider here returns a bare object.
   static String? _messageFromBody(String body) {
     try {
-      final decoded = jsonDecode(body) as Map<String, dynamic>;
-      final err = decoded['error'];
-      if (err is Map && err['message'] is String) {
-        return err['message'] as String;
+      final decoded = jsonDecode(body);
+      final obj =
+          decoded is List && decoded.isNotEmpty ? decoded.first : decoded;
+      if (obj is Map) {
+        final err = obj['error'];
+        if (err is Map && err['message'] is String) {
+          return err['message'] as String;
+        }
+        if (obj['message'] is String) return obj['message'] as String;
       }
-      if (decoded['message'] is String) return decoded['message'] as String;
     } catch (_) {}
     return null;
   }
@@ -145,6 +160,7 @@ class OpenAiCompatibleClient implements AiClient {
       'messages': messages,
       'max_tokens': maxOutputTokens,
       if (tools.isNotEmpty) 'tools': tools,
+      if (reasoningEffort != null) 'reasoning_effort': reasoningEffort,
     };
     final url = agentId != null ? agentsBaseUrl! : baseUrl;
 

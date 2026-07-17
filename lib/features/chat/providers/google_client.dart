@@ -12,6 +12,7 @@ class GoogleClient extends OpenAiCompatibleClient {
               'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
           defaultModel: mode.geminiModel,
           providerLabel: 'Luma AI',
+          reasoningEffort: mode.reasoningEffort,
         );
 }
 
@@ -29,6 +30,11 @@ class GoogleProxyClient extends OpenAiCompatibleClient {
           baseUrl: _proxyUrl(serverUrl),
           defaultModel: mode.name,
           providerLabel: 'Luma AI',
+          // The server forwards whatever's in the request body (beyond the
+          // model/max_tokens it overrides itself) straight to Google, so
+          // sending this here is enough — no server-side mode→effort
+          // mapping needed alongside its existing mode→model one.
+          reasoningEffort: mode.reasoningEffort,
         );
 
   static String _proxyUrl(String serverUrl) {

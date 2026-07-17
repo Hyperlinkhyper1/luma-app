@@ -738,10 +738,19 @@ class Api {
   /// keys/projects (404 "no longer available to new users") even while
   /// still listed in /v1beta/openai/models. The aliases always resolve to
   /// whatever Google currently serves for that tier.
+  ///
+  /// Pulsar shares Nebula's Flash model rather than a Pro one — free-tier
+  /// API keys get a hard `limit: 0` quota on every Pro-tier model
+  /// (confirmed directly against the API), so Pro isn't usable without
+  /// billing enabled on the key's project. Pulsar's "smartest" distinction
+  /// instead comes from the client sending `reasoning_effort: "high"`
+  /// (see AiMode.reasoningEffort), which this proxy forwards unchanged —
+  /// it only overrides `model`/`max_tokens` below, everything else in the
+  /// client's request body passes straight through to Google.
   static const _googleModeModels = {
     'normal': 'gemini-flash-lite-latest', // Aurora 1.0
     'smarter': 'gemini-flash-latest', // Nebula 1.0
-    'smartest': 'gemini-pro-latest', // Pulsar 1.0
+    'smartest': 'gemini-flash-latest', // Pulsar 1.0 — same model, forced high reasoning effort
   };
 
   /// Proxies a chat-completion request to Google AI Studio's
