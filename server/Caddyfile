@@ -1,6 +1,19 @@
 # Caddy terminates HTTPS with an automatic Let's Encrypt certificate for
 # LUMA_DOMAIN (set in .env) and proxies everything to the sync server.
+#
+# Uses the Cloudflare DNS-01 challenge (CLOUDFLARE_API_TOKEN in .env,
+# needs Zone:DNS:Edit permission on the domain's zone) instead of the
+# default HTTP-01/TLS-ALPN-01 challenges. Those need Let's Encrypt to
+# reach this machine directly on ports 80/443 — fine for a plain VPS, but
+# not when the domain is proxied through Cloudflare (its edge intercepts
+# both before they reach the real origin). DNS-01 only needs the API
+# token to create a TXT record, no inbound connectivity required, so it
+# works the same whether the domain is Cloudflare-proxied or not.
 {$LUMA_DOMAIN} {
+	tls {
+		dns cloudflare {$CLOUDFLARE_API_TOKEN}
+	}
+
 	reverse_proxy luma-sync:8080
 
 	header {
