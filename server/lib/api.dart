@@ -2377,14 +2377,17 @@ tbody tr:hover td{background:#181330}
 .range-btn{background:transparent;color:#9b94b3;border:0;border-radius:7px;padding:6px 12px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;transition:color .15s,background .15s}
 .range-btn:hover{color:#ece8f7}
 .range-btn.active{background:#8a7ee0;color:#14111f;font-weight:600}
-.metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
+.metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(440px,1fr));gap:14px}
+@media (max-width:960px){.metrics-grid{grid-template-columns:1fr}}
 .metric-card{background:#151122;border:1px solid #241e36;border-radius:14px;padding:16px 18px}
 .metric-title{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#8d86a8;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px}
 .metric-title .legend{display:inline-flex;gap:10px;text-transform:none;letter-spacing:0}
 .metric-title .k.accent{color:#8a7ee0}
 .metric-title .k.green{color:#7ee08a}
 .metric-value{font-size:15px;font-weight:600;margin-top:10px;font-variant-numeric:tabular-nums}
-canvas{display:block;width:100%;height:120px}
+canvas{display:block;width:100%;height:170px;cursor:crosshair}
+.chart-tip{position:fixed;pointer-events:none;background:#1e1834;border:1px solid #352c55;border-radius:8px;padding:6px 10px;font-size:12px;line-height:1.6;color:#ece8f7;z-index:100;display:none;box-shadow:0 6px 20px rgba(0,0,0,.45);font-variant-numeric:tabular-nums;white-space:nowrap}
+.chart-tip .t{color:#8d86a8;font-size:11px}
 pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:16px;font-size:12px;line-height:1.55;max-height:400px;overflow:auto;white-space:pre-wrap;word-break:break-all;color:#b9b2d4;margin:0}
 @media (max-width:640px){.wrap{padding:24px 16px 48px}.card{padding:16px}}
 ''';
@@ -2645,8 +2648,14 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
     return ctx;
   }
 
+  // Shared tooltip element for chart hover (one for all four graphs).
+  const tip = document.createElement('div');
+  tip.className = 'chart-tip';
+  document.body.appendChild(tip);
+
   function drawGraph(canvas, series, maxValue) {
     if (!canvas) return;
+    canvas._series = series;
     const ctx = ensureHiDPI(canvas);
     if (!ctx) return; // hidden right now — history keeps accumulating either way
     const w = canvas._cssW, h = canvas._cssH;
@@ -2693,22 +2702,90 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
       ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
       ctx.stroke();
     }
+
+    // Hover crosshair + markers at the sample nearest the cursor.
+    if (canvas._hoverFrac != null) {
+      const x = canvas._hoverFrac * w;
+      ctx.strokeStyle = 'rgba(236,232,247,0.25)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x + 0.5, 0);
+      ctx.lineTo(x + 0.5, h);
+      ctx.stroke();
+      for (const s of series) {
+        const values = s.values;
+        if (!values.length) continue;
+        const i = Math.round(canvas._hoverFrac * (values.length - 1));
+        const px = values.length > 1 ? (w * i) / (values.length - 1) : 0;
+        const py = h - (Math.min(values[i], max) / max) * h;
+        ctx.fillStyle = s.color;
+        ctx.beginPath();
+        ctx.arc(px, py, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
   }
 
   function redrawAll() {
     drawGraph(document.getElementById('cpuGraph'),
-        [{ values: history.cpu, color: '#8a7ee0' }], 100);
+        [{ values: history.cpu, color: '#8a7ee0', label: 'CPU' }], 100);
     drawGraph(document.getElementById('ramGraph'),
-        [{ values: history.ram, color: '#8a7ee0' }], 100);
+        [{ values: history.ram, color: '#8a7ee0', label: 'RAM' }], 100);
     drawGraph(document.getElementById('netGraph'), [
-      { values: history.rx, color: '#8a7ee0' },
-      { values: history.tx, color: '#7ee08a' },
+      { values: history.rx, color: '#8a7ee0', label: '↓ down' },
+      { values: history.tx, color: '#7ee08a', label: '↑ up' },
     ], null);
     drawGraph(document.getElementById('diskGraph'), [
-      { values: history.diskRead, color: '#8a7ee0' },
-      { values: history.diskWrite, color: '#7ee08a' },
+      { values: history.diskRead, color: '#8a7ee0', label: '↓ read' },
+      { values: history.diskWrite, color: '#7ee08a', label: '↑ write' },
     ], null);
   }
+
+  function esc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    })[c]);
+  }
+
+  // Shows the exact value(s) at the hovered sample in a floating tooltip
+  // and redraws the chart with a crosshair. `fmt` formats one raw value
+  // (percent for CPU/RAM, bytes/s for network and disk).
+  function attachHover(canvas, fmt) {
+    if (!canvas) return;
+    canvas.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width < 1) return;
+      canvas._hoverFrac =
+          Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+      redrawAll();
+      let html = '';
+      for (const s of canvas._series || []) {
+        const values = s.values;
+        if (!values.length) continue;
+        const i = Math.round(canvas._hoverFrac * (values.length - 1));
+        html += '<div><span style="color:' + s.color + '">●</span> '
+            + esc(s.label) + ' <strong>' + esc(fmt(values[i])) + '</strong></div>';
+      }
+      if (!html) { tip.style.display = 'none'; return; }
+      tip.innerHTML = html;
+      tip.style.display = 'block';
+      const tw = tip.offsetWidth;
+      const left = e.clientX + 14 + tw > window.innerWidth
+          ? e.clientX - 14 - tw : e.clientX + 14;
+      tip.style.left = left + 'px';
+      tip.style.top = (e.clientY - 12) + 'px';
+    });
+    canvas.addEventListener('mouseleave', () => {
+      canvas._hoverFrac = null;
+      tip.style.display = 'none';
+      redrawAll();
+    });
+  }
+
+  attachHover(document.getElementById('cpuGraph'), (v) => v.toFixed(1) + '%');
+  attachHover(document.getElementById('ramGraph'), (v) => v.toFixed(1) + '%');
+  attachHover(document.getElementById('netGraph'), fmtRate);
+  attachHover(document.getElementById('diskGraph'), fmtRate);
 
   // Rebuilds the `history` arrays (as drawn on the graphs) from a server
   // history payload — same derived fields poll() computes per live sample
