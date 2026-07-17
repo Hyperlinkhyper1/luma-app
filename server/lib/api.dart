@@ -732,10 +732,16 @@ class Api {
   /// The app's user-facing "Luma AI" modes and the Gemini model each maps
   /// to. Clients only ever send the mode name; the real model names stay
   /// server-side so they can be upgraded without an app release.
+  ///
+  /// Uses Google's rolling "-latest" aliases, not a pinned version like
+  /// "gemini-2.5-flash" — pinned versions get retired for newer API
+  /// keys/projects (404 "no longer available to new users") even while
+  /// still listed in /v1beta/openai/models. The aliases always resolve to
+  /// whatever Google currently serves for that tier.
   static const _googleModeModels = {
-    'normal': 'gemini-2.5-flash-lite', // Aurora 1.0
-    'smarter': 'gemini-2.5-flash', // Nebula 1.0
-    'smartest': 'gemini-2.5-pro', // Pulsar 1.0
+    'normal': 'gemini-flash-lite-latest', // Aurora 1.0
+    'smarter': 'gemini-flash-latest', // Nebula 1.0
+    'smartest': 'gemini-pro-latest', // Pulsar 1.0
   };
 
   /// Proxies a chat-completion request to Google AI Studio's

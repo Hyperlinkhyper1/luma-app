@@ -71,6 +71,7 @@ class SettingsController extends ChangeNotifier {
     required String? aiCallsResetDate,
     required String aiProviderId,
     required String aiMode,
+    required Map<String, int> modelUsage,
     required List<String> navOrder,
     required bool useAmericanGpaScale,
     required File? file,
@@ -88,6 +89,7 @@ class SettingsController extends ChangeNotifier {
         _aiCallsResetDate = aiCallsResetDate,
         _aiProviderId = aiProviderId,
         _aiMode = aiMode,
+        _modelUsage = modelUsage,
         _navOrder = navOrder,
         _useAmericanGpaScale = useAmericanGpaScale,
         _file = file;
@@ -121,6 +123,12 @@ class SettingsController extends ChangeNotifier {
   String? _aiCallsResetDate;
   String _aiProviderId;
   String _aiMode;
+
+  /// Lifetime successful-message count per model, keyed by
+  /// `modelUsageKeyFor(...)` (see providers/ai_usage.dart) — e.g.
+  /// `"google:smartest"` or `"mistral"`. Local-device-only, like the rest of
+  /// the AI provider/key state.
+  Map<String, int> _modelUsage;
   List<String> _navOrder;
   bool _useAmericanGpaScale;
   final File? _file;
@@ -239,6 +247,18 @@ class SettingsController extends ChangeNotifier {
   void setAiMode(String mode) {
     if (mode == _aiMode) return;
     _aiMode = mode;
+    _changed();
+  }
+
+  /// Lifetime successful-message count per model (see [_modelUsage]).
+  Map<String, int> get modelUsage => Map.unmodifiable(_modelUsage);
+
+  /// Records one successful assistant reply from [modelKey] (a
+  /// `modelUsageKeyFor(...)` result). Call only after a successful send —
+  /// this is a usage stat, not a budget guard.
+  void recordModelUsage(String modelKey) {
+    _modelUsage = Map.of(_modelUsage)
+      ..update(modelKey, (n) => n + 1, ifAbsent: () => 1);
     _changed();
   }
 
@@ -381,6 +401,7 @@ class SettingsController extends ChangeNotifier {
     _aiCallsResetDate = null;
     _aiProviderId = 'anthropic';
     _aiMode = 'normal';
+    _modelUsage = const {};
     _navOrder = const [];
     _useAmericanGpaScale = false;
     _changed();
@@ -453,6 +474,7 @@ class SettingsController extends ChangeNotifier {
         'aiCallsResetDate': _aiCallsResetDate,
         'aiProviderId': _aiProviderId,
         'aiMode': _aiMode,
+        'modelUsage': _modelUsage,
         'navOrder': _navOrder,
         'useAmericanGpaScale': _useAmericanGpaScale,
       }));
@@ -494,6 +516,7 @@ class SettingsController extends ChangeNotifier {
       aiCallsResetDate: data['aiCallsResetDate'] as String?,
       aiProviderId: data['aiProviderId'] as String? ?? 'anthropic',
       aiMode: data['aiMode'] as String? ?? 'normal',
+      modelUsage: _parseModelUsage(data['modelUsage']),
       navOrder: _parseNavOrder(data['navOrder']),
       useAmericanGpaScale: data['useAmericanGpaScale'] == true,
       file: file,
@@ -512,6 +535,19 @@ class SettingsController extends ChangeNotifier {
   static int _parseAccentIndex(Object? raw) {
     if (raw is int && raw >= 0 && raw < kAccentPresets.length) return raw;
     return 0;
+  }
+
+  static Map<String, int> _parseModelUsage(Object? raw) {
+    if (raw is Map) {
+      final result = <String, int>{};
+      for (final entry in raw.entries) {
+        if (entry.key is String && entry.value is int) {
+          result[entry.key as String] = entry.value as int;
+        }
+      }
+      return result;
+    }
+    return const {};
   }
 
   static List<String> _parseNavOrder(Object? raw) {

@@ -9,6 +9,7 @@ import 'data/chat_repository.dart';
 import 'providers/ai_client.dart';
 import 'providers/ai_modes.dart';
 import 'providers/ai_providers.dart';
+import 'providers/ai_usage.dart';
 import 'providers/google_client.dart';
 import 'providers/mistral_proxy_client.dart';
 
@@ -69,9 +70,10 @@ class ChatController extends ChangeNotifier {
     final sync = _syncService;
     final serverAvailable = sync != null && sync.signedIn;
     var usingServerKey = false;
+    AiMode? googleMode;
 
     if (providerId == AiProviderId.google.name) {
-      final mode = aiModeById(_settings.aiMode);
+      final mode = googleMode = aiModeById(_settings.aiMode);
       if (apiKey != null) {
         client = GoogleClient(mode: mode);
       } else if (serverAvailable) {
@@ -133,6 +135,8 @@ class ChatController extends ChangeNotifier {
         metadataJson: result.metadataJson,
       );
       if (!usingServerKey) _settings.recordAiCall();
+      _settings.recordModelUsage(
+          modelUsageKeyFor(providerId, mode: googleMode));
     } on AiError catch (e) {
       await _repository.addMessage(conversationId, 'error', e.message);
     } catch (e) {

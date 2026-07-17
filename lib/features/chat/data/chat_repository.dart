@@ -9,12 +9,14 @@ class ChatConversationRecord {
     required this.title,
     required this.createdAt,
     required this.updatedAt,
+    required this.pinned,
   });
 
   final int id;
   final String title;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final bool pinned;
 }
 
 /// A single message within a conversation.
@@ -44,7 +46,10 @@ class ChatRepository {
 
   Stream<List<ChatConversationRecord>> watchConversations() {
     final query = _db.select(_db.chatConversations)
-      ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]);
+      ..orderBy([
+        (t) => OrderingTerm.desc(t.pinned),
+        (t) => OrderingTerm.desc(t.updatedAt),
+      ]);
     return query.watch().map(
           (rows) => rows.map(_toConversation).toList(growable: false),
         );
@@ -62,6 +67,11 @@ class ChatRepository {
       title: Value(title),
       updatedAt: Value(DateTime.now()),
     ));
+  }
+
+  Future<void> setPinned(int id, bool pinned) {
+    return (_db.update(_db.chatConversations)..where((t) => t.id.equals(id)))
+        .write(ChatConversationsCompanion(pinned: Value(pinned)));
   }
 
   Future<void> deleteConversation(int id) async {
@@ -114,6 +124,7 @@ class ChatRepository {
         title: row.title,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
+        pinned: row.pinned,
       );
 
   ChatMessageRecord _toMessage(ChatMessage row) => ChatMessageRecord(

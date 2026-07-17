@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../app/widgets.dart';
@@ -9,6 +11,7 @@ import 'ai_agent_store.dart';
 import 'ai_key_store.dart';
 import 'providers/ai_client.dart';
 import 'providers/ai_providers.dart';
+import 'providers/ai_usage.dart';
 import 'providers/google_client.dart';
 import 'providers/mistral_proxy_client.dart';
 
@@ -44,8 +47,145 @@ class AiSettingsSection extends StatelessWidget {
               providerId: settings.aiProviderId,
             ),
           ],
+          const SizedBox(height: 16),
+          _ModelUsageSection(usage: settings.modelUsage),
         ],
       ),
+    );
+  }
+}
+
+/// Which model has been used the most, across every provider — a simple
+/// lifetime message count for the 1x-weight models (Luma Assistant,
+/// Anthropic, OpenAI), and for Luma AI's three Gemini tiers a count scaled
+/// by [ModelUsageEntry.weight] so a handful of Pulsar replies (the
+/// expensive tier) don't look smaller than a pile of cheap Aurora ones.
+class _ModelUsageSection extends StatelessWidget {
+  const _ModelUsageSection({required this.usage});
+  final Map<String, int> usage;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+
+    final rows = kModelUsageEntries
+        .map((e) => (entry: e, count: usage[e.key] ?? 0))
+        .where((r) => r.count > 0)
+        .toList()
+      ..sort((a, b) =>
+          (b.count * b.entry.weight).compareTo(a.count * a.entry.weight));
+    final maxScore = rows.isEmpty
+        ? 1
+        : rows.map((r) => r.count * r.entry.weight).reduce(math.max);
+
+    return LumaCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.bar_chart_rounded, size: 16, color: luma.accent),
+              const SizedBox(width: 8),
+              Text(
+                'Model usage',
+                style: TextStyle(
+                  color: luma.textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Which model you\'ve sent the most to. Luma AI\'s smarter tiers '
+            'cost more per message, so they\'re weighted accordingly '
+            '(Nebula ×5, Pulsar ×20) rather than counted flat.',
+            style: TextStyle(color: luma.textMuted, fontSize: 11.5, height: 1.4),
+          ),
+          const SizedBox(height: 14),
+          if (rows.isEmpty)
+            Text(
+              'No messages sent yet.',
+              style: TextStyle(color: luma.textMuted, fontSize: 12),
+            )
+          else
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final r in rows) ...[
+                  _UsageRow(
+                    label: r.entry.label,
+                    count: r.count,
+                    weight: r.entry.weight,
+                    fraction: (r.count * r.entry.weight) / maxScore,
+                    top: r == rows.first,
+                  ),
+                  if (r != rows.last) const SizedBox(height: 10),
+                ],
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UsageRow extends StatelessWidget {
+  const _UsageRow({
+    required this.label,
+    required this.count,
+    required this.weight,
+    required this.fraction,
+    required this.top,
+  });
+
+  final String label;
+  final int count;
+  final int weight;
+  final double fraction;
+  final bool top;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final messages = '$count message${count == 1 ? '' : 's'}';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            if (top) ...[
+              Icon(Icons.star_rounded, size: 13, color: luma.accent),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                color: luma.textPrimary,
+                fontSize: 12.5,
+                fontWeight: top ? FontWeight.w700 : FontWeight.w600,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              weight > 1 ? '$messages · ×$weight' : messages,
+              style: TextStyle(color: luma.textMuted, fontSize: 11.5),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: LinearProgressIndicator(
+            value: fraction.clamp(0.03, 1.0),
+            minHeight: 6,
+            backgroundColor: luma.border,
+            valueColor: AlwaysStoppedAnimation(
+                top ? luma.accent : luma.accent.withValues(alpha: 0.55)),
+          ),
+        ),
+      ],
     );
   }
 }
