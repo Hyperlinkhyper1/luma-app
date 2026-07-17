@@ -2694,6 +2694,16 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
       // Smooth the polyline into a curve by drawing a quadratic segment
       // through the midpoint of each pair of points — avoids the jagged,
       // "low-res" look of a raw point-to-point line with no extra libs.
+      // The very first hop goes to mid(0,1) (a tiny straight nub) instead of
+      // curving straight from pts[0], so every quadratic segment afterward
+      // is symmetric — control point pts[i] sits at t=0.5 between two
+      // midpoints. Without this, the first segment was the odd one out
+      // (start = pts[0] exactly, not a midpoint), so the on-curve point
+      // near pts[1] landed off to the side of where a hover marker placed
+      // at pts[1] expected it to be.
+      if (pts.length > 2) {
+        ctx.lineTo((pts[0].x + pts[1].x) / 2, (pts[0].y + pts[1].y) / 2);
+      }
       for (let i = 1; i < pts.length - 1; i++) {
         const mx = (pts[i].x + pts[i + 1].x) / 2;
         const my = (pts[i].y + pts[i + 1].y) / 2;
