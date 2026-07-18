@@ -27,8 +27,8 @@
   }
   ui.ic = ic;
 
-  const MODE_ICON = { metro: 'metro', tram: 'tram', bus: 'bus', train: 'train' };
-  const MODE_TINT = { metro: '#e05252', tram: '#2e9e4f', bus: '#f2a33c', train: '#7a6ff0' };
+  const MODE_ICON = { metro: 'metro', tram: 'tram', bus: 'bus', train: 'train', hst: 'hst' };
+  const MODE_TINT = { metro: '#e05252', tram: '#2e9e4f', bus: '#f2a33c', train: '#7a6ff0', hst: '#d452c4' };
   ui.MODE_TINT = MODE_TINT;
 
   // ── Toasts & banners ─────────────────────────────────────────────────
@@ -57,7 +57,7 @@
   // ── Mode / tool / overlay switching ──────────────────────────────────
   function refreshRailHighlight() {
     if (SB.map3d.ready) {
-      SB.map3d.setRailMode(ui.mode === 'train' && (ui.tool === 'station' || ui.tool === 'line'));
+      SB.map3d.setRailMode(SB.isRailMode(ui.mode) && (ui.tool === 'station' || ui.tool === 'line'), ui.mode);
     }
   }
 
@@ -85,18 +85,19 @@
 
   ui.hintForTool = function () {
     const M = SB.MODES[ui.mode];
+    const role = M.role ? M.role + ' — ' : '';
     const hints = {
       select: 'Click a stop or line to inspect it. Drag to pan, scroll to zoom, right-drag to rotate.',
-      station: ui.mode === 'train'
-        ? 'Trains only call at real stations — highlighted on the map. Click one to lease it.'
+      station: SB.isRailMode(ui.mode)
+        ? role + M.label + ' services only call at real stations, highlighted on the map. Click one to lease it.'
         : ui.mode === 'metro'
-          ? 'Click the map to dig a metro station. Denser areas cost more.'
-          : 'Click near a street to place a ' + M.label.toLowerCase() + ' stop — it snaps to the road.',
-      line: ui.mode === 'train'
-        ? 'Click real stations in order — the route follows existing tracks. Enter or double-click to finish.'
+          ? role + 'click the map to dig a metro station. Denser areas cost more.'
+          : role + 'click near a street to place a ' + M.label.toLowerCase() + ' stop — it snaps to the road.',
+      line: SB.isRailMode(ui.mode)
+        ? role + 'click real stations in order — the route follows existing tracks. Enter to finish.'
         : ui.mode === 'metro'
-          ? 'Click stations in order to bore tunnels between them. Enter or double-click to finish.'
-          : 'Click ' + M.label.toLowerCase() + ' stops in order — the route follows real streets. Enter to finish.',
+          ? role + 'click stations in order to bore tunnels between them. Enter to finish.'
+          : role + 'click stops in order — the route follows real streets. Enter to finish.',
       bulldoze: 'Click a stop to demolish it (25% refund). Click a line to remove the whole line.',
     };
     ui.hint(hints[ui.tool]);

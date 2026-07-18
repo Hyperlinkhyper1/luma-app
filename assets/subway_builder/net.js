@@ -242,11 +242,19 @@
       'way["railway"="rail"](around:' + radius + ',' + lat + ',' + lng + ');' +
       'node["railway"~"^(station|halt)$"]["station"!~"subway|light_rail"](around:' + radius + ',' + lat + ',' + lng + ');' +
       ');out geom;';
-    const res = await fetch('https://overpass-api.de/api/interpreter', {
-      method: 'POST',
-      body: 'data=' + encodeURIComponent(q),
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    });
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(), 20000);
+    let res;
+    try {
+      res = await fetch('https://overpass-api.de/api/interpreter', {
+        method: 'POST',
+        body: 'data=' + encodeURIComponent(q),
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        signal: abort.signal,
+      });
+    } finally {
+      clearTimeout(timer);
+    }
     if (!res.ok) throw new Error('overpass ' + res.status);
     const data = await res.json();
     const g = newGraph();

@@ -110,6 +110,7 @@ flutter:
     - assets/space_colony/
     - assets/city_planner/
     - assets/subway_builder/
+    - assets/subway_builder/vendor/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

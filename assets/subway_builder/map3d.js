@@ -14,21 +14,60 @@
 
   function emptyFC() { return { type: 'FeatureCollection', features: [] }; }
 
+  // Visible boot status — a broken map must never be a silent blank screen.
+  const bootErrors = [];
+  function showBootError(title) {
+    const el = document.getElementById('bootstatus');
+    if (!el) return;
+    el.style.display = 'flex';
+    el.innerHTML =
+      '<div class="bs-card"><b>' + title + '</b>' +
+      (bootErrors.length ? '<div class="bs-err">' + bootErrors.slice(0, 3).join('<br>') + '</div>' : '') +
+      '<div class="bs-sub">Subway Builder needs an internet connection for OpenStreetMap tiles.</div>' +
+      '<button onclick="location.reload()">Retry</button></div>';
+  }
+
   map3d.init = function (onReady) {
-    const map = (map3d.map = new maplibregl.Map({
-      container: 'map',
-      style: STYLE_URL,
-      center: [-73.985, 40.735],
-      zoom: 11.5,
-      pitch: 0,
-      attributionControl: { compact: true },
-      maxPitch: 70,
-    }));
+    let map;
+    try {
+      map = map3d.map = new maplibregl.Map({
+        container: 'map',
+        style: STYLE_URL,
+        center: [-73.985, 40.735],
+        zoom: 11.5,
+        pitch: 0,
+        attributionControl: { compact: true },
+        maxPitch: 70,
+      });
+    } catch (e) {
+      bootErrors.push(String(e && e.message || e));
+      showBootError('The 3D map couldn’t start (WebGL unavailable in this webview)');
+      return;
+    }
     map.dragRotate.enable();
     map.touchZoomRotate.enable();
     map.doubleClickZoom.disable(); // double-click finishes line drafts
 
+    let loaded = false;
+    map.on('error', (e) => {
+      const msg = String((e && e.error && e.error.message) || 'map error');
+      if (!loaded && bootErrors.length < 6 && !bootErrors.includes(msg)) bootErrors.push(msg);
+    });
+    const bootTimer = setTimeout(() => {
+      if (!loaded) showBootError('The map is taking too long to load');
+    }, 16000);
+    // Webviews can lay out late — kick the canvas size a few times.
+    let kicks = 0;
+    const resizeKick = setInterval(() => {
+      try { map.resize(); } catch (e) { /* ignore */ }
+      if (++kicks >= 8) clearInterval(resizeKick);
+    }, 700);
+
     map.on('load', () => {
+      loaded = true;
+      clearTimeout(bootTimer);
+      const bs = document.getElementById('bootstatus');
+      if (bs) bs.style.display = 'none';
       // Find the style's vector source (OpenMapTiles schema).
       for (const [id, src] of Object.entries(map.getStyle().sources)) {
         if (src.type === 'vector') { vecSource = id; break; }
@@ -174,7 +213,7 @@
       }
     }
 
-    const MODE_W = { metro: 5, train: 4.2, tram: 3.4, bus: 2.8 };
+    const MODE_W = { metro: 5, train: 4.2, hst: 4.6, tram: 3.4, bus: 2.8 };
     const lineFeats = [];
     for (const line of st.lines) {
       const selected = uiState.selection && uiState.selection.type === 'line' && uiState.selection.id === line.id;
@@ -199,7 +238,7 @@
     }
     map3d.map.getSource('sb-lines').setData({ type: 'FeatureCollection', features: lineFeats });
 
-    const MODE_R = { metro: 5.4, train: 6.2, tram: 4.2, bus: 3.4 };
+    const MODE_R = { metro: 5.4, train: 6.2, hst: 6.6, tram: 4.2, bus: 3.4 };
     const stFeats = [];
     for (const s of st.stations) {
       const lines = SB.game.linesThrough(s.id);
@@ -214,7 +253,8 @@
           id: s.id,
           r: (MODE_R[s.mode] || 5) + (interchange ? 1.8 : 0),
           rw: interchange ? 2.6 : s.mode === 'bus' ? 1.6 : 2.1,
-          ring: selected ? '#2f6fdb' : inDraft ? (uiState.draftColor || '#2f6fdb') : orphan ? '#a49c8a' : s.mode === 'train' ? '#5a4fcf' : '#2b2b33',
+          ring: selected ? '#2f6fdb' : inDraft ? (uiState.draftColor || '#2f6fdb') : orphan ? '#a49c8a'
+            : s.mode === 'train' ? '#5a4fcf' : s.mode === 'hst' ? '#b03aa4' : '#2b2b33',
           label: s.name,
         },
       });
@@ -222,8 +262,8 @@
     map3d.map.getSource('sb-stations').setData({ type: 'FeatureCollection', features: stFeats });
   };
 
-  /* Real railway stations offered for leasing, shown in Train mode. */
-  map3d.setRailMode = function (on) {
+  /* Real railway stations offered for leasing, shown in rail modes. */
+  map3d.setRailMode = function (on, mode) {
     if (!map3d.ready) return;
     if (map3d.map.getLayer('sb-railnet')) {
       map3d.map.setLayoutProperty('sb-railnet', 'visibility', on ? 'visible' : 'none');
@@ -231,7 +271,7 @@
     const feats = [];
     if (on) {
       const taken = new Set(SB.game.state.stations
-        .filter((s) => s.mode === 'train').map((s) => Math.round(s.x) + ',' + Math.round(s.y)));
+        .filter((s) => s.mode === (mode || 'train')).map((s) => Math.round(s.x) + ',' + Math.round(s.y)));
       for (const rs of SB.net.railStations) {
         if (taken.has(Math.round(rs.x) + ',' + Math.round(rs.y))) continue;
         feats.push({

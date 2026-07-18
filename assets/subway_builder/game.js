@@ -10,37 +10,52 @@
   const SAVE_KEY = 'subway_builder_geo_v1';
 
   // ── Mode catalog ─────────────────────────────────────────────────────
+  // Each mode has a distance role, enforced per segment: metro and tram are
+  // short-hop modes (maxSegM), train and high-speed rail are long-hop modes
+  // (minSegM); the bus does any distance, it's just slow.
   const MODES = {
     metro: {
-      label: 'Metro', vehicle: 'train',
+      label: 'Metro', vehicle: 'train', role: 'Short hops · fast · underground',
       speedKmh: 60, cap: 600, dwellMin: 0.75, access: 950,
       stationBase: 60e6, densMult: 0.6, perKm: 45e6, waterMult: 2.6,
       vehicleCost: 25e6, vehicleRefund: 12e6, vehicleOpDay: 6000,
       stationOpDay: 4000, trackOpKmDay: 1500, maxVehicles: 14, spacing: 400,
+      maxSegM: 3000,
     },
     tram: {
-      label: 'Tram', vehicle: 'tram',
-      speedKmh: 24, cap: 220, dwellMin: 0.5, access: 650,
-      stationBase: 6e6, densMult: 0.4, perKm: 14e6, waterMult: 1,
-      vehicleCost: 4.5e6, vehicleRefund: 2e6, vehicleOpDay: 1800,
-      stationOpDay: 600, trackOpKmDay: 500, maxVehicles: 16, spacing: 280,
+      label: 'Tram', vehicle: 'tram', role: 'Short hops · cheap · on streets',
+      speedKmh: 22, cap: 220, dwellMin: 0.5, access: 650,
+      stationBase: 4e6, densMult: 0.4, perKm: 10e6, waterMult: 1,
+      vehicleCost: 4e6, vehicleRefund: 1.8e6, vehicleOpDay: 1600,
+      stationOpDay: 500, trackOpKmDay: 450, maxVehicles: 16, spacing: 280,
+      maxSegM: 1600,
     },
     bus: {
-      label: 'Bus', vehicle: 'bus',
-      speedKmh: 19, cap: 90, dwellMin: 0.35, access: 450,
+      label: 'Bus', vehicle: 'bus', role: 'Any distance · cheapest · slow',
+      speedKmh: 17, cap: 90, dwellMin: 0.35, access: 450,
       stationBase: 400e3, densMult: 0.3, perKm: 150e3, waterMult: 1,
       vehicleCost: 700e3, vehicleRefund: 300e3, vehicleOpDay: 900,
       stationOpDay: 120, trackOpKmDay: 0, maxVehicles: 20, spacing: 220,
     },
     train: {
-      label: 'Train', vehicle: 'train',
-      speedKmh: 85, cap: 900, dwellMin: 1.2, access: 1400,
+      label: 'Train', vehicle: 'train', role: 'Long hops · real stations & tracks',
+      speedKmh: 90, cap: 900, dwellMin: 1.2, access: 1400,
       stationBase: 25e6, densMult: 0.2, perKm: 4e6, waterMult: 1,
       vehicleCost: 35e6, vehicleRefund: 15e6, vehicleOpDay: 9000,
       stationOpDay: 6000, trackOpKmDay: 800, maxVehicles: 10, spacing: 0,
+      minSegM: 2500, rail: true,
+    },
+    hst: {
+      label: 'High-speed', vehicle: 'train', role: 'Very long hops · very fast · few stops',
+      speedKmh: 230, cap: 550, dwellMin: 3, access: 2500,
+      stationBase: 65e6, densMult: 0.25, perKm: 15e6, waterMult: 1,
+      vehicleCost: 90e6, vehicleRefund: 40e6, vehicleOpDay: 26000,
+      stationOpDay: 9000, trackOpKmDay: 2000, maxVehicles: 8, spacing: 0,
+      minSegM: 6000, rail: true,
     },
   };
   SB.MODES = MODES;
+  SB.isRailMode = function (mode) { return !!MODES[mode].rail; };
 
   const ECON = {
     demolishRefund: 0.25,
@@ -215,6 +230,13 @@
   /* Returns {pts (lnglat), len, waterM, cost} or {err}. */
   game.routeSegment = function (mode, a, b) {
     const M = MODES[mode];
+    const chord = Math.hypot(b.x - a.x, b.y - a.y);
+    if (M.maxSegM && chord > M.maxSegM) {
+      return { err: M.label + ' hops max ' + (M.maxSegM / 1000).toFixed(1) + ' km between stops — add a stop in between, or use Train for long distances' };
+    }
+    if (M.minSegM && chord < M.minSegM) {
+      return { err: M.label + ' is for long hops (min ' + (M.minSegM / 1000).toFixed(0) + ' km between stations) — use Metro or Tram for short ones' };
+    }
     if (mode === 'metro') {
       const len = Math.hypot(b.x - a.x, b.y - a.y);
       const steps = Math.max(2, Math.ceil(len / 90));
@@ -226,11 +248,11 @@
       const cost = ((len - waterM) / 1000) * M.perKm + (waterM / 1000) * M.perKm * M.waterMult;
       return { pts: [[a.lng, a.lat], [b.lng, b.lat]], len, waterM, cost };
     }
-    const graph = mode === 'train' ? SB.net.rails : SB.net.roads;
-    const snap = mode === 'train' ? 450 : 320;
+    const graph = M.rail ? SB.net.rails : SB.net.roads;
+    const snap = M.rail ? 450 : 320;
     const r = SB.net.route(graph, a.x, a.y, b.x, b.y, snap);
     if (!r) {
-      return { err: mode === 'train'
+      return { err: M.rail
         ? 'No rail connection exists between these stations'
         : 'No street route between these stops' };
     }
@@ -290,7 +312,7 @@
 
   // ── Actions ──────────────────────────────────────────────────────────
   game.addStation = function (lng, lat, mode) {
-    if (mode === 'train') return { ok: false, err: 'Trains only call at real railway stations — click one' };
+    if (MODES[mode].rail) return { ok: false, err: MODES[mode].label + ' services only call at real railway stations — click one' };
     const [x, y] = SB.geo.toM(lng, lat);
     const check = game.canPlaceStation(x, y, mode);
     if (!check.ok) return check;
@@ -318,17 +340,18 @@
     return { ok: true, station, cost: check.cost };
   };
 
-  /* Lease a real railway station (from SB.net.railStations). */
-  game.addTrainStation = function (real) {
+  /* Lease a real railway station (from SB.net.railStations) for a rail mode. */
+  game.addTrainStation = function (real, mode) {
+    mode = mode || 'train';
     const st = game.state;
     const existing = st.stations.find(
-      (s) => s.mode === 'train' && Math.hypot(s.x - real.x, s.y - real.y) < 120);
+      (s) => s.mode === mode && Math.hypot(s.x - real.x, s.y - real.y) < 120);
     if (existing) return { ok: true, station: existing, cost: 0, existing: true };
-    const cost = game.stationCostAt(real.x, real.y, 'train');
+    const cost = game.stationCostAt(real.x, real.y, mode);
     if (cost > st.money) return { ok: false, err: 'Not enough funds', cost };
     const station = {
       id: st.nextStationId++,
-      mode: 'train', real: true,
+      mode, real: true,
       lng: real.lng, lat: real.lat, x: real.x, y: real.y,
       name: real.name,
     };

@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:webview_windows/webview_windows.dart';
+import 'package:ffi/ffi.dart';
+import 'package:win32/win32.dart' as win32;
 
 /// Resolves a Flutter asset's on-disk path for a Windows desktop build.
 ///
@@ -38,6 +40,26 @@ class _WindowsWebviewState extends State<WindowsWebview> {
   final _controller = WebviewController();
   bool _ready = false;
 
+  /// WebView2 in composition mode is often flagged as occluded by Chromium's
+  /// native-window occlusion tracker, which marks the page hidden and freezes
+  /// requestAnimationFrame — WebGL content (e.g. Subway Builder's map) then
+  /// never renders. These browser arguments disable that. Must be set before
+  /// the process's first WebView2 environment is created; harmless after.
+  static bool _envConfigured = false;
+  static void _configureWebview2Env() {
+    if (_envConfigured) return;
+    _envConfigured = true;
+    final name = 'WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS'.toNativeUtf16();
+    final value =
+        '--disable-features=CalculateNativeWinOcclusion '
+                '--disable-background-timer-throttling '
+                '--disable-renderer-backgrounding'
+            .toNativeUtf16();
+    win32.SetEnvironmentVariable(name, value);
+    calloc.free(name);
+    calloc.free(value);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -45,6 +67,7 @@ class _WindowsWebviewState extends State<WindowsWebview> {
   }
 
   Future<void> _init() async {
+    _configureWebview2Env();
     await _controller.initialize();
     await _controller.setBackgroundColor(Colors.transparent);
     await _controller.setPopupWindowPolicy(WebviewPopupWindowPolicy.deny);

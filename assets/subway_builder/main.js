@@ -69,10 +69,10 @@
     }
 
     if (ui.tool === 'station') {
-      if (ui.mode === 'train') {
+      if (SB.isRailMode(ui.mode)) {
         const rs = map3d.railStationAtPoint(e.point);
-        if (!rs) { ui.toast('Trains only call at real railway stations — click a highlighted one', 'bad'); return; }
-        const r = game.addTrainStation(rs);
+        if (!rs) { ui.toast(SB.MODES[ui.mode].label + ' services only call at real railway stations — click a highlighted one', 'bad'); return; }
+        const r = game.addTrainStation(rs, ui.mode);
         if (!r.ok) ui.toast(r.err, 'bad');
         else if (!r.existing) ui.toast(r.station.name + ' leased · ' + SB.fmtMoney(r.cost));
         ui.updateAll();
@@ -87,11 +87,11 @@
 
     if (ui.tool === 'line') {
       let target = station;
-      // In train mode, clicking an unleased real station leases it on the fly.
-      if (!target && ui.mode === 'train') {
+      // In rail modes, clicking an unleased real station leases it on the fly.
+      if (!target && SB.isRailMode(ui.mode)) {
         const rs = map3d.railStationAtPoint(e.point);
         if (rs) {
-          const r = game.addTrainStation(rs);
+          const r = game.addTrainStation(rs, ui.mode);
           if (!r.ok) { ui.toast(r.err, 'bad'); return; }
           if (!r.existing) ui.toast(r.station.name + ' leased · ' + SB.fmtMoney(r.cost));
           target = r.station;
@@ -177,7 +177,7 @@
     mouseLL = e.lngLat;
     const station = map3d.stationAtPoint(e.point);
     hover = station ? { type: 'station', id: station.id } : null;
-    if (ui.tool === 'station' && ui.mode !== 'train') {
+    if (ui.tool === 'station' && !SB.isRailMode(ui.mode)) {
       const [x, y] = SB.geo.toM(e.lngLat.lng, e.lngLat.lat);
       ghostOk = game.canPlaceStation(x, y, ui.mode).ok;
     }
@@ -225,6 +225,7 @@
       case '2': ui.setMode('tram'); break;
       case '3': ui.setMode('bus'); break;
       case '4': ui.setMode('train'); break;
+      case '5': ui.setMode('hst'); break;
       default: return;
     }
     e.preventDefault();
@@ -263,7 +264,7 @@
       advanceTime(dt);
       map3d.updateTrains();
       map3d.updateDraft(ui.mapState(), mouseLL);
-      map3d.updateGhost({ tool: ui.mode === 'train' ? 'none' : ui.tool, ghostOk, mode: ui.mode }, mouseLL);
+      map3d.updateGhost({ tool: SB.isRailMode(ui.mode) ? 'none' : ui.tool, ghostOk, mode: ui.mode }, mouseLL);
     }
     requestAnimationFrame(frame);
   }
