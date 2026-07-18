@@ -131,6 +131,16 @@
       "version": "1.0.0"
     },
     {
+      "id": "subway-builder",
+      "name": "Subway Builder",
+      "description": "A transit simulator on the real world: pick any city on Earth and build metro, tram, bus and train networks on a live 3D OpenStreetMap map. Trains only call at real stations and run on tracks that really exist; buses and trams pathfind along real streets. A commuter simulation fed by real land use decides, trip by trip, whether your network beats the car.",
+      "icon": "directions_subway",
+      "category": "Games",
+      "tags": ["Games", "Simulation"],
+      "free": true,
+      "version": "1.0.0"
+    },
+    {
       "id": "space-colony",
       "name": "Space Colony",
       "description": "Build and manage a human settlement on an unexplored planet. Balance power, oxygen, water and food, research new tech, automate production, and survive random events like meteor showers and dust storms.",

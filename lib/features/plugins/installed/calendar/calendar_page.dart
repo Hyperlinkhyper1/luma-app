@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -20,7 +22,23 @@ class CalendarPage extends StatefulWidget {
   State<CalendarPage> createState() => _CalendarPageState();
 }
 
-enum _View { month, agenda }
+enum _View { day, week, month, agenda }
+
+extension on _View {
+  String get label => switch (this) {
+        _View.day => 'Day',
+        _View.week => 'Week',
+        _View.month => 'Month',
+        _View.agenda => 'Agenda',
+      };
+
+  IconData get icon => switch (this) {
+        _View.day => Icons.calendar_view_day_rounded,
+        _View.week => Icons.calendar_view_week_rounded,
+        _View.month => Icons.calendar_view_month_rounded,
+        _View.agenda => Icons.view_agenda_rounded,
+      };
+}
 
 class _CalendarPageState extends State<CalendarPage> {
   final _search = TextEditingController();
@@ -52,10 +70,52 @@ class _CalendarPageState extends State<CalendarPage> {
     });
   }
 
-  void _shiftMonth(int by) => setState(
-      () => _monthCursor = DateTime(_monthCursor.year, _monthCursor.month + by));
+  /// Prev/next steps by day, week or month depending on the active view.
+  void _shift(int by) {
+    setState(() {
+      switch (_view) {
+        case _View.day:
+          _selectedDay = _selectedDay.add(Duration(days: by));
+          _monthCursor = DateTime(_selectedDay.year, _selectedDay.month);
+        case _View.week:
+          _selectedDay = _selectedDay.add(Duration(days: 7 * by));
+          _monthCursor = DateTime(_selectedDay.year, _selectedDay.month);
+        case _View.month:
+        case _View.agenda:
+          _monthCursor =
+              DateTime(_monthCursor.year, _monthCursor.month + by);
+      }
+    });
+  }
 
   void _selectDay(DateTime day) => setState(() => _selectedDay = _dateOnly(day));
+
+  void _showDay(DateTime day) => setState(() {
+        _selectedDay = _dateOnly(day);
+        _monthCursor = DateTime(day.year, day.month);
+        _view = _View.day;
+      });
+
+  DateTime get _weekStart =>
+      _selectedDay.subtract(Duration(days: _selectedDay.weekday - 1));
+
+  String get _toolbarLabel {
+    switch (_view) {
+      case _View.day:
+        return DateFormat('d MMMM yyyy').format(_selectedDay);
+      case _View.week:
+        final start = _weekStart;
+        final end = start.add(const Duration(days: 6));
+        if (start.month == end.month) {
+          return '${start.day} – ${DateFormat('d MMM yyyy').format(end)}';
+        }
+        return '${DateFormat('d MMM').format(start)} – '
+            '${DateFormat('d MMM yyyy').format(end)}';
+      case _View.month:
+      case _View.agenda:
+        return DateFormat('MMMM yyyy').format(_monthCursor);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,14 +137,13 @@ class _CalendarPageState extends State<CalendarPage> {
                 return Column(
                   children: [
                     _Toolbar(
-                      monthLabel: DateFormat('MMMM yyyy').format(_monthCursor),
+                      monthLabel: _toolbarLabel,
                       view: _view,
                       search: _search,
-                      searching: _query.isNotEmpty,
                       onSearch: (v) => setState(() => _query = v.trim()),
                       onView: (v) => setState(() => _view = v),
-                      onPrev: () => _shiftMonth(-1),
-                      onNext: () => _shiftMonth(1),
+                      onPrev: () => _shift(-1),
+                      onNext: () => _shift(1),
                       onToday: _goToday,
                       onNew: () => showEventEditor(context, repo,
                           initialDate: _selectedDay),
@@ -112,6 +171,19 @@ class _CalendarPageState extends State<CalendarPage> {
     if (_view == _View.agenda) {
       return _AgendaView(repo: repo, events: events);
     }
+    if (_view == _View.day || _view == _View.week) {
+      final start = _view == _View.day ? _selectedDay : _weekStart;
+      final days = [
+        for (var i = 0; i < (_view == _View.day ? 1 : 7); i++)
+          start.add(Duration(days: i)),
+      ];
+      return _TimeGridView(
+        days: days,
+        events: events,
+        repo: repo,
+        onShowDay: _view == _View.week ? _showDay : null,
+      );
+    }
     return _MonthView(
       monthCursor: _monthCursor,
       selectedDay: _selectedDay,
@@ -130,7 +202,6 @@ class _Toolbar extends StatelessWidget {
     required this.monthLabel,
     required this.view,
     required this.search,
-    required this.searching,
     required this.onSearch,
     required this.onView,
     required this.onPrev,
@@ -142,7 +213,6 @@ class _Toolbar extends StatelessWidget {
   final String monthLabel;
   final _View view;
   final TextEditingController search;
-  final bool searching;
   final ValueChanged<String> onSearch;
   final ValueChanged<_View> onView;
   final VoidCallback onPrev;
@@ -173,9 +243,11 @@ class _Toolbar extends StatelessWidget {
                   icon: Icons.chevron_right_rounded, onTap: onNext),
               const SizedBox(width: 12),
               SizedBox(
-                width: 168,
+                width: 204,
                 child: Text(
                   monthLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 20,
@@ -194,7 +266,7 @@ class _Toolbar extends StatelessWidget {
             children: [
               SizedBox(width: 220, child: _SearchField(search, onSearch)),
               const SizedBox(width: 12),
-              _ViewToggle(view: view, searching: searching, onView: onView),
+              _ViewMenuButton(view: view, onView: onView),
               const SizedBox(width: 12),
               LumaPrimaryButton(
                 label: 'New event',
@@ -249,19 +321,156 @@ class _SearchField extends StatelessWidget {
   }
 }
 
-class _ViewToggle extends StatelessWidget {
-  const _ViewToggle(
-      {required this.view, required this.searching, required this.onView});
+/// Google-Calendar-style view switcher: a bordered "Month ▾" button that
+/// opens a dropdown listing Day / Week / Month / Agenda.
+class _ViewMenuButton extends StatefulWidget {
+  const _ViewMenuButton({required this.view, required this.onView});
   final _View view;
-  final bool searching;
   final ValueChanged<_View> onView;
 
   @override
+  State<_ViewMenuButton> createState() => _ViewMenuButtonState();
+}
+
+class _ViewMenuButtonState extends State<_ViewMenuButton> {
+  final _menu = MenuController();
+  bool _hovering = false;
+
+  @override
   Widget build(BuildContext context) {
-    return LumaSegmentedTabs(
-      tabs: const ['Month', 'Agenda'],
-      selectedIndex: searching ? -1 : view.index,
-      onSelect: (i) => onView(_View.values[i]),
+    final luma = context.luma;
+    return MenuAnchor(
+      controller: _menu,
+      style: MenuStyle(
+        backgroundColor: WidgetStatePropertyAll(luma.surface),
+        surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+        elevation: const WidgetStatePropertyAll(10),
+        padding: const WidgetStatePropertyAll(
+            EdgeInsets.symmetric(vertical: 6, horizontal: 6)),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: luma.border),
+          ),
+        ),
+      ),
+      alignmentOffset: const Offset(0, 6),
+      menuChildren: [
+        for (final v in _View.values)
+          _ViewMenuItem(
+            view: v,
+            selected: v == widget.view,
+            onTap: () {
+              _menu.close();
+              widget.onView(v);
+            },
+          ),
+      ],
+      builder: (context, controller, _) {
+        return MouseRegion(
+          cursor: SystemMouseCursors.click,
+          onEnter: (_) => setState(() => _hovering = true),
+          onExit: (_) => setState(() => _hovering = false),
+          child: GestureDetector(
+            onTap: () => controller.isOpen ? controller.close() : controller.open(),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              height: 34,
+              padding: const EdgeInsets.only(left: 12, right: 6),
+              decoration: BoxDecoration(
+                color: _hovering || controller.isOpen
+                    ? luma.surfaceHover
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(9),
+                border: Border.all(color: luma.border),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(widget.view.icon, size: 16, color: luma.textSecondary),
+                  const SizedBox(width: 7),
+                  Text(
+                    widget.view.label,
+                    style: TextStyle(
+                      color: luma.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  Icon(Icons.arrow_drop_down_rounded,
+                      size: 22, color: luma.textMuted),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ViewMenuItem extends StatefulWidget {
+  const _ViewMenuItem(
+      {required this.view, required this.selected, required this.onTap});
+  final _View view;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  State<_ViewMenuItem> createState() => _ViewMenuItemState();
+}
+
+class _ViewMenuItemState extends State<_ViewMenuItem> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          width: 176,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+          decoration: BoxDecoration(
+            color: widget.selected
+                ? luma.accentSubtle
+                : _hovering
+                    ? luma.surfaceHover
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                widget.view.icon,
+                size: 17,
+                color: widget.selected ? luma.accent : luma.textSecondary,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  widget.view.label,
+                  style: TextStyle(
+                    color:
+                        widget.selected ? luma.accent : luma.textPrimary,
+                    fontSize: 13,
+                    fontWeight:
+                        widget.selected ? FontWeight.w700 : FontWeight.w600,
+                  ),
+                ),
+              ),
+              if (widget.selected)
+                Icon(Icons.check_rounded, size: 16, color: luma.accent),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1126,6 +1335,515 @@ class _MetaChip extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Day / Week time grid ────────────────────────────────────────────────
+
+/// Google-Calendar-style time grid: one column per day, hour lines, timed
+/// events as positioned blocks, all-day events in a top strip and a "now"
+/// line on today. Used for both the Day (1 column) and Week (7 columns)
+/// views.
+class _TimeGridView extends StatefulWidget {
+  const _TimeGridView({
+    required this.days,
+    required this.events,
+    required this.repo,
+    this.onShowDay,
+  });
+
+  final List<DateTime> days;
+  final List<EventRecord> events;
+  final CalendarRepository repo;
+
+  /// Week view passes this so tapping a day header zooms into that day.
+  final ValueChanged<DateTime>? onShowDay;
+
+  @override
+  State<_TimeGridView> createState() => _TimeGridViewState();
+}
+
+class _TimeGridViewState extends State<_TimeGridView> {
+  static const _hourHeight = 56.0;
+  static const _gutterWidth = 58.0;
+
+  // Open on 07:00 so the working day is in view.
+  final _scroll = ScrollController(initialScrollOffset: 7 * _hourHeight);
+  Timer? _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    // Keeps the "now" line moving while the grid stays open.
+    _ticker = Timer.periodic(
+        const Duration(minutes: 1), (_) => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final rangeStart = widget.days.first;
+    final rangeEnd = widget.days.last.add(const Duration(days: 1));
+    final occurrences =
+        expandOccurrences(widget.events, rangeStart, rangeEnd);
+    final allDay = occurrences.where((o) => o.allDay).toList();
+    final timed = occurrences.where((o) => !o.allDay).toList();
+    final hasAllDay = allDay.isNotEmpty;
+
+    return Column(
+      children: [
+        _TimeGridHeader(days: widget.days, onShowDay: widget.onShowDay),
+        if (hasAllDay) ...[
+          Container(height: 1, color: luma.border),
+          _AllDayStrip(
+            days: widget.days,
+            occurrences: allDay,
+            repo: widget.repo,
+          ),
+        ],
+        Container(height: 1, color: luma.border),
+        Expanded(
+          child: SingleChildScrollView(
+            controller: _scroll,
+            child: SizedBox(
+              height: 24 * _hourHeight,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _HourGutter(hourHeight: _hourHeight, width: _gutterWidth),
+                  for (final day in widget.days)
+                    Expanded(
+                      child: _DayColumn(
+                        day: day,
+                        occurrences: timed,
+                        hourHeight: _hourHeight,
+                        repo: widget.repo,
+                      ),
+                    ),
+                  const SizedBox(width: 8),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TimeGridHeader extends StatelessWidget {
+  const _TimeGridHeader({required this.days, required this.onShowDay});
+  final List<DateTime> days;
+  final ValueChanged<DateTime>? onShowDay;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final today = _dateOnly(DateTime.now());
+    return Padding(
+      padding: const EdgeInsets.only(
+          left: _TimeGridViewState._gutterWidth, right: 8),
+      child: Row(
+        children: [
+          for (final day in days)
+            Expanded(
+              child: _DayHeaderCell(
+                day: day,
+                isToday: _sameDay(day, today),
+                onTap: onShowDay == null ? null : () => onShowDay!(day),
+                luma: luma,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DayHeaderCell extends StatefulWidget {
+  const _DayHeaderCell({
+    required this.day,
+    required this.isToday,
+    required this.onTap,
+    required this.luma,
+  });
+  final DateTime day;
+  final bool isToday;
+  final VoidCallback? onTap;
+  final LumaPalette luma;
+
+  @override
+  State<_DayHeaderCell> createState() => _DayHeaderCellState();
+}
+
+class _DayHeaderCellState extends State<_DayHeaderCell> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = widget.luma;
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          DateFormat('EEE').format(widget.day).toUpperCase(),
+          style: TextStyle(
+            color: widget.isToday ? luma.accent : luma.textMuted,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.6,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Container(
+          width: 30,
+          height: 30,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: widget.isToday
+                ? luma.accent
+                : _hovering
+                    ? luma.surfaceHover
+                    : Colors.transparent,
+            shape: BoxShape.circle,
+          ),
+          child: Text(
+            '${widget.day.day}',
+            style: TextStyle(
+              color: widget.isToday ? luma.onAccent : luma.textPrimary,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: widget.onTap == null
+          ? Center(child: content)
+          : MouseRegion(
+              cursor: SystemMouseCursors.click,
+              onEnter: (_) => setState(() => _hovering = true),
+              onExit: (_) => setState(() => _hovering = false),
+              child: GestureDetector(
+                onTap: widget.onTap,
+                behavior: HitTestBehavior.opaque,
+                child: Center(child: content),
+              ),
+            ),
+    );
+  }
+}
+
+class _AllDayStrip extends StatelessWidget {
+  const _AllDayStrip({
+    required this.days,
+    required this.occurrences,
+    required this.repo,
+  });
+  final List<DateTime> days;
+  final List<EventOccurrence> occurrences;
+  final CalendarRepository repo;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: _TimeGridViewState._gutterWidth,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 8, right: 8),
+              child: Text(
+                'all-day',
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                  color: luma.textMuted,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+          for (final day in days)
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(2, 5, 2, 5),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final o in occurrences.where((o) => o.coversDay(day))) ...[
+                      _MiniChip(occurrence: o, repo: repo),
+                      const SizedBox(height: 3),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HourGutter extends StatelessWidget {
+  const _HourGutter({required this.hourHeight, required this.width});
+  final double hourHeight;
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return SizedBox(
+      width: width,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          for (var h = 1; h < 24; h++)
+            Positioned(
+              top: h * hourHeight - 7,
+              right: 8,
+              child: Text(
+                '${h.toString().padLeft(2, '0')}:00',
+                style: TextStyle(
+                  color: luma.textMuted,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One day column of the time grid: hour lines, laid-out event blocks and,
+/// on today, the current-time line.
+class _DayColumn extends StatelessWidget {
+  const _DayColumn({
+    required this.day,
+    required this.occurrences,
+    required this.hourHeight,
+    required this.repo,
+  });
+
+  final DateTime day;
+  final List<EventOccurrence> occurrences;
+  final double hourHeight;
+  final CalendarRepository repo;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final now = DateTime.now();
+    final isToday = _sameDay(day, now);
+    final slots = _layoutDay(
+      occurrences.where((o) => o.coversDay(day)).toList(),
+      day,
+      hourHeight,
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        return GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () => showEventEditor(context, repo, initialDate: day),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // Left edge of the column + hour lines.
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    border: Border(left: BorderSide(color: luma.border)),
+                  ),
+                ),
+              ),
+              for (var h = 1; h < 24; h++)
+                Positioned(
+                  top: h * hourHeight,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    height: 1,
+                    color: luma.border.withValues(alpha: 0.55),
+                  ),
+                ),
+              for (final s in slots)
+                Positioned(
+                  top: s.top,
+                  left: 3 + (width - 6) * s.lane / s.lanes,
+                  width: (width - 6) / s.lanes - 2,
+                  height: s.height,
+                  child: _TimeBlock(occurrence: s.occurrence, repo: repo),
+                ),
+              if (isToday)
+                Positioned(
+                  top: (now.hour * 60 + now.minute) / 60 * hourHeight - 4,
+                  left: 0,
+                  right: 0,
+                  child: IgnorePointer(
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: luma.danger,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        Expanded(
+                            child: Container(height: 2, color: luma.danger)),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// A timed event rendered as a colored block in the grid.
+class _TimeBlock extends StatelessWidget {
+  const _TimeBlock({required this.occurrence, required this.repo});
+  final EventOccurrence occurrence;
+  final CalendarRepository repo;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Color(occurrence.color);
+    final onColor = color.computeLuminance() > 0.6
+        ? const Color(0xFF1A1526)
+        : Colors.white;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () =>
+            showEventEditor(context, repo, existing: occurrence.event),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(7),
+            border: Border.all(
+                color: Colors.white.withValues(alpha: 0.25), width: 0.5),
+          ),
+          clipBehavior: Clip.hardEdge,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final showTime = constraints.maxHeight >= 34;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    occurrence.title,
+                    maxLines: showTime ? 2 : 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: onColor,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      height: 1.15,
+                    ),
+                  ),
+                  if (showTime)
+                    Text(
+                      '${DateFormat('HH:mm').format(occurrence.start)} – '
+                      '${DateFormat('HH:mm').format(occurrence.end)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: onColor.withValues(alpha: 0.85),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TimeSlot {
+  _TimeSlot(this.occurrence, this.top, this.height);
+  final EventOccurrence occurrence;
+  final double top;
+  final double height;
+  int lane = 0;
+  int lanes = 1;
+}
+
+/// Positions one day's timed events: clamp to the day, convert to pixels,
+/// then split overlapping events into side-by-side lanes (like Google
+/// Calendar does).
+List<_TimeSlot> _layoutDay(
+    List<EventOccurrence> items, DateTime day, double hourHeight) {
+  final dayStart = _dateOnly(day);
+  final dayEnd = dayStart.add(const Duration(days: 1));
+  final slots = <_TimeSlot>[];
+  for (final o in items) {
+    final s = o.start.isBefore(dayStart) ? dayStart : o.start;
+    final e = o.end.isAfter(dayEnd) ? dayEnd : o.end;
+    if (!e.isAfter(s)) continue;
+    final top = s.difference(dayStart).inMinutes / 60 * hourHeight;
+    final height =
+        (e.difference(s).inMinutes / 60 * hourHeight).clamp(22.0, 24 * hourHeight);
+    slots.add(_TimeSlot(o, top, height));
+  }
+  slots.sort((a, b) => a.top.compareTo(b.top));
+
+  // Greedy lane assignment within clusters of transitively-overlapping events.
+  var clusterStart = 0;
+  var clusterEnd = double.negativeInfinity;
+  final laneEnds = <double>[];
+  void finalizeCluster(int endIndex) {
+    for (var i = clusterStart; i < endIndex; i++) {
+      slots[i].lanes = laneEnds.length;
+    }
+  }
+
+  for (var i = 0; i < slots.length; i++) {
+    final s = slots[i];
+    if (laneEnds.isNotEmpty && s.top >= clusterEnd) {
+      finalizeCluster(i);
+      laneEnds.clear();
+      clusterStart = i;
+      clusterEnd = double.negativeInfinity;
+    }
+    var lane = laneEnds.indexWhere((end) => end <= s.top);
+    if (lane == -1) {
+      lane = laneEnds.length;
+      laneEnds.add(0);
+    }
+    s.lane = lane;
+    laneEnds[lane] = s.top + s.height;
+    if (s.top + s.height > clusterEnd) clusterEnd = s.top + s.height;
+  }
+  finalizeCluster(slots.length);
+  return slots;
 }
 
 // ── Agenda view ─────────────────────────────────────────────────────────

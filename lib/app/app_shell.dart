@@ -26,6 +26,7 @@ import '../features/plugins/installed/school/school_page.dart';
 import '../features/plugins/installed/secure_chat/secure_chat_page.dart';
 import '../features/plugins/installed/server_tycoon/server_tycoon_page.dart';
 import '../features/plugins/installed/space_colony/space_colony_page.dart';
+import '../features/plugins/installed/subway_builder/subway_builder_page.dart';
 import '../features/plugins/installed/usage/usage_page.dart';
 import '../features/plugins/installed/wifi_speed_test/wifi_speed_test_page.dart';
 import '../features/plugins/installed/youtube_downloader/youtube_downloader_page.dart';
@@ -211,6 +212,7 @@ class _AppShellState extends State<AppShell> {
         'data-management' => const DataManagementPage(),
         'server-tycoon' => const ServerTycoonPage(),
         'space-colony' => const SpaceColonyPage(),
+        'subway-builder' => const SubwayBuilderPage(),
         'city-planner' => const CityPlannerPage(),
         'mood-journal' => const MoodJournalPage(),
         'youtube-downloader' => const YoutubeDownloaderPage(),

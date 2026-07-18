@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../theme/luma_theme.dart';
 import 'tools/audio_editor_view.dart';
+import 'tools/collage_maker_view.dart';
 import 'tools/downscaler_view.dart';
 import 'tools/image_editor_view.dart';
 import 'tools/media_converter_view.dart';
@@ -17,6 +18,7 @@ enum ConverterTool {
   videoDownscaler,
   imageEditor,
   audioEditor,
+  collageMaker,
 }
 
 /// File Converter section: a hub of four tools, each opening its own screen.
@@ -50,6 +52,8 @@ class _ConverterPageState extends State<ConverterPage> {
         return ImageEditorView(onBack: _back);
       case ConverterTool.audioEditor:
         return AudioEditorView(onBack: _back);
+      case ConverterTool.collageMaker:
+        return CollageMakerView(onBack: _back);
       case null:
         return _ConverterHub(onOpen: _open);
     }
@@ -169,6 +173,13 @@ class _ConverterHub extends StatelessWidget {
           subtitle: 'Cut, equalize & preview audio',
           badge: 'EDIT',
           onTap: () => onOpen(ConverterTool.audioEditor),
+        ),
+        _ToolTile(
+          icon: Icons.grid_view_rounded,
+          title: 'Collage maker',
+          subtitle: 'Create photo collages with templates',
+          badge: 'CREATE',
+          onTap: () => onOpen(ConverterTool.collageMaker),
         ),
       ];
 }

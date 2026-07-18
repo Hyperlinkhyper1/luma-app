@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Subway Builder</title>
+<link rel="stylesheet" href="vendor/maplibre-gl.css">
+<style>
+  :root {
+    --bg: #0b0e14;
+    --panel: #10141c;
+    --panel2: #161b25;
+    --panel3: #1d2330;
+    --border: #242b38;
+    --border-soft: #1e2530;
+    --text: #e2e8f2;
+    --muted: #8b96a8;
+    --faint: #5d6779;
+    --accent: #4da3ff;
+    --accent-ink: #06121f;
+    --good: #45c274;
+    --warn: #eab03e;
+    --bad: #e8615c;
+    --m-metro: #e05252;
+    --m-tram: #2e9e4f;
+    --m-bus: #f2a33c;
+    --m-train: #7a6ff0;
+    --r-sm: 6px;
+    --r-md: 9px;
+    --r-lg: 13px;
+    font-size: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif; }
+  #app { display: flex; flex-direction: column; width: 100%; height: 100%; }
+
+  .ic { width: 15px; height: 15px; flex: 0 0 auto; stroke: currentColor; fill: none;
+    stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .tint-metro { color: var(--m-metro); } .tint-tram { color: var(--m-tram); }
+  .tint-bus { color: var(--m-bus); } .tint-train { color: var(--m-train); }
+
+  button { display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    background: var(--panel2); color: var(--text); border: 1px solid var(--border);
+    border-radius: var(--r-sm); padding: 5px 10px; font-size: 12.5px; cursor: pointer;
+    font-family: inherit; transition: border-color .12s, background .12s, color .12s; }
+  button:hover { border-color: #38445a; background: var(--panel3); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  button:disabled { opacity: .38; cursor: default; }
+  button.danger { border-color: #4c2f34; color: #ff9d9d; }
+  button.danger:hover { border-color: var(--bad); background: #241418; }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  button.mini { padding: 2px 6px; font-size: 12px; border-radius: 5px; }
+  button.ghostbtn { background: transparent; border-color: transparent; color: var(--muted); }
+  button.ghostbtn:hover { color: var(--text); background: var(--panel3); }
+
+  /* ── Top bar ─────────────────────────────── */
+  #topbar { display: flex; align-items: center; gap: 10px; padding: 7px 12px; height: 46px;
+    background: var(--panel); border-bottom: 1px solid var(--border); flex: 0 0 auto; }
+  #topbar .logo { display: flex; align-items: center; gap: 8px; font-weight: 700;
+    letter-spacing: .2px; margin-right: 2px; font-size: 13.5px; }
+  #topbar .logo .ic { width: 18px; height: 18px; color: var(--accent); }
+  .tstat { display: flex; align-items: center; gap: 7px; background: var(--panel2);
+    border: 1px solid var(--border-soft); border-radius: var(--r-sm); padding: 4px 10px;
+    font-size: 12.5px; white-space: nowrap; }
+  .tstat .ic { width: 13px; height: 13px; color: var(--faint); }
+  .tstat b { font-weight: 600; font-variant-numeric: tabular-nums; min-width: 3ch; }
+  #stat-money.neg { color: var(--bad); }
+  #speedctl { display: flex; background: var(--panel2); border: 1px solid var(--border-soft);
+    border-radius: var(--r-sm); overflow: hidden; }
+  #speedctl button { width: 38px; border: none; border-radius: 0; padding: 5px 0; background: transparent; font-variant-numeric: tabular-nums; }
+  #speedctl button + button { border-left: 1px solid var(--border-soft); }
+  #speedctl button.active { background: var(--accent); color: var(--accent-ink); }
+  #speedctl button .ic { width: 12px; height: 12px; }
+  .spacer { flex: 1; }
+
+  /* ── Main area ───────────────────────────── */
+  #main { display: flex; flex: 1 1 auto; min-height: 0; }
+  #left { width: 236px; flex: 0 0 auto; background: var(--panel); border-right: 1px solid var(--border);
+    overflow-y: auto; padding: 12px 10px 16px; display: flex; flex-direction: column; gap: 16px; }
+  #left::-webkit-scrollbar { width: 8px; }
+  #left::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .sect h4 { font-size: 10.5px; letter-spacing: .9px; color: var(--faint); text-transform: uppercase;
+    margin: 0 4px 7px; font-weight: 600; }
+
+  /* mode picker */
+  #modes { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+  .modebtn { display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 8px 4px 7px; border: 1px solid var(--border-soft); background: var(--panel2);
+    border-radius: var(--r-md); font-size: 11px; color: var(--muted); }
+  .modebtn .ic { width: 17px; height: 17px; }
+  .modebtn:hover { color: var(--text); }
+  .modebtn.active { color: var(--text); font-weight: 600; background: var(--panel3); }
+  #mode-metro.active { border-color: var(--m-metro); box-shadow: inset 0 -2px 0 var(--m-metro); }
+  #mode-tram.active { border-color: var(--m-tram); box-shadow: inset 0 -2px 0 var(--m-tram); }
+  #mode-bus.active { border-color: var(--m-bus); box-shadow: inset 0 -2px 0 var(--m-bus); }
+  #mode-train.active { border-color: var(--m-train); box-shadow: inset 0 -2px 0 var(--m-train); }
+  #mode-metro .ic { color: var(--m-metro); } #mode-tram .ic { color: var(--m-tram); }
+  #mode-bus .ic { color: var(--m-bus); } #mode-train .ic { color: var(--m-train); }
+
+  .toolbtn { display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
+    justify-content: flex-start; padding: 6px 9px; margin: 1px 0; border: 1px solid transparent;
+    background: transparent; border-radius: var(--r-sm); font-size: 12.5px; color: var(--text); }
+  .toolbtn .ic { color: var(--muted); }
+  .toolbtn:hover { background: var(--panel2); border-color: transparent; }
+  .toolbtn.active { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+  .toolbtn.active .ic { color: var(--accent-ink); }
+  .toolbtn kbd { margin-left: auto; font-size: 10px; color: var(--faint); border: 1px solid var(--border);
+    border-radius: 4px; padding: 0 5px; background: var(--panel2); font-family: inherit; }
+  .toolbtn.active kbd { color: var(--accent-ink); border-color: rgba(0,0,0,.25); background: transparent; }
+
+  /* line list */
+  #linelist { display: flex; flex-direction: column; gap: 3px; }
+  #linelist .empty { color: var(--muted); font-size: 11.5px; padding: 4px 6px; line-height: 1.5; }
+  .linerow { display: flex; align-items: center; gap: 8px; padding: 6px 7px; border-radius: var(--r-sm);
+    cursor: pointer; border: 1px solid transparent; font-size: 12px; }
+  .linerow:hover { background: var(--panel2); }
+  .linerow.sel { border-color: var(--accent); background: var(--panel2); }
+  .linerow .sw { width: 22px; height: 22px; border-radius: 6px; flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center; }
+  .linerow .sw .ic { width: 13px; height: 13px; color: #fff; stroke-width: 2; }
+  .linerow .lcol { display: flex; flex-direction: column; min-width: 0; flex: 1; gap: 1px; }
+  .linerow .lname { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .linerow .lmeta { color: var(--muted); font-size: 10.5px; white-space: nowrap; }
+  .linerow .tctl { display: flex; align-items: center; gap: 3px; flex: 0 0 auto; }
+  .linerow .tcount { font-size: 11px; color: var(--muted); min-width: 16px; text-align: center;
+    font-variant-numeric: tabular-nums; }
+  #btn-newline { width: 100%; margin-top: 7px; }
+
+  /* finance */
+  .finrow { display: flex; align-items: center; gap: 6px; padding: 3px 4px; font-size: 12px; }
+  .finrow .lbl { color: var(--muted); }
+  .finrow b { font-variant-numeric: tabular-nums; }
+  #funding-line { color: var(--muted); font-size: 11px; padding: 3px 4px; line-height: 1.55; }
+  #loan-out { color: var(--warn); font-size: 11px; padding: 0 4px; margin-left: auto; }
+
+  /* ── Map + floats ────────────────────────── */
+  #canvaswrap { position: relative; flex: 1 1 auto; min-width: 0; overflow: hidden; background: #dfdcd3; }
+  #map { position: absolute; inset: 0; }
+  #map .maplibregl-ctrl-attrib { font-size: 10px; opacity: .75; }
+  #loading { position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+    flex-direction: column; gap: 16px; background: rgba(11,14,20,.85); z-index: 12; }
+  #loading .spin { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--border);
+    border-top-color: var(--accent); animation: spin 0.9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #loading-text { color: var(--muted); font-size: 12.5px; max-width: 400px; text-align: center; line-height: 1.55; }
+
+  #hint { position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+    background: rgba(11,14,20,.92); border: 1px solid var(--border); color: var(--text);
+    padding: 7px 15px; border-radius: 999px; font-size: 12px; pointer-events: none;
+    max-width: 72%; text-align: center; display: none; z-index: 5; }
+  #toasts { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 6px; z-index: 8; pointer-events: none; }
+  .toast { display: flex; align-items: center; gap: 8px; background: rgba(13,17,24,.95);
+    border: 1px solid var(--border); border-radius: var(--r-md);
+    padding: 8px 14px; font-size: 12.5px; opacity: 0; transform: translateY(8px);
+    transition: opacity .25s, transform .25s; max-width: 480px; text-align: left; }
+  .toast .ic { color: var(--muted); }
+  .toast.show { opacity: 1; transform: none; }
+  .toast.bad { border-color: #593034; }
+  .toast.bad .ic { color: var(--bad); }
+  .toast.good { border-color: #2b5340; }
+  .toast.good .ic { color: var(--good); }
+
+  #infopanel { position: absolute; top: 14px; right: 14px; width: 262px; background: rgba(16,20,28,.97);
+    border: 1px solid var(--border); border-radius: var(--r-lg); padding: 12px 14px; display: none;
+    z-index: 6; box-shadow: 0 8px 28px rgba(0,0,0,.35); }
+  .ip-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .ip-head .ic { width: 16px; height: 16px; }
+  .ip-title { font-weight: 700; font-size: 13.5px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ip-row { display: flex; justify-content: space-between; gap: 8px; font-size: 12px;
+    color: var(--muted); padding: 3px 0; align-items: center; }
+  .ip-row b { color: var(--text); font-weight: 600; display: inline-flex; gap: 3px; align-items: center;
+    font-variant-numeric: tabular-nums; }
+  .ip-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .dot.big { width: 13px; height: 13px; }
+  .warn { color: var(--warn); } .good { color: var(--good); } .bad { color: var(--bad); }
+
+  #milestone { position: absolute; top: 64px; left: 50%; transform: translate(-50%,-16px) scale(.95);
+    background: linear-gradient(135deg, #16281d, #10221a); border: 1px solid #2b5340;
+    border-radius: var(--r-lg); padding: 13px 24px; text-align: center; opacity: 0;
+    transition: opacity .35s, transform .35s; pointer-events: none; z-index: 9; }
+  #milestone.show { opacity: 1; transform: translate(-50%,0) scale(1); }
+  #milestone-title { font-weight: 700; font-size: 15px; color: #7ee2a0; }
+  #milestone-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+  /* ── Modals ──────────────────────────────── */
+  #modalback { position: fixed; inset: 0; background: rgba(4,6,10,.74); display: none;
+    align-items: center; justify-content: center; z-index: 20; }
+  #modal { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-lg);
+    padding: 22px 24px; width: 460px; max-width: 94vw; max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 18px 50px rgba(0,0,0,.5); }
+  #modal.wide { width: 800px; }
+  #modal h2 { font-size: 17px; margin-bottom: 6px; }
+  #modal h3 { font-size: 11px; color: var(--faint); margin: 16px 0 7px; text-transform: uppercase; letter-spacing: .8px; }
+  #modal .sub { color: var(--muted); font-size: 12.5px; line-height: 1.55; }
+  .mrow { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+  kbd { border: 1px solid var(--border); border-radius: 4px; padding: 0 5px; background: var(--panel2);
+    font-size: 11px; font-family: inherit; }
+
+  .brandrow { text-align: center; margin-bottom: 16px; }
+  .brandrow .brandmark { width: 30px; height: 30px; color: var(--accent); display: inline-block; }
+  .brand { display: block; font-size: 22px; font-weight: 800; letter-spacing: .3px; margin-top: 6px; }
+  .searchrow { display: flex; gap: 8px; margin: 6px 0 10px; }
+  .searchrow input { flex: 1; }
+  input[type=text] { background: var(--panel2); color: var(--text); border: 1px solid var(--border);
+    border-radius: var(--r-sm); padding: 7px 10px; font-size: 12.5px; font-family: inherit; user-select: text; }
+  input[type=text]:focus { outline: none; border-color: var(--accent); }
+
+  .citygrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 9px; margin-top: 8px; }
+  .citycard { border: 1px solid var(--border); border-radius: var(--r-md); padding: 12px 13px;
+    cursor: pointer; background: var(--panel2); transition: border-color .12s, transform .12s; }
+  .citycard:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .cc-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13.5px; }
+  .pill { font-size: 10px; padding: 1px 8px; border-radius: 999px; font-weight: 600;
+    background: #1d2c44; color: #8fc1ff; }
+  .cc-meta { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .cc-save { margin-top: 7px; font-size: 10.5px; color: var(--good); }
+  .cc-fresh, .cc-del { color: var(--muted); text-decoration: underline; }
+
+  .helpgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 18px; margin: 14px 0; }
+  .helpgrid b { font-size: 12.5px; }
+  .helpgrid p { color: var(--muted); font-size: 11.5px; line-height: 1.55; margin-top: 3px; }
+  .helpgrid i { color: var(--text); font-style: normal; font-weight: 600; }
+
+  .statgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 8px; margin-top: 10px; }
+  .stat { background: var(--panel2); border: 1px solid var(--border-soft); border-radius: var(--r-md); padding: 9px 11px; }
+  .stat .v { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat .l { font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+  .stat .l i { font-style: normal; opacity: .8; }
+  .modesplit { margin: 14px 0 4px; }
+  .ms-bar { display: flex; height: 12px; border-radius: 999px; overflow: hidden; background: var(--panel3); }
+  .ms-bar span { display: block; height: 100%; }
+  .ms-legend { display: flex; gap: 16px; margin-top: 7px; font-size: 11px; color: var(--muted); }
+  .ms-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; }
+  .modebars { display: flex; flex-direction: column; gap: 5px; }
+  .modebar { display: flex; align-items: center; gap: 8px; font-size: 11.5px; }
+  .mb-label { display: flex; align-items: center; gap: 5px; width: 74px; color: var(--muted); }
+  .mb-track { flex: 1; height: 8px; background: var(--panel3); border-radius: 999px; overflow: hidden; }
+  .mb-track span { display: block; height: 100%; border-radius: 999px; }
+  .mb-val { width: 46px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .chartrow { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 6px; }
+  .chartrow canvas { width: 100%; background: var(--panel2); border: 1px solid var(--border-soft); border-radius: var(--r-md); }
+  .stbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .stbl td { padding: 5px 6px; border-bottom: 1px solid var(--border-soft); }
+  .stbl td:last-child { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-metro" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="14" rx="3"/><path d="M5 11h14M9 17l-2 4M15 17l2 4M9 7h.01M15 7h.01"/></symbol>
+  <symbol id="i-train" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="13" rx="3"/><path d="M4 10h16M8 16l-2 5M16 16l2 5M12 3v7"/></symbol>
+  <symbol id="i-tram" viewBox="0 0 24 24"><rect x="5" y="6" width="14" height="11" rx="2.5"/><path d="M5 12h14M9 2l3 4 3-4M9 17l-1 4M15 17l1 4"/></symbol>
+  <symbol id="i-bus" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="13" rx="2.5"/><path d="M4 11h16M7 17v3M17 17v3M8 7h8"/></symbol>
+  <symbol id="i-select" viewBox="0 0 24 24"><path d="M5 3l14 7-6.5 1.5L14 18l-3 1.5L9 13 5 3z"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 1 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.6"/></symbol>
+  <symbol id="i-route" viewBox="0 0 24 24"><circle cx="5" cy="19" r="2.4"/><circle cx="19" cy="5" r="2.4"/><path d="M7 17.5 17 6.5"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6.5 7l1 13h9l1-13M10 11v5M14 11v5"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.4"/><path d="M17.5 14.6c2.2.5 3.5 2.3 3.5 4.9"/></symbol>
+  <symbol id="i-briefcase" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="12" rx="2.5"/><path d="M9 8V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V8M3 13h18"/></symbol>
+  <symbol id="i-walk" viewBox="0 0 24 24"><circle cx="13" cy="4.5" r="2"/><path d="M13 7.5 9.5 10l-1 4.5M13 7.5l2 4 3.5 1M12.5 12l-1.5 4-3 4.5M12.5 12l2.5 4 1 4.5"/></symbol>
+  <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4 14a8 8 0 1 1 16 0"/><path d="M12 14l4-5"/><path d="M2.5 19h19"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V4M4 20h16"/><path d="M8 16v-5M12 16V8M16 16v-3"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.4 4 5.3 4 8.5s-1.4 6.1-4 8.5c-2.6-2.4-4-5.3-4-8.5s1.4-6.1 4-8.5z"/></symbol>
+  <symbol id="i-cube" viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.8 2.1c-.9.6-1.3 1-1.3 2.1M12 17h.01"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+  <symbol id="i-coins" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M9 3v4M15 3v4"/></symbol>
+  <symbol id="i-trend" viewBox="0 0 24 24"><path d="M4 17l5.5-5.5 3.5 3.5L20 8"/><path d="M15 8h5v5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4L2.5 20h19L12 4z"/><path d="M12 10v4.5M12 17.5h.01"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/></symbol>
+</defs></svg>
+
+<div id="app">
+  <div id="topbar">
+    <span class="logo"><svg class="ic"><use href="#i-metro"/></svg><span id="cityname">Subway Builder</span></span>
+    <span class="tstat" title="Day"><svg class="ic"><use href="#i-cal"/></svg><b id="stat-day">—</b></span>
+    <span class="tstat" title="Treasury"><svg class="ic"><use href="#i-coins"/></svg><b id="stat-money">—</b></span>
+    <span class="tstat" title="Daily transit riders"><svg class="ic"><use href="#i-users"/></svg><b id="stat-riders">—</b></span>
+    <span class="tstat" title="Share of all commutes on your network"><svg class="ic"><use href="#i-trend"/></svg><b id="stat-share">—</b></span>
+    <span class="spacer"></span>
+    <span id="speedctl">
+      <button title="Pause (Space)"><svg class="ic"><use href="#i-pause"/></svg></button><button title="Normal speed">1×</button><button title="Fast">2×</button><button title="Very fast">4×</button>
+    </span>
+    <button id="btn-3d" title="Tilt the camera for 3D buildings"><svg class="ic"><use href="#i-cube"/></svg>3D</button>
+    <button id="btn-stats" title="Network analysis"><svg class="ic"><use href="#i-chart"/></svg>Stats</button>
+    <button id="btn-cities" title="Change location"><svg class="ic"><use href="#i-globe"/></svg>Places</button>
+    <button id="btn-help" title="How to play"><svg class="ic"><use href="#i-help"/></svg></button>
+  </div>
+
+  <div id="main">
+    <div id="left">
+      <div class="sect">
+        <h4>Mode</h4>
+        <div id="modes">
+          <button class="modebtn active" id="mode-metro"><svg class="ic"><use href="#i-metro"/></svg>Metro</button>
+          <button class="modebtn" id="mode-tram"><svg class="ic"><use href="#i-tram"/></svg>Tram</button>
+          <button class="modebtn" id="mode-bus"><svg class="ic"><use href="#i-bus"/></svg>Bus</button>
+          <button class="modebtn" id="mode-train"><svg class="ic"><use href="#i-train"/></svg>Train</button>
+        </div>
+      </div>
+      <div class="sect">
+        <h4>Build</h4>
+        <button class="toolbtn" id="tool-select"><svg class="ic"><use href="#i-select"/></svg>Select / pan <kbd>V</kbd></button>
+        <button class="toolbtn" id="tool-station"><svg class="ic"><use href="#i-pin"/></svg>Stop <kbd>S</kbd></button>
+        <button class="toolbtn" id="tool-line"><svg class="ic"><use href="#i-route"/></svg>Draw line <kbd>L</kbd></button>
+        <button class="toolbtn" id="tool-bulldoze"><svg class="ic"><use href="#i-trash"/></svg>Bulldoze <kbd>B</kbd></button>
+      </div>
+      <div class="sect">
+        <h4>Data views</h4>
+        <button class="toolbtn" id="ov-pop"><svg class="ic"><use href="#i-users"/></svg>Residents</button>
+        <button class="toolbtn" id="ov-jobs"><svg class="ic"><use href="#i-briefcase"/></svg>Jobs</button>
+        <button class="toolbtn" id="ov-access"><svg class="ic"><use href="#i-walk"/></svg>Stop reach</button>
+        <button class="toolbtn" id="ov-load"><svg class="ic"><use href="#i-gauge"/></svg>Line load</button>
+      </div>
+      <div class="sect">
+        <h4>Lines</h4>
+        <div id="linelist"></div>
+        <button id="btn-newline"><svg class="ic"><use href="#i-plus"/></svg>New line</button>
+      </div>
+      <div class="sect">
+        <h4>Finance</h4>
+        <div class="finrow"><span class="lbl">Fare</span>
+          <span style="margin-left:auto;display:flex;gap:5px;align-items:center">
+            <button class="mini" id="fare-minus"><svg class="ic"><use href="#i-minus"/></svg></button><b id="fare-val">$2.50</b><button class="mini" id="fare-plus"><svg class="ic"><use href="#i-plus"/></svg></button>
+          </span>
+        </div>
+        <div id="funding-line">—</div>
+        <div class="finrow"><button class="mini" id="btn-loan">Take loan</button>
+          <button class="mini" id="btn-repay">Repay</button><b id="loan-out"></b></div>
+      </div>
+    </div>
+
+    <div id="canvaswrap">
+      <div id="map"></div>
+      <div id="loading"><div class="spin"></div><div id="loading-text"></div></div>
+      <div id="hint"></div>
+      <div id="infopanel"></div>
+      <div id="milestone"><div id="milestone-title"></div><div id="milestone-sub"></div></div>
+      <div id="toasts"></div>
+    </div>
+  </div>
+</div>
+
+<div id="modalback"><div id="modal"></div></div>
+
+<script src="vendor/maplibre-gl.js"></script>
+<script src="geo.js?v=2"></script>
+<script src="demand.js?v=2"></script>
+<script src="net.js?v=2"></script>
+<script src="game.js?v=2"></script>
+<script src="sim.js?v=2"></script>
+<script src="map3d.js?v=2"></script>
+<script src="ui.js?v=2"></script>
+<script src="main.js?v=2"></script>
+</body>
+</html>

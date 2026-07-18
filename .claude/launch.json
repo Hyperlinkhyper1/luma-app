@@ -20,6 +20,12 @@
       "port": 8124
     },
     {
+      "name": "subway-builder",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8125", "--directory", "assets/subway_builder"],
+      "port": 8125
+    },
+    {
       "name": "luma-web-built",
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "8091", "--directory", "build/web"],
