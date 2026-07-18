@@ -48,6 +48,13 @@
     map.touchZoomRotate.enable();
     map.doubleClickZoom.disable(); // double-click finishes line drafts
 
+    // The Windows WebView2 host (webview_windows) can only deliver wheel
+    // input at a fixed (0,0) point — MapLibre's built-in scroll-zoom (which
+    // hit-tests the event's own, always-wrong, coordinates) never sees the
+    // event land on the map canvas. main.js installs a manual wheel handler
+    // that uses the real cursor position tracked from mousemove instead.
+    map.scrollZoom.disable();
+
     let loaded = false;
     map.on('error', (e) => {
       const msg = String((e && e.error && e.error.message) || 'map error');

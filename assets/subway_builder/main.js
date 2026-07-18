@@ -269,6 +269,44 @@
     requestAnimationFrame(frame);
   }
 
+  // ── Wheel handling ───────────────────────────────────────────────────
+  // The Windows WebView2 host can only deliver wheel input at a fixed
+  // (0,0) point (a WebView2/webview_windows limitation), so the wheel
+  // event's own coordinates can't be trusted to find what's under the
+  // cursor. Track the real cursor position from mousemove instead, and
+  // drive map zoom / element scrolling from that.
+  let lastClientX = 0, lastClientY = 0;
+  window.addEventListener('pointermove', (e) => {
+    lastClientX = e.clientX;
+    lastClientY = e.clientY;
+  }, true);
+
+  function onWheel(e) {
+    const el = document.elementFromPoint(lastClientX, lastClientY);
+    if (!el) return;
+    const map = map3d.map;
+    if (map && map.getContainer().contains(el)) {
+      e.preventDefault();
+      const rect = map.getContainer().getBoundingClientRect();
+      const point = [lastClientX - rect.left, lastClientY - rect.top];
+      const around = map.unproject(point);
+      const zoom = map.getZoom() - e.deltaY * 0.01;
+      map.jumpTo({ zoom: Math.min(22, Math.max(0, zoom)), around });
+      return;
+    }
+    let node = el;
+    while (node && node !== document.body && node !== document.documentElement) {
+      const style = getComputedStyle(node);
+      if (node.scrollHeight > node.clientHeight && /(auto|scroll)/.test(style.overflowY)) {
+        node.scrollTop += e.deltaY;
+        e.preventDefault();
+        return;
+      }
+      node = node.parentElement;
+    }
+  }
+  window.addEventListener('wheel', onWheel, { passive: false, capture: true });
+
   // ── Boot ─────────────────────────────────────────────────────────────
   window.addEventListener('DOMContentLoaded', () => {
     ui.init();
