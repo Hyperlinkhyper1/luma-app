@@ -52,10 +52,18 @@
   /* Re-applies every render setting to the live map — safe to call any
      time after the layers exist (map 'load'), and whenever a setting
      changes. */
-  map3d.applySettings = function () {
+  let lastAppliedKey = null;
+  map3d.applySettings = function (force) {
     if (!map3d.ready) return;
     const map = map3d.map;
     const s = map3d.settings;
+
+    // Slider drags (and any other rapid-fire caller) can otherwise queue up
+    // many identical re-applications; skip the (fairly heavy) style mutation
+    // work entirely when nothing actually changed.
+    const key = JSON.stringify(s);
+    if (!force && key === lastAppliedKey) return;
+    lastAppliedKey = key;
 
     try {
       const minZoom = Math.max(0, BASE_BUILD_MINZOOM - s.renderDistance);

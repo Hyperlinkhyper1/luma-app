@@ -620,13 +620,31 @@
       if (SB.map3d.settings.mode2d) $('btn-3d').classList.remove('active');
       syncSettingsUI();
     });
+    // Dragging a range slider fires 'input' continuously (many times per
+    // second); re-applying the render style on every tick floods MapLibre
+    // with paint/zoom-range mutations and can leave tiles stuck mid-update.
+    // Debounce the actual apply, but keep the label live for feedback, and
+    // always apply immediately once the user releases the slider ('change').
+    let renderDebounce = null, lodDebounce = null;
     $('set-render').addEventListener('input', () => {
+      const v = +$('set-render').value;
+      $('set-render-val').textContent = v;
+      clearTimeout(renderDebounce);
+      renderDebounce = setTimeout(() => SB.map3d.setSetting('renderDistance', v), 150);
+    });
+    $('set-render').addEventListener('change', () => {
+      clearTimeout(renderDebounce);
       SB.map3d.setSetting('renderDistance', +$('set-render').value);
-      $('set-render-val').textContent = $('set-render').value;
     });
     $('set-lod').addEventListener('input', () => {
+      const v = +$('set-lod').value;
+      $('set-lod-val').textContent = v.toFixed(1);
+      clearTimeout(lodDebounce);
+      lodDebounce = setTimeout(() => SB.map3d.setSetting('lodDistance', v), 150);
+    });
+    $('set-lod').addEventListener('change', () => {
+      clearTimeout(lodDebounce);
       SB.map3d.setSetting('lodDistance', +$('set-lod').value);
-      $('set-lod-val').textContent = (+$('set-lod').value).toFixed(1);
     });
     syncSettingsUI();
     $('btn-newline').addEventListener('click', () => {
