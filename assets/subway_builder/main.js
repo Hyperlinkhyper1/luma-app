@@ -290,7 +290,12 @@
       const rect = map.getContainer().getBoundingClientRect();
       const point = [lastClientX - rect.left, lastClientY - rect.top];
       const around = map.unproject(point);
-      const zoom = map.getZoom() - e.deltaY * 0.01;
+      // webview_windows relays a whole burst of wheel notches per physical
+      // click (see the comment above), so deltaY can be an order of
+      // magnitude larger than a real browser's ~100-per-notch — clamp the
+      // per-event zoom change so a single scroll click feels like one step.
+      const step = Math.sign(e.deltaY) * Math.min(Math.abs(e.deltaY) * 0.002, 0.35);
+      const zoom = map.getZoom() - step;
       map.jumpTo({ zoom: Math.min(22, Math.max(0, zoom)), around });
       return;
     }
