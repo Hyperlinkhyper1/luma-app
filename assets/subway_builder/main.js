@@ -38,8 +38,9 @@
         ui.selection = null;
         ui.cancelDraft(true);
         dayAcc = 0;
-        map3d.map.easeTo({ center: [place.lng, place.lat], zoom: 12.6, pitch: 45, duration: 1200 });
-        document.getElementById('btn-3d').classList.add('active');
+        const pitch3d = !map3d.settings.mode2d;
+        map3d.map.easeTo({ center: [place.lng, place.lat], zoom: 12.6, pitch: pitch3d ? 45 : 0, duration: 1200 });
+        document.getElementById('btn-3d').classList.toggle('active', pitch3d);
         map3d.setOverlay(ui.overlay);
         ui.updateAll();
         if (!game.state.helpSeen) ui.showHelp();

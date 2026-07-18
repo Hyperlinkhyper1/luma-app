@@ -12,6 +12,108 @@
 
   let vecSource = null; // name of the style's vector source (openmaptiles)
 
+  // ── Render settings ──────────────────────────────────────────────────
+  // "Render distance" is the number of extra zoom-out levels beyond the
+  // base draw-in point at which 3D buildings (and, scaled down, line/
+  // station detail) start appearing — higher = visible from further away.
+  // "LOD distance" is the zoom-level span just past that horizon over
+  // which detail ramps up gradually instead of popping in abruptly.
+  const BASE_BUILD_MINZOOM = 13;
+  const SETTINGS_KEY = 'sb_render_settings_v1';
+  const DEFAULT_SETTINGS = {
+    buildings3d: true,
+    mode2d: false,
+    renderDistance: 0,
+    lodDistance: 2,
+  };
+
+  function loadSettings() {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (!raw) return { ...DEFAULT_SETTINGS };
+      return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    } catch (e) {
+      return { ...DEFAULT_SETTINGS };
+    }
+  }
+
+  map3d.settings = loadSettings();
+
+  map3d.saveSettings = function () {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(map3d.settings)); } catch (e) { /* ignore */ }
+  };
+
+  map3d.setSetting = function (key, value) {
+    map3d.settings[key] = value;
+    map3d.saveSettings();
+    map3d.applySettings();
+  };
+
+  /* Re-applies every render setting to the live map — safe to call any
+     time after the layers exist (map 'load'), and whenever a setting
+     changes. */
+  map3d.applySettings = function () {
+    if (!map3d.ready) return;
+    const map = map3d.map;
+    const s = map3d.settings;
+
+    const minZoom = Math.max(0, BASE_BUILD_MINZOOM - s.renderDistance);
+    const fadeEnd = minZoom + s.lodDistance;
+    const ramped = fadeEnd > minZoom;
+
+    if (map.getLayer('sb-3d-buildings')) {
+      const on = s.buildings3d;
+      map.setLayoutProperty('sb-3d-buildings', 'visibility', on ? 'visible' : 'none');
+      if (on) {
+        map.setLayerZoomRange('sb-3d-buildings', minZoom, 24);
+        map.setPaintProperty('sb-3d-buildings', 'fill-extrusion-opacity',
+          ramped ? ['interpolate', ['linear'], ['zoom'], minZoom, 0, fadeEnd, 0.88] : 0.88);
+        map.setPaintProperty('sb-3d-buildings', 'fill-extrusion-height',
+          ramped
+            ? ['*', ['interpolate', ['linear'], ['zoom'], minZoom, 0.15, fadeEnd, 1],
+                ['coalesce', ['get', 'render_height'], 8]]
+            : ['coalesce', ['get', 'render_height'], 8]);
+      }
+    }
+
+    // Line/station detail fades in over the same horizon, thinning out
+    // instead of disappearing outright.
+    const LOD_MIN_SCALE = 0.45;
+    const lodWidth = (expr) => (ramped
+      ? ['interpolate', ['linear'], ['zoom'], minZoom, ['*', expr, LOD_MIN_SCALE], fadeEnd, expr]
+      : expr);
+    if (map.getLayer('sb-lines-casing')) {
+      map.setPaintProperty('sb-lines-casing', 'line-width', lodWidth(['+', ['get', 'w'], 3.5]));
+    }
+    if (map.getLayer('sb-lines')) {
+      map.setPaintProperty('sb-lines', 'line-width', lodWidth(['get', 'w']));
+    }
+    if (map.getLayer('sb-lines-dash')) {
+      map.setPaintProperty('sb-lines-dash', 'line-width', lodWidth(['get', 'w']));
+    }
+    if (map.getLayer('sb-stations')) {
+      map.setPaintProperty('sb-stations', 'circle-radius', lodWidth(['get', 'r']));
+    }
+
+    // Labels shouldn't pop in long after the geometry they describe.
+    const labelShift = s.renderDistance * 0.5;
+    if (map.getLayer('sb-station-labels')) {
+      map.setLayerZoomRange('sb-station-labels', Math.max(0, 12.6 - labelShift), 24);
+    }
+    if (map.getLayer('sb-railstation-labels')) {
+      map.setLayerZoomRange('sb-railstation-labels', Math.max(0, 11.5 - labelShift), 24);
+    }
+
+    if (s.mode2d) {
+      map.setMaxPitch(0);
+      if (map.getPitch() !== 0) map.easeTo({ pitch: 0, duration: 400 });
+      map.dragRotate.disable();
+    } else {
+      map.setMaxPitch(70);
+      map.dragRotate.enable();
+    }
+  };
+
   function emptyFC() { return { type: 'FeatureCollection', features: [] }; }
 
   // Visible boot status — a broken map must never be a silent blank screen.
@@ -179,6 +281,7 @@
         paint: { 'text-color': '#3d3a33', 'text-halo-color': 'rgba(255,255,255,.85)', 'text-halo-width': 1.4 } });
 
       map3d.ready = true;
+      map3d.applySettings();
       if (onReady) onReady();
     });
   };
@@ -447,6 +550,7 @@
   };
 
   map3d.setPitch3D = function (on) {
+    if (map3d.settings.mode2d) return;
     map3d.map.easeTo({ pitch: on ? 55 : 0, duration: 600 });
   };
 

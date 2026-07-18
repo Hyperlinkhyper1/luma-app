@@ -140,6 +140,15 @@
   #funding-line { color: var(--muted); font-size: 11px; padding: 3px 4px; line-height: 1.55; }
   #loan-out { color: var(--warn); font-size: 11px; padding: 0 4px; margin-left: auto; }
 
+  /* settings */
+  .togglerow { display: flex; align-items: center; justify-content: space-between; padding: 4px 2px; }
+  .togglerow .lbl { color: var(--muted); font-size: 12.5px; }
+  .settingrow { padding: 7px 2px 5px; }
+  .settingrow-head { display: flex; justify-content: space-between; margin-bottom: 5px; }
+  .settingrow-head .lbl { color: var(--muted); font-size: 12.5px; }
+  .settingrow-head b { font-size: 12px; font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); background: transparent; cursor: pointer; }
+
   /* ── Map + floats ────────────────────────── */
   #canvaswrap { position: relative; flex: 1 1 auto; min-width: 0; overflow: hidden; background: #dfdcd3; }
   #map { position: absolute; inset: 0; }
@@ -350,6 +359,25 @@
         <div class="finrow"><button class="mini" id="btn-loan">Take loan</button>
           <button class="mini" id="btn-repay">Repay</button><b id="loan-out"></b></div>
       </div>
+      <div class="sect">
+        <h4>Rendering</h4>
+        <div class="togglerow">
+          <span class="lbl">3D buildings</span>
+          <button class="mini active" id="set-buildings3d">On</button>
+        </div>
+        <div class="togglerow">
+          <span class="lbl">2D mode</span>
+          <button class="mini" id="set-2d">Off</button>
+        </div>
+        <div class="settingrow">
+          <div class="settingrow-head"><span class="lbl">Render distance</span><b id="set-render-val">0</b></div>
+          <input type="range" id="set-render" min="0" max="8" step="1" value="0">
+        </div>
+        <div class="settingrow">
+          <div class="settingrow-head"><span class="lbl">LOD distance</span><b id="set-lod-val">2.0</b></div>
+          <input type="range" id="set-lod" min="0" max="6" step="0.5" value="2">
+        </div>
+      </div>
     </div>
 
     <div id="canvaswrap">
@@ -407,8 +435,8 @@
 <script src="net.js?v=4"></script>
 <script src="game.js?v=4"></script>
 <script src="sim.js?v=4"></script>
-<script src="map3d.js?v=4"></script>
-<script src="ui.js?v=4"></script>
-<script src="main.js?v=4"></script>
+<script src="map3d.js?v=5"></script>
+<script src="ui.js?v=5"></script>
+<script src="main.js?v=5"></script>
 </body>
 </html>

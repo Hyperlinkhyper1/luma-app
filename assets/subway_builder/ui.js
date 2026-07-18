@@ -571,6 +571,20 @@
     c.fillText(fmt(values[values.length - 1]), 6, 10);
   }
 
+  // ── Rendering settings ───────────────────────────────────────────────
+  function syncSettingsUI() {
+    const s = SB.map3d.settings;
+    $('set-buildings3d').classList.toggle('active', s.buildings3d);
+    $('set-buildings3d').textContent = s.buildings3d ? 'On' : 'Off';
+    $('set-2d').classList.toggle('active', s.mode2d);
+    $('set-2d').textContent = s.mode2d ? 'On' : 'Off';
+    $('set-render').value = s.renderDistance;
+    $('set-render-val').textContent = s.renderDistance;
+    $('set-lod').value = s.lodDistance;
+    $('set-lod-val').textContent = s.lodDistance.toFixed(1);
+  }
+  ui.syncSettingsUI = syncSettingsUI;
+
   // ── Static wiring ────────────────────────────────────────────────────
   ui.init = function () {
     for (const m of Object.keys(SB.MODES)) {
@@ -589,10 +603,32 @@
     $('btn-help').addEventListener('click', ui.showHelp);
     $('btn-cities').addEventListener('click', () => ui.showPlacePicker(true));
     $('btn-3d').addEventListener('click', () => {
+      if (SB.map3d.settings.mode2d) {
+        ui.toast('Turn off 2D mode in Settings to tilt the camera', 'bad');
+        return;
+      }
       const on = !$('btn-3d').classList.contains('active');
       $('btn-3d').classList.toggle('active', on);
       SB.map3d.setPitch3D(on);
     });
+    $('set-buildings3d').addEventListener('click', () => {
+      SB.map3d.setSetting('buildings3d', !SB.map3d.settings.buildings3d);
+      syncSettingsUI();
+    });
+    $('set-2d').addEventListener('click', () => {
+      SB.map3d.setSetting('mode2d', !SB.map3d.settings.mode2d);
+      if (SB.map3d.settings.mode2d) $('btn-3d').classList.remove('active');
+      syncSettingsUI();
+    });
+    $('set-render').addEventListener('input', () => {
+      SB.map3d.setSetting('renderDistance', +$('set-render').value);
+      $('set-render-val').textContent = $('set-render').value;
+    });
+    $('set-lod').addEventListener('input', () => {
+      SB.map3d.setSetting('lodDistance', +$('set-lod').value);
+      $('set-lod-val').textContent = (+$('set-lod').value).toFixed(1);
+    });
+    syncSettingsUI();
     $('btn-newline').addEventListener('click', () => {
       ui.setTool('line');
       ui.beginDraftFrom(null);
