@@ -57,60 +57,69 @@
     const map = map3d.map;
     const s = map3d.settings;
 
-    const minZoom = Math.max(0, BASE_BUILD_MINZOOM - s.renderDistance);
-    const fadeEnd = minZoom + s.lodDistance;
-    const ramped = fadeEnd > minZoom;
+    try {
+      const minZoom = Math.max(0, BASE_BUILD_MINZOOM - s.renderDistance);
+      const fadeEnd = minZoom + s.lodDistance;
+      const ramped = fadeEnd > minZoom;
 
-    if (map.getLayer('sb-3d-buildings')) {
-      const on = s.buildings3d;
-      map.setLayoutProperty('sb-3d-buildings', 'visibility', on ? 'visible' : 'none');
-      if (on) {
-        map.setLayerZoomRange('sb-3d-buildings', minZoom, 24);
-        map.setPaintProperty('sb-3d-buildings', 'fill-extrusion-opacity',
-          ramped ? ['interpolate', ['linear'], ['zoom'], minZoom, 0, fadeEnd, 0.88] : 0.88);
-        map.setPaintProperty('sb-3d-buildings', 'fill-extrusion-height',
-          ramped
-            ? ['*', ['interpolate', ['linear'], ['zoom'], minZoom, 0.15, fadeEnd, 1],
-                ['coalesce', ['get', 'render_height'], 8]]
-            : ['coalesce', ['get', 'render_height'], 8]);
+      if (map.getLayer('sb-3d-buildings')) {
+        const on = s.buildings3d;
+        map.setLayoutProperty('sb-3d-buildings', 'visibility', on ? 'visible' : 'none');
+        if (on) {
+          map.setLayerZoomRange('sb-3d-buildings', minZoom, 24);
+          const height = ['coalesce', ['get', 'render_height'], 8];
+          // NB: a zoom expression may only appear as the top-level
+          // expression of a property (or the input of a top-level
+          // step/interpolate) — it can't be nested inside an arithmetic
+          // operator like `*`. So the interpolate itself must be the
+          // outer expression, with the per-feature height as its output.
+          map.setPaintProperty('sb-3d-buildings', 'fill-extrusion-opacity',
+            ramped ? ['interpolate', ['linear'], ['zoom'], minZoom, 0, fadeEnd, 0.88] : 0.88);
+          map.setPaintProperty('sb-3d-buildings', 'fill-extrusion-height',
+            ramped
+              ? ['interpolate', ['linear'], ['zoom'], minZoom, ['*', 0.15, height], fadeEnd, height]
+              : height);
+        }
       }
-    }
 
-    // Line/station detail fades in over the same horizon, thinning out
-    // instead of disappearing outright.
-    const LOD_MIN_SCALE = 0.45;
-    const lodWidth = (expr) => (ramped
-      ? ['interpolate', ['linear'], ['zoom'], minZoom, ['*', expr, LOD_MIN_SCALE], fadeEnd, expr]
-      : expr);
-    if (map.getLayer('sb-lines-casing')) {
-      map.setPaintProperty('sb-lines-casing', 'line-width', lodWidth(['+', ['get', 'w'], 3.5]));
-    }
-    if (map.getLayer('sb-lines')) {
-      map.setPaintProperty('sb-lines', 'line-width', lodWidth(['get', 'w']));
-    }
-    if (map.getLayer('sb-lines-dash')) {
-      map.setPaintProperty('sb-lines-dash', 'line-width', lodWidth(['get', 'w']));
-    }
-    if (map.getLayer('sb-stations')) {
-      map.setPaintProperty('sb-stations', 'circle-radius', lodWidth(['get', 'r']));
-    }
+      // Line/station detail fades in over the same horizon, thinning out
+      // instead of disappearing outright.
+      const LOD_MIN_SCALE = 0.45;
+      const lodWidth = (expr) => (ramped
+        ? ['interpolate', ['linear'], ['zoom'], minZoom, ['*', expr, LOD_MIN_SCALE], fadeEnd, expr]
+        : expr);
+      if (map.getLayer('sb-lines-casing')) {
+        map.setPaintProperty('sb-lines-casing', 'line-width', lodWidth(['+', ['get', 'w'], 3.5]));
+      }
+      if (map.getLayer('sb-lines')) {
+        map.setPaintProperty('sb-lines', 'line-width', lodWidth(['get', 'w']));
+      }
+      if (map.getLayer('sb-lines-dash')) {
+        map.setPaintProperty('sb-lines-dash', 'line-width', lodWidth(['get', 'w']));
+      }
+      if (map.getLayer('sb-stations')) {
+        map.setPaintProperty('sb-stations', 'circle-radius', lodWidth(['get', 'r']));
+      }
 
-    // Labels shouldn't pop in long after the geometry they describe.
-    const labelShift = s.renderDistance * 0.5;
-    if (map.getLayer('sb-station-labels')) {
-      map.setLayerZoomRange('sb-station-labels', Math.max(0, 12.6 - labelShift), 24);
-    }
-    if (map.getLayer('sb-railstation-labels')) {
-      map.setLayerZoomRange('sb-railstation-labels', Math.max(0, 11.5 - labelShift), 24);
-    }
+      // Labels shouldn't pop in long after the geometry they describe.
+      const labelShift = s.renderDistance * 0.5;
+      if (map.getLayer('sb-station-labels')) {
+        map.setLayerZoomRange('sb-station-labels', Math.max(0, 12.6 - labelShift), 24);
+      }
+      if (map.getLayer('sb-railstation-labels')) {
+        map.setLayerZoomRange('sb-railstation-labels', Math.max(0, 11.5 - labelShift), 24);
+      }
 
-    if (s.mode2d) {
-      map.setMaxPitch(0);
-      if (map.getPitch() !== 0) map.easeTo({ pitch: 0, duration: 400 });
-      map.dragRotate.disable();
-    } else {
-      map.setMaxPitch(70);
-      map.dragRotate.enable();
+      if (s.mode2d) {
+        map.setMaxPitch(0);
+        if (map.getPitch() !== 0) map.easeTo({ pitch: 0, duration: 400 });
+        map.dragRotate.disable();
+      } else {
+        map.setMaxPitch(70);
+        map.dragRotate.enable();
+      }
+    } catch (e) {
+      console.error('applySettings failed', e);
     }
   };
 
