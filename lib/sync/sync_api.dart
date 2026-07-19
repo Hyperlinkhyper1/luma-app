@@ -229,6 +229,16 @@ class SyncApi {
     return body['configured'] == true;
   }
 
+  /// Which shared AI keys the operator configured plus this account's usage
+  /// — usage arrives only as percentages / message counts (the server keeps
+  /// the raw token budgets to itself). See Api._aiStatus server-side.
+  Future<Map<String, dynamic>> aiStatus() async {
+    final response = await _client
+        .get(Uri.parse('$baseUrl/api/v1/ai/status'), headers: _authHeaders)
+        .timeout(_jsonTimeout);
+    return _decodeOrThrow(response);
+  }
+
   // ---- Account & blobs -------------------------------------------------------
 
   Future<RemoteAccount> account() async {

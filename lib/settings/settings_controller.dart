@@ -69,6 +69,7 @@ class SettingsController extends ChangeNotifier {
     required int aiCallsToday,
     required String? aiCallsResetDate,
     required String aiProviderId,
+    required String aiMode,
     required List<String> navOrder,
     required bool useAmericanGpaScale,
     required File? file,
@@ -84,6 +85,7 @@ class SettingsController extends ChangeNotifier {
         _aiCallsToday = aiCallsToday,
         _aiCallsResetDate = aiCallsResetDate,
         _aiProviderId = aiProviderId,
+        _aiMode = aiMode,
         _navOrder = navOrder,
         _useAmericanGpaScale = useAmericanGpaScale,
         _file = file;
@@ -107,6 +109,7 @@ class SettingsController extends ChangeNotifier {
   int _aiCallsToday;
   String? _aiCallsResetDate;
   String _aiProviderId;
+  String _aiMode;
   List<String> _navOrder;
   bool _useAmericanGpaScale;
   final File? _file;
@@ -184,6 +187,18 @@ class SettingsController extends ChangeNotifier {
   void setAiProviderId(String id) {
     if (id == _aiProviderId) return;
     _aiProviderId = id;
+    _changed();
+  }
+
+  /// Which "Luma AI" intelligence mode is selected (`AiMode.name`:
+  /// normal/smarter/smartest — shown as Aurora/Nebula/Pulsar). Only
+  /// meaningful for the Google provider; like the provider id, this is a
+  /// local per-device choice, not synced.
+  String get aiMode => _aiMode;
+
+  void setAiMode(String mode) {
+    if (mode == _aiMode) return;
+    _aiMode = mode;
     _changed();
   }
 
@@ -325,6 +340,7 @@ class SettingsController extends ChangeNotifier {
     _aiCallsToday = 0;
     _aiCallsResetDate = null;
     _aiProviderId = 'anthropic';
+    _aiMode = 'normal';
     _navOrder = const [];
     _useAmericanGpaScale = false;
     _changed();
@@ -395,6 +411,7 @@ class SettingsController extends ChangeNotifier {
         'aiCallsToday': _aiCallsToday,
         'aiCallsResetDate': _aiCallsResetDate,
         'aiProviderId': _aiProviderId,
+        'aiMode': _aiMode,
         'navOrder': _navOrder,
         'useAmericanGpaScale': _useAmericanGpaScale,
       }));
@@ -434,6 +451,7 @@ class SettingsController extends ChangeNotifier {
       aiCallsToday: data['aiCallsToday'] as int? ?? 0,
       aiCallsResetDate: data['aiCallsResetDate'] as String?,
       aiProviderId: data['aiProviderId'] as String? ?? 'anthropic',
+      aiMode: data['aiMode'] as String? ?? 'normal',
       navOrder: _parseNavOrder(data['navOrder']),
       useAmericanGpaScale: data['useAmericanGpaScale'] == true,
       file: file,

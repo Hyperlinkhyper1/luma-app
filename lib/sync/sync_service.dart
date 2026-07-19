@@ -602,6 +602,19 @@ class SyncService extends ChangeNotifier {
     }
   }
 
+  /// Shared-AI status for this account: which operator keys exist and how
+  /// much of this user's budget is used — percentages only, the raw token
+  /// numbers never leave the server. Null when signed out or unreachable.
+  Future<AiServerStatus?> aiStatus() async {
+    final api = _api;
+    if (api == null || !signedIn) return null;
+    try {
+      return AiServerStatus.fromJson(await api.aiStatus());
+    } catch (_) {
+      return null;
+    }
+  }
+
   // ---- Sync ---------------------------------------------------------------------
 
   /// Synchronizes all enabled collections. Safe to call at any time —
@@ -934,3 +947,47 @@ class SyncService extends ChangeNotifier {
 String _hexEncode(List<int> bytes) => bytes
     .map((b) => b.toRadixString(16).padLeft(2, '0'))
     .join();
+
+/// Parsed GET /api/v1/ai/status response — see [SyncService.aiStatus].
+class AiServerStatus {
+  const AiServerStatus({
+    required this.mistralConfigured,
+    required this.googleConfigured,
+    required this.fiveHourPct,
+    required this.weeklyPct,
+    required this.supportUsed,
+    required this.supportLimit,
+  });
+
+  /// Whether the operator configured a shared Luma Support (Mistral) key.
+  final bool mistralConfigured;
+
+  /// Whether the operator configured a shared Luma AI (Google) key.
+  final bool googleConfigured;
+
+  /// Percent (0-100) of this user's rolling 5-hour Luma AI budget used.
+  final int fiveHourPct;
+
+  /// Percent (0-100) of this user's rolling weekly Luma AI budget used.
+  final int weeklyPct;
+
+  /// Luma Support messages used today, out of [supportLimit].
+  final int supportUsed;
+  final int supportLimit;
+
+  int get supportRemaining => (supportLimit - supportUsed).clamp(0, supportLimit);
+
+  factory AiServerStatus.fromJson(Map<String, dynamic> json) {
+    final usage = json['usage'] as Map<String, dynamic>? ?? const {};
+    int intOf(Object? v, [int fallback = 0]) =>
+        v is num ? v.toInt() : fallback;
+    return AiServerStatus(
+      mistralConfigured: json['mistralConfigured'] == true,
+      googleConfigured: json['googleConfigured'] == true,
+      fiveHourPct: intOf(usage['fiveHourPct']),
+      weeklyPct: intOf(usage['weeklyPct']),
+      supportUsed: intOf(usage['supportUsed']),
+      supportLimit: intOf(usage['supportLimit'], 15),
+    );
+  }
+}

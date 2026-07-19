@@ -7,7 +7,9 @@ import 'ai_key_store.dart';
 import 'ai_tools.dart';
 import 'data/chat_repository.dart';
 import 'providers/ai_client.dart';
+import 'providers/ai_modes.dart';
 import 'providers/ai_providers.dart';
+import 'providers/google_client.dart';
 import 'providers/mistral_proxy_client.dart';
 
 /// Orchestrates one chat turn: persists the user's message, calls whichever
@@ -65,13 +67,24 @@ class ChatController extends ChangeNotifier {
     AiClient client = aiProviderById(providerId).client;
 
     final sync = _syncService;
-    final usingServerKey = apiKey == null &&
-        providerId == AiProviderId.mistral.name &&
-        sync != null &&
-        sync.signedIn;
-    if (usingServerKey) {
+    final serverAvailable = sync != null && sync.signedIn;
+    var usingServerKey = false;
+
+    if (providerId == AiProviderId.google.name) {
+      final mode = aiModeById(_settings.aiMode);
+      if (apiKey != null) {
+        client = GoogleClient(mode: mode);
+      } else if (serverAvailable) {
+        client = GoogleProxyClient(serverUrl: sync.serverUrl!, mode: mode);
+        apiKey = sync.authToken!;
+        usingServerKey = true;
+      }
+    } else if (providerId == AiProviderId.mistral.name &&
+        apiKey == null &&
+        serverAvailable) {
       client = MistralProxyClient(serverUrl: sync.serverUrl!);
       apiKey = sync.authToken!;
+      usingServerKey = true;
     }
 
     if (apiKey == null) {
@@ -81,7 +94,10 @@ class ChatController extends ChangeNotifier {
       return;
     }
 
-    if (!_settings.canSendAiMessage) {
+    // Server-proxied chats are metered server-side (token budgets for Luma
+    // AI, a daily message count for Luma Support), so the local per-device
+    // guard only applies when spending the user's own key.
+    if (!usingServerKey && !_settings.canSendAiMessage) {
       await _repository.addMessage(
         conversationId,
         'error',
@@ -116,7 +132,7 @@ class ChatController extends ChangeNotifier {
         result.text,
         metadataJson: result.metadataJson,
       );
-      _settings.recordAiCall();
+      if (!usingServerKey) _settings.recordAiCall();
     } on AiError catch (e) {
       await _repository.addMessage(conversationId, 'error', e.message);
     } catch (e) {
