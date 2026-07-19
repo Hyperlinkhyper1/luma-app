@@ -321,6 +321,55 @@
     return { graph: g, stations: dedupeStations(stations) };
   };
 
+  /* Rail corridors between cities are usually never on screen, so their
+     tracks exist in neither the initial Overpass fetch (radius-bound) nor
+     the visible-tile merges. Fetch railway=rail for a bbox covering the
+     given stops (~10 km margin) and merge it into the live rail graph. */
+  let corridorInFlight = false;
+  net.surveyRailCorridor = async function (stops) {
+    if (corridorInFlight || !stops.length) return false;
+    corridorInFlight = true;
+    try {
+      let s = Infinity, w = Infinity, n = -Infinity, e = -Infinity;
+      for (const p of stops) {
+        s = Math.min(s, p.lat); n = Math.max(n, p.lat);
+        w = Math.min(w, p.lng); e = Math.max(e, p.lng);
+      }
+      const mLat = 10000 / 111320;
+      const mLng = 10000 / (111320 * Math.max(0.2, Math.cos(((s + n) / 2) * Math.PI / 180)));
+      const q = '[out:json][timeout:22];way["railway"="rail"](' +
+        (s - mLat) + ',' + (w - mLng) + ',' + (n + mLat) + ',' + (e + mLng) + ');out geom;';
+      const abort = new AbortController();
+      const timer = setTimeout(() => abort.abort(), 20000);
+      let res;
+      try {
+        res = await fetch('https://overpass-api.de/api/interpreter', {
+          method: 'POST',
+          body: 'data=' + encodeURIComponent(q),
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          signal: abort.signal,
+        });
+      } finally {
+        clearTimeout(timer);
+      }
+      if (!res.ok) throw new Error('overpass ' + res.status);
+      const data = await res.json();
+      if (!net.rails) net.rails = newGraph();
+      let ways = 0;
+      for (const el of data.elements || []) {
+        if (el.type === 'way' && el.geometry) {
+          addLineString(net.rails, el.geometry.map((p) => [p.lon, p.lat]));
+          ways++;
+        }
+      }
+      return ways > 0;
+    } catch (e) {
+      return false;
+    } finally {
+      corridorInFlight = false;
+    }
+  };
+
   /* Assemble everything after a survey. Async because of Overpass. */
   net.build = async function (collected, place, onProgress) {
     net.buildRoads(collected.transportation || []);

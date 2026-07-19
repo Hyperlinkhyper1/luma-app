@@ -60,11 +60,12 @@
   // is now on screen get folded into the live graphs so building and
   // pathfinding keep working arbitrarily far from the starting point.
   let lastMergeAt = 0;
-  function mergeVisibleIntoNetworks() {
+  function mergeVisibleIntoNetworks(force) {
     if (!game.state || !game.city || !map3d.ready) return;
     const now = performance.now();
-    if (now - lastMergeAt < 1500) return;
+    if (!force && now - lastMergeAt < 1500) return;
     lastMergeAt = now;
+    const railStationsBefore = SB.net.railStations.length;
     const feats = map3d.harvestVisible(['transportation', 'poi', 'water', 'landuse']);
     if (feats.transportation.length) {
       SB.net.mergeRoads(feats.transportation);
@@ -72,6 +73,13 @@
     }
     if (feats.water.length) game.city.addWaterFeatures(feats.water);
     if (feats.landuse.length) game.city.addLanduseFeatures(feats.landuse);
+    // Newly discovered real stations must reach the clickable layer too —
+    // without this they only appear after the player switches tool/mode.
+    if (SB.net.railStations.length !== railStationsBefore) refreshRailStationLayer();
+  }
+
+  function refreshRailStationLayer() {
+    map3d.setRailMode(SB.isRailMode(ui.mode) && (ui.tool === 'station' || ui.tool === 'line'), ui.mode);
   }
 
   // ── Tool clicks on the map ───────────────────────────────────────────
@@ -91,7 +99,13 @@
 
     if (ui.tool === 'station') {
       if (SB.isRailMode(ui.mode)) {
-        const rs = map3d.railStationAtPoint(e.point);
+        let rs = map3d.railStationAtPoint(e.point);
+        if (!rs) {
+          // The station may simply not be in the graphs yet (area never
+          // merged) — harvest the visible tiles now and look again.
+          mergeVisibleIntoNetworks(true);
+          rs = map3d.railStationAtPoint(e.point);
+        }
         if (!rs) { ui.toast(SB.MODES[ui.mode].label + ' services only call at real railway stations — click a highlighted one', 'bad'); return; }
         const r = game.addTrainStation(rs, ui.mode);
         if (!r.ok) ui.toast(r.err, 'bad');
@@ -99,7 +113,13 @@
         ui.updateAll();
         return;
       }
-      const r = game.addStation(e.lngLat.lng, e.lngLat.lat, ui.mode);
+      let r = game.addStation(e.lngLat.lng, e.lngLat.lat, ui.mode);
+      if (!r.ok) {
+        // Streets here may not be merged into the road graph yet — harvest
+        // the visible tiles and retry once before reporting failure.
+        mergeVisibleIntoNetworks(true);
+        r = game.addStation(e.lngLat.lng, e.lngLat.lat, ui.mode);
+      }
       if (!r.ok) ui.toast(r.err, 'bad');
       else ui.toast(r.station.name + ' built · ' + SB.fmtMoney(r.cost));
       ui.updateAll();
@@ -110,7 +130,11 @@
       let target = station;
       // In rail modes, clicking an unleased real station leases it on the fly.
       if (!target && SB.isRailMode(ui.mode)) {
-        const rs = map3d.railStationAtPoint(e.point);
+        let rs = map3d.railStationAtPoint(e.point);
+        if (!rs) {
+          mergeVisibleIntoNetworks(true);
+          rs = map3d.railStationAtPoint(e.point);
+        }
         if (rs) {
           const r = game.addTrainStation(rs, ui.mode);
           if (!r.ok) { ui.toast(r.err, 'bad'); return; }
@@ -164,7 +188,20 @@
         const fromId = ui.draftIds[0];
         const atStart = line.stationIds[0] === fromId;
         const r = game.extendLine(line.id, station.id, atStart);
-        if (!r.ok) { ui.toast(r.err, 'bad'); return; }
+        if (!r.ok) {
+          if (SB.isRailMode(ui.mode)) {
+            const from = game.stationById(fromId);
+            retryAfterRailSurvey([from, station], r.err, () => {
+              const r2 = game.extendLine(line.id, station.id, atStart);
+              if (!r2.ok) { ui.toast(r2.err, 'bad'); return; }
+              ui.draftIds = [station.id];
+              ui.toast(line.name + ' extended to ' + station.name);
+              ui.updateAll();
+            });
+            return;
+          }
+          ui.toast(r.err, 'bad'); return;
+        }
         ui.draftIds = [station.id];
         ui.toast(line.name + ' extended to ' + station.name);
         ui.updateAll();
@@ -183,10 +220,28 @@
       ui.updateAll();
   }
 
-  function finishDraft() {
+  /* A failed rail route often just means the corridor between the stops was
+     never surveyed (it's off-screen and outside the initial Overpass radius).
+     Fetch the tracks for the corridor, then retry the action once. */
+  function retryAfterRailSurvey(stops, origErr, retry) {
+    ui.toast('Surveying the rail corridor…');
+    SB.net.surveyRailCorridor(stops.filter(Boolean)).then((added) => {
+      if (added) retry();
+      else ui.toast(origErr, 'bad');
+    });
+  }
+
+  function finishDraft(isRetry) {
     if (ui.draftIds.length < 2) { ui.cancelDraft(); return; }
     const r = game.commitLine(ui.mode, ui.draftIds);
-    if (!r.ok) { ui.toast(r.err, 'bad'); return; }
+    if (!r.ok) {
+      if (SB.isRailMode(ui.mode) && !isRetry) {
+        const stops = ui.draftIds.map((id) => game.stationById(id));
+        retryAfterRailSurvey(stops, r.err, () => finishDraft(true));
+        return;
+      }
+      ui.toast(r.err, 'bad'); return;
+    }
     const draft = game.draftCost(r.line.mode, r.line.stationIds);
     let msg = r.line.name + ' opened — ' + SB.fmtMoney(r.cost) + ', 2 ' + SB.MODES[r.line.mode].vehicle + 's included';
     if (draft.waterM > 0) msg += ', includes underwater tunnelling';
@@ -347,7 +402,12 @@
       const map = map3d.map;
       map.on('click', handleClick);
       map.on('mousemove', onMouseMove);
-      map.on('idle', mergeVisibleIntoNetworks);
+      // 'idle' alone is unreliable in this WebView2 (render-loop events can
+      // stall) — also merge on movement end and on a plain timer so the
+      // graphs always grow when the player pans away from the survey area.
+      map.on('idle', () => mergeVisibleIntoNetworks());
+      map.on('moveend', () => mergeVisibleIntoNetworks());
+      setInterval(() => mergeVisibleIntoNetworks(), 2500);
       map.on('dblclick', (e) => {
         if (ui.tool === 'line' && ui.draftIds.length > 1 && !ui.draftLineId) {
           e.preventDefault();
