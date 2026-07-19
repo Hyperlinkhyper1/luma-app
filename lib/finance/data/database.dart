@@ -67,6 +67,11 @@ class RecurringRules extends Table {
   IntColumn get merchantId => integer().nullable().references(Merchants, #id)();
   IntColumn get categoryId => integer().nullable().references(Categories, #id)();
   BoolColumn get active => boolean().withDefault(const Constant(true))();
+
+  /// Marks this as a bill/subscription (vs. an ordinary recurring expense or
+  /// income) so it can be surfaced in the "due soon" reminder list. Only
+  /// meaningful for expense-kind rules.
+  BoolColumn get isBill => boolean().withDefault(const Constant(false))();
 }
 
 /// Rules that automatically move money from the main balance into a pot.
@@ -102,6 +107,22 @@ class MetaItems extends Table {
   Set<Column> get primaryKey => {key};
 }
 
+/// One daily snapshot of total net worth (main balance + all pots + holdings
+/// market value), so the overview can chart a trend over time. Populated
+/// once per day (see FinanceRepository.recordBalanceSnapshotIfNeeded) —
+/// balances themselves are never stored anywhere else, only ever derived
+/// from the transaction ledger, so this is purely an appendable history.
+class BalanceSnapshots extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  DateTimeColumn get date => dateTime()();
+  IntColumn get totalCents => integer()();
+
+  @override
+  List<Set<Column>> get uniqueKeys => [
+        {date}
+      ];
+}
+
 /// User-configured graphs on the overview dashboard.
 class OverviewGraphs extends Table {
   IntColumn get id => integer().autoIncrement()();
@@ -121,6 +142,7 @@ class OverviewGraphs extends Table {
     Holdings,
     MetaItems,
     OverviewGraphs,
+    BalanceSnapshots,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -137,7 +159,7 @@ class AppDatabase extends _$AppDatabase {
             ));
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -149,6 +171,10 @@ class AppDatabase extends _$AppDatabase {
           if (from < 2) {
             await m.createTable(overviewGraphs);
             await _seedGraphs();
+          }
+          if (from < 3) {
+            await m.addColumn(recurringRules, recurringRules.isBill);
+            await m.createTable(balanceSnapshots);
           }
         },
       );

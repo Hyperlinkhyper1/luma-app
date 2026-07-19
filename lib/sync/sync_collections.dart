@@ -175,8 +175,26 @@ class PasswordVaultSyncCollection extends DriftSyncCollection {
   Future<Map<String, Object?>> transformExportRow(
       String table, Map<String, Object?> row) async {
     if (table == 'password_entries') {
+      final entryId = row['id'] as int;
       final cipher = row.remove('password_cipher');
-      row['password_plain'] = cipher is String ? crypto.decrypt(cipher) : '';
+      final plain = cipher is String
+          ? crypto.decrypt(cipher, entryId: entryId, field: 'password')
+          : '';
+      if (plain == null) {
+        // Never export an entry we can't decrypt: syncing '' in its place
+        // would overwrite the real password on every other device.
+        throw StateError(
+            'Could not decrypt password entry $entryId for sync '
+            '(corrupt data or changed key file).');
+      }
+      row['password_plain'] = plain;
+      // The TOTP secret is encrypted with this device's local key too — it
+      // must cross the wire as plaintext (inside the E2E-encrypted sync
+      // envelope) or the other device can never decrypt it.
+      final totpCipher = row.remove('totp_secret_cipher');
+      row['totp_secret_plain'] = totpCipher is String
+          ? crypto.decrypt(totpCipher, entryId: entryId, field: 'totp')
+          : null;
     }
     return row;
   }
@@ -185,8 +203,19 @@ class PasswordVaultSyncCollection extends DriftSyncCollection {
   Future<Map<String, Object?>> transformImportRow(
       String table, Map<String, Object?> row) async {
     if (table == 'password_entries') {
+      final entryId = row['id'] as int;
       final plain = row.remove('password_plain');
-      row['password_cipher'] = crypto.encrypt(plain is String ? plain : '');
+      row['password_cipher'] = crypto.encrypt(plain is String ? plain : '',
+          entryId: entryId, field: 'password');
+      // Older snapshots carried totp_secret_cipher (this device can't decrypt
+      // a peer's local ciphertext, so drop it); newer ones carry the plain
+      // secret to re-encrypt under this device's key.
+      final totpPlain = row.remove('totp_secret_plain');
+      if (row.containsKey('totp_secret_cipher') || totpPlain != null) {
+        row['totp_secret_cipher'] = totpPlain is String && totpPlain.isNotEmpty
+            ? crypto.encrypt(totpPlain, entryId: entryId, field: 'totp')
+            : null;
+      }
     }
     return row;
   }

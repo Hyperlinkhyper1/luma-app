@@ -9,6 +9,15 @@ class RateLimiter {
   final Map<String, List<int>> _hits = {};
   int _sincePrune = 0;
 
+  /// True if [key] is currently over its budget, without recording a hit.
+  bool isLimited(String key) {
+    final cutoff = DateTime.now().millisecondsSinceEpoch - window.inMilliseconds;
+    final times = _hits[key];
+    if (times == null) return false;
+    times.removeWhere((t) => t < cutoff);
+    return times.length >= maxRequests;
+  }
+
   /// Returns true if the request is allowed (and records it).
   bool allow(String key) {
     final now = DateTime.now().millisecondsSinceEpoch;

@@ -54,12 +54,17 @@
     const seed = (Math.round(place.lat * 1e4) * 31 + Math.round(place.lng * 1e4)) | 0;
 
     const resPolys = [], jobPolys = [], deadPolys = [], waterPolys = [];
-    for (const f of collected.landuse) {
-      const cls = f.properties && (f.properties.class || f.properties.subclass);
-      if (POP_CLASSES.has(cls)) resPolys.push(...polysOf(f));
-      else if (JOB_CLASSES.has(cls)) jobPolys.push(...polysOf(f));
-      else if (DEAD_CLASSES.has(cls)) deadPolys.push(...polysOf(f));
+    function absorbLanduse(features) {
+      for (const f of features) {
+        const cls = f.properties && (f.properties.class || f.properties.subclass);
+        if (POP_CLASSES.has(cls)) resPolys.push(...polysOf(f));
+        else if (JOB_CLASSES.has(cls)) jobPolys.push(...polysOf(f));
+        else if (DEAD_CLASSES.has(cls)) deadPolys.push(...polysOf(f));
+      }
+      hasLanduse = resPolys.length + jobPolys.length > 3;
     }
+    let hasLanduse = false;
+    absorbLanduse(collected.landuse);
     for (const f of collected.water) waterPolys.push(...polysOf(f));
 
     // Named neighbourhoods for station naming and the map's feel of place.
@@ -80,40 +85,46 @@
 
     function isWater(x, y) { return inAny(waterPolys, x, y); }
 
+    // Raw (unnormalized) density kernel for one point — shared by the initial
+    // rasterization below and by densityAt() for points outside the disc, so
+    // there's one formula. gx/gy just seed the per-cell noise term.
+    function sampleRaw(x, y, gx, gy) {
+      const d = Math.hypot(x, y);
+      const water = isWater(x, y) ? (isWater(x - 100, y - 100) || isWater(x + 100, y + 100)) : false;
+      const dead = !water && inAny(deadPolys, x, y);
+      let pop = 0, jobs = 0;
+      if (!water && !dead) {
+        const jobsK = Math.exp(-(d * d) / (2 * 1900 * 1900));
+        const popK = Math.exp(-(d * d) / (2 * 4600 * 4600));
+        const n = 0.55 + 0.9 * hash01(gx, gy, seed);
+        if (hasLanduse) {
+          const inRes = inAny(resPolys, x, y);
+          const inJob = inAny(jobPolys, x, y);
+          pop = popK * n * (inRes ? 3.2 : 0.35);
+          jobs = jobsK * n * (inJob ? 4.2 : 0.55) + (inJob ? 0.35 : 0);
+          if (inRes) jobs += 0.12 * n; // corner shops, schools…
+        } else {
+          // Rural/unmapped fallback: kernel city so the sim still runs.
+          pop = popK * n;
+          jobs = jobsK * n * 1.4;
+        }
+      }
+      return { water, pop, jobs };
+    }
+
     // ── Rasterize onto the grid ─────────────────────────────────────────
     const cols = Math.ceil((RADIUS * 2) / CELL);
     const rows = cols;
     const cells = [];
     const cellAt = new Int32Array(cols * rows).fill(-1);
-    const hasLanduse = resPolys.length + jobPolys.length > 3;
 
     let popSum = 0, jobsSum = 0;
     for (let gy = 0; gy < rows; gy++) {
       for (let gx = 0; gx < cols; gx++) {
         const x = -RADIUS + gx * CELL + CELL / 2;
         const y = -RADIUS + gy * CELL + CELL / 2;
-        const d = Math.hypot(x, y);
-        if (d > RADIUS) continue;
-        const water = isWater(x, y) ? (isWater(x - 100, y - 100) || isWater(x + 100, y + 100)) : false;
-        const dead = !water && inAny(deadPolys, x, y);
-
-        let pop = 0, jobs = 0;
-        if (!water && !dead) {
-          const jobsK = Math.exp(-(d * d) / (2 * 1900 * 1900));
-          const popK = Math.exp(-(d * d) / (2 * 4600 * 4600));
-          const n = 0.55 + 0.9 * hash01(gx, gy, seed);
-          if (hasLanduse) {
-            const inRes = inAny(resPolys, x, y);
-            const inJob = inAny(jobPolys, x, y);
-            pop = popK * n * (inRes ? 3.2 : 0.35);
-            jobs = jobsK * n * (inJob ? 4.2 : 0.55) + (inJob ? 0.35 : 0);
-            if (inRes) jobs += 0.12 * n; // corner shops, schools…
-          } else {
-            // Rural/unmapped fallback: kernel city so the sim still runs.
-            pop = popK * n;
-            jobs = jobsK * n * 1.4;
-          }
-        }
+        if (Math.hypot(x, y) > RADIUS) continue;
+        const { water, pop, jobs } = sampleRaw(x, y, gx, gy);
         const idx = cells.length;
         cells.push({ gx, gy, x, y, water, pop, jobs });
         cellAt[gy * cols + gx] = idx;
@@ -125,9 +136,11 @@
     const urbanCells = cells.filter((c) => c.pop > 0.15).length;
     const estPop = Math.max(90000, Math.round(urbanCells * 620));
     const commuters = estPop * 0.42;
+    const popScale = popSum > 0 ? estPop / popSum : 0;
+    const jobsScale = jobsSum > 0 ? commuters / jobsSum : 0;
     for (const c of cells) {
-      c.pop = popSum > 0 ? (c.pop / popSum) * estPop : 0;
-      c.jobs = jobsSum > 0 ? (c.jobs / jobsSum) * commuters : 0;
+      c.pop *= popScale;
+      c.jobs *= jobsScale;
     }
     const maxPop = Math.max(1, ...cells.map((c) => c.pop));
     const maxJobs = Math.max(1, ...cells.map((c) => c.jobs));
@@ -141,11 +154,27 @@
         budget: 1.4e9, funding: 25e3,
       },
       isWater,
-      inBounds(x, y) { return Math.hypot(x, y) <= RADIUS; },
+      // Water/landuse picked up while exploring beyond the original survey —
+      // the arrays are shared by reference, so isWater()/densityAt() see them.
+      addWaterFeatures(features) {
+        for (const f of features) waterPolys.push(...polysOf(f));
+      },
+      addLanduseFeatures: absorbLanduse,
       cellIndexAt(x, y) {
         const gx = Math.floor((x + RADIUS) / CELL), gy = Math.floor((y + RADIUS) / CELL);
         if (gx < 0 || gy < 0 || gx >= cols || gy >= rows) return -1;
         return cellAt[gy * cols + gx];
+      },
+      // Population/jobs density anywhere, not just inside the surveyed disc:
+      // the gaussian kernel in sampleRaw decays smoothly with distance from
+      // the chosen point, so far-flung stations get a sensible (low, never
+      // hard-zeroed) density estimate instead of falling back to flat cost.
+      densityAt(x, y) {
+        const ci = this.cellIndexAt(x, y);
+        if (ci >= 0) { const c = cells[ci]; return { pop: c.pop, jobs: c.jobs }; }
+        const gx = Math.floor((x + RADIUS) / CELL), gy = Math.floor((y + RADIUS) / CELL);
+        const raw = sampleRaw(x, y, gx, gy);
+        return { pop: raw.pop * popScale, jobs: raw.jobs * jobsScale };
       },
       districtNameAt(x, y) {
         let best = null, bd = Infinity;

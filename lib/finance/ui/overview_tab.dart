@@ -29,13 +29,17 @@ class OverviewTab extends StatelessWidget {
               stream: repo.watchTransactions(),
               builder: (context, txns) => StreamData<List<OverviewGraph>>(
                 stream: repo.watchOverviewGraphs(),
-                builder: (context, graphs) => _OverviewBody(
-                  pots: pots,
-                  categories: categories,
-                  holdings: holdings,
-                  recurring: recurring,
-                  txns: txns,
-                  graphs: graphs,
+                builder: (context, graphs) => StreamData<List<BalanceSnapshot>>(
+                  stream: repo.watchNetWorthHistory(),
+                  builder: (context, netWorthHistory) => _OverviewBody(
+                    pots: pots,
+                    categories: categories,
+                    holdings: holdings,
+                    recurring: recurring,
+                    txns: txns,
+                    graphs: graphs,
+                    netWorthHistory: netWorthHistory,
+                  ),
                 ),
               ),
             ),
@@ -54,6 +58,7 @@ class _OverviewBody extends StatefulWidget {
     required this.recurring,
     required this.txns,
     required this.graphs,
+    required this.netWorthHistory,
   });
 
   final List<Pot> pots;
@@ -62,6 +67,7 @@ class _OverviewBody extends StatefulWidget {
   final List<RecurringRule> recurring;
   final List<FinanceTransaction> txns;
   final List<OverviewGraph> graphs;
+  final List<BalanceSnapshot> netWorthHistory;
 
   @override
   State<_OverviewBody> createState() => _OverviewBodyState();
@@ -147,6 +153,7 @@ class _OverviewBodyState extends State<_OverviewBody> {
             txns: widget.txns,
             categories: widget.categories,
             holdings: widget.holdings,
+            netWorthHistory: widget.netWorthHistory,
             isEditing: _isEditing,
           ),
           const SizedBox(height: 24),
@@ -191,6 +198,7 @@ class _DashboardGraphs extends StatelessWidget {
     required this.txns,
     required this.categories,
     required this.holdings,
+    required this.netWorthHistory,
     required this.isEditing,
   });
 
@@ -198,6 +206,7 @@ class _DashboardGraphs extends StatelessWidget {
   final List<FinanceTransaction> txns;
   final List<Category> categories;
   final List<Holding> holdings;
+  final List<BalanceSnapshot> netWorthHistory;
   final bool isEditing;
 
   @override
@@ -269,7 +278,7 @@ class _DashboardGraphs extends StatelessWidget {
 
   Widget _buildGraph(OverviewGraph g) {
     if (g.dataSource == 'net_worth') {
-      return NetWorthChart(txns: txns, holdings: holdings);
+      return NetWorthChart(snapshots: netWorthHistory);
     } else if (g.dataSource == 'category_spending') {
       return CategorySpendingChart(txns: txns, categories: categories);
     } else if (g.dataSource == 'income_vs_expense') {

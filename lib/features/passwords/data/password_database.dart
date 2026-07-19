@@ -22,6 +22,10 @@ class PasswordEntries extends Table {
   TextColumn get info => text().nullable()();
   TextColumn get icon => text().nullable()();
 
+  /// Base32 TOTP/2FA secret, encrypted (same scheme as [passwordCipher]).
+  /// Null when this entry has no 2FA code configured.
+  TextColumn get totpSecretCipher => text().nullable()();
+
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }
@@ -40,13 +44,17 @@ class PasswordDatabase extends _$PasswordDatabase {
             ));
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onUpgrade: (m, from, to) async {
           if (from < 2) {
             await m.addColumn(passwordEntries, passwordEntries.icon);
+          }
+          if (from < 3) {
+            await m.addColumn(
+                passwordEntries, passwordEntries.totpSecretCipher);
           }
         },
       );

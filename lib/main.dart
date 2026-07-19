@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
@@ -276,8 +278,11 @@ class _LumaAppState extends State<LumaApp> {
   // The real startup work the splash covers: catch up any recurring entries /
   // allocations that came due while closed. Errors are swallowed so a storage
   // hiccup never blocks (or hangs) startup.
-  late final Future<void> _bootstrap =
-      _repository.applyDue(DateTime.now()).catchError((_) => 0).then((_) {});
+  late final Future<void> _bootstrap = _repository
+      .applyDue(DateTime.now())
+      .catchError((_) => 0)
+      .then((_) => _repository.recordDailyNetWorthSnapshot())
+      .catchError((_) {});
 
   AppLifecycleListener? _lifecycleListener;
 
@@ -291,6 +296,7 @@ class _LumaAppState extends State<LumaApp> {
     _sync.init();
     _peerSync.init();
     _familyRepository.init();
+    unawaited(_passwordRepository.migrateLegacyCiphertexts());
     _secureChatRepository.init();
     _autoClickerRepository.init();
     _usageRepository.init();

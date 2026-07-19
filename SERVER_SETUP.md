@@ -4,7 +4,10 @@ luma can sync your data (notes, finance, passwords, calendar, …) between
 devices through a small server that you run yourself. This guide takes you
 from "I have nothing" to a working, secure sync server.
 
-The server code lives in the [`server/`](server/) folder of this repo.
+The server code lives in the [`server/`](server/) folder of this repo. This
+guide covers *deploying* it; for the server's internals (architecture, API
+reference, how auth/admin/rate-limiting work), see
+[`server/README.md`](server/README.md) instead.
 
 ---
 
@@ -314,21 +317,9 @@ variables in a small `.bat` wrapper).
 
 ### API quick reference (for the curious)
 
-All endpoints under `https://<server>/api/v1`:
-
-```
-POST /auth/params    {email}                        → KDF salt + iterations
-POST /auth/register  {email, authKey, kdfSalt, …}   → token
-POST /auth/login     {email, authKey}               → token
-POST /auth/logout                                    (auth)
-POST /auth/change    {currentAuthKey, newAuthKey,…}  (auth)
-GET  /account                                        (auth) → usage, quota, collections
-POST /account/delete {authKey}                       (auth) → wipes everything
-GET  /sync/<name>                                    (auth) → encrypted snapshot
-PUT  /sync/<name>    (X-Base-Version header)         (auth) → optimistic-locked upload
-DELETE /sync/<name>                                  (auth)
-GET  /health                                          public
-```
+See [`server/README.md`](server/README.md) for the full endpoint table, the
+server's internal architecture, and how the admin dashboard's login works —
+that's the developer-facing companion to this deployment guide.
 
 ---
 

@@ -10,16 +10,15 @@
   const SAVE_KEY = 'subway_builder_geo_v1';
 
   // ── Mode catalog ─────────────────────────────────────────────────────
-  // Each mode has a distance role, enforced per segment: metro and tram are
-  // short-hop modes (maxSegM), train and high-speed rail are long-hop modes
-  // (minSegM); the bus does any distance, it's just slow.
+  // Metro and tram are short-hop modes (maxSegM caps how far one segment can
+  // run); there is no minimum hop or station-spacing distance for any mode.
   const MODES = {
     metro: {
       label: 'Metro', vehicle: 'train', role: 'Short hops · fast · underground',
       speedKmh: 60, cap: 600, dwellMin: 0.75, access: 950,
       stationBase: 60e6, densMult: 0.6, perKm: 45e6, waterMult: 2.6,
       vehicleCost: 25e6, vehicleRefund: 12e6, vehicleOpDay: 6000,
-      stationOpDay: 4000, trackOpKmDay: 1500, maxVehicles: 14, spacing: 400,
+      stationOpDay: 4000, trackOpKmDay: 1500, maxVehicles: 14,
       maxSegM: 3000,
     },
     tram: {
@@ -27,7 +26,7 @@
       speedKmh: 22, cap: 220, dwellMin: 0.5, access: 650,
       stationBase: 4e6, densMult: 0.4, perKm: 10e6, waterMult: 1,
       vehicleCost: 4e6, vehicleRefund: 1.8e6, vehicleOpDay: 1600,
-      stationOpDay: 500, trackOpKmDay: 450, maxVehicles: 16, spacing: 280,
+      stationOpDay: 500, trackOpKmDay: 450, maxVehicles: 16,
       maxSegM: 1600,
     },
     bus: {
@@ -35,23 +34,23 @@
       speedKmh: 17, cap: 90, dwellMin: 0.35, access: 450,
       stationBase: 400e3, densMult: 0.3, perKm: 150e3, waterMult: 1,
       vehicleCost: 700e3, vehicleRefund: 300e3, vehicleOpDay: 900,
-      stationOpDay: 120, trackOpKmDay: 0, maxVehicles: 20, spacing: 220,
+      stationOpDay: 120, trackOpKmDay: 0, maxVehicles: 20,
     },
     train: {
       label: 'Train', vehicle: 'train', role: 'Long hops · real stations & tracks',
       speedKmh: 90, cap: 900, dwellMin: 1.2, access: 1400,
       stationBase: 25e6, densMult: 0.2, perKm: 4e6, waterMult: 1,
       vehicleCost: 35e6, vehicleRefund: 15e6, vehicleOpDay: 9000,
-      stationOpDay: 6000, trackOpKmDay: 800, maxVehicles: 10, spacing: 0,
-      minSegM: 2500, rail: true,
+      stationOpDay: 6000, trackOpKmDay: 800, maxVehicles: 10,
+      rail: true,
     },
     hst: {
       label: 'High-speed', vehicle: 'train', role: 'Very long hops · very fast · few stops',
       speedKmh: 230, cap: 550, dwellMin: 3, access: 2500,
       stationBase: 65e6, densMult: 0.25, perKm: 15e6, waterMult: 1,
       vehicleCost: 90e6, vehicleRefund: 40e6, vehicleOpDay: 26000,
-      stationOpDay: 9000, trackOpKmDay: 2000, maxVehicles: 8, spacing: 0,
-      minSegM: 6000, rail: true,
+      stationOpDay: 9000, trackOpKmDay: 2000, maxVehicles: 8,
+      rail: true,
     },
   };
   SB.MODES = MODES;
@@ -238,9 +237,6 @@
     if (M.maxSegM && chord > M.maxSegM) {
       return { err: M.label + ' hops max ' + (M.maxSegM / 1000).toFixed(1) + ' km between stops — add a stop in between, or use Train for long distances' };
     }
-    if (M.minSegM && chord < M.minSegM) {
-      return { err: M.label + ' is for long hops (min ' + (M.minSegM / 1000).toFixed(0) + ' km between stations) — use Metro or Tram for short ones' };
-    }
     if (mode === 'metro') {
       const len = Math.hypot(b.x - a.x, b.y - a.y);
       const steps = Math.max(2, Math.ceil(len / 90));
@@ -260,9 +256,6 @@
         ? 'No rail connection exists between these stations'
         : 'No street route between these stops' };
     }
-    if (r.len > Math.hypot(b.x - a.x, b.y - a.y) * 4 + 1500) {
-      return { err: 'The only route is a huge detour — pick closer stops' };
-    }
     return {
       pts: r.pts.map(([x, y]) => SB.geo.toLL(x, y)),
       len: r.len, waterM: 0,
@@ -273,12 +266,8 @@
   // ── Cost helpers ─────────────────────────────────────────────────────
   game.stationCostAt = function (x, y, mode) {
     const M = MODES[mode];
-    const ci = game.city.cellIndexAt(x, y);
-    let dens = 0;
-    if (ci >= 0) {
-      const c = game.city.cells[ci];
-      dens = Math.max(c.pop / game.city.maxPop, c.jobs / game.city.maxJobs);
-    }
+    const { pop, jobs } = game.city.densityAt(x, y);
+    const dens = Math.max(pop / game.city.maxPop, jobs / game.city.maxJobs);
     return M.stationBase * (1 + dens * M.densMult);
   };
 
@@ -298,16 +287,10 @@
   game.canPlaceStation = function (x, y, mode) {
     const city = game.city;
     const M = MODES[mode];
-    if (!city.inBounds(x, y)) return { ok: false, err: 'Outside the play area (7 km around your chosen point)' };
     if (city.isWater(x, y)) return { ok: false, err: 'That’s open water' };
     if ((mode === 'bus' || mode === 'tram') &&
         SB.net.nearestNode(SB.net.roads, x, y, 130) < 0) {
       return { ok: false, err: 'Place ' + M.label.toLowerCase() + ' stops on a street' };
-    }
-    for (const s of game.state.stations) {
-      if (s.mode === mode && Math.hypot(s.x - x, s.y - y) < M.spacing) {
-        return { ok: false, err: 'Too close to ' + s.name };
-      }
     }
     const cost = game.stationCostAt(x, y, mode);
     if (cost > game.state.money) return { ok: false, err: 'Not enough funds', cost };

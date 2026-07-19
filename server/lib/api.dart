@@ -159,7 +159,11 @@ class Api {
         _generalLimiter = RateLimiter(
             maxRequests: 300, window: const Duration(minutes: 1)),
         _resendLimiter = RateLimiter(
-            maxRequests: 3, window: const Duration(minutes: 15));
+            maxRequests: 3, window: const Duration(minutes: 15)),
+        _adminFailLimiter = RateLimiter(
+            maxRequests: 10, window: const Duration(minutes: 15)),
+        _inviteLimiter = RateLimiter(
+            maxRequests: 10, window: const Duration(hours: 1));
 
   final Store store;
   final ServerConfig config;
@@ -174,6 +178,23 @@ class Api {
   /// verification mail to one address from many IPs.
   final RateLimiter _resendLimiter;
 
+  /// Per-IP limit on *failed* admin-key attempts, so the admin key cannot be
+  /// brute-forced at the general limiter's 300 req/min.
+  final RateLimiter _adminFailLimiter;
+
+  /// Per-user limit on family/chat invites, each of which sends an email to
+  /// an arbitrary address — without this, any account could use the server
+  /// as a spam relay at the general limiter's speed.
+  final RateLimiter _inviteLimiter;
+
+  /// Admin dashboard login sessions, keyed by SHA-256 of the session cookie
+  /// token (mirrors [Store.sessionsByTokenHash] for regular users). In-memory
+  /// only — an operator just logs in again after a restart — so the admin key
+  /// no longer has to travel in every dashboard URL/log line/Referer header.
+  final Map<String, int> _adminSessionExpiryByTokenHash = {};
+  static const _adminSessionTtl = Duration(hours: 12);
+  static const _adminCookieName = 'luma_admin';
+
   Handler get handler {
     final router = Router()
       ..get('/', _root)
@@ -185,6 +206,8 @@ class Api {
       ..post('/api/v1/auth/login', _login)
       ..post('/api/v1/auth/logout', _requireAuth(_logout))
       ..post('/api/v1/auth/change', _requireAuth(_changePassword))
+      ..get('/api/v1/auth/sessions', _requireAuth(_listSessions))
+      ..post('/api/v1/auth/sessions/<id>/revoke', _requireAuth(_revokeSession))
       ..get('/api/v1/account', _requireAuth(_accountInfo))
       ..post('/api/v1/account/delete', _requireAuth(_deleteAccount))
       ..get('/api/v1/ai/mistral-key-configured', _requireAuth(_mistralKeyStatus))
@@ -225,6 +248,9 @@ class Api {
       ..post('/api/v1/chat/conversations/<id>/messages',
           _requireAuth(_sendChatMessage))
       ..post('/api/v1/plugins/download', _reportPluginDownload)
+      ..get('/admin/login', _adminLoginPage)
+      ..post('/admin/login', _adminLoginSubmit)
+      ..post('/admin/logout', _adminLogout)
       ..get('/admin', _requireAdmin(_adminDashboard))
       ..get('/admin/users', _requireAdmin(_adminUsers))
       ..get('/admin/stats', _requireAdmin(_adminStats))
@@ -290,7 +316,10 @@ class Api {
     if (config.trustProxy) {
       final forwarded = request.headers['x-forwarded-for'];
       if (forwarded != null && forwarded.isNotEmpty) {
-        return forwarded.split(',').first.trim();
+        // Take the LAST entry — that's the one appended by our own trusted
+        // proxy. Earlier entries are client-supplied and trivially spoofed,
+        // which would let an attacker rotate fake IPs past the rate limiter.
+        return forwarded.split(',').last.trim();
       }
     }
     final conn = request.context['shelf.io.connection_info'];
@@ -330,27 +359,185 @@ class Api {
     };
   }
 
-  /// Wraps a handler so it only runs with a valid admin key. If no admin key
-  /// is configured, the route behaves as if it doesn't exist (404) rather
-  /// than being left open. Accepts the key via the `X-Admin-Key` header (all
-  /// endpoints) or a `?key=` query parameter (so the HTML dashboard is
-  /// reachable from a plain browser, which cannot set custom headers).
+  /// Wraps a handler so it only runs for an authenticated admin. If no admin
+  /// key is configured, the route behaves as if it doesn't exist (404)
+  /// rather than being left open.
+  ///
+  /// Primary path: a session cookie set by [_adminLoginSubmit] after the
+  /// operator enters the key once at /admin/login — this is what the
+  /// dashboard itself uses, so the key never appears in a URL, browser
+  /// history, or a reverse-proxy access log line. Fallback path, for
+  /// non-browser callers (curl, scripts): the raw key via the `X-Admin-Key`
+  /// header or a `?key=` query parameter — visiting /admin this way still
+  /// works but also opportunistically establishes a session, so only the
+  /// first request needs the key.
   Handler _requireAdmin(FutureOr<Response> Function(Request) handler) {
     return (request) async {
       if (!config.adminEnabled) {
         return _error(404, 'not_found', 'Not found.');
       }
-      final provided = request.headers['x-admin-key'] ??
-          request.url.queryParameters['key'] ??
-          '';
+      final clientKey = _clientKey(request);
+      // Refuse outright while this IP is over its failed-attempt budget —
+      // only *failed* attempts count, so the dashboard's own polling never
+      // locks a legitimate operator out.
+      if (_adminFailLimiter.isLimited(clientKey)) {
+        return _error(429, 'rate_limited',
+            'Too many failed admin attempts. Try again later.');
+      }
+
+      if (_hasValidAdminSession(request)) {
+        return _withAdminHeaders(await handler(request));
+      }
+
+      // Fall back to the raw key, for non-browser/API callers (curl, scripts)
+      // that don't hold a session cookie.
+      final provided =
+          request.headers['x-admin-key'] ?? request.url.queryParameters['key'];
+      if (provided == null) {
+        // No credential of any kind — most likely a browser navigating here
+        // directly, so send it to the login form rather than a bare 401.
+        return Response.found('/admin/login');
+      }
       final expected = config.adminKey!;
       final match = constantTimeEquals(
           utf8.encode(provided), utf8.encode(expected));
       if (!match) {
+        _adminFailLimiter.allow(clientKey);
         return _error(401, 'unauthorized', 'Invalid or missing admin key.');
       }
-      return handler(request);
+      final response = _withAdminHeaders(await handler(request));
+      // Loading the dashboard itself via an old `?key=` bookmark: piggyback a
+      // session cookie on the response so every subsequent click/poll from
+      // this browser goes through the cookie instead of repeating the key.
+      return request.url.path == 'admin'
+          ? _establishAdminSession(response, request)
+          : response;
     };
+  }
+
+  Response _establishAdminSession(Response response, Request request) {
+    final token = base64UrlEncode(randomBytes(32)).replaceAll('=', '');
+    final tokenHash = c.sha256.convert(utf8.encode(token)).toString();
+    _pruneAdminSessions();
+    _adminSessionExpiryByTokenHash[tokenHash] =
+        DateTime.now().millisecondsSinceEpoch + _adminSessionTtl.inMilliseconds;
+    final secure = _isSecureRequest(request);
+    return response.change(headers: {
+      'Set-Cookie': '$_adminCookieName=$token; Path=/admin; HttpOnly; '
+          'SameSite=Strict${secure ? '; Secure' : ''}; '
+          'Max-Age=${_adminSessionTtl.inSeconds}',
+    });
+  }
+
+  /// The dashboard used to carry the admin key in its URL (every link, form
+  /// action, and fetch call) — that leaks into reverse-proxy access logs,
+  /// browser history, and the Referer header. These headers close that off
+  /// for the cookie-authenticated path; `no-store` also keeps a shared/public
+  /// machine from caching a page full of account data.
+  Response _withAdminHeaders(Response response) => response.change(headers: {
+        'Referrer-Policy': 'no-referrer',
+        'Cache-Control': 'no-store',
+      });
+
+  String? _adminSessionToken(Request request) {
+    final cookieHeader = request.headers['cookie'];
+    if (cookieHeader == null) return null;
+    for (final part in cookieHeader.split(';')) {
+      final eq = part.indexOf('=');
+      if (eq < 0) continue;
+      final name = part.substring(0, eq).trim();
+      if (name == _adminCookieName) return part.substring(eq + 1).trim();
+    }
+    return null;
+  }
+
+  bool _hasValidAdminSession(Request request) {
+    final token = _adminSessionToken(request);
+    if (token == null) return false;
+    final tokenHash = c.sha256.convert(utf8.encode(token)).toString();
+    final expiresAt = _adminSessionExpiryByTokenHash[tokenHash];
+    if (expiresAt == null) return false;
+    if (expiresAt <= DateTime.now().millisecondsSinceEpoch) {
+      _adminSessionExpiryByTokenHash.remove(tokenHash);
+      return false;
+    }
+    return true;
+  }
+
+  void _pruneAdminSessions() {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    _adminSessionExpiryByTokenHash.removeWhere((_, exp) => exp <= now);
+  }
+
+  /// Whether to mark the session cookie `Secure` (HTTPS-only). Mirrors the
+  /// scheme-detection [_originHint] already uses for the landing page: trust
+  /// the proxy's forwarded-proto header, and otherwise assume plain HTTP only
+  /// on localhost.
+  bool _isSecureRequest(Request request) {
+    final proto = request.headers['x-forwarded-proto'];
+    if (proto != null) return proto == 'https';
+    final host = request.headers['host'] ?? '';
+    return !(host.startsWith('localhost') || host.startsWith('127.'));
+  }
+
+  String _adminLoginFormHtml({bool failed = false}) =>
+      '<!doctype html><html><head><meta charset="utf-8">'
+      '<meta name="viewport" content="width=device-width, initial-scale=1">'
+      '<title>luma admin — sign in</title>'
+      '<style>$_adminCss</style></head><body><div class="wrap" '
+      'style="max-width:360px;padding-top:15vh">'
+      '<header class="top"><h1>luma<span class="dot">.</span> admin</h1></header>'
+      '<div class="card">'
+      '${failed ? '<p class="hint" style="color:#e07e7e">Invalid admin key, or too many attempts — try again shortly.</p>' : ''}'
+      '<form method="post" action="/admin/login">'
+      '<div class="product-form" style="flex-direction:column;align-items:stretch">'
+      '<input type="password" name="key" placeholder="Admin key" autofocus required '
+      'style="width:100%">'
+      '<button type="submit" class="btn btn-primary">Sign in</button>'
+      '</div></form></div></div></body></html>';
+
+  Response _adminLoginPage(Request request) {
+    if (!config.adminEnabled) return _error(404, 'not_found', 'Not found.');
+    return Response(200,
+        body: _adminLoginFormHtml(
+            failed: request.url.queryParameters.containsKey('failed')),
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'no-store',
+        });
+  }
+
+  Future<Response> _adminLoginSubmit(Request request) async {
+    if (!config.adminEnabled) return _error(404, 'not_found', 'Not found.');
+    final clientKey = _clientKey(request);
+    if (_adminFailLimiter.isLimited(clientKey)) {
+      return Response.found('/admin/login?failed=1');
+    }
+    Map<String, String> form = const {};
+    try {
+      form = Uri.splitQueryString(await request.readAsString());
+    } catch (_) {}
+    final provided = form['key'] ?? '';
+    final match = constantTimeEquals(
+        utf8.encode(provided), utf8.encode(config.adminKey!));
+    if (!match) {
+      _adminFailLimiter.allow(clientKey);
+      return Response.found('/admin/login?failed=1');
+    }
+
+    return _establishAdminSession(Response.found('/admin'), request);
+  }
+
+  Response _adminLogout(Request request) {
+    final token = _adminSessionToken(request);
+    if (token != null) {
+      _adminSessionExpiryByTokenHash
+          .remove(c.sha256.convert(utf8.encode(token)).toString());
+    }
+    return Response.found('/admin/login', headers: {
+      'Set-Cookie': '$_adminCookieName=; Path=/admin; HttpOnly; '
+          'SameSite=Strict; Max-Age=0',
+    });
   }
 
   // ---- Handlers: misc -----------------------------------------------------
@@ -443,6 +630,7 @@ class Api {
     if (iterations is! int || iterations < 50000 || iterations > 5000000) {
       return _error(400, 'bad_kdf_iterations', 'Invalid KDF iterations.');
     }
+    final deviceLabel = body['deviceLabel'] as String?;
 
     return store.lock.synchronized(() async {
       if (store.userIdByEmail.containsKey(email)) {
@@ -470,7 +658,7 @@ class Api {
       if (!requireVerification) {
         await store.saveUsers();
         await store.logActivity('account_registered', '$email registered');
-        final token = await _createSession(user);
+        final token = await _createSession(user, deviceLabel: deviceLabel);
         return _json(201, {
           'token': token.$1,
           'expiresAtMs': token.$2,
@@ -495,6 +683,7 @@ class Api {
     final body = await _readJson(request);
     final email = _normalizeEmail(body['email']);
     final authKey = _decodeB64(body['authKey'], minLen: 32, maxLen: 64);
+    final deviceLabel = body['deviceLabel'] as String?;
     if (email == null || authKey == null) {
       return _error(400, 'bad_request', 'Invalid email or auth key.');
     }
@@ -520,7 +709,7 @@ class Api {
     }
 
     return store.lock.synchronized(() async {
-      final token = await _createSession(user);
+      final token = await _createSession(user, deviceLabel: deviceLabel);
       user.lastLoginAtMs = DateTime.now().millisecondsSinceEpoch;
       await store.saveUsers();
       await store.logActivity('login', '${user.email} logged in');
@@ -529,6 +718,54 @@ class Api {
         'expiresAtMs': token.$2,
         'quotaBytes': user.quotaBytes,
       });
+    });
+  }
+
+  /// Lists this account's active (non-expired) sessions, newest first, with
+  /// the caller's own session flagged via `isCurrent` so the UI can show
+  /// "This device" and disable revoking it (use Sign out for that instead).
+  Response _listSessions(Request request, StoredUser user) {
+    final auth = request.headers['authorization']!;
+    final currentTokenHash =
+        c.sha256.convert(utf8.encode(auth.substring(7).trim())).toString();
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final sessions = store.sessionsByTokenHash.values
+        .where((s) => s.userId == user.id && s.expiresAtMs > now)
+        .toList()
+      ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
+    return _json(200, {
+      'sessions': sessions
+          .map((s) => {
+                'id': s.tokenHash,
+                'deviceLabel': s.deviceLabel,
+                'createdAtMs': s.createdAtMs,
+                'expiresAtMs': s.expiresAtMs,
+                'isCurrent': s.tokenHash == currentTokenHash,
+              })
+          .toList(),
+    });
+  }
+
+  /// Revokes one of the caller's own sessions by id (its tokenHash). Revoking
+  /// the current session is rejected — use /auth/logout for that, which also
+  /// clears the client's local token.
+  Future<Response> _revokeSession(Request request, StoredUser user) async {
+    final id = request.params['id']!;
+    final auth = request.headers['authorization']!;
+    final currentTokenHash =
+        c.sha256.convert(utf8.encode(auth.substring(7).trim())).toString();
+    if (id == currentTokenHash) {
+      return _error(400, 'cannot_revoke_current',
+          'Cannot revoke the session you are currently using — sign out instead.');
+    }
+    return store.lock.synchronized(() async {
+      final session = store.sessionsByTokenHash[id];
+      if (session == null || session.userId != user.id) {
+        return _error(404, 'not_found', 'Session not found.');
+      }
+      store.sessionsByTokenHash.remove(id);
+      await store.saveSessions();
+      return _json(200, {'ok': true});
     });
   }
 
@@ -545,7 +782,10 @@ class Api {
     return store.lock.synchronized(() async {
       StoredUser? user;
       for (final u in store.usersById.values) {
-        if (u.verificationTokenHash == tokenHash) {
+        final candidate = u.verificationTokenHash;
+        if (candidate != null &&
+            constantTimeEquals(
+                utf8.encode(candidate), utf8.encode(tokenHash))) {
           user = u;
           break;
         }
@@ -946,17 +1186,32 @@ class Api {
     }
 
     // Read the body with a hard cap so oversized uploads cannot exhaust RAM.
+    // The cap is the smaller of the global per-upload limit and what this
+    // user's quota could possibly accept (replacing their existing blob), so
+    // a 5 MB-quota account can't buffer 256 MB into memory per request. The
+    // authoritative quota check still happens under the lock below.
+    final existingSize =
+        store.collectionsByUser[user.id]?[name]?.size ?? 0;
+    final quotaHeadroom =
+        user.quotaBytes - store.usedBytes(user.id) + existingSize;
+    final cap = quotaHeadroom < config.maxBlobBytes
+        ? quotaHeadroom
+        : config.maxBlobBytes;
+    if (cap <= 0) {
+      return _error(413, 'quota_exceeded',
+          'Storage quota exceeded (${user.quotaBytes} bytes).');
+    }
     final declared = request.contentLength ?? -1;
-    if (declared > config.maxBlobBytes) {
+    if (declared > cap) {
       return _error(413, 'blob_too_large',
-          'Snapshot exceeds the per-upload limit of ${config.maxBlobBytes} bytes.');
+          'Snapshot exceeds the allowed upload size of $cap bytes.');
     }
     final builder = BytesBuilder(copy: false);
     await for (final chunk in request.read()) {
       builder.add(chunk);
-      if (builder.length > config.maxBlobBytes) {
+      if (builder.length > cap) {
         return _error(413, 'blob_too_large',
-            'Snapshot exceeds the per-upload limit of ${config.maxBlobBytes} bytes.');
+            'Snapshot exceeds the allowed upload size of $cap bytes.');
       }
     }
     final bytes = builder.takeBytes();
@@ -1144,6 +1399,12 @@ class Api {
     if (name.isEmpty || name.length > 60) {
       return _error(400, 'bad_name', 'Family name must be 1–60 characters.');
     }
+    // No control characters: the name is later interpolated into an email
+    // Subject header (see Mailer.sendFamilyInviteEmail), where a CR/LF would
+    // be an SMTP header-injection vector.
+    if (name.codeUnits.any((c) => c < 0x20 || c == 0x7f)) {
+      return _error(400, 'bad_name', 'Family name contains invalid characters.');
+    }
 
     return store.lock.synchronized(() async {
       if (familyStore.familyIdByUserId.containsKey(user.id)) {
@@ -1187,6 +1448,10 @@ class Api {
     final body = await _readJson(request);
     final email = _normalizeEmail(body['email']);
     if (email == null) return _error(400, 'bad_email', 'Invalid email.');
+    if (!_inviteLimiter.allow(user.id)) {
+      return _error(429, 'rate_limited',
+          'Too many invites sent recently. Try again later.');
+    }
 
     return store.lock.synchronized(() async {
       final now = _nowMs;
@@ -1539,10 +1804,24 @@ class Api {
   // under `_maxJsonBody` (64KB) — so each blob gets well under half of that.
   static const _maxChatBlobLength = 28000; // base64 chars (~20KB plaintext)
 
+  /// Hard cap on stored messages per conversation; the oldest are dropped
+  /// once it's exceeded, so one user can't grow the messages file (and the
+  /// full rewrite each save does) without bound.
+  static const _maxChatMessagesPerConversation = 2000;
+
   Future<Response> _putChatKey(Request request, StoredUser user) async {
     final body = await _readJson(request);
     final key = body['publicKey'];
+    // Must be exactly a base64-encoded 32-byte X25519 public key — anything
+    // else would silently break every peer that tries to encrypt to it.
     if (key is! String || key.isEmpty || key.length > 200) {
+      return _error(400, 'bad_key', 'Invalid public key.');
+    }
+    try {
+      if (base64Decode(key).length != 32) {
+        return _error(400, 'bad_key', 'Invalid public key.');
+      }
+    } on FormatException {
       return _error(400, 'bad_key', 'Invalid public key.');
     }
     return store.lock.synchronized(() async {
@@ -1569,6 +1848,10 @@ class Api {
     if (email == null) return _error(400, 'bad_email', 'Invalid email.');
     if (email == user.email.toLowerCase()) {
       return _error(400, 'bad_email', 'You cannot invite yourself.');
+    }
+    if (!_inviteLimiter.allow(user.id)) {
+      return _error(429, 'rate_limited',
+          'Too many invites sent recently. Try again later.');
     }
 
     return store.lock.synchronized(() async {
@@ -1734,9 +2017,13 @@ class Api {
         blobForRecipient: forRecipient,
         blobForSender: forSender,
       );
-      chatStore.messagesByConversationId
+      final messages = chatStore.messagesByConversationId
           .putIfAbsent(conversationId, () => [])
-          .add(message);
+        ..add(message);
+      if (messages.length > _maxChatMessagesPerConversation) {
+        messages.removeRange(
+            0, messages.length - _maxChatMessagesPerConversation);
+      }
       await chatStore.saveMessages();
       return _json(201, {'id': message.id, 'createdAtMs': message.createdAtMs});
     });
@@ -1865,12 +2152,23 @@ class Api {
       await store.saveUsers();
       await store.logActivity(
           'admin_verified', '$email was manually verified by an admin');
-      final key = request.url.queryParameters['key'];
-      if (key != null) {
-        return Response.found('/admin?key=${Uri.encodeQueryComponent(key)}');
-      }
-      return _json(200, {'ok': true});
+      return _adminFormResponse(request, '/admin');
     });
+  }
+
+  /// The dashboard's forms POST here directly (cookie-authenticated) and
+  /// expect an HTML redirect back to the page; a script/API caller
+  /// authenticates with the `X-Admin-Key` header instead and expects JSON.
+  /// `?key=` is preserved on the redirect for old bookmarked dashboard links
+  /// still authenticating that way.
+  Response _adminFormResponse(Request request, String path,
+      {Map<String, dynamic>? json, String? fragment}) {
+    if (request.headers['x-admin-key'] != null) {
+      return _json(200, json ?? {'ok': true});
+    }
+    final key = request.url.queryParameters['key'];
+    final withKey = key != null ? '$path?key=${Uri.encodeQueryComponent(key)}' : path;
+    return Response.found(fragment != null ? '$withKey#$fragment' : withKey);
   }
 
   /// Grants (or revokes, by setting planId='core') a plan for an account —
@@ -1902,13 +2200,8 @@ class Api {
       await store.saveUsers();
       await store.logActivity(
           'plan_granted', '$email was granted the $planId plan');
-      final key = request.url.queryParameters['key'];
-      if (key != null) {
-        return Response.found(
-            '/admin?key=${Uri.encodeQueryComponent(key)}#products');
-      }
-      return _json(
-          200, {'ok': true, 'planId': planId, 'quotaBytes': user.quotaBytes});
+      return _adminFormResponse(request, '/admin', fragment: 'products',
+          json: {'ok': true, 'planId': planId, 'quotaBytes': user.quotaBytes});
     });
   }
 
@@ -1944,13 +2237,14 @@ class Api {
         return Response(response.statusCode,
             body: body, headers: {'Content-Type': 'application/json'});
       }
-      final key = request.url.queryParameters['key'];
-      if (key != null) {
-        return Response.found(
-            '/admin?key=${Uri.encodeQueryComponent(key)}#control');
+      if (request.headers['x-admin-key'] != null) {
+        return Response(200,
+            body: body, headers: {'Content-Type': 'application/json'});
       }
-      return Response(200,
-          body: body, headers: {'Content-Type': 'application/json'});
+      final key = request.url.queryParameters['key'];
+      final withKey =
+          key != null ? '/admin?key=${Uri.encodeQueryComponent(key)}' : '/admin';
+      return Response.found('$withKey#control');
     } catch (_) {
       return _error(
           502, 'upstream_error', 'Could not reach the groceries server.');
@@ -2027,8 +2321,8 @@ class Api {
         mode: ProcessStartMode.detached,
       );
     } catch (e) {
-      return _error(500, 'deploy_failed',
-          'Could not start the deploy process: $e');
+      stderr.writeln('[luma] could not start deploy process: $e');
+      return _error(500, 'deploy_failed', 'Could not start the deploy process.');
     }
 
     return _json(200, {'started': true});
@@ -2070,7 +2364,6 @@ class Api {
     final stats = _adminStatsJson();
     final users = store.usersById.values.toList()
       ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
-    final key = request.url.queryParameters['key'] ?? '';
 
     String fmtBytes(int bytes) {
       const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -2103,7 +2396,7 @@ class Api {
           : 0.0;
       final statusClass = u.status == 'active' ? 'ok' : 'warn';
       final action = u.isPending
-          ? '<form method="post" action="/admin/verify?key=${Uri.encodeQueryComponent(key)}" '
+          ? '<form method="post" action="/admin/verify" '
               'style="margin:0" onsubmit="return confirm(\'Manually verify '
               '${_htmlEscape(u.email)}? This skips email verification.\')">'
               '<input type="hidden" name="email" value="${_htmlEscape(u.email)}">'
@@ -2129,7 +2422,7 @@ class Api {
       return '<tr>'
           '<td>${_htmlEscape(u.email)}</td>'
           '<td>${_htmlEscape(label)}</td>'
-          '<td><form method="post" action="/admin/plan?key=${Uri.encodeQueryComponent(key)}" '
+          '<td><form method="post" action="/admin/plan" '
           'style="margin:0" onsubmit="return confirm(\'Remove '
           '${_htmlEscape(u.email)}\\\'s $label plan? They revert to Core.\')">'
           '<input type="hidden" name="email" value="${_htmlEscape(u.email)}">'
@@ -2187,7 +2480,10 @@ class Api {
         '<style>$_adminCss</style>'
         '</head><body><div class="wrap">'
         '<header class="top"><h1>luma<span class="dot">.</span> admin</h1>'
-        '<span class="sub">server console</span></header>'
+        '<span class="sub">server console</span>'
+        '<form method="post" action="/admin/logout" style="margin-left:auto">'
+        '<button type="submit" class="btn btn-ghost btn-sm">Sign out</button>'
+        '</form></header>'
         '<div class="stats">'
         '<div class="stat"><div class="n">${stats['totalAccounts']}</div><div class="l">Total accounts</div></div>'
         '<div class="stat"><div class="n">${stats['activeAccounts']}</div><div class="l">Active</div></div>'
@@ -2214,7 +2510,7 @@ class Api {
         '<div class="tab-panel" id="panel-products">'
         '<div class="card">'
         '<h2>Grant a plan</h2>'
-        '<form class="product-form" method="post" action="/admin/plan?key=${Uri.encodeQueryComponent(key)}">'
+        '<form class="product-form" method="post" action="/admin/plan">'
         '<select name="planId">$planOptions</select>'
         '<input type="email" name="email" placeholder="user@example.com" required>'
         '<button type="submit" class="btn btn-primary">Grant</button>'
@@ -2275,15 +2571,15 @@ class Api {
         '<div class="card">'
         '<h2>Groceries database</h2>'
         '<div class="product-form">'
-        '<form method="post" action="/admin/groceries/sync?key=${Uri.encodeQueryComponent(key)}" style="margin:0">'
+        '<form method="post" action="/admin/groceries/sync" style="margin:0">'
         '<button type="submit" class="btn btn-primary">Sync all markets</button></form>'
-        '<form method="post" action="/admin/groceries/sync?key=${Uri.encodeQueryComponent(key)}" style="margin:0">'
+        '<form method="post" action="/admin/groceries/sync" style="margin:0">'
         '<input type="hidden" name="market" value="jumbo">'
         '<button type="submit" class="btn btn-ghost">Sync Jumbo</button></form>'
-        '<form method="post" action="/admin/groceries/sync?key=${Uri.encodeQueryComponent(key)}" style="margin:0">'
+        '<form method="post" action="/admin/groceries/sync" style="margin:0">'
         '<input type="hidden" name="market" value="ah">'
         '<button type="submit" class="btn btn-ghost">Sync Albert Heijn</button></form>'
-        '<form method="post" action="/admin/groceries/sync?key=${Uri.encodeQueryComponent(key)}" style="margin:0">'
+        '<form method="post" action="/admin/groceries/sync" style="margin:0">'
         '<input type="hidden" name="market" value="lidl">'
         '<button type="submit" class="btn btn-ghost">Sync Lidl</button></form>'
         '</div>'
@@ -2424,7 +2720,6 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
   /// every 3 seconds while a sync is running so the counters fill in live.
   static const _adminGroceriesScript = r'''
 (function () {
-  const key = new URLSearchParams(location.search).get('key') || '';
   const summary = document.getElementById('groceriesSummary');
   const rows = document.getElementById('groceriesSyncRows');
   if (!summary || !rows) return;
@@ -2482,7 +2777,7 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
 
   let timer = null;
   function load() {
-    fetch('/admin/groceries/status?key=' + encodeURIComponent(key))
+    fetch('/admin/groceries/status')
       .then((r) => r.json())
       .then((data) => {
         const running = render(data);
@@ -2505,7 +2800,6 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
   /// `systemctl status` output without manually refreshing.
   static const _adminDeployScript = r'''
 (function () {
-  const key = new URLSearchParams(location.search).get('key') || '';
   const btn = document.getElementById('deployBtn');
   const status = document.getElementById('deployStatus');
   const log = document.getElementById('deployLog');
@@ -2520,7 +2814,7 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
   }
 
   function poll() {
-    fetch('/admin/deploy/status?key=' + encodeURIComponent(key))
+    fetch('/admin/deploy/status')
       .then(function (r) { return r.json(); })
       .then(function (data) {
         if (data.log) {
@@ -2566,7 +2860,7 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
     btn.disabled = true;
     btn.style.opacity = '0.5';
     btn.style.cursor = 'not-allowed';
-    fetch('/admin/deploy?key=' + encodeURIComponent(key), { method: 'POST' })
+    fetch('/admin/deploy', { method: 'POST' })
       .then(function (r) { return r.json(); })
       .then(function (data) {
         if (data.error) {
@@ -2598,7 +2892,6 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
   /// a page reload or server restart instead of starting blank every time.
   static const _adminMetricsScript = r'''
 (function () {
-  const key = new URLSearchParams(location.search).get('key') || '';
   const RANGE_CAPS = { minute: 45, hour: 60, day: 24, week: 24 * 7 };
   let currentRange = 'minute';
   let cap = RANGE_CAPS[currentRange];
@@ -2826,8 +3119,7 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
     document.querySelectorAll('.range-btn').forEach((b) =>
         b.classList.toggle('active', b.dataset.range === range));
     try {
-      const res = await fetch('/admin/metrics/history?range=' + range +
-          '&key=' + encodeURIComponent(key));
+      const res = await fetch('/admin/metrics/history?range=' + range);
       if (res.ok) {
         const data = await res.json();
         seedHistory(data.points || []);
@@ -2842,7 +3134,7 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
   async function poll() {
     let res;
     try {
-      res = await fetch('/admin/metrics?key=' + encodeURIComponent(key));
+      res = await fetch('/admin/metrics');
     } catch (e) {
       return;
     }
@@ -2909,7 +3201,8 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
       pbkdf2Sha256(authKey, salt, _serverHashIterations, 32);
 
   /// Creates a session and returns (token, expiresAtMs). Caller holds the lock.
-  Future<(String, int)> _createSession(StoredUser user) async {
+  Future<(String, int)> _createSession(StoredUser user,
+      {String? deviceLabel}) async {
     final token = base64UrlEncode(randomBytes(32)).replaceAll('=', '');
     final tokenHash = c.sha256.convert(utf8.encode(token)).toString();
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -2920,9 +3213,18 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
       userId: user.id,
       createdAtMs: now,
       expiresAtMs: expires,
+      deviceLabel: _sanitizeDeviceLabel(deviceLabel),
     );
     await store.saveSessions();
     return (token, expires);
+  }
+
+  /// Trims and caps a client-supplied device label so it can't be used to
+  /// stuff an oversized/garbage value into the sessions file.
+  static String? _sanitizeDeviceLabel(String? raw) {
+    final trimmed = raw?.trim();
+    if (trimmed == null || trimmed.isEmpty) return null;
+    return trimmed.length > 60 ? trimmed.substring(0, 60) : trimmed;
   }
 
   /// Generates a fresh verification token, stores only its hash against the
@@ -2977,10 +3279,22 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
     if (declared > _maxJsonBody) {
       throw const FormatException('body too large');
     }
-    final body = await request
-        .readAsString()
-        .timeout(const Duration(seconds: 15), onTimeout: () => '');
-    if (body.length > _maxJsonBody) throw const FormatException('body too large');
+    // Enforce the cap while streaming, not after: a chunked request has no
+    // Content-Length, so checking only the fully-buffered string would let a
+    // client stream an arbitrarily large body into RAM first.
+    Future<String> readCapped() async {
+      final builder = BytesBuilder(copy: false);
+      await for (final chunk in request.read()) {
+        builder.add(chunk);
+        if (builder.length > _maxJsonBody) {
+          throw const FormatException('body too large');
+        }
+      }
+      return utf8.decode(builder.takeBytes());
+    }
+
+    final body = await readCapped().timeout(const Duration(seconds: 15),
+        onTimeout: () => throw const FormatException('body read timed out'));
     final decoded = jsonDecode(body);
     if (decoded is! Map<String, dynamic>) {
       throw const FormatException('expected JSON object');

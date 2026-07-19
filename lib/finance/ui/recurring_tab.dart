@@ -23,12 +23,16 @@ class RecurringTab extends StatelessWidget {
           stream: repo.watchRecurring(),
           builder: (context, rules) => StreamData<List<AllocationRule>>(
             stream: repo.watchAllocationRules(),
-            builder: (context, allocations) => _RecurringBody(
-              repo: repo,
-              pots: pots,
-              categories: categories,
-              rules: rules,
-              allocations: allocations,
+            builder: (context, allocations) => StreamData<List<RecurringRule>>(
+              stream: repo.watchDueBills(),
+              builder: (context, dueBills) => _RecurringBody(
+                repo: repo,
+                pots: pots,
+                categories: categories,
+                rules: rules,
+                allocations: allocations,
+                dueBills: dueBills,
+              ),
             ),
           ),
         ),
@@ -44,12 +48,14 @@ class _RecurringBody extends StatelessWidget {
     required this.categories,
     required this.rules,
     required this.allocations,
+    required this.dueBills,
   });
   final FinanceRepository repo;
   final List<Pot> pots;
   final List<Category> categories;
   final List<RecurringRule> rules;
   final List<AllocationRule> allocations;
+  final List<RecurringRule> dueBills;
 
   @override
   Widget build(BuildContext context) {
@@ -77,6 +83,10 @@ class _RecurringBody extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
+          if (dueBills.isNotEmpty) ...[
+            _BillsDueSoonCard(bills: dueBills),
+            const SizedBox(height: 20),
+          ],
           Row(
             children: [
               _SectionHeader('Fixed costs & income'),
@@ -149,6 +159,79 @@ class _RecurringBody extends StatelessWidget {
   }
 }
 
+/// A prominent reminder banner for bills due within the next 7 days — the
+/// closest thing to a push notification this app can do without a
+/// platform notification plugin, but shown wherever the user actually
+/// looks (Recurring tab), not buried.
+class _BillsDueSoonCard extends StatelessWidget {
+  const _BillsDueSoonCard({required this.bills});
+  final List<RecurringRule> bills;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: luma.danger.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: luma.danger.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.notifications_active_rounded,
+                  size: 18, color: luma.danger),
+              const SizedBox(width: 8),
+              Text(
+                bills.length == 1
+                    ? '1 bill due soon'
+                    : '${bills.length} bills due soon',
+                style: TextStyle(
+                    color: luma.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          for (final bill in bills)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(bill.name,
+                        style: TextStyle(
+                            color: luma.textSecondary, fontSize: 13)),
+                  ),
+                  Text(_dueLabel(bill.nextDue),
+                      style: TextStyle(
+                          color: luma.danger,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+String _dueLabel(DateTime due) {
+  final today = DateTime.now();
+  final days = DateTime(due.year, due.month, due.day)
+      .difference(DateTime(today.year, today.month, today.day))
+      .inDays;
+  if (days < 0) return 'Overdue';
+  if (days == 0) return 'Due today';
+  if (days == 1) return 'Due tomorrow';
+  return 'Due in $days days';
+}
+
 class _RecurringRow extends StatelessWidget {
   const _RecurringRow({required this.rule, required this.onDelete});
   final RecurringRule rule;
@@ -183,7 +266,8 @@ class _RecurringRow extends StatelessWidget {
                         color: luma.textPrimary, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 2),
                 Text(
-                  '${rule.cadence == Cadence.weekly ? 'Weekly' : 'Monthly'} · next ${_shortDate(rule.nextDue)}',
+                  '${rule.cadence == Cadence.weekly ? 'Weekly' : 'Monthly'}'
+                  '${rule.isBill ? ' · Bill' : ''} · next ${_shortDate(rule.nextDue)}',
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
               ],
@@ -318,6 +402,7 @@ class _RecurringEditorState extends State<_RecurringEditor> {
   DateTime _firstDue = DateTime.now();
   int? _potId;
   int? _categoryId;
+  bool _isBill = false;
   String? _error;
 
   @override
@@ -342,6 +427,7 @@ class _RecurringEditorState extends State<_RecurringEditor> {
       nextDue: _firstDue,
       potId: Value(_potId),
       categoryId: Value(_kind == TxnKind.expense ? _categoryId : null),
+      isBill: Value(_kind == TxnKind.expense && _isBill),
     ));
     if (mounted) Navigator.pop(context);
   }
@@ -402,6 +488,30 @@ class _RecurringEditorState extends State<_RecurringEditor> {
                 for (final c in widget.categories) c.id: c.name,
               },
               onChanged: (v) => setState(() => _categoryId = v),
+            ),
+            const SizedBox(height: 8),
+            InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: () => setState(() => _isBill = !_isBill),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Checkbox(
+                      value: _isBill,
+                      onChanged: (v) => setState(() => _isBill = v ?? false),
+                      activeColor: luma.accent,
+                    ),
+                    Expanded(
+                      child: Text(
+                        'Treat as a bill/subscription — show it in "due soon"',
+                        style:
+                            TextStyle(color: luma.textSecondary, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
           if (_error != null) ...[

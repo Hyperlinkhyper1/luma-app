@@ -70,6 +70,33 @@ class RemoteAccount {
   }
 }
 
+/// One active cloud session, as returned by GET /auth/sessions.
+class RemoteSession {
+  const RemoteSession({
+    required this.id,
+    required this.deviceLabel,
+    required this.createdAt,
+    required this.expiresAt,
+    required this.isCurrent,
+  });
+
+  final String id;
+  final String? deviceLabel;
+  final DateTime createdAt;
+  final DateTime expiresAt;
+  final bool isCurrent;
+
+  factory RemoteSession.fromJson(Map<String, dynamic> j) => RemoteSession(
+        id: j['id'] as String,
+        deviceLabel: j['deviceLabel'] as String?,
+        createdAt: DateTime.fromMillisecondsSinceEpoch(
+            j['createdAtMs'] as int? ?? 0),
+        expiresAt: DateTime.fromMillisecondsSinceEpoch(
+            j['expiresAtMs'] as int? ?? 0),
+        isCurrent: j['isCurrent'] as bool? ?? false,
+      );
+}
+
 class RemoteBlob {
   const RemoteBlob({
     required this.bytes,
@@ -171,12 +198,14 @@ class SyncApi {
     required Uint8List authKey,
     required Uint8List kdfSalt,
     required int kdfIterations,
+    String? deviceLabel,
   }) async {
     final body = await _postJson('/auth/register', {
       'email': email,
       'authKey': base64Encode(authKey),
       'kdfSalt': base64Encode(kdfSalt),
       'kdfIterations': kdfIterations,
+      if (deviceLabel != null) 'deviceLabel': deviceLabel,
     });
     final token = body['token'] as String?;
     if (token == null) {
@@ -191,16 +220,37 @@ class SyncApi {
   }
 
   Future<String> login(
-      {required String email, required Uint8List authKey}) async {
+      {required String email,
+      required Uint8List authKey,
+      String? deviceLabel}) async {
     final body = await _postJson('/auth/login', {
       'email': email,
       'authKey': base64Encode(authKey),
+      if (deviceLabel != null) 'deviceLabel': deviceLabel,
     });
     return body['token'] as String;
   }
 
   Future<void> logout() async {
     await _postJson('/auth/logout', const {});
+  }
+
+  /// Lists every active session on this account (across all signed-in
+  /// devices), newest first.
+  Future<List<RemoteSession>> listSessions() async {
+    final response = await _client
+        .get(_uri('/auth/sessions'), headers: _authHeaders)
+        .timeout(_jsonTimeout);
+    final body = _decodeOrThrow(response);
+    return (body['sessions'] as List<dynamic>? ?? const [])
+        .map((j) => RemoteSession.fromJson(j as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Revokes another device's session by [id] (from [RemoteSession.id]).
+  /// The server rejects revoking the caller's own current session.
+  Future<void> revokeSession(String id) async {
+    await _postJson('/auth/sessions/$id/revoke', const {});
   }
 
   Future<void> changePassword({

@@ -621,4 +621,21 @@
       }, 12000);
     }, 15000);
   };
+
+  /* Read whatever vector tiles are already loaded for the current viewport,
+     no camera movement. Lets the road/rail graphs grow as the player pans
+     beyond the original surveyed area, instead of being capped to it. */
+  map3d.harvestVisible = function (layers) {
+    const out = {};
+    for (const layer of layers) out[layer] = [];
+    if (!vecSource || !map3d.map) return out;
+    try {
+      for (const layer of layers) {
+        out[layer].push(...map3d.map.querySourceFeatures(vecSource, {
+          sourceLayer: layer === 'places' ? 'place' : layer,
+        }));
+      }
+    } catch (e) { /* tiles not ready yet — try again next idle */ }
+    return out;
+  };
 })();

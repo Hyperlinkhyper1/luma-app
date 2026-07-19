@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,6 +11,7 @@ import '../../theme/luma_theme.dart';
 import 'password_entry_sheet.dart';
 import 'password_repository.dart';
 import 'password_scope.dart';
+import 'totp.dart';
 
 /// Root of the Password Manager destination: a searchable list of stored
 /// credentials with an action to add a new one.
@@ -264,7 +266,11 @@ class _CredentialCardState extends State<_CredentialCard> {
           const SizedBox(height: 10),
           _Field(
             label: 'Password',
-            value: _revealed ? r.password : '•' * (r.password.isEmpty ? 8 : 10),
+            value: r.decryptFailed
+                ? '⚠ Could not decrypt — data corrupt or key file changed'
+                : _revealed
+                    ? r.password
+                    : '•' * (r.password.isEmpty ? 8 : 10),
             mono: true,
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
@@ -313,6 +319,79 @@ class _CredentialCardState extends State<_CredentialCard> {
             _Field(label: 'Phone', value: r.phone!),
           if (r.info != null && r.info!.isNotEmpty)
             _Field(label: 'Info', value: r.info!),
+          if (r.totpSecret != null && r.totpSecret!.isNotEmpty)
+            _TotpField(secret: r.totpSecret!, onCopy: _copy),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shows a live-refreshing TOTP/2FA code with a countdown to the next
+/// rotation, for entries that have a 2FA secret configured.
+class _TotpField extends StatefulWidget {
+  const _TotpField({required this.secret, required this.onCopy});
+  final String secret;
+  final Future<void> Function(String label, String value) onCopy;
+
+  @override
+  State<_TotpField> createState() => _TotpFieldState();
+}
+
+class _TotpFieldState extends State<_TotpField> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final code = Totp.currentCode(widget.secret);
+    if (code == null) {
+      return _Field(label: '2FA code', value: 'Invalid secret');
+    }
+    final remaining = Totp.secondsRemaining();
+    return _Field(
+      label: '2FA code',
+      value: '${code.substring(0, 3)} ${code.substring(3)}',
+      mono: true,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 22,
+            height: 22,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                CircularProgressIndicator(
+                  strokeWidth: 2,
+                  value: remaining / Totp.periodSeconds,
+                  backgroundColor: luma.surfaceHover,
+                  valueColor: AlwaysStoppedAnimation(luma.accent),
+                ),
+                Text('$remaining',
+                    style: TextStyle(color: luma.textMuted, fontSize: 9)),
+              ],
+            ),
+          ),
+          _IconAction(
+            icon: Icons.copy_rounded,
+            tooltip: 'Copy 2FA code',
+            onTap: () => widget.onCopy('2FA code', code),
+          ),
         ],
       ),
     );

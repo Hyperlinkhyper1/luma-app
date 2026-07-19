@@ -110,6 +110,7 @@ class StoredSession {
     required this.userId,
     required this.createdAtMs,
     required this.expiresAtMs,
+    this.deviceLabel,
   });
 
   final String tokenHash;
@@ -117,11 +118,17 @@ class StoredSession {
   final int createdAtMs;
   int expiresAtMs;
 
+  /// Human-readable device/platform string the client sent at login (e.g.
+  /// "windows", "android") — display-only, never used for auth. Null for
+  /// sessions created before this field existed.
+  String? deviceLabel;
+
   Map<String, dynamic> toJson() => {
         'tokenHash': tokenHash,
         'userId': userId,
         'createdAtMs': createdAtMs,
         'expiresAtMs': expiresAtMs,
+        'deviceLabel': deviceLabel,
       };
 
   factory StoredSession.fromJson(Map<String, dynamic> j) => StoredSession(
@@ -129,6 +136,7 @@ class StoredSession {
         userId: j['userId'] as String,
         createdAtMs: j['createdAtMs'] as int,
         expiresAtMs: j['expiresAtMs'] as int,
+        deviceLabel: j['deviceLabel'] as String?,
       );
 }
 

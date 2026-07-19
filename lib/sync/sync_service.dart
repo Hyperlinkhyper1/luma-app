@@ -165,8 +165,11 @@ class SyncService extends ChangeNotifier {
     });
     notifyListeners();
     if (signedIn) {
-      // Initial sync shortly after startup, off the critical path.
-      Timer(const Duration(seconds: 3), () => syncNow(silent: true));
+      // Kick off the initial sync right away (still off the critical path —
+      // syncNow is async/non-blocking) so admin-granted plan info and other
+      // account state reach the UI as soon as possible instead of showing
+      // stale/default values for the first few seconds after launch.
+      syncNow(silent: true);
     }
   }
 
@@ -212,8 +215,10 @@ class SyncService extends ChangeNotifier {
         kdfSalt: params.kdfSalt,
         iterations: params.kdfIterations,
       );
-      final token =
-          await api.login(email: normalizedEmail, authKey: keys.authKey);
+      final token = await api.login(
+          email: normalizedEmail,
+          authKey: keys.authKey,
+          deviceLabel: _deviceLabel());
       api.token = token;
 
       _api?.close();
@@ -272,6 +277,7 @@ class SyncService extends ChangeNotifier {
         authKey: keys.authKey,
         kdfSalt: kdfSalt,
         kdfIterations: iterations,
+        deviceLabel: _deviceLabel(),
       );
       if (result.pendingVerification) {
         api.close();
@@ -449,6 +455,45 @@ class SyncService extends ChangeNotifier {
     }
     await s.save();
     notifyListeners();
+  }
+
+  /// Lists every active cloud session on this account (across all
+  /// signed-in devices), newest first. Requires a cloud (not local-only)
+  /// sign-in.
+  Future<List<RemoteSession>> listSessions() async {
+    final api = _api;
+    if (api == null || !signedIn) throw StateError('Not signed in.');
+    return api.listSessions();
+  }
+
+  /// Revokes another device's session, signing it out remotely. The
+  /// server rejects revoking the session this device is currently using —
+  /// call [signOut] for that instead.
+  Future<void> revokeSession(String id) async {
+    final api = _api;
+    if (api == null || !signedIn) throw StateError('Not signed in.');
+    await api.revokeSession(id);
+  }
+
+  /// A short, human-readable platform label sent to the server at
+  /// sign-in/registration so [listSessions] can show something more useful
+  /// than an opaque session id (e.g. "Windows", "Android"). Display-only —
+  /// never used for authentication.
+  static String? _deviceLabel() {
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return 'Android';
+      case TargetPlatform.iOS:
+        return 'iPhone/iPad';
+      case TargetPlatform.macOS:
+        return 'Mac';
+      case TargetPlatform.windows:
+        return 'Windows';
+      case TargetPlatform.linux:
+        return 'Linux';
+      default:
+        return null;
+    }
   }
 
   /// Permanently deletes the account and everything stored on the server.

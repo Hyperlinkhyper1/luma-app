@@ -58,7 +58,6 @@
     let prevXY = null;
     for (const [lng, lat] of coords) {
       const [x, y] = geo.toM(lng, lat);
-      if (Math.hypot(x, y) > SB.demand.RADIUS * 1.25) { prev = -1; prevXY = null; continue; }
       if (prev >= 0 && prevXY) {
         const segLen = Math.hypot(x - prevXY[0], y - prevXY[1]);
         const steps = Math.floor(segLen / MAX_SEG);
@@ -240,7 +239,6 @@
       if (!f.geometry || f.geometry.type !== 'Point') continue;
       const [lng, lat] = f.geometry.coordinates;
       const [x, y] = geo.toM(lng, lat);
-      if (Math.hypot(x, y) > SB.demand.RADIUS) continue;
       out.push({ name: p.name || 'Station', lng, lat, x, y });
     }
     return dedupeStations(out);
@@ -253,6 +251,36 @@
     }
     return out;
   }
+
+  /* Grow the road/rail graphs from whatever tiles the player has scrolled
+     into view, so pathfinding keeps working arbitrarily far from the
+     originally surveyed city — not just inside the initial build() call.
+     addFeatureLines/nodeId already dedupe by quantized coordinate, so
+     re-adding the same street twice is harmless. */
+  net.mergeRoads = function (transportFeatures) {
+    if (!net.roads) return net.buildRoads(transportFeatures);
+    for (const f of transportFeatures) {
+      const cls = f.properties && f.properties.class;
+      if (ROAD_CLASSES.has(cls)) addFeatureLines(net.roads, f);
+    }
+    return net.roads;
+  };
+
+  net.mergeRailsFromTiles = function (transportFeatures, poiFeatures) {
+    if (!net.rails) net.rails = newGraph();
+    for (const f of transportFeatures) {
+      const p = f.properties || {};
+      if (p.class === 'rail' && p.subclass !== 'subway' && p.subclass !== 'tram' &&
+          p.subclass !== 'monorail' && p.subclass !== 'funicular') {
+        addFeatureLines(net.rails, f);
+      }
+    }
+    const found = net.railStationsFromTiles(poiFeatures);
+    for (const s of found) {
+      if (net.railStations.some((o) => Math.hypot(o.x - s.x, o.y - s.y) < 180)) continue;
+      if (net.nearestNode(net.rails, s.x, s.y, 420) >= 0) net.railStations.push(s);
+    }
+  };
 
   /* The authoritative source: Overpass gives full-detail railway=rail ways
      and railway=station/halt nodes in one call. Falls back to tile data. */

@@ -54,6 +54,26 @@
 
   main.focusLine = function (line) { map3d.focusLine(line); };
 
+  // ── Live re-survey ────────────────────────────────────────────────────
+  // The initial survey only reads tiles around the chosen point. As the
+  // player scrolls the map further out, streets/tracks/water for whatever
+  // is now on screen get folded into the live graphs so building and
+  // pathfinding keep working arbitrarily far from the starting point.
+  let lastMergeAt = 0;
+  function mergeVisibleIntoNetworks() {
+    if (!game.state || !game.city || !map3d.ready) return;
+    const now = performance.now();
+    if (now - lastMergeAt < 1500) return;
+    lastMergeAt = now;
+    const feats = map3d.harvestVisible(['transportation', 'poi', 'water', 'landuse']);
+    if (feats.transportation.length) {
+      SB.net.mergeRoads(feats.transportation);
+      SB.net.mergeRailsFromTiles(feats.transportation, feats.poi);
+    }
+    if (feats.water.length) game.city.addWaterFeatures(feats.water);
+    if (feats.landuse.length) game.city.addLanduseFeatures(feats.landuse);
+  }
+
   // ── Tool clicks on the map ───────────────────────────────────────────
   function handleClick(e) {
     if (!game.state) return;
@@ -327,6 +347,7 @@
       const map = map3d.map;
       map.on('click', handleClick);
       map.on('mousemove', onMouseMove);
+      map.on('idle', mergeVisibleIntoNetworks);
       map.on('dblclick', (e) => {
         if (ui.tool === 'line' && ui.draftIds.length > 1 && !ui.draftLineId) {
           e.preventDefault();

@@ -239,6 +239,14 @@ class _SignedInBody extends StatelessWidget {
                 child: Text('Change password',
                     style: TextStyle(color: luma.textSecondary, fontSize: 13)),
               ),
+              TextButton(
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  builder: (_) => _SessionsDialog(sync: sync),
+                ),
+                child: Text('Devices signed in…',
+                    style: TextStyle(color: luma.textSecondary, fontSize: 13)),
+              ),
               const Spacer(),
               TextButton(
                 onPressed: () => showDialog<void>(
@@ -842,6 +850,162 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
             onTap: _busy ? null : _submit),
       ],
     );
+  }
+}
+
+/// Lists every active cloud session on this account and lets the user
+/// revoke ones that aren't the device they're currently using.
+class _SessionsDialog extends StatefulWidget {
+  const _SessionsDialog({required this.sync});
+  final SyncService sync;
+
+  @override
+  State<_SessionsDialog> createState() => _SessionsDialogState();
+}
+
+class _SessionsDialogState extends State<_SessionsDialog> {
+  List<RemoteSession>? _sessions;
+  String? _error;
+  final _revoking = <String>{};
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _error = null);
+    try {
+      final sessions = await widget.sync.listSessions();
+      if (mounted) setState(() => _sessions = sessions);
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString());
+    }
+  }
+
+  Future<void> _revoke(RemoteSession session) async {
+    setState(() => _revoking.add(session.id));
+    try {
+      await widget.sync.revokeSession(session.id);
+      if (mounted) {
+        setState(() => _sessions?.removeWhere((s) => s.id == session.id));
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _revoking.remove(session.id));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return AlertDialog(
+      backgroundColor: luma.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: luma.border),
+      ),
+      title:
+          Text('Devices signed in', style: TextStyle(color: luma.textPrimary)),
+      content: SizedBox(
+        width: 420,
+        child: _buildBody(luma),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text('Close', style: TextStyle(color: luma.textSecondary)),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBody(LumaPalette luma) {
+    if (_error != null) {
+      return Text(_error!,
+          style: TextStyle(color: Colors.red.shade400, fontSize: 13));
+    }
+    final sessions = _sessions;
+    if (sessions == null) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(
+            child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2))),
+      );
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final session in sessions)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(
+              children: [
+                Icon(_iconFor(session.deviceLabel),
+                    size: 20, color: luma.textSecondary),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(session.deviceLabel ?? 'Unknown device',
+                          style: TextStyle(
+                              color: luma.textPrimary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500)),
+                      Text(
+                        session.isCurrent
+                            ? 'This device'
+                            : 'Signed in ${DateFormat('d MMM yyyy').format(session.createdAt)}',
+                        style:
+                            TextStyle(color: luma.textMuted, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                if (session.isCurrent)
+                  Text('Current',
+                      style: TextStyle(color: luma.accent, fontSize: 12))
+                else if (_revoking.contains(session.id))
+                  const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                else
+                  TextButton(
+                    onPressed: () => _revoke(session),
+                    child: Text('Revoke',
+                        style: TextStyle(
+                            color: Colors.red.shade400, fontSize: 13)),
+                  ),
+              ],
+            ),
+          ),
+        if (sessions.isEmpty)
+          Text('No other active sessions.',
+              style: TextStyle(color: luma.textMuted, fontSize: 13)),
+      ],
+    );
+  }
+
+  IconData _iconFor(String? deviceLabel) {
+    switch (deviceLabel) {
+      case 'Android':
+      case 'iPhone/iPad':
+        return Icons.smartphone_rounded;
+      case 'Windows':
+      case 'Mac':
+      case 'Linux':
+        return Icons.computer_rounded;
+      default:
+        return Icons.devices_other_rounded;
+    }
   }
 }
 
