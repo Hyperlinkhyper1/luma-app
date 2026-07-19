@@ -6,7 +6,35 @@
   const SB = (window.SB = window.SB || {});
   const geo = SB.geo;
 
-  const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron';
+  // Basemap + game-layer colors per theme. Both styles come from the same
+  // OpenFreeMap OpenMapTiles server, so the vector schema (and therefore
+  // surveyPlace/harvestVisible) is identical in either theme.
+  const THEMES = {
+    dark: {
+      style: 'https://tiles.openfreemap.org/styles/dark',
+      building: '#20242d',
+      casing: '#0b0d12',
+      stationFill: '#ffffff',
+      label: '#dde3ee',
+      halo: 'rgba(10,12,16,.85)',
+      railLabel: '#a99ef7',
+      railHalo: 'rgba(10,12,16,.85)',
+      railStationFill: '#1a1728',
+      trainBody: '#f2f5f9',
+    },
+    light: {
+      style: 'https://tiles.openfreemap.org/styles/positron',
+      building: '#d9d4c9',
+      casing: '#ffffff',
+      stationFill: '#ffffff',
+      label: '#3d3a33',
+      halo: 'rgba(255,255,255,.85)',
+      railLabel: '#5a4fcf',
+      railHalo: 'rgba(255,255,255,.9)',
+      railStationFill: '#efeaff',
+      trainBody: '#ffffff',
+    },
+  };
 
   const map3d = (SB.map3d = { map: null, ready: false });
 
@@ -25,7 +53,10 @@
     mode2d: false,
     renderDistance: 0,
     lodDistance: 2,
+    theme: 'dark',
   };
+
+  function themeOf() { return THEMES[map3d.settings && map3d.settings.theme] || THEMES.dark; }
 
   function loadSettings() {
     try {
@@ -151,7 +182,7 @@
     try {
       map = map3d.map = new maplibregl.Map({
         container: 'map',
-        style: STYLE_URL,
+        style: themeOf().style,
         center: [-73.985, 40.735],
         zoom: 11.5,
         pitch: 0,
@@ -194,11 +225,51 @@
       clearTimeout(bootTimer);
       const bs = document.getElementById('bootstatus');
       if (bs) bs.style.display = 'none';
-      // Find the style's vector source (OpenMapTiles schema).
-      for (const [id, src] of Object.entries(map.getStyle().sources)) {
-        if (src.type === 'vector') { vecSource = id; break; }
-      }
+      buildLayers();
+      map3d.ready = true;
+      map3d.applySettings(true);
+      if (onReady) onReady();
+    });
+  };
 
+  /* Switch dark/light. setStyle wipes every custom source and layer, so
+     rebuild the whole game layer stack once the new style has loaded and
+     re-push the current game data into it. */
+  map3d.setTheme = function (theme) {
+    if (!THEMES[theme]) return;
+    map3d.settings.theme = theme;
+    map3d.saveSettings();
+    const map = map3d.map;
+    if (!map) return;
+    map3d.ready = false;
+    map.setStyle(themeOf().style);
+    // 'style.load' proved racy in the embedded webview (it can slip past a
+    // once() registered right after setStyle) — poll isStyleLoaded instead.
+    const tryRebuild = () => {
+      if (!map.isStyleLoaded()) { setTimeout(tryRebuild, 120); return; }
+      buildLayers();
+      map3d.ready = true;
+      lastAppliedKey = null;
+      map3d.applySettings(true);
+      if (SB.ui && SB.game && SB.game.state) {
+        SB.ui.updateAll();               // network, stations, rail highlight
+        map3d.setOverlay(SB.ui.overlay); // demand / access fills
+      }
+    };
+    setTimeout(tryRebuild, 120);
+  };
+
+  /* Creates every game source and layer on the current style. Called on
+     first load and again after each setTheme() style swap. */
+  function buildLayers() {
+    const map = map3d.map;
+    const T = themeOf();
+    // Find the style's vector source (OpenMapTiles schema).
+    vecSource = null;
+    for (const [id, src] of Object.entries(map.getStyle().sources)) {
+      if (src.type === 'vector') { vecSource = id; break; }
+    }
+    {
       // 3D buildings from real OSM footprints + heights.
       if (vecSource) {
         map.addLayer({
@@ -208,7 +279,7 @@
           type: 'fill-extrusion',
           minzoom: 13,
           paint: {
-            'fill-extrusion-color': '#d9d4c9',
+            'fill-extrusion-color': T.building,
             'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 8],
             'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
             'fill-extrusion-opacity': 0.88,
@@ -240,7 +311,7 @@
 
       map.addLayer({ id: 'sb-lines-casing', source: 'sb-lines', type: 'line',
         layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': '#ffffff', 'line-width': ['+', ['get', 'w'], 3.5], 'line-offset': ['get', 'off'] } });
+        paint: { 'line-color': T.casing, 'line-width': ['+', ['get', 'w'], 3.5], 'line-offset': ['get', 'off'] } });
       // line-dasharray can't be data-driven, so buses get their own layer.
       map.addLayer({ id: 'sb-lines', source: 'sb-lines', type: 'line',
         filter: ['!=', ['get', 'dash'], 1],
@@ -260,22 +331,25 @@
       map.addLayer({ id: 'sb-ghost', source: 'sb-ghost', type: 'line',
         paint: { 'line-color': ['get', 'color'], 'line-width': ['get', 'w'], 'line-dasharray': [1.5, 1.5] } });
 
-      map.addLayer({ id: 'sb-trains', source: 'sb-trains', type: 'symbol',
-        layout: {
-          'icon-image': ['get', 'icon'], 'icon-rotate': ['get', 'ang'],
-          'icon-rotation-alignment': 'map', 'icon-allow-overlap': true, 'icon-size': 1,
-        } });
+      // Trains are short slices of the actual route polyline, so they bend
+      // around curves instead of cutting corners as straight sprites.
+      map.addLayer({ id: 'sb-trains-casing', source: 'sb-trains', type: 'line',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': ['get', 'color'], 'line-width': ['+', ['get', 'w'], 3] } });
+      map.addLayer({ id: 'sb-trains', source: 'sb-trains', type: 'line',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': T.trainBody, 'line-width': ['get', 'w'] } });
 
       map.addLayer({ id: 'sb-stations', source: 'sb-stations', type: 'circle',
         paint: {
           'circle-radius': ['get', 'r'],
-          'circle-color': '#ffffff',
+          'circle-color': T.stationFill,
           'circle-stroke-color': ['get', 'ring'],
           'circle-stroke-width': ['get', 'rw'],
         } });
       map.addLayer({ id: 'sb-railstations', source: 'sb-railstations', type: 'circle',
         paint: {
-          'circle-radius': 6.5, 'circle-color': '#efeaff',
+          'circle-radius': 6.5, 'circle-color': T.railStationFill,
           'circle-stroke-color': '#5a4fcf', 'circle-stroke-width': 2.4,
         } });
       map.addLayer({ id: 'sb-railstation-labels', source: 'sb-railstations', type: 'symbol',
@@ -285,7 +359,7 @@
           'text-font': ['Noto Sans Regular'],
           'text-anchor': 'left', 'text-offset': [0.9, 0], 'text-optional': true,
         },
-        paint: { 'text-color': '#5a4fcf', 'text-halo-color': 'rgba(255,255,255,.9)', 'text-halo-width': 1.3 } });
+        paint: { 'text-color': T.railLabel, 'text-halo-color': T.railHalo, 'text-halo-width': 1.3 } });
 
       map.addLayer({ id: 'sb-station-labels', source: 'sb-stations', type: 'symbol',
         minzoom: 12.6,
@@ -295,31 +369,8 @@
           'text-font': ['Noto Sans Regular'],
           'text-anchor': 'left', 'text-offset': [0.9, 0], 'text-optional': true,
         },
-        paint: { 'text-color': '#3d3a33', 'text-halo-color': 'rgba(255,255,255,.85)', 'text-halo-width': 1.4 } });
-
-      map3d.ready = true;
-      map3d.applySettings();
-      if (onReady) onReady();
-    });
-  };
-
-  // ── Train icons (one generated sprite per line color) ────────────────
-  const trainIcons = new Set();
-  function trainIcon(color) {
-    const key = 'train-' + color;
-    if (trainIcons.has(key)) return key;
-    const w = 26, h = 12, c = document.createElement('canvas');
-    c.width = w; c.height = h;
-    const x = c.getContext('2d');
-    x.fillStyle = color;
-    x.strokeStyle = '#ffffff';
-    x.lineWidth = 2;
-    x.beginPath();
-    x.roundRect(1.5, 1.5, w - 3, h - 3, 4.5);
-    x.fill(); x.stroke();
-    map3d.map.addImage(key, x.getImageData(0, 0, w, h), { pixelRatio: 1.6 });
-    trainIcons.add(key);
-    return key;
+        paint: { 'text-color': T.label, 'text-halo-color': T.halo, 'text-halo-width': 1.4 } });
+    }
   }
 
   // ── Feature builders ─────────────────────────────────────────────────
@@ -476,14 +527,16 @@
     map3d.map.getSource('sb-ghost').setData({ type: 'FeatureCollection', features: feats });
   };
 
+  // Body width per mode (the colored casing adds ~3px around it).
+  const TRAIN_W = { metro: 6, train: 5.4, hst: 5.8, tram: 4.4, bus: 3.6 };
+
   map3d.updateTrains = function () {
     if (!map3d.ready) return;
     const feats = [];
-    for (const t of SB.sim.trainSprites()) {
-      const [lng, lat] = geo.toLL(t.x, t.y);
+    for (const t of SB.sim.trainSegments()) {
       feats.push({ type: 'Feature',
-        geometry: { type: 'Point', coordinates: [lng, lat] },
-        properties: { icon: trainIcon(t.line.color), ang: 90 - (t.angle * 180) / Math.PI } });
+        geometry: { type: 'LineString', coordinates: t.pts.map((p) => geo.toLL(p[0], p[1])) },
+        properties: { color: t.line.color, w: TRAIN_W[t.line.mode] || 5 } });
     }
     map3d.map.getSource('sb-trains').setData({ type: 'FeatureCollection', features: feats });
   };

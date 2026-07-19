@@ -580,6 +580,7 @@
     $('set-buildings3d').textContent = s.buildings3d ? 'On' : 'Off';
     $('set-2d').classList.toggle('active', s.mode2d);
     $('set-2d').textContent = s.mode2d ? 'On' : 'Off';
+    $('mc-2d').classList.toggle('active', s.mode2d);
     $('set-render').value = s.renderDistance;
     $('set-render-val').textContent = s.renderDistance;
     $('set-lod').value = s.lodDistance;
@@ -617,10 +618,40 @@
       SB.map3d.setSetting('buildings3d', !SB.map3d.settings.buildings3d);
       syncSettingsUI();
     });
-    $('set-2d').addEventListener('click', () => {
+    function toggle2d() {
       SB.map3d.setSetting('mode2d', !SB.map3d.settings.mode2d);
       if (SB.map3d.settings.mode2d) $('btn-3d').classList.remove('active');
       syncSettingsUI();
+    }
+    $('set-2d').addEventListener('click', toggle2d);
+    $('mc-2d').addEventListener('click', toggle2d);
+
+    // Floating map controls (zoom / compass).
+    $('mc-zoomin').addEventListener('click', () => {
+      const m = SB.map3d.map;
+      if (m) m.zoomTo(Math.min(22, m.getZoom() + 1), { duration: 250 });
+    });
+    $('mc-zoomout').addEventListener('click', () => {
+      const m = SB.map3d.map;
+      if (m) m.zoomTo(Math.max(0, m.getZoom() - 1), { duration: 250 });
+    });
+    $('mc-compass').addEventListener('click', () => {
+      const m = SB.map3d.map;
+      if (m) m.easeTo({ bearing: 0, duration: 400 });
+    });
+
+    // Theme toggle — swaps the UI palette and the basemap style together.
+    function updateThemeIcon() {
+      $('btn-theme').querySelector('use').setAttribute('href',
+        SB.map3d.settings.theme === 'light' ? '#i-moon' : '#i-sun');
+    }
+    document.body.classList.toggle('light', SB.map3d.settings.theme === 'light');
+    updateThemeIcon();
+    $('btn-theme').addEventListener('click', () => {
+      const next = SB.map3d.settings.theme === 'light' ? 'dark' : 'light';
+      SB.map3d.setTheme(next);
+      document.body.classList.toggle('light', next === 'light');
+      updateThemeIcon();
     });
     // Dragging a range slider fires 'input' continuously (many times per
     // second); re-applying the render style on every tick floods MapLibre

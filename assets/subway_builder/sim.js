@@ -455,28 +455,45 @@
     }
   };
 
-  // Returns [{x, y, angle, line}] in meter coords, on the real geometry.
-  sim.trainSprites = function () {
+  // ── Train geometry for rendering ─────────────────────────────────────
+  // Each vehicle is drawn as a short slice of the actual route polyline
+  // (so it bends with the track), centered on its current position.
+  const TRAIN_LEN_M = { metro: 95, train: 145, hst: 185, tram: 55, bus: 30 };
+
+  // Interpolated point at a given distance along the path, plus the index
+  // of the first vertex strictly after it.
+  function pointAt(ts, pos) {
+    let lo = 0, hi = ts.cum.length - 1;
+    while (lo < hi - 1) {
+      const mid = (lo + hi) >> 1;
+      if (ts.cum[mid] <= pos) lo = mid; else hi = mid;
+    }
+    const a = ts.pts[lo], b = ts.pts[hi];
+    const span = ts.cum[hi] - ts.cum[lo] || 1;
+    const f = Math.min(1, Math.max(0, (pos - ts.cum[lo]) / span));
+    return { x: a[0] + (b[0] - a[0]) * f, y: a[1] + (b[1] - a[1]) * f, hi };
+  }
+
+  function slicePath(ts, p0, p1) {
+    const s = pointAt(ts, p0), e = pointAt(ts, p1);
+    const pts = [[s.x, s.y]];
+    for (let i = s.hi; i < e.hi; i++) pts.push(ts.pts[i]);
+    pts.push([e.x, e.y]);
+    return pts;
+  }
+
+  // Returns [{pts: [[x, y], …], line}] in meter coords, on the real geometry.
+  sim.trainSegments = function () {
     const out = [];
     for (const line of SB.game.state.lines) {
       const ts = vehState.get(line.id);
       if (!ts || ts.total <= 0 || ts.pts.length < 2) continue;
+      const half = Math.min(ts.total / 2, (TRAIN_LEN_M[line.mode] || 80) / 2);
       for (const t of ts.list) {
-        // Binary search the cum array for the vertex pair containing pos.
-        let lo = 0, hi = ts.cum.length - 1;
-        while (lo < hi - 1) {
-          const mid = (lo + hi) >> 1;
-          if (ts.cum[mid] <= t.pos) lo = mid; else hi = mid;
-        }
-        const a = ts.pts[lo], b = ts.pts[hi];
-        const span = ts.cum[hi] - ts.cum[lo] || 1;
-        const f = Math.min(1, Math.max(0, (t.pos - ts.cum[lo]) / span));
-        out.push({
-          x: a[0] + (b[0] - a[0]) * f,
-          y: a[1] + (b[1] - a[1]) * f,
-          angle: Math.atan2(b[1] - a[1], b[0] - a[0]),
-          line,
-        });
+        const p0 = Math.max(0, t.pos - half);
+        const p1 = Math.min(ts.total, t.pos + half);
+        if (p1 - p0 < 1) continue;
+        out.push({ pts: slicePath(ts, p0, p1), line });
       }
     }
     return out;
