@@ -94,10 +94,10 @@
           ? role + 'click the map to dig a metro station. Denser areas cost more.'
           : role + 'click near a street to place a ' + M.label.toLowerCase() + ' stop — it snaps to the road.',
       line: SB.isRailMode(ui.mode)
-        ? role + 'click real stations in order — the route follows existing tracks. Enter to finish.'
+        ? role + 'click real stations in order — the route follows existing tracks. Enter to finish, or click the first station again to close a loop.'
         : ui.mode === 'metro'
-          ? role + 'click stations in order to bore tunnels between them. Enter to finish.'
-          : role + 'click stops in order — the route follows real streets. Enter to finish.',
+          ? role + 'click stations in order to bore tunnels between them. Enter to finish, or click the first station again to close a loop.'
+          : role + 'click stops in order — the route follows real streets. Enter to finish, or click the first stop again to close a loop.',
       bulldoze: 'Click a stop to demolish it (25% refund). Click a line to remove the whole line.',
     };
     ui.hint(hints[ui.tool]);
@@ -203,11 +203,8 @@
     $('fare-val').textContent = '$' + st.fare.toFixed(2);
     $('loan-out').textContent = st.loans > 0 ? SB.fmtMoney(st.loans) + ' owed' : 'No debt';
     $('btn-repay').disabled = st.loans <= 0;
-    const cadence = SB.ECON.capitalEveryDays;
-    const daysLeft = cadence - (st.day % cadence);
     $('funding-line').innerHTML =
-      SB.fmtMoney(SB.game.city.def.funding) + '/day operating subsidy<br>' +
-      SB.fmtMoney(SB.game.city.def.capital) + ' capital budget in ' + daysLeft + 'd';
+      SB.fmtMoney(SB.game.city.def.funding) + '/day operating subsidy';
   }
 
   function renderLineList() {
@@ -228,11 +225,14 @@
       if (selected) row.classList.add('sel');
       const riders = res ? res.lineRiders.get(line.id) || 0 : 0;
       const ratio = res ? res.lineMaxRatio.get(line.id) || 0 : 0;
+      const revenue = riders * st.fare;
+      const isLoop = SB.isLoopLine(line);
+      const stopCount = line.stationIds.length - (isLoop ? 1 : 0);
       const M = SB.MODES[line.mode];
       row.innerHTML =
         '<span class="sw" style="background:' + line.color + '">' + ic(MODE_ICON[line.mode]) + '</span>' +
         '<span class="lcol"><span class="lname">' + line.name + '</span>' +
-        '<span class="lmeta">' + line.stationIds.length + ' stops · ' + SB.fmtInt(riders) + '/d' +
+        '<span class="lmeta">' + stopCount + ' stops' + (isLoop ? ' · loop' : '') + ' · ' + SB.fmtInt(riders) + '/d · ' + SB.fmtMoney(revenue) + '/d' +
         (ratio > 1.05 ? ' · <b class="bad">crowded</b>' : '') + '</span></span>' +
         '<span class="tctl">' +
         '<button class="mini" data-act="vminus" title="Sell a ' + M.vehicle + '">' + ic('minus') + '</button>' +
@@ -296,14 +296,16 @@
       const ratio = res ? res.lineMaxRatio.get(line.id) || 0 : 0;
       const delay = SB.sim.lineDelayFor(line.id);
       const crowdCls = ratio > 1.05 ? 'bad' : ratio > 0.85 ? 'warn' : 'good';
+      const isLoop = SB.isLoopLine(line);
+      const stopCount = line.stationIds.length - (isLoop ? 1 : 0);
       panel.innerHTML =
         '<div class="ip-head"><span class="dot big" style="background:' + line.color + '"></span>' +
-        '<span class="ip-title">' + line.name + '</span>' +
+        '<span class="ip-title">' + line.name + (isLoop ? ' <span class="pill">loop</span>' : '') + '</span>' +
         '<button class="mini ghostbtn" id="ip-close">' + ic('x') + '</button></div>' +
         '<div class="ip-row">Mode <b>' + M.label + ' · ' + M.speedKmh + ' km/h</b></div>' +
-        '<div class="ip-row">Stops <b>' + line.stationIds.length + '</b> · length <b>' + SB.fmtKm(lenM) + '</b></div>' +
+        '<div class="ip-row">Stops <b>' + stopCount + '</b> · length <b>' + SB.fmtKm(lenM) + '</b></div>' +
         '<div class="ip-row">Fleet <b>' + line.vehicles + ' ' + M.vehicle + 's</b> · headway <b>' + (isFinite(headway) ? headway.toFixed(1) + ' min' : '—') + '</b></div>' +
-        '<div class="ip-row">Riders <b>' + SB.fmtInt(riders) + '/day</b></div>' +
+        '<div class="ip-row">Riders <b>' + SB.fmtInt(riders) + '/day</b> · revenue <b>' + SB.fmtMoney(riders * SB.game.state.fare) + '/day</b></div>' +
         '<div class="ip-row">Peak crowding <b class="' + crowdCls + '">' + Math.round(ratio * 100) + '%</b>' +
         (delay > 1.02 ? ' <span class="warn">delays ×' + delay.toFixed(2) + '</span>' : '') + '</div>' +
         '<div class="ip-actions">' +
@@ -461,7 +463,7 @@
       '<div><b>3 · Build stops &amp; lines</b><p>Place stops with <kbd>S</kbd>, connect them with <kbd>L</kbd>, finish with <kbd>Enter</kbd>. Metro under rivers costs 2.6× for tunnelling; surface modes must find a real street route.</p></div>' +
       '<div><b>4 · Run the fleet</b><p>Every line starts with two vehicles. More vehicles mean shorter waits and more capacity — watch the crowding flags before riders give up.</p></div>' +
       '<div><b>5 · Win commuters</b><p>Each simulated commuter weighs walking, waiting, riding, transfers and fares against driving, door to door. Your score is the <b>transit share</b>.</p></div>' +
-      '<div><b>6 · Fund it</b><p>Fares plus a daily subsidy cover operations; every 30 days a fresh <i>capital budget</i> arrives. Milestones bring bonus grants — loans are there if you dare.</p></div>' +
+      '<div><b>6 · Fund it</b><p>You start with a fixed budget — fares plus a small daily subsidy cover operations from there. Milestones bring bonus grants — loans are there if you dare.</p></div>' +
       '</div>' +
       '<p class="sub">Shortcuts — <kbd>V</kbd> select · <kbd>S</kbd> stop · <kbd>L</kbd> line · <kbd>B</kbd> bulldoze · <kbd>1</kbd>–<kbd>4</kbd> mode · <kbd>Space</kbd> pause · <kbd>Esc</kbd> cancel</p>' +
       '<div class="mrow"><button id="m-close" class="primary">Let’s build</button></div>',

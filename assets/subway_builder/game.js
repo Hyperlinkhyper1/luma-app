@@ -56,12 +56,16 @@
   };
   SB.MODES = MODES;
   SB.isRailMode = function (mode) { return !!MODES[mode].rail; };
+  // A line loops when it was closed back onto its own first stop.
+  SB.isLoopLine = function (line) {
+    return line.stationIds.length > 3 &&
+      line.stationIds[0] === line.stationIds[line.stationIds.length - 1];
+  };
 
   const ECON = {
     demolishRefund: 0.25,
     loanAmount: 250e6,
     loanRatePerDay: 0.0006,
-    capitalEveryDays: 30,
     fareMin: 1, fareMax: 5, fareDefault: 2.5,
   };
   SB.ECON = ECON;
@@ -553,11 +557,6 @@
     st.day++;
 
     const events = [];
-    if (st.day % ECON.capitalEveryDays === 0) {
-      const capital = game.city.def.capital;
-      st.money += capital;
-      events.push({ type: 'capital', label: 'Annual capital budget', grant: capital });
-    }
     for (let i = 0; i < MILESTONES.length; i++) {
       if (share >= MILESTONES[i].share && !st.milestonesHit.includes(i)) {
         st.milestonesHit.push(i);

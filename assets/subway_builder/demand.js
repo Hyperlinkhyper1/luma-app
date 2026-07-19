@@ -138,7 +138,7 @@
       def: {
         id: place.id, name: place.name, seed,
         pop: estPop,
-        budget: 1.4e9, funding: 250e3, capital: 450e6,
+        budget: 1.4e9, funding: 25e3,
       },
       isWater,
       inBounds(x, y) { return Math.hypot(x, y) <= RADIUS; },

@@ -12,6 +12,10 @@
 
   const QUANT = 14;      // meters — vertices closer than this merge into one node
   const BUCKET = 220;    // meters — spatial index cell for nearest-node lookups
+  // meters — long OSM way segments get subdivided so a graph vertex exists
+  // near any point along the line, not just at sparsely-placed original OSM
+  // vertices (rural/branch track can have vertices 600m+ apart)
+  const MAX_SEG = 120;
 
   const ROAD_CLASSES = new Set([
     'motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor',
@@ -51,12 +55,27 @@
 
   function addLineString(g, coords) {
     let prev = -1;
+    let prevXY = null;
     for (const [lng, lat] of coords) {
       const [x, y] = geo.toM(lng, lat);
-      if (Math.hypot(x, y) > SB.demand.RADIUS * 1.25) { prev = -1; continue; }
-      const id = nodeId(g, x, y);
-      if (prev >= 0) addEdge(g, prev, id);
-      prev = id;
+      if (Math.hypot(x, y) > SB.demand.RADIUS * 1.25) { prev = -1; prevXY = null; continue; }
+      if (prev >= 0 && prevXY) {
+        const segLen = Math.hypot(x - prevXY[0], y - prevXY[1]);
+        const steps = Math.floor(segLen / MAX_SEG);
+        let last = prev;
+        for (let i = 1; i <= steps; i++) {
+          const t = (i * MAX_SEG) / segLen;
+          const id = nodeId(g, prevXY[0] + (x - prevXY[0]) * t, prevXY[1] + (y - prevXY[1]) * t);
+          addEdge(g, last, id);
+          last = id;
+        }
+        const id = nodeId(g, x, y);
+        addEdge(g, last, id);
+        prev = id;
+      } else {
+        prev = nodeId(g, x, y);
+      }
+      prevXY = [x, y];
     }
   }
 

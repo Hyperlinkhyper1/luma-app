@@ -125,7 +125,9 @@
 
   sim.headwayMin = function (line) {
     if (line.vehicles <= 0) return Infinity;
-    return Math.max(2, (2 * lineOneWayMin(line)) / line.vehicles);
+    // A loop's "round trip" is one circuit; a shuttle has to go out and back.
+    const cycle = SB.isLoopLine(line) ? lineOneWayMin(line) : 2 * lineOneWayMin(line);
+    return Math.max(2, cycle / line.vehicles);
   };
 
   function buildGraph() {
@@ -386,6 +388,7 @@
         stops[si++] = acc;
       }
       const total = acc;
+      const isLoop = SB.isLoopLine(line);
       const prev = vehState.get(line.id);
       const list = [];
       for (let i = 0; i < line.vehicles; i++) {
@@ -393,6 +396,11 @@
           const t = prev.list[i];
           const pos = Math.min(total, (t.pos / prev.total) * total);
           list.push({ pos, dir: t.dir, dwell: 0, stopIdx: nearestStop(stops, pos) });
+        } else if (isLoop) {
+          // Spread evenly around the circuit — loop vehicles always run forward.
+          const frac = line.vehicles > 0 ? i / line.vehicles : 0;
+          const pos = frac * total;
+          list.push({ pos, dir: 1, dwell: 0, stopIdx: nearestStop(stops, pos) });
         } else {
           const frac = line.vehicles > 0 ? i / line.vehicles : 0;
           const bounce = frac * 2;
@@ -420,12 +428,20 @@
     for (const line of SB.game.state.lines) {
       const ts = vehState.get(line.id);
       if (!ts || ts.total <= 0) continue;
+      const isLoop = SB.isLoopLine(line);
       const v = (SB.MODES[line.mode].speedKmh / 3.6) * 1.7 * Math.max(1, speedMult);
       for (const t of ts.list) {
         if (t.dwell > 0) { t.dwell -= dt * speedMult; continue; }
+        // The closing stop is the same physical station as stop 0 — wrap
+        // back to the start and keep running forward instead of bouncing.
+        if (isLoop && t.stopIdx === ts.stops.length - 1) { t.stopIdx = 0; t.pos = 0; }
         let target = t.stopIdx + t.dir;
-        if (target < 0 || target >= ts.stops.length) { t.dir *= -1; target = t.stopIdx + t.dir; }
-        if (target < 0 || target >= ts.stops.length) continue;
+        if (isLoop) {
+          if (target >= ts.stops.length) continue;
+        } else {
+          if (target < 0 || target >= ts.stops.length) { t.dir *= -1; target = t.stopIdx + t.dir; }
+          if (target < 0 || target >= ts.stops.length) continue;
+        }
         const goal = ts.stops[target];
         const step = v * dt;
         if (Math.abs(goal - t.pos) <= step) {

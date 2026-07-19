@@ -152,6 +152,11 @@
       }
       const last = ui.draftIds[ui.draftIds.length - 1];
       if (station.id === last) { finishDraft(); return; } // click end twice = done
+      if (station.id === ui.draftIds[0] && ui.draftIds.length >= 3) {
+        ui.draftIds.push(station.id); // close the loop back to the start stop
+        finishDraft();
+        return;
+      }
       if (ui.draftIds.includes(station.id)) { ui.toast('Already on this draft', 'bad'); return; }
       ui.draftIds.push(station.id);
       ui.updateDraftHint();
