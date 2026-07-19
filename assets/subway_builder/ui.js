@@ -685,6 +685,23 @@
       ui.beginDraftFrom(null);
       ui.updateDraftHint();
     });
+    $('btn-loadstations').addEventListener('click', async () => {
+      const btn = $('btn-loadstations');
+      if (btn.disabled) return;
+      btn.disabled = true;
+      ui.toast('Loading official stations in view…');
+      try {
+        const b = SB.map3d.map.getBounds();
+        const added = await SB.net.surveyStationsInBounds(
+          b.getSouth(), b.getWest(), b.getNorth(), b.getEast());
+        if (added < 0) ui.toast('Station lookup failed — the map data service is busy, try again', 'bad');
+        else if (added === 0) ui.toast('No new official stations found in view');
+        else ui.toast(added + ' official station' + (added === 1 ? '' : 's') + ' loaded', 'good');
+        SB.map3d.setRailMode(SB.isRailMode(ui.mode) && (ui.tool === 'station' || ui.tool === 'line'), ui.mode);
+      } finally {
+        btn.disabled = false;
+      }
+    });
     $('fare-minus').addEventListener('click', () => { SB.game.setFare(SB.game.state.fare - 0.25); });
     $('fare-plus').addEventListener('click', () => { SB.game.setFare(SB.game.state.fare + 0.25); });
     $('btn-loan').addEventListener('click', () => {
