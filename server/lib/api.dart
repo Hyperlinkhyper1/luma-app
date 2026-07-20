@@ -14,6 +14,7 @@ import 'mail.dart';
 import 'metrics.dart';
 import 'rate_limit.dart';
 import 'store.dart';
+import 'subway_relay.dart';
 import 'util.dart';
 
 /// Server configuration, read from environment variables (see .env.example).
@@ -171,6 +172,7 @@ class Api {
   final FamilyStore familyStore;
   final ChatStore chatStore;
   final AiUsageStore aiUsage;
+  final SubwayRelay _subwayRelay = SubwayRelay();
   final RateLimiter _authLimiter;
   final RateLimiter _generalLimiter;
 
@@ -248,6 +250,7 @@ class Api {
       ..post('/api/v1/chat/conversations/<id>/messages',
           _requireAuth(_sendChatMessage))
       ..post('/api/v1/plugins/download', _reportPluginDownload)
+      ..get('/api/v1/subway/room/<room>', _subwayRelay.subwayRoomHandler)
       ..get('/admin/login', _adminLoginPage)
       ..post('/admin/login', _adminLoginSubmit)
       ..post('/admin/logout', _adminLogout)
@@ -277,6 +280,11 @@ class Api {
   Handler _recover(Handler inner) => (request) async {
         try {
           return await inner(request);
+        } on HijackException {
+          // WebSocket upgrades (subway co-op) hijack the connection instead
+          // of returning a Response — this must propagate untouched, never
+          // get converted into a 500.
+          rethrow;
         } on FormatException {
           return _error(400, 'bad_request', 'Malformed request.');
         } catch (e, st) {

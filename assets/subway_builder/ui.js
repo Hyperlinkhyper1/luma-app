@@ -189,15 +189,66 @@
       if (ui.overlay === 'access') SB.map3d.setOverlay('access');
       refreshRailHighlight();
     }
-    $('stat-day').textContent = g.state.day;
     $('stat-money').textContent = SB.fmtMoney(g.state.money);
     $('stat-money').classList.toggle('neg', g.state.money < 0);
     $('stat-riders').textContent = res ? SB.fmtInt(res.ridersDaily) : '—';
     $('stat-share').textContent = res ? (res.share * 100).toFixed(1) + '%' : '—';
+    ui.updateClock();
 
     renderLineList();
     renderInfoPanel();
     renderFinance();
+  };
+
+  // ── World clock / weather HUD ────────────────────────────────────────
+  ui.updateClock = function () {
+    const g = SB.game;
+    if (!g.state || !SB.world) return;
+    SB.world.ensure();
+    const season = SB.world.season();
+    $('stat-day').textContent = 'Day ' + SB.world.day() + ' · ' + SB.world.weekday() +
+      ' · ' + season.emoji;
+    $('stat-time').textContent = SB.world.timeString() +
+      (SB.world.isRushHour() ? ' 🔺 rush' : SB.world.isNight() ? ' 🌙 night' : '');
+    $('stat-clock').title = season.label + ' · Day ' + SB.world.day();
+    const w = SB.world.weatherInfo();
+    $('weather-emoji').textContent = w.emoji;
+    $('stat-weather-label').textContent = w.label;
+    $('stat-weather').title = w.label +
+      (w.surface > 1 ? ' — surface transit slowed ×' + w.surface.toFixed(2) : '');
+
+    const badge = $('ach-badge');
+    const newCount = g.state.achievementsHit.length - g.state.achievementsSeen;
+    badge.textContent = newCount;
+    badge.style.display = newCount > 0 ? 'block' : 'none';
+
+    const coopBtn = $('btn-coop');
+    coopBtn.classList.toggle('active', SB.mp.connected);
+    coopBtn.lastChild.textContent = SB.mp.connected ? SB.mp.roomCode : 'Co-op';
+  };
+
+  // ── Achievements ─────────────────────────────────────────────────────
+  ui.showAchievements = function () {
+    const st = SB.game.state;
+    const rows = SB.ACHIEVEMENTS.map((a) => {
+      const done = st.achievementsHit.includes(a.id);
+      return '<div class="achrow' + (done ? ' done' : '') + '">' +
+        ic(done ? 'trophy' : 'trophy') +
+        '<span class="at"><b>' + a.label + '</b><span>' + a.sub + '</span></span>' +
+        '<span class="av">' + (done ? 'Unlocked' : SB.fmtMoney(a.grant)) + '</span></div>';
+    }).join('');
+    const doneCount = st.achievementsHit.length;
+    openModal(
+      '<h2>Achievements</h2><p class="sub">' + doneCount + ' / ' + SB.ACHIEVEMENTS.length +
+      ' unlocked — real facts about the network you actually built.</p>' +
+      '<div class="achlist">' + rows + '</div>' +
+      '<div class="mrow"><button id="m-close">Close</button></div>',
+      true
+    );
+    st.achievementsSeen = st.achievementsHit.length;
+    SB.game.save();
+    ui.updateClock();
+    $('m-close').onclick = ui.closeModal;
   };
 
   function renderFinance() {
@@ -222,7 +273,8 @@
     }
     for (const line of st.lines) {
       const row = document.createElement('div');
-      row.className = 'linerow';
+      const disruption = SB.world ? SB.world.disruptionFor(line.id) : null;
+      row.className = 'linerow' + (disruption ? ' disrupted' : '');
       const selected = ui.selection && ui.selection.type === 'line' && ui.selection.id === line.id;
       if (selected) row.classList.add('sel');
       const riders = res ? res.lineRiders.get(line.id) || 0 : 0;
@@ -235,7 +287,8 @@
         '<span class="sw" style="background:' + line.color + '">' + ic(MODE_ICON[line.mode]) + '</span>' +
         '<span class="lcol"><span class="lname">' + line.name + '</span>' +
         '<span class="lmeta">' + stopCount + ' stops' + (isLoop ? ' · loop' : '') + ' · ' + SB.fmtInt(riders) + '/d · ' + SB.fmtMoney(revenue) + '/d' +
-        (ratio > 1.05 ? ' · <b class="bad">crowded</b>' : '') + '</span></span>' +
+        (ratio > 1.05 ? ' · <b class="bad">crowded</b>' : '') +
+        (disruption ? ' · <b class="dis-flag">' + disruption.label + '</b>' : '') + '</span></span>' +
         '<span class="tctl">' +
         '<button class="mini" data-act="vminus" title="Sell a ' + M.vehicle + '">' + ic('minus') + '</button>' +
         '<span class="tcount">' + line.vehicles + '</span>' +
@@ -300,6 +353,7 @@
       const crowdCls = ratio > 1.05 ? 'bad' : ratio > 0.85 ? 'warn' : 'good';
       const isLoop = SB.isLoopLine(line);
       const stopCount = line.stationIds.length - (isLoop ? 1 : 0);
+      const disruption = SB.world ? SB.world.disruptionFor(line.id) : null;
       panel.innerHTML =
         '<div class="ip-head"><span class="dot big" style="background:' + line.color + '"></span>' +
         '<span class="ip-title">' + line.name + (isLoop ? ' <span class="pill">loop</span>' : '') + '</span>' +
@@ -310,12 +364,20 @@
         '<div class="ip-row">Riders <b>' + SB.fmtInt(riders) + '/day</b> · revenue <b>' + SB.fmtMoney(riders * SB.game.state.fare) + '/day</b></div>' +
         '<div class="ip-row">Peak crowding <b class="' + crowdCls + '">' + Math.round(ratio * 100) + '%</b>' +
         (delay > 1.02 ? ' <span class="warn">delays ×' + delay.toFixed(2) + '</span>' : '') + '</div>' +
+        (disruption ? '<div class="ip-row"><b class="bad">⚠ ' + disruption.label + '</b> — service is slowed until it clears</div>' : '') +
+        '<div class="ip-row">Service window' +
+        '<div class="svctoggle">' +
+        '<button class="mini' + (line.nightService ? ' active' : ' off') + '" id="ip-night" title="Toggle overnight (22:00–05:00) service">' + ic('moonwave') + 'Night</button>' +
+        '<button class="mini' + (line.weekendService ? ' active' : ' off') + '" id="ip-weekend" title="Toggle weekend service">' + ic('week') + 'Weekend</button>' +
+        '</div></div>' +
         '<div class="ip-actions">' +
         '<button id="ip-veh">' + ic('plus') + M.vehicle.charAt(0).toUpperCase() + M.vehicle.slice(1) + ' · ' + SB.fmtMoney(M.vehicleCost) + '</button>' +
         '<button id="ip-extend">' + ic('route') + 'Extend</button>' +
         '<button id="ip-delete" class="danger">' + ic('trash') + 'Delete</button></div>';
       panel.style.display = 'block';
       $('ip-close').onclick = () => { ui.selection = null; ui.updateAll(); };
+      $('ip-night').onclick = () => doAction(SB.game.setLineService(line.id, 'night', !line.nightService));
+      $('ip-weekend').onclick = () => doAction(SB.game.setLineService(line.id, 'weekend', !line.weekendService));
       $('ip-veh').onclick = () => doAction(SB.game.addVehicle(line.id));
       $('ip-extend').onclick = () => {
         ui.setMode(line.mode);
@@ -333,6 +395,67 @@
       };
     }
   }
+
+  // ── Co-op ────────────────────────────────────────────────────────────
+  const COOP_COLORS = ['#4da3ff', '#e6493f', '#2e9e4f', '#f28c28', '#8e4fc7', '#e8c11c', '#18a999', '#e05a9b'];
+
+  function coopPeerList() {
+    const rows = [{ name: SB.mp.myName + ' (you)', color: SB.mp.myColor, seq: SB.mp.mySeq }]
+      .concat([...SB.mp.peers.values()].map((p) => ({ name: p.name, color: p.color, seq: p.seq })));
+    return rows.map((p) =>
+      '<div class="achrow done" style="opacity:1"><span class="dot big" style="background:' + p.color + '"></span>' +
+      '<span class="at"><b>' + p.name + '</b><span>' + (p.seq ? 'builder #' + p.seq : 'joining…') + '</span></span></div>'
+    ).join('');
+  }
+
+  function renderCoopConnected() {
+    openModal(
+      '<h2>Co-op — room ' + SB.mp.roomCode + '</h2>' +
+      '<p class="sub">' + (SB.mp.isHost
+        ? 'You’re hosting. Share this code — anyone who joins builds on your live map and shares your treasury.'
+        : 'Building on ' + SB.mp.roomCode + '’s network. Only the host manages fare and loans.') + '</p>' +
+      '<div class="statgrid" style="grid-template-columns:1fr"><div class="stat"><div class="v">' + SB.mp.roomCode + '</div><div class="l">room code</div></div></div>' +
+      '<div class="achlist">' + coopPeerList() + '</div>' +
+      '<div class="mrow"><button id="cp-leave" class="danger">Leave room</button><button id="m-close">Close</button></div>',
+      true
+    );
+    $('m-close').onclick = ui.closeModal;
+    $('cp-leave').onclick = () => { SB.mp.leave(); ui.closeModal(); ui.toast('Left the co-op room'); };
+  }
+
+  function renderCoopSetup() {
+    const color = COOP_COLORS[Math.floor(Math.random() * COOP_COLORS.length)];
+    openModal(
+      '<h2>Play together</h2>' +
+      '<p class="sub">Open a room on your current save and share the code — anyone who joins builds on your live map with you, as one shared network and treasury. Only the host manages fare/loans and runs the clock.</p>' +
+      '<div class="mrow" style="margin-top:10px"><input type="text" id="cp-name" placeholder="Your name" maxlength="18" style="flex:1"></div>' +
+      '<div class="mrow"><button id="cp-host" class="primary">Host a room</button></div>' +
+      '<p class="sub" style="margin-top:14px">— or join one —</p>' +
+      '<div class="mrow"><input type="text" id="cp-code" placeholder="Room code" maxlength="6" style="flex:1;text-transform:uppercase"></div>' +
+      '<div class="mrow"><button id="cp-join">Join room</button></div>' +
+      '<div class="mrow"><button id="m-close">Cancel</button></div>',
+      true
+    );
+    $('m-close').onclick = ui.closeModal;
+    $('cp-host').onclick = () => {
+      const name = $('cp-name').value.trim() || 'Host';
+      SB.mp.host(name, color);
+      ui.closeModal();
+    };
+    $('cp-join').onclick = () => {
+      const name = $('cp-name').value.trim() || 'Player';
+      const code = $('cp-code').value.trim();
+      if (!code) { ui.toast('Enter a room code', 'bad'); return; }
+      SB.mp.join(code, name, color);
+      ui.closeModal();
+    };
+  }
+
+  ui.showCoop = function () {
+    if (!SB.game.state) { ui.toast('Load a city first', 'bad'); return; }
+    if (SB.mp.connected) renderCoopConnected();
+    else renderCoopSetup();
+  };
 
   // ── Modals ───────────────────────────────────────────────────────────
   function openModal(html, wide) {
@@ -605,6 +728,8 @@
       b.addEventListener('click', () => ui.setSpeed(i));
     });
     $('btn-stats').addEventListener('click', ui.showStats);
+    $('btn-achievements').addEventListener('click', ui.showAchievements);
+    $('btn-coop').addEventListener('click', ui.showCoop);
     $('btn-help').addEventListener('click', ui.showHelp);
     $('btn-cities').addEventListener('click', () => ui.showPlacePicker(true));
     $('btn-3d').addEventListener('click', () => {
@@ -704,16 +829,21 @@
         btn.disabled = false;
       }
     });
-    $('fare-minus').addEventListener('click', () => { SB.game.setFare(SB.game.state.fare - 0.25); });
-    $('fare-plus').addEventListener('click', () => { SB.game.setFare(SB.game.state.fare + 0.25); });
+    function econGate() {
+      if (SB.mp.econLocked()) { ui.toast('Only the host manages the treasury', 'bad'); return true; }
+      return false;
+    }
+    $('fare-minus').addEventListener('click', () => { if (!econGate()) SB.game.setFare(SB.game.state.fare - 0.25); });
+    $('fare-plus').addEventListener('click', () => { if (!econGate()) SB.game.setFare(SB.game.state.fare + 0.25); });
     $('btn-loan').addEventListener('click', () => {
+      if (econGate()) return;
       ui.confirm('Take a ' + SB.fmtMoney(SB.ECON.loanAmount) + ' loan?',
         'Interest accrues daily at 0.06% of the outstanding amount.', () => {
           SB.game.takeLoan();
           ui.toast(SB.fmtMoney(SB.ECON.loanAmount) + ' loan received');
         });
     });
-    $('btn-repay').addEventListener('click', () => doAction(SB.game.repayLoan()));
+    $('btn-repay').addEventListener('click', () => { if (!econGate()) doAction(SB.game.repayLoan()); });
     $('modalback').addEventListener('mousedown', (e) => {
       if (e.target === $('modalback') && $('m-close')) ui.closeModal();
     });

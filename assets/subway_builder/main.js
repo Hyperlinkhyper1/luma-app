@@ -9,12 +9,11 @@
   let hover = null;
   let ghostOk = false;
   let mouseLL = null;
-  let dayAcc = 0;
   let lastT = 0;
   let starting = false;
 
   // ── Place lifecycle ──────────────────────────────────────────────────
-  main.startPlace = function (place, fresh) {
+  main.startPlace = function (place, fresh, onReady) {
     if (starting) return;
     starting = true;
     const loading = document.getElementById('loading');
@@ -37,13 +36,13 @@
         ui.setTool('select');
         ui.selection = null;
         ui.cancelDraft(true);
-        dayAcc = 0;
         const pitch3d = !map3d.settings.mode2d;
         map3d.map.easeTo({ center: [place.lng, place.lat], zoom: 12.6, pitch: pitch3d ? 45 : 0, duration: 1200 });
         document.getElementById('btn-3d').classList.toggle('active', pitch3d);
         map3d.setOverlay(ui.overlay);
         ui.updateAll();
-        if (!game.state.helpSeen) ui.showHelp();
+        if (onReady) onReady();
+        else if (!game.state.helpSeen) ui.showHelp();
         else ui.toast('Welcome back to ' + place.name + ' — day ' + game.state.day);
       } finally {
         loading.style.display = 'none';
@@ -85,6 +84,11 @@
   // ── Tool clicks on the map ───────────────────────────────────────────
   function handleClick(e) {
     if (!game.state) return;
+    if ((ui.tool === 'station' || ui.tool === 'line' || ui.tool === 'bulldoze') &&
+        SB.mp && SB.mp.connected && !SB.mp.canBuild()) {
+      ui.toast('Still syncing with the host…', 'bad');
+      return;
+    }
     const station = map3d.stationAtPoint(e.point);
 
     if (ui.tool === 'select') {
@@ -313,10 +317,13 @@
   }
 
   // ── World clock (1 real second at 1× = 1 in-game minute) ─────────────
+  // In co-op, only the host's clock is real — peers mirror it via SB.mp's
+  // periodic 'econ' broadcasts instead of ticking their own.
   let saveAcc = 0;
   function advanceTime(dt) {
     const sp = ui.SPEEDS[ui.speed];
     if (!sp || sp.minPerSec === 0 || !game.state) return;
+    if (SB.mp && SB.mp.isPeer) { ui.updateClock(); return; }
     SB.world.ensure();
     SB.world.advance(dt * sp.minPerSec);
     // Autosave the ticking clock every ~10 real seconds.
@@ -325,10 +332,8 @@
     ui.updateClock();
   }
 
-  SB.world.onNews = function (msg, kind) { ui.toast(msg, kind); };
-  SB.world.onDayEnd = function (report) {
-    SB.sim.assign(); // crowding feedback converges day by day
-    for (const ev of report.events) {
+  main.renderDayEvents = function (events) {
+    for (const ev of events) {
       if (ev.type === 'milestone') {
         ui.banner('🎉 ' + ev.label, (ev.share * 100).toFixed(0) + '% transit share reached — ' + SB.fmtMoney(ev.grant) + ' grant awarded!');
       } else if (ev.type === 'achievement') {
@@ -341,10 +346,16 @@
         ui.toast('🏛 ' + ev.label + ': ' + SB.fmtMoney(ev.grant) + ' to build with', 'good');
       }
     }
+  };
+
+  SB.world.onNews = function (msg, kind) { ui.toast(msg, kind); };
+  SB.world.onDayEnd = function (report) {
+    SB.sim.assign(); // crowding feedback converges day by day
+    main.renderDayEvents(report.events);
     if (game.state.money < 0 && (game.state.money - report.net) >= 0) {
       ui.toast('Treasury is in the red — consider a loan or higher fares', 'bad');
     }
-    if (SB.mp) SB.mp.onLocalChange();
+    if (SB.mp) SB.mp.broadcastDayEvents(report.events);
     ui.updateAll();
   };
 

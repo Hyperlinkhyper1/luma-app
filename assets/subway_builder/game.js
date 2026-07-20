@@ -141,8 +141,13 @@
     networkDirty: false,
   });
 
-  function emit() {
+  /* moneyDelta: the signed change just applied to st.money (undefined/0 for
+     actions with no economic effect) — in co-op, peers report this to the
+     host so the shared treasury actually reflects everyone's spending, not
+     just the host's own. */
+  function emit(moneyDelta) {
     game.networkDirty = true;
+    if (SB.mp && SB.mp.onLocalChange) SB.mp.onLocalChange(moneyDelta || 0);
     if (game.onChange) game.onChange();
   }
 
@@ -158,6 +163,7 @@
       nextLineId: 1,
       milestonesHit: [],
       achievementsHit: [],
+      achievementsSeen: 0,
       world: null,          // owned by SB.world (clock, weather, events…)
       history: [],
       totalSpent: 0,
@@ -216,12 +222,11 @@
     localStorage.setItem(SAVE_KEY, JSON.stringify(all));
   };
 
-  game.attachCity = function (city, place, fresh) {
-    game.city = city;
-    game.place = place;
-    const saved = !fresh && game.savedEntry(place.id);
-    game.state = saved ? saved.state : blankState(city);
-    // Rehydrate derived data + migrate pre-mode saves.
+  /* Recompute derived (non-persisted) fields — meter coords, path geometry,
+     legacy-save migrations. Shared by attachCity (loading a save) and
+     SB.mp (applying a remote co-op snapshot/sync), since both hand this
+     function a stations/lines array that only has the persisted fields. */
+  game.rehydrate = function () {
     for (const s of game.state.stations) {
       if (!s.mode) s.mode = 'metro';
       const [x, y] = SB.geo.toM(s.lng, s.lat);
@@ -238,13 +243,22 @@
         for (let i = 0; i < l.stationIds.length - 1; i++) {
           const a = game.stationById(l.stationIds[i]);
           const b = game.stationById(l.stationIds[i + 1]);
-          l.paths.push([[a.lng, a.lat], [b.lng, b.lat]]);
+          if (a && b) l.paths.push([[a.lng, a.lat], [b.lng, b.lat]]);
         }
       }
       delete l._pm;
     }
     if (!game.state.achievementsHit) game.state.achievementsHit = [];
+    if (game.state.achievementsSeen === undefined) game.state.achievementsSeen = game.state.achievementsHit.length;
     SB.world.ensure();
+  };
+
+  game.attachCity = function (city, place, fresh) {
+    game.city = city;
+    game.place = place;
+    const saved = !fresh && game.savedEntry(place.id);
+    game.state = saved ? saved.state : blankState(city);
+    game.rehydrate();
     game.save();
     emit();
   };
@@ -382,7 +396,7 @@
     st.money -= check.cost;
     st.totalSpent += check.cost;
     game.save();
-    emit();
+    emit(-check.cost);
     return { ok: true, station, cost: check.cost };
   };
 
@@ -405,7 +419,7 @@
     st.money -= cost;
     st.totalSpent += cost;
     game.save();
-    emit();
+    emit(-cost);
     return { ok: true, station, cost };
   };
 
@@ -444,7 +458,7 @@
     st.money -= cost;
     st.totalSpent += cost;
     game.save();
-    emit();
+    emit(-cost);
     return { ok: true, line, cost };
   };
 
@@ -466,7 +480,7 @@
     game.state.money -= seg.cost;
     game.state.totalSpent += seg.cost;
     game.save();
-    emit();
+    emit(-seg.cost);
     return { ok: true };
   };
 
@@ -505,7 +519,7 @@
     st.stations.splice(idx, 1);
     st.money += refund;
     game.save();
-    emit();
+    emit(refund);
     return { ok: true, refund };
   };
 
@@ -520,7 +534,7 @@
     st.lines.splice(idx, 1);
     st.money += refund;
     game.save();
-    emit();
+    emit(refund);
     return { ok: true, refund };
   };
 
@@ -536,7 +550,7 @@
     game.state.money -= M.vehicleCost;
     game.state.totalSpent += M.vehicleCost;
     game.save();
-    emit();
+    emit(-M.vehicleCost);
     return { ok: true };
   };
 
@@ -545,9 +559,10 @@
     if (!line) return { ok: false, err: 'Unknown line' };
     if (line.vehicles <= 1) return { ok: false, err: 'A line needs at least one vehicle' };
     line.vehicles--;
-    game.state.money += MODES[line.mode].vehicleRefund;
+    const refund = MODES[line.mode].vehicleRefund;
+    game.state.money += refund;
     game.save();
-    emit();
+    emit(refund);
     return { ok: true };
   };
 
