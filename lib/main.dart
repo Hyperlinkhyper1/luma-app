@@ -60,6 +60,9 @@ import 'features/plugins/installed/groceries/groceries_scope.dart';
 import 'features/plugins/installed/recipe_book/data/recipe_book_database.dart';
 import 'features/plugins/installed/recipe_book/recipe_book_repository.dart';
 import 'features/plugins/installed/recipe_book/recipe_book_scope.dart';
+import 'features/plugins/installed/minecraft_launcher/data/minecraft_launcher_database.dart';
+import 'features/plugins/installed/minecraft_launcher/minecraft_launcher_repository.dart';
+import 'features/plugins/installed/minecraft_launcher/minecraft_launcher_scope.dart';
 import 'features/plugins/plugin_catalog_service.dart';
 import 'features/plugins/plugin_repository.dart';
 import 'features/plugins/plugin_scope.dart';
@@ -151,6 +154,10 @@ class _LumaAppState extends State<LumaApp> {
   late final RecipeBookDatabase _recipeBookDb = RecipeBookDatabase();
   late final RecipeBookRepository _recipeBookRepository =
       RecipeBookRepository(_recipeBookDb);
+  late final MinecraftLauncherDatabase _minecraftDb =
+      MinecraftLauncherDatabase();
+  late final MinecraftLauncherRepository _minecraftRepository =
+      MinecraftLauncherRepository(_minecraftDb);
 
   // Global local-storage cap, enforced regardless of which plugins are
   // installed — see StorageGuardService.
@@ -338,6 +345,7 @@ class _LumaAppState extends State<LumaApp> {
     _dataManagementDb.close();
     _moodJournalDb.close();
     _schoolDb.close();
+    _minecraftDb.close();
     _serverTycoonRepository.dispose();
     _autoClickerRepository.dispose();
     _usageRepository.dispose();
@@ -436,6 +444,8 @@ class _LumaAppState extends State<LumaApp> {
                       api: _groceriesApi,
                       child: RecipeBookScope(
                       repository: _recipeBookRepository,
+                      child: MinecraftLauncherScope(
+                      repository: _minecraftRepository,
                       child: ListenableBuilder(
                       listenable: widget.settings,
                       builder: (context, _) {
@@ -459,6 +469,7 @@ class _LumaAppState extends State<LumaApp> {
                               bootstrap: _bootstrap, accentSeed: s.accentSeed),
                         );
                       },
+                    ),
                     ),
                     ),
                     ),

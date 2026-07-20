@@ -31,7 +31,7 @@ class StorageGuardService extends ChangeNotifier {
 
   /// Subdirectories (relative to the app support directory) excluded from the
   /// sum: one-time tool/binary downloads (yt-dlp, ffmpeg, …), not user data.
-  static const _excludedDirNames = {'tools', 'ffmpeg'};
+  static const _excludedDirNames = {'tools', 'ffmpeg', 'minecraft'};
 
   int _limitBytes = _defaultLimitBytes;
   int _usedBytes = 0;

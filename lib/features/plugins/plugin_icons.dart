@@ -49,6 +49,8 @@ IconData pluginIconFor(String? name) {
       return Icons.checklist_rounded;
     case 'chat':
       return Icons.chat_rounded;
+    case 'sports_esports':
+      return Icons.sports_esports_rounded;
     default:
       return Icons.extension_rounded;
   }

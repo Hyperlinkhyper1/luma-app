@@ -221,6 +221,16 @@
       "version": "1.0.0"
     },
     {
+      "id": "minecraft-launcher",
+      "name": "Minecraft Launcher",
+      "description": "Install and manage Minecraft instances — Vanilla, Fabric, Forge, NeoForge and Quilt — with mod, resource pack and shader pack downloads, Java management, and live launch logs. Inspired by modern launchers, built with luma's own design.",
+      "icon": "sports_esports",
+      "category": "Games",
+      "tags": ["Games", "Utility"],
+      "free": true,
+      "version": "1.0.0"
+    },
+    {
       "id": "recipe-book",
       "name": "Recipe Book",
       "description": "Store and organise all your recipes in one place. Add ingredients, step-by-step instructions, prep and cook times, and scale servings on the fly.",

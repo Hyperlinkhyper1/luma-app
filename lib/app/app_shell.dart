@@ -18,6 +18,7 @@ import '../features/plugins/installed/city_planner/city_planner_page.dart';
 import '../features/plugins/installed/file_tree/file_tree_page.dart';
 import '../features/plugins/installed/file_viewer/file_viewer_page.dart';
 import '../features/plugins/installed/groceries/groceries_page.dart';
+import '../features/plugins/installed/minecraft_launcher/minecraft_launcher_page.dart';
 import '../features/plugins/installed/mood_journal/mood_journal_page.dart';
 import '../features/plugins/installed/bulletin_board/bulletin_board_page.dart';
 import '../features/plugins/installed/price_tracker/price_tracker_page.dart';
@@ -222,6 +223,7 @@ class _AppShellState extends State<AppShell> {
         'usage' => const UsagePage(),
         'wifi-speed-test' => const WifiSpeedTestPage(),
         'groceries-list' => const GroceriesPage(),
+        'minecraft-launcher' => const MinecraftLauncherPage(),
         'secure-chat' => const SecureChatPage(),
         'recipe-book' => const RecipeBookPage(),
         _ => LumaEmptyState(
