@@ -15,6 +15,7 @@ import 'metrics.dart';
 import 'rate_limit.dart';
 import 'store.dart';
 import 'subway_relay.dart';
+import 'subway_store.dart';
 import 'util.dart';
 
 /// Server configuration, read from environment variables (see .env.example).
@@ -154,7 +155,7 @@ const int kSupportMessagesPerDay = 15;
 
 class Api {
   Api(this.store, this.config, this.mailer, this.familyStore, this.chatStore,
-      this.aiUsage)
+      this.aiUsage, this.subwayStore)
       : _authLimiter = RateLimiter(
             maxRequests: 15, window: const Duration(minutes: 10)),
         _generalLimiter = RateLimiter(
@@ -172,7 +173,9 @@ class Api {
   final FamilyStore familyStore;
   final ChatStore chatStore;
   final AiUsageStore aiUsage;
+  final SubwayStore subwayStore;
   final SubwayRelay _subwayRelay = SubwayRelay();
+  final SubwayTicketStore _subwayTickets = SubwayTicketStore();
   final RateLimiter _authLimiter;
   final RateLimiter _generalLimiter;
 
@@ -250,7 +253,16 @@ class Api {
       ..post('/api/v1/chat/conversations/<id>/messages',
           _requireAuth(_sendChatMessage))
       ..post('/api/v1/plugins/download', _reportPluginDownload)
-      ..get('/api/v1/subway/room/<room>', _subwayRelay.subwayRoomHandler)
+      ..post('/api/v1/subway/rooms', _requireAuth(_createSubwayRoom))
+      ..get('/api/v1/subway/rooms', _requireAuth(_listSubwayRooms))
+      ..post('/api/v1/subway/rooms/<code>/invite', _requireAuth(_inviteToSubwayRoom))
+      ..post('/api/v1/subway/rooms/<code>/join', _requireAuth(_joinSubwayRoom))
+      ..put('/api/v1/subway/rooms/<code>/state', _requireAuth(_putSubwayState))
+      ..get('/api/v1/subway/rooms/<code>/state', _requireAuth(_getSubwayState))
+      ..post('/api/v1/subway/rooms/<code>/clock/claim', _requireAuth(_claimSubwayClock))
+      ..post('/api/v1/subway/rooms/<code>/clock/release', _requireAuth(_releaseSubwayClock))
+      ..post('/api/v1/subway/rooms/<code>/ticket', _requireAuth(_mintSubwayTicket))
+      ..get('/api/v1/subway/room/<room>', _subwayRoomSocket)
       ..get('/admin/login', _adminLoginPage)
       ..post('/admin/login', _adminLoginSubmit)
       ..post('/admin/logout', _adminLogout)
@@ -1320,6 +1332,220 @@ class Api {
       await store.recordPluginDownload(pluginId, safeName);
       return _json(200, {'ok': true});
     });
+  }
+
+  // ---- Handlers: subway co-op ------------------------------------------------
+  //
+  // The server never simulates the game — it holds room membership and
+  // whatever full-state JSON snapshot a member last pushed, so a room stays
+  // joinable without its creator's client needing to stay online. See
+  // subway_store.dart and subway_relay.dart for the persistence/relay split.
+
+  static const _maxSubwayStateBytes = 4 * 1024 * 1024;
+  static const _clockLeaseTtl = Duration(seconds: 12);
+
+  Future<Response> _createSubwayRoom(Request request, StoredUser user) async {
+    return store.lock.synchronized(() async {
+      final code = subwayStore.newRoomCode();
+      final room = SubwayRoom(
+        code: code,
+        ownerId: user.id,
+        createdAtMs: _nowMs,
+        memberIds: {user.id},
+      );
+      subwayStore.roomsByCode[code] = room;
+      await subwayStore.saveRooms();
+      return _json(201, {'code': code, 'createdAtMs': room.createdAtMs});
+    });
+  }
+
+  Response _listSubwayRooms(Request request, StoredUser user) {
+    final rooms = subwayStore.roomsForUser(user.id);
+    return _json(200, {
+      'rooms': rooms
+          .map((r) => {
+                'code': r.code,
+                'ownerId': r.ownerId,
+                'isOwner': r.ownerId == user.id,
+                'memberCount': r.memberIds.length,
+                'updatedAtMs': r.updatedAtMs,
+              })
+          .toList(),
+    });
+  }
+
+  /// Owner-only. [contactUserId] must already be someone the caller has an
+  /// accepted chat conversation with — this is the "existing chat contacts
+  /// only" invite scope. Does not itself send anything; the client is
+  /// responsible for actually notifying the invitee via a real chat message
+  /// (the server cannot compose one — chat messages are end-to-end
+  /// encrypted client-side, see chat_store.dart).
+  Future<Response> _inviteToSubwayRoom(Request request, StoredUser user) async {
+    final code = (request.params['code'] ?? '').toUpperCase();
+    final body = await _readJson(request);
+    final contactUserId = body['contactUserId'];
+    if (contactUserId is! String || contactUserId.isEmpty) {
+      return _error(400, 'bad_request', 'Missing contactUserId.');
+    }
+    return store.lock.synchronized(() async {
+      final room = subwayStore.roomsByCode[code];
+      if (room == null) return _error(404, 'not_found', 'Room not found.');
+      if (room.ownerId != user.id) {
+        return _error(403, 'forbidden', 'Only the room owner can invite.');
+      }
+      if (chatStore.conversationBetween(user.id, contactUserId) == null) {
+        return _error(403, 'not_a_contact',
+            'You can only invite people you already chat with.');
+      }
+      room.memberIds.add(contactUserId);
+      room.updatedAtMs = _nowMs;
+      await subwayStore.saveRooms();
+      return _json(200, {'ok': true});
+    });
+  }
+
+  /// Presenting a valid code is itself an invite path (alongside the
+  /// chat-contact invite above) — any signed-in account holding the code
+  /// can join. There's no public room listing/discovery, so this only works
+  /// for someone who was actually given the code.
+  Future<Response> _joinSubwayRoom(Request request, StoredUser user) async {
+    final code = (request.params['code'] ?? '').toUpperCase();
+    return store.lock.synchronized(() async {
+      final room = subwayStore.roomsByCode[code];
+      if (room == null) return _error(404, 'not_found', 'Room not found.');
+      if (room.memberIds.add(user.id)) {
+        room.updatedAtMs = _nowMs;
+        await subwayStore.saveRooms();
+      }
+      final stateJson = await subwayStore.readState(code);
+      return _json(200, {
+        'ok': true,
+        'code': room.code,
+        'ownerId': room.ownerId,
+        'memberIds': room.memberIds.toList(),
+        'state': stateJson == null ? null : jsonDecode(stateJson),
+      });
+    });
+  }
+
+  Future<Response> _putSubwayState(Request request, StoredUser user) async {
+    final code = (request.params['code'] ?? '').toUpperCase();
+    final room = subwayStore.roomsByCode[code];
+    if (room == null) return _error(404, 'not_found', 'Room not found.');
+    if (!room.isMember(user.id)) {
+      return _error(403, 'forbidden', 'Not a member of this room.');
+    }
+    final raw = await request.readAsString();
+    if (raw.length > _maxSubwayStateBytes) {
+      return _error(413, 'too_large', 'Room state too large.');
+    }
+    try {
+      jsonDecode(raw); // shape-validate without needing to understand it
+    } on FormatException {
+      return _error(400, 'bad_request', 'Malformed state.');
+    }
+    return store.lock.synchronized(() async {
+      await subwayStore.writeState(code, raw);
+      room.stateVersion++;
+      room.updatedAtMs = _nowMs;
+      await subwayStore.saveRooms();
+      return _json(200, {'ok': true, 'version': room.stateVersion});
+    });
+  }
+
+  Future<Response> _getSubwayState(Request request, StoredUser user) async {
+    final code = (request.params['code'] ?? '').toUpperCase();
+    final room = subwayStore.roomsByCode[code];
+    if (room == null) return _error(404, 'not_found', 'Room not found.');
+    if (!room.isMember(user.id)) {
+      return _error(403, 'forbidden', 'Not a member of this room.');
+    }
+    final stateJson = await subwayStore.readState(code);
+    if (stateJson == null) return _error(404, 'no_state', 'Room has no state yet.');
+    return Response.ok(stateJson, headers: {'Content-Type': 'application/json'});
+  }
+
+  /// A lease on "who runs the world clock right now" (see world.js/mp.js on
+  /// the client) — floats to whichever member claims it first, renewed
+  /// every few seconds while held, expires on its own if that client goes
+  /// away so someone else can pick it up. Not who "owns" the room.
+  Future<Response> _claimSubwayClock(Request request, StoredUser user) async {
+    final code = (request.params['code'] ?? '').toUpperCase();
+    return store.lock.synchronized(() async {
+      final room = subwayStore.roomsByCode[code];
+      if (room == null) return _error(404, 'not_found', 'Room not found.');
+      if (!room.isMember(user.id)) {
+        return _error(403, 'forbidden', 'Not a member of this room.');
+      }
+      final now = _nowMs;
+      final held = room.clockHolderId != null &&
+          room.clockLeaseExpiresAtMs != null &&
+          room.clockLeaseExpiresAtMs! > now;
+      if (held && room.clockHolderId != user.id) {
+        return _json(200, {'granted': false, 'holderId': room.clockHolderId});
+      }
+      room.clockHolderId = user.id;
+      room.clockLeaseExpiresAtMs = now + _clockLeaseTtl.inMilliseconds;
+      await subwayStore.saveRooms();
+      return _json(200, {
+        'granted': true,
+        'leaseExpiresAtMs': room.clockLeaseExpiresAtMs,
+      });
+    });
+  }
+
+  Future<Response> _releaseSubwayClock(Request request, StoredUser user) async {
+    final code = (request.params['code'] ?? '').toUpperCase();
+    return store.lock.synchronized(() async {
+      final room = subwayStore.roomsByCode[code];
+      if (room == null) return _error(404, 'not_found', 'Room not found.');
+      if (room.clockHolderId == user.id) {
+        room.clockHolderId = null;
+        room.clockLeaseExpiresAtMs = null;
+        await subwayStore.saveRooms();
+      }
+      return _json(200, {'ok': true});
+    });
+  }
+
+  /// Mints a short-lived, single-use ticket that authorizes exactly one
+  /// WebSocket upgrade for this room (see SubwayTicketStore's doc comment
+  /// for why — browsers can't attach an Authorization header to a WS
+  /// handshake, so this keeps the real session token out of the connection
+  /// URL / any proxy log line).
+  Future<Response> _mintSubwayTicket(Request request, StoredUser user) async {
+    final code = (request.params['code'] ?? '').toUpperCase();
+    final room = subwayStore.roomsByCode[code];
+    if (room == null) return _error(404, 'not_found', 'Room not found.');
+    if (!room.isMember(user.id)) {
+      return _error(403, 'forbidden', 'Not a member of this room.');
+    }
+    final ticket = _subwayTickets.mint(user.id, code);
+    return _json(200, {
+      'ticket': ticket,
+      'ttlSeconds': SubwayTicketStore.ttl.inSeconds,
+    });
+  }
+
+  /// The WebSocket upgrade itself is unauthenticated at the shelf_router
+  /// level (routes can't run `_requireAuth`'s bearer-token check against a
+  /// WS handshake the same way) — this wrapper enforces the ticket instead,
+  /// then falls through to the unchanged dumb-relay handler.
+  FutureOr<Response> _subwayRoomSocket(Request request) {
+    final code = (request.params['room'] ?? '').toUpperCase();
+    final ticket = request.url.queryParameters['ticket'];
+    if (ticket == null) {
+      return _error(401, 'unauthorized', 'Missing ticket.');
+    }
+    final redeemed = _subwayTickets.redeem(ticket, code);
+    if (redeemed == null) {
+      return _error(401, 'unauthorized', 'Invalid or expired ticket.');
+    }
+    final room = subwayStore.roomsByCode[code];
+    if (room == null || !room.isMember(redeemed.userId)) {
+      return _error(403, 'forbidden', 'Not a member of this room.');
+    }
+    return _subwayRelay.subwayRoomHandler(request);
   }
 
   // ---- Handlers: family -----------------------------------------------------

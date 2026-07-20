@@ -323,7 +323,7 @@
   function advanceTime(dt) {
     const sp = ui.SPEEDS[ui.speed];
     if (!sp || sp.minPerSec === 0 || !game.state) return;
-    if (SB.mp && SB.mp.isPeer) { ui.updateClock(); return; }
+    if (SB.mp && SB.mp.connected && !SB.mp.isClockAuthority) { ui.updateClock(); return; }
     SB.world.ensure();
     SB.world.advance(dt * sp.minPerSec);
     // Autosave the ticking clock every ~10 real seconds.

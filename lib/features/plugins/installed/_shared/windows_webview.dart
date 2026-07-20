@@ -26,11 +26,22 @@ class WindowsWebview extends StatefulWidget {
     super.key,
     required this.fileUrl,
     this.onLoaded,
+    this.onController,
   });
 
   /// A `file:///...` URL to load.
   final String fileUrl;
   final VoidCallback? onLoaded;
+
+  /// Fired once with the underlying [WebviewController] right after it's
+  /// initialized (before the page loads), for callers that need to talk to
+  /// the page's JS — e.g. `controller.webMessage` (JS→Dart, via
+  /// `window.chrome.webview.postMessage`) and `controller.postWebMessage`
+  /// (Dart→JS, delivered to `window.chrome.webview.addEventListener
+  /// ('message', ...)`). Both are plain `webview_windows` APIs; this widget
+  /// otherwise stays a dumb page-loader, so opting into a bridge is the
+  /// caller's choice.
+  final void Function(WebviewController controller)? onController;
 
   @override
   State<WindowsWebview> createState() => _WindowsWebviewState();
@@ -71,6 +82,7 @@ class _WindowsWebviewState extends State<WindowsWebview> {
     await _controller.initialize();
     await _controller.setBackgroundColor(Colors.transparent);
     await _controller.setPopupWindowPolicy(WebviewPopupWindowPolicy.deny);
+    widget.onController?.call(_controller);
     _controller.loadingState
         .firstWhere((s) => s == LoadingState.navigationCompleted)
         .then((_) {

@@ -397,64 +397,115 @@
   }
 
   // ── Co-op ────────────────────────────────────────────────────────────
-  const COOP_COLORS = ['#4da3ff', '#e6493f', '#2e9e4f', '#f28c28', '#8e4fc7', '#e8c11c', '#18a999', '#e05a9b'];
-
-  function coopPeerList() {
-    const rows = [{ name: SB.mp.myName + ' (you)', color: SB.mp.myColor, seq: SB.mp.mySeq }]
-      .concat([...SB.mp.peers.values()].map((p) => ({ name: p.name, color: p.color, seq: p.seq })));
-    return rows.map((p) =>
-      '<div class="achrow done" style="opacity:1"><span class="dot big" style="background:' + p.color + '"></span>' +
-      '<span class="at"><b>' + p.name + '</b><span>' + (p.seq ? 'builder #' + p.seq : 'joining…') + '</span></span></div>'
-    ).join('');
+  function renderCoopSignedOut() {
+    openModal(
+      '<h2>Play together</h2>' +
+      '<p class="sub">Co-op rooms are tied to your luma account — that’s what makes invites and room membership work. Sign in from the app’s account settings, then come back here.</p>' +
+      '<div class="mrow"><button id="m-close">Close</button></div>'
+    );
+    $('m-close').onclick = ui.closeModal;
   }
 
   function renderCoopConnected() {
+    const authLine = SB.mp.isClockAuthority
+      ? 'You’re currently running the clock for this room.'
+      : 'A fellow builder is currently running the clock — you’ll pick it up automatically if they leave.';
     openModal(
       '<h2>Co-op — room ' + SB.mp.roomCode + '</h2>' +
-      '<p class="sub">' + (SB.mp.isHost
-        ? 'You’re hosting. Share this code — anyone who joins builds on your live map and shares your treasury.'
-        : 'Building on ' + SB.mp.roomCode + '’s network. Only the host manages fare and loans.') + '</p>' +
+      '<p class="sub">Anyone with the code (or an invite) can join and build on this network with you.</p>' +
       '<div class="statgrid" style="grid-template-columns:1fr"><div class="stat"><div class="v">' + SB.mp.roomCode + '</div><div class="l">room code</div></div></div>' +
-      '<div class="achlist">' + coopPeerList() + '</div>' +
+      '<p class="sub">' + authLine + '</p>' +
+      '<div class="mrow"><button id="cp-invite">Invite a chat contact</button></div>' +
       '<div class="mrow"><button id="cp-leave" class="danger">Leave room</button><button id="m-close">Close</button></div>',
       true
     );
     $('m-close').onclick = ui.closeModal;
-    $('cp-leave').onclick = () => { SB.mp.leave(); ui.closeModal(); ui.toast('Left the co-op room'); };
+    $('cp-leave').onclick = () => { SB.mp.leaveRoom(); ui.closeModal(); ui.toast('Left the co-op room'); };
+    $('cp-invite').onclick = renderCoopInvite;
   }
 
-  function renderCoopSetup() {
-    const color = COOP_COLORS[Math.floor(Math.random() * COOP_COLORS.length)];
+  async function renderCoopInvite() {
+    openModal(
+      '<h2>Invite a contact</h2><p class="sub">Loading your chat contacts…</p>' +
+      '<div class="mrow"><button id="m-close">Back</button></div>', true);
+    $('m-close').onclick = renderCoopConnected;
+    let contacts = [];
+    try { contacts = await SB.mp.chatContacts(); } catch (e) { /* fall through to empty state */ }
+    const ready = contacts.filter((c) => c.ready);
+    const rows = ready.length
+      ? ready.map((c) =>
+          '<div class="achrow done" style="opacity:1"><span class="at"><b>' + c.peerEmail + '</b></span>' +
+          '<button class="mini" data-cid="' + c.conversationId + '" data-uid="' + c.peerUserId + '">Invite</button></div>'
+        ).join('')
+      : '<div class="empty">No chat contacts yet — set up the Chat plugin first, or just share the room code ' + SB.mp.roomCode + ' directly.</div>';
+    openModal(
+      '<h2>Invite a contact</h2>' +
+      '<p class="sub">Sends them a chat message with the room code — they still need to tap Join.</p>' +
+      '<div class="achlist">' + rows + '</div>' +
+      '<div class="mrow"><button id="m-close">Back</button></div>',
+      true
+    );
+    $('m-close').onclick = renderCoopConnected;
+    document.querySelectorAll('[data-cid]').forEach((btn) => {
+      btn.onclick = async () => {
+        btn.disabled = true;
+        try {
+          await SB.mp.inviteContact(SB.mp.roomCode, btn.getAttribute('data-uid'));
+          await SB.mp.sendInviteMessage(btn.getAttribute('data-cid'), SB.mp.roomCode);
+          ui.toast('Invite sent', 'good');
+          renderCoopConnected();
+        } catch (e) {
+          ui.toast('Could not send invite: ' + e.message, 'bad');
+          btn.disabled = false;
+        }
+      };
+    });
+  }
+
+  async function renderCoopSetup() {
+    openModal(
+      '<h2>Play together</h2><p class="sub">Loading your rooms…</p>' +
+      '<div class="mrow"><button id="m-close">Cancel</button></div>', true);
+    $('m-close').onclick = ui.closeModal;
+    let rooms = [];
+    try { rooms = await SB.mp.myRooms(); } catch (e) { /* fall through to empty list */ }
+    const roomRows = rooms.length
+      ? rooms.map((r) =>
+          '<div class="achrow done" style="opacity:1"><span class="at"><b>' + r.code + '</b><span>' +
+          r.memberCount + ' member' + (r.memberCount === 1 ? '' : 's') + (r.isOwner ? ' · yours' : '') +
+          '</span></span><button class="mini" data-rejoin="' + r.code + '">Open</button></div>'
+        ).join('')
+      : '';
     openModal(
       '<h2>Play together</h2>' +
-      '<p class="sub">Open a room on your current save and share the code — anyone who joins builds on your live map with you, as one shared network and treasury. Only the host manages fare/loans and runs the clock.</p>' +
-      '<div class="mrow" style="margin-top:10px"><input type="text" id="cp-name" placeholder="Your name" maxlength="18" style="flex:1"></div>' +
-      '<div class="mrow"><button id="cp-host" class="primary">Host a room</button></div>' +
-      '<p class="sub" style="margin-top:14px">— or join one —</p>' +
+      '<p class="sub">Build on the same network as friends — invite via chat, or share a room code. Whoever’s connected keeps the clock running; leave and rejoin any time.</p>' +
+      (roomRows ? '<h3>Your rooms</h3><div class="achlist">' + roomRows + '</div>' : '') +
+      '<div class="mrow" style="margin-top:10px"><button id="cp-create" class="primary">Create a new room</button></div>' +
+      '<p class="sub" style="margin-top:14px">— or join by code —</p>' +
       '<div class="mrow"><input type="text" id="cp-code" placeholder="Room code" maxlength="6" style="flex:1;text-transform:uppercase"></div>' +
       '<div class="mrow"><button id="cp-join">Join room</button></div>' +
       '<div class="mrow"><button id="m-close">Cancel</button></div>',
       true
     );
     $('m-close').onclick = ui.closeModal;
-    $('cp-host').onclick = () => {
-      const name = $('cp-name').value.trim() || 'Host';
-      SB.mp.host(name, color);
-      ui.closeModal();
-    };
+    document.querySelectorAll('[data-rejoin]').forEach((btn) => {
+      btn.onclick = () => { ui.closeModal(); SB.mp.joinRoom(btn.getAttribute('data-rejoin')); };
+    });
+    $('cp-create').onclick = () => { ui.closeModal(); SB.mp.createAndJoin(); };
     $('cp-join').onclick = () => {
-      const name = $('cp-name').value.trim() || 'Player';
       const code = $('cp-code').value.trim();
       if (!code) { ui.toast('Enter a room code', 'bad'); return; }
-      SB.mp.join(code, name, color);
       ui.closeModal();
+      SB.mp.joinRoom(code);
     };
   }
 
-  ui.showCoop = function () {
+  ui.showCoop = async function () {
     if (!SB.game.state) { ui.toast('Load a city first', 'bad'); return; }
-    if (SB.mp.connected) renderCoopConnected();
-    else renderCoopSetup();
+    if (SB.mp.connected) { renderCoopConnected(); return; }
+    const signedIn = await SB.mp.init();
+    if (!signedIn) { renderCoopSignedOut(); return; }
+    renderCoopSetup();
   };
 
   // ── Modals ───────────────────────────────────────────────────────────
@@ -830,7 +881,7 @@
       }
     });
     function econGate() {
-      if (SB.mp.econLocked()) { ui.toast('Only the host manages the treasury', 'bad'); return true; }
+      if (SB.mp.econLocked()) { ui.toast('Only whoever is running the clock manages the treasury', 'bad'); return true; }
       return false;
     }
     $('fare-minus').addEventListener('click', () => { if (!econGate()) SB.game.setFare(SB.game.state.fare - 0.25); });

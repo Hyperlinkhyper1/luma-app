@@ -1,85 +1,161 @@
-/* Subway Builder — co-op multiplayer.
+/* Subway Builder — co-op multiplayer, hosted server-side.
 
-   Transport: a dumb WebSocket broadcast relay (server/lib/subway_relay.dart)
-   that never parses game state — it just forwards every message a client
-   sends to every other client in the same room. All the real logic lives
-   here:
+   Rooms live on the sync server (server/lib/subway_store.dart): it holds
+   membership (who's invited) and the last full game-state snapshot any
+   member pushed, so a room stays joinable without whoever created it
+   needing to stay online. This file talks to that server directly over
+   REST (using a session token handed to it once by the native app — see
+   SB.native below) plus a lightweight WebSocket for live updates while
+   multiple people are actually connected at once.
 
-   - Whoever taps "Host" is the host for the session: authoritative for the
-     shared treasury (money/fare/loans/day/world clock/weather/disruptions/
-     events/achievements/milestones). Only the host's local `world.advance`/
-     `endDay` ever run; it broadcasts the results (`econ`, `day_events`) to
-     everyone else, who just mirror them.
-   - Every station/line a client places is built by calling the normal
-     local game.js functions (so cost validation and instant feedback stay
-     local), then the client's *entire* current stations/lines arrays are
-     broadcast (`sync`, debounced) and every recipient replaces its own
-     arrays wholesale. This is deliberately last-write-wins at the
-     whole-network granularity rather than a real CRDT — simple, and fine
-     for a casual co-op session where only one person is usually mid-edit
-     at a time. Two people editing at the exact same instant can clobber
-     each other; that's a known, acceptable limitation for v1.
-   - Station/line ids stay plain incrementing numbers (unchanged for solo
-     play). Joining peers get their id counters bumped into a private
-     namespace (`seq * 10,000,000`) so concurrent builders never collide. */
+   There's no fixed "host" any more. Instead, whoever's currently connected
+   can hold a short leased "clock authority" role (claimed/renewed over
+   REST) — that's who runs the world clock/economy locally and broadcasts
+   the results; if they leave, the lease expires and the next connected
+   member picks it up. Building (stations/lines) works the same way it
+   always did: any member can place things locally, which get broadcast to
+   live peers and persisted to the server for whoever joins later.
+
+   Two invite paths, both just add a userId to the room's member list
+   server-side: sharing the raw room code (anyone signed in who has the
+   code can join), or inviting an existing chat contact — the latter also
+   sends them a real message through the Chat plugin's actual E2E pipeline,
+   which only the native app can do (see SB.native.call('sendChatMessage')). */
 (function () {
   'use strict';
   const SB = (window.SB = window.SB || {});
 
-  const DEFAULT_SERVER = 'sync.luma-app.cc';
-  const ID_NAMESPACE = 10000000;
-  const ROOM_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O/1/I/L
+  // ── Native bridge: the WebView's one connection back to the Flutter app.
+  // Two backends: flutter_inappwebview's built-in callHandler (everywhere
+  // except Windows), or a hand-rolled request/response protocol over
+  // WebView2's raw chrome.webview.postMessage channel (Windows — see
+  // lib/features/plugins/installed/_shared/windows_webview.dart). ──────────
+  const native = (SB.native = {});
+  (function () {
+    let nextId = 1;
+    const pending = new Map();
+    const isWindows = () => !!(window.chrome && window.chrome.webview);
+
+    if (isWindows()) {
+      window.chrome.webview.addEventListener('message', (e) => {
+        let data = e.data;
+        if (typeof data === 'string') {
+          try { data = JSON.parse(data); } catch (err) { return; }
+        }
+        const p = pending.get(data.id);
+        if (!p) return;
+        pending.delete(data.id);
+        if (data.error) p.reject(new Error(data.error));
+        else p.resolve(data.result);
+      });
+    }
+
+    native.available = function () {
+      return isWindows() || !!(window.flutter_inappwebview && window.flutter_inappwebview.callHandler);
+    };
+
+    native.call = function (name) {
+      const args = Array.prototype.slice.call(arguments, 1);
+      if (isWindows()) {
+        return new Promise((resolve, reject) => {
+          const id = nextId++;
+          pending.set(id, { resolve, reject });
+          window.chrome.webview.postMessage(JSON.stringify({ id, name, args }));
+          setTimeout(() => {
+            if (pending.has(id)) { pending.delete(id); reject(new Error('Native bridge timed out')); }
+          }, 8000);
+        });
+      }
+      if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+        return window.flutter_inappwebview.callHandler('luma_bridge', name, args);
+      }
+      return Promise.reject(new Error('Native bridge not available'));
+    };
+  })();
+
+  const ID_NAMESPACE_BASE = 10000000;
+  const ID_NAMESPACE_SPAN = 90000; // buckets — see idNamespaceFor
+  const CLOCK_RENEW_MS = 5000;
 
   const mp = (SB.mp = {
-    connected: false,
-    isHost: false,
-    isPeer: false,      // connected AND not host
-    ready: false,        // peer has received the host's initial snapshot
+    signedIn: false,
+    connected: false,       // WS open to the current room
+    ready: false,           // room state applied locally, safe to build
+    isClockAuthority: false,
     roomCode: null,
-    serverHost: DEFAULT_SERVER,
-    mySeq: 1,
-    myId: Math.random().toString(36).slice(2) + Date.now().toString(36),
-    myName: 'Player',
-    myColor: '#4da3ff',
-    peers: new Map(),    // clientId -> {name, color, seq}
+    token: null, serverUrl: null, email: null,
     onPeersChanged: null,
   });
 
-  let ws = null;
-  let nextSeq = 2;             // host-only: next seq to hand out
-  let syncTimer = null;
-  let econTimer = null;
-
-  function randomRoomCode() {
-    let s = '';
-    for (let i = 0; i < 6; i++) s += ROOM_CHARS[Math.floor(Math.random() * ROOM_CHARS.length)];
-    return s;
-  }
-  mp.randomRoomCode = randomRoomCode;
-
-  function send(msg) {
-    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
+  function hashStr(s) {
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return h >>> 0;
   }
 
-  function wsUrl(host, room) {
-    const clean = host.replace(/^wss?:\/\//, '').replace(/\/+$/, '');
-    const scheme = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(clean) ? 'ws' : 'wss';
-    return scheme + '://' + clean + '/api/v1/subway/room/' + encodeURIComponent(room);
+  function bumpIdNamespace() {
+    const st = SB.game.state;
+    const base = ID_NAMESPACE_BASE + (hashStr(mp.email || '') % ID_NAMESPACE_SPAN) * 1000;
+    if (st.nextStationId < base) st.nextStationId = base;
+    if (st.nextLineId < base) st.nextLineId = base;
   }
 
-  function reset() {
-    mp.connected = false;
-    mp.isHost = false;
-    mp.isPeer = false;
-    mp.ready = false;
-    mp.roomCode = null;
-    mp.peers = new Map();
-    nextSeq = 2;
-    clearInterval(econTimer); econTimer = null;
-    clearTimeout(syncTimer); syncTimer = null;
-    ws = null;
+  // ── REST helper ──────────────────────────────────────────────────────
+  async function api(method, path, body) {
+    const res = await fetch(mp.serverUrl + '/api/v1' + path, {
+      method,
+      headers: Object.assign(
+        { 'Content-Type': 'application/json' },
+        mp.token ? { Authorization: 'Bearer ' + mp.token } : {}),
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+    const text = await res.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch (e) { /* non-JSON error page */ }
+    if (!res.ok) throw new Error((data && data.message) || ('HTTP ' + res.status));
+    return data;
   }
 
+  /// Reads the current sign-in state from the native app. Call before
+  /// showing any co-op UI — SB.mp.signedIn tells you whether to bother.
+  mp.init = async function () {
+    try {
+      const ctx = await native.call('authContext');
+      mp.signedIn = !!ctx.signedIn;
+      mp.token = ctx.token;
+      mp.serverUrl = (ctx.serverUrl || '').replace(/\/+$/, '');
+      mp.email = ctx.email;
+    } catch (e) {
+      mp.signedIn = false;
+    }
+    return mp.signedIn;
+  };
+
+  mp.myRooms = async function () {
+    const r = await api('GET', '/subway/rooms');
+    return r.rooms;
+  };
+
+  mp.chatContacts = async function () {
+    return await native.call('chatContacts');
+  };
+
+  mp.createRoom = async function () {
+    const r = await api('POST', '/subway/rooms');
+    return r.code;
+  };
+
+  mp.inviteContact = async function (code, contactUserId) {
+    await api('POST', '/subway/rooms/' + code + '/invite', { contactUserId });
+  };
+
+  mp.sendInviteMessage = async function (conversationId, code) {
+    const text = 'Join my Subway Builder co-op room — open Subway Builder, tap Co-op → Join, and enter code ' + code + '.';
+    const r = await native.call('sendChatMessage', conversationId, text);
+    if (!r || !r.ok) throw new Error((r && r.error) || 'Failed to send the invite message');
+  };
+
+  // ── Snapshot helpers ─────────────────────────────────────────────────
   function stripXY(list) {
     return list.map((o) => {
       const c = {};
@@ -110,188 +186,225 @@
     const st = SB.game.state;
     st.stations = stations;
     st.lines = lines;
-    for (const l of st.lines) delete l._pm;
     SB.game.rehydrate();
     SB.game.networkDirty = true;
     SB.game.save();
     SB.ui.updateAll();
   }
 
-  function bumpIdNamespace(seq) {
+  // ── Durable persistence (REST, throttled) ───────────────────────────
+  let pushTimer = null;
+  function schedulePush() {
+    if (!mp.connected || !mp.ready) return;
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(pushStateNow, 600);
+  }
+  function pushStateNow() {
+    if (!mp.roomCode) return;
     const st = SB.game.state;
-    const base = seq * ID_NAMESPACE;
-    if (st.nextStationId < base) st.nextStationId = base;
-    if (st.nextLineId < base) st.nextLineId = base;
+    const payload = {
+      place: SB.game.place,
+      stations: stripXY(st.stations),
+      lines: stripXY(st.lines),
+      econ: snapshotEcon(),
+    };
+    api('PUT', '/subway/rooms/' + mp.roomCode + '/state', payload).catch(() => {
+      /* best-effort — the next successful push carries the latest state anyway */
+    });
+  }
+
+  // ── Live relay (WebSocket) ───────────────────────────────────────────
+  let ws = null;
+  let syncTimer = null;
+
+  function wsUrl(serverUrl, room, ticket) {
+    const clean = serverUrl.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+    const scheme = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(clean) ? 'ws' : 'wss';
+    return scheme + '://' + clean + '/api/v1/subway/room/' + encodeURIComponent(room) +
+      '?ticket=' + encodeURIComponent(ticket);
+  }
+
+  async function connectSocket() {
+    let ticket;
+    try {
+      const r = await api('POST', '/subway/rooms/' + mp.roomCode + '/ticket');
+      ticket = r.ticket;
+    } catch (e) {
+      SB.ui.toast('Could not connect to the room: ' + e.message, 'bad');
+      return;
+    }
+    try {
+      ws = new WebSocket(wsUrl(mp.serverUrl, mp.roomCode, ticket));
+    } catch (e) {
+      SB.ui.toast('Could not reach the co-op server', 'bad');
+      return;
+    }
+    ws.onopen = () => { mp.connected = true; startClockClaimLoop(); SB.ui.updateAll(); };
+    ws.onmessage = (e) => onMessage(e.data);
+    ws.onclose = () => {
+      const wasConnected = mp.connected;
+      mp.connected = false;
+      stopClockClaimLoop();
+      if (wasConnected && mp.roomCode) {
+        SB.ui.toast('Lost connection to the room — reconnecting…', 'bad');
+        setTimeout(() => { if (mp.roomCode) connectSocket(); }, 3000);
+      }
+      SB.ui.updateAll();
+    };
+    ws.onerror = () => {};
+  }
+
+  function send(msg) {
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
   }
 
   function onMessage(raw) {
     let msg;
     try { msg = JSON.parse(raw); } catch (e) { return; }
     switch (msg.type) {
-      case 'hello': {
-        const known = mp.peers.get(msg.id);
-        mp.peers.set(msg.id, { name: msg.name, color: msg.color, seq: known ? known.seq : undefined });
-        if (mp.onPeersChanged) mp.onPeersChanged();
-        if (mp.isHost && (!known || known.seq === undefined)) {
-          const seq = nextSeq++;
-          mp.peers.set(msg.id, { name: msg.name, color: msg.color, seq });
-          if (mp.onPeersChanged) mp.onPeersChanged();
-          const roster = [{ id: mp.myId, name: mp.myName, color: mp.myColor, seq: 1 }];
-          for (const [id, p] of mp.peers) if (p.seq !== undefined) roster.push({ id, name: p.name, color: p.color, seq: p.seq });
-          send({
-            type: 'state', to: msg.id, seq, roster, place: SB.game.place,
-            snapshot: {
-              stations: stripXY(SB.game.state.stations),
-              lines: stripXY(SB.game.state.lines),
-              econ: snapshotEcon(),
-            },
-          });
-        }
-        break;
-      }
-      case 'state': {
-        if (msg.to !== mp.myId || mp.isHost) return;
-        mp.mySeq = msg.seq;
-        for (const p of msg.roster || []) {
-          if (p.id !== mp.myId) mp.peers.set(p.id, { name: p.name, color: p.color, seq: p.seq });
-        }
-        if (mp.onPeersChanged) mp.onPeersChanged();
-        const applyRest = () => {
-          applyNetwork(msg.snapshot.stations, msg.snapshot.lines);
-          applyEcon(msg.snapshot.econ);
-          bumpIdNamespace(mp.mySeq);
-          mp.ready = true;
-          SB.ui.toast('Joined room ' + mp.roomCode + ' — building as ' + mp.myName, 'good');
-          SB.ui.updateAll();
-        };
-        // A joiner starts on their own last-played city — if the host is
-        // building somewhere else, survey the host's city fresh first (this
-        // discards the joiner's own local network for that place — they're
-        // here to build on the host's map, not merge two different ones).
-        if (!SB.game.place || SB.game.place.id !== msg.place.id) {
-          SB.ui.toast('Travelling to ' + msg.place.name + '…');
-          SB.main.startPlace(msg.place, true, applyRest);
-        } else {
-          applyRest();
-        }
-        break;
-      }
-      case 'sync': {
-        if (msg.id === mp.myId) return;
+      case 'sync':
         applyNetwork(msg.stations, msg.lines);
         break;
-      }
-      case 'econ': {
-        if (mp.isHost) return; // host is the source of truth, never take econ from others
-        applyEcon(msg.econ);
+      case 'econ':
+        if (!mp.isClockAuthority) applyEcon(msg.econ);
         break;
-      }
-      case 'spend': {
-        // Only the host's money is real — a peer's local change to their own
-        // st.money (already applied by the normal game.js action) is just an
-        // optimistic preview until this lands and the host's next econ
-        // broadcast corrects everyone, including the spender.
-        if (!mp.isHost || !msg.amount) return;
-        SB.game.state.money += msg.amount;
-        SB.game.save();
-        send({ type: 'econ', econ: snapshotEcon() });
-        SB.ui.updateAll();
+      case 'spend':
+        if (mp.isClockAuthority && msg.amount) {
+          SB.game.state.money += msg.amount;
+          SB.game.save();
+          send({ type: 'econ', econ: snapshotEcon() });
+          pushStateNow();
+          SB.ui.updateAll();
+        }
         break;
-      }
-      case 'day_events': {
-        if (mp.isHost) return;
-        if (SB.main && SB.main.renderDayEvents) SB.main.renderDayEvents(msg.events);
+      case 'day_events':
+        if (!mp.isClockAuthority && SB.main && SB.main.renderDayEvents) {
+          SB.main.renderDayEvents(msg.events);
+        }
         break;
-      }
       default: break;
     }
   }
 
-  function connect(room, serverHost, onOpen) {
-    reset();
-    mp.roomCode = room;
-    mp.serverHost = serverHost || DEFAULT_SERVER;
-    try {
-      ws = new WebSocket(wsUrl(mp.serverHost, room));
-    } catch (e) {
-      SB.ui.toast('Could not reach ' + mp.serverHost, 'bad');
-      return;
-    }
-    ws.onopen = () => {
-      mp.connected = true;
-      send({ type: 'hello', id: mp.myId, name: mp.myName, color: mp.myColor });
-      if (onOpen) onOpen();
-    };
-    ws.onmessage = (e) => onMessage(e.data);
-    ws.onerror = () => SB.ui.toast('Co-op connection error', 'bad');
-    ws.onclose = () => {
-      if (mp.connected) SB.ui.toast('Disconnected from co-op room', 'bad');
-      reset();
-      SB.ui.updateAll();
-    };
-  }
-
-  /* Start a fresh room as the host. Assumes SB.game.state already exists
-     (host plays on their own current save; peers adopt it on join). */
-  mp.host = function (name, color, serverHost) {
-    if (!SB.game.state) { SB.ui.toast('Load a city first', 'bad'); return; }
-    mp.myName = name || 'Host';
-    mp.myColor = color || mp.myColor;
-    const room = randomRoomCode();
-    connect(room, serverHost || DEFAULT_SERVER, () => {
-      mp.isHost = true;
-      mp.isPeer = false;
-      mp.mySeq = 1;
-      mp.ready = true;
-      econTimer = setInterval(() => send({ type: 'econ', econ: snapshotEcon() }), 1200);
-      SB.ui.toast('Room ' + room + ' open — share the code to build together', 'good');
-      SB.ui.updateAll();
-    });
-  };
-
-  mp.join = function (room, name, color, serverHost) {
-    mp.myName = name || 'Player';
-    mp.myColor = color || mp.myColor;
-    connect(room.toUpperCase().trim(), serverHost, () => {
-      mp.isHost = false;
-      mp.isPeer = true;
-      SB.ui.toast('Connecting to room ' + mp.roomCode + '…');
-      SB.ui.updateAll();
-    });
-  };
-
-  mp.leave = function () {
-    if (ws) { try { ws.close(); } catch (e) {} }
-    reset();
-    SB.ui.updateAll();
-  };
-
-  /* Everyone (host and peers) can build; peers just can't touch the shared
-     treasury directly (fare/loans) — only the host's economy is real. */
-  mp.canBuild = function () { return !mp.connected || mp.ready; };
-  mp.econLocked = function () { return mp.connected && !mp.isHost; };
-
   /* Hooked from game.js's emit() — the single choke point every mutating
-     action already calls. moneyDelta is the signed change that action just
-     made to st.money; non-host clients report it so the host's real
-     treasury actually reflects it (see the 'spend' case above). */
+     build action already calls. moneyDelta is the signed change that
+     action just made to st.money; non-authority clients report it so
+     whoever holds clock authority applies it to the real shared treasury. */
   mp.onLocalChange = function (moneyDelta) {
     if (!mp.connected || !mp.ready) return;
-    if (!mp.isHost && moneyDelta) send({ type: 'spend', amount: moneyDelta });
+    if (!mp.isClockAuthority && moneyDelta) send({ type: 'spend', amount: moneyDelta });
     clearTimeout(syncTimer);
     syncTimer = setTimeout(() => {
       send({
-        type: 'sync', id: mp.myId,
+        type: 'sync',
         stations: stripXY(SB.game.state.stations),
         lines: stripXY(SB.game.state.lines),
       });
+      schedulePush();
     }, 350);
   };
 
-  /* Host-only — called right after a real endDay() so peers see the same
-     milestone/achievement/event toasts instead of just a silent number jump. */
+  /* Host-only-equivalent: called right after a real endDay() so live peers
+     see the same milestone/achievement/event toasts, not just a silent
+     number jump. */
   mp.broadcastDayEvents = function (events) {
-    if (!mp.connected || !mp.isHost || !events.length) return;
+    if (!mp.connected || !mp.isClockAuthority || !events.length) return;
     send({ type: 'day_events', events });
+    pushStateNow();
   };
+
+  // ── Clock-authority lease ────────────────────────────────────────────
+  let clockTimer = null;
+  function startClockClaimLoop() {
+    claimTick();
+    clockTimer = setInterval(claimTick, CLOCK_RENEW_MS);
+  }
+  function stopClockClaimLoop() {
+    clearInterval(clockTimer);
+    clockTimer = null;
+    if (mp.isClockAuthority && mp.roomCode) {
+      api('POST', '/subway/rooms/' + mp.roomCode + '/clock/release').catch(() => {});
+    }
+    mp.isClockAuthority = false;
+  }
+  async function claimTick() {
+    if (!mp.roomCode) return;
+    try {
+      const r = await api('POST', '/subway/rooms/' + mp.roomCode + '/clock/claim');
+      const was = mp.isClockAuthority;
+      mp.isClockAuthority = !!r.granted;
+      if (mp.isClockAuthority && !was) SB.ui.toast('Running the clock for this room', 'good');
+    } catch (e) {
+      mp.isClockAuthority = false;
+    }
+  }
+
+  // ── Room lifecycle ───────────────────────────────────────────────────
+  mp.joinRoom = async function (codeIn) {
+    const code = codeIn.toUpperCase().trim();
+    let r;
+    try {
+      r = await api('POST', '/subway/rooms/' + code + '/join');
+    } catch (e) {
+      SB.ui.toast('Could not join that room: ' + e.message, 'bad');
+      return false;
+    }
+    mp.roomCode = code;
+    bumpIdNamespace();
+
+    const finish = () => { connectSocket(); };
+
+    if (r.state) {
+      const place = r.state.place;
+      if (place && (!SB.game.place || SB.game.place.id !== place.id)) {
+        SB.ui.toast('Travelling to ' + place.name + '…');
+        SB.main.startPlace(place, true, () => {
+          applyNetwork(r.state.stations, r.state.lines);
+          applyEcon(r.state.econ);
+          mp.ready = true;
+          SB.ui.toast('Joined room ' + code, 'good');
+          finish();
+        });
+        return true;
+      }
+      applyNetwork(r.state.stations, r.state.lines);
+      applyEcon(r.state.econ);
+    }
+    mp.ready = true;
+    SB.ui.toast(r.state ? 'Joined room ' + code : 'Room ' + code + ' created — start building', 'good');
+    finish();
+    return true;
+  };
+
+  mp.createAndJoin = async function () {
+    if (!SB.game.state) { SB.ui.toast('Load a city first', 'bad'); return null; }
+    let code;
+    try {
+      code = await mp.createRoom();
+    } catch (e) {
+      SB.ui.toast('Could not create a room: ' + e.message, 'bad');
+      return null;
+    }
+    // A fresh room has no state yet — seed it from whatever's loaded now.
+    mp.roomCode = code;
+    bumpIdNamespace();
+    mp.ready = true;
+    connectSocket();
+    pushStateNow();
+    SB.ui.toast('Room ' + code + ' created — share the code or invite a contact', 'good');
+    return code;
+  };
+
+  mp.leaveRoom = function () {
+    if (ws) { try { ws.close(); } catch (e) {} }
+    ws = null;
+    stopClockClaimLoop();
+    mp.connected = false;
+    mp.ready = false;
+    mp.roomCode = null;
+    SB.ui.updateAll();
+  };
+
+  mp.econLocked = function () { return mp.connected && !mp.isClockAuthority; };
+  mp.canBuild = function () { return !mp.connected || mp.ready; };
 })();
