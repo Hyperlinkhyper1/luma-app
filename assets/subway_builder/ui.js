@@ -14,11 +14,13 @@
     speed: 1,
   });
 
+  // minPerSec: in-game minutes per real second. 1× is the "1 second = 1
+  // minute" base rate, so a full day takes 24 real minutes at 1×.
   const SPEEDS = [
-    { label: 'pause', mult: 0, dayS: Infinity },
-    { label: '1×', mult: 1, dayS: 14 },
-    { label: '2×', mult: 2, dayS: 6 },
-    { label: '4×', mult: 4, dayS: 2.2 },
+    { label: 'pause', mult: 0, minPerSec: 0 },
+    { label: '1×', mult: 1, minPerSec: 1 },
+    { label: '6×', mult: 2, minPerSec: 6 },
+    { label: '30×', mult: 4, minPerSec: 30 },
   ];
   ui.SPEEDS = SPEEDS;
 

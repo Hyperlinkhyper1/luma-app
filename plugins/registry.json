@@ -219,6 +219,16 @@
       "tags": ["Shopping", "Nova"],
       "free": false,
       "version": "1.0.0"
+    },
+    {
+      "id": "recipe-book",
+      "name": "Recipe Book",
+      "description": "Store and organise all your recipes in one place. Add ingredients, step-by-step instructions, prep and cook times, and scale servings on the fly.",
+      "icon": "menu_book",
+      "category": "Productivity",
+      "tags": ["Productivity", "Food"],
+      "free": true,
+      "version": "1.0.0"
     }
   ]
 }

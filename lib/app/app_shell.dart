@@ -30,6 +30,7 @@ import '../features/plugins/installed/subway_builder/subway_builder_page.dart';
 import '../features/plugins/installed/usage/usage_page.dart';
 import '../features/plugins/installed/wifi_speed_test/wifi_speed_test_page.dart';
 import '../features/plugins/installed/youtube_downloader/youtube_downloader_page.dart';
+import '../features/plugins/installed/recipe_book/recipe_book_page.dart';
 import '../features/plugins/plugin_repository.dart';
 import '../features/plugins/plugin_scope.dart';
 import '../features/plugins/plugins_page.dart';
@@ -222,6 +223,7 @@ class _AppShellState extends State<AppShell> {
         'wifi-speed-test' => const WifiSpeedTestPage(),
         'groceries-list' => const GroceriesPage(),
         'secure-chat' => const SecureChatPage(),
+        'recipe-book' => const RecipeBookPage(),
         _ => LumaEmptyState(
             icon: Icons.extension_off_rounded,
             title: t.shellPluginUnavailable,

@@ -312,28 +312,41 @@
     e.preventDefault();
   }
 
-  // ── Day / economy timer ──────────────────────────────────────────────
+  // ── World clock (1 real second at 1× = 1 in-game minute) ─────────────
+  let saveAcc = 0;
   function advanceTime(dt) {
     const sp = ui.SPEEDS[ui.speed];
-    if (!sp || sp.mult === 0 || !game.state) return;
-    dayAcc += dt;
-    if (dayAcc >= sp.dayS) {
-      dayAcc -= sp.dayS;
-      const report = game.endDay();
-      SB.sim.assign(); // crowding feedback converges day by day
-      for (const ev of report.events) {
-        if (ev.type === 'milestone') {
-          ui.banner('🎉 ' + ev.label, (ev.share * 100).toFixed(0) + '% transit share reached — ' + SB.fmtMoney(ev.grant) + ' grant awarded!');
-        } else if (ev.type === 'capital') {
-          ui.toast('🏛 ' + ev.label + ': ' + SB.fmtMoney(ev.grant) + ' to build with', 'good');
-        }
-      }
-      if (game.state.money < 0 && (game.state.money - report.net) >= 0) {
-        ui.toast('Treasury is in the red — consider a loan or higher fares', 'bad');
-      }
-      ui.updateAll();
-    }
+    if (!sp || sp.minPerSec === 0 || !game.state) return;
+    SB.world.ensure();
+    SB.world.advance(dt * sp.minPerSec);
+    // Autosave the ticking clock every ~10 real seconds.
+    saveAcc += dt;
+    if (saveAcc > 10) { saveAcc = 0; game.save(); }
+    ui.updateClock();
   }
+
+  SB.world.onNews = function (msg, kind) { ui.toast(msg, kind); };
+  SB.world.onDayEnd = function (report) {
+    SB.sim.assign(); // crowding feedback converges day by day
+    for (const ev of report.events) {
+      if (ev.type === 'milestone') {
+        ui.banner('🎉 ' + ev.label, (ev.share * 100).toFixed(0) + '% transit share reached — ' + SB.fmtMoney(ev.grant) + ' grant awarded!');
+      } else if (ev.type === 'achievement') {
+        ui.banner('🏆 ' + ev.label, ev.sub + ' — ' + SB.fmtMoney(ev.grant) + ' bonus');
+      } else if (ev.type === 'event') {
+        ui.toast(ev.crowded
+          ? '🎪 ' + ev.label + ' — crowding cut the surge payout to ' + SB.fmtMoney(ev.grant)
+          : '🎪 ' + ev.label + ' brought a surge: +' + SB.fmtMoney(ev.grant), ev.crowded ? 'bad' : 'good');
+      } else if (ev.type === 'capital') {
+        ui.toast('🏛 ' + ev.label + ': ' + SB.fmtMoney(ev.grant) + ' to build with', 'good');
+      }
+    }
+    if (game.state.money < 0 && (game.state.money - report.net) >= 0) {
+      ui.toast('Treasury is in the red — consider a loan or higher fares', 'bad');
+    }
+    if (SB.mp) SB.mp.onLocalChange();
+    ui.updateAll();
+  };
 
   // ── Main loop (game layers only — MapLibre renders the map itself) ───
   function frame(t) {

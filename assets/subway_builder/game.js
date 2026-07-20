@@ -69,6 +69,53 @@
   };
   SB.ECON = ECON;
 
+  /* Achievements tied to real-world facts about the network the player
+     actually built (real stations, real geography). Tested at day end. */
+  const ACHIEVEMENTS = [
+    { id: 'first1k', label: 'Commuter favourite', sub: '1,000 daily riders', grant: 20e6,
+      test: (st, res) => res && res.ridersDaily >= 1000 },
+    { id: 'riders25k', label: 'City mover', sub: '25,000 daily riders', grant: 60e6,
+      test: (st, res) => res && res.ridersDaily >= 25000 },
+    { id: 'riders100k', label: 'Metropolis machine', sub: '100,000 daily riders', grant: 150e6,
+      test: (st, res) => res && res.ridersDaily >= 100000 },
+    { id: 'st10', label: 'Network effect', sub: '10 stations in service', grant: 25e6,
+      test: (st) => st.stations.length >= 10 },
+    { id: 'st40', label: 'On every corner', sub: '40 stations in service', grant: 80e6,
+      test: (st) => st.stations.length >= 40 },
+    { id: 'km50', label: 'Going the distance', sub: '50 km of routes', grant: 40e6,
+      test: () => game.networkLengthM() >= 50000 },
+    { id: 'km250', label: 'Steel spine', sub: '250 km of routes', grant: 120e6,
+      test: () => game.networkLengthM() >= 250000 },
+    { id: 'allmodes', label: 'Full spectrum', sub: 'All five modes in service', grant: 90e6,
+      test: (st) => ['metro', 'tram', 'bus', 'train', 'hst'].every(
+        (m) => st.lines.some((l) => l.mode === m)) },
+    { id: 'water', label: 'Under the river', sub: 'A tunnel under open water', grant: 30e6,
+      test: (st) => st.lines.some((l) => l.mode === 'metro' &&
+        (game.draftCost(l.mode, l.stationIds).waterM || 0) > 40) },
+    { id: 'intercity', label: 'Intercity express', sub: 'Two real stations 15+ km apart on one line', grant: 70e6,
+      test: (st) => st.lines.some((l) => {
+        if (!MODES[l.mode].rail) return false;
+        const pts = l.stationIds.map((id) => game.stationById(id)).filter(Boolean);
+        for (const a of pts) for (const b of pts) {
+          if (Math.hypot(a.x - b.x, a.y - b.y) > 15000) return true;
+        }
+        return false;
+      }) },
+    { id: 'airport', label: 'Airport link', sub: 'An airport station on the network', grant: 50e6,
+      test: (st) => st.stations.some((s) =>
+        /airport|luchthaven|flughafen|a[ée]roport|aeropuerto|aeroporto/i.test(s.name || '')) },
+    { id: 'ring', label: 'Ring line', sub: 'A line that loops back on itself', grant: 35e6,
+      test: (st) => st.lines.some((l) => SB.isLoopLine(l)) },
+    { id: 'bullet', label: 'Bullet service', sub: 'A high-speed line in operation', grant: 60e6,
+      test: (st) => st.lines.some((l) => l.mode === 'hst') },
+    { id: 'nightowl', label: 'The city never sleeps', sub: '10,000 riders with every line running all night', grant: 45e6,
+      test: (st, res) => res && res.ridersDaily >= 10000 && st.lines.length >= 3 &&
+        st.lines.every((l) => l.nightService !== false) },
+    { id: 'profit', label: 'In the black', sub: 'A profitable day with 5,000+ riders', grant: 40e6,
+      test: (st, res, ctx) => ctx && ctx.net > 0 && res && res.ridersDaily >= 5000 },
+  ];
+  SB.ACHIEVEMENTS = ACHIEVEMENTS;
+
   const MILESTONES = [
     { share: 0.03, grant: 250e6, label: 'City Hall takes notice' },
     { share: 0.06, grant: 400e6, label: 'State transit grant' },
@@ -110,6 +157,8 @@
       nextStationId: 1,
       nextLineId: 1,
       milestonesHit: [],
+      achievementsHit: [],
+      world: null,          // owned by SB.world (clock, weather, events…)
       history: [],
       totalSpent: 0,
       helpSeen: false,
@@ -182,6 +231,8 @@
       if (!l.mode) l.mode = 'metro';
       if (l.vehicles === undefined) l.vehicles = l.trains !== undefined ? l.trains : 2;
       delete l.trains;
+      if (l.nightService === undefined) l.nightService = true;
+      if (l.weekendService === undefined) l.weekendService = true;
       if (!l.paths || l.paths.length !== l.stationIds.length - 1) {
         l.paths = [];
         for (let i = 0; i < l.stationIds.length - 1; i++) {
@@ -192,8 +243,16 @@
       }
       delete l._pm;
     }
+    if (!game.state.achievementsHit) game.state.achievementsHit = [];
+    SB.world.ensure();
     game.save();
     emit();
+  };
+
+  game.networkLengthM = function () {
+    let len = 0;
+    for (const l of game.state.lines) len += game.lineLengthM(l);
+    return len;
   };
 
   // Meter-space copies of a line's segment paths (cached per line).
@@ -492,6 +551,17 @@
     return { ok: true };
   };
 
+  /* Per-line service window toggles ('night' | 'weekend'). */
+  game.setLineService = function (lineId, which, on) {
+    const line = game.lineById(lineId);
+    if (!line) return { ok: false, err: 'Unknown line' };
+    if (which === 'night') line.nightService = !!on;
+    else if (which === 'weekend') line.weekendService = !!on;
+    game.save();
+    emit();
+    return { ok: true };
+  };
+
   game.setFare = function (v) {
     game.state.fare = Math.min(ECON.fareMax, Math.max(ECON.fareMin, v));
     game.save();
@@ -522,29 +592,97 @@
   game.endDay = function () {
     const st = game.state;
     const res = SB.sim.results;
-    const riders = res ? res.ridersDaily : 0;
+    const W = SB.world;
+    let riders = res ? res.ridersDaily : 0;
     const share = res ? res.share : 0;
 
-    const revenue = riders * st.fare;
-    let opex = 0;
+    // The day that just ended (world.day() already points at the new one).
+    const endedDay = W ? W.day() - 1 : st.day;
+    const wasWeekend = W ? ((endedDay - 1) % 7) >= 5 : false;
+
+    // Weekend days simply move fewer commuters; weather nudges demand.
+    let dayMult = 1;
+    if (W) {
+      if (wasWeekend) dayMult *= W.WEEKEND_DAY_MULT;
+      dayMult *= W.weatherInfo().demand;
+    }
+    riders *= dayMult;
+
+    // Per-line service windows: skipping the night forfeits the night share
+    // of that line's riders but parks its fleet for those hours; skipping a
+    // weekend day idles the line entirely (minimal opex, no riders).
+    let revenue = 0, opex = 0;
+    const totalLineRiders = res
+      ? [...res.lineRiders.values()].reduce((a, b) => a + b, 0) : 0;
     for (const line of st.lines) {
       const M = MODES[line.mode];
-      opex += line.vehicles * M.vehicleOpDay;
+      const lr = res ? (res.lineRiders.get(line.id) || 0) : 0;
+      const rShare = totalLineRiders > 0 ? lr / totalLineRiders : 0;
+      let rideFactor = 1, fleetFactor = 1;
+      if (wasWeekend && line.weekendService === false) {
+        rideFactor = 0; fleetFactor = 0.15;
+      } else if (line.nightService === false && W) {
+        rideFactor = 1 - W.NIGHT_SHARE; fleetFactor = 0.82;
+      }
+      // Disruptions that ran today cost riders on that line.
+      if (W) {
+        const dis = W.disruptionFor(line.id);
+        if (dis) rideFactor *= 0.85;
+      }
+      revenue += riders * rShare * rideFactor * st.fare;
+      opex += line.vehicles * M.vehicleOpDay * fleetFactor;
       opex += (game.lineLengthM(line) / 1000) * M.trackOpKmDay;
     }
+    // No lines yet → no revenue either way.
     for (const s of st.stations) opex += MODES[s.mode].stationOpDay;
+
+    // Rush-hour events: a surge at one station pays out if it has service.
+    const events = [];
+    if (W && res) {
+      for (const ev of W.activeEvents().concat(
+        (st.world.events || []).filter((e) => e.end <= st.world.clock &&
+          e.end > st.world.clock - 1440))) {
+        const boarded = res.boardings.get(ev.sid) || 0;
+        if (boarded > 10) {
+          const crowdedHere = game.linesThrough(ev.sid)
+            .some((l) => (res.lineMaxRatio.get(l.id) || 0) > 1.05);
+          const bonus = boarded * st.fare * 0.4 * (ev.mult - 1) * (crowdedHere ? 0.4 : 1);
+          revenue += bonus;
+          const s = game.stationById(ev.sid);
+          events.push({
+            type: 'event',
+            label: ev.name + (s ? ' at ' + s.name : ''),
+            grant: bonus,
+            crowded: crowdedHere,
+          });
+        }
+        ev.sid = -1; // consume — never pay the same event twice
+      }
+      st.world.events = st.world.events.filter((e) => e.sid !== -1);
+    }
+
     const interest = st.loans * ECON.loanRatePerDay;
     const net = revenue + game.city.def.funding - opex - interest;
 
     st.money += net;
-    st.day++;
-
-    const events = [];
+    if (!SB.world) st.day++;   // world.advance owns the day counter now
     for (let i = 0; i < MILESTONES.length; i++) {
       if (share >= MILESTONES[i].share && !st.milestonesHit.includes(i)) {
         st.milestonesHit.push(i);
         st.money += MILESTONES[i].grant;
         events.push({ type: 'milestone', label: MILESTONES[i].label, grant: MILESTONES[i].grant, share: MILESTONES[i].share });
+      }
+    }
+
+    if (!st.achievementsHit) st.achievementsHit = [];
+    for (const a of ACHIEVEMENTS) {
+      if (st.achievementsHit.includes(a.id)) continue;
+      let hit = false;
+      try { hit = !!a.test(st, res, { net }); } catch (e) { /* never break the day */ }
+      if (hit) {
+        st.achievementsHit.push(a.id);
+        st.money += a.grant;
+        events.push({ type: 'achievement', label: a.label, sub: a.sub, grant: a.grant });
       }
     }
 

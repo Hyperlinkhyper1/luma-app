@@ -156,7 +156,8 @@
 
     for (const line of st.lines) {
       const M = SB.MODES[line.mode];
-      const delay = lineDelay.get(line.id) || 1;
+      const world = SB.world && SB.world.delayFor ? SB.world.delayFor(line) : 1;
+      const delay = (lineDelay.get(line.id) || 1) * world;
       const wait = Math.min(TUNE.waitCapMin, sim.headwayMin(line) / 2) + TUNE.boardMin;
       const rideNodes = [];
       for (let k = 0; k < line.stationIds.length; k++) {
@@ -428,8 +429,11 @@
     for (const line of SB.game.state.lines) {
       const ts = vehState.get(line.id);
       if (!ts || ts.total <= 0) continue;
+      // Lines outside their service window park their fleet.
+      if (SB.world && SB.world.lineActive && !SB.world.lineActive(line)) continue;
       const isLoop = SB.isLoopLine(line);
-      const v = (SB.MODES[line.mode].speedKmh / 3.6) * 1.7 * Math.max(1, speedMult);
+      const slow = SB.world && SB.world.delayFor ? SB.world.delayFor(line) : 1;
+      const v = ((SB.MODES[line.mode].speedKmh / 3.6) / slow) * 1.7 * Math.max(1, speedMult);
       for (const t of ts.list) {
         if (t.dwell > 0) { t.dwell -= dt * speedMult; continue; }
         // The closing stop is the same physical station as stop 0 — wrap
@@ -488,6 +492,7 @@
     for (const line of SB.game.state.lines) {
       const ts = vehState.get(line.id);
       if (!ts || ts.total <= 0 || ts.pts.length < 2) continue;
+      if (SB.world && SB.world.lineActive && !SB.world.lineActive(line)) continue;
       const half = Math.min(ts.total / 2, (TRAIN_LEN_M[line.mode] || 80) / 2);
       for (const t of ts.list) {
         const p0 = Math.max(0, t.pos - half);

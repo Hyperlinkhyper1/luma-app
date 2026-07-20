@@ -57,6 +57,9 @@ import 'features/plugins/installed/groceries/data/groceries_database.dart';
 import 'features/plugins/installed/groceries/groceries_api.dart';
 import 'features/plugins/installed/groceries/groceries_repository.dart';
 import 'features/plugins/installed/groceries/groceries_scope.dart';
+import 'features/plugins/installed/recipe_book/data/recipe_book_database.dart';
+import 'features/plugins/installed/recipe_book/recipe_book_repository.dart';
+import 'features/plugins/installed/recipe_book/recipe_book_scope.dart';
 import 'features/plugins/plugin_catalog_service.dart';
 import 'features/plugins/plugin_repository.dart';
 import 'features/plugins/plugin_scope.dart';
@@ -145,6 +148,9 @@ class _LumaAppState extends State<LumaApp> {
   late final GroceriesRepository _groceriesRepository =
       GroceriesRepository(_groceriesDb);
   late final GroceriesApi _groceriesApi = GroceriesApi();
+  late final RecipeBookDatabase _recipeBookDb = RecipeBookDatabase();
+  late final RecipeBookRepository _recipeBookRepository =
+      RecipeBookRepository(_recipeBookDb);
 
   // Global local-storage cap, enforced regardless of which plugins are
   // installed — see StorageGuardService.
@@ -256,6 +262,12 @@ class _LumaAppState extends State<LumaApp> {
       icon: Icons.local_grocery_store_rounded,
       db: _groceriesDb,
     ),
+    DriftSyncCollection(
+      id: 'recipe_book',
+      label: 'Recipe book',
+      icon: Icons.menu_book_rounded,
+      db: _recipeBookDb,
+    ),
   ]);
 
   // The Cloud Files plugin stores encrypted files on the same sync server.
@@ -332,6 +344,7 @@ class _LumaAppState extends State<LumaApp> {
     _usageDb.close();
     _groceriesDb.close();
     _groceriesApi.dispose();
+    _recipeBookDb.close();
     super.dispose();
   }
 
@@ -421,6 +434,8 @@ class _LumaAppState extends State<LumaApp> {
                       repository: _groceriesRepository,
                       child: GroceriesApiScope(
                       api: _groceriesApi,
+                      child: RecipeBookScope(
+                      repository: _recipeBookRepository,
                       child: ListenableBuilder(
                       listenable: widget.settings,
                       builder: (context, _) {
@@ -444,6 +459,7 @@ class _LumaAppState extends State<LumaApp> {
                               bootstrap: _bootstrap, accentSeed: s.accentSeed),
                         );
                       },
+                    ),
                     ),
                     ),
                     ),
