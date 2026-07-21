@@ -91,69 +91,79 @@ class BottomNav extends StatelessWidget {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: context.luma.surface,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _MoreRow(
-                icon: Icons.sticky_note_2_rounded,
-                label: t.navNotes,
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  onSelect(4);
-                },
-              ),
-              _MoreRow(
-                icon: Icons.smart_toy_rounded,
-                label: t.navAssistant,
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  onSelect(5);
-                },
-              ),
-              _MoreRow(
-                icon: Icons.extension_rounded,
-                label: t.navPlugins,
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  onSelect(NavRail.pluginsIndex);
-                },
-              ),
-              _MoreRow(
-                icon: Icons.settings_rounded,
-                label: t.navSettings,
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  onSelect(NavRail.settingsIndex);
-                },
-              ),
-              _MoreRow(
-                icon: Icons.badge_rounded,
-                label: t.navAccount,
-                trailing: t.planSuffix(plan.name),
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  onSelect(NavRail.accountIndex);
-                },
-              ),
-              if (installedPlugins.isNotEmpty) ...[
-                const Divider(height: 20),
-                for (final plugin in installedPlugins)
-                  _MoreRow(
-                    icon: pluginIconFor(plugin.icon),
-                    label: plugin.name,
-                    onTap: () {
-                      Navigator.pop(sheetContext);
-                      onSelectPlugin(plugin.pluginId);
-                    },
-                  ),
+        child: ConstrainedBox(
+          // Without isScrollControlled + an explicit scroll view, a sheet
+          // taller than the default (non-scrollable) bottom sheet height
+          // just clips its overflowing rows instead of scrolling to them —
+          // e.g. installed plugins past the first couple become untappable.
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(sheetContext).size.height * 0.85,
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _MoreRow(
+                  icon: Icons.sticky_note_2_rounded,
+                  label: t.navNotes,
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    onSelect(4);
+                  },
+                ),
+                _MoreRow(
+                  icon: Icons.smart_toy_rounded,
+                  label: t.navAssistant,
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    onSelect(5);
+                  },
+                ),
+                _MoreRow(
+                  icon: Icons.extension_rounded,
+                  label: t.navPlugins,
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    onSelect(NavRail.pluginsIndex);
+                  },
+                ),
+                _MoreRow(
+                  icon: Icons.settings_rounded,
+                  label: t.navSettings,
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    onSelect(NavRail.settingsIndex);
+                  },
+                ),
+                _MoreRow(
+                  icon: Icons.badge_rounded,
+                  label: t.navAccount,
+                  trailing: t.planSuffix(plan.name),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    onSelect(NavRail.accountIndex);
+                  },
+                ),
+                if (installedPlugins.isNotEmpty) ...[
+                  const Divider(height: 20),
+                  for (final plugin in installedPlugins)
+                    _MoreRow(
+                      icon: pluginIconFor(plugin.icon),
+                      label: plugin.name,
+                      onTap: () {
+                        Navigator.pop(sheetContext);
+                        onSelectPlugin(plugin.pluginId);
+                      },
+                    ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
