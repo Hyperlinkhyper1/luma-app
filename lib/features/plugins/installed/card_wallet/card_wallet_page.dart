@@ -646,8 +646,8 @@ class _NfcScanSheetState extends State<_NfcScanSheet> {
             const SizedBox(height: 8),
             Text(
               _error ??
-                  'Hold your card flat against the back of your phone until it '
-                      'reads.',
+                  'Hold your card flat against the back of your phone and keep '
+                      'it still — larger cards take a second to read.',
               textAlign: TextAlign.center,
               style: TextStyle(color: luma.textMuted, fontSize: 13, height: 1.35),
             ),
