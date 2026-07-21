@@ -30,6 +30,8 @@
 	<string>Luma uses your local network to find and sync with your other devices.</string>
 	<key>NFCReaderUsageDescription</key>
 	<string>Luma reads NFC tags so you can add and present tap-only cards in your Card Wallet.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Luma uses the camera to scan a card's barcode or QR code into your Card Wallet.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_luma-sync._tcp</string>

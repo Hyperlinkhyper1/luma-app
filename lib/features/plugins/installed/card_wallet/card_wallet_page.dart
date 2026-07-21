@@ -1,12 +1,20 @@
+import 'dart:async';
+
 import 'package:barcode_widget/barcode_widget.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+// Hide mobile_scanner's Barcode: barcode_widget already exports a Barcode type
+// used here for rendering (Barcode.qrCode()). We only need the scanner widget,
+// controller and BarcodeCapture, so the collision is avoided cleanly.
+import 'package:mobile_scanner/mobile_scanner.dart' hide Barcode;
 
 import '../../../../app/widgets.dart';
 import '../../../../theme/luma_theme.dart';
 import 'card_formats.dart';
 import 'card_wallet_nfc.dart';
 import 'card_wallet_repository.dart';
+import 'card_wallet_scanner.dart';
 import 'card_wallet_scope.dart';
 
 /// Accent colors offered when creating a card. Kept vivid so the wallet grid
@@ -751,6 +759,126 @@ class _ScanPulseState extends State<_ScanPulse>
   }
 }
 
+/// Bottom sheet holding a live camera preview; pops with the first barcode it
+/// reads (value + detected format).
+class _BarcodeCameraSheet extends StatefulWidget {
+  const _BarcodeCameraSheet();
+
+  @override
+  State<_BarcodeCameraSheet> createState() => _BarcodeCameraSheetState();
+}
+
+class _BarcodeCameraSheetState extends State<_BarcodeCameraSheet> {
+  final MobileScannerController _controller = MobileScannerController(
+    detectionSpeed: DetectionSpeed.noDuplicates,
+  );
+  bool _handled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // When a controller is supplied we own its lifecycle; start it ourselves.
+    // Guarded so it's harmless if the widget already started it.
+    unawaited(_startCamera());
+  }
+
+  Future<void> _startCamera() async {
+    try {
+      await _controller.start();
+    } catch (_) {
+      // Already started, or no camera available — the preview handles the rest.
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onDetect(BarcodeCapture capture) {
+    if (_handled) return;
+    for (final barcode in capture.barcodes) {
+      final value = barcode.rawValue;
+      if (value != null && value.isNotEmpty) {
+        _handled = true;
+        Navigator.of(context).pop(
+          BarcodeScanResult(
+            value: value,
+            format: CardWalletScanner.mapFormat(barcode.format),
+          ),
+        );
+        return;
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return SafeArea(
+      top: false,
+      child: Container(
+        decoration: BoxDecoration(
+          color: luma.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: luma.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'Scan a barcode',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: luma.textPrimary,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Point the camera at the card’s barcode or QR code.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: luma.textMuted, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: SizedBox(
+                height: 300,
+                child: MobileScanner(
+                  controller: _controller,
+                  fit: BoxFit.cover,
+                  onDetect: _onDetect,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            LumaGhostButton(
+              label: 'Cancel',
+              expand: true,
+              onTap: () => Navigator.of(context).pop(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Add / edit sheet. When [existing] is null this creates a new card;
 /// otherwise it edits that card in place.
 void _showCardEditor(
@@ -827,6 +955,66 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
     setState(() {});
     messenger.showSnackBar(
       SnackBar(content: Text('Scanned tag (${result.source})')),
+    );
+  }
+
+  /// Opens the live camera scanner and drops the first barcode it reads into
+  /// the value field, switching the format to match the symbology.
+  Future<void> _scanCamera() async {
+    final result = await showModalBottomSheet<BarcodeScanResult>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => const _BarcodeCameraSheet(),
+    );
+    if (!mounted || result == null) return;
+    _applyScan(result);
+  }
+
+  /// Lets the user pick a screenshot / photo and decodes any barcode in it.
+  Future<void> _scanImage() async {
+    final picked = await FilePicker.platform.pickFiles(type: FileType.image);
+    final path = (picked != null && picked.files.isNotEmpty)
+        ? picked.files.first.path
+        : null;
+    if (path == null || !mounted) return;
+    setState(() {
+      _scanning = true;
+      _error = null;
+    });
+    try {
+      final result = await CardWalletScanner.scanImage(path);
+      if (!mounted) return;
+      if (result == null) {
+        setState(() => _error = 'No barcode or QR code found in that image.');
+        return;
+      }
+      _applyScan(result);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = 'Could not read that image. ($e)');
+      }
+    } finally {
+      if (mounted) setState(() => _scanning = false);
+    }
+  }
+
+  /// Applies a decoded barcode: fills the value and, when the symbology is one
+  /// luma can render, selects the matching format automatically.
+  void _applyScan(BarcodeScanResult result) {
+    _code.text = result.value;
+    setState(() {
+      if (result.format != null) _format = result.format!;
+      _error = null;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          result.format != null
+              ? 'Scanned ${result.format!.label}'
+              : 'Scanned code',
+        ),
+      ),
     );
   }
 
@@ -950,6 +1138,36 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
                     ),
                 ],
               ),
+              if (!_format.isNfc &&
+                  (CardWalletScanner.cameraSupported ||
+                      CardWalletScanner.imageSupported)) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    if (CardWalletScanner.cameraSupported)
+                      Expanded(
+                        child: LumaGhostButton(
+                          label: 'Scan',
+                          icon: Icons.qr_code_scanner_rounded,
+                          expand: true,
+                          onTap: _scanning ? null : _scanCamera,
+                        ),
+                      ),
+                    if (CardWalletScanner.cameraSupported &&
+                        CardWalletScanner.imageSupported)
+                      const SizedBox(width: 10),
+                    if (CardWalletScanner.imageSupported)
+                      Expanded(
+                        child: LumaGhostButton(
+                          label: 'From image',
+                          icon: Icons.image_outlined,
+                          expand: true,
+                          onTap: _scanning ? null : _scanImage,
+                        ),
+                      ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 6),
               TextField(
                 controller: _code,
@@ -960,7 +1178,10 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
                         ? (CardWalletNfc.isSupported
                             ? 'Tap “Scan tag”, or paste it (text or hex)'
                             : 'Paste the tag payload (text or hex)')
-                        : 'e.g. 2601234567890'),
+                        : ((CardWalletScanner.cameraSupported ||
+                                CardWalletScanner.imageSupported)
+                            ? 'Scan it in above, or type it — e.g. 2601234567890'
+                            : 'e.g. 2601234567890')),
               ),
               const SizedBox(height: 14),
               _CodePreview(format: _format, code: _code.text.trim()),
