@@ -70,6 +70,8 @@ dependencies:
   ffi: ^2.2.0
   # Preview playback in the audio editor.
   audioplayers: ^6.1.0
+  # Read physical NFC tags for the Card Wallet plugin (mobile only).
+  nfc_manager: ^3.5.0
 
 dev_dependencies:
   flutter_test:

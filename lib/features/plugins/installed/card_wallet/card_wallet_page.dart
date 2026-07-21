@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../../../../app/widgets.dart';
 import '../../../../theme/luma_theme.dart';
 import 'card_formats.dart';
+import 'card_wallet_nfc.dart';
 import 'card_wallet_repository.dart';
 import 'card_wallet_scope.dart';
 
@@ -555,6 +556,201 @@ class _NfcPresent extends StatelessWidget {
   }
 }
 
+/// Bottom sheet that runs a live NFC read: prompts the user to hold their card
+/// to the phone, then pops with the tag's payload (or shows the reason it
+/// couldn't, with a Retry).
+class _NfcScanSheet extends StatefulWidget {
+  const _NfcScanSheet();
+
+  @override
+  State<_NfcScanSheet> createState() => _NfcScanSheetState();
+}
+
+class _NfcScanSheetState extends State<_NfcScanSheet> {
+  bool _scanning = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _start();
+  }
+
+  Future<void> _start() async {
+    setState(() {
+      _scanning = true;
+      _error = null;
+    });
+    try {
+      final result = await CardWalletNfc.scan();
+      if (mounted) Navigator.of(context).pop(result);
+    } on NfcScanException catch (e) {
+      if (mounted) {
+        setState(() {
+          _scanning = false;
+          _error = e.message;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _scanning = false;
+          _error = 'Something went wrong while scanning. ($e)';
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    // Make sure the reader session is closed if the sheet is dismissed mid-scan.
+    CardWalletNfc.stop();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return SafeArea(
+      top: false,
+      child: Container(
+        decoration: BoxDecoration(
+          color: luma.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: luma.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+            _ScanPulse(active: _scanning, error: _error != null),
+            const SizedBox(height: 22),
+            Text(
+              _error != null
+                  ? "Couldn't scan"
+                  : (_scanning ? 'Ready to scan' : 'Scan a tag'),
+              style: TextStyle(
+                color: luma.textPrimary,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _error ??
+                  'Hold your card flat against the back of your phone until it '
+                      'reads.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: luma.textMuted, fontSize: 13, height: 1.35),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: LumaGhostButton(
+                    label: 'Cancel',
+                    expand: true,
+                    onTap: () => Navigator.of(context).pop(),
+                  ),
+                ),
+                if (_error != null) ...[
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: LumaPrimaryButton(
+                      label: 'Try again',
+                      icon: Icons.refresh_rounded,
+                      expand: true,
+                      onTap: _start,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A soft pulsing contactless glyph shown while a scan is in progress; turns
+/// into a static error glyph when a read fails.
+class _ScanPulse extends StatefulWidget {
+  const _ScanPulse({required this.active, required this.error});
+  final bool active;
+  final bool error;
+
+  @override
+  State<_ScanPulse> createState() => _ScanPulseState();
+}
+
+class _ScanPulseState extends State<_ScanPulse>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final accent = widget.error ? luma.danger : luma.accent;
+    return SizedBox(
+      width: 108,
+      height: 108,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          final t = _controller.value;
+          return Stack(
+            alignment: Alignment.center,
+            children: [
+              if (widget.active && !widget.error)
+                Container(
+                  width: 60 + 48 * t,
+                  height: 60 + 48 * t,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: accent.withValues(alpha: (1 - t) * 0.28),
+                  ),
+                ),
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: accent.withValues(alpha: 0.16),
+                ),
+                child: Icon(
+                  widget.error
+                      ? Icons.error_outline_rounded
+                      : Icons.contactless_rounded,
+                  color: accent,
+                  size: 32,
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
 /// Add / edit sheet. When [existing] is null this creates a new card;
 /// otherwise it edits that card in place.
 void _showCardEditor(
@@ -585,6 +781,7 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
   late CardFormat _format;
   late int _color;
   bool _saving = false;
+  bool _scanning = false;
   String? _error;
 
   @override
@@ -607,6 +804,30 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
     _code.dispose();
     _notes.dispose();
     super.dispose();
+  }
+
+  /// Opens the tap-to-scan sheet and, if a tag is read, drops its payload into
+  /// the code field.
+  Future<void> _scanNfc() async {
+    setState(() {
+      _scanning = true;
+      _error = null;
+    });
+    final messenger = ScaffoldMessenger.of(context);
+    final result = await showModalBottomSheet<NfcScanResult>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => const _NfcScanSheet(),
+    );
+    if (!mounted) return;
+    setState(() => _scanning = false);
+    if (result == null) return;
+    _code.text = result.payload;
+    setState(() {});
+    messenger.showSnackBar(
+      SnackBar(content: Text('Scanned tag (${result.source})')),
+    );
   }
 
   Future<void> _save() async {
@@ -711,8 +932,24 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
                 }),
               ),
               const SizedBox(height: 14),
-              _label(luma,
-                  _format.isNfc ? 'NFC tag data' : 'Card number / barcode value'),
+              Row(
+                children: [
+                  Expanded(
+                    child: _label(
+                      luma,
+                      _format.isNfc
+                          ? 'NFC tag data'
+                          : 'Card number / barcode value',
+                    ),
+                  ),
+                  if (_format.isNfc && CardWalletNfc.isSupported)
+                    LumaGhostButton(
+                      label: 'Scan tag',
+                      icon: Icons.contactless_rounded,
+                      onTap: _scanning ? null : _scanNfc,
+                    ),
+                ],
+              ),
               const SizedBox(height: 6),
               TextField(
                 controller: _code,
@@ -720,7 +957,9 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
                 maxLines: _format.isNfc ? 3 : 1,
                 decoration: _dec(luma,
                     hint: _format.isNfc
-                        ? 'Paste the tag payload (text or hex)'
+                        ? (CardWalletNfc.isSupported
+                            ? 'Tap “Scan tag”, or paste it (text or hex)'
+                            : 'Paste the tag payload (text or hex)')
                         : 'e.g. 2601234567890'),
               ),
               const SizedBox(height: 14),

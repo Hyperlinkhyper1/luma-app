@@ -13,7 +13,7 @@
     {
       "id": "card-wallet",
       "name": "Card Wallet",
-      "description": "Keep your loyalty and membership passes in one place. Save a card's barcode and luma regenerates it on screen to scan at the till, or store an NFC tag's data to copy and carry. Like Stocard, inside luma.",
+      "description": "Keep your loyalty and membership passes in one place. Save a card's barcode and luma regenerates it on screen to scan at the till, or tap an NFC card to your phone to capture its tag. Like Stocard, inside luma.",
       "icon": "wallet",
       "category": "Utility",
       "tags": ["Utility", "Shopping"],

@@ -12,6 +12,11 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
 
+    <!-- Read loyalty/membership NFC tags in the Card Wallet plugin. Marked
+         not-required so the app still installs on devices without NFC. -->
+    <uses-permission android:name="android.permission.NFC" />
+    <uses-feature android:name="android.hardware.nfc" android:required="false" />
+
     <application
         android:label="luma"
         android:name="${applicationName}"
