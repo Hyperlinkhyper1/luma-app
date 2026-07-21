@@ -148,6 +148,10 @@
     #left.open { transform: translateX(0); }
     #left-close { display: inline-flex; }
     #mc-menu { display: flex; align-items: center; justify-content: center; }
+    /* The stop/line inspector is a fixed 280px box that eats most of a
+       phone's width parked in the corner — widen it to a top card instead,
+       capped and scrollable so a long line's details never run off-screen. */
+    #infopanel { left: 14px; right: 14px; width: auto; max-height: 50vh; overflow-y: auto; }
   }
 
   /* mode picker */
