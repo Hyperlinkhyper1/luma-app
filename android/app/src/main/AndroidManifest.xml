@@ -17,6 +17,12 @@
     <uses-permission android:name="android.permission.NFC" />
     <uses-feature android:name="android.hardware.nfc" android:required="false" />
 
+    <!-- Scan a card's barcode / QR with the camera in the Card Wallet plugin.
+         not-required so the app still installs on devices without a camera. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+
     <application
         android:label="luma"
         android:name="${applicationName}"
