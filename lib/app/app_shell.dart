@@ -92,6 +92,14 @@ class _AppShellState extends State<AppShell> {
 
   void _selectPlugin(String id) => setState(() => _selectedPluginId = id);
 
+  void _closePlugin() => setState(() => _selectedPluginId = null);
+
+  // Plugins whose own content is the whole point of the screen (full-map or
+  // full-canvas games): on phone, the top title bar and bottom nav just eat
+  // space the game desperately needs, so they're hidden and replaced with a
+  // single floating back button instead.
+  static const _phoneImmersivePlugins = {'subway-builder'};
+
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
@@ -118,6 +126,9 @@ class _AppShellState extends State<AppShell> {
         final showingPlugin = activePlugin != null;
         final title = showingPlugin ? activePlugin.name : titles[index];
         final isPhone = MediaQuery.sizeOf(context).width < _phoneBreakpoint;
+        final hideChromeOnPhone = isPhone &&
+            showingPlugin &&
+            _phoneImmersivePlugins.contains(activePlugin.pluginId);
 
         final content = Container(
           color: luma.background,
@@ -143,26 +154,35 @@ class _AppShellState extends State<AppShell> {
                 ),
         );
 
-        return Scaffold(
+        final scaffold = Scaffold(
           body: Column(
             children: [
-              WindowTitleBar(title: title, trailing: const InboxButton()),
-              ListenableBuilder(
-                listenable: storageGuard,
-                builder: (context, _) {
-                  if (!storageGuard.isOverLimit || _storageBannerDismissed) {
-                    return const SizedBox.shrink();
-                  }
-                  return _StorageLimitBanner(
-                    onManage: () => _selectFixed(NavRail.accountIndex),
-                    onDismiss: () =>
-                        setState(() => _storageBannerDismissed = true),
-                  );
-                },
-              ),
+              if (!hideChromeOnPhone)
+                WindowTitleBar(title: title, trailing: const InboxButton()),
+              if (!hideChromeOnPhone)
+                ListenableBuilder(
+                  listenable: storageGuard,
+                  builder: (context, _) {
+                    if (!storageGuard.isOverLimit || _storageBannerDismissed) {
+                      return const SizedBox.shrink();
+                    }
+                    return _StorageLimitBanner(
+                      onManage: () => _selectFixed(NavRail.accountIndex),
+                      onDismiss: () =>
+                          setState(() => _storageBannerDismissed = true),
+                    );
+                  },
+                ),
               Expanded(
                 child: isPhone
-                    ? content
+                    ? (hideChromeOnPhone
+                        ? Stack(
+                            children: [
+                              content,
+                              _PhoneBackButton(onTap: _closePlugin),
+                            ],
+                          )
+                        : content)
                     : Row(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -180,7 +200,7 @@ class _AppShellState extends State<AppShell> {
               ),
             ],
           ),
-          bottomNavigationBar: isPhone
+          bottomNavigationBar: (isPhone && !hideChromeOnPhone)
               ? BottomNav(
                   selectedIndex: showingPlugin ? -1 : index,
                   selectedPluginId:
@@ -190,6 +210,16 @@ class _AppShellState extends State<AppShell> {
                   onSelectPlugin: _selectPlugin,
                 )
               : null,
+        );
+
+        if (!hideChromeOnPhone) return scaffold;
+
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) _closePlugin();
+          },
+          child: scaffold,
         );
       },
     );
@@ -231,6 +261,38 @@ class _AppShellState extends State<AppShell> {
             title: t.shellPluginUnavailable,
           ),
       };
+}
+
+/// Floating exit affordance for immersive phone plugins (see
+/// [_AppShellState._phoneImmersivePlugins]) that otherwise have no chrome to
+/// navigate away with once the title bar and bottom nav are hidden.
+class _PhoneBackButton extends StatelessWidget {
+  const _PhoneBackButton({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final topInset = MediaQuery.paddingOf(context).top;
+    return Positioned(
+      top: topInset + 8,
+      left: 8,
+      child: Material(
+        color: luma.surface.withValues(alpha: 0.85),
+        shape: const CircleBorder(),
+        elevation: 2,
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Icon(Icons.arrow_back_rounded,
+                color: luma.textPrimary, size: 22),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// App-wide warning shown the moment the local storage cap is hit — covers
