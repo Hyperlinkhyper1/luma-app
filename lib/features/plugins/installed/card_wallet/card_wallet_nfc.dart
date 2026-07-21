@@ -1,12 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:nfc_manager/nfc_manager.dart';
+import 'package:nfc_manager/platform_tags.dart';
 
 /// What we managed to pull off a scanned tag: the value to store on the card
-/// plus a short label for where it came from (an NDEF record or the tag UID).
+/// plus a short label for where it came from (a memory dump, an NDEF record,
+/// or the tag UID).
 class NfcScanResult {
   const NfcScanResult({required this.payload, required this.source});
 
@@ -14,8 +17,8 @@ class NfcScanResult {
   final String source;
 }
 
-/// Thrown when a scan can't start or complete. [message] is already
-/// user-friendly and safe to show in the UI.
+/// Thrown when a scan can't start, can't complete, or is refused for safety
+/// (payment cards). [message] is already user-friendly and safe to show.
 class NfcScanException implements Exception {
   const NfcScanException(this.message);
 
@@ -25,9 +28,14 @@ class NfcScanException implements Exception {
   String toString() => message;
 }
 
-/// Reads a physical NFC tag and turns it into a string we can store on a wallet
-/// card, so a card with a tap-only tag can be captured by holding it to the
-/// phone instead of typing the payload out by hand.
+/// Reads a physical NFC tag and turns its contents into a string we can store
+/// on a wallet card, so a tap-only card — a hotel keycard, an OV-chipkaart, an
+/// MSC wristband — can be captured by holding it to the phone.
+///
+/// For plain memory cards (MIFARE Classic, MIFARE Ultralight / NTAG) it dumps
+/// the readable blocks/pages as hex. For NDEF tags it decodes the records.
+/// Bank / credit cards are deliberately refused: luma detects the contactless
+/// payment application and never reads a payment card's data.
 ///
 /// Real scanning only runs on Android and iOS; everywhere else [isSupported]
 /// is false and the editor falls back to manual entry.
@@ -51,10 +59,11 @@ class CardWalletNfc {
   }
 
   /// Waits for a single tag and returns its contents. Throws
-  /// [NfcScanException] if NFC is off, the read fails, or [timeout] elapses.
-  /// The reader session is always stopped before returning.
+  /// [NfcScanException] if NFC is off, the tag is a payment card, the read
+  /// fails, or [detectTimeout] elapses before a tag is presented. The reader
+  /// session is always stopped before returning.
   static Future<NfcScanResult> scan({
-    Duration timeout = const Duration(seconds: 30),
+    Duration detectTimeout = const Duration(seconds: 30),
   }) async {
     if (!isSupported) {
       throw const NfcScanException(
@@ -71,17 +80,17 @@ class CardWalletNfc {
     final completer = Completer<NfcScanResult>();
     Timer? timer;
 
-    Future<void> finish() async {
-      timer?.cancel();
-      await stop();
-    }
-
     try {
       await NfcManager.instance.startSession(
         onDiscovered: (NfcTag tag) async {
+          // A tag is in hand — stop the "no tag" countdown; the read itself
+          // (a 4K card can hold a lot) is allowed to take as long as it needs.
+          timer?.cancel();
           try {
-            final result = _readTag(tag);
+            final result = await _readTag(tag);
             if (!completer.isCompleted) completer.complete(result);
+          } on NfcScanException catch (e) {
+            if (!completer.isCompleted) completer.completeError(e);
           } catch (e) {
             if (!completer.isCompleted) {
               completer.completeError(
@@ -91,16 +100,17 @@ class CardWalletNfc {
               );
             }
           } finally {
-            await finish();
+            await stop();
           }
         },
       );
     } catch (e) {
-      await finish();
+      timer?.cancel();
+      await stop();
       throw NfcScanException('Could not start the NFC reader. ($e)');
     }
 
-    timer = Timer(timeout, () async {
+    timer = Timer(detectTimeout, () async {
       if (!completer.isCompleted) {
         completer.completeError(
           const NfcScanException(
@@ -108,8 +118,8 @@ class CardWalletNfc {
             'phone and try again.',
           ),
         );
+        await stop();
       }
-      await finish();
     });
 
     return completer.future;
@@ -124,24 +134,206 @@ class CardWalletNfc {
     }
   }
 
-  /// Pulls the most useful string out of a discovered tag: a decoded NDEF
-  /// record when the tag carries one, otherwise the hardware UID as hex.
-  static NfcScanResult _readTag(NfcTag tag) {
-    final ndef = Ndef.from(tag);
-    final message = ndef?.cachedMessage;
-    if (message != null && message.records.isNotEmpty) {
-      final decoded = _decodeNdef(message.records);
-      if (decoded != null && decoded.trim().isNotEmpty) {
-        return NfcScanResult(payload: decoded.trim(), source: 'NDEF record');
+  /// Reads whatever a discovered tag will safely give up, refusing payment
+  /// cards outright. Prefers a full memory dump (Classic / Ultralight), then
+  /// NDEF records, and always includes the tech type and UID as a header.
+  static Future<NfcScanResult> _readTag(NfcTag tag) async {
+    // Security boundary: never read the application data of a contactless
+    // bank / credit card. The user asked for this explicitly, and it keeps a
+    // PAN from ever landing in the wallet.
+    if (await _isPaymentCard(tag)) {
+      throw const NfcScanException(
+        "That looks like a bank or credit card — luma won't copy payment "
+        'cards for your security. Add a loyalty, hotel, transit or event '
+        'card instead.',
+      );
+    }
+
+    final sections = <String>[];
+    var source = 'tag UID';
+
+    // Header: friendly tech name + UID.
+    final header = StringBuffer();
+    final tech = _techLabel(tag);
+    final uid = _extractUid(tag);
+    if (tech != null) header.writeln(tech);
+    if (uid != null) header.writeln('UID: $uid');
+    if (header.isNotEmpty) sections.add(header.toString().trimRight());
+
+    // MIFARE Classic — hotel keycards, NS OV-chipkaart, many access cards.
+    final classic = await _dumpMifareClassic(tag);
+    if (classic != null) {
+      sections.add(classic);
+      source = 'MIFARE Classic';
+    } else {
+      // MIFARE Ultralight / NTAG — wristbands (MSC), event and hotel tags.
+      final ultralight = await _dumpMifareUltralight(tag);
+      if (ultralight != null) {
+        sections.add(ultralight);
+        source = 'MIFARE Ultralight';
       }
     }
 
-    final uid = _extractUid(tag);
-    if (uid != null && uid.isNotEmpty) {
-      return NfcScanResult(payload: uid, source: 'tag UID');
+    // NDEF text / URI records, if the tag carries any.
+    final ndef = Ndef.from(tag);
+    if (ndef != null) {
+      final message = ndef.cachedMessage ?? await _tryReadNdef(ndef);
+      if (message != null && message.records.isNotEmpty) {
+        final decoded = _decodeNdef(message.records);
+        if (decoded != null && decoded.trim().isNotEmpty) {
+          sections.add('NDEF:\n${decoded.trim()}');
+          if (source == 'tag UID') source = 'NDEF record';
+        }
+      }
     }
 
-    throw StateError('empty tag');
+    final payload =
+        sections.where((s) => s.trim().isNotEmpty).join('\n\n').trim();
+    if (payload.isEmpty) {
+      throw const NfcScanException(
+        "Couldn't read anything off that tag — it may be empty or locked.",
+      );
+    }
+    return NfcScanResult(payload: payload, source: source);
+  }
+
+  // ---- Payment-card guard ---------------------------------------------------
+
+  /// True when the tag responds to the contactless payment directory
+  /// (`2PAY.SYS.DDF01`). Only the directory is selected — no account records
+  /// are ever read — purely so luma can recognise and refuse a bank card.
+  static Future<bool> _isPaymentCard(NfcTag tag) async {
+    final iso = IsoDep.from(tag);
+    if (iso == null) return false;
+    // SELECT PPSE — the entry point every contactless EMV card exposes.
+    final selectPpse = Uint8List.fromList([
+      0x00, 0xA4, 0x04, 0x00, 0x0e, // CLA INS P1 P2 Lc
+      0x32, 0x50, 0x41, 0x59, 0x2e, 0x53, 0x59, 0x53, // "2PAY.SYS"
+      0x2e, 0x44, 0x44, 0x46, 0x30, 0x31, // ".DDF01"
+      0x00, // Le
+    ]);
+    try {
+      final resp = await iso.transceive(data: selectPpse);
+      if (resp.length < 2) return false;
+      final sw1 = resp[resp.length - 2];
+      final sw2 = resp[resp.length - 1];
+      // 0x9000 = OK, 0x61xx = OK with more data available.
+      return (sw1 == 0x90 && sw2 == 0x00) || sw1 == 0x61;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ---- Memory dumps ---------------------------------------------------------
+
+  /// Reads every MIFARE Classic block we can unlock with a well-known key.
+  /// Sectors protected by non-default keys (e.g. most OV-chipkaart data) are
+  /// skipped, so we return whatever is readable rather than failing. Returns
+  /// null when the tag isn't a Classic card (including on iOS, which can't
+  /// read Classic).
+  static Future<String?> _dumpMifareClassic(NfcTag tag) async {
+    final mc = MifareClassic.from(tag);
+    if (mc == null) return null;
+
+    final sectorCount = mc.sectorCount;
+    final buffer = StringBuffer();
+    var readAny = false;
+
+    for (var sector = 0; sector < sectorCount; sector++) {
+      final unlocked = await _authenticateSector(mc, sector);
+      if (!unlocked) continue;
+
+      final first = _firstBlockOfSector(sector);
+      final count = _blocksInSector(sector);
+      for (var i = 0; i < count; i++) {
+        final blockIndex = first + i;
+        try {
+          final data = await mc.readBlock(blockIndex: blockIndex);
+          buffer.writeln('Block ${_pad(blockIndex, 3)}: ${_hex(data)}');
+          readAny = true;
+        } catch (_) {
+          // Trailer/permission-locked block — skip it.
+        }
+      }
+    }
+
+    return readAny ? buffer.toString().trimRight() : null;
+  }
+
+  /// Tries the common default keys (A then B) against a sector.
+  static Future<bool> _authenticateSector(
+    MifareClassic mc,
+    int sector,
+  ) async {
+    for (final key in _classicDefaultKeys) {
+      try {
+        if (await mc.authenticateSectorWithKeyA(sectorIndex: sector, key: key)) {
+          return true;
+        }
+      } catch (_) {
+        // Wrong key / transient error — try the next one.
+      }
+    }
+    for (final key in _classicDefaultKeys) {
+      try {
+        if (await mc.authenticateSectorWithKeyB(sectorIndex: sector, key: key)) {
+          return true;
+        }
+      } catch (_) {
+        // Wrong key / transient error — try the next one.
+      }
+    }
+    return false;
+  }
+
+  /// Reads MIFARE Ultralight / NTAG pages until the memory runs out (the read
+  /// throws or wraps back to page 0). Returns null when the tag isn't an
+  /// Ultralight-family tag.
+  static Future<String?> _dumpMifareUltralight(NfcTag tag) async {
+    final mu = MifareUltralight.from(tag);
+    if (mu == null) return null;
+
+    final buffer = StringBuffer();
+    Uint8List? firstChunk;
+    var readAny = false;
+
+    // READ returns 4 pages (16 bytes) at a time; cap well past the largest
+    // NTAG216 (231 pages) so a misbehaving tag can't loop forever.
+    for (var page = 0; page < 240; page += 4) {
+      Uint8List chunk;
+      try {
+        chunk = await mu.readPages(pageOffset: page);
+      } catch (_) {
+        break; // Past the end of memory — done.
+      }
+      if (chunk.isEmpty) break;
+      // Ultralight READ wraps around at the end of memory; a repeat of page 0
+      // means we've looped, so stop.
+      if (page > 0 && firstChunk != null && _bytesEqual(chunk, firstChunk)) {
+        break;
+      }
+      firstChunk ??= chunk;
+
+      for (var i = 0; i < chunk.length; i += 4) {
+        final end = (i + 4 <= chunk.length) ? i + 4 : chunk.length;
+        buffer.writeln(
+          'Page ${_pad(page + i ~/ 4, 3)}: ${_hex(chunk.sublist(i, end))}',
+        );
+      }
+      readAny = true;
+    }
+
+    return readAny ? buffer.toString().trimRight() : null;
+  }
+
+  // ---- NDEF decoding --------------------------------------------------------
+
+  static Future<NdefMessage?> _tryReadNdef(Ndef ndef) async {
+    try {
+      return await ndef.read();
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Joins every readable NDEF record into a single string.
@@ -193,6 +385,8 @@ class CardWalletNfc {
     return printable.isEmpty ? null : printable;
   }
 
+  // ---- Low-level helpers ----------------------------------------------------
+
   /// Formats a tag's hardware identifier as colon-separated uppercase hex,
   /// e.g. `04:A2:2C:19`. Digs through the platform-specific [NfcTag.data] map,
   /// which nests the `identifier` bytes under a technology-specific key.
@@ -219,6 +413,47 @@ class CardWalletNfc {
     return null;
   }
 
+  /// A human-friendly name for the tag technology, derived from the keys
+  /// present in [NfcTag.data] (Android uses lowercase tech names; iOS uses
+  /// its own). Returns null when nothing is recognised.
+  static String? _techLabel(NfcTag tag) {
+    final data = tag.data;
+    if (data is! Map) return null;
+    const names = <String, String>{
+      'mifareclassic': 'MIFARE Classic',
+      'mifareultralight': 'MIFARE Ultralight / NTAG',
+      'mifare': 'MIFARE',
+      'isodep': 'ISO-DEP smartcard',
+      'iso7816': 'ISO-7816 smartcard',
+      'iso15693': 'NFC-V (ISO 15693)',
+      'nfcv': 'NFC-V (ISO 15693)',
+      'felica': 'FeliCa',
+      'nfcf': 'FeliCa (NFC-F)',
+      'nfca': 'NFC-A (ISO 14443-A)',
+      'nfcb': 'NFC-B (ISO 14443-B)',
+    };
+    for (final entry in names.entries) {
+      if (data.containsKey(entry.key)) return entry.value;
+    }
+    return null;
+  }
+
+  static bool _bytesEqual(List<int> a, List<int> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  static String _hex(List<int> bytes) => bytes
+      .map((b) => (b & 0xff).toRadixString(16).padLeft(2, '0'))
+      .join(' ')
+      .toUpperCase();
+
+  static String _pad(int value, int width) =>
+      value.toString().padLeft(width, '0');
+
   static String _decodeUtf16(List<int> bytes) {
     if (bytes.length < 2) return '';
     var start = 0;
@@ -237,6 +472,27 @@ class CardWalletNfc {
     }
     return String.fromCharCodes(codeUnits);
   }
+
+  /// Standard MIFARE Classic layout: sectors 0-31 hold 4 blocks, sectors 32+
+  /// (4K only) hold 16. Works for 1K (all sectors < 32) and 4K alike.
+  static int _blocksInSector(int sector) => sector < 32 ? 4 : 16;
+
+  static int _firstBlockOfSector(int sector) =>
+      sector < 32 ? sector * 4 : 128 + (sector - 32) * 16;
+
+  /// Factory / widely-published MIFARE Classic keys, tried in turn. These
+  /// unlock the readable sectors on hotel and event cards that were never
+  /// re-keyed; properly secured cards (OV transit data) simply stay locked.
+  static final List<Uint8List> _classicDefaultKeys = [
+    Uint8List.fromList([0xff, 0xff, 0xff, 0xff, 0xff, 0xff]),
+    Uint8List.fromList([0xa0, 0xa1, 0xa2, 0xa3, 0xa4, 0xa5]),
+    Uint8List.fromList([0xd3, 0xf7, 0xd3, 0xf7, 0xd3, 0xf7]),
+    Uint8List.fromList([0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+    Uint8List.fromList([0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb5]),
+    Uint8List.fromList([0x4d, 0x3a, 0x99, 0xc3, 0x51, 0xdd]),
+    Uint8List.fromList([0x1a, 0x98, 0x2c, 0x7e, 0x45, 0x9a]),
+    Uint8List.fromList([0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff]),
+  ];
 
   /// NFC-Forum URI record prefix abbreviations (first payload byte → prefix).
   static const Map<int, String> _uriPrefixes = {
