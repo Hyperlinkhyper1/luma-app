@@ -132,8 +132,12 @@
 
     if (ui.tool === 'line') {
       let target = station;
-      // In rail modes, clicking an unleased real station leases it on the fly.
-      if (!target && SB.isRailMode(ui.mode)) {
+      // In rail modes, clicking a real station leases it on the fly. A real
+      // station can host every rail service at once, so when the stop under the
+      // cursor belongs to another mode (e.g. an existing Train stop while
+      // building a High-speed line), resolve the real station and lease this
+      // mode's own copy too instead of refusing to connect it.
+      if (SB.isRailMode(ui.mode) && (!target || target.mode !== ui.mode)) {
         let rs = map3d.railStationAtPoint(e.point);
         if (!rs) {
           mergeVisibleIntoNetworks(true);
