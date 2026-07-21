@@ -126,8 +126,33 @@
     overflow-y: auto; padding: 14px 12px 16px; display: flex; flex-direction: column; gap: 16px; }
   #left::-webkit-scrollbar { width: 8px; }
   #left::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  #left-close { display: none; align-self: flex-end; }
   .sect h4 { font-size: 10.5px; letter-spacing: .9px; color: var(--faint); text-transform: uppercase;
     margin: 0 4px 7px; font-weight: 600; }
+
+  /* On narrow (phone) viewports #left becomes an off-canvas drawer: hidden
+     past the left edge until opened via #mc-menu, with a scrim behind it so
+     a tap anywhere on the map closes it again. Wide viewports are untouched
+     — the panel stays permanently docked as before. */
+  #leftscrim { position: absolute; inset: 0; z-index: 6; background: rgba(4,6,10,.55);
+    opacity: 0; pointer-events: none; transition: opacity .2s; }
+  body.light #leftscrim { background: rgba(20,26,38,.35); }
+  #leftscrim.show { opacity: 1; pointer-events: auto; }
+  #mc-menu { position: absolute; left: 14px; bottom: 28px; z-index: 8; width: 40px; height: 40px;
+    border-radius: 12px; background: var(--glass); border: 1px solid var(--border);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: var(--shadow);
+    padding: 0; display: none; }
+  #mc-menu .ic { width: 18px; height: 18px; }
+  @media (max-width: 760px) {
+    #left { transition: transform .25s ease; transform: translateX(calc(-100% - 24px)); }
+    #left.open { transform: translateX(0); }
+    #left-close { display: inline-flex; }
+    #mc-menu { display: flex; align-items: center; justify-content: center; }
+    /* The stop/line inspector is a fixed 280px box that eats most of a
+       phone's width parked in the corner — widen it to a top card instead,
+       capped and scrollable so a long line's details never run off-screen. */
+    #infopanel { left: 14px; right: 14px; width: auto; max-height: 50vh; overflow-y: auto; }
+  }
 
   /* mode picker */
   #modes { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
@@ -364,6 +389,7 @@
   <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.5 14.2A8.6 8.6 0 0 1 9.8 3.5a8.6 8.6 0 1 0 10.7 10.7z"/></symbol>
   <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5V5M12 19v2.5M2.5 12H5M19 12h2.5M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></symbol>
   <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M15.5 8.5l-2 5-5 2 2-5 5-2z"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
 </defs></svg>
 
 <div id="app">
@@ -389,6 +415,7 @@
 
   <div id="main">
     <div id="left">
+      <button id="left-close" title="Close menu"><svg class="ic"><use href="#i-x"/></svg></button>
       <div class="sect">
         <h4>Mode</h4>
         <div id="modes">
@@ -450,6 +477,7 @@
         </div>
       </div>
     </div>
+    <div id="leftscrim"></div>
 
     <div id="canvaswrap">
       <div id="map"></div>
@@ -457,6 +485,7 @@
       <div id="loading"><div class="spin"></div><div id="loading-text"></div></div>
       <div id="hint"></div>
       <div id="infopanel"></div>
+      <button id="mc-menu" title="Menu"><svg class="ic"><use href="#i-menu"/></svg></button>
       <div id="mapctl">
         <button id="mc-compass" title="Reset rotation"><svg class="ic"><use href="#i-compass"/></svg></button>
         <button id="mc-2d" title="Toggle 2D mode">2D</button>
@@ -515,7 +544,7 @@
 <script src="mp.js?v=3"></script>
 <script src="sim.js?v=7"></script>
 <script src="map3d.js?v=10"></script>
-<script src="ui.js?v=14"></script>
+<script src="ui.js?v=15"></script>
 <script src="main.js?v=13"></script>
 </body>
 </html>
