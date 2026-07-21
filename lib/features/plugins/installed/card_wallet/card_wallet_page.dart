@@ -43,84 +43,55 @@ class CardWalletPage extends StatelessWidget {
     final luma = context.luma;
     final repo = CardWalletScope.of(context);
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 860),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              LumaCard(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Your cards',
-                            style: TextStyle(
-                              color: luma.textPrimary,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Add a loyalty or membership pass, then present its '
-                            'barcode at the till — or keep an NFC tag handy.',
-                            style: TextStyle(color: luma.textMuted, fontSize: 13),
-                          ),
-                        ],
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showCardEditor(context, repo),
+        backgroundColor: luma.accent,
+        foregroundColor: luma.onAccent,
+        tooltip: 'Add card',
+        child: const Icon(Icons.add_rounded, size: 28),
+      ),
+      body: SingleChildScrollView(
+        // Extra bottom padding so the last card clears the floating button.
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 96),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 860),
+            child: StreamData<List<WalletCardRecord>>(
+              stream: repo.watchAll(),
+              builder: (context, cards) {
+                if (cards.isEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 48),
+                    child: LumaEmptyState(
+                      icon: Icons.wallet_rounded,
+                      title: 'No cards yet',
+                      subtitle:
+                          'Add your first loyalty or membership card and it '
+                          'shows up here, ready to scan.',
+                      action: LumaPrimaryButton(
+                        label: 'Add card',
+                        icon: Icons.add_rounded,
+                        onTap: () => _showCardEditor(context, repo),
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    LumaPrimaryButton(
-                      label: 'Add card',
-                      icon: Icons.add_rounded,
-                      onTap: () => _showCardEditor(context, repo),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              StreamData<List<WalletCardRecord>>(
-                stream: repo.watchAll(),
-                builder: (context, cards) {
-                  if (cards.isEmpty) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 32),
-                      child: LumaEmptyState(
-                        icon: Icons.wallet_rounded,
-                        title: 'No cards yet',
-                        subtitle:
-                            'Add your first loyalty or membership card and it '
-                            'shows up here, ready to scan.',
-                        action: LumaPrimaryButton(
-                          label: 'Add card',
-                          icon: Icons.add_rounded,
-                          onTap: () => _showCardEditor(context, repo),
-                        ),
-                      ),
-                    );
-                  }
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      for (var i = 0; i < cards.length; i++) ...[
-                        if (i > 0) const SizedBox(height: 16),
-                        _CardTile(
-                          card: cards[i],
-                          onTap: () =>
-                              _showCardDetail(context, repo, cards[i]),
-                        ),
-                      ],
-                    ],
                   );
-                },
-              ),
-            ],
+                }
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var i = 0; i < cards.length; i++) ...[
+                      if (i > 0) const SizedBox(height: 16),
+                      _CardTile(
+                        card: cards[i],
+                        onTap: () => _showCardDetail(context, repo, cards[i]),
+                      ),
+                    ],
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),

@@ -126,8 +126,13 @@ class _AppShellState extends State<AppShell> {
         final showingPlugin = activePlugin != null;
         final title = showingPlugin ? activePlugin.name : titles[index];
         final isPhone = MediaQuery.sizeOf(context).width < _phoneBreakpoint;
-        final hideChromeOnPhone = isPhone &&
-            showingPlugin &&
+        // A phone-sized device in *either* orientation. Landscape widens the
+        // window past the width breakpoint, so immersive plugins use the
+        // shortest side to stay full-screen when the phone is turned sideways.
+        final isPhoneForm =
+            MediaQuery.sizeOf(context).shortestSide < _phoneBreakpoint;
+        final immersive = showingPlugin &&
+            isPhoneForm &&
             _phoneImmersivePlugins.contains(activePlugin.pluginId);
 
         final content = Container(
@@ -157,9 +162,9 @@ class _AppShellState extends State<AppShell> {
         final scaffold = Scaffold(
           body: Column(
             children: [
-              if (!hideChromeOnPhone)
+              if (!immersive)
                 WindowTitleBar(title: title, trailing: const InboxButton()),
-              if (!hideChromeOnPhone)
+              if (!immersive)
                 ListenableBuilder(
                   listenable: storageGuard,
                   builder: (context, _) {
@@ -174,33 +179,43 @@ class _AppShellState extends State<AppShell> {
                   },
                 ),
               Expanded(
-                child: isPhone
-                    ? (hideChromeOnPhone
-                        ? Stack(
-                            children: [
-                              content,
-                              _PhoneBackButton(onTap: _closePlugin),
-                            ],
-                          )
-                        : content)
-                    : Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                child: immersive
+                    // No title bar here, so inset the plugin ourselves: the
+                    // OS status bar (and any display cutout) would otherwise
+                    // sit on top of the game's own HUD. A background layer
+                    // fills the inset strip so it matches the app.
+                    ? Stack(
                         children: [
-                          NavRail(
-                            selectedIndex: showingPlugin ? -1 : index,
-                            selectedPluginId:
-                                showingPlugin ? activePlugin.pluginId : null,
-                            installedPlugins: installed,
-                            onSelect: _selectFixed,
-                            onSelectPlugin: _selectPlugin,
+                          Positioned.fill(
+                            child: ColoredBox(color: luma.background),
                           ),
-                          Expanded(child: content),
+                          Positioned.fill(
+                            child: SafeArea(child: content),
+                          ),
+                          _PhoneBackButton(onTap: _closePlugin),
                         ],
-                      ),
+                      )
+                    : (isPhone
+                        ? content
+                        : Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              NavRail(
+                                selectedIndex: showingPlugin ? -1 : index,
+                                selectedPluginId: showingPlugin
+                                    ? activePlugin.pluginId
+                                    : null,
+                                installedPlugins: installed,
+                                onSelect: _selectFixed,
+                                onSelectPlugin: _selectPlugin,
+                              ),
+                              Expanded(child: content),
+                            ],
+                          )),
               ),
             ],
           ),
-          bottomNavigationBar: (isPhone && !hideChromeOnPhone)
+          bottomNavigationBar: (isPhone && !immersive)
               ? BottomNav(
                   selectedIndex: showingPlugin ? -1 : index,
                   selectedPluginId:
@@ -212,7 +227,7 @@ class _AppShellState extends State<AppShell> {
               : null,
         );
 
-        if (!hideChromeOnPhone) return scaffold;
+        if (!immersive) return scaffold;
 
         return PopScope(
           canPop: false,
