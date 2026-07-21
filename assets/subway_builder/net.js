@@ -323,43 +323,74 @@
 
   /* Rail corridors between cities are usually never on screen, so their
      tracks exist in neither the initial Overpass fetch (radius-bound) nor
-     the visible-tile merges. Fetch railway=rail for a bbox covering the
-     given stops (~10 km margin) and merge it into the live rail graph. */
+     the visible-tile merges. Survey them by sampling a thin corridor of
+     windows stepping along the direct line between the stops, rather than one
+     bounding box over the whole span: a long international hop (say Brussels →
+     London) bounds a ~24,000 km² rectangle that pulls in every unrelated line
+     across three countries and reliably times Overpass out, so the missing
+     tracks — including the tunnel that links the two networks — are never
+     fetched and the route keeps failing. The corridor runs straight down the
+     path a real service takes, so the cross-water tunnels on it (the Channel
+     Tunnel, the Øresund link, …) come in with it and A* can route through. */
+  const CORRIDOR_STEP = 22000;   // meters between corridor sample points
+  const CORRIDOR_HALF = 15000;   // meters — half-size of each sample window
+  const CORRIDOR_BATCH = 8;      // sample windows per Overpass request
   let corridorInFlight = false;
   net.surveyRailCorridor = async function (stops) {
+    stops = (stops || []).filter(Boolean);
     if (corridorInFlight || !stops.length) return false;
     corridorInFlight = true;
     try {
-      let s = Infinity, w = Infinity, n = -Infinity, e = -Infinity;
-      for (const p of stops) {
-        s = Math.min(s, p.lat); n = Math.max(n, p.lat);
-        w = Math.min(w, p.lng); e = Math.max(e, p.lng);
+      // Dense chain of sample points: every stop, plus interpolated points so
+      // no gap along a hop exceeds CORRIDOR_STEP.
+      const samples = [];
+      for (let i = 0; i < stops.length; i++) {
+        const p = stops[i];
+        samples.push(p);
+        const q = stops[i + 1];
+        if (!q) break;
+        const d = Math.hypot(q.x - p.x, q.y - p.y);
+        const steps = Math.floor(d / CORRIDOR_STEP);
+        for (let k = 1; k <= steps; k++) {
+          const t = (k * CORRIDOR_STEP) / d;
+          samples.push({ lat: p.lat + (q.lat - p.lat) * t, lng: p.lng + (q.lng - p.lng) * t });
+        }
       }
-      const mLat = 10000 / 111320;
-      const mLng = 10000 / (111320 * Math.max(0.2, Math.cos(((s + n) / 2) * Math.PI / 180)));
-      const q = '[out:json][timeout:22];way["railway"="rail"](' +
-        (s - mLat) + ',' + (w - mLng) + ',' + (n + mLat) + ',' + (e + mLng) + ');out geom;';
-      const abort = new AbortController();
-      const timer = setTimeout(() => abort.abort(), 20000);
-      let res;
-      try {
-        res = await fetch('https://overpass-api.de/api/interpreter', {
-          method: 'POST',
-          body: 'data=' + encodeURIComponent(q),
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          signal: abort.signal,
-        });
-      } finally {
-        clearTimeout(timer);
-      }
-      if (!res.ok) throw new Error('overpass ' + res.status);
-      const data = await res.json();
+      const windows = samples.map((p) => {
+        const dLat = CORRIDOR_HALF / 111320;
+        const dLng = CORRIDOR_HALF / (111320 * Math.max(0.2, Math.cos(p.lat * Math.PI / 180)));
+        return (p.lat - dLat) + ',' + (p.lng - dLng) + ',' + (p.lat + dLat) + ',' + (p.lng + dLng);
+      });
       if (!net.rails) net.rails = newGraph();
       let ways = 0;
-      for (const el of data.elements || []) {
-        if (el.type === 'way' && el.geometry) {
-          addLineString(net.rails, el.geometry.map((p) => [p.lon, p.lat]));
-          ways++;
+      // Batch the windows so no single request is oversized. A failed batch is
+      // skipped, not fatal — the surveyed part of the corridor still helps.
+      for (let i = 0; i < windows.length; i += CORRIDOR_BATCH) {
+        const filters = windows.slice(i, i + CORRIDOR_BATCH)
+          .map((b) => 'way["railway"="rail"](' + b + ');').join('');
+        const q = '[out:json][timeout:40];(' + filters + ');out geom;';
+        const abort = new AbortController();
+        const timer = setTimeout(() => abort.abort(), 30000);
+        let res;
+        try {
+          res = await fetch('https://overpass-api.de/api/interpreter', {
+            method: 'POST',
+            body: 'data=' + encodeURIComponent(q),
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            signal: abort.signal,
+          });
+        } catch (e) {
+          continue;
+        } finally {
+          clearTimeout(timer);
+        }
+        if (!res.ok) continue;
+        const data = await res.json();
+        for (const el of data.elements || []) {
+          if (el.type === 'way' && el.geometry) {
+            addLineString(net.rails, el.geometry.map((p) => [p.lon, p.lat]));
+            ways++;
+          }
         }
       }
       return ways > 0;
