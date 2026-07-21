@@ -169,14 +169,18 @@ class UpdateService {
     void Function(double)? onProgress,
   ) async {
     final req = http.Request('GET', Uri.parse(url));
-    final res = await _client.send(req);
+    final res = await _client.send(req).timeout(const Duration(seconds: 15));
     if (res.statusCode != 200) {
       await _logError('download', 'HTTP ${res.statusCode} for $url');
       return null;
     }
     final total = res.contentLength ?? 0;
     final bytes = <int>[];
-    await for (final chunk in res.stream) {
+    // Resets on every chunk, so this only fires if the connection actually
+    // stalls — a slow-but-steady download is unaffected. Without this, a
+    // stalled connection leaves the non-dismissible UpdatingScreen stuck
+    // forever with no way to back out.
+    await for (final chunk in res.stream.timeout(const Duration(seconds: 30))) {
       bytes.addAll(chunk);
       if (total > 0) onProgress?.call(bytes.length / total);
     }
