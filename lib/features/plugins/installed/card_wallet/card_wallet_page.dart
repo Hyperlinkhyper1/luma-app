@@ -974,7 +974,7 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
 
   /// Lets the user pick a screenshot / photo and decodes any barcode in it.
   Future<void> _scanImage() async {
-    final picked = await FilePicker.platform.pickFiles(type: FileType.image);
+    final picked = await FilePicker.pickFiles(type: FileType.image);
     final path = (picked != null && picked.files.isNotEmpty)
         ? picked.files.first.path
         : null;
