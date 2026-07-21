@@ -105,15 +105,17 @@ class CardWalletPage extends StatelessWidget {
                       ),
                     );
                   }
-                  return Wrap(
-                    spacing: 16,
-                    runSpacing: 16,
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      for (final card in cards)
+                      for (var i = 0; i < cards.length; i++) ...[
+                        if (i > 0) const SizedBox(height: 16),
                         _CardTile(
-                          card: card,
-                          onTap: () => _showCardDetail(context, repo, card),
+                          card: cards[i],
+                          onTap: () =>
+                              _showCardDetail(context, repo, cards[i]),
                         ),
+                      ],
                     ],
                   );
                 },
@@ -142,7 +144,6 @@ class _CardTile extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          width: 250,
           height: 158,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
