@@ -60,6 +60,8 @@ import 'features/plugins/installed/groceries/groceries_scope.dart';
 import 'features/plugins/installed/recipe_book/data/recipe_book_database.dart';
 import 'features/plugins/installed/recipe_book/recipe_book_repository.dart';
 import 'features/plugins/installed/recipe_book/recipe_book_scope.dart';
+import 'features/plugins/installed/recipes/recipes_repository.dart';
+import 'features/plugins/installed/recipes/recipes_scope.dart';
 import 'features/plugins/installed/minecraft_launcher/data/minecraft_launcher_database.dart';
 import 'features/plugins/installed/minecraft_launcher/minecraft_launcher_repository.dart';
 import 'features/plugins/installed/minecraft_launcher/minecraft_launcher_scope.dart';
@@ -291,6 +293,12 @@ class _LumaAppState extends State<LumaApp> {
   late final secure_chat.ChatRepository _secureChatRepository =
       secure_chat.ChatRepository(_sync);
 
+  // Recipes: a local-first recipe collection whose "Public" tab is a shared,
+  // cross-account catalogue on the sync server (browse/rate/review/photos),
+  // reached through its own plain endpoints — see
+  // lib/features/plugins/installed/recipes/.
+  late final RecipesController _recipesController = RecipesController(_sync);
+
   // Optional peer-to-peer (Wi-Fi/LAN) sync between same-account devices.
   late final PeerSyncController _peerSync = PeerSyncController(sync: _sync);
 
@@ -317,6 +325,7 @@ class _LumaAppState extends State<LumaApp> {
     _familyRepository.init();
     unawaited(_passwordRepository.migrateLegacyCiphertexts());
     _secureChatRepository.init();
+    _recipesController.init();
     _autoClickerRepository.init();
     _usageRepository.init();
     _lifecycleListener = AppLifecycleListener(
@@ -332,6 +341,7 @@ class _LumaAppState extends State<LumaApp> {
     _cloudFiles.dispose();
     _familyRepository.dispose();
     _secureChatRepository.dispose();
+    _recipesController.dispose();
     _sync.dispose();
     _db.close();
     _passwordDb.close();
@@ -444,6 +454,8 @@ class _LumaAppState extends State<LumaApp> {
                       api: _groceriesApi,
                       child: RecipeBookScope(
                       repository: _recipeBookRepository,
+                      child: RecipesScope(
+                      controller: _recipesController,
                       child: MinecraftLauncherScope(
                       repository: _minecraftRepository,
                       child: ListenableBuilder(
@@ -469,6 +481,7 @@ class _LumaAppState extends State<LumaApp> {
                               bootstrap: _bootstrap, accentSeed: s.accentSeed),
                         );
                       },
+                    ),
                     ),
                     ),
                     ),

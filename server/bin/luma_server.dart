@@ -7,6 +7,7 @@ import 'package:luma_sync_server/api.dart';
 import 'package:luma_sync_server/chat_store.dart';
 import 'package:luma_sync_server/family_store.dart';
 import 'package:luma_sync_server/mail.dart';
+import 'package:luma_sync_server/recipe_store.dart';
 import 'package:luma_sync_server/store.dart';
 import 'package:luma_sync_server/subway_store.dart';
 
@@ -31,8 +32,9 @@ Future<void> main() async {
   final chatStore = await ChatStore.open(config.dataDir);
   final aiUsage = await AiUsageStore.open(config.dataDir);
   final subwayStore = await SubwayStore.open(config.dataDir);
+  final recipeStore = await RecipeStore.open(config.dataDir);
   final api = Api(store, config, Mailer(mailConfig), familyStore, chatStore,
-      aiUsage, subwayStore);
+      aiUsage, subwayStore, recipeStore);
 
   final server = await shelf_io.serve(
     api.handler,
