@@ -264,45 +264,72 @@ class _HeaderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final progress = total == 0 ? 0.0 : done / total;
+
+    final titleBlock = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Today\'s errands',
+          style: TextStyle(
+            color: luma.textPrimary,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          _formatFullDate(today),
+          style: TextStyle(color: luma.textMuted, fontSize: 13),
+        ),
+      ],
+    );
+    final categoriesBtn = LumaGhostButton(
+      label: 'Categories',
+      icon: Icons.category_rounded,
+      onTap: onManageCategories,
+    );
+    final addBtn = LumaPrimaryButton(
+      label: 'Add errand',
+      icon: Icons.add_rounded,
+      onTap: onAdd,
+    );
+
     return LumaCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          // On a phone the title and both action buttons can't share one row
+          // without squeezing the title down to a sliver — which wrapped
+          // "Today's errands" to one letter per line. Below this width the
+          // buttons drop onto their own row beneath the full-width title.
+          LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth < 380) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      'Today\'s errands',
-                      style: TextStyle(
-                        color: luma.textPrimary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _formatFullDate(today),
-                      style: TextStyle(color: luma.textMuted, fontSize: 13),
+                    titleBlock,
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(child: categoriesBtn),
+                        const SizedBox(width: 10),
+                        Expanded(child: addBtn),
+                      ],
                     ),
                   ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              LumaGhostButton(
-                label: 'Categories',
-                icon: Icons.category_rounded,
-                onTap: onManageCategories,
-              ),
-              const SizedBox(width: 10),
-              LumaPrimaryButton(
-                label: 'Add errand',
-                icon: Icons.add_rounded,
-                onTap: onAdd,
-              ),
-            ],
+                );
+              }
+              return Row(
+                children: [
+                  Expanded(child: titleBlock),
+                  const SizedBox(width: 12),
+                  categoriesBtn,
+                  const SizedBox(width: 10),
+                  addBtn,
+                ],
+              );
+            },
           ),
           if (total > 0) ...[
             const SizedBox(height: 16),
