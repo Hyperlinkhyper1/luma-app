@@ -629,25 +629,31 @@ class _MonthView extends StatelessWidget {
             ],
           );
         }
-        return Column(
-          children: [
-            SizedBox(
-              height: 360,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: grid,
+        // Phone: the month grid and the selected day's panel don't both fit
+        // in one fixed viewport without the panel (dinner card, event list)
+        // getting clipped at the bottom. Make the whole thing scroll instead,
+        // with the day panel shrink-wrapped below the grid.
+        return SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                height: 340,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  child: grid,
+                ),
               ),
-            ),
-            Container(height: 1, color: context.luma.border),
-            Expanded(
-              child: _DayPanel(
+              Container(height: 1, color: context.luma.border),
+              _DayPanel(
                 day: selectedDay,
                 events: events,
                 dinner: dinner,
                 repo: repo,
+                embedded: true,
               ),
-            ),
-          ],
+            ],
+          ),
         );
       },
     );
@@ -1031,11 +1037,18 @@ class _DayPanel extends StatelessWidget {
     required this.events,
     required this.dinner,
     required this.repo,
+    this.embedded = false,
   });
   final DateTime day;
   final List<EventRecord> events;
   final DinnerPlanRecord? dinner;
   final CalendarRepository repo;
+
+  /// True when the panel is stacked inside an outer scroll view (phone month
+  /// view) rather than filling a fixed side pane. It then shrink-wraps its
+  /// event list instead of expanding, so it contributes its natural height to
+  /// the scroll rather than needing a bounded box.
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
@@ -1099,32 +1112,47 @@ class _DayPanel extends StatelessWidget {
           child: _DinnerSection(day: day, dinner: dinner, repo: repo),
         ),
         Container(height: 1, color: luma.border),
-        Expanded(
-          child: dayEvents.isEmpty
-              ? LumaEmptyState(
-                  icon: Icons.event_available_rounded,
-                  title: 'Nothing planned',
-                  subtitle: 'Add an event to fill this day.',
-                  action: LumaGhostButton(
-                    label: 'Add event',
-                    icon: Icons.add_rounded,
-                    onTap: () =>
-                        showEventEditor(context, repo, initialDate: day),
-                  ),
-                )
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                  itemCount: dayEvents.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 10),
-                  itemBuilder: (context, i) => _EventTile(
-                    occurrence: dayEvents[i],
-                    repo: repo,
-                  ),
+        if (dayEvents.isEmpty)
+          _wrapEvents(
+            SizedBox(
+              height: embedded ? 220 : null,
+              child: LumaEmptyState(
+                icon: Icons.event_available_rounded,
+                title: 'Nothing planned',
+                subtitle: 'Add an event to fill this day.',
+                action: LumaGhostButton(
+                  label: 'Add event',
+                  icon: Icons.add_rounded,
+                  onTap: () =>
+                      showEventEditor(context, repo, initialDate: day),
                 ),
-        ),
+              ),
+            ),
+          )
+        else
+          _wrapEvents(
+            ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              shrinkWrap: embedded,
+              physics:
+                  embedded ? const NeverScrollableScrollPhysics() : null,
+              itemCount: dayEvents.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 10),
+              itemBuilder: (context, i) => _EventTile(
+                occurrence: dayEvents[i],
+                repo: repo,
+              ),
+            ),
+          ),
       ],
     );
   }
+
+  /// In the fixed side-pane layout the events area fills the remaining height
+  /// (Expanded); when embedded in an outer scroll view it must instead take
+  /// only its natural height.
+  Widget _wrapEvents(Widget child) =>
+      embedded ? child : Expanded(child: child);
 }
 
 /// The "what's for dinner" card shown at the top of the day panel: an empty
