@@ -8,6 +8,7 @@ import '../../app/widgets.dart';
 import '../../app/pin_dialog.dart';
 import '../../settings/settings_scope.dart';
 import '../../theme/luma_theme.dart';
+import 'breach_check.dart';
 import 'password_entry_sheet.dart';
 import 'password_repository.dart';
 import 'password_scope.dart';
@@ -122,6 +123,24 @@ class _CredentialCard extends StatefulWidget {
 
 class _CredentialCardState extends State<_CredentialCard> {
   bool _revealed = false;
+  BreachChecker? _breachChecker;
+
+  @override
+  void initState() {
+    super.initState();
+    BreachChecker.load().then((checker) {
+      if (mounted) setState(() => _breachChecker = checker);
+    });
+  }
+
+  // Whether this entry's password appears on the bundled breach list. Checked
+  // for every saved credential so a compromised password is visible at a
+  // glance in the vault — not only warned about once, when it's first typed.
+  bool get _breached {
+    final r = widget.record;
+    if (r.decryptFailed || r.password.isEmpty) return false;
+    return _breachChecker?.isCommon(r.password) ?? false;
+  }
 
   Future<bool> _requirePin() async {
     final settings = SettingsScope.of(context);
@@ -263,6 +282,10 @@ class _CredentialCardState extends State<_CredentialCard> {
               ),
             ],
           ),
+          if (_breached) ...[
+            const SizedBox(height: 10),
+            const _BreachBadge(),
+          ],
           const SizedBox(height: 10),
           _Field(
             label: 'Password',
@@ -391,6 +414,39 @@ class _TotpFieldState extends State<_TotpField> {
             icon: Icons.copy_rounded,
             tooltip: 'Copy 2FA code',
             onTap: () => widget.onCopy('2FA code', code),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Inline warning shown on any saved credential whose password is on the
+/// bundled breach list — the vault-wide, always-visible counterpart to the
+/// one-time prompt shown when a breached password is first entered.
+class _BreachBadge extends StatelessWidget {
+  const _BreachBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: luma.danger.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: luma.danger.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.gpp_bad_rounded, size: 16, color: luma.danger),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'This password was found in a known breach — change it where you use it.',
+              style: TextStyle(color: luma.danger, fontSize: 12, height: 1.35),
+            ),
           ),
         ],
       ),

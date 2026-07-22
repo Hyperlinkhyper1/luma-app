@@ -48,14 +48,28 @@ Future<void> checkAndPromptForUpdate(
     builder: (ctx) => AlertDialog(
       title: Text('Update available — ${info.version}'),
       content: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420, maxHeight: 320),
+        constraints: const BoxConstraints(maxWidth: 460, maxHeight: 380),
         child: SingleChildScrollView(
-          child: Text(
-            info.notes.isEmpty
-                ? 'A newer version of luma is ready to install.\n\n'
-                    'You are on ${AppVersion.current}.'
-                : info.notes,
-          ),
+          child: info.notes.isEmpty
+              ? Text(
+                  'A newer version of luma is ready to install.\n\n'
+                  'You are on ${AppVersion.current}.',
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      "You're on ${AppVersion.current}. What's new in ${info.version}:",
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: Theme.of(ctx).textTheme.bodySmall?.color,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ..._changelogWidgets(ctx, info.notes),
+                  ],
+                ),
         ),
       ),
       actions: [
@@ -75,6 +89,64 @@ Future<void> checkAndPromptForUpdate(
 
   await _runInstall(context, service, info);
 }
+
+/// Renders GitHub release notes (the changelog) as a compact, readable list
+/// instead of a raw dump of markdown: `#` headings become bold lines, `*`/`-`
+/// items become real bullets, and markdown link/emphasis syntax is stripped
+/// so URLs and `**` markers don't clutter the text.
+List<Widget> _changelogWidgets(BuildContext context, String notes) {
+  final baseColor = Theme.of(context).textTheme.bodyMedium?.color;
+  final widgets = <Widget>[];
+  for (final rawLine in notes.split('\n')) {
+    final trimmed = rawLine.trim();
+    if (trimmed.isEmpty) {
+      if (widgets.isNotEmpty) widgets.add(const SizedBox(height: 8));
+      continue;
+    }
+    if (trimmed.startsWith('#')) {
+      widgets.add(Padding(
+        padding: const EdgeInsets.only(top: 4, bottom: 4),
+        child: Text(
+          _stripInlineMarkdown(trimmed.replaceFirst(RegExp(r'^#+\s*'), '')),
+          style: TextStyle(
+              fontWeight: FontWeight.w700, fontSize: 14.5, color: baseColor),
+        ),
+      ));
+      continue;
+    }
+    final bullet = RegExp(r'^[-*]\s+(.*)').firstMatch(trimmed);
+    if (bullet != null) {
+      widgets.add(Padding(
+        padding: const EdgeInsets.only(left: 2, top: 2, bottom: 2),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('•  ', style: TextStyle(color: baseColor, height: 1.4)),
+            Expanded(
+              child: Text(
+                _stripInlineMarkdown(bullet.group(1)!),
+                style: TextStyle(color: baseColor, height: 1.4, fontSize: 13.5),
+              ),
+            ),
+          ],
+        ),
+      ));
+      continue;
+    }
+    widgets.add(Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Text(
+        _stripInlineMarkdown(trimmed),
+        style: TextStyle(color: baseColor, height: 1.4, fontSize: 13.5),
+      ),
+    ));
+  }
+  return widgets;
+}
+
+String _stripInlineMarkdown(String s) => s
+    .replaceAllMapped(RegExp(r'\[([^\]]+)\]\(([^)]+)\)'), (m) => m.group(1)!)
+    .replaceAll(RegExp(r'\*\*|__|`'), '');
 
 /// Shows a full-screen, non-dismissible "Updating luma" experience while the
 /// installer downloads. It is guaranteed to stay up for a minimum of ~6s

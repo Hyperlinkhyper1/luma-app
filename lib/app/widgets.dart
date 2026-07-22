@@ -209,28 +209,45 @@ class LumaSegmentedTabs extends StatelessWidget {
     required this.tabs,
     required this.selectedIndex,
     required this.onSelect,
+    this.scrollable = false,
   });
 
   final List<String> tabs;
   final int selectedIndex;
   final ValueChanged<int> onSelect;
 
+  /// When true the pills sit on a single horizontally-scrollable row instead
+  /// of wrapping onto multiple lines. Use it where there are enough tabs to
+  /// wrap into an ungainly stack on a phone (e.g. the School plugin's nine
+  /// sections) so they stay one swipeable strip.
+  final bool scrollable;
+
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      children: [
-        for (var i = 0; i < tabs.length; i++)
-          _Pill(
-            label: tabs[i],
-            selected: i == selectedIndex,
-            onTap: () => onSelect(i),
-            luma: luma,
-          ),
-      ],
-    );
+    final pills = [
+      for (var i = 0; i < tabs.length; i++)
+        _Pill(
+          label: tabs[i],
+          selected: i == selectedIndex,
+          onTap: () => onSelect(i),
+          luma: luma,
+        ),
+    ];
+    if (scrollable) {
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            for (var i = 0; i < pills.length; i++) ...[
+              if (i > 0) const SizedBox(width: 6),
+              pills[i],
+            ],
+          ],
+        ),
+      );
+    }
+    return Wrap(spacing: 6, runSpacing: 6, children: pills);
   }
 }
 

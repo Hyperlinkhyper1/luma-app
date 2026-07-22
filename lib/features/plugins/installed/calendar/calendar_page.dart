@@ -223,60 +223,114 @@ class _Toolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: luma.border)),
-      ),
-      child: Wrap(
-        spacing: 12,
-        runSpacing: 12,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        alignment: WrapAlignment.spaceBetween,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _RoundIconButton(icon: Icons.chevron_left_rounded, onTap: onPrev),
-              const SizedBox(width: 4),
-              _RoundIconButton(
-                  icon: Icons.chevron_right_rounded, onTap: onNext),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: 204,
-                child: Text(
-                  monthLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: luma.textPrimary,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.3,
-                  ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // The full desktop toolbar packs a 200px-wide title, a 220px search
+        // box and three labelled buttons into one row; on a phone that runs
+        // straight off the right edge (the buttons end up out of bounds).
+        // Below this width it becomes a two-row layout where the search box
+        // flexes to the available space instead.
+        final narrow = constraints.maxWidth < 620;
+        final decoration = BoxDecoration(
+          border: Border(bottom: BorderSide(color: luma.border)),
+        );
+        if (narrow) {
+          return Container(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+            decoration: decoration,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    _RoundIconButton(
+                        icon: Icons.chevron_left_rounded, onTap: onPrev),
+                    const SizedBox(width: 4),
+                    _RoundIconButton(
+                        icon: Icons.chevron_right_rounded, onTap: onNext),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        monthLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: luma.textPrimary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    _ViewMenuButton(view: view, onView: onView),
+                    const SizedBox(width: 4),
+                    _RoundIconButton(icon: Icons.today_rounded, onTap: onToday),
+                    const SizedBox(width: 4),
+                    _RoundIconButton(icon: Icons.add_rounded, onTap: onNew),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 6),
-              LumaGhostButton(
-                  label: 'Today', icon: Icons.today_rounded, onTap: onToday),
-            ],
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
+                const SizedBox(height: 10),
+                _SearchField(search, onSearch),
+              ],
+            ),
+          );
+        }
+        return Container(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
+          decoration: decoration,
+          child: Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            alignment: WrapAlignment.spaceBetween,
             children: [
-              SizedBox(width: 220, child: _SearchField(search, onSearch)),
-              const SizedBox(width: 12),
-              _ViewMenuButton(view: view, onView: onView),
-              const SizedBox(width: 12),
-              LumaPrimaryButton(
-                label: 'New event',
-                icon: Icons.add_rounded,
-                onTap: onNew,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _RoundIconButton(
+                      icon: Icons.chevron_left_rounded, onTap: onPrev),
+                  const SizedBox(width: 4),
+                  _RoundIconButton(
+                      icon: Icons.chevron_right_rounded, onTap: onNext),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: 204,
+                    child: Text(
+                      monthLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: luma.textPrimary,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  LumaGhostButton(
+                      label: 'Today', icon: Icons.today_rounded, onTap: onToday),
+                ],
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(width: 220, child: _SearchField(search, onSearch)),
+                  const SizedBox(width: 12),
+                  _ViewMenuButton(view: view, onView: onView),
+                  const SizedBox(width: 12),
+                  LumaPrimaryButton(
+                    label: 'New event',
+                    icon: Icons.add_rounded,
+                    onTap: onNew,
+                  ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
