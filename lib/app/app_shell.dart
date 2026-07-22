@@ -32,6 +32,7 @@ import '../features/plugins/installed/usage/usage_page.dart';
 import '../features/plugins/installed/wifi_speed_test/wifi_speed_test_page.dart';
 import '../features/plugins/installed/youtube_downloader/youtube_downloader_page.dart';
 import '../features/plugins/installed/recipe_book/recipe_book_page.dart';
+import '../features/plugins/installed/recipes/recipes_page.dart';
 import '../features/plugins/plugin_repository.dart';
 import '../features/plugins/plugin_scope.dart';
 import '../features/plugins/plugins_page.dart';
@@ -318,6 +319,7 @@ class _AppShellState extends State<AppShell> {
         'minecraft-launcher' => const MinecraftLauncherPage(),
         'secure-chat' => const SecureChatPage(),
         'recipe-book' => const RecipeBookPage(),
+        'recipes' => const RecipesPage(),
         _ => LumaEmptyState(
             icon: Icons.extension_off_rounded,
             title: t.shellPluginUnavailable,
