@@ -42,6 +42,23 @@ Future<void> checkAndPromptForUpdate(
     return;
   }
 
+  // A newer version exists but the installer for this platform isn't attached
+  // to the release yet (its build job is still running or failed). Say so —
+  // don't fall through to the install flow with no file to download.
+  if (!info.assetReady) {
+    if (announceIfUpToDate) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'luma ${info.version} is available, but its download is still '
+            'being prepared. Try again in a few minutes.',
+          ),
+        ),
+      );
+    }
+    return;
+  }
+
   final wantsUpdate = await showDialog<bool>(
     context: context,
     barrierDismissible: true,
@@ -205,11 +222,14 @@ Future<void> _runInstall(
   }
 
   // Reaching here means either the download or the installer hand-off
-  // failed — see update.log (next to the app databases, in the app support
-  // directory) for the underlying exception.
+  // failed — surface the specific reason (also logged to update.log, next to
+  // the app databases) instead of a generic "try again".
   if (context.mounted) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Update failed. Please try again later.')),
+      SnackBar(
+        content: Text(service.lastError ?? 'Update failed. Please try again later.'),
+        duration: const Duration(seconds: 6),
+      ),
     );
   }
 }

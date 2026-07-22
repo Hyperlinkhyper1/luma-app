@@ -68,9 +68,25 @@ class _UpdatingScreenState extends State<UpdatingScreen>
 
   static const _holdCap = 0.94;
 
+  // How far the time-based creep is allowed to advance the bar *before* any
+  // real byte progress arrives. Kept well below [_holdCap] so the upper range
+  // is reserved for the actual download — otherwise a slow connection lets the
+  // creep reach the cap and the bar looks stuck near "done" before a single
+  // byte has landed.
+  static const _preRealCap = 0.55;
+
   bool _timelineDone = false;
   bool _downloadOk = false;
   bool _finishing = false;
+
+  // Set once the real download reports any byte progress. After that the bar
+  // tracks the actual download instead of the time-based creep — otherwise a
+  // large or slow download parks the bar at [_holdCap] the moment the 6s
+  // timeline finishes and looks frozen there for the whole download.
+  bool _sawRealProgress = false;
+  // Highest fraction shown so far, so the bar never visibly jumps backwards
+  // when handing over from the time creep to real byte progress.
+  double _shownFloor = 0;
 
   static const _stages = <_Stage>[
     _Stage(0.00, 'Downloading update'),
@@ -109,7 +125,10 @@ class _UpdatingScreenState extends State<UpdatingScreen>
     widget.progress.addListener(_onProgress);
   }
 
-  void _onProgress() => setState(() {});
+  void _onProgress() {
+    if (widget.progress.value > 0) _sawRealProgress = true;
+    setState(() {});
+  }
 
   Future<void> _tryFinish() async {
     if (!_downloadOk || !_timelineDone || _finishing) return;
@@ -135,10 +154,15 @@ class _UpdatingScreenState extends State<UpdatingScreen>
     if (_finishing) {
       return _holdCap + (1 - _holdCap) * _finish.value;
     }
-    final timeCapped = (_timeline.value * _holdCap).clamp(0.0, _holdCap);
-    final real = widget.progress.value;
-    final realCapped = real > 0 ? math.min(real, _holdCap) : 0.0;
-    return math.max(timeCapped, realCapped);
+    // Once real byte progress is flowing, map it onto 0..holdCap and let it
+    // drive the bar; until then, creep along the minimum-visible-time
+    // timeline. Clamp to a monotonic floor so the switch-over never jumps
+    // backwards.
+    final target = _sawRealProgress
+        ? math.min(widget.progress.value, 1.0) * _holdCap
+        : _timeline.value * _preRealCap;
+    _shownFloor = math.max(_shownFloor, target).clamp(0.0, _holdCap);
+    return _shownFloor;
   }
 
   String get _status {
