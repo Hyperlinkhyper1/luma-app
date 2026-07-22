@@ -68,6 +68,13 @@ class _AppShellState extends State<AppShell> {
   // priority over [_selectedIndex].
   String? _selectedPluginId;
 
+  // Where the system/hardware Back button walks to. Every navigation records
+  // the screen it left, so Back retraces those steps in-app instead of
+  // popping the root route (which, on Android, quits the whole app the moment
+  // you're anywhere but the start screen — and then a fresh launch has to
+  // crawl through the boot/loading screen again).
+  final List<_NavEntry> _history = [];
+
   static List<String> _titles(L t) => [
         t.navHome,
         t.navFileConverter,
@@ -85,14 +92,47 @@ class _AppShellState extends State<AppShell> {
   // the live truth regardless of this dismissal.
   bool _storageBannerDismissed = false;
 
-  void _selectFixed(int i) => setState(() {
-        _selectedIndex = i;
-        _selectedPluginId = null;
-      });
+  _NavEntry get _currentEntry => _NavEntry(_selectedIndex, _selectedPluginId);
 
-  void _selectPlugin(String id) => setState(() => _selectedPluginId = id);
+  // Record the screen we're leaving so Back can return to it. Consecutive
+  // duplicates are collapsed so tapping the same tab twice doesn't stack.
+  void _pushHistory() {
+    final cur = _currentEntry;
+    if (_history.isEmpty || _history.last != cur) _history.add(cur);
+  }
 
-  void _closePlugin() => setState(() => _selectedPluginId = null);
+  void _selectFixed(int i) {
+    if (_selectedIndex == i && _selectedPluginId == null) return;
+    setState(() {
+      _pushHistory();
+      _selectedIndex = i;
+      _selectedPluginId = null;
+    });
+  }
+
+  void _selectPlugin(String id) {
+    if (_selectedPluginId == id) return;
+    setState(() {
+      _pushHistory();
+      _selectedPluginId = id;
+    });
+  }
+
+  // Returns true if it consumed the Back gesture by moving within the app.
+  bool _goBack() {
+    if (_history.isEmpty) return false;
+    final prev = _history.removeLast();
+    setState(() {
+      _selectedIndex = prev.index;
+      _selectedPluginId = prev.pluginId;
+    });
+    return true;
+  }
+
+  void _closePlugin() {
+    if (_goBack()) return;
+    setState(() => _selectedPluginId = null);
+  }
 
   // Plugins whose own content is the whole point of the screen (full-map or
   // full-canvas games): on phone, the top title bar and bottom nav just eat
@@ -227,12 +267,19 @@ class _AppShellState extends State<AppShell> {
               : null,
         );
 
-        if (!immersive) return scaffold;
-
+        // Only the very first screen (nothing recorded to go back to, no
+        // plugin open) lets the pop through to the OS, which then exits the
+        // app. Everywhere else, Back retraces our own navigation history.
+        final canExit = _history.isEmpty && _selectedPluginId == null;
         return PopScope(
-          canPop: false,
+          canPop: canExit,
           onPopInvokedWithResult: (didPop, _) {
-            if (!didPop) _closePlugin();
+            if (didPop) return;
+            if (_selectedPluginId != null) {
+              _closePlugin();
+              return;
+            }
+            _goBack();
           },
           child: scaffold,
         );
@@ -276,6 +323,21 @@ class _AppShellState extends State<AppShell> {
             title: t.shellPluginUnavailable,
           ),
       };
+}
+
+/// A single step in [_AppShellState._history]: the fixed-section index (null
+/// means the configured start screen) and any plugin that was open.
+class _NavEntry {
+  const _NavEntry(this.index, this.pluginId);
+  final int? index;
+  final String? pluginId;
+
+  @override
+  bool operator ==(Object other) =>
+      other is _NavEntry && other.index == index && other.pluginId == pluginId;
+
+  @override
+  int get hashCode => Object.hash(index, pluginId);
 }
 
 /// Floating exit affordance for immersive phone plugins (see
