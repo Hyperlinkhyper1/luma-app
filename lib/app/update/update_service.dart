@@ -15,6 +15,7 @@ class UpdateInfo {
     required this.notes,
     required this.downloadUrl,
     required this.assetName,
+    this.assetReady = true,
   });
 
   final String version;
@@ -22,6 +23,13 @@ class UpdateInfo {
   final String notes;
   final String downloadUrl;
   final String assetName;
+
+  /// False when a newer release exists but the installer/APK for this
+  /// platform hasn't been attached to it yet — the release is published but
+  /// its per-platform build job is still running (or failed). Callers must
+  /// treat this as "a newer version exists but can't be installed right now",
+  /// which is very different from "you're already up to date".
+  final bool assetReady;
 }
 
 /// Checks GitHub Releases for a newer build and downloads the right asset for
@@ -42,6 +50,12 @@ class UpdateService {
   final http.Client _client;
 
   static const _apiBase = 'https://api.github.com';
+
+  /// A short, human-readable reason the last download/install attempt failed,
+  /// surfaced to the user instead of a generic "try again" so a persistent
+  /// problem (no network, blocked install source, …) is actionable. Null
+  /// until something fails.
+  String? lastError;
 
   /// Returns update details if the latest published release is newer than the
   /// running build, otherwise null. Never throws — network/parse failures just
@@ -68,6 +82,9 @@ class UpdateService {
       if (tag.isEmpty) return null;
       if (AppVersion.compare(tag, AppVersion.current) <= 0) return null;
 
+      final version = tag.replaceFirst(RegExp(r'^[vV]'), '');
+      final notes = (json['body'] as String?)?.trim() ?? '';
+
       final suffix = Platform.isAndroid ? '.apk' : 'setup.exe';
       final assets = (json['assets'] as List?) ?? const [];
       Map<String, dynamic>? installerAsset;
@@ -78,12 +95,25 @@ class UpdateService {
           break;
         }
       }
-      if (installerAsset == null) return null;
+      // A newer release exists but its installer for this platform isn't
+      // attached yet (the build job is still running or failed). Report it as
+      // "not ready" rather than null, so the UI doesn't wrongly claim the app
+      // is already up to date when it plainly isn't.
+      if (installerAsset == null) {
+        return UpdateInfo(
+          version: version,
+          tagName: tag,
+          notes: notes,
+          downloadUrl: '',
+          assetName: '',
+          assetReady: false,
+        );
+      }
 
       return UpdateInfo(
-        version: tag.replaceFirst(RegExp(r'^[vV]'), ''),
+        version: version,
         tagName: tag,
-        notes: (json['body'] as String?)?.trim() ?? '',
+        notes: notes,
         downloadUrl: installerAsset['browser_download_url'] as String,
         assetName: installerAsset['name'] as String,
       );
@@ -121,12 +151,19 @@ class UpdateService {
     void Function(double progress)? onProgress,
   }) async {
     try {
-      final installerPath = '${Directory.systemTemp.path}/${info.assetName}';
+      // Use the app's own temp directory rather than [Directory.systemTemp]:
+      // on Android the system installer is handed the file through
+      // open_file's FileProvider, which only exposes app-owned paths (cache /
+      // files dirs). A raw systemTemp path there can't be shared and the
+      // hand-off fails with a permission error.
+      final dir = await getTemporaryDirectory();
+      final installerPath = '${dir.path}/${info.assetName}';
       final bytes = await _download(info.downloadUrl, onProgress);
       if (bytes == null) return null;
       await File(installerPath).writeAsBytes(bytes);
       return installerPath;
     } catch (e, st) {
+      lastError = 'Download failed: $e';
       await _logError('downloadInstaller', e, st);
       return null;
     }
@@ -146,6 +183,13 @@ class UpdateService {
           installerPath,
           type: 'application/vnd.android.package-archive',
         );
+        if (result.type != ResultType.done) {
+          lastError = result.type == ResultType.permissionDenied
+              ? 'Android blocked the install — allow "Install unknown apps" '
+                  'for luma in system settings, then try again.'
+              : 'Could not open the installer: ${result.message}';
+          await _logError('launchInstaller', lastError!);
+        }
         return result.type == ResultType.done;
       }
 
@@ -159,6 +203,7 @@ class UpdateService {
       );
       return true;
     } catch (e, st) {
+      lastError = 'Could not start the installer: $e';
       await _logError('launchInstaller', e, st);
       return false;
     }
@@ -171,6 +216,7 @@ class UpdateService {
     final req = http.Request('GET', Uri.parse(url));
     final res = await _client.send(req).timeout(const Duration(seconds: 15));
     if (res.statusCode != 200) {
+      lastError = 'Server returned HTTP ${res.statusCode} for the installer.';
       await _logError('download', 'HTTP ${res.statusCode} for $url');
       return null;
     }

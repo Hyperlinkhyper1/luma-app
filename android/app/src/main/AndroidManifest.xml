@@ -66,5 +66,15 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- Lets the in-app updater resolve and launch the system package
+             installer on Android 11+ (package-visibility rules hide it
+             otherwise, so handing off the downloaded APK would fail). -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:mimeType="application/vnd.android.package-archive"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.INSTALL_PACKAGE"/>
+        </intent>
     </queries>
 </manifest>
