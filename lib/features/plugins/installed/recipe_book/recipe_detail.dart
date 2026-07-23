@@ -6,16 +6,16 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/widgets.dart';
 import '../../../../theme/luma_theme.dart';
-import 'recipes_editor.dart';
-import 'recipes_models.dart';
-import 'recipes_repository.dart';
-import 'recipes_widgets.dart';
+import 'recipe_editor.dart';
+import 'recipe_models.dart';
+import 'recipe_book_controller.dart';
+import 'recipe_widgets.dart';
 
 // ---- Entry points ----------------------------------------------------------
 
 Future<void> showLocalRecipeDetail(
   BuildContext context,
-  RecipesController controller,
+  RecipeBookController controller,
   LocalRecipe recipe,
 ) {
   return showDialog<void>(
@@ -27,7 +27,7 @@ Future<void> showLocalRecipeDetail(
 
 Future<void> showPublicRecipeDetail(
   BuildContext context,
-  RecipesController controller,
+  RecipeBookController controller,
   PublicRecipe recipe,
 ) {
   return showDialog<void>(
@@ -41,7 +41,7 @@ Future<void> showPublicRecipeDetail(
 
 class _LocalRecipeDetail extends StatefulWidget {
   const _LocalRecipeDetail({required this.controller, required this.recipe});
-  final RecipesController controller;
+  final RecipeBookController controller;
   final LocalRecipe recipe;
 
   @override
@@ -128,7 +128,7 @@ class _LocalRecipeDetailState extends State<_LocalRecipeDetail> {
 
 class _PublicRecipeDetail extends StatefulWidget {
   const _PublicRecipeDetail({required this.controller, required this.initial});
-  final RecipesController controller;
+  final RecipeBookController controller;
   final PublicRecipe initial;
 
   @override
@@ -276,7 +276,7 @@ class _PublicRecipeDetailState extends State<_PublicRecipeDetail> {
 
 class _ReviewComposer extends StatefulWidget {
   const _ReviewComposer({required this.controller, required this.recipe});
-  final RecipesController controller;
+  final RecipeBookController controller;
   final PublicRecipe recipe;
 
   @override
@@ -451,7 +451,7 @@ class _ReviewTile extends StatelessWidget {
     required this.review,
     required this.category,
   });
-  final RecipesController controller;
+  final RecipeBookController controller;
   final RecipeReview review;
   final String category;
 
@@ -748,7 +748,7 @@ Widget _circleButton(IconData icon, VoidCallback onTap) => MouseRegion(
       ),
     );
 
-Future<void> _openPhoto(BuildContext context, RecipesController controller,
+Future<void> _openPhoto(BuildContext context, RecipeBookController controller,
     String photoId, String category) {
   return showDialog<void>(
     context: context,

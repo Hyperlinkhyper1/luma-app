@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
-import '../recipes_models.dart';
+import '../recipe_models.dart';
 
 /// Raised for every non-successful server response from the recipe endpoints,
 /// mirroring [ChatApiException] in the chat plugin.

@@ -233,22 +233,12 @@
     {
       "id": "recipe-book",
       "name": "Recipe Book",
-      "description": "Store and organise all your recipes in one place. Add ingredients, step-by-step instructions, prep and cook times, and scale servings on the fly.",
-      "icon": "menu_book",
-      "category": "Productivity",
-      "tags": ["Productivity", "Food"],
-      "free": true,
-      "version": "1.0.0"
-    },
-    {
-      "id": "recipes",
-      "name": "Recipes",
-      "description": "A photo-forward recipe collection with three tabs — Favourites, Public and Private. Keep your own recipes private, or publish them to a shared catalogue where every luma user can browse, upload photos, rate with stars and leave reviews. Public recipes sync through your account. Inspired by FamilyWall's recipe wall.",
+      "description": "A photo-forward recipe collection with three tabs — Favourites, Public and Private. Add ingredients, step-by-step instructions, prep and cook times, and scale servings on the fly. Keep recipes private, or publish them to a shared catalogue where every luma user can browse, upload photos, rate with stars and leave reviews. Public recipes sync through your account.",
       "icon": "restaurant_menu",
-      "category": "Social",
-      "tags": ["Social", "Food", "Sync"],
+      "category": "Productivity",
+      "tags": ["Productivity", "Food", "Social", "Sync"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.1.0"
     }
   ]
 }

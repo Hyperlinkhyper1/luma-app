@@ -89,15 +89,14 @@ Wi-Fi Speed Test
 **Productivity** — Errand Manager (recurring chore checklist) · Bulletin
 Board (freeform corkboard) · Calendar (month view, repeat rules, reminders)
 · Data Management (custom datasets + charts) · Mood Journal · School
-(homework, flashcards, GPA calculator, timetable, and more)
+(homework, flashcards, GPA calculator, timetable, and more) · Recipe Book
+(Favourites/Public/Private tabs — keep recipes private or publish them to a
+shared catalogue others can rate, review and add photos to)
 
 **Games** — Server Hosting Tycoon · Subway Builder (real-world transit
 simulator on a live 3D map) · Space Colony · City Planner
 
-**Social** — Chat (end-to-end encrypted messaging between luma users) ·
-Recipes (a photo-forward recipe collection with Favourites/Public/Private tabs
-— publish recipes to a shared catalogue others can rate, review and add photos
-to)
+**Social** — Chat (end-to-end encrypted messaging between luma users)
 
 **Shopping** — Groceries List (Nova plan exclusive — compare prices across
 Dutch supermarkets)
