@@ -292,8 +292,9 @@ class RecipeBookController extends ChangeNotifier {
     Uint8List? processed;
     String? photoPath;
     if (photoBytes != null) {
-      processed = await compute(_processImage, photoBytes);
-      photoPath = await _writePhotoFile(id, processed);
+      final p = await compute(_processImage, photoBytes);
+      processed = p;
+      photoPath = await _writePhotoFile(id, p);
     }
 
     final now = DateTime.now();
@@ -349,8 +350,9 @@ class RecipeBookController extends ChangeNotifier {
       await _deletePhotoFile(recipe.photoPath);
       newPhotoPath = null;
     } else if (photoBytes != null) {
-      processed = await compute(_processImage, photoBytes);
-      newPhotoPath = await _writePhotoFile(id, processed);
+      final p = await compute(_processImage, photoBytes);
+      processed = p;
+      newPhotoPath = await _writePhotoFile(id, p);
     }
 
     recipe = recipe.copyWith(
