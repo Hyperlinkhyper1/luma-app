@@ -47,28 +47,26 @@ class _RecipeBookPageState extends State<RecipeBookPage> {
             children: [
               _header(controller),
               const SizedBox(height: 14),
-              if (_tab != 3) ...[
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      for (final cat in _kFilterCategories)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: _CategoryChip(
-                            label: cat,
-                            selected: _category == cat,
-                            color: cat == 'All'
-                                ? luma.accent
-                                : recipeCategoryColor(cat, luma),
-                            onTap: () => setState(() => _category = cat),
-                          ),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    for (final cat in _kFilterCategories)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: _CategoryChip(
+                          label: cat,
+                          selected: _category == cat,
+                          color: cat == 'All'
+                              ? luma.accent
+                              : recipeCategoryColor(cat, luma),
+                          onTap: () => setState(() => _category = cat),
                         ),
-                    ],
-                  ),
+                      ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-              ],
+              ),
+              const SizedBox(height: 16),
               Expanded(
                 child: AnimatedBuilder(
                   animation: controller,
@@ -76,6 +74,17 @@ class _RecipeBookPageState extends State<RecipeBookPage> {
                 ),
               ),
             ],
+          ),
+        ),
+        Positioned(
+          left: 24,
+          bottom: 24,
+          child: AnimatedBuilder(
+            animation: controller,
+            builder: (context, _) => _PlannerButton(
+              count: controller.plannedCount,
+              onTap: () => showRecipePlanner(context, controller),
+            ),
           ),
         ),
         Positioned(
@@ -97,29 +106,25 @@ class _RecipeBookPageState extends State<RecipeBookPage> {
           'Favourites${controller.favouriteCount > 0 ? ' (${controller.favouriteCount})' : ''}',
           'Public',
           'Private',
-          'Planner',
         ];
-        final isPlanner = _tab == 3;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (!isPlanner) ...[
-              Row(
-                children: [
-                  Expanded(
-                      child: _SearchBar(
-                          onChanged: (v) => setState(() => _search = v))),
-                  if (_tab == 1) ...[
-                    const SizedBox(width: 12),
-                    _RefreshButton(
-                      loading: controller.loadingPublic,
-                      onTap: () => controller.refreshPublic(),
-                    ),
-                  ],
+            Row(
+              children: [
+                Expanded(
+                    child: _SearchBar(
+                        onChanged: (v) => setState(() => _search = v))),
+                if (_tab == 1) ...[
+                  const SizedBox(width: 12),
+                  _RefreshButton(
+                    loading: controller.loadingPublic,
+                    onTap: () => controller.refreshPublic(),
+                  ),
                 ],
-              ),
-              const SizedBox(height: 12),
-            ],
+              ],
+            ),
+            const SizedBox(height: 12),
             LumaSegmentedTabs(
               tabs: tabs,
               selectedIndex: _tab,
@@ -135,7 +140,6 @@ class _RecipeBookPageState extends State<RecipeBookPage> {
       switch (_tab) {
         0 => _favouritesTab(controller),
         1 => _publicTab(controller, luma),
-        3 => RecipePlannerView(controller: controller),
         _ => _privateTab(controller),
       };
 
@@ -618,6 +622,77 @@ class _CategoryChipState extends State<_CategoryChip> {
               fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PlannerButton extends StatefulWidget {
+  const _PlannerButton({required this.count, required this.onTap});
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  State<_PlannerButton> createState() => _PlannerButtonState();
+}
+
+class _PlannerButtonState extends State<_PlannerButton> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          height: 56,
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          decoration: BoxDecoration(
+            color: _hovering ? luma.surfaceHover : luma.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: luma.border),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.18),
+                blurRadius: 14,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.event_note_rounded, color: luma.accent, size: 22),
+              const SizedBox(width: 10),
+              Text('Planner',
+                  style: TextStyle(
+                      color: luma.textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700)),
+              if (widget.count > 0) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: luma.accentSubtle,
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Text('${widget.count}',
+                      style: TextStyle(
+                          color: luma.accent,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800)),
+                ),
+              ],
+            ],
           ),
         ),
       ),
