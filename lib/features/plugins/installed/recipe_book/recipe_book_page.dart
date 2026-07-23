@@ -7,6 +7,7 @@ import 'recipe_editor.dart';
 import 'recipe_models.dart';
 import 'recipe_book_controller.dart';
 import 'recipe_book_scope.dart';
+import 'recipe_planner.dart';
 import 'recipe_widgets.dart';
 
 const _kFilterCategories = ['All', ...kRecipeCategories];
@@ -73,6 +74,17 @@ class _RecipeBookPageState extends State<RecipeBookPage> {
                 ),
               ),
             ],
+          ),
+        ),
+        Positioned(
+          left: 24,
+          bottom: 24,
+          child: AnimatedBuilder(
+            animation: controller,
+            builder: (context, _) => _PlannerButton(
+              count: controller.plannedCount,
+              onTap: () => showRecipePlanner(context, controller),
+            ),
           ),
         ),
         Positioned(
@@ -607,6 +619,77 @@ class _CategoryChipState extends State<_CategoryChip> {
               fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PlannerButton extends StatefulWidget {
+  const _PlannerButton({required this.count, required this.onTap});
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  State<_PlannerButton> createState() => _PlannerButtonState();
+}
+
+class _PlannerButtonState extends State<_PlannerButton> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          height: 56,
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          decoration: BoxDecoration(
+            color: _hovering ? luma.surfaceHover : luma.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: luma.border),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.18),
+                blurRadius: 14,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.event_note_rounded, color: luma.accent, size: 22),
+              const SizedBox(width: 10),
+              Text('Planner',
+                  style: TextStyle(
+                      color: luma.textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700)),
+              if (widget.count > 0) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: luma.accentSubtle,
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Text('${widget.count}',
+                      style: TextStyle(
+                          color: luma.accent,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800)),
+                ),
+              ],
+            ],
           ),
         ),
       ),
