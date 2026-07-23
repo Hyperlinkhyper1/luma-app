@@ -19,73 +19,35 @@ const _kWeekdayNames = [
 
 String _weekdayShort(int weekday) => _kWeekdayNames[weekday].substring(0, 3);
 
-Future<void> showRecipePlanner(
-    BuildContext context, RecipeBookController controller) {
-  return showDialog<void>(
-    context: context,
-    barrierColor: Colors.black.withValues(alpha: 0.5),
-    builder: (_) => _PlannerDialog(controller: controller),
-  );
-}
-
-class _PlannerDialog extends StatelessWidget {
-  const _PlannerDialog({required this.controller});
+/// The meal planner rendered inline as a page tab (no dialog chrome). The user
+/// sets which weekday the week starts on and adds recipes into each day.
+class RecipePlannerView extends StatelessWidget {
+  const RecipePlannerView({super.key, required this.controller});
   final RecipeBookController controller;
 
   @override
   Widget build(BuildContext context) {
-    final luma = context.luma;
-    return Dialog(
-      backgroundColor: luma.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: luma.border),
-      ),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 560, maxHeight: 780),
-        child: AnimatedBuilder(
-          animation: controller,
-          builder: (context, _) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 22, 16, 0),
-                  child: Row(
-                    children: [
-                      Icon(Icons.event_note_rounded, color: luma.accent, size: 22),
-                      const SizedBox(width: 10),
-                      Text('Meal planner',
-                          style: TextStyle(
-                              color: luma.textPrimary,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800)),
-                      const Spacer(),
-                      IconButton(
-                        icon: Icon(Icons.close_rounded, color: luma.textMuted),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
-                  child: _weekStartRow(context, luma),
-                ),
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                    children: [
-                      for (final weekday in controller.orderedWeekdays)
-                        _DayCard(controller: controller, weekday: weekday),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        final luma = context.luma;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _weekStartRow(context, luma),
+            const SizedBox(height: 14),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.only(bottom: 96),
+                children: [
+                  for (final weekday in controller.orderedWeekdays)
+                    _DayCard(controller: controller, weekday: weekday),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
