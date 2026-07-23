@@ -17,7 +17,18 @@ const _kWeekdayNames = [
   'Sunday',
 ];
 
+const _kMonthsShort = [
+  '', // 1-based
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
 String _weekdayShort(int weekday) => _kWeekdayNames[weekday].substring(0, 3);
+
+String _formatDate(DateTime d) => '${d.day} ${_kMonthsShort[d.month]}';
+
+bool _isSameDay(DateTime a, DateTime b) =>
+    a.year == b.year && a.month == b.month && a.day == b.day;
 
 /// Opens the meal planner as its own full screen (more room than a popup).
 Future<void> showRecipePlanner(
@@ -76,20 +87,29 @@ class RecipePlannerView extends StatelessWidget {
       animation: controller,
       builder: (context, _) {
         final luma = context.luma;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        // Dates for the current week, so each recurring weekday shows the
+        // concrete day it maps to right now.
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        final offset = (today.weekday - controller.weekStartsOn + 7) % 7;
+        final weekStart = today.subtract(Duration(days: offset));
+        final weekdays = controller.orderedWeekdays;
+        // Everything lives in one scroll view so the whole week is reachable.
+        return ListView(
+          padding: const EdgeInsets.only(bottom: 32),
           children: [
             _weekStartRow(context, luma),
             const SizedBox(height: 14),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.only(bottom: 96),
-                children: [
-                  for (final weekday in controller.orderedWeekdays)
-                    _DayCard(controller: controller, weekday: weekday),
-                ],
+            for (var i = 0; i < weekdays.length; i++)
+              _DayCard(
+                controller: controller,
+                weekday: weekdays[i],
+                date: DateTime(
+                    weekStart.year, weekStart.month, weekStart.day + i),
+                isToday: _isSameDay(
+                    DateTime(weekStart.year, weekStart.month, weekStart.day + i),
+                    today),
               ),
-            ),
           ],
         );
       },
@@ -151,9 +171,16 @@ class RecipePlannerView extends StatelessWidget {
 }
 
 class _DayCard extends StatelessWidget {
-  const _DayCard({required this.controller, required this.weekday});
+  const _DayCard({
+    required this.controller,
+    required this.weekday,
+    required this.date,
+    required this.isToday,
+  });
   final RecipeBookController controller;
   final int weekday;
+  final DateTime date;
+  final bool isToday;
 
   @override
   Widget build(BuildContext context) {
@@ -165,7 +192,7 @@ class _DayCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: luma.background,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: luma.border),
+        border: Border.all(color: isToday ? luma.accent : luma.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -189,11 +216,40 @@ class _DayCard extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(_kWeekdayNames[weekday],
-                    style: TextStyle(
-                        color: luma.textPrimary,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(_kWeekdayNames[weekday],
+                            style: TextStyle(
+                                color: luma.textPrimary,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700)),
+                        if (isToday) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: luma.accentSubtle,
+                              borderRadius: BorderRadius.circular(7),
+                            ),
+                            child: Text('Today',
+                                style: TextStyle(
+                                    color: luma.accent,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800)),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(_formatDate(date),
+                        style:
+                            TextStyle(color: luma.textMuted, fontSize: 12)),
+                  ],
+                ),
               ),
               _addButton(context),
             ],
