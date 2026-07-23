@@ -1,24 +1,17 @@
 import 'package:flutter/widgets.dart';
 
-import 'recipe_book_repository.dart';
+import 'recipe_book_controller.dart';
 
-class RecipeBookScope extends InheritedWidget {
+class RecipeBookScope extends InheritedNotifier<RecipeBookController> {
   const RecipeBookScope({
     super.key,
-    required this.repository,
+    required RecipeBookController controller,
     required super.child,
-  });
+  }) : super(notifier: controller);
 
-  final RecipeBookRepository repository;
-
-  static RecipeBookRepository of(BuildContext context) {
-    final scope =
-        context.dependOnInheritedWidgetOfExactType<RecipeBookScope>();
+  static RecipeBookController of(BuildContext context) {
+    final scope = context.dependOnInheritedWidgetOfExactType<RecipeBookScope>();
     assert(scope != null, 'RecipeBookScope was not found in the widget tree');
-    return scope!.repository;
+    return scope!.notifier!;
   }
-
-  @override
-  bool updateShouldNotify(RecipeBookScope oldWidget) =>
-      oldWidget.repository != repository;
 }

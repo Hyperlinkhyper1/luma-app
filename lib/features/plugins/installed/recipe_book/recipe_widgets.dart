@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../theme/luma_theme.dart';
-import 'recipes_models.dart';
-import 'recipes_repository.dart';
+import 'recipe_models.dart';
+import 'recipe_book_controller.dart';
 
 const kStarColor = Color(0xFFF5B942);
 
@@ -159,7 +159,7 @@ class RemoteRecipeImage extends StatefulWidget {
     this.iconSize = 40,
   });
 
-  final RecipesController controller;
+  final RecipeBookController controller;
   final String? photoId;
   final String category;
   final double iconSize;
