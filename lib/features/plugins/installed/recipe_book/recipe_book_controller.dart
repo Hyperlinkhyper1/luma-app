@@ -9,8 +9,9 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../../../storage/storage_guard.dart';
 import '../../../../sync/sync_service.dart';
-import 'data/recipes_api.dart';
-import 'recipes_models.dart';
+import 'data/recipe_api.dart';
+import 'data/recipe_book_database.dart';
+import 'recipe_models.dart';
 
 /// Downscales an arbitrary image to a web-friendly JPEG. Runs in an isolate
 /// (via [compute]) so decoding a large photo never janks the UI. Longest side
@@ -28,16 +29,23 @@ Uint8List _processImage(Uint8List raw) {
   return Uint8List.fromList(img.encodeJpg(out, quality: 82));
 }
 
-/// Orchestrates the Recipes plugin. Local ("Private") recipes and the set of
-/// favourited items live in a single local-first JSON file; the shared
+/// Orchestrates the Recipe Book plugin. Local ("Private") recipes and the set
+/// of favourited items live in a single local-first JSON file; the shared
 /// ("Public") catalogue, its reviews and photos are fetched from — and
 /// published to — the sync server through [RecipeApi], tracking the signed-in
 /// session the same way the chat plugin does. A [ChangeNotifier] so the page
 /// rebuilds on any change.
-class RecipesController extends ChangeNotifier {
-  RecipesController(this._sync);
+///
+/// [_legacyDb] is the plugin's original drift database, read once on first run
+/// to migrate any pre-existing recipes into the new local store — see
+/// [_migrateLegacy].
+class RecipeBookController extends ChangeNotifier {
+  RecipeBookController(this._sync, this._legacyDb);
 
   final SyncService _sync;
+  final RecipeBookDatabase _legacyDb;
+
+  bool _migratedLegacy = false;
 
   // ---- Local state --------------------------------------------------------
 
@@ -190,10 +198,62 @@ class RecipesController extends ChangeNotifier {
             ..clear()
             ..addAll((raw['favoritePublicIds'] as List? ?? const [])
                 .cast<String>());
+          _migratedLegacy = raw['migratedLegacy'] as bool? ?? false;
         }
       }
     } catch (_) {}
+    if (!_migratedLegacy) {
+      await _migrateLegacy();
+      await _persist();
+    }
     notifyListeners();
+  }
+
+  /// One-time import of recipes from the plugin's original drift database into
+  /// the new local store, so upgrading users keep everything they'd saved.
+  /// Runs once (guarded by [_migratedLegacy]); failures are swallowed so a bad
+  /// legacy row can never block the plugin from opening.
+  Future<void> _migrateLegacy() async {
+    try {
+      final rows = await _legacyDb.select(_legacyDb.recipes).get();
+      final existingIds = _local.map((r) => r.id).toSet();
+      for (final row in rows) {
+        final id = 'legacy_${row.id}';
+        if (existingIds.contains(id)) continue;
+        _local.add(LocalRecipe(
+          id: id,
+          title: row.title,
+          description: row.description,
+          category: row.category,
+          servings: row.servings,
+          prepMinutes: row.prepMinutes,
+          cookMinutes: row.cookMinutes,
+          ingredients: _decodeIngredients(row.ingredients),
+          steps: _decodeSteps(row.steps),
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+        ));
+      }
+    } catch (_) {}
+    _migratedLegacy = true;
+  }
+
+  static List<RecipeIngredient> _decodeIngredients(String raw) {
+    try {
+      return (jsonDecode(raw) as List)
+          .map((e) => RecipeIngredient.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  static List<String> _decodeSteps(String raw) {
+    try {
+      return (jsonDecode(raw) as List).cast<String>();
+    } catch (_) {
+      return const [];
+    }
   }
 
   Future<void> _persist() async {
@@ -201,6 +261,7 @@ class RecipesController extends ChangeNotifier {
       final file = await _getStoreFile();
       await file.writeAsString(jsonEncode({
         'version': 1,
+        'migratedLegacy': _migratedLegacy,
         'local': _local.map((r) => r.toJson()).toList(),
         'favoritePublicIds': _favoritePublicIds.toList(),
       }));

@@ -7,13 +7,13 @@ import 'package:flutter/services.dart';
 
 import '../../../../app/widgets.dart';
 import '../../../../theme/luma_theme.dart';
-import 'recipes_models.dart';
-import 'recipes_repository.dart';
-import 'recipes_widgets.dart';
+import 'recipe_models.dart';
+import 'recipe_book_controller.dart';
+import 'recipe_widgets.dart';
 
 Future<void> showRecipeEditor(
   BuildContext context,
-  RecipesController controller, {
+  RecipeBookController controller, {
   LocalRecipe? existing,
 }) {
   return showDialog<void>(
@@ -26,7 +26,7 @@ Future<void> showRecipeEditor(
 class _RecipeEditorDialog extends StatefulWidget {
   const _RecipeEditorDialog({required this.controller, this.existing});
 
-  final RecipesController controller;
+  final RecipeBookController controller;
   final LocalRecipe? existing;
 
   @override
