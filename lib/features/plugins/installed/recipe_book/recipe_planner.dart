@@ -75,39 +75,72 @@ class _RecipePlannerScreen extends StatelessWidget {
   }
 }
 
-/// The meal planner body (week-start selector + day cards). Kept separate so
+/// The meal planner body: a navigable week (prev/next) whose days each hold
+/// their own plan, a week-start selector, and the day cards. Kept separate so
 /// it can be embedded anywhere; [showRecipePlanner] wraps it in a full screen.
-class RecipePlannerView extends StatelessWidget {
+class RecipePlannerView extends StatefulWidget {
   const RecipePlannerView({super.key, required this.controller});
   final RecipeBookController controller;
 
   @override
+  State<RecipePlannerView> createState() => _RecipePlannerViewState();
+}
+
+class _RecipePlannerViewState extends State<RecipePlannerView> {
+  late DateTime _weekStart;
+
+  RecipeBookController get _controller => widget.controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _weekStart = _weekStartContaining(DateTime.now(), _controller.weekStartsOn);
+  }
+
+  /// The start date of the week that contains [day], for a given start weekday.
+  static DateTime _weekStartContaining(DateTime day, int startsOn) {
+    final d = DateTime(day.year, day.month, day.day);
+    final offset = (d.weekday - startsOn + 7) % 7;
+    return DateTime(d.year, d.month, d.day - offset);
+  }
+
+  void _shiftWeek(int weeks) {
+    setState(() => _weekStart = DateTime(
+        _weekStart.year, _weekStart.month, _weekStart.day + weeks * 7));
+  }
+
+  void _goToThisWeek() {
+    setState(() =>
+        _weekStart = _weekStartContaining(DateTime.now(), _controller.weekStartsOn));
+  }
+
+  @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: controller,
+      animation: _controller,
       builder: (context, _) {
         final luma = context.luma;
-        // Dates for the current week, so each recurring weekday shows the
-        // concrete day it maps to right now.
         final now = DateTime.now();
         final today = DateTime(now.year, now.month, now.day);
-        final offset = (today.weekday - controller.weekStartsOn + 7) % 7;
-        final weekStart = today.subtract(Duration(days: offset));
-        final weekdays = controller.orderedWeekdays;
-        // Everything lives in one scroll view so the whole week is reachable.
+        final weekEnd =
+            DateTime(_weekStart.year, _weekStart.month, _weekStart.day + 6);
+        final showsToday =
+            !today.isBefore(_weekStart) && !today.isAfter(weekEnd);
         return ListView(
           padding: const EdgeInsets.only(bottom: 32),
           children: [
-            _weekStartRow(context, luma),
+            _weekNav(luma, weekEnd, showsToday),
+            const SizedBox(height: 10),
+            _weekStartRow(luma),
             const SizedBox(height: 14),
-            for (var i = 0; i < weekdays.length; i++)
+            for (var i = 0; i < 7; i++)
               _DayCard(
-                controller: controller,
-                weekday: weekdays[i],
+                controller: _controller,
                 date: DateTime(
-                    weekStart.year, weekStart.month, weekStart.day + i),
+                    _weekStart.year, _weekStart.month, _weekStart.day + i),
                 isToday: _isSameDay(
-                    DateTime(weekStart.year, weekStart.month, weekStart.day + i),
+                    DateTime(_weekStart.year, _weekStart.month,
+                        _weekStart.day + i),
                     today),
               ),
           ],
@@ -116,7 +149,67 @@ class RecipePlannerView extends StatelessWidget {
     );
   }
 
-  Widget _weekStartRow(BuildContext context, LumaPalette luma) {
+  Widget _weekNav(LumaPalette luma, DateTime weekEnd, bool showsToday) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+      decoration: BoxDecoration(
+        color: luma.background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: luma.border),
+      ),
+      child: Row(
+        children: [
+          _navArrow(luma, Icons.chevron_left_rounded, () => _shiftWeek(-1)),
+          Expanded(
+            child: Column(
+              children: [
+                Text(_rangeLabel(_weekStart, weekEnd),
+                    style: TextStyle(
+                        color: luma.textPrimary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800)),
+                const SizedBox(height: 2),
+                showsToday
+                    ? Text('This week',
+                        style:
+                            TextStyle(color: luma.textMuted, fontSize: 12))
+                    : GestureDetector(
+                        onTap: _goToThisWeek,
+                        child: Text('Jump to this week',
+                            style: TextStyle(
+                                color: luma.accent,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600)),
+                      ),
+              ],
+            ),
+          ),
+          _navArrow(luma, Icons.chevron_right_rounded, () => _shiftWeek(1)),
+        ],
+      ),
+    );
+  }
+
+  Widget _navArrow(LumaPalette luma, IconData icon, VoidCallback onTap) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: luma.surface,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: luma.border),
+          ),
+          child: Icon(icon, size: 22, color: luma.textSecondary),
+        ),
+      ),
+    );
+  }
+
+  Widget _weekStartRow(LumaPalette luma) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
@@ -145,7 +238,7 @@ class RecipePlannerView extends StatelessWidget {
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<int>(
-                value: controller.weekStartsOn,
+                value: _controller.weekStartsOn,
                 dropdownColor: luma.surface,
                 iconEnabledColor: luma.textMuted,
                 style: TextStyle(color: luma.textPrimary, fontSize: 13),
@@ -159,7 +252,10 @@ class RecipePlannerView extends StatelessWidget {
                     ),
                 ],
                 onChanged: (v) {
-                  if (v != null) controller.setWeekStartsOn(v);
+                  if (v == null) return;
+                  _controller.setWeekStartsOn(v);
+                  setState(() =>
+                      _weekStart = _weekStartContaining(_weekStart, v));
                 },
               ),
             ),
@@ -170,22 +266,29 @@ class RecipePlannerView extends StatelessWidget {
   }
 }
 
+String _rangeLabel(DateTime start, DateTime end) {
+  if (start.month == end.month) {
+    return '${start.day} – ${end.day} ${_kMonthsShort[end.month]}';
+  }
+  return '${_formatDate(start)} – ${_formatDate(end)}';
+}
+
 class _DayCard extends StatelessWidget {
   const _DayCard({
     required this.controller,
-    required this.weekday,
     required this.date,
     required this.isToday,
   });
   final RecipeBookController controller;
-  final int weekday;
   final DateTime date;
   final bool isToday;
+
+  int get weekday => date.weekday;
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final meals = controller.plannedFor(weekday);
+    final meals = controller.plannedForDate(date);
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
@@ -259,7 +362,7 @@ class _DayCard extends StatelessWidget {
             ...meals.map((m) => _MealRow(
                   controller: controller,
                   meal: m,
-                  onRemove: () => controller.removeFromPlan(weekday, m.id),
+                  onRemove: () => controller.removeFromPlan(date, m.id),
                 )),
           ] else ...[
             const SizedBox(height: 10),
@@ -280,9 +383,9 @@ class _DayCard extends StatelessWidget {
           final pick = await _showRecipePicker(context, controller);
           if (pick == null) return;
           if (pick.local != null) {
-            await controller.addLocalToPlan(weekday, pick.local!);
+            await controller.addLocalToPlan(date, pick.local!);
           } else if (pick.public != null) {
-            await controller.addPublicToPlan(weekday, pick.public!);
+            await controller.addPublicToPlan(date, pick.public!);
           }
         },
         child: Container(

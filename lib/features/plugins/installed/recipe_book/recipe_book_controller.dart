@@ -58,8 +58,15 @@ class RecipeBookController extends ChangeNotifier {
   /// Which weekday the planner's week begins on (DateTime.monday..sunday, 1-7).
   int _weekStartsOn = DateTime.monday;
 
-  /// Planned meals grouped by weekday (1 = Monday .. 7 = Sunday).
-  final Map<int, List<PlannedMeal>> _plan = {};
+  /// Planned meals grouped by calendar day, keyed by an ISO 'yyyy-MM-dd'
+  /// string — so each specific day of each week keeps its own plan and the
+  /// user can plan weeks ahead, not just a repeating template.
+  final Map<String, List<PlannedMeal>> _plan = {};
+
+  static String dateKey(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
 
   // ---- Server state -------------------------------------------------------
 
@@ -108,12 +115,8 @@ class RecipeBookController extends ChangeNotifier {
 
   int get weekStartsOn => _weekStartsOn;
 
-  /// The seven weekdays in display order, starting from [weekStartsOn].
-  List<int> get orderedWeekdays =>
-      List.generate(7, (i) => ((_weekStartsOn - 1 + i) % 7) + 1);
-
-  List<PlannedMeal> plannedFor(int weekday) =>
-      List.unmodifiable(_plan[weekday] ?? const []);
+  List<PlannedMeal> plannedForDate(DateTime day) =>
+      List.unmodifiable(_plan[dateKey(day)] ?? const []);
 
   int get plannedCount =>
       _plan.values.fold(0, (sum, list) => sum + list.length);
@@ -125,8 +128,8 @@ class RecipeBookController extends ChangeNotifier {
     await _persist();
   }
 
-  Future<void> addLocalToPlan(int weekday, LocalRecipe r) => _addToPlan(
-        weekday,
+  Future<void> addLocalToPlan(DateTime day, LocalRecipe r) => _addToPlan(
+        day,
         PlannedMeal(
           id: DateTime.now().microsecondsSinceEpoch.toString(),
           source: 'local',
@@ -137,8 +140,8 @@ class RecipeBookController extends ChangeNotifier {
         ),
       );
 
-  Future<void> addPublicToPlan(int weekday, PublicRecipe r) => _addToPlan(
-        weekday,
+  Future<void> addPublicToPlan(DateTime day, PublicRecipe r) => _addToPlan(
+        day,
         PlannedMeal(
           id: DateTime.now().microsecondsSinceEpoch.toString(),
           source: 'public',
@@ -149,21 +152,22 @@ class RecipeBookController extends ChangeNotifier {
         ),
       );
 
-  Future<void> _addToPlan(int weekday, PlannedMeal meal) async {
-    (_plan[weekday] ??= []).add(meal);
+  Future<void> _addToPlan(DateTime day, PlannedMeal meal) async {
+    (_plan[dateKey(day)] ??= []).add(meal);
     notifyListeners();
     await _persist();
   }
 
-  Future<void> removeFromPlan(int weekday, String mealId) async {
-    _plan[weekday]?.removeWhere((m) => m.id == mealId);
-    if (_plan[weekday]?.isEmpty ?? false) _plan.remove(weekday);
+  Future<void> removeFromPlan(DateTime day, String mealId) async {
+    final key = dateKey(day);
+    _plan[key]?.removeWhere((m) => m.id == mealId);
+    if (_plan[key]?.isEmpty ?? false) _plan.remove(key);
     notifyListeners();
     await _persist();
   }
 
-  Future<void> clearPlanDay(int weekday) async {
-    if (_plan.remove(weekday) == null) return;
+  Future<void> clearPlanDay(DateTime day) async {
+    if (_plan.remove(dateKey(day)) == null) return;
     notifyListeners();
     await _persist();
   }
@@ -277,11 +281,27 @@ class RecipeBookController extends ChangeNotifier {
           final planRaw = raw['plan'];
           if (planRaw is Map) {
             planRaw.forEach((key, value) {
-              final weekday = int.tryParse('$key');
-              if (weekday == null || value is! List) return;
-              _plan[weekday] = value
+              if (value is! List) return;
+              final meals = value
                   .map((e) => PlannedMeal.fromJson(e as Map<String, dynamic>))
                   .toList();
+              final k = '$key';
+              // New format keys are 'yyyy-MM-dd'. Migrate any old weekday-int
+              // keys (1-7) onto that weekday in the current week.
+              final oldWeekday = int.tryParse(k);
+              if (oldWeekday != null && oldWeekday >= 1 && oldWeekday <= 7) {
+                final now = DateTime.now();
+                final today = DateTime(now.year, now.month, now.day);
+                final startOffset = (today.weekday - _weekStartsOn + 7) % 7;
+                final weekStart = DateTime(
+                    today.year, today.month, today.day - startOffset);
+                final dayOffset = (oldWeekday - _weekStartsOn + 7) % 7;
+                final date = DateTime(weekStart.year, weekStart.month,
+                    weekStart.day + dayOffset);
+                _plan.putIfAbsent(dateKey(date), () => []).addAll(meals);
+              } else {
+                _plan[k] = meals;
+              }
             });
           }
         }
@@ -350,8 +370,8 @@ class RecipeBookController extends ChangeNotifier {
         'local': _local.map((r) => r.toJson()).toList(),
         'favoritePublicIds': _favoritePublicIds.toList(),
         'weekStartsOn': _weekStartsOn,
-        'plan': _plan.map((weekday, meals) =>
-            MapEntry('$weekday', meals.map((m) => m.toJson()).toList())),
+        'plan': _plan.map((key, meals) =>
+            MapEntry(key, meals.map((m) => m.toJson()).toList())),
       }));
     } catch (_) {}
   }
