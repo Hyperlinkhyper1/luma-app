@@ -19,8 +19,53 @@ const _kWeekdayNames = [
 
 String _weekdayShort(int weekday) => _kWeekdayNames[weekday].substring(0, 3);
 
-/// The meal planner rendered inline as a page tab (no dialog chrome). The user
-/// sets which weekday the week starts on and adds recipes into each day.
+/// Opens the meal planner as its own full screen (more room than a popup).
+Future<void> showRecipePlanner(
+    BuildContext context, RecipeBookController controller) {
+  return Navigator.of(context).push<void>(
+    MaterialPageRoute(
+      builder: (_) => _RecipePlannerScreen(controller: controller),
+    ),
+  );
+}
+
+class _RecipePlannerScreen extends StatelessWidget {
+  const _RecipePlannerScreen({required this.controller});
+  final RecipeBookController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Scaffold(
+      backgroundColor: luma.background,
+      appBar: AppBar(
+        backgroundColor: luma.background,
+        elevation: 0,
+        titleSpacing: 0,
+        iconTheme: IconThemeData(color: luma.textSecondary),
+        title: Text('Meal planner',
+            style: TextStyle(
+                color: luma.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w800)),
+      ),
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+              child: RecipePlannerView(controller: controller),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The meal planner body (week-start selector + day cards). Kept separate so
+/// it can be embedded anywhere; [showRecipePlanner] wraps it in a full screen.
 class RecipePlannerView extends StatelessWidget {
   const RecipePlannerView({super.key, required this.controller});
   final RecipeBookController controller;

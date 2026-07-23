@@ -16,24 +16,25 @@ Future<void> showRecipeEditor(
   RecipeBookController controller, {
   LocalRecipe? existing,
 }) {
-  return showDialog<void>(
-    context: context,
-    barrierColor: Colors.black.withValues(alpha: 0.5),
-    builder: (_) => _RecipeEditorDialog(controller: controller, existing: existing),
+  return Navigator.of(context).push<void>(
+    MaterialPageRoute(
+      builder: (_) =>
+          _RecipeEditorScreen(controller: controller, existing: existing),
+    ),
   );
 }
 
-class _RecipeEditorDialog extends StatefulWidget {
-  const _RecipeEditorDialog({required this.controller, this.existing});
+class _RecipeEditorScreen extends StatefulWidget {
+  const _RecipeEditorScreen({required this.controller, this.existing});
 
   final RecipeBookController controller;
   final LocalRecipe? existing;
 
   @override
-  State<_RecipeEditorDialog> createState() => _RecipeEditorDialogState();
+  State<_RecipeEditorScreen> createState() => _RecipeEditorScreenState();
 }
 
-class _RecipeEditorDialogState extends State<_RecipeEditorDialog> {
+class _RecipeEditorScreenState extends State<_RecipeEditorScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _titleCtrl;
   late final TextEditingController _descCtrl;
@@ -186,79 +187,64 @@ class _RecipeEditorDialogState extends State<_RecipeEditorDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    return Dialog(
-      backgroundColor: luma.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: luma.border),
+    return Scaffold(
+      backgroundColor: luma.background,
+      appBar: AppBar(
+        backgroundColor: luma.background,
+        elevation: 0,
+        titleSpacing: 0,
+        iconTheme: IconThemeData(color: luma.textSecondary),
+        title: Text(
+          _isEdit ? 'Edit recipe' : 'New recipe',
+          style: TextStyle(
+            color: luma.textPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
       ),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 640, maxHeight: 780),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 22, 16, 0),
-                child: Row(
-                  children: [
-                    Text(
-                      _isEdit ? 'Edit recipe' : 'New recipe',
-                      style: TextStyle(
-                        color: luma.textPrimary,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                      ),
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
+                    child: LumaSegmentedTabs(
+                      tabs: const ['Details', 'Ingredients', 'Steps'],
+                      selectedIndex: _section,
+                      onSelect: (i) => setState(() => _section = i),
                     ),
-                    const Spacer(),
-                    IconButton(
-                      icon: Icon(Icons.close_rounded, color: luma.textMuted),
-                      onPressed: () => Navigator.pop(context),
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                      child: switch (_section) {
+                        1 => _ingredientsSection(luma),
+                        2 => _stepsSection(luma),
+                        _ => _detailsSection(luma),
+                      },
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
-                child: LumaSegmentedTabs(
-                  tabs: const ['Details', 'Ingredients', 'Steps'],
-                  selectedIndex: _section,
-                  onSelect: (i) => setState(() => _section = i),
-                ),
-              ),
-              const SizedBox(height: 14),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 4),
-                  child: switch (_section) {
-                    1 => _ingredientsSection(luma),
-                    2 => _stepsSection(luma),
-                    _ => _detailsSection(luma),
-                  },
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    LumaGhostButton(
-                      label: 'Cancel',
-                      onTap: () => Navigator.pop(context),
-                    ),
-                    const SizedBox(width: 12),
-                    LumaPrimaryButton(
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
+                    child: LumaPrimaryButton(
                       label: _isEdit ? 'Save changes' : 'Add recipe',
                       icon: _isEdit ? Icons.check_rounded : Icons.add_rounded,
                       loading: _saving,
+                      expand: true,
                       onTap: _save,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
