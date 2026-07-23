@@ -53,6 +53,14 @@ class RecipeBookController extends ChangeNotifier {
   final Set<String> _favoritePublicIds = {};
   bool _loadedLocal = false;
 
+  // ---- Weekly meal planner ------------------------------------------------
+
+  /// Which weekday the planner's week begins on (DateTime.monday..sunday, 1-7).
+  int _weekStartsOn = DateTime.monday;
+
+  /// Planned meals grouped by weekday (1 = Monday .. 7 = Sunday).
+  final Map<int, List<PlannedMeal>> _plan = {};
+
   // ---- Server state -------------------------------------------------------
 
   List<PublicRecipe> _public = [];
@@ -95,6 +103,70 @@ class RecipeBookController extends ChangeNotifier {
   }
 
   bool isFavoritePublic(String id) => _favoritePublicIds.contains(id);
+
+  // ---- Meal planner -------------------------------------------------------
+
+  int get weekStartsOn => _weekStartsOn;
+
+  /// The seven weekdays in display order, starting from [weekStartsOn].
+  List<int> get orderedWeekdays =>
+      List.generate(7, (i) => ((_weekStartsOn - 1 + i) % 7) + 1);
+
+  List<PlannedMeal> plannedFor(int weekday) =>
+      List.unmodifiable(_plan[weekday] ?? const []);
+
+  int get plannedCount =>
+      _plan.values.fold(0, (sum, list) => sum + list.length);
+
+  Future<void> setWeekStartsOn(int weekday) async {
+    if (weekday < 1 || weekday > 7 || weekday == _weekStartsOn) return;
+    _weekStartsOn = weekday;
+    notifyListeners();
+    await _persist();
+  }
+
+  Future<void> addLocalToPlan(int weekday, LocalRecipe r) => _addToPlan(
+        weekday,
+        PlannedMeal(
+          id: DateTime.now().microsecondsSinceEpoch.toString(),
+          source: 'local',
+          refId: r.id,
+          title: r.title,
+          category: r.category,
+          localPhotoPath: r.photoPath,
+        ),
+      );
+
+  Future<void> addPublicToPlan(int weekday, PublicRecipe r) => _addToPlan(
+        weekday,
+        PlannedMeal(
+          id: DateTime.now().microsecondsSinceEpoch.toString(),
+          source: 'public',
+          refId: r.id,
+          title: r.title,
+          category: r.category,
+          photoId: r.photoId,
+        ),
+      );
+
+  Future<void> _addToPlan(int weekday, PlannedMeal meal) async {
+    (_plan[weekday] ??= []).add(meal);
+    notifyListeners();
+    await _persist();
+  }
+
+  Future<void> removeFromPlan(int weekday, String mealId) async {
+    _plan[weekday]?.removeWhere((m) => m.id == mealId);
+    if (_plan[weekday]?.isEmpty ?? false) _plan.remove(weekday);
+    notifyListeners();
+    await _persist();
+  }
+
+  Future<void> clearPlanDay(int weekday) async {
+    if (_plan.remove(weekday) == null) return;
+    notifyListeners();
+    await _persist();
+  }
 
   /// The local ("Private") copy of a published recipe, if this user is the
   /// author and still has it — lets the Public tab route "edit" back to the
@@ -199,6 +271,19 @@ class RecipeBookController extends ChangeNotifier {
             ..addAll((raw['favoritePublicIds'] as List? ?? const [])
                 .cast<String>());
           _migratedLegacy = raw['migratedLegacy'] as bool? ?? false;
+          final ws = raw['weekStartsOn'] as int?;
+          if (ws != null && ws >= 1 && ws <= 7) _weekStartsOn = ws;
+          _plan.clear();
+          final planRaw = raw['plan'];
+          if (planRaw is Map) {
+            planRaw.forEach((key, value) {
+              final weekday = int.tryParse('$key');
+              if (weekday == null || value is! List) return;
+              _plan[weekday] = value
+                  .map((e) => PlannedMeal.fromJson(e as Map<String, dynamic>))
+                  .toList();
+            });
+          }
         }
       }
     } catch (_) {}
@@ -264,6 +349,9 @@ class RecipeBookController extends ChangeNotifier {
         'migratedLegacy': _migratedLegacy,
         'local': _local.map((r) => r.toJson()).toList(),
         'favoritePublicIds': _favoritePublicIds.toList(),
+        'weekStartsOn': _weekStartsOn,
+        'plan': _plan.map((weekday, meals) =>
+            MapEntry('$weekday', meals.map((m) => m.toJson()).toList())),
       }));
     } catch (_) {}
   }

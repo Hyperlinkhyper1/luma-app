@@ -48,6 +48,7 @@ class _RecipeEditorDialogState extends State<_RecipeEditorDialog> {
   bool _removePhoto = false;
   late bool _makePublic;
   bool _saving = false;
+  int _section = 0; // 0 = Details, 1 = Ingredients, 2 = Steps
 
   bool get _isEdit => widget.existing != null;
 
@@ -116,7 +117,14 @@ class _RecipeEditorDialogState extends State<_RecipeEditorDialog> {
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
+    // The title lives on the Details tab; if it's blank, jump there so the
+    // requirement is visible rather than validating an off-screen field.
+    if (_titleCtrl.text.trim().isEmpty) {
+      setState(() => _section = 0);
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please give your recipe a title.')));
+      return;
+    }
     setState(() => _saving = true);
     try {
       final ingredients = _ingredients
@@ -212,143 +220,23 @@ class _RecipeEditorDialogState extends State<_RecipeEditorDialog> {
                 ),
               ),
               const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
+                child: LumaSegmentedTabs(
+                  tabs: const ['Details', 'Ingredients', 'Steps'],
+                  selectedIndex: _section,
+                  onSelect: (i) => setState(() => _section = i),
+                ),
+              ),
+              const SizedBox(height: 14),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _photoPicker(luma),
-                      const SizedBox(height: 16),
-                      const RecipeFieldLabel('Title'),
-                      const SizedBox(height: 6),
-                      RecipeTextField(
-                        controller: _titleCtrl,
-                        hint: 'e.g. Spaghetti Carbonara',
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'Required' : null,
-                      ),
-                      const SizedBox(height: 14),
-                      const RecipeFieldLabel('Description (optional)'),
-                      const SizedBox(height: 6),
-                      RecipeTextField(
-                        controller: _descCtrl,
-                        hint: 'A short note about this recipe…',
-                        maxLines: 2,
-                      ),
-                      const SizedBox(height: 14),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const RecipeFieldLabel('Category'),
-                                const SizedBox(height: 6),
-                                _categoryDropdown(luma),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const RecipeFieldLabel('Servings'),
-                                const SizedBox(height: 6),
-                                RecipeTextField(
-                                  controller: _servingsCtrl,
-                                  hint: '2',
-                                  inputType: TextInputType.number,
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const RecipeFieldLabel('Prep time (min)'),
-                                const SizedBox(height: 6),
-                                RecipeTextField(
-                                  controller: _prepCtrl,
-                                  hint: '15',
-                                  inputType: TextInputType.number,
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const RecipeFieldLabel('Cook time (min)'),
-                                const SizedBox(height: 6),
-                                RecipeTextField(
-                                  controller: _cookCtrl,
-                                  hint: '20',
-                                  inputType: TextInputType.number,
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      _sectionHeader(
-                          luma, 'Ingredients', Icons.format_list_bulleted_rounded),
-                      const SizedBox(height: 10),
-                      ..._ingredients.asMap().entries.map(
-                            (e) => _IngredientRowEditor(
-                              field: e.value,
-                              onRemove: _ingredients.length > 1
-                                  ? () => setState(
-                                      () => _ingredients.removeAt(e.key))
-                                  : null,
-                              onUnitChanged: (u) =>
-                                  setState(() => _ingredients[e.key].unit = u),
-                            ),
-                          ),
-                      const SizedBox(height: 6),
-                      _addRowButton(luma, 'Add ingredient',
-                          () => setState(() => _ingredients.add(_IngredientField.empty()))),
-                      const SizedBox(height: 20),
-                      _sectionHeader(
-                          luma, 'Instructions', Icons.format_list_numbered_rounded),
-                      const SizedBox(height: 10),
-                      ..._stepCtrls.asMap().entries.map(
-                            (e) => _StepRowEditor(
-                              number: e.key + 1,
-                              controller: e.value,
-                              onRemove: _stepCtrls.length > 1
-                                  ? () =>
-                                      setState(() => _stepCtrls.removeAt(e.key))
-                                  : null,
-                            ),
-                          ),
-                      const SizedBox(height: 6),
-                      _addRowButton(luma, 'Add step',
-                          () => setState(() => _stepCtrls.add(TextEditingController()))),
-                      const SizedBox(height: 20),
-                      _publicToggle(luma),
-                      const SizedBox(height: 20),
-                    ],
-                  ),
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 4),
+                  child: switch (_section) {
+                    1 => _ingredientsSection(luma),
+                    2 => _stepsSection(luma),
+                    _ => _detailsSection(luma),
+                  },
                 ),
               ),
               Padding(
@@ -377,100 +265,228 @@ class _RecipeEditorDialogState extends State<_RecipeEditorDialog> {
     );
   }
 
-  Widget _photoPicker(LumaPalette luma) {
-    final hasNew = _pickedPhoto != null;
-    final hasExisting = !_removePhoto &&
-        !hasNew &&
-        (widget.existing?.photoPath != null);
-    final showsPhoto = hasNew || hasExisting;
+  // ---- Sections -----------------------------------------------------------
+
+  Widget _detailsSection(LumaPalette luma) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const RecipeFieldLabel('Photo (optional)'),
+        _compactPhoto(luma),
+        const SizedBox(height: 16),
+        const RecipeFieldLabel('Title'),
         const SizedBox(height: 6),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(14),
-          child: SizedBox(
-            height: 160,
-            width: double.infinity,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (hasNew)
-                  Image.memory(_pickedPhoto!, fit: BoxFit.cover)
-                else if (hasExisting)
-                  LocalRecipeImage(
-                      path: widget.existing!.photoPath, category: _category)
-                else
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: luma.background,
-                      border: Border.all(color: luma.border),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.add_a_photo_rounded,
-                              color: luma.textMuted, size: 28),
-                          const SizedBox(height: 8),
-                          Text('Add a photo',
-                              style: TextStyle(
-                                  color: luma.textMuted, fontSize: 13)),
-                        ],
-                      ),
-                    ),
-                  ),
-                Positioned(
-                  right: 8,
-                  bottom: 8,
-                  child: Row(
-                    children: [
-                      _photoAction(luma, Icons.image_outlined,
-                          showsPhoto ? 'Replace' : 'Choose', _pickPhoto),
-                      if (showsPhoto) ...[
-                        const SizedBox(width: 6),
-                        _photoAction(luma, Icons.delete_outline_rounded, 'Remove',
-                            () {
-                          setState(() {
-                            _pickedPhoto = null;
-                            _removePhoto = true;
-                          });
-                        }),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
+        RecipeTextField(
+          controller: _titleCtrl,
+          hint: 'e.g. Spaghetti Carbonara',
+          validator: (v) =>
+              (v == null || v.trim().isEmpty) ? 'Required' : null,
+        ),
+        const SizedBox(height: 14),
+        const RecipeFieldLabel('Description (optional)'),
+        const SizedBox(height: 6),
+        RecipeTextField(
+          controller: _descCtrl,
+          hint: 'A short note about this recipe…',
+          maxLines: 2,
+        ),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const RecipeFieldLabel('Category'),
+                  const SizedBox(height: 6),
+                  _categoryDropdown(luma),
+                ],
+              ),
             ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const RecipeFieldLabel('Servings'),
+                  const SizedBox(height: 6),
+                  RecipeTextField(
+                    controller: _servingsCtrl,
+                    hint: '2',
+                    inputType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const RecipeFieldLabel('Prep time (min)'),
+                  const SizedBox(height: 6),
+                  RecipeTextField(
+                    controller: _prepCtrl,
+                    hint: '15',
+                    inputType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const RecipeFieldLabel('Cook time (min)'),
+                  const SizedBox(height: 6),
+                  RecipeTextField(
+                    controller: _cookCtrl,
+                    hint: '20',
+                    inputType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        _publicToggle(luma),
+      ],
+    );
+  }
+
+  Widget _ingredientsSection(LumaPalette luma) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _sectionHeader(luma, 'Ingredients', Icons.format_list_bulleted_rounded),
+        const SizedBox(height: 12),
+        ..._ingredients.asMap().entries.map(
+              (e) => _IngredientRowEditor(
+                field: e.value,
+                onRemove: _ingredients.length > 1
+                    ? () => setState(() => _ingredients.removeAt(e.key))
+                    : null,
+                onUnitChanged: (u) =>
+                    setState(() => _ingredients[e.key].unit = u),
+              ),
+            ),
+        const SizedBox(height: 6),
+        _addRowButton(luma, 'Add ingredient',
+            () => setState(() => _ingredients.add(_IngredientField.empty()))),
+      ],
+    );
+  }
+
+  Widget _stepsSection(LumaPalette luma) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _sectionHeader(luma, 'Instructions', Icons.format_list_numbered_rounded),
+        const SizedBox(height: 12),
+        ..._stepCtrls.asMap().entries.map(
+              (e) => _StepRowEditor(
+                number: e.key + 1,
+                controller: e.value,
+                onRemove: _stepCtrls.length > 1
+                    ? () => setState(() => _stepCtrls.removeAt(e.key))
+                    : null,
+              ),
+            ),
+        const SizedBox(height: 6),
+        _addRowButton(luma, 'Add step',
+            () => setState(() => _stepCtrls.add(TextEditingController()))),
+      ],
+    );
+  }
+
+  Widget _compactPhoto(LumaPalette luma) {
+    final hasNew = _pickedPhoto != null;
+    final hasExisting =
+        !_removePhoto && !hasNew && (widget.existing?.photoPath != null);
+    final showsPhoto = hasNew || hasExisting;
+    return Row(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: SizedBox(
+            width: 88,
+            height: 88,
+            child: hasNew
+                ? Image.memory(_pickedPhoto!, fit: BoxFit.cover)
+                : hasExisting
+                    ? LocalRecipeImage(
+                        path: widget.existing!.photoPath,
+                        category: _category,
+                        iconSize: 26)
+                    : DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: luma.background,
+                          border: Border.all(color: luma.border),
+                        ),
+                        child: Icon(Icons.add_a_photo_rounded,
+                            color: luma.textMuted, size: 26),
+                      ),
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const RecipeFieldLabel('Photo (optional)'),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _photoChip(luma, Icons.image_outlined,
+                      showsPhoto ? 'Replace' : 'Choose photo', _pickPhoto),
+                  if (showsPhoto)
+                    _photoChip(luma, Icons.delete_outline_rounded, 'Remove', () {
+                      setState(() {
+                        _pickedPhoto = null;
+                        _removePhoto = true;
+                      });
+                    }),
+                ],
+              ),
+            ],
           ),
         ),
       ],
     );
   }
 
-  Widget _photoAction(
+  Widget _photoChip(
       LumaPalette luma, IconData icon, String label, VoidCallback onTap) {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.55),
-            borderRadius: BorderRadius.circular(8),
+            color: luma.background,
+            borderRadius: BorderRadius.circular(9),
+            border: Border.all(color: luma.border),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 14, color: Colors.white),
-              const SizedBox(width: 5),
+              Icon(icon, size: 15, color: luma.textSecondary),
+              const SizedBox(width: 6),
               Text(label,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
+                  style: TextStyle(
+                      color: luma.textPrimary,
+                      fontSize: 13,
                       fontWeight: FontWeight.w600)),
             ],
           ),

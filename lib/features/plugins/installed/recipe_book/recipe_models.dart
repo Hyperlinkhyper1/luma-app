@@ -257,6 +257,51 @@ class PublicRecipe {
       );
 }
 
+/// A recipe placed into a day of the weekly meal planner. It keeps a snapshot
+/// of the recipe's title/category/photo so the planner still renders even if
+/// the source recipe is deleted or the public catalogue isn't loaded.
+class PlannedMeal {
+  const PlannedMeal({
+    required this.id,
+    required this.source,
+    required this.refId,
+    required this.title,
+    required this.category,
+    this.localPhotoPath,
+    this.photoId,
+  });
+
+  final String id;
+  final String source; // 'local' | 'public'
+  final String refId;
+  final String title;
+  final String category;
+  final String? localPhotoPath;
+  final String? photoId;
+
+  bool get isLocal => source == 'local';
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'source': source,
+        'refId': refId,
+        'title': title,
+        'category': category,
+        'localPhotoPath': localPhotoPath,
+        'photoId': photoId,
+      };
+
+  factory PlannedMeal.fromJson(Map<String, dynamic> j) => PlannedMeal(
+        id: j['id'] as String,
+        source: j['source'] as String? ?? 'local',
+        refId: j['refId'] as String? ?? '',
+        title: j['title'] as String? ?? '',
+        category: j['category'] as String? ?? 'Other',
+        localPhotoPath: j['localPhotoPath'] as String?,
+        photoId: j['photoId'] as String?,
+      );
+}
+
 /// One rating + written review of a [PublicRecipe].
 class RecipeReview {
   const RecipeReview({
