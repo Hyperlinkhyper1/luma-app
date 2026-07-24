@@ -163,6 +163,62 @@
     return path;
   }
 
+  /* Explore src's connected component with Dijkstra and return the reachable
+     node whose straight-line distance to (tx,ty) is smallest — i.e. how far
+     along the real track you can get toward a target that lives on a
+     *different* (disconnected) part of the graph. Bounded by `cap` settled
+     nodes so exploring a whole national rail network can't stall the UI. */
+  function nearestReachable(g, src, tx, ty, cap) {
+    const N = g.xs.length;
+    const dist = new Float64Array(N).fill(Infinity);
+    const closed = new Uint8Array(N);
+    dist[src] = 0;
+    const hd = [0], hn = [src];
+    function push(d, n) {
+      let i = hd.length;
+      hd.push(d); hn.push(n);
+      while (i > 0) {
+        const p = (i - 1) >> 1;
+        if (hd[p] <= hd[i]) break;
+        [hd[p], hd[i]] = [hd[i], hd[p]];
+        [hn[p], hn[i]] = [hn[i], hn[p]];
+        i = p;
+      }
+    }
+    function pop() {
+      const top = hn[0];
+      const ld = hd.pop(), ln = hn.pop();
+      if (hd.length) {
+        hd[0] = ld; hn[0] = ln;
+        let i = 0;
+        for (;;) {
+          const l = i * 2 + 1, r = l + 1;
+          let m = i;
+          if (l < hd.length && hd[l] < hd[m]) m = l;
+          if (r < hd.length && hd[r] < hd[m]) m = r;
+          if (m === i) break;
+          [hd[m], hd[i]] = [hd[i], hd[m]];
+          [hn[m], hn[i]] = [hn[i], hn[m]];
+          i = m;
+        }
+      }
+      return top;
+    }
+    let best = src, bestD = Math.hypot(g.xs[src] - tx, g.ys[src] - ty), settled = 0;
+    while (hd.length && settled < cap) {
+      const u = pop();
+      if (closed[u]) continue;
+      closed[u] = 1; settled++;
+      const dToT = Math.hypot(g.xs[u] - tx, g.ys[u] - ty);
+      if (dToT < bestD) { bestD = dToT; best = u; }
+      for (const [v, w] of g.adj[u]) {
+        const nd = dist[u] + w;
+        if (nd < dist[v] - 1e-6) { dist[v] = nd; push(nd, v); }
+      }
+    }
+    return best;
+  }
+
   // Douglas–Peucker simplification on meter points.
   function simplify(pts, eps) {
     if (pts.length <= 2) return pts;
@@ -186,24 +242,59 @@
     return pts.filter((_, i) => keep[i]);
   }
 
-  /* Route between two meter points over a graph. Returns
-     {pts: [[x,y],…], len} following real geometry, or null. */
-  net.route = function (g, ax, ay, bx, by, snapDist) {
-    const a = net.nearestNode(g, ax, ay, snapDist);
-    const b = net.nearestNode(g, bx, by, snapDist);
-    if (a < 0 || b < 0) return null;
-    const ids = astar(g, a, b);
-    if (!ids) return null;
-    let pts = ids.map((id) => [g.xs[id], g.ys[id]]);
-    pts = simplify(pts, 5);
-    // Anchor the ends on the actual stop positions.
-    pts.unshift([ax, ay]);
-    pts.push([bx, by]);
+  // Cap on nodes explored when searching for a bridge exit/entry, so a
+  // failed cross-network route can't walk an entire continent's rail graph.
+  const BRIDGE_CAP = 80000;
+
+  function polyLen(pts) {
     let len = 0;
     for (let i = 0; i < pts.length - 1; i++) {
       len += Math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]);
     }
-    return { pts, len };
+    return len;
+  }
+
+  /* Route between two meter points over a graph. Returns
+     {pts: [[x,y],…], len, tunnelM} following real geometry, or null.
+
+     With opts.bridge (used for rail), a route is still produced when the two
+     endpoints sit on disconnected parts of the network — e.g. the British and
+     continental rail networks, which physically join only through the Channel
+     Tunnel. Rather than fail (and let the caller draw one naive straight line
+     ignoring all geography), it follows real track from each end as far as it
+     reaches toward the other side, then spans the remaining gap with a single
+     straight tunnel segment. `tunnelM` reports that bridged length so the
+     caller can price it as tunnelling. When the networks *are* connected, A*
+     finds the real path and tunnelM is 0 — exactly as before. */
+  net.route = function (g, ax, ay, bx, by, snapDist, opts) {
+    opts = opts || {};
+    const a = net.nearestNode(g, ax, ay, snapDist);
+    const b = net.nearestNode(g, bx, by, snapDist);
+    if (a < 0 || b < 0) return null;
+    const ids = astar(g, a, b);
+    if (ids) {
+      let pts = ids.map((id) => [g.xs[id], g.ys[id]]);
+      pts = simplify(pts, 5);
+      pts.unshift([ax, ay]);
+      pts.push([bx, by]);
+      return { pts, len: polyLen(pts), tunnelM: 0 };
+    }
+    if (!opts.bridge) return null;
+    // Disconnected networks: reach as far as the track goes on each side, then
+    // tunnel across the gap between the two frontiers (the real portals, when
+    // their approaches have been surveyed — e.g. Folkestone ↔ Coquelles).
+    const exitA = nearestReachable(g, a, g.xs[b], g.ys[b], BRIDGE_CAP);
+    const entryB = nearestReachable(g, b, g.xs[a], g.ys[a], BRIDGE_CAP);
+    const pathA = astar(g, a, exitA);
+    const pathB = astar(g, entryB, b);
+    if (!pathA || !pathB) return null;
+    let ptsA = simplify(pathA.map((id) => [g.xs[id], g.ys[id]]), 5);
+    let ptsB = simplify(pathB.map((id) => [g.xs[id], g.ys[id]]), 5);
+    // ptsA ends at exitA, ptsB starts at entryB; the straight run between them
+    // is the tunnel. Anchor both far ends on the real stop positions.
+    const pts = [[ax, ay], ...ptsA, ...ptsB, [bx, by]];
+    const tunnelM = Math.hypot(g.xs[exitA] - g.xs[entryB], g.ys[exitA] - g.ys[entryB]);
+    return { pts, len: polyLen(pts), tunnelM };
   };
 
   // ── Building the networks ────────────────────────────────────────────
