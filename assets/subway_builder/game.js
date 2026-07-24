@@ -54,6 +54,10 @@
     },
   };
   SB.MODES = MODES;
+  // Premium on the per-km rate for a bridged rail tunnel (undersea/unbuilt
+  // track that joins two otherwise-disconnected networks), matching metro's
+  // under-water multiplier.
+  const RAIL_TUNNEL_MULT = 2.6;
   SB.isRailMode = function (mode) { return !!MODES[mode].rail; };
   // A line loops when it was closed back onto its own first stop.
   SB.isLoopLine = function (line) {
@@ -323,16 +327,23 @@
     }
     const graph = M.rail ? SB.net.rails : SB.net.roads;
     const snap = M.rail ? 450 : 320;
-    const r = SB.net.route(graph, a.x, a.y, b.x, b.y, snap);
+    // Rail may bridge disconnected networks with a tunnel (Channel Tunnel &c.);
+    // buses/trams must stay on the connected road graph.
+    const r = SB.net.route(graph, a.x, a.y, b.x, b.y, snap, { bridge: M.rail });
     if (!r) {
       return { err: M.rail
         ? 'No rail connection exists between these stations'
         : 'No street route between these stops' };
     }
+    // A bridged (undersea/unbuilt) tunnel segment costs a tunnelling premium;
+    // the rest follows existing track at the normal per-km rate.
+    const tunnelM = r.tunnelM || 0;
+    const trackM = Math.max(0, r.len - tunnelM);
+    const cost = (trackM / 1000) * M.perKm + (tunnelM / 1000) * M.perKm * RAIL_TUNNEL_MULT;
     return {
       pts: r.pts.map(([x, y]) => SB.geo.toLL(x, y)),
-      len: r.len, waterM: 0,
-      cost: (r.len / 1000) * M.perKm,
+      len: r.len, waterM: tunnelM,
+      cost,
     };
   };
 
