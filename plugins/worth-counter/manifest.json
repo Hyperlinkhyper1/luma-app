@@ -1,0 +1,11 @@
+{
+  "id": "worth-counter",
+  "name": "Worth Counter",
+  "version": "1.0.0",
+  "description": "A tally counter that knows what things are worth. Add a product with its price, hit + and - as you count, and the bottom bar keeps a live total of everything counted.",
+  "icon": "calculate",
+  "category": "Utility",
+  "tags": ["Utility", "Finance"],
+  "details": "Worth Counter is a clicker that counts money, not just numbers. Tap the + button in the bottom right to add a product — give it a name, say what one is worth in euros, and pick a colour so it stands out in the list.\n\nEvery product gets its own row with a big - and + either side of its count. Count a €2.00 product twenty times and its row shows €40.00; the bar pinned along the bottom adds every row together into one running total, so you always see what the whole count is worth.\n\nMade a mistake? Edit a product's name or price at any time, reset a single row's count, or reset every count at once while keeping the products themselves. Everything is stored locally and is still there next time you open the plugin.",
+  "screenshots": []
+}
