@@ -53,6 +53,8 @@ IconData pluginIconFor(String? name) {
       return Icons.sports_esports_rounded;
     case 'restaurant_menu':
       return Icons.restaurant_menu_rounded;
+    case 'calculate':
+      return Icons.calculate_rounded;
     default:
       return Icons.extension_rounded;
   }

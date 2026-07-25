@@ -239,6 +239,16 @@
       "tags": ["Productivity", "Food", "Social", "Sync"],
       "free": true,
       "version": "1.1.0"
+    },
+    {
+      "id": "worth-counter",
+      "name": "Worth Counter",
+      "description": "A tally counter that knows what things are worth. Add a product with its price, hit + and - as you count, and the bottom bar keeps a live total of everything counted.",
+      "icon": "calculate",
+      "category": "Utility",
+      "tags": ["Utility", "Finance"],
+      "free": true,
+      "version": "1.0.0"
     }
   ]
 }
