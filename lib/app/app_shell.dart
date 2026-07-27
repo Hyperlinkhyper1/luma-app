@@ -10,6 +10,7 @@ import '../features/notes/notes_page.dart';
 import '../features/passwords/passwords_page.dart';
 import '../features/plugins/installed/data_management/data_management_page.dart';
 import '../features/plugins/installed/auto_clicker/auto_clicker_page.dart';
+import '../features/plugins/installed/calculator/calculator_page.dart';
 import '../features/plugins/installed/calendar/calendar_page.dart';
 import '../features/plugins/installed/cloud_files/cloud_files_page.dart';
 import '../features/plugins/installed/card_wallet/card_wallet_page.dart';
@@ -338,6 +339,7 @@ class _AppShellState extends State<AppShell> {
         'file-viewer' => const FileViewerPage(),
         'bulletin-board' => const BulletinBoardPage(),
         'price-tracker' => const PriceTrackerPage(),
+        'calculator' => const CalculatorPage(),
         'calendar' => const CalendarPage(),
         'cloud-files' => const CloudFilesPage(),
         'data-management' => const DataManagementPage(),
