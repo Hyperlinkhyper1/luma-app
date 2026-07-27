@@ -541,15 +541,27 @@ class _BootGateState extends State<_BootGate> {
               // migrated away (see SyncService.init), have no account at
               // all — prompt them to create one.
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (!mounted) return;
-                final sync = SyncScope.of(context);
-                if (!sync.p2pReady) {
-                  showAccountSetupDialog(context, sync, initialMode: 1);
-                }
+                if (mounted) maybePromptAccountSetup(context);
               });
             },
           ),
       ],
     );
   }
+}
+
+/// Shows the account setup dialog the first time the app is opened on a
+/// device with no account at all (new installs, and devices whose
+/// local-only identity was just migrated away — see [SyncService.init]).
+///
+/// If the user closes it without completing sign-in/registration/local
+/// setup, this is not called again automatically on later launches — see
+/// [SyncService.accountSetupPromptDismissed]. It can still always be opened
+/// by hand from Settings → Sync & account.
+Future<void> maybePromptAccountSetup(BuildContext context) async {
+  final sync = SyncScope.of(context);
+  if (sync.p2pReady || sync.accountSetupPromptDismissed) return;
+  final completed =
+      await showAccountSetupDialog(context, sync, initialMode: 1);
+  if (!completed) await sync.dismissAccountSetupPrompt();
 }
