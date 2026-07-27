@@ -38,7 +38,7 @@ class _CloudBackupSectionState extends State<CloudBackupSection> {
 
   Future<void> _load() async {
     final sync = SyncScope.of(context);
-    if (!sync.signedIn) {
+    if (!sync.serverReady) {
       setState(() => _entries = const []);
       return;
     }
@@ -58,7 +58,7 @@ class _CloudBackupSectionState extends State<CloudBackupSection> {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final sync = SyncScope.of(context);
-    if (!sync.signedIn) return const SizedBox.shrink();
+    if (!sync.serverReady) return const SizedBox.shrink();
     if (_entries == null) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 8),

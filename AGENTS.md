@@ -24,11 +24,26 @@ lib/
   p2p/                       Wi-Fi/LAN peer sync (nsd + WebSocket protocol)
   settings/                  SettingsController (shared_preferences-like, ChangeNotifier)
   sync/                      Server sync (SyncService coordinates multiple SyncCollection adapters)
+    server_access.dart       The app-wide gate: no luma-server traffic without an approved account
 server/                      Standalone Dart HTTP server; deploy via docker-compose
 plugins/
   registry.json              Catalog of available plugins (fetched at runtime)
   <id>/manifest.json         Per-plugin metadata
 ```
+
+**Server access is gated.** Nothing in the app may reach a luma server until
+this device is signed in to an *approved* account (email verified, or approved
+from the admin dashboard). Two layers enforce it:
+
+1. Call sites check `SyncService.serverReady` — never `signedIn` — before
+   doing any server-backed work.
+2. Their HTTP goes through `GatedServerClient` (`lib/sync/server_access.dart`),
+   which refuses to open a socket while the gate is shut. The only exception
+   is the account handshake itself (`ServerAccessGate.accountSetupPaths`).
+
+Plugins that are useless without the server are listed in
+`AppShell.serverOnlyPlugins` and render a `ServerAccountGate` instead of their
+page until an account is approved.
 
 **Platform-specific code** uses the suffix convention: `feature_io.dart` (Windows/Android/native), `feature_stub.dart` (unsupported platforms), `feature_web.dart` (web). The main `feature.dart` file exports the right one via conditional imports.
 

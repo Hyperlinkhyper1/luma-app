@@ -6,6 +6,8 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../sync/server_access.dart';
+
 /// A supermarket the search API knows about.
 class RemoteMarket {
   const RemoteMarket({
@@ -117,7 +119,8 @@ class GroceriesApiException implements Exception {
 /// page) and persisted locally in case someone points it at their own
 /// deployment instead (see supermarket-db/ at the repo root).
 class GroceriesApi extends ChangeNotifier {
-  GroceriesApi({http.Client? client}) : _client = client ?? http.Client() {
+  GroceriesApi({http.Client? client})
+      : _client = GatedServerClient(inner: client) {
     _load();
   }
 
@@ -215,6 +218,11 @@ class GroceriesApi extends ChangeNotifier {
       return parse(body);
     } on GroceriesApiException {
       rethrow;
+    } on ServerAccessDeniedException {
+      throw GroceriesApiException(
+          'Product search needs an approved luma account. Create one under '
+          'Settings → Sync & account — your shopping list itself keeps '
+          'working offline.');
     } on TimeoutException {
       throw GroceriesApiException('The groceries server took too long to respond.');
     } on SocketException {

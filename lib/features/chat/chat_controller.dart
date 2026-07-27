@@ -68,7 +68,7 @@ class ChatController extends ChangeNotifier {
     AiClient client = aiProviderById(providerId).client;
 
     final sync = _syncService;
-    final serverAvailable = sync != null && sync.signedIn;
+    final serverAvailable = sync != null && sync.serverReady;
     var usingServerKey = false;
     AiMode? googleMode;
 

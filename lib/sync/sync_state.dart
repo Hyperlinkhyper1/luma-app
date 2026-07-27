@@ -73,6 +73,20 @@ class SyncStateStore {
   /// stale value can never reject a genuinely new identity.
   String? localVerifier;
 
+  /// Whether the server has approved this account (email verified, or
+  /// approved from the admin dashboard). Set when a sign-in succeeds — the
+  /// server only hands out a token to an approved account — and cleared
+  /// again if `/account` ever reports the account back to `pending`.
+  ///
+  /// This is what opens [ServerAccessGate]: while it is false, the app makes
+  /// no requests to the server beyond the account handshake itself.
+  bool accountApproved = false;
+
+  /// The address of an account that was created on this device but is still
+  /// waiting for approval. Purely so the UI can say who it is waiting for
+  /// and offer to resend the mail; it grants no access.
+  String? pendingApprovalEmail;
+
   /// One-time migration flag: the first time this device's state is loaded
   /// after this field was introduced, any existing local-only (serverless)
   /// identity is cleared so the user is prompted to create a real cloud
@@ -83,6 +97,10 @@ class SyncStateStore {
 
   bool get signedIn =>
       token != null && encryptionKey != null && serverUrl != null;
+
+  /// Signed in *and* approved — the state every server-backed feature
+  /// requires before it does anything.
+  bool get serverReady => signedIn && accountApproved;
 
   /// The 'settings' collection (theme, preferences — see main.dart) always
   /// syncs and can't be turned off, so it defaults to enabled the first time
@@ -118,6 +136,12 @@ class SyncStateStore {
         store.kdfSalt = Uint8List.fromList(base64Decode(salt));
       }
       store.kdfIterations = data['kdfIterations'] as int?;
+      // Devices that signed in before this flag existed already proved the
+      // account is approved (the server only issues tokens to approved
+      // accounts), so an existing token counts as approved on upgrade.
+      store.accountApproved =
+          data['accountApproved'] as bool? ?? (store.token != null);
+      store.pendingApprovalEmail = data['pendingApprovalEmail'] as String?;
       store.localVerifier = data['localVerifier'] as String?;
       store.localAccountMigrated = data['localAccountMigrated'] == true;
       if (data['lastSyncAt'] is int) {
@@ -150,6 +174,8 @@ class SyncStateStore {
             encryptionKey == null ? null : base64Encode(encryptionKey!),
         'kdfSalt': kdfSalt == null ? null : base64Encode(kdfSalt!),
         'kdfIterations': kdfIterations,
+        'accountApproved': accountApproved,
+        'pendingApprovalEmail': pendingApprovalEmail,
         'localVerifier': localVerifier,
         'localAccountMigrated': localAccountMigrated,
         'lastSyncAt': lastSyncAt?.millisecondsSinceEpoch,
@@ -173,6 +199,7 @@ class SyncStateStore {
     encryptionKey = null;
     kdfSalt = null;
     kdfIterations = null;
+    accountApproved = false;
     localVerifier = null;
     lastSyncAt = null;
     for (final s in collections.values) {

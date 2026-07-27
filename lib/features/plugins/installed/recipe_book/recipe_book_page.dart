@@ -167,7 +167,7 @@ class _RecipeBookPageState extends State<RecipeBookPage> {
   // ---- Public --------------------------------------------------------------
 
   Widget _publicTab(RecipeBookController controller, LumaPalette luma) {
-    if (!controller.signedIn) {
+    if (!controller.serverReady) {
       return const LumaEmptyState(
         icon: Icons.cloud_off_rounded,
         title: 'Sign in to browse public recipes',

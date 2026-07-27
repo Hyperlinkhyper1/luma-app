@@ -38,10 +38,22 @@ class _SubwayBuilderPageState extends State<SubwayBuilderPage> {
 
   // ---- Bridge call handlers (shared by both WebView backends) -----------
 
+  /// What the game's JavaScript is told about the account. Co-op rooms live
+  /// on the luma server, so without an approved account the WebView gets no
+  /// credentials at all — it can't reach the server even though it makes its
+  /// own requests, outside the app's gated HTTP client.
   Map<String, dynamic> _bridgeAuthContext() {
     final sync = SyncScope.of(context);
+    if (!sync.serverReady) {
+      return {
+        'signedIn': false,
+        'token': null,
+        'serverUrl': null,
+        'email': null,
+      };
+    }
     return {
-      'signedIn': sync.signedIn,
+      'signedIn': true,
       'token': sync.authToken,
       'serverUrl': sync.serverUrl,
       'email': sync.email,
