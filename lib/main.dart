@@ -117,8 +117,9 @@ class _LumaAppState extends State<LumaApp> {
   late final PasswordRepository _passwordRepository =
       PasswordRepository(_passwordDb, widget.passwordCrypto);
   late final PluginDatabase _pluginDb = PluginDatabase();
-  late final PluginRepository _pluginRepository =
-      PluginRepository(_pluginDb, PluginCatalogService());
+  late final PluginRepository _pluginRepository = PluginRepository(
+      _pluginDb, PluginCatalogService(),
+      authToken: () => _sync.authToken);
   late final QrCodeDatabase _qrCodeDb = QrCodeDatabase();
   late final QrCodeRepository _qrCodeRepository = QrCodeRepository(_qrCodeDb);
   late final CardWalletDatabase _cardWalletDb = CardWalletDatabase();

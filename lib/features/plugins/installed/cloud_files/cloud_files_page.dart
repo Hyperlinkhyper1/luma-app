@@ -37,7 +37,7 @@ class _CloudFilesPageState extends State<CloudFilesPage> {
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 820),
-              child: !controller.signedIn
+              child: !controller.serverReady
                   ? const _SignedOut()
                   : _Body(controller: controller),
             ),

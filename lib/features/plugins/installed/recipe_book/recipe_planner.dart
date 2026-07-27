@@ -610,7 +610,7 @@ class _RecipePickerDialogState extends State<_RecipePickerDialog> {
                         onTap: () => Navigator.pop(
                             context, _PickResult(public: publics[i])),
                       ),
-                      emptyText: !controller.signedIn
+                      emptyText: !controller.serverReady
                           ? 'Sign in to browse public recipes.'
                           : (controller.publicRecipes.isEmpty
                               ? 'No public recipes yet.'

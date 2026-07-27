@@ -88,6 +88,7 @@
       "category": "Utility",
       "tags": ["Utility", "Sync"],
       "free": true,
+      "requiresAccount": true,
       "version": "1.0.0"
     },
     {
@@ -208,6 +209,7 @@
       "category": "Social",
       "tags": ["Social", "Sync"],
       "free": true,
+      "requiresAccount": true,
       "version": "1.0.0"
     },
     {

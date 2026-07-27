@@ -37,6 +37,7 @@ import '../features/plugins/plugin_repository.dart';
 import '../features/plugins/plugin_scope.dart';
 import '../features/plugins/plugins_page.dart';
 import '../finance/finance_page.dart';
+import 'server_account_gate.dart';
 import '../settings/settings_controller.dart';
 import '../settings/settings_page.dart';
 import '../settings/settings_scope.dart';
@@ -294,7 +295,42 @@ class _AppShellState extends State<AppShell> {
         StartScreen.finance => 2,
       };
 
-  static Widget _pluginPageFor(String pluginId, L t) => switch (pluginId) {
+  /// Plugins that do nothing at all without the server, mapped to the copy
+  /// shown in their place until this device has an approved account. Kept
+  /// compiled in rather than read from the fetched registry — the registry's
+  /// own `requiresAccount` flag only drives the marketplace badge, and a
+  /// gate must not depend on a file downloaded at runtime.
+  static const serverOnlyPlugins =
+      <String, ({String title, String description, IconData icon})>{
+    'cloud-files': (
+      title: 'Cloud Files needs an approved account',
+      description: 'Cloud Files stores your files on the luma server, '
+          'encrypted on this device first.',
+      icon: Icons.cloud_off_rounded,
+    ),
+    'secure-chat': (
+      title: 'Chat needs an approved account',
+      description: 'Chat relays end-to-end encrypted messages between '
+          'accounts through the luma server.',
+      icon: Icons.lock_outline_rounded,
+    ),
+  };
+
+  /// Resolves a plugin id to its page, wrapping the server-only ones in a
+  /// [ServerAccountGate] so they stay inert until an account is approved.
+  static Widget _pluginPageFor(String pluginId, L t) {
+    final page = _pluginBodyFor(pluginId, t);
+    final gate = serverOnlyPlugins[pluginId];
+    if (gate == null) return page;
+    return ServerAccountGate(
+      title: gate.title,
+      description: gate.description,
+      icon: gate.icon,
+      child: page,
+    );
+  }
+
+  static Widget _pluginBodyFor(String pluginId, L t) => switch (pluginId) {
         'qr-code-generator' => const QrCodeGeneratorPage(),
         'card-wallet' => const CardWalletPage(),
         'errand-manager' => const ErrandsPage(),
