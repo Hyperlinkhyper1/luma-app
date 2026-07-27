@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../settings/sync_section.dart';
+import '../sync/sync_api.dart';
 import '../sync/sync_scope.dart';
 import '../sync/sync_service.dart';
 import '../theme/luma_theme.dart';
@@ -13,7 +14,8 @@ import 'widgets.dart';
 /// Three states, driven by [SyncService]:
 /// * no account at all → "create one";
 /// * an account created here that is still waiting for approval → who we're
-///   waiting for, plus a resend button;
+///   waiting for, and (only when the server approves by email) a resend
+///   button;
 /// * an approved account whose session expired → "sign in again".
 class ServerAccountRequired extends StatefulWidget {
   const ServerAccountRequired({
@@ -64,6 +66,7 @@ class _ServerAccountRequiredState extends State<ServerAccountRequired> {
       listenable: sync,
       builder: (context, _) {
         final pending = sync.pendingApprovalEmail;
+        final byEmail = sync.pendingApprovalMode == ServerApprovalMode.email;
         final expired = sync.signedIn && !sync.accountApproved;
         return Center(
         child: SingleChildScrollView(
@@ -87,10 +90,16 @@ class _ServerAccountRequiredState extends State<ServerAccountRequired> {
                 const SizedBox(height: 8),
                 Text(
                   pending != null
-                      ? 'Your account ($pending) is waiting to be approved. '
-                          'Open the link in the email we sent, then sign in '
-                          'here — until it is approved this device does not '
-                          'contact the server at all.'
+                      ? byEmail
+                          ? 'Your account ($pending) is waiting to be '
+                              'approved. Open the link in the email we sent, '
+                              'then sign in here — until it is approved this '
+                              'device does not contact the server at all.'
+                          : 'Your account ($pending) is waiting for the '
+                              'server operator to approve it. Nothing to do '
+                              'in the meantime — just sign in once they '
+                              'have; until then this device does not contact '
+                              'the server at all.'
                       : expired
                           ? 'This account is not approved (any more). Once it '
                               'is approved, sign in again to switch this back '
@@ -122,7 +131,7 @@ class _ServerAccountRequiredState extends State<ServerAccountRequired> {
                       onTap: () => showAccountSetupDialog(context, sync,
                           initialMode: pending != null ? 0 : 1),
                     ),
-                    if (pending != null)
+                    if (pending != null && byEmail)
                       LumaGhostButton(
                         label: _resending
                             ? 'Sending…'

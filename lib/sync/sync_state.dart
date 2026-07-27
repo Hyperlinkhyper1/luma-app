@@ -83,9 +83,15 @@ class SyncStateStore {
   bool accountApproved = false;
 
   /// The address of an account that was created on this device but is still
-  /// waiting for approval. Purely so the UI can say who it is waiting for
-  /// and offer to resend the mail; it grants no access.
+  /// waiting for approval. Purely so the UI can say who it is waiting for;
+  /// it grants no access.
   String? pendingApprovalEmail;
+
+  /// How that account gets approved, as the server reported it at
+  /// registration: `manual` (the operator approves it — the default),
+  /// `email` (the user opens a link), or `open`. Decides whether the UI
+  /// offers to resend anything.
+  String? pendingApprovalMode;
 
   /// One-time migration flag: the first time this device's state is loaded
   /// after this field was introduced, any existing local-only (serverless)
@@ -142,6 +148,7 @@ class SyncStateStore {
       store.accountApproved =
           data['accountApproved'] as bool? ?? (store.token != null);
       store.pendingApprovalEmail = data['pendingApprovalEmail'] as String?;
+      store.pendingApprovalMode = data['pendingApprovalMode'] as String?;
       store.localVerifier = data['localVerifier'] as String?;
       store.localAccountMigrated = data['localAccountMigrated'] == true;
       if (data['lastSyncAt'] is int) {
@@ -176,6 +183,7 @@ class SyncStateStore {
         'kdfIterations': kdfIterations,
         'accountApproved': accountApproved,
         'pendingApprovalEmail': pendingApprovalEmail,
+        'pendingApprovalMode': pendingApprovalMode,
         'localVerifier': localVerifier,
         'localAccountMigrated': localAccountMigrated,
         'lastSyncAt': lastSyncAt?.millisecondsSinceEpoch,
