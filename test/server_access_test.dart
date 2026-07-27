@@ -130,6 +130,29 @@ void main() {
       expect(sync.pendingApprovalEmail, isNull);
       await expectLater(sync.resendApprovalEmail(), throwsStateError);
     });
+
+    test('approval defaults to manual, so no UI offers to resend anything',
+        () async {
+      final sync = SyncService(collections: const []);
+      await sync.init();
+      expect(sync.pendingApprovalMode, ServerApprovalMode.manual);
+    });
+  });
+
+  group('ServerApprovalMode', () {
+    test('parses what the server reports', () {
+      expect(ServerApprovalMode.parse('manual'), ServerApprovalMode.manual);
+      expect(ServerApprovalMode.parse('email'), ServerApprovalMode.email);
+      expect(ServerApprovalMode.parse('open'), ServerApprovalMode.open);
+    });
+
+    test('anything unknown — including a server too old to say — is manual',
+        () {
+      // Safe default: manual never promises the user an email that is not
+      // coming, and never implies the account is already usable.
+      expect(ServerApprovalMode.parse(null), ServerApprovalMode.manual);
+      expect(ServerApprovalMode.parse('whatever'), ServerApprovalMode.manual);
+    });
   });
 
   group('RemoteAccount.status', () {

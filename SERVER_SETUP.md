@@ -52,10 +52,11 @@ reference, how auth/admin/rate-limiting work), see
   plugin install counter — stays switched off, and the plugins that need
   the server (Cloud Files, Chat, cloud backups, product search, co-op
   rooms) show a "needs an approved account" screen instead of running.
-  Approval means the account is `active`: the user clicked the link in the
-  verification email, or you approved them yourself from the admin
-  dashboard. The server enforces the same rule — a `pending` account gets
-  `403 account_not_approved` on every authenticated route.
+  By default **you approve each account by hand** from the admin
+  dashboard's Users tab (`LUMA_APPROVAL_MODE=manual`) — no email is sent
+  and nobody waits on one. The server enforces the same rule as the app: a
+  `pending` account gets `403 account_not_approved` on every authenticated
+  route.
 
 ---
 
@@ -135,10 +136,14 @@ nano .env
 Fill in `.env`:
 
 - `LUMA_DOMAIN` — your domain, e.g. `sync.yourdomain.com`
+- `LUMA_ADMIN_KEY` — generate one with `openssl rand -hex 32`. You need it
+  to reach `/admin`, which is where you approve accounts.
 - Leave the rest at the defaults unless you know why you're changing them.
   Registration is **open** by default (anyone who knows the address can
-  create an account). Once your accounts exist you can set
-  `LUMA_ALLOW_REGISTRATION=false` and restart to close it — see section 7.
+  create an account) but every new account waits for **your approval**
+  before it can do anything — see section 6.1. Once your accounts exist you
+  can set `LUMA_ALLOW_REGISTRATION=false` and restart to close sign-ups
+  entirely — see section 7.
 
 Start it:
 
@@ -163,10 +168,24 @@ On each device, in luma:
 
 1. **Settings → Sync & account → Sign in or create account**
 2. Server address: `https://sync.yourdomain.com`
-3. First device: *Create account* tab → email + password. Other devices:
-   *Sign in* with the same account.
+3. First device: *Create account* tab → email + password. The app says the
+   account is waiting for you to approve it (see 6.1). Other devices:
+   *Sign in* with the same account — already-approved accounts sign in
+   straight away.
 4. Toggle on the features you want synced (they are all **off** by
    default). The storage bar shows usage against the 3 GB quota.
+
+### 6.1 Approving an account
+
+Open `https://sync.yourdomain.com/admin` and sign in with your
+`LUMA_ADMIN_KEY`. The **Users** tab lists accounts waiting for approval
+first, each with an **Approve** button. Press it and the person can sign in
+immediately — nothing is emailed, in either direction.
+
+Prefer users to approve themselves by email instead? Set
+`LUMA_APPROVAL_MODE=email` and fill in the `LUMA_SMTP_*` settings. Running a
+server only you can reach and want no approval step at all? Set
+`LUMA_APPROVAL_MODE=open`.
 
 The **Cloud Files** plugin (install it from the plugin marketplace) uses the
 same account to upload arbitrary files. They are end-to-end encrypted on the
@@ -227,6 +246,12 @@ docker run --rm -it -v luma-sync_luma_data:/data debian bash
 #         delete /data/blobs/<their-user-id>/
 docker compose start luma-sync
 ```
+
+### Approving accounts
+
+`/admin` → **Users**. Pending accounts sort to the top with an **Approve**
+button; the header's *Pending* counter tells you at a glance whether anyone
+is waiting. Approving is instant and needs nothing from the user's side.
 
 ### Closing registration
 
@@ -320,7 +345,7 @@ variables in a small `.bat` wrapper).
 |---|---|
 | `curl https://…/health` fails | DNS not propagated yet, or ports 80/443 blocked. `docker compose logs caddy` shows certificate errors. |
 | App says "This server does not accept new accounts" | Registration is closed (`LUMA_ALLOW_REGISTRATION=false`). Set it to `true` (or remove it) and restart to allow sign-ups. |
-| App says an account is "waiting to be approved" | The verification email hasn't been opened yet. The user can resend it from *Settings → Sync & account*, or you can approve them from the admin dashboard's Users tab. Set `LUMA_REQUIRE_EMAIL_VERIFICATION=false` if you don't want to run SMTP at all — accounts are then approved on creation. |
+| App says an account is "waiting to be approved" | Working as intended: approve it from the admin dashboard's Users tab (section 6.1). Under `LUMA_APPROVAL_MODE=email` it instead means the verification mail hasn't been opened — the user can resend it from *Settings → Sync & account*, and you can still approve them by hand. |
 | A plugin shows "needs an approved account" | By design: it only works through the server, and this device has no approved account yet. Sign in once the account is approved and it switches on. |
 | App says "Session expired" | Tokens expire after 90 days of inactivity — just sign in again. Data is untouched. |
 | "Could not decrypt this snapshot" | The account's data was encrypted under a different password (e.g. password was changed on another device before it finished re-encrypting). Sign in again on the device that has the data and let it re-upload. |

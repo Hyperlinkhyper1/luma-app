@@ -158,6 +158,18 @@ GET  /health                                                       public
 Every `(auth)` route also requires the account to be **approved**: a user
 still in `status: "pending"` gets `403 account_not_approved` even with a
 valid token, and `/account` reports the same state in its `status` field.
+
+`LUMA_APPROVAL_MODE` decides how an account leaves `pending`, and `/health`
+reports which mode is in effect:
+
+| Mode | Who approves | On register | `/auth/resend-verification` |
+|---|---|---|---|
+| `manual` (default) | The operator, from `/admin` → Users → Approve | account created `pending`, no mail sent, `{status: "pending_approval", approval: "manual"}` | no-op with an explanatory message |
+| `email` | The user, via the emailed `/auth/verify` link | same, plus the mail | re-sends the link (3 / 15 min per address) |
+| `open` | Nobody | account created `active`, token returned immediately | no-op |
+
+`POST /auth/login` on a pending account returns `403
+account_pending_approval` in every mode; only the message differs.
 The app mirrors that — a device with no approved account sends nothing but
 the four handshake calls (`/auth/params`, `/auth/register`, `/auth/login`,
 `/auth/resend-verification`). That is why `/plugins/download` is

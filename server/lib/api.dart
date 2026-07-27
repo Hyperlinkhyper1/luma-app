@@ -19,6 +19,30 @@ import 'subway_relay.dart';
 import 'subway_store.dart';
 import 'util.dart';
 
+/// How a newly registered account becomes usable.
+enum ApprovalMode {
+  /// The operator approves each account by hand from the admin dashboard.
+  /// No email is sent and no verification link exists — the default, so a
+  /// deployment works with no SMTP configured at all.
+  manual,
+
+  /// The user approves their own account by opening a link emailed to them.
+  email,
+
+  /// No approval step: accounts are active (and signed in) the moment they
+  /// are created.
+  open;
+
+  static ApprovalMode parse(String? raw) => switch (raw?.trim().toLowerCase()) {
+        'email' => ApprovalMode.email,
+        'open' || 'none' || 'off' => ApprovalMode.open,
+        _ => ApprovalMode.manual,
+      };
+
+  /// Whether new accounts start out waiting for approval.
+  bool get holdsNewAccounts => this != ApprovalMode.open;
+}
+
 /// Server configuration, read from environment variables (see .env.example).
 class ServerConfig {
   ServerConfig({
@@ -30,7 +54,7 @@ class ServerConfig {
     required this.corsOrigin,
     required this.trustProxy,
     required this.verificationTtl,
-    required this.requireEmailVerification,
+    required this.approvalMode,
     required this.adminKey,
     required this.mistralApiKey,
     required this.mistralAgentId,
@@ -50,10 +74,13 @@ class ServerConfig {
   /// How long an email-verification link stays valid.
   final Duration verificationTtl;
 
-  /// Whether new accounts must verify their email before they can log in.
-  /// On by default; can be disabled for closed/trusted deployments that
-  /// don't want to configure SMTP.
-  final bool requireEmailVerification;
+  /// How a new account gets approved before it can sign in. Defaults to
+  /// [ApprovalMode.manual] — the operator approves each one from the admin
+  /// dashboard, so nobody waits on email and no SMTP setup is needed.
+  final ApprovalMode approvalMode;
+
+  /// Whether new accounts have to verify their own email address.
+  bool get requireEmailVerification => approvalMode == ApprovalMode.email;
 
   /// Shared secret for the /admin/* endpoints. When unset, the admin
   /// dashboard is disabled entirely rather than left open.
@@ -119,9 +146,16 @@ class ServerConfig {
       trustProxy: env['LUMA_TRUST_PROXY'] == 'true',
       verificationTtl:
           Duration(hours: intOf('LUMA_VERIFICATION_TTL_HOURS', 24)),
-      requireEmailVerification:
-          (env['LUMA_REQUIRE_EMAIL_VERIFICATION'] ?? 'true').toLowerCase() !=
-              'false',
+      // LUMA_APPROVAL_MODE wins; the older LUMA_REQUIRE_EMAIL_VERIFICATION
+      // is still honoured so existing .env files keep their behaviour
+      // (true → email, false → no approval at all).
+      approvalMode: env['LUMA_APPROVAL_MODE'] != null
+          ? ApprovalMode.parse(env['LUMA_APPROVAL_MODE'])
+          : switch (env['LUMA_REQUIRE_EMAIL_VERIFICATION']?.toLowerCase()) {
+              'true' => ApprovalMode.email,
+              'false' => ApprovalMode.open,
+              _ => ApprovalMode.manual,
+            },
       adminKey: env['LUMA_ADMIN_KEY'],
       mistralApiKey: env['LUMA_MISTRAL_API_KEY'],
       mistralAgentId: env['LUMA_MISTRAL_AGENT_ID'],
@@ -620,6 +654,7 @@ class Api {
         'ok': true,
         'name': 'luma-sync-server',
         'registration': config.registrationEnabled ? 'open' : 'closed',
+        'approval': config.approvalMode.name,
       });
 
   // ---- Handlers: auth -----------------------------------------------------
@@ -679,7 +714,7 @@ class Api {
       }
       final authSalt = randomBytes(16);
       final authHash = await _hashAuthKey(authKey, authSalt);
-      final requireVerification = config.requireEmailVerification;
+      final mode = config.approvalMode;
       final user = StoredUser(
         id: base64UrlEncode(randomBytes(12)).replaceAll('=', ''),
         email: email,
@@ -691,12 +726,12 @@ class Api {
         // plan map, not LUMA_QUOTA_BYTES — see kPlanQuotaBytes.
         quotaBytes: kPlanQuotaBytes[kDefaultPlanId]!,
         createdAtMs: DateTime.now().millisecondsSinceEpoch,
-        status: requireVerification ? 'pending' : 'active',
+        status: mode.holdsNewAccounts ? 'pending' : 'active',
       );
       store.usersById[user.id] = user;
       store.userIdByEmail[email] = user.id;
 
-      if (!requireVerification) {
+      if (!mode.holdsNewAccounts) {
         await store.saveUsers();
         await store.logActivity('account_registered', '$email registered');
         final token = await _createSession(user, deviceLabel: deviceLabel);
@@ -704,6 +739,22 @@ class Api {
           'token': token.$1,
           'expiresAtMs': token.$2,
           'quotaBytes': user.quotaBytes,
+          'approval': mode.name,
+        });
+      }
+
+      if (mode == ApprovalMode.manual) {
+        // Nothing to send and nothing for the user to do: the account sits
+        // in 'pending' until the operator approves it from /admin.
+        await store.saveUsers();
+        await store.logActivity(
+            'account_registered', '$email registered (awaiting approval)');
+        return _json(201, {
+          'status': 'pending_approval',
+          'approval': mode.name,
+          'message': 'Account created. It has to be approved by the server '
+              'operator before you can sign in — no email needed, just try '
+              'signing in once they have approved it.',
         });
       }
 
@@ -713,7 +764,8 @@ class Api {
           'account_registered', '$email registered (pending verification)');
       await _sendVerificationEmail(user, verificationToken);
       return _json(201, {
-        'status': 'pending_verification',
+        'status': 'pending_approval',
+        'approval': mode.name,
         'message':
             'Check your email to verify your account before signing in.',
       });
@@ -745,8 +797,13 @@ class Api {
     }
 
     if (user.isPending) {
-      return _error(403, 'email_not_verified',
-          'Please verify your email address before signing in.');
+      return _error(
+          403,
+          'account_pending_approval',
+          config.approvalMode == ApprovalMode.email
+              ? 'Please verify your email address before signing in.'
+              : 'This account is waiting to be approved by the server '
+                  'operator.');
     }
 
     return store.lock.synchronized(() async {
@@ -856,6 +913,19 @@ class Api {
     final body = await _readJson(request);
     final email = _normalizeEmail(body['email']);
     if (email == null) return _error(400, 'bad_email', 'Invalid email.');
+
+    if (config.approvalMode != ApprovalMode.email) {
+      // No link exists to resend. Answered the same way for every address,
+      // so this still says nothing about whether the account exists.
+      return _json(200, {
+        'status': 'pending_approval',
+        'approval': config.approvalMode.name,
+        'message': config.approvalMode == ApprovalMode.manual
+            ? 'This server approves accounts by hand — there is no email to '
+                'resend. The operator will approve it.'
+            : 'This server does not require approval; just sign in.',
+      });
+    }
 
     if (!_resendLimiter.allow(email)) {
       return _error(429, 'rate_limited',
@@ -2727,10 +2797,10 @@ class Api {
     return _json(200, {'events': events.map((e) => e.toJson()).toList()});
   }
 
-  /// Manually activates a pending account, bypassing email verification —
-  /// the escape hatch for self-hosted servers where SMTP isn't configured
-  /// (or mail just didn't arrive) and the operator needs to unblock a
-  /// legitimate sign-up with no other way to receive the link.
+  /// Approves a pending account, which is how accounts normally become
+  /// usable: [ApprovalMode.manual] (the default) has every sign-up wait here
+  /// until the operator presses Approve in the dashboard. It doubles as the
+  /// escape hatch under [ApprovalMode.email] when the mail never arrived.
   Future<Response> _adminVerifyUser(Request request) async {
     final raw = await request.readAsString();
     String? email;
@@ -2752,7 +2822,7 @@ class Api {
       user.verificationExpiresAtMs = null;
       await store.saveUsers();
       await store.logActivity(
-          'admin_verified', '$email was manually verified by an admin');
+          'admin_verified', '$email was approved by an admin');
       return _adminFormResponse(request, '/admin');
     });
   }
@@ -2963,8 +3033,14 @@ class Api {
 
   Response _adminDashboard(Request request) {
     final stats = _adminStatsJson();
+    // Accounts waiting for approval float to the top: with the default
+    // manual approval mode, working through them is the operator's routine
+    // job here, and they'd otherwise be scattered through the list.
     final users = store.usersById.values.toList()
-      ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
+      ..sort((a, b) {
+        if (a.isPending != b.isPending) return a.isPending ? -1 : 1;
+        return b.createdAtMs.compareTo(a.createdAtMs);
+      });
 
     String fmtBytes(int bytes) {
       const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -2998,10 +3074,10 @@ class Api {
       final statusClass = u.status == 'active' ? 'ok' : 'warn';
       final action = u.isPending
           ? '<form method="post" action="/admin/verify" '
-              'style="margin:0" onsubmit="return confirm(\'Manually verify '
-              '${_htmlEscape(u.email)}? This skips email verification.\')">'
+              'style="margin:0" onsubmit="return confirm(\'Approve '
+              '${_htmlEscape(u.email)}? They can sign in straight after.\')">'
               '<input type="hidden" name="email" value="${_htmlEscape(u.email)}">'
-              '<button type="submit" class="btn btn-primary btn-sm">Verify</button>'
+              '<button type="submit" class="btn btn-primary btn-sm">Approve</button>'
               '</form>'
           : '';
       return '<tr>'

@@ -119,6 +119,12 @@ class SyncService extends ChangeNotifier {
   /// for approval, or null. Display-only — it grants no access.
   String? get pendingApprovalEmail => _state?.pendingApprovalEmail;
 
+  /// How that account gets approved. [ServerApprovalMode.manual] (the
+  /// default) means the server's operator approves it from the admin
+  /// dashboard — there is no email to wait for and nothing to resend.
+  ServerApprovalMode get pendingApprovalMode =>
+      ServerApprovalMode.parse(_state?.pendingApprovalMode);
+
   /// True when an account exists on this device but the server has put it
   /// back to "waiting for approval", so the UI can explain why everything
   /// server-backed stopped working.
@@ -264,7 +270,8 @@ class SyncService extends ChangeNotifier {
         // approved yet, so holding one is the proof — this is what opens the
         // server-access gate for the rest of the app.
         ..accountApproved = true
-        ..pendingApprovalEmail = null;
+        ..pendingApprovalEmail = null
+        ..pendingApprovalMode = null;
       // Fresh account on this device: forget previous sync bookkeeping.
       for (final st in s.collections.values) {
         st.lastSyncedVersion = null;
@@ -315,13 +322,15 @@ class SyncService extends ChangeNotifier {
         kdfIterations: iterations,
         deviceLabel: _deviceLabel(),
       );
-      if (result.pendingVerification) {
+      if (result.pendingApproval) {
         api.close();
         // The account exists but is NOT approved: remember who we're waiting
-        // for so the UI can explain it, and leave the gate shut — no further
-        // request reaches the server until the approval lands and the user
-        // signs in.
-        s.pendingApprovalEmail = normalizedEmail;
+        // for (and who does the approving) so the UI can explain it, and
+        // leave the gate shut — no further request reaches the server until
+        // the approval lands and the user signs in.
+        s
+          ..pendingApprovalEmail = normalizedEmail
+          ..pendingApprovalMode = result.approvalMode.name;
         await s.save();
         notifyListeners();
         return result.message;
@@ -339,7 +348,8 @@ class SyncService extends ChangeNotifier {
         ..kdfSalt = kdfSalt
         ..kdfIterations = iterations
         ..accountApproved = true
-        ..pendingApprovalEmail = null;
+        ..pendingApprovalEmail = null
+        ..pendingApprovalMode = null;
       for (final st in s.collections.values) {
         st.lastSyncedVersion = null;
         st.lastSyncedHash = null;
@@ -371,17 +381,21 @@ class SyncService extends ChangeNotifier {
     _account = null;
     _requiresReauth = false;
     s.clearAccount();
-    s.pendingApprovalEmail = null;
+    s
+      ..pendingApprovalEmail = null
+      ..pendingApprovalMode = null;
     await s.save();
     _applyServerAccess();
     notifyListeners();
   }
 
   /// Asks the server to send the approval mail again for an account created
-  /// on this device that is still waiting. Returns the server's (deliberately
-  /// generic) message. Throws [StateError] when nothing is pending — this is
-  /// part of the account handshake, so it is one of the few calls allowed
-  /// through the closed gate.
+  /// on this device that is still waiting. Only meaningful under
+  /// [ServerApprovalMode.email] — with manual approval there is no mail, and
+  /// the server says so. Returns the server's (deliberately generic)
+  /// message. Throws [StateError] when nothing is pending — this is part of
+  /// the account handshake, so it is one of the few calls allowed through
+  /// the closed gate.
   Future<String> resendApprovalEmail() async {
     final s = _state;
     final pending = s?.pendingApprovalEmail;
@@ -401,7 +415,9 @@ class SyncService extends ChangeNotifier {
   Future<void> cancelPendingApproval() async {
     final s = _state;
     if (s == null || s.pendingApprovalEmail == null) return;
-    s.pendingApprovalEmail = null;
+    s
+      ..pendingApprovalEmail = null
+      ..pendingApprovalMode = null;
     await s.save();
     notifyListeners();
   }
@@ -594,7 +610,9 @@ class SyncService extends ChangeNotifier {
     _api = null;
     _account = null;
     s.clearAccount();
-    s.pendingApprovalEmail = null;
+    s
+      ..pendingApprovalEmail = null
+      ..pendingApprovalMode = null;
     await s.save();
     _applyServerAccess();
     notifyListeners();

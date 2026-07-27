@@ -98,7 +98,8 @@ class _SignedOutBody extends StatelessWidget {
 
 /// Shown while an account created on this device is still waiting to be
 /// approved: nothing server-backed works yet, and this is where the user can
-/// ask for another approval mail or start over with a different address.
+/// start over with a different address (or, when the server approves by
+/// email rather than by hand, ask for another link).
 class _PendingApprovalNotice extends StatefulWidget {
   const _PendingApprovalNotice({required this.sync});
   final SyncService sync;
@@ -130,13 +131,22 @@ class _PendingApprovalNoticeState extends State<_PendingApprovalNotice> {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final email = widget.sync.pendingApprovalEmail ?? '';
+    final byEmail =
+        widget.sync.pendingApprovalMode == ServerApprovalMode.email;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '$email is waiting to be approved. Open the link in the email we '
-          'sent, then sign in. Until then this device does not contact the '
-          'server at all, and the plugins that need it stay switched off.',
+          byEmail
+              ? '$email is waiting to be approved. Open the link in the email '
+                  'we sent, then sign in. Until then this device does not '
+                  'contact the server at all, and the plugins that need it '
+                  'stay switched off.'
+              : '$email is waiting for the server operator to approve it. '
+                  'There is nothing to do in the meantime — just sign in once '
+                  'they have. Until then this device does not contact the '
+                  'server at all, and the plugins that need it stay switched '
+                  'off.',
           style: TextStyle(
               color: Colors.orange.shade400, fontSize: 12, height: 1.5),
         ),
@@ -150,11 +160,12 @@ class _PendingApprovalNoticeState extends State<_PendingApprovalNotice> {
           spacing: 10,
           runSpacing: 10,
           children: [
-            LumaGhostButton(
-              label: _busy ? 'Sending…' : 'Resend approval email',
-              icon: Icons.mail_outline_rounded,
-              onTap: _busy ? null : _resend,
-            ),
+            if (byEmail)
+              LumaGhostButton(
+                label: _busy ? 'Sending…' : 'Resend approval email',
+                icon: Icons.mail_outline_rounded,
+                onTap: _busy ? null : _resend,
+              ),
             LumaGhostButton(
               label: 'Use a different email',
               icon: Icons.close_rounded,
@@ -629,9 +640,10 @@ class _AccountDialogState extends State<_AccountDialog> {
             password: _password.text,
           );
           if (pendingMessage != null) {
-            // Account created but not signed in yet — needs email
-            // verification first. Stay on the dialog and switch to Sign in
-            // so the user can come back once they've verified.
+            // Account created but not signed in yet — it has to be approved
+            // first (by the operator, or by email link depending on the
+            // server's mode). Stay on the dialog and switch to Sign in so
+            // the user can come straight back once it's approved.
             if (mounted) {
               setState(() {
                 _busy = false;
