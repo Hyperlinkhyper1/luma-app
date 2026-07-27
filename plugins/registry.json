@@ -243,6 +243,16 @@
       "version": "1.1.0"
     },
     {
+      "id": "calculator",
+      "name": "Calculator",
+      "description": "An everyday calculator that turns into a graphing one. Basic mode handles the daily sums; Advanced adds a scientific keypad and plots any number of functions of x on a pannable, zoomable graph you can tap to trace. The ☰ button in its header converts measurements — km to miles, °C to °F, kg to pounds, and more.",
+      "icon": "functions",
+      "category": "Utility",
+      "tags": ["Utility", "Education"],
+      "free": true,
+      "version": "1.0.0"
+    },
+    {
       "id": "worth-counter",
       "name": "Worth Counter",
       "description": "A tally counter that knows what things are worth. Add a product with its price, hit + and - as you count, and the bottom bar keeps a live total of everything counted.",

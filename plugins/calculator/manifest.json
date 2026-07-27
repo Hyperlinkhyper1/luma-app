@@ -1,0 +1,11 @@
+{
+  "id": "calculator",
+  "name": "Calculator",
+  "version": "1.0.0",
+  "description": "An everyday calculator that turns into a graphing one. Basic mode handles the daily sums; Advanced adds a scientific keypad and plots any number of functions of x on a pannable, zoomable graph you can tap to trace. The ☰ button in its header converts measurements — km to miles, °C to °F, kg to pounds, and more.",
+  "icon": "functions",
+  "category": "Utility",
+  "tags": ["Utility", "Education"],
+  "details": "Calculator opens in Basic mode: a plain, quick calculator with the keys you'd expect and nothing you don't. Type a sum and the answer appears underneath as you go, before you even press =. Brackets get their own key that knows whether to open or close, and every finished sum is kept in the history behind the clock icon — tap one to put it back on the entry line.\n\nSwitch to Advanced and it becomes a graphing calculator. The keypad grows sin, cos and tan (with inverses behind the 2nd key), ln, log, roots, powers, factorials, π, e, nCr and a DEG/RAD toggle that everything follows. Type a function of x — x^2 - 3, sin(x), 1/x — press Plot, and it's drawn on the graph. Plot as many as you like: each gets its own colour, can be hidden or edited, and stays put between sessions. Drag the graph to pan, scroll or pinch to zoom, and tap anywhere to drop a trace line that reads out what every curve is worth at that x.\n\nThe ☰ button in the header opens a unit converter that works the same in both modes. Pick a category — length, weight, temperature, speed, area, volume, time, data, pressure, energy or angle — type a value, and read it back in any other unit, with the full table underneath. Send any result straight to the calculator with one tap.\n\nEverything is stored locally on your device.",
+  "screenshots": []
+}

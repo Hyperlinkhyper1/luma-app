@@ -80,7 +80,9 @@ Beyond the built-ins, luma has a marketplace of optional plugins you install
 individually from the **Plugins** tab. Each is self-contained — its own
 local data, its own page.
 
-**Utility** — QR Code Generator · Card Wallet (loyalty/membership passes) ·
+**Utility** — Calculator (an everyday calculator that switches into a
+graphing one, plus a ☰ unit converter) · QR Code Generator ·
+Card Wallet (loyalty/membership passes) ·
 File Tree (disk space analyzer) · File Viewer (PDF/Word/Excel/image/text
 viewer) · Price Tracker (price-history graphs from a pasted product URL) ·
 Cloud Files (encrypted file sync) · YouTube Downloader · Auto Clicker ·
