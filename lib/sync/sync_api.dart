@@ -8,6 +8,26 @@ import 'server_access.dart';
 /// The one luma sync server. Fixed so no UI ever needs to ask for it.
 const kDefaultSyncServerUrl = 'https://sync.luma-app.cc';
 
+/// How the server approves a newly created account — mirrors `ApprovalMode`
+/// in server/lib/api.dart, and comes back on the register response.
+enum ServerApprovalMode {
+  /// The operator approves each account by hand from the admin dashboard.
+  /// Nothing is emailed, so there is nothing for the user to resend.
+  manual,
+
+  /// The user approves their own account from a link emailed to them.
+  email,
+
+  /// No approval step at all — registering signs you straight in.
+  open;
+
+  static ServerApprovalMode parse(String? raw) => switch (raw) {
+        'email' => ServerApprovalMode.email,
+        'open' => ServerApprovalMode.open,
+        _ => ServerApprovalMode.manual,
+      };
+}
+
 /// Metadata the server keeps for one synced collection.
 class RemoteCollectionMeta {
   const RemoteCollectionMeta({
@@ -215,12 +235,21 @@ class SyncApi {
   }
 
   /// Registers a new account. The server either signs the account in
-  /// immediately (`token` set) or, when it requires email verification
+  /// immediately (`token` set) or, when the account has to be approved
   /// first, comes back with no token and a human-readable [message] instead
-  /// — in that case [pendingVerification] is true and the caller must not
-  /// treat this as a successful sign-in.
-  Future<({String? token, bool pendingVerification, String? message})>
-      register({
+  /// — in that case [pendingApproval] is true and the caller must not treat
+  /// this as a successful sign-in.
+  ///
+  /// [approvalMode] says who does the approving: `manual` (the operator, from
+  /// the admin dashboard — the default) or `email` (the user, by opening a
+  /// link). It decides whether offering to resend anything makes sense.
+  Future<
+      ({
+        String? token,
+        bool pendingApproval,
+        String? message,
+        ServerApprovalMode approvalMode
+      })> register({
     required String email,
     required Uint8List authKey,
     required Uint8List kdfSalt,
@@ -234,16 +263,23 @@ class SyncApi {
       'kdfIterations': kdfIterations,
       if (deviceLabel != null) 'deviceLabel': deviceLabel,
     });
+    final mode = ServerApprovalMode.parse(body['approval'] as String?);
     final token = body['token'] as String?;
     if (token == null) {
       return (
         token: null,
-        pendingVerification: true,
+        pendingApproval: true,
+        approvalMode: mode,
         message: body['message'] as String? ??
-            'Check your email to verify your account before signing in.',
+            'Your account has to be approved before you can sign in.',
       );
     }
-    return (token: token, pendingVerification: false, message: null);
+    return (
+      token: token,
+      pendingApproval: false,
+      approvalMode: mode,
+      message: null,
+    );
   }
 
   Future<String> login(
