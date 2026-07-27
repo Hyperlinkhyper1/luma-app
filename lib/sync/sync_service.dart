@@ -131,6 +131,23 @@ class SyncService extends ChangeNotifier {
   bool get awaitingApproval =>
       pendingApprovalEmail != null || (signedIn && !accountApproved);
 
+  /// True once the user has closed the automatic first-run account setup
+  /// prompt without completing it. See [dismissAccountSetupPrompt] and
+  /// `maybePromptAccountSetup` in main.dart.
+  bool get accountSetupPromptDismissed =>
+      _state?.accountSetupPromptDismissed ?? false;
+
+  /// Records that the first-run account setup prompt was closed without
+  /// creating or signing into an account, so it does not automatically pop
+  /// up again on future launches. Opening it manually (e.g. from Settings)
+  /// is unaffected.
+  Future<void> dismissAccountSetupPrompt() async {
+    final s = _state;
+    if (s == null || s.accountSetupPromptDismissed) return;
+    s.accountSetupPromptDismissed = true;
+    await s.save();
+  }
+
   /// Persists the current sync state (toggles, credentials, bookkeeping) to
   /// disk. Called automatically on toggle changes and on [dispose], but also
   /// exposed so the app can flush state on lifecycle events.

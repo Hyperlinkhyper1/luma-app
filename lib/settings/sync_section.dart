@@ -9,17 +9,25 @@ import '../sync/sync_service.dart';
 import '../theme/luma_theme.dart';
 
 /// Shows the account setup/sign-in dialog. Used both from the Settings page
-/// and as the app-wide first-run / re-authentication prompt (see
-/// `maybePromptAccountSetup` in main.dart).
-Future<void> showAccountSetupDialog(
+/// and as the app-wide first-run prompt (see `maybePromptAccountSetup` in
+/// main.dart).
+///
+/// Resolves `true` when the dialog closed because a cloud sign-in,
+/// registration, or local account setup actually completed; `false` for
+/// every other way it can close (Cancel, tapping outside it, back button).
+/// The first-run prompt uses that to tell "the user set something up" apart
+/// from "the user dismissed this" without inspecting sync state, which
+/// would conflate cancelling with a pending-approval account.
+Future<bool> showAccountSetupDialog(
   BuildContext context,
   SyncService sync, {
   int initialMode = 1,
-}) {
-  return showDialog<void>(
+}) async {
+  final completed = await showDialog<bool>(
     context: context,
     builder: (_) => _AccountDialog(sync: sync, initialMode: initialMode),
   );
+  return completed ?? false;
 }
 
 /// The "Sync & account" block on the Settings page: account sign-in, storage
@@ -661,7 +669,7 @@ class _AccountDialogState extends State<_AccountDialog> {
           password: _password.text,
         );
       }
-      if (mounted) Navigator.of(context).pop();
+      if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -807,7 +815,7 @@ class _AccountDialogState extends State<_AccountDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: _busy ? null : () => Navigator.of(context).pop(),
+          onPressed: _busy ? null : () => Navigator.of(context).pop(false),
           child:
               Text('Cancel', style: TextStyle(color: luma.textSecondary)),
         ),
