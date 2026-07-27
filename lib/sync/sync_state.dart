@@ -99,6 +99,14 @@ class SyncStateStore {
   /// account instead (see `SyncService.init`). Stays true forever after.
   bool localAccountMigrated = false;
 
+  /// True once the user has dismissed the first-run account setup prompt
+  /// without completing it (closed it, hit Cancel, tapped outside it).
+  /// Stops that automatic prompt from reappearing on later launches — see
+  /// `maybePromptAccountSetup` in main.dart. Manually opening the dialog
+  /// from Settings is unaffected; this only gates the automatic one-time
+  /// nag.
+  bool accountSetupPromptDismissed = false;
+
   final Map<String, CollectionSyncState> collections = {};
 
   bool get signedIn =>
@@ -151,6 +159,8 @@ class SyncStateStore {
       store.pendingApprovalMode = data['pendingApprovalMode'] as String?;
       store.localVerifier = data['localVerifier'] as String?;
       store.localAccountMigrated = data['localAccountMigrated'] == true;
+      store.accountSetupPromptDismissed =
+          data['accountSetupPromptDismissed'] == true;
       if (data['lastSyncAt'] is int) {
         store.lastSyncAt =
             DateTime.fromMillisecondsSinceEpoch(data['lastSyncAt'] as int);
@@ -186,6 +196,7 @@ class SyncStateStore {
         'pendingApprovalMode': pendingApprovalMode,
         'localVerifier': localVerifier,
         'localAccountMigrated': localAccountMigrated,
+        'accountSetupPromptDismissed': accountSetupPromptDismissed,
         'lastSyncAt': lastSyncAt?.millisecondsSinceEpoch,
         'collections':
             collections.map((id, s) => MapEntry(id, s.toJson())),
