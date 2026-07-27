@@ -266,7 +266,7 @@ class Api {
       ..post('/api/v1/recipes/<id>/reviews/photo',
           _requireAuth(_uploadReviewPhoto))
       ..delete('/api/v1/recipes/<id>/reviews', _requireAuth(_deleteRecipeReview))
-      ..post('/api/v1/plugins/download', _reportPluginDownload)
+      ..post('/api/v1/plugins/download', _requireAuth(_reportPluginDownload))
       ..post('/api/v1/subway/rooms', _requireAuth(_createSubwayRoom))
       ..get('/api/v1/subway/rooms', _requireAuth(_listSubwayRooms))
       ..post('/api/v1/subway/rooms/<code>/invite', _requireAuth(_inviteToSubwayRoom))
@@ -380,6 +380,13 @@ class Api {
       final user = store.usersById[session.userId];
       if (user == null) {
         return _error(401, 'unauthorized', 'Account no longer exists.');
+      }
+      // An account that is (back to) waiting for approval gets nothing but
+      // the account handshake — the app mirrors this by shutting its own
+      // server-access gate when it sees this code.
+      if (user.isPending) {
+        return _error(403, 'account_not_approved',
+            'This account is waiting to be approved.');
       }
       // Sliding expiry: refresh when past the halfway point.
       final half = config.tokenTtl.inMilliseconds ~/ 2;
@@ -1184,6 +1191,10 @@ class Api {
       'usedBytes': store.usedBytes(user.id),
       'quotaBytes': user.quotaBytes,
       'planId': user.planId,
+      // The client mirrors this into its own server-access gate: an account
+      // that is back to 'pending' stops talking to the server until it is
+      // approved again (see ServerAccessGate in the app).
+      'status': user.status,
       'collections': collections.values.map((m) => m.toJson()).toList(),
     });
   }
@@ -1666,7 +1677,10 @@ class Api {
   /// installed without a sync account — and just a best-effort counter, so a
   /// malformed or missing body is ignored rather than erroring the client's
   /// install flow.
-  Future<Response> _reportPluginDownload(Request request) async {
+  /// Records a plugin install for the dashboard's aggregate counter.
+  /// Authenticated: the app only ever reaches a luma server once its account
+  /// is approved, so anonymous stats pings no longer exist.
+  Future<Response> _reportPluginDownload(Request request, StoredUser user) async {
     Map<String, dynamic> body;
     try {
       body = await _readJson(request);

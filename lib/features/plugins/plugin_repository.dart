@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
-import 'package:http/http.dart' as http;
 
+import '../../sync/server_access.dart';
 import '../../sync/sync_api.dart' show kDefaultSyncServerUrl;
 import 'data/plugin_database.dart';
 import 'plugin_catalog_service.dart';
@@ -31,10 +31,16 @@ class InstalledPluginRecord {
 /// Installing fetches the plugin's manifest from the repo first, so a
 /// download always involves a real round trip to the source of truth.
 class PluginRepository {
-  PluginRepository(this._db, this._service);
+  PluginRepository(this._db, this._service, {String? Function()? authToken})
+      : _authToken = authToken;
 
   final PluginDatabase _db;
   final PluginCatalogService _service;
+
+  /// Reads the current account's bearer token. A callback rather than a
+  /// value because the sync service is constructed after this repository —
+  /// and because the token changes on every sign-in/out.
+  final String? Function()? _authToken;
 
   /// Streams installed plugins, oldest-installed first (so newly downloaded
   /// plugins appear at the bottom of the nav rail group).
@@ -78,21 +84,32 @@ class PluginRepository {
   static const _reportDownloadTimeout = Duration(seconds: 8);
 
   /// Best-effort ping to the default luma server's admin-only download
-  /// counter (see the admin dashboard's "Plugins" tab). Anonymous — no sync
-  /// account required — and purely for aggregate stats, so any failure
-  /// (offline, a self-hosted server that doesn't have this route yet, etc.)
-  /// is silently ignored.
+  /// counter (see the admin dashboard's "Plugins" tab), purely for aggregate
+  /// stats — so any failure (offline, a self-hosted server without this
+  /// route, …) is silently ignored.
+  ///
+  /// It only fires for a device with an approved account: a device that has
+  /// not created and approved one talks to no server at all, stats included.
+  /// [GatedServerClient] enforces that even if this check is ever missed.
   Future<void> _reportDownload(String pluginId, String name) async {
+    final token = _authToken?.call();
+    if (!ServerAccess.instance.approved || token == null) return;
+    final client = GatedServerClient();
     try {
-      await http
+      await client
           .post(
             Uri.parse('$kDefaultSyncServerUrl/api/v1/plugins/download'),
-            headers: const {'Content-Type': 'application/json'},
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
             body: jsonEncode({'pluginId': pluginId, 'name': name}),
           )
           .timeout(_reportDownloadTimeout);
     } catch (_) {
       // Stats-only; never let this affect the install flow.
+    } finally {
+      client.close();
     }
   }
 

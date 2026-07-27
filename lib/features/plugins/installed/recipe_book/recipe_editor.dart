@@ -504,7 +504,7 @@ class _RecipeEditorScreenState extends State<_RecipeEditorScreen> {
                         fontWeight: FontWeight.w700)),
                 const SizedBox(height: 2),
                 Text(
-                  widget.controller.signedIn
+                  widget.controller.serverReady
                       ? 'Publish so other luma users can find, rate and review it.'
                       : 'Sign in under Settings → Sync to publish recipes.',
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
@@ -516,7 +516,7 @@ class _RecipeEditorScreenState extends State<_RecipeEditorScreen> {
             value: _makePublic,
             activeThumbColor: luma.onAccent,
             activeTrackColor: luma.accent,
-            onChanged: widget.controller.signedIn
+            onChanged: widget.controller.serverReady
                 ? (v) => setState(() => _makePublic = v)
                 : null,
           ),

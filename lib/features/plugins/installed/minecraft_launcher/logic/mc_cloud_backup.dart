@@ -78,7 +78,7 @@ class McCloudBackup {
   static const String indexCollection = 'minecraft_cloud_index';
   static const int chunkSize = 8 * 1024 * 1024; // 8 MiB
 
-  bool get signedIn => _sync.signedIn;
+  bool get serverReady => _sync.serverReady;
 
   Future<List<McCloudBackupEntry>> list({String? instanceId}) async {
     final entries = await _readIndex();
@@ -94,8 +94,10 @@ class McCloudBackup {
     required File file,
     void Function(double)? onProgress,
   }) async {
-    if (!signedIn) {
-      throw const McCloudBackupException('Sign in under Settings → Sync first.');
+    if (!serverReady) {
+      throw const McCloudBackupException(
+          'Cloud backups need an approved luma account — create one under '
+          'Settings → Sync & account.');
     }
 
     final size = await file.length();
@@ -142,8 +144,10 @@ class McCloudBackup {
     String savePath, {
     void Function(double)? onProgress,
   }) async {
-    if (!signedIn) {
-      throw const McCloudBackupException('Sign in under Settings → Sync first.');
+    if (!serverReady) {
+      throw const McCloudBackupException(
+          'Cloud backups need an approved luma account — create one under '
+          'Settings → Sync & account.');
     }
     final out = await File(savePath).open(mode: FileMode.write);
     try {

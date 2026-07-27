@@ -44,6 +44,18 @@ reference, how auth/admin/rate-limiting work), see
 - Each account gets **3 GB** of storage by default (configurable).
 - Nothing syncs by default: each user turns individual features on in
   *Settings → Sync & account*.
+- **The app does not contact the server at all until an account exists and
+  has been approved.** A fresh install makes zero requests to it; the only
+  calls allowed before approval are the four that create the account
+  (`/auth/params`, `/auth/register`, `/auth/login`,
+  `/auth/resend-verification`). Everything else — sync, the AI proxy, the
+  plugin install counter — stays switched off, and the plugins that need
+  the server (Cloud Files, Chat, cloud backups, product search, co-op
+  rooms) show a "needs an approved account" screen instead of running.
+  Approval means the account is `active`: the user clicked the link in the
+  verification email, or you approved them yourself from the admin
+  dashboard. The server enforces the same rule — a `pending` account gets
+  `403 account_not_approved` on every authenticated route.
 
 ---
 
@@ -308,6 +320,8 @@ variables in a small `.bat` wrapper).
 |---|---|
 | `curl https://…/health` fails | DNS not propagated yet, or ports 80/443 blocked. `docker compose logs caddy` shows certificate errors. |
 | App says "This server does not accept new accounts" | Registration is closed (`LUMA_ALLOW_REGISTRATION=false`). Set it to `true` (or remove it) and restart to allow sign-ups. |
+| App says an account is "waiting to be approved" | The verification email hasn't been opened yet. The user can resend it from *Settings → Sync & account*, or you can approve them from the admin dashboard's Users tab. Set `LUMA_REQUIRE_EMAIL_VERIFICATION=false` if you don't want to run SMTP at all — accounts are then approved on creation. |
+| A plugin shows "needs an approved account" | By design: it only works through the server, and this device has no approved account yet. Sign in once the account is approved and it switches on. |
 | App says "Session expired" | Tokens expire after 90 days of inactivity — just sign in again. Data is untouched. |
 | "Could not decrypt this snapshot" | The account's data was encrypted under a different password (e.g. password was changed on another device before it finished re-encrypting). Sign in again on the device that has the data and let it re-upload. |
 | "Storage quota exceeded" | The account hit its 3 GB. Turn off + "delete from server" for features you don't need synced, or raise the quota (section 7). |

@@ -3,6 +3,8 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
+import '../../../../../sync/server_access.dart';
+
 import '../recipe_models.dart';
 
 /// Raised for every non-successful server response from the recipe endpoints,
@@ -28,7 +30,7 @@ class RecipeApiException implements Exception {
 class RecipeApi {
   RecipeApi(String baseUrl, {this.token, http.Client? client})
       : baseUrl = _normalizeBaseUrl(baseUrl),
-        _client = client ?? http.Client();
+        _client = GatedServerClient(inner: client);
 
   final String baseUrl;
   String? token;

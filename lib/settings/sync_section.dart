@@ -75,14 +75,92 @@ class _SignedOutBody extends StatelessWidget {
             style: TextStyle(color: Colors.orange.shade400, fontSize: 12),
           ),
         ],
+        if (sync.pendingApprovalEmail != null) ...[
+          const SizedBox(height: 10),
+          _PendingApprovalNotice(sync: sync),
+        ],
         const SizedBox(height: 16),
         Align(
           alignment: Alignment.centerLeft,
           child: LumaPrimaryButton(
-            label: 'Set up account',
+            label: sync.pendingApprovalEmail != null
+                ? 'Sign in'
+                : 'Set up account',
             icon: Icons.person_add_rounded,
-            onTap: () => showAccountSetupDialog(context, sync),
+            onTap: () => showAccountSetupDialog(context, sync,
+                initialMode: sync.pendingApprovalEmail != null ? 0 : 1),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Shown while an account created on this device is still waiting to be
+/// approved: nothing server-backed works yet, and this is where the user can
+/// ask for another approval mail or start over with a different address.
+class _PendingApprovalNotice extends StatefulWidget {
+  const _PendingApprovalNotice({required this.sync});
+  final SyncService sync;
+
+  @override
+  State<_PendingApprovalNotice> createState() => _PendingApprovalNoticeState();
+}
+
+class _PendingApprovalNoticeState extends State<_PendingApprovalNotice> {
+  bool _busy = false;
+  String? _message;
+
+  Future<void> _resend() async {
+    setState(() {
+      _busy = true;
+      _message = null;
+    });
+    try {
+      final message = await widget.sync.resendApprovalEmail();
+      if (mounted) setState(() => _message = message);
+    } catch (e) {
+      if (mounted) setState(() => _message = '$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final email = widget.sync.pendingApprovalEmail ?? '';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '$email is waiting to be approved. Open the link in the email we '
+          'sent, then sign in. Until then this device does not contact the '
+          'server at all, and the plugins that need it stay switched off.',
+          style: TextStyle(
+              color: Colors.orange.shade400, fontSize: 12, height: 1.5),
+        ),
+        if (_message != null) ...[
+          const SizedBox(height: 6),
+          Text(_message!,
+              style: TextStyle(color: luma.textMuted, fontSize: 12)),
+        ],
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            LumaGhostButton(
+              label: _busy ? 'Sending…' : 'Resend approval email',
+              icon: Icons.mail_outline_rounded,
+              onTap: _busy ? null : _resend,
+            ),
+            LumaGhostButton(
+              label: 'Use a different email',
+              icon: Icons.close_rounded,
+              onTap: () => widget.sync.cancelPendingApproval(),
+            ),
+          ],
         ),
       ],
     );

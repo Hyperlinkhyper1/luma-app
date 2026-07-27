@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../../sync/server_access.dart';
 import 'ai_client.dart';
 
 /// Shared implementation for providers that speak the OpenAI-style
@@ -16,6 +17,7 @@ class OpenAiCompatibleClient implements AiClient {
     this.agentsBaseUrl,
     this.maxOutputTokens = 1024,
     this.reasoningEffort,
+    this.viaLumaServer = false,
   });
 
   final String baseUrl;
@@ -36,6 +38,12 @@ class OpenAiCompatibleClient implements AiClient {
   /// request body entirely when null, so providers that don't recognize
   /// the field never see it.
   final String? reasoningEffort;
+
+  /// True for the subclasses that route through the luma server's shared-key
+  /// proxy ([MistralProxyClient], [GoogleProxyClient]) rather than straight
+  /// to the provider. Those requests only leave the device once the account
+  /// is approved — see [GatedServerClient].
+  final bool viaLumaServer;
 
   static const _maxToolHops = 5;
 
@@ -164,9 +172,11 @@ class OpenAiCompatibleClient implements AiClient {
     };
     final url = agentId != null ? agentsBaseUrl! : baseUrl;
 
+    final client =
+        viaLumaServer ? GatedServerClient() : http.Client();
     final http.Response res;
     try {
-      res = await http
+      res = await client
           .post(
             Uri.parse(url),
             headers: {
@@ -176,9 +186,13 @@ class OpenAiCompatibleClient implements AiClient {
             body: jsonEncode(body),
           )
           .timeout(const Duration(seconds: 30));
+    } on ServerAccessDeniedException catch (e) {
+      throw AiAuthError(e.message);
     } catch (e) {
       throw AiNetworkError(
           "Couldn't reach $providerLabel — check your connection.\n($e)");
+    } finally {
+      client.close();
     }
 
     if (res.statusCode == 401) {

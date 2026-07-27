@@ -87,7 +87,7 @@ class RecipeBookController extends ChangeNotifier {
 
   // ---- Public getters -----------------------------------------------------
 
-  bool get signedIn => _sync.signedIn;
+  bool get serverReady => _sync.serverReady;
   bool get loadingPublic => _loadingPublic;
   String? get publicError => _publicError;
 
@@ -220,7 +220,7 @@ class RecipeBookController extends ChangeNotifier {
   }
 
   void _onSyncChanged() {
-    if (!_sync.signedIn) {
+    if (!_sync.serverReady) {
       _api?.close();
       _api = null;
       _apiServerUrl = null;

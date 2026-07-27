@@ -141,7 +141,7 @@ POST /auth/logout                                                (auth)
 POST /auth/change                {currentAuthKey, newAuthKey,…} (auth)
 GET  /auth/sessions                                              (auth) → active sessions
 POST /auth/sessions/<id>/revoke                                  (auth)
-GET  /account                                                    (auth) → usage, quota, collections
+GET  /account                                                    (auth) → usage, quota, status, collections
 POST /account/delete             {authKey}                       (auth) → wipes everything
 GET  /sync/<name>                                                (auth) → encrypted snapshot
 PUT  /sync/<name>                (X-Base-Version header)         (auth) → optimistic-locked upload
@@ -151,8 +151,17 @@ POST /ai/mistral/chat            (OpenAI-compatible body)         (auth) → pro
 POST /ai/google/chat             (OpenAI-compatible body)         (auth) → proxied completion
 POST /family, GET /family, POST /family/<id>/invite, …            (auth) → see api.dart
 POST /chat/invite, GET /chat/conversations, …                     (auth) → see api.dart
+POST /plugins/download           {pluginId, name}                (auth) → marketplace install counter
 GET  /health                                                       public
 ```
+
+Every `(auth)` route also requires the account to be **approved**: a user
+still in `status: "pending"` gets `403 account_not_approved` even with a
+valid token, and `/account` reports the same state in its `status` field.
+The app mirrors that — a device with no approved account sends nothing but
+the four handshake calls (`/auth/params`, `/auth/register`, `/auth/login`,
+`/auth/resend-verification`). That is why `/plugins/download` is
+authenticated: anonymous stats pings no longer exist.
 
 The full route table (including every family/chat sub-route and `/admin/*`)
 lives at the top of `Api.handler` in `api.dart` — that's the source of
