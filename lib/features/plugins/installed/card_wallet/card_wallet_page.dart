@@ -13,6 +13,7 @@ import '../../../../app/widgets.dart';
 import '../../../../theme/luma_theme.dart';
 import 'card_formats.dart';
 import 'card_wallet_nfc.dart';
+import 'card_wallet_platform.dart';
 import 'card_wallet_repository.dart';
 import 'card_wallet_scanner.dart';
 import 'card_wallet_scope.dart';
@@ -42,16 +43,19 @@ class CardWalletPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final repo = CardWalletScope.of(context);
+    final canManage = CardWalletPlatform.canManageCards;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showCardEditor(context, repo),
-        backgroundColor: luma.accent,
-        foregroundColor: luma.onAccent,
-        tooltip: 'Add card',
-        child: const Icon(Icons.add_rounded, size: 28),
-      ),
+      floatingActionButton: canManage
+          ? FloatingActionButton(
+              onPressed: () => _showCardEditor(context, repo),
+              backgroundColor: luma.accent,
+              foregroundColor: luma.onAccent,
+              tooltip: 'Add card',
+              child: const Icon(Icons.add_rounded, size: 28),
+            )
+          : null,
       body: SingleChildScrollView(
         // Extra bottom padding so the last card clears the floating button.
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 96),
@@ -67,14 +71,17 @@ class CardWalletPage extends StatelessWidget {
                     child: LumaEmptyState(
                       icon: Icons.wallet_rounded,
                       title: 'No cards yet',
-                      subtitle:
-                          'Add your first loyalty or membership card and it '
-                          'shows up here, ready to scan.',
-                      action: LumaPrimaryButton(
-                        label: 'Add card',
-                        icon: Icons.add_rounded,
-                        onTap: () => _showCardEditor(context, repo),
-                      ),
+                      subtitle: canManage
+                          ? 'Add your first loyalty or membership card and it '
+                              'shows up here, ready to scan.'
+                          : CardWalletPlatform.readOnlyNotice,
+                      action: canManage
+                          ? LumaPrimaryButton(
+                              label: 'Add card',
+                              icon: Icons.add_rounded,
+                              onTap: () => _showCardEditor(context, repo),
+                            )
+                          : null,
                     ),
                   );
                 }
@@ -88,12 +95,52 @@ class CardWalletPage extends StatelessWidget {
                         onTap: () => _showCardDetail(context, repo, cards[i]),
                       ),
                     ],
+                    if (!canManage) ...[
+                      const SizedBox(height: 20),
+                      const _ReadOnlyNote(),
+                    ],
                   ],
                 );
               },
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Footer shown on the desktop builds, which can present cards but not make
+/// them — see [CardWalletPlatform].
+class _ReadOnlyNote extends StatelessWidget {
+  const _ReadOnlyNote();
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: luma.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: luma.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.smartphone_rounded, color: luma.textMuted, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              CardWalletPlatform.readOnlyNotice,
+              style: TextStyle(
+                color: luma.textMuted,
+                fontSize: 12.5,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -350,15 +397,17 @@ void _showCardDetail(
                       },
                     ),
                     const Spacer(),
-                    LumaGhostButton(
-                      label: 'Edit',
-                      icon: Icons.edit_rounded,
-                      onTap: () {
-                        Navigator.of(dialogContext).pop();
-                        _showCardEditor(context, repo, existing: card);
-                      },
-                    ),
-                    const SizedBox(width: 10),
+                    if (CardWalletPlatform.canManageCards) ...[
+                      LumaGhostButton(
+                        label: 'Edit',
+                        icon: Icons.edit_rounded,
+                        onTap: () {
+                          Navigator.of(dialogContext).pop();
+                          _showCardEditor(context, repo, existing: card);
+                        },
+                      ),
+                      const SizedBox(width: 10),
+                    ],
                     LumaPrimaryButton(
                       label: 'Done',
                       onTap: () => Navigator.of(dialogContext).pop(),
@@ -880,6 +929,14 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
   late final TextEditingController _notes;
   late CardFormat _format;
   late int _color;
+
+  /// While on, the format follows whatever [detectCardFormat] makes of the
+  /// value. Turned off by anything the user picks by hand in Advanced. New
+  /// cards start automatic; editing an existing one leaves its stored format
+  /// alone until the user asks for detection.
+  late bool _autoFormat;
+  CardFormatGuess? _guess;
+  bool _advancedOpen = false;
   bool _saving = false;
   bool _scanning = false;
   String? _error;
@@ -894,11 +951,42 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
     _notes = TextEditingController(text: e?.notes ?? '');
     _format = e?.format ?? CardFormat.code128;
     _color = e?.color ?? _cardColors.first;
-    _code.addListener(() => setState(() {}));
+    _autoFormat = e == null;
+    _guess = detectCardFormat(_code.text);
+    if (_autoFormat && _guess != null) _format = _guess!.format;
+    _code.addListener(_onCodeChanged);
+  }
+
+  /// Turns detection back on — and applies it straight away, so the format
+  /// catches up with whatever is already in the field.
+  void _setAutoFormat(bool value) {
+    setState(() {
+      _autoFormat = value;
+      _error = null;
+      if (value) {
+        final guess = detectCardFormat(_code.text);
+        _guess = guess;
+        if (guess != null) _format = guess.format;
+      }
+    });
+  }
+
+  /// Re-reads the value on every keystroke: the preview always refreshes, and
+  /// while [_autoFormat] is on the symbology follows along.
+  void _onCodeChanged() {
+    final guess = detectCardFormat(_code.text);
+    setState(() {
+      _guess = guess;
+      if (_autoFormat && guess != null) {
+        _format = guess.format;
+        _error = null;
+      }
+    });
   }
 
   @override
   void dispose() {
+    _code.removeListener(_onCodeChanged);
     _name.dispose();
     _category.dispose();
     _code.dispose();
@@ -971,8 +1059,10 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
     }
   }
 
-  /// Applies a decoded barcode: fills the value and, when the symbology is one
-  /// luma can render, selects the matching format automatically.
+  /// Applies a decoded barcode: fills the value and picks the format. The
+  /// scanner read the real symbology off the code, so it wins over detection;
+  /// when it reports one luma can't render (Code 93, MaxiCode…), the value
+  /// still lands and [_onCodeChanged] has already inferred a carrier for it.
   void _applyScan(BarcodeScanResult result) {
     _code.text = result.value;
     setState(() {
@@ -980,13 +1070,7 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
       _error = null;
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          result.format != null
-              ? 'Scanned ${result.format!.label}'
-              : 'Scanned code',
-        ),
-      ),
+      SnackBar(content: Text('Scanned ${_format.label}')),
     );
   }
 
@@ -1001,6 +1085,16 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
       setState(() => _error = _format.isNfc
           ? 'Enter the NFC tag data.'
           : 'Enter the card number / barcode value.');
+      return;
+    }
+    // Only reachable with a hand-picked format: detection never returns one
+    // the encoder rejects.
+    if (!_format.accepts(code)) {
+      setState(() {
+        _advancedOpen = true;
+        _error = "This value can't be encoded as ${_format.label}. "
+            'Pick another format, or turn detection back on.';
+      });
       return;
     }
     setState(() {
@@ -1082,16 +1176,6 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
                 decoration: _dec(luma, hint: 'Loyalty, Membership, Transit…'),
               ),
               const SizedBox(height: 14),
-              _label(luma, 'Format'),
-              const SizedBox(height: 6),
-              _FormatDropdown(
-                value: _format,
-                onChanged: (f) => setState(() {
-                  _format = f;
-                  _error = null;
-                }),
-              ),
-              const SizedBox(height: 14),
               Row(
                 children: [
                   Expanded(
@@ -1155,6 +1239,13 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
                             ? 'Scan it in above, or type it — e.g. 2601234567890'
                             : 'e.g. 2601234567890')),
               ),
+              const SizedBox(height: 10),
+              _FormatStatus(
+                format: _format,
+                guess: _guess,
+                auto: _autoFormat,
+                onOpenAdvanced: () => setState(() => _advancedOpen = true),
+              ),
               const SizedBox(height: 14),
               _CodePreview(format: _format, code: _code.text.trim()),
               const SizedBox(height: 16),
@@ -1172,6 +1263,31 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
                 style: TextStyle(color: luma.textPrimary),
                 maxLines: 2,
                 decoration: _dec(luma, hint: 'PIN, member since, anything handy'),
+              ),
+              const SizedBox(height: 18),
+              _AdvancedSection(
+                open: _advancedOpen,
+                onToggle: () => setState(() => _advancedOpen = !_advancedOpen),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _AutoDetectSwitch(
+                      value: _autoFormat,
+                      onChanged: _setAutoFormat,
+                    ),
+                    const SizedBox(height: 14),
+                    _label(luma, 'Format'),
+                    const SizedBox(height: 6),
+                    _FormatDropdown(
+                      value: _format,
+                      onChanged: (f) => setState(() {
+                        _format = f;
+                        _autoFormat = false;
+                        _error = null;
+                      }),
+                    ),
+                  ],
+                ),
               ),
               if (_error != null) ...[
                 const SizedBox(height: 12),
@@ -1198,6 +1314,179 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The one-line answer to "what did luma make of this?", sitting under the
+/// value field: which format is in play, whether it was recognized or chosen,
+/// and a way through to Advanced.
+class _FormatStatus extends StatelessWidget {
+  const _FormatStatus({
+    required this.format,
+    required this.guess,
+    required this.auto,
+    required this.onOpenAdvanced,
+  });
+
+  final CardFormat format;
+  final CardFormatGuess? guess;
+  final bool auto;
+  final VoidCallback onOpenAdvanced;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final recognized = auto && (guess?.confident ?? false);
+    final waiting = auto && guess == null;
+    final icon = !auto
+        ? Icons.tune_rounded
+        : (recognized ? Icons.auto_awesome_rounded : Icons.edit_note_rounded);
+    final color = recognized ? luma.success : luma.textMuted;
+    final String text;
+    if (!auto) {
+      text = '${format.label} · detection off';
+    } else if (waiting) {
+      text = 'Scan or type a code and luma picks the format';
+    } else if (recognized) {
+      text = 'Recognized as ${format.label}';
+    } else {
+      text = 'No standard match — using ${format.label}';
+    }
+    return Row(
+      children: [
+        Icon(icon, size: 15, color: color),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(color: color, fontSize: 12.5),
+          ),
+        ),
+        const SizedBox(width: 8),
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: onOpenAdvanced,
+            child: Text(
+              'Change',
+              style: TextStyle(
+                color: luma.accent,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Collapsed-by-default disclosure at the bottom of the editor holding the
+/// manual format controls. Everything above it works without ever opening it.
+class _AdvancedSection extends StatelessWidget {
+  const _AdvancedSection({
+    required this.open,
+    required this.onToggle,
+    required this.child,
+  });
+
+  final bool open;
+  final VoidCallback onToggle;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Container(
+      decoration: BoxDecoration(
+        color: luma.background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: luma.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          InkWell(
+            onTap: onToggle,
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(
+                children: [
+                  Icon(Icons.tune_rounded, size: 16, color: luma.textSecondary),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Advanced',
+                      style: TextStyle(
+                        color: luma.textSecondary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    open
+                        ? Icons.expand_less_rounded
+                        : Icons.expand_more_rounded,
+                    size: 20,
+                    color: luma.textMuted,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (open)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+              child: child,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The switch that hands the format back to [detectCardFormat].
+class _AutoDetectSwitch extends StatelessWidget {
+  const _AutoDetectSwitch({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Detect the format automatically',
+                style: TextStyle(color: luma.textPrimary, fontSize: 13.5),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'luma reads the value and picks the matching symbology.',
+                style: TextStyle(color: luma.textMuted, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        Switch(
+          value: value,
+          onChanged: onChanged,
+          activeThumbColor: luma.onAccent,
+          activeTrackColor: luma.accent,
+          inactiveThumbColor: luma.textSecondary,
+          inactiveTrackColor: luma.surfaceHover,
+        ),
+      ],
     );
   }
 }
