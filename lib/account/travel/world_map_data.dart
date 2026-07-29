@@ -96,6 +96,18 @@ class WorldMap {
     return null;
   }
 
+  /// Like [countryAt], but a tap that misses everything falls back to the
+  /// smallest country whose outline sits within [slop] of [point] (unit
+  /// space). Without it, Malta and Singapore are untappable on a phone.
+  WorldCountry? countryNear(Offset point, double slop) {
+    final exact = countryAt(point);
+    if (exact != null || slop <= 0) return exact;
+    for (final country in _byAscendingSize) {
+      if (country.bounds.inflate(slop).contains(point)) return country;
+    }
+    return null;
+  }
+
   /// Country codes grouped by continent, each group name-sorted.
   Map<String, List<WorldCountry>> get byRegion {
     final grouped = <String, List<WorldCountry>>{};

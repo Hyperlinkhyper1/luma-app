@@ -7,7 +7,8 @@ import '../../theme/luma_theme.dart';
 import 'world_map_data.dart';
 
 /// The world, painted from [WorldMap] and coloured by which countries have
-/// been visited. Pan and pinch/scroll to zoom, tap a country to toggle it.
+/// been visited. Pan and pinch/scroll to zoom, tap a country to toggle it on
+/// or off.
 class WorldMapView extends StatefulWidget {
   const WorldMapView({
     super.key,
@@ -15,17 +16,25 @@ class WorldMapView extends StatefulWidget {
     required this.visited,
     required this.onToggle,
     this.controller,
+    this.borderRadius = 16,
+    this.maxScale = 14,
   });
 
   final WorldMap map;
 
   /// Country codes marked as visited.
   final Set<String> visited;
+
+  /// Called with the country under the tap — visited or not, so the same tap
+  /// both marks and unmarks.
   final ValueChanged<WorldCountry> onToggle;
 
   /// Optional external handle on the pan/zoom transform, so a parent can
-  /// offer "reset view" or focus a country.
+  /// offer "reset view". One is created internally when this is null.
   final TransformationController? controller;
+
+  final double borderRadius;
+  final double maxScale;
 
   @override
   State<WorldMapView> createState() => _WorldMapViewState();
@@ -33,14 +42,33 @@ class WorldMapView extends StatefulWidget {
 
 class _WorldMapViewState extends State<WorldMapView> {
   WorldCountry? _hovered;
+  TransformationController? _ownController;
 
-  /// Turns a pointer position on the canvas into unit-space map coordinates.
-  /// [local] is already in the unscaled child's own coordinates, so the
-  /// current pan/zoom doesn't come into it.
+  /// How far off a country a tap may land and still count, in logical pixels
+  /// on screen. Small countries are otherwise unhittable on a phone.
+  static const _tapSlop = 7.0;
+
+  TransformationController get _controller =>
+      widget.controller ?? (_ownController ??= TransformationController());
+
+  @override
+  void dispose() {
+    _ownController?.dispose();
+    super.dispose();
+  }
+
+  /// Turns a pointer position on the canvas into the country under it.
+  /// [local] is already in the unscaled child's own coordinates, so pan and
+  /// zoom don't come into it — but the current scale does set how much slop
+  /// a near miss is allowed.
   WorldCountry? _countryAt(Offset local, Size canvas) {
     if (canvas.isEmpty) return null;
-    return widget.map
-        .countryAt(Offset(local.dx / canvas.width, local.dy / canvas.height));
+    final scale = _controller.value.getMaxScaleOnAxis();
+    final slop = _tapSlop / (canvas.width * (scale <= 0 ? 1 : scale));
+    return widget.map.countryNear(
+      Offset(local.dx / canvas.width, local.dy / canvas.height),
+      slop,
+    );
   }
 
   @override
@@ -48,45 +76,52 @@ class _WorldMapViewState extends State<WorldMapView> {
     final luma = context.luma;
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Fit the whole world inside the viewport at rest; zooming from
-        // there is the InteractiveViewer's job.
-        final size = Size(
-          constraints.maxWidth,
-          constraints.maxWidth / MillerProjection.aspectRatio,
-        );
+        // Show the whole world at rest, as large as the box allows: sized by
+        // width normally, by height when the box is wider than the world is
+        // (a phone held sideways, say). Zooming from there is the
+        // InteractiveViewer's job.
+        var width = constraints.maxWidth;
+        var height = width / MillerProjection.aspectRatio;
+        if (constraints.hasBoundedHeight && height > constraints.maxHeight) {
+          height = constraints.maxHeight;
+          width = height * MillerProjection.aspectRatio;
+        }
+        final size = Size(width, height);
 
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            width: size.width,
-            height: size.height,
-            color: luma.background,
-            child: InteractiveViewer(
-              transformationController: widget.controller,
-              minScale: 1,
-              maxScale: 12,
-              child: MouseRegion(
-                onHover: (event) {
-                  final country = _countryAt(event.localPosition, size);
-                  if (country != _hovered) setState(() => _hovered = country);
-                },
-                onExit: (_) => setState(() => _hovered = null),
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTapUp: (details) {
-                    final country = _countryAt(details.localPosition, size);
-                    if (country != null) widget.onToggle(country);
+        return Center(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(widget.borderRadius),
+            child: Container(
+              width: size.width,
+              height: size.height,
+              color: luma.background,
+              child: InteractiveViewer(
+                transformationController: _controller,
+                minScale: 1,
+                maxScale: widget.maxScale,
+                child: MouseRegion(
+                  onHover: (event) {
+                    final country = _countryAt(event.localPosition, size);
+                    if (country != _hovered) setState(() => _hovered = country);
                   },
-                  child: CustomPaint(
-                    size: size,
-                    painter: _WorldMapPainter(
-                      map: widget.map,
-                      visited: widget.visited,
-                      hovered: _hovered,
-                      luma: luma,
-                      label: _hovered == null
-                          ? null
-                          : _labelFor(_hovered!, luma, context),
+                  onExit: (_) => setState(() => _hovered = null),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTapUp: (details) {
+                      final country = _countryAt(details.localPosition, size);
+                      if (country != null) widget.onToggle(country);
+                    },
+                    child: CustomPaint(
+                      size: size,
+                      painter: _WorldMapPainter(
+                        map: widget.map,
+                        visited: widget.visited,
+                        hovered: _hovered,
+                        luma: luma,
+                        label: _hovered == null
+                            ? null
+                            : _labelFor(_hovered!, luma, context),
+                      ),
                     ),
                   ),
                 ),
