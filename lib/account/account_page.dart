@@ -15,12 +15,20 @@ import '../theme/luma_theme.dart';
 import 'family_page.dart';
 import 'plan.dart';
 import 'plan_selection_page.dart';
+import 'stats_section.dart';
 
-/// The Account destination: profile picture, sync & paired devices (moved
-/// here from Settings, now collapsible), local storage usage, and the plan
-/// picker. Pinned in the nav rail directly below Settings.
-class AccountPage extends StatelessWidget {
+/// The Account destination: a Profile tab (profile picture, sync & paired
+/// devices, storage, plan and family) and a Stats tab (lifetime totals and
+/// the travel map). Pinned in the nav rail directly below Settings.
+class AccountPage extends StatefulWidget {
   const AccountPage({super.key});
+
+  @override
+  State<AccountPage> createState() => _AccountPageState();
+}
+
+class _AccountPageState extends State<AccountPage> {
+  int _tab = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -32,69 +40,92 @@ class AccountPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ---- Profile ------------------------------------------------
-              _SectionHeader(
-                icon: Icons.person_rounded,
-                title: 'Profile',
-                subtitle: 'How you show up on this device.',
-              ),
-              const SizedBox(height: 12),
-              const _ProfileSection(),
-
-              const SizedBox(height: 24),
-
-              // ---- Sync & account (collapsible) ----------------------------
-              LumaCollapsibleSection(
-                icon: Icons.cloud_sync_rounded,
-                title: 'Sync & account',
-                subtitle:
-                    'Your data on every device, and devices paired to this one.',
-                child: const Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SyncSection(),
-                    SizedBox(height: 16),
-                    DevicesSection(),
-                  ],
+              Align(
+                alignment: Alignment.centerLeft,
+                child: LumaSegmentedTabs(
+                  tabs: const ['Profile', 'Stats'],
+                  selectedIndex: _tab,
+                  onSelect: (index) => setState(() => _tab = index),
                 ),
               ),
-
-              const SizedBox(height: 24),
-
-              // ---- Storage --------------------------------------------------
-              _SectionHeader(
-                icon: Icons.storage_rounded,
-                title: 'Storage',
-                subtitle: 'How much room luma is using on this device.',
-              ),
-              const SizedBox(height: 12),
-              const _LocalStorageBar(),
-
-              const SizedBox(height: 24),
-
-              // ---- Plan -------------------------------------------------------
-              _SectionHeader(
-                icon: Icons.workspace_premium_rounded,
-                title: 'Plan',
-                subtitle: 'Your active plan and what it includes.',
-              ),
-              const SizedBox(height: 12),
-              const _PlanSummary(),
-
-              const SizedBox(height: 24),
-
-              // ---- Family -------------------------------------------------------
-              _SectionHeader(
-                icon: Icons.diversity_3_rounded,
-                title: 'Family',
-                subtitle: 'Share your calendar with people who matter.',
-              ),
-              const SizedBox(height: 12),
-              const _FamilySummary(),
+              const SizedBox(height: 20),
+              if (_tab == 0) const _ProfileTab() else const StatsSection(),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class _ProfileTab extends StatelessWidget {
+  const _ProfileTab();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // ---- Profile ------------------------------------------------
+        _SectionHeader(
+          icon: Icons.person_rounded,
+          title: 'Profile',
+          subtitle: 'How you show up on this device.',
+        ),
+        const SizedBox(height: 12),
+        const _ProfileSection(),
+
+        const SizedBox(height: 24),
+
+        // ---- Sync & account (collapsible) ----------------------------
+        LumaCollapsibleSection(
+          icon: Icons.cloud_sync_rounded,
+          title: 'Sync & account',
+          subtitle:
+              'Your data on every device, and devices paired to this one.',
+          child: const Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SyncSection(),
+              SizedBox(height: 16),
+              DevicesSection(),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 24),
+
+        // ---- Storage --------------------------------------------------
+        _SectionHeader(
+          icon: Icons.storage_rounded,
+          title: 'Storage',
+          subtitle: 'How much room luma is using on this device.',
+        ),
+        const SizedBox(height: 12),
+        const _LocalStorageBar(),
+
+        const SizedBox(height: 24),
+
+        // ---- Plan -------------------------------------------------------
+        _SectionHeader(
+          icon: Icons.workspace_premium_rounded,
+          title: 'Plan',
+          subtitle: 'Your active plan and what it includes.',
+        ),
+        const SizedBox(height: 12),
+        const _PlanSummary(),
+
+        const SizedBox(height: 24),
+
+        // ---- Family -------------------------------------------------------
+        _SectionHeader(
+          icon: Icons.diversity_3_rounded,
+          title: 'Family',
+          subtitle: 'Share your calendar with people who matter.',
+        ),
+        const SizedBox(height: 12),
+        const _FamilySummary(),
+      ],
     );
   }
 }
