@@ -226,5 +226,8 @@ class _WorldMapPainter extends CustomPainter {
       old.map != map ||
       old.hovered != hovered ||
       old.luma != luma ||
-      !setEquals(old.visited, visited);
+      !_sameCodes(old.visited, visited);
+
+  static bool _sameCodes(Set<String> a, Set<String> b) =>
+      a.length == b.length && a.containsAll(b);
 }
