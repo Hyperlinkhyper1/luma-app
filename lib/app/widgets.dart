@@ -113,22 +113,25 @@ class _LumaPrimaryButtonState extends State<LumaPrimaryButton> {
                       valueColor: AlwaysStoppedAnimation(luma.onAccent),
                     ),
                   )
-                : Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (widget.icon != null) ...[
-                        Icon(widget.icon, color: luma.onAccent, size: 18),
-                        const SizedBox(width: 8),
-                      ],
-                      Text(
-                        widget.label,
-                        style: TextStyle(
-                          color: luma.onAccent,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
+                : FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (widget.icon != null) ...[
+                          Icon(widget.icon, color: luma.onAccent, size: 18),
+                          const SizedBox(width: 8),
+                        ],
+                        Text(
+                          widget.label,
+                          style: TextStyle(
+                            color: luma.onAccent,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
           ),
         ),
@@ -178,22 +181,28 @@ class _LumaGhostButtonState extends State<LumaGhostButton> {
             border: Border.all(color: luma.border),
           ),
           child: Center(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (widget.icon != null) ...[
-                  Icon(widget.icon, color: luma.textSecondary, size: 18),
-                  const SizedBox(width: 8),
-                ],
-                Text(
-                  widget.label,
-                  style: TextStyle(
-                    color: luma.textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+            // Scale a long label down rather than let it spill past the
+            // border: these sit two-to-a-row inside dialogs, and a phone-width
+            // half leaves less room than the label needs.
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (widget.icon != null) ...[
+                    Icon(widget.icon, color: luma.textSecondary, size: 18),
+                    const SizedBox(width: 8),
+                  ],
+                  Text(
+                    widget.label,
+                    style: TextStyle(
+                      color: luma.textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
