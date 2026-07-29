@@ -15,6 +15,8 @@ lib/
     update/                  Self-update via GitHub Releases (check → download → silent Inno installer on Windows)
     widgets.dart             Shared UI primitives (cards, pills, StreamData…)
   account/                   Account + plan UI (plan.dart holds kPlans: storage, sync and family limits)
+    stats_section.dart       Account's Stats tab: lifetime money totals + the travel map card
+    travel/                  World travel map (bundled outline in assets/world/, picked countries in SettingsController)
   family/                    Family groups: repository, scope, invite dialog, in-app inbox
   features/
     chat/                    The Assistant. providers/ holds one client per AI provider + the
