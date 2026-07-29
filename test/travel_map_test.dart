@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/account/travel/world_map_data.dart';
+import 'package:luma/settings/settings_controller.dart';
 
 /// The bundled outline, read straight off disk so the test covers the real
 /// asset rather than a fixture.
@@ -17,6 +18,56 @@ const _square = '''
 ''';
 
 void main() {
+  // SettingsController.load() reaches for path_provider, which isn't there on
+  // the host — it falls back to an in-memory controller.
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  group('visited countries', () {
+    test('a second tap takes a country back off the map', () async {
+      final settings = await SettingsController.load();
+      settings.setVisitedCountries(const []);
+
+      settings.toggleVisitedCountry('NL');
+      expect(settings.visitedCountries, ['NL']);
+
+      settings.toggleVisitedCountry('JP');
+      expect(settings.visitedCountries, ['JP', 'NL']);
+
+      settings.toggleVisitedCountry('NL');
+      expect(settings.visitedCountries, ['JP']);
+
+      settings.toggleVisitedCountry('JP');
+      expect(settings.visitedCountries, isEmpty);
+    });
+
+    test('picks are deduplicated, sorted and notify listeners', () async {
+      final settings = await SettingsController.load();
+      settings.setVisitedCountries(const []);
+
+      var notifications = 0;
+      settings.addListener(() => notifications++);
+
+      settings.setVisitedCountries(['NL', 'BE', 'NL']);
+      expect(settings.visitedCountries, ['BE', 'NL']);
+      expect(notifications, 1);
+
+      // Setting the same picks again is a no-op.
+      settings.setVisitedCountries(['NL', 'BE']);
+      expect(notifications, 1);
+    });
+
+    test('picks survive an export/import round trip', () async {
+      final settings = await SettingsController.load();
+      settings.setVisitedCountries(['FR', 'IT']);
+
+      final snapshot = settings.exportData();
+      settings.setVisitedCountries(const []);
+      await settings.importData(Map<String, dynamic>.from(snapshot));
+
+      expect(settings.visitedCountries, ['FR', 'IT']);
+    });
+  });
+
   group('MillerProjection', () {
     test('projects the antimeridian and the prime meridian', () {
       expect(MillerProjection.project(-180, 0).dx, closeTo(0, 1e-9));
@@ -62,6 +113,22 @@ void main() {
       expect(map.countryAt(MillerProjection.project(15, 5))?.code, 'IN');
       // …and it paints last, so it stays visible.
       expect(map.byDescendingSize.first.code, 'SQ');
+    });
+
+    test('a near miss still lands on a country', () {
+      final map = WorldMap.parse(_square);
+      // Just off the west coast of the square, in open water.
+      final justOutside = MillerProjection.project(9.8, 5);
+      expect(map.countryAt(justOutside), isNull);
+      expect(map.countryNear(justOutside, 0.0)?.code, isNull);
+      expect(map.countryNear(justOutside, 0.01)?.code, 'SQ');
+      // A tap far out to sea stays a miss.
+      expect(map.countryNear(MillerProjection.project(40, 5), 0.01), isNull);
+    });
+
+    test('an exact hit beats a neighbour within the slop', () {
+      final map = WorldMap.parse(_square);
+      expect(map.countryNear(MillerProjection.project(15, 5), 0.02)?.code, 'IN');
     });
 
     test('groups countries by region', () {

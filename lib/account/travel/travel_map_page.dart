@@ -4,6 +4,7 @@ import '../../app/widgets.dart';
 import '../../settings/settings_controller.dart';
 import '../../settings/settings_scope.dart';
 import '../../theme/luma_theme.dart';
+import 'fullscreen_map_page.dart';
 import 'world_map_data.dart';
 import 'world_map_view.dart';
 
@@ -22,9 +23,32 @@ class _TravelMapPageState extends State<TravelMapPage> {
   final _searchController = TextEditingController();
   String _search = '';
 
+  /// The outline once it has loaded, so the app bar's fullscreen action can
+  /// hand it straight to [FullscreenMapPage].
+  WorldMap? _loaded;
+
   /// Below this the map and the country list stack instead of sitting
   /// side by side.
   static const _sideBySideBreakpoint = 900.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _map.then(
+      (map) {
+        if (mounted) setState(() => _loaded = map);
+      },
+      // Errors are surfaced by the FutureBuilder below; this listener only
+      // exists to keep the app bar action in sync.
+      onError: (_) {},
+    );
+  }
+
+  Future<void> _openFullscreen(WorldMap map) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => FullscreenMapPage(map: map)),
+    );
+  }
 
   @override
   void dispose() {
@@ -47,8 +71,13 @@ class _TravelMapPageState extends State<TravelMapPage> {
         actions: [
           IconButton(
             tooltip: 'Reset zoom',
-            icon: const Icon(Icons.zoom_out_map_rounded),
+            icon: const Icon(Icons.restart_alt_rounded),
             onPressed: () => _view.value = Matrix4.identity(),
+          ),
+          IconButton(
+            tooltip: 'Fullscreen',
+            icon: const Icon(Icons.fullscreen_rounded),
+            onPressed: _loaded == null ? null : () => _openFullscreen(_loaded!),
           ),
           const SizedBox(width: 4),
         ],
@@ -105,6 +134,7 @@ class _TravelMapPageState extends State<TravelMapPage> {
           visited: known,
           onToggle: toggle,
           controller: _view,
+          onFullscreen: () => _openFullscreen(map),
         );
         final listPanel = _CountryList(
           map: map,
@@ -118,12 +148,14 @@ class _TravelMapPageState extends State<TravelMapPage> {
 
         if (!sideBySide) {
           return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 32),
             children: [
-              _Summary(map: map, visited: known),
-              const SizedBox(height: 16),
+              // Map first on a phone: it's what the page is for, and the
+              // summary is a scroll away rather than in front of it.
               mapPanel,
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
+              _Summary(map: map, visited: known),
+              const SizedBox(height: 14),
               SizedBox(height: 460, child: listPanel),
             ],
           );
@@ -239,17 +271,33 @@ class _Summary extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final entry in _regionCounts().entries)
-                _RegionPill(
-                  region: entry.key,
-                  visited: entry.value.$1,
-                  total: entry.value.$2,
-                ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final pills = [
+                for (final entry in _regionCounts().entries)
+                  _RegionPill(
+                    region: entry.key,
+                    visited: entry.value.$1,
+                    total: entry.value.$2,
+                  ),
+              ];
+              // Wrapping seven continents costs three rows on a phone; keep
+              // them on one swipeable line there instead.
+              if (constraints.maxWidth < 520) {
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      for (var i = 0; i < pills.length; i++) ...[
+                        if (i > 0) const SizedBox(width: 8),
+                        pills[i],
+                      ],
+                    ],
+                  ),
+                );
+              }
+              return Wrap(spacing: 8, runSpacing: 8, children: pills);
+            },
           ),
         ],
       ),
@@ -317,42 +365,93 @@ class _MapPanel extends StatelessWidget {
     required this.visited,
     required this.onToggle,
     required this.controller,
+    required this.onFullscreen,
   });
 
   final WorldMap map;
   final Set<String> visited;
   final ValueChanged<WorldCountry> onToggle;
   final TransformationController controller;
+  final VoidCallback onFullscreen;
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
     return LumaCard(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          WorldMapView(
-            map: map,
-            visited: visited,
-            onToggle: onToggle,
-            controller: controller,
-          ),
-          const SizedBox(height: 10),
-          Row(
+          Stack(
             children: [
-              Icon(Icons.touch_app_rounded, size: 14, color: luma.textMuted),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  'Tap a country to mark it visited. Drag to pan, '
-                  'pinch or scroll to zoom.',
-                  style: TextStyle(color: luma.textMuted, fontSize: 12),
+              WorldMapView(
+                map: map,
+                visited: visited,
+                onToggle: onToggle,
+                controller: controller,
+              ),
+              Positioned(
+                right: 8,
+                bottom: 8,
+                child: _MapAction(
+                  icon: Icons.fullscreen_rounded,
+                  tooltip: 'Open fullscreen',
+                  onTap: onFullscreen,
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              children: [
+                Icon(Icons.touch_app_rounded, size: 14, color: luma.textMuted),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Tap a country to mark it visited, tap it again to remove '
+                    'it. Pinch to zoom, or open the map fullscreen.',
+                    style: TextStyle(color: luma.textMuted, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+/// Small round button floating over the map.
+class _MapAction extends StatelessWidget {
+  const _MapAction({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: luma.surface.withValues(alpha: 0.92),
+        shape: CircleBorder(side: BorderSide(color: luma.border)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: Icon(icon, size: 18, color: luma.textPrimary),
+          ),
+        ),
       ),
     );
   }
@@ -400,7 +499,7 @@ class _CountryList extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Countries',
+                  visited.isEmpty ? 'Countries' : 'Countries · ${visited.length}',
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 14,
@@ -446,6 +545,16 @@ class _CountryList extends StatelessWidget {
               ),
             ),
           ),
+          if (visited.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _VisitedChips(
+              countries: [
+                for (final country in map.countries)
+                  if (visited.contains(country.code)) country,
+              ],
+              onRemove: onToggle,
+            ),
+          ],
           const SizedBox(height: 6),
           Expanded(
             child: matches.isEmpty
@@ -469,6 +578,58 @@ class _CountryList extends StatelessWidget {
                   ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The countries already picked, as chips with an ✕ — the quickest way to
+/// take one back off the map without hunting for it in the list.
+class _VisitedChips extends StatelessWidget {
+  const _VisitedChips({required this.countries, required this.onRemove});
+
+  final List<WorldCountry> countries;
+  final ValueChanged<WorldCountry> onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxHeight: 108),
+      child: SingleChildScrollView(
+        child: Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            for (final country in countries)
+              Material(
+                color: luma.accentSubtle,
+                borderRadius: BorderRadius.circular(20),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: () => onRemove(country),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(10, 5, 8, 5),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          country.name,
+                          style: TextStyle(
+                            color: luma.textPrimary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(Icons.close_rounded, size: 14, color: luma.accent),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
