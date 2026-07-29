@@ -12,6 +12,20 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
 
+    <!-- Labels each Wi-Fi Speed Test run with the network it was measured on.
+         The SSID is only handed out to apps holding a nearby-devices (Android
+         13+) or fine-location (Android 12 and below) grant, and the mobile
+         data generation (2G/3G/4G/5G) needs READ_PHONE_STATE. All three are
+         only asked for when the user opts in from that page, and the plugin
+         falls back to a plain "Wi-Fi" / "Mobile data" label if denied. -->
+    <uses-permission
+        android:name="android.permission.NEARBY_WIFI_DEVICES"
+        android:usesPermissionFlags="neverForLocation" />
+    <uses-permission
+        android:name="android.permission.ACCESS_FINE_LOCATION"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+
     <!-- Read loyalty/membership NFC tags in the Card Wallet plugin. Marked
          not-required so the app still installs on devices without NFC. -->
     <uses-permission android:name="android.permission.NFC" />
