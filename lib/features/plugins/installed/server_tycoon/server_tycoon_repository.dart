@@ -100,9 +100,10 @@ class ServerTycoonRepository extends ChangeNotifier {
 
   /// Research points earned at each day rollover.
   double get researchPointsPerDayNow {
+    final byRig = servicesByRig();
     var serving = 0;
-    for (final rig in _state.rigs.values) {
-      if (rig.services.isNotEmpty) serving++;
+    for (final rigId in _state.rigs.keys) {
+      if ((byRig[rigId] ?? const []).isNotEmpty) serving++;
     }
     return researchPointsPerDay(
       rigsServingTraffic: serving,
@@ -674,14 +675,31 @@ class ServerTycoonRepository extends ChangeNotifier {
     return (events, offline ? 0.0 : rewardCash);
   }
 
+  /// Services grouped by the rig they're wired to. Anything unconnected (or
+  /// pointing at a deleted rig) is simply absent, which is what makes an
+  /// unplugged service node earn nothing.
+  Map<String, List<ServiceInstance>> servicesByRig() {
+    final byRig = <String, List<ServiceInstance>>{};
+    for (final service in _state.services.values) {
+      final rigId = service.rigId;
+      if (rigId == null || !_state.rigs.containsKey(rigId)) continue;
+      byRig.putIfAbsent(rigId, () => []).add(service.toInstance());
+    }
+    return byRig;
+  }
+
   AccountLoadResult calculateLoad() {
+    final byRig = servicesByRig();
     final rigs = <String, RigInput>{};
     for (final entry in _state.rigs.entries) {
+      final routerId = entry.value.routerId;
+      // An unwired rig is modelled as being on a router that doesn't exist,
+      // so it gets a zero bandwidth factor rather than free connectivity.
       rigs[entry.key] = RigInput(
         build: entry.value.build,
-        services: entry.value.services,
+        services: byRig[entry.key] ?? const [],
         kind: entry.value.kind,
-        routerId: entry.value.routerId,
+        routerId: routerId ?? '',
       );
     }
     final routers = <String, RouterInput>{};
@@ -1078,7 +1096,9 @@ class ServerTycoonRepository extends ChangeNotifier {
     var bestCount = 999999;
     final rigCounts = <String, int>{};
     for (final rig in _state.rigs.values) {
-      rigCounts[rig.routerId] = (rigCounts[rig.routerId] ?? 0) + 1;
+      final routerId = rig.routerId;
+      if (routerId == null) continue;
+      rigCounts[routerId] = (rigCounts[routerId] ?? 0) + 1;
     }
     for (final router in _state.routers.values) {
       final count = rigCounts[router.routerId] ?? 0;
@@ -1099,7 +1119,6 @@ class ServerTycoonRepository extends ChangeNotifier {
       name: server ? 'Server $rigId' : 'Rig $rigId',
       kind: kind,
       build: server ? newServerBuild() : newRigBuild(),
-      services: [],
       routerId: bestRouter.routerId,
       pos: NodePos(
         x: (bestRouter.pos.x + 320).clamp(0, GameState.canvasMaxX),
@@ -1173,9 +1192,17 @@ class ServerTycoonRepository extends ChangeNotifier {
     return const ActionResult(ok: true);
   }
 
-  ActionResult installService(String rigId, String serviceTypeId, int capacity) {
-    final rig = _state.rigs[rigId];
-    if (rig == null) return const ActionResult(ok: false, errors: ['Unknown rig']);
+  /// Creates a service node. [rigId] may be null to drop it on the canvas
+  /// unconnected, for the player to wire up themselves.
+  ActionResult installService(
+    String? rigId,
+    String serviceTypeId,
+    int capacity, {
+    NodePos? pos,
+  }) {
+    if (rigId != null && !_state.rigs.containsKey(rigId)) {
+      return const ActionResult(ok: false, errors: ['Unknown rig']);
+    }
     final serviceType = servicesById[serviceTypeId];
     if (serviceType == null) return const ActionResult(ok: false, errors: ['Unknown service type']);
     if (serviceType.requiredLicense != null && !_state.licenses.contains(serviceType.requiredLicense)) {
@@ -1185,37 +1212,107 @@ class ServerTycoonRepository extends ChangeNotifier {
 
     final instanceId = '${_state.nextInstanceId}';
     _state.nextInstanceId++;
-    rig.services.add(ServiceInstance(instanceId: instanceId, serviceTypeId: serviceTypeId, capacity: capacity));
+
+    _state.services[instanceId] = ServiceNode(
+      instanceId: instanceId,
+      serviceTypeId: serviceTypeId,
+      capacity: capacity,
+      rigId: rigId,
+      pos: pos ?? _freeServiceSlot(rigId),
+    );
     _bumpMission(MissionMetric.servicesInstalled, 1);
     _save();
     notifyListeners();
     return const ActionResult(ok: true);
   }
 
-  ActionResult uninstallService(String rigId, String instanceId) {
-    final rig = _state.rigs[rigId];
-    if (rig == null) return const ActionResult(ok: false, errors: ['Unknown rig']);
-    final idx = rig.services.indexWhere((s) => s.instanceId == instanceId);
-    if (idx < 0) return const ActionResult(ok: false, errors: ['Service instance not found']);
-    rig.services.removeAt(idx);
+  /// A spot to the left of the owning rig that nothing else is sitting on.
+  NodePos _freeServiceSlot(String? rigId) {
+    final rig = rigId == null ? null : _state.rigs[rigId];
+    final baseX = (rig?.pos.x ?? 380) + 320;
+    final baseY = rig?.pos.y ?? 60;
+
+    for (var row = 0; row < 40; row++) {
+      final y = baseY + row * 84;
+      final taken = _state.services.values.any(
+        (s) => (s.pos.x - baseX).abs() < 8 && (s.pos.y - y).abs() < 8,
+      );
+      if (!taken) {
+        return NodePos(
+          x: baseX.clamp(0, GameState.canvasMaxX),
+          y: y.clamp(0, GameState.canvasMaxY),
+        );
+      }
+    }
+    return NodePos(x: baseX.clamp(0, GameState.canvasMaxX), y: baseY.clamp(0, GameState.canvasMaxY));
+  }
+
+  ActionResult uninstallService(String instanceId) {
+    if (_state.services.remove(instanceId) == null) {
+      return const ActionResult(ok: false, errors: ['Service instance not found']);
+    }
     _save();
     notifyListeners();
     return const ActionResult(ok: true);
   }
 
-  ActionResult setServiceCapacity(String rigId, String instanceId, int capacity) {
-    final rig = _state.rigs[rigId];
-    if (rig == null) return const ActionResult(ok: false, errors: ['Unknown rig']);
-    if (capacity < 1) capacity = 1;
-    for (final inst in rig.services) {
-      if (inst.instanceId == instanceId) {
-        inst.capacity = capacity;
-        _save();
-        notifyListeners();
-        return const ActionResult(ok: true);
-      }
+  ActionResult setServiceCapacity(String instanceId, int capacity) {
+    final service = _state.services[instanceId];
+    if (service == null) return const ActionResult(ok: false, errors: ['Service instance not found']);
+    service.capacity = capacity < 1 ? 1 : capacity;
+    _save();
+    notifyListeners();
+    return const ActionResult(ok: true);
+  }
+
+  // ── Wiring ──
+
+  /// Connects one node to another. Only service → rig and rig → router are
+  /// meaningful; anything else is refused so the canvas can't be wired into a
+  /// shape the simulation doesn't understand.
+  ActionResult connectNodes(String fromKind, String fromId, String toKind, String toId) {
+    if (fromKind == 'service' && toKind == 'rig') {
+      final service = _state.services[fromId];
+      if (service == null) return const ActionResult(ok: false, errors: ['Unknown service']);
+      if (!_state.rigs.containsKey(toId)) return const ActionResult(ok: false, errors: ['Unknown rig']);
+      service.rigId = toId;
+    } else if (fromKind == 'rig' && toKind == 'router') {
+      final rig = _state.rigs[fromId];
+      if (rig == null) return const ActionResult(ok: false, errors: ['Unknown rig']);
+      if (!_state.routers.containsKey(toId)) return const ActionResult(ok: false, errors: ['Unknown router']);
+      rig.routerId = toId;
+    } else if (fromKind == 'rig' && toKind == 'service') {
+      // Dragging the other way round is the same link; be forgiving about it.
+      return connectNodes('service', toId, 'rig', fromId);
+    } else if (fromKind == 'router' && toKind == 'rig') {
+      return connectNodes('rig', toId, 'router', fromId);
+    } else if (fromKind == toKind) {
+      return ActionResult(ok: false, errors: ['Two ${fromKind}s cannot be connected to each other']);
+    } else {
+      return const ActionResult(ok: false, errors: ['Those two cannot be connected']);
     }
-    return const ActionResult(ok: false, errors: ['Service instance not found']);
+
+    _save();
+    notifyListeners();
+    return const ActionResult(ok: true);
+  }
+
+  /// Unplugs a node from whatever it feeds into.
+  ActionResult disconnectNode(String kind, String id) {
+    if (kind == 'service') {
+      final service = _state.services[id];
+      if (service == null) return const ActionResult(ok: false, errors: ['Unknown service']);
+      service.rigId = null;
+    } else if (kind == 'rig') {
+      final rig = _state.rigs[id];
+      if (rig == null) return const ActionResult(ok: false, errors: ['Unknown rig']);
+      rig.routerId = null;
+    } else {
+      return const ActionResult(ok: false, errors: ['Nothing to disconnect']);
+    }
+    _save();
+    notifyListeners();
+    return const ActionResult(ok: true);
   }
 
   ActionResult buyLicense(String licenseId) {
@@ -1558,6 +1655,26 @@ class ServerTycoonRepository extends ChangeNotifier {
           if (ok) return ('storage', drive.id, drive.name, drive.price);
         }
         return null;
+      case 'disk':
+        // Out of throughput rather than space, so pick on speed and only
+        // consider drives quicker than the slowest one already fitted —
+        // adding another identical HDD would barely move the needle.
+        final slowest = rig.build.storageIds
+            .map((id) => storageById[id])
+            .nonNulls
+            .map((d) => d.readSpeedMBs * 0.7 + d.writeSpeedMBs * 0.3)
+            .fold<double>(double.infinity, math.min);
+        final candidates = storageList
+            .where((d) => d.readSpeedMBs * 0.7 + d.writeSpeedMBs * 0.3 > slowest)
+            .toList()
+          ..sort((a, b) => a.price.compareTo(b.price));
+        for (final drive in candidates) {
+          if (!affordable(drive.id, drive.price)) continue;
+          final trial = rig.build.copyWith(storageIds: [...rig.build.storageIds, drive.id]);
+          final (_, ok) = validateBuild(trial, rigKind: rig.kind);
+          if (ok) return ('storage', drive.id, drive.name, drive.price);
+        }
+        return null;
       default:
         return null;
     }
@@ -1639,7 +1756,6 @@ class ServerTycoonRepository extends ChangeNotifier {
         ramIds: [...source.build.ramIds],
         storageIds: [...source.build.storageIds],
       ),
-      services: [],
       routerId: source.routerId,
       pos: NodePos(
         x: (source.pos.x + 260).clamp(0, GameState.canvasMaxX),
@@ -1652,44 +1768,65 @@ class ServerTycoonRepository extends ChangeNotifier {
     return ActionResult(ok: true, warning: 'Cloned for \$$cost — install services on it to start earning');
   }
 
-  /// Lays every node out in tidy columns: routers down the left, their rigs in
-  /// a grid beside them. Dragging tiles into place is miserable on a phone.
+  /// Lays the graph out left to right — routers, then the rigs feeding them,
+  /// then each rig's services. Wiring a graph by hand on a phone is fiddly
+  /// enough without also having to tidy it.
   ActionResult autoArrange() {
-    if (_state.routers.isEmpty) return const ActionResult(ok: false, errors: ['Nothing to arrange']);
+    if (_state.routers.isEmpty && _state.rigs.isEmpty && _state.services.isEmpty) {
+      return const ActionResult(ok: false, errors: ['Nothing to arrange']);
+    }
 
     const routerX = 60.0;
-    const rigStartX = 380.0;
-    const columnWidth = 260.0;
-    const rowHeight = 120.0;
-    const groupGap = 60.0;
-    const rigsPerRow = 3;
+    const rigX = 400.0;
+    const serviceX = 760.0;
+    const rigRowHeight = 150.0;
+    const serviceRowHeight = 84.0;
+    const groupGap = 40.0;
 
     var y = 60.0;
+
+    /// Places one rig and stacks its services beside it, returning the y to
+    /// carry on from.
+    double placeRig(Rig rig, double top) {
+      rig.pos = NodePos(x: rigX, y: top.clamp(0, GameState.canvasMaxY));
+      final services = _state.services.values.where((s) => s.rigId == rig.rigId).toList()
+        ..sort((a, b) => a.instanceId.compareTo(b.instanceId));
+      for (var i = 0; i < services.length; i++) {
+        services[i].pos = NodePos(
+          x: serviceX,
+          y: (top + i * serviceRowHeight).clamp(0, GameState.canvasMaxY),
+        );
+      }
+      final used = math.max(rigRowHeight, services.length * serviceRowHeight + 20);
+      return top + used;
+    }
+
     final routerIds = _state.routers.keys.toList()..sort();
     for (final routerId in routerIds) {
       final router = _state.routers[routerId]!;
       final rigs = _state.rigs.values.where((r) => r.routerId == routerId).toList()
         ..sort((a, b) => a.rigId.compareTo(b.rigId));
 
-      router.pos = NodePos(x: routerX, y: y);
-      for (var i = 0; i < rigs.length; i++) {
-        rigs[i].pos = NodePos(
-          x: rigStartX + (i % rigsPerRow) * columnWidth,
-          y: y + (i ~/ rigsPerRow) * rowHeight,
-        );
+      router.pos = NodePos(x: routerX, y: y.clamp(0, GameState.canvasMaxY));
+      var groupY = y;
+      for (final rig in rigs) {
+        groupY = placeRig(rig, groupY);
       }
-
-      final rows = rigs.isEmpty ? 1 : ((rigs.length - 1) ~/ rigsPerRow) + 1;
-      y += rows * rowHeight + groupGap;
+      y = math.max(groupY, y + rigRowHeight) + groupGap;
     }
 
-    // Rigs pointing at a router that no longer exists would otherwise be left
-    // wherever they were dropped.
-    var orphanY = y;
+    // Unwired rigs still need somewhere sensible to sit.
     for (final rig in _state.rigs.values) {
-      if (_state.routers.containsKey(rig.routerId)) continue;
-      rig.pos = NodePos(x: rigStartX, y: orphanY);
-      orphanY += rowHeight;
+      if (rig.routerId != null && _state.routers.containsKey(rig.routerId)) continue;
+      y = placeRig(rig, y) + groupGap;
+    }
+
+    // Same for services that aren't plugged into anything.
+    var looseY = y;
+    for (final service in _state.services.values) {
+      if (service.rigId != null && _state.rigs.containsKey(service.rigId)) continue;
+      service.pos = NodePos(x: serviceX, y: looseY.clamp(0, GameState.canvasMaxY));
+      looseY += serviceRowHeight;
     }
 
     _save();
