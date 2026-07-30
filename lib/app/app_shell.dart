@@ -141,7 +141,7 @@ class _AppShellState extends State<AppShell> {
   // full-canvas games): on phone, the top title bar and bottom nav just eat
   // space the game desperately needs, so they're hidden and replaced with a
   // single floating back button instead.
-  static const _phoneImmersivePlugins = {'subway-builder'};
+  static const _phoneImmersivePlugins = {'subway-builder', 'server-tycoon'};
 
   @override
   Widget build(BuildContext context) {
