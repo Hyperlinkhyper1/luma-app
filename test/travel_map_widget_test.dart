@@ -7,14 +7,18 @@ import 'package:luma/settings/settings_controller.dart';
 import 'package:luma/settings/settings_scope.dart';
 import 'package:luma/theme/luma_theme.dart';
 
+import 'world_map_fixture.dart';
+
 /// Two square countries — enough geometry to lay the map out without paying
 /// for the real outline.
-const _square = '''
-{"q":1,"countries":[
-  {"c":"SQ","n":"Square","r":"Nowhere","p":[[10,0,20,0,20,10,10,10]]},
-  {"c":"IN","n":"Inner","r":"Nowhere","p":[[14,4,16,4,16,6,14,6]]}
-]}
-''';
+final _square = encodeWorldMap(const [
+  FixtureCountry('SQ', 'Square', 'Nowhere', [
+    [10, 0, 20, 0, 20, 10, 10, 10],
+  ]),
+  FixtureCountry('IN', 'Inner', 'Nowhere', [
+    [14, 4, 16, 4, 16, 6, 14, 6],
+  ]),
+]);
 
 /// Loading settings touches real async I/O, so it runs outside the widget
 /// tester's fake clock; there is no path_provider on the host, so the

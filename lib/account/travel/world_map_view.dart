@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -182,9 +181,12 @@ class _WorldMapPainter extends CustomPainter {
       ..strokeWidth = 0.6
       ..color = luma.background.withValues(alpha: 0.9);
 
+    final paths = map.pathsFor(size);
+
     // Largest first so enclaves keep their own colour on top.
     for (final country in map.byDescendingSize) {
-      final path = _pathFor(country, size);
+      final path = paths[country.code];
+      if (path == null) continue;
       final isVisited = visited.contains(country.code);
       canvas.drawPath(
         path,
@@ -196,32 +198,19 @@ class _WorldMapPainter extends CustomPainter {
     }
 
     final hoveredCountry = hovered;
-    if (hoveredCountry != null) {
+    final hoveredPath = hoveredCountry == null
+        ? null
+        : paths[hoveredCountry.code];
+    if (hoveredCountry != null && hoveredPath != null) {
       final outline = Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.4
         ..color = visited.contains(hoveredCountry.code)
             ? luma.onAccent.withValues(alpha: 0.8)
             : luma.accent;
-      canvas.drawPath(_pathFor(hoveredCountry, size), outline);
+      canvas.drawPath(hoveredPath, outline);
       _paintLabel(canvas, size, hoveredCountry);
     }
-  }
-
-  Path _pathFor(WorldCountry country, Size size) {
-    final path = Path();
-    for (final ring in country.rings) {
-      _addRing(path, ring, size);
-    }
-    return path;
-  }
-
-  static void _addRing(Path path, Float32List ring, Size size) {
-    path.moveTo(ring[0] * size.width, ring[1] * size.height);
-    for (var i = 2; i < ring.length; i += 2) {
-      path.lineTo(ring[i] * size.width, ring[i + 1] * size.height);
-    }
-    path.close();
   }
 
   /// Name chip pinned just above the hovered country, nudged to stay on

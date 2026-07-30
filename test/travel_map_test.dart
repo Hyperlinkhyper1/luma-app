@@ -4,18 +4,23 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/account/travel/world_map_data.dart';
 import 'package:luma/settings/settings_controller.dart';
 
+import 'world_map_fixture.dart';
+
 /// The bundled outline, read straight off disk so the test covers the real
 /// asset rather than a fixture.
 WorldMap _bundled() =>
     WorldMap.parse(File('assets/world/world_countries.json').readAsStringSync());
 
-/// A square country covering 10°..20° east, 0°..10° north.
-const _square = '''
-{"q":1,"countries":[
-  {"c":"SQ","n":"Square","r":"Nowhere","p":[[10,0,20,0,20,10,10,10]]},
-  {"c":"IN","n":"Inner","r":"Nowhere","p":[[14,4,16,4,16,6,14,6]]}
-]}
-''';
+/// A square country covering 10°..20° east, 0°..10° north, with a smaller
+/// one sitting inside it.
+final _square = encodeWorldMap(const [
+  FixtureCountry('SQ', 'Square', 'Nowhere', [
+    [10, 0, 20, 0, 20, 10, 10, 10],
+  ]),
+  FixtureCountry('IN', 'Inner', 'Nowhere', [
+    [14, 4, 16, 4, 16, 6, 14, 6],
+  ]),
+]);
 
 void main() {
   // SettingsController.load() reaches for path_provider, which isn't there on
@@ -141,20 +146,42 @@ void main() {
   group('bundled world outline', () {
     test('covers the world with unique codes', () {
       final map = _bundled();
-      expect(map.countries.length, greaterThan(200));
+      expect(map.countries.length, greaterThan(240));
       final codes = map.countries.map((c) => c.code).toSet();
       expect(codes.length, map.countries.length);
-      for (final code in ['NL', 'US', 'JP', 'BR', 'ZA', 'AU', 'SG']) {
+      // Down to the states that are smaller than the quantisation grid.
+      for (final code in ['NL', 'US', 'JP', 'BR', 'ZA', 'AU', 'SG', 'MT',
+        'MC', 'VA']) {
         expect(map.byCode(code), isNotNull, reason: '$code is missing');
       }
+    });
+
+    test('carries the detail the 1:10m source has', () {
+      final map = _bundled();
+      final points = map.countries.fold<int>(
+        0,
+        (sum, c) => sum + c.rings.fold<int>(0, (n, r) => n + r.length ~/ 2),
+      );
+      // A coarser asset would sail through every other test in here while
+      // looking like a potato on screen.
+      expect(points, greaterThan(80000));
+      // Archipelagos keep their islands rather than collapsing to one blob.
+      expect(map.byCode('ID')!.rings.length, greaterThan(20));
+      expect(map.byCode('GR')!.rings.length, greaterThan(10));
+      expect(map.byCode('PH')!.rings.length, greaterThan(10));
     });
 
     test('every point lands inside the unit square', () {
       for (final country in _bundled().countries) {
         expect(country.bounds.left, greaterThanOrEqualTo(0));
-        expect(country.bounds.top, greaterThanOrEqualTo(0));
         expect(country.bounds.right, lessThanOrEqualTo(1));
-        expect(country.bounds.bottom, lessThanOrEqualTo(1));
+        // Strict on the vertical: a country touching 0 or 1 exactly would be
+        // one the projection band is clamping, i.e. drawing squashed flat
+        // against the top or bottom edge.
+        expect(country.bounds.top, greaterThan(0),
+            reason: '${country.name} is clipped at the top of the map');
+        expect(country.bounds.bottom, lessThan(1),
+            reason: '${country.name} is clipped at the bottom of the map');
       }
     });
 
