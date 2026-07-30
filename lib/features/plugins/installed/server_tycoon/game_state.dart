@@ -49,8 +49,10 @@ class Rig {
   String name;
   RigKind kind;
   Build build;
-  List<ServiceInstance> services;
-  String routerId;
+
+  /// The router this rig is wired to, or null when it isn't plugged into
+  /// anything. An unwired rig serves no traffic.
+  String? routerId;
   NodePos pos;
 
   Rig({
@@ -58,7 +60,6 @@ class Rig {
     required this.name,
     required this.kind,
     required this.build,
-    required this.services,
     required this.routerId,
     required this.pos,
   });
@@ -68,7 +69,6 @@ class Rig {
     'name': name,
     'kind': kind.name,
     'build': build.toJson(),
-    'services': services.map((s) => s.toJson()).toList(),
     'routerId': routerId,
     'pos': pos.toJson(),
   };
@@ -78,10 +78,50 @@ class Rig {
     name: json['name'] as String,
     kind: RigKind.values.byName(json['kind'] as String),
     build: Build.fromJson(json['build'] as Map<String, dynamic>),
-    services: (json['services'] as List).map((e) => ServiceInstance.fromJson(e as Map<String, dynamic>)).toList(),
-    routerId: json['routerId'] as String,
+    routerId: json['routerId'] as String?,
     pos: NodePos.fromJson(json['pos'] as Map<String, dynamic>),
   );
+}
+
+/// A service sitting on the canvas in its own right. It only earns once it is
+/// wired to a rig — before that it's an unplugged box.
+class ServiceNode {
+  final String instanceId;
+  final String serviceTypeId;
+  int capacity;
+  String? rigId;
+  NodePos pos;
+
+  ServiceNode({
+    required this.instanceId,
+    required this.serviceTypeId,
+    required this.capacity,
+    required this.rigId,
+    required this.pos,
+  });
+
+  /// The shape the load simulation consumes.
+  ServiceInstance toInstance() => ServiceInstance(
+        instanceId: instanceId,
+        serviceTypeId: serviceTypeId,
+        capacity: capacity,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'instanceId': instanceId,
+        'serviceTypeId': serviceTypeId,
+        'capacity': capacity,
+        'rigId': rigId,
+        'pos': pos.toJson(),
+      };
+
+  factory ServiceNode.fromJson(Map<String, dynamic> json) => ServiceNode(
+        instanceId: json['instanceId'] as String,
+        serviceTypeId: json['serviceTypeId'] as String,
+        capacity: json['capacity'] as int,
+        rigId: json['rigId'] as String?,
+        pos: NodePos.fromJson(json['pos'] as Map<String, dynamic>),
+      );
 }
 
 class Router {
@@ -301,6 +341,7 @@ class GameState {
   int dayCount;
   Map<String, Rig> rigs;
   Map<String, Router> routers;
+  Map<String, ServiceNode> services;
   int nextRigId;
   int nextRouterId;
   int nextInstanceId;
@@ -365,6 +406,7 @@ class GameState {
     required this.dayCount,
     required this.rigs,
     required this.routers,
+    Map<String, ServiceNode>? services,
     required this.nextRigId,
     required this.nextRouterId,
     required this.nextInstanceId,
@@ -395,7 +437,8 @@ class GameState {
     bool? autoConfirmDay,
     int? gameSpeed,
     int? lastSeenEpochMs,
-  }) : inventory = inventory ?? {},
+  }) : services = services ?? {},
+       inventory = inventory ?? {},
        totalMoneyEverEarned = totalMoneyEverEarned ?? 0,
        contractsCompletedCount = contractsCompletedCount ?? 0,
        uptimeStreakDays = uptimeStreakDays ?? 0,
@@ -435,7 +478,6 @@ class GameState {
           name: 'Rig 1',
           kind: RigKind.pc,
           build: newStarterBuild(),
-          services: [],
           routerId: firstRouterId,
           pos: NodePos(x: 380, y: 60),
         ),
@@ -471,6 +513,7 @@ class GameState {
     'dayCount': dayCount,
     'rigs': rigs.map((k, v) => MapEntry(k, v.toJson())),
     'routers': routers.map((k, v) => MapEntry(k, v.toJson())),
+    'services': services.map((k, v) => MapEntry(k, v.toJson())),
     'nextRigId': nextRigId,
     'nextRouterId': nextRouterId,
     'nextInstanceId': nextInstanceId,
@@ -503,12 +546,49 @@ class GameState {
     'lastSeenEpochMs': lastSeenEpochMs,
   };
 
+  /// Services used to live inside each rig. A save written before they became
+  /// canvas nodes has no top-level `services` map, so hoist the nested lists
+  /// out and park each one just left of the rig it was running on.
+  static Map<String, ServiceNode> _servicesFromJson(Map<String, dynamic> json) {
+    final top = json['services'] as Map<String, dynamic>?;
+    if (top != null) {
+      return top.map((k, v) => MapEntry(k, ServiceNode.fromJson(v as Map<String, dynamic>)));
+    }
+
+    final migrated = <String, ServiceNode>{};
+    final rigs = json['rigs'] as Map<String, dynamic>? ?? const {};
+    for (final entry in rigs.entries) {
+      final rig = entry.value as Map<String, dynamic>;
+      final legacy = rig['services'] as List? ?? const [];
+      final rigPos = rig['pos'] as Map<String, dynamic>?;
+      final baseX = (rigPos?['x'] as num?)?.toDouble() ?? 0;
+      final baseY = (rigPos?['y'] as num?)?.toDouble() ?? 0;
+
+      for (var i = 0; i < legacy.length; i++) {
+        final svc = legacy[i] as Map<String, dynamic>;
+        final id = svc['instanceId'] as String;
+        migrated[id] = ServiceNode(
+          instanceId: id,
+          serviceTypeId: svc['serviceTypeId'] as String,
+          capacity: svc['capacity'] as int,
+          rigId: entry.key,
+          pos: NodePos(
+            x: (baseX + 320).clamp(0, canvasMaxX),
+            y: (baseY + i * 84).clamp(0, canvasMaxY),
+          ),
+        );
+      }
+    }
+    return migrated;
+  }
+
   factory GameState.fromJson(Map<String, dynamic> json) => GameState(
     money: (json['money'] as num).toDouble(),
     reputation: (json['reputation'] as num).toDouble(),
     dayCount: json['dayCount'] as int,
     rigs: (json['rigs'] as Map<String, dynamic>).map((k, v) => MapEntry(k, Rig.fromJson(v as Map<String, dynamic>))),
     routers: (json['routers'] as Map<String, dynamic>).map((k, v) => MapEntry(k, Router.fromJson(v as Map<String, dynamic>))),
+    services: _servicesFromJson(json),
     nextRigId: json['nextRigId'] as int,
     nextRouterId: json['nextRouterId'] as int,
     nextInstanceId: json['nextInstanceId'] as int,

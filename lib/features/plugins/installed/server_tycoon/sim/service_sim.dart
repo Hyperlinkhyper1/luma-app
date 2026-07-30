@@ -79,24 +79,57 @@ class RequiredResources {
   final double storageGB;
   final double bandwidthMbps;
 
-  const RequiredResources({required this.cpu, required this.ramGB, required this.storageGB, required this.bandwidthMbps});
+  /// Sustained disk throughput the workload needs, in MB/s. Derived from how
+  /// much data is parked on the rig and how hard it is being served — see
+  /// [diskThroughputDemandMBs].
+  final double diskMBs;
+
+  const RequiredResources({
+    required this.cpu,
+    required this.ramGB,
+    required this.storageGB,
+    required this.bandwidthMbps,
+    this.diskMBs = 0,
+  });
 }
+
+/// How much disk throughput a workload of this size demands.
+///
+/// A large dataset costs IOPS even when idle (worse cache hit rates, more
+/// seeking), and served traffic has to be read off the platter in the first
+/// place. This is what makes a 4TB HDD and a 4TB NVMe behave differently
+/// instead of being interchangeable buckets of gigabytes.
+double diskThroughputDemandMBs({required double storageGB, required double bandwidthMbps}) =>
+    storageGB * 0.12 + bandwidthMbps * 0.5;
 
 class RigCapacity {
   final double cpu;
   final int ramGB;
   final int storageGB;
   final int nicMbps;
+  final double diskMBs;
 
-  const RigCapacity({required this.cpu, required this.ramGB, required this.storageGB, required this.nicMbps});
+  const RigCapacity({
+    required this.cpu,
+    required this.ramGB,
+    required this.storageGB,
+    required this.nicMbps,
+    this.diskMBs = 0,
+  });
 }
 
 class Utilization {
   final double cpu;
   final double ramGB;
   final double storageGB;
+  final double disk;
 
-  const Utilization({required this.cpu, required this.ramGB, required this.storageGB});
+  const Utilization({
+    required this.cpu,
+    required this.ramGB,
+    required this.storageGB,
+    this.disk = 0,
+  });
 }
 
 class RigLoadResult {
@@ -203,11 +236,20 @@ RequiredResources _sumRequired(List<ServiceInstance> services, SimModifiers modi
     storageGB += serviceType.base.storageGB + serviceType.perUnit.storageGB * inst.capacity;
     bandwidthMbps += serviceType.base.bandwidthMbps + serviceType.perUnit.bandwidthMbps * inst.capacity;
   }
+  // Disk demand follows the *effective* footprint, so compression and packet
+  // shaping research relieve the drives too.
+  final effectiveStorage = storageGB * (1 - modifiers.storageCompression);
+  final effectiveBandwidth = bandwidthMbps * (1 - modifiers.bandwidthOverhead);
+
   return RequiredResources(
     cpu: cpu,
     ramGB: ramGB,
-    storageGB: storageGB * (1 - modifiers.storageCompression),
-    bandwidthMbps: bandwidthMbps * (1 - modifiers.bandwidthOverhead),
+    storageGB: effectiveStorage,
+    bandwidthMbps: effectiveBandwidth,
+    diskMBs: diskThroughputDemandMBs(
+      storageGB: effectiveStorage,
+      bandwidthMbps: effectiveBandwidth,
+    ),
   );
 }
 
@@ -240,15 +282,19 @@ RigLoadResult calculateRigLoad(
   final throttleFactor = thermalThrottleFactor * (1 - overheatThrottlePenalty);
   final effectiveCPUCapacity = capacity.cpuScore * throttleFactor;
 
+  final diskCapacityMBs = getDiskThroughputMBs(build);
+
   final util = Utilization(
     cpu: effectiveCPUCapacity > 0 ? req.cpu / effectiveCPUCapacity : (req.cpu > 0 ? double.infinity : 0),
     ramGB: capacity.ramGB > 0 ? req.ramGB / capacity.ramGB : (req.ramGB > 0 ? double.infinity : 0),
     storageGB: capacity.storageGB > 0 ? req.storageGB / capacity.storageGB : (req.storageGB > 0 ? double.infinity : 0),
+    disk: diskCapacityMBs > 0 ? req.diskMBs / diskCapacityMBs : (req.diskMBs > 0 ? double.infinity : 0),
   );
 
   final degradationCpu = util.cpu > 1 ? 1 / util.cpu : 1.0;
   final degradationRam = util.ramGB > 1 ? 1 / util.ramGB : 1.0;
   final degradationStorage = util.storageGB > 1 ? 1 / util.storageGB : 1.0;
+  final degradationDisk = util.disk > 1 ? 1 / util.disk : 1.0;
 
   var nicCapFactor = 1.0;
   if (capacity.nicMbps > 0 && req.bandwidthMbps > capacity.nicMbps) {
@@ -257,7 +303,8 @@ RigLoadResult calculateRigLoad(
     nicCapFactor = 0;
   }
 
-  final localFactorRaw = [degradationCpu, degradationRam, degradationStorage, nicCapFactor].reduce((a, b) => a < b ? a : b);
+  final localFactorRaw = [degradationCpu, degradationRam, degradationStorage, degradationDisk, nicCapFactor]
+      .reduce((a, b) => a < b ? a : b);
   final localFactor = incompatible ? 0.0 : localFactorRaw;
   String? bottleneck;
   if (incompatible) {
@@ -266,13 +313,20 @@ RigLoadResult calculateRigLoad(
     if (degradationCpu == localFactor) bottleneck = 'cpu';
     else if (degradationRam == localFactor) bottleneck = 'ram';
     else if (degradationStorage == localFactor) bottleneck = 'storage';
+    else if (degradationDisk == localFactor) bottleneck = 'disk';
     else bottleneck = 'nic';
   }
 
   return RigLoadResult(
     rigId: rigId,
     required: req,
-    capacity: RigCapacity(cpu: effectiveCPUCapacity, ramGB: capacity.ramGB, storageGB: capacity.storageGB, nicMbps: capacity.nicMbps),
+    capacity: RigCapacity(
+      cpu: effectiveCPUCapacity,
+      ramGB: capacity.ramGB,
+      storageGB: capacity.storageGB,
+      nicMbps: capacity.nicMbps,
+      diskMBs: diskCapacityMBs,
+    ),
     utilization: util,
     throttleFactor: throttleFactor,
     tempRatio: tempRatio,
