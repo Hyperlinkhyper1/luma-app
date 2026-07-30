@@ -8,13 +8,23 @@ import 'package:flutter/material.dart' hide Router;
 import 'package:flutter/services.dart';
 
 import '../../../../theme/luma_theme.dart';
+import 'data/boosts.dart';
 import 'data/game_data.dart';
+import 'data/missions.dart';
 import 'data/research.dart';
 import 'game_state.dart';
 import 'server_tycoon_repository.dart';
 import 'server_tycoon_scope.dart';
 import 'sim/computer_sim.dart';
 import 'sim/service_sim.dart';
+
+/// Below this shortest-side width the game switches to its phone layout:
+/// stacked HUD, sheet inspectors, and a five-slot toolbar. Matches the app
+/// shell's own breakpoint so the two agree about what counts as a phone.
+const double _phoneBreakpoint = 700;
+
+bool _isPhone(BuildContext context) =>
+    MediaQuery.sizeOf(context).shortestSide < _phoneBreakpoint;
 
 class ServerTycoonPage extends StatefulWidget {
   const ServerTycoonPage({super.key});
@@ -37,6 +47,19 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
   bool _showDayReport = false;
   bool _showAchievements = false;
   bool _showStaff = false;
+  bool _showMissions = false;
+  bool _showBoosts = false;
+  bool _showStats = false;
+  bool _showAwayReport = false;
+
+  /// True once the canvas has been framed on the player's actual layout. The
+  /// saved node positions live in a 4000×3000 space, so opening at the origin
+  /// at 1× would otherwise show an empty grid.
+  bool _didAutoFit = false;
+
+  /// Set while a phone inspector sheet is up, so re-tapping the same node
+  /// doesn't stack a second one.
+  bool _inspectorSheetOpen = false;
 
   final TransformationController _canvasController = TransformationController();
 
@@ -97,17 +120,25 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
   Widget _buildMain(BuildContext context) {
     final luma = context.luma;
     final repo = ServerTycoonScope.of(context);
+    final phone = _isPhone(context);
 
     return ListenableBuilder(
       listenable: repo,
       builder: (context, _) {
         final state = repo.state;
         final load = repo.calculateLoad();
-        final effects = getResearchEffects(state.research);
+        final effects = repo.effects;
 
-        // Check for day report to auto-show
-        if (repo.lastDayReport != null && !_showDayReport) {
+        // Check for day report to auto-show. Auto-advance deliberately skips
+        // it — a modal every 30 seconds is the opposite of idling.
+        if (repo.lastDayReport != null && !_showDayReport && !state.autoConfirmDay) {
           _showDayReport = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) setState(() {});
+          });
+        }
+        if (repo.lastAwayReport != null && !_showAwayReport) {
+          _showAwayReport = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) setState(() {});
           });
@@ -117,8 +148,10 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
           backgroundColor: luma.background,
           body: Column(
             children: [
-              // Top Bar
-              _buildTopBar(context, state, load, effects),
+              if (phone)
+                _buildPhoneTopBar(context, state, load, effects)
+              else
+                _buildTopBar(context, state, load, effects),
               // Main Content
               Expanded(
                 child: Row(
@@ -127,26 +160,287 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
                     Expanded(
                       child: _buildCanvas(context, state, load),
                     ),
-                    // Inspector / Side Panel
-                    if (_selectedRigId != null && state.rigs.containsKey(_selectedRigId))
+                    // Inspector side panels are desktop-only; on a phone the
+                    // same content opens as a bottom sheet instead, because a
+                    // 340px panel beside a 360px screen leaves no canvas.
+                    if (!phone && _selectedRigId != null && state.rigs.containsKey(_selectedRigId))
                       SizedBox(
                         width: 340,
-                        child: _buildInspector(context, state, load, _selectedRigId!),
+                        child: _buildInspector(
+                          context,
+                          state,
+                          load,
+                          _selectedRigId!,
+                          onClose: () => setState(() => _selectedRigId = null),
+                        ),
                       ),
-                    if (_selectedRouterId != null && state.routers.containsKey(_selectedRouterId))
+                    if (!phone && _selectedRouterId != null && state.routers.containsKey(_selectedRouterId))
                       SizedBox(
                         width: 300,
-                        child: _buildRouterInspector(context, state, _selectedRouterId!),
+                        child: _buildRouterInspector(
+                          context,
+                          state,
+                          _selectedRouterId!,
+                          onClose: () => setState(() => _selectedRouterId = null),
+                        ),
                       ),
                   ],
                 ),
               ),
-              // Bottom Toolbar
-              _buildToolbar(context, state, effects),
+              if (phone)
+                _buildPhoneToolbar(context, state)
+              else
+                _buildToolbar(context, state),
             ],
           ),
         );
       },
+    );
+  }
+
+  // ── Phone HUD ──
+
+  /// Two compact lines instead of the desktop bar's single row: the desktop
+  /// version lays out nine stats plus a 140px timer and needs ~1100px, which
+  /// overflows every phone in portrait.
+  Widget _buildPhoneTopBar(BuildContext context, GameState state, AccountLoadResult load, ResearchEffects effects) {
+    final luma = context.luma;
+    final repo = ServerTycoonScope.of(context);
+    final totalWatts = _getTotalWatts(state, load);
+    final activeMissions = state.missions.where((m) => !m.rewarded).length;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 8, 8, 6),
+      decoration: BoxDecoration(
+        color: luma.surface,
+        border: Border(bottom: BorderSide(color: luma.border)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.attach_money_rounded, size: 18, color: Colors.green.shade400),
+              Text(
+                _fmt(state.money),
+                style: TextStyle(color: Colors.green.shade400, fontWeight: FontWeight.w700, fontSize: 16),
+              ),
+              const SizedBox(width: 12),
+              Icon(Icons.star_rounded, size: 15, color: Colors.amber.shade400),
+              const SizedBox(width: 2),
+              Text(
+                state.reputation.toStringAsFixed(1),
+                style: TextStyle(color: Colors.amber.shade400, fontWeight: FontWeight.w600, fontSize: 13),
+              ),
+              const Spacer(),
+              _dayTimerPill(context),
+            ],
+          ),
+          const SizedBox(height: 6),
+          SizedBox(
+            height: 24,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                if (state.prestigeLevel > 0)
+                  _topStat(context, Icons.military_tech_rounded, _prestigeTierName(state.prestigeLevel), luma.accent),
+                _topStat(context, Icons.calendar_today_rounded, 'Day ${state.dayCount}', luma.textMuted),
+                _topStat(
+                  context,
+                  Icons.network_check_rounded,
+                  '${load.totalRequiredBandwidth.toStringAsFixed(0)}/${load.totalBandwidthCapacity.toStringAsFixed(0)} Mbps',
+                  load.overloaded ? Colors.red.shade400 : Colors.green.shade400,
+                ),
+                _topStat(context, Icons.electrical_services_rounded, '${totalWatts.toStringAsFixed(0)}W', luma.textMuted),
+                _topStat(context, Icons.description_rounded, '${state.contracts.length}/${effects.contractSlots}', luma.textMuted),
+                if (activeMissions > 0)
+                  _topStat(context, Icons.flag_rounded, '$activeMissions goals', luma.accent),
+                if (state.activeResearch != null)
+                  _topStat(
+                    context,
+                    Icons.science_rounded,
+                    '${(state.activeResearch!.fraction * 100).toStringAsFixed(0)}%',
+                    luma.accent,
+                  ),
+                for (final boost in state.activeBoosts)
+                  _topStat(context, Icons.bolt_rounded, '${boost.def?.name ?? boost.defId} ${boost.daysRemaining}d', Colors.orange.shade400),
+                if (state.hiredStaffIds.isNotEmpty)
+                  _topStat(context, Icons.badge_rounded, '${state.hiredStaffIds.length} staff', luma.textMuted),
+              ],
+            ),
+          ),
+          if (repo.awaitingConfirmation && !state.autoConfirmDay) ...[
+            const SizedBox(height: 6),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: repo.lastDayReport != null ? null : repo.confirmNextDay,
+                icon: const Icon(Icons.check_rounded, size: 16),
+                label: const Text('Next Day'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: luma.accent,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(40),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Shared day clock: progress ring, seconds left, and the speed control.
+  Widget _dayTimerPill(BuildContext context) {
+    final luma = context.luma;
+    final repo = ServerTycoonScope.of(context);
+    final state = repo.state;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 26,
+          height: 26,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              CircularProgressIndicator(
+                value: repo.dayProgress,
+                strokeWidth: 3,
+                backgroundColor: luma.border,
+                valueColor: AlwaysStoppedAnimation<Color>(luma.accent),
+              ),
+              Text(
+                '${repo.secondsRemaining}',
+                style: TextStyle(color: luma.textMuted, fontSize: 9, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+        ),
+        IconButton(
+          visualDensity: VisualDensity.compact,
+          tooltip: repo.isPaused ? 'Resume' : 'Pause',
+          icon: Icon(
+            repo.isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+            size: 20,
+            color: repo.isPaused ? luma.accent : luma.textMuted,
+          ),
+          onPressed: () {
+            HapticFeedback.selectionClick();
+            repo.setPaused(!repo.isPaused);
+          },
+        ),
+        InkWell(
+          borderRadius: BorderRadius.circular(6),
+          onTap: () {
+            HapticFeedback.selectionClick();
+            final speeds = GameState.gameSpeeds;
+            final next = speeds[(speeds.indexOf(state.gameSpeed) + 1) % speeds.length];
+            repo.setGameSpeed(next);
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            child: Text(
+              '${state.gameSpeed}×',
+              style: TextStyle(
+                color: state.gameSpeed > 1 ? luma.accent : luma.textMuted,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Five primary actions; everything else lives behind "More". The desktop
+  /// toolbar puts eleven widgets in one un-scrollable Row.
+  Widget _buildPhoneToolbar(BuildContext context, GameState state) {
+    final luma = context.luma;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      decoration: BoxDecoration(
+        color: luma.surface,
+        border: Border(top: BorderSide(color: luma.border)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _phoneToolButton(context, Icons.add_circle_outline_rounded, 'Build', () => _showBuildSheet(context)),
+          _phoneToolButton(context, Icons.shopping_cart_rounded, 'Shop', () => _showShopCatalog(context)),
+          _phoneToolButton(
+            context,
+            Icons.assignment_rounded,
+            'Contracts',
+            () => setState(() => _showContracts = true),
+            badge: state.contracts.length,
+          ),
+          _phoneToolButton(
+            context,
+            Icons.science_rounded,
+            'Research',
+            () => setState(() => _showResearch = true),
+            highlight: state.activeResearch != null,
+          ),
+          _phoneToolButton(context, Icons.more_horiz_rounded, 'More', () => _showMoreSheet(context)),
+        ],
+      ),
+    );
+  }
+
+  Widget _phoneToolButton(
+    BuildContext context,
+    IconData icon,
+    String label,
+    VoidCallback onTap, {
+    int badge = 0,
+    bool highlight = false,
+  }) {
+    final luma = context.luma;
+    final color = highlight ? luma.accent : luma.textMuted;
+
+    return Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        // 48px minimum so it's a real touch target, not a 12px text button.
+        child: Container(
+          height: 52,
+          alignment: Alignment.center,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(icon, size: 21, color: color),
+                  if (badge > 0)
+                    Positioned(
+                      right: -6,
+                      top: -4,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                        decoration: BoxDecoration(color: luma.accent, borderRadius: BorderRadius.circular(8)),
+                        child: Text(
+                          '$badge',
+                          style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -240,7 +534,125 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
     );
   }
 
+  /// Frames every node in the viewport. Node positions live anywhere in a
+  /// 4000×3000 space, so without this the player opens onto empty grid.
+  void _fitToContent(Size viewport, GameState state) {
+    if (viewport.width <= 0 || viewport.height <= 0) return;
+
+    var minX = double.infinity, minY = double.infinity;
+    var maxX = -double.infinity, maxY = -double.infinity;
+
+    void include(double x, double y, Size size) {
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x + size.width > maxX) maxX = x + size.width;
+      if (y + size.height > maxY) maxY = y + size.height;
+    }
+
+    for (final rig in state.rigs.values) {
+      include(rig.pos.x, rig.pos.y, _rigSize);
+    }
+    for (final router in state.routers.values) {
+      include(router.pos.x, router.pos.y, _routerSize);
+    }
+    if (minX == double.infinity) return;
+
+    const padding = 32.0;
+    final contentWidth = (maxX - minX) + padding * 2;
+    final contentHeight = (maxY - minY) + padding * 2;
+    final scale = math.min(viewport.width / contentWidth, viewport.height / contentHeight).clamp(0.25, 1.2);
+
+    // Centre whatever slack is left over after fitting.
+    final tx = (viewport.width - contentWidth * scale) / 2 + (padding - minX) * scale;
+    final ty = (viewport.height - contentHeight * scale) / 2 + (padding - minY) * scale;
+
+    _canvasController.value = Matrix4.identity()
+      ..translateByDouble(tx, ty, 0, 1)
+      ..scaleByDouble(scale, scale, 1, 1);
+  }
+
   Widget _buildCanvas(BuildContext context, GameState state, AccountLoadResult load) {
+    final luma = context.luma;
+    final repo = ServerTycoonScope.of(context);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final viewport = Size(constraints.maxWidth, constraints.maxHeight);
+        if (!_didAutoFit && viewport.width > 0) {
+          _didAutoFit = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _fitToContent(viewport, state);
+          });
+        }
+
+        return Stack(
+          children: [
+            Positioned.fill(child: _canvasViewer(context, state, load)),
+            Positioned(
+              right: 12,
+              bottom: 12,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _canvasButton(context, Icons.center_focus_strong_rounded, 'Fit to view', () {
+                    HapticFeedback.selectionClick();
+                    _fitToContent(viewport, state);
+                  }),
+                  const SizedBox(height: 8),
+                  _canvasButton(context, Icons.auto_awesome_mosaic_rounded, 'Auto-arrange', () {
+                    HapticFeedback.selectionClick();
+                    repo.autoArrange();
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) _fitToContent(viewport, repo.state);
+                    });
+                  }),
+                ],
+              ),
+            ),
+            if (_isPhone(context))
+              Positioned(
+                left: 12,
+                bottom: 12,
+                child: IgnorePointer(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: luma.surface.withOpacity(0.75),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'Tap to inspect · hold to move',
+                      style: TextStyle(color: luma.textMuted, fontSize: 10),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _canvasButton(BuildContext context, IconData icon, String tooltip, VoidCallback onTap) {
+    final luma = context.luma;
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: luma.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: luma.border),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: onTap,
+          child: SizedBox(width: 44, height: 44, child: Icon(icon, size: 20, color: luma.textMuted)),
+        ),
+      ),
+    );
+  }
+
+  Widget _canvasViewer(BuildContext context, GameState state, AccountLoadResult load) {
     final luma = context.luma;
     final repo = ServerTycoonScope.of(context);
     final incidentsByTarget = <String, List<ActiveIncident>>{};
@@ -251,7 +663,7 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
     return InteractiveViewer(
       transformationController: _canvasController,
       boundaryMargin: const EdgeInsets.all(2000),
-      minScale: 0.1,
+      minScale: 0.25,
       maxScale: 2.0,
       constrained: false,
       child: Container(
@@ -296,10 +708,7 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
                   selected: _selectedRouterId == entry.key,
                   hasActiveIncident: incidentsByTarget.containsKey(entry.key),
                   pulse: _pulseController,
-                  onTap: () => setState(() {
-                    _selectedRouterId = entry.key;
-                    _selectedRigId = null;
-                  }),
+                  onTap: () => _selectRouter(entry.key),
                 ),
               ),
             // Rig nodes
@@ -316,10 +725,7 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
                   hasActiveIncident: incidentsByTarget.containsKey(entry.key),
                   incidentIsPositive: incidentsByTarget[entry.key]?.every((i) => incidentDefsByType[i.type]?.isPositive == true) ?? false,
                   pulse: _pulseController,
-                  onTap: () => setState(() {
-                    _selectedRigId = entry.key;
-                    _selectedRouterId = null;
-                  }),
+                  onTap: () => _selectRig(entry.key),
                 ),
               ),
           ],
@@ -328,6 +734,9 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
     );
   }
 
+  /// Nodes move on long-press-drag, not plain drag. A pan handler on the tile
+  /// swallows the gesture before InteractiveViewer sees it, which on a touch
+  /// screen means you cannot scroll the map with a finger on a node at all.
   Widget _draggableNode({
     required String kind,
     required String id,
@@ -336,38 +745,134 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
     required Widget child,
   }) {
     final pos = _effectivePos(kind, id, x, y);
+
+    void endDrag() {
+      final drop = _dragPos;
+      if (drop != null) {
+        // Snap to the 20px grid so hand-placed tiles still line up.
+        const grid = 20.0;
+        ServerTycoonScope.of(context).moveNode(
+          kind,
+          id,
+          (drop.dx / grid).round() * grid,
+          (drop.dy / grid).round() * grid,
+        );
+      }
+      setState(() {
+        _dragKind = null;
+        _dragId = null;
+        _dragPos = null;
+      });
+    }
+
     return Positioned(
       left: pos.dx,
       top: pos.dy,
       child: GestureDetector(
         behavior: HitTestBehavior.deferToChild,
-        onPanStart: (_) => setState(() {
-          _dragKind = kind;
-          _dragId = id;
-          _dragPos = Offset(x, y);
-        }),
-        onPanUpdate: (details) {
-          if (_dragPos == null) return;
-          final scale = _canvasController.value.getMaxScaleOnAxis();
-          setState(() => _dragPos = _dragPos! + details.delta / scale);
-        },
-        onPanEnd: (_) {
-          final drop = _dragPos;
-          if (drop != null) {
-            ServerTycoonScope.of(context).moveNode(kind, id, drop.dx, drop.dy);
-          }
+        onLongPressStart: (_) {
+          HapticFeedback.mediumImpact();
           setState(() {
-            _dragKind = null;
-            _dragId = null;
-            _dragPos = null;
+            _dragKind = kind;
+            _dragId = id;
+            _dragPos = Offset(x, y);
           });
         },
+        onLongPressMoveUpdate: (details) {
+          if (_dragPos == null) return;
+          // Measured from the committed start position in global coordinates:
+          // the tile's own local frame travels with it while dragging.
+          final scale = _canvasController.value.getMaxScaleOnAxis();
+          setState(() => _dragPos = Offset(x, y) + details.offsetFromOrigin / scale);
+        },
+        onLongPressEnd: (_) => endDrag(),
+        onLongPressCancel: () => setState(() {
+          _dragKind = null;
+          _dragId = null;
+          _dragPos = null;
+        }),
         child: child,
       ),
     );
   }
 
-  Widget _buildInspector(BuildContext context, GameState state, AccountLoadResult load, String rigId) {
+  void _selectRig(String rigId) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      _selectedRigId = rigId;
+      _selectedRouterId = null;
+    });
+    if (_isPhone(context)) _openInspectorSheet();
+  }
+
+  void _selectRouter(String routerId) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      _selectedRouterId = routerId;
+      _selectedRigId = null;
+    });
+    if (_isPhone(context)) _openInspectorSheet();
+  }
+
+  /// The phone counterpart to the desktop side panel. Reads live from the
+  /// repository so the sheet keeps updating as days tick past underneath it.
+  void _openInspectorSheet() {
+    if (_inspectorSheetOpen) return;
+    final luma = context.luma;
+    final repo = ServerTycoonScope.of(context);
+    _inspectorSheetOpen = true;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: luma.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (sheetContext) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.55,
+        minChildSize: 0.3,
+        maxChildSize: 0.92,
+        builder: (_, scrollController) => ListenableBuilder(
+          listenable: repo,
+          builder: (context, _) {
+            final state = repo.state;
+            final rigId = _selectedRigId;
+            final routerId = _selectedRouterId;
+            void close() => Navigator.of(sheetContext).maybePop();
+
+            if (rigId != null && state.rigs.containsKey(rigId)) {
+              return _buildInspector(context, state, repo.calculateLoad(), rigId,
+                  onClose: close, scrollController: scrollController);
+            }
+            if (routerId != null && state.routers.containsKey(routerId)) {
+              return _buildRouterInspector(context, state, routerId,
+                  onClose: close, scrollController: scrollController);
+            }
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    ).whenComplete(() {
+      _inspectorSheetOpen = false;
+      if (mounted) {
+        setState(() {
+          _selectedRigId = null;
+          _selectedRouterId = null;
+        });
+      }
+    });
+  }
+
+  Widget _buildInspector(
+    BuildContext context,
+    GameState state,
+    AccountLoadResult load,
+    String rigId, {
+    required VoidCallback onClose,
+    ScrollController? scrollController,
+  }) {
     final luma = context.luma;
     final rig = state.rigs[rigId]!;
     final rigLoad = load.rigs[rigId];
@@ -395,18 +900,20 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
                   ),
                 ),
                 IconButton(
-                  icon: Icon(Icons.close_rounded, color: luma.textMuted, size: 18),
-                  onPressed: () => setState(() => _selectedRigId = null),
+                  icon: Icon(Icons.close_rounded, color: luma.textMuted, size: 20),
+                  onPressed: onClose,
                 ),
               ],
             ),
           ),
           Expanded(
             child: SingleChildScrollView(
+              controller: scrollController,
               padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  _quickActionsRow(context, rigId),
                   // Status
                   if (rigLoad != null) ...[
                     if (rigLoad.incompatible)
@@ -519,8 +1026,66 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
     );
   }
 
-  Widget _buildRouterInspector(BuildContext context, GameState state, String routerId) {
+  /// One-tap upgrades: buy whatever relieves this rig's actual bottleneck, or
+  /// duplicate a build that's working. Both replace a five-sheet crawl.
+  Widget _quickActionsRow(BuildContext context, String rigId) {
     final luma = context.luma;
+    final repo = ServerTycoonScope.of(context);
+    final fix = repo.bottleneckFixFor(rigId);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: FilledButton.icon(
+              onPressed: fix == null
+                  ? null
+                  : () {
+                      HapticFeedback.selectionClick();
+                      _showResult(context, repo.fixBottleneck(rigId));
+                    },
+              icon: const Icon(Icons.auto_fix_high_rounded, size: 16),
+              label: Text(
+                fix == null ? 'No fix needed' : 'Fix: ${fix.$3}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: luma.accent,
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(40),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton.icon(
+            onPressed: () {
+              HapticFeedback.selectionClick();
+              _showResult(context, repo.cloneRig(rigId));
+            },
+            icon: Icon(Icons.copy_rounded, size: 15, color: luma.textMuted),
+            label: Text('Clone', style: TextStyle(color: luma.textMuted, fontSize: 12)),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: luma.border),
+              minimumSize: const Size(0, 40),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRouterInspector(
+    BuildContext context,
+    GameState state,
+    String routerId, {
+    required VoidCallback onClose,
+    ScrollController? scrollController,
+  }) {
+    final luma = context.luma;
+    final repo = ServerTycoonScope.of(context);
     final router = state.routers[routerId]!;
     final plan = internetPlansById[router.internetPlanId];
 
@@ -544,18 +1109,35 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
                   ),
                 ),
                 IconButton(
-                  icon: Icon(Icons.close_rounded, color: luma.textMuted, size: 18),
-                  onPressed: () => setState(() => _selectedRouterId = null),
+                  icon: Icon(Icons.close_rounded, color: luma.textMuted, size: 20),
+                  onPressed: onClose,
                 ),
               ],
             ),
           ),
           Expanded(
             child: SingleChildScrollView(
+              controller: scrollController,
               padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        HapticFeedback.selectionClick();
+                        _showResult(context, repo.upgradeRouterPlan(routerId));
+                      },
+                      icon: const Icon(Icons.upgrade_rounded, size: 16),
+                      label: const Text('Upgrade to next plan', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: luma.accent,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(40),
+                      ),
+                    ),
+                  ),
                   Text('Internet Plan', style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700, fontSize: 13)),
                   const SizedBox(height: 8),
                   if (plan != null) ...[
@@ -594,7 +1176,7 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
     );
   }
 
-  Widget _buildToolbar(BuildContext context, GameState state, ResearchEffects effects) {
+  Widget _buildToolbar(BuildContext context, GameState state) {
     final luma = context.luma;
     final repo = ServerTycoonScope.of(context);
 
@@ -606,18 +1188,45 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
       ),
       child: Row(
         children: [
-          _toolButton(context, Icons.computer_rounded, 'PC Rig', () => _showResult(context, ServerTycoonScope.of(context).addRig())),
-          _toolButton(context, Icons.storage_rounded, 'Server', () => _showResult(context, ServerTycoonScope.of(context).addRig(server: true))),
-          _toolButton(context, Icons.router_rounded, 'Router', () => _showResult(context, ServerTycoonScope.of(context).addRouter())),
-          VerticalDivider(color: luma.border, width: 24),
-          _toolButton(context, Icons.science_rounded, 'Research', () => setState(() => _showResearch = true)),
-          _toolButton(context, Icons.assignment_rounded, 'Contracts', () => setState(() => _showContracts = true)),
-          _toolButton(context, Icons.verified_rounded, 'Licenses', () => setState(() => _showLicenses = true)),
-          _toolButton(context, Icons.emoji_events_rounded, 'Achievements', () => setState(() => _showAchievements = true)),
-          _toolButton(context, Icons.badge_rounded, 'Staff', () => setState(() => _showStaff = true)),
-          VerticalDivider(color: luma.border, width: 24),
-          _toolButton(context, Icons.shopping_cart_rounded, 'Shop', () => _showShopCatalog(context)),
-          const Spacer(),
+          // Scrollable so a narrow desktop window degrades into a scroll
+          // instead of a RenderFlex overflow.
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _toolButton(context, Icons.computer_rounded, 'PC Rig', () => _showResult(context, ServerTycoonScope.of(context).addRig())),
+                  _toolButton(context, Icons.storage_rounded, 'Server', () => _showResult(context, ServerTycoonScope.of(context).addRig(server: true))),
+                  _toolButton(context, Icons.router_rounded, 'Router', () => _showResult(context, ServerTycoonScope.of(context).addRouter())),
+                  VerticalDivider(color: luma.border, width: 24),
+                  _toolButton(context, Icons.science_rounded, 'Research', () => setState(() => _showResearch = true)),
+                  _toolButton(context, Icons.assignment_rounded, 'Contracts', () => setState(() => _showContracts = true)),
+                  _toolButton(context, Icons.flag_rounded, 'Goals', () => setState(() => _showMissions = true)),
+                  _toolButton(context, Icons.bolt_rounded, 'Boosts', () => setState(() => _showBoosts = true)),
+                  _toolButton(context, Icons.verified_rounded, 'Licenses', () => setState(() => _showLicenses = true)),
+                  _toolButton(context, Icons.emoji_events_rounded, 'Achievements', () => setState(() => _showAchievements = true)),
+                  _toolButton(context, Icons.badge_rounded, 'Staff', () => setState(() => _showStaff = true)),
+                  _toolButton(context, Icons.insights_rounded, 'Stats', () => setState(() => _showStats = true)),
+                  VerticalDivider(color: luma.border, width: 24),
+                  _toolButton(context, Icons.shopping_cart_rounded, 'Shop', () => _showShopCatalog(context)),
+                ],
+              ),
+            ),
+          ),
+          Tooltip(
+            message: 'Auto-advance days',
+            child: IconButton(
+              visualDensity: VisualDensity.compact,
+              icon: Icon(
+                Icons.fast_forward_rounded,
+                size: 19,
+                color: state.autoConfirmDay ? luma.accent : luma.textMuted,
+              ),
+              onPressed: () => repo.setAutoConfirmDay(!state.autoConfirmDay),
+            ),
+          ),
+          _dayTimerPill(context),
+          const SizedBox(width: 8),
           if (repo.canRebirth) ...[
             FilledButton.icon(
               onPressed: () => _confirmRebirth(context),
@@ -1001,6 +1610,204 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
     );
   }
 
+  /// Phone equivalent of the desktop toolbar's first three buttons.
+  void _showBuildSheet(BuildContext context) {
+    final luma = context.luma;
+    final repo = ServerTycoonScope.of(context);
+    final effects = repo.effects;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: luma.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _sheetHeader(context, Icons.add_circle_outline_rounded, 'Build'),
+            _sheetTile(
+              context,
+              Icons.computer_rounded,
+              'PC Rig',
+              '\$${(GameState.newRigCost * (1 - effects.rigCostDiscount)).round()} • a cheap box to start on',
+              () {
+                Navigator.pop(ctx);
+                _showResult(context, repo.addRig());
+              },
+            ),
+            _sheetTile(
+              context,
+              Icons.storage_rounded,
+              'Server Rig',
+              '\$${(GameState.newServerRigCost * (1 - effects.rigCostDiscount)).round()} • takes server-grade parts',
+              () {
+                Navigator.pop(ctx);
+                _showResult(context, repo.addRig(server: true));
+              },
+            ),
+            _sheetTile(
+              context,
+              Icons.router_rounded,
+              'Router',
+              '\$${GameState.newRouterCost} • ${repo.state.routers.length}/${effects.maxRouters} in use',
+              () {
+                Navigator.pop(ctx);
+                _showResult(context, repo.addRouter());
+              },
+            ),
+            const Divider(height: 1),
+            _sheetTile(
+              context,
+              Icons.auto_awesome_mosaic_rounded,
+              'Auto-arrange',
+              'Lay every rig out in tidy rows under its router',
+              () {
+                Navigator.pop(ctx);
+                repo.autoArrange();
+                setState(() => _didAutoFit = false);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Everything that doesn't fit in five phone toolbar slots.
+  void _showMoreSheet(BuildContext context) {
+    final luma = context.luma;
+    final repo = ServerTycoonScope.of(context);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: luma.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+      builder: (ctx) => SafeArea(
+        child: ListenableBuilder(
+          listenable: repo,
+          builder: (context, _) {
+            final state = repo.state;
+            final unclaimed = state.missions.where((m) => !m.rewarded).length;
+
+            return SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _sheetHeader(context, Icons.more_horiz_rounded, 'More'),
+                  ListTile(
+                    leading: Icon(Icons.fast_forward_rounded, color: luma.textMuted, size: 20),
+                    title: Text(
+                      'Auto-advance days',
+                      style: TextStyle(color: luma.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      'Roll straight into the next day instead of tapping through the report',
+                      style: TextStyle(color: luma.textMuted, fontSize: 11),
+                    ),
+                    trailing: Switch(
+                      value: state.autoConfirmDay,
+                      activeThumbColor: luma.onAccent,
+                      activeTrackColor: luma.accent,
+                      onChanged: (value) {
+                        HapticFeedback.selectionClick();
+                        repo.setAutoConfirmDay(value);
+                      },
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  _sheetTile(context, Icons.flag_rounded, 'Daily goals',
+                      unclaimed > 0 ? '$unclaimed still open today' : 'All done for today', () {
+                    Navigator.pop(ctx);
+                    setState(() => _showMissions = true);
+                  }),
+                  _sheetTile(context, Icons.bolt_rounded, 'Boosts',
+                      state.activeBoosts.isEmpty ? 'None running' : '${state.activeBoosts.length} running', () {
+                    Navigator.pop(ctx);
+                    setState(() => _showBoosts = true);
+                  }),
+                  _sheetTile(context, Icons.insights_rounded, 'Stats', 'Income and power history', () {
+                    Navigator.pop(ctx);
+                    setState(() => _showStats = true);
+                  }),
+                  _sheetTile(context, Icons.verified_rounded, 'Licenses', '${state.licenses.length} held', () {
+                    Navigator.pop(ctx);
+                    setState(() => _showLicenses = true);
+                  }),
+                  _sheetTile(context, Icons.badge_rounded, 'Staff', '${state.hiredStaffIds.length} hired', () {
+                    Navigator.pop(ctx);
+                    setState(() => _showStaff = true);
+                  }),
+                  _sheetTile(context, Icons.emoji_events_rounded, 'Achievements',
+                      '${state.unlockedAchievements.length} unlocked', () {
+                    Navigator.pop(ctx);
+                    setState(() => _showAchievements = true);
+                  }),
+                  const Divider(height: 1),
+                  if (repo.canRebirth)
+                    _sheetTile(
+                      context,
+                      Icons.trending_up_rounded,
+                      'Scale Up',
+                      'Restart bigger with a permanent income multiplier',
+                      () {
+                        Navigator.pop(ctx);
+                        _confirmRebirth(context);
+                      },
+                      color: luma.accent,
+                    ),
+                  _sheetTile(context, Icons.restart_alt_rounded, 'Reset game', 'Start over from day zero', () {
+                    Navigator.pop(ctx);
+                    _confirmReset(context);
+                  }, color: luma.danger),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _sheetHeader(BuildContext context, IconData icon, String title, {Widget? trailing}) {
+    final luma = context.luma;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 8, 10),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: luma.accent),
+          const SizedBox(width: 8),
+          Text(title, style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700, fontSize: 16)),
+          const Spacer(),
+          ?trailing,
+        ],
+      ),
+    );
+  }
+
+  Widget _sheetTile(
+    BuildContext context,
+    IconData icon,
+    String title,
+    String subtitle,
+    VoidCallback onTap, {
+    Color? color,
+  }) {
+    final luma = context.luma;
+    return ListTile(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
+      leading: Icon(icon, color: color ?? luma.textMuted, size: 20),
+      title: Text(title, style: TextStyle(color: color ?? luma.textPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
+      subtitle: Text(subtitle, style: TextStyle(color: luma.textMuted, fontSize: 11)),
+      minVerticalPadding: 10,
+    );
+  }
+
   void _showShopCatalog(BuildContext context) {
     final luma = context.luma;
     final repo = ServerTycoonScope.of(context);
@@ -1212,6 +2019,21 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
           _StaffModal(
             onClose: () => setState(() => _showStaff = false),
           ),
+        // Daily goals
+        if (_showMissions)
+          _MissionsModal(
+            onClose: () => setState(() => _showMissions = false),
+          ),
+        // Boosts
+        if (_showBoosts)
+          _BoostsModal(
+            onClose: () => setState(() => _showBoosts = false),
+          ),
+        // Stats
+        if (_showStats)
+          _StatsModal(
+            onClose: () => setState(() => _showStats = false),
+          ),
         // Achievement unlock toasts
         _AchievementToastStack(),
         // Live incident banners
@@ -1232,6 +2054,15 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
             onClose: () {
               repo.clearDayReport();
               setState(() => _showDayReport = false);
+            },
+          ),
+        // "While you were away" — takes precedence, so it renders last.
+        if (_showAwayReport && repo.lastAwayReport != null)
+          _AwayReportModal(
+            report: repo.lastAwayReport!,
+            onClose: () {
+              repo.clearAwayReport();
+              setState(() => _showAwayReport = false);
             },
           ),
       ],
@@ -1516,6 +2347,77 @@ class _WirePainter extends CustomPainter {
 
 // ── Modals ──
 
+/// Shared frame for the game's full-screen modals. The originals hard-coded
+/// `width: 600, height: 500` containers, which clip on anything narrower.
+class _GameModal extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final VoidCallback onClose;
+  final Widget child;
+  final Widget? headerTrailing;
+  final double maxWidth;
+
+  const _GameModal({
+    required this.icon,
+    required this.title,
+    required this.onClose,
+    required this.child,
+    this.headerTrailing,
+    this.maxWidth = 600,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final phone = _isPhone(context);
+    final size = MediaQuery.sizeOf(context);
+
+    return Material(
+      color: Colors.black54,
+      child: SafeArea(
+        child: Center(
+          child: Container(
+            margin: EdgeInsets.all(phone ? 10 : 24),
+            constraints: BoxConstraints(
+              maxWidth: maxWidth,
+              maxHeight: size.height * (phone ? 0.92 : 0.85),
+            ),
+            decoration: BoxDecoration(color: luma.surface, borderRadius: BorderRadius.circular(16)),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 6, 12),
+                  decoration: BoxDecoration(border: Border(bottom: BorderSide(color: luma.border))),
+                  child: Row(
+                    children: [
+                      Icon(icon, size: 18, color: luma.accent),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700, fontSize: 16),
+                        ),
+                      ),
+                      ?headerTrailing,
+                      IconButton(
+                        icon: Icon(Icons.close_rounded, color: luma.textMuted),
+                        onPressed: onClose,
+                      ),
+                    ],
+                  ),
+                ),
+                Flexible(child: child),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ContractsModal extends StatelessWidget {
   final VoidCallback onClose;
   const _ContractsModal({required this.onClose});
@@ -1525,81 +2427,65 @@ class _ContractsModal extends StatelessWidget {
     final luma = context.luma;
     final repo = ServerTycoonScope.of(context);
     final state = repo.state;
-    final effects = getResearchEffects(state.research);
+    final effects = repo.effects;
+    final canAccept = state.contracts.length < effects.contractSlots;
 
-    return Material(
-      color: Colors.black54,
-      child: Center(
-        child: Container(
-          width: 600,
-          height: 500,
-          margin: const EdgeInsets.all(24),
-          decoration: BoxDecoration(color: luma.surface, borderRadius: BorderRadius.circular(16)),
-          child: Column(
-            children: [
-              // Header
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(border: Border(bottom: BorderSide(color: luma.border))),
-                child: Row(
-                  children: [
-                    Text('Contracts', style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700, fontSize: 16)),
-                    const Spacer(),
-                    Text('${state.contracts.length} / ${effects.contractSlots} active', style: TextStyle(color: luma.textMuted, fontSize: 12)),
-                    IconButton(icon: Icon(Icons.close_rounded, color: luma.textMuted), onPressed: onClose),
-                  ],
-                ),
+    return _GameModal(
+      icon: Icons.assignment_rounded,
+      title: 'Contracts',
+      onClose: onClose,
+      headerTrailing: Text(
+        '${state.contracts.length} / ${effects.contractSlots}',
+        style: TextStyle(color: luma.textMuted, fontSize: 12),
+      ),
+      child: ListView(
+        padding: const EdgeInsets.only(bottom: 12),
+        children: [
+          if (state.contracts.isNotEmpty) ...[
+            _sectionLabel(context, 'Active'),
+            for (final c in state.contracts) _contractTile(context, c, active: true),
+          ],
+          _sectionLabel(context, "Today's Offers"),
+          if (repo.contractOffers.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                'No offers today — build reputation and buy licenses to attract companies.',
+                style: TextStyle(color: luma.textMuted, fontSize: 12),
               ),
-              // Active contracts
-              if (state.contracts.isNotEmpty) ...[
-                Container(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                  alignment: Alignment.centerLeft,
-                  child: Text('Active', style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
-                ),
-                for (final c in state.contracts)
-                  _contractTile(context, c, active: true),
-              ],
-              // Offers
-              Container(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                alignment: Alignment.centerLeft,
-                child: Text('Today\'s Offers', style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: repo.contractOffers.length,
-                  itemBuilder: (ctx, i) {
-                    final offer = repo.contractOffers[i];
-                    final company = companiesById[offer.companyId];
-                    final service = servicesById[offer.serviceTypeId];
-                    final canAccept = state.contracts.length < effects.contractSlots;
+            ),
+          for (final offer in repo.contractOffers)
+            Builder(builder: (ctx) {
+              final company = companiesById[offer.companyId];
+              final service = servicesById[offer.serviceTypeId];
 
-                    return ListTile(
-                      dense: true,
-                      title: Text('${company?.name ?? offer.companyId} — ${service?.name ?? offer.serviceTypeId}', style: TextStyle(color: luma.textPrimary, fontSize: 13)),
-                      subtitle: Text('${offer.minCapacity} ${service?.capacityUnitLabel ?? ""} • ${offer.durationDays} days • \$${offer.payoutPerDay.toStringAsFixed(2)}/day + \$${offer.completionBonus.toStringAsFixed(0)} bonus', style: TextStyle(color: luma.textMuted, fontSize: 11)),
-                      trailing: canAccept
-                          ? TextButton(
-                              onPressed: () {
-                                final result = repo.acceptContract(offer.offerId);
-                                if (!result.ok) {
-                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                    content: Text(result.errors?.join('\n') ?? 'Error'),
-                                    backgroundColor: luma.surface,
-                                  ));
-                                }
-                              },
-                              child: Text('Accept', style: TextStyle(color: luma.accent, fontSize: 12)),
-                            )
-                          : Text('Full', style: TextStyle(color: luma.textMuted, fontSize: 11)),
-                    );
-                  },
+              return ListTile(
+                title: Text(
+                  '${company?.name ?? offer.companyId} — ${service?.name ?? offer.serviceTypeId}',
+                  style: TextStyle(color: luma.textPrimary, fontSize: 13),
                 ),
-              ),
-            ],
-          ),
-        ),
+                subtitle: Text(
+                  '${offer.minCapacity} ${service?.capacityUnitLabel ?? ""} • ${offer.durationDays} days • \$${offer.payoutPerDay.toStringAsFixed(2)}/day + \$${offer.completionBonus.toStringAsFixed(0)} bonus',
+                  style: TextStyle(color: luma.textMuted, fontSize: 11),
+                ),
+                trailing: canAccept
+                    ? TextButton(
+                        onPressed: () {
+                          HapticFeedback.selectionClick();
+                          final result = repo.acceptContract(offer.offerId);
+                          if (!result.ok) {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text(result.errors?.join('\n') ?? 'Error'),
+                              backgroundColor: luma.surface,
+                            ));
+                          }
+                        },
+                        child: Text('Accept', style: TextStyle(color: luma.accent, fontSize: 13)),
+                      )
+                    : Text('Full', style: TextStyle(color: luma.textMuted, fontSize: 11)),
+              );
+            }),
+        ],
       ),
     );
   }
@@ -1633,94 +2519,387 @@ class _ContractsModal extends StatelessWidget {
   }
 }
 
-class _ResearchModal extends StatelessWidget {
+class _ResearchModal extends StatefulWidget {
   final VoidCallback onClose;
   const _ResearchModal({required this.onClose});
+
+  @override
+  State<_ResearchModal> createState() => _ResearchModalState();
+}
+
+class _ResearchModalState extends State<_ResearchModal> {
+  ResearchBranch _branch = ResearchBranch.lab;
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
     final repo = ServerTycoonScope.of(context);
-    final state = repo.state;
 
-    return Material(
-      color: Colors.black54,
-      child: Center(
-        child: Container(
-          width: 500,
-          height: 500,
-          margin: const EdgeInsets.all(24),
-          decoration: BoxDecoration(color: luma.surface, borderRadius: BorderRadius.circular(16)),
+    return ListenableBuilder(
+      listenable: repo,
+      builder: (context, _) {
+        final state = repo.state;
+        final projects = researchInBranch(_branch);
+        final maxTier = researchMaxTier(_branch);
+
+        return _GameModal(
+          icon: Icons.science_rounded,
+          title: 'Research',
+          onClose: widget.onClose,
+          maxWidth: 720,
+          headerTrailing: Text(
+            '${state.researchPoints.toStringAsFixed(1)} RP',
+            style: TextStyle(color: luma.accent, fontSize: 12, fontWeight: FontWeight.w700),
+          ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(border: Border(bottom: BorderSide(color: luma.border))),
-                child: Row(
+              _activeBar(context, repo),
+              SizedBox(
+                height: 44,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   children: [
-                    Text('Research', style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700, fontSize: 16)),
-                    const Spacer(),
-                    IconButton(icon: Icon(Icons.close_rounded, color: luma.textMuted), onPressed: onClose),
+                    for (final branch in ResearchBranch.values)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 3),
+                        child: ChoiceChip(
+                          label: Text(
+                            researchBranchNames[branch] ?? branch.name,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          selected: _branch == branch,
+                          onSelected: (_) {
+                            HapticFeedback.selectionClick();
+                            setState(() => _branch = branch);
+                          },
+                        ),
+                      ),
                   ],
                 ),
               ),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: researchList.length,
-                  itemBuilder: (ctx, i) {
-                    final project = researchList[i];
-                    final owned = state.research.contains(project.id);
-                    final canAfford = state.money >= project.cost;
-                    final repOk = state.reputation >= project.minReputation;
-                    final reqsMet = project.requires.every((r) => state.research.contains(r));
-
-                    return Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: owned ? luma.accent.withOpacity(0.1) : luma.background,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: owned ? luma.accent.withOpacity(0.3) : luma.border),
+              const Divider(height: 1),
+              Flexible(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(0, 8, 0, 16),
+                  children: [
+                    for (var tier = 1; tier <= maxTier; tier++)
+                      _tierBlock(
+                        context,
+                        repo,
+                        tier,
+                        projects.where((p) => p.tier == tier).toList(),
+                        isLast: tier == maxTier,
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(project.name, style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
-                              ),
-                              if (owned)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(color: Colors.green.shade900.withOpacity(0.3), borderRadius: BorderRadius.circular(4)),
-                                  child: Text('OWNED', style: TextStyle(color: Colors.green.shade400, fontSize: 9, fontWeight: FontWeight.w700)),
-                                )
-                              else
-                                TextButton(
-                                  onPressed: canAfford && repOk && reqsMet ? () => repo.buyResearch(project.id) : null,
-                                  child: Text('\$${project.cost}', style: TextStyle(color: canAfford && repOk && reqsMet ? luma.accent : luma.textMuted, fontSize: 12)),
-                                ),
-                            ],
-                          ),
-                          Text(project.description, style: TextStyle(color: luma.textMuted, fontSize: 11)),
-                          const SizedBox(height: 4),
-                          Text('Category: ${project.category} • Requires ${project.minReputation} rep', style: TextStyle(color: luma.textMuted, fontSize: 10)),
-                          if (!reqsMet)
-                            Text('Prerequisites not met', style: TextStyle(color: Colors.red.shade400, fontSize: 10)),
-                        ],
-                      ),
-                    );
-                  },
+                  ],
                 ),
               ),
             ],
           ),
+        );
+      },
+    );
+  }
+
+  /// Progress on whatever is being researched right now, plus the point rate
+  /// that decides how long everything else will take.
+  Widget _activeBar(BuildContext context, ServerTycoonRepository repo) {
+    final luma = context.luma;
+    final state = repo.state;
+    final active = state.activeResearch;
+    final rate = repo.researchPointsPerDayNow;
+
+    if (active == null) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+        color: luma.background,
+        child: Text(
+          'Nothing in the lab — earning ${rate.toStringAsFixed(1)} RP/day',
+          style: TextStyle(color: luma.textMuted, fontSize: 12),
         ),
+      );
+    }
+
+    final project = researchById[active.projectId];
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+      color: luma.background,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Researching: ${project?.name ?? active.projectId}',
+                  style: TextStyle(color: luma.textPrimary, fontSize: 12, fontWeight: FontWeight.w600),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Text(
+                '${repo.activeResearchDaysRemaining}d left',
+                style: TextStyle(color: luma.textMuted, fontSize: 11),
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: active.fraction,
+              backgroundColor: luma.border,
+              valueColor: AlwaysStoppedAnimation<Color>(luma.accent),
+              minHeight: 5,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Text(
+                '${active.rpAccrued.toStringAsFixed(1)} / ${active.rpNeeded.toStringAsFixed(0)} RP · ${rate.toStringAsFixed(1)}/day',
+                style: TextStyle(color: luma.textMuted, fontSize: 10),
+              ),
+              const Spacer(),
+              if (state.researchQueue.isNotEmpty)
+                Text('${state.researchQueue.length} queued', style: TextStyle(color: luma.textMuted, fontSize: 10)),
+            ],
+          ),
+        ],
       ),
     );
   }
+
+  /// One depth level of the branch: a rail on the left showing how far the
+  /// player has climbed, and the tier's projects scrolling horizontally.
+  Widget _tierBlock(
+    BuildContext context,
+    ServerTycoonRepository repo,
+    int tier,
+    List<ResearchProject> projects,
+    {required bool isLast}) {
+    final luma = context.luma;
+    if (projects.isEmpty) return const SizedBox.shrink();
+
+    final reached = projects.any((p) => _statusOf(repo, p) != _NodeStatus.locked);
+    final railColor = reached ? luma.accent : luma.border;
+
+    // Deliberately not IntrinsicHeight around a full-height rail: a
+    // horizontally-scrolling viewport reports zero intrinsic height, which
+    // would collapse the row. The rail is drawn as fixed segments instead.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            SizedBox(
+              width: 34,
+              child: Center(
+                child: Container(
+                  width: 11,
+                  height: 11,
+                  decoration: BoxDecoration(
+                    color: reached ? luma.accent : luma.surface,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: railColor, width: 2),
+                  ),
+                ),
+              ),
+            ),
+            Text(
+              'Tier $tier',
+              style: TextStyle(color: luma.textMuted, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: Container(height: 1, color: luma.border)),
+            const SizedBox(width: 12),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.only(left: 34),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.only(right: 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final project in projects)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: _projectCard(context, repo, project),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        if (!isLast)
+          SizedBox(
+            width: 34,
+            child: Center(child: Container(width: 2, height: 16, color: luma.border)),
+          ),
+      ],
+    );
+  }
+
+  _NodeStatus _statusOf(ServerTycoonRepository repo, ResearchProject project) {
+    final state = repo.state;
+    if (state.activeResearch?.projectId == project.id) return _NodeStatus.researching;
+    if (state.researchQueue.contains(project.id)) return _NodeStatus.queued;
+
+    if (project.repeatable) {
+      final level = state.researchLevels[project.id] ?? 0;
+      if (level >= project.maxLevel) return _NodeStatus.owned;
+    } else if (state.research.contains(project.id)) {
+      return _NodeStatus.owned;
+    }
+
+    final reqsMet = project.requires.every((r) => state.research.contains(r));
+    if (!reqsMet || state.reputation < project.minReputation) return _NodeStatus.locked;
+    return _NodeStatus.available;
+  }
+
+  Widget _projectCard(BuildContext context, ServerTycoonRepository repo, ResearchProject project) {
+    final luma = context.luma;
+    final state = repo.state;
+    final status = _statusOf(repo, project);
+    final level = repo.pendingLevelFor(project.id);
+    final cost = project.costAtLevel(level);
+    final canAfford = state.money >= cost;
+
+    final (Color borderColor, Color tint) = switch (status) {
+      _NodeStatus.owned => (Colors.green.shade400.withOpacity(0.4), Colors.green.shade900.withOpacity(0.12)),
+      _NodeStatus.researching => (luma.accent, luma.accent.withOpacity(0.10)),
+      _NodeStatus.queued => (luma.accent.withOpacity(0.5), luma.accent.withOpacity(0.05)),
+      _NodeStatus.available => (luma.border, luma.background),
+      _NodeStatus.locked => (luma.border, luma.background),
+    };
+
+    final locked = status == _NodeStatus.locked;
+
+    return Container(
+      width: 218,
+      padding: const EdgeInsets.all(11),
+      decoration: BoxDecoration(
+        color: tint,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  project.name,
+                  style: TextStyle(
+                    color: locked ? luma.textMuted : luma.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              if (status == _NodeStatus.owned)
+                Icon(Icons.check_circle_rounded, size: 16, color: Colors.green.shade400)
+              else if (status == _NodeStatus.researching)
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    value: state.activeResearch?.fraction ?? 0,
+                    strokeWidth: 2.5,
+                    backgroundColor: luma.border,
+                    valueColor: AlwaysStoppedAnimation<Color>(luma.accent),
+                  ),
+                )
+              else if (status == _NodeStatus.queued)
+                Icon(Icons.hourglass_top_rounded, size: 15, color: luma.accent)
+              else if (locked)
+                Icon(Icons.lock_rounded, size: 14, color: luma.textMuted),
+            ],
+          ),
+          const SizedBox(height: 5),
+          Text(
+            project.description,
+            style: TextStyle(color: luma.textMuted, fontSize: 11, height: 1.25),
+          ),
+          if (project.repeatable) ...[
+            const SizedBox(height: 5),
+            Text(
+              'Level ${state.researchLevels[project.id] ?? 0} — repeatable',
+              style: TextStyle(color: luma.accent, fontSize: 10, fontWeight: FontWeight.w600),
+            ),
+          ],
+          const SizedBox(height: 7),
+          if (locked)
+            Text(
+              _lockReason(repo, project),
+              style: TextStyle(color: Colors.orange.shade300, fontSize: 10),
+            )
+          else if (status == _NodeStatus.owned)
+            Text('Researched', style: TextStyle(color: Colors.green.shade400, fontSize: 11, fontWeight: FontWeight.w600))
+          else if (status == _NodeStatus.researching || status == _NodeStatus.queued)
+            SizedBox(
+              height: 30,
+              child: TextButton(
+                onPressed: () {
+                  HapticFeedback.selectionClick();
+                  repo.cancelResearch(project.id);
+                },
+                style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                child: Text(
+                  status == _NodeStatus.researching ? 'Cancel (50% back)' : 'Remove from queue',
+                  style: TextStyle(color: luma.textMuted, fontSize: 11),
+                ),
+              ),
+            )
+          else
+            SizedBox(
+              height: 32,
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: canAfford
+                    ? () {
+                        HapticFeedback.selectionClick();
+                        final result = repo.queueResearch(project.id);
+                        if (!result.ok) {
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text(result.errors?.join('\n') ?? 'Error'),
+                            backgroundColor: luma.surface,
+                          ));
+                        }
+                      }
+                    : null,
+                style: FilledButton.styleFrom(
+                  backgroundColor: luma.accent,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.zero,
+                  textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                ),
+                child: Text('\$$cost · ~${repo.estimatedResearchDays(project)}d'),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _lockReason(ServerTycoonRepository repo, ResearchProject project) {
+    final state = repo.state;
+    final missing = project.requires.where((r) => !state.research.contains(r)).toList();
+    if (missing.isNotEmpty) {
+      return 'Needs ${missing.map((id) => researchById[id]?.name ?? id).join(', ')}';
+    }
+    return 'Needs ${project.minReputation} reputation';
+  }
 }
+
+enum _NodeStatus { locked, available, queued, researching, owned }
 
 class _LicensesModal extends StatelessWidget {
   final VoidCallback onClose;
@@ -1732,54 +2911,44 @@ class _LicensesModal extends StatelessWidget {
     final repo = ServerTycoonScope.of(context);
     final state = repo.state;
 
-    return Material(
-      color: Colors.black54,
-      child: Center(
-        child: Container(
-          width: 500,
-          height: 500,
-          margin: const EdgeInsets.all(24),
-          decoration: BoxDecoration(color: luma.surface, borderRadius: BorderRadius.circular(16)),
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(border: Border(bottom: BorderSide(color: luma.border))),
-                child: Row(
-                  children: [
-                    Text('Licenses', style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700, fontSize: 16)),
-                    const Spacer(),
-                    IconButton(icon: Icon(Icons.close_rounded, color: luma.textMuted), onPressed: onClose),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: licenseList.length,
-                  itemBuilder: (ctx, i) {
-                    final license = licenseList[i];
-                    final owned = state.licenses.contains(license.id);
-                    final canAfford = state.money >= license.cost;
-                    final repOk = state.reputation >= license.minReputation;
-                    final reqsMet = license.requires.every((r) => state.licenses.contains(r));
+    return _GameModal(
+      icon: Icons.verified_rounded,
+      title: 'Licenses',
+      onClose: onClose,
+      maxWidth: 520,
+      child: ListView.builder(
+        padding: const EdgeInsets.only(bottom: 12),
+        itemCount: licenseList.length,
+        itemBuilder: (ctx, i) {
+final license = licenseList[i];
+final owned = state.licenses.contains(license.id);
+final canAfford = state.money >= license.cost;
+final repOk = state.reputation >= license.minReputation;
+final reqsMet = license.requires.every((r) => state.licenses.contains(r));
 
-                    return ListTile(
-                      dense: true,
-                      title: Text(license.name, style: TextStyle(color: luma.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
-                      subtitle: Text('${license.description}\nRequires ${license.minReputation} rep', style: TextStyle(color: luma.textMuted, fontSize: 11)),
-                      trailing: owned
-                          ? Icon(Icons.check_circle_rounded, color: Colors.green.shade400, size: 20)
-                          : TextButton(
-                              onPressed: canAfford && repOk && reqsMet ? () => repo.buyLicense(license.id) : null,
-                              child: Text('\$${license.cost}', style: TextStyle(color: canAfford && repOk && reqsMet ? luma.accent : luma.textMuted, fontSize: 12)),
-                            ),
-                    );
-                  },
-                ),
-              ),
-            ],
+return ListTile(
+  title: Text(license.name, style: TextStyle(color: luma.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
+  subtitle: Text(
+    '${license.description}\nRequires ${license.minReputation} rep',
+    style: TextStyle(color: luma.textMuted, fontSize: 11),
+  ),
+  isThreeLine: true,
+  trailing: owned
+      ? Icon(Icons.check_circle_rounded, color: Colors.green.shade400, size: 20)
+      : TextButton(
+          onPressed: canAfford && repOk && reqsMet
+              ? () {
+                  HapticFeedback.selectionClick();
+                  repo.buyLicense(license.id);
+                }
+              : null,
+          child: Text(
+            '\$${license.cost}',
+            style: TextStyle(color: canAfford && repOk && reqsMet ? luma.accent : luma.textMuted, fontSize: 13),
           ),
         ),
+);
+        },
       ),
     );
   }
@@ -1795,92 +2964,79 @@ class _StaffModal extends StatelessWidget {
     final repo = ServerTycoonScope.of(context);
     final state = repo.state;
 
-    return Material(
-      color: Colors.black54,
-      child: Center(
-        child: Container(
-          width: 500,
-          height: 500,
-          margin: const EdgeInsets.all(24),
-          decoration: BoxDecoration(color: luma.surface, borderRadius: BorderRadius.circular(16)),
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(border: Border(bottom: BorderSide(color: luma.border))),
-                child: Row(
+    return _GameModal(
+      icon: Icons.badge_rounded,
+      title: 'Staff',
+      onClose: onClose,
+      maxWidth: 520,
+      child: ListView.builder(
+        padding: const EdgeInsets.only(top: 8, bottom: 12),
+        itemCount: staffDefList.length,
+        itemBuilder: (ctx, i) {
+          final def = staffDefList[i];
+          final hired = state.hiredStaffIds.contains(def.id);
+          final canAfford = state.money >= def.cost;
+          final repOk = state.reputation >= def.minReputation;
+          final licenseOk = def.requiresLicense == null || state.licenses.contains(def.requiresLicense);
+          final researchOk = def.requiresResearch == null || state.research.contains(def.requiresResearch);
+
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: hired ? luma.accent.withOpacity(0.1) : luma.background,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: hired ? luma.accent.withOpacity(0.3) : luma.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Text('Staff', style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700, fontSize: 16)),
-                    const Spacer(),
-                    IconButton(icon: Icon(Icons.close_rounded, color: luma.textMuted), onPressed: onClose),
+                    Expanded(
+                      child: Text(def.name, style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
+                    ),
+                    if (hired)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(color: Colors.green.shade900.withOpacity(0.3), borderRadius: BorderRadius.circular(4)),
+                        child: Text('HIRED', style: TextStyle(color: Colors.green.shade400, fontSize: 9, fontWeight: FontWeight.w700)),
+                      ),
                   ],
                 ),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: staffDefList.length,
-                  itemBuilder: (ctx, i) {
-                    final def = staffDefList[i];
-                    final hired = state.hiredStaffIds.contains(def.id);
-                    final canAfford = state.money >= def.cost;
-                    final repOk = state.reputation >= def.minReputation;
-                    final licenseOk = def.requiresLicense == null || state.licenses.contains(def.requiresLicense);
-                    final researchOk = def.requiresResearch == null || state.research.contains(def.requiresResearch);
-
-                    return Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: hired ? luma.accent.withOpacity(0.1) : luma.background,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: hired ? luma.accent.withOpacity(0.3) : luma.border),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(def.name, style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
-                              ),
-                              if (hired)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(color: Colors.green.shade900.withOpacity(0.3), borderRadius: BorderRadius.circular(4)),
-                                  child: Text('HIRED', style: TextStyle(color: Colors.green.shade400, fontSize: 9, fontWeight: FontWeight.w700)),
-                                ),
-                            ],
+                Text(def.description, style: TextStyle(color: luma.textMuted, fontSize: 11)),
+                const SizedBox(height: 4),
+                Text('Salary: \$${def.dailySalary.toStringAsFixed(0)}/day', style: TextStyle(color: luma.textMuted, fontSize: 10)),
+                if (!hired && (!repOk || !licenseOk || !researchOk))
+                  Text('Requirements not met', style: TextStyle(color: Colors.red.shade400, fontSize: 10)),
+                const SizedBox(height: 6),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: hired
+                      ? TextButton(
+                          onPressed: () {
+                            HapticFeedback.selectionClick();
+                            repo.fireStaff(def.id);
+                          },
+                          child: Text('Fire', style: TextStyle(color: luma.danger, fontSize: 13)),
+                        )
+                      : TextButton(
+                          onPressed: canAfford && repOk && licenseOk && researchOk
+                              ? () {
+                                  HapticFeedback.selectionClick();
+                                  repo.hireStaff(def.id);
+                                }
+                              : null,
+                          child: Text(
+                            'Hire \$${def.cost}',
+                            style: TextStyle(color: canAfford && repOk && licenseOk && researchOk ? luma.accent : luma.textMuted, fontSize: 13),
                           ),
-                          Text(def.description, style: TextStyle(color: luma.textMuted, fontSize: 11)),
-                          const SizedBox(height: 4),
-                          Text('Salary: \$${def.dailySalary.toStringAsFixed(0)}/day', style: TextStyle(color: luma.textMuted, fontSize: 10)),
-                          if (!hired && (!repOk || !licenseOk || !researchOk))
-                            Text('Requirements not met', style: TextStyle(color: Colors.red.shade400, fontSize: 10)),
-                          const SizedBox(height: 6),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: hired
-                                ? TextButton(
-                                    onPressed: () => repo.fireStaff(def.id),
-                                    child: Text('Fire', style: TextStyle(color: luma.danger, fontSize: 12)),
-                                  )
-                                : TextButton(
-                                    onPressed: canAfford && repOk && licenseOk && researchOk ? () => repo.hireStaff(def.id) : null,
-                                    child: Text(
-                                      'Hire \$${def.cost}',
-                                      style: TextStyle(color: canAfford && repOk && licenseOk && researchOk ? luma.accent : luma.textMuted, fontSize: 12),
-                                    ),
-                                  ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+                        ),
                 ),
-              ),
-            ],
-          ),
-        ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -1896,81 +3052,63 @@ class _AchievementsModal extends StatelessWidget {
     final repo = ServerTycoonScope.of(context);
     final state = repo.state;
 
-    return Material(
-      color: Colors.black54,
-      child: Center(
-        child: Container(
-          width: 500,
-          height: 500,
-          margin: const EdgeInsets.all(24),
-          decoration: BoxDecoration(color: luma.surface, borderRadius: BorderRadius.circular(16)),
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(border: Border(bottom: BorderSide(color: luma.border))),
-                child: Row(
+    return _GameModal(
+      icon: Icons.emoji_events_rounded,
+      title: 'Achievements',
+      onClose: onClose,
+      maxWidth: 520,
+      headerTrailing: Text(
+        '${state.unlockedAchievements.length} / ${achievementDefList.length}',
+        style: TextStyle(color: luma.textMuted, fontSize: 12),
+      ),
+      child: ListView.builder(
+        padding: const EdgeInsets.only(top: 8, bottom: 12),
+        itemCount: achievementDefList.length,
+        itemBuilder: (ctx, i) {
+          final def = achievementDefList[i];
+          final unlocked = state.unlockedAchievements.contains(def.id);
+          final progress = (repo.metricValueFor(def.metric) / def.threshold).clamp(0, 1).toDouble();
+
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: unlocked ? Colors.amber.withOpacity(0.1) : luma.background,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: unlocked ? Colors.amber.withOpacity(0.4) : luma.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Text('Achievements', style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700, fontSize: 16)),
-                    const Spacer(),
-                    Text('${state.unlockedAchievements.length} / ${achievementDefList.length}', style: TextStyle(color: luma.textMuted, fontSize: 12)),
-                    IconButton(icon: Icon(Icons.close_rounded, color: luma.textMuted), onPressed: onClose),
+                    Icon(unlocked ? Icons.emoji_events_rounded : Icons.emoji_events_outlined, size: 16, color: unlocked ? Colors.amber.shade400 : luma.textMuted),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(def.name, style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
+                    ),
+                    if (unlocked)
+                      Icon(Icons.check_circle_rounded, color: Colors.green.shade400, size: 18),
                   ],
                 ),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: achievementDefList.length,
-                  itemBuilder: (ctx, i) {
-                    final def = achievementDefList[i];
-                    final unlocked = state.unlockedAchievements.contains(def.id);
-                    final progress = (repo.metricValueFor(def.metric) / def.threshold).clamp(0, 1).toDouble();
-
-                    return Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: unlocked ? Colors.amber.withOpacity(0.1) : luma.background,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: unlocked ? Colors.amber.withOpacity(0.4) : luma.border),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(unlocked ? Icons.emoji_events_rounded : Icons.emoji_events_outlined, size: 16, color: unlocked ? Colors.amber.shade400 : luma.textMuted),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(def.name, style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
-                              ),
-                              if (unlocked)
-                                Icon(Icons.check_circle_rounded, color: Colors.green.shade400, size: 18),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(def.description, style: TextStyle(color: luma.textMuted, fontSize: 11)),
-                          if (!unlocked) ...[
-                            const SizedBox(height: 6),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(3),
-                              child: LinearProgressIndicator(
-                                value: progress,
-                                backgroundColor: luma.border,
-                                valueColor: AlwaysStoppedAnimation(luma.accent),
-                                minHeight: 4,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
+                const SizedBox(height: 4),
+                Text(def.description, style: TextStyle(color: luma.textMuted, fontSize: 11)),
+                if (!unlocked) ...[
+                  const SizedBox(height: 6),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(3),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      backgroundColor: luma.border,
+                      valueColor: AlwaysStoppedAnimation(luma.accent),
+                      minHeight: 4,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -2201,20 +3339,18 @@ class _DayReportModal extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
 
-    return Material(
-      color: Colors.black54,
-      child: Center(
-        child: Container(
-          width: 400,
-          margin: const EdgeInsets.all(24),
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(color: luma.surface, borderRadius: BorderRadius.circular(16)),
+    return _GameModal(
+      icon: Icons.assessment_rounded,
+      title: 'Day ${report.day}',
+      onClose: onClose,
+      maxWidth: 440,
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Day ${report.day} Report', style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700, fontSize: 18)),
-              const SizedBox(height: 16),
               _reportRow('Income', '\$${report.income.toStringAsFixed(2)}', Colors.green.shade400),
               _reportRow('Contract Income', '\$${report.contractIncome.toStringAsFixed(2)}', Colors.green.shade400),
               _reportRow('Electricity', '-\$${report.electricityCost.toStringAsFixed(2)}', Colors.red.shade400),
@@ -2234,9 +3370,31 @@ class _DayReportModal extends StatelessWidget {
                   Text(e, style: TextStyle(color: e.contains('FAILED') ? Colors.red.shade400 : Colors.green.shade400, fontSize: 11)),
                 const SizedBox(height: 16),
               ],
+              if (report.missionEvents.isNotEmpty) ...[
+                Text('Goals Completed', style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
+                const SizedBox(height: 4),
+                for (final e in report.missionEvents)
+                  Text(e, style: TextStyle(color: luma.accent, fontSize: 11)),
+                const SizedBox(height: 16),
+              ],
+              if (report.researchEvents.isNotEmpty) ...[
+                Text('Research', style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
+                const SizedBox(height: 4),
+                for (final e in report.researchEvents)
+                  Text(e, style: TextStyle(color: Colors.green.shade400, fontSize: 11)),
+                const SizedBox(height: 16),
+              ],
+              if (report.boostEvents.isNotEmpty) ...[
+                for (final e in report.boostEvents)
+                  Text(e, style: TextStyle(color: luma.textMuted, fontSize: 11)),
+                const SizedBox(height: 16),
+              ],
               FilledButton(
                 onPressed: onClose,
-                style: FilledButton.styleFrom(backgroundColor: luma.accent),
+                style: FilledButton.styleFrom(
+                  backgroundColor: luma.accent,
+                  minimumSize: const Size.fromHeight(44),
+                ),
                 child: const Text('Continue'),
               ),
             ],
@@ -2259,7 +3417,573 @@ class _DayReportModal extends StatelessWidget {
   }
 }
 
+class _MissionsModal extends StatelessWidget {
+  final VoidCallback onClose;
+  const _MissionsModal({required this.onClose});
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final repo = ServerTycoonScope.of(context);
+
+    return ListenableBuilder(
+      listenable: repo,
+      builder: (context, _) {
+        final state = repo.state;
+
+        return _GameModal(
+          icon: Icons.flag_rounded,
+          title: 'Daily Goals',
+          onClose: onClose,
+          maxWidth: 520,
+          headerTrailing: Text('Day ${state.dayCount}', style: TextStyle(color: luma.textMuted, fontSize: 12)),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            children: [
+              Text(
+                'A fresh board is rolled every day. Rewards are paid the moment a goal is met.',
+                style: TextStyle(color: luma.textMuted, fontSize: 11),
+              ),
+              const SizedBox(height: 12),
+              if (state.missions.isEmpty)
+                Text('No goals today.', style: TextStyle(color: luma.textMuted, fontSize: 12)),
+              for (final mission in state.missions)
+                Builder(builder: (ctx) {
+                  final def = mission.def;
+                  if (def == null) return const SizedBox.shrink();
+                  final done = mission.rewarded;
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: done ? Colors.green.shade900.withOpacity(0.15) : luma.background,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: done ? Colors.green.shade400.withOpacity(0.4) : luma.border),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              done ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                              size: 17,
+                              color: done ? Colors.green.shade400 : luma.textMuted,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                def.name,
+                                style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700, fontSize: 13),
+                              ),
+                            ),
+                            Text(
+                              '+\$${mission.rewardCash}',
+                              style: TextStyle(color: Colors.green.shade400, fontSize: 12, fontWeight: FontWeight.w700),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(def.description, style: TextStyle(color: luma.textMuted, fontSize: 11)),
+                        const SizedBox(height: 7),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(3),
+                          child: LinearProgressIndicator(
+                            value: mission.fraction,
+                            backgroundColor: luma.border,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              done ? Colors.green.shade400 : luma.accent,
+                            ),
+                            minHeight: 5,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${_missionValue(def.metric, mission.progress)} / ${_missionValue(def.metric, mission.target)}'
+                          ' · +${mission.rewardRep.toStringAsFixed(1)} rep',
+                          style: TextStyle(color: luma.textMuted, fontSize: 10),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Money and bandwidth goals read better with their unit attached.
+  String _missionValue(MissionMetric metric, double value) => switch (metric) {
+        MissionMetric.dailyNetProfit => '\$${value.toStringAsFixed(0)}',
+        MissionMetric.bandwidthServed => '${value.toStringAsFixed(0)} Mbps',
+        _ => value.toStringAsFixed(0),
+      };
+}
+
+class _BoostsModal extends StatelessWidget {
+  final VoidCallback onClose;
+  const _BoostsModal({required this.onClose});
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final repo = ServerTycoonScope.of(context);
+
+    return ListenableBuilder(
+      listenable: repo,
+      builder: (context, _) {
+        final state = repo.state;
+
+        return _GameModal(
+          icon: Icons.bolt_rounded,
+          title: 'Boosts',
+          onClose: onClose,
+          maxWidth: 520,
+          headerTrailing: Text(
+            '\$${_fmt(state.money)}',
+            style: TextStyle(color: Colors.green.shade400, fontSize: 12, fontWeight: FontWeight.w700),
+          ),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            children: [
+              for (final def in boostDefList)
+                Builder(builder: (ctx) {
+                  final active = state.activeBoosts.where((b) => b.defId == def.id).firstOrNull;
+                  final canAfford = state.money >= def.cost;
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: active != null ? luma.accent.withOpacity(0.10) : luma.background,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: active != null ? luma.accent.withOpacity(0.45) : luma.border),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.bolt_rounded, size: 16, color: active != null ? luma.accent : luma.textMuted),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                def.name,
+                                style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700, fontSize: 13),
+                              ),
+                            ),
+                            if (active != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: luma.accent.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(5),
+                                ),
+                                child: Text(
+                                  '${active.daysRemaining}d left',
+                                  style: TextStyle(color: luma.accent, fontSize: 10, fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 5),
+                        Text(def.description, style: TextStyle(color: luma.textMuted, fontSize: 11, height: 1.25)),
+                        const SizedBox(height: 9),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 38,
+                          child: FilledButton(
+                            onPressed: canAfford
+                                ? () {
+                                    HapticFeedback.mediumImpact();
+                                    ServerTycoonScope.of(context).buyBoost(def.id);
+                                  }
+                                : null,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: luma.accent,
+                              foregroundColor: Colors.white,
+                              textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                            ),
+                            child: Text(
+                              active != null
+                                  ? 'Extend — \$${def.cost} for ${def.durationDays} days'
+                                  : 'Activate — \$${def.cost} for ${def.durationDays} days',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _StatsModal extends StatelessWidget {
+  final VoidCallback onClose;
+  const _StatsModal({required this.onClose});
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final repo = ServerTycoonScope.of(context);
+    final state = repo.state;
+    final recent = repo.recentDays;
+
+    final best = recent.isEmpty
+        ? null
+        : recent.reduce((a, b) => a.netProfit >= b.netProfit ? a : b);
+    final worst = recent.isEmpty
+        ? null
+        : recent.reduce((a, b) => a.netProfit <= b.netProfit ? a : b);
+
+    // Income per service type, from the live load rather than the day log, so
+    // it reflects what the fleet is earning right now.
+    final byService = <String, double>{};
+    for (final inst in repo.calculateLoad().instances) {
+      byService[inst.serviceTypeId] = (byService[inst.serviceTypeId] ?? 0) + inst.incomePerDay;
+    }
+    final serviceRows = byService.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+
+    return _GameModal(
+      icon: Icons.insights_rounded,
+      title: 'Stats',
+      onClose: onClose,
+      maxWidth: 560,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
+        children: [
+          _statGrid(context, state, repo),
+          const SizedBox(height: 18),
+          _chartCard(
+            context,
+            'Net profit — last ${state.incomeHistory.length} days',
+            state.incomeHistory,
+            Colors.green.shade400,
+            (v) => '\$${v.toStringAsFixed(0)}',
+          ),
+          const SizedBox(height: 12),
+          _chartCard(
+            context,
+            'Power draw — last ${state.powerHistory.length} days',
+            state.powerHistory,
+            Colors.orange.shade400,
+            (v) => '${v.toStringAsFixed(0)}W',
+          ),
+          if (best != null && worst != null) ...[
+            const SizedBox(height: 18),
+            _label(context, 'Best & worst'),
+            const SizedBox(height: 6),
+            _kv(context, 'Best day', 'Day ${best.day} · \$${best.netProfit.toStringAsFixed(2)}', Colors.green.shade400),
+            _kv(context, 'Worst day', 'Day ${worst.day} · \$${worst.netProfit.toStringAsFixed(2)}', Colors.red.shade400),
+          ],
+          if (serviceRows.isNotEmpty) ...[
+            const SizedBox(height: 18),
+            _label(context, 'Income by service'),
+            const SizedBox(height: 6),
+            for (final entry in serviceRows)
+              _kv(
+                context,
+                servicesById[entry.key]?.name ?? entry.key,
+                '\$${entry.value.toStringAsFixed(2)}/day',
+                luma.textPrimary,
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _statGrid(BuildContext context, GameState state, ServerTycoonRepository repo) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        _statTile(context, 'Lifetime earned', '\$${_fmt(state.totalMoneyEverEarned)}'),
+        _statTile(context, 'Days run', '${state.dayCount}'),
+        _statTile(context, 'Uptime streak', '${state.uptimeStreakDays}d'),
+        _statTile(context, 'Peak bandwidth', '${state.peakBandwidthServed.toStringAsFixed(0)} Mbps'),
+        _statTile(context, 'Peak power', '${state.peakPowerDrawWatts.toStringAsFixed(0)}W'),
+        _statTile(context, 'Contracts done', '${state.contractsCompletedCount}'),
+        _statTile(context, 'Research done', '${state.researchCompletedCount}'),
+        _statTile(context, 'Research rate', '${repo.researchPointsPerDayNow.toStringAsFixed(1)} RP/day'),
+        _statTile(context, 'Rigs', '${state.rigs.length}'),
+        _statTile(context, 'Away rate', '${(repo.offlineRate * 100).toStringAsFixed(0)}%'),
+      ],
+    );
+  }
+
+  Widget _statTile(BuildContext context, String label, String value) {
+    final luma = context.luma;
+    return Container(
+      width: 148,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: luma.background,
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: luma.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: TextStyle(color: luma.textMuted, fontSize: 10)),
+          const SizedBox(height: 3),
+          Text(value, style: TextStyle(color: luma.textPrimary, fontSize: 15, fontWeight: FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+
+  Widget _chartCard(
+    BuildContext context,
+    String title,
+    List<double> values,
+    Color color,
+    String Function(double) format,
+  ) {
+    final luma = context.luma;
+    final latest = values.isEmpty ? 0.0 : values.last;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: luma.background,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: luma.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(title, style: TextStyle(color: luma.textMuted, fontSize: 11)),
+              ),
+              Text(format(latest), style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w700)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 64,
+            width: double.infinity,
+            child: values.length < 2
+                ? Center(
+                    child: Text(
+                      'Not enough days yet',
+                      style: TextStyle(color: luma.textMuted, fontSize: 11),
+                    ),
+                  )
+                : CustomPaint(painter: _SparklinePainter(values: values, color: color, baseline: luma.border)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _label(BuildContext context, String text) {
+    final luma = context.luma;
+    return Text(text, style: TextStyle(color: luma.textPrimary, fontSize: 13, fontWeight: FontWeight.w700));
+  }
+
+  Widget _kv(BuildContext context, String label, String value, Color color) {
+    final luma = context.luma;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: TextStyle(color: luma.textMuted, fontSize: 12))),
+          Text(value, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Simple filled line chart for the 30-day history lists. Handles negative
+/// values by placing zero inside the band rather than clipping it away.
+class _SparklinePainter extends CustomPainter {
+  final List<double> values;
+  final Color color;
+  final Color baseline;
+
+  _SparklinePainter({required this.values, required this.color, required this.baseline});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (values.length < 2) return;
+
+    var min = values.first, max = values.first;
+    for (final v in values) {
+      if (v < min) min = v;
+      if (v > max) max = v;
+    }
+    if (min > 0) min = 0;
+    if (max < 0) max = 0;
+    final range = (max - min).abs() < 1e-9 ? 1.0 : max - min;
+
+    double yFor(double v) => size.height - ((v - min) / range) * size.height;
+    double xFor(int i) => (i / (values.length - 1)) * size.width;
+
+    // Zero line, so a loss-making stretch is obvious at a glance.
+    final zeroY = yFor(0);
+    canvas.drawLine(
+      Offset(0, zeroY),
+      Offset(size.width, zeroY),
+      Paint()
+        ..color = baseline
+        ..strokeWidth = 1,
+    );
+
+    final path = Path()..moveTo(xFor(0), yFor(values.first));
+    for (var i = 1; i < values.length; i++) {
+      path.lineTo(xFor(i), yFor(values[i]));
+    }
+
+    final fill = Path.from(path)
+      ..lineTo(size.width, zeroY)
+      ..lineTo(0, zeroY)
+      ..close();
+    canvas.drawPath(fill, Paint()..color = color.withOpacity(0.16));
+
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..strokeJoin = StrokeJoin.round,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _SparklinePainter old) =>
+      old.values != values || old.color != color;
+}
+
+class _AwayReportModal extends StatelessWidget {
+  final AwayReport report;
+  final VoidCallback onClose;
+  const _AwayReportModal({required this.report, required this.onClose});
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final positive = report.netProfit >= 0;
+
+    return _GameModal(
+      icon: Icons.nightlight_round,
+      title: 'While you were away',
+      onClose: onClose,
+      maxWidth: 440,
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Away for ${_formatDuration(report.awayFor)} — ${report.daysSimulated} '
+                '${report.daysSimulated == 1 ? "day" : "days"} simulated '
+                'at ${(report.rate * 100).toStringAsFixed(0)}% rate.',
+                style: TextStyle(color: luma.textMuted, fontSize: 12, height: 1.35),
+              ),
+              if (report.capped) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(9),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade900.withOpacity(0.22),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Capped at ${GameState.maxOfflineDays} days — ${report.daysElapsed} had passed. '
+                    'Research the R&D Lab branch to earn more while away.',
+                    style: TextStyle(color: Colors.orange.shade200, fontSize: 11, height: 1.3),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+              Center(
+                child: Text(
+                  '${positive ? "+" : "-"}\$${report.netProfit.abs().toStringAsFixed(2)}',
+                  style: TextStyle(
+                    color: positive ? Colors.green.shade400 : Colors.red.shade400,
+                    fontSize: 30,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              _row(context, 'Income', '\$${report.income.toStringAsFixed(2)}', Colors.green.shade400),
+              _row(context, 'Running costs', '-\$${report.expenses.toStringAsFixed(2)}', Colors.red.shade400),
+              _row(context, 'Research points', '+${report.researchPointsEarned.toStringAsFixed(1)} RP', luma.accent),
+              if (report.events.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                Text('What happened', style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
+                const SizedBox(height: 5),
+                for (final event in report.events)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: Text('• $event', style: TextStyle(color: luma.textMuted, fontSize: 11)),
+                  ),
+              ],
+              const SizedBox(height: 18),
+              FilledButton(
+                onPressed: onClose,
+                style: FilledButton.styleFrom(
+                  backgroundColor: luma.accent,
+                  minimumSize: const Size.fromHeight(44),
+                ),
+                child: const Text('Back to work'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _row(BuildContext context, String label, String value, Color color) {
+    final luma = context.luma;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: TextStyle(color: luma.textMuted, fontSize: 13))),
+          Text(value, style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+
+  String _formatDuration(Duration d) {
+    if (d.inDays >= 1) return '${d.inDays}d ${d.inHours % 24}h';
+    if (d.inHours >= 1) return '${d.inHours}h ${d.inMinutes % 60}m';
+    return '${d.inMinutes}m';
+  }
+}
+
 // ── Helpers ──
+
+/// Small section heading used inside the game's list modals.
+Widget _sectionLabel(BuildContext context, String text) {
+  final luma = context.luma;
+  return Padding(
+    padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+    child: Text(
+      text,
+      style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700, fontSize: 13),
+    ),
+  );
+}
 
 String _fmt(double n) {
   if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';

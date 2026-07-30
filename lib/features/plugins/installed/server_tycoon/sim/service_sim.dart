@@ -24,6 +24,40 @@ class ServiceInstance {
   );
 }
 
+/// Account-wide multipliers folded in from research and active boosts. The sim
+/// itself stays ignorant of where they came from — the repository composes
+/// [ResearchEffects] and [BoostEffects] into one of these before calling in.
+class SimModifiers {
+  /// Scales usable CPU score (research cpuBoost × boost capacity).
+  final double cpuCapacityMultiplier;
+
+  /// Scales cooling headroom (research coolingEfficiency × boost cooling).
+  final double coolingMultiplier;
+
+  /// Fraction shaved off every service's storage requirement, 0–1.
+  final double storageCompression;
+
+  /// Fraction shaved off every service's bandwidth requirement, 0–1.
+  final double bandwidthOverhead;
+
+  /// Added to each instance's satisfaction before it is capped at 1.
+  final double satisfactionBonus;
+
+  /// Scales service income.
+  final double incomeMultiplier;
+
+  const SimModifiers({
+    this.cpuCapacityMultiplier = 1.0,
+    this.coolingMultiplier = 1.0,
+    this.storageCompression = 0,
+    this.bandwidthOverhead = 0,
+    this.satisfactionBonus = 0,
+    this.incomeMultiplier = 1.0,
+  });
+
+  static const none = SimModifiers();
+}
+
 class RigInput {
   final Build build;
   final List<ServiceInstance> services;
@@ -159,7 +193,7 @@ class AccountLoadResult {
   });
 }
 
-RequiredResources _sumRequired(List<ServiceInstance> services) {
+RequiredResources _sumRequired(List<ServiceInstance> services, SimModifiers modifiers) {
   var cpu = 0.0, ramGB = 0.0, storageGB = 0.0, bandwidthMbps = 0.0;
   for (final inst in services) {
     final serviceType = servicesById[inst.serviceTypeId];
@@ -169,7 +203,12 @@ RequiredResources _sumRequired(List<ServiceInstance> services) {
     storageGB += serviceType.base.storageGB + serviceType.perUnit.storageGB * inst.capacity;
     bandwidthMbps += serviceType.base.bandwidthMbps + serviceType.perUnit.bandwidthMbps * inst.capacity;
   }
-  return RequiredResources(cpu: cpu, ramGB: ramGB, storageGB: storageGB, bandwidthMbps: bandwidthMbps);
+  return RequiredResources(
+    cpu: cpu,
+    ramGB: ramGB,
+    storageGB: storageGB * (1 - modifiers.storageCompression),
+    bandwidthMbps: bandwidthMbps * (1 - modifiers.bandwidthOverhead),
+  );
 }
 
 RigLoadResult calculateRigLoad(
@@ -179,14 +218,25 @@ RigLoadResult calculateRigLoad(
   RigKind kind, {
   double overheatThrottlePenalty = 0.0,
   double coolingCapacityReduction = 0.0,
+  SimModifiers modifiers = SimModifiers.none,
 }) {
-  final req = _sumRequired(services);
-  final capacity = getCapacity(build);
+  final req = _sumRequired(services, modifiers);
+  final rawCapacity = getCapacity(build);
+  final capacity = Capacity(
+    cpuScore: rawCapacity.cpuScore * modifiers.cpuCapacityMultiplier,
+    ramGB: rawCapacity.ramGB,
+    storageGB: rawCapacity.storageGB,
+    nicMbps: rawCapacity.nicMbps,
+  );
   final (incompatibilityReasons, compatible) = validateBuild(build, rigKind: kind);
   final incompatible = !compatible;
 
   final double nominalCPULoadFactor = capacity.cpuScore > 0 ? (req.cpu / capacity.cpuScore).clamp(0, 1).toDouble() : 1.0;
-  final (thermalThrottleFactor, tempRatio) = getThermals(build, nominalCPULoadFactor, coolingCapacityMultiplier: 1 - coolingCapacityReduction);
+  final (thermalThrottleFactor, tempRatio) = getThermals(
+    build,
+    nominalCPULoadFactor,
+    coolingCapacityMultiplier: (1 - coolingCapacityReduction) * modifiers.coolingMultiplier,
+  );
   final throttleFactor = thermalThrottleFactor * (1 - overheatThrottlePenalty);
   final effectiveCPUCapacity = capacity.cpuScore * throttleFactor;
 
@@ -242,6 +292,7 @@ AccountLoadResult calculateAccountLoad(
   Map<String, double> rigCoolingReductions = const {},
   Map<String, double> routerBandwidthMultipliers = const {},
   Map<String, double> instanceIncomeMultipliers = const {},
+  SimModifiers modifiers = SimModifiers.none,
 }) {
   final rigResults = <String, RigLoadResult>{};
   final routerResults = <String, RouterLoadResult>{};
@@ -271,6 +322,7 @@ AccountLoadResult calculateAccountLoad(
       entry.value.kind,
       overheatThrottlePenalty: rigOverheatPenalties[entry.key] ?? 0.0,
       coolingCapacityReduction: rigCoolingReductions[entry.key] ?? 0.0,
+      modifiers: modifiers,
     );
     rigResults[entry.key] = result;
     totalRequiredBandwidth += result.required.bandwidthMbps;
@@ -317,7 +369,12 @@ AccountLoadResult calculateAccountLoad(
         latencyFactor = (serviceType.maxLatencyMs! / routerLatency).clamp(0.2, 1.0);
       }
 
-      final satisfaction = rigResult.localFactor * routerFactor * latencyFactor;
+      final rawSatisfaction = rigResult.localFactor * routerFactor * latencyFactor;
+      // The research bonus lifts a degraded service but can never take one
+      // past fully satisfied, and never rescues incompatible hardware (0).
+      final satisfaction = rawSatisfaction <= 0
+          ? 0.0
+          : (rawSatisfaction + modifiers.satisfactionBonus).clamp(0.0, 1.0).toDouble();
       if (routerFactor < rigResult.localFactor && routerFactor < latencyFactor) {
         bottleneck = 'bandwidth';
       } else if (latencyFactor < rigResult.localFactor && latencyFactor < routerFactor) {
@@ -325,7 +382,8 @@ AccountLoadResult calculateAccountLoad(
       }
 
       final incomeMultiplier = instanceIncomeMultipliers[inst.instanceId] ?? 1.0;
-      final incomePerDay = serviceType.incomePerUnitPerDay * inst.capacity * satisfaction * incomeMultiplier;
+      final incomePerDay =
+          serviceType.incomePerUnitPerDay * inst.capacity * satisfaction * incomeMultiplier * modifiers.incomeMultiplier;
 
       instances.add(InstanceResult(
         instanceId: inst.instanceId,

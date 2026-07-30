@@ -1,7 +1,9 @@
 // Auto-ported from Roblox Server Hosting Tycoon
 // The full serializable state for one player's hosting business.
 
+import 'data/boosts.dart';
 import 'data/incidents.dart';
+import 'data/missions.dart';
 import 'sim/computer_sim.dart';
 import 'sim/service_sim.dart';
 
@@ -186,6 +188,41 @@ class ContractOffer {
   });
 }
 
+/// A research project part-way through. Progress is paid in research points
+/// accrued at day rollover, so this survives app restarts.
+class ResearchProgress {
+  final String projectId;
+
+  /// For repeatable projects, the level this run will unlock. 0 otherwise.
+  final int level;
+  final double rpNeeded;
+  double rpAccrued;
+
+  ResearchProgress({
+    required this.projectId,
+    required this.rpNeeded,
+    this.level = 0,
+    this.rpAccrued = 0,
+  });
+
+  double get fraction => rpNeeded <= 0 ? 1 : (rpAccrued / rpNeeded).clamp(0, 1).toDouble();
+  bool get complete => rpAccrued >= rpNeeded;
+
+  Map<String, dynamic> toJson() => {
+        'projectId': projectId,
+        'level': level,
+        'rpNeeded': rpNeeded,
+        'rpAccrued': rpAccrued,
+      };
+
+  factory ResearchProgress.fromJson(Map<String, dynamic> json) => ResearchProgress(
+        projectId: json['projectId'] as String,
+        level: json['level'] as int? ?? 0,
+        rpNeeded: (json['rpNeeded'] as num).toDouble(),
+        rpAccrued: (json['rpAccrued'] as num?)?.toDouble() ?? 0,
+      );
+}
+
 class DayReport {
   final int day;
   final double income;
@@ -199,6 +236,11 @@ class DayReport {
   final double reputation;
   final double money;
   final bool overloaded;
+  final List<String> researchEvents;
+  final List<String> missionEvents;
+  final List<String> boostEvents;
+  final double researchPointsEarned;
+  final double missionRewardCash;
 
   const DayReport({
     required this.day,
@@ -213,7 +255,44 @@ class DayReport {
     required this.reputation,
     required this.money,
     required this.overloaded,
+    this.researchEvents = const [],
+    this.missionEvents = const [],
+    this.boostEvents = const [],
+    this.researchPointsEarned = 0,
+    this.missionRewardCash = 0,
   });
+}
+
+/// Summary of the days simulated on the player's behalf while the app was
+/// closed. Session-only — shown once on the next open, then dropped.
+class AwayReport {
+  final int daysSimulated;
+
+  /// How many days actually elapsed, before the catch-up cap was applied.
+  final int daysElapsed;
+  final Duration awayFor;
+  final double income;
+  final double expenses;
+  final double netProfit;
+
+  /// The fraction of normal earnings offline days paid out at.
+  final double rate;
+  final double researchPointsEarned;
+  final List<String> events;
+
+  const AwayReport({
+    required this.daysSimulated,
+    required this.daysElapsed,
+    required this.awayFor,
+    required this.income,
+    required this.expenses,
+    required this.netProfit,
+    required this.rate,
+    required this.researchPointsEarned,
+    this.events = const [],
+  });
+
+  bool get capped => daysElapsed > daysSimulated;
 }
 
 class GameState {
@@ -248,7 +327,30 @@ class GameState {
   // Hired staff.
   Set<String> hiredStaffIds;
 
+  // Research pipeline. `research` above stays the owned-set; these drive the
+  // accrue-over-time queue on top of it.
+  double researchPoints;
+  ResearchProgress? activeResearch;
+  List<String> researchQueue;
+  Map<String, int> researchLevels;
+  int researchCompletedCount;
+
+  // Timed boosts and the daily objective board.
+  List<ActiveBoost> activeBoosts;
+  List<Mission> missions;
+  int missionsRolledForDay;
+
+  // Session preferences that belong to the save, not the app settings.
+  bool autoConfirmDay;
+  int gameSpeed;
+
+  /// Wall-clock of the last day processed, for away earnings. 0 = never seen.
+  int lastSeenEpochMs;
+
   static const int historyLength = 30;
+  static const int maxOfflineDays = 12;
+  static const double baseOfflineRate = 0.6;
+  static const List<int> gameSpeeds = [1, 2, 4];
   static const int newRigCost = 300;
   static const int newServerRigCost = 2000;
   static const int newRouterCost = 500;
@@ -282,6 +384,17 @@ class GameState {
     int? prestigeLevel,
     double? incomeMultiplier,
     Set<String>? hiredStaffIds,
+    double? researchPoints,
+    this.activeResearch,
+    List<String>? researchQueue,
+    Map<String, int>? researchLevels,
+    int? researchCompletedCount,
+    List<ActiveBoost>? activeBoosts,
+    List<Mission>? missions,
+    int? missionsRolledForDay,
+    bool? autoConfirmDay,
+    int? gameSpeed,
+    int? lastSeenEpochMs,
   }) : inventory = inventory ?? {},
        totalMoneyEverEarned = totalMoneyEverEarned ?? 0,
        contractsCompletedCount = contractsCompletedCount ?? 0,
@@ -290,7 +403,19 @@ class GameState {
        unlockedAchievements = unlockedAchievements ?? {},
        prestigeLevel = prestigeLevel ?? 0,
        incomeMultiplier = incomeMultiplier ?? 1.0,
-       hiredStaffIds = hiredStaffIds ?? {};
+       hiredStaffIds = hiredStaffIds ?? {},
+       researchPoints = researchPoints ?? 0,
+       researchQueue = researchQueue ?? [],
+       researchLevels = researchLevels ?? {},
+       researchCompletedCount = researchCompletedCount ?? 0,
+       activeBoosts = activeBoosts ?? [],
+       missions = missions ?? [],
+       missionsRolledForDay = missionsRolledForDay ?? -1,
+       autoConfirmDay = autoConfirmDay ?? false,
+       // Anything not on the speed dial (an older or hand-edited save) falls
+       // back to 1×; a zero here would stall the day timer entirely.
+       gameSpeed = (gameSpeed != null && gameSpeeds.contains(gameSpeed)) ? gameSpeed : 1,
+       lastSeenEpochMs = lastSeenEpochMs ?? 0;
 
   factory GameState.newDefault({
     double totalMoneyEverEarned = 0,
@@ -365,6 +490,17 @@ class GameState {
     'prestigeLevel': prestigeLevel,
     'incomeMultiplier': incomeMultiplier,
     'hiredStaffIds': hiredStaffIds.toList(),
+    'researchPoints': researchPoints,
+    'activeResearch': activeResearch?.toJson(),
+    'researchQueue': researchQueue,
+    'researchLevels': researchLevels,
+    'researchCompletedCount': researchCompletedCount,
+    'activeBoosts': activeBoosts.map((b) => b.toJson()).toList(),
+    'missions': missions.map((m) => m.toJson()).toList(),
+    'missionsRolledForDay': missionsRolledForDay,
+    'autoConfirmDay': autoConfirmDay,
+    'gameSpeed': gameSpeed,
+    'lastSeenEpochMs': lastSeenEpochMs,
   };
 
   factory GameState.fromJson(Map<String, dynamic> json) => GameState(
@@ -392,5 +528,21 @@ class GameState {
     prestigeLevel: json['prestigeLevel'] as int? ?? 0,
     incomeMultiplier: (json['incomeMultiplier'] as num?)?.toDouble() ?? 1.0,
     hiredStaffIds: (json['hiredStaffIds'] as List?)?.cast<String>().toSet() ?? {},
+    researchPoints: (json['researchPoints'] as num?)?.toDouble() ?? 0,
+    activeResearch: json['activeResearch'] == null
+        ? null
+        : ResearchProgress.fromJson(json['activeResearch'] as Map<String, dynamic>),
+    researchQueue: (json['researchQueue'] as List?)?.cast<String>().toList() ?? [],
+    researchLevels: (json['researchLevels'] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as int)) ?? {},
+    researchCompletedCount: json['researchCompletedCount'] as int? ?? 0,
+    activeBoosts: (json['activeBoosts'] as List?)
+            ?.map((e) => ActiveBoost.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        [],
+    missions: (json['missions'] as List?)?.map((e) => Mission.fromJson(e as Map<String, dynamic>)).toList() ?? [],
+    missionsRolledForDay: json['missionsRolledForDay'] as int? ?? -1,
+    autoConfirmDay: json['autoConfirmDay'] as bool? ?? false,
+    gameSpeed: json['gameSpeed'] as int? ?? 1,
+    lastSeenEpochMs: json['lastSeenEpochMs'] as int? ?? 0,
   );
 }
