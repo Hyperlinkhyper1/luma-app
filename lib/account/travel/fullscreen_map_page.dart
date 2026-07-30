@@ -66,43 +66,51 @@ class _FullscreenMapPageState extends State<FullscreenMapPage> {
           final visited = settings.visitedCountries
               .where((code) => widget.map.byCode(code) != null)
               .toSet();
+          // StackFit.expand and a positioned toolbar: a non-positioned
+          // toolbar would set the stack's size, leaving the map squeezed into
+          // a strip the height of the buttons.
           return Stack(
+            fit: StackFit.expand,
             children: [
-              Positioned.fill(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: WorldMapView(
-                    map: widget.map,
-                    visited: visited,
-                    onToggle: (country) =>
-                        settings.toggleVisitedCountry(country.code),
-                    controller: _view,
-                    borderRadius: 0,
-                  ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: WorldMapView(
+                  map: widget.map,
+                  visited: visited,
+                  onToggle: (country) =>
+                      settings.toggleVisitedCountry(country.code),
+                  controller: _view,
+                  borderRadius: 0,
                 ),
               ),
-              SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Row(
-                    children: [
-                      _OverlayButton(
-                        icon: Icons.close_rounded,
-                        tooltip: 'Close',
-                        onTap: () => Navigator.of(context).pop(),
-                      ),
-                      const SizedBox(width: 10),
-                      _CountPill(
-                        visited: visited.length,
-                        total: widget.map.countries.length,
-                      ),
-                      const Spacer(),
-                      _OverlayButton(
-                        icon: Icons.restart_alt_rounded,
-                        tooltip: 'Reset zoom',
-                        onTap: () => _view.value = Matrix4.identity(),
-                      ),
-                    ],
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 0,
+                child: SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: const EdgeInsets.all(10),
+                    child: Row(
+                      children: [
+                        _OverlayButton(
+                          icon: Icons.close_rounded,
+                          tooltip: 'Close',
+                          onTap: () => Navigator.of(context).pop(),
+                        ),
+                        const SizedBox(width: 10),
+                        _CountPill(
+                          visited: visited.length,
+                          total: widget.map.countries.length,
+                        ),
+                        const Spacer(),
+                        _OverlayButton(
+                          icon: Icons.restart_alt_rounded,
+                          tooltip: 'Reset zoom',
+                          onTap: () => _view.value = Matrix4.identity(),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
