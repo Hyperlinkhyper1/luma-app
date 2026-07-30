@@ -6,8 +6,8 @@ import 'dart:ui';
 import 'package:flutter/services.dart';
 
 /// Where the bundled world outline lives (built from public-domain Natural
-/// Earth 1:50m country polygons, simplified and quantised — see
-/// `assets/world/README.md`).
+/// Earth 1:10m country polygons, simplified, quantised and delta-encoded —
+/// see `assets/world/README.md`).
 const String kWorldMapAsset = 'assets/world/world_countries.json';
 
 /// One country's outline, already projected into unit space (see
@@ -135,12 +135,32 @@ class WorldMap {
     });
   }
 
-  /// Parses the asset's JSON. Coordinates arrive as integers of 1/`q` of a
-  /// degree and are projected once, here, rather than on every frame.
+  /// Parses the asset.
+  ///
+  /// `countries` carries the metadata plus the point count of each of that
+  /// country's rings; every ring's coordinates live in one base64 `points`
+  /// blob, delta-encoded as zigzag varints in integers of 1/`q` of a degree.
+  /// Rings are read in the order the countries are listed, and projected once
+  /// here rather than on every frame.
   static WorldMap parse(String source) {
     final decoded = jsonDecode(source) as Map<String, dynamic>;
     final quantisation = (decoded['q'] as num).toDouble();
+    final bytes = base64Decode(decoded['points'] as String);
     final countries = <WorldCountry>[];
+    var offset = 0;
+
+    int readDelta() {
+      var result = 0;
+      var shift = 0;
+      while (true) {
+        final byte = bytes[offset++];
+        result |= (byte & 0x7F) << shift;
+        if (byte < 0x80) break;
+        shift += 7;
+      }
+      // Zigzag: …, -2 -> 3, -1 -> 1, 0 -> 0, 1 -> 2, 2 -> 4, …
+      return (result >> 1) ^ -(result & 1);
+    }
 
     for (final raw in decoded['countries'] as List) {
       final entry = raw as Map<String, dynamic>;
@@ -148,16 +168,17 @@ class WorldMap {
       var left = double.infinity, top = double.infinity;
       var right = -double.infinity, bottom = -double.infinity;
 
-      for (final rawRing in entry['p'] as List) {
-        final flat = (rawRing as List).cast<num>();
-        final ring = Float32List(flat.length);
-        for (var i = 0; i < flat.length; i += 2) {
-          final point = MillerProjection.project(
-            flat[i] / quantisation,
-            flat[i + 1] / quantisation,
-          );
-          ring[i] = point.dx;
-          ring[i + 1] = point.dy;
+      for (final rawCount in entry['p'] as List) {
+        final count = rawCount as int;
+        final ring = Float32List(count * 2);
+        var x = 0, y = 0;
+        for (var i = 0; i < count; i++) {
+          x += readDelta();
+          y += readDelta();
+          final point =
+              MillerProjection.project(x / quantisation, y / quantisation);
+          ring[i * 2] = point.dx;
+          ring[i * 2 + 1] = point.dy;
           if (point.dx < left) left = point.dx;
           if (point.dx > right) right = point.dx;
           if (point.dy < top) top = point.dy;
@@ -179,6 +200,32 @@ class WorldMap {
     countries.sort((a, b) => a.name.compareTo(b.name));
     return WorldMap(countries);
   }
+
+  Size? _pathSize;
+  Map<String, Path>? _paths;
+
+  /// Every country's outline as a [Path] scaled to [size], keyed by country
+  /// code. Built once per size and reused: with ~100k points, rebuilding the
+  /// paths on every frame would show up as jank while panning.
+  Map<String, Path> pathsFor(Size size) {
+    final cached = _paths;
+    if (cached != null && _pathSize == size) return cached;
+
+    final paths = <String, Path>{};
+    for (final country in countries) {
+      final path = Path();
+      for (final ring in country.rings) {
+        path.moveTo(ring[0] * size.width, ring[1] * size.height);
+        for (var i = 2; i < ring.length; i += 2) {
+          path.lineTo(ring[i] * size.width, ring[i + 1] * size.height);
+        }
+        path.close();
+      }
+      paths[country.code] = path;
+    }
+    _pathSize = size;
+    return _paths = paths;
+  }
 }
 
 /// Miller cylindrical projection onto the unit square. Straight
@@ -187,10 +234,12 @@ class WorldMap {
 class MillerProjection {
   const MillerProjection._();
 
-  /// Latitudes outside this band are clipped away — the map stops just below
-  /// the Antarctic coast (no country there to pick) and just above Svalbard.
-  static const double maxLatitude = 83.6;
-  static const double minLatitude = -56.0;
+  /// Latitudes outside this band are clamped onto the edge of the map. The
+  /// band is set just wide enough to hold every point in the bundled outline
+  /// — northern Greenland at 83.63°N, South Georgia at 59.47°S — so nothing
+  /// real is ever squashed against an edge. Antarctica isn't in the data.
+  static const double maxLatitude = 83.7;
+  static const double minLatitude = -59.6;
 
   static final double _top = _millerY(maxLatitude);
   static final double _bottom = _millerY(minLatitude);
