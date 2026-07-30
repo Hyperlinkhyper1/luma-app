@@ -284,6 +284,85 @@ void main() {
     });
   });
 
+  group('storage speed', () {
+    Build withDrive(String driveId) => newStarterBuild().copyWith(storageIds: [driveId]);
+
+    // Cloud storage is the disk-heavy workload: ~50GB per customer but almost
+    // no RAM, so throughput binds before anything else does.
+    List<ServiceInstance> heavyLoad() => [
+          ServiceInstance(instanceId: 'i1', serviceTypeId: 'CLOUD_STORAGE', capacity: 30),
+        ];
+
+    test('an NVMe drive moves more data than a hard disk', () {
+      final hdd = getDiskThroughputMBs(withDrive('WD_RED_4TB'));
+      final nvme = getDiskThroughputMBs(withDrive('SAMSUNG_990_PRO_4TB'));
+      expect(nvme, greaterThan(hdd * 10));
+    });
+
+    test('two drives supply more throughput than one', () {
+      final one = getDiskThroughputMBs(withDrive('WD_RED_4TB'));
+      final two = getDiskThroughputMBs(
+        newStarterBuild().copyWith(storageIds: ['WD_RED_4TB', 'WD_RED_4TB']),
+      );
+      expect(two, closeTo(one * 2, 1e-9));
+    });
+
+    test('demand rises with both dataset size and traffic', () {
+      final small = diskThroughputDemandMBs(storageGB: 10, bandwidthMbps: 1);
+      final bigger = diskThroughputDemandMBs(storageGB: 1000, bandwidthMbps: 1);
+      final busier = diskThroughputDemandMBs(storageGB: 10, bandwidthMbps: 50);
+      expect(bigger, greaterThan(small));
+      expect(busier, greaterThan(small));
+    });
+
+    test('two same-size drives are no longer interchangeable', () {
+      // Both hold 4TB and both fit the starter board; only the speed differs.
+      // Before this change the sim could not tell them apart at all.
+      final onHdd = calculateRigLoad('r', withDrive('WD_RED_4TB'), heavyLoad(), RigKind.pc);
+      final onSsd = calculateRigLoad('r', withDrive('SAMSUNG_870_EVO_4TB'), heavyLoad(), RigKind.pc);
+
+      expect(onHdd.incompatible, isFalse);
+      expect(onSsd.incompatible, isFalse);
+      expect(onHdd.capacity.storageGB, onSsd.capacity.storageGB);
+      expect(onHdd.utilization.disk, greaterThan(onSsd.utilization.disk));
+      expect(onHdd.localFactor, lessThan(onSsd.localFactor));
+    });
+
+    test('a saturated disk is reported as the bottleneck', () {
+      final result = calculateRigLoad('r', withDrive('WD_RED_4TB'), heavyLoad(), RigKind.pc);
+      expect(result.utilization.disk, greaterThan(1));
+      expect(result.localBottleneck, 'disk');
+    });
+
+    test('a light workload is not disk-bound on any drive', () {
+      final result = calculateRigLoad(
+        'r',
+        withDrive('WD_RED_4TB'),
+        [_instance(capacity: 4)],
+        RigKind.pc,
+      );
+      expect(result.utilization.disk, lessThan(1));
+      expect(result.localBottleneck, isNot('disk'));
+    });
+
+    test('compression research relieves the drives too', () {
+      final plain = calculateRigLoad('r', withDrive('WD_RED_4TB'), heavyLoad(), RigKind.pc);
+      final compressed = calculateRigLoad(
+        'r',
+        withDrive('WD_RED_4TB'),
+        heavyLoad(),
+        RigKind.pc,
+        modifiers: const SimModifiers(storageCompression: 0.5),
+      );
+      expect(compressed.utilization.disk, lessThan(plain.utilization.disk));
+    });
+
+    test('a rig with no drives at all has no throughput', () {
+      final build = newStarterBuild().copyWith(storageIds: <String>[]);
+      expect(getDiskThroughputMBs(build), 0);
+    });
+  });
+
   group('satisfaction bonus', () {
     Map<String, RigInput> rigs({required List<ServiceInstance> services}) => {
           '1': RigInput(
@@ -385,6 +464,79 @@ void main() {
       expect(state.gameSpeed, 1);
       expect(state.autoConfirmDay, isFalse);
       expect(state.lastSeenEpochMs, 0);
+    });
+
+    test('services nested inside rigs are hoisted onto the canvas', () {
+      // How saves looked before services became nodes.
+      final legacy = <String, dynamic>{
+        'money': 500.0,
+        'reputation': 0.0,
+        'dayCount': 3,
+        'rigs': {
+          '1': {
+            'rigId': '1',
+            'name': 'Rig 1',
+            'kind': 'pc',
+            'build': newStarterBuild().toJson(),
+            'services': [
+              {'instanceId': '7', 'serviceTypeId': 'STATIC_WEBSITE', 'capacity': 28},
+              {'instanceId': '8', 'serviceTypeId': 'DISCORD_BOT', 'capacity': 1},
+            ],
+            'routerId': '1',
+            'pos': {'x': 380.0, 'y': 60.0},
+          },
+        },
+        'routers': {
+          '1': {'routerId': '1', 'name': 'Router 1', 'internetPlanId': 'HOME_25', 'pos': {'x': 60.0, 'y': 60.0}},
+        },
+        'nextRigId': 2,
+        'nextRouterId': 2,
+        'nextInstanceId': 9,
+        'nextContractId': 1,
+        'licenses': <String>[],
+        'research': <String>[],
+        'contracts': <dynamic>[],
+        'peakPowerDrawWatts': 0.0,
+        'powerHistory': <dynamic>[],
+        'incomeHistory': <dynamic>[],
+      };
+
+      final state = GameState.fromJson(legacy);
+
+      expect(state.services.length, 2);
+      expect(state.services['7']!.serviceTypeId, 'STATIC_WEBSITE');
+      expect(state.services['7']!.capacity, 28);
+      // Still wired to the rig they were running on, so nothing goes offline.
+      expect(state.services['7']!.rigId, '1');
+      expect(state.services['8']!.rigId, '1');
+      // And they get distinct spots rather than stacking at the origin.
+      expect(state.services['7']!.pos.y, isNot(state.services['8']!.pos.y));
+      expect(state.rigs['1']!.routerId, '1');
+    });
+
+    test('a rig saved without a router loads as unwired', () {
+      final json = GameState.newDefault().toJson();
+      (json['rigs'] as Map)['1']['routerId'] = null;
+      expect(GameState.fromJson(json).rigs['1']!.routerId, isNull);
+    });
+
+    test('service nodes round-trip', () {
+      final state = GameState.newDefault();
+      state.services['7'] = ServiceNode(
+        instanceId: '7',
+        serviceTypeId: 'STATIC_WEBSITE',
+        capacity: 12,
+        rigId: '1',
+        pos: NodePos(x: 80, y: 140),
+      );
+
+      final restored = GameState.fromJson(state.toJson());
+      final service = restored.services['7']!;
+      expect(service.serviceTypeId, 'STATIC_WEBSITE');
+      expect(service.capacity, 12);
+      expect(service.rigId, '1');
+      expect(service.pos.x, 80);
+      expect(service.pos.y, 140);
     });
 
     test('a nonsense game speed falls back to 1x rather than stalling the clock', () {
@@ -721,7 +873,8 @@ void main() {
         expect(clone.build.cpuId, source.build.cpuId);
         expect(clone.build.ramIds, source.build.ramIds);
         expect(clone.routerId, source.routerId);
-        expect(clone.services, isEmpty);
+        // Services are their own nodes, so a clone starts unplugged.
+        expect(repo.state.services.values.where((s) => s.rigId == clone.rigId), isEmpty);
       });
 
       test('cloning is refused when it cannot be paid for', () {
@@ -806,6 +959,101 @@ void main() {
         for (final rig in repo.state.rigs.values) {
           expect(positions.add('${rig.pos.x},${rig.pos.y}'), isTrue);
         }
+      });
+    });
+
+    group('node wiring', () {
+      test('a service dropped on the canvas is unplugged and earns nothing', () {
+        expect(repo.installService(null, 'STATIC_WEBSITE', 4).ok, isTrue);
+
+        final service = repo.state.services.values.single;
+        expect(service.rigId, isNull);
+        expect(repo.servicesByRig(), isEmpty);
+        expect(repo.calculateLoad().totalIncomePerDay, 0);
+      });
+
+      test('wiring it to a rig brings it online', () {
+        repo.installService(null, 'STATIC_WEBSITE', 4);
+        final instanceId = repo.state.services.keys.first;
+
+        expect(repo.connectNodes('service', instanceId, 'rig', firstRigId()).ok, isTrue);
+        expect(repo.state.services[instanceId]!.rigId, firstRigId());
+        expect(repo.calculateLoad().totalIncomePerDay, greaterThan(0));
+      });
+
+      test('dragging the link the other way round means the same thing', () {
+        repo.installService(null, 'STATIC_WEBSITE', 4);
+        final instanceId = repo.state.services.keys.first;
+
+        expect(repo.connectNodes('rig', firstRigId(), 'service', instanceId).ok, isTrue);
+        expect(repo.state.services[instanceId]!.rigId, firstRigId());
+      });
+
+      test('unplugging a service stops it earning without deleting it', () {
+        repo.installService(firstRigId(), 'STATIC_WEBSITE', 4);
+        final instanceId = repo.state.services.keys.first;
+        expect(repo.calculateLoad().totalIncomePerDay, greaterThan(0));
+
+        expect(repo.disconnectNode('service', instanceId).ok, isTrue);
+        expect(repo.state.services.containsKey(instanceId), isTrue);
+        expect(repo.calculateLoad().totalIncomePerDay, 0);
+      });
+
+      test('an unwired rig serves nothing even with services attached', () {
+        repo.installService(firstRigId(), 'STATIC_WEBSITE', 4);
+        expect(repo.calculateLoad().totalIncomePerDay, greaterThan(0));
+
+        expect(repo.disconnectNode('rig', firstRigId()).ok, isTrue);
+        expect(repo.state.rigs[firstRigId()]!.routerId, isNull);
+        expect(repo.calculateLoad().totalIncomePerDay, 0);
+      });
+
+      test('a rig can be rewired to a router', () {
+        repo.disconnectNode('rig', firstRigId());
+        final routerId = repo.state.routers.keys.first;
+
+        expect(repo.connectNodes('rig', firstRigId(), 'router', routerId).ok, isTrue);
+        expect(repo.state.rigs[firstRigId()]!.routerId, routerId);
+      });
+
+      test('nonsense connections are refused', () {
+        final routerId = repo.state.routers.keys.first;
+        repo.installService(null, 'STATIC_WEBSITE', 1);
+        final instanceId = repo.state.services.keys.first;
+
+        expect(repo.connectNodes('service', instanceId, 'router', routerId).ok, isFalse);
+        expect(repo.connectNodes('rig', firstRigId(), 'rig', firstRigId()).ok, isFalse);
+        expect(repo.connectNodes('service', instanceId, 'rig', 'nope').ok, isFalse);
+      });
+
+      test('deleting a rig leaves its services orphaned rather than earning', () {
+        repo.installService(firstRigId(), 'STATIC_WEBSITE', 4);
+        repo.state.rigs.remove(firstRigId());
+
+        expect(repo.servicesByRig(), isEmpty);
+        expect(repo.calculateLoad().totalIncomePerDay, 0);
+      });
+
+      test('new service nodes do not land on top of each other', () {
+        for (var i = 0; i < 5; i++) {
+          repo.installService(null, 'STATIC_WEBSITE', 1);
+        }
+        final spots = repo.state.services.values.map((s) => '${s.pos.x},${s.pos.y}').toSet();
+        expect(spots.length, repo.state.services.length);
+      });
+
+      test('auto-arrange places services beside the rig they feed', () {
+        repo.installService(firstRigId(), 'STATIC_WEBSITE', 1);
+        repo.installService(firstRigId(), 'DISCORD_BOT', 1);
+
+        expect(repo.autoArrange().ok, isTrue);
+
+        final rig = repo.state.rigs[firstRigId()]!;
+        final router = repo.state.routers.values.first;
+        for (final service in repo.state.services.values) {
+          expect(service.pos.x, greaterThan(rig.pos.x));
+        }
+        expect(rig.pos.x, greaterThan(router.pos.x));
       });
     });
 

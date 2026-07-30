@@ -212,6 +212,21 @@ int getTotalRAMGB(Build build) {
   return total;
 }
 
+/// Combined sustained throughput of every drive in the rig, in MB/s.
+///
+/// Serving is read-dominated, so reads are weighted more heavily than writes.
+/// Drives sum, which is what makes adding a second spindle a real upgrade
+/// rather than just more space.
+double getDiskThroughputMBs(Build build) {
+  var total = 0.0;
+  for (final driveId in build.storageIds) {
+    final drive = storageById[driveId];
+    if (drive == null) continue;
+    total += drive.readSpeedMBs * 0.7 + drive.writeSpeedMBs * 0.3;
+  }
+  return total;
+}
+
 int getTotalStorageGB(Build build) {
   var total = 0;
   for (final driveId in build.storageIds) {

@@ -38,9 +38,17 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
   // attach to tile edges and drags stay aligned under the pointer.
   static const Size _rigSize = Size(220, 88);
   static const Size _routerSize = Size(170, 76);
+  static const Size _serviceSize = Size(200, 72);
 
   String? _selectedRigId;
   String? _selectedRouterId;
+  String? _selectedServiceId;
+
+  // Live port-drag: which node the wire is coming out of, and where the
+  // finger currently is in canvas coordinates.
+  String? _linkFromKind;
+  String? _linkFromId;
+  Offset? _linkCursor;
   bool _showContracts = false;
   bool _showResearch = false;
   bool _showLicenses = false;
@@ -62,6 +70,10 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
   bool _inspectorSheetOpen = false;
 
   final TransformationController _canvasController = TransformationController();
+
+  /// Identifies the InteractiveViewer's viewport, so a finger position can be
+  /// mapped back into canvas space while wiring nodes together.
+  final GlobalKey _canvasKey = GlobalKey();
 
   // Drives fan-spin/glow pulse on nodes and packet-flow on wires. Deliberately
   // NOT routed through setState/notifyListeners -- each node/wire scopes its
@@ -172,6 +184,17 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
                           load,
                           _selectedRigId!,
                           onClose: () => setState(() => _selectedRigId = null),
+                        ),
+                      ),
+                    if (!phone && _selectedServiceId != null && state.services.containsKey(_selectedServiceId))
+                      SizedBox(
+                        width: 320,
+                        child: _buildServiceInspector(
+                          context,
+                          state,
+                          load,
+                          _selectedServiceId!,
+                          onClose: () => setState(() => _selectedServiceId = null),
                         ),
                       ),
                     if (!phone && _selectedRouterId != null && state.routers.containsKey(_selectedRouterId))
@@ -555,6 +578,9 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
     for (final router in state.routers.values) {
       include(router.pos.x, router.pos.y, _routerSize);
     }
+    for (final service in state.services.values) {
+      include(service.pos.x, service.pos.y, _serviceSize);
+    }
     if (minX == double.infinity) return;
 
     const padding = 32.0;
@@ -661,6 +687,7 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
     }
 
     return InteractiveViewer(
+      key: _canvasKey,
       transformationController: _canvasController,
       boundaryMargin: const EdgeInsets.all(2000),
       minScale: 0.25,
@@ -676,25 +703,62 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
             CustomPaint(size: const Size(4000, 3000), painter: _GridPainter(color: luma.border)),
             // Connection lines (drawn behind nodes, attached to tile edges)
             for (final rig in state.rigs.values)
-              if (state.routers.containsKey(rig.routerId))
+              if (rig.routerId != null && state.routers.containsKey(rig.routerId))
                 Builder(builder: (_) {
+                  final routerId = rig.routerId!;
                   final rigPos = _effectivePos('rig', rig.rigId, rig.pos.x, rig.pos.y);
-                  final router = state.routers[rig.routerId]!;
-                  final routerPos = _effectivePos('router', rig.routerId, router.pos.x, router.pos.y);
+                  final router = state.routers[routerId]!;
+                  final routerPos = _effectivePos('router', routerId, router.pos.x, router.pos.y);
                   final rigRect = rigPos & _rigSize;
                   final routerRect = routerPos & _routerSize;
                   return CustomPaint(
                     size: const Size(4000, 3000),
                     painter: _WirePainter(
                       points: _wireRoute(rigRect, routerRect),
-                      color: load.rigs[rig.rigId]?.localFactor == 1 && load.routers[rig.routerId]?.bandwidthFactor == 1
+                      color: load.rigs[rig.rigId]?.localFactor == 1 && load.routers[routerId]?.bandwidthFactor == 1
                           ? Colors.green.shade400
                           : Colors.red.shade400,
                       pulse: _pulseController,
-                      utilization: 1 - (load.routers[rig.routerId]?.bandwidthFactor ?? 1.0),
+                      utilization: 1 - (load.routers[routerId]?.bandwidthFactor ?? 1.0),
                     ),
                   );
                 }),
+            // Service → rig wires.
+            for (final service in state.services.values)
+              if (service.rigId != null && state.rigs.containsKey(service.rigId))
+                Builder(builder: (_) {
+                  final rigId = service.rigId!;
+                  final servicePos =
+                      _effectivePos('service', service.instanceId, service.pos.x, service.pos.y);
+                  final rig = state.rigs[rigId]!;
+                  final rigPos = _effectivePos('rig', rigId, rig.pos.x, rig.pos.y);
+                  final result =
+                      load.instances.where((i) => i.instanceId == service.instanceId).firstOrNull;
+                  final satisfaction = result?.satisfaction ?? 1.0;
+                  return CustomPaint(
+                    size: const Size(4000, 3000),
+                    painter: _WirePainter(
+                      points: _wireRoute(servicePos & _serviceSize, rigPos & _rigSize),
+                      color: satisfaction > 0.9 ? Colors.green.shade400 : Colors.orange.shade400,
+                      pulse: _pulseController,
+                      utilization: 1 - satisfaction,
+                    ),
+                  );
+                }),
+            // The wire being dragged out of a port right now.
+            if (_linkFromKind != null && _linkCursor != null)
+              Builder(builder: (_) {
+                final origin = _linkOriginRect(state);
+                if (origin == null) return const SizedBox.shrink();
+                return CustomPaint(
+                  size: const Size(4000, 3000),
+                  painter: _PendingWirePainter(
+                    from: origin.center,
+                    to: _linkCursor!,
+                    color: luma.accent,
+                  ),
+                );
+              }),
             // Router nodes
             for (final entry in state.routers.entries)
               _draggableNode(
@@ -711,6 +775,24 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
                   onTap: () => _selectRouter(entry.key),
                 ),
               ),
+            // Service nodes
+            for (final entry in state.services.entries)
+              _draggableNode(
+                kind: 'service',
+                id: entry.key,
+                x: entry.value.pos.x,
+                y: entry.value.pos.y,
+                child: _ServiceNodeTile(
+                  service: entry.value,
+                  result: load.instances.where((i) => i.instanceId == entry.key).firstOrNull,
+                  connected: entry.value.rigId != null && state.rigs.containsKey(entry.value.rigId),
+                  selected: _selectedServiceId == entry.key,
+                  onTap: () => _selectService(entry.key),
+                  onPortDragStart: (global) => _beginLink('service', entry.key, global),
+                  onPortDragUpdate: _updateLink,
+                  onPortDragEnd: _endLink,
+                ),
+              ),
             // Rig nodes
             for (final entry in state.rigs.entries)
               _draggableNode(
@@ -724,8 +806,14 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
                   selected: _selectedRigId == entry.key,
                   hasActiveIncident: incidentsByTarget.containsKey(entry.key),
                   incidentIsPositive: incidentsByTarget[entry.key]?.every((i) => incidentDefsByType[i.type]?.isPositive == true) ?? false,
+                  serviceCount: state.services.values.where((s) => s.rigId == entry.key).length,
+                  connected: entry.value.routerId != null &&
+                      state.routers.containsKey(entry.value.routerId),
                   pulse: _pulseController,
                   onTap: () => _selectRig(entry.key),
+                  onPortDragStart: (global) => _beginLink('rig', entry.key, global),
+                  onPortDragUpdate: _updateLink,
+                  onPortDragEnd: _endLink,
                 ),
               ),
           ],
@@ -796,11 +884,106 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
     );
   }
 
+  // ── Wiring by hand ──
+
+  /// Converts a global (screen) point into canvas coordinates, undoing the
+  /// InteractiveViewer transform.
+  Offset _toCanvas(Offset global) {
+    final box = _canvasKey.currentContext?.findRenderObject() as RenderBox?;
+    final local = box?.globalToLocal(global) ?? global;
+    final inverse = Matrix4.tryInvert(_canvasController.value);
+    if (inverse == null) return local;
+    return MatrixUtils.transformPoint(inverse, local);
+  }
+
+  Rect? _nodeRect(GameState state, String kind, String id) {
+    switch (kind) {
+      case 'rig':
+        final rig = state.rigs[id];
+        if (rig == null) return null;
+        return _effectivePos('rig', id, rig.pos.x, rig.pos.y) & _rigSize;
+      case 'router':
+        final router = state.routers[id];
+        if (router == null) return null;
+        return _effectivePos('router', id, router.pos.x, router.pos.y) & _routerSize;
+      case 'service':
+        final service = state.services[id];
+        if (service == null) return null;
+        return _effectivePos('service', id, service.pos.x, service.pos.y) & _serviceSize;
+    }
+    return null;
+  }
+
+  Rect? _linkOriginRect(GameState state) =>
+      _linkFromKind == null ? null : _nodeRect(state, _linkFromKind!, _linkFromId!);
+
+  void _beginLink(String kind, String id, Offset global) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      _linkFromKind = kind;
+      _linkFromId = id;
+      _linkCursor = _toCanvas(global);
+    });
+  }
+
+  void _updateLink(Offset global) {
+    if (_linkFromKind == null) return;
+    setState(() => _linkCursor = _toCanvas(global));
+  }
+
+  void _endLink(Offset global) {
+    final fromKind = _linkFromKind;
+    final fromId = _linkFromId;
+    final drop = _toCanvas(global);
+    setState(() {
+      _linkFromKind = null;
+      _linkFromId = null;
+      _linkCursor = null;
+    });
+    if (fromKind == null || fromId == null) return;
+
+    final repo = ServerTycoonScope.of(context);
+    final state = repo.state;
+
+    // Whatever node the wire was released over wins.
+    for (final kind in const ['rig', 'router', 'service']) {
+      final ids = switch (kind) {
+        'rig' => state.rigs.keys,
+        'router' => state.routers.keys,
+        _ => state.services.keys,
+      };
+      for (final id in ids) {
+        if (kind == fromKind && id == fromId) continue;
+        final rect = _nodeRect(state, kind, id);
+        if (rect != null && rect.contains(drop)) {
+          final result = repo.connectNodes(fromKind, fromId, kind, id);
+          if (result.ok) HapticFeedback.mediumImpact();
+          _showResult(context, result);
+          return;
+        }
+      }
+    }
+
+    // Released over empty canvas: treat it as unplugging.
+    _showResult(context, repo.disconnectNode(fromKind, fromId));
+  }
+
+  void _selectService(String instanceId) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      _selectedServiceId = instanceId;
+      _selectedRigId = null;
+      _selectedRouterId = null;
+    });
+    if (_isPhone(context)) _openInspectorSheet();
+  }
+
   void _selectRig(String rigId) {
     HapticFeedback.selectionClick();
     setState(() {
       _selectedRigId = rigId;
       _selectedRouterId = null;
+      _selectedServiceId = null;
     });
     if (_isPhone(context)) _openInspectorSheet();
   }
@@ -810,6 +993,7 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
     setState(() {
       _selectedRouterId = routerId;
       _selectedRigId = null;
+      _selectedServiceId = null;
     });
     if (_isPhone(context)) _openInspectorSheet();
   }
@@ -850,6 +1034,11 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
               return _buildRouterInspector(context, state, routerId,
                   onClose: close, scrollController: scrollController);
             }
+            final serviceId = _selectedServiceId;
+            if (serviceId != null && state.services.containsKey(serviceId)) {
+              return _buildServiceInspector(context, state, repo.calculateLoad(), serviceId,
+                  onClose: close, scrollController: scrollController);
+            }
             return const SizedBox.shrink();
           },
         ),
@@ -860,6 +1049,7 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
         setState(() {
           _selectedRigId = null;
           _selectedRouterId = null;
+          _selectedServiceId = null;
         });
       }
     });
@@ -878,6 +1068,8 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
     final rigLoad = load.rigs[rigId];
     final cpu = cpusById[rig.build.cpuId];
     final mobo = motherboardsById[rig.build.motherboardId];
+    final wiredServices = state.services.values.where((s) => s.rigId == rigId).toList()
+      ..sort((a, b) => a.instanceId.compareTo(b.instanceId));
 
     return Container(
       color: luma.surface,
@@ -936,6 +1128,12 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
                     _statBar(context, 'CPU', rigLoad.utilization.cpu, rigLoad.localBottleneck == 'cpu'),
                     _statBar(context, 'RAM', rigLoad.utilization.ramGB, rigLoad.localBottleneck == 'ram'),
                     _statBar(context, 'Storage', rigLoad.utilization.storageGB, rigLoad.localBottleneck == 'storage'),
+                    _statBar(
+                      context,
+                      'Disk speed (${rigLoad.capacity.diskMBs.toStringAsFixed(0)} MB/s)',
+                      rigLoad.utilization.disk,
+                      rigLoad.localBottleneck == 'disk',
+                    ),
                     _statBar(context, 'NIC', 1 - rigLoad.nicCapFactor, rigLoad.localBottleneck == 'nic'),
                     if (rigLoad.tempRatio > 1)
                       Container(
@@ -981,16 +1179,25 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
                   for (var i = 0; i < rig.build.storageIds.length; i++)
                     _storageRow(context, rigId, i, rig.build.storageIds[i]),
                   const SizedBox(height: 16),
-                  // Services
+                  // Services wired into this rig. They live on the canvas as
+                  // their own nodes now, so this is a view of what's plugged
+                  // in rather than a list the rig owns.
                   Text('Services', style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700, fontSize: 13)),
                   const SizedBox(height: 8),
-                  if (rig.services.isEmpty)
-                    Text('No services installed', style: TextStyle(color: luma.textMuted, fontSize: 12)),
-                  for (final inst in rig.services)
-                    _serviceRow(context, rigId, inst, load.instances.where((i) => i.instanceId == inst.instanceId).firstOrNull),
+                  if (wiredServices.isEmpty)
+                    Text(
+                      'Nothing plugged in — drag a service node onto this rig.',
+                      style: TextStyle(color: luma.textMuted, fontSize: 12),
+                    ),
+                  for (final service in wiredServices)
+                    _serviceRow(
+                      context,
+                      service,
+                      load.instances.where((i) => i.instanceId == service.instanceId).firstOrNull,
+                    ),
                   const SizedBox(height: 8),
                   TextButton.icon(
-                    onPressed: () => _showInstallServiceSheet(context, rigId),
+                    onPressed: () => _showInstallServiceSheet(context, rigId: rigId),
                     icon: Icon(Icons.add_rounded, size: 16, color: luma.accent),
                     label: Text('Install Service', style: TextStyle(color: luma.accent, fontSize: 12)),
                   ),
@@ -1010,11 +1217,21 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
                     dropdownColor: luma.surface,
                     style: TextStyle(color: luma.textPrimary, fontSize: 13),
                     items: [
+                      DropdownMenuItem(
+                        value: null,
+                        child: Text('Not connected',
+                            style: TextStyle(color: Colors.orange.shade300, fontSize: 13)),
+                      ),
                       for (final router in state.routers.values)
                         DropdownMenuItem(value: router.routerId, child: Text(router.name, style: TextStyle(color: luma.textPrimary, fontSize: 13))),
                     ],
                     onChanged: (value) {
-                      if (value != null) ServerTycoonScope.of(context).assignRigRouter(rigId, value);
+                      final repo = ServerTycoonScope.of(context);
+                      if (value == null) {
+                        repo.disconnectNode('rig', rigId);
+                      } else {
+                        repo.assignRigRouter(rigId, value);
+                      }
                     },
                   ),
                 ],
@@ -1072,6 +1289,154 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
               minimumSize: const Size(0, 40),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildServiceInspector(
+    BuildContext context,
+    GameState state,
+    AccountLoadResult load,
+    String instanceId, {
+    required VoidCallback onClose,
+    ScrollController? scrollController,
+  }) {
+    final luma = context.luma;
+    final repo = ServerTycoonScope.of(context);
+    final service = state.services[instanceId]!;
+    final def = servicesById[service.serviceTypeId];
+    final result = load.instances.where((i) => i.instanceId == instanceId).firstOrNull;
+    final rig = service.rigId == null ? null : state.rigs[service.rigId];
+
+    return Container(
+      color: luma.surface,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(border: Border(bottom: BorderSide(color: luma.border))),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(def?.name ?? service.serviceTypeId,
+                          style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700, fontSize: 15)),
+                      Text('Service', style: TextStyle(color: luma.textMuted, fontSize: 12)),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.close_rounded, color: luma.textMuted, size: 20),
+                  onPressed: onClose,
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              controller: scrollController,
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: rig == null
+                          ? Colors.orange.shade900.withOpacity(0.25)
+                          : luma.background,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          rig == null ? Icons.link_off_rounded : Icons.link_rounded,
+                          size: 16,
+                          color: rig == null ? Colors.orange.shade300 : Colors.green.shade400,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            rig == null
+                                ? 'Not plugged in — drag this node\'s port onto a rig.'
+                                : 'Running on ${rig.name}',
+                            style: TextStyle(
+                              color: rig == null ? Colors.orange.shade200 : luma.textPrimary,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(def?.description ?? '', style: TextStyle(color: luma.textMuted, fontSize: 12)),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Text('Capacity', style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
+                      const Spacer(),
+                      _capacityStepper(context, service),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(def?.capacityUnitLabel ?? '', style: TextStyle(color: luma.textMuted, fontSize: 11)),
+                  const SizedBox(height: 14),
+                  _kvRow(context, 'Income', '\$${result?.incomePerDay.toStringAsFixed(2) ?? "0.00"}/day',
+                      Colors.green.shade400),
+                  _kvRow(
+                    context,
+                    'Satisfaction',
+                    result == null ? '—' : '${(result.satisfaction * 100).toStringAsFixed(0)}%',
+                    (result?.satisfaction ?? 0) > 0.9 ? Colors.green.shade400 : Colors.orange.shade400,
+                  ),
+                  if (result?.bottleneck != null)
+                    _kvRow(context, 'Bottleneck', result!.bottleneck!.toUpperCase(), Colors.red.shade400),
+                  const SizedBox(height: 18),
+                  if (rig != null)
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        HapticFeedback.selectionClick();
+                        repo.disconnectNode('service', instanceId);
+                      },
+                      icon: Icon(Icons.link_off_rounded, size: 16, color: luma.textMuted),
+                      label: Text('Unplug', style: TextStyle(color: luma.textMuted, fontSize: 12)),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: luma.border),
+                        minimumSize: const Size.fromHeight(42),
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
+                      repo.uninstallService(instanceId);
+                      onClose();
+                    },
+                    icon: Icon(Icons.delete_outline_rounded, size: 16, color: luma.danger),
+                    label: Text('Delete service', style: TextStyle(color: luma.danger, fontSize: 12)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _kvRow(BuildContext context, String label, String value, Color color) {
+    final luma = context.luma;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: TextStyle(color: luma.textMuted, fontSize: 12))),
+          Text(value, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -1198,6 +1563,7 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
                   _toolButton(context, Icons.computer_rounded, 'PC Rig', () => _showResult(context, ServerTycoonScope.of(context).addRig())),
                   _toolButton(context, Icons.storage_rounded, 'Server', () => _showResult(context, ServerTycoonScope.of(context).addRig(server: true))),
                   _toolButton(context, Icons.router_rounded, 'Router', () => _showResult(context, ServerTycoonScope.of(context).addRouter())),
+                  _toolButton(context, Icons.apps_rounded, 'Service', () => _showInstallServiceSheet(context)),
                   VerticalDivider(color: luma.border, width: 24),
                   _toolButton(context, Icons.science_rounded, 'Research', () => setState(() => _showResearch = true)),
                   _toolButton(context, Icons.assignment_rounded, 'Contracts', () => setState(() => _showContracts = true)),
@@ -1345,7 +1711,7 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
     );
   }
 
-  Widget _serviceRow(BuildContext context, String rigId, ServiceInstance inst, InstanceResult? result) {
+  Widget _serviceRow(BuildContext context, ServiceNode inst, InstanceResult? result) {
     final luma = context.luma;
     final serviceType = servicesById[inst.serviceTypeId];
     final sat = result?.satisfaction ?? 1.0;
@@ -1366,7 +1732,7 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
               Text('\$${result?.incomePerDay.toStringAsFixed(2) ?? "0.00"}/day', style: TextStyle(color: Colors.green.shade400, fontSize: 11)),
               IconButton(
                 icon: Icon(Icons.delete_outline_rounded, size: 16, color: luma.danger),
-                onPressed: () => ServerTycoonScope.of(context).uninstallService(rigId, inst.instanceId),
+                onPressed: () => ServerTycoonScope.of(context).uninstallService(inst.instanceId),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
               ),
@@ -1374,31 +1740,18 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
           ),
           Row(
             children: [
-              Text('Capacity: ', style: TextStyle(color: luma.textMuted, fontSize: 11)),
-              SizedBox(
-                width: 60,
-                child: TextField(
-                  controller: TextEditingController(text: '${inst.capacity}'),
-                  style: TextStyle(color: luma.textPrimary, fontSize: 11),
-                  keyboardType: TextInputType.number,
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (v) {
-                    final n = int.tryParse(v);
-                    if (n != null && n > 0) {
-                      ServerTycoonScope.of(context).setServiceCapacity(rigId, inst.instanceId, n);
-                    }
-                  },
-                  decoration: InputDecoration(
-                    isDense: true,
-                    filled: true,
-                    fillColor: luma.surface,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: BorderSide(color: luma.border)),
-                  ),
+              // A stepper rather than a text field: the old one rebuilt its
+              // controller every frame, so the 1s repository tick wiped
+              // whatever you were part-way through typing.
+              _capacityStepper(context, inst),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  serviceType?.capacityUnitLabel ?? '',
+                  style: TextStyle(color: luma.textMuted, fontSize: 11),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Text(' ${serviceType?.capacityUnitLabel ?? ""}', style: TextStyle(color: luma.textMuted, fontSize: 11)),
-              const Spacer(),
               Text('${(sat * 100).toStringAsFixed(0)}% sat', style: TextStyle(color: satColor, fontSize: 11)),
             ],
           ),
@@ -1407,6 +1760,123 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
         ],
       ),
     );
+  }
+
+  /// −/+ stepper for a service's capacity. Holding either button repeats, and
+  /// tapping the number opens a keypad for a big jump.
+  Widget _capacityStepper(BuildContext context, ServiceNode inst) {
+    final luma = context.luma;
+
+    void setTo(int value) {
+      if (value < 1) return;
+      HapticFeedback.selectionClick();
+      ServerTycoonScope.of(context).setServiceCapacity(inst.instanceId, value);
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: luma.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: luma.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _stepperButton(
+            context,
+            Icons.remove_rounded,
+            enabled: inst.capacity > 1,
+            onTap: () => setTo(inst.capacity - 1),
+            onLongPress: () => setTo(inst.capacity - 10),
+          ),
+          InkWell(
+            onTap: () => _promptCapacity(context, inst),
+            child: Container(
+              constraints: const BoxConstraints(minWidth: 44),
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              alignment: Alignment.center,
+              child: Text(
+                '${inst.capacity}',
+                style: TextStyle(color: luma.textPrimary, fontSize: 13, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+          _stepperButton(
+            context,
+            Icons.add_rounded,
+            enabled: true,
+            onTap: () => setTo(inst.capacity + 1),
+            onLongPress: () => setTo(inst.capacity + 10),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _stepperButton(
+    BuildContext context,
+    IconData icon, {
+    required bool enabled,
+    required VoidCallback onTap,
+    required VoidCallback onLongPress,
+  }) {
+    final luma = context.luma;
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      onLongPress: enabled ? onLongPress : null,
+      borderRadius: BorderRadius.circular(7),
+      // 36px square keeps this a usable touch target without making the
+      // service card taller than the rest of the inspector rows.
+      child: SizedBox(
+        width: 36,
+        height: 36,
+        child: Icon(icon, size: 17, color: enabled ? luma.accent : luma.textMuted),
+      ),
+    );
+  }
+
+  Future<void> _promptCapacity(BuildContext context, ServiceNode inst) async {
+    final luma = context.luma;
+    final controller = TextEditingController(text: '${inst.capacity}');
+    final serviceType = servicesById[inst.serviceTypeId];
+
+    final value = await showDialog<int>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: luma.surface,
+        title: Text(
+          serviceType?.name ?? 'Capacity',
+          style: TextStyle(color: luma.textPrimary, fontSize: 16),
+        ),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          style: TextStyle(color: luma.textPrimary),
+          decoration: InputDecoration(
+            labelText: serviceType?.capacityUnitLabel,
+            labelStyle: TextStyle(color: luma.textMuted),
+          ),
+          onSubmitted: (v) => Navigator.pop(ctx, int.tryParse(v)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel', style: TextStyle(color: luma.textMuted)),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, int.tryParse(controller.text)),
+            style: FilledButton.styleFrom(backgroundColor: luma.accent),
+            child: const Text('Set'),
+          ),
+        ],
+      ),
+    );
+
+    controller.dispose();
+    if (value != null && value > 0 && context.mounted) {
+      ServerTycoonScope.of(context).setServiceCapacity(inst.instanceId, value);
+    }
   }
 
   void _showResult(BuildContext context, ActionResult result) {
@@ -1655,12 +2125,22 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
                 _showResult(context, repo.addRouter());
               },
             ),
+            _sheetTile(
+              context,
+              Icons.apps_rounded,
+              'Service',
+              'Drops a service node on the canvas for you to wire up',
+              () {
+                Navigator.pop(ctx);
+                _showInstallServiceSheet(context);
+              },
+            ),
             const Divider(height: 1),
             _sheetTile(
               context,
               Icons.auto_awesome_mosaic_rounded,
               'Auto-arrange',
-              'Lay every rig out in tidy rows under its router',
+              'Lay the whole graph out: routers, rigs, then their services',
               () {
                 Navigator.pop(ctx);
                 repo.autoArrange();
@@ -1939,7 +2419,7 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
     );
   }
 
-  void _showInstallServiceSheet(BuildContext context, String rigId) {
+  void _showInstallServiceSheet(BuildContext context, {String? rigId}) {
     final luma = context.luma;
     final repo = ServerTycoonScope.of(context);
 
@@ -2078,8 +2558,13 @@ class _RigNode extends StatelessWidget {
   final bool selected;
   final bool hasActiveIncident;
   final bool incidentIsPositive;
+  final int serviceCount;
+  final bool connected;
   final Animation<double> pulse;
   final VoidCallback onTap;
+  final void Function(Offset global) onPortDragStart;
+  final void Function(Offset global) onPortDragUpdate;
+  final void Function(Offset global) onPortDragEnd;
 
   const _RigNode({
     required this.rig,
@@ -2087,8 +2572,13 @@ class _RigNode extends StatelessWidget {
     required this.selected,
     this.hasActiveIncident = false,
     this.incidentIsPositive = false,
+    required this.serviceCount,
+    required this.connected,
     required this.pulse,
     required this.onTap,
+    required this.onPortDragStart,
+    required this.onPortDragUpdate,
+    required this.onPortDragEnd,
   });
 
   @override
@@ -2100,7 +2590,10 @@ class _RigNode extends StatelessWidget {
     final incidentColor = incidentIsPositive ? Colors.amber.shade400 : Colors.red.shade400;
     final highLoad = (loadResult?.utilization.cpu ?? 0) > 0.7;
 
-    return GestureDetector(
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        GestureDetector(
       onTap: onTap,
       child: AnimatedBuilder(
         animation: pulse,
@@ -2149,7 +2642,13 @@ class _RigNode extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(cpu?.name ?? rig.build.cpuId, style: TextStyle(color: luma.textMuted, fontSize: 12), overflow: TextOverflow.ellipsis, maxLines: 1),
-            Text('${rig.services.length} services', style: TextStyle(color: luma.textMuted, fontSize: 12)),
+            Text(
+              connected ? '$serviceCount services' : '$serviceCount services · no router',
+              style: TextStyle(
+                color: connected ? luma.textMuted : Colors.orange.shade300,
+                fontSize: 12,
+              ),
+            ),
             if (loadResult?.incompatible == true)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
@@ -2164,6 +2663,19 @@ class _RigNode extends StatelessWidget {
           ],
         ),
       ),
+    ),
+        // Uplink port: drag from here onto a router to plug the rig in.
+        Positioned(
+          left: -9,
+          top: 29,
+          child: _NodePort(
+            color: connected ? Colors.green.shade400 : Colors.orange.shade400,
+            onDragStart: onPortDragStart,
+            onDragUpdate: onPortDragUpdate,
+            onDragEnd: onPortDragEnd,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -2238,6 +2750,203 @@ class _RouterNode extends StatelessWidget {
 }
 
 // ── Painters ──
+
+/// A service sitting on the canvas. Drag its port onto a rig to plug it in.
+class _ServiceNodeTile extends StatelessWidget {
+  final ServiceNode service;
+  final InstanceResult? result;
+  final bool connected;
+  final bool selected;
+  final VoidCallback onTap;
+  final void Function(Offset global) onPortDragStart;
+  final void Function(Offset global) onPortDragUpdate;
+  final void Function(Offset global) onPortDragEnd;
+
+  const _ServiceNodeTile({
+    required this.service,
+    required this.result,
+    required this.connected,
+    required this.selected,
+    required this.onTap,
+    required this.onPortDragStart,
+    required this.onPortDragUpdate,
+    required this.onPortDragEnd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final def = servicesById[service.serviceTypeId];
+    final satisfaction = result?.satisfaction ?? 0;
+    final statusColor = !connected
+        ? luma.textMuted
+        : satisfaction > 0.9
+            ? Colors.green.shade400
+            : satisfaction > 0.6
+                ? Colors.orange.shade400
+                : Colors.red.shade400;
+
+    return SizedBox(
+      width: 200,
+      height: 72,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          GestureDetector(
+            onTap: onTap,
+            child: Container(
+              width: 200,
+              height: 72,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: luma.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: selected
+                      ? luma.accent
+                      : connected
+                          ? luma.border
+                          : Colors.orange.shade400.withOpacity(0.6),
+                  width: selected ? 2 : 1,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle),
+                      ),
+                      const SizedBox(width: 7),
+                      Expanded(
+                        child: Text(
+                          def?.name ?? service.serviceTypeId,
+                          style: TextStyle(
+                            color: luma.textPrimary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    connected
+                        ? '${service.capacity} ${def?.capacityUnitLabel ?? ""} · \$${result?.incomePerDay.toStringAsFixed(2) ?? "0.00"}/day'
+                        : 'Not plugged in',
+                    style: TextStyle(
+                      color: connected ? luma.textMuted : Colors.orange.shade300,
+                      fontSize: 11,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Output port on the left edge, facing the rig it feeds. It owns
+          // the pan gesture, so dragging from here draws a wire while
+          // dragging the body pans the map and long-pressing it moves the node.
+          Positioned(
+            left: -9,
+            top: 22,
+            child: _NodePort(
+              color: connected ? luma.accent : Colors.orange.shade400,
+              onDragStart: onPortDragStart,
+              onDragUpdate: onPortDragUpdate,
+              onDragEnd: onPortDragEnd,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The little circle you drag a connection out of.
+class _NodePort extends StatelessWidget {
+  final Color color;
+  final void Function(Offset global) onDragStart;
+  final void Function(Offset global) onDragUpdate;
+  final void Function(Offset global) onDragEnd;
+
+  const _NodePort({
+    required this.color,
+    required this.onDragStart,
+    required this.onDragUpdate,
+    required this.onDragEnd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onPanStart: (d) => onDragStart(d.globalPosition),
+      onPanUpdate: (d) => onDragUpdate(d.globalPosition),
+      onPanEnd: (d) => onDragEnd(d.globalPosition),
+      // Padded out to a 30px touch target around an 18px dot.
+      child: Container(
+        width: 30,
+        height: 30,
+        alignment: Alignment.center,
+        child: Container(
+          width: 18,
+          height: 18,
+          decoration: BoxDecoration(
+            color: luma.surface,
+            shape: BoxShape.circle,
+            border: Border.all(color: color, width: 3),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The rubber-band wire that follows your finger while connecting.
+class _PendingWirePainter extends CustomPainter {
+  final Offset from;
+  final Offset to;
+  final Color color;
+
+  _PendingWirePainter({required this.from, required this.to, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    // Dashed, to read as provisional rather than an existing link.
+    const dash = 10.0;
+    const gap = 7.0;
+    final delta = to - from;
+    final distance = delta.distance;
+    if (distance < 1) return;
+    final step = delta / distance;
+
+    var travelled = 0.0;
+    while (travelled < distance) {
+      final end = math.min(travelled + dash, distance);
+      canvas.drawLine(from + step * travelled, from + step * end, paint);
+      travelled = end + gap;
+    }
+
+    canvas.drawCircle(to, 6, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(covariant _PendingWirePainter old) => old.from != from || old.to != to;
+}
 
 class _GridPainter extends CustomPainter {
   final Color color;
