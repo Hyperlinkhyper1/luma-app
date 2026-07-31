@@ -863,7 +863,12 @@ class ServerTycoonRepository extends ChangeNotifier {
     return candidates.last.rigId;
   }
 
-  void _spawnIncident() {
+  /// Forces a specific incident to spawn. Only for tests — normal play rolls
+  /// the type from whatever is currently eligible.
+  @visibleForTesting
+  void spawnIncidentOfType(IncidentType type) => _spawnIncident(forceType: type);
+
+  void _spawnIncident({IncidentType? forceType}) {
     final eligible = <IncidentType>[];
     if (_state.routers.isNotEmpty) eligible.add(IncidentType.routerDdos);
     if (_state.rigs.isNotEmpty) eligible.add(IncidentType.rigOverheatSpike);
@@ -882,7 +887,8 @@ class ServerTycoonRepository extends ChangeNotifier {
     if (slackInstances.isNotEmpty) eligible.add(IncidentType.viralDemandSpike);
 
     if (eligible.isEmpty) return;
-    final type = eligible[_incidentRng.nextInt(eligible.length)];
+    if (forceType != null && !eligible.contains(forceType)) return;
+    final type = forceType ?? eligible[_incidentRng.nextInt(eligible.length)];
 
     late String targetKind;
     late String targetId;

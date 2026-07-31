@@ -2518,14 +2518,9 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
         _AchievementToastStack(),
         // Live incident banners
         _IncidentBannerStack(
-          onSelectRig: (id) => setState(() {
-            _selectedRigId = id;
-            _selectedRouterId = null;
-          }),
-          onSelectRouter: (id) => setState(() {
-            _selectedRouterId = id;
-            _selectedRigId = null;
-          }),
+          onSelectRig: _selectRig,
+          onSelectRouter: _selectRouter,
+          onReplaceDrive: (rigId) => _showAddStorageSheet(context, rigId),
         ),
         // Day Report Modal
         if (_showDayReport && repo.lastDayReport != null)
@@ -3826,7 +3821,12 @@ class _AchievementsModal extends StatelessWidget {
 class _IncidentBannerStack extends StatelessWidget {
   final void Function(String rigId) onSelectRig;
   final void Function(String routerId) onSelectRouter;
-  const _IncidentBannerStack({required this.onSelectRig, required this.onSelectRouter});
+  final void Function(String rigId) onReplaceDrive;
+  const _IncidentBannerStack({
+    required this.onSelectRig,
+    required this.onSelectRouter,
+    required this.onReplaceDrive,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -3856,6 +3856,7 @@ class _IncidentBannerStack extends StatelessWidget {
                         onSelectRouter(incident.targetId);
                       }
                     },
+                    onReplaceDrive: () => onReplaceDrive(incident.targetId),
                   ),
                 ),
             ],
@@ -3869,7 +3870,12 @@ class _IncidentBannerStack extends StatelessWidget {
 class _IncidentCard extends StatelessWidget {
   final ActiveIncident incident;
   final VoidCallback onSelect;
-  const _IncidentCard({required this.incident, required this.onSelect});
+  final VoidCallback onReplaceDrive;
+  const _IncidentCard({
+    required this.incident,
+    required this.onSelect,
+    required this.onReplaceDrive,
+  });
 
   void _showResult(BuildContext context, ActionResult result) {
     final luma = context.luma;
@@ -3912,7 +3918,7 @@ class _IncidentCard extends StatelessWidget {
         break;
       case IncidentType.driveFailure:
         primaryButton = TextButton(
-          onPressed: onSelect,
+          onPressed: onReplaceDrive,
           child: Text(def?.actionLabel ?? 'Replace Drive', style: TextStyle(color: accentColor, fontSize: 12, fontWeight: FontWeight.w600)),
         );
         break;

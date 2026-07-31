@@ -962,6 +962,61 @@ void main() {
       });
     });
 
+    group('drive failure', () {
+      /// Spawns a drive failure and returns the rig it hit.
+      String failADrive() {
+        repo.spawnIncidentOfType(IncidentType.driveFailure);
+        final incident = repo.activeIncidents.firstWhere(
+          (i) => i.type == IncidentType.driveFailure,
+        );
+        return incident.targetId;
+      }
+
+      test('a failure physically removes a drive from the rig', () {
+        final rigId = firstRigId();
+        final before = repo.state.rigs[rigId]!.build.storageIds.length;
+
+        failADrive();
+
+        expect(repo.state.rigs[rigId]!.build.storageIds.length, before - 1);
+      });
+
+      test('it survives the day rollover, unlike other incidents', () {
+        failADrive();
+        repo.processDay();
+        expect(
+          repo.activeIncidents.where((i) => i.type == IncidentType.driveFailure),
+          isNotEmpty,
+        );
+      });
+
+      test('fitting a replacement drive clears the incident', () {
+        final rigId = failADrive();
+        expect(repo.activeIncidents, isNotEmpty);
+
+        // What the banner's "Replace Drive" button now leads to.
+        expect(repo.addStorage(rigId, 'HDD_500GB').ok, isTrue);
+
+        expect(
+          repo.activeIncidents.where((i) => i.type == IncidentType.driveFailure),
+          isEmpty,
+        );
+      });
+
+      test('a rig with no drives left cannot fail another one', () {
+        final rigId = firstRigId();
+        failADrive();
+        expect(repo.state.rigs[rigId]!.build.storageIds, isEmpty);
+
+        repo.spawnIncidentOfType(IncidentType.driveFailure);
+
+        expect(
+          repo.activeIncidents.where((i) => i.type == IncidentType.driveFailure).length,
+          1,
+        );
+      });
+    });
+
     group('node wiring', () {
       test('a service dropped on the canvas is unplugged and earns nothing', () {
         expect(repo.installService(null, 'STATIC_WEBSITE', 4).ok, isTrue);
