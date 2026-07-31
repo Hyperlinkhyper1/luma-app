@@ -85,17 +85,30 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
   // wires) from this local position and only commit to the repo on drag end.
   String? _dragKind;
   String? _dragId;
-  Offset? _dragPos;
+
+  /// Live drag position. Deliberately a notifier rather than setState state:
+  /// a move fires on every pointer sample, and rebuilding the whole page that
+  /// often left the tile visibly trailing the finger.
+  final ValueNotifier<Offset?> _dragPos = ValueNotifier<Offset?>(null);
+
+  /// The account load frozen at the start of a drag. calculateLoad() is a full
+  /// account simulation and node positions cannot affect it, so re-running it
+  /// per pointer sample was pure waste.
+  AccountLoadResult? _dragLoadCache;
 
   @override
   void dispose() {
     _pulseController.dispose();
     _canvasController.dispose();
+    _dragPos.dispose();
     super.dispose();
   }
 
-  Offset _effectivePos(String kind, String id, double x, double y) =>
-      (_dragKind == kind && _dragId == id) ? _dragPos! : Offset(x, y);
+  Offset _effectivePos(String kind, String id, double x, double y) {
+    final dragging = _dragPos.value;
+    if (dragging != null && _dragKind == kind && _dragId == id) return dragging;
+    return Offset(x, y);
+  }
 
   /// Intersection of the segment [rect.center → target] with rect's border,
   /// so wires start/end on the tile edge instead of its center.
@@ -138,7 +151,7 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
       listenable: repo,
       builder: (context, _) {
         final state = repo.state;
-        final load = repo.calculateLoad();
+        final load = _dragLoadCache ?? repo.calculateLoad();
         final effects = repo.effects;
 
         // Check for day report to auto-show. Auto-advance deliberately skips
@@ -693,7 +706,9 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
       minScale: 0.25,
       maxScale: 2.0,
       constrained: false,
-      child: Container(
+      child: ValueListenableBuilder<Offset?>(
+        valueListenable: _dragPos,
+        builder: (context, _, __) => Container(
         width: 4000,
         height: 3000,
         color: luma.background,
@@ -818,6 +833,7 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
               ),
           ],
         ),
+        ),
       ),
     );
   }
@@ -835,7 +851,7 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
     final pos = _effectivePos(kind, id, x, y);
 
     void endDrag() {
-      final drop = _dragPos;
+      final drop = _dragPos.value;
       if (drop != null) {
         // Snap to the 20px grid so hand-placed tiles still line up.
         const grid = 20.0;
@@ -846,10 +862,11 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
           (drop.dy / grid).round() * grid,
         );
       }
+      _dragPos.value = null;
+      _dragLoadCache = null;
       setState(() {
         _dragKind = null;
         _dragId = null;
-        _dragPos = null;
       });
     }
 
@@ -860,26 +877,32 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
         behavior: HitTestBehavior.deferToChild,
         onLongPressStart: (_) {
           HapticFeedback.mediumImpact();
+          _dragPos.value = Offset(x, y);
+          _dragLoadCache = ServerTycoonScope.of(context).calculateLoad();
           setState(() {
             _dragKind = kind;
             _dragId = id;
-            _dragPos = Offset(x, y);
           });
         },
         onLongPressMoveUpdate: (details) {
-          if (_dragPos == null) return;
+          if (_dragPos.value == null) return;
           // Measured from the committed start position in global coordinates:
-          // the tile's own local frame travels with it while dragging.
+          // the tile's own local frame travels with it while dragging. Only
+          // the notifier is touched here, so nothing outside the canvas
+          // rebuilds between pointer samples.
           final scale = _canvasController.value.getMaxScaleOnAxis();
-          setState(() => _dragPos = Offset(x, y) + details.offsetFromOrigin / scale);
+          _dragPos.value = Offset(x, y) + details.offsetFromOrigin / scale;
         },
         onLongPressEnd: (_) => endDrag(),
-        onLongPressCancel: () => setState(() {
-          _dragKind = null;
-          _dragId = null;
-          _dragPos = null;
-        }),
-        child: child,
+        onLongPressCancel: () {
+          _dragPos.value = null;
+          _dragLoadCache = null;
+          setState(() {
+            _dragKind = null;
+            _dragId = null;
+          });
+        },
+        child: RepaintBoundary(child: child),
       ),
     );
   }
