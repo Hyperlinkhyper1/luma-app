@@ -1174,6 +1174,10 @@ class ServerTycoonRepository extends ChangeNotifier {
       final router = _state.routers[id];
       if (router == null) return const ActionResult(ok: false, errors: ['Unknown router']);
       router.pos = NodePos(x: x, y: y);
+    } else if (kind == 'service') {
+      final service = _state.services[id];
+      if (service == null) return const ActionResult(ok: false, errors: ['Unknown service']);
+      service.pos = NodePos(x: x, y: y);
     } else {
       return const ActionResult(ok: false, errors: ['Unknown node kind']);
     }
