@@ -1042,6 +1042,47 @@ void main() {
         expect(spots.length, repo.state.services.length);
       });
 
+      test('every kind of node can be dragged to a new spot', () {
+        repo.installService(null, 'STATIC_WEBSITE', 1);
+        final instanceId = repo.state.services.keys.first;
+        final routerId = repo.state.routers.keys.first;
+
+        expect(repo.moveNode('rig', firstRigId(), 500, 250).ok, isTrue);
+        expect(repo.moveNode('router', routerId, 120, 300).ok, isTrue);
+        // Services were left out of moveNode when they became nodes, so they
+        // rendered mid-drag and then snapped straight back on release.
+        expect(repo.moveNode('service', instanceId, 900, 400).ok, isTrue);
+
+        expect(repo.state.rigs[firstRigId()]!.pos.x, 500);
+        expect(repo.state.routers[routerId]!.pos.y, 300);
+        expect(repo.state.services[instanceId]!.pos.x, 900);
+        expect(repo.state.services[instanceId]!.pos.y, 400);
+      });
+
+      test('a moved service keeps its position across a save round-trip', () {
+        repo.installService(null, 'STATIC_WEBSITE', 1);
+        final instanceId = repo.state.services.keys.first;
+        repo.moveNode('service', instanceId, 640, 220);
+
+        final restored = GameState.fromJson(repo.state.toJson());
+        expect(restored.services[instanceId]!.pos.x, 640);
+        expect(restored.services[instanceId]!.pos.y, 220);
+      });
+
+      test('dragging an unknown node is refused rather than silently ignored', () {
+        expect(repo.moveNode('service', 'nope', 10, 10).ok, isFalse);
+        expect(repo.moveNode('gizmo', '1', 10, 10).ok, isFalse);
+      });
+
+      test('nodes are kept inside the canvas bounds', () {
+        repo.installService(null, 'STATIC_WEBSITE', 1);
+        final instanceId = repo.state.services.keys.first;
+
+        repo.moveNode('service', instanceId, -500, 99999);
+        expect(repo.state.services[instanceId]!.pos.x, 0);
+        expect(repo.state.services[instanceId]!.pos.y, GameState.canvasMaxY);
+      });
+
       test('auto-arrange places services beside the rig they feed', () {
         repo.installService(firstRigId(), 'STATIC_WEBSITE', 1);
         repo.installService(firstRigId(), 'DISCORD_BOT', 1);
