@@ -1170,11 +1170,11 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
                   // Hardware
                   Text('Hardware', style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700, fontSize: 13)),
                   const SizedBox(height: 8),
-                  _hardwareRow(context, 'CPU', cpu?.name ?? rig.build.cpuId, () => _showShopSheet(context, rig.rigId, 'cpu')),
-                  _hardwareRow(context, 'Motherboard', mobo?.name ?? rig.build.motherboardId, () => _showShopSheet(context, rig.rigId, 'motherboard')),
-                  _hardwareRow(context, 'PSU', psusById[rig.build.psuId]?.name ?? rig.build.psuId, () => _showShopSheet(context, rig.rigId, 'psu')),
-                  _hardwareRow(context, 'Cooling', coolingById[rig.build.coolingId]?.name ?? rig.build.coolingId, () => _showShopSheet(context, rig.rigId, 'cooling')),
-                  _hardwareRow(context, 'NIC', nicsById[rig.build.nicId]?.name ?? rig.build.nicId, () => _showShopSheet(context, rig.rigId, 'nic')),
+                  _hardwareRow(context, 'CPU', cpu?.name ?? rig.build.cpuId, () => _showShopSheet(context, rig.rigId, 'cpu'), slot: 'cpu', itemId: rig.build.cpuId),
+                  _hardwareRow(context, 'Motherboard', mobo?.name ?? rig.build.motherboardId, () => _showShopSheet(context, rig.rigId, 'motherboard'), slot: 'motherboard', itemId: rig.build.motherboardId),
+                  _hardwareRow(context, 'PSU', psusById[rig.build.psuId]?.name ?? rig.build.psuId, () => _showShopSheet(context, rig.rigId, 'psu'), slot: 'psu', itemId: rig.build.psuId),
+                  _hardwareRow(context, 'Cooling', coolingById[rig.build.coolingId]?.name ?? rig.build.coolingId, () => _showShopSheet(context, rig.rigId, 'cooling'), slot: 'cooling', itemId: rig.build.coolingId),
+                  _hardwareRow(context, 'NIC', nicsById[rig.build.nicId]?.name ?? rig.build.nicId, () => _showShopSheet(context, rig.rigId, 'nic'), slot: 'nic', itemId: rig.build.nicId),
                   const SizedBox(height: 12),
                   // RAM
                   Row(
@@ -1683,14 +1683,39 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
     );
   }
 
-  Widget _hardwareRow(BuildContext context, String label, String value, VoidCallback onChange) {
+  Widget _hardwareRow(
+    BuildContext context,
+    String label,
+    String value,
+    VoidCallback onChange, {
+    String slot = '',
+    String itemId = '',
+  }) {
     final luma = context.luma;
+    final spec = slot.isEmpty ? '' : _componentSpec(slot, itemId);
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 90, child: Text(label, style: TextStyle(color: luma.textMuted, fontSize: 11))),
-          Expanded(child: Text(value, style: TextStyle(color: luma.textPrimary, fontSize: 12), overflow: TextOverflow.ellipsis)),
+          SizedBox(
+            width: 90,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(label, style: TextStyle(color: luma.textMuted, fontSize: 11)),
+            ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(value, style: TextStyle(color: luma.textPrimary, fontSize: 12), overflow: TextOverflow.ellipsis),
+                if (spec.isNotEmpty)
+                  Text(spec, style: TextStyle(color: luma.textMuted, fontSize: 10)),
+              ],
+            ),
+          ),
           TextButton(
             onPressed: onChange,
             child: Text('Change', style: TextStyle(color: luma.accent, fontSize: 11)),
@@ -1705,8 +1730,15 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
     final stick = ramById[ramId];
     return Row(
       children: [
-        Expanded(child: Text(stick?.name ?? ramId, style: TextStyle(color: luma.textPrimary, fontSize: 11), overflow: TextOverflow.ellipsis)),
-        Text('${stick?.capacityGB ?? 0}GB', style: TextStyle(color: luma.textMuted, fontSize: 11)),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(stick?.name ?? ramId, style: TextStyle(color: luma.textPrimary, fontSize: 11), overflow: TextOverflow.ellipsis),
+              Text(_componentSpec('ram', ramId), style: TextStyle(color: luma.textMuted, fontSize: 10)),
+            ],
+          ),
+        ),
         IconButton(
           icon: Icon(Icons.remove_circle_outline_rounded, size: 16, color: luma.danger),
           onPressed: () => ServerTycoonScope.of(context).removeRAM(rigId, index),
@@ -1722,8 +1754,15 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
     final drive = storageById[driveId];
     return Row(
       children: [
-        Expanded(child: Text(drive?.name ?? driveId, style: TextStyle(color: luma.textPrimary, fontSize: 11), overflow: TextOverflow.ellipsis)),
-        Text('${drive?.capacityGB ?? 0}GB', style: TextStyle(color: luma.textMuted, fontSize: 11)),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(drive?.name ?? driveId, style: TextStyle(color: luma.textPrimary, fontSize: 11), overflow: TextOverflow.ellipsis),
+              Text(_componentSpec('storage', driveId), style: TextStyle(color: luma.textMuted, fontSize: 10)),
+            ],
+          ),
+        ),
         IconButton(
           icon: Icon(Icons.remove_circle_outline_rounded, size: 16, color: luma.danger),
           onPressed: () => ServerTycoonScope.of(context).removeStorage(rigId, index),
@@ -2038,9 +2077,34 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
           builder: (_, scrollController) => Column(
             children: [
               Container(
-                padding: const EdgeInsets.all(16),
-                child: Text('${slot == 'ram' || slot == 'storage' ? 'Add' : 'Swap'} ${slot.toUpperCase()}', style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700)),
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${slot == 'ram' || slot == 'storage' ? 'Add' : 'Swap'} ${slot.toUpperCase()}',
+                      style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700),
+                    ),
+                    if (_slotRequirement(rig.build, slot) case final requirement?) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.info_outline_rounded, size: 13, color: luma.accent),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              requirement,
+                              style: TextStyle(color: luma.accent, fontSize: 11, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
               ),
+              const Divider(height: 1),
               Expanded(
                 child: ListView.builder(
                   controller: scrollController,
@@ -2049,28 +2113,55 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
                     final (itemId, name, price, fits) = sortedItems[i];
                     final owned = repo.inventoryCount(itemId);
                     final canAfford = owned > 0 || repo.state.money >= price;
+                    final spec = _componentSpec(slot, itemId);
+                    // Every reason this part would break the build, worked out
+                    // against the rig's current parts before any money moves.
+                    final issues = swapIssues(rig.build, rig.kind, slot, itemId);
 
                     return ListTile(
-                      dense: true,
-                      title: Text(name, style: TextStyle(color: luma.textPrimary, fontSize: 13)),
-                      subtitle: Row(
+                      isThreeLine: issues.isNotEmpty,
+                      title: Row(
                         children: [
-                          if (owned > 0)
-                            Text('In inventory x$owned', style: TextStyle(color: Colors.blue.shade300, fontSize: 12, fontWeight: FontWeight.w600))
+                          Expanded(
+                            child: Text(name, style: TextStyle(color: luma.textPrimary, fontSize: 13)),
+                          ),
+                          if (issues.isEmpty)
+                            Icon(Icons.check_circle_rounded, size: 14, color: Colors.green.shade400)
                           else
-                            Text('\$$price', style: TextStyle(color: canAfford ? Colors.green.shade400 : Colors.red.shade400, fontSize: 12)),
-                          if (!fits) ...[
-                            const SizedBox(width: 6),
-                            Icon(Icons.warning_amber_rounded, size: 12, color: Colors.orange.shade400),
-                            const SizedBox(width: 2),
-                            Expanded(
+                            Icon(Icons.error_outline_rounded, size: 14, color: Colors.orange.shade400),
+                        ],
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (spec.isNotEmpty)
+                            Text(spec, style: TextStyle(color: luma.textMuted, fontSize: 11)),
+                          Row(
+                            children: [
+                              if (owned > 0)
+                                Text('In inventory x$owned', style: TextStyle(color: Colors.blue.shade300, fontSize: 12, fontWeight: FontWeight.w600))
+                              else
+                                Text('\$$price', style: TextStyle(color: canAfford ? Colors.green.shade400 : Colors.red.shade400, fontSize: 12)),
+                              if (!fits) ...[
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    '${rig.kind == RigKind.server ? "Consumer" : "Server"} hardware',
+                                    style: TextStyle(color: Colors.orange.shade400, fontSize: 11),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          for (final issue in issues)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
                               child: Text(
-                                'Incompatible with this ${rig.kind.name} rig -- won\'t earn money',
-                                style: TextStyle(color: Colors.orange.shade400, fontSize: 11),
-                                overflow: TextOverflow.ellipsis,
+                                '⚠ $issue',
+                                style: TextStyle(color: Colors.orange.shade300, fontSize: 11),
                               ),
                             ),
-                          ],
                         ],
                       ),
                       trailing: TextButton(
@@ -2408,16 +2499,25 @@ class _ServerTycoonPageState extends State<ServerTycoonPage> with SingleTickerPr
                         final owned = repo.inventoryCount(itemId);
                         final canAfford = repo.state.money >= price;
 
+                        final spec = _componentSpec(selected, itemId);
+
                         return ListTile(
-                          dense: true,
+                          isThreeLine: spec.isNotEmpty,
                           title: Text(name, style: TextStyle(color: luma.textPrimary, fontSize: 13)),
-                          subtitle: Row(
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('\$$price', style: TextStyle(color: canAfford ? Colors.green.shade400 : Colors.red.shade400, fontSize: 12)),
-                              if (owned > 0) ...[
-                                const SizedBox(width: 8),
-                                Text('Owned x$owned', style: TextStyle(color: Colors.blue.shade300, fontSize: 11, fontWeight: FontWeight.w600)),
-                              ],
+                              if (spec.isNotEmpty)
+                                Text(spec, style: TextStyle(color: luma.textMuted, fontSize: 11)),
+                              Row(
+                                children: [
+                                  Text('\$$price', style: TextStyle(color: canAfford ? Colors.green.shade400 : Colors.red.shade400, fontSize: 12)),
+                                  if (owned > 0) ...[
+                                    const SizedBox(width: 8),
+                                    Text('Owned x$owned', style: TextStyle(color: Colors.blue.shade300, fontSize: 11, fontWeight: FontWeight.w600)),
+                                  ],
+                                ],
+                              ),
                             ],
                           ),
                           trailing: TextButton(
@@ -4710,6 +4810,99 @@ class _AwayReportModal extends StatelessWidget {
 }
 
 // ── Helpers ──
+
+// ── Component specs ──
+
+/// The one-line spec that decides whether a part fits: socket, memory type,
+/// slot counts, wattage. Shown everywhere a part is listed, because none of it
+/// used to be visible until after you had already bought the thing.
+String _componentSpec(String slot, String itemId) {
+  switch (slot) {
+    case 'cpu':
+      final cpu = cpusById[itemId];
+      if (cpu == null) return '';
+      return '${_socketLabel(cpu.socket)} · ${cpu.cores}C/${cpu.threads}T · ${cpu.tdpWatts}W';
+    case 'motherboard':
+      final mobo = motherboardsById[itemId];
+      if (mobo == null) return '';
+      final ecc = mobo.supportsECC ? ' · ECC ok' : '';
+      return '${_socketLabel(mobo.socket)} · ${_ramTypeLabel(mobo.ramType)} '
+          '· ${mobo.ramSlots} RAM slots, max ${mobo.maxRAMGB}GB '
+          '· ${mobo.sataPorts} SATA, ${mobo.m2Slots} M.2$ecc';
+    case 'ram':
+      final stick = ramById[itemId];
+      if (stick == null) return '';
+      final kind = stick.registered
+          ? ' · registered'
+          : stick.ecc
+              ? ' · ECC'
+              : '';
+      return '${_ramTypeLabel(stick.ramType)} · ${stick.capacityGB}GB · ${stick.speedMHz}MHz$kind';
+    case 'storage':
+      final drive = storageById[itemId];
+      if (drive == null) return '';
+      final bus = drive.interfaceType == StorageInterface.nvme ? 'NVMe (M.2)' : 'SATA';
+      return '$bus · ${drive.capacityGB}GB · ${drive.readSpeedMBs}/${drive.writeSpeedMBs} MB/s';
+    case 'psu':
+      final psu = psusById[itemId];
+      if (psu == null) return '';
+      return '${psu.wattage}W · ${psu.efficiencyRating.name}';
+    case 'cooling':
+      final cooler = coolingById[itemId];
+      if (cooler == null) return '';
+      final water = cooler.requiresWater ? ' · water loop' : '';
+      return '${cooler.coolingType.name} · ${cooler.coolingCapacityWatts}W cooling$water';
+    case 'nic':
+      final nic = nicsById[itemId];
+      if (nic == null) return '';
+      return '${nic.throughputMbps} Mbps · ${nic.interfaceType.name}';
+  }
+  return '';
+}
+
+String _socketLabel(Socket socket) => socket.name.toUpperCase();
+
+String _ramTypeLabel(RAMType type) => type.name.toUpperCase();
+
+/// What this rig will actually accept in [slot], so the player knows what to
+/// look for instead of guessing and eating the cost of getting it wrong.
+String? _slotRequirement(Build build, String slot) {
+  final mobo = motherboardsById[build.motherboardId];
+  final cpu = cpusById[build.cpuId];
+
+  switch (slot) {
+    case 'cpu':
+      if (mobo == null) return null;
+      return 'This board needs a ${_socketLabel(mobo.socket)} CPU';
+    case 'motherboard':
+      if (cpu == null) return null;
+      return 'Your ${cpu.name} needs a ${_socketLabel(cpu.socket)} board';
+    case 'ram':
+      if (mobo == null) return null;
+      final ecc = mobo.supportsECC ? '' : ', no registered/ECC';
+      return 'Takes ${_ramTypeLabel(mobo.ramType)} · '
+          '${build.ramIds.length}/${mobo.ramSlots} slots used, max ${mobo.maxRAMGB}GB$ecc';
+    case 'storage':
+      if (mobo == null) return null;
+      var sata = 0, m2 = 0;
+      for (final id in build.storageIds) {
+        final drive = storageById[id];
+        if (drive == null) continue;
+        if (drive.interfaceType == StorageInterface.nvme) {
+          m2++;
+        } else {
+          sata++;
+        }
+      }
+      return 'SATA ports $sata/${mobo.sataPorts} · M.2 slots $m2/${mobo.m2Slots} used';
+    case 'psu':
+      return 'This build draws up to ${getMaxPowerDrawWatts(build)}W';
+    case 'cooling':
+      if (cpu == null) return null;
+      return 'Your ${cpu.name} puts out ${cpu.tdpWatts}W of heat';
+  }
+  return null;
+}
 
 /// Small section heading used inside the game's list modals.
 Widget _sectionLabel(BuildContext context, String text) {

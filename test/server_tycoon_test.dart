@@ -284,6 +284,178 @@ void main() {
     });
   });
 
+  group('default builds', () {
+    // A rig you just paid for must not arrive broken. newServerBuild() shipped
+    // with a RAM id that wasn't in the catalogue ('DDR4_32GB_RDIMM' rather
+    // than 'DDR4_32GB_RDIMM2'), so every $2000 server rig was invalid on
+    // purchase, counted 0GB of RAM and earned nothing.
+    test('the starter PC build is valid', () {
+      final (errors, ok) = validateBuild(newStarterBuild(), rigKind: RigKind.pc);
+      expect(ok, isTrue, reason: errors.join('; '));
+    });
+
+    test('the server build is valid', () {
+      final (errors, ok) = validateBuild(newServerBuild(), rigKind: RigKind.server);
+      expect(ok, isTrue, reason: errors.join('; '));
+    });
+
+    test('every part in a default build exists in the catalogue', () {
+      for (final build in [newStarterBuild(), newServerBuild()]) {
+        expect(cpusById[build.cpuId], isNotNull, reason: build.cpuId);
+        expect(motherboardsById[build.motherboardId], isNotNull, reason: build.motherboardId);
+        expect(psusById[build.psuId], isNotNull, reason: build.psuId);
+        expect(coolingById[build.coolingId], isNotNull, reason: build.coolingId);
+        expect(nicsById[build.nicId], isNotNull, reason: build.nicId);
+        for (final id in build.ramIds) {
+          expect(ramById[id], isNotNull, reason: id);
+        }
+        for (final id in build.storageIds) {
+          expect(storageById[id], isNotNull, reason: id);
+        }
+      }
+    });
+
+    test('a default build reports the RAM it actually has', () {
+      expect(getTotalRAMGB(newStarterBuild()), greaterThan(0));
+      expect(getTotalRAMGB(newServerBuild()), greaterThan(0));
+    });
+
+    test('a save carrying the bad server RAM id is repaired on load', () {
+      final broken = newServerBuild().toJson();
+      broken['ramIds'] = ['DDR4_32GB_RDIMM'];
+
+      final repaired = Build.fromJson(broken);
+
+      expect(repaired.ramIds, ['DDR4_32GB_RDIMM2']);
+      expect(validateBuild(repaired, rigKind: RigKind.server).$2, isTrue);
+      expect(getTotalRAMGB(repaired), greaterThan(0));
+    });
+
+    test('ids that are still valid are left alone', () {
+      final build = Build.fromJson(newStarterBuild().toJson());
+      expect(build.ramIds, newStarterBuild().ramIds);
+    });
+
+    test('every catalogue entry is keyed by its own id', () {
+      for (final entry in cpusById.entries) {
+        expect(entry.value.id, entry.key);
+      }
+      for (final entry in ramById.entries) {
+        expect(entry.value.id, entry.key);
+      }
+      for (final entry in storageById.entries) {
+        expect(entry.value.id, entry.key);
+      }
+      for (final entry in motherboardsById.entries) {
+        expect(entry.value.id, entry.key);
+      }
+    });
+  });
+
+  group('compatibility preview', () {
+    // The starter board is LGA1150 + DDR3, 2 RAM slots, 4 SATA, 0 M.2.
+    Build starter() => newStarterBuild();
+
+    String issuesFor(String slot, String itemId) =>
+        swapIssues(starter(), RigKind.pc, slot, itemId).join(' | ');
+
+    test('a CPU on the wrong socket is called out before it is bought', () {
+      // XEON_E5_2680_V4 is LGA2011v3; the starter board is LGA1150.
+      final issues = issuesFor('cpu', 'XEON_E5_2680_V4');
+      expect(issues, contains('socket'));
+    });
+
+    test('a CPU on the right socket reports nothing', () {
+      // The starter build already runs an LGA1150 chip, so a sibling fits.
+      final lga1150 = cpuList.firstWhere(
+        (c) => c.socket == cpusById['I3_4130']!.socket && c.id != 'I3_4130',
+      );
+      expect(swapIssues(starter(), RigKind.pc, 'cpu', lga1150.id), isEmpty);
+    });
+
+    test('memory of the wrong generation is called out', () {
+      final ddr4 = ramList.firstWhere((r) => r.ramType == RAMType.ddr4);
+      expect(issuesFor('ram', ddr4.id), contains(RAMType.ddr4.name.toUpperCase()));
+    });
+
+    test('matching memory reports nothing', () {
+      final ddr3 = ramList.firstWhere(
+        (r) => r.ramType == RAMType.ddr3 && !r.registered && !r.ecc,
+      );
+      expect(swapIssues(starter(), RigKind.pc, 'ram', ddr3.id), isEmpty);
+    });
+
+    test('an NVMe drive is called out on a board with no M.2 slots', () {
+      final nvme = storageList.firstWhere((d) => d.interfaceType == StorageInterface.nvme);
+      expect(issuesFor('storage', nvme.id), contains('M.2'));
+    });
+
+    test('a SATA drive fits the spare ports', () {
+      final sata = storageList.firstWhere((d) => d.interfaceType == StorageInterface.sata);
+      expect(swapIssues(starter(), RigKind.pc, 'storage', sata.id), isEmpty);
+    });
+
+    test('filling the last RAM slot is fine, overfilling is not', () {
+      final ddr3 = ramList.firstWhere(
+        (r) => r.ramType == RAMType.ddr3 && !r.registered && !r.ecc && r.capacityGB <= 8,
+      );
+      // Starter has one stick in a two-slot board.
+      final second = buildWithPart(starter(), 'ram', ddr3.id);
+      expect(swapIssues(starter(), RigKind.pc, 'ram', ddr3.id), isEmpty);
+      expect(swapIssues(second, RigKind.pc, 'ram', ddr3.id).join(' '), contains('slots'));
+    });
+
+    test('a PSU too small for the build is called out', () {
+      final weakest = psuList.reduce((a, b) => a.wattage <= b.wattage ? a : b);
+      final hungry = cpuList.reduce((a, b) => a.tdpWatts >= b.tdpWatts ? a : b);
+      final thirstyBuild = buildWithPart(starter(), 'cpu', hungry.id);
+
+      expect(
+        swapIssues(thirstyBuild, RigKind.pc, 'psu', weakest.id).join(' '),
+        contains('exceeds'),
+      );
+    });
+
+    test('problems the build already has are not blamed on the new part', () {
+      // Start from a build that is already broken: DDR4 in a DDR3 board.
+      final ddr4 = ramList.firstWhere((r) => r.ramType == RAMType.ddr4);
+      final broken = buildWithPart(starter(), 'ram', ddr4.id);
+      expect(validateBuild(broken, rigKind: RigKind.pc).$2, isFalse);
+
+      // Swapping in a compatible NIC should report nothing, even though the
+      // build as a whole is still invalid.
+      final nic = nicList.firstWhere((n) => gradeFits('nic', n.id, RigKind.pc));
+      expect(swapIssues(broken, RigKind.pc, 'nic', nic.id), isEmpty);
+    });
+
+    test('buildWithPart adds memory and drives but swaps everything else', () {
+      final ddr3 = ramList.firstWhere((r) => r.ramType == RAMType.ddr3);
+      final withRam = buildWithPart(starter(), 'ram', ddr3.id);
+      expect(withRam.ramIds.length, starter().ramIds.length + 1);
+
+      final drive = storageList.first;
+      final withDrive = buildWithPart(starter(), 'storage', drive.id);
+      expect(withDrive.storageIds.length, starter().storageIds.length + 1);
+
+      final cpu = cpuList.firstWhere((c) => c.id != starter().cpuId);
+      final swapped = buildWithPart(starter(), 'cpu', cpu.id);
+      expect(swapped.cpuId, cpu.id);
+      expect(swapped.ramIds.length, starter().ramIds.length);
+    });
+
+    test('previewing a swap never mutates the original build', () {
+      final build = starter();
+      final ramBefore = [...build.ramIds];
+      final cpuBefore = build.cpuId;
+
+      swapIssues(build, RigKind.pc, 'ram', ramList.first.id);
+      swapIssues(build, RigKind.pc, 'cpu', cpuList.last.id);
+
+      expect(build.ramIds, ramBefore);
+      expect(build.cpuId, cpuBefore);
+    });
+  });
+
   group('storage speed', () {
     Build withDrive(String driveId) => newStarterBuild().copyWith(storageIds: [driveId]);
 
