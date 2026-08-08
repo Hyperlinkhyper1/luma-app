@@ -30,8 +30,17 @@ class StorageGuardService extends ChangeNotifier {
   static late StorageGuardService instance;
 
   /// Subdirectories (relative to the app support directory) excluded from the
-  /// sum: one-time tool/binary downloads (yt-dlp, ffmpeg, …), not user data.
-  static const _excludedDirNames = {'tools', 'ffmpeg', 'minecraft'};
+  /// sum: one-time tool/binary downloads (yt-dlp, ffmpeg, …) and derived
+  /// caches — not user data. `gallery_cache` holds thumbnails and read-back
+  /// EXIF for photos that live in the user's own picture folders; every byte
+  /// of it can be rebuilt by rescanning, and counting it would put a 30 MB
+  /// Nova device over its cap after a few hundred photos.
+  static const _excludedDirNames = {
+    'tools',
+    'ffmpeg',
+    'minecraft',
+    'gallery_cache',
+  };
 
   int _limitBytes = _defaultLimitBytes;
   int _usedBytes = 0;

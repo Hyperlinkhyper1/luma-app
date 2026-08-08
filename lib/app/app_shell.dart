@@ -17,6 +17,7 @@ import '../features/plugins/installed/card_wallet/card_wallet_page.dart';
 import '../features/plugins/installed/errands/errands_page.dart';
 import '../features/plugins/installed/city_planner/city_planner_page.dart';
 import '../features/plugins/installed/file_tree/file_tree_page.dart';
+import '../features/plugins/installed/gallery/gallery_page.dart';
 import '../features/plugins/installed/file_viewer/file_viewer_page.dart';
 import '../features/plugins/installed/groceries/groceries_page.dart';
 import '../features/plugins/installed/minecraft_launcher/minecraft_launcher_page.dart';
@@ -358,6 +359,7 @@ class _AppShellState extends State<AppShell> {
         'secure-chat' => const SecureChatPage(),
         'recipe-book' => const RecipeBookPage(),
         'worth-counter' => const WorthCounterPage(),
+        'gallery' => const GalleryPage(),
         _ => LumaEmptyState(
             icon: Icons.extension_off_rounded,
             title: t.shellPluginUnavailable,
