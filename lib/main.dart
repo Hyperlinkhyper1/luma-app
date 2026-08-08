@@ -63,6 +63,8 @@ import 'features/plugins/installed/recipe_book/recipe_book_scope.dart';
 import 'features/plugins/installed/minecraft_launcher/data/minecraft_launcher_database.dart';
 import 'features/plugins/installed/minecraft_launcher/minecraft_launcher_repository.dart';
 import 'features/plugins/installed/minecraft_launcher/minecraft_launcher_scope.dart';
+import 'features/plugins/installed/gallery/gallery_repository.dart';
+import 'features/plugins/installed/gallery/gallery_scope.dart';
 import 'features/plugins/plugin_catalog_service.dart';
 import 'features/plugins/plugin_repository.dart';
 import 'features/plugins/plugin_scope.dart';
@@ -163,6 +165,10 @@ class _LumaAppState extends State<LumaApp> {
       MinecraftLauncherDatabase();
   late final MinecraftLauncherRepository _minecraftRepository =
       MinecraftLauncherRepository(_minecraftDb);
+  // The Gallery plugin reads the device's own photos; it has no database of
+  // its own, only a rebuildable cache next to the thumbnails. The scan starts
+  // when the page is first opened, not here.
+  late final GalleryRepository _galleryRepository = GalleryRepository();
 
   // Global local-storage cap, enforced regardless of which plugins are
   // installed — see StorageGuardService.
@@ -354,6 +360,7 @@ class _LumaAppState extends State<LumaApp> {
     _groceriesDb.close();
     _groceriesApi.dispose();
     _recipeBookDb.close();
+    _galleryRepository.dispose();
     super.dispose();
   }
 
@@ -447,6 +454,8 @@ class _LumaAppState extends State<LumaApp> {
                       controller: _recipeBookController,
                       child: MinecraftLauncherScope(
                       repository: _minecraftRepository,
+                      child: GalleryScope(
+                      repository: _galleryRepository,
                       child: ListenableBuilder(
                       listenable: widget.settings,
                       builder: (context, _) {
@@ -470,6 +479,7 @@ class _LumaAppState extends State<LumaApp> {
                               bootstrap: _bootstrap, accentSeed: s.accentSeed),
                         );
                       },
+                    ),
                     ),
                     ),
                     ),

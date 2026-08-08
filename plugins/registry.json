@@ -253,6 +253,16 @@
       "version": "1.0.0"
     },
     {
+      "id": "gallery",
+      "name": "Gallery",
+      "description": "Every photo and video on this device, sorted into tabs: pictures and videos from the camera, screenshots, GIFs, and one tab per folder — WhatsApp, Downloads, whatever else is there. See where shots were taken on a world map, and on Nova let on-device models sort them by what's in them.",
+      "icon": "photo_library",
+      "category": "Utility",
+      "tags": ["Utility", "Photos"],
+      "free": true,
+      "version": "1.0.0"
+    },
+    {
       "id": "worth-counter",
       "name": "Worth Counter",
       "description": "A tally counter that knows what things are worth. Add a product with its price, hit + and - as you count, and the bottom bar keeps a live total of everything counted.",
