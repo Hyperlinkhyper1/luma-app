@@ -32,6 +32,8 @@
 	<string>Luma reads NFC tags so you can add and present tap-only cards in your Card Wallet.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Luma uses the camera to scan a card's barcode or QR code into your Card Wallet.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Luma reads your photo library to show it in the Gallery plugin. Nothing is uploaded.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_luma-sync._tcp</string>
