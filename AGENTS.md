@@ -124,7 +124,8 @@ GitHub Actions (`.github/workflows/release.yml`) builds on every push to `master
 - Windows: produces `dist/luma-setup.exe` (Inno Setup installer).
 - Linux: produces `luma-<version>-linux-x64.tar.gz`.
 - Android: produces a release-signed `luma-<version>.apk`. The job fails on purpose if the APK came out debug-signed — a debug-signed release can never be installed over a properly signed one.
-- All three are attached to an automatically created GitHub Release tagged `v1.0.<run_number>`.
+- iOS: produces an unsigned `luma-<version>-unsigned.ipa` (no Apple Developer account is configured), for resigning and sideloading. This job is the one that catches CocoaPods problems — a pod whose minimum deployment target is above `ios/Podfile`'s `platform :ios` line fails `pod install` outright, and nothing on Windows or Linux will tell you first.
+- All four are attached to an automatically created GitHub Release tagged `v1.0.<run_number>`.
 
 The in-app updater (`lib/app/update/`) polls GitHub Releases on startup and can apply the Windows installer silently (no admin rights needed; installs to `%LOCALAPPDATA%\Programs\luma`).
 
