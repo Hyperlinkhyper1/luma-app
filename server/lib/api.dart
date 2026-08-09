@@ -339,6 +339,14 @@ class Api {
       ..post('/admin/website/build', _requireAdmin(_adminWebsiteBuild))
       ..get('/admin/website/build/status',
           _requireAdmin(_adminWebsiteBuildStatus))
+      // Preview assets + upload must be registered before the <page|.*>
+      // catch-alls or those would swallow them.
+      ..get('/admin/website/preview/page.css', _requireAdmin(_wikiPreviewCss))
+      ..get('/admin/website/preview/astro/<file>',
+          _requireAdmin(_wikiPreviewAstroAsset))
+      ..get('/admin/website/preview/public/<path|.*>',
+          _requireAdmin(_wikiPreviewPublicAsset))
+      ..post('/admin/website/upload', _requireAdmin(_adminWebsiteUpload))
       ..get('/admin/website/<page|.*>', _requireAdmin(_adminWebsiteEditor))
       ..post('/admin/website/<page|.*>', _requireAdmin(_adminWebsiteSave));
 
@@ -3164,34 +3172,236 @@ class Api {
     }
     final exists = await file.exists();
     final content = exists ? await file.readAsString() : '';
-    final saved = request.url.queryParameters.containsKey('saved');
+    // JSON-embedded into a <script>; <-escape closes the XSS door of a
+    // literal "</script>" inside page content.
+    final initial = jsonEncode({'page': page, 'content': content, 'isNew': !exists})
+        .replaceAll('<', '\\u003c');
 
     return Response(200,
         body: '<!doctype html><html><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width, initial-scale=1">'
             '<title>edit — ${_htmlEscape(page)}</title>'
-            '<style>$_adminCss textarea.editor{width:100%;min-height:60vh;'
-            'font-family:ui-monospace,monospace;font-size:14px;'
-            'line-height:1.5;box-sizing:border-box}</style></head>'
-            '<body><div class="wrap">'
-            '<header class="top"><h1>luma<span class="dot">.</span> '
-            '${_htmlEscape(page)}</h1>'
-            '<nav><a href="/admin/website">← all pages</a></nav></header>'
-            '<div class="card">'
-            '${saved ? '<p class="hint">Saved.</p>' : ''}'
-            '${exists ? '' : '<p class="hint">New page — it will be created on save.</p>'}'
-            '<form method="post" action="/admin/website/${_htmlEscape(page)}">'
-            '<textarea class="editor" name="content" spellcheck="false">'
-            '${_htmlEscape(content)}</textarea>'
-            '<div style="display:flex;gap:8px;margin-top:10px">'
-            '<button type="submit" class="btn">Save</button>'
-            '<button type="submit" class="btn btn-primary" name="publish" '
-            'value="1">Save &amp; publish</button>'
-            '</div></form>'
-            '<pre id="buildlog" style="white-space:pre-wrap"></pre>'
-            '<script>$_wikiBuildScript</script>'
-            '</div></div></body></html>',
+            '<style>$_wikiEditorCss</style></head>'
+            '<body>'
+            '<header class="ed-top">'
+            '<a class="ed-back" href="/admin/website" aria-label="All pages">←</a>'
+            '<h1 class="ed-name">${_htmlEscape(page)}</h1>'
+            '<span id="status" class="ed-status" role="status" aria-live="polite"></span>'
+            '<div class="ed-actions">'
+            '<button id="imgbtn" class="ed-btn" type="button">Image</button>'
+            '<input id="imgfile" type="file" accept="image/*" hidden>'
+            '<button id="savebtn" class="ed-btn" type="button">Save</button>'
+            '<button id="pubbtn" class="ed-btn ed-primary" type="button">'
+            'Save &amp; publish</button>'
+            '</div></header>'
+            '<div class="ed-tabs" role="tablist">'
+            '<button class="ed-tab is-on" data-pane="write" role="tab">Write</button>'
+            '<button class="ed-tab" data-pane="preview" role="tab">Preview</button>'
+            '</div>'
+            '<main class="ed-split">'
+            '<section class="ed-pane" id="pane-write">'
+            '<details class="ed-fm"><summary>Page settings (frontmatter)</summary>'
+            '<textarea id="fm" spellcheck="false" rows="8" '
+            'aria-label="Frontmatter"></textarea></details>'
+            '<textarea id="src" spellcheck="false" '
+            'aria-label="Page content (Markdown)" '
+            'placeholder="Write Markdown here…"></textarea>'
+            '</section>'
+            '<section class="ed-pane" id="pane-preview">'
+            '<iframe id="pv" title="Live preview"></iframe>'
+            '</section>'
+            '</main>'
+            '<script>window.__initial=$initial;</script>'
+            '<script>$_wikiEditorJs</script>'
+            '</body></html>',
         headers: {'Content-Type': 'text/html; charset=utf-8'});
+  }
+
+  // ---- Preview assets: the editor iframe uses the *built site's* own CSS
+  // and fonts so the preview is pixel-identical to wiki.luma-app.cc. ----
+
+  static const _assetTypes = {
+    'css': 'text/css; charset=utf-8',
+    'woff2': 'font/woff2',
+    'woff': 'font/woff',
+    'png': 'image/png',
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'webp': 'image/webp',
+    'gif': 'image/gif',
+    'svg': 'image/svg+xml',
+    'avif': 'image/avif',
+    'ico': 'image/x-icon',
+  };
+
+  static final _assetNameRe = RegExp(r'^[A-Za-z0-9][A-Za-z0-9._-]*$');
+
+  Response _serveFile(File file, String name, {String cache = 'no-store'}) {
+    if (!file.existsSync()) return _error(404, 'not_found', 'Not found.');
+    final ext = name.contains('.') ? name.split('.').last.toLowerCase() : '';
+    final type = _assetTypes[ext];
+    if (type == null) return _error(404, 'not_found', 'Not found.');
+    return Response(200, body: file.openRead(), headers: {
+      'Content-Type': type,
+      'Content-Length': '${file.lengthSync()}',
+      'Cache-Control': cache,
+    });
+  }
+
+  /// All of the built site's stylesheets concatenated, with asset URLs
+  /// rewritten to our authed proxy so fonts/images resolve too.
+  Future<Response> _wikiPreviewCss(Request request) async {
+    final unavailable = _wikiUnavailable();
+    if (unavailable != null) return unavailable;
+    final dir = Directory('${config.wikiDir}/site/_astro');
+    if (!dir.existsSync()) {
+      return _error(404, 'not_found', 'No built site yet — publish once.');
+    }
+    // Use exactly the stylesheets a built wiki page links, in order —
+    // concatenating every page's CSS lets unrelated pages override the
+    // wiki's own rules. Fall back to all of them if the page is missing.
+    var files = <File>[];
+    // An *article* page, not the wiki landing page — they link different CSS
+    // bundles and the editor previews articles.
+    File? sample;
+    final wikiRoot = Directory('${config.wikiDir}/site/wiki');
+    if (wikiRoot.existsSync()) {
+      for (final e in wikiRoot.listSync()..sort((a, b) => a.path.compareTo(b.path))) {
+        if (e is Directory) {
+          final f = File('${e.path}/index.html');
+          if (f.existsSync()) {
+            sample = f;
+            break;
+          }
+        }
+      }
+      sample ??= File('${wikiRoot.path}/index.html');
+    }
+    // Astro inlines the page-specific CSS (prose/wiki styles) as <style>
+    // blocks in the HTML and links only the shared bundles — the preview
+    // needs both.
+    var inline = '';
+    if (sample != null && sample.existsSync()) {
+      final html = sample.readAsStringSync();
+      files = RegExp(r'<link rel="stylesheet" href="/_astro/([^"]+)"')
+          .allMatches(html)
+          .map((m) => File('${dir.path}/${m[1]}'))
+          .where((f) => f.existsSync())
+          .toList();
+      inline = RegExp(r'<style>(.*?)</style>', dotAll: true)
+          .allMatches(html)
+          .map((m) => m[1]!)
+          .join('\n');
+    }
+    if (files.isEmpty) {
+      files = dir
+          .listSync()
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.css'))
+          .toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
+    }
+    final buf = StringBuffer();
+    for (final f in files) {
+      buf.writeln(f.readAsStringSync()
+          .replaceAll('url(/_astro/', 'url(/admin/website/preview/astro/')
+          .replaceAll('url("/_astro/', 'url("/admin/website/preview/astro/')
+          .replaceAll("url('/_astro/", "url('/admin/website/preview/astro/"));
+    }
+    if (inline.isNotEmpty) {
+      // Placeholder keeps the second (broader) rewrite from re-prefixing
+      // URLs the first one already handled.
+      buf.writeln(inline
+          .replaceAll('url(/_astro/', 'url(@astro@')
+          .replaceAll('url(/', 'url(/admin/website/preview/public/')
+          .replaceAll('url(@astro@', 'url(/admin/website/preview/astro/'));
+    }
+    return Response(200, body: buf.toString(), headers: {
+      'Content-Type': 'text/css; charset=utf-8',
+      'Cache-Control': 'private, max-age=300',
+    });
+  }
+
+  Future<Response> _wikiPreviewAstroAsset(Request request) async {
+    final unavailable = _wikiUnavailable();
+    if (unavailable != null) return unavailable;
+    final name = request.url.pathSegments.last;
+    if (!_assetNameRe.hasMatch(name) || name.contains('..')) {
+      return _error(404, 'not_found', 'Not found.');
+    }
+    return _serveFile(File('${config.wikiDir}/site/_astro/$name'), name,
+        cache: 'private, max-age=3600');
+  }
+
+  /// Serves files from the editable source's public/ dir, so images that are
+  /// uploaded but not yet published still show up in the preview.
+  Future<Response> _wikiPreviewPublicAsset(Request request) async {
+    final unavailable = _wikiUnavailable();
+    if (unavailable != null) return unavailable;
+    const prefix = 'admin/website/preview/public/';
+    final rel = request.url.path.startsWith(prefix)
+        ? request.url.path.substring(prefix.length)
+        : '';
+    if (rel.isEmpty ||
+        rel.contains('..') ||
+        !RegExp(r'^[A-Za-z0-9._/-]+$').hasMatch(rel)) {
+      return _error(404, 'not_found', 'Not found.');
+    }
+    final root = '${config.wikiDir}/source/public';
+    final file = File('$root/$rel');
+    if (!file.absolute.path.replaceAll('\\', '/')
+        .startsWith(Directory(root).absolute.path.replaceAll('\\', '/'))) {
+      return _error(404, 'not_found', 'Not found.');
+    }
+    // Fall back to the built site (already-published assets like wiki-bg.jpg).
+    final fallback = File('${config.wikiDir}/site/$rel');
+    return _serveFile(file.existsSync() ? file : fallback, rel.split('/').last);
+  }
+
+  static const _wikiUploadMax = 8 * 1024 * 1024;
+
+  /// Raw-body image upload (no multipart): the filename travels in ?name=,
+  /// the bytes in the body. Saved under source/public/images/uploads/.
+  Future<Response> _adminWebsiteUpload(Request request) async {
+    final unavailable = _wikiUnavailable();
+    if (unavailable != null) return unavailable;
+    if (!_sameOrigin(request)) {
+      return _error(403, 'bad_origin', 'Cross-origin request rejected.');
+    }
+    final rawName = request.url.queryParameters['name'] ?? '';
+    final dot = rawName.lastIndexOf('.');
+    if (dot <= 0) return _error(400, 'bad_name', 'Filename needs an extension.');
+    final ext = rawName.substring(dot + 1).toLowerCase();
+    if (!{'png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'avif'}.contains(ext)) {
+      return _error(400, 'bad_type',
+          'Only png, jpg, webp, gif, svg, and avif images are allowed.');
+    }
+    var stem = rawName
+        .substring(0, dot)
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9-]+'), '-')
+        .replaceAll(RegExp(r'-+'), '-')
+        .replaceAll(RegExp(r'^-|-$'), '');
+    if (stem.isEmpty) stem = 'image';
+
+    final bytes = BytesBuilder();
+    await for (final chunk in request.read()) {
+      bytes.add(chunk);
+      if (bytes.length > _wikiUploadMax) {
+        return _error(413, 'too_large', 'Image too large (max 8 MB).');
+      }
+    }
+    if (bytes.length == 0) return _error(400, 'empty', 'Empty upload.');
+
+    final dir = Directory('${config.wikiDir}/source/public/images/uploads');
+    await dir.create(recursive: true);
+    var name = '$stem.$ext';
+    var n = 1;
+    while (File('${dir.path}/$name').existsSync()) {
+      name = '$stem-${++n}.$ext';
+    }
+    await File('${dir.path}/$name').writeAsBytes(bytes.takeBytes(), flush: true);
+    return _json(200, {'url': '/images/uploads/$name'});
   }
 
   Future<Response> _adminWebsiteSave(Request request) async {
@@ -3304,6 +3514,403 @@ class Api {
   });
   // If a build is already running when the page loads, start polling.
   poll(); timer = setInterval(poll, 2000);
+})();
+''';
+
+  /// Chrome for the split-view page editor. Dark, warm-neutral, amber accent
+  /// to sit visually alongside the wiki itself; the preview pane's inside is
+  /// styled entirely by the built site's own CSS.
+  static const _wikiEditorCss = '''
+:root{--bg:#131110;--bg2:#1b1917;--line:#2c2825;--tx:#ece7e1;--tx2:#a89f94;
+--accent:#e8a44e;--accent-tx:#241a0c;--ok:#8fc98f;--err:#e07e7e;--focus:#7db3e8}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--tx);
+font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;
+display:flex;flex-direction:column}
+.ed-top{display:flex;align-items:center;gap:12px;padding:8px 14px;
+background:var(--bg2);border-bottom:1px solid var(--line);flex:0 0 auto}
+.ed-back{color:var(--tx2);text-decoration:none;font-size:19px;padding:8px 10px;
+border-radius:8px;min-width:40px;text-align:center}
+.ed-back:hover{background:var(--line);color:var(--tx)}
+.ed-name{font-size:15px;font-weight:600;margin:0;white-space:nowrap;
+overflow:hidden;text-overflow:ellipsis}
+.ed-status{margin-left:auto;font-size:13px;color:var(--tx2);white-space:nowrap}
+.ed-status.ok{color:var(--ok)}.ed-status.err{color:var(--err)}
+.ed-actions{display:flex;gap:8px}
+.ed-btn{min-height:40px;padding:0 16px;border-radius:9px;cursor:pointer;
+border:1px solid var(--line);background:var(--bg);color:var(--tx);
+font:inherit;font-weight:500}
+.ed-btn:hover{background:var(--line)}
+.ed-btn:focus-visible,.ed-tab:focus-visible,.ed-back:focus-visible{
+outline:2px solid var(--focus);outline-offset:2px}
+.ed-btn:disabled{opacity:.45;cursor:default}
+.ed-primary{background:var(--accent);border-color:var(--accent);
+color:var(--accent-tx);font-weight:600}
+.ed-primary:hover{background:#f2b465}
+.ed-tabs{display:none;flex:0 0 auto;border-bottom:1px solid var(--line)}
+.ed-tab{flex:1;min-height:44px;background:none;border:0;color:var(--tx2);
+font:inherit;cursor:pointer;border-bottom:2px solid transparent}
+.ed-tab.is-on{color:var(--tx);border-bottom-color:var(--accent)}
+.ed-split{flex:1;display:grid;grid-template-columns:1fr 1fr;min-height:0}
+.ed-pane{display:flex;flex-direction:column;min-width:0;min-height:0}
+#pane-write{border-right:1px solid var(--line)}
+.ed-fm{flex:0 0 auto;border-bottom:1px solid var(--line);background:var(--bg2)}
+.ed-fm summary{padding:9px 14px;font-size:13px;color:var(--tx2);cursor:pointer;
+user-select:none}
+.ed-fm summary:hover{color:var(--tx)}
+.ed-fm textarea{width:100%;border:0;background:var(--bg2);color:var(--tx);
+resize:vertical;padding:4px 14px 12px;
+font:13px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace}
+#src{flex:1;width:100%;border:0;resize:none;background:var(--bg);
+color:var(--tx);padding:18px 16px 40vh;
+font:14.5px/1.65 ui-monospace,SFMono-Regular,Consolas,monospace}
+#src:focus,.ed-fm textarea:focus{outline:none}
+#src.dragover{box-shadow:inset 0 0 0 2px var(--accent)}
+#pv{flex:1;width:100%;border:0;background:#161311}
+@media(max-width:900px){
+.ed-tabs{display:flex}
+.ed-split{grid-template-columns:1fr}
+.ed-pane{display:none}
+.ed-pane.is-on{display:flex}
+#pane-write{border-right:0}
+.ed-name{display:none}
+}
+@media(prefers-reduced-motion:no-preference){
+.ed-btn{transition:background .15s ease-out}
+}''';
+
+  /// The whole client side of the editor: a small Markdown renderer, the
+  /// live preview iframe (styled by the site's real CSS), image upload
+  /// (button, paste, or drag a file in), and drag-to-reposition for image
+  /// blocks inside the preview.
+  static const _wikiEditorJs = r'''
+(function () {
+'use strict';
+var page = window.__initial.page;
+var src = document.getElementById('src');
+var fm = document.getElementById('fm');
+var pv = document.getElementById('pv');
+var statusEl = document.getElementById('status');
+var dirty = false, saving = false, pollTimer = null;
+
+/* ---------- frontmatter split ---------- */
+function splitFM(text) {
+  if (text.slice(0, 4) === '---\n' || text === '---') {
+    var end = text.indexOf('\n---', 3);
+    if (end > 0) {
+      var rest = text.slice(end + 4);
+      if (rest[0] === '\n') rest = rest.slice(1);
+      return { fm: text.slice(4, end), body: rest };
+    }
+  }
+  return { fm: '', body: text };
+}
+var parts = splitFM(window.__initial.content);
+fm.value = parts.fm;
+src.value = parts.body;
+if (!parts.fm && window.__initial.isNew) {
+  fm.value = 'title: New page\ndescription: ';
+  document.querySelector('.ed-fm').open = true;
+}
+
+/* ---------- tiny markdown renderer (block-level, for preview only) ------ */
+function esc(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function mapSrc(u) {
+  // site-absolute assets go through the authed preview proxy so unpublished
+  // uploads render too
+  return u.charAt(0) === '/' ? '/admin/website/preview/public' + u : u;
+}
+function inline(s) {
+  s = esc(s);
+  s = s.replace(/`([^`]+)`/g, function (_, c) { return '<code>' + c + '</code>'; });
+  s = s.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, function (_, alt, u) {
+    return '<img src="' + mapSrc(u) + '" alt="' + alt + '" style="max-width:100%">';
+  });
+  s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2">$1</a>');
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+  return s;
+}
+function blockHtml(b) {
+  var m;
+  if ((m = b.match(/^```(\w*)\n?([\s\S]*?)\n?```\s*$/)))
+    return { h: '<pre><code>' + esc(m[2]) + '</code></pre>' };
+  if ((m = b.match(/^(#{1,6})\s+(.*)$/m))) {
+    var lvl = m[1].length; // same mapping as the site's markdown renderer
+    return { h: '<h' + lvl + '>' + inline(m[2]) + '</h' + lvl + '>' };
+  }
+  if (/^(-{3,}|\*{3,})\s*$/.test(b)) return { h: '<hr>' };
+  var lines = b.split('\n');
+  if (lines.every(function (l) { return /^\s*([-*]|\d+\.)\s+/.test(l); })) {
+    var ordered = /^\s*\d+\./.test(lines[0]);
+    var items = lines.map(function (l) {
+      return '<li>' + inline(l.replace(/^\s*([-*]|\d+\.)\s+/, '')) + '</li>';
+    }).join('');
+    return { h: (ordered ? '<ol>' : '<ul>') + items + (ordered ? '</ol>' : '</ul>') };
+  }
+  if (lines.every(function (l) { return /^\s*>/.test(l); })) {
+    return { h: '<blockquote><p>' + lines.map(function (l) {
+      return inline(l.replace(/^\s*>\s?/, ''));
+    }).join('<br>') + '</p></blockquote>' };
+  }
+  if (lines.length > 1 && lines[0].indexOf('|') >= 0 &&
+      /^[\s|:-]+$/.test(lines[1] || '')) {
+    var row = function (l, tag) {
+      var cells = l.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|');
+      return '<tr>' + cells.map(function (c) {
+        return '<' + tag + '>' + inline(c.trim()) + '</' + tag + '>';
+      }).join('') + '</tr>';
+    };
+    return { h: '<table><thead>' + row(lines[0], 'th') + '</thead><tbody>' +
+      lines.slice(2).map(function (l) { return row(l, 'td'); }).join('') +
+      '</tbody></table>' };
+  }
+  var onlyImg = b.match(/^\s*!\[([^\]]*)\]\(([^)\s]+)\)\s*$/);
+  if (onlyImg) return { h: '<p>' + inline(b.trim()) + '</p>', img: true };
+  return { h: '<p>' + inline(lines.join('\n')) + '</p>' };
+}
+function blocksOf(body) {
+  var out = [], cur = [], inFence = false;
+  body.split('\n').forEach(function (line) {
+    if (/^```/.test(line)) inFence = !inFence;
+    if (!inFence && /^\s*$/.test(line)) {
+      if (cur.length) { out.push(cur.join('\n')); cur = []; }
+    } else {
+      cur.push(line);
+    }
+  });
+  if (cur.length) out.push(cur.join('\n'));
+  return out;
+}
+function titleOf() {
+  var m = fm.value.match(/^title:\s*["']?(.+?)["']?\s*$/m);
+  return m ? m[1] : page;
+}
+
+/* ---------- preview iframe (uses the built site's real CSS) ---------- */
+pv.srcdoc = '<!doctype html><html data-theme="wiki"><head>' +
+  '<meta charset="utf-8">' +
+  '<link rel="stylesheet" href="/admin/website/preview/page.css">' +
+  '<style>' +
+  'html{scrollbar-color:#3a352f transparent}' +
+  '.wiki-shell{display:block!important;max-width:900px;margin:0 auto}' +
+  'body{padding:2rem 1.25rem 40vh}' +
+  '.blk.drag-img{cursor:grab}' +
+  '.blk.drag-img:hover{outline:2px dashed rgba(232,164,78,.55);outline-offset:4px;border-radius:6px}' +
+  '.blk.dragging{opacity:.35}' +
+  '.blk.drop-before{box-shadow:0 -3px 0 0 #e8a44e}' +
+  '.blk.drop-after{box-shadow:0 3px 0 0 #e8a44e}' +
+  '.prose:empty:before{content:"Start typing on the left…";color:#8d8375}' +
+  '</style></head><body>' +
+  '<main id="main"><div class="wiki-shell"><article class="wiki-card">' +
+  '<div class="wiki-title-row"><h1 class="wiki-title" id="_top"></h1></div>' +
+  '<div class="prose" style="margin-top:2rem" id="prose"></div>' +
+  '</article></div></main></body></html>';
+
+var doc = null, prose = null, blocks = blocksOf(src.value);
+
+function render() {
+  if (!prose) return;
+  blocks = blocksOf(src.value);
+  doc.querySelector('.wiki-title').textContent = titleOf();
+  prose.innerHTML = blocks.map(function (b, i) {
+    var r = blockHtml(b);
+    return '<div class="blk' + (r.img ? ' drag-img' : '') + '" data-i="' + i +
+      '"' + (r.img ? ' draggable="true"' : '') + '>' + r.h + '</div>';
+  }).join('');
+}
+
+/* ---------- drag to reposition image blocks ---------- */
+var dragFrom = -1;
+function clearDrop() {
+  prose.querySelectorAll('.drop-before,.drop-after').forEach(function (el) {
+    el.classList.remove('drop-before', 'drop-after');
+  });
+}
+function moveBlock(from, to) {
+  if (from < 0 || from === to || from + 1 === to) return;
+  var b = blocks.splice(from, 1)[0];
+  blocks.splice(from < to ? to - 1 : to, 0, b);
+  src.value = blocks.join('\n\n');
+  markDirty();
+  render();
+}
+function bindPreview() {
+  doc = pv.contentDocument;
+  prose = doc.getElementById('prose');
+  render();
+  doc.addEventListener('dragstart', function (e) {
+    var blk = e.target.closest && e.target.closest('.blk.drag-img');
+    if (!blk) return;
+    dragFrom = +blk.dataset.i;
+    blk.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', 'blk'); } catch (_) {}
+  });
+  doc.addEventListener('dragend', function () {
+    dragFrom = -1; clearDrop();
+    prose.querySelectorAll('.dragging').forEach(function (el) {
+      el.classList.remove('dragging');
+    });
+  });
+  doc.addEventListener('dragover', function (e) {
+    e.preventDefault(); // allow drop (both block moves and OS files)
+    var blk = e.target.closest && e.target.closest('.blk');
+    clearDrop();
+    if (!blk) return;
+    var r = blk.getBoundingClientRect();
+    blk.classList.add(e.clientY < r.top + r.height / 2 ? 'drop-before' : 'drop-after');
+  });
+  doc.addEventListener('drop', function (e) {
+    e.preventDefault();
+    var blk = e.target.closest && e.target.closest('.blk');
+    var idx = blocks.length;
+    if (blk) {
+      var r = blk.getBoundingClientRect();
+      idx = +blk.dataset.i + (e.clientY < r.top + r.height / 2 ? 0 : 1);
+    }
+    clearDrop();
+    if (e.dataTransfer.files && e.dataTransfer.files.length) {
+      uploadFiles(e.dataTransfer.files, idx);
+    } else if (dragFrom >= 0) {
+      moveBlock(dragFrom, idx);
+    }
+    dragFrom = -1;
+  });
+}
+pv.addEventListener('load', bindPreview);
+
+/* ---------- editing ---------- */
+var renderT = null;
+function markDirty() { dirty = true; setStatus(''); }
+src.addEventListener('input', function () {
+  markDirty();
+  clearTimeout(renderT); renderT = setTimeout(render, 120);
+});
+fm.addEventListener('input', function () {
+  markDirty();
+  clearTimeout(renderT); renderT = setTimeout(render, 120);
+});
+// rough scroll sync: keep preview at the same relative position
+src.addEventListener('scroll', function () {
+  if (!doc) return;
+  var p = src.scrollTop / Math.max(1, src.scrollHeight - src.clientHeight);
+  var d = doc.scrollingElement;
+  d.scrollTop = p * Math.max(0, d.scrollHeight - d.clientHeight);
+});
+
+/* ---------- image upload ---------- */
+function setStatus(msg, cls) {
+  statusEl.textContent = msg;
+  statusEl.className = 'ed-status' + (cls ? ' ' + cls : '');
+}
+function insertBlockAt(text, idx) {
+  blocks = blocksOf(src.value);
+  if (idx == null || idx > blocks.length) idx = blocks.length;
+  blocks.splice(idx, 0, text);
+  src.value = blocks.join('\n\n');
+  markDirty();
+  render();
+}
+function uploadFiles(files, atIdx) {
+  Array.prototype.forEach.call(files, function (file) {
+    if (!/^image\//.test(file.type)) return;
+    setStatus('Uploading ' + file.name + '…');
+    fetch('/admin/website/upload?name=' + encodeURIComponent(file.name), {
+      method: 'POST', body: file, credentials: 'same-origin'
+    }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.j.message || 'upload failed');
+        insertBlockAt('![' + file.name.replace(/\.[^.]+$/, '') + '](' + res.j.url + ')', atIdx);
+        setStatus('Image added — drag it in the preview to move it', 'ok');
+      })
+      .catch(function (e) { setStatus('Upload failed: ' + e.message, 'err'); });
+  });
+}
+document.getElementById('imgbtn').addEventListener('click', function () {
+  document.getElementById('imgfile').click();
+});
+document.getElementById('imgfile').addEventListener('change', function () {
+  if (this.files.length) uploadFiles(this.files, null);
+  this.value = '';
+});
+src.addEventListener('dragover', function (e) {
+  e.preventDefault(); src.classList.add('dragover');
+});
+src.addEventListener('dragleave', function () { src.classList.remove('dragover'); });
+src.addEventListener('drop', function (e) {
+  e.preventDefault(); src.classList.remove('dragover');
+  if (e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files, null);
+});
+src.addEventListener('paste', function (e) {
+  var files = e.clipboardData && e.clipboardData.files;
+  if (files && files.length) { e.preventDefault(); uploadFiles(files, null); }
+});
+
+/* ---------- save & publish ---------- */
+function fullContent() {
+  var f = fm.value.replace(/\s+$/, '');
+  var b = src.value.replace(/\s+$/, '') + '\n';
+  return f ? '---\n' + f + '\n---\n\n' + b : b;
+}
+function save(publish) {
+  if (saving) return;
+  saving = true;
+  var btn = document.getElementById(publish ? 'pubbtn' : 'savebtn');
+  btn.disabled = true;
+  setStatus(publish ? 'Saving…' : 'Saving…');
+  var body = new URLSearchParams();
+  body.set('content', fullContent());
+  if (publish) body.set('publish', '1');
+  fetch(location.pathname, {
+    method: 'POST', body: body, credentials: 'same-origin', redirect: 'manual'
+  }).then(function (r) {
+    if (r.status >= 400) throw new Error('HTTP ' + r.status);
+    dirty = false;
+    if (publish) { setStatus('Building…'); pollBuild(); }
+    else setStatus('Saved ✓', 'ok');
+  }).catch(function (e) {
+    setStatus('Save failed: ' + e.message, 'err');
+  }).finally(function () { saving = false; btn.disabled = false; });
+}
+function pollBuild() {
+  clearInterval(pollTimer);
+  pollTimer = setInterval(function () {
+    fetch('/admin/website/build/status', { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (s) {
+        var st = (s.status && s.status.state) || '';
+        if (s.pending || st === 'building') { setStatus('Building…'); return; }
+        clearInterval(pollTimer);
+        if (st === 'ok') setStatus('Published ✓ — live on the wiki', 'ok');
+        else if (st === 'error') setStatus('Build failed — check /admin/website log', 'err');
+      }).catch(function () {});
+  }, 2000);
+}
+document.getElementById('savebtn').addEventListener('click', function () { save(false); });
+document.getElementById('pubbtn').addEventListener('click', function () { save(true); });
+document.addEventListener('keydown', function (e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); save(false); }
+});
+window.addEventListener('beforeunload', function (e) {
+  if (dirty) { e.preventDefault(); e.returnValue = ''; }
+});
+
+/* ---------- mobile tabs ---------- */
+document.querySelectorAll('.ed-tab').forEach(function (t) {
+  t.addEventListener('click', function () {
+    document.querySelectorAll('.ed-tab').forEach(function (x) {
+      x.classList.toggle('is-on', x === t);
+    });
+    document.querySelectorAll('.ed-pane').forEach(function (p) {
+      p.classList.toggle('is-on', p.id === 'pane-' + t.dataset.pane);
+    });
+  });
+});
+if (window.innerWidth <= 900) document.getElementById('pane-write').classList.add('is-on');
 })();
 ''';
 
