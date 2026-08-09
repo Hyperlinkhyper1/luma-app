@@ -3161,30 +3161,40 @@ class Api {
     final sections = byCollection.entries.map((entry) {
       final collection = entry.key;
       final name = collectionNames[collection] ?? collection;
-      final rows = entry.value
-          .map((p) => '<tr><td><a href="/admin/website/${_htmlEscape(p)}">'
-              '${_htmlEscape(p.contains('/') ? p.substring(p.indexOf('/') + 1) : p)}'
-              '</a></td></tr>')
-          .join();
+      final tree = _WikiTreeNode();
+      for (final p in entry.value) {
+        final rel = p.contains('/') ? p.substring(p.indexOf('/') + 1) : p;
+        var node = tree;
+        for (final segment in rel.split('/')) {
+          node = node.children.putIfAbsent(segment, () => _WikiTreeNode());
+        }
+        node.pagePath = p;
+      }
       final newDevlogBtn = collection == 'blog'
           ? '<a href="/admin/website/new-devlog" class="btn btn-primary btn-sm">'
               '+ New devlog</a>'
           : '';
+      final newPageHint = collection == 'wiki'
+          ? '<p class="hint tree-hint">New page: open '
+              '<code>/admin/website/wiki/&lt;name&gt;</code> — nest it under an '
+              'existing page the same way, e.g. '
+              '<code>wiki/simply-cozy/&lt;name&gt;</code>.</p>'
+          : '';
       return '<div class="card table-card">'
-          '<h2 style="display:flex;align-items:center;justify-content:space-between">'
-          '<span>$name '
-          '<span class="hint" style="display:inline;margin:0">'
-          '(${entry.value.length})</span></span>'
+          '<div class="tree-head">'
+          '<h2><span>$name</span><span class="count-pill">${entry.value.length}</span></h2>'
           '$newDevlogBtn'
-          '</h2>'
-          '<table><tbody>$rows</tbody></table>'
+          '</div>'
+          '<div class="tree" role="tree">${_renderWikiTree(tree.children)}</div>'
+          '$newPageHint'
           '</div>';
     }).join();
 
     return Response(200,
         body: '<!doctype html><html><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width, initial-scale=1">'
-            '<title>luma admin — website</title><style>$_adminCss</style></head>'
+            '<title>luma admin — website</title>'
+            '<style>$_adminCss$_wikiTreeCss</style></head>'
             '<body><div class="wrap">'
             '<header class="top"><h1>luma<span class="dot">.</span> website</h1>'
             '<span class="sub">page editor</span>'
@@ -3215,6 +3225,86 @@ class Api {
             '</div></body></html>',
         headers: {'Content-Type': 'text/html; charset=utf-8'});
   }
+
+  /// Renders one level of the page tree. A node with children becomes an
+  /// expandable `<details>` (native disclosure semantics — keyboard and
+  /// screen-reader accessible with zero extra JS); a childless node is
+  /// always a real page (only created while walking toward one), so it
+  /// renders as a plain link.
+  String _renderWikiTree(Map<String, _WikiTreeNode> nodes, {int depth = 0}) {
+    final keys = nodes.keys.toList()..sort();
+    final buf = StringBuffer();
+    for (final key in keys) {
+      final node = nodes[key]!;
+      final label = _htmlEscape(key);
+      final editLink = node.pagePath != null
+          ? '<a class="tree-edit" href="/admin/website/${_htmlEscape(node.pagePath!)}">Edit</a>'
+          : '';
+      if (node.children.isNotEmpty) {
+        buf.write('<details class="tree-node">'
+            '<summary><span class="tree-toggle" aria-hidden="true"></span>'
+            '<span class="tree-label">$label</span></summary>'
+            '<div class="tree-children">'
+            '${node.pagePath != null ? '<div class="tree-row tree-self">'
+                '<a href="/admin/website/${_htmlEscape(node.pagePath!)}">'
+                'This page<span class="tree-self-name"> — $label</span></a></div>' : ''}'
+            '${_renderWikiTree(node.children, depth: depth + 1)}'
+            '</div></details>');
+      } else {
+        buf.write('<div class="tree-row tree-leaf">'
+            '<a href="/admin/website/${_htmlEscape(node.pagePath!)}">$label</a>'
+            '$editLink'
+            '</div>');
+      }
+    }
+    return buf.toString();
+  }
+
+  static const _wikiTreeCss = r'''
+.tree-head{display:flex;align-items:center;justify-content:space-between;
+gap:12px;padding:6px 6px 2px;margin-bottom:2px}
+.tree-head h2{display:flex;align-items:center;gap:8px;margin:0;padding:0}
+.count-pill{display:inline-flex;align-items:center;justify-content:center;
+min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:#241e3c;
+color:#a89fd6;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums}
+.tree{padding:2px 6px 8px}
+.tree-row{display:flex;align-items:center;justify-content:space-between;gap:10px;
+min-height:40px;padding:0 10px 0 30px;border-radius:8px}
+.tree-row:hover{background:#1a1530}
+.tree-row a{color:#d3cef0;text-decoration:none;font-size:13.5px;
+padding:8px 0;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;
+white-space:nowrap}
+.tree-row a:hover{color:#ece8f7;text-decoration:underline}
+.tree-row a:focus-visible{outline:2px solid #8a7ee0;outline-offset:2px;
+border-radius:4px}
+.tree-edit{flex:none!important;font-size:11px!important;font-weight:600;
+color:#8d86a8!important;text-decoration:none!important;padding:4px 10px!important;
+border-radius:999px;border:1px solid #262038;opacity:0;transition:opacity .12s}
+.tree-row:hover .tree-edit,.tree-row:focus-within .tree-edit{opacity:1}
+.tree-edit:hover{border-color:#463d6b;color:#ece8f7!important}
+.tree-node{position:relative}
+.tree-node > summary{list-style:none;display:flex;align-items:center;gap:8px;
+min-height:40px;padding:0 10px;border-radius:8px;cursor:pointer;user-select:none;
+font-size:13.5px;font-weight:600;color:#c7c1e6}
+.tree-node > summary::-webkit-details-marker{display:none}
+.tree-node > summary:hover{background:#1a1530}
+.tree-node > summary:focus-visible{outline:2px solid #8a7ee0;outline-offset:-2px}
+.tree-toggle{flex:none;width:16px;height:16px;position:relative}
+.tree-toggle::before{content:'';position:absolute;left:3px;top:6px;
+border:4px solid transparent;border-left-color:#7f7898;border-right:none;
+transition:transform .15s var(--ease-out,ease)}
+.tree-node[open] > summary .tree-toggle::before{transform:rotate(90deg)
+translate(2px,-2px)}
+.tree-children{position:relative;margin-left:19px;padding-left:12px;
+border-left:1px solid #262038}
+.tree-children .tree-row,.tree-children .tree-node>summary{padding-left:11px}
+.tree-self{opacity:.85}
+.tree-self a{font-style:italic}
+.tree-self-name{font-style:normal}
+.tree-hint{margin:8px 6px 0;padding-top:10px;border-top:1px solid #1d1830}
+.tree-hint code{background:#1a1530;border:1px solid #262038;border-radius:5px;
+padding:1px 6px;font-size:11.5px;color:#c7c1e6}
+''';
 
   /// Page name from the request path, e.g. /admin/website/wiki/simply-cozy
   /// → "wiki/simply-cozy". The single-arg [_requireAdmin] wrapper hides the
@@ -5208,6 +5298,15 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
   static Response _error(int status, String code, String message,
           {Map<String, dynamic>? extra}) =>
       _json(status, {'error': code, 'message': message, ...?extra});
+}
+
+/// One node of the /admin/website page tree: a path segment that either is
+/// an actual page ([pagePath] set), a folder grouping deeper pages
+/// ([children] non-empty), or both — e.g. `wiki/simply-cozy` existing
+/// alongside `wiki/simply-cozy/sub-page`.
+class _WikiTreeNode {
+  final Map<String, _WikiTreeNode> children = {};
+  String? pagePath;
 }
 
 /// Result type for [Api._parseSharedEventBody]: either a validated set of
