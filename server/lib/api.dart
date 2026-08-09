@@ -3789,6 +3789,33 @@ border-radius:999px;padding:2px 8px}
     return Response.found('/admin/website/blog/$slug?saved=1');
   }
 
+  /// A frontmatter line like `description:` with nothing after the colon
+  /// parses as YAML `null` — which a schema field like
+  /// `z.string().optional()` rejects (optional allows the key to be
+  /// *missing*, not present-but-null), and fails the whole site build with
+  /// an opaque schema error. Dropping such lines makes the key genuinely
+  /// absent instead, which every `.optional()` field accepts. Only drops a
+  /// line when the next line isn't more indented — a real block sequence
+  /// (`links:` followed by `  - ...`) is left alone.
+  static String _dropEmptyFrontmatterKeys(String content) {
+    if (!content.startsWith('---\n')) return content;
+    final close = content.indexOf('\n---', 4);
+    if (close < 0) return content;
+    final lines = content.substring(4, close).split('\n');
+    final kept = <String>[];
+    for (var i = 0; i < lines.length; i++) {
+      final line = lines[i];
+      if (RegExp(r'^[A-Za-z0-9_-]+:\s*$').hasMatch(line)) {
+        final next = i + 1 < lines.length ? lines[i + 1] : '';
+        final isBlockContinuation =
+            next.isNotEmpty && RegExp(r'^\s').hasMatch(next);
+        if (!isBlockContinuation) continue;
+      }
+      kept.add(line);
+    }
+    return '---\n${kept.join('\n')}${content.substring(close)}';
+  }
+
   Future<Response> _adminWebsiteSave(Request request) async {
     final unavailable = _wikiUnavailable();
     if (unavailable != null) return unavailable;
@@ -3814,7 +3841,9 @@ border-radius:999px;padding:2px 8px}
     await file.parent.create(recursive: true);
     // Write-then-rename so the builder never sees a half-written file.
     final tmp = File('${file.path}.tmp');
-    await tmp.writeAsString(content.replaceAll('\r\n', '\n'), flush: true);
+    await tmp.writeAsString(
+        _dropEmptyFrontmatterKeys(content.replaceAll('\r\n', '\n')),
+        flush: true);
     await tmp.rename(file.path);
 
     if (form['publish'] == '1') {
