@@ -6,6 +6,7 @@ import '../../../../account/plan_selection_page.dart';
 import '../../../../app/widgets.dart';
 import '../../../../settings/settings_scope.dart';
 import '../../../../theme/luma_theme.dart';
+import 'gallery_album_card.dart';
 import 'gallery_categories.dart';
 import 'gallery_map_page.dart';
 import 'gallery_media.dart';
@@ -16,9 +17,9 @@ import 'gallery_source.dart';
 import 'gallery_tile.dart';
 import 'gallery_viewer_page.dart';
 
-/// Everything on this device, in one grid. The tab strip holds the five fixed
-/// categories, then a tab per folder the library actually has, then — on Nova
-/// — whatever the on-device models have made of the photos.
+/// The Gallery plugin. Opens on the albums screen — All, the camera roll,
+/// screenshots, GIFs, then a card per folder, then the smart albums on Nova —
+/// and drills into one album's grid from there.
 class GalleryPage extends StatefulWidget {
   const GalleryPage({super.key});
 
@@ -27,14 +28,16 @@ class GalleryPage extends StatefulWidget {
 }
 
 class _GalleryPageState extends State<GalleryPage> {
-  /// Selected tab, held as an id rather than an index: folder tabs come and
-  /// go with a rescan, and smart tabs reorder as the models catch up.
-  String _selected = GalleryCategoryIds.all;
+  /// The open album, or null on the albums screen. Held as an id rather than
+  /// an object: folder albums come and go with a rescan, and smart albums
+  /// grow as the models catch up.
+  String? _openAlbum;
 
   bool _started = false;
 
-  /// The pill non-Nova devices see in place of the smart tabs.
+  /// The card non-Nova devices see in place of the smart albums.
   static const _smartTeaserId = 'smart-teaser';
+  static const _smartPrefix = 'smart:';
 
   @override
   void didChangeDependencies() {
@@ -64,100 +67,58 @@ class _GalleryPageState extends State<GalleryPage> {
 
   @override
   Widget build(BuildContext context) {
-    final luma = context.luma;
     final repo = GalleryScope.of(context);
     final isNova = SettingsScope.of(context).selectedPlanId == 'nova';
-
-    final categories = repo.categories;
-    final smartGroups = isNova && repo.status == GalleryStatus.ready
-        ? repo.smartGroups()
-        : const <GallerySmartGroup>[];
-
-    final tabs = <_Tab>[
-      for (final category in categories)
-        _Tab(id: category.id, label: category.label, count: category.count),
-      for (final group in smartGroups)
-        _Tab(
-          id: 'smart:${group.id}',
-          label: '✦ ${group.label}',
-          count: group.count,
-          smart: true,
-        ),
-      if (!isNova && repo.status == GalleryStatus.ready)
-        const _Tab(id: _smartTeaserId, label: '✦ Smart', count: 0, smart: true),
-    ];
-
-    final selectedIndex = tabs.indexWhere((t) => t.id == _selected);
-    final activeIndex = selectedIndex < 0 ? 0 : selectedIndex;
+    final open = _openAlbum;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _Header(
-            repository: repo,
-            subtitle: _subtitleFor(repo, tabs.isEmpty ? null : tabs[activeIndex]),
-            onAddFolder: repo.supportsCustomFolders
-                ? () => _addFolder(repo)
-                : null,
-          ),
-          if (tabs.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-              child: LumaSegmentedTabs(
-                tabs: [for (final tab in tabs) tab.label],
-                selectedIndex: activeIndex,
-                scrollable: true,
-                onSelect: (index) =>
-                    setState(() => _selected = tabs[index].id),
-              ),
-            ),
-          if (repo.access == GalleryAccess.limited && repo.canPresentPicker)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-              child: _LimitedAccessNote(onSelectMore: repo.presentPicker),
-            ),
-          if (repo.isAnalysing)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-              child: _ProgressNote(
-                label: 'Sorting photos into smart categories — '
-                    '${repo.analysedCount} done',
-              ),
-            ),
-          Expanded(
-            child: _body(
-              context,
-              repo,
-              tabs.isEmpty ? null : tabs[activeIndex],
-              smartGroups,
-              isNova,
-              luma,
-            ),
-          ),
-        ],
-      ),
+      body: open == null
+          ? _albumsScreen(context, repo, isNova)
+          : _albumScreen(context, repo, isNova, open),
     );
   }
 
-  String? _subtitleFor(GalleryRepository repo, _Tab? tab) {
-    if (repo.status == GalleryStatus.scanning) return 'Reading your library…';
-    if (repo.status != GalleryStatus.ready) return null;
-    if (tab == null) return null;
-    final count = tab.id == _smartTeaserId ? repo.items.length : tab.count;
-    final noun = count == 1 ? 'item' : 'items';
-    if (repo.isLocating) {
-      return '$count $noun · reading locations';
-    }
-    return '$count $noun';
-  }
+  // ---------------------------------------------------------------- albums
 
-  Widget _body(
+  Widget _albumsScreen(
     BuildContext context,
     GalleryRepository repo,
-    _Tab? tab,
-    List<GallerySmartGroup> smartGroups,
+    bool isNova,
+  ) {
+    final luma = context.luma;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _Header(
+          title: 'Gallery',
+          subtitle: _librarySubtitle(repo),
+          repository: repo,
+          onAddFolder:
+              repo.supportsCustomFolders ? () => _addFolder(repo) : null,
+        ),
+        if (repo.access == GalleryAccess.limited && repo.canPresentPicker)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+            child: _LimitedAccessNote(onSelectMore: repo.presentPicker),
+          ),
+        if (repo.isAnalysing)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+            child: _ProgressNote(
+              label: 'Sorting photos into smart albums — '
+                  '${repo.analysedCount} done',
+            ),
+          ),
+        Expanded(child: _albumsBody(context, repo, isNova, luma)),
+      ],
+    );
+  }
+
+  Widget _albumsBody(
+    BuildContext context,
+    GalleryRepository repo,
     bool isNova,
     LumaPalette luma,
   ) {
@@ -165,58 +126,14 @@ class _GalleryPageState extends State<GalleryPage> {
       case GalleryStatus.idle:
       case GalleryStatus.askingAccess:
       case GalleryStatus.scanning:
-        return Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(color: luma.accent, strokeWidth: 2.5),
-              const SizedBox(height: 16),
-              Text(
-                repo.status == GalleryStatus.askingAccess
-                    ? 'Waiting for permission…'
-                    : 'Finding your photos and videos…',
-                style: TextStyle(color: luma.textSecondary, fontSize: 13),
-              ),
-            ],
-          ),
+        return _Busy(
+          label: repo.status == GalleryStatus.askingAccess
+              ? 'Waiting for permission…'
+              : 'Finding your photos and videos…',
         );
 
       case GalleryStatus.noAccess:
-        return Padding(
-          padding: const EdgeInsets.all(24),
-          child: LumaEmptyState(
-            icon: Icons.no_photography_rounded,
-            title: repo.supportsCustomFolders
-                ? 'No picture folders found'
-                : 'Gallery needs access to your photos',
-            subtitle: repo.supportsCustomFolders
-                ? 'Nothing was found in Pictures, Videos or Downloads. Point '
-                    'the gallery at a folder and it will scan that instead.'
-                : 'Photos and videos stay on this device — the gallery only '
-                    'reads them to show them here.',
-            action: repo.supportsCustomFolders
-                ? LumaPrimaryButton(
-                    label: 'Add a folder',
-                    icon: Icons.create_new_folder_rounded,
-                    onTap: () => _addFolder(repo),
-                  )
-                : Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      LumaPrimaryButton(
-                        label: 'Allow access',
-                        icon: Icons.lock_open_rounded,
-                        onTap: () => repo.initialise(force: true),
-                      ),
-                      const SizedBox(width: 8),
-                      LumaGhostButton(
-                        label: 'Open settings',
-                        onTap: repo.openSystemSettings,
-                      ),
-                    ],
-                  ),
-          ),
-        );
+        return _NoAccess(repo: repo, onAddFolder: () => _addFolder(repo));
 
       case GalleryStatus.empty:
         return Padding(
@@ -230,67 +147,244 @@ class _GalleryPageState extends State<GalleryPage> {
         );
 
       case GalleryStatus.ready:
-        if (tab == null) return const SizedBox.shrink();
-        if (tab.id == _smartTeaserId) return _SmartUpsell(repo: repo);
-        if (tab.smart) {
-          final id = tab.id.substring('smart:'.length);
-          final group = smartGroups.firstWhere(
-            (g) => g.id == id,
-            orElse: () => const GallerySmartGroup(
-              id: '',
-              label: '',
-              icon: Icons.auto_awesome_rounded,
-              items: [],
-            ),
-          );
-          return _Grid(
-            repository: repo,
-            items: group.items,
-            onOpen: _open,
-          );
-        }
-        final category = repo.categories.firstWhere(
-          (c) => c.id == tab.id,
-          orElse: () => repo.categories.first,
-        );
-        return _Grid(
-          repository: repo,
-          items: itemsInCategory(category, repo.items),
-          onOpen: _open,
-          footer: isNova && repo.pendingAnalysis > 0 && !repo.isAnalysing
-              ? _SmartPrompt(repo: repo)
-              : null,
+        final categories = repo.categories;
+        final fixed = [for (final c in categories) if (!c.isFolder) c];
+        final folders = [for (final c in categories) if (c.isFolder) c];
+        final smart = isNova ? repo.smartGroups() : const <GallerySmartGroup>[];
+
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            // Cards want to be about 150 logical pixels wide; three across is
+            // the floor so a phone shows the same three-up grid the system
+            // gallery does.
+            final columns = (constraints.maxWidth / 172).floor().clamp(3, 8);
+            final cardWidth = (constraints.maxWidth - 40 - (columns - 1) * 12) /
+                columns;
+            // Cover, then two lines of label underneath.
+            final extent = cardWidth + 42;
+
+            return CustomScrollView(
+              slivers: [
+                ..._albumSection(
+                  title: 'Albums',
+                  columns: columns,
+                  extent: extent,
+                  luma: luma,
+                  first: true,
+                  cards: [
+                    for (final category in fixed)
+                      GalleryAlbumCard(
+                        key: ValueKey(category.id),
+                        label: category.label,
+                        icon: category.icon,
+                        count: category.count,
+                        cover: category.cover,
+                        repository: repo,
+                        onTap: () =>
+                            setState(() => _openAlbum = category.id),
+                      ),
+                  ],
+                ),
+                if (folders.isNotEmpty)
+                  ..._albumSection(
+                    title: 'More albums',
+                    columns: columns,
+                    extent: extent,
+                    luma: luma,
+                    cards: [
+                      for (final category in folders)
+                        GalleryAlbumCard(
+                          key: ValueKey(category.id),
+                          label: category.label,
+                          icon: category.icon,
+                          count: category.count,
+                          cover: category.cover,
+                          repository: repo,
+                          onTap: () =>
+                              setState(() => _openAlbum = category.id),
+                        ),
+                    ],
+                  ),
+                if (smart.isNotEmpty)
+                  ..._albumSection(
+                    title: 'Smart albums',
+                    columns: columns,
+                    extent: extent,
+                    luma: luma,
+                    cards: [
+                      for (final group in smart)
+                        GalleryAlbumCard(
+                          key: ValueKey(group.id),
+                          label: group.label,
+                          icon: group.icon,
+                          count: group.count,
+                          cover: group.items.isEmpty ? null : group.items.first,
+                          repository: repo,
+                          onTap: () => setState(
+                            () => _openAlbum = '$_smartPrefix${group.id}',
+                          ),
+                        ),
+                    ],
+                  ),
+                if (!isNova)
+                  ..._albumSection(
+                    title: 'Smart albums',
+                    columns: columns,
+                    extent: extent,
+                    luma: luma,
+                    cards: [
+                      GalleryAlbumCard(
+                        label: 'Smart albums',
+                        icon: Icons.auto_awesome_rounded,
+                        count: 0,
+                        subtitle: 'Included with Nova',
+                        badge: 'Nova',
+                        repository: repo,
+                        onTap: () =>
+                            setState(() => _openAlbum = _smartTeaserId),
+                      ),
+                    ],
+                  ),
+                if (isNova && repo.pendingAnalysis > 0 && !repo.isAnalysing)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                      child: _SmartPrompt(repo: repo),
+                    ),
+                  ),
+                const SliverToBoxAdapter(child: SizedBox(height: 24)),
+              ],
+            );
+          },
         );
     }
   }
+
+  /// A heading and its grid of cards, as the two slivers they have to be.
+  List<Widget> _albumSection({
+    required String title,
+    required int columns,
+    required double extent,
+    required LumaPalette luma,
+    required List<Widget> cards,
+    bool first = false,
+  }) =>
+      [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(20, first ? 0 : 24, 20, 10),
+            child: Text(
+              title,
+              style: TextStyle(
+                color: luma.textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          sliver: SliverGrid(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: columns,
+              mainAxisSpacing: 16,
+              crossAxisSpacing: 12,
+              mainAxisExtent: extent,
+            ),
+            delegate: SliverChildListDelegate(cards),
+          ),
+        ),
+      ];
+
+  String? _librarySubtitle(GalleryRepository repo) {
+    if (repo.status == GalleryStatus.scanning) return 'Reading your library…';
+    if (repo.status != GalleryStatus.ready) return null;
+    final count = repo.items.length;
+    final noun = count == 1 ? 'item' : 'items';
+    if (repo.isLocating) return '$count $noun · reading locations';
+    return '$count $noun';
+  }
+
+  // ----------------------------------------------------------- one album
+
+  Widget _albumScreen(
+    BuildContext context,
+    GalleryRepository repo,
+    bool isNova,
+    String albumId,
+  ) {
+    if (albumId == _smartTeaserId) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _Header(
+            title: 'Smart albums',
+            subtitle: 'Included with Nova',
+            repository: repo,
+            onBack: () => setState(() => _openAlbum = null),
+          ),
+          Expanded(child: _SmartUpsell(repo: repo)),
+        ],
+      );
+    }
+
+    final String label;
+    final List<GalleryItem> items;
+
+    if (albumId.startsWith(_smartPrefix)) {
+      final id = albumId.substring(_smartPrefix.length);
+      final group = repo.smartGroups().where((g) => g.id == id).firstOrNull;
+      label = group?.label ?? 'Album';
+      items = group?.items ?? const [];
+    } else {
+      final category =
+          repo.categories.where((c) => c.id == albumId).firstOrNull;
+      // The album can vanish under us — a rescan after every WhatsApp photo
+      // was deleted, say. Falling back to the albums screen beats an empty
+      // page with a name on it.
+      if (category == null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) setState(() => _openAlbum = null);
+        });
+        return const SizedBox.shrink();
+      }
+      label = category.label;
+      items = itemsInCategory(category, repo.items);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _Header(
+          title: label,
+          subtitle: items.length == 1 ? '1 item' : '${items.length} items',
+          repository: repo,
+          onBack: () => setState(() => _openAlbum = null),
+        ),
+        Expanded(
+          child: _Grid(repository: repo, items: items, onOpen: _open),
+        ),
+      ],
+    );
+  }
 }
 
-/// One pill in the strip. Folder and smart tabs both end up here, which is
-/// what keeps the strip a single swipeable row.
-@immutable
-class _Tab {
-  const _Tab({
-    required this.id,
-    required this.label,
-    required this.count,
-    this.smart = false,
-  });
-
-  final String id;
-  final String label;
-  final int count;
-  final bool smart;
-}
-
+/// The page header, on both screens: a back arrow when there is somewhere to
+/// go back to, then the title, then the map and rescan actions.
 class _Header extends StatelessWidget {
   const _Header({
-    required this.repository,
+    required this.title,
     required this.subtitle,
+    required this.repository,
+    this.onBack,
     this.onAddFolder,
   });
 
-  final GalleryRepository repository;
+  final String title;
   final String? subtitle;
+  final GalleryRepository repository;
+  final VoidCallback? onBack;
   final VoidCallback? onAddFolder;
 
   @override
@@ -299,15 +393,23 @@ class _Header extends StatelessWidget {
     final hasPins = repository.hasLocatedItems;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 12, 12),
+      padding: EdgeInsets.fromLTRB(onBack == null ? 20 : 6, 16, 12, 12),
       child: Row(
         children: [
+          if (onBack != null)
+            IconButton(
+              tooltip: 'All albums',
+              onPressed: onBack,
+              icon: Icon(Icons.arrow_back_rounded, color: luma.textSecondary),
+            ),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Gallery',
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 22,
@@ -328,7 +430,10 @@ class _Header extends StatelessWidget {
             IconButton(
               tooltip: 'Add a folder',
               onPressed: onAddFolder,
-              icon: Icon(Icons.create_new_folder_rounded, color: luma.textSecondary),
+              icon: Icon(
+                Icons.create_new_folder_rounded,
+                color: luma.textSecondary,
+              ),
             ),
           IconButton(
             tooltip: hasPins
@@ -359,19 +464,17 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// The grid itself: one section per day, newest first.
+/// An album's contents: one section per day, newest first.
 class _Grid extends StatelessWidget {
   const _Grid({
     required this.repository,
     required this.items,
     required this.onOpen,
-    this.footer,
   });
 
   final GalleryRepository repository;
   final List<GalleryItem> items;
   final void Function(List<GalleryItem> items, int index) onOpen;
-  final Widget? footer;
 
   @override
   Widget build(BuildContext context) {
@@ -381,7 +484,7 @@ class _Grid extends StatelessWidget {
         padding: EdgeInsets.all(24),
         child: LumaEmptyState(
           icon: Icons.filter_none_rounded,
-          title: 'Nothing in this category',
+          title: 'Nothing in this album',
           subtitle: 'Photos land here as soon as there are any.',
         ),
       );
@@ -437,18 +540,79 @@ class _Grid extends StatelessWidget {
           offset += group.items.length;
         }
 
-        if (footer != null) {
-          slivers.add(SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-              child: footer,
-            ),
-          ));
-        }
         slivers.add(const SliverToBoxAdapter(child: SizedBox(height: 24)));
-
         return CustomScrollView(slivers: slivers);
       },
+    );
+  }
+}
+
+class _Busy extends StatelessWidget {
+  const _Busy({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(color: luma.accent, strokeWidth: 2.5),
+          const SizedBox(height: 16),
+          Text(
+            label,
+            style: TextStyle(color: luma.textSecondary, fontSize: 13),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NoAccess extends StatelessWidget {
+  const _NoAccess({required this.repo, required this.onAddFolder});
+
+  final GalleryRepository repo;
+  final VoidCallback onAddFolder;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: LumaEmptyState(
+        icon: Icons.no_photography_rounded,
+        title: repo.supportsCustomFolders
+            ? 'No picture folders found'
+            : 'Gallery needs access to your photos',
+        subtitle: repo.supportsCustomFolders
+            ? 'Nothing was found in Pictures, Videos or Downloads. Point the '
+                'gallery at a folder and it will scan that instead.'
+            : 'Photos and videos stay on this device — the gallery only reads '
+                'them to show them here.',
+        action: repo.supportsCustomFolders
+            ? LumaPrimaryButton(
+                label: 'Add a folder',
+                icon: Icons.create_new_folder_rounded,
+                onTap: onAddFolder,
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  LumaPrimaryButton(
+                    label: 'Allow access',
+                    icon: Icons.lock_open_rounded,
+                    onTap: () => repo.initialise(force: true),
+                  ),
+                  const SizedBox(width: 8),
+                  LumaGhostButton(
+                    label: 'Open settings',
+                    onTap: repo.openSystemSettings,
+                  ),
+                ],
+              ),
+      ),
     );
   }
 }
@@ -513,7 +677,7 @@ class _ProgressNote extends StatelessWidget {
   }
 }
 
-/// Offer to run the models, shown under the grid once there is something to
+/// Offer to run the models, shown under the albums once there is something to
 /// analyse. Kept opt-in: it reads every photo, and that is the user's battery.
 class _SmartPrompt extends StatelessWidget {
   const _SmartPrompt({required this.repo});
@@ -537,7 +701,7 @@ class _SmartPrompt extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Smart categories',
+                  'Smart albums',
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 14,
@@ -565,7 +729,7 @@ class _SmartPrompt extends StatelessWidget {
   }
 }
 
-/// What Core and Orbit see in place of the smart tabs.
+/// What Core and Orbit see behind the Smart albums card.
 class _SmartUpsell extends StatelessWidget {
   const _SmartUpsell({required this.repo});
 
@@ -577,14 +741,14 @@ class _SmartUpsell extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       child: LumaEmptyState(
         icon: Icons.auto_awesome_rounded,
-        title: 'Smart categories are a Nova extra',
+        title: 'Smart albums are a Nova extra',
         subtitle: repo.smartModelsAvailable
             ? 'Nova sorts your library by what is actually in the photos — '
                 'people, selfies, food, pets, nature, documents — using models '
                 'that run on this device, offline. Nothing is uploaded.'
             : 'Nova sorts your library by what is in the photos. The models '
                 'run on the phone build; this device gets the panorama and '
-                'place groups.',
+                'place albums.',
         action: LumaPrimaryButton(
           label: 'Upgrade to ${planById('nova').name}',
           icon: Icons.auto_awesome_rounded,
