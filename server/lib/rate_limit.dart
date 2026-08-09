@@ -35,4 +35,16 @@ class RateLimiter {
     times.add(now);
     return true;
   }
+
+  /// Seconds until [key]'s oldest hit ages out of the window and a slot
+  /// frees up — 0 if [key] isn't currently over budget. Lets a 429 response
+  /// carry a `Retry-After` header instead of leaving the caller to guess.
+  int retryAfterSeconds(String key) {
+    final times = _hits[key];
+    if (times == null || times.length < maxRequests) return 0;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final resetAt = times.first + window.inMilliseconds;
+    final seconds = ((resetAt - now) / 1000).ceil();
+    return seconds.clamp(1, window.inSeconds);
+  }
 }
