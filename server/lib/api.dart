@@ -3148,6 +3148,40 @@ class Api {
           .replaceFirst(RegExp(r'\.md$'), ''));
     }
     pages.sort();
+    final pageSet = pages.toSet();
+
+    // Scan every page's body for links to a wiki/blog/admin-editor page that
+    // doesn't exist yet, so a page like simply-cozy can reference
+    // "coffee-machine" before that page is created and the tree shows it as
+    // a pending stub instead of the link silently going nowhere.
+    final referencedMissing = <String>{};
+    final linkRe = RegExp(r'\]\(([^)\s]+)\)');
+    for (final p in pages) {
+      final file = _wikiPageFile(p);
+      if (file == null) continue;
+      String content;
+      try {
+        content = await file.readAsString();
+      } catch (_) {
+        continue;
+      }
+      for (final m in linkRe.allMatches(content)) {
+        final uri = Uri.tryParse(m[1]!);
+        if (uri == null) continue;
+        final path = uri.path;
+        String? target;
+        if (path.startsWith('/admin/website/')) {
+          target = path.substring('/admin/website/'.length);
+        } else if (path.startsWith('/wiki/') || path.startsWith('/blog/')) {
+          target = path.substring(1);
+        }
+        if (target == null) continue;
+        target = target.replaceAll(RegExp(r'/+$'), '');
+        if (target.isEmpty || !_wikiPageRe.hasMatch(target)) continue;
+        if (pageSet.contains(target)) continue; // already a real page
+        referencedMissing.add(target);
+      }
+    }
 
     // Group by top-level folder — each is a content collection (wiki, blog…).
     final byCollection = <String, List<String>>{};
@@ -3155,6 +3189,14 @@ class Api {
       final slash = p.indexOf('/');
       final collection = slash > 0 ? p.substring(0, slash) : p;
       (byCollection[collection] ??= []).add(p);
+    }
+    for (final target in referencedMissing) {
+      final slash = target.indexOf('/');
+      final collection = slash > 0 ? target.substring(0, slash) : target;
+      // A link to a collection with no real pages yet still gets its own
+      // section (empty count, all-phantom tree) — that's a useful signal
+      // too, e.g. a typo'd collection name in a link.
+      byCollection.putIfAbsent(collection, () => []);
     }
     final collectionNames = {'wiki': 'Wiki', 'blog': 'Devlog'};
 
@@ -3170,6 +3212,15 @@ class Api {
         }
         node.pagePath = p;
       }
+      for (final target
+          in referencedMissing.where((t) => t.startsWith('$collection/'))) {
+        final rel = target.substring(collection.length + 1);
+        var node = tree;
+        for (final segment in rel.split('/')) {
+          node = node.children.putIfAbsent(segment, () => _WikiTreeNode());
+        }
+        if (node.pagePath == null) node.phantomPath = target;
+      }
       final newDevlogBtn = collection == 'blog'
           ? '<a href="/admin/website/new-devlog" class="btn btn-primary btn-sm">'
               '+ New devlog</a>'
@@ -3178,7 +3229,10 @@ class Api {
           ? '<p class="hint tree-hint">New page: open '
               '<code>/admin/website/wiki/&lt;name&gt;</code> — nest it under an '
               'existing page the same way, e.g. '
-              '<code>wiki/simply-cozy/&lt;name&gt;</code>.</p>'
+              '<code>wiki/simply-cozy/&lt;name&gt;</code>. Link to a page that '
+              'doesn\'t exist yet and it shows up below as '
+              '<span class="tree-phantom-badge">not created</span> with a '
+              'shortcut to make it.</p>'
           : '';
       return '<div class="card table-card">'
           '<div class="tree-head">'
@@ -3228,37 +3282,50 @@ class Api {
 
   /// Renders one level of the page tree. A node with children becomes an
   /// expandable `<details>` (native disclosure semantics — keyboard and
-  /// screen-reader accessible with zero extra JS); a childless node is
-  /// always a real page (only created while walking toward one), so it
-  /// renders as a plain link.
+  /// screen-reader accessible with zero extra JS). A childless node is
+  /// either a real page (only created while walking toward one) or a
+  /// "phantom" — a page some other page links to that doesn't exist yet.
   String _renderWikiTree(Map<String, _WikiTreeNode> nodes, {int depth = 0}) {
     final keys = nodes.keys.toList()..sort();
     final buf = StringBuffer();
     for (final key in keys) {
       final node = nodes[key]!;
       final label = _htmlEscape(key);
-      final editLink = node.pagePath != null
-          ? '<a class="tree-edit" href="/admin/website/${_htmlEscape(node.pagePath!)}">Edit</a>'
-          : '';
+      final isPhantom = node.pagePath == null && node.phantomPath != null;
       if (node.children.isNotEmpty) {
+        final selfRow = node.pagePath != null
+            ? '<div class="tree-row tree-self">'
+                '<a href="/admin/website/${_htmlEscape(node.pagePath!)}">'
+                'This page<span class="tree-self-name"> — $label</span></a></div>'
+            : (isPhantom ? _phantomRow(label, node.phantomPath!) : '');
         buf.write('<details class="tree-node">'
             '<summary><span class="tree-toggle" aria-hidden="true"></span>'
             '<span class="tree-label">$label</span></summary>'
             '<div class="tree-children">'
-            '${node.pagePath != null ? '<div class="tree-row tree-self">'
-                '<a href="/admin/website/${_htmlEscape(node.pagePath!)}">'
-                'This page<span class="tree-self-name"> — $label</span></a></div>' : ''}'
+            '$selfRow'
             '${_renderWikiTree(node.children, depth: depth + 1)}'
             '</div></details>');
+      } else if (isPhantom) {
+        buf.write(_phantomRow(label, node.phantomPath!));
       } else {
         buf.write('<div class="tree-row tree-leaf">'
             '<a href="/admin/website/${_htmlEscape(node.pagePath!)}">$label</a>'
-            '$editLink'
+            '<a class="tree-edit" href="/admin/website/${_htmlEscape(node.pagePath!)}">Edit</a>'
             '</div>');
       }
     }
     return buf.toString();
   }
+
+  /// A page some other page links to, that doesn't have a file yet —
+  /// dimmed, dashed, with a shortcut straight into a blank editor for it.
+  String _phantomRow(String label, String phantomPath) =>
+      '<div class="tree-row tree-leaf tree-phantom">'
+      '<a class="tree-phantom-link" href="/admin/website/${_htmlEscape(phantomPath)}">'
+      '$label</a>'
+      '<span class="tree-phantom-badge">not created</span>'
+      '<a class="tree-edit" href="/admin/website/${_htmlEscape(phantomPath)}">Create</a>'
+      '</div>';
 
   static const _wikiTreeCss = r'''
 .tree-head{display:flex;align-items:center;justify-content:space-between;
@@ -3304,6 +3371,13 @@ border-left:1px solid #262038}
 .tree-hint{margin:8px 6px 0;padding-top:10px;border-top:1px solid #1d1830}
 .tree-hint code{background:#1a1530;border:1px solid #262038;border-radius:5px;
 padding:1px 6px;font-size:11.5px;color:#c7c1e6}
+.tree-hint .tree-phantom-badge{position:relative;top:-1px}
+.tree-phantom-link{color:#9089b0!important;font-style:italic}
+.tree-phantom-link:hover{color:#c7c1e6!important}
+.tree-phantom-badge{flex:none;font-size:10px;font-weight:700;
+letter-spacing:.03em;text-transform:uppercase;color:#e0c87e;
+background:rgba(224,200,126,.12);border:1px dashed rgba(224,200,126,.4);
+border-radius:999px;padding:2px 8px}
 ''';
 
   /// Page name from the request path, e.g. /admin/website/wiki/simply-cozy
@@ -5307,6 +5381,8 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
 class _WikiTreeNode {
   final Map<String, _WikiTreeNode> children = {};
   String? pagePath;
+  /// Set when no page exists at this path, but some other page links to it.
+  String? phantomPath;
 }
 
 /// Result type for [Api._parseSharedEventBody]: either a validated set of
