@@ -1,0 +1,10 @@
+{
+  "id": "gallery",
+  "name": "Gallery",
+  "version": "1.0.0",
+  "description": "Every photo and video on this device, sorted into tabs: pictures and videos from the camera, screenshots, GIFs, and one tab per folder — WhatsApp, Downloads, whatever else is there. See where shots were taken on a world map, and on Nova let on-device models sort them by what's in them.",
+  "icon": "photo_library",
+  "category": "Utility",
+  "details": "Gallery reads the photo and video library already on your device and lays it out as one grid, grouped by day, newest first. The tab strip starts with All, then Pictures and Videos from the camera itself, Screenshots (screen recordings included), and GIFs — followed by a tab for every folder that actually holds media, named after it: WhatsApp Images, WhatsApp Video, Downloads, Telegram, and any folder of your own. Folders that would only repeat a fixed tab are left out, so there is no second Camera tab sitting next to Pictures.\n\nTap the map icon and the photos that carry a GPS tag appear on a world map, clustered into pins that split apart as you zoom in; tap a pin to see the photos taken there. The map is a bundled outline, not a tile service — it works with no connection and nothing about your photos is sent anywhere to draw it.\n\nOn Nova, Gallery adds smart categories. Two Google ML Kit models run entirely on the phone, offline, and sort the library by what is in the frame: People, Selfies and Group shots from face detection, plus Food, Pets, Animals, Nature, City, Vehicles, Documents, Celebrations and Art from image labelling. Panoramas and Places need no model and show up on every build. Photos are never uploaded — the models ship inside the app.\n\nOn Windows and Linux, Gallery scans Pictures, Videos and Downloads, and you can point it at any other folder you like.",
+  "screenshots": []
+}

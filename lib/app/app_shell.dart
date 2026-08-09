@@ -10,12 +10,14 @@ import '../features/notes/notes_page.dart';
 import '../features/passwords/passwords_page.dart';
 import '../features/plugins/installed/data_management/data_management_page.dart';
 import '../features/plugins/installed/auto_clicker/auto_clicker_page.dart';
+import '../features/plugins/installed/calculator/calculator_page.dart';
 import '../features/plugins/installed/calendar/calendar_page.dart';
 import '../features/plugins/installed/cloud_files/cloud_files_page.dart';
 import '../features/plugins/installed/card_wallet/card_wallet_page.dart';
 import '../features/plugins/installed/errands/errands_page.dart';
 import '../features/plugins/installed/city_planner/city_planner_page.dart';
 import '../features/plugins/installed/file_tree/file_tree_page.dart';
+import '../features/plugins/installed/gallery/gallery_page.dart';
 import '../features/plugins/installed/file_viewer/file_viewer_page.dart';
 import '../features/plugins/installed/groceries/groceries_page.dart';
 import '../features/plugins/installed/minecraft_launcher/minecraft_launcher_page.dart';
@@ -30,12 +32,14 @@ import '../features/plugins/installed/space_colony/space_colony_page.dart';
 import '../features/plugins/installed/subway_builder/subway_builder_page.dart';
 import '../features/plugins/installed/usage/usage_page.dart';
 import '../features/plugins/installed/wifi_speed_test/wifi_speed_test_page.dart';
+import '../features/plugins/installed/worth_counter/worth_counter_page.dart';
 import '../features/plugins/installed/youtube_downloader/youtube_downloader_page.dart';
 import '../features/plugins/installed/recipe_book/recipe_book_page.dart';
 import '../features/plugins/plugin_repository.dart';
 import '../features/plugins/plugin_scope.dart';
 import '../features/plugins/plugins_page.dart';
 import '../finance/finance_page.dart';
+import 'server_account_gate.dart';
 import '../settings/settings_controller.dart';
 import '../settings/settings_page.dart';
 import '../settings/settings_scope.dart';
@@ -68,6 +72,13 @@ class _AppShellState extends State<AppShell> {
   // priority over [_selectedIndex].
   String? _selectedPluginId;
 
+  // Where the system/hardware Back button walks to. Every navigation records
+  // the screen it left, so Back retraces those steps in-app instead of
+  // popping the root route (which, on Android, quits the whole app the moment
+  // you're anywhere but the start screen — and then a fresh launch has to
+  // crawl through the boot/loading screen again).
+  final List<_NavEntry> _history = [];
+
   static List<String> _titles(L t) => [
         t.navHome,
         t.navFileConverter,
@@ -85,12 +96,53 @@ class _AppShellState extends State<AppShell> {
   // the live truth regardless of this dismissal.
   bool _storageBannerDismissed = false;
 
-  void _selectFixed(int i) => setState(() {
-        _selectedIndex = i;
-        _selectedPluginId = null;
-      });
+  _NavEntry get _currentEntry => _NavEntry(_selectedIndex, _selectedPluginId);
 
-  void _selectPlugin(String id) => setState(() => _selectedPluginId = id);
+  // Record the screen we're leaving so Back can return to it. Consecutive
+  // duplicates are collapsed so tapping the same tab twice doesn't stack.
+  void _pushHistory() {
+    final cur = _currentEntry;
+    if (_history.isEmpty || _history.last != cur) _history.add(cur);
+  }
+
+  void _selectFixed(int i) {
+    if (_selectedIndex == i && _selectedPluginId == null) return;
+    setState(() {
+      _pushHistory();
+      _selectedIndex = i;
+      _selectedPluginId = null;
+    });
+  }
+
+  void _selectPlugin(String id) {
+    if (_selectedPluginId == id) return;
+    setState(() {
+      _pushHistory();
+      _selectedPluginId = id;
+    });
+  }
+
+  // Returns true if it consumed the Back gesture by moving within the app.
+  bool _goBack() {
+    if (_history.isEmpty) return false;
+    final prev = _history.removeLast();
+    setState(() {
+      _selectedIndex = prev.index;
+      _selectedPluginId = prev.pluginId;
+    });
+    return true;
+  }
+
+  void _closePlugin() {
+    if (_goBack()) return;
+    setState(() => _selectedPluginId = null);
+  }
+
+  // Plugins whose own content is the whole point of the screen (full-map or
+  // full-canvas games): on phone, the top title bar and bottom nav just eat
+  // space the game desperately needs, so they're hidden and replaced with a
+  // single floating back button instead.
+  static const _phoneImmersivePlugins = {'subway-builder', 'server-tycoon'};
 
   @override
   Widget build(BuildContext context) {
@@ -118,6 +170,14 @@ class _AppShellState extends State<AppShell> {
         final showingPlugin = activePlugin != null;
         final title = showingPlugin ? activePlugin.name : titles[index];
         final isPhone = MediaQuery.sizeOf(context).width < _phoneBreakpoint;
+        // A phone-sized device in *either* orientation. Landscape widens the
+        // window past the width breakpoint, so immersive plugins use the
+        // shortest side to stay full-screen when the phone is turned sideways.
+        final isPhoneForm =
+            MediaQuery.sizeOf(context).shortestSide < _phoneBreakpoint;
+        final immersive = showingPlugin &&
+            isPhoneForm &&
+            _phoneImmersivePlugins.contains(activePlugin.pluginId);
 
         final content = Container(
           color: luma.background,
@@ -143,44 +203,63 @@ class _AppShellState extends State<AppShell> {
                 ),
         );
 
-        return Scaffold(
+        final scaffold = Scaffold(
           body: Column(
             children: [
-              WindowTitleBar(title: title, trailing: const InboxButton()),
-              ListenableBuilder(
-                listenable: storageGuard,
-                builder: (context, _) {
-                  if (!storageGuard.isOverLimit || _storageBannerDismissed) {
-                    return const SizedBox.shrink();
-                  }
-                  return _StorageLimitBanner(
-                    onManage: () => _selectFixed(NavRail.accountIndex),
-                    onDismiss: () =>
-                        setState(() => _storageBannerDismissed = true),
-                  );
-                },
-              ),
+              if (!immersive)
+                WindowTitleBar(title: title, trailing: const InboxButton()),
+              if (!immersive)
+                ListenableBuilder(
+                  listenable: storageGuard,
+                  builder: (context, _) {
+                    if (!storageGuard.isOverLimit || _storageBannerDismissed) {
+                      return const SizedBox.shrink();
+                    }
+                    return _StorageLimitBanner(
+                      onManage: () => _selectFixed(NavRail.accountIndex),
+                      onDismiss: () =>
+                          setState(() => _storageBannerDismissed = true),
+                    );
+                  },
+                ),
               Expanded(
-                child: isPhone
-                    ? content
-                    : Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                child: immersive
+                    // No title bar here, so inset the plugin ourselves: the
+                    // OS status bar (and any display cutout) would otherwise
+                    // sit on top of the game's own HUD. A background layer
+                    // fills the inset strip so it matches the app.
+                    ? Stack(
                         children: [
-                          NavRail(
-                            selectedIndex: showingPlugin ? -1 : index,
-                            selectedPluginId:
-                                showingPlugin ? activePlugin.pluginId : null,
-                            installedPlugins: installed,
-                            onSelect: _selectFixed,
-                            onSelectPlugin: _selectPlugin,
+                          Positioned.fill(
+                            child: ColoredBox(color: luma.background),
                           ),
-                          Expanded(child: content),
+                          Positioned.fill(
+                            child: SafeArea(child: content),
+                          ),
+                          _PhoneBackButton(onTap: _closePlugin),
                         ],
-                      ),
+                      )
+                    : (isPhone
+                        ? content
+                        : Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              NavRail(
+                                selectedIndex: showingPlugin ? -1 : index,
+                                selectedPluginId: showingPlugin
+                                    ? activePlugin.pluginId
+                                    : null,
+                                installedPlugins: installed,
+                                onSelect: _selectFixed,
+                                onSelectPlugin: _selectPlugin,
+                              ),
+                              Expanded(child: content),
+                            ],
+                          )),
               ),
             ],
           ),
-          bottomNavigationBar: isPhone
+          bottomNavigationBar: (isPhone && !immersive)
               ? BottomNav(
                   selectedIndex: showingPlugin ? -1 : index,
                   selectedPluginId:
@@ -190,6 +269,23 @@ class _AppShellState extends State<AppShell> {
                   onSelectPlugin: _selectPlugin,
                 )
               : null,
+        );
+
+        // Only the very first screen (nothing recorded to go back to, no
+        // plugin open) lets the pop through to the OS, which then exits the
+        // app. Everywhere else, Back retraces our own navigation history.
+        final canExit = _history.isEmpty && _selectedPluginId == null;
+        return PopScope(
+          canPop: canExit,
+          onPopInvokedWithResult: (didPop, _) {
+            if (didPop) return;
+            if (_selectedPluginId != null) {
+              _closePlugin();
+              return;
+            }
+            _goBack();
+          },
+          child: scaffold,
         );
       },
     );
@@ -201,7 +297,42 @@ class _AppShellState extends State<AppShell> {
         StartScreen.finance => 2,
       };
 
-  static Widget _pluginPageFor(String pluginId, L t) => switch (pluginId) {
+  /// Plugins that do nothing at all without the server, mapped to the copy
+  /// shown in their place until this device has an approved account. Kept
+  /// compiled in rather than read from the fetched registry — the registry's
+  /// own `requiresAccount` flag only drives the marketplace badge, and a
+  /// gate must not depend on a file downloaded at runtime.
+  static const serverOnlyPlugins =
+      <String, ({String title, String description, IconData icon})>{
+    'cloud-files': (
+      title: 'Cloud Files needs an approved account',
+      description: 'Cloud Files stores your files on the luma server, '
+          'encrypted on this device first.',
+      icon: Icons.cloud_off_rounded,
+    ),
+    'secure-chat': (
+      title: 'Chat needs an approved account',
+      description: 'Chat relays end-to-end encrypted messages between '
+          'accounts through the luma server.',
+      icon: Icons.lock_outline_rounded,
+    ),
+  };
+
+  /// Resolves a plugin id to its page, wrapping the server-only ones in a
+  /// [ServerAccountGate] so they stay inert until an account is approved.
+  static Widget _pluginPageFor(String pluginId, L t) {
+    final page = _pluginBodyFor(pluginId, t);
+    final gate = serverOnlyPlugins[pluginId];
+    if (gate == null) return page;
+    return ServerAccountGate(
+      title: gate.title,
+      description: gate.description,
+      icon: gate.icon,
+      child: page,
+    );
+  }
+
+  static Widget _pluginBodyFor(String pluginId, L t) => switch (pluginId) {
         'qr-code-generator' => const QrCodeGeneratorPage(),
         'card-wallet' => const CardWalletPage(),
         'errand-manager' => const ErrandsPage(),
@@ -209,6 +340,7 @@ class _AppShellState extends State<AppShell> {
         'file-viewer' => const FileViewerPage(),
         'bulletin-board' => const BulletinBoardPage(),
         'price-tracker' => const PriceTrackerPage(),
+        'calculator' => const CalculatorPage(),
         'calendar' => const CalendarPage(),
         'cloud-files' => const CloudFilesPage(),
         'data-management' => const DataManagementPage(),
@@ -226,11 +358,60 @@ class _AppShellState extends State<AppShell> {
         'minecraft-launcher' => const MinecraftLauncherPage(),
         'secure-chat' => const SecureChatPage(),
         'recipe-book' => const RecipeBookPage(),
+        'worth-counter' => const WorthCounterPage(),
+        'gallery' => const GalleryPage(),
         _ => LumaEmptyState(
             icon: Icons.extension_off_rounded,
             title: t.shellPluginUnavailable,
           ),
       };
+}
+
+/// A single step in [_AppShellState._history]: the fixed-section index (null
+/// means the configured start screen) and any plugin that was open.
+class _NavEntry {
+  const _NavEntry(this.index, this.pluginId);
+  final int? index;
+  final String? pluginId;
+
+  @override
+  bool operator ==(Object other) =>
+      other is _NavEntry && other.index == index && other.pluginId == pluginId;
+
+  @override
+  int get hashCode => Object.hash(index, pluginId);
+}
+
+/// Floating exit affordance for immersive phone plugins (see
+/// [_AppShellState._phoneImmersivePlugins]) that otherwise have no chrome to
+/// navigate away with once the title bar and bottom nav are hidden.
+class _PhoneBackButton extends StatelessWidget {
+  const _PhoneBackButton({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final topInset = MediaQuery.paddingOf(context).top;
+    return Positioned(
+      top: topInset + 8,
+      left: 8,
+      child: Material(
+        color: luma.surface.withValues(alpha: 0.85),
+        shape: const CircleBorder(),
+        elevation: 2,
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Icon(Icons.arrow_back_rounded,
+                color: luma.textPrimary, size: 22),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// App-wide warning shown the moment the local storage cap is hit — covers

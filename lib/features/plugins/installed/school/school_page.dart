@@ -47,6 +47,7 @@ class _SchoolPageState extends State<SchoolPage> {
             tabs: _tabs,
             selectedIndex: _tab,
             onSelect: (i) => setState(() => _tab = i),
+            scrollable: true,
           ),
         ),
         Expanded(

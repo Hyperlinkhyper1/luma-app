@@ -347,7 +347,7 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
       final sync = SyncScope.of(context);
       final serverUrl = sync.serverUrl;
       final token = sync.authToken;
-      if (serverUrl != null && token != null) {
+      if (sync.serverReady && serverUrl != null && token != null) {
         client = widget.providerId == AiProviderId.google.name
             ? GoogleProxyClient(serverUrl: serverUrl)
             : MistralProxyClient(serverUrl: serverUrl);

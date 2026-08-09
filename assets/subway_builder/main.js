@@ -132,8 +132,12 @@
 
     if (ui.tool === 'line') {
       let target = station;
-      // In rail modes, clicking an unleased real station leases it on the fly.
-      if (!target && SB.isRailMode(ui.mode)) {
+      // In rail modes, clicking a real station leases it on the fly. A real
+      // station can host every rail service at once, so when the stop under the
+      // cursor belongs to another mode (e.g. an existing Train stop while
+      // building a High-speed line), resolve the real station and lease this
+      // mode's own copy too instead of refusing to connect it.
+      if (SB.isRailMode(ui.mode) && (!target || target.mode !== ui.mode)) {
         let rs = map3d.railStationAtPoint(e.point);
         if (!rs) {
           mergeVisibleIntoNetworks(true);
@@ -191,24 +195,22 @@
         }
         const fromId = ui.draftIds[0];
         const atStart = line.stationIds[0] === fromId;
-        const r = game.extendLine(line.id, station.id, atStart);
-        if (!r.ok) {
-          if (SB.isRailMode(ui.mode)) {
-            const from = game.stationById(fromId);
-            retryAfterRailSurvey([from, station], r.err, () => {
-              const r2 = game.extendLine(line.id, station.id, atStart);
-              if (!r2.ok) { ui.toast(r2.err, 'bad'); return; }
-              ui.draftIds = [station.id];
-              ui.toast(line.name + ' extended to ' + station.name);
-              ui.updateAll();
-            });
-            return;
-          }
-          ui.toast(r.err, 'bad'); return;
+        const doExtend = () => {
+          const r = game.extendLine(line.id, station.id, atStart);
+          if (!r.ok) { ui.toast(r.err, 'bad'); return; }
+          ui.draftIds = [station.id];
+          ui.toast(line.name + ' extended to ' + station.name);
+          ui.updateAll();
+        };
+        if (SB.isRailMode(ui.mode)) {
+          // Fetch the real corridor track first so the extension follows it
+          // (and only tunnels across whatever gap genuinely remains).
+          const from = game.stationById(fromId);
+          ui.toast('Surveying the rail corridor…');
+          SB.net.surveyRailCorridor([from, station].filter(Boolean)).finally(doExtend);
+        } else {
+          doExtend();
         }
-        ui.draftIds = [station.id];
-        ui.toast(line.name + ' extended to ' + station.name);
-        ui.updateAll();
         return;
       }
       const last = ui.draftIds[ui.draftIds.length - 1];
@@ -224,28 +226,20 @@
       ui.updateAll();
   }
 
-  /* A failed rail route often just means the corridor between the stops was
-     never surveyed (it's off-screen and outside the initial Overpass radius).
-     Fetch the tracks for the corridor, then retry the action once. */
-  function retryAfterRailSurvey(stops, origErr, retry) {
-    ui.toast('Surveying the rail corridor…');
-    SB.net.surveyRailCorridor(stops.filter(Boolean)).then((added) => {
-      if (added) retry();
-      else ui.toast(origErr, 'bad');
-    });
-  }
-
   function finishDraft(isRetry) {
     if (ui.draftIds.length < 2) { ui.cancelDraft(); return; }
-    const r = game.commitLine(ui.mode, ui.draftIds);
-    if (!r.ok) {
-      if (SB.isRailMode(ui.mode) && !isRetry) {
-        const stops = ui.draftIds.map((id) => game.stationById(id));
-        retryAfterRailSurvey(stops, r.err, () => finishDraft(true));
-        return;
-      }
-      ui.toast(r.err, 'bad'); return;
+    // Rail lines can span networks that were never surveyed (off-screen
+    // intercity corridors, outside the initial Overpass radius). Fetch their
+    // real track first so the committed route follows as much of it as
+    // possible before any remaining gap is bridged with a tunnel.
+    if (SB.isRailMode(ui.mode) && !isRetry) {
+      const stops = ui.draftIds.map((id) => game.stationById(id));
+      ui.toast('Surveying the rail corridor…');
+      SB.net.surveyRailCorridor(stops.filter(Boolean)).finally(() => finishDraft(true));
+      return;
     }
+    const r = game.commitLine(ui.mode, ui.draftIds);
+    if (!r.ok) { ui.toast(r.err, 'bad'); return; }
     const draft = game.draftCost(r.line.mode, r.line.stationIds);
     let msg = r.line.name + ' opened — ' + SB.fmtMoney(r.cost) + ', 2 ' + SB.MODES[r.line.mode].vehicle + 's included';
     if (draft.waterM > 0) msg += ', includes underwater tunnelling';

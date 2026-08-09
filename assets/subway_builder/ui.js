@@ -764,13 +764,33 @@
   }
   ui.syncSettingsUI = syncSettingsUI;
 
+  // ── Mobile: #left is an off-canvas drawer on narrow viewports ─────────
+  // (desktop/tablet widths keep it permanently docked, unaffected).
+  function isNarrowViewport() {
+    return window.matchMedia('(max-width: 760px)').matches;
+  }
+  function setLeftOpen(open) {
+    $('left').classList.toggle('open', open);
+    $('leftscrim').classList.toggle('show', open);
+  }
+  ui.setLeftOpen = setLeftOpen;
+
   // ── Static wiring ────────────────────────────────────────────────────
   ui.init = function () {
+    $('mc-menu').addEventListener('click', () =>
+      setLeftOpen(!$('left').classList.contains('open')));
+    $('leftscrim').addEventListener('click', () => setLeftOpen(false));
+    $('left-close').addEventListener('click', () => setLeftOpen(false));
+
     for (const m of Object.keys(SB.MODES)) {
       $('mode-' + m).addEventListener('click', () => ui.setMode(m));
+      // Picking a mode or tool is the cue that the player is about to work
+      // on the map, so tuck the drawer away again on phones.
+      $('mode-' + m).addEventListener('click', () => { if (isNarrowViewport()) setLeftOpen(false); });
     }
     for (const t of ['select', 'station', 'line', 'bulldoze']) {
       $('tool-' + t).addEventListener('click', () => ui.setTool(t));
+      $('tool-' + t).addEventListener('click', () => { if (isNarrowViewport()) setLeftOpen(false); });
     }
     for (const o of ['pop', 'jobs', 'access', 'load']) {
       $('ov-' + o).addEventListener('click', () => ui.setOverlay(o));

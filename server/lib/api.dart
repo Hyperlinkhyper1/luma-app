@@ -13,10 +13,35 @@ import 'family_store.dart';
 import 'mail.dart';
 import 'metrics.dart';
 import 'rate_limit.dart';
+import 'recipe_store.dart';
 import 'store.dart';
 import 'subway_relay.dart';
 import 'subway_store.dart';
 import 'util.dart';
+
+/// How a newly registered account becomes usable.
+enum ApprovalMode {
+  /// The operator approves each account by hand from the admin dashboard.
+  /// No email is sent and no verification link exists — the default, so a
+  /// deployment works with no SMTP configured at all.
+  manual,
+
+  /// The user approves their own account by opening a link emailed to them.
+  email,
+
+  /// No approval step: accounts are active (and signed in) the moment they
+  /// are created.
+  open;
+
+  static ApprovalMode parse(String? raw) => switch (raw?.trim().toLowerCase()) {
+        'email' => ApprovalMode.email,
+        'open' || 'none' || 'off' => ApprovalMode.open,
+        _ => ApprovalMode.manual,
+      };
+
+  /// Whether new accounts start out waiting for approval.
+  bool get holdsNewAccounts => this != ApprovalMode.open;
+}
 
 /// Server configuration, read from environment variables (see .env.example).
 class ServerConfig {
@@ -29,7 +54,7 @@ class ServerConfig {
     required this.corsOrigin,
     required this.trustProxy,
     required this.verificationTtl,
-    required this.requireEmailVerification,
+    required this.approvalMode,
     required this.adminKey,
     required this.mistralApiKey,
     required this.mistralAgentId,
@@ -50,10 +75,13 @@ class ServerConfig {
   /// How long an email-verification link stays valid.
   final Duration verificationTtl;
 
-  /// Whether new accounts must verify their email before they can log in.
-  /// On by default; can be disabled for closed/trusted deployments that
-  /// don't want to configure SMTP.
-  final bool requireEmailVerification;
+  /// How a new account gets approved before it can sign in. Defaults to
+  /// [ApprovalMode.manual] — the operator approves each one from the admin
+  /// dashboard, so nobody waits on email and no SMTP setup is needed.
+  final ApprovalMode approvalMode;
+
+  /// Whether new accounts have to verify their own email address.
+  bool get requireEmailVerification => approvalMode == ApprovalMode.email;
 
   /// Shared secret for the /admin/* endpoints. When unset, the admin
   /// dashboard is disabled entirely rather than left open.
@@ -126,9 +154,16 @@ class ServerConfig {
       trustProxy: env['LUMA_TRUST_PROXY'] == 'true',
       verificationTtl:
           Duration(hours: intOf('LUMA_VERIFICATION_TTL_HOURS', 24)),
-      requireEmailVerification:
-          (env['LUMA_REQUIRE_EMAIL_VERIFICATION'] ?? 'true').toLowerCase() !=
-              'false',
+      // LUMA_APPROVAL_MODE wins; the older LUMA_REQUIRE_EMAIL_VERIFICATION
+      // is still honoured so existing .env files keep their behaviour
+      // (true → email, false → no approval at all).
+      approvalMode: env['LUMA_APPROVAL_MODE'] != null
+          ? ApprovalMode.parse(env['LUMA_APPROVAL_MODE'])
+          : switch (env['LUMA_REQUIRE_EMAIL_VERIFICATION']?.toLowerCase()) {
+              'true' => ApprovalMode.email,
+              'false' => ApprovalMode.open,
+              _ => ApprovalMode.manual,
+            },
       adminKey: env['LUMA_ADMIN_KEY'],
       mistralApiKey: env['LUMA_MISTRAL_API_KEY'],
       mistralAgentId: env['LUMA_MISTRAL_AGENT_ID'],
@@ -164,7 +199,7 @@ const int kSupportMessagesPerDay = 15;
 
 class Api {
   Api(this.store, this.config, this.mailer, this.familyStore, this.chatStore,
-      this.aiUsage, this.subwayStore)
+      this.aiUsage, this.subwayStore, this.recipeStore)
       : _authLimiter = RateLimiter(
             maxRequests: 15, window: const Duration(minutes: 10)),
         _generalLimiter = RateLimiter(
@@ -183,6 +218,7 @@ class Api {
   final ChatStore chatStore;
   final AiUsageStore aiUsage;
   final SubwayStore subwayStore;
+  final RecipeStore recipeStore;
   final SubwayRelay _subwayRelay = SubwayRelay();
   final SubwayTicketStore _subwayTickets = SubwayTicketStore();
   final RateLimiter _authLimiter;
@@ -261,7 +297,19 @@ class Api {
           _requireAuth(_listChatMessages))
       ..post('/api/v1/chat/conversations/<id>/messages',
           _requireAuth(_sendChatMessage))
-      ..post('/api/v1/plugins/download', _reportPluginDownload)
+      ..get('/api/v1/recipes', _requireAuth(_listPublicRecipes))
+      ..post('/api/v1/recipes', _requireAuth(_publishRecipe))
+      ..get('/api/v1/recipes/media/<photoId>', _requireAuth(_getRecipeMedia))
+      ..get('/api/v1/recipes/<id>', _requireAuth(_getPublicRecipe))
+      ..put('/api/v1/recipes/<id>', _requireAuth(_updatePublicRecipe))
+      ..delete('/api/v1/recipes/<id>', _requireAuth(_deletePublicRecipe))
+      ..post('/api/v1/recipes/<id>/photo', _requireAuth(_uploadRecipePhoto))
+      ..get('/api/v1/recipes/<id>/reviews', _requireAuth(_listRecipeReviews))
+      ..post('/api/v1/recipes/<id>/reviews', _requireAuth(_putRecipeReview))
+      ..post('/api/v1/recipes/<id>/reviews/photo',
+          _requireAuth(_uploadReviewPhoto))
+      ..delete('/api/v1/recipes/<id>/reviews', _requireAuth(_deleteRecipeReview))
+      ..post('/api/v1/plugins/download', _requireAuth(_reportPluginDownload))
       ..post('/api/v1/subway/rooms', _requireAuth(_createSubwayRoom))
       ..get('/api/v1/subway/rooms', _requireAuth(_listSubwayRooms))
       ..post('/api/v1/subway/rooms/<code>/invite', _requireAuth(_inviteToSubwayRoom))
@@ -381,6 +429,13 @@ class Api {
       final user = store.usersById[session.userId];
       if (user == null) {
         return _error(401, 'unauthorized', 'Account no longer exists.');
+      }
+      // An account that is (back to) waiting for approval gets nothing but
+      // the account handshake — the app mirrors this by shutting its own
+      // server-access gate when it sees this code.
+      if (user.isPending) {
+        return _error(403, 'account_not_approved',
+            'This account is waiting to be approved.');
       }
       // Sliding expiry: refresh when past the halfway point.
       final half = config.tokenTtl.inMilliseconds ~/ 2;
@@ -614,6 +669,7 @@ class Api {
         'ok': true,
         'name': 'luma-sync-server',
         'registration': config.registrationEnabled ? 'open' : 'closed',
+        'approval': config.approvalMode.name,
       });
 
   // ---- Handlers: auth -----------------------------------------------------
@@ -673,7 +729,7 @@ class Api {
       }
       final authSalt = randomBytes(16);
       final authHash = await _hashAuthKey(authKey, authSalt);
-      final requireVerification = config.requireEmailVerification;
+      final mode = config.approvalMode;
       final user = StoredUser(
         id: base64UrlEncode(randomBytes(12)).replaceAll('=', ''),
         email: email,
@@ -685,12 +741,12 @@ class Api {
         // plan map, not LUMA_QUOTA_BYTES — see kPlanQuotaBytes.
         quotaBytes: kPlanQuotaBytes[kDefaultPlanId]!,
         createdAtMs: DateTime.now().millisecondsSinceEpoch,
-        status: requireVerification ? 'pending' : 'active',
+        status: mode.holdsNewAccounts ? 'pending' : 'active',
       );
       store.usersById[user.id] = user;
       store.userIdByEmail[email] = user.id;
 
-      if (!requireVerification) {
+      if (!mode.holdsNewAccounts) {
         await store.saveUsers();
         await store.logActivity('account_registered', '$email registered');
         final token = await _createSession(user, deviceLabel: deviceLabel);
@@ -698,6 +754,22 @@ class Api {
           'token': token.$1,
           'expiresAtMs': token.$2,
           'quotaBytes': user.quotaBytes,
+          'approval': mode.name,
+        });
+      }
+
+      if (mode == ApprovalMode.manual) {
+        // Nothing to send and nothing for the user to do: the account sits
+        // in 'pending' until the operator approves it from /admin.
+        await store.saveUsers();
+        await store.logActivity(
+            'account_registered', '$email registered (awaiting approval)');
+        return _json(201, {
+          'status': 'pending_approval',
+          'approval': mode.name,
+          'message': 'Account created. It has to be approved by the server '
+              'operator before you can sign in — no email needed, just try '
+              'signing in once they have approved it.',
         });
       }
 
@@ -707,7 +779,8 @@ class Api {
           'account_registered', '$email registered (pending verification)');
       await _sendVerificationEmail(user, verificationToken);
       return _json(201, {
-        'status': 'pending_verification',
+        'status': 'pending_approval',
+        'approval': mode.name,
         'message':
             'Check your email to verify your account before signing in.',
       });
@@ -739,8 +812,13 @@ class Api {
     }
 
     if (user.isPending) {
-      return _error(403, 'email_not_verified',
-          'Please verify your email address before signing in.');
+      return _error(
+          403,
+          'account_pending_approval',
+          config.approvalMode == ApprovalMode.email
+              ? 'Please verify your email address before signing in.'
+              : 'This account is waiting to be approved by the server '
+                  'operator.');
     }
 
     return store.lock.synchronized(() async {
@@ -850,6 +928,19 @@ class Api {
     final body = await _readJson(request);
     final email = _normalizeEmail(body['email']);
     if (email == null) return _error(400, 'bad_email', 'Invalid email.');
+
+    if (config.approvalMode != ApprovalMode.email) {
+      // No link exists to resend. Answered the same way for every address,
+      // so this still says nothing about whether the account exists.
+      return _json(200, {
+        'status': 'pending_approval',
+        'approval': config.approvalMode.name,
+        'message': config.approvalMode == ApprovalMode.manual
+            ? 'This server approves accounts by hand — there is no email to '
+                'resend. The operator will approve it.'
+            : 'This server does not require approval; just sign in.',
+      });
+    }
 
     if (!_resendLimiter.allow(email)) {
       return _error(429, 'rate_limited',
@@ -1185,6 +1276,10 @@ class Api {
       'usedBytes': store.usedBytes(user.id),
       'quotaBytes': user.quotaBytes,
       'planId': user.planId,
+      // The client mirrors this into its own server-access gate: an account
+      // that is back to 'pending' stops talking to the server until it is
+      // approved again (see ServerAccessGate in the app).
+      'status': user.status,
       'collections': collections.values.map((m) => m.toJson()).toList(),
     });
   }
@@ -1321,6 +1416,345 @@ class Api {
     });
   }
 
+  // ---- Handlers: recipes ---------------------------------------------------
+
+  static final RegExp _photoIdPattern = RegExp(r'^[a-z0-9_]{1,80}$');
+
+  String _newRecipeId() =>
+      randomBytes(12).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+
+  /// A public recipe's author display name: the local-part of their email,
+  /// so the whole address isn't broadcast to everyone browsing the catalogue.
+  static String _authorDisplay(String email) {
+    final at = email.indexOf('@');
+    return at > 0 ? email.substring(0, at) : email;
+  }
+
+  Map<String, dynamic> _recipeJson(PublicRecipe r, StoredUser viewer,
+      {bool includeReviews = false}) {
+    final summary = recipeStore.ratingSummary(r.id);
+    final mine = recipeStore.reviewBy(r.id, viewer.id);
+    return {
+      'id': r.id,
+      'authorName': _authorDisplay(r.authorEmail),
+      'mine': r.authorId == viewer.id,
+      'title': r.title,
+      'description': r.description,
+      'category': r.category,
+      'servings': r.servings,
+      'prepMinutes': r.prepMinutes,
+      'cookMinutes': r.cookMinutes,
+      'ingredients': jsonDecode(r.ingredients),
+      'steps': jsonDecode(r.steps),
+      'photoId': r.photoId,
+      'createdAtMs': r.createdAtMs,
+      'ratingCount': summary.count,
+      'ratingAvg': summary.avg,
+      'myRating': mine?.rating,
+      if (includeReviews)
+        'reviews':
+            recipeStore.reviewsFor(r.id).map((rv) => _reviewJson(rv, viewer)).toList(),
+    };
+  }
+
+  Map<String, dynamic> _reviewJson(RecipeReview r, StoredUser viewer) => {
+        'id': r.id,
+        'authorName': _authorDisplay(r.userEmail),
+        'mine': r.userId == viewer.id,
+        'rating': r.rating,
+        'text': r.text,
+        'photoId': r.photoId,
+        'createdAtMs': r.createdAtMs,
+      };
+
+  Response _listPublicRecipes(Request request, StoredUser user) => _json(200, {
+        'recipes':
+            recipeStore.browse().map((r) => _recipeJson(r, user)).toList(),
+      });
+
+  Response _getPublicRecipe(Request request, StoredUser user) {
+    final recipe = recipeStore.recipesById[request.params['id']];
+    if (recipe == null) return _error(404, 'not_found', 'Recipe not found.');
+    return _json(200, _recipeJson(recipe, user, includeReviews: true));
+  }
+
+  /// Validates the shared recipe body used by publish + update. Returns either
+  /// a normalised field record or a validation error.
+  ({
+    String title,
+    String? description,
+    String category,
+    int servings,
+    int prep,
+    int cook,
+    String ingredients,
+    String steps
+  })? _parseRecipeBody(Map<String, dynamic> body, {required void Function(Response) fail}) {
+    final title = (body['title'] as String? ?? '').trim();
+    if (title.isEmpty || title.length > 200) {
+      fail(_error(400, 'bad_title', 'A title of up to 200 characters is required.'));
+      return null;
+    }
+    final descRaw = (body['description'] as String?)?.trim();
+    if (descRaw != null && descRaw.length > 2000) {
+      fail(_error(400, 'bad_description', 'Description is too long.'));
+      return null;
+    }
+    final category = (body['category'] as String? ?? 'Other').trim();
+    if (category.length > 40) {
+      fail(_error(400, 'bad_category', 'Category is too long.'));
+      return null;
+    }
+    int clampInt(dynamic v, int lo, int hi, int fallback) {
+      final n = v is int ? v : (v is num ? v.toInt() : fallback);
+      return n < lo ? lo : (n > hi ? hi : n);
+    }
+    final ingredientsRaw = body['ingredients'];
+    final stepsRaw = body['steps'];
+    if (ingredientsRaw is! List || stepsRaw is! List) {
+      fail(_error(400, 'bad_body', 'ingredients and steps must be lists.'));
+      return null;
+    }
+    if (ingredientsRaw.length > 100 || stepsRaw.length > 100) {
+      fail(_error(400, 'too_many', 'Too many ingredients or steps.'));
+      return null;
+    }
+    final ingredients = <Map<String, dynamic>>[];
+    for (final i in ingredientsRaw) {
+      if (i is! Map) continue;
+      final name = (i['name'] as String? ?? '').trim();
+      if (name.isEmpty || name.length > 120) continue;
+      ingredients.add({
+        'name': name,
+        'amount': (i['amount'] as String? ?? '').trim(),
+        'unit': (i['unit'] as String? ?? '').trim(),
+      });
+    }
+    final steps = <String>[];
+    for (final s in stepsRaw) {
+      final text = (s is String ? s : '').trim();
+      if (text.isEmpty || text.length > 1000) continue;
+      steps.add(text);
+    }
+    final ingredientsJson = jsonEncode(ingredients);
+    final stepsJson = jsonEncode(steps);
+    if (ingredientsJson.length + stepsJson.length > 32 * 1024) {
+      fail(_error(400, 'too_large', 'Recipe body is too large.'));
+      return null;
+    }
+    return (
+      title: title,
+      description: (descRaw == null || descRaw.isEmpty) ? null : descRaw,
+      category: category.isEmpty ? 'Other' : category,
+      servings: clampInt(body['servings'], 1, 999, 2),
+      prep: clampInt(body['prepMinutes'], 0, 100000, 0),
+      cook: clampInt(body['cookMinutes'], 0, 100000, 0),
+      ingredients: ingredientsJson,
+      steps: stepsJson,
+    );
+  }
+
+  Future<Response> _publishRecipe(Request request, StoredUser user) async {
+    final body = await _readJson(request);
+    Response? error;
+    final fields = _parseRecipeBody(body, fail: (r) => error = r);
+    if (fields == null) return error!;
+    return store.lock.synchronized(() async {
+      final recipe = PublicRecipe(
+        id: _newRecipeId(),
+        authorId: user.id,
+        authorEmail: user.email,
+        title: fields.title,
+        description: fields.description,
+        category: fields.category,
+        servings: fields.servings,
+        prepMinutes: fields.prep,
+        cookMinutes: fields.cook,
+        ingredients: fields.ingredients,
+        steps: fields.steps,
+        createdAtMs: DateTime.now().millisecondsSinceEpoch,
+      );
+      recipeStore.recipesById[recipe.id] = recipe;
+      await recipeStore.saveRecipes();
+      return _json(201, _recipeJson(recipe, user));
+    });
+  }
+
+  Future<Response> _updatePublicRecipe(Request request, StoredUser user) async {
+    final recipe = recipeStore.recipesById[request.params['id']];
+    if (recipe == null) return _error(404, 'not_found', 'Recipe not found.');
+    if (recipe.authorId != user.id) {
+      return _error(403, 'forbidden', 'You can only edit your own recipes.');
+    }
+    final body = await _readJson(request);
+    Response? error;
+    final fields = _parseRecipeBody(body, fail: (r) => error = r);
+    if (fields == null) return error!;
+    return store.lock.synchronized(() async {
+      recipe
+        ..title = fields.title
+        ..description = fields.description
+        ..category = fields.category
+        ..servings = fields.servings
+        ..prepMinutes = fields.prep
+        ..cookMinutes = fields.cook
+        ..ingredients = fields.ingredients
+        ..steps = fields.steps
+        ..updatedAtMs = DateTime.now().millisecondsSinceEpoch;
+      await recipeStore.saveRecipes();
+      return _json(200, _recipeJson(recipe, user, includeReviews: true));
+    });
+  }
+
+  Future<Response> _deletePublicRecipe(Request request, StoredUser user) async {
+    final recipe = recipeStore.recipesById[request.params['id']];
+    if (recipe == null) return _error(404, 'not_found', 'Recipe not found.');
+    if (recipe.authorId != user.id) {
+      return _error(403, 'forbidden', 'You can only delete your own recipes.');
+    }
+    return store.lock.synchronized(() async {
+      await recipeStore.deleteRecipe(recipe.id);
+      return _json(200, {'ok': true});
+    });
+  }
+
+  Response _listRecipeReviews(Request request, StoredUser user) {
+    final recipe = recipeStore.recipesById[request.params['id']];
+    if (recipe == null) return _error(404, 'not_found', 'Recipe not found.');
+    return _json(200, {
+      'reviews': recipeStore
+          .reviewsFor(recipe.id)
+          .map((r) => _reviewJson(r, user))
+          .toList(),
+    });
+  }
+
+  /// Adds or updates the caller's review (one per recipe). Rating is required
+  /// (1..5); text is optional.
+  Future<Response> _putRecipeReview(Request request, StoredUser user) async {
+    final recipe = recipeStore.recipesById[request.params['id']];
+    if (recipe == null) return _error(404, 'not_found', 'Recipe not found.');
+    final body = await _readJson(request);
+    final rating = body['rating'];
+    if (rating is! int || rating < 1 || rating > 5) {
+      return _error(400, 'bad_rating', 'A rating from 1 to 5 is required.');
+    }
+    final text = (body['text'] as String? ?? '').trim();
+    if (text.length > 2000) {
+      return _error(400, 'bad_text', 'Review text is too long.');
+    }
+    return store.lock.synchronized(() async {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final existing = recipeStore.reviewBy(recipe.id, user.id);
+      if (existing != null) {
+        existing
+          ..rating = rating
+          ..text = text
+          ..updatedAtMs = now;
+      } else {
+        recipeStore.reviewsByRecipeId
+            .putIfAbsent(recipe.id, () => [])
+            .insert(
+                0,
+                RecipeReview(
+                  id: _newRecipeId(),
+                  recipeId: recipe.id,
+                  userId: user.id,
+                  userEmail: user.email,
+                  rating: rating,
+                  text: text,
+                  createdAtMs: now,
+                ));
+      }
+      await recipeStore.saveReviews();
+      return _json(200, _recipeJson(recipe, user, includeReviews: true));
+    });
+  }
+
+  Future<Response> _deleteRecipeReview(Request request, StoredUser user) async {
+    final recipe = recipeStore.recipesById[request.params['id']];
+    if (recipe == null) return _error(404, 'not_found', 'Recipe not found.');
+    return store.lock.synchronized(() async {
+      final list = recipeStore.reviewsByRecipeId[recipe.id];
+      if (list != null) {
+        final mine = list.where((r) => r.userId == user.id).toList();
+        for (final r in mine) {
+          await recipeStore.deleteMedia(r.photoId);
+        }
+        list.removeWhere((r) => r.userId == user.id);
+        await recipeStore.saveReviews();
+      }
+      return _json(200, _recipeJson(recipe, user, includeReviews: true));
+    });
+  }
+
+  Future<Response> _uploadRecipePhoto(Request request, StoredUser user) async {
+    final recipe = recipeStore.recipesById[request.params['id']];
+    if (recipe == null) return _error(404, 'not_found', 'Recipe not found.');
+    if (recipe.authorId != user.id) {
+      return _error(403, 'forbidden', 'You can only edit your own recipes.');
+    }
+    final bytes = await _readCappedBytes(request, RecipeStore.maxPhotoBytes);
+    if (bytes == null) {
+      return _error(413, 'photo_too_large', 'That image is too large.');
+    }
+    return store.lock.synchronized(() async {
+      final photoId = 'r_${recipe.id}';
+      await recipeStore.writeMedia(photoId, bytes);
+      recipe
+        ..photoId = photoId
+        ..updatedAtMs = DateTime.now().millisecondsSinceEpoch;
+      await recipeStore.saveRecipes();
+      return _json(200, {'photoId': photoId});
+    });
+  }
+
+  Future<Response> _uploadReviewPhoto(Request request, StoredUser user) async {
+    final recipe = recipeStore.recipesById[request.params['id']];
+    if (recipe == null) return _error(404, 'not_found', 'Recipe not found.');
+    final review = recipeStore.reviewBy(recipe.id, user.id);
+    if (review == null) {
+      return _error(404, 'no_review', 'Post your review before adding a photo.');
+    }
+    final bytes = await _readCappedBytes(request, RecipeStore.maxPhotoBytes);
+    if (bytes == null) {
+      return _error(413, 'photo_too_large', 'That image is too large.');
+    }
+    return store.lock.synchronized(() async {
+      final photoId = 'v_${review.id}';
+      await recipeStore.writeMedia(photoId, bytes);
+      review.photoId = photoId;
+      await recipeStore.saveReviews();
+      return _json(200, {'photoId': photoId});
+    });
+  }
+
+  Future<Response> _getRecipeMedia(Request request, StoredUser user) async {
+    final photoId = request.params['photoId']!;
+    if (!_photoIdPattern.hasMatch(photoId)) {
+      return _error(400, 'bad_photo_id', 'Invalid photo id.');
+    }
+    final bytes = await recipeStore.readMedia(photoId);
+    if (bytes == null) return _error(404, 'not_found', 'No such photo.');
+    return Response(200, body: bytes, headers: {
+      'Content-Type': 'image/jpeg',
+      'Cache-Control': 'private, max-age=86400',
+    });
+  }
+
+  /// Streams a request body into memory with a hard cap, returning null if it
+  /// exceeds [cap] (mirrors the streaming guard in [_putBlob]).
+  Future<Uint8List?> _readCappedBytes(Request request, int cap) async {
+    if ((request.contentLength ?? 0) > cap) return null;
+    final builder = BytesBuilder(copy: false);
+    await for (final chunk in request.read()) {
+      builder.add(chunk);
+      if (builder.length > cap) return null;
+    }
+    final bytes = builder.takeBytes();
+    return bytes.isEmpty ? null : bytes;
+  }
+
   // ---- Handlers: plugins ---------------------------------------------------
 
   /// Records one plugin install for the admin dashboard's "Plugins" tab (see
@@ -1328,7 +1762,10 @@ class Api {
   /// installed without a sync account — and just a best-effort counter, so a
   /// malformed or missing body is ignored rather than erroring the client's
   /// install flow.
-  Future<Response> _reportPluginDownload(Request request) async {
+  /// Records a plugin install for the dashboard's aggregate counter.
+  /// Authenticated: the app only ever reaches a luma server once its account
+  /// is approved, so anonymous stats pings no longer exist.
+  Future<Response> _reportPluginDownload(Request request, StoredUser user) async {
     Map<String, dynamic> body;
     try {
       body = await _readJson(request);
@@ -2375,10 +2812,10 @@ class Api {
     return _json(200, {'events': events.map((e) => e.toJson()).toList()});
   }
 
-  /// Manually activates a pending account, bypassing email verification —
-  /// the escape hatch for self-hosted servers where SMTP isn't configured
-  /// (or mail just didn't arrive) and the operator needs to unblock a
-  /// legitimate sign-up with no other way to receive the link.
+  /// Approves a pending account, which is how accounts normally become
+  /// usable: [ApprovalMode.manual] (the default) has every sign-up wait here
+  /// until the operator presses Approve in the dashboard. It doubles as the
+  /// escape hatch under [ApprovalMode.email] when the mail never arrived.
   Future<Response> _adminVerifyUser(Request request) async {
     final raw = await request.readAsString();
     String? email;
@@ -2400,7 +2837,7 @@ class Api {
       user.verificationExpiresAtMs = null;
       await store.saveUsers();
       await store.logActivity(
-          'admin_verified', '$email was manually verified by an admin');
+          'admin_verified', '$email was approved by an admin');
       return _adminFormResponse(request, '/admin');
     });
   }
@@ -2872,8 +3309,14 @@ class Api {
 
   Response _adminDashboard(Request request) {
     final stats = _adminStatsJson();
+    // Accounts waiting for approval float to the top: with the default
+    // manual approval mode, working through them is the operator's routine
+    // job here, and they'd otherwise be scattered through the list.
     final users = store.usersById.values.toList()
-      ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
+      ..sort((a, b) {
+        if (a.isPending != b.isPending) return a.isPending ? -1 : 1;
+        return b.createdAtMs.compareTo(a.createdAtMs);
+      });
 
     String fmtBytes(int bytes) {
       const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -2907,10 +3350,10 @@ class Api {
       final statusClass = u.status == 'active' ? 'ok' : 'warn';
       final action = u.isPending
           ? '<form method="post" action="/admin/verify" '
-              'style="margin:0" onsubmit="return confirm(\'Manually verify '
-              '${_htmlEscape(u.email)}? This skips email verification.\')">'
+              'style="margin:0" onsubmit="return confirm(\'Approve '
+              '${_htmlEscape(u.email)}? They can sign in straight after.\')">'
               '<input type="hidden" name="email" value="${_htmlEscape(u.email)}">'
-              '<button type="submit" class="btn btn-primary btn-sm">Verify</button>'
+              '<button type="submit" class="btn btn-primary btn-sm">Approve</button>'
               '</form>'
           : '';
       return '<tr>'

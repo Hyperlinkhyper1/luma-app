@@ -73,6 +73,7 @@ class SettingsController extends ChangeNotifier {
     required String aiMode,
     required Map<String, int> modelUsage,
     required List<String> navOrder,
+    required List<String> visitedCountries,
     required bool useAmericanGpaScale,
     required File? file,
   })  : _themeMode = themeMode,
@@ -91,6 +92,7 @@ class SettingsController extends ChangeNotifier {
         _aiMode = aiMode,
         _modelUsage = modelUsage,
         _navOrder = navOrder,
+        _visitedCountries = visitedCountries,
         _useAmericanGpaScale = useAmericanGpaScale,
         _file = file;
 
@@ -130,6 +132,7 @@ class SettingsController extends ChangeNotifier {
   /// the AI provider/key state.
   Map<String, int> _modelUsage;
   List<String> _navOrder;
+  List<String> _visitedCountries;
   bool _useAmericanGpaScale;
   final File? _file;
 
@@ -276,6 +279,28 @@ class SettingsController extends ChangeNotifier {
     _changed();
   }
 
+  /// Country codes marked as visited on the travel map (Account -> Stats),
+  /// matching the codes in `assets/world/world_countries.json`. Kept sorted
+  /// so the persisted file and the sync payload don't churn on reordering.
+  List<String> get visitedCountries => List.unmodifiable(_visitedCountries);
+
+  /// Marks [code] visited, or unmarks it if it already was.
+  void toggleVisitedCountry(String code) {
+    final next = List.of(_visitedCountries);
+    if (!next.remove(code)) next.add(code);
+    setVisitedCountries(next);
+  }
+
+  void setVisitedCountries(Iterable<String> codes) {
+    final next = codes.toSet().toList()..sort();
+    if (next.length == _visitedCountries.length &&
+        _listEquals(next, _visitedCountries)) {
+      return;
+    }
+    _visitedCountries = next;
+    _changed();
+  }
+
   static bool _listEquals<T>(List<T> a, List<T> b) {
     for (var i = 0; i < a.length; i++) {
       if (a[i] != b[i]) {
@@ -403,6 +428,7 @@ class SettingsController extends ChangeNotifier {
     _aiMode = 'normal';
     _modelUsage = const {};
     _navOrder = const [];
+    _visitedCountries = const [];
     _useAmericanGpaScale = false;
     _changed();
   }
@@ -428,6 +454,7 @@ class SettingsController extends ChangeNotifier {
         'selectedPlanId': _selectedPlanId,
         'planExpiresAt': _planExpiresAt,
         'navOrder': _navOrder,
+        'visitedCountries': _visitedCountries,
         'useAmericanGpaScale': _useAmericanGpaScale,
       };
 
@@ -446,6 +473,7 @@ class SettingsController extends ChangeNotifier {
     _selectedPlanId = data['selectedPlanId'] as String? ?? 'core';
     _planExpiresAt = data['planExpiresAt'] as String?;
     _navOrder = _parseNavOrder(data['navOrder']);
+    _visitedCountries = _parseStringList(data['visitedCountries']);
     _useAmericanGpaScale = data['useAmericanGpaScale'] == true;
     notifyListeners();
     await _persist();
@@ -476,6 +504,7 @@ class SettingsController extends ChangeNotifier {
         'aiMode': _aiMode,
         'modelUsage': _modelUsage,
         'navOrder': _navOrder,
+        'visitedCountries': _visitedCountries,
         'useAmericanGpaScale': _useAmericanGpaScale,
       }));
     } catch (_) {
@@ -518,6 +547,7 @@ class SettingsController extends ChangeNotifier {
       aiMode: data['aiMode'] as String? ?? 'normal',
       modelUsage: _parseModelUsage(data['modelUsage']),
       navOrder: _parseNavOrder(data['navOrder']),
+      visitedCountries: _parseStringList(data['visitedCountries']),
       useAmericanGpaScale: data['useAmericanGpaScale'] == true,
       file: file,
     );
@@ -550,7 +580,9 @@ class SettingsController extends ChangeNotifier {
     return const {};
   }
 
-  static List<String> _parseNavOrder(Object? raw) {
+  static List<String> _parseNavOrder(Object? raw) => _parseStringList(raw);
+
+  static List<String> _parseStringList(Object? raw) {
     if (raw is List) {
       return raw.whereType<String>().toList(growable: true);
     }
