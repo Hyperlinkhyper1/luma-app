@@ -3954,12 +3954,14 @@ font:13px/1 inherit}
 .ed-fmt[aria-expanded="true"]{background:var(--line);color:var(--tx);
 border-color:var(--accent)}
 .ed-fmt-sep{width:1px;align-self:stretch;margin:4px 4px;background:var(--line)}
-.ed-linkpop{position:absolute;top:calc(100% + 6px);left:10px;z-index:5;
-display:flex;gap:6px;padding:10px;background:var(--bg2);
-border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+/* In normal flow (not an overlay) — a floating popover here would sit right
+   on top of the frontmatter panel below and swallow clicks meant for it. */
+.ed-linkpop{width:100%;display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;
+padding:10px;background:var(--bg2);border:1px solid var(--line);
+border-radius:10px}
 .ed-linkpop input{min-height:36px;padding:0 10px;border-radius:7px;
 border:1px solid var(--line);background:var(--bg);color:var(--tx);
-font:13px inherit;width:170px}
+font:13px inherit;flex:1;min-width:140px}
 .ed-linkpop input:focus{outline:2px solid var(--focus);outline-offset:1px}
 .ed-linkpop .ed-btn{min-height:36px;padding:0 14px}
 .ed-tabs{display:none;flex:0 0 auto;border-bottom:1px solid var(--line)}
