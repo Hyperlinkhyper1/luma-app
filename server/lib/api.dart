@@ -207,7 +207,7 @@ class Api {
         _resendLimiter = RateLimiter(
             maxRequests: 3, window: const Duration(minutes: 15)),
         _adminFailLimiter = RateLimiter(
-            maxRequests: 10, window: const Duration(minutes: 15)),
+            maxRequests: 1, window: const Duration(minutes: 1)),
         _inviteLimiter = RateLimiter(
             maxRequests: 10, window: const Duration(hours: 1)),
         _aiChatLimiter = RateLimiter(
@@ -240,8 +240,9 @@ class Api {
   /// verification mail to one address from many IPs.
   final RateLimiter _resendLimiter;
 
-  /// Per-IP limit on *failed* admin-key attempts, so the admin key cannot be
-  /// brute-forced at the general limiter's 300 req/min.
+  /// Per-IP limit on *failed* admin-key attempts: one wrong guess per
+  /// minute, so the admin key cannot be brute-forced by a bot. Successful
+  /// logins never count against it.
   final RateLimiter _adminFailLimiter;
 
   /// Per-user limit on family/chat invites, each of which sends an email to
