@@ -6,30 +6,32 @@ import '../../../../theme/luma_theme.dart';
 import 'gallery_media.dart';
 import 'gallery_repository.dart';
 
-/// One square in the grid. Asks the repository for a thumbnail when it first
+/// The picture itself: asks the repository for a thumbnail when it first
 /// appears and holds on to the request, so a tile scrolled off and back on
-/// doesn't start a second decode.
-class GalleryTile extends StatefulWidget {
-  const GalleryTile({
+/// doesn't start a second decode. Shared by the grid tiles and the album
+/// covers.
+class GalleryThumbnail extends StatefulWidget {
+  const GalleryThumbnail({
     super.key,
     required this.item,
     required this.repository,
-    required this.onTap,
     this.pixels = 256,
+    this.placeholderSize = 22,
   });
 
   final GalleryItem item;
   final GalleryRepository repository;
-  final VoidCallback onTap;
 
   /// Long edge of the thumbnail to request, in pixels.
   final int pixels;
 
+  final double placeholderSize;
+
   @override
-  State<GalleryTile> createState() => _GalleryTileState();
+  State<GalleryThumbnail> createState() => _GalleryThumbnailState();
 }
 
-class _GalleryTileState extends State<GalleryTile> {
+class _GalleryThumbnailState extends State<GalleryThumbnail> {
   Future<Uint8List?>? _thumbnail;
 
   @override
@@ -39,7 +41,7 @@ class _GalleryTileState extends State<GalleryTile> {
   }
 
   @override
-  void didUpdateWidget(GalleryTile oldWidget) {
+  void didUpdateWidget(GalleryThumbnail oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.item.id != widget.item.id) _request();
   }
@@ -51,45 +53,70 @@ class _GalleryTileState extends State<GalleryTile> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final item = widget.item;
+    return FutureBuilder<Uint8List?>(
+      future: _thumbnail,
+      builder: (context, snapshot) {
+        final bytes = snapshot.data;
+        if (bytes == null) {
+          return Center(
+            child: Icon(
+              widget.item.isVideo
+                  ? Icons.movie_rounded
+                  : Icons.image_rounded,
+              color: luma.textMuted,
+              size: widget.placeholderSize,
+            ),
+          );
+        }
+        return Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+          gaplessPlayback: true,
+          cacheWidth: widget.pixels,
+          errorBuilder: (context, error, stack) => Center(
+            child: Icon(
+              Icons.broken_image_rounded,
+              color: luma.textMuted,
+              size: widget.placeholderSize,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// One square in an album's grid.
+class GalleryTile extends StatelessWidget {
+  const GalleryTile({
+    super.key,
+    required this.item,
+    required this.repository,
+    required this.onTap,
+    this.pixels = 256,
+  });
+
+  final GalleryItem item;
+  final GalleryRepository repository;
+  final VoidCallback onTap;
+  final int pixels;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
 
     return GestureDetector(
-      onTap: widget.onTap,
+      onTap: onTap,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: Stack(
           fit: StackFit.expand,
           children: [
             Container(color: luma.surface),
-            FutureBuilder<Uint8List?>(
-              future: _thumbnail,
-              builder: (context, snapshot) {
-                final bytes = snapshot.data;
-                if (bytes == null) {
-                  return Center(
-                    child: Icon(
-                      item.isVideo
-                          ? Icons.movie_rounded
-                          : Icons.image_rounded,
-                      color: luma.textMuted,
-                      size: 22,
-                    ),
-                  );
-                }
-                return Image.memory(
-                  bytes,
-                  fit: BoxFit.cover,
-                  gaplessPlayback: true,
-                  cacheWidth: widget.pixels,
-                  errorBuilder: (context, error, stack) => Center(
-                    child: Icon(
-                      Icons.broken_image_rounded,
-                      color: luma.textMuted,
-                      size: 22,
-                    ),
-                  ),
-                );
-              },
+            GalleryThumbnail(
+              item: item,
+              repository: repository,
+              pixels: pixels,
             ),
             if (item.isVideo)
               Positioned(

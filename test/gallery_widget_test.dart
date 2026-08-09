@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:luma/app/widgets.dart';
+import 'package:luma/features/plugins/installed/gallery/gallery_album_card.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_media.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_page.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_repository.dart';
@@ -126,19 +127,33 @@ Future<GalleryRepository> _pump(
   return repository;
 }
 
-/// Taps a pill in the strip. The strip scrolls horizontally, so a tab far
-/// enough along is off-screen and has to be brought into view first.
-Future<void> _selectTab(WidgetTester tester, String label) async {
-  await tester.ensureVisible(find.text(label));
+/// Opens an album by tapping its card. Cards further down the page have to be
+/// scrolled to first.
+Future<void> _openAlbum(WidgetTester tester, String label) async {
+  final card = find.ancestor(
+    of: find.text(label),
+    matching: find.byType(GalleryAlbumCard),
+  );
+  await tester.ensureVisible(card.first);
   await tester.pumpAndSettle();
-  await tester.tap(find.text(label));
+  await tester.tap(card.first);
+  await tester.pumpAndSettle();
+}
+
+/// Back out of an album to the albums screen.
+Future<void> _back(WidgetTester tester) async {
+  await tester.tap(find.byIcon(Icons.arrow_back_rounded));
   await tester.pumpAndSettle();
 }
 
 void main() {
-  testWidgets('the tab strip lists the fixed tabs then the folders',
+  testWidgets('the gallery opens on albums, not on a wall of photos',
       (tester) async {
     await _pump(tester);
+
+    expect(find.byType(GalleryAlbumCard), findsWidgets);
+    // No photo grid until an album is opened.
+    expect(find.byType(GalleryTile), findsNothing);
 
     expect(find.text('All'), findsOneWidget);
     expect(find.text('Pictures'), findsOneWidget);
@@ -151,24 +166,72 @@ void main() {
     expect(find.text('Camera'), findsNothing);
   });
 
-  testWidgets('the grid shows every item, under a date heading',
-      (tester) async {
+  testWidgets('each album card carries its own count', (tester) async {
     await _pump(tester);
 
-    expect(find.byType(GalleryTile), findsNWidgets(_library.length));
-    expect(find.text('July 31'), findsOneWidget);
-    expect(find.textContaining('6 items'), findsOneWidget);
+    Finder subtitleOf(String label) => find.descendant(
+          of: find.ancestor(
+            of: find.text(label),
+            matching: find.byType(GalleryAlbumCard),
+          ),
+          matching: find.textContaining('item'),
+        );
+
+    expect(tester.widget<Text>(subtitleOf('All')).data, '6 items');
+    expect(tester.widget<Text>(subtitleOf('Pictures')).data, '2 items');
+    expect(tester.widget<Text>(subtitleOf('Downloads')).data, '1 item');
   });
 
-  testWidgets('picking a tab narrows the grid to that category',
+  testWidgets('an album card shows its newest photo as the cover',
+      (tester) async {
+    final repository = await _pump(tester, items: [
+      _item(
+        name: 'old.jpg',
+        folder: 'Download',
+        takenAt: DateTime(2020, 1, 1),
+      ),
+      _item(
+        name: 'newest.jpg',
+        folder: 'Download',
+        takenAt: DateTime(2026, 5, 5),
+      ),
+    ]);
+
+    final downloads = repository.categories
+        .firstWhere((c) => c.label == 'Downloads');
+    expect(downloads.cover?.name, 'newest.jpg');
+  });
+
+  testWidgets('opening an album shows its photos under a date heading',
       (tester) async {
     await _pump(tester);
 
-    await _selectTab(tester, 'Pictures');
+    await _openAlbum(tester, 'All');
+    expect(find.byType(GalleryTile), findsNWidgets(_library.length));
+    expect(find.text('July 31'), findsOneWidget);
+  });
+
+  testWidgets('each album opens only its own photos', (tester) async {
+    await _pump(tester);
+
+    await _openAlbum(tester, 'Pictures');
     expect(find.byType(GalleryTile), findsNWidgets(2));
 
-    await _selectTab(tester, 'Downloads');
+    await _back(tester);
+    await _openAlbum(tester, 'Downloads');
     expect(find.byType(GalleryTile), findsOneWidget);
+  });
+
+  testWidgets('backing out of an album returns to the albums screen',
+      (tester) async {
+    await _pump(tester);
+
+    await _openAlbum(tester, 'Screenshots');
+    expect(find.byType(GalleryTile), findsOneWidget);
+
+    await _back(tester);
+    expect(find.byType(GalleryAlbumCard), findsWidgets);
+    expect(find.byType(GalleryTile), findsNothing);
   });
 
   testWidgets('a video tile is badged with its length', (tester) async {
@@ -182,24 +245,26 @@ void main() {
         duration: const Duration(minutes: 4, seconds: 7),
       ),
     ]);
+    await _openAlbum(tester, 'Videos');
 
     expect(find.text('4:07'), findsOneWidget);
   });
 
-  testWidgets('smart categories are offered, not given, below Nova',
+  testWidgets('smart albums are offered, not given, below Nova',
       (tester) async {
     await _pump(tester);
 
-    expect(find.text('✦ Smart'), findsOneWidget);
-    await _selectTab(tester, '✦ Smart');
+    expect(find.text('Nova'), findsOneWidget);
+    await _openAlbum(tester, 'Smart albums');
     expect(find.textContaining('Nova extra'), findsOneWidget);
   });
 
-  testWidgets('Nova gets the smart tabs instead of the upsell',
+  testWidgets('Nova gets real smart albums instead of the upsell card',
       (tester) async {
     await _pump(tester, plan: 'nova');
 
-    expect(find.text('✦ Smart'), findsNothing);
+    expect(find.text('Nova'), findsNothing);
+    expect(find.text('Included with Nova'), findsNothing);
   });
 
   testWidgets('a refused grant explains itself and offers a way back',
@@ -207,7 +272,7 @@ void main() {
     await _pump(tester, access: GalleryAccess.denied);
 
     expect(find.byType(LumaEmptyState), findsOneWidget);
-    expect(find.byType(GalleryTile), findsNothing);
+    expect(find.byType(GalleryAlbumCard), findsNothing);
   });
 
   testWidgets('an empty library says so rather than showing a blank grid',
@@ -215,6 +280,25 @@ void main() {
     await _pump(tester, items: const []);
 
     expect(find.text('No photos or videos yet'), findsOneWidget);
+  });
+
+  testWidgets('the albums grid lays out three-up on a narrow phone',
+      (tester) async {
+    tester.view.physicalSize = const Size(1080, 2220);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+
+    await _pump(tester);
+
+    // Three cards across, and the row is inside the screen — no overflow.
+    final cards = tester.widgetList<GalleryAlbumCard>(
+      find.byType(GalleryAlbumCard),
+    );
+    expect(cards.length, greaterThanOrEqualTo(6));
+
+    final width = tester.getSize(find.byType(GalleryAlbumCard).first).width;
+    final screen = tester.view.physicalSize.width / tester.view.devicePixelRatio;
+    expect(width * 3, lessThan(screen));
   });
 
   testWidgets('the map button stays disabled until something has a location',
