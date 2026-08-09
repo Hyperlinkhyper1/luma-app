@@ -16,8 +16,8 @@ class GalleryCategoryIds {
   static const folderPrefix = 'folder:';
 }
 
-/// One entry in the tab strip: either one of the five fixed categories or a
-/// folder the library actually contains.
+/// One album: either one of the five fixed categories or a folder the library
+/// actually contains.
 @immutable
 class GalleryCategory {
   const GalleryCategory({
@@ -25,6 +25,7 @@ class GalleryCategory {
     required this.label,
     required this.icon,
     required this.count,
+    this.cover,
     this.folders = const {},
   });
 
@@ -32,6 +33,11 @@ class GalleryCategory {
   final String label;
   final IconData icon;
   final int count;
+
+  /// The newest item in the album — what the card on the albums screen shows.
+  /// Found during the same pass that counts the album, so opening the screen
+  /// never has to walk the library once per album.
+  final GalleryItem? cover;
 
   /// For folder categories, every folder path folded into this label. Two
   /// devices may keep the same album in different places (`DCIM/Screenshots`
@@ -87,29 +93,31 @@ const _cameraFolderNames = {'camera', 'open camera', 'opencamera'};
 /// the screenshot folders — are left out; a "Camera" tab next to "Pictures"
 /// and "Videos" showing the same files is noise.
 List<GalleryCategory> buildCategories(List<GalleryItem> items) {
-  var pictures = 0;
-  var videos = 0;
-  var screenshots = 0;
-  var gifs = 0;
+  final all = _Bucket();
+  final pictures = _Bucket();
+  final videos = _Bucket();
+  final screenshots = _Bucket();
+  final gifs = _Bucket();
   final byLabel = <String, _FolderBucket>{};
 
   for (final item in items) {
     final capture = isScreenCapture(item);
     final camera = !capture && isCameraShot(item);
-    if (capture) screenshots++;
-    if (item.isGif) gifs++;
+    all.add(item);
+    if (capture) screenshots.add(item);
+    if (item.isGif) gifs.add(item);
     if (camera) {
       if (item.isVideo) {
-        videos++;
+        videos.add(item);
       } else if (!item.isGif) {
-        pictures++;
+        pictures.add(item);
       }
     }
 
     if (item.folder.isEmpty) continue;
     final label = folderLabel(item.folderName);
     final bucket = byLabel.putIfAbsent(label, _FolderBucket.new);
-    bucket.count++;
+    bucket.add(item);
     bucket.folders.add(item.folder);
     if (!capture) bucket.allCaptures = false;
     if (!camera) bucket.allCamera = false;
@@ -120,35 +128,40 @@ List<GalleryCategory> buildCategories(List<GalleryItem> items) {
       id: GalleryCategoryIds.all,
       label: 'All',
       icon: Icons.photo_library_rounded,
-      count: items.length,
+      count: all.count,
+      cover: all.cover,
     ),
-    if (pictures > 0)
+    if (pictures.count > 0)
       GalleryCategory(
         id: GalleryCategoryIds.pictures,
         label: 'Pictures',
         icon: Icons.photo_camera_rounded,
-        count: pictures,
+        count: pictures.count,
+        cover: pictures.cover,
       ),
-    if (videos > 0)
+    if (videos.count > 0)
       GalleryCategory(
         id: GalleryCategoryIds.videos,
         label: 'Videos',
         icon: Icons.videocam_rounded,
-        count: videos,
+        count: videos.count,
+        cover: videos.cover,
       ),
-    if (screenshots > 0)
+    if (screenshots.count > 0)
       GalleryCategory(
         id: GalleryCategoryIds.screenshots,
         label: 'Screenshots',
         icon: Icons.crop_rounded,
-        count: screenshots,
+        count: screenshots.count,
+        cover: screenshots.cover,
       ),
-    if (gifs > 0)
+    if (gifs.count > 0)
       GalleryCategory(
         id: GalleryCategoryIds.gifs,
         label: 'GIFs',
         icon: Icons.gif_box_rounded,
-        count: gifs,
+        count: gifs.count,
+        cover: gifs.cover,
       ),
   ];
 
@@ -160,6 +173,7 @@ List<GalleryCategory> buildCategories(List<GalleryItem> items) {
           label: e.key,
           icon: folderIcon(e.key),
           count: e.value.count,
+          cover: e.value.cover,
           folders: e.value.folders,
         ),
       )
@@ -172,8 +186,22 @@ List<GalleryCategory> buildCategories(List<GalleryItem> items) {
   return [...categories, ...folders];
 }
 
-class _FolderBucket {
+/// Counts an album and remembers its newest member, so both come out of the
+/// one pass over the library.
+class _Bucket {
   int count = 0;
+  GalleryItem? cover;
+
+  void add(GalleryItem item) {
+    count++;
+    final current = cover;
+    if (current == null || item.takenAt.isAfter(current.takenAt)) {
+      cover = item;
+    }
+  }
+}
+
+class _FolderBucket extends _Bucket {
   final Set<String> folders = {};
   bool allCaptures = true;
   bool allCamera = true;

@@ -138,6 +138,33 @@ void main() {
       expect(labels, isNot(contains('Screenshots')));
     });
 
+    test('every album carries its newest item as a cover', () {
+      final categories = buildCategories([
+        item(
+          name: 'old.jpg',
+          folder: 'Download',
+          takenAt: DateTime(2020, 1, 1),
+        ),
+        item(
+          name: 'newest.jpg',
+          folder: 'Download',
+          takenAt: DateTime(2026, 5, 5),
+        ),
+      ]);
+      final byId = {for (final c in categories) c.id: c};
+      expect(byId[GalleryCategoryIds.all]!.cover?.name, 'newest.jpg');
+      expect(
+        categories.firstWhere((c) => c.label == 'Downloads').cover?.name,
+        'newest.jpg',
+      );
+    });
+
+    test('an album with nothing in it has no cover', () {
+      final categories = buildCategories(const []);
+      expect(categories.single.id, GalleryCategoryIds.all);
+      expect(categories.single.cover, isNull);
+    });
+
     test('the same album in two places is one tab', () {
       final categories = buildCategories([
         item(name: 'a.jpg', folder: 'Pictures/Instagram'),
