@@ -113,22 +113,25 @@ class _LumaPrimaryButtonState extends State<LumaPrimaryButton> {
                       valueColor: AlwaysStoppedAnimation(luma.onAccent),
                     ),
                   )
-                : Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (widget.icon != null) ...[
-                        Icon(widget.icon, color: luma.onAccent, size: 18),
-                        const SizedBox(width: 8),
-                      ],
-                      Text(
-                        widget.label,
-                        style: TextStyle(
-                          color: luma.onAccent,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
+                : FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (widget.icon != null) ...[
+                          Icon(widget.icon, color: luma.onAccent, size: 18),
+                          const SizedBox(width: 8),
+                        ],
+                        Text(
+                          widget.label,
+                          style: TextStyle(
+                            color: luma.onAccent,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
           ),
         ),
@@ -178,22 +181,28 @@ class _LumaGhostButtonState extends State<LumaGhostButton> {
             border: Border.all(color: luma.border),
           ),
           child: Center(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (widget.icon != null) ...[
-                  Icon(widget.icon, color: luma.textSecondary, size: 18),
-                  const SizedBox(width: 8),
-                ],
-                Text(
-                  widget.label,
-                  style: TextStyle(
-                    color: luma.textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+            // Scale a long label down rather than let it spill past the
+            // border: these sit two-to-a-row inside dialogs, and a phone-width
+            // half leaves less room than the label needs.
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (widget.icon != null) ...[
+                    Icon(widget.icon, color: luma.textSecondary, size: 18),
+                    const SizedBox(width: 8),
+                  ],
+                  Text(
+                    widget.label,
+                    style: TextStyle(
+                      color: luma.textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -209,28 +218,45 @@ class LumaSegmentedTabs extends StatelessWidget {
     required this.tabs,
     required this.selectedIndex,
     required this.onSelect,
+    this.scrollable = false,
   });
 
   final List<String> tabs;
   final int selectedIndex;
   final ValueChanged<int> onSelect;
 
+  /// When true the pills sit on a single horizontally-scrollable row instead
+  /// of wrapping onto multiple lines. Use it where there are enough tabs to
+  /// wrap into an ungainly stack on a phone (e.g. the School plugin's nine
+  /// sections) so they stay one swipeable strip.
+  final bool scrollable;
+
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      children: [
-        for (var i = 0; i < tabs.length; i++)
-          _Pill(
-            label: tabs[i],
-            selected: i == selectedIndex,
-            onTap: () => onSelect(i),
-            luma: luma,
-          ),
-      ],
-    );
+    final pills = [
+      for (var i = 0; i < tabs.length; i++)
+        _Pill(
+          label: tabs[i],
+          selected: i == selectedIndex,
+          onTap: () => onSelect(i),
+          luma: luma,
+        ),
+    ];
+    if (scrollable) {
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            for (var i = 0; i < pills.length; i++) ...[
+              if (i > 0) const SizedBox(width: 6),
+              pills[i],
+            ],
+          ],
+        ),
+      );
+    }
+    return Wrap(spacing: 6, runSpacing: 6, children: pills);
   }
 }
 

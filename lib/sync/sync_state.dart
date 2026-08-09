@@ -73,16 +73,48 @@ class SyncStateStore {
   /// stale value can never reject a genuinely new identity.
   String? localVerifier;
 
+  /// Whether the server has approved this account (email verified, or
+  /// approved from the admin dashboard). Set when a sign-in succeeds — the
+  /// server only hands out a token to an approved account — and cleared
+  /// again if `/account` ever reports the account back to `pending`.
+  ///
+  /// This is what opens [ServerAccessGate]: while it is false, the app makes
+  /// no requests to the server beyond the account handshake itself.
+  bool accountApproved = false;
+
+  /// The address of an account that was created on this device but is still
+  /// waiting for approval. Purely so the UI can say who it is waiting for;
+  /// it grants no access.
+  String? pendingApprovalEmail;
+
+  /// How that account gets approved, as the server reported it at
+  /// registration: `manual` (the operator approves it — the default),
+  /// `email` (the user opens a link), or `open`. Decides whether the UI
+  /// offers to resend anything.
+  String? pendingApprovalMode;
+
   /// One-time migration flag: the first time this device's state is loaded
   /// after this field was introduced, any existing local-only (serverless)
   /// identity is cleared so the user is prompted to create a real cloud
   /// account instead (see `SyncService.init`). Stays true forever after.
   bool localAccountMigrated = false;
 
+  /// True once the user has dismissed the first-run account setup prompt
+  /// without completing it (closed it, hit Cancel, tapped outside it).
+  /// Stops that automatic prompt from reappearing on later launches — see
+  /// `maybePromptAccountSetup` in main.dart. Manually opening the dialog
+  /// from Settings is unaffected; this only gates the automatic one-time
+  /// nag.
+  bool accountSetupPromptDismissed = false;
+
   final Map<String, CollectionSyncState> collections = {};
 
   bool get signedIn =>
       token != null && encryptionKey != null && serverUrl != null;
+
+  /// Signed in *and* approved — the state every server-backed feature
+  /// requires before it does anything.
+  bool get serverReady => signedIn && accountApproved;
 
   /// The 'settings' collection (theme, preferences — see main.dart) always
   /// syncs and can't be turned off, so it defaults to enabled the first time
@@ -118,8 +150,17 @@ class SyncStateStore {
         store.kdfSalt = Uint8List.fromList(base64Decode(salt));
       }
       store.kdfIterations = data['kdfIterations'] as int?;
+      // Devices that signed in before this flag existed already proved the
+      // account is approved (the server only issues tokens to approved
+      // accounts), so an existing token counts as approved on upgrade.
+      store.accountApproved =
+          data['accountApproved'] as bool? ?? (store.token != null);
+      store.pendingApprovalEmail = data['pendingApprovalEmail'] as String?;
+      store.pendingApprovalMode = data['pendingApprovalMode'] as String?;
       store.localVerifier = data['localVerifier'] as String?;
       store.localAccountMigrated = data['localAccountMigrated'] == true;
+      store.accountSetupPromptDismissed =
+          data['accountSetupPromptDismissed'] == true;
       if (data['lastSyncAt'] is int) {
         store.lastSyncAt =
             DateTime.fromMillisecondsSinceEpoch(data['lastSyncAt'] as int);
@@ -150,8 +191,12 @@ class SyncStateStore {
             encryptionKey == null ? null : base64Encode(encryptionKey!),
         'kdfSalt': kdfSalt == null ? null : base64Encode(kdfSalt!),
         'kdfIterations': kdfIterations,
+        'accountApproved': accountApproved,
+        'pendingApprovalEmail': pendingApprovalEmail,
+        'pendingApprovalMode': pendingApprovalMode,
         'localVerifier': localVerifier,
         'localAccountMigrated': localAccountMigrated,
+        'accountSetupPromptDismissed': accountSetupPromptDismissed,
         'lastSyncAt': lastSyncAt?.millisecondsSinceEpoch,
         'collections':
             collections.map((id, s) => MapEntry(id, s.toJson())),
@@ -173,6 +218,7 @@ class SyncStateStore {
     encryptionKey = null;
     kdfSalt = null;
     kdfIterations = null;
+    accountApproved = false;
     localVerifier = null;
     lastSyncAt = null;
     for (final s in collections.values) {

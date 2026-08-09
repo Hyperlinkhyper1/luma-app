@@ -24,6 +24,14 @@ Add a new entry to `.\plugins\registry.json`. Use a unique `id`, a descriptive `
 }
 ```
 
+Add `"requiresAccount": true` if the plugin does nothing without the luma
+server (like Cloud Files or Chat). It puts an "Account required" badge on the
+marketplace card. The badge is only cosmetic — what actually keeps such a
+plugin from running is the compiled-in `AppShell.serverOnlyPlugins` map, which
+swaps the page for a `ServerAccountGate` until the device has an approved
+account. Add your plugin id there too, since the registry is fetched at
+runtime and must not be able to open a gate.
+
 ### 2. Create the Manifest
 Create a new directory `.\plugins\your-plugin-id\` and add a `manifest.json` file inside it. This should match the fields in the registry.
 
@@ -37,6 +45,14 @@ Create a new directory `.\plugins\your-plugin-id\` and add a `manifest.json` fil
   "category": "Utility"
 }
 ```
+
+### 3. Using the server
+Anything that talks to the luma server (cloud storage, shared data, the AI
+proxy) must first check `SyncService.serverReady` — true only when this device
+is signed in to an **approved** account. Route the requests through
+`GatedServerClient` (`lib/sync/server_access.dart`) as well; it refuses to
+open a socket while the gate is shut, so a forgotten check can't leak a
+connection. See `lib/features/plugins/installed/cloud_files/` for the pattern.
 
 ## Step 2: Implement the UI
 

@@ -35,6 +35,7 @@ class GoogleProxyClient extends OpenAiCompatibleClient {
           // sending this here is enough — no server-side mode→effort
           // mapping needed alongside its existing mode→model one.
           reasoningEffort: mode.reasoningEffort,
+          viaLumaServer: true,
         );
 
   static String _proxyUrl(String serverUrl) {

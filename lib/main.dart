@@ -58,11 +58,13 @@ import 'features/plugins/installed/groceries/groceries_api.dart';
 import 'features/plugins/installed/groceries/groceries_repository.dart';
 import 'features/plugins/installed/groceries/groceries_scope.dart';
 import 'features/plugins/installed/recipe_book/data/recipe_book_database.dart';
-import 'features/plugins/installed/recipe_book/recipe_book_repository.dart';
+import 'features/plugins/installed/recipe_book/recipe_book_controller.dart';
 import 'features/plugins/installed/recipe_book/recipe_book_scope.dart';
 import 'features/plugins/installed/minecraft_launcher/data/minecraft_launcher_database.dart';
 import 'features/plugins/installed/minecraft_launcher/minecraft_launcher_repository.dart';
 import 'features/plugins/installed/minecraft_launcher/minecraft_launcher_scope.dart';
+import 'features/plugins/installed/gallery/gallery_repository.dart';
+import 'features/plugins/installed/gallery/gallery_scope.dart';
 import 'features/plugins/plugin_catalog_service.dart';
 import 'features/plugins/plugin_repository.dart';
 import 'features/plugins/plugin_scope.dart';
@@ -117,8 +119,9 @@ class _LumaAppState extends State<LumaApp> {
   late final PasswordRepository _passwordRepository =
       PasswordRepository(_passwordDb, widget.passwordCrypto);
   late final PluginDatabase _pluginDb = PluginDatabase();
-  late final PluginRepository _pluginRepository =
-      PluginRepository(_pluginDb, PluginCatalogService());
+  late final PluginRepository _pluginRepository = PluginRepository(
+      _pluginDb, PluginCatalogService(),
+      authToken: () => _sync.authToken);
   late final QrCodeDatabase _qrCodeDb = QrCodeDatabase();
   late final QrCodeRepository _qrCodeRepository = QrCodeRepository(_qrCodeDb);
   late final CardWalletDatabase _cardWalletDb = CardWalletDatabase();
@@ -152,12 +155,20 @@ class _LumaAppState extends State<LumaApp> {
       GroceriesRepository(_groceriesDb);
   late final GroceriesApi _groceriesApi = GroceriesApi();
   late final RecipeBookDatabase _recipeBookDb = RecipeBookDatabase();
-  late final RecipeBookRepository _recipeBookRepository =
-      RecipeBookRepository(_recipeBookDb);
+  // The Recipe Book plugin: local-first private recipes, a shared server-backed
+  // public catalogue with photos/ratings/reviews, and favourites. The drift DB
+  // above is retained only so the controller can migrate any pre-existing
+  // recipes into its new local store on first run.
+  late final RecipeBookController _recipeBookController =
+      RecipeBookController(_sync, _recipeBookDb);
   late final MinecraftLauncherDatabase _minecraftDb =
       MinecraftLauncherDatabase();
   late final MinecraftLauncherRepository _minecraftRepository =
       MinecraftLauncherRepository(_minecraftDb);
+  // The Gallery plugin reads the device's own photos; it has no database of
+  // its own, only a rebuildable cache next to the thumbnails. The scan starts
+  // when the page is first opened, not here.
+  late final GalleryRepository _galleryRepository = GalleryRepository();
 
   // Global local-storage cap, enforced regardless of which plugins are
   // installed — see StorageGuardService.
@@ -269,12 +280,6 @@ class _LumaAppState extends State<LumaApp> {
       icon: Icons.local_grocery_store_rounded,
       db: _groceriesDb,
     ),
-    DriftSyncCollection(
-      id: 'recipe_book',
-      label: 'Recipe book',
-      icon: Icons.menu_book_rounded,
-      db: _recipeBookDb,
-    ),
   ]);
 
   // The Cloud Files plugin stores encrypted files on the same sync server.
@@ -317,6 +322,7 @@ class _LumaAppState extends State<LumaApp> {
     _familyRepository.init();
     unawaited(_passwordRepository.migrateLegacyCiphertexts());
     _secureChatRepository.init();
+    _recipeBookController.init();
     _autoClickerRepository.init();
     _usageRepository.init();
     _lifecycleListener = AppLifecycleListener(
@@ -332,6 +338,7 @@ class _LumaAppState extends State<LumaApp> {
     _cloudFiles.dispose();
     _familyRepository.dispose();
     _secureChatRepository.dispose();
+    _recipeBookController.dispose();
     _sync.dispose();
     _db.close();
     _passwordDb.close();
@@ -353,6 +360,7 @@ class _LumaAppState extends State<LumaApp> {
     _groceriesDb.close();
     _groceriesApi.dispose();
     _recipeBookDb.close();
+    _galleryRepository.dispose();
     super.dispose();
   }
 
@@ -443,9 +451,11 @@ class _LumaAppState extends State<LumaApp> {
                       child: GroceriesApiScope(
                       api: _groceriesApi,
                       child: RecipeBookScope(
-                      repository: _recipeBookRepository,
+                      controller: _recipeBookController,
                       child: MinecraftLauncherScope(
                       repository: _minecraftRepository,
+                      child: GalleryScope(
+                      repository: _galleryRepository,
                       child: ListenableBuilder(
                       listenable: widget.settings,
                       builder: (context, _) {
@@ -469,6 +479,7 @@ class _LumaAppState extends State<LumaApp> {
                               bootstrap: _bootstrap, accentSeed: s.accentSeed),
                         );
                       },
+                    ),
                     ),
                     ),
                     ),
@@ -540,15 +551,27 @@ class _BootGateState extends State<_BootGate> {
               // migrated away (see SyncService.init), have no account at
               // all — prompt them to create one.
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (!mounted) return;
-                final sync = SyncScope.of(context);
-                if (!sync.p2pReady) {
-                  showAccountSetupDialog(context, sync, initialMode: 1);
-                }
+                if (mounted) maybePromptAccountSetup(context);
               });
             },
           ),
       ],
     );
   }
+}
+
+/// Shows the account setup dialog the first time the app is opened on a
+/// device with no account at all (new installs, and devices whose
+/// local-only identity was just migrated away — see [SyncService.init]).
+///
+/// If the user closes it without completing sign-in/registration/local
+/// setup, this is not called again automatically on later launches — see
+/// [SyncService.accountSetupPromptDismissed]. It can still always be opened
+/// by hand from Settings → Sync & account.
+Future<void> maybePromptAccountSetup(BuildContext context) async {
+  final sync = SyncScope.of(context);
+  if (sync.p2pReady || sync.accountSetupPromptDismissed) return;
+  final completed =
+      await showAccountSetupDialog(context, sync, initialMode: 1);
+  if (!completed) await sync.dismissAccountSetupPrompt();
 }

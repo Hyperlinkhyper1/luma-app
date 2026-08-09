@@ -143,7 +143,7 @@ class _MarkupController extends TextEditingController {
   }
 }
 
-class _NotesPageState extends State<NotesPage> {
+class _NotesPageState extends State<NotesPage> with WidgetsBindingObserver {
   late final NotesRepository _repo = NotesRepository();
   String? _selectedId;
 
@@ -155,16 +155,44 @@ class _NotesPageState extends State<NotesPage> {
   void initState() {
     super.initState();
     _repo.addListener(_onRepoChanged);
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
     // NotesRepository is a shared singleton (also used by the sync engine),
     // so the page must NOT dispose it — only detach its own listener.
+    WidgetsBinding.instance.removeObserver(this);
+    _flushEdits();
     _repo.removeListener(_onRepoChanged);
     _titleController.dispose();
     _contentController.dispose();
     super.dispose();
+  }
+
+  // Persist whatever is in the editor right now without leaving edit mode.
+  // Rotating the phone reflows the notes layout between its one- and two-pane
+  // forms, and the soft keyboard opening/closing reflows it too; either can
+  // tear down and rebuild the editor subtree, so we save first to make sure a
+  // user never loses text they've typed but not explicitly saved yet.
+  void _flushEdits() {
+    if (!_editing || _selectedId == null) return;
+    _repo.update(
+      _selectedId!,
+      title: _titleController.text,
+      content: _contentController.text,
+    );
+  }
+
+  @override
+  void didChangeMetrics() => _flushEdits();
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
+      _flushEdits();
+    }
   }
 
   void _onRepoChanged() {
@@ -647,24 +675,6 @@ class _NoteEditor extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               if (editing) ...[
-                _IconBtn(
-                  icon: Icons.format_bold_rounded,
-                  tooltip: 'Bold',
-                  onTap: onToggleBold,
-                ),
-                _IconBtn(
-                  icon: Icons.format_italic_rounded,
-                  tooltip: 'Cursive',
-                  onTap: onToggleCursive,
-                ),
-                _ColorPickerBtn(onSelected: onPickColor),
-                const SizedBox(width: 6),
-                _IconBtn(
-                  icon: Icons.checklist_rounded,
-                  tooltip: 'Add checklist item',
-                  onTap: onInsertChecklistItem,
-                ),
-                const SizedBox(width: 4),
                 _TextBtn(label: 'Cancel', onTap: onCancel),
                 const SizedBox(width: 8),
                 _TextBtn(label: 'Save', accent: true, onTap: onSave),
@@ -672,6 +682,37 @@ class _NoteEditor extends StatelessWidget {
                 _TextBtn(label: 'Edit', onTap: onEdit),
             ],
           ),
+          // The formatting controls sit on their own horizontally-scrollable
+          // row rather than crammed into the title row: on a phone the title
+          // field plus every button in one row overflows the screen and
+          // squeezes the title down to a few unusable pixels.
+          if (editing) ...[
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _IconBtn(
+                    icon: Icons.format_bold_rounded,
+                    tooltip: 'Bold',
+                    onTap: onToggleBold,
+                  ),
+                  _IconBtn(
+                    icon: Icons.format_italic_rounded,
+                    tooltip: 'Cursive',
+                    onTap: onToggleCursive,
+                  ),
+                  _ColorPickerBtn(onSelected: onPickColor),
+                  const SizedBox(width: 6),
+                  _IconBtn(
+                    icon: Icons.checklist_rounded,
+                    tooltip: 'Add checklist item',
+                    onTap: onInsertChecklistItem,
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 6),
           Text(
             _formatDate(note.updatedAt),

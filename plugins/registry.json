@@ -13,7 +13,7 @@
     {
       "id": "card-wallet",
       "name": "Card Wallet",
-      "description": "Keep your loyalty and membership passes in one place. Save a card's barcode and luma regenerates it on screen to scan at the till, or store an NFC tag's data to copy and carry. Like Stocard, inside luma.",
+      "description": "Keep your loyalty and membership passes in one place. Scan a card's barcode or QR with your camera or a screenshot and luma regenerates it on screen to scan at the till, or tap an NFC card to capture its tag. Like Stocard, inside luma.",
       "icon": "wallet",
       "category": "Utility",
       "tags": ["Utility", "Shopping"],
@@ -88,6 +88,7 @@
       "category": "Utility",
       "tags": ["Utility", "Sync"],
       "free": true,
+      "requiresAccount": true,
       "version": "1.0.0"
     },
     {
@@ -103,12 +104,12 @@
     {
       "id": "server-tycoon",
       "name": "Server Hosting Tycoon",
-      "description": "Build a server-hosting empire right inside luma. Buy rigs and routers, spec them with real CPUs, motherboards, RAM and cooling, host services, accept contracts, and manage power and bandwidth as you grow day by day.",
+      "description": "Build a server-hosting empire right inside luma. Buy rigs and routers, spec them with real CPUs, motherboards, RAM and cooling, host services, accept contracts, and manage power and bandwidth as you grow day by day. Now with a phone-friendly layout, offline earnings, a six-branch research tree, daily goals and timed boosts.",
       "icon": "dns",
       "category": "Games",
       "tags": ["Games", "Simulation"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.1.0"
     },
     {
       "id": "mood-journal",
@@ -208,6 +209,7 @@
       "category": "Social",
       "tags": ["Social", "Sync"],
       "free": true,
+      "requiresAccount": true,
       "version": "1.0.0"
     },
     {
@@ -233,10 +235,40 @@
     {
       "id": "recipe-book",
       "name": "Recipe Book",
-      "description": "Store and organise all your recipes in one place. Add ingredients, step-by-step instructions, prep and cook times, and scale servings on the fly.",
-      "icon": "menu_book",
+      "description": "A photo-forward recipe collection with three tabs — Favourites, Public and Private. Add ingredients, step-by-step instructions, prep and cook times, and scale servings on the fly. Keep recipes private, or publish them to a shared catalogue where every luma user can browse, upload photos, rate with stars and leave reviews. Public recipes sync through your account.",
+      "icon": "restaurant_menu",
       "category": "Productivity",
-      "tags": ["Productivity", "Food"],
+      "tags": ["Productivity", "Food", "Social", "Sync"],
+      "free": true,
+      "version": "1.1.0"
+    },
+    {
+      "id": "calculator",
+      "name": "Calculator",
+      "description": "An everyday calculator that turns into a graphing one. Basic mode handles the daily sums; Advanced adds a scientific keypad and plots any number of functions of x on a pannable, zoomable graph you can tap to trace. The ☰ button in its header converts measurements — km to miles, °C to °F, kg to pounds, and more.",
+      "icon": "functions",
+      "category": "Utility",
+      "tags": ["Utility", "Education"],
+      "free": true,
+      "version": "1.0.0"
+    },
+    {
+      "id": "gallery",
+      "name": "Gallery",
+      "description": "Every photo and video on this device, sorted into tabs: pictures and videos from the camera, screenshots, GIFs, and one tab per folder — WhatsApp, Downloads, whatever else is there. See where shots were taken on a world map, and on Nova let on-device models sort them by what's in them.",
+      "icon": "photo_library",
+      "category": "Utility",
+      "tags": ["Utility", "Photos"],
+      "free": true,
+      "version": "1.0.0"
+    },
+    {
+      "id": "worth-counter",
+      "name": "Worth Counter",
+      "description": "A tally counter that knows what things are worth. Add a product with its price, hit + and - as you count, and the bottom bar keeps a live total of everything counted.",
+      "icon": "calculate",
+      "category": "Utility",
+      "tags": ["Utility", "Finance"],
       "free": true,
       "version": "1.0.0"
     }
