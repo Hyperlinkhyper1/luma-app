@@ -347,6 +347,8 @@ class Api {
       ..get('/admin/website/preview/public/<path|.*>',
           _requireAdmin(_wikiPreviewPublicAsset))
       ..post('/admin/website/upload', _requireAdmin(_adminWebsiteUpload))
+      ..get('/admin/website/new-devlog', _requireAdmin(_adminNewDevlogForm))
+      ..post('/admin/website/new-devlog', _requireAdmin(_adminNewDevlogCreate))
       ..get('/admin/website/<page|.*>', _requireAdmin(_adminWebsiteEditor))
       ..post('/admin/website/<page|.*>', _requireAdmin(_adminWebsiteSave));
 
@@ -397,8 +399,12 @@ class Api {
         final isAuthRoute = request.url.path.startsWith('api/v1/auth/') &&
             !request.url.path.endsWith('/logout');
         final limiter = isAuthRoute ? _authLimiter : _generalLimiter;
-        if (!limiter.allow('${isAuthRoute ? 'a' : 'g'}:$key')) {
-          return _error(429, 'rate_limited', 'Too many requests. Slow down.');
+        final limiterKey = '${isAuthRoute ? 'a' : 'g'}:$key';
+        if (!limiter.allow(limiterKey)) {
+          return _error(429, 'rate_limited', 'Too many requests. Slow down.')
+              .change(headers: {
+            'Retry-After': '${limiter.retryAfterSeconds(limiterKey)}',
+          });
         }
         return inner(request);
       };
@@ -480,7 +486,10 @@ class Api {
       // locks a legitimate operator out.
       if (_adminFailLimiter.isLimited(clientKey)) {
         return _error(429, 'rate_limited',
-            'Too many failed admin attempts. Try again later.');
+                'Too many failed admin attempts. Try again later.')
+            .change(headers: {
+          'Retry-After': '${_adminFailLimiter.retryAfterSeconds(clientKey)}',
+        });
       }
 
       if (_hasValidAdminSession(request)) {
@@ -578,27 +587,40 @@ class Api {
     return !(host.startsWith('localhost') || host.startsWith('127.'));
   }
 
-  String _adminLoginFormHtml({bool failed = false}) =>
-      '<!doctype html><html><head><meta charset="utf-8">'
-      '<meta name="viewport" content="width=device-width, initial-scale=1">'
-      '<title>luma admin — sign in</title>'
-      '<style>$_adminCss</style></head><body><div class="wrap" '
-      'style="max-width:360px;padding-top:15vh">'
-      '<header class="top"><h1>luma<span class="dot">.</span> admin</h1></header>'
-      '<div class="card">'
-      '${failed ? '<p class="hint" style="color:#e07e7e">Invalid admin key, or too many attempts — try again shortly.</p>' : ''}'
-      '<form method="post" action="/admin/login">'
-      '<div class="product-form" style="flex-direction:column;align-items:stretch">'
-      '<input type="password" name="key" placeholder="Admin key" autofocus required '
-      'style="width:100%">'
-      '<button type="submit" class="btn btn-primary">Sign in</button>'
-      '</div></form></div></div></body></html>';
+  static String _fmtWait(int seconds) {
+    if (seconds < 60) return '$seconds second${seconds == 1 ? '' : 's'}';
+    final minutes = (seconds / 60).ceil();
+    return '$minutes minute${minutes == 1 ? '' : 's'}';
+  }
+
+  String _adminLoginFormHtml({bool failed = false, int? lockedSeconds}) {
+    final message = lockedSeconds != null
+        ? 'Too many failed attempts — try again in ${_fmtWait(lockedSeconds)}.'
+        : (failed ? 'Invalid admin key.' : null);
+    return '<!doctype html><html><head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        '<title>luma admin — sign in</title>'
+        '<style>$_adminCss</style></head><body><div class="wrap" '
+        'style="max-width:360px;padding-top:15vh">'
+        '<header class="top"><h1>luma<span class="dot">.</span> admin</h1></header>'
+        '<div class="card">'
+        '${message != null ? '<p class="hint" style="color:#e07e7e">${_htmlEscape(message)}</p>' : ''}'
+        '<form method="post" action="/admin/login">'
+        '<div class="product-form" style="flex-direction:column;align-items:stretch">'
+        '<input type="password" name="key" placeholder="Admin key" autofocus required '
+        '${lockedSeconds != null ? 'disabled' : ''} style="width:100%">'
+        '<button type="submit" class="btn btn-primary" '
+        '${lockedSeconds != null ? 'disabled' : ''}>Sign in</button>'
+        '</div></form></div></div></body></html>';
+  }
 
   Response _adminLoginPage(Request request) {
     if (!config.adminEnabled) return _error(404, 'not_found', 'Not found.');
+    final locked = int.tryParse(request.url.queryParameters['locked'] ?? '');
     return Response(200,
         body: _adminLoginFormHtml(
-            failed: request.url.queryParameters.containsKey('failed')),
+            failed: request.url.queryParameters.containsKey('failed'),
+            lockedSeconds: locked),
         headers: {
           'Content-Type': 'text/html; charset=utf-8',
           'Cache-Control': 'no-store',
@@ -609,7 +631,8 @@ class Api {
     if (!config.adminEnabled) return _error(404, 'not_found', 'Not found.');
     final clientKey = _clientKey(request);
     if (_adminFailLimiter.isLimited(clientKey)) {
-      return Response.found('/admin/login?failed=1');
+      final wait = _adminFailLimiter.retryAfterSeconds(clientKey);
+      return Response.found('/admin/login?locked=$wait');
     }
     Map<String, String> form = const {};
     try {
@@ -3126,10 +3149,37 @@ class Api {
     }
     pages.sort();
 
-    final rows = pages
-        .map((p) => '<tr><td><a href="/admin/website/${_htmlEscape(p)}">'
-            '${_htmlEscape(p)}</a></td></tr>')
-        .join();
+    // Group by top-level folder — each is a content collection (wiki, blog…).
+    final byCollection = <String, List<String>>{};
+    for (final p in pages) {
+      final slash = p.indexOf('/');
+      final collection = slash > 0 ? p.substring(0, slash) : p;
+      (byCollection[collection] ??= []).add(p);
+    }
+    final collectionNames = {'wiki': 'Wiki', 'blog': 'Devlog'};
+
+    final sections = byCollection.entries.map((entry) {
+      final collection = entry.key;
+      final name = collectionNames[collection] ?? collection;
+      final rows = entry.value
+          .map((p) => '<tr><td><a href="/admin/website/${_htmlEscape(p)}">'
+              '${_htmlEscape(p.contains('/') ? p.substring(p.indexOf('/') + 1) : p)}'
+              '</a></td></tr>')
+          .join();
+      final newDevlogBtn = collection == 'blog'
+          ? '<a href="/admin/website/new-devlog" class="btn btn-primary btn-sm">'
+              '+ New devlog</a>'
+          : '';
+      return '<div class="card table-card">'
+          '<h2 style="display:flex;align-items:center;justify-content:space-between">'
+          '<span>$name '
+          '<span class="hint" style="display:inline;margin:0">'
+          '(${entry.value.length})</span></span>'
+          '$newDevlogBtn'
+          '</h2>'
+          '<table><tbody>$rows</tbody></table>'
+          '</div>';
+    }).join();
 
     return Response(200,
         body: '<!doctype html><html><head><meta charset="utf-8">'
@@ -3137,18 +3187,32 @@ class Api {
             '<title>luma admin — website</title><style>$_adminCss</style></head>'
             '<body><div class="wrap">'
             '<header class="top"><h1>luma<span class="dot">.</span> website</h1>'
-            '<nav><a href="/admin">← dashboard</a></nav></header>'
-            '<div class="card"><h2>Pages</h2>'
-            '<table><tbody>$rows</tbody></table>'
-            '<p class="hint">Open a page to edit it, or go to '
-            '/admin/website/&lt;collection&gt;/&lt;new-name&gt; to create one '
-            '(e.g. wiki/my-new-page).</p>'
-            '<form method="post" action="/admin/website/build">'
+            '<span class="sub">page editor</span>'
+            '<nav style="margin-left:auto">'
+            '<a href="/admin" class="btn btn-ghost btn-sm">← dashboard</a>'
+            '</nav></header>'
+            '<div class="stats">'
+            '<div class="stat"><div class="n">${pages.length}</div>'
+            '<div class="l">Pages</div></div>'
+            '<div class="stat"><div class="n">${byCollection.length}</div>'
+            '<div class="l">Collections</div></div>'
+            '</div>'
+            '$sections'
+            '<div class="card">'
+            '<h2>Publish</h2>'
+            '<p class="hint">Saved edits stay in draft on the server until you '
+            'publish — this commits them to git, rebuilds the site with '
+            'Astro, and rsyncs the result live.</p>'
+            '<div class="product-form">'
+            '<form method="post" action="/admin/website/build" style="margin:0">'
             '<button type="submit" class="btn btn-primary">Publish site '
             '(rebuild)</button></form>'
-            '<pre id="buildlog" style="white-space:pre-wrap"></pre>'
+            '<span id="buildbadge" class="badge" style="display:none"></span>'
+            '</div>'
+            '<pre id="buildlog" class="log" style="display:none;margin-top:12px"></pre>'
+            '</div>'
             '<script>$_wikiBuildScript</script>'
-            '</div></div></body></html>',
+            '</div></body></html>',
         headers: {'Content-Type': 'text/html; charset=utf-8'});
   }
 
@@ -3188,12 +3252,34 @@ class Api {
             '<h1 class="ed-name">${_htmlEscape(page)}</h1>'
             '<span id="status" class="ed-status" role="status" aria-live="polite"></span>'
             '<div class="ed-actions">'
-            '<button id="imgbtn" class="ed-btn" type="button">Image</button>'
-            '<input id="imgfile" type="file" accept="image/*" hidden>'
             '<button id="savebtn" class="ed-btn" type="button">Save</button>'
             '<button id="pubbtn" class="ed-btn ed-primary" type="button">'
             'Save &amp; publish</button>'
             '</div></header>'
+            '<div class="ed-format" role="toolbar" aria-label="Formatting">'
+            '<button id="fmt-bold" class="ed-fmt" type="button" '
+            'title="Bold (Ctrl+B)"><strong>B</strong></button>'
+            '<button id="fmt-italic" class="ed-fmt" type="button" '
+            'title="Italic (Ctrl+I)"><em>i</em></button>'
+            '<button id="fmt-h2" class="ed-fmt" type="button" '
+            'title="Heading">H2</button>'
+            '<button id="fmt-list" class="ed-fmt" type="button" '
+            'title="Bullet list">•⁠ ⁠list</button>'
+            '<span class="ed-fmt-sep"></span>'
+            '<button id="linkbtn" class="ed-fmt" type="button" '
+            'title="Insert link — turns a name into a clickable link '
+            'instead of a bare URL" aria-expanded="false">Link</button>'
+            '<button id="imgbtn" class="ed-fmt" type="button" '
+            'title="Insert image">Image</button>'
+            '<input id="imgfile" type="file" accept="image/*" hidden>'
+            '<div id="linkpop" class="ed-linkpop" hidden>'
+            '<input id="linktext" type="text" placeholder="Text readers see" '
+            'aria-label="Link text">'
+            '<input id="linkurl" type="url" placeholder="https://…" '
+            'aria-label="Link URL">'
+            '<button id="linkgo" type="button" class="ed-btn ed-primary">Add</button>'
+            '</div>'
+            '</div>'
             '<div class="ed-tabs" role="tablist">'
             '<button class="ed-tab is-on" data-pane="write" role="tab">Write</button>'
             '<button class="ed-tab" data-pane="preview" role="tab">Preview</button>'
@@ -3404,6 +3490,141 @@ class Api {
     return _json(200, {'url': '/images/uploads/$name'});
   }
 
+  // ---- Quick devlog creation: a small form instead of hand-writing
+  // frontmatter YAML in the raw editor. Writes the post as a draft by
+  // default and hands off to the full split editor for everything else. ----
+
+  static String _slugify(String s) {
+    final slug = s
+        .toLowerCase()
+        .trim()
+        .replaceAll(RegExp(r"[^a-z0-9\s-]"), '')
+        .replaceAll(RegExp(r'[\s_-]+'), '-')
+        .replaceAll(RegExp(r'^-+|-+$'), '');
+    return slug.isEmpty ? 'post' : slug;
+  }
+
+  static String _yamlStr(String s) =>
+      '"${s.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"';
+
+  Response _adminNewDevlogForm(Request request) {
+    final unavailable = _wikiUnavailable();
+    if (unavailable != null) return unavailable;
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    return Response(200,
+        body: '<!doctype html><html><head><meta charset="utf-8">'
+            '<meta name="viewport" content="width=device-width, initial-scale=1">'
+            '<title>luma admin — new devlog</title>'
+            '<style>$_adminCss'
+            '.product-form{flex-direction:column;align-items:stretch;gap:6px}'
+            '.product-form label{font-size:11px;letter-spacing:.05em;'
+            'text-transform:uppercase;color:#8d86a8;margin:10px 0 -2px}'
+            '.product-form label:first-child{margin-top:0}'
+            '.product-form input,.product-form select{width:100%}'
+            '.product-form textarea{background:#1a1530;color:#ece8f7;'
+            'border:1px solid #2d2645;border-radius:9px;padding:10px 12px;'
+            'font-size:13px;font-family:inherit;outline:none;width:100%;'
+            'min-height:220px;resize:vertical}'
+            '.product-form textarea:focus{border-color:#8a7ee0}'
+            '.devlog-row{display:flex;gap:10px}'
+            '.devlog-row > div{flex:1}'
+            '.devlog-check{flex-direction:row!important;align-items:center;'
+            'gap:8px;text-transform:none!important;letter-spacing:0!important;'
+            'font-size:13px!important;color:#ece8f7!important}'
+            '.devlog-check input{width:auto!important}'
+            '</style></head><body><div class="wrap">'
+            '<header class="top"><h1>luma<span class="dot">.</span> new devlog</h1>'
+            '<nav style="margin-left:auto">'
+            '<a href="/admin/website" class="btn btn-ghost btn-sm">← all pages</a>'
+            '</nav></header>'
+            '<div class="card" style="max-width:640px">'
+            '<h2>New devlog post</h2>'
+            '<form method="post" action="/admin/website/new-devlog">'
+            '<div class="product-form">'
+            '<label for="title">Title</label>'
+            '<input id="title" name="title" type="text" required autofocus '
+            'placeholder="What happened this week">'
+            '<label for="description">Description</label>'
+            '<input id="description" name="description" type="text" required '
+            'placeholder="One line for the devlog list">'
+            '<div class="devlog-row">'
+            '<div><label for="topic">Topic</label>'
+            '<select id="topic" name="topic">'
+            '<option value="site">Site</option>'
+            '<option value="luma">Luma</option>'
+            '<option value="minecraft">Minecraft</option>'
+            '</select></div>'
+            '<div><label for="date">Date</label>'
+            '<input id="date" name="date" type="date" value="$today"></div>'
+            '</div>'
+            '<label for="tags">Tags (comma separated)</label>'
+            '<input id="tags" name="tags" type="text" placeholder="update, mods">'
+            '<label for="body">Body (Markdown)</label>'
+            '<textarea id="body" name="body" '
+            'placeholder="Write the devlog here — you can keep editing after '
+            'it is created."></textarea>'
+            '<label class="devlog-check">'
+            '<input type="checkbox" name="draft" value="1" checked>'
+            'Save as draft (hidden from the site until you publish it)</label>'
+            '<button type="submit" class="btn btn-primary" '
+            'style="align-self:flex-start;margin-top:6px">Create devlog</button>'
+            '</div></form></div></div></body></html>',
+        headers: {'Content-Type': 'text/html; charset=utf-8'});
+  }
+
+  Future<Response> _adminNewDevlogCreate(Request request) async {
+    final unavailable = _wikiUnavailable();
+    if (unavailable != null) return unavailable;
+    if (!_sameOrigin(request)) {
+      return _error(403, 'bad_origin', 'Cross-origin request rejected.');
+    }
+    Map<String, String> form = const {};
+    try {
+      form = Uri.splitQueryString(await request.readAsString());
+    } catch (_) {}
+    final title = (form['title'] ?? '').trim();
+    final description = (form['description'] ?? '').trim();
+    if (title.isEmpty || description.isEmpty) {
+      return _error(
+          400, 'bad_request', 'Title and description are required.');
+    }
+    final topic = {'luma', 'minecraft', 'site'}.contains(form['topic'])
+        ? form['topic']!
+        : 'site';
+    final date = RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(form['date'] ?? '')
+        ? form['date']!
+        : DateTime.now().toIso8601String().substring(0, 10);
+    final tags = (form['tags'] ?? '')
+        .split(',')
+        .map((t) => t.trim())
+        .where((t) => t.isNotEmpty)
+        .toList();
+    final draft = form['draft'] == '1';
+    final body = (form['body'] ?? '').trim();
+
+    final dir = Directory('$_wikiContentPath/blog');
+    await dir.create(recursive: true);
+    final baseSlug = _slugify(title);
+    var file = File('${dir.path}/$baseSlug.md');
+    var n = 2;
+    while (await file.exists()) {
+      file = File('${dir.path}/$baseSlug-${n++}.md');
+    }
+    final slug =
+        file.path.replaceAll('\\', '/').split('/').last.replaceFirst(RegExp(r'\.md$'), '');
+
+    final tagsYaml = tags.map(_yamlStr).join(', ');
+    final frontmatter = 'title: ${_yamlStr(title)}\n'
+        'description: ${_yamlStr(description)}\n'
+        'date: $date\n'
+        'tags: [$tagsYaml]\n'
+        'topic: $topic\n'
+        'draft: $draft\n';
+    await file.writeAsString('---\n$frontmatter---\n\n$body\n', flush: true);
+
+    return Response.found('/admin/website/blog/$slug?saved=1');
+  }
+
   Future<Response> _adminWebsiteSave(Request request) async {
     final unavailable = _wikiUnavailable();
     if (unavailable != null) return unavailable;
@@ -3488,19 +3709,29 @@ class Api {
 (function () {
   var el = document.getElementById('buildlog');
   if (!el) return;
+  var badge = document.getElementById('buildbadge');
   var timer = null, idle = 0;
+  function setBadge(text, cls) {
+    if (!badge) return;
+    badge.style.display = 'inline-block';
+    badge.textContent = text;
+    badge.className = 'badge' + (cls ? ' ' + cls : '');
+  }
   function poll() {
     fetch('/admin/website/build/status', {credentials: 'same-origin'})
       .then(function (r) { return r.json(); })
       .then(function (s) {
         var state = (s.status && s.status.state) || '';
         var busy = s.pending || state === 'building';
+        if (busy) setBadge('Building…', 'warn');
+        else if (state === 'ok') setBadge('Live', 'ok');
+        else if (state === 'error') setBadge('Build failed', 'err');
         if (busy || state === 'error') {
-          el.textContent = '[build ' + (busy ? 'running' : state) + ']\n' +
-            (s.log || '');
+          el.style.display = 'block';
+          el.textContent = s.log || '(no output yet)';
           el.scrollTop = el.scrollHeight;
-        } else if (state === 'ok' && el.textContent) {
-          el.textContent = '[build ok — site published]';
+        } else if (state === 'ok' && el.style.display !== 'none') {
+          el.style.display = 'none';
         }
         idle = busy ? 0 : idle + 1;
         if (idle > 4 && timer) { clearInterval(timer); timer = null; }
@@ -3548,6 +3779,25 @@ outline:2px solid var(--focus);outline-offset:2px}
 .ed-primary{background:var(--accent);border-color:var(--accent);
 color:var(--accent-tx);font-weight:600}
 .ed-primary:hover{background:#f2b465}
+.ed-format{position:relative;display:flex;align-items:center;gap:4px;
+padding:6px 10px;background:var(--bg2);border-bottom:1px solid var(--line);
+flex:0 0 auto;flex-wrap:wrap}
+.ed-fmt{min-height:32px;min-width:32px;padding:0 10px;border-radius:7px;
+border:1px solid transparent;background:none;color:var(--tx2);cursor:pointer;
+font:13px/1 inherit}
+.ed-fmt:hover{background:var(--line);color:var(--tx)}
+.ed-fmt:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
+.ed-fmt[aria-expanded="true"]{background:var(--line);color:var(--tx);
+border-color:var(--accent)}
+.ed-fmt-sep{width:1px;align-self:stretch;margin:4px 4px;background:var(--line)}
+.ed-linkpop{position:absolute;top:calc(100% + 6px);left:10px;z-index:5;
+display:flex;gap:6px;padding:10px;background:var(--bg2);
+border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.ed-linkpop input{min-height:36px;padding:0 10px;border-radius:7px;
+border:1px solid var(--line);background:var(--bg);color:var(--tx);
+font:13px inherit;width:170px}
+.ed-linkpop input:focus{outline:2px solid var(--focus);outline-offset:1px}
+.ed-linkpop .ed-btn{min-height:36px;padding:0 14px}
 .ed-tabs{display:none;flex:0 0 auto;border-bottom:1px solid var(--line)}
 .ed-tab{flex:1;min-height:44px;background:none;border:0;color:var(--tx2);
 font:inherit;cursor:pointer;border-bottom:2px solid transparent}
@@ -3837,6 +4087,91 @@ document.getElementById('imgfile').addEventListener('change', function () {
   if (this.files.length) uploadFiles(this.files, null);
   this.value = '';
 });
+
+/* ---------- formatting toolbar ---------- */
+function wrapSelection(before, after, placeholder) {
+  var s = src.selectionStart, e = src.selectionEnd;
+  var sel = src.value.slice(s, e) || placeholder || '';
+  src.value = src.value.slice(0, s) + before + sel + after + src.value.slice(e);
+  var caretStart = s + before.length;
+  src.focus();
+  src.setSelectionRange(caretStart, caretStart + sel.length);
+  markDirty();
+  render();
+}
+function prefixLines(marker) {
+  var s = src.selectionStart, e = src.selectionEnd;
+  var lineStart = src.value.lastIndexOf('\n', s - 1) + 1;
+  var lineEnd = src.value.indexOf('\n', e);
+  if (lineEnd === -1) lineEnd = src.value.length;
+  var chunk = src.value.slice(lineStart, lineEnd);
+  var out = chunk.split('\n').map(function (l) {
+    return /^\s*[-#]/.test(l) ? l : marker + l;
+  }).join('\n');
+  src.value = src.value.slice(0, lineStart) + out + src.value.slice(lineEnd);
+  src.focus();
+  markDirty();
+  render();
+}
+document.getElementById('fmt-bold').addEventListener('click', function () {
+  wrapSelection('**', '**', 'bold text');
+});
+document.getElementById('fmt-italic').addEventListener('click', function () {
+  wrapSelection('*', '*', 'italic text');
+});
+document.getElementById('fmt-h2').addEventListener('click', function () {
+  prefixLines('## ');
+});
+document.getElementById('fmt-list').addEventListener('click', function () {
+  prefixLines('- ');
+});
+
+/* ---------- link insert: turns a name/sentence into a clickable link
+   instead of a bare URL sitting in the text ---------- */
+var linkbtn = document.getElementById('linkbtn');
+var linkpop = document.getElementById('linkpop');
+var linktext = document.getElementById('linktext');
+var linkurl = document.getElementById('linkurl');
+var linkSelRange = null;
+function openLinkPop() {
+  linkSelRange = [src.selectionStart, src.selectionEnd];
+  linktext.value = src.value.slice(linkSelRange[0], linkSelRange[1]);
+  linkurl.value = '';
+  linkpop.hidden = false;
+  linkbtn.setAttribute('aria-expanded', 'true');
+  (linktext.value ? linkurl : linktext).focus();
+}
+function closeLinkPop() {
+  linkpop.hidden = true;
+  linkbtn.setAttribute('aria-expanded', 'false');
+}
+linkbtn.addEventListener('click', function () {
+  if (linkpop.hidden) openLinkPop(); else closeLinkPop();
+});
+document.getElementById('linkgo').addEventListener('click', function () {
+  var url = linkurl.value.trim();
+  if (!url) { linkurl.focus(); return; }
+  var text = linktext.value.trim() || url;
+  var r = linkSelRange || [src.selectionStart, src.selectionEnd];
+  src.value = src.value.slice(0, r[0]) + '[' + text + '](' + url + ')' + src.value.slice(r[1]);
+  closeLinkPop();
+  src.focus();
+  markDirty();
+  render();
+});
+linkurl.addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') { e.preventDefault(); document.getElementById('linkgo').click(); }
+  if (e.key === 'Escape') closeLinkPop();
+});
+document.addEventListener('click', function (e) {
+  if (!linkpop.hidden && !linkpop.contains(e.target) && e.target !== linkbtn) closeLinkPop();
+});
+document.addEventListener('keydown', function (e) {
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'b' &&
+      document.activeElement === src) { e.preventDefault(); wrapSelection('**', '**', 'bold text'); }
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'i' &&
+      document.activeElement === src) { e.preventDefault(); wrapSelection('*', '*', 'italic text'); }
+});
 src.addEventListener('dragover', function (e) {
   e.preventDefault(); src.classList.add('dragover');
 });
@@ -4041,9 +4376,12 @@ if (window.innerWidth <= 900) document.getElementById('pane-write').classList.ad
         '</head><body><div class="wrap">'
         '<header class="top"><h1>luma<span class="dot">.</span> admin</h1>'
         '<span class="sub">server console</span>'
-        '<form method="post" action="/admin/logout" style="margin-left:auto">'
+        '<div style="margin-left:auto;display:flex;gap:8px;align-items:center">'
+        '<a href="/admin/website" class="btn btn-ghost btn-sm">Website</a>'
+        '<form method="post" action="/admin/logout" style="margin:0">'
         '<button type="submit" class="btn btn-ghost btn-sm">Sign out</button>'
-        '</form></header>'
+        '</form>'
+        '</div></header>'
         '<div class="stats">'
         '<div class="stat"><div class="n">${stats['totalAccounts']}</div><div class="l">Total accounts</div></div>'
         '<div class="stat"><div class="n">${stats['activeAccounts']}</div><div class="l">Active</div></div>'
