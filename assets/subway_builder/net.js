@@ -163,6 +163,62 @@
     return path;
   }
 
+  /* Explore src's connected component with Dijkstra and return the reachable
+     node whose straight-line distance to (tx,ty) is smallest — i.e. how far
+     along the real track you can get toward a target that lives on a
+     *different* (disconnected) part of the graph. Bounded by `cap` settled
+     nodes so exploring a whole national rail network can't stall the UI. */
+  function nearestReachable(g, src, tx, ty, cap) {
+    const N = g.xs.length;
+    const dist = new Float64Array(N).fill(Infinity);
+    const closed = new Uint8Array(N);
+    dist[src] = 0;
+    const hd = [0], hn = [src];
+    function push(d, n) {
+      let i = hd.length;
+      hd.push(d); hn.push(n);
+      while (i > 0) {
+        const p = (i - 1) >> 1;
+        if (hd[p] <= hd[i]) break;
+        [hd[p], hd[i]] = [hd[i], hd[p]];
+        [hn[p], hn[i]] = [hn[i], hn[p]];
+        i = p;
+      }
+    }
+    function pop() {
+      const top = hn[0];
+      const ld = hd.pop(), ln = hn.pop();
+      if (hd.length) {
+        hd[0] = ld; hn[0] = ln;
+        let i = 0;
+        for (;;) {
+          const l = i * 2 + 1, r = l + 1;
+          let m = i;
+          if (l < hd.length && hd[l] < hd[m]) m = l;
+          if (r < hd.length && hd[r] < hd[m]) m = r;
+          if (m === i) break;
+          [hd[m], hd[i]] = [hd[i], hd[m]];
+          [hn[m], hn[i]] = [hn[i], hn[m]];
+          i = m;
+        }
+      }
+      return top;
+    }
+    let best = src, bestD = Math.hypot(g.xs[src] - tx, g.ys[src] - ty), settled = 0;
+    while (hd.length && settled < cap) {
+      const u = pop();
+      if (closed[u]) continue;
+      closed[u] = 1; settled++;
+      const dToT = Math.hypot(g.xs[u] - tx, g.ys[u] - ty);
+      if (dToT < bestD) { bestD = dToT; best = u; }
+      for (const [v, w] of g.adj[u]) {
+        const nd = dist[u] + w;
+        if (nd < dist[v] - 1e-6) { dist[v] = nd; push(nd, v); }
+      }
+    }
+    return best;
+  }
+
   // Douglas–Peucker simplification on meter points.
   function simplify(pts, eps) {
     if (pts.length <= 2) return pts;
@@ -186,24 +242,59 @@
     return pts.filter((_, i) => keep[i]);
   }
 
-  /* Route between two meter points over a graph. Returns
-     {pts: [[x,y],…], len} following real geometry, or null. */
-  net.route = function (g, ax, ay, bx, by, snapDist) {
-    const a = net.nearestNode(g, ax, ay, snapDist);
-    const b = net.nearestNode(g, bx, by, snapDist);
-    if (a < 0 || b < 0) return null;
-    const ids = astar(g, a, b);
-    if (!ids) return null;
-    let pts = ids.map((id) => [g.xs[id], g.ys[id]]);
-    pts = simplify(pts, 5);
-    // Anchor the ends on the actual stop positions.
-    pts.unshift([ax, ay]);
-    pts.push([bx, by]);
+  // Cap on nodes explored when searching for a bridge exit/entry, so a
+  // failed cross-network route can't walk an entire continent's rail graph.
+  const BRIDGE_CAP = 80000;
+
+  function polyLen(pts) {
     let len = 0;
     for (let i = 0; i < pts.length - 1; i++) {
       len += Math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]);
     }
-    return { pts, len };
+    return len;
+  }
+
+  /* Route between two meter points over a graph. Returns
+     {pts: [[x,y],…], len, tunnelM} following real geometry, or null.
+
+     With opts.bridge (used for rail), a route is still produced when the two
+     endpoints sit on disconnected parts of the network — e.g. the British and
+     continental rail networks, which physically join only through the Channel
+     Tunnel. Rather than fail (and let the caller draw one naive straight line
+     ignoring all geography), it follows real track from each end as far as it
+     reaches toward the other side, then spans the remaining gap with a single
+     straight tunnel segment. `tunnelM` reports that bridged length so the
+     caller can price it as tunnelling. When the networks *are* connected, A*
+     finds the real path and tunnelM is 0 — exactly as before. */
+  net.route = function (g, ax, ay, bx, by, snapDist, opts) {
+    opts = opts || {};
+    const a = net.nearestNode(g, ax, ay, snapDist);
+    const b = net.nearestNode(g, bx, by, snapDist);
+    if (a < 0 || b < 0) return null;
+    const ids = astar(g, a, b);
+    if (ids) {
+      let pts = ids.map((id) => [g.xs[id], g.ys[id]]);
+      pts = simplify(pts, 5);
+      pts.unshift([ax, ay]);
+      pts.push([bx, by]);
+      return { pts, len: polyLen(pts), tunnelM: 0 };
+    }
+    if (!opts.bridge) return null;
+    // Disconnected networks: reach as far as the track goes on each side, then
+    // tunnel across the gap between the two frontiers (the real portals, when
+    // their approaches have been surveyed — e.g. Folkestone ↔ Coquelles).
+    const exitA = nearestReachable(g, a, g.xs[b], g.ys[b], BRIDGE_CAP);
+    const entryB = nearestReachable(g, b, g.xs[a], g.ys[a], BRIDGE_CAP);
+    const pathA = astar(g, a, exitA);
+    const pathB = astar(g, entryB, b);
+    if (!pathA || !pathB) return null;
+    let ptsA = simplify(pathA.map((id) => [g.xs[id], g.ys[id]]), 5);
+    let ptsB = simplify(pathB.map((id) => [g.xs[id], g.ys[id]]), 5);
+    // ptsA ends at exitA, ptsB starts at entryB; the straight run between them
+    // is the tunnel. Anchor both far ends on the real stop positions.
+    const pts = [[ax, ay], ...ptsA, ...ptsB, [bx, by]];
+    const tunnelM = Math.hypot(g.xs[exitA] - g.xs[entryB], g.ys[exitA] - g.ys[entryB]);
+    return { pts, len: polyLen(pts), tunnelM };
   };
 
   // ── Building the networks ────────────────────────────────────────────
@@ -323,43 +414,74 @@
 
   /* Rail corridors between cities are usually never on screen, so their
      tracks exist in neither the initial Overpass fetch (radius-bound) nor
-     the visible-tile merges. Fetch railway=rail for a bbox covering the
-     given stops (~10 km margin) and merge it into the live rail graph. */
+     the visible-tile merges. Survey them by sampling a thin corridor of
+     windows stepping along the direct line between the stops, rather than one
+     bounding box over the whole span: a long international hop (say Brussels →
+     London) bounds a ~24,000 km² rectangle that pulls in every unrelated line
+     across three countries and reliably times Overpass out, so the missing
+     tracks — including the tunnel that links the two networks — are never
+     fetched and the route keeps failing. The corridor runs straight down the
+     path a real service takes, so the cross-water tunnels on it (the Channel
+     Tunnel, the Øresund link, …) come in with it and A* can route through. */
+  const CORRIDOR_STEP = 22000;   // meters between corridor sample points
+  const CORRIDOR_HALF = 15000;   // meters — half-size of each sample window
+  const CORRIDOR_BATCH = 8;      // sample windows per Overpass request
   let corridorInFlight = false;
   net.surveyRailCorridor = async function (stops) {
+    stops = (stops || []).filter(Boolean);
     if (corridorInFlight || !stops.length) return false;
     corridorInFlight = true;
     try {
-      let s = Infinity, w = Infinity, n = -Infinity, e = -Infinity;
-      for (const p of stops) {
-        s = Math.min(s, p.lat); n = Math.max(n, p.lat);
-        w = Math.min(w, p.lng); e = Math.max(e, p.lng);
+      // Dense chain of sample points: every stop, plus interpolated points so
+      // no gap along a hop exceeds CORRIDOR_STEP.
+      const samples = [];
+      for (let i = 0; i < stops.length; i++) {
+        const p = stops[i];
+        samples.push(p);
+        const q = stops[i + 1];
+        if (!q) break;
+        const d = Math.hypot(q.x - p.x, q.y - p.y);
+        const steps = Math.floor(d / CORRIDOR_STEP);
+        for (let k = 1; k <= steps; k++) {
+          const t = (k * CORRIDOR_STEP) / d;
+          samples.push({ lat: p.lat + (q.lat - p.lat) * t, lng: p.lng + (q.lng - p.lng) * t });
+        }
       }
-      const mLat = 10000 / 111320;
-      const mLng = 10000 / (111320 * Math.max(0.2, Math.cos(((s + n) / 2) * Math.PI / 180)));
-      const q = '[out:json][timeout:22];way["railway"="rail"](' +
-        (s - mLat) + ',' + (w - mLng) + ',' + (n + mLat) + ',' + (e + mLng) + ');out geom;';
-      const abort = new AbortController();
-      const timer = setTimeout(() => abort.abort(), 20000);
-      let res;
-      try {
-        res = await fetch('https://overpass-api.de/api/interpreter', {
-          method: 'POST',
-          body: 'data=' + encodeURIComponent(q),
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          signal: abort.signal,
-        });
-      } finally {
-        clearTimeout(timer);
-      }
-      if (!res.ok) throw new Error('overpass ' + res.status);
-      const data = await res.json();
+      const windows = samples.map((p) => {
+        const dLat = CORRIDOR_HALF / 111320;
+        const dLng = CORRIDOR_HALF / (111320 * Math.max(0.2, Math.cos(p.lat * Math.PI / 180)));
+        return (p.lat - dLat) + ',' + (p.lng - dLng) + ',' + (p.lat + dLat) + ',' + (p.lng + dLng);
+      });
       if (!net.rails) net.rails = newGraph();
       let ways = 0;
-      for (const el of data.elements || []) {
-        if (el.type === 'way' && el.geometry) {
-          addLineString(net.rails, el.geometry.map((p) => [p.lon, p.lat]));
-          ways++;
+      // Batch the windows so no single request is oversized. A failed batch is
+      // skipped, not fatal — the surveyed part of the corridor still helps.
+      for (let i = 0; i < windows.length; i += CORRIDOR_BATCH) {
+        const filters = windows.slice(i, i + CORRIDOR_BATCH)
+          .map((b) => 'way["railway"="rail"](' + b + ');').join('');
+        const q = '[out:json][timeout:40];(' + filters + ');out geom;';
+        const abort = new AbortController();
+        const timer = setTimeout(() => abort.abort(), 30000);
+        let res;
+        try {
+          res = await fetch('https://overpass-api.de/api/interpreter', {
+            method: 'POST',
+            body: 'data=' + encodeURIComponent(q),
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            signal: abort.signal,
+          });
+        } catch (e) {
+          continue;
+        } finally {
+          clearTimeout(timer);
+        }
+        if (!res.ok) continue;
+        const data = await res.json();
+        for (const el of data.elements || []) {
+          if (el.type === 'way' && el.geometry) {
+            addLineString(net.rails, el.geometry.map((p) => [p.lon, p.lat]));
+            ways++;
+          }
         }
       }
       return ways > 0;

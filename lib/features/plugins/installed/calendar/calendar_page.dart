@@ -223,60 +223,114 @@ class _Toolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: luma.border)),
-      ),
-      child: Wrap(
-        spacing: 12,
-        runSpacing: 12,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        alignment: WrapAlignment.spaceBetween,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _RoundIconButton(icon: Icons.chevron_left_rounded, onTap: onPrev),
-              const SizedBox(width: 4),
-              _RoundIconButton(
-                  icon: Icons.chevron_right_rounded, onTap: onNext),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: 204,
-                child: Text(
-                  monthLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: luma.textPrimary,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.3,
-                  ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // The full desktop toolbar packs a 200px-wide title, a 220px search
+        // box and three labelled buttons into one row; on a phone that runs
+        // straight off the right edge (the buttons end up out of bounds).
+        // Below this width it becomes a two-row layout where the search box
+        // flexes to the available space instead.
+        final narrow = constraints.maxWidth < 620;
+        final decoration = BoxDecoration(
+          border: Border(bottom: BorderSide(color: luma.border)),
+        );
+        if (narrow) {
+          return Container(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+            decoration: decoration,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    _RoundIconButton(
+                        icon: Icons.chevron_left_rounded, onTap: onPrev),
+                    const SizedBox(width: 4),
+                    _RoundIconButton(
+                        icon: Icons.chevron_right_rounded, onTap: onNext),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        monthLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: luma.textPrimary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    _ViewMenuButton(view: view, onView: onView),
+                    const SizedBox(width: 4),
+                    _RoundIconButton(icon: Icons.today_rounded, onTap: onToday),
+                    const SizedBox(width: 4),
+                    _RoundIconButton(icon: Icons.add_rounded, onTap: onNew),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 6),
-              LumaGhostButton(
-                  label: 'Today', icon: Icons.today_rounded, onTap: onToday),
-            ],
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
+                const SizedBox(height: 10),
+                _SearchField(search, onSearch),
+              ],
+            ),
+          );
+        }
+        return Container(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
+          decoration: decoration,
+          child: Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            alignment: WrapAlignment.spaceBetween,
             children: [
-              SizedBox(width: 220, child: _SearchField(search, onSearch)),
-              const SizedBox(width: 12),
-              _ViewMenuButton(view: view, onView: onView),
-              const SizedBox(width: 12),
-              LumaPrimaryButton(
-                label: 'New event',
-                icon: Icons.add_rounded,
-                onTap: onNew,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _RoundIconButton(
+                      icon: Icons.chevron_left_rounded, onTap: onPrev),
+                  const SizedBox(width: 4),
+                  _RoundIconButton(
+                      icon: Icons.chevron_right_rounded, onTap: onNext),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: 204,
+                    child: Text(
+                      monthLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: luma.textPrimary,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  LumaGhostButton(
+                      label: 'Today', icon: Icons.today_rounded, onTap: onToday),
+                ],
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(width: 220, child: _SearchField(search, onSearch)),
+                  const SizedBox(width: 12),
+                  _ViewMenuButton(view: view, onView: onView),
+                  const SizedBox(width: 12),
+                  LumaPrimaryButton(
+                    label: 'New event',
+                    icon: Icons.add_rounded,
+                    onTap: onNew,
+                  ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -575,25 +629,31 @@ class _MonthView extends StatelessWidget {
             ],
           );
         }
-        return Column(
-          children: [
-            SizedBox(
-              height: 360,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: grid,
+        // Phone: the month grid and the selected day's panel don't both fit
+        // in one fixed viewport without the panel (dinner card, event list)
+        // getting clipped at the bottom. Make the whole thing scroll instead,
+        // with the day panel shrink-wrapped below the grid.
+        return SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                height: 340,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  child: grid,
+                ),
               ),
-            ),
-            Container(height: 1, color: context.luma.border),
-            Expanded(
-              child: _DayPanel(
+              Container(height: 1, color: context.luma.border),
+              _DayPanel(
                 day: selectedDay,
                 events: events,
                 dinner: dinner,
                 repo: repo,
+                embedded: true,
               ),
-            ),
-          ],
+            ],
+          ),
         );
       },
     );
@@ -977,11 +1037,18 @@ class _DayPanel extends StatelessWidget {
     required this.events,
     required this.dinner,
     required this.repo,
+    this.embedded = false,
   });
   final DateTime day;
   final List<EventRecord> events;
   final DinnerPlanRecord? dinner;
   final CalendarRepository repo;
+
+  /// True when the panel is stacked inside an outer scroll view (phone month
+  /// view) rather than filling a fixed side pane. It then shrink-wraps its
+  /// event list instead of expanding, so it contributes its natural height to
+  /// the scroll rather than needing a bounded box.
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
@@ -1045,32 +1112,47 @@ class _DayPanel extends StatelessWidget {
           child: _DinnerSection(day: day, dinner: dinner, repo: repo),
         ),
         Container(height: 1, color: luma.border),
-        Expanded(
-          child: dayEvents.isEmpty
-              ? LumaEmptyState(
-                  icon: Icons.event_available_rounded,
-                  title: 'Nothing planned',
-                  subtitle: 'Add an event to fill this day.',
-                  action: LumaGhostButton(
-                    label: 'Add event',
-                    icon: Icons.add_rounded,
-                    onTap: () =>
-                        showEventEditor(context, repo, initialDate: day),
-                  ),
-                )
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                  itemCount: dayEvents.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 10),
-                  itemBuilder: (context, i) => _EventTile(
-                    occurrence: dayEvents[i],
-                    repo: repo,
-                  ),
+        if (dayEvents.isEmpty)
+          _wrapEvents(
+            SizedBox(
+              height: embedded ? 220 : null,
+              child: LumaEmptyState(
+                icon: Icons.event_available_rounded,
+                title: 'Nothing planned',
+                subtitle: 'Add an event to fill this day.',
+                action: LumaGhostButton(
+                  label: 'Add event',
+                  icon: Icons.add_rounded,
+                  onTap: () =>
+                      showEventEditor(context, repo, initialDate: day),
                 ),
-        ),
+              ),
+            ),
+          )
+        else
+          _wrapEvents(
+            ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              shrinkWrap: embedded,
+              physics:
+                  embedded ? const NeverScrollableScrollPhysics() : null,
+              itemCount: dayEvents.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 10),
+              itemBuilder: (context, i) => _EventTile(
+                occurrence: dayEvents[i],
+                repo: repo,
+              ),
+            ),
+          ),
       ],
     );
   }
+
+  /// In the fixed side-pane layout the events area fills the remaining height
+  /// (Expanded); when embedded in an outer scroll view it must instead take
+  /// only its natural height.
+  Widget _wrapEvents(Widget child) =>
+      embedded ? child : Expanded(child: child);
 }
 
 /// The "what's for dinner" card shown at the top of the day panel: an empty

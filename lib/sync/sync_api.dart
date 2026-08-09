@@ -3,8 +3,30 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
+import 'server_access.dart';
+
 /// The one luma sync server. Fixed so no UI ever needs to ask for it.
 const kDefaultSyncServerUrl = 'https://sync.luma-app.cc';
+
+/// How the server approves a newly created account — mirrors `ApprovalMode`
+/// in server/lib/api.dart, and comes back on the register response.
+enum ServerApprovalMode {
+  /// The operator approves each account by hand from the admin dashboard.
+  /// Nothing is emailed, so there is nothing for the user to resend.
+  manual,
+
+  /// The user approves their own account from a link emailed to them.
+  email,
+
+  /// No approval step at all — registering signs you straight in.
+  open;
+
+  static ServerApprovalMode parse(String? raw) => switch (raw) {
+        'email' => ServerApprovalMode.email,
+        'open' => ServerApprovalMode.open,
+        _ => ServerApprovalMode.manual,
+      };
+}
 
 /// Metadata the server keeps for one synced collection.
 class RemoteCollectionMeta {
@@ -42,12 +64,23 @@ class RemoteAccount {
     required this.quotaBytes,
     required this.collections,
     this.planId,
+    this.status = 'active',
   });
 
   final String email;
   final int usedBytes;
   final int quotaBytes;
   final Map<String, RemoteCollectionMeta> collections;
+
+  /// The account's approval state on the server: `active` once it has been
+  /// approved (email verified, or approved from the admin dashboard),
+  /// `pending` while it is still waiting. Servers older than this field omit
+  /// it; they only ever hand a token to an approved account, so treating a
+  /// missing value as `active` matches what the token already proves.
+  final String status;
+
+  /// Whether the server considers this account approved to use it.
+  bool get approved => status == 'active';
 
   /// The plan tier the server has on file for this account — granted by an
   /// admin via the dashboard (see Api._adminSetPlan). Null when the server
@@ -65,6 +98,7 @@ class RemoteAccount {
       usedBytes: j['usedBytes'] as int? ?? 0,
       quotaBytes: j['quotaBytes'] as int? ?? 0,
       planId: j['planId'] as String?,
+      status: j['status'] as String? ?? 'active',
       collections: collections,
     );
   }
@@ -123,15 +157,28 @@ class SyncApiException implements Exception {
   bool get isUnauthorized => status == 401;
   bool get isNotFound => status == 404;
 
+  /// The account exists and the token is valid, but the server has it
+  /// waiting for approval — everything server-backed has to stop until it
+  /// is approved.
+  bool get isNotApproved => code == 'account_not_approved';
+
   @override
   String toString() => message;
 }
 
 /// Thin typed HTTP client for the luma sync server.
+///
+/// Every request goes through a [GatedServerClient], so while this device
+/// has no approved account the only calls that can leave it are the account
+/// handshake ones ([ServerAccessGate.accountSetupPaths]) — everything else
+/// throws [ServerAccessDeniedException] before a socket is opened.
 class SyncApi {
   SyncApi(String baseUrl, {this.token, http.Client? client})
       : baseUrl = normalizeBaseUrl(baseUrl),
-        _client = client ?? http.Client();
+        _client = GatedServerClient(
+          inner: client,
+          allowBeforeApproval: ServerAccessGate.accountSetupPaths,
+        );
 
   final String baseUrl;
   String? token;
@@ -188,12 +235,21 @@ class SyncApi {
   }
 
   /// Registers a new account. The server either signs the account in
-  /// immediately (`token` set) or, when it requires email verification
+  /// immediately (`token` set) or, when the account has to be approved
   /// first, comes back with no token and a human-readable [message] instead
-  /// — in that case [pendingVerification] is true and the caller must not
-  /// treat this as a successful sign-in.
-  Future<({String? token, bool pendingVerification, String? message})>
-      register({
+  /// — in that case [pendingApproval] is true and the caller must not treat
+  /// this as a successful sign-in.
+  ///
+  /// [approvalMode] says who does the approving: `manual` (the operator, from
+  /// the admin dashboard — the default) or `email` (the user, by opening a
+  /// link). It decides whether offering to resend anything makes sense.
+  Future<
+      ({
+        String? token,
+        bool pendingApproval,
+        String? message,
+        ServerApprovalMode approvalMode
+      })> register({
     required String email,
     required Uint8List authKey,
     required Uint8List kdfSalt,
@@ -207,16 +263,23 @@ class SyncApi {
       'kdfIterations': kdfIterations,
       if (deviceLabel != null) 'deviceLabel': deviceLabel,
     });
+    final mode = ServerApprovalMode.parse(body['approval'] as String?);
     final token = body['token'] as String?;
     if (token == null) {
       return (
         token: null,
-        pendingVerification: true,
+        pendingApproval: true,
+        approvalMode: mode,
         message: body['message'] as String? ??
-            'Check your email to verify your account before signing in.',
+            'Your account has to be approved before you can sign in.',
       );
     }
-    return (token: token, pendingVerification: false, message: null);
+    return (
+      token: token,
+      pendingApproval: false,
+      approvalMode: mode,
+      message: null,
+    );
   }
 
   Future<String> login(
@@ -229,6 +292,17 @@ class SyncApi {
       if (deviceLabel != null) 'deviceLabel': deviceLabel,
     });
     return body['token'] as String;
+  }
+
+  /// Asks the server to send the approval (verification) mail again for an
+  /// account that is still waiting. The response is deliberately generic —
+  /// it never reveals whether the address has an account — so the returned
+  /// message is safe to show as-is.
+  Future<String> resendVerification(String email) async {
+    final body = await _postJson('/auth/resend-verification', {'email': email});
+    return body['message'] as String? ??
+        'If that email has an account waiting for approval, we just sent a '
+            'new link.';
   }
 
   Future<void> logout() async {

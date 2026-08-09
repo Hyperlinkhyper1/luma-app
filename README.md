@@ -2,7 +2,7 @@
 
 luma is a private, all-in-one desktop and Android app: a budgeting tool, a
 password manager, a file converter, notes, a built-in AI assistant, and a
-marketplace of 20+ optional plugins — all in one clean interface, modeled
+marketplace of 26 optional plugins — all in one clean interface, modeled
 after the Modrinth app (a fixed left icon rail, a slim top bar, rounded
 content cards).
 
@@ -67,10 +67,16 @@ An encrypted local vault for logins:
 Fast, simple notes — no folders or formatting to fight with.
 
 ### Assistant
-A built-in AI chat with three modes (Aurora, Nebula, Pulsar — fast to
-"smartest"), backed by Mistral and Google's models. If a server operator has
-configured a shared key, it works out of the box with a fair per-user usage
-allowance; otherwise you can bring your own API key.
+A built-in AI chat with three modes — **Aurora** (fast), **Nebula**
+(smarter) and **Pulsar** (smartest) — served through luma's own proxy. If a
+server operator has configured a shared key, it works out of the box with a
+fair per-user allowance, weighted per mode (Nebula counts ×5, Pulsar ×20) so
+one expensive reply isn't billed like a cheap one.
+
+You can also bring your own API key for **Anthropic**, **OpenAI**,
+**Mistral** or **Google** and talk to those providers directly from your
+device. Keys are stored encrypted at rest, in their own key file separate
+from the password vault's.
 
 ---
 
@@ -80,19 +86,27 @@ Beyond the built-ins, luma has a marketplace of optional plugins you install
 individually from the **Plugins** tab. Each is self-contained — its own
 local data, its own page.
 
-**Utility** — QR Code Generator · Card Wallet (loyalty/membership passes) ·
+**Utility** — Calculator (an everyday calculator that switches into a
+graphing one, plus a ☰ unit converter) · QR Code Generator ·
+Card Wallet (loyalty/membership passes) ·
 File Tree (disk space analyzer) · File Viewer (PDF/Word/Excel/image/text
 viewer) · Price Tracker (price-history graphs from a pasted product URL) ·
-Cloud Files (encrypted file sync) · YouTube Downloader · Auto Clicker ·
-Wi-Fi Speed Test
+Worth Counter (a tally counter that keeps a running total of what you've
+counted) · Cloud Files (encrypted file sync) · YouTube Downloader ·
+Auto Clicker · Wi-Fi Speed Test
 
 **Productivity** — Errand Manager (recurring chore checklist) · Bulletin
 Board (freeform corkboard) · Calendar (month view, repeat rules, reminders)
 · Data Management (custom datasets + charts) · Mood Journal · School
-(homework, flashcards, GPA calculator, timetable, and more)
+(homework, flashcards, GPA calculator, timetable, and more) · Recipe Book
+(Favourites/Public/Private tabs — keep recipes private or publish them to a
+shared catalogue others can rate, review and add photos to, plus a weekly
+meal planner tied to real dates)
 
 **Games** — Server Hosting Tycoon · Subway Builder (real-world transit
-simulator on a live 3D map) · Space Colony · City Planner
+simulator on a live 3D map) · Space Colony · City Planner ·
+Minecraft Launcher (Vanilla/Fabric/Forge/NeoForge/Quilt instances, mod and
+pack downloads, Java management, live launch logs)
 
 **Social** — Chat (end-to-end encrypted messaging between luma users)
 
@@ -105,8 +119,9 @@ Dutch supermarkets)
 
 ## Accounts, plans & family
 
-luma works fully offline with no account. Signing in unlocks sync and
-raises your local storage cap:
+luma works fully offline with no account, and that's the default: on a fresh
+install nothing in the app talks to a server at all. Creating an account and
+having it **approved** unlocks sync and raises your local storage cap:
 
 | Plan | Local storage | Sync | Family |
 |---|---|---|---|
@@ -116,6 +131,14 @@ raises your local storage cap:
 
 **Family** sharing lets a group share a calendar and manage members from
 the Account tab — invite by email, accept/decline from an in-app inbox.
+
+**Approval.** A new account starts out *pending*. By default the server
+operator approves each one by hand from the admin dashboard; a server can
+instead be configured to accept an emailed verification link. Until an
+account is approved, the app refuses to open a connection to the server for
+anything but the account handshake itself — no sync, no server-backed
+plugins, not even usage pings. Plugins that are useless without the server
+(Cloud Files, Chat) show an "account required" screen in the meantime.
 
 ---
 
@@ -132,11 +155,20 @@ Nothing syncs by default — you turn on individual features from
 - **Wi-Fi/LAN sync** — sync directly between devices on the same network,
   no server required.
 
+How many features you may sync at once depends on your plan (3 / 5 /
+unlimited); Settings sync is always on top of that allowance.
+
 ---
 
 ## Platforms
 
-Windows desktop and Android. Built with Flutter.
+Windows desktop, Linux desktop and Android. Built with Flutter. Every
+release ships a Windows installer (`luma-setup.exe`), a Linux x64 tarball
+and a signed APK; the Windows build can update itself in place from inside
+the app.
+
+The interface is translated into English, Dutch, French, Spanish and
+Chinese.
 
 ---
 
@@ -145,7 +177,8 @@ Windows desktop and Android. Built with Flutter.
 Building luma from source, contributing, or running the sync server? See:
 
 - [`AGENTS.md`](AGENTS.md) — project structure, build/test commands,
-  coding conventions, plugin development guide.
+  coding conventions, plugin development guide. [`CLAUDE.md`](CLAUDE.md)
+  points here too, so both stay in step.
 - [`SERVER_SETUP.md`](SERVER_SETUP.md) — deploying your own sync server.
 - [`server/README.md`](server/README.md) — the sync server's internals.
 - [`PLUGIN_GUIDE.md`](PLUGIN_GUIDE.md) — building a new plugin.

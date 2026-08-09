@@ -9,17 +9,25 @@ import '../sync/sync_service.dart';
 import '../theme/luma_theme.dart';
 
 /// Shows the account setup/sign-in dialog. Used both from the Settings page
-/// and as the app-wide first-run / re-authentication prompt (see
-/// `maybePromptAccountSetup` in main.dart).
-Future<void> showAccountSetupDialog(
+/// and as the app-wide first-run prompt (see `maybePromptAccountSetup` in
+/// main.dart).
+///
+/// Resolves `true` when the dialog closed because a cloud sign-in,
+/// registration, or local account setup actually completed; `false` for
+/// every other way it can close (Cancel, tapping outside it, back button).
+/// The first-run prompt uses that to tell "the user set something up" apart
+/// from "the user dismissed this" without inspecting sync state, which
+/// would conflate cancelling with a pending-approval account.
+Future<bool> showAccountSetupDialog(
   BuildContext context,
   SyncService sync, {
   int initialMode = 1,
-}) {
-  return showDialog<void>(
+}) async {
+  final completed = await showDialog<bool>(
     context: context,
     builder: (_) => _AccountDialog(sync: sync, initialMode: initialMode),
   );
+  return completed ?? false;
 }
 
 /// The "Sync & account" block on the Settings page: account sign-in, storage
@@ -75,14 +83,103 @@ class _SignedOutBody extends StatelessWidget {
             style: TextStyle(color: Colors.orange.shade400, fontSize: 12),
           ),
         ],
+        if (sync.pendingApprovalEmail != null) ...[
+          const SizedBox(height: 10),
+          _PendingApprovalNotice(sync: sync),
+        ],
         const SizedBox(height: 16),
         Align(
           alignment: Alignment.centerLeft,
           child: LumaPrimaryButton(
-            label: 'Set up account',
+            label: sync.pendingApprovalEmail != null
+                ? 'Sign in'
+                : 'Set up account',
             icon: Icons.person_add_rounded,
-            onTap: () => showAccountSetupDialog(context, sync),
+            onTap: () => showAccountSetupDialog(context, sync,
+                initialMode: sync.pendingApprovalEmail != null ? 0 : 1),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Shown while an account created on this device is still waiting to be
+/// approved: nothing server-backed works yet, and this is where the user can
+/// start over with a different address (or, when the server approves by
+/// email rather than by hand, ask for another link).
+class _PendingApprovalNotice extends StatefulWidget {
+  const _PendingApprovalNotice({required this.sync});
+  final SyncService sync;
+
+  @override
+  State<_PendingApprovalNotice> createState() => _PendingApprovalNoticeState();
+}
+
+class _PendingApprovalNoticeState extends State<_PendingApprovalNotice> {
+  bool _busy = false;
+  String? _message;
+
+  Future<void> _resend() async {
+    setState(() {
+      _busy = true;
+      _message = null;
+    });
+    try {
+      final message = await widget.sync.resendApprovalEmail();
+      if (mounted) setState(() => _message = message);
+    } catch (e) {
+      if (mounted) setState(() => _message = '$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final email = widget.sync.pendingApprovalEmail ?? '';
+    final byEmail =
+        widget.sync.pendingApprovalMode == ServerApprovalMode.email;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          byEmail
+              ? '$email is waiting to be approved. Open the link in the email '
+                  'we sent, then sign in. Until then this device does not '
+                  'contact the server at all, and the plugins that need it '
+                  'stay switched off.'
+              : '$email is waiting for the server operator to approve it. '
+                  'There is nothing to do in the meantime — just sign in once '
+                  'they have. Until then this device does not contact the '
+                  'server at all, and the plugins that need it stay switched '
+                  'off.',
+          style: TextStyle(
+              color: Colors.orange.shade400, fontSize: 12, height: 1.5),
+        ),
+        if (_message != null) ...[
+          const SizedBox(height: 6),
+          Text(_message!,
+              style: TextStyle(color: luma.textMuted, fontSize: 12)),
+        ],
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            if (byEmail)
+              LumaGhostButton(
+                label: _busy ? 'Sending…' : 'Resend approval email',
+                icon: Icons.mail_outline_rounded,
+                onTap: _busy ? null : _resend,
+              ),
+            LumaGhostButton(
+              label: 'Use a different email',
+              icon: Icons.close_rounded,
+              onTap: () => widget.sync.cancelPendingApproval(),
+            ),
+          ],
         ),
       ],
     );
@@ -551,9 +648,10 @@ class _AccountDialogState extends State<_AccountDialog> {
             password: _password.text,
           );
           if (pendingMessage != null) {
-            // Account created but not signed in yet — needs email
-            // verification first. Stay on the dialog and switch to Sign in
-            // so the user can come back once they've verified.
+            // Account created but not signed in yet — it has to be approved
+            // first (by the operator, or by email link depending on the
+            // server's mode). Stay on the dialog and switch to Sign in so
+            // the user can come straight back once it's approved.
             if (mounted) {
               setState(() {
                 _busy = false;
@@ -571,7 +669,7 @@ class _AccountDialogState extends State<_AccountDialog> {
           password: _password.text,
         );
       }
-      if (mounted) Navigator.of(context).pop();
+      if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -717,7 +815,7 @@ class _AccountDialogState extends State<_AccountDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: _busy ? null : () => Navigator.of(context).pop(),
+          onPressed: _busy ? null : () => Navigator.of(context).pop(false),
           child:
               Text('Cancel', style: TextStyle(color: luma.textSecondary)),
         ),
