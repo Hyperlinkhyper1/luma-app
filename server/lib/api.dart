@@ -209,7 +209,19 @@ class Api {
         _adminFailLimiter = RateLimiter(
             maxRequests: 10, window: const Duration(minutes: 15)),
         _inviteLimiter = RateLimiter(
-            maxRequests: 10, window: const Duration(hours: 1));
+            maxRequests: 10, window: const Duration(hours: 1)),
+        _aiChatLimiter = RateLimiter(
+            maxRequests: 20, window: const Duration(minutes: 1)),
+        _syncWriteLimiter = RateLimiter(
+            maxRequests: 60, window: const Duration(minutes: 1)),
+        _uploadLimiter = RateLimiter(
+            maxRequests: 30, window: const Duration(minutes: 10)),
+        _socketLimiter = RateLimiter(
+            maxRequests: 30, window: const Duration(minutes: 1)),
+        _adminLimiter = RateLimiter(
+            maxRequests: 240, window: const Duration(minutes: 1)),
+        _loginFailLimiter = RateLimiter(
+            maxRequests: 10, window: const Duration(minutes: 15));
 
   final Store store;
   final ServerConfig config;
@@ -236,6 +248,25 @@ class Api {
   /// an arbitrary address — without this, any account could use the server
   /// as a spam relay at the general limiter's speed.
   final RateLimiter _inviteLimiter;
+
+  /// Tighter per-IP budgets for the expensive endpoint classes, layered into
+  /// [_rateLimit] by [_limiterFor]. The general 300/min budget is fine for
+  /// small JSON calls but far too generous for endpoints that burn upstream
+  /// AI quota, accept multi-megabyte bodies, or hold a socket open.
+  final RateLimiter _aiChatLimiter;
+  final RateLimiter _syncWriteLimiter;
+  final RateLimiter _uploadLimiter;
+  final RateLimiter _socketLimiter;
+
+  /// Per-IP budget for /admin/* — high enough for the dashboard's live
+  /// polling, low enough that the admin surface can't be hammered.
+  final RateLimiter _adminLimiter;
+
+  /// Per-*email* limit on failed logins, so one account's password can't be
+  /// brute-forced from many IPs (the per-IP [_authLimiter] alone doesn't
+  /// stop a distributed guesser). Only failures count — successful logins
+  /// never lock anyone out.
+  final RateLimiter _loginFailLimiter;
 
   /// Admin dashboard login sessions, keyed by SHA-256 of the session cookie
   /// token (mirrors [Store.sessionsByTokenHash] for regular users). In-memory
@@ -330,6 +361,7 @@ class Api {
       ..get('/admin/metrics/history', _requireAdmin(_adminMetricsHistory))
       ..get('/admin/activity', _requireAdmin(_adminActivity))
       ..post('/admin/verify', _requireAdmin(_adminVerifyUser))
+      ..post('/admin/revoke', _requireAdmin(_adminRevokeUser))
       ..post('/admin/plan', _requireAdmin(_adminSetPlan))
       ..post('/admin/groceries/sync', _requireAdmin(_adminGroceriesSync))
       ..get('/admin/groceries/status', _requireAdmin(_adminGroceriesStatus))
@@ -384,6 +416,11 @@ class Api {
               'Authorization, Content-Type, X-Base-Version, X-Payload-Saved-At',
           'Access-Control-Expose-Headers': 'X-Version, X-Payload-Saved-At',
           'X-Content-Type-Options': 'nosniff',
+          // Nothing this server serves should ever render inside a frame on
+          // someone else's site (clickjacking the admin dashboard, mainly).
+          // SAMEORIGIN, not DENY: the website editor's live preview frames
+          // its own /admin/website/preview pages.
+          'X-Frame-Options': 'SAMEORIGIN',
         };
         if (request.method == 'OPTIONS') {
           return Response(204, headers: headers);
@@ -394,14 +431,41 @@ class Api {
 
   Handler _rateLimit(Handler inner) => (request) async {
         final key = _clientKey(request);
-        final isAuthRoute = request.url.path.startsWith('api/v1/auth/') &&
-            !request.url.path.endsWith('/logout');
-        final limiter = isAuthRoute ? _authLimiter : _generalLimiter;
-        if (!limiter.allow('${isAuthRoute ? 'a' : 'g'}:$key')) {
+        final (tag, limiter) = _limiterFor(request.method, request.url.path);
+        if (!limiter.allow('$tag:$key')) {
           return _error(429, 'rate_limited', 'Too many requests. Slow down.');
         }
         return inner(request);
       };
+
+  /// Buckets every request into the limiter matching how expensive it is.
+  /// Each bucket keys separately (the tag), so e.g. hammering uploads can't
+  /// starve the same IP's ordinary API calls or vice versa.
+  (String, RateLimiter) _limiterFor(String method, String path) {
+    if (path.startsWith('api/v1/auth/') && !path.endsWith('/logout')) {
+      return ('a', _authLimiter);
+    }
+    if (path.startsWith('api/v1/ai/') && path.endsWith('/chat')) {
+      return ('ai', _aiChatLimiter);
+    }
+    if (path.startsWith('api/v1/sync/') &&
+        (method == 'PUT' || method == 'DELETE')) {
+      return ('w', _syncWriteLimiter);
+    }
+    if (method == 'POST' &&
+        (path.endsWith('/photo') ||
+            path.endsWith('/reviews/photo') ||
+            path == 'admin/website/upload')) {
+      return ('u', _uploadLimiter);
+    }
+    if (path.startsWith('api/v1/subway/room/')) {
+      return ('ws', _socketLimiter);
+    }
+    if (path == 'admin' || path.startsWith('admin/')) {
+      return ('adm', _adminLimiter);
+    }
+    return ('g', _generalLimiter);
+  }
 
   String _clientKey(Request request) {
     if (config.trustProxy) {
@@ -535,6 +599,14 @@ class Api {
   Response _withAdminHeaders(Response response) => response.change(headers: {
         'Referrer-Policy': 'no-referrer',
         'Cache-Control': 'no-store',
+        // The dashboard is self-contained (inline styles/scripts, same-origin
+        // fetches) — everything external is refused, so even an HTML-injection
+        // slip could not load or exfiltrate to an outside host.
+        'Content-Security-Policy': "default-src 'none'; "
+            "style-src 'unsafe-inline'; script-src 'unsafe-inline'; "
+            "img-src 'self' data:; connect-src 'self'; form-action 'self'; "
+            "frame-src 'self'; frame-ancestors 'self'; base-uri 'none'; "
+            "font-src 'self'",
       });
 
   String? _adminSessionToken(Request request) {
@@ -804,6 +876,14 @@ class Api {
       return _error(400, 'bad_request', 'Invalid email or auth key.');
     }
 
+    // Refuse before doing any hashing work while this address is over its
+    // failed-attempt budget. Keyed by email, not IP, so rotating IPs doesn't
+    // buy an attacker more guesses at the same account.
+    if (_loginFailLimiter.isLimited(email)) {
+      return _error(429, 'rate_limited',
+          'Too many failed sign-in attempts for this account. Try again later.');
+    }
+
     final userId = store.userIdByEmail[email];
     final user = userId == null ? null : store.usersById[userId];
 
@@ -816,6 +896,7 @@ class Api {
 
     if (user == null ||
         !constantTimeEquals(hash, base64Decode(user.authHash))) {
+      _loginFailLimiter.allow(email);
       return _error(401, 'invalid_credentials', 'Wrong email or password.');
     }
 
@@ -894,6 +975,14 @@ class Api {
   /// Returns a small HTML page (the user opens this in a browser from their
   /// email client, not the app) mirroring the style of [_root].
   Future<Response> _verify(Request request) async {
+    // In manual (or open) mode no verification links are ever issued, so
+    // this endpoint must be inert — it is the only path that could flip an
+    // account to 'active' without the operator pressing Approve.
+    if (config.approvalMode != ApprovalMode.email) {
+      return _verifyPage(403,
+          'This server approves accounts by hand from the admin dashboard — '
+          'email verification links are not used here.');
+    }
     final token = request.url.queryParameters['token'];
     if (token == null || token.isEmpty) {
       return _verifyPage(400, 'Missing verification token.');
@@ -2850,6 +2939,39 @@ class Api {
     });
   }
 
+  /// The opposite of [_adminVerifyUser]: puts an account back to 'pending'
+  /// and revokes every one of its sessions, so its devices are cut off on
+  /// their very next request — [_requireAuth] rejects pending accounts, and
+  /// the app shuts its own server-access gate when it sees
+  /// `account_not_approved`.
+  Future<Response> _adminRevokeUser(Request request) async {
+    final raw = await request.readAsString();
+    String? email;
+    try {
+      email = Uri.splitQueryString(raw)['email'];
+    } catch (_) {}
+    email = email?.trim().toLowerCase();
+    if (email == null || email.isEmpty) {
+      return _error(400, 'bad_request', 'email is required.');
+    }
+    return store.lock.synchronized(() async {
+      final userId = store.userIdByEmail[email];
+      final user = userId == null ? null : store.usersById[userId];
+      if (user == null) {
+        return _error(404, 'not_found', 'No account with that email.');
+      }
+      user.status = 'pending';
+      user.verificationTokenHash = null;
+      user.verificationExpiresAtMs = null;
+      store.sessionsByTokenHash.removeWhere((_, s) => s.userId == user.id);
+      await store.saveUsers();
+      await store.saveSessions();
+      await store.logActivity(
+          'admin_revoked', '$email had their approval revoked by an admin');
+      return _adminFormResponse(request, '/admin');
+    });
+  }
+
   /// The dashboard's forms POST here directly (cookie-authenticated) and
   /// expect an HTML redirect back to the page; a script/API caller
   /// authenticates with the `X-Admin-Key` header instead and expects JSON.
@@ -3962,7 +4084,13 @@ if (window.innerWidth <= 900) document.getElementById('pane-write').classList.ad
               '<input type="hidden" name="email" value="${_htmlEscape(u.email)}">'
               '<button type="submit" class="btn btn-primary btn-sm">Approve</button>'
               '</form>'
-          : '';
+          : '<form method="post" action="/admin/revoke" '
+              'style="margin:0" onsubmit="return confirm(\'Revoke '
+              '${_htmlEscape(u.email)}? All their devices are signed out '
+              'immediately and blocked until you approve them again.\')">'
+              '<input type="hidden" name="email" value="${_htmlEscape(u.email)}">'
+              '<button type="submit" class="btn btn-danger btn-sm">Revoke</button>'
+              '</form>';
       return '<tr>'
           '<td>${_htmlEscape(u.email)}</td>'
           '<td><span class="badge $statusClass">${_htmlEscape(u.status)}</span></td>'
