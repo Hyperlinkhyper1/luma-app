@@ -36,6 +36,7 @@ class ServerConfig {
     required this.googleApiKey,
     required this.groceriesUrl,
     required this.groceriesAdminKey,
+    required this.wikiDir,
   });
 
   final int port;
@@ -98,6 +99,13 @@ class ServerConfig {
   bool get groceriesAdminEnabled =>
       groceriesAdminKey != null && groceriesAdminKey!.isNotEmpty;
 
+  /// Root of the wiki checkout mounted into the container (contains
+  /// `source/` with the Astro project and `site/` with the built output).
+  /// When unset, the /admin/website editor is disabled.
+  final String? wikiDir;
+
+  bool get wikiEnabled => wikiDir != null && wikiDir!.isNotEmpty;
+
   /// Whether new accounts may be created. Open by default; set
   /// LUMA_ALLOW_REGISTRATION=false to close it (existing accounts keep working).
   bool get registrationEnabled => allowRegistration;
@@ -128,6 +136,7 @@ class ServerConfig {
       groceriesUrl:
           env['LUMA_GROCERIES_URL'] ?? 'https://groceries.luma-app.cc',
       groceriesAdminKey: env['LUMA_GROCERIES_ADMIN_KEY'],
+      wikiDir: env['LUMA_WIKI_DIR'],
     );
   }
 }
@@ -277,7 +286,13 @@ class Api {
       ..post('/admin/groceries/sync', _requireAdmin(_adminGroceriesSync))
       ..get('/admin/groceries/status', _requireAdmin(_adminGroceriesStatus))
       ..post('/admin/deploy', _requireAdmin(_adminDeploy))
-      ..get('/admin/deploy/status', _requireAdmin(_adminDeployStatus));
+      ..get('/admin/deploy/status', _requireAdmin(_adminDeployStatus))
+      ..get('/admin/website', _requireAdmin(_adminWebsiteIndex))
+      ..post('/admin/website/build', _requireAdmin(_adminWebsiteBuild))
+      ..get('/admin/website/build/status',
+          _requireAdmin(_adminWebsiteBuildStatus))
+      ..get('/admin/website/<page|.*>', _requireAdmin(_adminWebsiteEditor))
+      ..post('/admin/website/<page|.*>', _requireAdmin(_adminWebsiteSave));
 
     return const Pipeline()
         .addMiddleware(_recover)
@@ -2593,6 +2608,267 @@ class Api {
       return false;
     }
   }
+
+  // ---------------------------------------------------------------------
+  // Website (wiki) editor — /admin/website
+  //
+  // Edits only Markdown files under source/src/content in the mounted wiki
+  // checkout; the served static output is never written directly. Publishing
+  // drops a .build-request flag that a separate builder container picks up
+  // (git commit → astro build → rsync into site/), so this process needs no
+  // node, docker, or shell access to publish.
+  // ---------------------------------------------------------------------
+
+  /// One or more lowercase slug segments: `wiki/simply-cozy`, `blog/luma-1-1`.
+  static final _wikiPageRe =
+      RegExp(r'^[a-z0-9][a-z0-9._-]*(/[a-z0-9][a-z0-9._-]*)*$');
+
+  String get _wikiContentPath => '${config.wikiDir}/source/src/content';
+
+  /// Resolves a page name to its Markdown file, or null if the name is
+  /// invalid. The regex already forbids `..`, empty segments, and leading
+  /// dots, but the canonical-path containment check is kept as a second
+  /// line of defense.
+  File? _wikiPageFile(String page) {
+    if (page.length > 200 || !_wikiPageRe.hasMatch(page)) return null;
+    if (page.contains('..')) return null;
+    final root = Directory(_wikiContentPath).absolute.path;
+    final file = File('$_wikiContentPath/$page.md');
+    if (!file.absolute.path.replaceAll('\\', '/').startsWith('$root/')) {
+      return null;
+    }
+    return file;
+  }
+
+  /// CSRF guard for the state-changing website endpoints: the session cookie
+  /// is SameSite=Strict, and on top of that the Origin header must match the
+  /// Host we were reached on. Browser form posts always send Origin.
+  bool _sameOrigin(Request request) {
+    final origin = request.headers['origin'];
+    final host = request.headers['host'];
+    if (origin == null || host == null) return false;
+    final uri = Uri.tryParse(origin);
+    return uri != null && uri.authority == host;
+  }
+
+  Response? _wikiUnavailable() {
+    if (!config.wikiEnabled) {
+      return _error(404, 'not_found',
+          'Website editing is not configured (LUMA_WIKI_DIR unset).');
+    }
+    if (!Directory(_wikiContentPath).existsSync()) {
+      return _error(500, 'wiki_missing',
+          'Wiki source not found at $_wikiContentPath — run deploy.sh once '
+          'to upload it.');
+    }
+    return null;
+  }
+
+  Future<Response> _adminWebsiteIndex(Request request) async {
+    final unavailable = _wikiUnavailable();
+    if (unavailable != null) return unavailable;
+
+    final root = Directory(_wikiContentPath);
+    final prefix = '${root.path}/';
+    final pages = <String>[];
+    await for (final entity in root.list(recursive: true, followLinks: false)) {
+      if (entity is! File || !entity.path.endsWith('.md')) continue;
+      final normalized = entity.path.replaceAll('\\', '/');
+      if (!normalized.startsWith(prefix)) continue;
+      pages.add(normalized
+          .substring(prefix.length)
+          .replaceFirst(RegExp(r'\.md$'), ''));
+    }
+    pages.sort();
+
+    final rows = pages
+        .map((p) => '<tr><td><a href="/admin/website/${_htmlEscape(p)}">'
+            '${_htmlEscape(p)}</a></td></tr>')
+        .join();
+
+    return Response(200,
+        body: '<!doctype html><html><head><meta charset="utf-8">'
+            '<meta name="viewport" content="width=device-width, initial-scale=1">'
+            '<title>luma admin — website</title><style>$_adminCss</style></head>'
+            '<body><div class="wrap">'
+            '<header class="top"><h1>luma<span class="dot">.</span> website</h1>'
+            '<nav><a href="/admin">← dashboard</a></nav></header>'
+            '<div class="card"><h2>Pages</h2>'
+            '<table><tbody>$rows</tbody></table>'
+            '<p class="hint">Open a page to edit it, or go to '
+            '/admin/website/&lt;collection&gt;/&lt;new-name&gt; to create one '
+            '(e.g. wiki/my-new-page).</p>'
+            '<form method="post" action="/admin/website/build">'
+            '<button type="submit" class="btn btn-primary">Publish site '
+            '(rebuild)</button></form>'
+            '<pre id="buildlog" style="white-space:pre-wrap"></pre>'
+            '<script>$_wikiBuildScript</script>'
+            '</div></div></body></html>',
+        headers: {'Content-Type': 'text/html; charset=utf-8'});
+  }
+
+  /// Page name from the request path, e.g. /admin/website/wiki/simply-cozy
+  /// → "wiki/simply-cozy". The single-arg [_requireAdmin] wrapper hides the
+  /// router's path parameter, so it is re-derived here.
+  static String _wikiPageOf(Request request) {
+    const prefix = 'admin/website/';
+    final path = request.url.path;
+    return path.startsWith(prefix) ? path.substring(prefix.length) : '';
+  }
+
+  Future<Response> _adminWebsiteEditor(Request request) async {
+    final unavailable = _wikiUnavailable();
+    if (unavailable != null) return unavailable;
+    final page = _wikiPageOf(request);
+    final file = _wikiPageFile(page);
+    if (file == null) {
+      return _error(400, 'bad_page',
+          'Invalid page name. Use lowercase letters, digits, dashes, and "/".');
+    }
+    final exists = await file.exists();
+    final content = exists ? await file.readAsString() : '';
+    final saved = request.url.queryParameters.containsKey('saved');
+
+    return Response(200,
+        body: '<!doctype html><html><head><meta charset="utf-8">'
+            '<meta name="viewport" content="width=device-width, initial-scale=1">'
+            '<title>edit — ${_htmlEscape(page)}</title>'
+            '<style>$_adminCss textarea.editor{width:100%;min-height:60vh;'
+            'font-family:ui-monospace,monospace;font-size:14px;'
+            'line-height:1.5;box-sizing:border-box}</style></head>'
+            '<body><div class="wrap">'
+            '<header class="top"><h1>luma<span class="dot">.</span> '
+            '${_htmlEscape(page)}</h1>'
+            '<nav><a href="/admin/website">← all pages</a></nav></header>'
+            '<div class="card">'
+            '${saved ? '<p class="hint">Saved.</p>' : ''}'
+            '${exists ? '' : '<p class="hint">New page — it will be created on save.</p>'}'
+            '<form method="post" action="/admin/website/${_htmlEscape(page)}">'
+            '<textarea class="editor" name="content" spellcheck="false">'
+            '${_htmlEscape(content)}</textarea>'
+            '<div style="display:flex;gap:8px;margin-top:10px">'
+            '<button type="submit" class="btn">Save</button>'
+            '<button type="submit" class="btn btn-primary" name="publish" '
+            'value="1">Save &amp; publish</button>'
+            '</div></form>'
+            '<pre id="buildlog" style="white-space:pre-wrap"></pre>'
+            '<script>$_wikiBuildScript</script>'
+            '</div></div></body></html>',
+        headers: {'Content-Type': 'text/html; charset=utf-8'});
+  }
+
+  Future<Response> _adminWebsiteSave(Request request) async {
+    final unavailable = _wikiUnavailable();
+    if (unavailable != null) return unavailable;
+    if (!_sameOrigin(request)) {
+      return _error(403, 'bad_origin', 'Cross-origin request rejected.');
+    }
+    final page = _wikiPageOf(request);
+    final file = _wikiPageFile(page);
+    if (file == null) {
+      return _error(400, 'bad_page', 'Invalid page name.');
+    }
+    Map<String, String> form = const {};
+    try {
+      form = Uri.splitQueryString(await request.readAsString());
+    } catch (_) {}
+    final content = form['content'];
+    if (content == null) {
+      return _error(400, 'bad_request', 'Missing content field.');
+    }
+    if (content.length > 2 * 1024 * 1024) {
+      return _error(413, 'too_large', 'Page content too large.');
+    }
+    await file.parent.create(recursive: true);
+    // Write-then-rename so the builder never sees a half-written file.
+    final tmp = File('${file.path}.tmp');
+    await tmp.writeAsString(content.replaceAll('\r\n', '\n'), flush: true);
+    await tmp.rename(file.path);
+
+    if (form['publish'] == '1') {
+      _requestWikiBuild();
+      return Response.found('/admin/website/$page?saved=1');
+    }
+    return Response.found('/admin/website/$page?saved=1');
+  }
+
+  void _requestWikiBuild() {
+    File('${config.wikiDir}/.build-request')
+        .writeAsStringSync(DateTime.now().toIso8601String());
+  }
+
+  Future<Response> _adminWebsiteBuild(Request request) async {
+    final unavailable = _wikiUnavailable();
+    if (unavailable != null) return unavailable;
+    if (!_sameOrigin(request)) {
+      return _error(403, 'bad_origin', 'Cross-origin request rejected.');
+    }
+    _requestWikiBuild();
+    return Response.found('/admin/website');
+  }
+
+  Future<Response> _adminWebsiteBuildStatus(Request request) async {
+    final unavailable = _wikiUnavailable();
+    if (unavailable != null) return unavailable;
+    String status = '{}';
+    final statusFile = File('${config.wikiDir}/.build-status.json');
+    if (await statusFile.exists()) {
+      try {
+        status = await statusFile.readAsString();
+        jsonDecode(status); // validate before embedding
+      } catch (_) {
+        status = '{}';
+      }
+    }
+    String log = '';
+    final logFile = File('${config.wikiDir}/.build-log');
+    if (await logFile.exists()) {
+      try {
+        log = await logFile.readAsString();
+        if (log.length > 20000) log = log.substring(log.length - 20000);
+      } catch (_) {}
+    }
+    final pending = File('${config.wikiDir}/.build-request').existsSync();
+    return _json(200, {
+      'pending': pending,
+      'status': jsonDecode(status),
+      'log': log,
+    });
+  }
+
+  /// Polls build status after a publish and shows the tail of the build log.
+  static const _wikiBuildScript = r'''
+(function () {
+  var el = document.getElementById('buildlog');
+  if (!el) return;
+  var timer = null, idle = 0;
+  function poll() {
+    fetch('/admin/website/build/status', {credentials: 'same-origin'})
+      .then(function (r) { return r.json(); })
+      .then(function (s) {
+        var state = (s.status && s.status.state) || '';
+        var busy = s.pending || state === 'building';
+        if (busy || state === 'error') {
+          el.textContent = '[build ' + (busy ? 'running' : state) + ']\n' +
+            (s.log || '');
+          el.scrollTop = el.scrollHeight;
+        } else if (state === 'ok' && el.textContent) {
+          el.textContent = '[build ok — site published]';
+        }
+        idle = busy ? 0 : idle + 1;
+        if (idle > 4 && timer) { clearInterval(timer); timer = null; }
+      }).catch(function () {});
+  }
+  document.querySelectorAll('form').forEach(function (f) {
+    f.addEventListener('submit', function () {
+      idle = 0;
+      if (!timer) timer = setInterval(poll, 2000);
+    });
+  });
+  // If a build is already running when the page loads, start polling.
+  poll(); timer = setInterval(poll, 2000);
+})();
+''';
 
   Response _adminDashboard(Request request) {
     final stats = _adminStatsJson();

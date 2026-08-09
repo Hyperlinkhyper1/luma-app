@@ -6,8 +6,11 @@ services:
     environment:
       # Caddy sits in front of us, so the forwarded client IP is trustworthy.
       LUMA_TRUST_PROXY: "true"
+      # Enables the /admin/website editor over the mounted wiki checkout.
+      LUMA_WIKI_DIR: /wiki
     volumes:
       - luma_data:/data
+      - ../wiki:/wiki
     # No "ports:" on purpose — only Caddy may reach the app, over the
     # internal network. Never expose 8080 to the internet (plain HTTP).
     networks:
