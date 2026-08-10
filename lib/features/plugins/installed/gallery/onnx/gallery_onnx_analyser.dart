@@ -5,6 +5,8 @@ import 'package:flutter_onnxruntime/flutter_onnxruntime.dart';
 import 'package:image/image.dart' as img;
 
 import '../gallery_cache.dart';
+import '../gallery_people.dart';
+import 'gallery_face_embedder.dart';
 import 'gallery_model_store.dart';
 import 'imagenet_buckets.dart';
 
@@ -52,8 +54,10 @@ class GalleryOnnxAnalyser {
     if (ready) return true;
     if (_failed) return false;
     try {
-      await GalleryModelStore.instance
-          .ensureDownloaded(onProgress: onProgress);
+      await GalleryModelStore.instance.ensureDownloaded(
+        GalleryModelStore.labelModels,
+        onProgress: onProgress,
+      );
       onProgress?.call('Starting the models', null);
 
       final runtime = OnnxRuntime();
@@ -83,10 +87,17 @@ class GalleryOnnxAnalyser {
   /// made and cached for the grid. Both models want a small square anyway, so
   /// re-reading the full-size file would be wasted work, and a cloud
   /// placeholder (which has no thumbnail) is skipped for free.
+  ///
+  /// [embedder] and [people] are the cross-platform recognition step (see
+  /// [GalleryFaceEmbedder]) — passed in rather than owned here, since the
+  /// phone's ML Kit path needs the exact same two objects.
   Future<GalleryCacheEntry> analyse(
     Uint8List bytes,
-    GalleryCacheEntry previous,
-  ) async {
+    GalleryCacheEntry previous, {
+    required GalleryFaceEmbedder embedder,
+    required GalleryPeopleStore people,
+    required String cacheKey,
+  }) async {
     if (!ready) return previous.copyWith(analysed: true, skipped: true);
     try {
       final decoded = img.decodeImage(bytes);
@@ -95,12 +106,22 @@ class GalleryOnnxAnalyser {
       }
 
       final verdict = await run(decoded);
+      final personIds = await identifyPeople(
+        decoded,
+        verdict.faces,
+        embedder: embedder,
+        people: people,
+        coverKey: cacheKey,
+      );
       return previous.copyWith(
         faceCount: verdict.faces.length,
         labels: [
           ...verdict.buckets,
           if (isSelfieShaped(verdict.faces)) selfieLabel,
+          if (hasSky(decoded)) skyLabel,
+          if (isNightShot(decoded)) nightLabel,
         ],
+        personIds: personIds,
         analysed: true,
       );
     } catch (_) {
@@ -189,8 +210,80 @@ class GalleryOnnxAnalyser {
   }
 }
 
-/// Marker written alongside the buckets, matching the ML Kit path.
+/// Markers written alongside the buckets, matching the ML Kit path.
 const selfieLabel = '_selfie';
+
+/// Sky and night are qualities of a scene, not objects in it, and ImageNet
+/// has no class for either — it is a list of a thousand *things*. They are
+/// read straight off the pixels instead, from the thumbnail the analyser has
+/// already decoded, which costs nothing next to running a model.
+const skyLabel = '_sky';
+const nightLabel = '_night';
+
+/// A photo counts as having sky when this much of its top third is sky-
+/// coloured. Less than a third and it is a patch of blue behind a building,
+/// which is most outdoor photographs.
+const skyCoverage = 0.55;
+
+/// Mean brightness (0–255) below which a picture was taken in the dark.
+const nightLuminance = 62.0;
+
+/// A night shot still has lights in it. Without this a scan of a black
+/// screenshot, a lens cap or an underexposed failure joins the album.
+const nightHighlight = 150.0;
+
+/// Whether the top of the frame is open sky.
+///
+/// Only blue sky is claimed. Overcast white would need separating from walls,
+/// ceilings and paper, and a Sky album full of indoor shots is worse than one
+/// that misses grey days.
+bool hasSky(img.Image image) {
+  if (image.width < 4 || image.height < 4) return false;
+  final bottom = math.max(1, image.height ~/ 3);
+  // Every fourth pixel is plenty to judge a region this size.
+  const step = 4;
+  var sampled = 0;
+  var skyLike = 0;
+
+  for (var y = 0; y < bottom; y += step) {
+    for (var x = 0; x < image.width; x += step) {
+      final pixel = image.getPixel(x, y);
+      final r = pixel.r.toDouble();
+      final g = pixel.g.toDouble();
+      final b = pixel.b.toDouble();
+      sampled++;
+      // Blue ahead of both other channels, and bright enough to be daylight
+      // rather than a navy jumper.
+      if (b > 90 && b - r > 18 && b >= g) skyLike++;
+    }
+  }
+  if (sampled == 0) return false;
+  return skyLike / sampled >= skyCoverage;
+}
+
+/// Whether the picture was taken in the dark: mostly shadow, but with
+/// something bright in it.
+bool isNightShot(img.Image image) {
+  if (image.width < 2 || image.height < 2) return false;
+  const step = 4;
+  var sampled = 0;
+  var total = 0.0;
+  var brightest = 0.0;
+
+  for (var y = 0; y < image.height; y += step) {
+    for (var x = 0; x < image.width; x += step) {
+      final pixel = image.getPixel(x, y);
+      // Rec. 601 luma, which is what "how bright does this look" means.
+      final luma =
+          0.299 * pixel.r + 0.587 * pixel.g + 0.114 * pixel.b;
+      total += luma;
+      if (luma > brightest) brightest = luma;
+      sampled++;
+    }
+  }
+  if (sampled == 0) return false;
+  return (total / sampled) < nightLuminance && brightest > nightHighlight;
+}
 
 /// MobileNetV2 takes a 224×224 square.
 const classifierSize = 224;
@@ -386,26 +479,36 @@ List<GalleryFace> facesFromOutputs(List<double> scores, List<double> boxes) {
   return [
     for (final face in kept)
       GalleryFace(
-        width: face.right - face.left,
-        centreX: (face.left + face.right) / 2,
-        centreY: (face.top + face.bottom) / 2,
+        left: face.left,
+        top: face.top,
+        right: face.right,
+        bottom: face.bottom,
       ),
   ];
 }
 
-/// Where a face sits in the frame and how much of it it fills, both as
-/// fractions of the frame.
+/// A detected face's box, as fractions of the frame (0..1). Carries the full
+/// box rather than just a size — [width]/[centreX]/[centreY] cover the
+/// selfie/group-shot heuristics, and the box itself is what a crop for
+/// [GalleryFaceEmbedder] is taken from.
 @immutable
 class GalleryFace {
   const GalleryFace({
-    required this.width,
-    required this.centreX,
-    required this.centreY,
+    required this.left,
+    required this.top,
+    required this.right,
+    required this.bottom,
   });
 
-  final double width;
-  final double centreX;
-  final double centreY;
+  final double left;
+  final double top;
+  final double right;
+  final double bottom;
+
+  double get width => right - left;
+  double get height => bottom - top;
+  double get centreX => (left + right) / 2;
+  double get centreY => (top + bottom) / 2;
 }
 
 /// One big face near the middle of the frame is how a selfie looks to a

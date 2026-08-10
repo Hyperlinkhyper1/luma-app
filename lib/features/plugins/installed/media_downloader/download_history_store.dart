@@ -12,6 +12,7 @@ class DownloadHistoryEntry {
     required this.mode,
     required this.detail,
     required this.completedAt,
+    this.source = 'YouTube',
   });
 
   final String title;
@@ -19,6 +20,7 @@ class DownloadHistoryEntry {
   final String mode; // 'Video' or 'Audio'
   final String detail; // e.g. "1080p · 192 kbps" or "MP3 · 320 kbps"
   final DateTime completedAt;
+  final String source; // 'YouTube' or 'Spotify'
 
   Map<String, dynamic> toJson() => {
         'title': title,
@@ -26,6 +28,7 @@ class DownloadHistoryEntry {
         'mode': mode,
         'detail': detail,
         'completedAt': completedAt.toIso8601String(),
+        'source': source,
       };
 
   factory DownloadHistoryEntry.fromJson(Map<String, dynamic> json) =>
@@ -36,6 +39,8 @@ class DownloadHistoryEntry {
         detail: json['detail']?.toString() ?? '',
         completedAt: DateTime.tryParse(json['completedAt']?.toString() ?? '') ??
             DateTime.now(),
+        // Older entries predate Spotify support and were always YouTube.
+        source: json['source']?.toString() ?? 'YouTube',
       );
 }
 
@@ -44,6 +49,8 @@ class DownloadHistoryEntry {
 class DownloadHistoryStore {
   Future<File> _file() async {
     final dir = await getApplicationSupportDirectory();
+    // Filename predates Spotify support and stays as-is so existing users'
+    // history isn't orphaned by a purely cosmetic rename.
     return File('${dir.path}${Platform.pathSeparator}youtube_downloads.json');
   }
 

@@ -46,14 +46,20 @@ void main() {
       expect(bucketForImagenetClass(950), 'Food'); // orange
 
       expect(bucketForImagenetClass(970), 'Nature'); // alp
-      expect(bucketForImagenetClass(978), 'Nature'); // seashore
       expect(bucketForImagenetClass(985), 'Nature'); // daisy
     });
 
+    test('the landscape run splits between land and water', () {
+      expect(bucketForImagenetClass(978), 'Ocean'); // seashore
+      expect(bucketForImagenetClass(975), 'Ocean'); // lakeside
+      expect(bucketForImagenetClass(970), 'Nature'); // alp
+      expect(bucketForImagenetClass(980), 'Nature'); // volcano
+    });
+
     test('scattered object classes are picked out individually', () {
-      expect(bucketForImagenetClass(817), 'Vehicles'); // sports car
-      expect(bucketForImagenetClass(404), 'Vehicles'); // airliner
-      expect(bucketForImagenetClass(497), 'City'); // church
+      expect(bucketForImagenetClass(817), 'Transport'); // sports car
+      expect(bucketForImagenetClass(404), 'Transport'); // airliner
+      expect(bucketForImagenetClass(497), 'Architecture'); // church
       expect(bucketForImagenetClass(922), 'Documents'); // menu
     });
 
@@ -110,7 +116,7 @@ void main() {
       logits[207] = 6; // golden retriever
       logits[978] = 5.6; // seashore
       final buckets = bucketsFromScores(logits);
-      expect(buckets, containsAll(<String>['Pets', 'Nature']));
+      expect(buckets, containsAll(<String>['Pets', 'Ocean']));
     });
 
     test('the ranking stops at the first class below the floor', () {
@@ -236,31 +242,80 @@ void main() {
     });
 
     test('one big centred face is a selfie; anything else is not', () {
-      const centred = GalleryFace(width: 0.45, centreX: 0.5, centreY: 0.45);
-      expect(isSelfieShaped(const [centred]), isTrue);
+      final centred = _faceAt(width: 0.45, centreX: 0.5, centreY: 0.45);
+      expect(isSelfieShaped([centred]), isTrue);
 
       expect(
-        isSelfieShaped(
-          const [GalleryFace(width: 0.10, centreX: 0.5, centreY: 0.5)],
-        ),
+        isSelfieShaped([_faceAt(width: 0.10, centreX: 0.5, centreY: 0.5)]),
         isFalse,
         reason: 'too far away',
       );
       expect(
-        isSelfieShaped(
-          const [GalleryFace(width: 0.45, centreX: 0.05, centreY: 0.5)],
-        ),
+        isSelfieShaped([_faceAt(width: 0.45, centreX: 0.05, centreY: 0.5)]),
         isFalse,
         reason: 'a face wedged in the corner is a bystander, not the subject',
       );
       expect(
-        isSelfieShaped(const [
+        isSelfieShaped([
           centred,
-          GalleryFace(width: 0.40, centreX: 0.7, centreY: 0.5),
+          _faceAt(width: 0.40, centreX: 0.7, centreY: 0.5),
         ]),
         isFalse,
       );
       expect(isSelfieShaped(const []), isFalse);
+    });
+  });
+
+  group('sky and night, read from pixels', () {
+    // Neither is an ImageNet object class — a clear sky isn't a "thing" the
+    // classifier has a slot for — so these are read directly off the
+    // thumbnail rather than asked of the model. Cheap, and it works the same
+    // on both platforms.
+    test('a blue upper third is sky', () {
+      final image = img.Image(width: 100, height: 90);
+      img.fillRect(image,
+          x1: 0, y1: 0, x2: 99, y2: 29, color: img.ColorRgb8(120, 170, 230));
+      img.fillRect(image,
+          x1: 0, y1: 30, x2: 99, y2: 89, color: img.ColorRgb8(60, 140, 60));
+      expect(hasSky(image), isTrue);
+    });
+
+    test('a green field with a strip of blue at the top is not', () {
+      final image = img.Image(width: 100, height: 90);
+      img.fill(image, color: img.ColorRgb8(60, 140, 60));
+      // A blue lake occupying only a corner of the top third.
+      img.fillRect(image,
+          x1: 0, y1: 0, x2: 20, y2: 20, color: img.ColorRgb8(120, 170, 230));
+      expect(hasSky(image), isFalse);
+    });
+
+    test('an indoor photo with no blue anywhere is not sky', () {
+      final image = img.Image(width: 60, height: 60);
+      img.fill(image, color: img.ColorRgb8(200, 190, 170));
+      expect(hasSky(image), isFalse);
+    });
+
+    test('a mostly-dark frame with a light in it is a night shot', () {
+      final image = img.Image(width: 80, height: 80);
+      img.fill(image, color: img.ColorRgb8(8, 8, 10));
+      img.fillRect(image,
+          x1: 30, y1: 30, x2: 45, y2: 45, color: img.ColorRgb8(255, 230, 180));
+      expect(isNightShot(image), isTrue);
+    });
+
+    test('a dark frame with nothing bright in it is underexposed, not night',
+        () {
+      // A lens cap or a failed exposure is not a "night" photo, even though
+      // it is dark — nothing in it is a light source.
+      final image = img.Image(width: 40, height: 40);
+      img.fill(image, color: img.ColorRgb8(5, 5, 5));
+      expect(isNightShot(image), isFalse);
+    });
+
+    test('a normally lit daytime photo is not night', () {
+      final image = img.Image(width: 40, height: 40);
+      img.fill(image, color: img.ColorRgb8(180, 180, 180));
+      expect(isNightShot(image), isFalse);
     });
   });
 
@@ -315,14 +370,28 @@ void main() {
   });
 
   group('model store', () {
-    test('both models are named, sized and sourced', () {
-      for (final model in GalleryModelStore.models) {
+    test('every model is named, sized and sourced', () {
+      for (final model in GalleryModelStore.allModels) {
         expect(model.fileName, endsWith('.onnx'));
         expect(model.url, startsWith('https://'));
         expect(model.approximateBytes, greaterThan(0));
       }
-      expect(GalleryModelStore.totalBytes, greaterThan(10 * 1024 * 1024));
-      expect(GalleryModelStore.totalBytes, lessThan(30 * 1024 * 1024));
+      final total = GalleryModelStore.bytesFor(GalleryModelStore.allModels);
+      expect(total, greaterThan(20 * 1024 * 1024));
+      expect(total, lessThan(40 * 1024 * 1024));
+    });
+
+    test('the label models are desktop-only; the embedder is everywhere',
+        () {
+      expect(
+        GalleryModelStore.labelModels,
+        containsAll(<GalleryModel>[
+          GalleryModelStore.classifier,
+          GalleryModelStore.faceDetector,
+        ]),
+      );
+      expect(GalleryModelStore.labelModels, isNot(contains(GalleryModelStore.embedder)));
+      expect(GalleryModelStore.allModels, contains(GalleryModelStore.embedder));
     });
 
     test('each platform gets exactly one analyser', () {
@@ -359,13 +428,30 @@ void main() {
 
 /// A label the ML Kit vocabulary would produce for each bucket, so the two
 /// mappings can be checked against each other.
+/// A square-ish [GalleryFace] of the given size and centre, for tests that
+/// only care about the selfie-shape heuristic and not the exact box.
+GalleryFace _faceAt({
+  required double width,
+  required double centreX,
+  required double centreY,
+}) =>
+    GalleryFace(
+      left: centreX - width / 2,
+      right: centreX + width / 2,
+      top: centreY - width / 2,
+      bottom: centreY + width / 2,
+    );
+
 String _mlKitExampleFor(String bucket) => switch (bucket) {
       'Pets' => 'dog',
       'Animals' => 'bird',
       'Food' => 'pizza',
       'Nature' => 'flower',
-      'City' => 'building',
-      'Vehicles' => 'car',
+      'Ocean' => 'beach',
+      'Sky' => 'sky',
+      'Night' => 'night',
+      'Architecture' => 'building',
+      'Transport' => 'car',
       'Documents' => 'document',
       'Celebrations' => 'fireworks',
       'Art' => 'painting',

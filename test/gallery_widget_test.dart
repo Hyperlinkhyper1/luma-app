@@ -6,11 +6,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:luma/app/widgets.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_album_card.dart';
+import 'package:luma/features/plugins/installed/gallery/gallery_cache.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_categories.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_media.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_page.dart';
+import 'package:luma/features/plugins/installed/gallery/gallery_people.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_repository.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_scope.dart';
+import 'package:luma/features/plugins/installed/gallery/gallery_smart.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_source.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_tile.dart';
 import 'package:luma/settings/settings_controller.dart';
@@ -71,6 +74,46 @@ class FakeGallerySource extends GallerySource {
   }
 }
 
+/// Stands in for [GalleryAnalyser]. The real one needs `path_provider` (a
+/// real model download, a real ONNX or ML Kit session), none of which a
+/// widget test's fake platform binding provides — this exercises the
+/// repository's bookkeeping (pending/examined/skipped counts, the "up to
+/// date" card, re-analysis) without any of that.
+///
+/// Every third photo comes back skipped, so the skipped/examined split is
+/// exercised the same way an OneDrive-heavy library would produce it for
+/// real.
+class FakeAnalyser extends GalleryAnalyser {
+  FakeAnalyser() : super(people: GalleryPeopleStore());
+
+  int _seen = 0;
+
+  @override
+  Future<bool> prepare({
+    void Function(String label, double? progress)? onProgress,
+  }) async =>
+      true;
+
+  @override
+  Future<GalleryCacheEntry> analyse({
+    required GalleryCacheEntry previous,
+    required String cacheKey,
+    String? path,
+    Uint8List? thumbnail,
+  }) async {
+    _seen++;
+    final skip = _seen % 3 == 0;
+    return previous.copyWith(
+      analysed: true,
+      skipped: skip,
+      labels: skip ? const [] : const ['stub'],
+    );
+  }
+
+  @override
+  Future<void> dispose() async {}
+}
+
 GalleryItem _item({
   required String name,
   required String folder,
@@ -123,6 +166,7 @@ Future<GalleryRepository> _pump(
   List<GalleryItem>? items,
   GalleryAccess access = GalleryAccess.granted,
   String plan = 'core',
+  GalleryAnalyser? analyser,
 }) async {
   tester.view.physicalSize = const Size(1100, 2000);
   tester.view.devicePixelRatio = 2;
@@ -134,6 +178,7 @@ Future<GalleryRepository> _pump(
       items: items ?? _library,
       access: access,
     ),
+    analyser: analyser,
   );
   addTearDown(repository.dispose);
 
@@ -174,6 +219,17 @@ Future<void> _openAlbum(WidgetTester tester, String label) async {
 /// Back out of an album to the albums screen.
 Future<void> _back(WidgetTester tester) async {
   await tester.tap(find.byIcon(Icons.arrow_back_rounded));
+  await tester.pumpAndSettle();
+}
+
+/// Scrolls the albums screen to the bottom. Content past the last section —
+/// the sort-progress card — sits beyond a fixed test viewport's cache
+/// extent and isn't built until it's been scrolled into view at least once.
+Future<void> _scrollAlbumsScreen(WidgetTester tester) async {
+  await tester.drag(
+    find.byType(CustomScrollView).first,
+    const Offset(0, -600),
+  );
   await tester.pumpAndSettle();
 }
 
@@ -286,21 +342,31 @@ void main() {
     expect(find.text('4:07'), findsOneWidget);
   });
 
-  testWidgets('smart albums are offered, not given, below Nova',
+  testWidgets('People and Categories are offered, not given, below Nova',
       (tester) async {
     await _pump(tester);
 
     expect(find.text('Nova'), findsOneWidget);
-    await _openAlbum(tester, 'Smart albums');
+    await _openAlbum(tester, 'People & Categories');
     expect(find.textContaining('Nova extra'), findsOneWidget);
   });
 
-  testWidgets('Nova gets real smart albums instead of the upsell card',
+  testWidgets('Nova gets real People and Categories instead of the upsell',
       (tester) async {
     await _pump(tester, plan: 'nova');
 
     expect(find.text('Nova'), findsNothing);
-    expect(find.text('Included with Nova'), findsNothing);
+    expect(find.text('People & Categories'), findsNothing);
+    expect(find.text('People'), findsOneWidget);
+    expect(find.text('Categories'), findsOneWidget);
+  });
+
+  testWidgets('Memories is free on every plan, unlike People and Categories',
+      (tester) async {
+    await _pump(tester);
+    // Memories sits alongside the Nova-gated card, not behind it.
+    expect(find.text('Memories'), findsOneWidget);
+    expect(find.text('People & Categories'), findsOneWidget);
   });
 
   testWidgets('a refused grant explains itself and offers a way back',
@@ -395,33 +461,41 @@ void main() {
     // bug. When there is nothing left to do, the card says what happened —
     // including how much it could not read, which on a cloud library is most
     // of it.
-    final repository = await _pump(tester, plan: 'nova');
+    final repository =
+        await _pump(tester, plan: 'nova', analyser: FakeAnalyser());
 
     await tester.runAsync(() => repository.analyseSmart());
     await tester.pumpAndSettle();
 
     expect(repository.pendingAnalysis, 0);
-    expect(find.text('Smart albums are up to date'), findsOneWidget);
+    // The prompt card sits below three sections of album cards — off-screen
+    // in this fixed test viewport, and slivers past the cache extent aren't
+    // built until scrolled into view.
+    await _scrollAlbumsScreen(tester);
+    expect(find.text('People and Categories are up to date'), findsOneWidget);
     expect(find.text('Look again'), findsOneWidget);
   });
 
   testWidgets('photos that could not be read are counted as skipped, not done',
       (tester) async {
-    // The host platform has no ONNX models, so every photo is skipped —
-    // exactly the shape of a library that is entirely in the cloud.
-    final repository = await _pump(tester, plan: 'nova');
+    // A fake analyser stands in for the real one — a fresh library never has
+    // its models on disk, and this is what that day-one shape looks like.
+    final repository =
+        await _pump(tester, plan: 'nova', analyser: FakeAnalyser());
     await tester.runAsync(() => repository.analyseSmart());
     await tester.pumpAndSettle();
 
     final photos = repository.items.where((i) => !i.isVideo).length;
     expect(repository.skippedAnalysis + repository.examinedAnalysis, photos);
     expect(repository.skippedAnalysis, greaterThan(0));
+    await _scrollAlbumsScreen(tester);
     expect(find.textContaining('skipped'), findsOneWidget);
   });
 
   testWidgets('looking again clears the verdicts and starts over',
       (tester) async {
-    final repository = await _pump(tester, plan: 'nova');
+    final repository =
+        await _pump(tester, plan: 'nova', analyser: FakeAnalyser());
     await tester.runAsync(() => repository.analyseSmart());
     await tester.pumpAndSettle();
     expect(repository.pendingAnalysis, 0);
