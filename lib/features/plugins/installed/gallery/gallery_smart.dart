@@ -148,14 +148,21 @@ class GalleryAnalyser {
     Uint8List? thumbnail,
   }) async {
     if (GallerySmartAnalyser.isSupported) {
-      if (path == null) return previous.copyWith(analysed: true);
+      // No file to hand ML Kit, so this photo was never actually looked at.
+      if (path == null) {
+        return previous.copyWith(analysed: true, skipped: true);
+      }
       return _mlKit.analyse(path, previous);
     }
     if (GalleryOnnxAnalyser.isSupported) {
-      if (thumbnail == null) return previous.copyWith(analysed: true);
+      // No thumbnail means a cloud placeholder or a format the decoder
+      // doesn't read — again, not looked at rather than found to be nothing.
+      if (thumbnail == null) {
+        return previous.copyWith(analysed: true, skipped: true);
+      }
       return _onnx.analyse(thumbnail, previous);
     }
-    return previous.copyWith(analysed: true);
+    return previous.copyWith(analysed: true, skipped: true);
   }
 
   Future<void> dispose() async {
