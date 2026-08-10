@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import 'gallery_cache.dart';
 import 'gallery_categories.dart';
+import 'gallery_file_editor.dart';
 import 'gallery_media.dart';
 import 'gallery_smart.dart';
 import 'gallery_source.dart';
@@ -430,6 +431,50 @@ class GalleryRepository extends ChangeNotifier {
   /// a queue drained in order would spend its time decoding pictures that
   /// have already scrolled away.
   final List<Completer<void>> _thumbnailQueue = [];
+
+  /// Whether files can be renamed and re-dated here. Only the desktop
+  /// sources work in real directories.
+  bool get canEditFiles => _source.supportsCustomFolders;
+
+  /// Renames and/or re-dates one file, then folds the result back into the
+  /// library without a rescan — on a 25 000-photo library, re-walking every
+  /// folder to learn one new name would be absurd.
+  Future<GalleryEditResult> editFile(
+    GalleryItem item, {
+    String? newName,
+    DateTime? newTakenAt,
+  }) async {
+    if (!canEditFiles) {
+      return const GalleryEditResult.failure(
+        'Files can only be renamed in the desktop app.',
+      );
+    }
+    final result = await GalleryFileEditor.apply(
+      item,
+      newName: newName,
+      newTakenAt: newTakenAt,
+    );
+    if (!result.ok) return result;
+
+    final updated = result.item!;
+    final index = _items.indexWhere((i) => i.id == item.id);
+    if (index >= 0) _items[index] = updated;
+
+    // Renaming changes the id, and the date is part of the cache key, so
+    // whatever was learned about this file has to move with it.
+    final previous = _cache[item.cacheKey];
+    if (previous != null && updated.cacheKey != item.cacheKey) {
+      _cache.put(updated.cacheKey, previous);
+    }
+
+    _items.sort((a, b) => b.takenAt.compareTo(a.takenAt));
+    _categories = buildCategories(_items);
+    _libraryVersion++;
+    _smartVersion++;
+    _set(() {});
+    unawaited(_cache.flush());
+    return GalleryEditResult.success(updated);
+  }
 
   Future<Uint8List?> thumbnail(GalleryItem item, int pixels) {
     final key = '${item.cacheKey}|$pixels';

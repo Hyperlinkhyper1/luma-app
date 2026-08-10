@@ -124,6 +124,27 @@ class GalleryItem {
         cloudOnly: cloudOnly ?? this.cloudOnly,
       );
 
+  /// The same picture after it has been renamed or re-dated on disk. Separate
+  /// from [copyWith] because these three are the file's identity — changing
+  /// them changes the id and the cache key, which nothing else may do.
+  GalleryItem withFile({String? name, String? path, DateTime? takenAt}) =>
+      GalleryItem(
+        id: path ?? id,
+        name: name ?? this.name,
+        type: type,
+        folder: folder,
+        takenAt: takenAt ?? this.takenAt,
+        path: path ?? this.path,
+        mimeType: mimeType,
+        width: width,
+        height: height,
+        duration: duration,
+        sizeBytes: sizeBytes,
+        latitude: latitude,
+        longitude: longitude,
+        cloudOnly: cloudOnly,
+      );
+
   @override
   bool operator ==(Object other) => other is GalleryItem && other.id == id;
 
