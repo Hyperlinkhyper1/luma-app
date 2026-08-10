@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:luma/app/widgets.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_album_card.dart';
+import 'package:luma/features/plugins/installed/gallery/gallery_categories.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_media.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_page.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_repository.dart';
@@ -86,6 +87,8 @@ GalleryItem _item({
       height: 3000,
     );
 
+/// A folder needs [minimumAlbumItems] pictures before it becomes an album, so
+/// the app folders here carry three apiece.
 final _library = [
   _item(name: 'IMG_1.jpg', folder: 'DCIM/Camera'),
   _item(name: 'IMG_2.jpg', folder: 'DCIM/Camera'),
@@ -96,7 +99,11 @@ final _library = [
   ),
   _item(name: 'Screenshot_1.png', folder: 'Pictures/Screenshots'),
   _item(name: 'IMG-WA0001.jpg', folder: 'WhatsApp/Media/WhatsApp Images'),
+  _item(name: 'IMG-WA0002.jpg', folder: 'WhatsApp/Media/WhatsApp Images'),
+  _item(name: 'IMG-WA0003.jpg', folder: 'WhatsApp/Media/WhatsApp Images'),
   _item(name: 'meme.gif', folder: 'Download'),
+  _item(name: 'invoice.png', folder: 'Download'),
+  _item(name: 'receipt.png', folder: 'Download'),
 ];
 
 /// Loading settings touches real async I/O, so it runs outside the widget
@@ -201,9 +208,9 @@ void main() {
           matching: find.textContaining('item'),
         );
 
-    expect(tester.widget<Text>(subtitleOf('All')).data, '6 items');
+    expect(tester.widget<Text>(subtitleOf('All')).data, '10 items');
     expect(tester.widget<Text>(subtitleOf('Pictures')).data, '2 items');
-    expect(tester.widget<Text>(subtitleOf('Downloads')).data, '1 item');
+    expect(tester.widget<Text>(subtitleOf('Downloads')).data, '3 items');
   });
 
   testWidgets('an album card shows its newest photo as the cover',
@@ -213,6 +220,11 @@ void main() {
         name: 'old.jpg',
         folder: 'Download',
         takenAt: DateTime(2020, 1, 1),
+      ),
+      _item(
+        name: 'middle.jpg',
+        folder: 'Download',
+        takenAt: DateTime(2023, 1, 1),
       ),
       _item(
         name: 'newest.jpg',
@@ -243,7 +255,7 @@ void main() {
 
     await _back(tester);
     await _openAlbum(tester, 'Downloads');
-    expect(find.byType(GalleryTile), findsOneWidget);
+    expect(find.byType(GalleryTile), findsNWidgets(3));
   });
 
   testWidgets('backing out of an album returns to the albums screen',

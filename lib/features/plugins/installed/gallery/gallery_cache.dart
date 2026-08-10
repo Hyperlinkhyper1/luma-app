@@ -12,16 +12,23 @@ class GalleryCacheEntry {
     this.labels = const [],
     this.faceCount = 0,
     this.analysed = false,
-    this.geoChecked = false,
+    this.detailsRead = false,
+    this.width,
+    this.height,
   });
 
   final double? latitude;
   final double? longitude;
 
-  /// Whether the GPS tag has been read. Most photos don't have one, and
-  /// without this the background pass would re-read every untagged file on
-  /// every launch.
-  final bool geoChecked;
+  /// Frame size, learned from the file header on desktop. MediaStore already
+  /// knows it on the phone.
+  final int? width;
+  final int? height;
+
+  /// Whether the file header has been read. Most photos carry no GPS tag at
+  /// all, and without this the background pass would re-read every untagged
+  /// file on every launch.
+  final bool detailsRead;
 
   /// Smart-category labels from the on-device image labeller.
   final List<String> labels;
@@ -41,7 +48,9 @@ class GalleryCacheEntry {
         if (labels.isNotEmpty) 'labels': labels,
         if (faceCount > 0) 'faces': faceCount,
         if (analysed) 'done': true,
-        if (geoChecked) 'geo': true,
+        if (detailsRead) 'read': true,
+        if (width != null) 'w': width,
+        if (height != null) 'h': height,
       };
 
   factory GalleryCacheEntry.fromJson(Map<String, dynamic> json) =>
@@ -54,7 +63,13 @@ class GalleryCacheEntry {
         ],
         faceCount: (json['faces'] as num?)?.toInt() ?? 0,
         analysed: json['done'] == true,
-        geoChecked: json['geo'] == true,
+        // Entries written before the header pass also learned frame sizes
+        // carry the old 'geo' flag. Treating those as unread costs one extra
+        // header read per photo, once, and fills in the dimensions they
+        // never had.
+        detailsRead: json['read'] == true,
+        width: (json['w'] as num?)?.toInt(),
+        height: (json['h'] as num?)?.toInt(),
       );
 
   GalleryCacheEntry copyWith({
@@ -63,7 +78,9 @@ class GalleryCacheEntry {
     List<String>? labels,
     int? faceCount,
     bool? analysed,
-    bool? geoChecked,
+    bool? detailsRead,
+    int? width,
+    int? height,
   }) =>
       GalleryCacheEntry(
         latitude: latitude ?? this.latitude,
@@ -71,7 +88,9 @@ class GalleryCacheEntry {
         labels: labels ?? this.labels,
         faceCount: faceCount ?? this.faceCount,
         analysed: analysed ?? this.analysed,
-        geoChecked: geoChecked ?? this.geoChecked,
+        detailsRead: detailsRead ?? this.detailsRead,
+        width: width ?? this.width,
+        height: height ?? this.height,
       );
 }
 
