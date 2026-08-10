@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -21,10 +22,21 @@ class FakeGallerySource extends GallerySource {
   FakeGallerySource({
     required this.items,
     this.access = GalleryAccess.granted,
+    this.blockThumbnails = false,
   });
 
   final List<GalleryItem> items;
   final GalleryAccess access;
+
+  /// Hold every thumbnail request open, so a test can look at how many the
+  /// repository let through at once.
+  final bool blockThumbnails;
+
+  final List<Completer<Uint8List?>> pendingThumbnails = [];
+
+  /// Requests that reached the source, as opposed to ones queued behind the
+  /// concurrency limit.
+  int startedThumbnails = 0;
 
   static final Uint8List _pixel = Uint8List.fromList(
     img.encodeJpg(img.Image(width: 2, height: 2)),
@@ -37,13 +49,25 @@ class FakeGallerySource extends GallerySource {
   Future<List<GalleryItem>> load() async => List.of(items);
 
   @override
-  Future<Uint8List?> thumbnail(GalleryItem item, int pixels) async => _pixel;
+  Future<Uint8List?> thumbnail(GalleryItem item, int pixels) async {
+    startedThumbnails++;
+    if (!blockThumbnails) return _pixel;
+    final completer = Completer<Uint8List?>();
+    pendingThumbnails.add(completer);
+    return completer.future;
+  }
 
   @override
   Future<String?> resolvePath(GalleryItem item) async => item.path;
 
+  /// Items the repository asked for coordinates.
+  final List<String> enriched = [];
+
   @override
-  Future<GalleryItem> enrich(GalleryItem item) async => item;
+  Future<GalleryItem> enrich(GalleryItem item) async {
+    enriched.add(item.id);
+    return item;
+  }
 }
 
 GalleryItem _item({
@@ -282,6 +306,77 @@ void main() {
     expect(find.text('No photos or videos yet'), findsOneWidget);
   });
 
+  testWidgets('opening a big album does not ask for every thumbnail at once',
+      (tester) async {
+    // The freeze this guards against: every tile asked for its picture the
+    // moment it was built, so opening an album kicked off a screenful of
+    // decodes in one frame — on desktop, one isolate each.
+    final source = FakeGallerySource(
+      items: [
+        for (var i = 0; i < 300; i++)
+          _item(
+            name: 'IMG_$i.jpg',
+            folder: 'DCIM/Camera',
+            takenAt: DateTime(2026, 7, 31, 12, 0, i),
+          ),
+      ],
+      blockThumbnails: true,
+    );
+
+    tester.view.physicalSize = const Size(1100, 2000);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+
+    final settings = await _settings(tester, 'core');
+    final repository = GalleryRepository(source: source);
+    addTearDown(repository.dispose);
+    await tester.runAsync(repository.initialise);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: LumaTheme.dark,
+        home: SettingsScope(
+          controller: settings,
+          child: GalleryScope(
+            repository: repository,
+            child: const Scaffold(body: GalleryPage()),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    source.startedThumbnails = 0;
+    await _openAlbum(tester, 'Pictures');
+
+    // Every visible tile has asked, but only a handful are in flight; the
+    // rest wait for a slot. The exact cap is platform-dependent, so this
+    // asserts the property that matters: it is bounded, and far below the
+    // number of tiles on screen.
+    expect(source.startedThumbnails, greaterThan(0));
+    expect(source.startedThumbnails, lessThanOrEqualTo(4));
+    expect(find.byType(GalleryTile), findsWidgets);
+  });
+
+  testWidgets('two tiles wanting the same picture decode it once',
+      (tester) async {
+    final source = FakeGallerySource(items: _library);
+    final repository = GalleryRepository(source: source);
+    addTearDown(repository.dispose);
+    await tester.runAsync(repository.initialise);
+
+    final item = repository.items.first;
+    await tester.runAsync(() async {
+      await Future.wait([
+        repository.thumbnail(item, 256),
+        repository.thumbnail(item, 256),
+        repository.thumbnail(item, 256),
+      ]);
+    });
+
+    expect(source.startedThumbnails, 1);
+  });
+
   testWidgets('the albums grid lays out three-up on a narrow phone',
       (tester) async {
     tester.view.physicalSize = const Size(1080, 2220);
@@ -301,9 +396,12 @@ void main() {
     expect(width * 3, lessThan(screen));
   });
 
-  testWidgets('the map button stays disabled until something has a location',
+  testWidgets('the map is reachable before any coordinates have been read',
       (tester) async {
-    await _pump(tester);
+    // Coordinates are only read once the map is opened, so "no pins yet" is
+    // the normal state on a first visit — not a reason to disable the button.
+    final repository = await _pump(tester);
+    expect(repository.hasLocatedItems, isFalse);
 
     final button = tester.widget<IconButton>(
       find.ancestor(
@@ -311,6 +409,22 @@ void main() {
         matching: find.byType(IconButton),
       ),
     );
-    expect(button.onPressed, isNull);
+    expect(button.onPressed, isNotNull);
+  });
+
+  testWidgets('the scan does not read locations on its own', (tester) async {
+    // Reading a GPS tag opens the file. Doing that for the whole library on
+    // open is what made the plugin feel stuck.
+    final source = FakeGallerySource(items: _library);
+    final repository = GalleryRepository(source: source);
+    addTearDown(repository.dispose);
+
+    await tester.runAsync(repository.initialise);
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 20)),
+    );
+
+    expect(repository.isLocating, isFalse);
+    expect(source.enriched, isEmpty);
   });
 }
