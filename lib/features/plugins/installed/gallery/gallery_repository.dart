@@ -83,6 +83,7 @@ class GalleryRepository extends ChangeNotifier {
 
     await _cache.load();
     _source.restoreRoots(_cache.roots);
+    unawaited(refreshModelState());
 
     _set(() => _status = GalleryStatus.askingAccess);
     _access = await _source.requestAccess();
@@ -216,13 +217,22 @@ class GalleryRepository extends ChangeNotifier {
   /// Runs the on-device models over photos that haven't been looked at yet,
   /// up to [budget] of them, newest first. Nova-only — the page checks the
   /// plan before calling this.
-  Future<void> analyseSmart({int budget = 400}) async {
+  /// Looks at every photo that hasn't been looked at yet, newest first.
+  ///
+  /// This used to stop after a few hundred, which for a 23 000-photo library
+  /// meant clicking the same button sixty times. It now runs the lot; the
+  /// results are cached per photo as it goes, so [stopAnalysing] — or closing
+  /// the app — loses nothing but the photo in flight.
+  Future<void> analyseSmart({int? budget}) async {
     if (_analysing || !GalleryAnalyser.isSupported) return;
-    final pending = [
+    final all = [
       for (final item in _items)
         if (!item.isVideo && !(_cache[item.cacheKey]?.analysed ?? false)) item,
-    ].take(budget).toList();
+    ];
+    final pending = budget == null ? all : all.take(budget).toList();
     if (pending.isEmpty) return;
+    _analysisTotal = pending.length;
+    _cancelAnalysis = false;
 
     _set(() {
       _analysing = true;
@@ -249,8 +259,10 @@ class GalleryRepository extends ChangeNotifier {
     }
     _analysisError = null;
 
+    _modelsPresent = true;
+
     for (final item in pending) {
-      if (_disposed) break;
+      if (_disposed || _cancelAnalysis) break;
       final previous = _cache[item.cacheKey] ?? const GalleryCacheEntry();
       // ML Kit reads the file; the ONNX path works from the thumbnail the
       // grid already made, which also means a cloud placeholder — which has
@@ -266,13 +278,32 @@ class GalleryRepository extends ChangeNotifier {
       _smartVersion++;
       if (_analysedCount % 12 == 0) {
         notifyListeners();
+        // Flushed as it goes, not only at the end: a pass over 23 000 photos
+        // takes a while, and closing the app halfway should keep the half
+        // that is done.
+        if (_analysedCount % 240 == 0) await _cache.flush();
         await Future<void>.delayed(Duration.zero);
       }
     }
 
     await _cache.flush();
-    _set(() => _analysing = false);
+    _set(() {
+      _analysing = false;
+      _cancelAnalysis = false;
+    });
   }
+
+  /// Asks the running pass to stop after the photo it is on.
+  void stopAnalysing() {
+    if (!_analysing) return;
+    _set(() => _cancelAnalysis = true);
+  }
+
+  bool _cancelAnalysis = false;
+  int _analysisTotal = 0;
+
+  /// How many this pass set out to do, for the "N of M" line.
+  int get analysisTotal => _analysisTotal;
 
   /// The thumbnail size handed to the ONNX models. Big enough for the
   /// classifier's 224² crop and for a face to survive the 320×240 squash,
@@ -290,8 +321,23 @@ class GalleryRepository extends ChangeNotifier {
   /// Why the last attempt to start the models failed, if it did.
   String? get analysisError => _analysisError;
 
-  /// Whether this platform fetches its models rather than shipping them.
-  bool get smartModelsNeedDownload => GalleryAnalyser.needsDownload;
+  /// Whether the models still have to be fetched — the platform downloads
+  /// them *and* they aren't on disk yet. Checked against the filesystem
+  /// rather than the platform alone, or the card would keep offering to
+  /// download models that were downloaded an hour ago.
+  bool get smartModelsNeedDownload =>
+      GalleryAnalyser.needsDownload && !_modelsPresent;
+
+  bool _modelsPresent = false;
+
+  /// Re-checks whether the models are on disk. Cheap (two `exists` calls) and
+  /// only run when the answer could have changed.
+  Future<void> refreshModelState() async {
+    if (!GalleryAnalyser.needsDownload) return;
+    final present = await GalleryModelStore.instance.ready;
+    if (present == _modelsPresent) return;
+    _set(() => _modelsPresent = present);
+  }
 
   /// Roughly how much that download is.
   int get smartModelBytes => GalleryModelStore.totalBytes;

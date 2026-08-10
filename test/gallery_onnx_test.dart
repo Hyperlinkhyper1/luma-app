@@ -120,6 +120,42 @@ void main() {
       expect(facesFromOutputs(scores, boxes), hasLength(1));
     });
 
+    test('a long thin box is pattern, not a face', () {
+      // UltraFace is a 1 MB model and will find a "face" in a plate of food.
+      // A real face is roughly as tall as it is wide; slivers are rejected.
+      final scores = <double>[];
+      final boxes = <double>[];
+      _addFace(scores, boxes,
+          confidence: 0.99, left: 0.1, top: 0.4, right: 0.9, bottom: 0.5);
+      expect(facesFromOutputs(scores, boxes), isEmpty,
+          reason: 'a wide letterbox is not a face');
+
+      scores.clear();
+      boxes.clear();
+      _addFace(scores, boxes,
+          confidence: 0.99, left: 0.45, top: 0.05, right: 0.52, bottom: 0.95);
+      expect(facesFromOutputs(scores, boxes), isEmpty,
+          reason: 'a tall sliver is not a face');
+    });
+
+    test('a speck of background texture is not a face', () {
+      final scores = <double>[];
+      final boxes = <double>[];
+      _addFace(scores, boxes,
+          confidence: 0.99, left: 0.50, top: 0.50, right: 0.51, bottom: 0.51);
+      expect(facesFromOutputs(scores, boxes), isEmpty);
+    });
+
+    test('a merely probable detection is not enough', () {
+      // The reference threshold of 0.7 is what put a plate of eggs in the
+      // Selfies album; the bar is higher now.
+      final scores = <double>[];
+      final boxes = <double>[];
+      _addFace(scores, boxes,
+          confidence: 0.75, left: 0.4, top: 0.3, right: 0.6, bottom: 0.6);
+      expect(facesFromOutputs(scores, boxes), isEmpty);
+    });
+
     test('the same face found by several anchors is merged', () {
       // Every real face lights up a cluster of overlapping anchors; without
       // suppression a portrait would look like a crowd.
@@ -143,11 +179,11 @@ void main() {
       final scores = <double>[];
       final boxes = <double>[];
       _addFace(scores, boxes,
-          confidence: 0.9, left: 0.05, top: 0.3, right: 0.20, bottom: 0.6);
+          confidence: 0.95, left: 0.05, top: 0.3, right: 0.20, bottom: 0.5);
       _addFace(scores, boxes,
-          confidence: 0.9, left: 0.45, top: 0.3, right: 0.60, bottom: 0.6);
+          confidence: 0.95, left: 0.45, top: 0.3, right: 0.60, bottom: 0.5);
       _addFace(scores, boxes,
-          confidence: 0.9, left: 0.80, top: 0.3, right: 0.95, bottom: 0.6);
+          confidence: 0.95, left: 0.80, top: 0.3, right: 0.95, bottom: 0.5);
       expect(facesFromOutputs(scores, boxes), hasLength(3));
     });
 
@@ -172,10 +208,31 @@ void main() {
       expect(facesFromOutputs(const [], const [0, 0, 1, 1]), isEmpty);
     });
 
-    test('one big face is a selfie, two are not', () {
-      expect(isSelfieShaped(const [0.45]), isTrue);
-      expect(isSelfieShaped(const [0.10]), isFalse, reason: 'too far away');
-      expect(isSelfieShaped(const [0.45, 0.40]), isFalse);
+    test('one big centred face is a selfie; anything else is not', () {
+      const centred = GalleryFace(width: 0.45, centreX: 0.5, centreY: 0.45);
+      expect(isSelfieShaped(const [centred]), isTrue);
+
+      expect(
+        isSelfieShaped(
+          const [GalleryFace(width: 0.10, centreX: 0.5, centreY: 0.5)],
+        ),
+        isFalse,
+        reason: 'too far away',
+      );
+      expect(
+        isSelfieShaped(
+          const [GalleryFace(width: 0.45, centreX: 0.05, centreY: 0.5)],
+        ),
+        isFalse,
+        reason: 'a face wedged in the corner is a bystander, not the subject',
+      );
+      expect(
+        isSelfieShaped(const [
+          centred,
+          GalleryFace(width: 0.40, centreX: 0.7, centreY: 0.5),
+        ]),
+        isFalse,
+      );
       expect(isSelfieShaped(const []), isFalse);
     });
   });

@@ -757,11 +757,23 @@ class _SmartPrompt extends StatelessWidget {
     final pending = repo.pendingAnalysis;
 
     if (repo.isAnalysing) {
+      final total = repo.analysisTotal;
       return LumaCard(
-        child: _ProgressNote(
-          label: repo.analysisStatus ??
-              'Sorting photos into smart albums — ${repo.analysedCount} done',
-          progress: repo.analysisProgress,
+        child: Row(
+          children: [
+            Expanded(
+              child: _ProgressNote(
+                label: repo.analysisStatus ??
+                    'Sorting photos into smart albums — '
+                        '${repo.analysedCount} of $total',
+                progress: repo.analysisStatus != null
+                    ? repo.analysisProgress
+                    : (total == 0 ? null : repo.analysedCount / total),
+              ),
+            ),
+            const SizedBox(width: 12),
+            LumaGhostButton(label: 'Stop', onTap: repo.stopAnalysing),
+          ],
         ),
       );
     }
@@ -782,11 +794,11 @@ class _SmartPrompt extends StatelessWidget {
             // Desktop has no ML Kit, so the equivalent models are fetched on
             // first use. Worth saying out loud what is being downloaded and
             // that the photos stay put.
-            ? '$pending photos to look at. The first run downloads about '
-                '$megabytes MB of models; after that everything happens on '
-                'this PC, offline — no photo is uploaded.'
+            ? '$pending photos to look at. This downloads about $megabytes MB '
+                'of models once; after that everything happens on this PC, '
+                'offline — no photo is uploaded.'
             : '$pending photos still to look at. Runs on this device, '
-                'offline.');
+                'offline, and picks up where it left off.');
 
     return LumaCard(
       child: Row(
