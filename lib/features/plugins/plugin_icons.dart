@@ -25,6 +25,8 @@ IconData pluginIconFor(String? name) {
       return Icons.mood_rounded;
     case 'smart_display':
       return Icons.smart_display_rounded;
+    case 'download':
+      return Icons.download_rounded;
     case 'rocket_launch':
       return Icons.rocket_launch_rounded;
     case 'directions_subway':

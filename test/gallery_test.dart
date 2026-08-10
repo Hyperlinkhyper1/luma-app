@@ -363,7 +363,7 @@ void main() {
     test('labels map into the buckets people browse by', () {
       expect(bucketForLabel('Dog'), 'Pets');
       expect(bucketForLabel('dessert'), 'Food');
-      expect(bucketForLabel('Skyscraper'), 'City');
+      expect(bucketForLabel('Skyscraper'), 'Architecture');
       expect(bucketForLabel('Nothing In Particular'), isNull);
     });
 

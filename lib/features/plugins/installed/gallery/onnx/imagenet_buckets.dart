@@ -51,97 +51,110 @@ const _runs = <_Run>[
   _Run(354, 397, 'Animals'),
   // Every prepared dish, fruit and vegetable.
   _Run(924, 969, 'Food'),
-  // Landscape: alp, cliff, coral reef, geyser, lakeside, promontory,
-  // sandbar, seashore, valley, volcano.
-  _Run(970, 980, 'Nature'),
+  // The landscape run, 970–980, splits between land and water: alp (970),
+  // cliff (972), geyser (974), valley (979) and volcano (980) are Nature;
+  // coral reef, lakeside, promontory, sandbar and seashore are Ocean, and
+  // are listed individually below. Bubble (971) belongs nowhere.
+  _Run(970, 970, 'Nature'),
+  _Run(972, 972, 'Nature'),
+  _Run(974, 974, 'Nature'),
+  _Run(979, 980, 'Nature'),
+  _Run(973, 973, 'Ocean'),
+  _Run(975, 978, 'Ocean'),
   // Flowers, trees and fungi.
   _Run(984, 998, 'Nature'),
 ];
 
 const _singles = <int, String>{
-  // Vehicles, scattered through the object classes.
-  404: 'Vehicles', // airliner
-  405: 'Vehicles', // airship
-  407: 'Vehicles', // ambulance
-  408: 'Vehicles', // amphibious vehicle
-  417: 'Vehicles', // balloon
-  436: 'Vehicles', // beach wagon
-  444: 'Vehicles', // tandem bicycle
-  466: 'Vehicles', // bullet train
-  468: 'Vehicles', // cab
-  472: 'Vehicles', // canoe
-  484: 'Vehicles', // catamaran
-  510: 'Vehicles', // container ship
-  511: 'Vehicles', // convertible
-  547: 'Vehicles', // electric locomotive
-  554: 'Vehicles', // fireboat
-  555: 'Vehicles', // fire engine
-  565: 'Vehicles', // freight car
-  569: 'Vehicles', // garbage truck
-  576: 'Vehicles', // gondola
-  581: 'Vehicles', // grille
-  609: 'Vehicles', // jeep
-  625: 'Vehicles', // lifeboat
-  627: 'Vehicles', // limousine
-  628: 'Vehicles', // liner
-  654: 'Vehicles', // minibus
-  656: 'Vehicles', // minivan
-  661: 'Vehicles', // Model T
-  665: 'Vehicles', // moped
-  670: 'Vehicles', // motor scooter
-  671: 'Vehicles', // mountain bike
-  675: 'Vehicles', // moving van
-  705: 'Vehicles', // passenger car
-  717: 'Vehicles', // pickup
-  751: 'Vehicles', // racer
-  779: 'Vehicles', // school bus
-  780: 'Vehicles', // schooner
-  803: 'Vehicles', // snowplough
-  814: 'Vehicles', // speedboat
-  817: 'Vehicles', // sports car
-  820: 'Vehicles', // steam locomotive
-  864: 'Vehicles', // tow truck
-  867: 'Vehicles', // trailer truck
-  871: 'Vehicles', // trimaran
-  874: 'Vehicles', // trolleybus
-  895: 'Vehicles', // warplane
-  914: 'Vehicles', // yawl
+  // Transport, scattered through the object classes.
+  404: 'Transport', // airliner
+  405: 'Transport', // airship
+  407: 'Transport', // ambulance
+  408: 'Transport', // amphibious vehicle
+  417: 'Transport', // balloon
+  436: 'Transport', // beach wagon
+  444: 'Transport', // tandem bicycle
+  466: 'Transport', // bullet train
+  468: 'Transport', // cab
+  472: 'Transport', // canoe
+  484: 'Transport', // catamaran
+  510: 'Transport', // container ship
+  511: 'Transport', // convertible
+  547: 'Transport', // electric locomotive
+  554: 'Transport', // fireboat
+  555: 'Transport', // fire engine
+  565: 'Transport', // freight car
+  569: 'Transport', // garbage truck
+  576: 'Transport', // gondola
+  581: 'Transport', // grille
+  609: 'Transport', // jeep
+  625: 'Transport', // lifeboat
+  627: 'Transport', // limousine
+  628: 'Transport', // liner
+  654: 'Transport', // minibus
+  656: 'Transport', // minivan
+  661: 'Transport', // Model T
+  665: 'Transport', // moped
+  670: 'Transport', // motor scooter
+  671: 'Transport', // mountain bike
+  675: 'Transport', // moving van
+  705: 'Transport', // passenger car
+  717: 'Transport', // pickup
+  751: 'Transport', // racer
+  779: 'Transport', // school bus
+  780: 'Transport', // schooner
+  803: 'Transport', // snowplough
+  814: 'Transport', // speedboat
+  817: 'Transport', // sports car
+  820: 'Transport', // steam locomotive
+  864: 'Transport', // tow truck
+  867: 'Transport', // trailer truck
+  871: 'Transport', // trimaran
+  874: 'Transport', // trolleybus
+  895: 'Transport', // warplane
+  914: 'Transport', // yawl
 
   // Buildings and streets.
-  415: 'City', // bakery
-  424: 'City', // barbershop
-  425: 'City', // barn
-  437: 'City', // beacon
-  449: 'City', // boathouse
-  454: 'City', // bookshop
-  467: 'City', // butcher shop
-  483: 'City', // castle
-  497: 'City', // church
-  498: 'City', // cinema
-  509: 'City', // confectionery
-  538: 'City', // dome
-  580: 'City', // greenhouse
-  582: 'City', // grocery store
-  624: 'City', // library
-  634: 'City', // lumbermill
-  649: 'City', // megalith
-  663: 'City', // monastery
-  668: 'City', // mosque
-  682: 'City', // obelisk
-  698: 'City', // palace
-  718: 'City', // pier
-  727: 'City', // planetarium
-  743: 'City', // prison
-  762: 'City', // restaurant
-  788: 'City', // shoe shop
-  821: 'City', // steel arch bridge
-  832: 'City', // stupa
-  839: 'City', // suspension bridge
-  860: 'City', // tobacco shop
-  865: 'City', // toyshop
-  873: 'City', // triumphal arch
-  888: 'City', // viaduct
-  900: 'City', // water tower
+  415: 'Architecture', // bakery
+  424: 'Architecture', // barbershop
+  425: 'Architecture', // barn
+  437: 'Architecture', // beacon
+  449: 'Architecture', // boathouse
+  454: 'Architecture', // bookshop
+  467: 'Architecture', // butcher shop
+  483: 'Architecture', // castle
+  497: 'Architecture', // church
+  498: 'Architecture', // cinema
+  509: 'Architecture', // confectionery
+  538: 'Architecture', // dome
+  580: 'Architecture', // greenhouse
+  582: 'Architecture', // grocery store
+  624: 'Architecture', // library
+  634: 'Architecture', // lumbermill
+  649: 'Architecture', // megalith
+  663: 'Architecture', // monastery
+  668: 'Architecture', // mosque
+  682: 'Architecture', // obelisk
+  698: 'Architecture', // palace
+  718: 'Architecture', // pier
+  727: 'Architecture', // planetarium
+  743: 'Architecture', // prison
+  762: 'Architecture', // restaurant
+  788: 'Architecture', // shoe shop
+  821: 'Architecture', // steel arch bridge
+  832: 'Architecture', // stupa
+  839: 'Architecture', // suspension bridge
+  860: 'Architecture', // tobacco shop
+  865: 'Architecture', // toyshop
+  873: 'Architecture', // triumphal arch
+  888: 'Architecture', // viaduct
+  900: 'Architecture', // water tower
+
+  // Waterside, where a photo of the sea usually lands.
+  460: 'Ocean', // breakwater
+  536: 'Ocean', // dock
+  833: 'Ocean', // submarine
+  913: 'Ocean', // wreck
 
   // Paper and screens.
   916: 'Documents', // web site
