@@ -24,11 +24,24 @@ class GalleryMapPage extends StatefulWidget {
 class _GalleryMapPageState extends State<GalleryMapPage> {
   final TransformationController _controller = TransformationController();
   double _scale = 1;
+  bool _started = false;
 
   @override
   void initState() {
     super.initState();
     _controller.addListener(_onTransform);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) return;
+    _started = true;
+    // Reading a GPS tag means opening the file, so the library is only
+    // walked for coordinates once someone actually asks to see the map.
+    // Photos located on an earlier visit are already pinned; this fills in
+    // the rest, and returns immediately when there is nothing left to read.
+    GalleryScope.of(context).locateAll();
   }
 
   void _onTransform() {
@@ -100,12 +113,33 @@ class _GalleryMapPageState extends State<GalleryMapPage> {
       body: located.isEmpty
           ? Padding(
               padding: const EdgeInsets.all(24),
-              child: LumaEmptyState(
-                icon: Icons.location_off_rounded,
-                title: 'No photos with a location',
-                subtitle: 'Photos only carry coordinates when the camera had '
-                    'location tagging switched on when they were taken.',
-              ),
+              child: repo.isLocating
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(
+                            color: luma.accent,
+                            strokeWidth: 2.5,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Reading where your photos were taken…',
+                            style: TextStyle(
+                              color: luma.textSecondary,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : LumaEmptyState(
+                      icon: Icons.location_off_rounded,
+                      title: 'No photos with a location',
+                      subtitle:
+                          'Photos only carry coordinates when the camera had '
+                          'location tagging switched on when they were taken.',
+                    ),
             )
           : FutureBuilder<WorldMap>(
               future: WorldMap.load(),

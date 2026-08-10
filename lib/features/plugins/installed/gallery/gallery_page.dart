@@ -35,6 +35,31 @@ class _GalleryPageState extends State<GalleryPage> {
 
   bool _started = false;
 
+  /// The open album's contents, filtered and sorted once. Rebuilding is
+  /// cheap; re-sorting a few thousand items on every notification from a
+  /// background pass is not, and that is exactly what a repository that
+  /// reports progress does.
+  List<GalleryItem>? _albumItems;
+  String? _albumItemsFor;
+  int _albumItemsVersion = -1;
+
+  List<GalleryItem> _itemsFor(
+    GalleryRepository repo,
+    String albumId,
+    List<GalleryItem> Function() build,
+  ) {
+    if (_albumItemsFor == albumId &&
+        _albumItemsVersion == repo.libraryVersion &&
+        _albumItems != null) {
+      return _albumItems!;
+    }
+    final items = build();
+    _albumItems = items;
+    _albumItemsFor = albumId;
+    _albumItemsVersion = repo.libraryVersion;
+    return items;
+  }
+
   /// The card non-Nova devices see in place of the smart albums.
   static const _smartTeaserId = 'smart-teaser';
   static const _smartPrefix = 'smart:';
@@ -336,6 +361,7 @@ class _GalleryPageState extends State<GalleryPage> {
       final id = albumId.substring(_smartPrefix.length);
       final group = repo.smartGroups().where((g) => g.id == id).firstOrNull;
       label = group?.label ?? 'Album';
+      // Smart groups are already memoised and sorted by the repository.
       items = group?.items ?? const [];
     } else {
       final category =
@@ -350,7 +376,11 @@ class _GalleryPageState extends State<GalleryPage> {
         return const SizedBox.shrink();
       }
       label = category.label;
-      items = itemsInCategory(category, repo.items);
+      items = _itemsFor(
+        repo,
+        albumId,
+        () => itemsInCategory(category, repo.items),
+      );
     }
 
     return Column(
@@ -390,7 +420,10 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final hasPins = repository.hasLocatedItems;
+    // Always reachable: the coordinates aren't read until the map is opened,
+    // so "no pins yet" is the normal state on a first visit rather than a
+    // reason to disable the button.
+    final canMap = repository.status == GalleryStatus.ready;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(onBack == null ? 20 : 6, 16, 12, 12),
@@ -436,10 +469,8 @@ class _Header extends StatelessWidget {
               ),
             ),
           IconButton(
-            tooltip: hasPins
-                ? 'Photo map'
-                : 'Photo map — no photos with a location yet',
-            onPressed: hasPins
+            tooltip: 'Photo map',
+            onPressed: canMap
                 ? () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
                         builder: (_) => const GalleryMapPage(),
@@ -448,7 +479,7 @@ class _Header extends StatelessWidget {
                 : null,
             icon: Icon(
               Icons.map_rounded,
-              color: hasPins ? luma.textSecondary : luma.textMuted,
+              color: canMap ? luma.textSecondary : luma.textMuted,
             ),
           ),
           IconButton(
@@ -465,7 +496,7 @@ class _Header extends StatelessWidget {
 }
 
 /// An album's contents: one section per day, newest first.
-class _Grid extends StatelessWidget {
+class _Grid extends StatefulWidget {
   const _Grid({
     required this.repository,
     required this.items,
@@ -477,8 +508,30 @@ class _Grid extends StatelessWidget {
   final void Function(List<GalleryItem> items, int index) onOpen;
 
   @override
+  State<_Grid> createState() => _GridState();
+}
+
+class _GridState extends State<_Grid> {
+  List<GalleryItem>? _grouped;
+  List<GalleryDateGroup> _groups = const [];
+
+  /// The day sections, recomputed only when the album's contents actually
+  /// change. The caller hands back the same list instance until then, so
+  /// identity is the whole test.
+  List<GalleryDateGroup> _groupsFor(List<GalleryItem> items) {
+    if (identical(_grouped, items)) return _groups;
+    _groups = groupByDate(items, DateTime.now());
+    _grouped = items;
+    return _groups;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final repository = widget.repository;
+    final items = widget.items;
+    final onOpen = widget.onOpen;
+
     if (items.isEmpty) {
       return const Padding(
         padding: EdgeInsets.all(24),
@@ -490,7 +543,7 @@ class _Grid extends StatelessWidget {
       );
     }
 
-    final groups = groupByDate(items, DateTime.now());
+    final groups = _groupsFor(items);
 
     return LayoutBuilder(
       builder: (context, constraints) {
