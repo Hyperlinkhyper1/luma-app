@@ -195,9 +195,20 @@ class _Bucket {
   void add(GalleryItem item) {
     count++;
     final current = cover;
-    if (current == null || item.takenAt.isAfter(current.takenAt)) {
+    if (current == null) {
       cover = item;
+      return;
     }
+    // Newest wins, except that a picture we can actually show beats one we
+    // can't: a cloud placeholder has no thumbnail (fetching it would download
+    // the file), so an album full of OneDrive photos would otherwise show a
+    // blank card whenever its newest item happened to be online-only.
+    if (current.cloudOnly && !item.cloudOnly) {
+      cover = item;
+      return;
+    }
+    if (!current.cloudOnly && item.cloudOnly) return;
+    if (item.takenAt.isAfter(current.takenAt)) cover = item;
   }
 }
 

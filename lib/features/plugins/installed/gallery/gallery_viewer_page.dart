@@ -108,7 +108,7 @@ void _showDetails(
   );
 }
 
-class _Page extends StatelessWidget {
+class _Page extends StatefulWidget {
   const _Page({
     required this.item,
     required this.repository,
@@ -122,9 +122,30 @@ class _Page extends StatelessWidget {
   final VoidCallback onPlay;
 
   @override
+  State<_Page> createState() => _PageState();
+}
+
+class _PageState extends State<_Page> {
+  /// Set once the user has asked for a cloud placeholder to be fetched.
+  /// Rendering the file is what triggers the download, so nothing reads it
+  /// until this is true.
+  bool _fetchApproved = false;
+
+  @override
   Widget build(BuildContext context) {
+    final item = widget.item;
+    final repository = widget.repository;
+    final onPlay = widget.onPlay;
+
+    if (item.cloudOnly && !_fetchApproved) {
+      return _CloudOnlyNotice(
+        item: item,
+        onFetch: () => setState(() => _fetchApproved = true),
+      );
+    }
+
     return FutureBuilder<String?>(
-      future: path,
+      future: widget.path,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return const Center(
@@ -174,6 +195,56 @@ class _Page extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// What stands in for a photo that lives in the cloud. Opening it is a
+/// download, and a download is the user's call — the gallery will happily
+/// list a 40 GB OneDrive library, but it won't put it on their disk for them.
+class _CloudOnlyNotice extends StatelessWidget {
+  const _CloudOnlyNotice({required this.item, required this.onFetch});
+
+  final GalleryItem item;
+  final VoidCallback onFetch;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_outlined, color: Colors.white54, size: 44),
+            const SizedBox(height: 16),
+            const Text(
+              'This one is only in the cloud',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${item.name} is stored online and isn\'t on this PC. Showing '
+              'it downloads it${item.sizeBytes == null ? '' : ' '
+                  '(${formatBytes(item.sizeBytes!)})'} and keeps it here '
+              'until your cloud app frees it up again.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white70, fontSize: 12.5),
+            ),
+            const SizedBox(height: 18),
+            FilledButton.icon(
+              onPressed: onFetch,
+              icon: const Icon(Icons.cloud_download_rounded, size: 18),
+              label: const Text('Download and show'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -336,6 +407,8 @@ class _DetailsSheet extends StatelessWidget {
               label: 'Folder',
               value: item.folder.isEmpty ? 'Unknown' : item.folder,
             ),
+            if (item.cloudOnly)
+              const _Row(label: 'Stored', value: 'Online only — not on this PC'),
             if (item.width > 0 && item.height > 0)
               _Row(label: 'Size', value: '${item.width} × ${item.height}'),
             if (item.isVideo)

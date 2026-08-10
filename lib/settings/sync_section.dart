@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../account/plan_selection_page.dart';
 import '../app/widgets.dart';
@@ -7,6 +8,10 @@ import '../sync/sync_api.dart';
 import '../sync/sync_scope.dart';
 import '../sync/sync_service.dart';
 import '../theme/luma_theme.dart';
+
+/// The published privacy policy — shown as a direct link wherever someone
+/// is about to hand over an email and password (account creation).
+const _kPrivacyPolicyUrl = 'https://wiki.luma-app.cc/privacy';
 
 /// Shows the account setup/sign-in dialog. Used both from the Settings page
 /// and as the app-wide first-run prompt (see `maybePromptAccountSetup` in
@@ -792,6 +797,19 @@ class _AccountDialogState extends State<_AccountDialog> {
                 'recovered — there is no reset.',
                 style: TextStyle(
                     color: Colors.orange.shade400, fontSize: 12, height: 1.4),
+              ),
+              const SizedBox(height: 8),
+              InkWell(
+                onTap: () => launchUrl(Uri.parse(_kPrivacyPolicyUrl),
+                    mode: LaunchMode.externalApplication),
+                child: Text(
+                  'Read the privacy policy',
+                  style: TextStyle(
+                    color: luma.accent,
+                    fontSize: 12,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
               ),
               if (_info != null) ...[
                 const SizedBox(height: 12),

@@ -25,6 +25,7 @@ class GalleryItem {
     this.sizeBytes,
     this.latitude,
     this.longitude,
+    this.cloudOnly = false,
   });
 
   /// Stable per-device identity: the MediaStore id on Android, the absolute
@@ -66,6 +67,12 @@ class GalleryItem {
   final double? latitude;
   final double? longitude;
 
+  /// The file is a cloud placeholder — it appears in the folder, but its
+  /// contents are not on this disk and reading them would download it. The
+  /// gallery lists these and refuses to open them on its own; see
+  /// [CloudFiles].
+  final bool cloudOnly;
+
   bool get isVideo => type == GalleryMediaType.video;
 
   bool get hasLocation => latitude != null && longitude != null;
@@ -98,6 +105,7 @@ class GalleryItem {
     double? longitude,
     int? width,
     int? height,
+    bool? cloudOnly,
   }) =>
       GalleryItem(
         id: id,
@@ -113,6 +121,7 @@ class GalleryItem {
         sizeBytes: sizeBytes ?? this.sizeBytes,
         latitude: latitude ?? this.latitude,
         longitude: longitude ?? this.longitude,
+        cloudOnly: cloudOnly ?? this.cloudOnly,
       );
 
   @override

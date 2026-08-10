@@ -60,9 +60,14 @@ class _GalleryThumbnailState extends State<GalleryThumbnail> {
         if (bytes == null) {
           return Center(
             child: Icon(
-              widget.item.isVideo
-                  ? Icons.movie_rounded
-                  : Icons.image_rounded,
+              // A cloud placeholder has no thumbnail on purpose — making one
+              // would download the file. Say so with the icon rather than
+              // showing the same blank frame as a broken image.
+              widget.item.cloudOnly
+                  ? Icons.cloud_outlined
+                  : widget.item.isVideo
+                      ? Icons.movie_rounded
+                      : Icons.image_rounded,
               color: luma.textMuted,
               size: widget.placeholderSize,
             ),
