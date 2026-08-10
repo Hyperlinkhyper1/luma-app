@@ -3,6 +3,19 @@ import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
 
+/// Bumped whenever a stored verdict stops meaning what it used to.
+///
+/// Version 2 introduced [GalleryCacheEntry.skipped]. Before it, a photo the
+/// pass couldn't read — a cloud placeholder, a HEIC — was written as
+/// `analysed` with no labels, indistinguishable from one that was looked at
+/// and found to contain nothing. A library whose entries all predate the
+/// flag would report tens of thousands of photos examined when almost none
+/// were, so those verdicts are thrown away and re-taken.
+///
+/// Coordinates and frame sizes survive a bump: they are facts about the file,
+/// not judgements, and re-reading them costs a pass over every header.
+const kGalleryAnalysisVersion = 2;
+
 /// What has already been learned about one file, so opening the gallery a
 /// second time doesn't re-read every EXIF header and re-run every model.
 class GalleryCacheEntry {
@@ -142,10 +155,26 @@ class GalleryCache {
           }
         });
       }
+
+      final storedVersion = (decoded['analysisVersion'] as num?)?.toInt() ?? 0;
+      if (storedVersion != kGalleryAnalysisVersion) _forgetVerdicts();
     } catch (_) {
       // A cache that won't parse is a cache worth throwing away.
       _entries.clear();
     }
+  }
+
+  /// Drops what the models decided, keeping what was measured.
+  void _forgetVerdicts() {
+    _entries.updateAll(
+      (_, entry) => entry.copyWith(
+        analysed: false,
+        skipped: false,
+        labels: const [],
+        faceCount: 0,
+      ),
+    );
+    _dirty = true;
   }
 
   void put(String key, GalleryCacheEntry entry) {
@@ -175,6 +204,7 @@ class GalleryCache {
       final file = await _open();
       await file.writeAsString(jsonEncode({
         'version': 1,
+        'analysisVersion': kGalleryAnalysisVersion,
         'roots': _roots,
         'entries': {
           for (final entry in _entries.entries)

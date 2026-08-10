@@ -6,6 +6,7 @@ import 'package:image/image.dart' as img;
 import 'package:luma/features/plugins/installed/gallery/gallery_cache.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_categories.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_exif.dart';
+import 'package:luma/features/plugins/installed/gallery/gallery_file_editor.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_map_page.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_media.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_smart.dart';
@@ -657,6 +658,130 @@ void main() {
       );
       // A video is a video whatever it weighs.
       expect(isLikelyPhotoFile(GalleryMediaType.video, 400), isTrue);
+    });
+  });
+
+  group('editing a file', () {
+    const original = 'IMG_2026.jpg';
+    String? check(String name) =>
+        GalleryFileEditor.validateName(name, originalName: original);
+
+    test('an ordinary rename is allowed', () {
+      expect(check('Rome rooftop.jpg'), isNull);
+      expect(check('holiday-01.jpg'), isNull);
+    });
+
+    test('names the filesystem would refuse are caught before writing', () {
+      expect(check(''), isNotNull);
+      expect(check('   '), isNotNull);
+      expect(check('a/b.jpg'), isNotNull);
+      expect(check(r'a\b.jpg'), isNotNull);
+      expect(check('what?.jpg'), isNotNull);
+      expect(check('trailing.jpg.'), isNotNull);
+      expect(check('.hidden.jpg'), isNotNull);
+      expect(check('CON.jpg'), isNotNull, reason: 'reserved on Windows');
+    });
+
+    test('the extension is protected', () {
+      // Renaming a JPEG to .txt stops it opening; the field says so rather
+      // than letting it happen.
+      expect(check('IMG_2026.txt'), isNotNull);
+      expect(check('IMG_2026'), isNotNull);
+      expect(check('IMG_2026.JPG'), isNull, reason: 'case is not a change');
+    });
+
+    test('impossible dates are rejected', () {
+      final now = DateTime(2026, 8, 10);
+      expect(
+        GalleryFileEditor.validateDate(DateTime(2026, 7, 1), now: now),
+        isNull,
+      );
+      expect(
+        GalleryFileEditor.validateDate(DateTime(2030), now: now),
+        isNotNull,
+      );
+      expect(
+        GalleryFileEditor.validateDate(DateTime(1500), now: now),
+        isNotNull,
+      );
+    });
+
+    test('renaming moves the file and keeps the rest of the item', () async {
+      final temp = await Directory.systemTemp.createTemp('luma_edit');
+      addTearDown(() => temp.delete(recursive: true));
+      final path = '${temp.path}${Platform.pathSeparator}$original';
+      File(path).writeAsBytesSync(
+        img.encodeJpg(img.Image(width: 32, height: 32)),
+      );
+
+      final item = GalleryItem(
+        id: path,
+        name: original,
+        type: GalleryMediaType.image,
+        folder: 'Pictures',
+        takenAt: DateTime(2026, 7, 31),
+        path: path,
+        latitude: 52.1,
+        longitude: 4.9,
+      );
+
+      final result = await GalleryFileEditor.apply(item, newName: 'Rome.jpg');
+      expect(result.ok, isTrue, reason: result.error);
+      expect(result.item!.name, 'Rome.jpg');
+      expect(File(result.item!.path!).existsSync(), isTrue);
+      expect(File(path).existsSync(), isFalse);
+      // Everything learned about the photo survives the rename.
+      expect(result.item!.latitude, 52.1);
+      expect(result.item!.folder, 'Pictures');
+    });
+
+    test('a rename onto an existing file is refused, not silently merged',
+        () async {
+      final temp = await Directory.systemTemp.createTemp('luma_edit');
+      addTearDown(() => temp.delete(recursive: true));
+      final separator = Platform.pathSeparator;
+      final bytes = img.encodeJpg(img.Image(width: 8, height: 8));
+      File('${temp.path}${separator}a.jpg').writeAsBytesSync(bytes);
+      File('${temp.path}${separator}b.jpg').writeAsBytesSync(bytes);
+
+      final item = GalleryItem(
+        id: '${temp.path}${separator}a.jpg',
+        name: 'a.jpg',
+        type: GalleryMediaType.image,
+        folder: 'Pictures',
+        takenAt: DateTime(2026),
+        path: '${temp.path}${separator}a.jpg',
+      );
+
+      final result = await GalleryFileEditor.apply(item, newName: 'b.jpg');
+      expect(result.ok, isFalse);
+      expect(result.error, contains('already'));
+      expect(File('${temp.path}${separator}a.jpg').existsSync(), isTrue);
+    });
+
+    test('the date is written to the file, not re-encoded into it', () async {
+      final temp = await Directory.systemTemp.createTemp('luma_edit');
+      addTearDown(() => temp.delete(recursive: true));
+      final path = '${temp.path}${Platform.pathSeparator}dated.jpg';
+      final bytes = img.encodeJpg(img.Image(width: 16, height: 16));
+      File(path).writeAsBytesSync(bytes);
+
+      final item = GalleryItem(
+        id: path,
+        name: 'dated.jpg',
+        type: GalleryMediaType.image,
+        folder: 'Pictures',
+        takenAt: DateTime(2020),
+        path: path,
+      );
+
+      final when = DateTime(2024, 5, 6, 7, 8);
+      final result = await GalleryFileEditor.apply(item, newTakenAt: when);
+      expect(result.ok, isTrue, reason: result.error);
+      expect(result.item!.takenAt, when);
+      expect(File(path).lastModifiedSync(), when);
+      // The pixels are untouched — nothing was re-compressed.
+      expect(File(path).readAsBytesSync(), bytes);
     });
   });
 
