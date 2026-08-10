@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, immutable, kIsWeb;
@@ -8,6 +9,7 @@ import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart';
 
 import 'gallery_cache.dart';
 import 'gallery_media.dart';
+import 'onnx/gallery_onnx_analyser.dart';
 
 /// A smart category: photos the models (or, where there are none, plain
 /// geometry) put together.
@@ -33,13 +35,15 @@ class GallerySmartGroup {
 ///
 /// Face *detection* is not face *recognition*: ML Kit will say a photo has
 /// three faces in it, never whose. So the people groups here are about how a
-/// photo was taken (a selfie, a group shot) rather than who is in it.
+/// photo was taken (a selfie, a group shot) rather than who is in it. The
+/// same is true of the ONNX models the desktop builds use — see
+/// [GalleryOnnxAnalyser].
 class GallerySmartAnalyser {
   FaceDetector? _faces;
   ImageLabeler? _labeller;
 
-  /// The models are Android/iOS only. Desktop keeps the geometry-based
-  /// groups, which need no model at all.
+  /// ML Kit is Android/iOS only. Desktop runs equivalent models through ONNX
+  /// Runtime instead; [GalleryAnalyser] picks between them.
   static bool get isSupported =>
       !kIsWeb &&
       (defaultTargetPlatform == TargetPlatform.android ||
@@ -100,8 +104,69 @@ class GallerySmartAnalyser {
   }
 }
 
-/// Marker the analyser writes alongside the model's own labels.
-const _selfieLabel = '_selfie';
+/// Whichever analyser this platform can actually run: ML Kit on the phone,
+/// ONNX Runtime on the desktop, nothing on the web.
+///
+/// The two produce the same thing — a face count, a selfie marker and a set
+/// of bucket names — so everything above this line is platform-agnostic and
+/// both builds end up with the same albums.
+class GalleryAnalyser {
+  GalleryAnalyser();
+
+  final GallerySmartAnalyser _mlKit = GallerySmartAnalyser();
+  final GalleryOnnxAnalyser _onnx = GalleryOnnxAnalyser();
+
+  /// Whether this platform can label photos at all.
+  static bool get isSupported =>
+      GallerySmartAnalyser.isSupported || GalleryOnnxAnalyser.isSupported;
+
+  /// Whether the models are on this machine already. ML Kit's ship inside the
+  /// app; the ONNX ones are downloaded on first use.
+  static bool get needsDownload =>
+      !GallerySmartAnalyser.isSupported && GalleryOnnxAnalyser.isSupported;
+
+  bool get usesOnnx => GalleryOnnxAnalyser.isSupported;
+
+  String? get lastError => _onnx.lastError;
+
+  /// Gets the models ready, fetching them if this platform downloads them.
+  /// Returns false when they can't be had.
+  Future<bool> prepare({
+    void Function(String label, double? progress)? onProgress,
+  }) async {
+    if (GallerySmartAnalyser.isSupported) return true;
+    if (!GalleryOnnxAnalyser.isSupported) return false;
+    return _onnx.prepare(onProgress: onProgress);
+  }
+
+  /// Looks at one photo. [path] is used by ML Kit, which reads the file
+  /// itself; [thumbnail] is used by the ONNX path, which wants pixels it can
+  /// resize and would rather not re-read a 12 MP original for them.
+  Future<GalleryCacheEntry> analyse({
+    required GalleryCacheEntry previous,
+    String? path,
+    Uint8List? thumbnail,
+  }) async {
+    if (GallerySmartAnalyser.isSupported) {
+      if (path == null) return previous.copyWith(analysed: true);
+      return _mlKit.analyse(path, previous);
+    }
+    if (GalleryOnnxAnalyser.isSupported) {
+      if (thumbnail == null) return previous.copyWith(analysed: true);
+      return _onnx.analyse(thumbnail, previous);
+    }
+    return previous.copyWith(analysed: true);
+  }
+
+  Future<void> dispose() async {
+    _mlKit.dispose();
+    await _onnx.dispose();
+  }
+}
+
+/// Marker the analyser writes alongside the model's own labels. Shared with
+/// the ONNX path so both write the same thing.
+const _selfieLabel = selfieLabel;
 
 /// Buckets ML Kit's label vocabulary into groups a person would look for.
 /// The base model emits a few hundred English nouns; these are the ones worth
