@@ -12,6 +12,7 @@ class GalleryCacheEntry {
     this.labels = const [],
     this.faceCount = 0,
     this.analysed = false,
+    this.skipped = false,
     this.detailsRead = false,
     this.width,
     this.height,
@@ -40,6 +41,12 @@ class GalleryCacheEntry {
   /// is the difference between re-running a model on every launch and not.
   final bool analysed;
 
+  /// Set when the pass *couldn't* look — the file is a cloud placeholder, or
+  /// it's in a format the decoder doesn't read. Without this, a library that
+  /// is mostly online-only reports every photo as done and shows nearly
+  /// empty albums with no hint as to why.
+  final bool skipped;
+
   bool get hasLocation => latitude != null && longitude != null;
 
   Map<String, dynamic> toJson() => {
@@ -48,6 +55,7 @@ class GalleryCacheEntry {
         if (labels.isNotEmpty) 'labels': labels,
         if (faceCount > 0) 'faces': faceCount,
         if (analysed) 'done': true,
+        if (skipped) 'skip': true,
         if (detailsRead) 'read': true,
         if (width != null) 'w': width,
         if (height != null) 'h': height,
@@ -63,6 +71,7 @@ class GalleryCacheEntry {
         ],
         faceCount: (json['faces'] as num?)?.toInt() ?? 0,
         analysed: json['done'] == true,
+        skipped: json['skip'] == true,
         // Entries written before the header pass also learned frame sizes
         // carry the old 'geo' flag. Treating those as unread costs one extra
         // header read per photo, once, and fills in the dimensions they
@@ -78,6 +87,7 @@ class GalleryCacheEntry {
     List<String>? labels,
     int? faceCount,
     bool? analysed,
+    bool? skipped,
     bool? detailsRead,
     int? width,
     int? height,
@@ -88,6 +98,7 @@ class GalleryCacheEntry {
         labels: labels ?? this.labels,
         faceCount: faceCount ?? this.faceCount,
         analysed: analysed ?? this.analysed,
+        skipped: skipped ?? this.skipped,
         detailsRead: detailsRead ?? this.detailsRead,
         width: width ?? this.width,
         height: height ?? this.height,
