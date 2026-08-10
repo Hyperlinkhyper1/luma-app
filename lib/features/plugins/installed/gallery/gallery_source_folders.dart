@@ -125,7 +125,7 @@ class FolderGallerySource extends GallerySource {
       if (name.startsWith('.')) continue;
 
       if (entry is Directory) {
-        if (_skippedFolders.contains(name.toLowerCase())) continue;
+        if (isSkippedFolder(name)) continue;
         await _walk(root, entry, depth + 1, seen, into);
         continue;
       }
@@ -141,6 +141,8 @@ class FolderGallerySource extends GallerySource {
       } on FileSystemException {
         continue;
       }
+
+      if (!isLikelyPhotoFile(type, stat.size)) continue;
 
       into.add(GalleryItem(
         id: entry.path,
@@ -160,17 +162,69 @@ class FolderGallerySource extends GallerySource {
     }
   }
 
-  /// Folders that are never worth walking: caches, package internals and the
-  /// app's own thumbnail store.
-  static const _skippedFolders = {
-    'node_modules',
+  /// Folders that are never worth walking. A Downloads folder is where
+  /// extracted archives, game installs and checked-out repositories end up,
+  /// and every one of those is thousands of PNGs that are not photographs —
+  /// a Minecraft resource pack alone contributes a few hundred.
+  static const skippedFolders = {
+    // The app's own store, and Windows' own.
+    'gallery_cache',
     'appdata',
+    'programdata',
+    'program files',
+    'program files (x86)',
+    'windows',
     '\$recycle.bin',
     'system volume information',
-    'gallery_cache',
-    '.git',
+    // Caches and temporaries.
+    'cache',
+    'caches',
+    '.cache',
+    'temp',
+    'tmp',
+    'logs',
     '.thumbnails',
+    'thumbnails',
+    // Games: textures, skins and resource packs, by the thousand.
+    '.minecraft',
+    'resourcepacks',
+    'texturepacks',
+    'shaderpacks',
+    'mods',
+    'saves',
+    'steamapps',
+    'crash-reports',
+    // Development trees.
+    'node_modules',
+    '.git',
+    '.gradle',
+    '.m2',
+    '.idea',
+    '.vscode',
+    'venv',
+    '.venv',
+    'site-packages',
+    'build',
+    'obj',
+    'bin',
+    'target',
+    'vendor',
+    'assets',
+    // Interface art rather than pictures.
+    'icons',
+    'emoji',
+    'sprites',
+    'textures',
   };
+
+  /// Images smaller than this aren't photographs. Icons, sprites, emoji,
+  /// avatars and UI art are all a few kilobytes; the smallest thing a camera
+  /// or a screenshot produces is far bigger. This is what keeps a stray
+  /// asset folder from adding thousands of 16×16 PNGs to the library — and
+  /// it is checked against the size on disk, so it costs no extra I/O.
+  ///
+  /// Videos have no floor: a video file is a video whatever its size.
+  static const minimumImageBytes = 12 * 1024;
 
   /// A photo in `C:\Users\me\Pictures\Trips\Rome` under the `Pictures` root
   /// becomes `Pictures/Trips/Rome`, which is the same shape MediaStore
@@ -208,17 +262,19 @@ class FolderGallerySource extends GallerySource {
 
   @override
   Future<GalleryItem> enrich(GalleryItem item) async {
-    if (item.isVideo || item.hasLocation) return item;
-    // Reading the EXIF header means opening the file, which for a cloud
+    if (item.isVideo) return item;
+    // Reading the header means opening the file, which for a cloud
     // placeholder means downloading it. A photo that isn't on this disk
-    // simply doesn't get a pin on the map.
+    // simply doesn't get a pin on the map or a shape the gallery knows.
     if (item.cloudOnly) return item;
     final path = item.path ?? item.id;
-    final metadata = await readJpegMetadata(File(path));
-    if (metadata == null || metadata.latitude == null) return item;
+    final details = await readImageDetails(File(path));
+    if (details == null || details.isEmpty) return item;
     return item.copyWith(
-      latitude: metadata.latitude,
-      longitude: metadata.longitude,
+      latitude: details.latitude,
+      longitude: details.longitude,
+      width: details.width,
+      height: details.height,
     );
   }
 
@@ -292,6 +348,17 @@ class FolderGallerySource extends GallerySource {
     _memoryThumbs.clear();
   }
 }
+
+/// Whether the walk should descend into a directory called [name]. Public so
+/// the rules can be tested without a filesystem to walk.
+bool isSkippedFolder(String name) =>
+    FolderGallerySource.skippedFolders.contains(name.trim().toLowerCase());
+
+/// Whether a file of this [type] and [sizeBytes] is worth showing in a
+/// gallery. See [FolderGallerySource.minimumImageBytes].
+bool isLikelyPhotoFile(GalleryMediaType type, int sizeBytes) =>
+    type == GalleryMediaType.video ||
+    sizeBytes >= FolderGallerySource.minimumImageBytes;
 
 class _ThumbnailRequest {
   const _ThumbnailRequest(this.path, this.pixels);

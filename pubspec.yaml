@@ -81,8 +81,13 @@ dependencies:
   # the picture folders with dart:io instead (see gallery_source.dart).
   photo_manager: ^3.11.0
   # Gallery's smart categories on Nova: both models run on-device, offline.
+  # ML Kit covers Android and iOS, where Google ships the models inside the
+  # app. Windows and Linux have no ML Kit, so they run the equivalent models
+  # through ONNX Runtime instead — see gallery/onnx/. Neither path uploads a
+  # photo anywhere.
   google_mlkit_face_detection: ^0.14.0
   google_mlkit_image_labeling: ^0.15.0
+  flutter_onnxruntime: ^1.8.3
 
 dev_dependencies:
   flutter_test:

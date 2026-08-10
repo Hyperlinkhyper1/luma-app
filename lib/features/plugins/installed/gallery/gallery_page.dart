@@ -270,7 +270,7 @@ class _GalleryPageState extends State<GalleryPage> {
                       ),
                     ],
                   ),
-                if (isNova && repo.pendingAnalysis > 0 && !repo.isAnalysing)
+                if (isNova)
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
@@ -704,9 +704,13 @@ class _LimitedAccessNote extends StatelessWidget {
 }
 
 class _ProgressNote extends StatelessWidget {
-  const _ProgressNote({required this.label});
+  const _ProgressNote({required this.label, this.progress});
 
   final String label;
+
+  /// 0..1 where the work reports it — the model download does — and null for
+  /// work that can only spin.
+  final double? progress;
 
   @override
   Widget build(BuildContext context) {
@@ -716,7 +720,11 @@ class _ProgressNote extends StatelessWidget {
         SizedBox(
           width: 14,
           height: 14,
-          child: CircularProgressIndicator(strokeWidth: 2, color: luma.accent),
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: luma.accent,
+            value: progress,
+          ),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -730,8 +738,14 @@ class _ProgressNote extends StatelessWidget {
   }
 }
 
-/// Offer to run the models, shown under the albums once there is something to
-/// analyse. Kept opt-in: it reads every photo, and that is the user's battery.
+/// Explains what fills the smart albums, and offers to do it.
+///
+/// The two halves of the answer differ by platform, and the difference is
+/// worth spelling out rather than leaving someone with 27 000 photos staring
+/// at a single Places card wondering what broke. Recognising *what is in* a
+/// photo needs Google's on-device models, which exist only on the phone
+/// builds. Recognising a photo's shape or where it was taken only needs its
+/// header — that works everywhere, but the headers have to be read first.
 class _SmartPrompt extends StatelessWidget {
   const _SmartPrompt({required this.repo});
 
@@ -740,13 +754,48 @@ class _SmartPrompt extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    if (!repo.smartModelsAvailable) return const SizedBox.shrink();
+    final pending = repo.pendingAnalysis;
+
+    if (repo.isAnalysing) {
+      return LumaCard(
+        child: _ProgressNote(
+          label: repo.analysisStatus ??
+              'Sorting photos into smart albums — ${repo.analysedCount} done',
+          progress: repo.analysisProgress,
+        ),
+      );
+    }
+    if (repo.isLocating) {
+      return LumaCard(
+        child: _ProgressNote(
+          label: 'Reading photo details — ${repo.pendingDetails} to go',
+        ),
+      );
+    }
+    if (!repo.smartModelsAvailable || pending == 0) {
+      return const SizedBox.shrink();
+    }
+
+    final megabytes = (repo.smartModelBytes / (1024 * 1024)).round();
+    final body = repo.analysisError ??
+        (repo.smartModelsNeedDownload
+            // Desktop has no ML Kit, so the equivalent models are fetched on
+            // first use. Worth saying out loud what is being downloaded and
+            // that the photos stay put.
+            ? '$pending photos to look at. The first run downloads about '
+                '$megabytes MB of models; after that everything happens on '
+                'this PC, offline — no photo is uploaded.'
+            : '$pending photos still to look at. Runs on this device, '
+                'offline.');
+
     return LumaCard(
       child: Row(
         children: [
           LumaIconBadge(
-            icon: Icons.auto_awesome_rounded,
-            color: luma.accent,
+            icon: repo.analysisError != null
+                ? Icons.error_outline_rounded
+                : Icons.auto_awesome_rounded,
+            color: repo.analysisError != null ? luma.danger : luma.accent,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -763,8 +812,7 @@ class _SmartPrompt extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${repo.pendingAnalysis} photos still to look at. Runs on '
-                  'this device, offline.',
+                  body,
                   style: TextStyle(color: luma.textSecondary, fontSize: 12),
                 ),
               ],
@@ -772,8 +820,14 @@ class _SmartPrompt extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           LumaPrimaryButton(
-            label: 'Sort them',
-            icon: Icons.auto_awesome_rounded,
+            label: repo.analysisError != null
+                ? 'Try again'
+                : repo.smartModelsNeedDownload
+                    ? 'Get the models'
+                    : 'Sort them',
+            icon: repo.smartModelsNeedDownload
+                ? Icons.download_rounded
+                : Icons.auto_awesome_rounded,
             onTap: () => repo.analyseSmart(),
           ),
         ],

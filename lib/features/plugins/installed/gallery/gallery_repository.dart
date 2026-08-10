@@ -7,6 +7,7 @@ import 'gallery_categories.dart';
 import 'gallery_media.dart';
 import 'gallery_smart.dart';
 import 'gallery_source.dart';
+import 'onnx/gallery_model_store.dart';
 
 /// Where the library scan has got to.
 enum GalleryStatus { idle, askingAccess, scanning, ready, noAccess, empty }
@@ -22,7 +23,7 @@ class GalleryRepository extends ChangeNotifier {
 
   final GallerySource _source;
   final GalleryCache _cache;
-  final GallerySmartAnalyser _analyser = GallerySmartAnalyser();
+  final GalleryAnalyser _analyser = GalleryAnalyser();
 
   GalleryStatus _status = GalleryStatus.idle;
   GalleryAccess _access = GalleryAccess.denied;
@@ -52,7 +53,7 @@ class GalleryRepository extends ChangeNotifier {
   bool get canPresentPicker => _source.canPresentPicker;
   bool get supportsCustomFolders => _source.supportsCustomFolders;
   List<String> get customRoots => _source.roots;
-  bool get smartModelsAvailable => GallerySmartAnalyser.isSupported;
+  bool get smartModelsAvailable => GalleryAnalyser.isSupported;
 
   /// Photos with a known position, newest first — the pins on the map. Walks
   /// the whole library, so the header asks [hasLocatedItems] instead.
@@ -110,17 +111,11 @@ class GalleryRepository extends ChangeNotifier {
     final scanned = await _source.load();
     if (_disposed) return;
 
-    // Fold in coordinates learned on an earlier run so the map is populated
-    // before the background pass has read a single file.
+    // Fold in what earlier runs learned — coordinates and frame sizes — so
+    // the map and the shape-based albums are populated before the background
+    // pass has reopened a single file.
     _items = [
-      for (final item in scanned)
-        if (_cache[item.cacheKey]?.hasLocation ?? false)
-          item.copyWith(
-            latitude: _cache[item.cacheKey]!.latitude,
-            longitude: _cache[item.cacheKey]!.longitude,
-          )
-        else
-          item,
+      for (final item in scanned) _withCached(item),
     ]..sort((a, b) => b.takenAt.compareTo(a.takenAt));
 
     _withLocation = _items.where((i) => i.hasLocation).length;
@@ -133,6 +128,20 @@ class GalleryRepository extends ChangeNotifier {
     unawaited(_cache.flush());
   }
 
+  /// Puts back whatever the cache already knows about [item].
+  GalleryItem _withCached(GalleryItem item) {
+    final entry = _cache[item.cacheKey];
+    if (entry == null) return item;
+    return item.copyWith(
+      latitude: entry.latitude,
+      longitude: entry.longitude,
+      // MediaStore supplies these on the phone; only fall back to the cache
+      // where the scan couldn't know them.
+      width: item.width > 0 ? null : entry.width,
+      height: item.height > 0 ? null : entry.height,
+    );
+  }
+
   /// Bumped whenever the set of items changes — a rescan, or the end of the
   /// location pass. The page memoises an album's sorted, date-grouped
   /// contents against it, so the background passes don't make it re-sort
@@ -140,19 +149,25 @@ class GalleryRepository extends ChangeNotifier {
   int _libraryVersion = 0;
   int get libraryVersion => _libraryVersion;
 
-  /// Walks every photo that has no position yet and asks the platform for its
-  /// GPS tag. One file read each — thousands of them — so this is deliberately
-  /// *not* started by [initialise]: doing it on open competes with the
-  /// thumbnails for the same platform thread and makes the whole plugin feel
-  /// stuck. The map page starts it instead, where the waiting is the point
-  /// and the progress is visible.
+  /// How many photos the header pass hasn't read yet.
+  int get pendingDetails => _pendingDetails().length;
+
+  List<GalleryItem> _pendingDetails() => [
+        for (final item in _items)
+          if (!item.isVideo && !(_cache[item.cacheKey]?.detailsRead ?? false))
+            item,
+      ];
+
+  /// Reads each photo's header for its GPS tag and frame size — what the map
+  /// and the shape-based albums are built from.
+  ///
+  /// One file read each, thousands of them, so this is deliberately *not*
+  /// started by [initialise]: doing it on open competes with the thumbnails
+  /// and makes the whole plugin feel stuck. The map page starts it, and on
+  /// desktop the smart albums section offers it.
   Future<void> locateAll() async {
     if (_locating || _status != GalleryStatus.ready) return;
-    final pending = [
-      for (final item in _items)
-        if (!item.hasLocation && !(_cache[item.cacheKey]?.geoChecked ?? false))
-          item,
-    ];
+    final pending = _pendingDetails();
     if (pending.isEmpty) return;
 
     _set(() {
@@ -166,25 +181,24 @@ class GalleryRepository extends ChangeNotifier {
       if (_disposed) return;
       final enriched = await _source.enrich(item);
       final previous = _cache[item.cacheKey] ?? const GalleryCacheEntry();
-      if (enriched.hasLocation) {
-        _replace(enriched);
-        _cache.put(
-          item.cacheKey,
-          previous.copyWith(
-            latitude: enriched.latitude,
-            longitude: enriched.longitude,
-            geoChecked: true,
-          ),
-        );
+      if (enriched.hasLocation && !item.hasLocation) {
         _locatedCount++;
         _withLocation++;
-        _smartVersion++;
-      } else {
-        _cache.put(item.cacheKey, previous.copyWith(geoChecked: true));
       }
+      _replace(enriched);
+      _cache.put(
+        item.cacheKey,
+        previous.copyWith(
+          latitude: enriched.latitude,
+          longitude: enriched.longitude,
+          width: enriched.width > 0 ? enriched.width : null,
+          height: enriched.height > 0 ? enriched.height : null,
+          detailsRead: true,
+        ),
+      );
+      _smartVersion++;
       // Let the UI breathe between batches; a tight loop over thousands of
-      // files makes the grid stutter even though the work is on a platform
-      // thread.
+      // files makes the grid stutter even though the work is off-thread.
       if (++index % batch == 0) {
         notifyListeners();
         await Future<void>.delayed(Duration.zero);
@@ -203,7 +217,7 @@ class GalleryRepository extends ChangeNotifier {
   /// up to [budget] of them, newest first. Nova-only — the page checks the
   /// plan before calling this.
   Future<void> analyseSmart({int budget = 400}) async {
-    if (_analysing || !GallerySmartAnalyser.isSupported) return;
+    if (_analysing || !GalleryAnalyser.isSupported) return;
     final pending = [
       for (final item in _items)
         if (!item.isVideo && !(_cache[item.cacheKey]?.analysed ?? false)) item,
@@ -213,22 +227,39 @@ class GalleryRepository extends ChangeNotifier {
     _set(() {
       _analysing = true;
       _analysedCount = 0;
+      _analysisStatus = null;
     });
+
+    // On desktop this is where the models are fetched, the first time only.
+    final started = await _analyser.prepare(
+      onProgress: (label, progress) => _set(() {
+        _analysisStatus = label;
+        _analysisProgress = progress;
+      }),
+    );
+    _analysisStatus = null;
+    _analysisProgress = null;
+    if (!started || _disposed) {
+      _set(() {
+        _analysing = false;
+        _analysisError = _analyser.lastError ??
+            'The smart album models could not be started.';
+      });
+      return;
+    }
+    _analysisError = null;
 
     for (final item in pending) {
       if (_disposed) break;
-      final path = await _source.resolvePath(item);
-      if (path == null) {
-        _cache.put(
-          item.cacheKey,
-          (_cache[item.cacheKey] ?? const GalleryCacheEntry())
-              .copyWith(analysed: true),
-        );
-        continue;
-      }
+      final previous = _cache[item.cacheKey] ?? const GalleryCacheEntry();
+      // ML Kit reads the file; the ONNX path works from the thumbnail the
+      // grid already made, which also means a cloud placeholder — which has
+      // no thumbnail — is skipped rather than downloaded.
       final entry = await _analyser.analyse(
-        path,
-        _cache[item.cacheKey] ?? const GalleryCacheEntry(),
+        previous: previous,
+        path: _analyser.usesOnnx ? null : await _source.resolvePath(item),
+        thumbnail:
+            _analyser.usesOnnx ? await thumbnail(item, _analysisPixels) : null,
       );
       _cache.put(item.cacheKey, entry);
       _analysedCount++;
@@ -242,6 +273,28 @@ class GalleryRepository extends ChangeNotifier {
     await _cache.flush();
     _set(() => _analysing = false);
   }
+
+  /// The thumbnail size handed to the ONNX models. Big enough for the
+  /// classifier's 224² crop and for a face to survive the 320×240 squash,
+  /// small enough that it costs nothing next to the full-size file.
+  static const _analysisPixels = 384;
+
+  /// What the model download is doing, while it is doing it.
+  String? _analysisStatus;
+  double? _analysisProgress;
+  String? _analysisError;
+
+  String? get analysisStatus => _analysisStatus;
+  double? get analysisProgress => _analysisProgress;
+
+  /// Why the last attempt to start the models failed, if it did.
+  String? get analysisError => _analysisError;
+
+  /// Whether this platform fetches its models rather than shipping them.
+  bool get smartModelsNeedDownload => GalleryAnalyser.needsDownload;
+
+  /// Roughly how much that download is.
+  int get smartModelBytes => GalleryModelStore.totalBytes;
 
   /// Bumped whenever something a smart group is built from changes: the
   /// library itself, a new location, a freshly analysed photo.
@@ -383,7 +436,7 @@ class GalleryRepository extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _thumbnails.clear();
-    _analyser.dispose();
+    unawaited(_analyser.dispose());
     _source.dispose();
     unawaited(_cache.flush());
     super.dispose();

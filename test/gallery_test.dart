@@ -115,15 +115,17 @@ void main() {
       item(name: 'Screenshot_2.png', folder: 'DCIM/Screenshots'),
       item(name: 'IMG-2026-WA0001.jpg', folder: 'WhatsApp/Media/WhatsApp Images'),
       item(name: 'IMG-2026-WA0002.jpg', folder: 'WhatsApp/Media/WhatsApp Images'),
+      item(name: 'IMG-2026-WA0003.jpg', folder: 'WhatsApp/Media/WhatsApp Images'),
       item(name: 'meme.gif', folder: 'Download'),
       item(name: 'invoice.png', folder: 'Download'),
+      item(name: 'receipt.png', folder: 'Download'),
     ];
 
     test('the fixed tabs count only what belongs to them', () {
       final categories = buildCategories(library);
       final byId = {for (final c in categories) c.id: c};
 
-      expect(byId[GalleryCategoryIds.all]!.count, 9);
+      expect(byId[GalleryCategoryIds.all]!.count, 11);
       expect(byId[GalleryCategoryIds.pictures]!.count, 2);
       expect(byId[GalleryCategoryIds.videos]!.count, 1);
       expect(byId[GalleryCategoryIds.screenshots]!.count, 2);
@@ -148,6 +150,11 @@ void main() {
           name: 'old.jpg',
           folder: 'Download',
           takenAt: DateTime(2020, 1, 1),
+        ),
+        item(
+          name: 'middle.jpg',
+          folder: 'Download',
+          takenAt: DateTime(2023, 1, 1),
         ),
         item(
           name: 'newest.jpg',
@@ -179,6 +186,12 @@ void main() {
           takenAt: DateTime(2026, 6, 6),
           cloudOnly: true,
         ),
+        item(
+          name: 'also-cloud.jpg',
+          folder: 'OneDrive/Holidays',
+          takenAt: DateTime(2026, 6, 7),
+          cloudOnly: true,
+        ),
       ]);
       expect(
         categories.firstWhere((c) => c.label == 'Holidays').cover?.name,
@@ -200,6 +213,12 @@ void main() {
           takenAt: DateTime(2026),
           cloudOnly: true,
         ),
+        item(
+          name: 'c.jpg',
+          folder: 'OneDrive/Holidays',
+          takenAt: DateTime(2025),
+          cloudOnly: true,
+        ),
       ]);
       expect(
         categories.firstWhere((c) => c.label == 'Holidays').cover?.name,
@@ -216,13 +235,62 @@ void main() {
     test('the same album in two places is one tab', () {
       final categories = buildCategories([
         item(name: 'a.jpg', folder: 'Pictures/Instagram'),
-        item(name: 'b.jpg', folder: 'DCIM/Instagram'),
+        item(name: 'b.jpg', folder: 'Pictures/Instagram'),
+        item(name: 'c.jpg', folder: 'DCIM/Instagram'),
       ]);
       final instagram =
           categories.where((c) => c.label == 'Instagram').toList();
       expect(instagram, hasLength(1));
-      expect(instagram.single.count, 2);
+      expect(instagram.single.count, 3);
       expect(instagram.single.folders, hasLength(2));
+    });
+
+    test('a folder with a picture or two in it earns no album', () {
+      // Nothing is lost: these are still in All, and still in their folder on
+      // disk. What is gained is an albums screen that isn't buried under
+      // one-item strays from downloads and extracted archives.
+      final categories = buildCategories([
+        for (var i = 0; i < minimumAlbumItems - 1; i++)
+          item(name: 'stray$i.jpg', folder: 'Download/Extracted'),
+        for (var i = 0; i < minimumAlbumItems; i++)
+          item(name: 'holiday$i.jpg', folder: 'Pictures/Rome'),
+      ]);
+      final labels = [for (final c in categories) c.label];
+      expect(labels, contains('Rome'));
+      expect(labels, isNot(contains('Extracted')));
+      // All still holds every one of them.
+      expect(
+        categories.first.count,
+        (minimumAlbumItems - 1) + minimumAlbumItems,
+      );
+    });
+
+    test('folders no person named get no album, however full', () {
+      final categories = buildCategories([
+        for (var i = 0; i < 20; i++)
+          item(name: 'x$i.jpg', folder: 'Download/1761572236343'),
+        for (var i = 0; i < 20; i++)
+          item(
+            name: 'y$i.jpg',
+            folder: 'Download/{0D75C5A9-8574-42CF-9B99-FFD0D2F44FF5}',
+          ),
+        for (var i = 0; i < 20; i++)
+          item(name: 'z$i.jpg', folder: 'Pictures/Wedding'),
+      ]);
+      final labels = [for (final c in categories) c.label];
+      expect(labels, contains('Wedding'));
+      expect(labels.where(looksMachineNamed), isEmpty);
+    });
+
+    test('machine-named folders are recognised, human ones are not', () {
+      expect(looksMachineNamed('1761572236343'), isTrue);
+      expect(looksMachineNamed('{0D75C5A9 8574 42CF 9B99 FFD0D2F44FF5}'),
+          isTrue);
+      expect(looksMachineNamed('a3f5b8c9d0e1f2a3'), isTrue);
+      expect(looksMachineNamed('Wedding'), isFalse);
+      expect(looksMachineNamed('2026'), isFalse, reason: 'a year is a name');
+      expect(looksMachineNamed('Trip 2024'), isFalse);
+      expect(looksMachineNamed('Boat'), isFalse);
     });
 
     test('empty fixed tabs are left out, All never is', () {
@@ -244,7 +312,7 @@ void main() {
 
       final whatsapp =
           categories.firstWhere((c) => c.label == 'WhatsApp Images');
-      expect(itemsInCategory(whatsapp, library), hasLength(2));
+      expect(itemsInCategory(whatsapp, library), hasLength(3));
     });
 
     test('items come back newest first', () {
@@ -388,7 +456,7 @@ void main() {
         longitudeRef: 'E',
         taken: '2026:07:31 14:12:33',
       );
-      final metadata = parseJpegMetadata(bytes);
+      final metadata = parseImageDetails(bytes);
 
       expect(metadata, isNotNull);
       expect(metadata!.latitude, closeTo(52.3730, 0.001));
@@ -403,22 +471,57 @@ void main() {
         longitude: [151, 12, 36],
         longitudeRef: 'W',
       );
-      final metadata = parseJpegMetadata(bytes)!;
+      final metadata = parseImageDetails(bytes)!;
       expect(metadata.latitude, lessThan(0));
       expect(metadata.longitude, lessThan(0));
     });
 
-    test('a file that is not a JPEG is simply metadata-free', () {
-      expect(parseJpegMetadata(Uint8List.fromList([0x89, 0x50, 0x4E, 0x47])),
-          isNull);
-      expect(parseJpegMetadata(Uint8List(0)), isNull);
+    test('a file in no known format is simply detail-free', () {
+      expect(parseImageDetails(Uint8List.fromList([1, 2, 3, 4])), isNull);
+      expect(parseImageDetails(Uint8List(0)), isNull);
     });
 
-    test('a JPEG without an EXIF block reads as null', () {
+    test('a JPEG with no EXIF still gives up its size', () {
+      // Frame size is what the Panoramas album is built from, and it lives in
+      // the SOF header that every JPEG has — EXIF or not.
       final plain = Uint8List.fromList(
-        img.encodeJpg(img.Image(width: 4, height: 4)),
+        img.encodeJpg(img.Image(width: 1600, height: 400)),
       );
-      expect(parseJpegMetadata(plain), isNull);
+      final details = parseImageDetails(plain)!;
+      expect(details.width, 1600);
+      expect(details.height, 400);
+      expect(details.latitude, isNull);
+    });
+
+    test('a PNG gives up its size from IHDR', () {
+      final png = Uint8List.fromList(
+        img.encodePng(img.Image(width: 300, height: 120)),
+      );
+      final details = parseImageDetails(png)!;
+      expect(details.width, 300);
+      expect(details.height, 120);
+    });
+
+    test('a GIF gives up its size from the screen descriptor', () {
+      final gif = Uint8List.fromList(
+        img.encodeGif(img.Image(width: 48, height: 64)),
+      );
+      final details = parseImageDetails(gif)!;
+      expect(details.width, 48);
+      expect(details.height, 64);
+    });
+
+    test('a geotagged JPEG reports both its place and its shape', () {
+      final bytes = _jpegWithGps(
+        latitude: [52, 22, 23],
+        latitudeRef: 'N',
+        longitude: [4, 53, 32],
+        longitudeRef: 'E',
+      );
+      final details = parseImageDetails(bytes)!;
+      expect(details.latitude, isNotNull);
+      expect(details.width, 8);
+      expect(details.height, 8);
     });
   });
 
@@ -482,6 +585,25 @@ void main() {
       );
     });
 
+    test('a scanned photo learns its shape, so Panoramas can exist', () async {
+      // The desktop walk has no media index to ask for dimensions, so
+      // without this pass every desktop photo has width 0 and the Panoramas
+      // album can never appear.
+      final wide = Uint8List.fromList(
+        img.encodeJpg(img.Image(width: 4000, height: 1000)),
+      );
+      File('${temp.path}${Platform.pathSeparator}pano.jpg')
+          .writeAsBytesSync(wide);
+
+      final scanned = onDisk('pano.jpg', cloudOnly: false);
+      expect(scanned.width, 0, reason: 'the walk itself knows no dimensions');
+
+      final enriched = await source.enrich(scanned);
+      expect(enriched.width, 4000);
+      expect(enriched.height, 1000);
+      expect(isPanorama(enriched), isTrue);
+    });
+
     test('no EXIF is read from a file that lives in the cloud', () async {
       final bytes = _jpegWithGps(
         latitude: [52, 22, 23],
@@ -499,6 +621,42 @@ void main() {
       final cloud = await source.enrich(onDisk('geo.jpg', cloudOnly: true));
       expect(cloud.hasLocation, isFalse,
           reason: 'a placeholder has no pin rather than being downloaded');
+    });
+  });
+
+  group('what the desktop walk refuses to pick up', () {
+    test('technical folders are never descended into', () {
+      for (final junk in [
+        'node_modules',
+        '.git',
+        'AppData',
+        'resourcepacks',
+        'Textures',
+        'build',
+        'Program Files (x86)',
+      ]) {
+        expect(isSkippedFolder(junk), isTrue, reason: junk);
+      }
+      for (final real in ['Rome 2024', 'Camera', 'WhatsApp Images', 'Boat']) {
+        expect(isSkippedFolder(real), isFalse, reason: real);
+      }
+    });
+
+    test('tiny images are icons and sprites, not photographs', () {
+      expect(isLikelyPhotoFile(GalleryMediaType.image, 400), isFalse);
+      expect(
+        isLikelyPhotoFile(
+          GalleryMediaType.image,
+          FolderGallerySource.minimumImageBytes - 1,
+        ),
+        isFalse,
+      );
+      expect(
+        isLikelyPhotoFile(GalleryMediaType.image, 2 * 1024 * 1024),
+        isTrue,
+      );
+      // A video is a video whatever it weighs.
+      expect(isLikelyPhotoFile(GalleryMediaType.video, 400), isTrue);
     });
   });
 
