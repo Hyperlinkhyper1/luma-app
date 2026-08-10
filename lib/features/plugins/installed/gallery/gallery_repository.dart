@@ -92,7 +92,6 @@ class GalleryRepository extends ChangeNotifier {
     }
 
     await _scan();
-    unawaited(locateAll());
   }
 
   /// Re-reads the library from scratch, keeping everything already cached.
@@ -104,7 +103,6 @@ class GalleryRepository extends ChangeNotifier {
       return;
     }
     await _scan();
-    unawaited(locateAll());
   }
 
   Future<void> _scan() async {
@@ -129,14 +127,25 @@ class GalleryRepository extends ChangeNotifier {
     _cache.retainKeys({for (final item in _items) item.cacheKey});
     _categories = buildCategories(_items);
     _smartVersion++;
+    _libraryVersion++;
     _set(() => _status =
         _items.isEmpty ? GalleryStatus.empty : GalleryStatus.ready);
     unawaited(_cache.flush());
   }
 
+  /// Bumped whenever the set of items changes — a rescan, or the end of the
+  /// location pass. The page memoises an album's sorted, date-grouped
+  /// contents against it, so the background passes don't make it re-sort
+  /// thousands of items on every progress notification.
+  int _libraryVersion = 0;
+  int get libraryVersion => _libraryVersion;
+
   /// Walks every photo that has no position yet and asks the platform for its
-  /// GPS tag. Slow — one file read each — so it runs in the background, in
-  /// batches, and reports progress as it goes.
+  /// GPS tag. One file read each — thousands of them — so this is deliberately
+  /// *not* started by [initialise]: doing it on open competes with the
+  /// thumbnails for the same platform thread and makes the whole plugin feel
+  /// stuck. The map page starts it instead, where the waiting is the point
+  /// and the progress is visible.
   Future<void> locateAll() async {
     if (_locating || _status != GalleryStatus.ready) return;
     final pending = [
@@ -183,6 +192,10 @@ class GalleryRepository extends ChangeNotifier {
     }
 
     await _cache.flush();
+    // One bump at the end rather than one per photo: the album lists only
+    // change in that they now carry coordinates, and re-sorting the library
+    // a thousand times over would cost more than the pass itself.
+    _libraryVersion++;
     _set(() => _locating = false);
   }
 
@@ -253,17 +266,78 @@ class GalleryRepository extends ChangeNotifier {
   final Map<String, Uint8List> _thumbnails = {};
   static const _thumbnailLimit = 300;
 
-  Future<Uint8List?> thumbnail(GalleryItem item, int pixels) async {
+  /// Requests already running or queued, so two tiles asking for the same
+  /// picture — a cover and its first grid tile, say — decode it once.
+  final Map<String, Future<Uint8List?>> _inFlight = {};
+
+  /// How many thumbnails may be produced at once.
+  ///
+  /// Every tile asks for its picture the moment it is built, so opening an
+  /// album asks for a whole screenful in the same frame. Unbounded, that was
+  /// the freeze: thirty requests at once.
+  ///
+  /// The right number differs by platform. On the phone each request is a
+  /// cheap call into MediaStore's own thumbnailer, so a few in parallel keep
+  /// the grid filling quickly. On desktop each one spawns an isolate that
+  /// decodes a full-size JPEG — a 12 MP photo is ~50 MB of pixels while it is
+  /// being resized — so two at a time is as much as is worth risking.
+  static final int _maxConcurrentThumbnails =
+      defaultTargetPlatform == TargetPlatform.android ||
+              defaultTargetPlatform == TargetPlatform.iOS
+          ? 4
+          : 2;
+
+  int _decoding = 0;
+
+  /// Requests waiting for a slot. Served newest-first: after a fast scroll
+  /// the tiles that are actually on screen are the ones that asked last, and
+  /// a queue drained in order would spend its time decoding pictures that
+  /// have already scrolled away.
+  final List<Completer<void>> _thumbnailQueue = [];
+
+  Future<Uint8List?> thumbnail(GalleryItem item, int pixels) {
     final key = '${item.cacheKey}|$pixels';
     final cached = _thumbnails[key];
-    if (cached != null) return cached;
-    final bytes = await _source.thumbnail(item, pixels);
-    if (bytes == null || _disposed) return bytes;
-    if (_thumbnails.length >= _thumbnailLimit) {
-      _thumbnails.remove(_thumbnails.keys.first);
+    if (cached != null) return Future.value(cached);
+    final running = _inFlight[key];
+    if (running != null) return running;
+
+    final request = _decodeThumbnail(key, item, pixels);
+    _inFlight[key] = request;
+    return request;
+  }
+
+  Future<Uint8List?> _decodeThumbnail(
+    String key,
+    GalleryItem item,
+    int pixels,
+  ) async {
+    try {
+      if (_decoding >= _maxConcurrentThumbnails) {
+        final slot = Completer<void>();
+        _thumbnailQueue.add(slot);
+        await slot.future;
+      }
+      if (_disposed) return null;
+
+      _decoding++;
+      try {
+        final bytes = await _source.thumbnail(item, pixels);
+        if (bytes == null || _disposed) return bytes;
+        if (_thumbnails.length >= _thumbnailLimit) {
+          _thumbnails.remove(_thumbnails.keys.first);
+        }
+        _thumbnails[key] = bytes;
+        return bytes;
+      } finally {
+        _decoding--;
+        if (_thumbnailQueue.isNotEmpty) {
+          _thumbnailQueue.removeLast().complete();
+        }
+      }
+    } finally {
+      _inFlight.remove(key);
     }
-    _thumbnails[key] = bytes;
-    return bytes;
   }
 
   Future<String?> resolvePath(GalleryItem item) => _source.resolvePath(item);
