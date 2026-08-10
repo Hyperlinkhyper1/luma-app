@@ -5,7 +5,9 @@ import 'package:flutter/foundation.dart';
 import 'gallery_cache.dart';
 import 'gallery_categories.dart';
 import 'gallery_file_editor.dart';
+import 'gallery_memories.dart';
 import 'gallery_media.dart';
+import 'gallery_people.dart';
 import 'gallery_smart.dart';
 import 'gallery_source.dart';
 import 'onnx/gallery_model_store.dart';
@@ -18,13 +20,25 @@ enum GalleryStatus { idle, askingAccess, scanning, ready, noAccess, empty }
 /// locations and smart labels, and the cache that means none of it has to
 /// happen twice.
 class GalleryRepository extends ChangeNotifier {
-  GalleryRepository({GallerySource? source, GalleryCache? cache})
-      : _source = source ?? GallerySource.forPlatform(),
-        _cache = cache ?? GalleryCache();
+  GalleryRepository({
+    GallerySource? source,
+    GalleryCache? cache,
+    GalleryPeopleStore? people,
+    GalleryAnalyser? analyser,
+  })  : _source = source ?? GallerySource.forPlatform(),
+        _cache = cache ?? GalleryCache(),
+        _people = people ?? GalleryPeopleStore() {
+    // The real analyser touches path_provider, a real model download and a
+    // real ONNX/ML Kit session — none of which a widget test's fake platform
+    // binding provides. Tests substitute their own here, the same way they
+    // substitute [GallerySource] to avoid touching MediaStore.
+    _analyser = analyser ?? GalleryAnalyser(people: _people);
+  }
 
   final GallerySource _source;
   final GalleryCache _cache;
-  final GalleryAnalyser _analyser = GalleryAnalyser();
+  final GalleryPeopleStore _people;
+  late final GalleryAnalyser _analyser;
 
   GalleryStatus _status = GalleryStatus.idle;
   GalleryAccess _access = GalleryAccess.denied;
@@ -102,6 +116,7 @@ class GalleryRepository extends ChangeNotifier {
           skipped: false,
           labels: const [],
           faceCount: 0,
+          personIds: const [],
         ),
       );
     }
@@ -120,6 +135,7 @@ class GalleryRepository extends ChangeNotifier {
     }
 
     await _cache.load();
+    await _people.load();
     _source.restoreRoots(_cache.roots);
     unawaited(refreshModelState());
 
@@ -307,6 +323,7 @@ class GalleryRepository extends ChangeNotifier {
       // no thumbnail — is skipped rather than downloaded.
       final entry = await _analyser.analyse(
         previous: previous,
+        cacheKey: item.cacheKey,
         path: _analyser.usesOnnx ? null : await _source.resolvePath(item),
         thumbnail:
             _analyser.usesOnnx ? await thumbnail(item, _analysisPixels) : null,
@@ -319,12 +336,16 @@ class GalleryRepository extends ChangeNotifier {
         // Flushed as it goes, not only at the end: a pass over 23 000 photos
         // takes a while, and closing the app halfway should keep the half
         // that is done.
-        if (_analysedCount % 240 == 0) await _cache.flush();
+        if (_analysedCount % 240 == 0) {
+          await _cache.flush();
+          await _people.flush();
+        }
         await Future<void>.delayed(Duration.zero);
       }
     }
 
     await _cache.flush();
+    await _people.flush();
     _set(() {
       _analysing = false;
       _cancelAnalysis = false;
@@ -359,26 +380,47 @@ class GalleryRepository extends ChangeNotifier {
   /// Why the last attempt to start the models failed, if it did.
   String? get analysisError => _analysisError;
 
-  /// Whether the models still have to be fetched — the platform downloads
-  /// them *and* they aren't on disk yet. Checked against the filesystem
-  /// rather than the platform alone, or the card would keep offering to
+  /// Whether this analyser runs the ONNX label/detector path — desktop only.
+  /// Phone builds use ML Kit for that and only fetch the recognition model.
+  bool get usesOnnxAnalysis => _analyser.usesOnnx;
+
+  /// What this platform actually has to fetch. Every platform now downloads
+  /// something — even the phone, which ships ML Kit but not face
+  /// recognition — but desktop downloads far more, so the UI needs to know
+  /// which situation it's in to word the download prompt correctly.
+  List<GalleryModel> get _modelsToFetch => usesOnnxAnalysis
+      ? const [
+          GalleryModelStore.classifier,
+          GalleryModelStore.faceDetector,
+          GalleryModelStore.embedder,
+        ]
+      : const [GalleryModelStore.embedder];
+
+  /// Whether the models still have to be fetched — this platform downloads
+  /// something *and* it isn't all on disk yet. Checked against the
+  /// filesystem rather than remembered, or the card would keep offering to
   /// download models that were downloaded an hour ago.
-  bool get smartModelsNeedDownload =>
-      GalleryAnalyser.needsDownload && !_modelsPresent;
+  bool get smartModelsNeedDownload => !_modelsPresent;
 
   bool _modelsPresent = false;
 
-  /// Re-checks whether the models are on disk. Cheap (two `exists` calls) and
-  /// only run when the answer could have changed.
+  /// Re-checks whether this platform's models are on disk. Cheap (a couple
+  /// of `exists` calls) and only run when the answer could have changed.
   Future<void> refreshModelState() async {
-    if (!GalleryAnalyser.needsDownload) return;
-    final present = await GalleryModelStore.instance.ready;
-    if (present == _modelsPresent) return;
-    _set(() => _modelsPresent = present);
+    try {
+      final present =
+          await GalleryModelStore.instance.readyFor(_modelsToFetch);
+      if (present == _modelsPresent) return;
+      _set(() => _modelsPresent = present);
+    } catch (_) {
+      // Nothing to check the models against (no filesystem access, a fake
+      // source under test). The existing guess is left in place rather than
+      // throwing out of a call nothing awaits — see initialise().
+    }
   }
 
   /// Roughly how much that download is.
-  int get smartModelBytes => GalleryModelStore.totalBytes;
+  int get smartModelBytes => GalleryModelStore.bytesFor(_modelsToFetch);
 
   /// Bumped whenever something a smart group is built from changes: the
   /// library itself, a new location, a freshly analysed photo.
@@ -395,6 +437,19 @@ class GalleryRepository extends ChangeNotifier {
     _smartGroups = buildSmartGroups(_items, _cache.entries);
     _smartGroupsVersion = _smartVersion;
     return _smartGroups;
+  }
+
+  int _memoriesVersion = -1;
+  List<GalleryMemory> _memories = const [];
+
+  /// The library's trips. Needs no model and no Nova plan — only dates,
+  /// which every item has — so it's memoised against [libraryVersion] alone
+  /// rather than [_smartVersion].
+  List<GalleryMemory> memories() {
+    if (_memoriesVersion == _libraryVersion) return _memories;
+    _memories = buildMemories(_items);
+    _memoriesVersion = _libraryVersion;
+    return _memories;
   }
 
   /// Thumbnails already decoded this session. Scrolling back up a long grid
@@ -567,6 +622,63 @@ class GalleryRepository extends ChangeNotifier {
     unawaited(_analyser.dispose());
     _source.dispose();
     unawaited(_cache.flush());
+    unawaited(_people.flush());
     super.dispose();
+  }
+
+  // ------------------------------------------------------------- people
+
+  int _peopleVersion = -1;
+  List<PersonCluster> _peopleCache = const [];
+
+  /// Every person the clustering has found with at least [kMinPersonPhotos]
+  /// photos, busiest first. Memoised against [_smartVersion] the same way
+  /// [smartGroups] is — this is asked for on every rebuild of the People
+  /// screen, and counting each cluster's photos is an O(items) walk.
+  List<PersonCluster> peopleClusters() {
+    if (_peopleVersion == _smartVersion) return _peopleCache;
+    final counted = <int, int>{};
+    for (final item in _items) {
+      for (final id in _cache[item.cacheKey]?.personIds ?? const <int>[]) {
+        counted[id] = (counted[id] ?? 0) + 1;
+      }
+    }
+    _peopleCache = [
+      for (final cluster in _people.clusters)
+        if ((counted[cluster.id] ?? 0) >= kMinPersonPhotos) cluster,
+    ]..sort((a, b) => (counted[b.id] ?? 0).compareTo(counted[a.id] ?? 0));
+    _peopleVersion = _smartVersion;
+    return _peopleCache;
+  }
+
+  /// Every photo a given person appears in, newest first.
+  List<GalleryItem> itemsForPerson(int personId) => _items
+      .where((item) =>
+          (_cache[item.cacheKey]?.personIds ?? const <int>[]).contains(personId))
+      .toList()
+    ..sort((a, b) => b.takenAt.compareTo(a.takenAt));
+
+  /// The photo to show as a person's avatar: whatever was on hand when their
+  /// cluster was created, falling back to their most recent photo if that one
+  /// has since gone missing (deleted, moved out of a synced folder).
+  GalleryItem? coverForPerson(PersonCluster cluster) {
+    final coverKey = cluster.coverKey;
+    if (coverKey != null) {
+      for (final item in _items) {
+        if (item.cacheKey == coverKey) return item;
+      }
+    }
+    final items = itemsForPerson(cluster.id);
+    return items.isEmpty ? null : items.first;
+  }
+
+  /// Gives a person a name. Nothing here is verified against any identity —
+  /// it only labels a cluster of similar-looking faces with whatever the
+  /// user types.
+  Future<void> renamePerson(int id, String name) async {
+    _people.rename(id, name);
+    _peopleVersion = -1;
+    notifyListeners();
+    await _people.flush();
   }
 }

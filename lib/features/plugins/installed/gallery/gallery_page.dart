@@ -10,6 +10,7 @@ import 'gallery_album_card.dart';
 import 'gallery_categories.dart';
 import 'gallery_map_page.dart';
 import 'gallery_media.dart';
+import 'gallery_people.dart';
 import 'gallery_repository.dart';
 import 'gallery_scope.dart';
 import 'gallery_smart.dart';
@@ -18,8 +19,11 @@ import 'gallery_tile.dart';
 import 'gallery_viewer_page.dart';
 
 /// The Gallery plugin. Opens on the albums screen — All, the camera roll,
-/// screenshots, GIFs, then a card per folder, then the smart albums on Nova —
-/// and drills into one album's grid from there.
+/// screenshots, GIFs, then a card per folder, then Smart albums — and drills
+/// down from there. Smart albums is itself three doors, not one flat grid:
+/// People (one folder per person the clustering has found), Memories (date
+/// clusters — a trip, a weekend, needing no model and no plan), and
+/// Categories (Food, Pets, Ocean, and the rest of what the models recognise).
 class GalleryPage extends StatefulWidget {
   const GalleryPage({super.key});
 
@@ -28,10 +32,12 @@ class GalleryPage extends StatefulWidget {
 }
 
 class _GalleryPageState extends State<GalleryPage> {
-  /// The open album, or null on the albums screen. Held as an id rather than
-  /// an object: folder albums come and go with a rescan, and smart albums
-  /// grow as the models catch up.
-  String? _openAlbum;
+  /// The open screen, or null for the albums screen. A single id string
+  /// carries the whole navigation stack via prefixes — `people`, `people:3`,
+  /// `memories`, `memories:memory:2026-...`, `categories`, `smart:Food` — so
+  /// the existing back-button/history model needs nothing new to support a
+  /// third level of nesting.
+  String? _open;
 
   bool _started = false;
 
@@ -60,9 +66,16 @@ class _GalleryPageState extends State<GalleryPage> {
     return items;
   }
 
-  /// The card non-Nova devices see in place of the smart albums.
-  static const _smartTeaserId = 'smart-teaser';
+  static const _peopleId = 'people';
+  static const _memoriesId = 'memories';
+  static const _categoriesId = 'categories';
+  static const _peoplePrefix = 'people:';
+  static const _memoriesPrefix = 'memories:';
   static const _smartPrefix = 'smart:';
+
+  /// The card Core/Orbit see in place of People and Categories — Memories
+  /// needs no model, so it never shows this.
+  static const _smartTeaserId = 'smart-teaser';
 
   @override
   void didChangeDependencies() {
@@ -82,7 +95,7 @@ class _GalleryPageState extends State<GalleryPage> {
     await repo.addFolder(path);
   }
 
-  void _open(List<GalleryItem> items, int index) {
+  void _openViewer(List<GalleryItem> items, int index) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => GalleryViewerPage(items: items, initialIndex: index),
@@ -90,17 +103,47 @@ class _GalleryPageState extends State<GalleryPage> {
     );
   }
 
+  Future<void> _renamePerson(GalleryRepository repo, PersonCluster person) async {
+    final controller = TextEditingController(text: person.name ?? '');
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Name for ${person.displayName}'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'e.g. Mum, Alex…'),
+          onSubmitted: (value) => Navigator.of(context).pop(value),
+        ),
+        // §1 escape-routes: a clear way out besides the name itself.
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(controller.text),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (name == null) return;
+    await repo.renamePerson(person.id, name);
+  }
+
   @override
   Widget build(BuildContext context) {
     final repo = GalleryScope.of(context);
     final isNova = SettingsScope.of(context).selectedPlanId == 'nova';
-    final open = _openAlbum;
+    final open = _open;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: open == null
           ? _albumsScreen(context, repo, isNova)
-          : _albumScreen(context, repo, isNova, open),
+          : _routedScreen(context, repo, isNova, open),
     );
   }
 
@@ -128,11 +171,11 @@ class _GalleryPageState extends State<GalleryPage> {
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
             child: _LimitedAccessNote(onSelectMore: repo.presentPicker),
           ),
-        if (repo.isAnalysing)
+        if (isNova && repo.isAnalysing)
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
             child: _ProgressNote(
-              label: 'Sorting photos into smart albums — '
+              label: 'Sorting photos into People and Categories — '
                   '${repo.analysedCount} done',
             ),
           ),
@@ -175,119 +218,153 @@ class _GalleryPageState extends State<GalleryPage> {
         final categories = repo.categories;
         final fixed = [for (final c in categories) if (!c.isFolder) c];
         final folders = [for (final c in categories) if (c.isFolder) c];
-        final smart = isNova ? repo.smartGroups() : const <GallerySmartGroup>[];
+        final memories = repo.memories();
+        final people = isNova ? repo.peopleClusters() : const <PersonCluster>[];
+        final smartCats = isNova
+            ? repo.smartGroups().where((g) => g.id != 'people').toList()
+            : const <GallerySmartGroup>[];
 
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            // Cards want to be about 150 logical pixels wide; three across is
-            // the floor so a phone shows the same three-up grid the system
-            // gallery does.
-            final columns = (constraints.maxWidth / 172).floor().clamp(3, 8);
-            final cardWidth = (constraints.maxWidth - 40 - (columns - 1) * 12) /
-                columns;
-            // Cover, then two lines of label underneath.
-            final extent = cardWidth + 42;
-
-            return CustomScrollView(
-              slivers: [
-                ..._albumSection(
-                  title: 'Albums',
-                  columns: columns,
-                  extent: extent,
-                  luma: luma,
-                  first: true,
-                  cards: [
-                    for (final category in fixed)
-                      GalleryAlbumCard(
-                        key: ValueKey(category.id),
-                        label: category.label,
-                        icon: category.icon,
-                        count: category.count,
-                        cover: category.cover,
-                        repository: repo,
-                        onTap: () =>
-                            setState(() => _openAlbum = category.id),
-                      ),
-                  ],
-                ),
-                if (folders.isNotEmpty)
-                  ..._albumSection(
-                    title: 'More albums',
-                    columns: columns,
-                    extent: extent,
-                    luma: luma,
-                    cards: [
-                      for (final category in folders)
-                        GalleryAlbumCard(
-                          key: ValueKey(category.id),
-                          label: category.label,
-                          icon: category.icon,
-                          count: category.count,
-                          cover: category.cover,
-                          repository: repo,
-                          onTap: () =>
-                              setState(() => _openAlbum = category.id),
-                        ),
-                    ],
+        return _cardGrid(
+          sections: [
+            _CardSection(
+              title: 'Albums',
+              first: true,
+              cards: [
+                for (final category in fixed)
+                  GalleryAlbumCard(
+                    key: ValueKey(category.id),
+                    label: category.label,
+                    icon: category.icon,
+                    count: category.count,
+                    cover: category.cover,
+                    repository: repo,
+                    onTap: () => setState(() => _open = category.id),
                   ),
-                if (smart.isNotEmpty)
-                  ..._albumSection(
-                    title: 'Smart albums',
-                    columns: columns,
-                    extent: extent,
-                    luma: luma,
-                    cards: [
-                      for (final group in smart)
-                        GalleryAlbumCard(
-                          key: ValueKey(group.id),
-                          label: group.label,
-                          icon: group.icon,
-                          count: group.count,
-                          cover: group.items.isEmpty ? null : group.items.first,
-                          repository: repo,
-                          onTap: () => setState(
-                            () => _openAlbum = '$_smartPrefix${group.id}',
-                          ),
-                        ),
-                    ],
-                  ),
-                if (!isNova)
-                  ..._albumSection(
-                    title: 'Smart albums',
-                    columns: columns,
-                    extent: extent,
-                    luma: luma,
-                    cards: [
-                      GalleryAlbumCard(
-                        label: 'Smart albums',
-                        icon: Icons.auto_awesome_rounded,
-                        count: 0,
-                        subtitle: 'Included with Nova',
-                        badge: 'Nova',
-                        repository: repo,
-                        onTap: () =>
-                            setState(() => _openAlbum = _smartTeaserId),
-                      ),
-                    ],
-                  ),
-                if (isNova)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                      child: _SmartPrompt(repo: repo),
-                    ),
-                  ),
-                const SliverToBoxAdapter(child: SizedBox(height: 24)),
               ],
-            );
-          },
+            ),
+            if (folders.isNotEmpty)
+              _CardSection(
+                title: 'More albums',
+                cards: [
+                  for (final category in folders)
+                    GalleryAlbumCard(
+                      key: ValueKey(category.id),
+                      label: category.label,
+                      icon: category.icon,
+                      count: category.count,
+                      cover: category.cover,
+                      repository: repo,
+                      onTap: () => setState(() => _open = category.id),
+                    ),
+                ],
+              ),
+            _CardSection(
+              title: 'Smart albums',
+              cards: [
+                // Memories needs no model and costs nothing to compute, so
+                // unlike People and Categories it isn't gated behind Nova.
+                GalleryAlbumCard(
+                  label: 'Memories',
+                  icon: Icons.auto_awesome_motion_rounded,
+                  count: memories.length,
+                  subtitle: memories.isEmpty
+                      ? 'None yet'
+                      : '${memories.length} '
+                          '${memories.length == 1 ? 'trip' : 'trips'}',
+                  cover: memories.isEmpty ? null : memories.first.cover,
+                  repository: repo,
+                  onTap: () => setState(() => _open = _memoriesId),
+                ),
+                if (isNova) ...[
+                  GalleryAlbumCard(
+                    label: 'People',
+                    icon: Icons.people_alt_rounded,
+                    count: people.length,
+                    subtitle: people.isEmpty
+                        ? 'None found yet'
+                        : '${people.length} '
+                            '${people.length == 1 ? 'person' : 'people'}',
+                    cover: people.isEmpty ? null : repo.coverForPerson(people.first),
+                    repository: repo,
+                    onTap: () => setState(() => _open = _peopleId),
+                  ),
+                  GalleryAlbumCard(
+                    label: 'Categories',
+                    icon: Icons.category_rounded,
+                    count: smartCats.length,
+                    subtitle: smartCats.isEmpty
+                        ? 'None found yet'
+                        : '${smartCats.length} categories',
+                    cover: smartCats.isEmpty || smartCats.first.items.isEmpty
+                        ? null
+                        : smartCats.first.items.first,
+                    repository: repo,
+                    onTap: () => setState(() => _open = _categoriesId),
+                  ),
+                ] else
+                  GalleryAlbumCard(
+                    label: 'People & Categories',
+                    icon: Icons.auto_awesome_rounded,
+                    count: 0,
+                    subtitle: 'Included with Nova',
+                    badge: 'Nova',
+                    repository: repo,
+                    onTap: () => setState(() => _open = _smartTeaserId),
+                  ),
+              ],
+            ),
+            if (isNova)
+              _CardSection(title: null, cards: const [], footer: _SmartPrompt(repo: repo)),
+          ],
         );
     }
   }
 
+  /// Lays out a list of card sections at a consistent column count, computed
+  /// once from the available width.
+  Widget _cardGrid({required List<_CardSection> sections}) {
+    final luma = context.luma;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Cards want to be about 150 logical pixels wide; three across is
+        // the floor so a phone shows the same three-up grid the system
+        // gallery does.
+        final columns = (constraints.maxWidth / 172).floor().clamp(3, 8);
+        final cardWidth =
+            (constraints.maxWidth - 40 - (columns - 1) * 12) / columns;
+        // Cover, then two lines of label underneath.
+        final extent = cardWidth + 42;
+
+        final slivers = <Widget>[];
+        for (final section in sections) {
+          if (section.cards.isNotEmpty) {
+            slivers.addAll(_albumSection(
+              title: section.title,
+              columns: columns,
+              extent: extent,
+              luma: luma,
+              first: section.first,
+              cards: section.cards,
+            ));
+          }
+          if (section.footer != null) {
+            slivers.add(SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                child: section.footer,
+              ),
+            ));
+          }
+        }
+        slivers.add(const SliverToBoxAdapter(child: SizedBox(height: 24)));
+        return CustomScrollView(slivers: slivers);
+      },
+    );
+  }
+
   /// A heading and its grid of cards, as the two slivers they have to be.
   List<Widget> _albumSection({
-    required String title,
+    required String? title,
     required int columns,
     required double extent,
     required LumaPalette luma,
@@ -295,19 +372,20 @@ class _GalleryPageState extends State<GalleryPage> {
     bool first = false,
   }) =>
       [
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(20, first ? 0 : 24, 20, 10),
-            child: Text(
-              title,
-              style: TextStyle(
-                color: luma.textPrimary,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
+        if (title != null)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(20, first ? 0 : 24, 20, 10),
+              child: Text(
+                title,
+                style: TextStyle(
+                  color: luma.textPrimary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
-        ),
         SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           sliver: SliverGrid(
@@ -331,76 +409,292 @@ class _GalleryPageState extends State<GalleryPage> {
     return '$count $noun';
   }
 
-  // ----------------------------------------------------------- one album
+  // ------------------------------------------------------------ routing
 
-  Widget _albumScreen(
+  Widget _routedScreen(
     BuildContext context,
     GalleryRepository repo,
     bool isNova,
-    String albumId,
+    String id,
   ) {
-    if (albumId == _smartTeaserId) {
-      return Column(
+    if (id == _smartTeaserId) {
+      return _screen(
+        title: 'People & Categories',
+        subtitle: 'Included with Nova',
+        onBack: () => setState(() => _open = null),
+        repo: repo,
+        child: _SmartUpsell(repo: repo),
+      );
+    }
+    if (id == _peopleId) return _peopleIndexScreen(context, repo);
+    if (id == _memoriesId) return _memoriesIndexScreen(context, repo);
+    if (id == _categoriesId) return _categoriesIndexScreen(context, repo);
+
+    if (id.startsWith(_peoplePrefix)) {
+      final personId = int.tryParse(id.substring(_peoplePrefix.length));
+      final person =
+          personId == null ? null : repo.peopleClusters().where((p) => p.id == personId).firstOrNull;
+      if (person == null) {
+        _bounceBackTo(_peopleId);
+        return const SizedBox.shrink();
+      }
+      return _screen(
+        title: person.displayName,
+        subtitle: '${person.count} items',
+        onBack: () => setState(() => _open = _peopleId),
+        repo: repo,
+        child: _Grid(
+          repository: repo,
+          items: _itemsFor(
+            repo,
+            id,
+            () => repo.itemsForPerson(person.id),
+          ),
+          onOpen: _openViewer,
+        ),
+      );
+    }
+
+    if (id.startsWith(_memoriesPrefix)) {
+      final memoryId = id.substring(_memoriesPrefix.length);
+      final memory =
+          repo.memories().where((m) => m.id == memoryId).firstOrNull;
+      if (memory == null) {
+        _bounceBackTo(_memoriesId);
+        return const SizedBox.shrink();
+      }
+      return _screen(
+        title: memory.label,
+        subtitle: '${memory.count} items',
+        onBack: () => setState(() => _open = _memoriesId),
+        repo: repo,
+        // Already oldest-first — a trip is relived from its start, unlike
+        // every other album in the gallery.
+        child: _Grid(repository: repo, items: memory.items, onOpen: _openViewer),
+      );
+    }
+
+    if (id.startsWith(_smartPrefix)) {
+      final groupId = id.substring(_smartPrefix.length);
+      final group = repo.smartGroups().where((g) => g.id == groupId).firstOrNull;
+      return _screen(
+        title: group?.label ?? 'Category',
+        subtitle: group == null ? null : '${group.count} items',
+        onBack: () => setState(() => _open = _categoriesId),
+        repo: repo,
+        child: _Grid(
+          repository: repo,
+          items: group?.items ?? const [],
+          onOpen: _openViewer,
+        ),
+      );
+    }
+
+    // A fixed or folder album.
+    final category = repo.categories.where((c) => c.id == id).firstOrNull;
+    // The album can vanish under us — a rescan after every WhatsApp photo
+    // was deleted, say. Falling back to the albums screen beats an empty
+    // page with a name on it.
+    if (category == null) {
+      _bounceBackTo(null);
+      return const SizedBox.shrink();
+    }
+    final items = _itemsFor(repo, id, () => itemsInCategory(category, repo.items));
+    return _screen(
+      title: category.label,
+      subtitle: items.length == 1 ? '1 item' : '${items.length} items',
+      onBack: () => setState(() => _open = null),
+      repo: repo,
+      child: _Grid(repository: repo, items: items, onOpen: _openViewer),
+    );
+  }
+
+  void _bounceBackTo(String? id) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _open = id);
+    });
+  }
+
+  Widget _screen({
+    required String title,
+    required String? subtitle,
+    required VoidCallback onBack,
+    required GalleryRepository repo,
+    required Widget child,
+  }) =>
+      Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _Header(
-            title: 'Smart albums',
-            subtitle: 'Included with Nova',
+            title: title,
+            subtitle: subtitle,
             repository: repo,
-            onBack: () => setState(() => _openAlbum = null),
+            onBack: onBack,
           ),
-          Expanded(child: _SmartUpsell(repo: repo)),
+          Expanded(child: child),
         ],
       );
-    }
 
-    final String label;
-    final List<GalleryItem> items;
+  // ------------------------------------------------------------- people
 
-    if (albumId.startsWith(_smartPrefix)) {
-      final id = albumId.substring(_smartPrefix.length);
-      final group = repo.smartGroups().where((g) => g.id == id).firstOrNull;
-      label = group?.label ?? 'Album';
-      // Smart groups are already memoised and sorted by the repository.
-      items = group?.items ?? const [];
-    } else {
-      final category =
-          repo.categories.where((c) => c.id == albumId).firstOrNull;
-      // The album can vanish under us — a rescan after every WhatsApp photo
-      // was deleted, say. Falling back to the albums screen beats an empty
-      // page with a name on it.
-      if (category == null) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) setState(() => _openAlbum = null);
-        });
-        return const SizedBox.shrink();
-      }
-      label = category.label;
-      items = _itemsFor(
-        repo,
-        albumId,
-        () => itemsInCategory(category, repo.items),
-      );
-    }
+  Widget _peopleIndexScreen(BuildContext context, GalleryRepository repo) {
+    final people = repo.peopleClusters();
+    return _screen(
+      title: 'People',
+      subtitle: people.isEmpty
+          ? null
+          : '${people.length} ${people.length == 1 ? 'person' : 'people'}',
+      onBack: () => setState(() => _open = null),
+      repo: repo,
+      child: people.isEmpty
+          ? Padding(
+              padding: const EdgeInsets.all(24),
+              child: LumaEmptyState(
+                icon: Icons.people_outline_rounded,
+                title: 'No one recognised yet',
+                subtitle: repo.isAnalysing
+                    ? 'Still sorting the library — people appear here once a '
+                        'face has turned up in a few photos.'
+                    : 'Sort the library from the albums screen and people who '
+                        'appear in a few photos together will show up here.',
+              ),
+            )
+          : _cardGrid(
+              sections: [
+                _CardSection(
+                  title: null,
+                  first: true,
+                  cards: [
+                    for (final person in people)
+                      _PersonCard(
+                        key: ValueKey(person.id),
+                        person: person,
+                        cover: repo.coverForPerson(person),
+                        repository: repo,
+                        onTap: () =>
+                            setState(() => _open = '$_peoplePrefix${person.id}'),
+                        onRename: () => _renamePerson(repo, person),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+    );
+  }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _Header(
-          title: label,
-          subtitle: items.length == 1 ? '1 item' : '${items.length} items',
-          repository: repo,
-          onBack: () => setState(() => _openAlbum = null),
-        ),
-        Expanded(
-          child: _Grid(repository: repo, items: items, onOpen: _open),
-        ),
-      ],
+  // ---------------------------------------------------------- memories
+
+  Widget _memoriesIndexScreen(BuildContext context, GalleryRepository repo) {
+    final memories = repo.memories();
+    return _screen(
+      title: 'Memories',
+      subtitle: memories.isEmpty
+          ? null
+          : '${memories.length} ${memories.length == 1 ? 'trip' : 'trips'}',
+      onBack: () => setState(() => _open = null),
+      repo: repo,
+      child: memories.isEmpty
+          ? const Padding(
+              padding: EdgeInsets.all(24),
+              child: LumaEmptyState(
+                icon: Icons.auto_awesome_motion_outlined,
+                title: 'No trips yet',
+                subtitle: 'A run of photos over a few busy days — a weekend '
+                    'away, a holiday — shows up here on its own. Nothing to '
+                    'set up, and it works without Nova.',
+              ),
+            )
+          : _cardGrid(
+              sections: [
+                _CardSection(
+                  title: null,
+                  first: true,
+                  cards: [
+                    for (final memory in memories)
+                      GalleryAlbumCard(
+                        key: ValueKey(memory.id),
+                        label: memory.label,
+                        icon: Icons.auto_awesome_motion_rounded,
+                        count: memory.count,
+                        cover: memory.cover,
+                        repository: repo,
+                        onTap: () => setState(
+                          () => _open = '$_memoriesPrefix${memory.id}',
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+    );
+  }
+
+  // -------------------------------------------------------- categories
+
+  Widget _categoriesIndexScreen(BuildContext context, GalleryRepository repo) {
+    final groups =
+        repo.smartGroups().where((g) => g.id != 'people').toList();
+    return _screen(
+      title: 'Categories',
+      subtitle: groups.isEmpty ? null : '${groups.length} categories',
+      onBack: () => setState(() => _open = null),
+      repo: repo,
+      child: groups.isEmpty
+          ? Padding(
+              padding: const EdgeInsets.all(24),
+              child: LumaEmptyState(
+                icon: Icons.category_outlined,
+                title: 'Nothing sorted yet',
+                subtitle: repo.isAnalysing
+                    ? 'Still looking through the library.'
+                    : 'Sort the library from the albums screen to fill '
+                        'these in.',
+              ),
+            )
+          : _cardGrid(
+              sections: [
+                _CardSection(
+                  title: null,
+                  first: true,
+                  cards: [
+                    for (final group in groups)
+                      GalleryAlbumCard(
+                        key: ValueKey(group.id),
+                        label: group.label,
+                        icon: group.icon,
+                        count: group.count,
+                        cover: group.items.isEmpty ? null : group.items.first,
+                        repository: repo,
+                        onTap: () => setState(
+                          () => _open = '$_smartPrefix${group.id}',
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
     );
   }
 }
 
-/// The page header, on both screens: a back arrow when there is somewhere to
+/// One section of the card grid: a heading (or none, for an index screen
+/// that is nothing but cards) and its cards, plus an optional block of extra
+/// content — the sort-progress card — that follows the last section.
+class _CardSection {
+  const _CardSection({
+    required this.title,
+    required this.cards,
+    this.first = false,
+    this.footer,
+  });
+
+  final String? title;
+  final List<Widget> cards;
+  final bool first;
+  final Widget? footer;
+}
+
+/// The page header, on every screen: a back arrow when there is somewhere to
 /// go back to, then the title, then the map and rescan actions.
 class _Header extends StatelessWidget {
   const _Header({
@@ -431,7 +725,7 @@ class _Header extends StatelessWidget {
         children: [
           if (onBack != null)
             IconButton(
-              tooltip: 'All albums',
+              tooltip: 'Back',
               onPressed: onBack,
               icon: Icon(Icons.arrow_back_rounded, color: luma.textSecondary),
             ),
@@ -495,7 +789,123 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// An album's contents: one section per day, newest first.
+/// One person's card on the People index screen: a circular avatar rather
+/// than the square covers everywhere else, so a face-based album reads as
+/// visibly different from a folder or a category at a glance.
+///
+/// The cover is a whole photo, not a crop of just the face — building a real
+/// face-cropped thumbnail would mean keeping each detection's box coordinates
+/// around after recognition, and they are deliberately discarded once a face
+/// has been embedded (see [PersonCluster]) to keep the per-photo cache a
+/// couple of integers rather than a float array. A circular frame around the
+/// whole photo is the honest middle ground.
+class _PersonCard extends StatelessWidget {
+  const _PersonCard({
+    super.key,
+    required this.person,
+    required this.cover,
+    required this.repository,
+    required this.onTap,
+    required this.onRename,
+  });
+
+  final PersonCluster person;
+  final GalleryItem? cover;
+  final GalleryRepository repository;
+  final VoidCallback onTap;
+  final VoidCallback onRename;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: onTap,
+            // A rename that only a long-press could reach is a rename no one
+            // finds — the pencil is a fallback, not the only way in.
+            onLongPress: onRename,
+            behavior: HitTestBehavior.opaque,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                ClipOval(
+                  child: Container(
+                    color: luma.surface,
+                    child: cover == null
+                        ? Icon(Icons.person_rounded,
+                            color: luma.textMuted, size: 32)
+                        : GalleryThumbnail(
+                            item: cover!,
+                            repository: repository,
+                            pixels: 256,
+                            placeholderSize: 28,
+                          ),
+                  ),
+                ),
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: _RenameButton(onTap: onRename),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          person.displayName,
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: luma.textPrimary,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 1),
+        Text(
+          person.count == 1 ? '1 item' : '${person.count} items',
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(color: luma.textMuted, fontSize: 11),
+        ),
+      ],
+    );
+  }
+}
+
+class _RenameButton extends StatelessWidget {
+  const _RenameButton({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Material(
+      color: luma.accent,
+      shape: const CircleBorder(),
+      child: InkWell(
+        // §2 touch-target-size: the visible dot is small, the tap area isn't.
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: const Padding(
+          padding: EdgeInsets.all(8),
+          child: Icon(Icons.edit_rounded, size: 13, color: Colors.white),
+        ),
+      ),
+    );
+  }
+}
+
+/// An album's contents: one section per day, newest first — except a memory,
+/// which hands its items in chronologically and stays that way (see
+/// [_GalleryPageState._routedScreen]'s memory branch).
 class _Grid extends StatefulWidget {
   const _Grid({
     required this.repository,
@@ -738,14 +1148,8 @@ class _ProgressNote extends StatelessWidget {
   }
 }
 
-/// Explains what fills the smart albums, and offers to do it.
-///
-/// The two halves of the answer differ by platform, and the difference is
-/// worth spelling out rather than leaving someone with 27 000 photos staring
-/// at a single Places card wondering what broke. Recognising *what is in* a
-/// photo needs Google's on-device models, which exist only on the phone
-/// builds. Recognising a photo's shape or where it was taken only needs its
-/// header — that works everywhere, but the headers have to be read first.
+/// Explains what fills People and Categories, and offers to do it. Memories
+/// needs none of this — it has nothing to download and nothing to run.
 class _SmartPrompt extends StatelessWidget {
   const _SmartPrompt({required this.repo});
 
@@ -764,8 +1168,7 @@ class _SmartPrompt extends StatelessWidget {
             Expanded(
               child: _ProgressNote(
                 label: repo.analysisStatus ??
-                    'Sorting photos into smart albums — '
-                        '${repo.analysedCount} of $total',
+                    'Sorting photos — ${repo.analysedCount} of $total',
                 progress: repo.analysisStatus != null
                     ? repo.analysisProgress
                     : (total == 0 ? null : repo.analysedCount / total),
@@ -806,7 +1209,7 @@ class _SmartPrompt extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Smart albums are up to date',
+                    'People and Categories are up to date',
                     style: TextStyle(
                       color: luma.textPrimary,
                       fontSize: 14,
@@ -836,12 +1239,18 @@ class _SmartPrompt extends StatelessWidget {
     final megabytes = (repo.smartModelBytes / (1024 * 1024)).round();
     final body = repo.analysisError ??
         (repo.smartModelsNeedDownload
-            // Desktop has no ML Kit, so the equivalent models are fetched on
-            // first use. Worth saying out loud what is being downloaded and
-            // that the photos stay put.
-            ? '$pending photos to look at. This downloads about $megabytes MB '
-                'of models once; after that everything happens on this PC, '
-                'offline — no photo is uploaded.'
+            // Every platform downloads something for this now — even the
+            // phone, which has ML Kit for labels but nothing for matching
+            // faces across photos.
+            ? repo.usesOnnxAnalysis
+                ? '$pending photos to look at. This downloads about '
+                    '$megabytes MB of models once (recognition and face '
+                    'matching); after that everything happens on this PC, '
+                    'offline — no photo is uploaded.'
+                : '$pending photos to look at. This downloads a small '
+                    '(~$megabytes MB) face-matching model once, so photos of '
+                    'the same person can be grouped — offline, and nothing '
+                    'is uploaded.'
             : '$pending photos still to look at. Runs on this device, '
                 'offline, and picks up where it left off.');
 
@@ -860,7 +1269,7 @@ class _SmartPrompt extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Smart albums',
+                  'People and Categories',
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 14,
@@ -893,7 +1302,8 @@ class _SmartPrompt extends StatelessWidget {
   }
 }
 
-/// What Core and Orbit see behind the Smart albums card.
+/// What Core and Orbit see behind People and Categories. Memories is never
+/// behind this — see the albums screen, where it's always its own card.
 class _SmartUpsell extends StatelessWidget {
   const _SmartUpsell({required this.repo});
 
@@ -905,14 +1315,15 @@ class _SmartUpsell extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       child: LumaEmptyState(
         icon: Icons.auto_awesome_rounded,
-        title: 'Smart albums are a Nova extra',
+        title: 'People and Categories are a Nova extra',
         subtitle: repo.smartModelsAvailable
-            ? 'Nova sorts your library by what is actually in the photos — '
-                'people, selfies, food, pets, nature, documents — using models '
-                'that run on this device, offline. Nothing is uploaded.'
-            : 'Nova sorts your library by what is in the photos. The models '
-                'run on the phone build; this device gets the panorama and '
-                'place albums.',
+            ? 'Nova groups your photos by who is in them and what is '
+                'actually in the picture — food, pets, ocean, and more — '
+                'using models that run on this device, offline. Nothing is '
+                'uploaded.'
+            : 'Nova groups your photos by what is in them. The full set of '
+                'categories needs the phone build\'s models; this device '
+                'still gets Panoramas and Places for free.',
         action: LumaPrimaryButton(
           label: 'Upgrade to ${planById('nova').name}',
           icon: Icons.auto_awesome_rounded,

@@ -92,8 +92,9 @@ Card Wallet (loyalty/membership passes) ·
 File Tree (disk space analyzer) · File Viewer (PDF/Word/Excel/image/text
 viewer) · Price Tracker (price-history graphs from a pasted product URL) ·
 Worth Counter (a tally counter that keeps a running total of what you've
-counted) · Cloud Files (encrypted file sync) · YouTube Downloader ·
-Auto Clicker · Wi-Fi Speed Test
+counted) · Cloud Files (encrypted file sync) ·
+Media Downloader (YouTube video/audio, plus Spotify tracks via a YouTube
+match) · Auto Clicker · Wi-Fi Speed Test
 
 **Productivity** — Errand Manager (recurring chore checklist) · Bulletin
 Board (freeform corkboard) · Calendar (month view, repeat rules, reminders)

@@ -29,6 +29,7 @@ class GalleryCacheEntry {
     this.detailsRead = false,
     this.width,
     this.height,
+    this.personIds = const [],
   });
 
   final double? latitude;
@@ -60,6 +61,13 @@ class GalleryCacheEntry {
   /// empty albums with no hint as to why.
   final bool skipped;
 
+  /// Which [PersonCluster]s this photo's faces were assigned to. Only the
+  /// ids live here — the fingerprints themselves are discarded once a face
+  /// has been placed, and the clusters' running centroids live in
+  /// `GalleryPeopleStore`, so this stays a couple of small integers per
+  /// photo rather than a float vector per face.
+  final List<int> personIds;
+
   bool get hasLocation => latitude != null && longitude != null;
 
   Map<String, dynamic> toJson() => {
@@ -72,6 +80,7 @@ class GalleryCacheEntry {
         if (detailsRead) 'read': true,
         if (width != null) 'w': width,
         if (height != null) 'h': height,
+        if (personIds.isNotEmpty) 'people': personIds,
       };
 
   factory GalleryCacheEntry.fromJson(Map<String, dynamic> json) =>
@@ -92,6 +101,10 @@ class GalleryCacheEntry {
         detailsRead: json['read'] == true,
         width: (json['w'] as num?)?.toInt(),
         height: (json['h'] as num?)?.toInt(),
+        personIds: [
+          for (final id in (json['people'] as List<dynamic>? ?? const []))
+            (id as num).toInt(),
+        ],
       );
 
   GalleryCacheEntry copyWith({
@@ -104,6 +117,7 @@ class GalleryCacheEntry {
     bool? detailsRead,
     int? width,
     int? height,
+    List<int>? personIds,
   }) =>
       GalleryCacheEntry(
         latitude: latitude ?? this.latitude,
@@ -115,6 +129,7 @@ class GalleryCacheEntry {
         detailsRead: detailsRead ?? this.detailsRead,
         width: width ?? this.width,
         height: height ?? this.height,
+        personIds: personIds ?? this.personIds,
       );
 }
 

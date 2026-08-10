@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:http/http.dart' as http;
@@ -96,7 +97,7 @@ class YtDlpException implements Exception {
 }
 
 /// Downloads, locates, and drives the yt-dlp / ffmpeg binaries used by the
-/// YouTube Downloader plugin. Nothing is bundled with the app: on first use
+/// Media Downloader plugin. Nothing is bundled with the app: on first use
 /// the current yt-dlp binary is pulled from its GitHub release and (on
 /// Windows) a static ffmpeg build is pulled and unzipped, both cached under
 /// the app's support directory so this only happens once. On Linux ffmpeg is
@@ -390,6 +391,66 @@ class YtDlpManager {
       eta: m.group(4),
       rawLine: line,
     );
+  }
+
+  /// Rewrites an already-downloaded audio file's title/artist tags and
+  /// (for mp3/m4a) embeds a cover image, via ffmpeg. Used after a
+  /// Spotify-sourced download so the file carries the real track metadata
+  /// instead of whatever the matched YouTube video was titled. Best-effort:
+  /// on any failure the original file is left untouched.
+  Future<void> tagAudioFile({
+    required String filePath,
+    required String title,
+    String? artist,
+    Uint8List? coverImageBytes,
+  }) async {
+    final file = File(filePath);
+    if (!await file.exists()) return;
+
+    final ext = filePath.split('.').last.toLowerCase();
+    final supportsCover = ext == 'mp3' || ext == 'm4a';
+    final ffmpeg = _isWindows ? await _ffmpegPath : _ffmpegExe;
+
+    File? coverFile;
+    if (supportsCover && coverImageBytes != null && coverImageBytes.isNotEmpty) {
+      coverFile = File('$filePath.cover.jpg');
+      await coverFile.writeAsBytes(coverImageBytes);
+    }
+
+    final tmpPath = '$filePath.tagged.$ext';
+    final args = <String>['-y', '-i', filePath];
+    if (coverFile != null) {
+      args.addAll([
+        '-i', coverFile.path,
+        '-map', '0:a',
+        '-map', '1:0',
+        '-disposition:v', 'attached_pic',
+      ]);
+    }
+    args.addAll(['-c', 'copy']);
+    if (ext == 'mp3') args.addAll(['-id3v2_version', '3']);
+    args.addAll(['-metadata', 'title=$title']);
+    if (artist != null && artist.isNotEmpty) {
+      args.addAll(['-metadata', 'artist=$artist']);
+    }
+    args.add(tmpPath);
+
+    try {
+      final result = await Process.run(ffmpeg, args);
+      final tmpFile = File(tmpPath);
+      if (result.exitCode == 0 && await tmpFile.exists()) {
+        await file.delete();
+        await tmpFile.rename(filePath);
+      } else if (await tmpFile.exists()) {
+        await tmpFile.delete();
+      }
+    } catch (_) {
+      // Best-effort — leave the original file as downloaded.
+    } finally {
+      if (coverFile != null && await coverFile.exists()) {
+        await coverFile.delete();
+      }
+    }
   }
 
   String _cleanError(String stderr) {
