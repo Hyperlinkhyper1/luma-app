@@ -102,6 +102,33 @@ void main() {
       expect(bucketsFromScores(List<double>.filled(1000, 1)), isEmpty);
     });
 
+    test('a photo can join more than one album from one pass', () {
+      // A dog on a beach splits its confidence between the breed and the
+      // scene; both are albums a person would look for it in, so the ranking
+      // is walked rather than only its top entry.
+      final logits = List<double>.filled(1000, 0);
+      logits[207] = 6; // golden retriever
+      logits[978] = 5.6; // seashore
+      final buckets = bucketsFromScores(logits);
+      expect(buckets, containsAll(<String>['Pets', 'Nature']));
+    });
+
+    test('the ranking stops at the first class below the floor', () {
+      // Only the leader is credible here; the runners-up must not drag their
+      // albums in behind it.
+      final logits = List<double>.filled(1000, 0);
+      logits[963] = 20; // pizza, overwhelming
+      logits[207] = 1; // a distant second
+      expect(bucketsFromScores(logits), <String>{'Food'});
+    });
+
+    test('only the top few are considered, however many map', () {
+      // Every class equally likely except a slight ordering: nothing clears
+      // the floor, so no album gets everything in the library.
+      final logits = [for (var i = 0; i < 1000; i++) 1 - i * 0.0001];
+      expect(bucketsFromScores(logits), isEmpty);
+    });
+
     test('an unmapped class wins without creating an album', () {
       expect(bucketsFromScores(_logitsFavouring(999)), isEmpty);
     });

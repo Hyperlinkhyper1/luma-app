@@ -389,6 +389,50 @@ void main() {
     expect(source.startedThumbnails, 1);
   });
 
+  testWidgets('a finished pass reports what it managed instead of vanishing',
+      (tester) async {
+    // The button disappearing with almost-empty albums behind it reads as a
+    // bug. When there is nothing left to do, the card says what happened —
+    // including how much it could not read, which on a cloud library is most
+    // of it.
+    final repository = await _pump(tester, plan: 'nova');
+
+    await tester.runAsync(() => repository.analyseSmart());
+    await tester.pumpAndSettle();
+
+    expect(repository.pendingAnalysis, 0);
+    expect(find.text('Smart albums are up to date'), findsOneWidget);
+    expect(find.text('Look again'), findsOneWidget);
+  });
+
+  testWidgets('photos that could not be read are counted as skipped, not done',
+      (tester) async {
+    // The host platform has no ONNX models, so every photo is skipped —
+    // exactly the shape of a library that is entirely in the cloud.
+    final repository = await _pump(tester, plan: 'nova');
+    await tester.runAsync(() => repository.analyseSmart());
+    await tester.pumpAndSettle();
+
+    final photos = repository.items.where((i) => !i.isVideo).length;
+    expect(repository.skippedAnalysis + repository.examinedAnalysis, photos);
+    expect(repository.skippedAnalysis, greaterThan(0));
+    expect(find.textContaining('skipped'), findsOneWidget);
+  });
+
+  testWidgets('looking again clears the verdicts and starts over',
+      (tester) async {
+    final repository = await _pump(tester, plan: 'nova');
+    await tester.runAsync(() => repository.analyseSmart());
+    await tester.pumpAndSettle();
+    expect(repository.pendingAnalysis, 0);
+
+    await tester.runAsync(() => repository.reanalyseAll());
+    await tester.pumpAndSettle();
+    // It ran again rather than finding nothing to do.
+    expect(repository.examinedAnalysis + repository.skippedAnalysis,
+        greaterThan(0));
+  });
+
   testWidgets('the albums grid lays out three-up on a narrow phone',
       (tester) async {
     tester.view.physicalSize = const Size(1080, 2220);

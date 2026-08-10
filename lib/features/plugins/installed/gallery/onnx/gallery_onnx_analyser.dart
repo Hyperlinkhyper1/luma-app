@@ -87,10 +87,12 @@ class GalleryOnnxAnalyser {
     Uint8List bytes,
     GalleryCacheEntry previous,
   ) async {
-    if (!ready) return previous.copyWith(analysed: true);
+    if (!ready) return previous.copyWith(analysed: true, skipped: true);
     try {
       final decoded = img.decodeImage(bytes);
-      if (decoded == null) return previous.copyWith(analysed: true);
+      if (decoded == null) {
+        return previous.copyWith(analysed: true, skipped: true);
+      }
 
       final verdict = await run(decoded);
       return previous.copyWith(
@@ -264,20 +266,34 @@ img.Image _centreSquare(img.Image image, int size) {
   );
 }
 
-/// How sure the classifier must be before a photo joins an album. ImageNet
-/// models are confident when they are right and spread thin when they aren't,
-/// so a plain probability floor separates the two well.
-const classifierThreshold = 0.22;
+/// How sure the classifier must be before a photo joins an album.
+///
+/// Spread over a thousand classes, a correct answer is often only 0.15–0.4 —
+/// a 1000-way softmax rarely produces the 0.9 a binary classifier would. A
+/// floor set for the latter is why a 23 000-photo library first produced
+/// albums with three items in them.
+const classifierThreshold = 0.10;
+
+/// How far down the ranking to look. The right answer for a photo of a dog on
+/// a beach might be split between several dog breeds and "seashore", none of
+/// them individually dominant, and both albums are ones a person would want
+/// it in.
+const classifierTopK = 5;
 
 /// The albums a classifier output belongs to. [scores] are the raw logits;
-/// the softmax and the mapping happen here.
+/// the softmax, the ranking and the mapping happen here.
 Set<String> bucketsFromScores(List<double> scores) {
   if (scores.isEmpty) return {};
   final probabilities = softmax(scores);
+
+  // Rank the classes, then walk the best few.
+  final ranked = List<int>.generate(probabilities.length, (i) => i)
+    ..sort((a, b) => probabilities[b].compareTo(probabilities[a]));
+
   final buckets = <String>{};
-  for (var i = 0; i < probabilities.length; i++) {
-    if (probabilities[i] < classifierThreshold) continue;
-    final bucket = bucketForImagenetClass(i);
+  for (final index in ranked.take(classifierTopK)) {
+    if (probabilities[index] < classifierThreshold) break;
+    final bucket = bucketForImagenetClass(index);
     if (bucket != null) buckets.add(bucket);
   }
   return buckets;

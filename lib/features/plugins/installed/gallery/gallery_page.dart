@@ -784,8 +784,53 @@ class _SmartPrompt extends StatelessWidget {
         ),
       );
     }
-    if (!repo.smartModelsAvailable || pending == 0) {
-      return const SizedBox.shrink();
+    if (!repo.smartModelsAvailable) return const SizedBox.shrink();
+
+    // Nothing left to do. Rather than the card simply vanishing — which reads
+    // as the button having broken — say what the pass managed, because on a
+    // cloud-backed library "skipped" can be most of it.
+    if (pending == 0) {
+      final examined = repo.examinedAnalysis;
+      final skipped = repo.skippedAnalysis;
+      if (examined == 0 && skipped == 0) return const SizedBox.shrink();
+      return LumaCard(
+        child: Row(
+          children: [
+            LumaIconBadge(
+              icon: Icons.done_rounded,
+              color: luma.accent,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Smart albums are up to date',
+                    style: TextStyle(
+                      color: luma.textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    skipped == 0
+                        ? 'Looked at $examined photos.'
+                        : 'Looked at $examined photos. $skipped were skipped '
+                            'because they are only in the cloud, or in a '
+                            'format that can\'t be read here — make them '
+                            'available offline and look again.',
+                    style: TextStyle(color: luma.textSecondary, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            LumaGhostButton(label: 'Look again', onTap: repo.reanalyseAll),
+          ],
+        ),
+      );
     }
 
     final megabytes = (repo.smartModelBytes / (1024 * 1024)).round();

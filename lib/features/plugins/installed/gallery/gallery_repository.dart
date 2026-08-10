@@ -72,6 +72,43 @@ class GalleryRepository extends ChangeNotifier {
       .where((i) => !i.isVideo && !(_cache[i.cacheKey]?.analysed ?? false))
       .length;
 
+  /// How many the pass reached but couldn't read — cloud placeholders, and
+  /// formats the decoder doesn't handle. Reported rather than hidden: on a
+  /// library that lives mostly in OneDrive this is the difference between
+  /// "the models found nothing" and "the models never saw your photos".
+  int get skippedAnalysis => _items
+      .where((i) => !i.isVideo && (_cache[i.cacheKey]?.skipped ?? false))
+      .length;
+
+  /// How many were actually looked at.
+  int get examinedAnalysis => _items.where((i) {
+        final entry = _cache[i.cacheKey];
+        if (entry == null || i.isVideo) return false;
+        return entry.analysed && !entry.skipped;
+      }).length;
+
+  /// Forgets every verdict and runs the pass again — after the models have
+  /// been improved, or after cloud photos have been made available offline.
+  Future<void> reanalyseAll() async {
+    if (_analysing) return;
+    for (final item in _items) {
+      final entry = _cache[item.cacheKey];
+      if (entry == null || !entry.analysed) continue;
+      _cache.put(
+        item.cacheKey,
+        entry.copyWith(
+          analysed: false,
+          skipped: false,
+          labels: const [],
+          faceCount: 0,
+        ),
+      );
+    }
+    _smartVersion++;
+    notifyListeners();
+    await analyseSmart();
+  }
+
   /// First call does everything: reads the cache, asks for access, scans, and
   /// kicks off the location pass. Later calls are a no-op unless [force].
   Future<void> initialise({bool force = false}) async {
