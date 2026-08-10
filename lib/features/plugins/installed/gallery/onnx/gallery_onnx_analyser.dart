@@ -18,7 +18,7 @@ class OnnxVerdict {
 
   /// Detected faces, as fractions of the frame's short edge — enough to tell
   /// a selfie (one big face) from a group shot (several small ones).
-  final List<double> faces;
+  final List<GalleryFace> faces;
 }
 
 /// The desktop half of the smart albums: the same two jobs ML Kit does on the
@@ -138,7 +138,7 @@ class GalleryOnnxAnalyser {
     }
   }
 
-  Future<List<double>> _detectFaces(img.Image image) async {
+  Future<List<GalleryFace>> _detectFaces(img.Image image) async {
     final session = _faceDetector;
     if (session == null) return const [];
 
@@ -150,19 +150,23 @@ class GalleryOnnxAnalyser {
     try {
       outputs = await session.run({session.inputNames.first: input});
       // UltraFace emits two tensors: per-anchor confidences (background,
-      // face) and per-anchor boxes. Their order in outputNames isn't
-      // guaranteed, so they're told apart by shape: 2 values per anchor
-      // against 4.
+      // face) at [1, anchors, 2] and per-anchor boxes at [1, anchors, 4].
+      // Their order in outputNames isn't guaranteed, so they are told apart
+      // by the last dimension of their shape.
+      //
+      // Not by their flattened length: 4420 anchors × 2 scores is 8840, which
+      // divides by four just as neatly as the boxes do, so counting values
+      // gets it backwards. The shape is unambiguous.
       List<double>? scores;
       List<double>? boxes;
-      for (final entry in outputs.entries) {
-        final flat = await entry.value.asFlattenedList();
-        final values = [for (final v in flat) (v as num).toDouble()];
-        final perAnchor = values.length ~/ math.max(1, _anchorCount(values));
-        if (perAnchor == 2 || entry.key.toLowerCase().contains('score')) {
-          scores ??= values;
-        } else {
-          boxes ??= values;
+      for (final value in outputs.values) {
+        final flat = await value.asFlattenedList();
+        final numbers = [for (final v in flat) (v as num).toDouble()];
+        final trailing = value.shape.isEmpty ? 0 : value.shape.last;
+        if (trailing == 2) {
+          scores ??= numbers;
+        } else if (trailing == 4) {
+          boxes ??= numbers;
         }
       }
       if (scores == null || boxes == null) return const [];
@@ -174,11 +178,6 @@ class GalleryOnnxAnalyser {
       }
     }
   }
-
-  /// Both output tensors share an anchor count; whichever divides evenly by
-  /// both 2 and 4 is resolved by taking the larger divisor.
-  int _anchorCount(List<double> values) =>
-      values.length % 4 == 0 ? values.length ~/ 4 : values.length ~/ 2;
 
   Future<void> dispose() async {
     await _classifier?.close();
@@ -304,7 +303,23 @@ List<double> softmax(List<double> logits) {
 }
 
 /// A detection has to beat this to count as a face.
-const faceThreshold = 0.7;
+///
+/// UltraFace is a 1 MB model and it is generous: at the 0.7 the reference
+/// code uses it will find a face in a plate of eggs. Since a false positive
+/// here doesn't just mislabel one photo but drops it into the People album —
+/// and a lone big one makes it a "selfie" — the bar is set high. Missing a
+/// face in a dim group shot is the cheaper mistake.
+const faceThreshold = 0.9;
+
+/// A face has to be at least this wide, as a fraction of the frame. Below it
+/// the detector is picking texture out of the background.
+const minimumFaceWidth = 0.04;
+
+/// Real faces are roughly as tall as they are wide — between these, allowing
+/// for hair, chins and a tilted head. Spurious boxes tend to be long thin
+/// slivers of pattern, and this is what rejects them.
+const minimumFaceAspect = 0.7;
+const maximumFaceAspect = 2.2;
 
 /// Two boxes overlapping by more than this are the same face seen by two
 /// anchors.
@@ -316,7 +331,7 @@ const faceOverlapThreshold = 0.35;
 /// [scores] is `anchors × 2` — background first, then face. [boxes] is
 /// `anchors × 4` — left, top, right, bottom, already in 0..1. Overlapping
 /// detections are merged, because every face lights up several anchors.
-List<double> facesFromOutputs(List<double> scores, List<double> boxes) {
+List<GalleryFace> facesFromOutputs(List<double> scores, List<double> boxes) {
   final anchors = math.min(scores.length ~/ 2, boxes.length ~/ 4);
   final found = <_Detection>[];
 
@@ -328,6 +343,13 @@ List<double> facesFromOutputs(List<double> scores, List<double> boxes) {
     final right = boxes[i * 4 + 2];
     final bottom = boxes[i * 4 + 3];
     if (right <= left || bottom <= top) continue;
+
+    final width = right - left;
+    final height = bottom - top;
+    if (width < minimumFaceWidth) continue;
+    final aspect = height / width;
+    if (aspect < minimumFaceAspect || aspect > maximumFaceAspect) continue;
+
     found.add(_Detection(confidence, left, top, right, bottom));
   }
 
@@ -345,13 +367,43 @@ List<double> facesFromOutputs(List<double> scores, List<double> boxes) {
     if (!overlaps) kept.add(candidate);
   }
 
-  return [for (final face in kept) face.right - face.left];
+  return [
+    for (final face in kept)
+      GalleryFace(
+        width: face.right - face.left,
+        centreX: (face.left + face.right) / 2,
+        centreY: (face.top + face.bottom) / 2,
+      ),
+  ];
 }
 
-/// One face filling a good part of the frame is how a selfie looks to a
-/// detector — the arm is only so long.
-bool isSelfieShaped(List<double> faceWidths) =>
-    faceWidths.length == 1 && faceWidths.first >= 0.30;
+/// Where a face sits in the frame and how much of it it fills, both as
+/// fractions of the frame.
+@immutable
+class GalleryFace {
+  const GalleryFace({
+    required this.width,
+    required this.centreX,
+    required this.centreY,
+  });
+
+  final double width;
+  final double centreX;
+  final double centreY;
+}
+
+/// One big face near the middle of the frame is how a selfie looks to a
+/// detector — the arm is only so long, and people point the camera at
+/// themselves. Requiring the position as well as the size is what keeps a
+/// stray detection in the corner of a landscape from being called one.
+bool isSelfieShaped(List<GalleryFace> faces) {
+  if (faces.length != 1) return false;
+  final face = faces.first;
+  return face.width >= 0.28 &&
+      face.centreX > 0.2 &&
+      face.centreX < 0.8 &&
+      face.centreY < 0.85;
+}
 
 class _Detection {
   const _Detection(
