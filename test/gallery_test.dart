@@ -1,5 +1,6 @@
-import 'dart:typed_data';
+import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:luma/features/plugins/installed/gallery/gallery_cache.dart';
@@ -8,6 +9,7 @@ import 'package:luma/features/plugins/installed/gallery/gallery_exif.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_map_page.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_media.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_smart.dart';
+import 'package:luma/features/plugins/installed/gallery/gallery_source_folders.dart';
 
 GalleryItem item({
   required String name,
@@ -18,6 +20,7 @@ GalleryItem item({
   int height = 3000,
   double? latitude,
   double? longitude,
+  bool cloudOnly = false,
 }) =>
     GalleryItem(
       id: '$folder/$name',
@@ -29,6 +32,7 @@ GalleryItem item({
       height: height,
       latitude: latitude,
       longitude: longitude,
+      cloudOnly: cloudOnly,
     );
 
 void main() {
@@ -156,6 +160,50 @@ void main() {
       expect(
         categories.firstWhere((c) => c.label == 'Downloads').cover?.name,
         'newest.jpg',
+      );
+    });
+
+    test('a cover prefers a local photo over a newer cloud placeholder', () {
+      // A cloud placeholder has no thumbnail — asking for one would download
+      // the file — so it must not win the cover slot from a photo that can
+      // actually be shown.
+      final categories = buildCategories([
+        item(
+          name: 'local.jpg',
+          folder: 'OneDrive/Holidays',
+          takenAt: DateTime(2024, 1, 1),
+        ),
+        item(
+          name: 'in-the-cloud.jpg',
+          folder: 'OneDrive/Holidays',
+          takenAt: DateTime(2026, 6, 6),
+          cloudOnly: true,
+        ),
+      ]);
+      expect(
+        categories.firstWhere((c) => c.label == 'Holidays').cover?.name,
+        'local.jpg',
+      );
+    });
+
+    test('an all-cloud album still gets a cover', () {
+      final categories = buildCategories([
+        item(
+          name: 'a.jpg',
+          folder: 'OneDrive/Holidays',
+          takenAt: DateTime(2024),
+          cloudOnly: true,
+        ),
+        item(
+          name: 'b.jpg',
+          folder: 'OneDrive/Holidays',
+          takenAt: DateTime(2026),
+          cloudOnly: true,
+        ),
+      ]);
+      expect(
+        categories.firstWhere((c) => c.label == 'Holidays').cover?.name,
+        'b.jpg',
       );
     });
 
@@ -371,6 +419,86 @@ void main() {
         img.encodeJpg(img.Image(width: 4, height: 4)),
       );
       expect(parseJpegMetadata(plain), isNull);
+    });
+  });
+
+  group('cloud placeholders', () {
+    // OneDrive's Files On-Demand leaves a file listed in the folder while its
+    // contents sit online. Reading one downloads it, so the desktop source
+    // must refuse — a gallery that thumbnails everything it finds would drag
+    // someone's whole cloud library onto their disk. Each test here pairs the
+    // guarded call with the identical unguarded one, so it fails if the guard
+    // is dropped rather than passing because the file was unreadable anyway.
+    late Directory temp;
+    late FolderGallerySource source;
+
+    setUp(() async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      temp = await Directory.systemTemp.createTemp('luma_gallery');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('plugins.flutter.io/path_provider'),
+        (call) async => temp.path,
+      );
+      source = FolderGallerySource();
+    });
+
+    tearDown(() async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('plugins.flutter.io/path_provider'),
+        null,
+      );
+      source.dispose();
+      if (temp.existsSync()) await temp.delete(recursive: true);
+    });
+
+    GalleryItem onDisk(String name, {required bool cloudOnly}) => GalleryItem(
+          id: '$name#${cloudOnly ? 'cloud' : 'local'}',
+          name: name,
+          type: GalleryMediaType.image,
+          folder: 'OneDrive/Pictures',
+          takenAt: DateTime(2026, 3, 3),
+          path: '${temp.path}${Platform.pathSeparator}$name',
+          cloudOnly: cloudOnly,
+        );
+
+    test('no thumbnail is decoded for a file that lives in the cloud',
+        () async {
+      final file = File('${temp.path}${Platform.pathSeparator}photo.jpg')
+        ..writeAsBytesSync(img.encodeJpg(img.Image(width: 64, height: 64)));
+      expect(file.existsSync(), isTrue);
+
+      // The same readable file, twice: only the flag differs.
+      expect(
+        await source.thumbnail(onDisk('photo.jpg', cloudOnly: false), 64),
+        isNotNull,
+        reason: 'a local photo should still get a thumbnail',
+      );
+      expect(
+        await source.thumbnail(onDisk('photo.jpg', cloudOnly: true), 64),
+        isNull,
+        reason: 'reading a placeholder would download it',
+      );
+    });
+
+    test('no EXIF is read from a file that lives in the cloud', () async {
+      final bytes = _jpegWithGps(
+        latitude: [52, 22, 23],
+        latitudeRef: 'N',
+        longitude: [4, 53, 32],
+        longitudeRef: 'E',
+      );
+      File('${temp.path}${Platform.pathSeparator}geo.jpg')
+          .writeAsBytesSync(bytes);
+
+      final local = await source.enrich(onDisk('geo.jpg', cloudOnly: false));
+      expect(local.hasLocation, isTrue,
+          reason: 'a local photo should still land on the map');
+
+      final cloud = await source.enrich(onDisk('geo.jpg', cloudOnly: true));
+      expect(cloud.hasLocation, isFalse,
+          reason: 'a placeholder has no pin rather than being downloaded');
     });
   });
 

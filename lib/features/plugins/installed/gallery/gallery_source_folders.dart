@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 
+import 'gallery_cloud_files.dart';
 import 'gallery_exif.dart';
 import 'gallery_media.dart';
 import 'gallery_source.dart';
@@ -151,7 +152,10 @@ class FolderGallerySource extends GallerySource {
         // detail view reads the real capture time when a photo is opened.
         takenAt: stat.modified,
         path: entry.path,
+        // stat() is safe on a placeholder — it reports the real size without
+        // fetching anything.
         sizeBytes: stat.size,
+        cloudOnly: CloudFiles.isCloudOnly(entry.path),
       ));
     }
   }
@@ -205,6 +209,10 @@ class FolderGallerySource extends GallerySource {
   @override
   Future<GalleryItem> enrich(GalleryItem item) async {
     if (item.isVideo || item.hasLocation) return item;
+    // Reading the EXIF header means opening the file, which for a cloud
+    // placeholder means downloading it. A photo that isn't on this disk
+    // simply doesn't get a pin on the map.
+    if (item.cloudOnly) return item;
     final path = item.path ?? item.id;
     final metadata = await readJpegMetadata(File(path));
     if (metadata == null || metadata.latitude == null) return item;
@@ -220,6 +228,12 @@ class FolderGallerySource extends GallerySource {
     // in ffmpeg for a thumbnail isn't worth it — the converter already
     // treats an ffmpeg binary as optional.
     if (item.isVideo) return null;
+
+    // The whole point of the placeholder check: decoding a thumbnail reads
+    // the file, and reading a cloud placeholder downloads it. Scrolling past
+    // a OneDrive folder must not move someone's library onto their disk, so
+    // these get the cloud badge rather than a picture.
+    if (item.cloudOnly) return null;
 
     final cached = _memoryThumbs[item.cacheKey];
     if (cached != null) return cached;
