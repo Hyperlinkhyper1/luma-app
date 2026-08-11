@@ -7,6 +7,7 @@ import '../logic/mod_dependency_resolver.dart';
 import '../logic/mod_installer.dart';
 import '../logic/modrinth_api_client.dart';
 import '../minecraft_launcher_repository.dart';
+import 'hover_sync_scroll.dart';
 
 class ProjectDetailPage extends StatefulWidget {
   const ProjectDetailPage({
@@ -156,7 +157,8 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
 
   Widget _buildBody(LumaPalette luma) {
     final project = _project!;
-    return ListView(
+    return HoverSyncScroll(
+      child: ListView(
       padding: const EdgeInsets.all(24),
       children: [
         Row(
@@ -226,6 +228,7 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
               ),
             ),
       ],
+      ),
     );
   }
 }

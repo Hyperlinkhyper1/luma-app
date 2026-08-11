@@ -6,6 +6,7 @@ import '../../../../../app/widgets.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../logic/launcher_settings_store.dart';
 import '../logic/mc_paths.dart';
+import 'hover_sync_scroll.dart';
 
 class SettingsTab extends StatefulWidget {
   const SettingsTab({super.key});
@@ -53,7 +54,8 @@ class _SettingsTabState extends State<SettingsTab> {
     final luma = context.luma;
     if (!_loaded) return const Center(child: CircularProgressIndicator(strokeWidth: 2.4));
 
-    return ListView(
+    return HoverSyncScroll(
+      child: ListView(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
       children: [
         Text(
@@ -134,6 +136,7 @@ class _SettingsTabState extends State<SettingsTab> {
           ),
         ),
       ],
+      ),
     );
   }
 }
