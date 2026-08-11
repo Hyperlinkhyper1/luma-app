@@ -22,6 +22,7 @@ import '../features/plugins/installed/file_viewer/file_viewer_page.dart';
 import '../features/plugins/installed/groceries/groceries_page.dart';
 import '../features/plugins/installed/minecraft_launcher/minecraft_launcher_page.dart';
 import '../features/plugins/installed/mood_journal/mood_journal_page.dart';
+import '../features/plugins/installed/nfc_tag_editor/nfc_tag_editor_page.dart';
 import '../features/plugins/installed/bulletin_board/bulletin_board_page.dart';
 import '../features/plugins/installed/price_tracker/price_tracker_page.dart';
 import '../features/plugins/installed/qr_code_generator/qr_code_generator_page.dart';
@@ -30,6 +31,7 @@ import '../features/plugins/installed/secure_chat/secure_chat_page.dart';
 import '../features/plugins/installed/server_tycoon/server_tycoon_page.dart';
 import '../features/plugins/installed/space_colony/space_colony_page.dart';
 import '../features/plugins/installed/subway_builder/subway_builder_page.dart';
+import '../features/plugins/installed/transport_tracker/transport_tracker_page.dart';
 import '../features/plugins/installed/usage/usage_page.dart';
 import '../features/plugins/installed/wifi_speed_test/wifi_speed_test_page.dart';
 import '../features/plugins/installed/worth_counter/worth_counter_page.dart';
@@ -142,7 +144,11 @@ class _AppShellState extends State<AppShell> {
   // full-canvas games): on phone, the top title bar and bottom nav just eat
   // space the game desperately needs, so they're hidden and replaced with a
   // single floating back button instead.
-  static const _phoneImmersivePlugins = {'subway-builder', 'server-tycoon'};
+  static const _phoneImmersivePlugins = {
+    'subway-builder',
+    'server-tycoon',
+    'transport-tracker',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -347,6 +353,7 @@ class _AppShellState extends State<AppShell> {
         'server-tycoon' => const ServerTycoonPage(),
         'space-colony' => const SpaceColonyPage(),
         'subway-builder' => const SubwayBuilderPage(),
+        'transport-tracker' => const TransportTrackerPage(),
         'city-planner' => const CityPlannerPage(),
         'mood-journal' => const MoodJournalPage(),
         'youtube-downloader' => const MediaDownloaderPage(),
@@ -360,6 +367,7 @@ class _AppShellState extends State<AppShell> {
         'recipe-book' => const RecipeBookPage(),
         'worth-counter' => const WorthCounterPage(),
         'gallery' => const GalleryPage(),
+        'nfc-tag-editor' => const NfcTagEditorPage(),
         _ => LumaEmptyState(
             icon: Icons.extension_off_rounded,
             title: t.shellPluginUnavailable,

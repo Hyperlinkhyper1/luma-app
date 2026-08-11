@@ -125,11 +125,11 @@
       "id": "youtube-downloader",
       "name": "Media Downloader",
       "description": "Paste a YouTube link and download the video or just the audio, with full control over resolution, bitrate, and output format. Paste a Spotify track link and luma finds and downloads the matching audio from YouTube, tagged with the real title, artist, and cover art. Keeps a history of everything you've downloaded.",
-      "icon": "download",
+      "icon": "video_library",
       "category": "Utility",
       "tags": ["Utility", "Media"],
       "free": true,
-      "version": "1.1.0"
+      "version": "1.1.1"
     },
     {
       "id": "subway-builder",
@@ -259,6 +259,26 @@
       "icon": "photo_library",
       "category": "Utility",
       "tags": ["Utility", "Photos"],
+      "free": true,
+      "version": "1.0.1"
+    },
+    {
+      "id": "transport-tracker",
+      "name": "Transport Tracker",
+      "description": "Live ship tracking on a real-world map, like MarineTraffic or VesselFinder. Pans and zooms freely; track the current view to see nearby vessels update live with speed, course, type and destination, fed by your own free AISStream.io API key.",
+      "icon": "directions_boat",
+      "category": "Utility",
+      "tags": ["Utility", "Travel"],
+      "free": true,
+      "version": "1.0.0"
+    },
+    {
+      "id": "nfc-tag-editor",
+      "name": "NFC Tag Editor",
+      "description": "Scan any NFC tag and rewrite what's on it: plain text, links, phone numbers, email, Wi-Fi details, contact cards and app shortcuts. Reorder, duplicate or delete records, save a set as a reusable template for writing a whole batch of stickers, lock a tag permanently read-only, and keep a full history of everything you've scanned or written. Android only.",
+      "icon": "nfc",
+      "category": "Utility",
+      "tags": ["Utility"],
       "free": true,
       "version": "1.0.0"
     },

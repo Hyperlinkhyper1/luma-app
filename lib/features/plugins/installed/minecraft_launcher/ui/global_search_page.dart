@@ -8,6 +8,7 @@ import '../data/minecraft_launcher_database.dart';
 import '../logic/modrinth_api_client.dart';
 import '../minecraft_launcher_repository.dart';
 import '../minecraft_launcher_scope.dart';
+import 'hover_sync_scroll.dart';
 import 'instance_detail_page.dart';
 import 'project_detail_page.dart';
 
@@ -112,7 +113,8 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
           onChanged: _onChanged,
         ),
       ),
-      body: ListView(
+      body: HoverSyncScroll(
+        child: ListView(
         padding: const EdgeInsets.all(24),
         children: [
           StreamBuilder<List<McInstance>>(
@@ -208,6 +210,7 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
                 ),
           ],
         ],
+        ),
       ),
     );
   }

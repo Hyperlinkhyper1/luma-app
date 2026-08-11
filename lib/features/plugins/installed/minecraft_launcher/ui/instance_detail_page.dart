@@ -11,12 +11,14 @@ import '../logic/active_launch_registry.dart';
 import '../logic/ai_crash_analyzer.dart';
 import '../logic/game_process_manager.dart';
 import '../logic/mc_paths.dart';
+import '../logic/mod_icon_extractor.dart';
 import '../logic/mod_installer.dart';
 import '../logic/modpack_exporter.dart';
 import '../minecraft_launcher_repository.dart';
 import '../minecraft_launcher_scope.dart';
 import 'browse_content_tab.dart';
 import 'download_progress_sheet.dart';
+import 'hover_sync_scroll.dart';
 import 'mod_updates_dialog.dart';
 import 'screenshots_tab.dart';
 import 'worlds_tab.dart';
@@ -44,57 +46,59 @@ class _InstanceDetailPageState extends State<InstanceDetailPage> {
           if (instance == null) {
             return const Center(child: Text('Instance not found'));
           }
-          return CustomScrollView(
-            slivers: [
-              SliverAppBar(
-                backgroundColor: luma.background,
-                pinned: true,
-                title: Text(instance.name),
-                actions: [
-                  IconButton(
-                    tooltip: 'Export as modpack',
-                    icon: const Icon(Icons.ios_share_rounded),
-                    onPressed: () => _exportModpack(context, repository, instance),
-                  ),
-                  IconButton(
-                    tooltip: 'Delete instance',
-                    icon: const Icon(Icons.delete_outline_rounded),
-                    onPressed: () => _confirmDelete(context, repository, instance),
-                  ),
-                ],
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      LumaSegmentedTabs(
-                        tabs: const [
-                          'Overview',
-                          'Content',
-                          'Worlds',
-                          'Screenshots',
-                          'Logs',
-                          'Settings',
-                        ],
-                        selectedIndex: _tab,
-                        onSelect: (i) => setState(() => _tab = i),
-                      ),
-                      const SizedBox(height: 16),
-                      switch (_tab) {
-                        0 => _OverviewSection(instance: instance, repository: repository),
-                        1 => _ContentSection(instance: instance, repository: repository),
-                        2 => WorldsSection(instance: instance),
-                        3 => ScreenshotsSection(instance: instance),
-                        4 => _LogsSection(instance: instance, repository: repository),
-                        _ => _SettingsSection(instance: instance, repository: repository),
-                      },
-                    ],
+          return HoverSyncScroll(
+            child: CustomScrollView(
+              slivers: [
+                SliverAppBar(
+                  backgroundColor: luma.background,
+                  pinned: true,
+                  title: Text(instance.name),
+                  actions: [
+                    IconButton(
+                      tooltip: 'Export as modpack',
+                      icon: const Icon(Icons.ios_share_rounded),
+                      onPressed: () => _exportModpack(context, repository, instance),
+                    ),
+                    IconButton(
+                      tooltip: 'Delete instance',
+                      icon: const Icon(Icons.delete_outline_rounded),
+                      onPressed: () => _confirmDelete(context, repository, instance),
+                    ),
+                  ],
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        LumaSegmentedTabs(
+                          tabs: const [
+                            'Overview',
+                            'Content',
+                            'Worlds',
+                            'Screenshots',
+                            'Logs',
+                            'Settings',
+                          ],
+                          selectedIndex: _tab,
+                          onSelect: (i) => setState(() => _tab = i),
+                        ),
+                        const SizedBox(height: 16),
+                        switch (_tab) {
+                          0 => _OverviewSection(instance: instance, repository: repository),
+                          1 => _ContentSection(instance: instance, repository: repository),
+                          2 => WorldsSection(instance: instance),
+                          3 => ScreenshotsSection(instance: instance),
+                          4 => _LogsSection(instance: instance, repository: repository),
+                          _ => _SettingsSection(instance: instance, repository: repository),
+                        },
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           );
         },
       ),
@@ -288,14 +292,7 @@ class _ContentSection extends StatelessWidget {
                     child: LumaCard(
                       child: Row(
                         children: [
-                          if (item.projectIconUrl != null)
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.network(item.projectIconUrl!,
-                                  width: 36, height: 36, fit: BoxFit.cover),
-                            )
-                          else
-                            LumaIconBadge(icon: Icons.extension_rounded, color: luma.accent, size: 36),
+                          _ContentIcon(instance: instance, item: item, luma: luma),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
@@ -334,6 +331,51 @@ class _ContentSection extends StatelessWidget {
           },
         ),
       ],
+    );
+  }
+}
+
+/// Shows the project's icon from Modrinth when it's known (anything
+/// installed through the in-app browser); otherwise tries to pull the real
+/// icon out of the jar itself (see [ModIconExtractor] — covers manually
+/// dropped files and modpack imports, which never get a `projectIconUrl`),
+/// falling back to the generic puzzle badge only if neither source has one.
+class _ContentIcon extends StatelessWidget {
+  const _ContentIcon({required this.instance, required this.item, required this.luma});
+  final McInstance instance;
+  final McInstalledMod item;
+  final LumaPalette luma;
+
+  Widget _fallback() => LumaIconBadge(icon: Icons.extension_rounded, color: luma.accent, size: 36);
+
+  @override
+  Widget build(BuildContext context) {
+    if (item.projectIconUrl != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(
+          item.projectIconUrl!,
+          width: 36,
+          height: 36,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => _fallback(),
+        ),
+      );
+    }
+    return FutureBuilder<File?>(
+      future: ModIconExtractor.iconFor(
+        instanceId: instance.id,
+        kind: item.kind,
+        fileName: item.fileName,
+      ),
+      builder: (context, snapshot) {
+        final file = snapshot.data;
+        if (file == null) return _fallback();
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.file(file, width: 36, height: 36, fit: BoxFit.cover),
+        );
+      },
     );
   }
 }

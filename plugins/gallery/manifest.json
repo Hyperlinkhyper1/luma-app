@@ -1,7 +1,7 @@
 {
   "id": "gallery",
   "name": "Gallery",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Every photo and video on this device, sorted into tabs: pictures and videos from the camera, screenshots, GIFs, and one tab per folder — WhatsApp, Downloads, whatever else is there. See where shots were taken on a world map, and on Nova let on-device models sort them by what's in them.",
   "icon": "photo_library",
   "category": "Utility",
