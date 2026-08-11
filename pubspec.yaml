@@ -129,6 +129,8 @@ flutter:
     - assets/city_planner/
     - assets/subway_builder/
     - assets/subway_builder/vendor/
+    - assets/transport_tracker/
+    - assets/transport_tracker/vendor/
     - assets/security/
     - assets/world/
 

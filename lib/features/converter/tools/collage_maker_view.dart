@@ -11,6 +11,8 @@ import '../../../theme/luma_theme.dart';
 import '../converter_widgets.dart';
 import '../file_saver.dart';
 import '../image_convert.dart';
+import 'collage_shape_editor.dart';
+import 'collage_templates_store.dart';
 
 // ---------------------------------------------------------------------------
 // Template data model
@@ -24,17 +26,24 @@ class CollageSlot {
 }
 
 /// A named template containing a list of slots.
+///
+/// [id] is null for the built-in templates in [kTemplates] and set for
+/// user-created ones, which is what [isCustom] and the picker's edit/delete
+/// affordances key off of.
 class CollageTemplate {
   const CollageTemplate({
     required this.name,
     required this.icon,
     required this.slots,
+    this.id,
   });
+  final String? id;
   final String name;
   final IconData icon;
   final List<CollageSlot> slots;
 
   int get slotCount => slots.length;
+  bool get isCustom => id != null;
 }
 
 /// All built-in templates. Rects use (left, top, right, bottom) in 0..1 space.
@@ -149,6 +158,104 @@ final List<CollageTemplate> kTemplates = [
       CollageSlot(const Rect.fromLTRB(0.333, 0.666, 0.666, 1)),
     ],
   ),
+  // -- 3-row equal
+  CollageTemplate(
+    name: '3 Row',
+    icon: Icons.view_agenda_rounded,
+    slots: [
+      CollageSlot(const Rect.fromLTRB(0, 0, 1, 0.333)),
+      CollageSlot(const Rect.fromLTRB(0, 0.333, 1, 0.666)),
+      CollageSlot(const Rect.fromLTRB(0, 0.666, 1, 1)),
+    ],
+  ),
+  // -- 4-column equal
+  CollageTemplate(
+    name: '4 Column',
+    icon: Icons.view_carousel_rounded,
+    slots: [
+      for (int c = 0; c < 4; c++)
+        CollageSlot(Rect.fromLTRB(c / 4, 0, (c + 1) / 4, 1)),
+    ],
+  ),
+  // -- 2 small left + 1 big right (mirrored L-shape)
+  CollageTemplate(
+    name: 'Right L-Shape',
+    icon: Icons.vertical_split_rounded,
+    slots: [
+      CollageSlot(const Rect.fromLTRB(0, 0, 0.4, 0.5)),
+      CollageSlot(const Rect.fromLTRB(0, 0.5, 0.4, 1)),
+      CollageSlot(const Rect.fromLTRB(0.4, 0, 1, 1)),
+    ],
+  ),
+  // -- 3 small top + 1 big bottom (mirrored Hero + Strip)
+  CollageTemplate(
+    name: 'Strip + Hero',
+    icon: Icons.horizontal_split_rounded,
+    slots: [
+      CollageSlot(const Rect.fromLTRB(0, 0, 0.333, 0.4)),
+      CollageSlot(const Rect.fromLTRB(0.333, 0, 0.666, 0.4)),
+      CollageSlot(const Rect.fromLTRB(0.666, 0, 1, 0.4)),
+      CollageSlot(const Rect.fromLTRB(0, 0.4, 1, 1)),
+    ],
+  ),
+  // -- Tall left rail + 2x2 grid right
+  CollageTemplate(
+    name: 'Sidebar',
+    icon: Icons.view_sidebar_rounded,
+    slots: [
+      CollageSlot(const Rect.fromLTRB(0, 0, 0.35, 1)),
+      CollageSlot(const Rect.fromLTRB(0.35, 0, 0.675, 0.5)),
+      CollageSlot(const Rect.fromLTRB(0.675, 0, 1, 0.5)),
+      CollageSlot(const Rect.fromLTRB(0.35, 0.5, 0.675, 1)),
+      CollageSlot(const Rect.fromLTRB(0.675, 0.5, 1, 1)),
+    ],
+  ),
+  // -- 5 equal vertical strips
+  CollageTemplate(
+    name: 'Filmstrip',
+    icon: Icons.burst_mode_rounded,
+    slots: [
+      for (int c = 0; c < 5; c++)
+        CollageSlot(Rect.fromLTRB(c / 5, 0, (c + 1) / 5, 1)),
+    ],
+  ),
+  // -- Big center + 4 corner accents
+  CollageTemplate(
+    name: 'Frame',
+    icon: Icons.filter_frames_rounded,
+    slots: [
+      CollageSlot(const Rect.fromLTRB(0.25, 0.25, 0.75, 0.75)),
+      CollageSlot(const Rect.fromLTRB(0, 0, 0.25, 0.25)),
+      CollageSlot(const Rect.fromLTRB(0.75, 0, 1, 0.25)),
+      CollageSlot(const Rect.fromLTRB(0, 0.75, 0.25, 1)),
+      CollageSlot(const Rect.fromLTRB(0.75, 0.75, 1, 1)),
+    ],
+  ),
+  // -- 4x4 grid of small squares
+  CollageTemplate(
+    name: 'Windowpane',
+    icon: Icons.window_rounded,
+    slots: [
+      for (int r = 0; r < 4; r++)
+        for (int c = 0; c < 4; c++)
+          CollageSlot(Rect.fromLTRB(
+            c / 4,
+            r / 4,
+            (c + 1) / 4,
+            (r + 1) / 4,
+          )),
+    ],
+  ),
+  // -- 3 overlapping diagonal squares
+  CollageTemplate(
+    name: 'Cascade',
+    icon: Icons.layers_rounded,
+    slots: [
+      CollageSlot(const Rect.fromLTRB(0, 0, 0.45, 0.45)),
+      CollageSlot(const Rect.fromLTRB(0.275, 0.275, 0.725, 0.725)),
+      CollageSlot(const Rect.fromLTRB(0.55, 0.55, 1, 1)),
+    ],
+  ),
 ];
 
 // ---------------------------------------------------------------------------
@@ -245,6 +352,74 @@ class _CollageMakerViewState extends State<CollageMakerView> {
   bool _exporting = false;
   String? _error;
   SaveResult? _result;
+
+  List<CollageTemplate> _customTemplates = [];
+  bool _editingShape = false;
+  CollageTemplate? _editingExisting;
+
+  List<CollageTemplate> get _allTemplates =>
+      [...kTemplates, ..._customTemplates];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCustomTemplates();
+  }
+
+  Future<void> _loadCustomTemplates() async {
+    final loaded = await loadCustomCollageTemplates();
+    if (!mounted) return;
+    setState(() => _customTemplates = loaded);
+  }
+
+  void _openShapeEditor({CollageTemplate? editing}) {
+    setState(() {
+      _editingExisting = editing;
+      _editingShape = true;
+    });
+  }
+
+  void _closeShapeEditor() {
+    setState(() {
+      _editingShape = false;
+      _editingExisting = null;
+    });
+  }
+
+  Future<void> _saveCustomTemplate(String name, List<Rect> rects) async {
+    final id =
+        _editingExisting?.id ?? 'custom_${DateTime.now().microsecondsSinceEpoch}';
+    final template = CollageTemplate(
+      id: id,
+      name: name,
+      icon: kCustomCollageIcon,
+      slots: rects.map((r) => CollageSlot(r)).toList(),
+    );
+    final updated = [
+      for (final t in _customTemplates)
+        if (t.id != id) t,
+      template,
+    ];
+    setState(() {
+      _customTemplates = updated;
+      _template = template;
+      _slotAssignments.clear();
+      _editingShape = false;
+      _editingExisting = null;
+    });
+    await saveCustomCollageTemplates(_customTemplates);
+  }
+
+  Future<void> _deleteCustomTemplate(CollageTemplate t) async {
+    setState(() {
+      _customTemplates = _customTemplates.where((c) => c.id != t.id).toList();
+      if (_template.id == t.id) {
+        _template = kTemplates[3];
+        _slotAssignments.clear();
+      }
+    });
+    await saveCustomCollageTemplates(_customTemplates);
+  }
 
   Future<void> _importPhotos() async {
     final result = await FilePicker.pickFiles(
@@ -423,6 +598,16 @@ class _CollageMakerViewState extends State<CollageMakerView> {
   Widget build(BuildContext context) {
     final luma = context.luma;
 
+    if (_editingShape) {
+      return CollageShapeEditor(
+        initialSlots: _editingExisting?.slots.map((s) => s.rect).toList() ??
+            const [],
+        initialName: _editingExisting?.name ?? '',
+        onCancel: _closeShapeEditor,
+        onSave: _saveCustomTemplate,
+      );
+    }
+
     return ToolScaffold(
       icon: Icons.grid_view_rounded,
       title: 'Collage maker',
@@ -447,9 +632,12 @@ class _CollageMakerViewState extends State<CollageMakerView> {
 
           // -- Template picker
           _TemplatePicker(
-            templates: kTemplates,
+            templates: _allTemplates,
             selected: _template,
             onSelect: _selectTemplate,
+            onCreateNew: () => _openShapeEditor(),
+            onEditCustom: (t) => _openShapeEditor(editing: t),
+            onDeleteCustom: _deleteCustomTemplate,
           ),
           const SizedBox(height: 16),
 
@@ -752,10 +940,16 @@ class _TemplatePicker extends StatelessWidget {
     required this.templates,
     required this.selected,
     required this.onSelect,
+    required this.onCreateNew,
+    required this.onEditCustom,
+    required this.onDeleteCustom,
   });
   final List<CollageTemplate> templates;
   final CollageTemplate selected;
   final ValueChanged<CollageTemplate> onSelect;
+  final VoidCallback onCreateNew;
+  final ValueChanged<CollageTemplate> onEditCustom;
+  final ValueChanged<CollageTemplate> onDeleteCustom;
 
   @override
   Widget build(BuildContext context) {
@@ -785,15 +979,20 @@ class _TemplatePicker extends StatelessWidget {
             height: 76,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              itemCount: templates.length,
+              itemCount: templates.length + 1,
               separatorBuilder: (_, __) => const SizedBox(width: 8),
               itemBuilder: (context, i) {
+                if (i == templates.length) {
+                  return _NewShapeTile(onTap: onCreateNew);
+                }
                 final t = templates[i];
                 final active = t == selected;
                 return _TemplateThumb(
                   template: t,
                   active: active,
                   onTap: () => onSelect(t),
+                  onEdit: t.isCustom ? () => onEditCustom(t) : null,
+                  onDelete: t.isCustom ? () => onDeleteCustom(t) : null,
                 );
               },
             ),
@@ -809,10 +1008,14 @@ class _TemplateThumb extends StatefulWidget {
     required this.template,
     required this.active,
     required this.onTap,
+    this.onEdit,
+    this.onDelete,
   });
   final CollageTemplate template;
   final bool active;
   final VoidCallback onTap;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   @override
   State<_TemplateThumb> createState() => _TemplateThumbState();
@@ -825,6 +1028,131 @@ class _TemplateThumbState extends State<_TemplateThumb> {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final active = widget.active;
+    final showActions =
+        _hovering && (widget.onEdit != null || widget.onDelete != null);
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: 90,
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: active
+                    ? luma.accentSubtle
+                    : (_hovering ? luma.surfaceHover : Colors.transparent),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: active ? luma.accent : luma.border,
+                  width: active ? 1.5 : 1,
+                ),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: CustomPaint(
+                      painter: _TemplateMiniPainter(
+                        slots: widget.template.slots,
+                        fillColor: active ? luma.accent : luma.textMuted,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    widget.template.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: active ? luma.accent : luma.textSecondary,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (showActions)
+              Positioned(
+                top: -6,
+                right: -6,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (widget.onEdit != null)
+                      _ThumbActionButton(
+                        icon: Icons.edit_rounded,
+                        color: luma.accent,
+                        onTap: widget.onEdit!,
+                      ),
+                    if (widget.onEdit != null && widget.onDelete != null)
+                      const SizedBox(width: 4),
+                    if (widget.onDelete != null)
+                      _ThumbActionButton(
+                        icon: Icons.close_rounded,
+                        color: luma.danger,
+                        onTap: widget.onDelete!,
+                      ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ThumbActionButton extends StatelessWidget {
+  const _ThumbActionButton({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 20,
+        height: 20,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white, width: 1.5),
+        ),
+        child: Icon(icon, size: 12, color: Colors.white),
+      ),
+    );
+  }
+}
+
+class _NewShapeTile extends StatefulWidget {
+  const _NewShapeTile({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  State<_NewShapeTile> createState() => _NewShapeTileState();
+}
+
+class _NewShapeTileState extends State<_NewShapeTile> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovering = true),
@@ -836,35 +1164,25 @@ class _TemplateThumbState extends State<_TemplateThumb> {
           width: 90,
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: active
-                ? luma.accentSubtle
-                : (_hovering ? luma.surfaceHover : Colors.transparent),
+            color: _hovering ? luma.accentSubtle : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: active ? luma.accent : luma.border,
-              width: active ? 1.5 : 1,
+              color: _hovering ? luma.accent : luma.border,
             ),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              SizedBox(
-                width: 40,
-                height: 40,
-                child: CustomPaint(
-                  painter: _TemplateMiniPainter(
-                    slots: widget.template.slots,
-                    fillColor: active ? luma.accent : luma.textMuted,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 4),
+              Icon(Icons.add_circle_outline_rounded,
+                  color: luma.accent, size: 26),
+              const SizedBox(height: 6),
               Text(
-                widget.template.name,
+                'New shape',
+                textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: active ? luma.accent : luma.textSecondary,
+                  color: luma.accent,
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
                 ),

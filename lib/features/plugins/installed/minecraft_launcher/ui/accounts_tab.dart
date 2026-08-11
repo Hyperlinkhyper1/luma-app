@@ -9,6 +9,7 @@ import '../logic/launcher_settings_store.dart';
 import '../logic/microsoft_auth_client.dart';
 import '../minecraft_launcher_repository.dart';
 import '../minecraft_launcher_scope.dart';
+import 'hover_sync_scroll.dart';
 
 class AccountsTab extends StatefulWidget {
   const AccountsTab({super.key});
@@ -21,9 +22,10 @@ class _AccountsTabState extends State<AccountsTab> {
   @override
   Widget build(BuildContext context) {
     final repository = MinecraftLauncherScope.of(context);
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-      children: [
+    return HoverSyncScroll(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+        children: [
         Row(
           children: [
             Expanded(
@@ -75,7 +77,8 @@ class _AccountsTabState extends State<AccountsTab> {
             );
           },
         ),
-      ],
+        ],
+      ),
     );
   }
 
