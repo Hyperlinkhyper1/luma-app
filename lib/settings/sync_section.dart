@@ -9,9 +9,11 @@ import '../sync/sync_scope.dart';
 import '../sync/sync_service.dart';
 import '../theme/luma_theme.dart';
 
-/// The published privacy policy — shown as a direct link wherever someone
-/// is about to hand over an email and password (account creation).
+/// The published privacy policy and terms of service — shown as direct
+/// links wherever someone is about to hand over an email and password
+/// (account creation).
 const _kPrivacyPolicyUrl = 'https://wiki.luma-app.cc/privacy';
+const _kTermsOfServiceUrl = 'https://wiki.luma-app.cc/terms';
 
 /// Shows the account setup/sign-in dialog. Used both from the Settings page
 /// and as the app-wide first-run prompt (see `maybePromptAccountSetup` in
@@ -799,17 +801,36 @@ class _AccountDialogState extends State<_AccountDialog> {
                     color: Colors.orange.shade400, fontSize: 12, height: 1.4),
               ),
               const SizedBox(height: 8),
-              InkWell(
-                onTap: () => launchUrl(Uri.parse(_kPrivacyPolicyUrl),
-                    mode: LaunchMode.externalApplication),
-                child: Text(
-                  'Read the privacy policy',
-                  style: TextStyle(
-                    color: luma.accent,
-                    fontSize: 12,
-                    decoration: TextDecoration.underline,
+              Wrap(
+                spacing: 4,
+                children: [
+                  InkWell(
+                    onTap: () => launchUrl(Uri.parse(_kPrivacyPolicyUrl),
+                        mode: LaunchMode.externalApplication),
+                    child: Text(
+                      'Privacy policy',
+                      style: TextStyle(
+                        color: luma.accent,
+                        fontSize: 12,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
                   ),
-                ),
+                  Text('·',
+                      style: TextStyle(color: luma.textMuted, fontSize: 12)),
+                  InkWell(
+                    onTap: () => launchUrl(Uri.parse(_kTermsOfServiceUrl),
+                        mode: LaunchMode.externalApplication),
+                    child: Text(
+                      'Terms of service',
+                      style: TextStyle(
+                        color: luma.accent,
+                        fontSize: 12,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               if (_info != null) ...[
                 const SizedBox(height: 12),

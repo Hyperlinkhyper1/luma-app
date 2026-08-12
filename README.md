@@ -160,7 +160,8 @@ How many features you may sync at once depends on your plan (3 / 5 /
 unlimited); Settings sync is always on top of that allowance.
 
 See [`PRIVACY.md`](PRIVACY.md) for the full privacy policy — what's
-collected, what's encrypted, and what a handful of built-in tools talk to.
+collected, what's encrypted, and what a handful of built-in tools talk to
+— and [`TERMS.md`](TERMS.md) for the Terms of Service.
 
 ---
 
