@@ -17,6 +17,9 @@ import 'features/plugins/installed/auto_clicker/auto_clicker_scope.dart';
 import 'features/plugins/installed/mood_journal/data/mood_journal_database.dart';
 import 'features/plugins/installed/mood_journal/mood_journal_repository.dart';
 import 'features/plugins/installed/mood_journal/mood_journal_scope.dart';
+import 'features/plugins/installed/ai_usage/data/ai_usage_database.dart';
+import 'features/plugins/installed/ai_usage/ai_usage_repository.dart';
+import 'features/plugins/installed/ai_usage/ai_usage_scope.dart';
 import 'features/plugins/installed/data_management/data/data_management_database.dart';
 import 'features/plugins/installed/data_management/data_management_repository.dart';
 import 'features/plugins/installed/server_tycoon/server_tycoon_repository.dart';
@@ -142,6 +145,8 @@ class _LumaAppState extends State<LumaApp> {
   late final ServerTycoonRepository _serverTycoonRepository = ServerTycoonRepository();
   late final MoodJournalDatabase _moodJournalDb = MoodJournalDatabase();
   late final MoodJournalRepository _moodJournalRepository = MoodJournalRepository(_moodJournalDb);
+  late final AiUsageDatabase _aiUsageDb = AiUsageDatabase();
+  late final AiUsageRepository _aiUsageRepository = AiUsageRepository(_aiUsageDb);
   late final SchoolDatabase _schoolDb = SchoolDatabase();
   late final SchoolRepository _schoolRepository = SchoolRepository(_schoolDb);
   late final AutoClickerRepository _autoClickerRepository =
@@ -252,6 +257,9 @@ class _LumaAppState extends State<LumaApp> {
       icon: Icons.mood_rounded,
       db: _moodJournalDb,
     ),
+    // AI Usage's database is a derived, re-scannable cache of the user's own
+    // local Claude Code logs — deliberately excluded from sync; it can be
+    // rebuilt any time by rescanning and may grow large.
     DriftSyncCollection(
       id: 'school',
       label: 'School',
@@ -351,6 +359,7 @@ class _LumaAppState extends State<LumaApp> {
     _calendarDb.close();
     _dataManagementDb.close();
     _moodJournalDb.close();
+    _aiUsageDb.close();
     _schoolDb.close();
     _minecraftDb.close();
     _serverTycoonRepository.dispose();
@@ -438,6 +447,8 @@ class _LumaAppState extends State<LumaApp> {
                       repository: _serverTycoonRepository,
                       child: MoodJournalScope(
                       repository: _moodJournalRepository,
+                      child: AiUsageScope(
+                      repository: _aiUsageRepository,
                       child: SchoolScope(
                       repository: _schoolRepository,
                       child: AutoClickerScope(
@@ -479,6 +490,7 @@ class _LumaAppState extends State<LumaApp> {
                               bootstrap: _bootstrap, accentSeed: s.accentSeed),
                         );
                       },
+                    ),
                     ),
                     ),
                     ),
