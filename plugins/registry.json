@@ -122,6 +122,16 @@
       "version": "1.0.0"
     },
     {
+      "id": "ai-usage",
+      "name": "AI Usage",
+      "description": "A private, offline dashboard for your Claude Code usage — token counts and cost estimates by day and model, read entirely from your local session logs. Nothing is ever sent anywhere.",
+      "icon": "query_stats",
+      "category": "Productivity",
+      "tags": ["Productivity", "Analytics"],
+      "free": true,
+      "version": "1.0.0"
+    },
+    {
       "id": "youtube-downloader",
       "name": "Media Downloader",
       "description": "Paste a YouTube link and download the video or just the audio, with full control over resolution, bitrate, and output format. Paste a Spotify track link and luma finds and downloads the matching audio from YouTube, tagged with the real title, artist, and cover art. Keeps a history of everything you've downloaded.",
