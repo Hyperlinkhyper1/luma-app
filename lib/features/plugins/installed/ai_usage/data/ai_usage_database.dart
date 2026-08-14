@@ -2,11 +2,13 @@ import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../ai_usage_source.dart';
+
 part 'ai_usage_database.g.dart';
 
-/// One assistant turn's token counts, read from a Claude Code JSONL session
-/// log. Only usage metadata is ever stored here — never the prompt/response
-/// text itself.
+/// One assistant turn's token counts, read from a local coding CLI's session
+/// log (Claude Code or Codex CLI). Only usage metadata is ever stored here —
+/// never the prompt/response text itself.
 class AiUsageTurns extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get sessionId => text()();
@@ -18,6 +20,8 @@ class AiUsageTurns extends Table {
   IntColumn get cacheCreationTokens => integer().withDefault(const Constant(0))();
   // Dedup key from the source record only — never the message content.
   TextColumn get messageId => text().nullable()();
+  // Which CLI this turn came from — determines which pricing table applies.
+  TextColumn get source => textEnum<AiUsageSource>()();
 }
 
 /// Tracks which JSONL files have already been scanned (path + mtime + how

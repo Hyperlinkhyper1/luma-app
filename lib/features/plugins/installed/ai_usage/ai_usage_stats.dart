@@ -1,4 +1,5 @@
 import 'ai_usage_pricing.dart';
+import 'ai_usage_source.dart';
 import 'data/ai_usage_database.dart';
 
 /// Quick time-range presets shown in the page's filter bar. `all` has no
@@ -29,9 +30,13 @@ enum AiUsageRangePreset {
   }
 }
 
-/// Total usage for one model within a queried range.
+/// Total usage for one (source, model) pair within a queried range. Keying
+/// by the pair — not the model name alone — means same-named models from
+/// different sources can never merge, and cost lookups always use the right
+/// provider's pricing table.
 class ModelUsageTotal {
   const ModelUsageTotal({
+    required this.source,
     required this.model,
     required this.turnCount,
     required this.inputTokens,
@@ -42,6 +47,7 @@ class ModelUsageTotal {
     required this.billable,
   });
 
+  final AiUsageSource source;
   final String model;
   final int turnCount;
   final int inputTokens;
@@ -84,25 +90,27 @@ class AiUsageTotals {
   final int totalTokens;
   final double cost;
 
-  /// Whether any turn in range came from a model outside Anthropic's known
-  /// pricing table — drives the cost tile's "*" footnote.
+  /// Whether any turn in range came from a model outside its provider's
+  /// known pricing table — drives the cost tile's "*" footnote.
   final bool hasUnbillable;
 }
 
 int _totalTokensFor(AiUsageTurn t) =>
     t.inputTokens + t.outputTokens + t.cacheReadTokens + t.cacheCreationTokens;
 
-/// Totals per model across [turns], sorted by descending token count.
+/// Totals per (source, model) pair across [turns], sorted by descending
+/// token count.
 List<ModelUsageTotal> aggregateByModel(Iterable<AiUsageTurn> turns) {
-  final byModel = <String, List<AiUsageTurn>>{};
+  final byKey = <(AiUsageSource, String), List<AiUsageTurn>>{};
   for (final t in turns) {
-    byModel.putIfAbsent(t.model, () => []).add(t);
+    byKey.putIfAbsent((t.source, t.model), () => []).add(t);
   }
 
   final totals = [
-    for (final entry in byModel.entries)
+    for (final entry in byKey.entries)
       ModelUsageTotal(
-        model: entry.key,
+        source: entry.key.$1,
+        model: entry.key.$2,
         turnCount: entry.value.length,
         inputTokens: entry.value.fold(0, (a, t) => a + t.inputTokens),
         outputTokens: entry.value.fold(0, (a, t) => a + t.outputTokens),
@@ -112,10 +120,10 @@ List<ModelUsageTotal> aggregateByModel(Iterable<AiUsageTurn> turns) {
         cost: entry.value.fold(
           0.0,
           (a, t) => a +
-              costForTurn(t.model, t.inputTokens, t.outputTokens,
+              costForTurn(t.source, t.model, t.inputTokens, t.outputTokens,
                   t.cacheReadTokens, t.cacheCreationTokens),
         ),
-        billable: isBillableModel(entry.key),
+        billable: isBillableModel(entry.key.$1, entry.key.$2),
       ),
   ];
   totals.sort((a, b) => b.totalTokens.compareTo(a.totalTokens));
@@ -134,7 +142,7 @@ List<AiDayUsageBucket> aggregateByDay(Iterable<AiUsageTurn> turns) {
     final day = DateTime(local.year, local.month, local.day);
     tokensByDay.update(day, (v) => v + _totalTokensFor(t),
         ifAbsent: () => _totalTokensFor(t));
-    final cost = costForTurn(t.model, t.inputTokens, t.outputTokens,
+    final cost = costForTurn(t.source, t.model, t.inputTokens, t.outputTokens,
         t.cacheReadTokens, t.cacheCreationTokens);
     costByDay.update(day, (v) => v + cost, ifAbsent: () => cost);
   }
@@ -162,9 +170,9 @@ AiUsageTotals totals(Iterable<AiUsageTurn> turns) {
   for (final t in turns) {
     turnCount++;
     totalTokens += _totalTokensFor(t);
-    cost += costForTurn(t.model, t.inputTokens, t.outputTokens,
+    cost += costForTurn(t.source, t.model, t.inputTokens, t.outputTokens,
         t.cacheReadTokens, t.cacheCreationTokens);
-    if (!isBillableModel(t.model)) hasUnbillable = true;
+    if (!isBillableModel(t.source, t.model)) hasUnbillable = true;
     sessions.add(t.sessionId);
   }
 

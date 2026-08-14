@@ -124,7 +124,7 @@
     {
       "id": "ai-usage",
       "name": "AI Usage",
-      "description": "A private, offline dashboard for your Claude Code usage — token counts and cost estimates by day and model, read entirely from your local session logs. Nothing is ever sent anywhere.",
+      "description": "A private, offline dashboard for your Claude Code and Codex CLI usage — token counts and cost estimates by day and model, read entirely from your local session logs. Nothing is ever sent anywhere.",
       "icon": "query_stats",
       "category": "Productivity",
       "tags": ["Productivity", "Analytics"],
