@@ -112,6 +112,15 @@ class $AiUsageTurnsTable extends AiUsageTurns
     requiredDuringInsert: false,
   );
   @override
+  late final GeneratedColumnWithTypeConverter<AiUsageSource, String> source =
+      GeneratedColumn<String>(
+        'source',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<AiUsageSource>($AiUsageTurnsTable.$convertersource);
+  @override
   List<GeneratedColumn> get $columns => [
     id,
     sessionId,
@@ -122,6 +131,7 @@ class $AiUsageTurnsTable extends AiUsageTurns
     cacheReadTokens,
     cacheCreationTokens,
     messageId,
+    source,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -249,6 +259,12 @@ class $AiUsageTurnsTable extends AiUsageTurns
         DriftSqlType.string,
         data['${effectivePrefix}message_id'],
       ),
+      source: $AiUsageTurnsTable.$convertersource.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}source'],
+        )!,
+      ),
     );
   }
 
@@ -256,6 +272,9 @@ class $AiUsageTurnsTable extends AiUsageTurns
   $AiUsageTurnsTable createAlias(String alias) {
     return $AiUsageTurnsTable(attachedDatabase, alias);
   }
+
+  static JsonTypeConverter2<AiUsageSource, String, String> $convertersource =
+      const EnumNameConverter<AiUsageSource>(AiUsageSource.values);
 }
 
 class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
@@ -268,6 +287,7 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
   final int cacheReadTokens;
   final int cacheCreationTokens;
   final String? messageId;
+  final AiUsageSource source;
   const AiUsageTurn({
     required this.id,
     required this.sessionId,
@@ -278,6 +298,7 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
     required this.cacheReadTokens,
     required this.cacheCreationTokens,
     this.messageId,
+    required this.source,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -292,6 +313,11 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
     map['cache_creation_tokens'] = Variable<int>(cacheCreationTokens);
     if (!nullToAbsent || messageId != null) {
       map['message_id'] = Variable<String>(messageId);
+    }
+    {
+      map['source'] = Variable<String>(
+        $AiUsageTurnsTable.$convertersource.toSql(source),
+      );
     }
     return map;
   }
@@ -309,6 +335,7 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
       messageId: messageId == null && nullToAbsent
           ? const Value.absent()
           : Value(messageId),
+      source: Value(source),
     );
   }
 
@@ -329,6 +356,9 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
         json['cacheCreationTokens'],
       ),
       messageId: serializer.fromJson<String?>(json['messageId']),
+      source: $AiUsageTurnsTable.$convertersource.fromJson(
+        serializer.fromJson<String>(json['source']),
+      ),
     );
   }
   @override
@@ -344,6 +374,9 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
       'cacheReadTokens': serializer.toJson<int>(cacheReadTokens),
       'cacheCreationTokens': serializer.toJson<int>(cacheCreationTokens),
       'messageId': serializer.toJson<String?>(messageId),
+      'source': serializer.toJson<String>(
+        $AiUsageTurnsTable.$convertersource.toJson(source),
+      ),
     };
   }
 
@@ -357,6 +390,7 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
     int? cacheReadTokens,
     int? cacheCreationTokens,
     Value<String?> messageId = const Value.absent(),
+    AiUsageSource? source,
   }) => AiUsageTurn(
     id: id ?? this.id,
     sessionId: sessionId ?? this.sessionId,
@@ -367,6 +401,7 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
     cacheReadTokens: cacheReadTokens ?? this.cacheReadTokens,
     cacheCreationTokens: cacheCreationTokens ?? this.cacheCreationTokens,
     messageId: messageId.present ? messageId.value : this.messageId,
+    source: source ?? this.source,
   );
   AiUsageTurn copyWithCompanion(AiUsageTurnsCompanion data) {
     return AiUsageTurn(
@@ -387,6 +422,7 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
           ? data.cacheCreationTokens.value
           : this.cacheCreationTokens,
       messageId: data.messageId.present ? data.messageId.value : this.messageId,
+      source: data.source.present ? data.source.value : this.source,
     );
   }
 
@@ -401,7 +437,8 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
           ..write('outputTokens: $outputTokens, ')
           ..write('cacheReadTokens: $cacheReadTokens, ')
           ..write('cacheCreationTokens: $cacheCreationTokens, ')
-          ..write('messageId: $messageId')
+          ..write('messageId: $messageId, ')
+          ..write('source: $source')
           ..write(')'))
         .toString();
   }
@@ -417,6 +454,7 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
     cacheReadTokens,
     cacheCreationTokens,
     messageId,
+    source,
   );
   @override
   bool operator ==(Object other) =>
@@ -430,7 +468,8 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
           other.outputTokens == this.outputTokens &&
           other.cacheReadTokens == this.cacheReadTokens &&
           other.cacheCreationTokens == this.cacheCreationTokens &&
-          other.messageId == this.messageId);
+          other.messageId == this.messageId &&
+          other.source == this.source);
 }
 
 class AiUsageTurnsCompanion extends UpdateCompanion<AiUsageTurn> {
@@ -443,6 +482,7 @@ class AiUsageTurnsCompanion extends UpdateCompanion<AiUsageTurn> {
   final Value<int> cacheReadTokens;
   final Value<int> cacheCreationTokens;
   final Value<String?> messageId;
+  final Value<AiUsageSource> source;
   const AiUsageTurnsCompanion({
     this.id = const Value.absent(),
     this.sessionId = const Value.absent(),
@@ -453,6 +493,7 @@ class AiUsageTurnsCompanion extends UpdateCompanion<AiUsageTurn> {
     this.cacheReadTokens = const Value.absent(),
     this.cacheCreationTokens = const Value.absent(),
     this.messageId = const Value.absent(),
+    this.source = const Value.absent(),
   });
   AiUsageTurnsCompanion.insert({
     this.id = const Value.absent(),
@@ -464,9 +505,11 @@ class AiUsageTurnsCompanion extends UpdateCompanion<AiUsageTurn> {
     this.cacheReadTokens = const Value.absent(),
     this.cacheCreationTokens = const Value.absent(),
     this.messageId = const Value.absent(),
+    required AiUsageSource source,
   }) : sessionId = Value(sessionId),
        timestamp = Value(timestamp),
-       model = Value(model);
+       model = Value(model),
+       source = Value(source);
   static Insertable<AiUsageTurn> custom({
     Expression<int>? id,
     Expression<String>? sessionId,
@@ -477,6 +520,7 @@ class AiUsageTurnsCompanion extends UpdateCompanion<AiUsageTurn> {
     Expression<int>? cacheReadTokens,
     Expression<int>? cacheCreationTokens,
     Expression<String>? messageId,
+    Expression<String>? source,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -489,6 +533,7 @@ class AiUsageTurnsCompanion extends UpdateCompanion<AiUsageTurn> {
       if (cacheCreationTokens != null)
         'cache_creation_tokens': cacheCreationTokens,
       if (messageId != null) 'message_id': messageId,
+      if (source != null) 'source': source,
     });
   }
 
@@ -502,6 +547,7 @@ class AiUsageTurnsCompanion extends UpdateCompanion<AiUsageTurn> {
     Value<int>? cacheReadTokens,
     Value<int>? cacheCreationTokens,
     Value<String?>? messageId,
+    Value<AiUsageSource>? source,
   }) {
     return AiUsageTurnsCompanion(
       id: id ?? this.id,
@@ -513,6 +559,7 @@ class AiUsageTurnsCompanion extends UpdateCompanion<AiUsageTurn> {
       cacheReadTokens: cacheReadTokens ?? this.cacheReadTokens,
       cacheCreationTokens: cacheCreationTokens ?? this.cacheCreationTokens,
       messageId: messageId ?? this.messageId,
+      source: source ?? this.source,
     );
   }
 
@@ -546,6 +593,11 @@ class AiUsageTurnsCompanion extends UpdateCompanion<AiUsageTurn> {
     if (messageId.present) {
       map['message_id'] = Variable<String>(messageId.value);
     }
+    if (source.present) {
+      map['source'] = Variable<String>(
+        $AiUsageTurnsTable.$convertersource.toSql(source.value),
+      );
+    }
     return map;
   }
 
@@ -560,7 +612,8 @@ class AiUsageTurnsCompanion extends UpdateCompanion<AiUsageTurn> {
           ..write('outputTokens: $outputTokens, ')
           ..write('cacheReadTokens: $cacheReadTokens, ')
           ..write('cacheCreationTokens: $cacheCreationTokens, ')
-          ..write('messageId: $messageId')
+          ..write('messageId: $messageId, ')
+          ..write('source: $source')
           ..write(')'))
         .toString();
   }
@@ -856,6 +909,7 @@ typedef $$AiUsageTurnsTableCreateCompanionBuilder =
       Value<int> cacheReadTokens,
       Value<int> cacheCreationTokens,
       Value<String?> messageId,
+      required AiUsageSource source,
     });
 typedef $$AiUsageTurnsTableUpdateCompanionBuilder =
     AiUsageTurnsCompanion Function({
@@ -868,6 +922,7 @@ typedef $$AiUsageTurnsTableUpdateCompanionBuilder =
       Value<int> cacheReadTokens,
       Value<int> cacheCreationTokens,
       Value<String?> messageId,
+      Value<AiUsageSource> source,
     });
 
 class $$AiUsageTurnsTableFilterComposer
@@ -922,6 +977,12 @@ class $$AiUsageTurnsTableFilterComposer
   ColumnFilters<String> get messageId => $composableBuilder(
     column: $table.messageId,
     builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<AiUsageSource, AiUsageSource, String>
+  get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 }
 
@@ -978,6 +1039,11 @@ class $$AiUsageTurnsTableOrderingComposer
     column: $table.messageId,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AiUsageTurnsTableAnnotationComposer
@@ -1023,6 +1089,9 @@ class $$AiUsageTurnsTableAnnotationComposer
 
   GeneratedColumn<String> get messageId =>
       $composableBuilder(column: $table.messageId, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<AiUsageSource, String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
 }
 
 class $$AiUsageTurnsTableTableManager
@@ -1067,6 +1136,7 @@ class $$AiUsageTurnsTableTableManager
                 Value<int> cacheReadTokens = const Value.absent(),
                 Value<int> cacheCreationTokens = const Value.absent(),
                 Value<String?> messageId = const Value.absent(),
+                Value<AiUsageSource> source = const Value.absent(),
               }) => AiUsageTurnsCompanion(
                 id: id,
                 sessionId: sessionId,
@@ -1077,6 +1147,7 @@ class $$AiUsageTurnsTableTableManager
                 cacheReadTokens: cacheReadTokens,
                 cacheCreationTokens: cacheCreationTokens,
                 messageId: messageId,
+                source: source,
               ),
           createCompanionCallback:
               ({
@@ -1089,6 +1160,7 @@ class $$AiUsageTurnsTableTableManager
                 Value<int> cacheReadTokens = const Value.absent(),
                 Value<int> cacheCreationTokens = const Value.absent(),
                 Value<String?> messageId = const Value.absent(),
+                required AiUsageSource source,
               }) => AiUsageTurnsCompanion.insert(
                 id: id,
                 sessionId: sessionId,
@@ -1099,6 +1171,7 @@ class $$AiUsageTurnsTableTableManager
                 cacheReadTokens: cacheReadTokens,
                 cacheCreationTokens: cacheCreationTokens,
                 messageId: messageId,
+                source: source,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

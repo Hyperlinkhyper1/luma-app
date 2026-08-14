@@ -3,33 +3,62 @@ import 'package:flutter/foundation.dart';
 
 import '../../../../storage/storage_guard.dart';
 import 'claude_code_scanner.dart';
+import 'codex_cli_scanner.dart';
 import 'data/ai_usage_database.dart';
 
-/// Owns the local Claude Code usage scan and the database it fills.
+/// Owns the local AI-usage scans (Claude Code + Codex CLI) and the database
+/// they fill.
 class AiUsageRepository extends ChangeNotifier {
-  AiUsageRepository(this._db, {ClaudeCodeScanner? scanner})
-      : _scanner = scanner ?? const ClaudeCodeScanner();
+  AiUsageRepository(
+    this._db, {
+    ClaudeCodeScanner? claudeScanner,
+    CodexCliScanner? codexScanner,
+  })  : _claudeScanner = claudeScanner ?? const ClaudeCodeScanner(),
+        _codexScanner = codexScanner ?? const CodexCliScanner();
 
   final AiUsageDatabase _db;
-  final ClaudeCodeScanner _scanner;
+  final ClaudeCodeScanner _claudeScanner;
+  final CodexCliScanner _codexScanner;
 
   bool _scanning = false;
-  bool? _projectsDirFound; // null = not yet checked
+  bool? _claudeCodeDirFound; // null = not yet checked
+  bool? _codexCliDirFound;
   DateTime? _lastScanAt;
-  ClaudeCodeScanResult? _lastScanResult;
+  ClaudeCodeScanResult? _lastClaudeResult;
+  CodexCliScanResult? _lastCodexResult;
 
   bool get scanning => _scanning;
 
   /// Whether `~/.claude/projects` was found on this device — null until the
   /// first [rescan] completes.
-  bool? get projectsDirFound => _projectsDirFound;
-  DateTime? get lastScanAt => _lastScanAt;
-  ClaudeCodeScanResult? get lastScanResult => _lastScanResult;
+  bool? get claudeCodeDirFound => _claudeCodeDirFound;
 
-  /// Scans `~/.claude/projects` for new/changed session logs and stores any
-  /// new usage. Safe to call repeatedly — unchanged files are skipped
-  /// cheaply by [ClaudeCodeScanner], and a scan already in flight is not
-  /// duplicated.
+  /// Whether `~/.codex/sessions` was found on this device — null until the
+  /// first [rescan] completes.
+  bool? get codexCliDirFound => _codexCliDirFound;
+
+  /// Whether *either* source was found — drives the page's empty-state gate.
+  /// Null until the first [rescan] completes.
+  bool? get anyDirFound {
+    if (_claudeCodeDirFound == null && _codexCliDirFound == null) return null;
+    return (_claudeCodeDirFound ?? false) || (_codexCliDirFound ?? false);
+  }
+
+  DateTime? get lastScanAt => _lastScanAt;
+  ClaudeCodeScanResult? get lastClaudeResult => _lastClaudeResult;
+  CodexCliScanResult? get lastCodexResult => _lastCodexResult;
+
+  /// Combined new-turn count from the most recent [rescan], across both
+  /// sources — for the single-line status UI.
+  int get lastTurnsAdded =>
+      (_lastClaudeResult?.turnsAdded ?? 0) + (_lastCodexResult?.turnsAdded ?? 0);
+
+  /// Scans `~/.claude/projects` and `~/.codex/sessions` for new/changed
+  /// session logs and stores any new usage. Safe to call repeatedly —
+  /// unchanged files are skipped cheaply by the scanners, and a scan already
+  /// in flight is not duplicated. The two scanners touch disjoint file paths
+  /// and only ever insert distinctly-sourced rows, so running them
+  /// concurrently is safe.
   Future<void> rescan() async {
     if (_scanning) return;
     _scanning = true;
@@ -37,11 +66,16 @@ class AiUsageRepository extends ChangeNotifier {
 
     try {
       StorageGuard.instance.ensureWithinLimit();
-      final result = await _scanner.scan(_db);
-      _lastScanResult = result;
-      _projectsDirFound = result.projectsDirFound;
+      final (claudeResult, codexResult) = await (
+        _claudeScanner.scan(_db),
+        _codexScanner.scan(_db),
+      ).wait;
+      _lastClaudeResult = claudeResult;
+      _lastCodexResult = codexResult;
+      _claudeCodeDirFound = claudeResult.projectsDirFound;
+      _codexCliDirFound = codexResult.sessionsDirFound;
       _lastScanAt = DateTime.now();
-      if (result.turnsAdded > 0) {
+      if (lastTurnsAdded > 0) {
         StorageGuard.instance.scheduleRefresh();
       }
     } on StorageLimitExceededException {
@@ -52,8 +86,9 @@ class AiUsageRepository extends ChangeNotifier {
     }
   }
 
-  /// Turns in `[start, end)`, soonest first. A null [start] is unbounded
-  /// ("All time"). Live-updates as [rescan] adds new rows.
+  /// Turns in `[start, end)`, soonest first, across both sources. A null
+  /// [start] is unbounded ("All time"). Live-updates as [rescan] adds new
+  /// rows.
   Stream<List<AiUsageTurn>> watchRange(DateTime? start, DateTime end) {
     final endUtc = end.toUtc();
     final query = _db.select(_db.aiUsageTurns)
