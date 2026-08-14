@@ -9,6 +9,7 @@ import '../../../chat/ai_key_store.dart';
 import '../../../chat/providers/ai_providers.dart';
 import 'ai_usage_repository.dart';
 import 'ai_usage_scope.dart';
+import 'ai_usage_source.dart';
 import 'ai_usage_stats.dart';
 import 'data/ai_usage_database.dart';
 
@@ -26,9 +27,9 @@ const List<Color> _kPalette = [
 ];
 const Color _kOtherColor = Color(0xFF8A8A9A);
 
-/// A private, offline dashboard for local Claude Code usage — token counts
-/// and cost estimates by day and model, read entirely from
-/// `~/.claude/projects` on this device.
+/// A private, offline dashboard for local AI coding CLI usage — token
+/// counts and cost estimates by day and model, read entirely from
+/// `~/.claude/projects` and `~/.codex/sessions` on this device.
 class AiUsagePage extends StatefulWidget {
   const AiUsagePage({super.key});
 
@@ -38,6 +39,7 @@ class AiUsagePage extends StatefulWidget {
 
 class _AiUsagePageState extends State<AiUsagePage> {
   AiUsageRangePreset _preset = AiUsageRangePreset.today;
+  AiUsageSource? _sourceFilter; // null = All
   bool _started = false;
 
   @override
@@ -58,7 +60,7 @@ class _AiUsagePageState extends State<AiUsagePage> {
     return ListenableBuilder(
       listenable: repo,
       builder: (context, _) {
-        if (repo.projectsDirFound == null) {
+        if (repo.anyDirFound == null) {
           return const Center(
             child: SizedBox(
               width: 22,
@@ -68,15 +70,16 @@ class _AiUsagePageState extends State<AiUsagePage> {
           );
         }
 
-        if (repo.projectsDirFound == false) {
+        if (repo.anyDirFound == false) {
           return Padding(
             padding: const EdgeInsets.all(24),
             child: LumaEmptyState(
               icon: Icons.smart_toy_outlined,
-              title: 'No local Claude Code logs found',
-              subtitle: 'AI Usage reads session logs from ~/.claude/projects '
-                  'on this device — nothing is ever sent anywhere. Use '
-                  'Claude Code here, then rescan.',
+              title: 'No local AI usage logs found',
+              subtitle: 'AI Usage reads session logs from Claude Code '
+                  '(~/.claude/projects) and Codex CLI (~/.codex/sessions) on '
+                  'this device — nothing is ever sent anywhere. Use either '
+                  'tool here, then rescan.',
               action: LumaGhostButton(
                 label: repo.scanning ? 'Scanning…' : 'Rescan',
                 icon: Icons.refresh_rounded,
@@ -98,11 +101,20 @@ class _AiUsagePageState extends State<AiUsagePage> {
                 preset: _preset,
                 onSelectPreset: (p) => setState(() => _preset = p),
               ),
+              const SizedBox(height: 10),
+              _SourceFilterBar(
+                selected: _sourceFilter,
+                onSelect: (s) => setState(() => _sourceFilter = s),
+              ),
               const SizedBox(height: 16),
               Expanded(
                 child: StreamData<List<AiUsageTurn>>(
                   stream: repo.watchRange(start, end),
-                  builder: (context, turns) => _AiUsageBody(turns: turns),
+                  builder: (context, turns) => _AiUsageBody(
+                    turns: _sourceFilter == null
+                        ? turns
+                        : turns.where((t) => t.source == _sourceFilter).toList(),
+                  ),
                 ),
               ),
             ],
@@ -128,13 +140,12 @@ class _TopBar extends StatelessWidget {
 
   String _statusLabel() {
     if (repo.scanning) return 'Scanning…';
-    final result = repo.lastScanResult;
     final at = repo.lastScanAt;
-    if (result == null || at == null) return '';
-    if (result.turnsAdded == 0) {
+    if (at == null) return '';
+    if (repo.lastTurnsAdded == 0) {
       return 'Up to date · ${DateFormat('h:mm a').format(at)}';
     }
-    return '${result.turnsAdded} new turns · ${DateFormat('h:mm a').format(at)}';
+    return '${repo.lastTurnsAdded} new turns · ${DateFormat('h:mm a').format(at)}';
   }
 
   @override
@@ -156,7 +167,7 @@ class _TopBar extends StatelessWidget {
         ),
         const Spacer(),
         IconButton(
-          tooltip: 'Rescan local Claude Code logs',
+          tooltip: 'Rescan local AI usage logs',
           icon: repo.scanning
               ? SizedBox(
                   width: 18,
@@ -170,6 +181,26 @@ class _TopBar extends StatelessWidget {
           onPressed: repo.scanning ? null : repo.rescan,
         ),
       ],
+    );
+  }
+}
+
+// ─── Source filter: All / Claude Code / Codex CLI ───────────────────────────
+
+class _SourceFilterBar extends StatelessWidget {
+  const _SourceFilterBar({required this.selected, required this.onSelect});
+
+  final AiUsageSource? selected;
+  final ValueChanged<AiUsageSource?> onSelect;
+
+  static const _options = <AiUsageSource?>[null, AiUsageSource.claudeCode, AiUsageSource.codexCli];
+
+  @override
+  Widget build(BuildContext context) {
+    return LumaSegmentedTabs(
+      tabs: const ['All', 'Claude Code', 'Codex CLI'],
+      selectedIndex: _options.indexOf(selected),
+      onSelect: (i) => onSelect(_options[i]),
     );
   }
 }
@@ -190,15 +221,15 @@ class _AiUsageBody extends StatelessWidget {
       return const LumaEmptyState(
         icon: Icons.smart_toy_outlined,
         title: 'No usage recorded in this range',
-        subtitle: 'Try a wider range, or use Claude Code and rescan.',
+        subtitle: 'Try a wider range, or use Claude Code / Codex CLI and rescan.',
       );
     }
 
     final dayBuckets = aggregateByDay(turns);
     final summary = totals(turns);
-    final colorByModel = <String, Color>{
+    final colorByModel = <(AiUsageSource, String), Color>{
       for (var i = 0; i < modelTotals.length && i < _kTopModelLimit; i++)
-        modelTotals[i].model: _kPalette[i % _kPalette.length],
+        (modelTotals[i].source, modelTotals[i].model): _kPalette[i % _kPalette.length],
     };
 
     return SingleChildScrollView(
@@ -221,13 +252,16 @@ class _AiUsageBody extends StatelessWidget {
               ),
               _SummaryChip(label: 'Turns', value: '${summary.turnCount}'),
               _SummaryChip(label: 'Sessions', value: '${summary.sessionCount}'),
-              _SummaryChip(label: 'Top model', value: _shortModelName(modelTotals.first.model)),
+              _SummaryChip(
+                label: 'Top model',
+                value: _displayName(modelTotals.first.source, modelTotals.first.model),
+              ),
             ],
           ),
           if (summary.hasUnbillable) ...[
             const SizedBox(height: 6),
             Text(
-              '* excludes usage from models outside Anthropic\'s known pricing',
+              '* excludes usage from models outside their provider\'s known pricing',
               style: TextStyle(color: luma.textMuted, fontSize: 11),
             ),
           ],
@@ -279,7 +313,8 @@ class _AiUsageBody extends StatelessWidget {
                   if (i > 0) const SizedBox(height: 10),
                   _ModelListRow(
                     total: modelTotals[i],
-                    color: colorByModel[modelTotals[i].model] ?? _kOtherColor,
+                    color: colorByModel[(modelTotals[i].source, modelTotals[i].model)] ??
+                        _kOtherColor,
                   ),
                 ],
               ],
@@ -329,7 +364,7 @@ class _ModelPieChart extends StatefulWidget {
   const _ModelPieChart({required this.modelTotals, required this.colorByModel});
 
   final List<ModelUsageTotal> modelTotals;
-  final Map<String, Color> colorByModel;
+  final Map<(AiUsageSource, String), Color> colorByModel;
 
   @override
   State<_ModelPieChart> createState() => _ModelPieChartState();
@@ -344,7 +379,11 @@ class _ModelPieChartState extends State<_ModelPieChart> {
     final otherTokens = rest.fold<int>(0, (a, t) => a + t.totalTokens);
     return [
       for (final t in top)
-        (_shortModelName(t.model), t.totalTokens, widget.colorByModel[t.model]!),
+        (
+          _displayName(t.source, t.model),
+          t.totalTokens,
+          widget.colorByModel[(t.source, t.model)]!,
+        ),
       if (otherTokens > 0) ('Other', otherTokens, _kOtherColor),
     ];
   }
@@ -552,7 +591,7 @@ class _ModelListRow extends StatelessWidget {
         Expanded(
           flex: 2,
           child: Text(
-            _shortModelName(total.model),
+            _displayName(total.source, total.model),
             style: TextStyle(color: luma.textPrimary, fontSize: 13),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -701,6 +740,15 @@ class _ProviderRow extends StatelessWidget {
 
 // ─── Formatting helpers ──────────────────────────────────────────────────────
 
+/// Source-prefixed display name, e.g. "claude-opus-4-8" -> "Claude · Opus
+/// 4.8", "gpt-5.4-mini" -> "Codex · GPT 5.4 mini". Names outside the
+/// recognized families for that source fall back to the raw model string
+/// with just the source prefix.
+String _displayName(AiUsageSource source, String model) => switch (source) {
+      AiUsageSource.claudeCode => 'Claude · ${_shortModelName(model)}',
+      AiUsageSource.codexCli => 'Codex · ${_shortOpenAiModelName(model)}',
+    };
+
 /// "claude-opus-4-8" -> "Opus 4.8", "claude-fable-5" -> "Fable 5". Names
 /// outside the recognized Anthropic families fall back to the raw string.
 String _shortModelName(String model) {
@@ -722,6 +770,15 @@ String _shortModelName(String model) {
   if (versioned != null) return '$family ${versioned.group(1)}.${versioned.group(2)}';
   final single = RegExp(r'(\d+)').firstMatch(model);
   return single != null ? '$family ${single.group(1)}' : family;
+}
+
+/// "gpt-5.4-mini" -> "GPT 5.4 mini", "gpt-5.5" -> "GPT 5.5". Names outside
+/// the "gpt-" naming convention fall back to the raw string.
+String _shortOpenAiModelName(String model) {
+  final m = model.toLowerCase();
+  if (!m.startsWith('gpt-')) return model;
+  final rest = model.substring('gpt-'.length); // e.g. "5.4-mini"
+  return 'GPT ${rest.replaceAll('-', ' ')}';
 }
 
 String _formatTokens(int n) {

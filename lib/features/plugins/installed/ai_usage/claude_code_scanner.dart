@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:drift/drift.dart';
 
+import 'ai_usage_source.dart';
 import 'data/ai_usage_database.dart';
 
 /// Summary of one [ClaudeCodeScanner.scan] pass, for a status line in the UI.
@@ -221,6 +222,7 @@ class ClaudeCodeScanner {
         cacheReadTokens: Value(cacheRead),
         cacheCreationTokens: Value(cacheCreation),
         messageId: Value(messageId),
+        source: AiUsageSource.claudeCode,
       );
     } catch (_) {
       return null;
