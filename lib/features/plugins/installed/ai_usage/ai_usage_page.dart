@@ -29,7 +29,11 @@ const Color _kOtherColor = Color(0xFF8A8A9A);
 
 /// A private, offline dashboard for local AI coding CLI usage — token
 /// counts and cost estimates by day and model, read entirely from
-/// `~/.claude/projects` and `~/.codex/sessions` on this device.
+/// `~/.claude/projects`, `~/.codex/sessions`, and
+/// `~/.gemini/antigravity/brain` on this device. The first two are exact,
+/// provider-metered counts; Antigravity's are estimated from message length
+/// (it doesn't record token usage locally at all) and are labelled as such
+/// everywhere they appear.
 class AiUsagePage extends StatefulWidget {
   const AiUsagePage({super.key});
 
@@ -77,9 +81,10 @@ class _AiUsagePageState extends State<AiUsagePage> {
               icon: Icons.smart_toy_outlined,
               title: 'No local AI usage logs found',
               subtitle: 'AI Usage reads session logs from Claude Code '
-                  '(~/.claude/projects) and Codex CLI (~/.codex/sessions) on '
-                  'this device — nothing is ever sent anywhere. Use either '
-                  'tool here, then rescan.',
+                  '(~/.claude/projects), Codex CLI (~/.codex/sessions), and '
+                  'Antigravity (~/.gemini/antigravity) on this device — '
+                  'nothing is ever sent anywhere. Use one of these tools '
+                  'here, then rescan.',
               action: LumaGhostButton(
                 label: repo.scanning ? 'Scanning…' : 'Rescan',
                 icon: Icons.refresh_rounded,
@@ -193,12 +198,17 @@ class _SourceFilterBar extends StatelessWidget {
   final AiUsageSource? selected;
   final ValueChanged<AiUsageSource?> onSelect;
 
-  static const _options = <AiUsageSource?>[null, AiUsageSource.claudeCode, AiUsageSource.codexCli];
+  static const _options = <AiUsageSource?>[
+    null,
+    AiUsageSource.claudeCode,
+    AiUsageSource.codexCli,
+    AiUsageSource.antigravity,
+  ];
 
   @override
   Widget build(BuildContext context) {
     return LumaSegmentedTabs(
-      tabs: const ['All', 'Claude Code', 'Codex CLI'],
+      tabs: const ['All', 'Claude Code', 'Codex CLI', 'Antigravity (est.)'],
       selectedIndex: _options.indexOf(selected),
       onSelect: (i) => onSelect(_options[i]),
     );
@@ -221,7 +231,7 @@ class _AiUsageBody extends StatelessWidget {
       return const LumaEmptyState(
         icon: Icons.smart_toy_outlined,
         title: 'No usage recorded in this range',
-        subtitle: 'Try a wider range, or use Claude Code / Codex CLI and rescan.',
+        subtitle: 'Try a wider range, or use one of the supported tools and rescan.',
       );
     }
 
@@ -243,12 +253,28 @@ class _AiUsageBody extends StatelessWidget {
               _SummaryChip(
                 label: 'Total tokens',
                 value: _formatTokens(summary.totalTokens),
+                tooltip: 'New tokens only: input + output + first-time cache writes. '
+                    "Doesn't include cache reads (see that tile) — a long session re-reads "
+                    "the same growing context on nearly every turn, which would otherwise "
+                    'count the same conversation over and over.',
               ),
+              if (summary.cacheReadTokens > 0)
+                _SummaryChip(
+                  label: 'Cache reads',
+                  value: _formatTokens(summary.cacheReadTokens),
+                  tooltip: 'Cached context re-read across all turns in range — real and '
+                      'billed, but at a steep discount, and not counted in "Total tokens" '
+                      'since it\'s re-use of content rather than new content.',
+                ),
               _SummaryChip(
                 label: 'Est. cost',
                 value: summary.hasUnbillable
                     ? '${_formatCost(summary.cost)}*'
                     : _formatCost(summary.cost),
+                tooltip: 'Estimated cost at API rates, including cache reads/writes at '
+                    'their discounted rate — so this reflects more usage than "Total '
+                    'tokens" shows on its own. Subscription plans (Max/Pro) bill '
+                    'differently than this per-token estimate.',
               ),
               _SummaryChip(label: 'Turns', value: '${summary.turnCount}'),
               _SummaryChip(label: 'Sessions', value: '${summary.sessionCount}'),
@@ -263,6 +289,30 @@ class _AiUsageBody extends StatelessWidget {
             Text(
               '* excludes usage from models outside their provider\'s known pricing',
               style: TextStyle(color: luma.textMuted, fontSize: 11),
+            ),
+          ],
+          if (turns.any((t) => t.source == AiUsageSource.antigravity)) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: luma.accentSubtle,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline_rounded, size: 15, color: luma.accent),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Antigravity numbers are estimated from message length — it '
+                      "doesn't record real token usage locally. They're not exact "
+                      'like Claude Code/Codex CLI, and never priced.',
+                      style: TextStyle(color: luma.textSecondary, fontSize: 11.5),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
           const SizedBox(height: 16),
@@ -309,6 +359,8 @@ class _AiUsageBody extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const _ModelTableHeader(),
+                const SizedBox(height: 8),
                 for (var i = 0; i < modelTotals.length; i++) ...[
                   if (i > 0) const SizedBox(height: 10),
                   _ModelListRow(
@@ -329,14 +381,15 @@ class _AiUsageBody extends StatelessWidget {
 }
 
 class _SummaryChip extends StatelessWidget {
-  const _SummaryChip({required this.label, required this.value});
+  const _SummaryChip({required this.label, required this.value, this.tooltip});
   final String label;
   final String value;
+  final String? tooltip;
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    return Container(
+    final chip = Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: luma.surface,
@@ -355,6 +408,7 @@ class _SummaryChip extends StatelessWidget {
         ],
       ),
     );
+    return tooltip == null ? chip : Tooltip(message: tooltip, child: chip);
   }
 }
 
@@ -569,6 +623,60 @@ class _DailyBarChart extends StatelessWidget {
   }
 }
 
+// ─── Model table header ──────────────────────────────────────────────────────
+
+class _ModelTableHeader extends StatelessWidget {
+  const _ModelTableHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final labelStyle = TextStyle(
+      color: luma.textMuted,
+      fontSize: 11,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.2,
+    );
+
+    Widget header(String label, String tooltip, {double? width, int? flex, TextAlign? align}) {
+      final text = Text(label, style: labelStyle, textAlign: align, maxLines: 1);
+      final tipped = Tooltip(message: tooltip, child: text);
+      return width != null ? SizedBox(width: width, child: tipped) : Expanded(flex: flex!, child: tipped);
+    }
+
+    return Row(
+      children: [
+        const SizedBox(width: 20), // lines up with the color-dot + gap in each row below
+        header('Model', 'Which model was used, and which local tool it came from', flex: 2),
+        const SizedBox(width: 12),
+        header(
+          'Turns',
+          'How many separate AI responses (API calls) were made with this model',
+          width: 48,
+          align: TextAlign.right,
+        ),
+        const SizedBox(width: 12),
+        header(
+          'Tokens',
+          'New tokens only: input + output + first-time cache writes. Excludes cache '
+              'reads (repeated re-use of prior context) — see the Cache reads stat tile '
+              'above for that figure.',
+          width: 72,
+          align: TextAlign.right,
+        ),
+        const SizedBox(width: 12),
+        header(
+          'Cost',
+          'Estimated USD cost at this provider\'s API rate — "n/a" if the model isn\'t in the '
+              'local pricing table',
+          width: 72,
+          align: TextAlign.right,
+        ),
+      ],
+    );
+  }
+}
+
 // ─── Model table row ─────────────────────────────────────────────────────────
 
 class _ModelListRow extends StatelessWidget {
@@ -610,7 +718,9 @@ class _ModelListRow extends StatelessWidget {
         SizedBox(
           width: 72,
           child: Text(
-            _formatTokens(total.totalTokens),
+            total.source == AiUsageSource.antigravity
+                ? '~${_formatTokens(total.totalTokens)}'
+                : _formatTokens(total.totalTokens),
             textAlign: TextAlign.right,
             style: TextStyle(color: luma.textSecondary, fontSize: 12),
           ),
@@ -747,6 +857,10 @@ class _ProviderRow extends StatelessWidget {
 String _displayName(AiUsageSource source, String model) => switch (source) {
       AiUsageSource.claudeCode => 'Claude · ${_shortModelName(model)}',
       AiUsageSource.codexCli => 'Codex · ${_shortOpenAiModelName(model)}',
+      // Already a human-readable name extracted from Antigravity's own UI
+      // text (e.g. "Claude Opus 4.6 (Thinking)") — no family-name shortening
+      // needed the way the other two sources' raw API model IDs require.
+      AiUsageSource.antigravity => 'Antigravity · $model',
     };
 
 /// "claude-opus-4-8" -> "Opus 4.8", "claude-fable-5" -> "Fable 5". Names

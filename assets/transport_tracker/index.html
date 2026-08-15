@@ -22,8 +22,17 @@
   html, body { width: 100%; height: 100%; overflow: hidden; background: var(--background); }
   #map { position: absolute; inset: 0; }
   #map .maplibregl-ctrl-attrib { font-size: 10px; opacity: .75; }
-  #map .maplibregl-ctrl-bottom-left,
-  #map .maplibregl-ctrl-top-right { display: none; }
+  /* Flutter draws its own controls over the top of the map and docks a panel
+     on the right, so the map's own controls are moved out from under them
+     into the bottom-left corner (see map.js). On narrow viewports the panel
+     covers that corner too, so they are dropped entirely — pinch-zoom still
+     works there. */
+  #map .maplibregl-ctrl-top-left,
+  #map .maplibregl-ctrl-top-right,
+  #map .maplibregl-ctrl-bottom-right { display: none; }
+  @media (max-width: 760px) {
+    #map .maplibregl-ctrl-bottom-left { display: none; }
+  }
 
   #loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
     background: var(--background); z-index: 5; transition: opacity .2s; }

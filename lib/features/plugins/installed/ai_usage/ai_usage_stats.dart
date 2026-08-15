@@ -57,8 +57,16 @@ class ModelUsageTotal {
   final double cost;
   final bool billable;
 
-  int get totalTokens =>
-      inputTokens + outputTokens + cacheReadTokens + cacheCreationTokens;
+  /// Input + output + first-time cache writes — i.e. tokens that represent
+  /// genuinely new content. Deliberately excludes [cacheReadTokens]: a
+  /// cache read is Anthropic/OpenAI re-serving context that was already
+  /// counted when it was first written, and in a long agentic session the
+  /// same growing context gets re-read on nearly every turn — so summing
+  /// it in would count the same conversation history over and over and
+  /// balloon "tokens used" into something that no longer means "how much
+  /// did I use." Cache reads are still real and still billed (at a steep
+  /// discount) — see [cacheReadTokens] and [cost], which does include them.
+  int get totalTokens => inputTokens + outputTokens + cacheCreationTokens;
 }
 
 /// One local calendar day's totals, for the daily bar chart. [day] is local
@@ -81,13 +89,22 @@ class AiUsageTotals {
     required this.turnCount,
     required this.sessionCount,
     required this.totalTokens,
+    required this.cacheReadTokens,
     required this.cost,
     required this.hasUnbillable,
   });
 
   final int turnCount;
   final int sessionCount;
+
+  /// New tokens only (input + output + cache writes) — see
+  /// [ModelUsageTotal.totalTokens] for why cache reads are excluded here.
   final int totalTokens;
+
+  /// Cached context re-read across all turns in range — shown as its own
+  /// stat rather than folded into [totalTokens]; still factored into
+  /// [cost] at the provider's discounted cache-read rate.
+  final int cacheReadTokens;
   final double cost;
 
   /// Whether any turn in range came from a model outside its provider's
@@ -96,7 +113,7 @@ class AiUsageTotals {
 }
 
 int _totalTokensFor(AiUsageTurn t) =>
-    t.inputTokens + t.outputTokens + t.cacheReadTokens + t.cacheCreationTokens;
+    t.inputTokens + t.outputTokens + t.cacheCreationTokens;
 
 /// Totals per (source, model) pair across [turns], sorted by descending
 /// token count.
@@ -163,6 +180,7 @@ List<AiDayUsageBucket> aggregateByDay(Iterable<AiUsageTurn> turns) {
 AiUsageTotals totals(Iterable<AiUsageTurn> turns) {
   var turnCount = 0;
   var totalTokens = 0;
+  var cacheReadTokens = 0;
   var cost = 0.0;
   var hasUnbillable = false;
   final sessions = <String>{};
@@ -170,6 +188,7 @@ AiUsageTotals totals(Iterable<AiUsageTurn> turns) {
   for (final t in turns) {
     turnCount++;
     totalTokens += _totalTokensFor(t);
+    cacheReadTokens += t.cacheReadTokens;
     cost += costForTurn(t.source, t.model, t.inputTokens, t.outputTokens,
         t.cacheReadTokens, t.cacheCreationTokens);
     if (!isBillableModel(t.source, t.model)) hasUnbillable = true;
@@ -180,6 +199,7 @@ AiUsageTotals totals(Iterable<AiUsageTurn> turns) {
     turnCount: turnCount,
     sessionCount: sessions.length,
     totalTokens: totalTokens,
+    cacheReadTokens: cacheReadTokens,
     cost: cost,
     hasUnbillable: hasUnbillable,
   );
