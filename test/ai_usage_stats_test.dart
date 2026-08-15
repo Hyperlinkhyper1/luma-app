@@ -126,6 +126,20 @@ void main() {
     });
   });
 
+  group('Antigravity pricing (via dispatcher)', () {
+    test('is always unbillable with no pricing, regardless of the model string', () {
+      // Antigravity's token counts are estimated from message length, not
+      // metered — attaching a dollar figure would compound one
+      // approximation on top of another, so it's deliberately never priced.
+      for (final model in ['Claude Opus 4.6 (Thinking)', 'Gemini 3.1 Pro (High)', null]) {
+        expect(isBillableModel(AiUsageSource.antigravity, model), isFalse, reason: '$model');
+        expect(pricingFor(AiUsageSource.antigravity, model), isNull, reason: '$model');
+      }
+      expect(costForTurn(AiUsageSource.antigravity, 'Claude Opus 4.6 (Thinking)', 100, 200, 0, 0),
+          0);
+    });
+  });
+
   group('costForTurn', () {
     test('non-billable model costs nothing', () {
       expect(costForTurn(AiUsageSource.claudeCode, 'gpt-4o-mini', 1000000, 1000000, 0, 0), 0);
@@ -166,6 +180,22 @@ void main() {
       expect(totals.first.billable, isTrue);
     });
 
+    test('totalTokens excludes cache reads even though cost still bills them', () {
+      final turns = [
+        _turn(
+          timestamp: DateTime(2026, 1, 1),
+          model: 'claude-sonnet-4-6',
+          inputTokens: 100,
+          outputTokens: 200,
+          cacheReadTokens: 5000000,
+        ),
+      ];
+      final result = aggregateByModel(turns).single;
+      expect(result.totalTokens, 300);
+      expect(result.cacheReadTokens, 5000000, reason: 'raw field is untouched');
+      expect(result.cost, greaterThan(1.0), reason: 'cost calc still includes the cache read');
+    });
+
     test('groups a non-Anthropic model as unbillable', () {
       final turns = [
         _turn(timestamp: DateTime(2026, 1, 1), model: 'gpt-4o-mini'),
@@ -204,6 +234,20 @@ void main() {
       expect(buckets[1].day, DateTime(2026, 1, 2));
       expect(buckets[1].totalTokens, 10);
     });
+
+    test('excludes cache reads from the daily total', () {
+      final turns = [
+        _turn(
+          timestamp: DateTime(2026, 1, 1),
+          inputTokens: 100,
+          outputTokens: 50,
+          cacheReadTokens: 500000,
+        ),
+      ];
+      final buckets = aggregateByDay(turns);
+      expect(buckets.single.totalTokens, 150,
+          reason: 'a huge repeated cache read must not dominate the daily total');
+    });
   });
 
   group('totals', () {
@@ -219,6 +263,30 @@ void main() {
       expect(result.turnCount, 3);
       expect(result.sessionCount, 2);
       expect(result.hasUnbillable, isTrue);
+    });
+
+    test('totalTokens excludes cache reads, but cost and cacheReadTokens still reflect them',
+        () {
+      // Regression test for a real bug: a long agentic session re-reads the
+      // same growing cached context on nearly every turn, so summing cache
+      // reads into "total tokens" inflated real usage by ~100x in practice
+      // (1.93B reported vs. a reference tool's ~15M for the same history).
+      final turns = [
+        _turn(
+          timestamp: DateTime(2026, 1, 1),
+          model: 'claude-sonnet-4-6',
+          inputTokens: 100,
+          outputTokens: 200,
+          cacheReadTokens: 1000000, // $0.30/MTok on sonnet-4-6 -> $0.30
+          cacheCreationTokens: 0,
+        ),
+      ];
+
+      final result = totals(turns);
+      expect(result.totalTokens, 300, reason: 'input + output only, cache read excluded');
+      expect(result.cacheReadTokens, 1000000, reason: 'still reported, just separately');
+      expect(result.cost, greaterThan(0.29),
+          reason: 'cost must still bill the cache read, even though tokens excludes it');
     });
 
     test('costs a mixed Claude Code + Codex CLI list using each turn\'s own source', () {

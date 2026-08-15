@@ -49,5 +49,23 @@ class AiUsageDatabase extends _$AiUsageDatabase {
             ));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            // Schema 1 predates the required `source` column. Both tables
+            // here are a derived, re-scannable cache of local session
+            // logs — simplest correct migration is to drop and recreate
+            // rather than synthesize a source for old rows; the next
+            // rescan repopulates everything from scratch.
+            await customStatement('DROP TABLE IF EXISTS ai_usage_turns');
+            await customStatement('DROP TABLE IF EXISTS ai_usage_scan_files');
+            await m.createTable(aiUsageTurns);
+            await m.createTable(aiUsageScanFiles);
+          }
+        },
+      );
 }
