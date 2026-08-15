@@ -32,6 +32,29 @@ enum AisConnectionState { idle, connecting, live, error, closed }
 class AisStreamClient {
   static const _endpoint = 'wss://stream.aisstream.io/v0/stream';
 
+  /// Every message type that can place a vessel on the map or name one.
+  ///
+  /// Subscribing to `PositionReport` alone (AIS types 1/2/3) only covers
+  /// Class A transponders — the ones commercial shipping is required to
+  /// carry. Leisure boats, small fishing vessels and most harbour craft use
+  /// Class B, whose positions arrive as `StandardClassBPositionReport` and
+  /// `ExtendedClassBPositionReport`, and whose names arrive as
+  /// `StaticDataReport`. Leaving those out hides a large share of the
+  /// traffic in any coastal area.
+  static const messageTypes = <String>[
+    'PositionReport',
+    'StandardClassBPositionReport',
+    'ExtendedClassBPositionReport',
+    'ShipStaticData',
+    'StaticDataReport',
+  ];
+
+  /// Raw frames received since the last [connect], and how many of those
+  /// produced a usable position. Surfaced in the UI so an empty map can be
+  /// told apart from a feed that is arriving but not parsing.
+  int rawMessageCount = 0;
+  int usableMessageCount = 0;
+
   WebSocket? _socket;
   StreamSubscription? _sub;
 
@@ -52,20 +75,13 @@ class AisStreamClient {
   }) async {
     await disconnect();
     _setState(AisConnectionState.connecting);
+    rawMessageCount = 0;
+    usableMessageCount = 0;
     try {
       final socket = await WebSocket.connect(_endpoint)
           .timeout(const Duration(seconds: 12));
       _socket = socket;
-      socket.add(jsonEncode({
-        'APIKey': apiKey,
-        'BoundingBoxes': [
-          [
-            [box.south, box.west],
-            [box.north, box.east],
-          ],
-        ],
-        'FilterMessageTypes': ['PositionReport', 'ShipStaticData'],
-      }));
+      socket.add(jsonEncode(_subscription(apiKey, box)));
       _sub = socket.listen(
         _onMessage,
         onError: (Object e) {
@@ -93,17 +109,19 @@ class AisStreamClient {
   void updateBoundingBox({required String apiKey, required AisBoundingBox box}) {
     final socket = _socket;
     if (socket == null || _current != AisConnectionState.live) return;
-    socket.add(jsonEncode({
-      'APIKey': apiKey,
-      'BoundingBoxes': [
-        [
-          [box.south, box.west],
-          [box.north, box.east],
-        ],
-      ],
-      'FilterMessageTypes': ['PositionReport', 'ShipStaticData'],
-    }));
+    socket.add(jsonEncode(_subscription(apiKey, box)));
   }
+
+  static Map<String, dynamic> _subscription(String apiKey, AisBoundingBox box) => {
+        'APIKey': apiKey,
+        'BoundingBoxes': [
+          [
+            [box.south, box.west],
+            [box.north, box.east],
+          ],
+        ],
+        'FilterMessageTypes': messageTypes,
+      };
 
   /// Opens a short-lived throwaway connection to sanity-check an API key,
   /// independent of any tracking connection already in progress. Returns
@@ -121,7 +139,7 @@ class AisStreamClient {
             [0.01, 0.01],
           ],
         ],
-        'FilterMessageTypes': ['PositionReport'],
+        'FilterMessageTypes': messageTypes,
       }));
       final completer = Completer<String?>();
       sub = socket.listen(
@@ -167,6 +185,7 @@ class AisStreamClient {
   }
 
   void _onMessage(dynamic raw) {
+    rawMessageCount++;
     Map<String, dynamic> msg;
     try {
       msg = jsonDecode(raw as String) as Map<String, dynamic>;
@@ -176,51 +195,93 @@ class AisStreamClient {
 
     final meta = msg['MetaData'] as Map<String, dynamic>?;
     if (meta == null) {
-      final err = msg['error'] ?? msg['Error'];
+      final err = msg['error'] ?? msg['Error'] ?? msg['message'];
       if (err != null) _errorController.add(err.toString());
       return;
     }
 
+    // Every message type carries the position in its metadata envelope, so
+    // a vessel can always be placed even when the payload itself is a
+    // name-only report (type 24) or a type this client doesn't decode.
     final mmsi = _asInt(meta['MMSI']);
-    final lat = _asDouble(meta['latitude']);
-    final lon = _asDouble(meta['longitude']);
+    final lat = _asDouble(meta['latitude']) ?? _asDouble(meta['Latitude']);
+    final lon = _asDouble(meta['longitude']) ?? _asDouble(meta['Longitude']);
     if (mmsi == null || lat == null || lon == null) return;
 
     final metaName = _cleanText(meta['ShipName'] as String?);
     final type = msg['MessageType'] as String?;
     final message = msg['Message'] as Map<String, dynamic>?;
+    final body = (message?[type] as Map<String, dynamic>?) ?? const {};
 
-    if (type == 'PositionReport') {
-      final pr = message?['PositionReport'] as Map<String, dynamic>?;
-      if (pr == null) return;
-      final heading = _asInt(pr['TrueHeading']);
-      _patchController.add(VesselPatch(
-        mmsi: mmsi,
-        latitude: lat,
-        longitude: lon,
-        name: metaName,
-        sog: _asDouble(pr['Sog']),
-        cog: _asDouble(pr['Cog']),
-        // 511 is the AIS "not available" sentinel for true heading.
-        trueHeading: (heading != null && heading < 360) ? heading : null,
-        navStatus: _asInt(pr['NavigationalStatus']),
-      ));
-    } else if (type == 'ShipStaticData') {
-      final sd = message?['ShipStaticData'] as Map<String, dynamic>?;
-      if (sd == null) return;
-      final staticName = _cleanText(sd['Name'] as String?);
-      _patchController.add(VesselPatch(
-        mmsi: mmsi,
-        latitude: lat,
-        longitude: lon,
-        name: staticName ?? metaName,
-        shipType: _asInt(sd['Type']),
-        imo: _asInt(sd['ImoNumber']),
-        callSign: _cleanText(sd['CallSign'] as String?),
-        destination: _cleanText(sd['Destination'] as String?),
-        draught: _asDouble(sd['MaximumStaticDraught']),
-      ));
+    usableMessageCount++;
+
+    switch (type) {
+      // Class A (1/2/3) and Class B (18) share these field names; 18 simply
+      // has no navigational status.
+      case 'PositionReport':
+      case 'StandardClassBPositionReport':
+        _patchController.add(VesselPatch(
+          mmsi: mmsi,
+          latitude: lat,
+          longitude: lon,
+          name: metaName,
+          sog: _asDouble(body['Sog']),
+          cog: _asDouble(body['Cog']),
+          trueHeading: _heading(body['TrueHeading']),
+          navStatus: _asInt(body['NavigationalStatus']),
+        ));
+      // Class B extended (19) additionally carries name and ship type.
+      case 'ExtendedClassBPositionReport':
+        _patchController.add(VesselPatch(
+          mmsi: mmsi,
+          latitude: lat,
+          longitude: lon,
+          name: _cleanText(body['Name'] as String?) ?? metaName,
+          sog: _asDouble(body['Sog']),
+          cog: _asDouble(body['Cog']),
+          trueHeading: _heading(body['TrueHeading']),
+          shipType: _asInt(body['Type']),
+        ));
+      case 'ShipStaticData':
+        _patchController.add(VesselPatch(
+          mmsi: mmsi,
+          latitude: lat,
+          longitude: lon,
+          name: _cleanText(body['Name'] as String?) ?? metaName,
+          shipType: _asInt(body['Type']),
+          imo: _asInt(body['ImoNumber']),
+          callSign: _cleanText(body['CallSign'] as String?),
+          destination: _cleanText(body['Destination'] as String?),
+          draught: _asDouble(body['MaximumStaticDraught']),
+        ));
+      // Class B static (24) is split across two part reports: A carries the
+      // name, B the call sign and ship type. Either may arrive alone.
+      case 'StaticDataReport':
+        final reportA = body['ReportA'] as Map<String, dynamic>?;
+        final reportB = body['ReportB'] as Map<String, dynamic>?;
+        _patchController.add(VesselPatch(
+          mmsi: mmsi,
+          latitude: lat,
+          longitude: lon,
+          name: _cleanText(reportA?['Name'] as String?) ?? metaName,
+          shipType: _asInt(reportB?['ShipType']),
+          callSign: _cleanText(reportB?['CallSign'] as String?),
+        ));
+      default:
+        // Unknown type, but the envelope still located a vessel.
+        _patchController.add(VesselPatch(
+          mmsi: mmsi,
+          latitude: lat,
+          longitude: lon,
+          name: metaName,
+        ));
     }
+  }
+
+  /// 511 is the AIS "heading not available" sentinel.
+  static int? _heading(dynamic v) {
+    final h = _asInt(v);
+    return (h != null && h >= 0 && h < 360) ? h : null;
   }
 
   /// AIS 6-bit text fields pad unused trailing characters with `@`.

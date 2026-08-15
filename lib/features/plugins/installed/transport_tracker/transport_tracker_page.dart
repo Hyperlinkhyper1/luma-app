@@ -12,6 +12,8 @@ import '../../../../theme/luma_theme.dart';
 import '../_shared/windows_webview.dart';
 import 'ais_key_store.dart';
 import 'ais_stream_client.dart';
+import 'transit_client.dart';
+import 'transit_vehicle.dart';
 import 'vessel.dart';
 
 /// Live ship tracking on a real-world map — MarineTraffic/VesselFinder,
@@ -29,6 +31,9 @@ class TransportTrackerPage extends StatefulWidget {
 }
 
 typedef _Bounds = ({double south, double west, double north, double east});
+
+/// Width of the docked side panel on desktop-sized viewports.
+const double _panelWidth = 300;
 
 class _TransportTrackerPageState extends State<TransportTrackerPage> {
   WebviewController? _windowsController;
@@ -50,6 +55,22 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
   _Bounds? _bounds;
   bool _tracking = false;
   AisConnectionState _connState = AisConnectionState.idle;
+
+  /// First failure reported by the map itself (missing style, blocked tiles,
+  /// no connection). Kept so a blank map can explain itself; only the first
+  /// is retained because MapLibre fires 'error' once per failed tile.
+  String? _mapError;
+
+  // ---- Public transport ------------------------------------------------
+  final _transit = TransitClient();
+  StreamSubscription<List<TransitVehicle>>? _transitSub;
+  StreamSubscription<String>? _transitErrorSub;
+  List<TransitVehicle> _transitVehicles = const [];
+
+  /// Which layers the options menu has switched on.
+  bool _showVessels = true;
+  bool _showTransit = false;
+  Set<TransitMode> _transitModes = TransitMode.values.toSet();
 
   String? _apiKey;
   late final Future<void> _keyLoad = _loadKey();
@@ -78,6 +99,59 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
       _dirty = true;
     });
     _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) => _onTick());
+
+    _transitSub = _transit.vehicles.listen((list) {
+      if (!mounted) return;
+      setState(() => _transitVehicles = list);
+      _pushTransit();
+    });
+    _transitErrorSub = _transit.errors.listen((msg) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    });
+  }
+
+  void _pushTransit() {
+    final features = _transitVehicles
+        .where((v) => _transitModes.contains(v.mode))
+        .map((v) => v.toGeoJsonFeature())
+        .toList();
+    final fc = jsonEncode({'type': 'FeatureCollection', 'features': features});
+    _evalJs('window.TT && TT.updateTransit($fc)');
+  }
+
+  void _setLayerVisible(String group, bool visible) {
+    _evalJs('window.TT && TT.setLayerVisible(${jsonEncode(group)}, $visible)');
+  }
+
+  Future<void> _openLayers() async {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => _LayersDialog(
+        showVessels: _showVessels,
+        showTransit: _showTransit,
+        transitModes: _transitModes,
+        onChanged: (vessels, transit, modes) {
+          setState(() {
+            _showVessels = vessels;
+            _showTransit = transit;
+            _transitModes = modes;
+          });
+          _setLayerVisible('vessels', vessels);
+          _setLayerVisible('transit', transit);
+          if (transit) {
+            _transit.start();
+          } else {
+            _transit.stop();
+          }
+          if (!vessels && _tracking) {
+            unawaited(_client.disconnect());
+            setState(() => _tracking = false);
+          }
+          _pushTransit();
+        },
+      ),
+    );
   }
 
   /// The HTML document loading (`onLoaded`/`onLoadStop`) just means the page
@@ -159,6 +233,10 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
         if (!mounted || !_vessels.containsKey(mmsi)) return;
         setState(() => _selectedMmsi = mmsi);
         _pushVessels();
+        break;
+      case 'mapError':
+        if (!mounted || _mapError != null || args.isEmpty) return;
+        setState(() => _mapError = args[0].toString());
         break;
     }
   }
@@ -298,25 +376,41 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
             // — see AppShell._phoneImmersivePlugins), so the status pill
             // needs extra clearance to not sit under it.
             leftInset: wide ? 12 : 56,
+            // Keep the controls clear of the docked side panel so a wrapped
+            // second row can never slide underneath it.
+            rightInset: wide ? _panelWidth + 24 : 12,
             connState: _connState,
             tracking: _tracking,
             canTrack: _bounds != null,
+            showVessels: _showVessels,
             onToggleTracking: _toggleTracking,
+            onOpenLayers: _openLayers,
             onOpenSettings: _openSettings,
           ),
           if (!_loading)
             Positioned(
-              top: 66,
+              // Docked to the right on desktop; a bottom sheet on a phone,
+              // where a full-height panel would cover the whole map.
+              top: wide ? 66 : null,
               right: 12,
               bottom: 12,
-              width: wide ? 300 : null,
+              width: wide ? _panelWidth : null,
               left: wide ? null : 12,
+              height: wide ? null : constraints.maxHeight * 0.42,
               child: FutureBuilder<void>(
                 future: _keyLoad,
                 builder: (context, _) => _SidePanel(
                   vessels: _vessels,
                   selectedMmsi: _selectedMmsi,
                   hasApiKey: _apiKey != null && _apiKey!.isNotEmpty,
+                  tracking: _tracking,
+                  mapError: _mapError,
+                  rawMessages: _client.rawMessageCount,
+                  transitVehicleCount: _showTransit
+                      ? _transitVehicles
+                          .where((v) => _transitModes.contains(v.mode))
+                          .length
+                      : null,
                   onSelect: _selectVessel,
                   onDeselect: () {
                     setState(() => _selectedMmsi = null);
@@ -339,6 +433,9 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
     _stateSub?.cancel();
     _errorSub?.cancel();
     _patchSub?.cancel();
+    _transitSub?.cancel();
+    _transitErrorSub?.cancel();
+    _transit.dispose();
     _client.dispose();
     _windowsMsgSub?.cancel();
     _windowsController?.dispose();
@@ -350,18 +447,24 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
 class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.leftInset,
+    required this.rightInset,
     required this.connState,
     required this.tracking,
     required this.canTrack,
+    required this.showVessels,
     required this.onToggleTracking,
+    required this.onOpenLayers,
     required this.onOpenSettings,
   });
 
   final double leftInset;
+  final double rightInset;
   final AisConnectionState connState;
   final bool tracking;
   final bool canTrack;
+  final bool showVessels;
   final VoidCallback onToggleTracking;
+  final VoidCallback onOpenLayers;
   final VoidCallback onOpenSettings;
 
   @override
@@ -374,7 +477,7 @@ class _TopBar extends StatelessWidget {
     return Positioned(
       top: 12,
       left: leftInset,
-      right: 12,
+      right: rightInset,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -419,7 +522,7 @@ class _TopBar extends StatelessWidget {
                     ],
                   ),
                 ),
-                _Glass(
+                if (showVessels) _Glass(
                   onTap: canTrack ? onToggleTracking : null,
                   accent: tracking,
                   tooltip: canTrack
@@ -451,6 +554,13 @@ class _TopBar extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+          const SizedBox(width: 8),
+          _Glass(
+            onTap: onOpenLayers,
+            tooltip: 'Choose what to track',
+            padding: const EdgeInsets.all(12),
+            child: Icon(Icons.layers_outlined, size: 16, color: luma.textPrimary),
           ),
           const SizedBox(width: 8),
           _Glass(
@@ -502,7 +612,11 @@ class _Glass extends StatelessWidget {
           ),
         ],
       ),
-      child: Center(child: child),
+      // widthFactor pins Align to its child's width. Without it, Align
+      // expands to the maximum width its parent offers — inside a Wrap that
+      // is the full row, which stretched each pill across the screen and
+      // pushed the rest onto extra lines.
+      child: Center(widthFactor: 1.0, child: child),
     );
     if (onTap == null) return pill;
     final button = Material(
@@ -524,6 +638,10 @@ class _SidePanel extends StatelessWidget {
     required this.vessels,
     required this.selectedMmsi,
     required this.hasApiKey,
+    required this.tracking,
+    required this.mapError,
+    required this.rawMessages,
+    required this.transitVehicleCount,
     required this.onSelect,
     required this.onDeselect,
     required this.onOpenSettings,
@@ -532,6 +650,10 @@ class _SidePanel extends StatelessWidget {
   final Map<int, Vessel> vessels;
   final int? selectedMmsi;
   final bool hasApiKey;
+  final bool tracking;
+  final String? mapError;
+  final int rawMessages;
+  final int? transitVehicleCount;
   final ValueChanged<int> onSelect;
   final VoidCallback onDeselect;
   final VoidCallback onOpenSettings;
@@ -574,6 +696,10 @@ class _SidePanel extends StatelessWidget {
                 key: const ValueKey('list'),
                 vessels: vessels,
                 hasApiKey: hasApiKey,
+                tracking: tracking,
+                mapError: mapError,
+                rawMessages: rawMessages,
+                transitVehicleCount: transitVehicleCount,
                 onSelect: onSelect,
                 onOpenSettings: onOpenSettings,
               ),
@@ -587,12 +713,20 @@ class _VesselList extends StatelessWidget {
     super.key,
     required this.vessels,
     required this.hasApiKey,
+    required this.tracking,
+    required this.mapError,
+    required this.rawMessages,
+    required this.transitVehicleCount,
     required this.onSelect,
     required this.onOpenSettings,
   });
 
   final Map<int, Vessel> vessels;
   final bool hasApiKey;
+  final bool tracking;
+  final String? mapError;
+  final int rawMessages;
+  final int? transitVehicleCount;
   final ValueChanged<int> onSelect;
   final VoidCallback onOpenSettings;
 
@@ -610,12 +744,18 @@ class _VesselList extends StatelessWidget {
             children: [
               Icon(Icons.directions_boat_rounded, size: 16, color: luma.accent),
               const SizedBox(width: 8),
-              Text(
-                'Vessels (${vessels.length})',
-                style: TextStyle(
-                  color: luma.textPrimary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
+              Expanded(
+                child: Text(
+                  transitVehicleCount != null
+                      ? 'Vessels (${vessels.length}) · Transit ($transitVehicleCount)'
+                      : 'Vessels (${vessels.length})',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: luma.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
@@ -630,12 +770,61 @@ class _VesselList extends StatelessWidget {
           child: sorted.isEmpty
               ? Padding(
                   padding: const EdgeInsets.all(20),
-                  child: Text(
-                    hasApiKey
-                        ? 'No vessels yet. Press "Track this view" to start '
-                            'the live feed for the area on screen.'
-                        : 'Add a free AISStream.io API key to see live ships.',
-                    style: TextStyle(color: luma.textMuted, fontSize: 12.5, height: 1.4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        !hasApiKey
+                            ? 'Add a free AISStream.io API key to see live '
+                                'ships.'
+                            : tracking
+                                ? 'Connected — waiting for position reports. '
+                                    'Busy shipping lanes fill in within '
+                                    'seconds; open ocean can take longer.'
+                                : 'No vessels yet. Press "Track this view" to '
+                                    'start the live feed for the area on '
+                                    'screen.',
+                        style: TextStyle(
+                            color: luma.textMuted, fontSize: 12.5, height: 1.4),
+                      ),
+                      // Tells a silent feed apart from one that is arriving
+                      // but not producing positions.
+                      if (tracking) ...[
+                        const SizedBox(height: 10),
+                        Text(
+                          rawMessages == 0
+                              ? 'No AIS messages received yet. If this stays '
+                                  'at zero, the key may be rejected or this '
+                                  'area may have no reporting traffic.'
+                              : '$rawMessages AIS messages received.',
+                          style: TextStyle(
+                              color: luma.textMuted,
+                              fontSize: 11,
+                              height: 1.4),
+                        ),
+                      ],
+                      if (mapError != null) ...[
+                        const SizedBox(height: 12),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.warning_amber_rounded,
+                                size: 14, color: luma.danger),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'The map could not load fully — check this '
+                                'device\'s internet connection. ($mapError)',
+                                style: TextStyle(
+                                    color: luma.danger,
+                                    fontSize: 11,
+                                    height: 1.4),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
                   ),
                 )
               : ListView.separated(
@@ -929,6 +1118,250 @@ String _relativeTime(DateTime t) {
   if (diff.inSeconds < 60) return '${diff.inSeconds}s ago';
   if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
   return '${diff.inHours}h ago';
+}
+
+/// "What to track" — picks which live layers are on, and which transport
+/// modes are shown within them.
+class _LayersDialog extends StatefulWidget {
+  const _LayersDialog({
+    required this.showVessels,
+    required this.showTransit,
+    required this.transitModes,
+    required this.onChanged,
+  });
+
+  final bool showVessels;
+  final bool showTransit;
+  final Set<TransitMode> transitModes;
+  final void Function(bool vessels, bool transit, Set<TransitMode> modes)
+      onChanged;
+
+  @override
+  State<_LayersDialog> createState() => _LayersDialogState();
+}
+
+class _LayersDialogState extends State<_LayersDialog> {
+  late bool _vessels = widget.showVessels;
+  late bool _transit = widget.showTransit;
+  late final Set<TransitMode> _modes = {...widget.transitModes};
+
+  void _emit() => widget.onChanged(_vessels, _transit, {..._modes});
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Dialog(
+      backgroundColor: luma.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: luma.border),
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.layers_outlined, color: luma.accent, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    'What to track',
+                    style: TextStyle(
+                      color: luma.textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _LayerToggle(
+                icon: Icons.directions_boat_rounded,
+                title: 'Ships',
+                subtitle: 'Live AIS vessel positions worldwide. Needs your '
+                    'own free AISStream.io key.',
+                value: _vessels,
+                onChanged: (v) {
+                  setState(() => _vessels = v);
+                  _emit();
+                },
+              ),
+              const SizedBox(height: 10),
+              _LayerToggle(
+                icon: Icons.directions_bus_rounded,
+                title: 'Public transport — Netherlands',
+                subtitle: 'Live trains, metros, trams, buses and ferries '
+                    'from the Dutch open-data feed. No key needed.',
+                value: _transit,
+                onChanged: (v) {
+                  setState(() => _transit = v);
+                  _emit();
+                },
+              ),
+              if (_transit) ...[
+                const SizedBox(height: 14),
+                Text(
+                  'Modes',
+                  style: TextStyle(
+                    color: luma.textMuted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final mode in TransitMode.values)
+                      _ModeChip(
+                        mode: mode,
+                        selected: _modes.contains(mode),
+                        onTap: () {
+                          setState(() {
+                            if (!_modes.remove(mode)) _modes.add(mode);
+                          });
+                          _emit();
+                        },
+                      ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 20),
+              LumaGhostButton(
+                label: 'Done',
+                onTap: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LayerToggle extends StatelessWidget {
+  const _LayerToggle({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Material(
+      color: value ? luma.accentSubtle : Colors.transparent,
+      borderRadius: BorderRadius.circular(12),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => onChanged(!value),
+        mouseCursor: SystemMouseCursors.click,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 44),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: value ? luma.accent : luma.border),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 18, color: value ? luma.accent : luma.textMuted),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: luma.textPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                          color: luma.textMuted, fontSize: 11, height: 1.35),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Switch(value: value, onChanged: onChanged),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ModeChip extends StatelessWidget {
+  const _ModeChip({
+    required this.mode,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final TransitMode mode;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Material(
+      color: selected ? mode.color.withValues(alpha: 0.16) : Colors.transparent,
+      borderRadius: BorderRadius.circular(999),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        mouseCursor: SystemMouseCursors.click,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 44),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            border:
+                Border.all(color: selected ? mode.color : luma.border),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(mode.icon,
+                  size: 15, color: selected ? mode.color : luma.textMuted),
+              const SizedBox(width: 7),
+              Text(
+                mode.label,
+                style: TextStyle(
+                  color: selected ? luma.textPrimary : luma.textMuted,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// The AISStream.io API key entry dialog — mirrors the AI Assistant's
