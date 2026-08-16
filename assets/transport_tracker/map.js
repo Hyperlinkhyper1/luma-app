@@ -86,10 +86,51 @@
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-left');
   map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
 
+  // Replaced by onWheel above so zoom anchors on the cursor rather than the
+  // corner; see the note on hostPointer.
+  map.scrollZoom.disable();
+  map.getContainer().addEventListener('wheel', onWheel, { passive: false });
+
   let ready = false;
   let pendingVessels = null;
   let pendingTransit = null;
   const pendingVisibility = {};
+
+  /* ── Cursor-anchored scroll zoom ──────────────────────────────────────
+     Inside the embedded WebView the host (Flutter) owns the mouse and
+     forwards the wheel, but no `mousemove` ever reaches the page — so the
+     document's idea of the cursor stays at (0, 0) and MapLibre's own
+     scroll zoom anchors every step to the top-left corner. The host pushes
+     the real pointer position through `TT.setPointer`, and wheel handling
+     is done here so it can zoom around that point.
+
+     A wheel event that does carry a real position (an ordinary browser)
+     is trusted over the pushed one, so this behaves normally outside the
+     WebView too. */
+  let hostPointer = null;
+
+  function wheelAnchor(e) {
+    const rect = map.getContainer().getBoundingClientRect();
+    if (e.clientX || e.clientY) {
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+    if (hostPointer) return hostPointer;
+    return null;
+  }
+
+  function onWheel(e) {
+    e.preventDefault();
+    // deltaMode 1 is lines, 0 is pixels; normalise both to zoom levels.
+    const step = e.deltaMode === 1 ? e.deltaY * 0.08 : e.deltaY * 0.0035;
+    const target = Math.max(
+      map.getMinZoom(),
+      Math.min(map.getMaxZoom(), map.getZoom() - step),
+    );
+    const anchor = wheelAnchor(e);
+    const options = { zoom: target, duration: 90 };
+    if (anchor) options.around = map.unproject([anchor.x, anchor.y]);
+    map.easeTo(options);
+  }
 
   /* Layer groups the host can switch on and off from its options menu. */
   const LAYER_GROUPS = {
@@ -316,6 +357,10 @@
     setLayerVisible(group, visible) {
       if (!ready) { pendingVisibility[group] = visible; return; }
       applyVisibility(group, visible);
+    },
+    /// Host-reported cursor position in CSS pixels relative to the map.
+    setPointer(x, y) {
+      hostPointer = { x: x, y: y };
     },
     flyTo(lat, lon, zoom) {
       map.flyTo({ center: [lon, lat], zoom: zoom || Math.max(map.getZoom(), 11), speed: 1.4 });

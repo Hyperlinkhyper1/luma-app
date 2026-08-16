@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/features/plugins/installed/transport_tracker/gtfs_realtime.dart';
+import 'package:luma/features/plugins/installed/transport_tracker/gtfs_stops.dart';
 import 'package:luma/features/plugins/installed/transport_tracker/transit_client.dart';
 import 'package:luma/features/plugins/installed/transport_tracker/transit_vehicle.dart';
 import 'package:luma/features/plugins/installed/transport_tracker/vessel.dart';
@@ -159,6 +160,131 @@ void main() {
     test('falls back to bus for anything unrecognised', () {
       expect(transitModeFor('QBUZZ', 'z870'), TransitMode.bus);
       expect(transitModeFor(null, null), TransitMode.bus);
+    });
+  });
+
+  group('trip updates', () {
+    Uint8List tripFeed(String tripId, List<({String stop, int seq, int epoch, int delay})> calls) {
+      final tu = _ProtoWriter()..message(1, _ProtoWriter()..string(1, tripId));
+      for (final c in calls) {
+        final departure = _ProtoWriter()..uint(1, c.delay)..uint(2, c.epoch);
+        tu.message(
+            2,
+            _ProtoWriter()
+              ..uint(1, c.seq)
+              ..string(4, c.stop)
+              ..message(3, departure));
+      }
+      final entity = _ProtoWriter()..string(1, 'e1')..message(3, tu);
+      return (_ProtoWriter()..message(2, entity)).toBytes();
+    }
+
+    test('decodes calls with times and delays, in stop order', () {
+      final bytes = tripFeed('T1', [
+        (stop: 'B', seq: 2, epoch: 1755300600, delay: 120),
+        (stop: 'A', seq: 1, epoch: 1755300000, delay: 0),
+      ]);
+      final updates = parseTripUpdates(bytes);
+      expect(updates, hasLength(1));
+      final calls = updates.single.calls;
+      expect(calls.map((c) => c.stopId), ['A', 'B']);
+      expect(calls.last.delaySeconds, 120);
+      expect(calls.first.time!.millisecondsSinceEpoch, 1755300000 * 1000);
+    });
+  });
+
+  group('train interpolation', () {
+    final stopsCsv = 'stop_id,stop_name,stop_lat,stop_lon\n'
+        'A,Alkmaar,52.0,4.0\n'
+        'B,Bergen,52.0,5.0\n'
+        'Z,Zero Station,0.0,0.0\n';
+
+    TripUpdate tripBetween(String from, String to, DateTime dep, DateTime arr) =>
+        TripUpdate(tripId: 'T', calls: [
+          StopCall(stopId: from, stopSequence: 1, departure: dep),
+          StopCall(stopId: to, stopSequence: 2, arrival: arr),
+        ]);
+
+    test('places a train partway between two stations', () {
+      final stops = GtfsStopsCache.fromCsv(stopsCsv);
+      final dep = DateTime(2026, 8, 16, 12, 0);
+      final arr = DateTime(2026, 8, 16, 12, 10);
+      final trains = TransitClient.interpolateTrains(
+        [tripBetween('A', 'B', dep, arr)],
+        stops,
+        now: DateTime(2026, 8, 16, 12, 5),
+      );
+      expect(trains, hasLength(1));
+      // Halfway through the leg, so halfway along it.
+      expect(trains.single.longitude, closeTo(4.5, 0.001));
+      expect(trains.single.mode, TransitMode.train);
+      expect(trains.single.interpolated, isTrue);
+    });
+
+    test('never places a train using a station with no coordinates', () {
+      // Several cross-border stations are published as 0,0 — a real point
+      // in the Gulf of Guinea. Interpolating toward it must be refused.
+      final stops = GtfsStopsCache.fromCsv(stopsCsv);
+      final trains = TransitClient.interpolateTrains(
+        [
+          tripBetween('A', 'Z', DateTime(2026, 8, 16, 12, 0),
+              DateTime(2026, 8, 16, 12, 10))
+        ],
+        stops,
+        now: DateTime(2026, 8, 16, 12, 5),
+      );
+      expect(trains, isEmpty);
+    });
+
+    test('ignores journeys that are not currently running', () {
+      final stops = GtfsStopsCache.fromCsv(stopsCsv);
+      final trains = TransitClient.interpolateTrains(
+        [
+          tripBetween('A', 'B', DateTime(2026, 8, 16, 12, 0),
+              DateTime(2026, 8, 16, 12, 10))
+        ],
+        stops,
+        now: DateTime(2026, 8, 16, 18, 0),
+      );
+      expect(trains, isEmpty);
+    });
+
+    test('does nothing without a stop cache', () {
+      expect(
+        TransitClient.interpolateTrains([
+          tripBetween('A', 'B', DateTime(2026, 8, 16, 12, 0),
+              DateTime(2026, 8, 16, 12, 10))
+        ], null),
+        isEmpty,
+      );
+    });
+  });
+
+  group('GTFS stop parsing', () {
+    test('reads quoted names containing commas', () {
+      final stops = GtfsStopsCache.fromCsv(
+        'stop_id,stop_name,stop_lat,stop_lon\n'
+        '1,"Den Haag, Centraal",52.08,4.32\n',
+      );
+      expect(stops.lookup('1')?.name, 'Den Haag, Centraal');
+    });
+
+    test('flags stops published without coordinates', () {
+      final stops = GtfsStopsCache.fromCsv(
+        'stop_id,stop_name,stop_lat,stop_lon\n'
+        '1,Real Place,52.08,4.32\n'
+        '2,No Coordinates,0.0,0.0\n',
+      );
+      expect(stops.lookup('1')!.hasPosition, isTrue);
+      expect(stops.lookup('2')!.hasPosition, isFalse);
+    });
+
+    test('falls back past an id prefix', () {
+      final stops = GtfsStopsCache.fromCsv(
+        'stop_id,stop_name,stop_lat,stop_lon\n'
+        '1234,Utrecht,52.08,5.11\n',
+      );
+      expect(stops.lookup('stoparea:1234')?.name, 'Utrecht');
     });
   });
 

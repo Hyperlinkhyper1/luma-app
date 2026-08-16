@@ -149,7 +149,9 @@ void main() {
     expect(row.sessionId, 'sess-1');
     expect(row.model, 'gpt-5.5');
     expect(row.source, AiUsageSource.codexCli);
-    expect(row.inputTokens, 16111);
+    expect(row.inputTokens, 16111 - 10112,
+        reason: 'cached_input_tokens is a subset of input_tokens, not additive, so it must be '
+            'subtracted to get genuinely new input');
     expect(row.cacheReadTokens, 10112);
     expect(row.outputTokens, 18 + 5, reason: 'output + reasoning tokens are folded together');
     expect(row.cacheCreationTokens, 0);
@@ -280,7 +282,7 @@ void main() {
     // outright (rather than just skipping their *emission*) would lose the
     // sessionId/model state and mishandle this second turn.
     await file.writeAsString(
-      '${_tokenCount(timestamp: '2026-07-07T21:09:10.000Z', lastInput: 500, lastOutput: 50)}\n',
+      '${_tokenCount(timestamp: '2026-07-07T21:09:10.000Z', lastInput: 500, lastCached: 0, lastOutput: 50)}\n',
       mode: FileMode.append,
     );
     await file.setLastModified(DateTime(2026, 1, 1, 0, 0, 1));

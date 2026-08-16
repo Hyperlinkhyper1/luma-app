@@ -12,6 +12,8 @@ import '../../../../theme/luma_theme.dart';
 import '../_shared/windows_webview.dart';
 import 'ais_key_store.dart';
 import 'ais_stream_client.dart';
+import 'gtfs_realtime.dart';
+import 'gtfs_stops.dart';
 import 'transit_client.dart';
 import 'transit_vehicle.dart';
 import 'vessel.dart';
@@ -71,6 +73,35 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
   bool _showVessels = true;
   bool _showTransit = false;
   Set<TransitMode> _transitModes = TransitMode.values.toSet();
+  String? _selectedTransitId;
+
+  /// Stop names/coordinates. Needed to label the next-stops list and to
+  /// place trains at all, so it is fetched the first time transit is
+  /// switched on rather than at startup.
+  GtfsStopsCache? _stops;
+  bool _stopsLoading = false;
+  String? _stopsError;
+
+  Future<void> _ensureStops() async {
+    if (_stopsLoading) return;
+    var cache = _stops ?? await GtfsStopsCache.load();
+    if (cache.isEmpty || cache.isStale) {
+      setState(() => _stopsLoading = true);
+      try {
+        cache = await GtfsStopsCache.download();
+        if (mounted) setState(() => _stopsError = null);
+      } catch (e) {
+        if (mounted) setState(() => _stopsError = e.toString());
+      } finally {
+        if (mounted) setState(() => _stopsLoading = false);
+      }
+    }
+    if (!mounted) return;
+    setState(() => _stops = cache);
+    _transit.stops = cache;
+    // Trains only exist once stop coordinates are available.
+    if (_showTransit) unawaited(_transit.refresh());
+  }
 
   String? _apiKey;
   late final Future<void> _keyLoad = _loadKey();
@@ -120,6 +151,17 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
     _evalJs('window.TT && TT.updateTransit($fc)');
   }
 
+  Offset? _lastPointer;
+
+  /// Forwards the cursor to the map page, rate-limited to whole pixels so a
+  /// drag doesn't fire an `executeScript` per hover event.
+  void _reportPointer(Offset position) {
+    final rounded = Offset(position.dx.roundToDouble(), position.dy.roundToDouble());
+    if (rounded == _lastPointer) return;
+    _lastPointer = rounded;
+    _evalJs('window.TT && TT.setPointer(${rounded.dx}, ${rounded.dy})');
+  }
+
   void _setLayerVisible(String group, bool visible) {
     _evalJs('window.TT && TT.setLayerVisible(${jsonEncode(group)}, $visible)');
   }
@@ -140,6 +182,7 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
           _setLayerVisible('vessels', vessels);
           _setLayerVisible('transit', transit);
           if (transit) {
+            unawaited(_ensureStops());
             _transit.start();
           } else {
             _transit.stop();
@@ -234,6 +277,18 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
         setState(() => _selectedMmsi = mmsi);
         _pushVessels();
         break;
+      case 'transitClicked':
+        if (args.isEmpty) return;
+        final id = args[0].toString();
+        if (!mounted) return;
+        final hit = _transitVehicles.where((v) => v.id == id);
+        if (hit.isEmpty) return;
+        setState(() {
+          _selectedTransitId = id;
+          _selectedMmsi = null;
+        });
+        _pushVessels();
+        break;
       case 'mapError':
         if (!mounted || _mapError != null || args.isEmpty) return;
         setState(() => _mapError = args[0].toString());
@@ -306,6 +361,16 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
     );
   }
 
+  void _selectTransit(String id) {
+    final v = _transitVehicles.where((x) => x.id == id).firstOrNull;
+    if (v == null) return;
+    setState(() {
+      _selectedTransitId = id;
+      _selectedMmsi = null;
+    });
+    _evalJs('TT.flyTo(${v.latitude}, ${v.longitude}, 13)');
+  }
+
   void _selectVessel(int mmsi) {
     final v = _vessels[mmsi];
     if (v == null) return;
@@ -338,8 +403,15 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
       final wide = constraints.maxWidth >= 700;
       return Stack(
         children: [
+          // The embedded WebView receives the wheel but never a mousemove,
+          // so the page cannot know where the cursor is and would zoom from
+          // the top-left corner. Forwarding hover keeps scroll zoom anchored
+          // under the pointer. See the hostPointer note in map.js.
           Positioned.fill(
-            child: Platform.isWindows
+            child: MouseRegion(
+              opaque: false,
+              onHover: (event) => _reportPointer(event.localPosition),
+              child: Platform.isWindows
                 ? WindowsWebview(
                     fileUrl: Uri.file(
                       windowsAssetPath('assets/transport_tracker/index.html'),
@@ -368,6 +440,7 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
                     },
                     onLoadStop: (controller, url) => _armLoadingFallback(),
                   ),
+            ),
           ),
           if (_loading) const Center(child: CircularProgressIndicator()),
           if (!_loading) _TopBar(
@@ -402,14 +475,26 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
                 builder: (context, _) => _SidePanel(
                   vessels: _vessels,
                   selectedMmsi: _selectedMmsi,
+                  selectedTransit: _selectedTransitId == null
+                      ? null
+                      : _transitVehicles
+                          .where((v) => v.id == _selectedTransitId)
+                          .firstOrNull,
+                  onTransitBack: () =>
+                      setState(() => _selectedTransitId = null),
+                  onSelectTransit: _selectTransit,
+                  stops: _stops,
+                  stopsLoading: _stopsLoading,
+                  stopsError: _stopsError,
+                  tripUpdates: _transit.tripUpdates,
                   hasApiKey: _apiKey != null && _apiKey!.isNotEmpty,
                   tracking: _tracking,
                   mapError: _mapError,
                   rawMessages: _client.rawMessageCount,
-                  transitVehicleCount: _showTransit
+                  transitVehicles: _showTransit
                       ? _transitVehicles
                           .where((v) => _transitModes.contains(v.mode))
-                          .length
+                          .toList()
                       : null,
                   onSelect: _selectVessel,
                   onDeselect: () {
@@ -641,19 +726,33 @@ class _SidePanel extends StatelessWidget {
     required this.tracking,
     required this.mapError,
     required this.rawMessages,
-    required this.transitVehicleCount,
+    required this.transitVehicles,
+    required this.selectedTransit,
+    required this.onTransitBack,
+    required this.onSelectTransit,
+    required this.stops,
+    required this.stopsLoading,
+    required this.stopsError,
+    required this.tripUpdates,
     required this.onSelect,
     required this.onDeselect,
     required this.onOpenSettings,
   });
 
+  final TransitVehicle? selectedTransit;
+  final VoidCallback onTransitBack;
+  final ValueChanged<String> onSelectTransit;
+  final GtfsStopsCache? stops;
+  final bool stopsLoading;
+  final String? stopsError;
+  final Map<String, TripUpdate> tripUpdates;
   final Map<int, Vessel> vessels;
   final int? selectedMmsi;
   final bool hasApiKey;
   final bool tracking;
   final String? mapError;
   final int rawMessages;
-  final int? transitVehicleCount;
+  final List<TransitVehicle>? transitVehicles;
   final ValueChanged<int> onSelect;
   final VoidCallback onDeselect;
   final VoidCallback onOpenSettings;
@@ -686,7 +785,17 @@ class _SidePanel extends StatelessWidget {
             : const Duration(milliseconds: 180),
         switchInCurve: Curves.easeOut,
         switchOutCurve: Curves.easeIn,
-        child: selected != null
+        child: selectedTransit != null
+            ? _TransitDetail(
+                key: ValueKey('transit-${selectedTransit!.id}'),
+                vehicle: selectedTransit!,
+                stops: stops,
+                stopsLoading: stopsLoading,
+                stopsError: stopsError,
+                update: tripUpdates[selectedTransit!.tripId],
+                onBack: onTransitBack,
+              )
+            : selected != null
             ? _VesselDetail(
                 key: ValueKey('detail-${selected.mmsi}'),
                 vessel: selected,
@@ -699,7 +808,8 @@ class _SidePanel extends StatelessWidget {
                 tracking: tracking,
                 mapError: mapError,
                 rawMessages: rawMessages,
-                transitVehicleCount: transitVehicleCount,
+                transitVehicles: transitVehicles,
+                onSelectTransit: onSelectTransit,
                 onSelect: onSelect,
                 onOpenSettings: onOpenSettings,
               ),
@@ -716,17 +826,20 @@ class _VesselList extends StatelessWidget {
     required this.tracking,
     required this.mapError,
     required this.rawMessages,
-    required this.transitVehicleCount,
+    required this.transitVehicles,
+    required this.onSelectTransit,
     required this.onSelect,
     required this.onOpenSettings,
   });
+
+  final ValueChanged<String> onSelectTransit;
 
   final Map<int, Vessel> vessels;
   final bool hasApiKey;
   final bool tracking;
   final String? mapError;
   final int rawMessages;
-  final int? transitVehicleCount;
+  final List<TransitVehicle>? transitVehicles;
   final ValueChanged<int> onSelect;
   final VoidCallback onOpenSettings;
 
@@ -734,6 +847,8 @@ class _VesselList extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final sorted = vessels.values.toList()
+      ..sort((a, b) => a.displayName.compareTo(b.displayName));
+    final transit = [...?transitVehicles]
       ..sort((a, b) => a.displayName.compareTo(b.displayName));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -746,8 +861,8 @@ class _VesselList extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  transitVehicleCount != null
-                      ? 'Vessels (${vessels.length}) · Transit ($transitVehicleCount)'
+                  transitVehicles != null
+                      ? 'Vessels (${vessels.length}) · Transit (${transitVehicles!.length})'
                       : 'Vessels (${vessels.length})',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -767,7 +882,7 @@ class _VesselList extends StatelessWidget {
             child: _KeyPrompt(onOpenSettings: onOpenSettings),
           ),
         Expanded(
-          child: sorted.isEmpty
+          child: sorted.isEmpty && transit.isEmpty
               ? Padding(
                   padding: const EdgeInsets.all(20),
                   child: Column(
@@ -827,13 +942,22 @@ class _VesselList extends StatelessWidget {
                     ],
                   ),
                 )
+              // One virtualised list over both sources — the transit feed
+              // alone can carry a couple of thousand vehicles, so rows are
+              // built on demand rather than all at once.
               : ListView.separated(
                   padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
-                  itemCount: sorted.length,
+                  itemCount: sorted.length + transit.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 2),
                   itemBuilder: (context, i) {
-                    final v = sorted[i];
-                    return _VesselRow(vessel: v, onTap: () => onSelect(v.mmsi));
+                    if (i < sorted.length) {
+                      final v = sorted[i];
+                      return _VesselRow(
+                          vessel: v, onTap: () => onSelect(v.mmsi));
+                    }
+                    final t = transit[i - sorted.length];
+                    return _TransitRow(
+                        vehicle: t, onTap: () => onSelectTransit(t.id));
                   },
                 ),
         ),
@@ -946,6 +1070,84 @@ class _VesselRow extends StatelessWidget {
               if (vessel.sog != null)
                 Text(
                   '${vessel.sog!.toStringAsFixed(1)} kn',
+                  style: TextStyle(color: luma.textSecondary, fontSize: 11),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TransitRow extends StatelessWidget {
+  const _TransitRow({required this.vehicle, required this.onTap});
+  final TransitVehicle vehicle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final kmh = vehicle.speed == null ? null : vehicle.speed! * 3.6;
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(10),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        mouseCursor: SystemMouseCursors.click,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 44),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          alignment: Alignment.centerLeft,
+          child: Row(
+            children: [
+              Container(
+                width: 26,
+                height: 18,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: vehicle.mode.color,
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: Text(
+                  (vehicle.line?.isNotEmpty ?? false) ? vehicle.line! : '·',
+                  maxLines: 1,
+                  overflow: TextOverflow.clip,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      vehicle.displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: luma.textPrimary,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      vehicle.operator ?? '—',
+                      style: TextStyle(color: luma.textMuted, fontSize: 10.5),
+                    ),
+                  ],
+                ),
+              ),
+              if (kmh != null)
+                Text(
+                  '${kmh.toStringAsFixed(0)} km/h',
                   style: TextStyle(color: luma.textSecondary, fontSize: 11),
                 ),
             ],
@@ -1073,6 +1275,366 @@ class _VesselDetail extends StatelessWidget {
                 '${vessel.latitude.toStringAsFixed(4)}, ${vessel.longitude.toStringAsFixed(4)}',
           ),
           _DetailRow(label: 'Last report', value: _relativeTime(vessel.lastUpdate)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Detail card for a public-transport vehicle, opened by tapping its dot on
+/// the map or its row in the list.
+///
+/// Deliberately does not promise a next-stops timeline: the realtime feed
+/// identifies stops only by id, and resolving those to names needs the
+/// national static GTFS dataset, which is a ~225 MB download. Everything
+/// shown here comes from the live feed itself.
+class _TransitDetail extends StatelessWidget {
+  const _TransitDetail({
+    super.key,
+    required this.vehicle,
+    required this.stops,
+    required this.stopsLoading,
+    required this.stopsError,
+    required this.update,
+    required this.onBack,
+  });
+
+  final TransitVehicle vehicle;
+  final GtfsStopsCache? stops;
+  final bool stopsLoading;
+  final String? stopsError;
+  final TripUpdate? update;
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final kmh = vehicle.speed == null ? null : vehicle.speed! * 3.6;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              IconButton(
+                icon: Icon(Icons.arrow_back_rounded,
+                    size: 18, color: luma.textSecondary),
+                onPressed: onBack,
+                tooltip: 'Back to list',
+              ),
+              // Line badge, in the vehicle's mode colour.
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: vehicle.mode.color,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  (vehicle.line?.isNotEmpty ?? false) ? vehicle.line! : '—',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${vehicle.operator ?? 'Unknown'} · ${vehicle.mode.label}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: luma.textMuted, fontSize: 11.5),
+                    ),
+                    Text(
+                      vehicle.displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: luma.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Divider(color: luma.border, height: 1),
+          const SizedBox(height: 10),
+          _DetailRow(label: 'Operator', value: vehicle.operator ?? '—'),
+          _DetailRow(label: 'Line', value: vehicle.line ?? '—'),
+          _DetailRow(label: 'Mode', value: vehicle.mode.label),
+          _DetailRow(label: 'Vehicle #', value: vehicle.label ?? '—'),
+          _DetailRow(
+            label: 'Speed',
+            value: kmh == null ? '—' : '${kmh.toStringAsFixed(0)} km/h',
+          ),
+          _DetailRow(
+            label: 'Position',
+            value: '${vehicle.latitude.toStringAsFixed(4)}, '
+                '${vehicle.longitude.toStringAsFixed(4)}',
+          ),
+          _DetailRow(
+            label: 'Last update',
+            value: vehicle.timestamp == null
+                ? '—'
+                : _relativeTime(vehicle.timestamp!),
+          ),
+          if (vehicle.interpolated) ...[
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.info_outline_rounded, size: 13, color: luma.textMuted),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Estimated from the timetable — trains do not broadcast '
+                    'their position in the open data, so this is interpolated '
+                    'between stations.',
+                    style: TextStyle(
+                        color: luma.textMuted, fontSize: 10.5, height: 1.4),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 16),
+          _NextStops(
+            update: update,
+            stops: stops,
+            stopsLoading: stopsLoading,
+            stopsError: stopsError,
+            accent: vehicle.mode.color,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The remaining calls of a journey, in the style of a departure board:
+/// stop name, countdown, and scheduled vs expected time when delayed.
+class _NextStops extends StatelessWidget {
+  const _NextStops({
+    required this.update,
+    required this.stops,
+    required this.stopsLoading,
+    required this.stopsError,
+    required this.accent,
+  });
+
+  final TripUpdate? update;
+  final GtfsStopsCache? stops;
+  final bool stopsLoading;
+  final String? stopsError;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+
+    Widget note(String text, {Color? color}) => Text(
+          text,
+          style: TextStyle(
+              color: color ?? luma.textMuted, fontSize: 11.5, height: 1.4),
+        );
+
+    if (stopsLoading) {
+      return Row(
+        children: [
+          SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(strokeWidth: 2, color: luma.accent),
+          ),
+          const SizedBox(width: 10),
+          Expanded(child: note('Downloading stop names (about 1.4 MB, once)…')),
+        ],
+      );
+    }
+    if (stopsError != null) {
+      return note('Stop names unavailable: $stopsError', color: luma.danger);
+    }
+
+    final calls = update?.calls ?? const <StopCall>[];
+    if (calls.isEmpty) {
+      return note('No stop predictions are published for this journey.');
+    }
+
+    final now = DateTime.now();
+    final upcoming = calls
+        .where((c) => c.time != null && c.time!.isAfter(now))
+        .take(12)
+        .toList();
+    if (upcoming.isEmpty) {
+      return note('This journey has no remaining stops.');
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'NEXT STOPS',
+          style: TextStyle(
+            color: luma.textMuted,
+            fontSize: 10.5,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.8,
+          ),
+        ),
+        const SizedBox(height: 10),
+        for (var i = 0; i < upcoming.length; i++)
+          _StopRow(
+            call: upcoming[i],
+            name: stops?.lookup(upcoming[i].stopId)?.name ??
+                upcoming[i].stopId ??
+                'Unknown stop',
+            accent: accent,
+            first: i == 0,
+            last: i == upcoming.length - 1,
+            now: now,
+          ),
+      ],
+    );
+  }
+}
+
+class _StopRow extends StatelessWidget {
+  const _StopRow({
+    required this.call,
+    required this.name,
+    required this.accent,
+    required this.first,
+    required this.last,
+    required this.now,
+  });
+
+  final StopCall call;
+  final String name;
+  final Color accent;
+  final bool first;
+  final bool last;
+  final DateTime now;
+
+  static String _countdown(Duration d) {
+    if (d.inMinutes < 1) return '${d.inSeconds} sec';
+    if (d.inMinutes < 60) return '${d.inMinutes} min';
+    final hours = d.inHours;
+    final minutes = d.inMinutes % 60;
+    return '$hours u ${minutes.toString().padLeft(2, '0')} min';
+  }
+
+  static String _clock(DateTime t) =>
+      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final time = call.time!;
+    final delay = call.delaySeconds ?? 0;
+    // Under a minute either way is not worth colouring as a delay.
+    final late = delay >= 60;
+    final scheduled = time.subtract(Duration(seconds: delay));
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Timeline rail: a dot per stop with a connecting line.
+          SizedBox(
+            width: 18,
+            child: Column(
+              children: [
+                Container(
+                  width: 9,
+                  height: 9,
+                  margin: const EdgeInsets.only(top: 4),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: first ? accent : luma.surface,
+                    border: Border.all(color: accent, width: 2),
+                  ),
+                ),
+                if (!last)
+                  Expanded(
+                    child: Container(
+                      width: 2,
+                      color: accent.withValues(alpha: 0.35),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: last ? 0 : 14),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: luma.textPrimary,
+                        fontSize: 12.5,
+                        fontWeight: first ? FontWeight.w700 : FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        _countdown(time.difference(now)),
+                        style: TextStyle(
+                          color: late ? luma.danger : luma.textPrimary,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (late) ...[
+                            Text(
+                              _clock(scheduled),
+                              style: TextStyle(
+                                color: luma.textMuted,
+                                fontSize: 10.5,
+                                decoration: TextDecoration.lineThrough,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                          ],
+                          Text(
+                            _clock(time),
+                            style: TextStyle(
+                              color: late ? luma.danger : luma.textMuted,
+                              fontSize: 10.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
