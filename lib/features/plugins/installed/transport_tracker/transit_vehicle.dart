@@ -94,6 +94,8 @@ class TransitVehicle {
     this.label,
     this.speed,
     this.timestamp,
+    this.tripId,
+    this.interpolated = false,
   });
 
   /// GTFS-realtime entity id — stable for the life of a journey.
@@ -114,6 +116,15 @@ class TransitVehicle {
   /// Metres per second, when the feed provides it.
   final double? speed;
   final DateTime? timestamp;
+
+  /// Links this vehicle to its entry in the trip-update feed, which is where
+  /// the remaining calls and their delays come from.
+  final String? tripId;
+
+  /// True when the position was derived from the timetable rather than
+  /// broadcast by the vehicle — currently only trains. Surfaced in the UI so
+  /// the reading isn't presented as more precise than it is.
+  final bool interpolated;
 
   String get displayName {
     final l = line?.trim();

@@ -235,14 +235,27 @@ class CodexCliScanner {
     if (lastUsage is! Map<String, dynamic>) return null;
 
     int tokenField(String key) => (lastUsage[key] as num?)?.toInt() ?? 0;
-    final inputTokens = tokenField('input_tokens');
+    // `input_tokens` from Codex is the FULL prompt size, and
+    // `cached_input_tokens` is a *subset* of it (the portion served from
+    // cache), not an additional amount — confirmed empirically against real
+    // session data: `total_tokens` always equals `input_tokens +
+    // output_tokens` with no separate addition for the cached portion. Every
+    // other part of this app (Claude Code's `cache_read_input_tokens`, and
+    // the `AiUsageTurns.inputTokens` column itself) treats "input tokens" as
+    // *new* prompt content only, with cache reads tracked as their own,
+    // separately-priced quantity — so the cached portion has to be
+    // subtracted here, or it gets counted as new input AND billed again at
+    // the cache-read rate.
+    final rawInputTokens = tokenField('input_tokens');
     final cacheReadTokens = tokenField('cached_input_tokens');
+    final inputTokens =
+        rawInputTokens > cacheReadTokens ? rawInputTokens - cacheReadTokens : 0;
     // OpenAI bills reasoning tokens at the output rate, so folding them
     // into outputTokens here keeps cost calculation accurate without a
     // dedicated schema column.
     final outputTokens =
         tokenField('output_tokens') + tokenField('reasoning_output_tokens');
-    if (inputTokens + outputTokens + cacheReadTokens == 0) return null;
+    if (rawInputTokens + outputTokens == 0) return null;
 
     final timestampRaw = record['timestamp'] as String?;
     final timestamp =
