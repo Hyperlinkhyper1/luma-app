@@ -6,6 +6,7 @@ import 'package:luma/features/plugins/installed/transport_tracker/gtfs_realtime.
 import 'package:luma/features/plugins/installed/transport_tracker/gtfs_stops.dart';
 import 'package:luma/features/plugins/installed/transport_tracker/transit_client.dart';
 import 'package:luma/features/plugins/installed/transport_tracker/transit_vehicle.dart';
+import 'package:luma/features/plugins/installed/transport_tracker/transport_prefs.dart';
 import 'package:luma/features/plugins/installed/transport_tracker/vessel.dart';
 
 /// Builds protobuf wire-format bytes, so the decoder can be exercised
@@ -285,6 +286,36 @@ void main() {
         '1234,Utrecht,52.08,5.11\n',
       );
       expect(stops.lookup('stoparea:1234')?.name, 'Utrecht');
+    });
+  });
+
+  group('layer preferences', () {
+    test('round-trip through JSON', () {
+      const prefs = TransportPrefs(
+        showVessels: false,
+        showTransit: true,
+        transitModes: {TransitMode.train, TransitMode.ferry},
+      );
+      final restored = TransportPrefs.fromJson(prefs.toJson());
+      expect(restored.showVessels, isFalse);
+      expect(restored.showTransit, isTrue);
+      expect(restored.transitModes, {TransitMode.train, TransitMode.ferry});
+    });
+
+    test('defaults apply when nothing has been saved', () {
+      final restored = TransportPrefs.fromJson(const {});
+      expect(restored.showVessels, isTrue);
+      expect(restored.showTransit, isFalse);
+      expect(restored.transitModes, TransitMode.values.toSet());
+    });
+
+    test('an unknown saved mode is ignored rather than breaking the load', () {
+      final restored = TransportPrefs.fromJson(const {
+        'showVessels': true,
+        'showTransit': true,
+        'transitModes': ['bus', 'hovercraft'],
+      });
+      expect(restored.transitModes, {TransitMode.bus});
     });
   });
 

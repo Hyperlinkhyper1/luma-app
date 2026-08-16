@@ -37,9 +37,21 @@ class TransitClient {
   /// [interpolateTrains]).
   static const nlTrainUpdatesUrl = 'https://gtfs.ovapi.nl/nl/trainUpdates.pb';
 
-  /// The publisher refreshes roughly every 20s; polling faster only burns
-  /// bandwidth for the same payload.
-  static const pollInterval = Duration(seconds: 20);
+  /// How often the timer wakes. Which feeds actually get fetched on a given
+  /// tick is decided per feed by the intervals below.
+  static const pollInterval = Duration(seconds: 30);
+
+  /// Positions are small (~400 KB) and are the thing that visibly moves.
+  static const positionsInterval = Duration(seconds: 30);
+
+  /// The update feeds are 3-4 MB each and change slowly, so they are pulled
+  /// far less often. Trains still appear to move between fetches because
+  /// their positions are re-interpolated against the clock every tick.
+  static const updatesInterval = Duration(minutes: 2);
+
+  /// OVapi returns HTTP 429 if it is polled too hard. When that happens the
+  /// client backs off exponentially rather than hammering it further.
+  static const _maxBackoff = Duration(minutes: 8);
 
   final http.Client _http;
   final bool _ownsClient;
@@ -83,8 +95,18 @@ class TransitClient {
     _setState(TransitConnectionState.idle);
   }
 
-  /// Fetches immediately, outside the poll cadence (used on manual refresh).
+  /// Fetches immediately, outside the poll cadence (used on manual refresh
+  /// and once the stop cache arrives, which is what makes trains placeable).
   Future<void> refresh() => _fetchOnce();
+
+  /// Recomputes train positions against the clock and re-emits, without
+  /// touching the network.
+  void repositionTrains() {
+    if (_vehiclesController.isClosed) return;
+    final trains =
+        wantsTrains ? interpolateTrains(_trainTrips, stops) : const <TransitVehicle>[];
+    _vehiclesController.add([..._positions, ...trains]);
+  }
 
   /// Stops used to place interpolated trains and to name calls. Set by the
   /// host once the cache is available; without it trains cannot be placed.
@@ -94,13 +116,61 @@ class TransitClient {
   Map<String, TripUpdate> _tripUpdates = const {};
   Map<String, TripUpdate> get tripUpdates => _tripUpdates;
 
+  /// Per-URL conditional-request state, so an unchanged feed costs a 304
+  /// instead of several megabytes.
+  final _etags = <String, String>{};
+  final _lastFetched = <String, DateTime>{};
+
+  List<TransitVehicle> _positions = const [];
+  List<TripUpdate> _trainTrips = const [];
+  Duration _backoff = Duration.zero;
+  DateTime? _blockedUntil;
+
+  /// Set by the host: trains are only worth their 3.7 MB feed when the user
+  /// actually wants to see them.
+  bool wantsTrains = true;
+
+  bool _isDue(String url, Duration interval) {
+    final last = _lastFetched[url];
+    return last == null || DateTime.now().difference(last) >= interval;
+  }
+
+  /// Returns the body, or null when nothing new is available (304, an
+  /// error, or a rate-limit hold).
   Future<Uint8List?> _fetch(String url) async {
-    final response =
-        await _http.get(Uri.parse(url)).timeout(const Duration(seconds: 30));
-    if (response.statusCode != 200) {
-      _errorController.add('$url returned HTTP ${response.statusCode}.');
+    final headers = <String, String>{};
+    final etag = _etags[url];
+    if (etag != null) headers['If-None-Match'] = etag;
+
+    final response = await _http
+        .get(Uri.parse(url), headers: headers)
+        .timeout(const Duration(seconds: 45));
+
+    _lastFetched[url] = DateTime.now();
+
+    if (response.statusCode == 304) return null;
+
+    if (response.statusCode == 429) {
+      // Back off hard and stop asking for a while.
+      _backoff = _backoff == Duration.zero
+          ? const Duration(minutes: 1)
+          : Duration(seconds: (_backoff.inSeconds * 2).clamp(60, _maxBackoff.inSeconds));
+      _blockedUntil = DateTime.now().add(_backoff);
+      _errorController.add(
+          'The transit feed is rate-limiting this device. Pausing for '
+          '${_backoff.inMinutes} min.');
       return null;
     }
+
+    if (response.statusCode != 200) {
+      _errorController.add('Transit feed returned HTTP ${response.statusCode}.');
+      return null;
+    }
+
+    _backoff = Duration.zero;
+    _blockedUntil = null;
+    final newEtag = response.headers['etag'];
+    if (newEtag != null) _etags[url] = newEtag;
     return Uint8List.fromList(response.bodyBytes);
   }
 
@@ -111,37 +181,59 @@ class TransitClient {
       _setState(TransitConnectionState.loading);
     }
     try {
-      final positionBytes = await _fetch(nlVehiclePositionsUrl);
-      if (positionBytes == null) {
-        _setState(TransitConnectionState.error);
-        return;
-      }
-      final vehicles = parseVehiclePositions(
-        positionBytes,
-        idParser: parseOvapiId,
-      );
+      final blocked =
+          _blockedUntil != null && DateTime.now().isBefore(_blockedUntil!);
 
-      // Trip updates power the next-stops list; a failure here must not take
-      // the vehicle layer down with it.
-      final updates = <String, TripUpdate>{};
-      for (final url in [nlTripUpdatesUrl, nlTrainUpdatesUrl]) {
-        try {
-          final bytes = await _fetch(url);
-          if (bytes == null) continue;
-          for (final update in parseTripUpdates(bytes)) {
-            final id = update.tripId;
-            if (id != null) updates[id] = update;
-          }
-        } catch (_) {
-          // Keep whatever did load.
+      if (!blocked && _isDue(nlVehiclePositionsUrl, positionsInterval)) {
+        final bytes = await _fetch(nlVehiclePositionsUrl);
+        if (bytes != null) {
+          _positions = parseVehiclePositions(bytes, idParser: parseOvapiId);
         }
       }
-      _tripUpdates = updates;
 
-      final trains = interpolateTrains(updates.values, stops);
-      _setState(TransitConnectionState.live);
+      // Stop predictions and train journeys change slowly; a failure in
+      // either must not take the vehicle layer down with it.
+      if (!blocked && _isDue(nlTripUpdatesUrl, updatesInterval)) {
+        try {
+          final bytes = await _fetch(nlTripUpdatesUrl);
+          if (bytes != null) {
+            final merged = <String, TripUpdate>{..._tripUpdates};
+            for (final update in parseTripUpdates(bytes)) {
+              if (update.tripId != null) merged[update.tripId!] = update;
+            }
+            _tripUpdates = merged;
+          }
+        } catch (_) {
+          // Keep whatever was already loaded.
+        }
+      }
+
+      if (!blocked && wantsTrains && _isDue(nlTrainUpdatesUrl, updatesInterval)) {
+        try {
+          final bytes = await _fetch(nlTrainUpdatesUrl);
+          if (bytes != null) {
+            _trainTrips = parseTripUpdates(bytes);
+            final merged = <String, TripUpdate>{..._tripUpdates};
+            for (final update in _trainTrips) {
+              if (update.tripId != null) merged[update.tripId!] = update;
+            }
+            _tripUpdates = merged;
+          }
+        } catch (_) {
+          // Keep whatever was already loaded.
+        }
+      }
+
+      // Recomputed every tick, not just on fetch, so trains keep moving
+      // between the (infrequent) downloads of their journeys.
+      final trains =
+          wantsTrains ? interpolateTrains(_trainTrips, stops) : const <TransitVehicle>[];
+
+      if (_positions.isNotEmpty || trains.isNotEmpty) {
+        _setState(TransitConnectionState.live);
+      }
       if (!_vehiclesController.isClosed) {
-        _vehiclesController.add([...vehicles, ...trains]);
+        _vehiclesController.add([..._positions, ...trains]);
       }
     } catch (e) {
       _setState(TransitConnectionState.error);
