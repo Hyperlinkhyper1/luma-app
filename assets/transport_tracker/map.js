@@ -94,6 +94,7 @@
   let ready = false;
   let pendingVessels = null;
   let pendingTransit = null;
+  let pendingRoute = null;
   const pendingVisibility = {};
 
   /* ── Cursor-anchored scroll zoom ──────────────────────────────────────
@@ -169,6 +170,81 @@
   });
 
   map.on('load', () => {
+    /* ── Selected journey's route ────────────────────────────────────
+       Added before the vehicle layers so the line always draws beneath
+       the moving markers rather than over them. The geometry is a chain
+       of the journey's own stops: the published route shapes live in a
+       255 MB file that is deliberately never downloaded, so this follows
+       chords between stops rather than the exact street or track. */
+    map.addSource('route', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] },
+    });
+
+    map.addLayer({
+      id: 'route-casing',
+      type: 'line',
+      source: 'route',
+      filter: ['==', ['geometry-type'], 'LineString'],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': HALO,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 8, 6, 14, 11],
+        'line-opacity': 0.85,
+      },
+    });
+
+    map.addLayer({
+      id: 'route-line',
+      type: 'line',
+      source: 'route',
+      filter: ['==', ['geometry-type'], 'LineString'],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': ['get', 'color'],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 8, 3, 14, 6],
+        // The part of the journey already run is dimmed back.
+        'line-opacity': ['case', ['get', 'passed'], 0.3, 0.95],
+      },
+    });
+
+    map.addLayer({
+      id: 'route-stops',
+      type: 'circle',
+      source: 'route',
+      filter: ['==', ['geometry-type'], 'Point'],
+      paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 2.5, 14, 5],
+        'circle-color': HALO,
+        'circle-stroke-width': 2,
+        'circle-stroke-color': ['get', 'color'],
+        'circle-opacity': ['case', ['get', 'passed'], 0.35, 1],
+        'circle-stroke-opacity': ['case', ['get', 'passed'], 0.35, 1],
+      },
+    });
+
+    map.addLayer({
+      id: 'route-stop-labels',
+      type: 'symbol',
+      source: 'route',
+      filter: ['==', ['geometry-type'], 'Point'],
+      minzoom: 12,
+      layout: {
+        'text-field': ['get', 'name'],
+        'text-font': FONT,
+        'text-size': 10.5,
+        'text-offset': [0, 0.9],
+        'text-anchor': 'top',
+        'text-optional': true,
+      },
+      paint: {
+        'text-color': INK,
+        'text-halo-color': HALO,
+        'text-halo-width': 1.2,
+        'text-opacity': ['case', ['get', 'passed'], 0.45, 1],
+      },
+    });
+
     map.addSource('vessels', {
       type: 'geojson',
       data: { type: 'FeatureCollection', features: [] },
@@ -310,6 +386,10 @@
       map.getSource('transit').setData(pendingTransit);
       pendingTransit = null;
     }
+    if (pendingRoute) {
+      map.getSource('route').setData(pendingRoute);
+      pendingRoute = null;
+    }
     for (const [id, visible] of Object.entries(pendingVisibility)) {
       applyVisibility(id, visible);
     }
@@ -353,6 +433,28 @@
     updateTransit(featureCollection) {
       if (!ready) { pendingTransit = featureCollection; return; }
       map.getSource('transit').setData(featureCollection);
+    },
+    /// Draws the selected journey's route, or clears it when passed null.
+    setRoute(featureCollection) {
+      const data = featureCollection || { type: 'FeatureCollection', features: [] };
+      if (!ready) { pendingRoute = data; return; }
+      map.getSource('route').setData(data);
+    },
+    /// Frames the whole route in the part of the map the panel isn't
+    /// covering.
+    ///
+    /// Lopsided `padding` is not used for this: MapLibre keeps the bounds
+    /// centred within the padded box, so a 340px right inset on a 1280px
+    /// map drops the fit from zoom 11 to 7.5. Symmetric padding keeps the
+    /// zoom honest, and `offset` slides the centre out from behind the
+    /// panel instead.
+    fitRoute(west, south, east, north, padRight, padBottom) {
+      map.fitBounds([[west, south], [east, north]], {
+        padding: 56,
+        offset: [-(padRight || 0) / 2, -(padBottom || 0) / 2],
+        maxZoom: 14,
+        duration: 700,
+      });
     },
     setLayerVisible(group, visible) {
       if (!ready) { pendingVisibility[group] = visible; return; }
