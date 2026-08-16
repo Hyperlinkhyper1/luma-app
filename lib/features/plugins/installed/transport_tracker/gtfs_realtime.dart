@@ -129,6 +129,7 @@ TransitVehicle? _parseEntity(
   String? entityId;
   _Position? position;
   String? label;
+  String? tripId;
   int? timestamp;
 
   while (!entity.done) {
@@ -140,7 +141,10 @@ TransitVehicle? _parseEntity(
       final v = entity.sub(vs, ve);
       while (!v.done) {
         final (vf, vw) = v.key();
-        if (vf == 2 && vw == 2) {
+        if (vf == 1 && vw == 2) {
+          final (trs, tre) = v.lengthDelimited();
+          tripId = _parseTrip(v.sub(trs, tre)).tripId;
+        } else if (vf == 2 && vw == 2) {
           final (ps, pe) = v.lengthDelimited();
           position = _parsePosition(v.sub(ps, pe));
         } else if (vf == 8 && vw == 2) {
@@ -169,6 +173,7 @@ TransitVehicle? _parseEntity(
     operator: meta.operator,
     line: meta.line,
     label: label,
+    tripId: tripId,
     speed: position.speed,
     timestamp: (timestamp != null && timestamp > 0)
         ? DateTime.fromMillisecondsSinceEpoch(timestamp * 1000)
@@ -191,6 +196,200 @@ _Position _parsePosition(_ProtoReader r) {
     }
   }
   return p;
+}
+
+/// TripDescriptor: `trip_id` = 1, `route_id` = 5.
+({String? tripId, String? routeId}) _parseTrip(_ProtoReader r) {
+  String? tripId;
+  String? routeId;
+  while (!r.done) {
+    final (field, wire) = r.key();
+    if (field == 1 && wire == 2) {
+      tripId = r.string();
+    } else if (field == 5 && wire == 2) {
+      routeId = r.string();
+    } else if (!r.skip(wire)) {
+      break;
+    }
+  }
+  return (tripId: tripId, routeId: routeId);
+}
+
+/// One predicted call at a stop within a trip.
+class StopCall {
+  const StopCall({
+    required this.stopId,
+    this.stopSequence,
+    this.arrival,
+    this.departure,
+    this.delaySeconds,
+  });
+
+  final String? stopId;
+  final int? stopSequence;
+  final DateTime? arrival;
+  final DateTime? departure;
+
+  /// Seconds behind schedule; negative means early.
+  final int? delaySeconds;
+
+  /// When the vehicle is expected to leave (or, at the final stop, arrive).
+  DateTime? get time => departure ?? arrival;
+}
+
+/// A live trip with its remaining calls, from a `TripUpdate` feed.
+class TripUpdate {
+  const TripUpdate({
+    required this.tripId,
+    required this.calls,
+    this.routeId,
+    this.vehicleLabel,
+    this.delaySeconds,
+  });
+
+  final String? tripId;
+  final String? routeId;
+  final String? vehicleLabel;
+  final int? delaySeconds;
+  final List<StopCall> calls;
+}
+
+/// Decodes a GTFS-realtime `FeedMessage` carrying `TripUpdate` entities.
+///
+/// Field numbers: FeedEntity.trip_update = 3; TripUpdate.trip = 1,
+/// .stop_time_update = 2, .vehicle = 3, .delay = 5; StopTimeUpdate
+/// .stop_sequence = 1, .arrival = 2, .departure = 3, .stop_id = 4;
+/// StopTimeEvent.delay = 1, .time = 2.
+List<TripUpdate> parseTripUpdates(Uint8List bytes) {
+  final out = <TripUpdate>[];
+  final root = _ProtoReader(bytes, 0, bytes.length);
+
+  while (!root.done) {
+    final (field, wire) = root.key();
+    if (field == 2 && wire == 2) {
+      final (entStart, entEnd) = root.lengthDelimited();
+      final entity = root.sub(entStart, entEnd);
+      while (!entity.done) {
+        final (ef, ew) = entity.key();
+        if (ef == 3 && ew == 2) {
+          final (ts, te) = entity.lengthDelimited();
+          final update = _parseTripUpdate(entity.sub(ts, te));
+          if (update != null) out.add(update);
+        } else if (!entity.skip(ew)) {
+          break;
+        }
+      }
+    } else if (!root.skip(wire)) {
+      break;
+    }
+  }
+  return out;
+}
+
+TripUpdate? _parseTripUpdate(_ProtoReader r) {
+  String? tripId;
+  String? routeId;
+  String? vehicleLabel;
+  int? delay;
+  final calls = <StopCall>[];
+
+  while (!r.done) {
+    final (field, wire) = r.key();
+    if (field == 1 && wire == 2) {
+      final (s, e) = r.lengthDelimited();
+      final trip = _parseTrip(r.sub(s, e));
+      tripId = trip.tripId;
+      routeId = trip.routeId;
+    } else if (field == 2 && wire == 2) {
+      final (s, e) = r.lengthDelimited();
+      final call = _parseStopCall(r.sub(s, e));
+      if (call != null) calls.add(call);
+    } else if (field == 3 && wire == 2) {
+      final (s, e) = r.lengthDelimited();
+      vehicleLabel = _parseVehicleLabel(r.sub(s, e));
+    } else if (field == 5 && wire == 0) {
+      delay = _zigZagSafe(r.varint());
+    } else if (!r.skip(wire)) {
+      break;
+    }
+  }
+
+  if (tripId == null && calls.isEmpty) return null;
+  calls.sort((a, b) => (a.stopSequence ?? 0).compareTo(b.stopSequence ?? 0));
+  return TripUpdate(
+    tripId: tripId,
+    routeId: routeId,
+    vehicleLabel: vehicleLabel,
+    delaySeconds: delay,
+    calls: calls,
+  );
+}
+
+StopCall? _parseStopCall(_ProtoReader r) {
+  String? stopId;
+  int? sequence;
+  DateTime? arrival;
+  DateTime? departure;
+  int? delay;
+
+  while (!r.done) {
+    final (field, wire) = r.key();
+    if (field == 1 && wire == 0) {
+      sequence = r.varint();
+    } else if (field == 4 && wire == 2) {
+      stopId = r.string();
+    } else if ((field == 2 || field == 3) && wire == 2) {
+      final (s, e) = r.lengthDelimited();
+      final event = _parseStopTimeEvent(r.sub(s, e));
+      if (field == 2) {
+        arrival = event.time;
+      } else {
+        departure = event.time;
+      }
+      delay ??= event.delay;
+    } else if (!r.skip(wire)) {
+      break;
+    }
+  }
+
+  if (stopId == null && arrival == null && departure == null) return null;
+  return StopCall(
+    stopId: stopId,
+    stopSequence: sequence,
+    arrival: arrival,
+    departure: departure,
+    delaySeconds: delay,
+  );
+}
+
+({DateTime? time, int? delay}) _parseStopTimeEvent(_ProtoReader r) {
+  DateTime? time;
+  int? delay;
+  while (!r.done) {
+    final (field, wire) = r.key();
+    if (field == 1 && wire == 0) {
+      delay = _zigZagSafe(r.varint());
+    } else if (field == 2 && wire == 0) {
+      final seconds = r.varint();
+      if (seconds > 0) {
+        time = DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
+      }
+    } else if (!r.skip(wire)) {
+      break;
+    }
+  }
+  return (time: time, delay: delay);
+}
+
+/// GTFS-realtime declares delays as signed `int32`, which protobuf encodes
+/// as a plain (non-zigzag) varint — negatives arrive as a 64-bit two's
+/// complement value that has to be folded back into range.
+int _zigZagSafe(int raw) {
+  if (raw >= 0x80000000) {
+    final wrapped = raw - 0x100000000;
+    if (wrapped > -0x80000000) return wrapped;
+  }
+  return raw;
 }
 
 String? _parseVehicleLabel(_ProtoReader r) {
