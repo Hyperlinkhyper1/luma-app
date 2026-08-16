@@ -171,6 +171,9 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
       if (!mounted) return;
       setState(() => _transitVehicles = list);
       _pushTransit();
+      // Keep the highlighted route in step with the feed (stops go from
+      // upcoming to passed), but never re-frame the camera from a refresh.
+      if (_selectedTransitId != null) _pushRoute();
     });
     _transitErrorSub = _transit.errors.listen((msg) {
       if (!mounted) return;
@@ -197,6 +200,97 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
     _lastPointer = rounded;
     _evalJs('window.TT && TT.setPointer(${rounded.dx}, ${rounded.dy})');
   }
+
+  /// Draws the selected journey's route: a line through its stops, with the
+  /// portion already run dimmed back, plus a dot per stop.
+  ///
+  /// [fit] frames the whole route — done when a vehicle is picked, but not on
+  /// the periodic refresh, which would otherwise yank the camera every tick.
+  void _pushRoute({bool fit = false}) {
+    final id = _selectedTransitId;
+    final stops = _stops;
+    final vehicle =
+        id == null ? null : _transitVehicles.where((v) => v.id == id).firstOrNull;
+    final update =
+        vehicle == null ? null : _transit.tripUpdates[vehicle.tripId];
+
+    if (vehicle == null || stops == null || update == null) {
+      _evalJs('window.TT && TT.setRoute(null)');
+      return;
+    }
+
+    final now = DateTime.now();
+    final color = vehicle.mode.hex;
+    final coordinates = <List<double>>[];
+    final features = <Map<String, dynamic>>[];
+    var minLat = 90.0, maxLat = -90.0, minLon = 180.0, maxLon = -180.0;
+
+    for (final call in update.calls) {
+      final stop = stops.lookup(call.stopId);
+      // Stops published without coordinates would drag the line to 0,0.
+      if (stop == null || !stop.hasPosition) continue;
+      final passed = call.time != null && call.time!.isBefore(now);
+      coordinates.add([stop.lon, stop.lat]);
+      features.add({
+        'type': 'Feature',
+        'geometry': {
+          'type': 'Point',
+          'coordinates': [stop.lon, stop.lat],
+        },
+        'properties': {'name': stop.name, 'color': color, 'passed': passed},
+      });
+      if (stop.lat < minLat) minLat = stop.lat;
+      if (stop.lat > maxLat) maxLat = stop.lat;
+      if (stop.lon < minLon) minLon = stop.lon;
+      if (stop.lon > maxLon) maxLon = stop.lon;
+    }
+
+    if (coordinates.length < 2) {
+      _evalJs('window.TT && TT.setRoute(null)');
+      return;
+    }
+
+    // Split at the vehicle's current progress so the run-so-far can be drawn
+    // dimmed while the rest stays bright.
+    final passedCount = features.where((f) =>
+        (f['properties'] as Map)['passed'] == true).length;
+    final splitAt = passedCount.clamp(1, coordinates.length - 1);
+
+    features.insertAll(0, [
+      {
+        'type': 'Feature',
+        'geometry': {
+          'type': 'LineString',
+          'coordinates': coordinates.sublist(0, splitAt + 1),
+        },
+        'properties': {'color': color, 'passed': true},
+      },
+      {
+        'type': 'Feature',
+        'geometry': {
+          'type': 'LineString',
+          'coordinates': coordinates.sublist(splitAt),
+        },
+        'properties': {'color': color, 'passed': false},
+      },
+    ]);
+
+    final fc = jsonEncode({'type': 'FeatureCollection', 'features': features});
+    _evalJs('window.TT && TT.setRoute($fc)');
+    if (fit) {
+      // The panel is docked right on desktop and along the bottom on phone,
+      // so the camera is nudged away from whichever edge it occupies.
+      final padRight = _panelIsDocked ? _panelWidth : 0.0;
+      final padBottom = _panelIsDocked ? 0.0 : _panelHeight;
+      _evalJs('window.TT && TT.fitRoute('
+          '$minLon, $minLat, $maxLon, $maxLat, $padRight, $padBottom)');
+    }
+  }
+
+  /// Whether the side panel is docked to the right (desktop) rather than
+  /// sitting at the bottom, which decides how the route is framed.
+  bool _panelIsDocked = false;
+  double _panelHeight = 0;
 
   void _setLayerVisible(String group, bool visible) {
     _evalJs('window.TT && TT.setLayerVisible(${jsonEncode(group)}, $visible)');
@@ -317,6 +411,7 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
           _selectedMmsi = null;
         });
         _pushVessels();
+        _pushRoute(fit: true);
         break;
       case 'mapError':
         if (!mounted || _mapError != null || args.isEmpty) return;
@@ -393,8 +488,13 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
   void _selectVessel(int mmsi) {
     final v = _vessels[mmsi];
     if (v == null) return;
-    setState(() => _selectedMmsi = mmsi);
+    setState(() {
+      _selectedMmsi = mmsi;
+      _selectedTransitId = null;
+    });
     _pushVessels();
+    // A ship has no published route, so drop any highlighted journey.
+    _pushRoute();
     _evalJs('TT.flyTo(${v.latitude}, ${v.longitude}, 12)');
   }
 
@@ -420,6 +520,8 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
     }
     return LayoutBuilder(builder: (context, constraints) {
       final wide = constraints.maxWidth >= 700;
+      _panelIsDocked = wide;
+      _panelHeight = wide ? 0 : constraints.maxHeight * 0.42;
       return Stack(
         children: [
           // The embedded WebView receives the wheel but never a mousemove,
@@ -488,7 +590,7 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
               bottom: 12,
               width: wide ? _panelWidth : null,
               left: wide ? null : 12,
-              height: wide ? null : constraints.maxHeight * 0.42,
+              height: wide ? null : _panelHeight,
               child: FutureBuilder<void>(
                 future: _keyLoad,
                 builder: (context, _) => _SidePanel(
@@ -499,8 +601,10 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
                       : _transitVehicles
                           .where((v) => v.id == _selectedTransitId)
                           .firstOrNull,
-                  onTransitBack: () =>
-                      setState(() => _selectedTransitId = null),
+                  onTransitBack: () {
+                    setState(() => _selectedTransitId = null);
+                    _pushRoute();
+                  },
                   stops: _stops,
                   stopsLoading: _stopsLoading,
                   stopsError: _stopsError,
