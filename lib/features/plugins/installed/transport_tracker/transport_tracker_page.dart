@@ -16,6 +16,7 @@ import 'gtfs_realtime.dart';
 import 'gtfs_stops.dart';
 import 'transit_client.dart';
 import 'transit_vehicle.dart';
+import 'transport_prefs.dart';
 import 'vessel.dart';
 
 /// Live ship tracking on a real-world map — MarineTraffic/VesselFinder,
@@ -82,6 +83,39 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
   bool _stopsLoading = false;
   String? _stopsError;
 
+  /// Restores the layer choices from the previous session and applies them
+  /// once the map is up.
+  Future<void> _restorePrefs() async {
+    final prefs = await TransportPrefs.load();
+    if (!mounted) return;
+    setState(() {
+      _showVessels = prefs.showVessels;
+      _showTransit = prefs.showTransit;
+      _transitModes = {...prefs.transitModes};
+    });
+    _applyLayers();
+  }
+
+  Future<void> _savePrefs() => TransportPrefs(
+        showVessels: _showVessels,
+        showTransit: _showTransit,
+        transitModes: _transitModes,
+      ).save();
+
+  /// Pushes the current layer choices to the map and the feed clients.
+  void _applyLayers() {
+    _setLayerVisible('vessels', _showVessels);
+    _setLayerVisible('transit', _showTransit);
+    _transit.wantsTrains = _transitModes.contains(TransitMode.train);
+    if (_showTransit) {
+      unawaited(_ensureStops());
+      _transit.start();
+    } else {
+      _transit.stop();
+    }
+    _pushTransit();
+  }
+
   Future<void> _ensureStops() async {
     if (_stopsLoading) return;
     var cache = _stops ?? await GtfsStopsCache.load();
@@ -131,6 +165,8 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
     });
     _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) => _onTick());
 
+    unawaited(_restorePrefs());
+
     _transitSub = _transit.vehicles.listen((list) {
       if (!mounted) return;
       setState(() => _transitVehicles = list);
@@ -179,19 +215,12 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
             _showTransit = transit;
             _transitModes = modes;
           });
-          _setLayerVisible('vessels', vessels);
-          _setLayerVisible('transit', transit);
-          if (transit) {
-            unawaited(_ensureStops());
-            _transit.start();
-          } else {
-            _transit.stop();
-          }
+          _applyLayers();
           if (!vessels && _tracking) {
             unawaited(_client.disconnect());
             setState(() => _tracking = false);
           }
-          _pushTransit();
+          unawaited(_savePrefs());
         },
       ),
     );
@@ -361,16 +390,6 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
     );
   }
 
-  void _selectTransit(String id) {
-    final v = _transitVehicles.where((x) => x.id == id).firstOrNull;
-    if (v == null) return;
-    setState(() {
-      _selectedTransitId = id;
-      _selectedMmsi = null;
-    });
-    _evalJs('TT.flyTo(${v.latitude}, ${v.longitude}, 13)');
-  }
-
   void _selectVessel(int mmsi) {
     final v = _vessels[mmsi];
     if (v == null) return;
@@ -482,7 +501,6 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
                           .firstOrNull,
                   onTransitBack: () =>
                       setState(() => _selectedTransitId = null),
-                  onSelectTransit: _selectTransit,
                   stops: _stops,
                   stopsLoading: _stopsLoading,
                   stopsError: _stopsError,
@@ -729,7 +747,6 @@ class _SidePanel extends StatelessWidget {
     required this.transitVehicles,
     required this.selectedTransit,
     required this.onTransitBack,
-    required this.onSelectTransit,
     required this.stops,
     required this.stopsLoading,
     required this.stopsError,
@@ -741,7 +758,6 @@ class _SidePanel extends StatelessWidget {
 
   final TransitVehicle? selectedTransit;
   final VoidCallback onTransitBack;
-  final ValueChanged<String> onSelectTransit;
   final GtfsStopsCache? stops;
   final bool stopsLoading;
   final String? stopsError;
@@ -785,6 +801,13 @@ class _SidePanel extends StatelessWidget {
             : const Duration(milliseconds: 180),
         switchInCurve: Curves.easeOut,
         switchOutCurve: Curves.easeIn,
+        // The default layout builder centres its child, which left a short
+        // detail card floating in the middle of a tall panel with a large
+        // empty band above it. Pin everything to the top instead.
+        layoutBuilder: (current, previous) => Stack(
+          alignment: Alignment.topCenter,
+          children: [...previous, ?current],
+        ),
         child: selectedTransit != null
             ? _TransitDetail(
                 key: ValueKey('transit-${selectedTransit!.id}'),
@@ -809,7 +832,6 @@ class _SidePanel extends StatelessWidget {
                 mapError: mapError,
                 rawMessages: rawMessages,
                 transitVehicles: transitVehicles,
-                onSelectTransit: onSelectTransit,
                 onSelect: onSelect,
                 onOpenSettings: onOpenSettings,
               ),
@@ -827,12 +849,9 @@ class _VesselList extends StatelessWidget {
     required this.mapError,
     required this.rawMessages,
     required this.transitVehicles,
-    required this.onSelectTransit,
     required this.onSelect,
     required this.onOpenSettings,
   });
-
-  final ValueChanged<String> onSelectTransit;
 
   final Map<int, Vessel> vessels;
   final bool hasApiKey;
@@ -847,8 +866,6 @@ class _VesselList extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final sorted = vessels.values.toList()
-      ..sort((a, b) => a.displayName.compareTo(b.displayName));
-    final transit = [...?transitVehicles]
       ..sort((a, b) => a.displayName.compareTo(b.displayName));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -882,7 +899,7 @@ class _VesselList extends StatelessWidget {
             child: _KeyPrompt(onOpenSettings: onOpenSettings),
           ),
         Expanded(
-          child: sorted.isEmpty && transit.isEmpty
+          child: sorted.isEmpty
               ? Padding(
                   padding: const EdgeInsets.all(20),
                   child: Column(
@@ -942,22 +959,17 @@ class _VesselList extends StatelessWidget {
                     ],
                   ),
                 )
-              // One virtualised list over both sources — the transit feed
-              // alone can carry a couple of thousand vehicles, so rows are
-              // built on demand rather than all at once.
+              // Only vessels are listed. Transit routinely runs to a few
+              // thousand vehicles nationwide, and an undifferentiated wall
+              // of "Bus 1079" rows is noise — those are found by tapping
+              // them on the map, which is where they have context.
               : ListView.separated(
                   padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
-                  itemCount: sorted.length + transit.length,
+                  itemCount: sorted.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 2),
                   itemBuilder: (context, i) {
-                    if (i < sorted.length) {
-                      final v = sorted[i];
-                      return _VesselRow(
-                          vessel: v, onTap: () => onSelect(v.mmsi));
-                    }
-                    final t = transit[i - sorted.length];
-                    return _TransitRow(
-                        vehicle: t, onTap: () => onSelectTransit(t.id));
+                    final v = sorted[i];
+                    return _VesselRow(vessel: v, onTap: () => onSelect(v.mmsi));
                   },
                 ),
         ),
@@ -1070,84 +1082,6 @@ class _VesselRow extends StatelessWidget {
               if (vessel.sog != null)
                 Text(
                   '${vessel.sog!.toStringAsFixed(1)} kn',
-                  style: TextStyle(color: luma.textSecondary, fontSize: 11),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TransitRow extends StatelessWidget {
-  const _TransitRow({required this.vehicle, required this.onTap});
-  final TransitVehicle vehicle;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final luma = context.luma;
-    final kmh = vehicle.speed == null ? null : vehicle.speed! * 3.6;
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(10),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        mouseCursor: SystemMouseCursors.click,
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 44),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          margin: const EdgeInsets.symmetric(horizontal: 2),
-          alignment: Alignment.centerLeft,
-          child: Row(
-            children: [
-              Container(
-                width: 26,
-                height: 18,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: vehicle.mode.color,
-                  borderRadius: BorderRadius.circular(5),
-                ),
-                child: Text(
-                  (vehicle.line?.isNotEmpty ?? false) ? vehicle.line! : '·',
-                  maxLines: 1,
-                  overflow: TextOverflow.clip,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      vehicle.displayName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: luma.textPrimary,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      vehicle.operator ?? '—',
-                      style: TextStyle(color: luma.textMuted, fontSize: 10.5),
-                    ),
-                  ],
-                ),
-              ),
-              if (kmh != null)
-                Text(
-                  '${kmh.toStringAsFixed(0)} km/h',
                   style: TextStyle(color: luma.textSecondary, fontSize: 11),
                 ),
             ],
