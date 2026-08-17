@@ -69,6 +69,8 @@ IconData pluginIconFor(String? name) {
       return Icons.nfc_rounded;
     case 'query_stats':
       return Icons.query_stats_rounded;
+    case 'swap_horiz':
+      return Icons.swap_horiz_rounded;
     default:
       return Icons.extension_rounded;
   }

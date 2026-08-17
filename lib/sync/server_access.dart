@@ -44,6 +44,14 @@ class ServerAccessGate extends ChangeNotifier {
     '/api/v1/auth/register',
     '/api/v1/auth/login',
     '/api/v1/auth/resend-verification',
+    // Signing in with Google or GitHub is the same handshake wearing a
+    // different hat: it ends in a session token for an approved account, and
+    // like the rest of this list it carries nothing but what the user just
+    // typed or clicked. /complete is the one that issues the token.
+    '/api/v1/auth/oauth/providers',
+    '/api/v1/auth/oauth/start',
+    '/api/v1/auth/oauth/poll',
+    '/api/v1/auth/oauth/complete',
   };
 
   bool _approved = false;

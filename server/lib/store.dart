@@ -38,7 +38,8 @@ class StoredUser {
     this.verificationExpiresAtMs,
     this.lastLoginAtMs,
     this.planId = kDefaultPlanId,
-  });
+    Map<String, String>? oauthSubjects,
+  }) : oauthSubjects = oauthSubjects ?? {};
 
   final String id;
   String email;
@@ -67,6 +68,16 @@ class StoredUser {
   String? verificationTokenHash;
   int? verificationExpiresAtMs;
 
+  /// Provider id ('google', 'github') -> that provider's immutable user id,
+  /// for every identity linked to this account. Written the first time
+  /// someone signs in with a provider whose *verified* address matches
+  /// [email]; an account can carry both at once, and a password set here
+  /// keeps working alongside them.
+  ///
+  /// The subject is kept rather than just a "linked" flag so a later email
+  /// change at the provider still resolves back to this account.
+  final Map<String, String> oauthSubjects;
+
   bool get isPending => status == 'pending';
 
   Map<String, dynamic> toJson() => {
@@ -83,6 +94,7 @@ class StoredUser {
         'verificationExpiresAtMs': verificationExpiresAtMs,
         'lastLoginAtMs': lastLoginAtMs,
         'planId': planId,
+        'oauthSubjects': oauthSubjects,
       };
 
   factory StoredUser.fromJson(Map<String, dynamic> j) => StoredUser(
@@ -99,6 +111,8 @@ class StoredUser {
         verificationExpiresAtMs: j['verificationExpiresAtMs'] as int?,
         lastLoginAtMs: j['lastLoginAtMs'] as int?,
         planId: j['planId'] as String? ?? kDefaultPlanId,
+        oauthSubjects: (j['oauthSubjects'] as Map?)
+            ?.map((k, v) => MapEntry('$k', '$v')),
       );
 }
 
@@ -217,6 +231,12 @@ class Store {
 
   final Map<String, StoredUser> usersById = {};
   final Map<String, String> userIdByEmail = {}; // lowercased email -> id
+
+  /// "<provider>:<subject>" -> user id, for accounts with a linked Google or
+  /// GitHub identity. Rebuilt from [StoredUser.oauthSubjects] on open; see
+  /// [oauthKey] and [linkOAuthIdentity].
+  final Map<String, String> userIdByOAuth = {};
+
   final Map<String, StoredSession> sessionsByTokenHash = {};
   final Map<String, Map<String, CollectionMeta>> collectionsByUser = {};
 
@@ -275,6 +295,9 @@ class Store {
       }
       store.usersById[user.id] = user;
       store.userIdByEmail[user.email.toLowerCase()] = user.id;
+      user.oauthSubjects.forEach((provider, subject) {
+        store.userIdByOAuth[oauthKey(provider, subject)] = user.id;
+      });
     }
     if (quotasMigrated) await store.saveUsers();
 
@@ -325,6 +348,30 @@ class Store {
     if (!await file.exists()) return const {};
     final decoded = jsonDecode(await file.readAsString());
     return decoded is Map<String, dynamic> ? decoded : const {};
+  }
+
+  // ---- OAuth identities --------------------------------------------------
+
+  /// Index key for [userIdByOAuth].
+  static String oauthKey(String provider, String subject) =>
+      '$provider:$subject';
+
+  /// Records that [user] owns [subject] at [provider], so a later sign-in
+  /// resolves to this account even if the address at the provider changes.
+  /// Caller holds [lock] and saves.
+  void linkOAuthIdentity(StoredUser user, String provider, String subject) {
+    final previous = user.oauthSubjects[provider];
+    if (previous == subject) return;
+    if (previous != null) userIdByOAuth.remove(oauthKey(provider, previous));
+    user.oauthSubjects[provider] = subject;
+    userIdByOAuth[oauthKey(provider, subject)] = user.id;
+  }
+
+  /// Drops every OAuth link held by [user] — part of deleting the account.
+  void unlinkAllOAuthIdentities(StoredUser user) {
+    user.oauthSubjects.forEach(
+        (provider, subject) => userIdByOAuth.remove(oauthKey(provider, subject)));
+    user.oauthSubjects.clear();
   }
 
   // ---- Persistence -------------------------------------------------------

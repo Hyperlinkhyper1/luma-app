@@ -94,7 +94,10 @@ viewer) · Price Tracker (price-history graphs from a pasted product URL) ·
 Worth Counter (a tally counter that keeps a running total of what you've
 counted) · Cloud Files (encrypted file sync) ·
 Media Downloader (YouTube video/audio, plus Spotify tracks via a YouTube
-match) · Auto Clicker · Wi-Fi Speed Test
+match) · Auto Clicker · Wi-Fi Speed Test · SFTP (Nova plan exclusive — a
+two-pane file transfer client for your own servers, like FileZilla; the
+connection goes straight from your device to your server, never through a
+luma server)
 
 **Productivity** — Errand Manager (recurring chore checklist) · Bulletin
 Board (freeform corkboard) · Calendar (month view, repeat rules, reminders)
@@ -151,8 +154,11 @@ Nothing syncs by default — you turn on individual features from
 - **Self-hosted server** — end-to-end encrypted: every feature's data is
   encrypted on your device before it ever leaves it, using a key derived
   from your account password. The server only ever stores unreadable
-  ciphertext and never sees your password. See
-  [`SERVER_SETUP.md`](SERVER_SETUP.md) to run your own.
+  ciphertext and never sees your password. Sign in with an email and
+  password, or — when the server operator has set it up — with Google or
+  GitHub, which stands in for the address but never for the passphrase that
+  does the encrypting. See [`SERVER_SETUP.md`](SERVER_SETUP.md) to run your
+  own.
 - **Wi-Fi/LAN sync** — sync directly between devices on the same network,
   no server required.
 
