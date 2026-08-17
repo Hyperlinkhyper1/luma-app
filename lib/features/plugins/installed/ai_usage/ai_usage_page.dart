@@ -18,14 +18,26 @@ import 'data/ai_usage_database.dart';
 const int _kTopModelLimit = 6;
 
 const List<Color> _kPalette = [
-  Color(0xFFB49DF5), // lavender
-  Color(0xFF57D9A3), // mint
-  Color(0xFFFF6B81), // coral
-  Color(0xFFFFD166), // gold
-  Color(0xFF6ECBF5), // sky
-  Color(0xFFBC96E6), // purple
+  Color(0xFFC4B5FD), // lavender
+  Color(0xFF6EE7B7), // mint
+  Color(0xFFFCA5A5), // coral
+  Color(0xFFFDE68A), // gold
+  Color(0xFF93C5FD), // sky
+  Color(0xFFD8B4FE), // purple
 ];
 const Color _kOtherColor = Color(0xFF8A8A9A);
+
+// Usage-category colors for the daily stacked chart and its legend.
+const Color _kInputColor = Color(0xFFFDE68A); // gold
+const Color _kOutputColor = Color(0xFFFCA5A5); // coral
+const Color _kCacheReadColor = Color(0xFFC4B5FD); // lavender
+const Color _kCacheCreationColor = Color(0xFF93C5FD); // sky
+
+// Input/output colors for the "Top Projects" bars — deliberately separate
+// from the daily chart's palette above (rather than reused) since the two
+// charts are never compared side by side.
+const Color _kProjectInputColor = Color(0xFFC4B5FD); // lavender
+const Color _kProjectOutputColor = Color(0xFF6EE7B7); // mint
 
 /// A private, offline dashboard for local AI coding CLI usage — token
 /// counts and cost estimates by day and model, read entirely from
@@ -119,6 +131,7 @@ class _AiUsagePageState extends State<AiUsagePage> {
                     turns: _sourceFilter == null
                         ? turns
                         : turns.where((t) => t.source == _sourceFilter).toList(),
+                    preset: _preset,
                   ),
                 ),
               ),
@@ -218,14 +231,20 @@ class _SourceFilterBar extends StatelessWidget {
 // ─── Body: stat tiles, charts, table, once turns for the range arrive ──────
 
 class _AiUsageBody extends StatelessWidget {
-  const _AiUsageBody({required this.turns});
+  const _AiUsageBody({required this.turns, required this.preset});
 
   final List<AiUsageTurn> turns;
+  final AiUsageRangePreset preset;
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final modelTotals = aggregateByModel(turns);
+    // Antigravity turns whose model couldn't be detected are real usage
+    // (still counted in the stat tiles and daily/project charts below) but
+    // aren't worth a dedicated, uninformative "Unknown model" row here.
+    final modelTotals = aggregateByModel(turns)
+        .where((m) => !(m.source == AiUsageSource.antigravity && m.model == 'Unknown model'))
+        .toList();
 
     if (modelTotals.isEmpty) {
       return const LumaEmptyState(
@@ -307,7 +326,9 @@ class _AiUsageBody extends StatelessWidget {
                     child: Text(
                       'Antigravity numbers are estimated from message length — it '
                       "doesn't record real token usage locally. They're not exact "
-                      'like Claude Code/Codex CLI, and never priced.',
+                      "like Claude Code/Codex CLI. Cost (marked ~) only shows for "
+                      'recognized Gemini/Claude models, and is a rougher estimate '
+                      'than the other two sources.',
                       style: TextStyle(color: luma.textSecondary, fontSize: 11.5),
                     ),
                   ),
@@ -315,6 +336,8 @@ class _AiUsageBody extends StatelessWidget {
               ),
             ),
           ],
+          const SizedBox(height: 16),
+          _HighlightsSection(turns: turns),
           const SizedBox(height: 16),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -373,6 +396,29 @@ class _AiUsageBody extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
+          LumaCard(
+            child: SizedBox(
+              height: 220,
+              child: _HourlyDistributionChart(hourly: aggregateByHour(turns)),
+            ),
+          ),
+          const SizedBox(height: 16),
+          LumaCard(child: _ProjectBreakdownSection(projects: aggregateByProject(turns))),
+          const SizedBox(height: 16),
+          LumaCard(
+            child: preset == AiUsageRangePreset.all
+                ? _ContributionHeatmap(dayBuckets: dayBuckets)
+                : SizedBox(
+                    height: 140,
+                    child: Center(
+                      child: Text(
+                        'Switch to "All" to see your yearly contribution heatmap',
+                        style: TextStyle(color: luma.textMuted, fontSize: 13),
+                      ),
+                    ),
+                  ),
+          ),
+          const SizedBox(height: 16),
           const _OtherAiToolsSection(),
         ],
       ),
@@ -409,6 +455,141 @@ class _SummaryChip extends StatelessWidget {
       ),
     );
     return tooltip == null ? chip : Tooltip(message: tooltip, child: chip);
+  }
+}
+
+// ─── Highlights: longest/priciest session, longest active-day streak ───────
+
+String _formatDuration(Duration d) {
+  if (d.inDays > 0) return '${d.inDays}d ${d.inHours % 24}h';
+  if (d.inHours > 0) return '${d.inHours}h ${d.inMinutes % 60}m';
+  return '${d.inMinutes}m';
+}
+
+class _HighlightsSection extends StatelessWidget {
+  const _HighlightsSection({required this.turns});
+
+  final List<AiUsageTurn> turns;
+
+  @override
+  Widget build(BuildContext context) {
+    final sessions = aggregateBySession(turns);
+    if (sessions.isEmpty) return const SizedBox.shrink();
+
+    SessionUsageTotal? longest;
+    SessionUsageTotal? priciest;
+    for (final s in sessions) {
+      if (longest == null || s.duration > longest.duration) longest = s;
+      if (priciest == null || s.cost > priciest.cost) priciest = s;
+    }
+    final streak = longestActiveDayStreak(turns);
+    final dateFmt = DateFormat('MMM d');
+
+    final cards = <_HighlightCard>[
+      if (longest != null)
+        _HighlightCard(
+          icon: Icons.timer_outlined,
+          color: _kInputColor,
+          label: 'Longest session',
+          value: _formatDuration(longest.duration),
+          caption:
+              '${longest.project ?? kUnknownProject} · ${dateFmt.format(longest.start.toLocal())}',
+        ),
+      if (priciest != null && priciest.cost > 0)
+        _HighlightCard(
+          icon: Icons.payments_outlined,
+          color: _kOutputColor,
+          label: 'Priciest session',
+          value: _formatCost(priciest.cost),
+          caption: '${priciest.project ?? kUnknownProject} · '
+              '${dateFmt.format(priciest.start.toLocal())}',
+        ),
+      if (streak.days > 1)
+        _HighlightCard(
+          icon: Icons.local_fire_department_rounded,
+          color: _kCacheReadColor,
+          label: 'Longest streak',
+          value: '${streak.days} days',
+          caption: '${dateFmt.format(streak.start!)} – ${dateFmt.format(streak.end!)}',
+        ),
+    ];
+    if (cards.isEmpty) return const SizedBox.shrink();
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final narrow = constraints.maxWidth < 640;
+        if (narrow) {
+          return Column(
+            children: [
+              for (var i = 0; i < cards.length; i++) ...[
+                if (i > 0) const SizedBox(height: 12),
+                cards[i],
+              ],
+            ],
+          );
+        }
+        return Row(
+          children: [
+            for (var i = 0; i < cards.length; i++) ...[
+              if (i > 0) const SizedBox(width: 12),
+              Expanded(child: cards[i]),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _HighlightCard extends StatelessWidget {
+  const _HighlightCard({
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.value,
+    required this.caption,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String label;
+  final String value;
+  final String caption;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return LumaCard(
+      child: Row(
+        children: [
+          LumaIconBadge(icon: icon, color: color),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: TextStyle(color: luma.textSecondary, fontSize: 12)),
+                const SizedBox(height: 3),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      color: luma.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  caption,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: luma.textMuted, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -535,88 +716,476 @@ class _ModelPieChartState extends State<_ModelPieChart> {
   }
 }
 
-// ─── Bar chart: tokens per day ───────────────────────────────────────────────
+// ─── Bar chart: input/output/cache read/cache creation per day ─────────────
 
 class _DailyBarChart extends StatelessWidget {
   const _DailyBarChart({required this.dayBuckets});
 
   final List<AiDayUsageBucket> dayBuckets;
 
+  int _stackTotal(AiDayUsageBucket d) =>
+      d.inputTokens + d.outputTokens + d.cacheReadTokens + d.cacheCreationTokens;
+
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final maxTokens =
-        dayBuckets.map((d) => d.totalTokens).fold<int>(0, (a, b) => a > b ? a : b);
-    final topY = maxTokens == 0 ? 1000.0 : maxTokens * 1.15;
+    final maxStack = dayBuckets.map(_stackTotal).fold<int>(0, (a, b) => a > b ? a : b);
+    final topY = maxStack == 0 ? 1000.0 : maxStack * 1.15;
 
-    return BarChart(
-      BarChartData(
-        maxY: topY,
-        minY: 0,
-        barTouchData: BarTouchData(
-          touchTooltipData: BarTouchTooltipData(
-            getTooltipItem: (group, groupIndex, rod, rodIndex) => BarTooltipItem(
-              '${DateFormat('MMM d').format(dayBuckets[groupIndex].day)}\n'
-              '${_formatTokens(dayBuckets[groupIndex].totalTokens)} tokens\n'
-              '${_formatCost(dayBuckets[groupIndex].cost)}',
-              TextStyle(color: luma.textPrimary, fontSize: 12),
-            ),
-          ),
-        ),
-        titlesData: FlTitlesData(
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 28,
-              interval: (dayBuckets.length / 8).ceilToDouble().clamp(1, 999),
-              getTitlesWidget: (value, meta) {
-                final idx = value.toInt();
-                if (idx < 0 || idx >= dayBuckets.length || value != idx.toDouble()) {
-                  return const SizedBox();
-                }
-                return Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    DateFormat('M/d').format(dayBuckets[idx].day),
-                    style: TextStyle(color: luma.textMuted, fontSize: 10),
-                  ),
-                );
-              },
-            ),
-          ),
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 46,
-              getTitlesWidget: (value, meta) => Text(
-                _formatTokens(value.round()),
-                style: TextStyle(color: luma.textMuted, fontSize: 10),
-              ),
-            ),
-          ),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        ),
-        gridData: FlGridData(
-          show: true,
-          drawVerticalLine: false,
-          getDrawingHorizontalLine: (_) =>
-              FlLine(color: luma.border.withValues(alpha: 0.5), strokeWidth: 1),
-        ),
-        borderData: FlBorderData(show: false),
-        barGroups: [
-          for (var i = 0; i < dayBuckets.length; i++)
-            BarChartGroupData(
-              x: i,
-              barRods: [
-                BarChartRodData(
-                  toY: dayBuckets[i].totalTokens.toDouble(),
-                  color: luma.accent,
-                  width: 16,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _UsageCategoryLegend(),
+        const SizedBox(height: 10),
+        Expanded(
+          child: BarChart(
+            BarChartData(
+              maxY: topY,
+              minY: 0,
+              barTouchData: BarTouchData(
+                touchTooltipData: BarTouchTooltipData(
+                  getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                    final d = dayBuckets[groupIndex];
+                    return BarTooltipItem(
+                      '${DateFormat('MMM d').format(d.day)}\n'
+                      'Input: ${_formatTokens(d.inputTokens)}\n'
+                      'Output: ${_formatTokens(d.outputTokens)}\n'
+                      'Cache read: ${_formatTokens(d.cacheReadTokens)}\n'
+                      'Cache write: ${_formatTokens(d.cacheCreationTokens)}\n'
+                      '${_formatCost(d.cost)}',
+                      TextStyle(color: luma.textPrimary, fontSize: 12),
+                    );
+                  },
                 ),
+              ),
+              titlesData: FlTitlesData(
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 28,
+                    interval: (dayBuckets.length / 8).ceilToDouble().clamp(1, 999),
+                    getTitlesWidget: (value, meta) {
+                      final idx = value.toInt();
+                      if (idx < 0 || idx >= dayBuckets.length || value != idx.toDouble()) {
+                        return const SizedBox();
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          DateFormat('M/d').format(dayBuckets[idx].day),
+                          style: TextStyle(color: luma.textMuted, fontSize: 10),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 46,
+                    getTitlesWidget: (value, meta) => Text(
+                      _formatTokens(value.round()),
+                      style: TextStyle(color: luma.textMuted, fontSize: 10),
+                    ),
+                  ),
+                ),
+                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              ),
+              gridData: FlGridData(
+                show: true,
+                drawVerticalLine: false,
+                getDrawingHorizontalLine: (_) =>
+                    FlLine(color: luma.border.withValues(alpha: 0.5), strokeWidth: 1),
+              ),
+              borderData: FlBorderData(show: false),
+              barGroups: [
+                for (var i = 0; i < dayBuckets.length; i++) _dayBarGroup(i, dayBuckets[i]),
               ],
             ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  BarChartGroupData _dayBarGroup(int index, AiDayUsageBucket d) {
+    var y = 0.0;
+    final segments = <(int tokens, Color color)>[
+      (d.inputTokens, _kInputColor),
+      (d.outputTokens, _kOutputColor),
+      (d.cacheReadTokens, _kCacheReadColor),
+      (d.cacheCreationTokens, _kCacheCreationColor),
+    ];
+    final stackItems = <BarChartRodStackItem>[];
+    for (final (tokens, color) in segments) {
+      if (tokens <= 0) continue;
+      final fromY = y;
+      y += tokens.toDouble();
+      stackItems.add(BarChartRodStackItem(fromY, y, color));
+    }
+    return BarChartGroupData(
+      x: index,
+      barRods: [
+        BarChartRodData(
+          toY: y,
+          rodStackItems: stackItems,
+          width: 16,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+        ),
+      ],
+    );
+  }
+}
+
+/// Always-visible 4-color legend for the daily stacked chart (and shared by
+/// nothing else — the project breakdown has its own, input/output-only,
+/// legend).
+class _UsageCategoryLegend extends StatelessWidget {
+  const _UsageCategoryLegend();
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    Widget dot(Color color, String label) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 9,
+              height: 9,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 5),
+            Text(label, style: TextStyle(color: luma.textSecondary, fontSize: 11)),
+          ],
+        );
+    return Wrap(
+      spacing: 14,
+      runSpacing: 6,
+      children: [
+        dot(_kInputColor, 'Input'),
+        dot(_kOutputColor, 'Output'),
+        dot(_kCacheReadColor, 'Cache read'),
+        dot(_kCacheCreationColor, 'Cache write'),
+      ],
+    );
+  }
+}
+
+// ─── Hourly distribution: tokens by hour, Anthropic peak hours highlighted ─
+
+/// Pacific Time's current UTC offset (US DST: 2nd Sunday of March through
+/// the 1st Sunday of November). Hand-rolled because this project has no
+/// timezone-database dependency for a single conversion.
+Duration _pacificUtcOffset(DateTime utc) {
+  int nthSunday(int year, int month, int n) {
+    final first = DateTime.utc(year, month, 1);
+    return 1 + ((7 - first.weekday) % 7) + (n - 1) * 7;
+  }
+
+  final dstStart = DateTime.utc(utc.year, 3, nthSunday(utc.year, 3, 2), 10);
+  final dstEnd = DateTime.utc(utc.year, 11, nthSunday(utc.year, 11, 1), 9);
+  final isDst = !utc.isBefore(dstStart) && utc.isBefore(dstEnd);
+  return Duration(hours: isDst ? -7 : -8);
+}
+
+/// Anthropic's published Claude Code peak-hours window — weekdays 5am-11am
+/// PT — converted to local hour-of-day. [localStart]/[localEnd] are the raw
+/// hour-of-day values (fractional for half-hour-offset zones); [hours] is
+/// the set of integer hour-of-day bars that fall inside the window (wraps
+/// past midnight correctly), for highlighting on the chart.
+typedef _AnthropicPeakWindow = ({double localStart, double localEnd, Set<int> hours});
+
+_AnthropicPeakWindow _anthropicPeakHourWindow() {
+  final now = DateTime.now();
+  final diffHours = (now.timeZoneOffset - _pacificUtcOffset(now.toUtc())).inMinutes / 60.0;
+  var start = (5.0 + diffHours) % 24;
+  var end = (11.0 + diffHours) % 24;
+  if (start < 0) start += 24;
+  if (end < 0) end += 24;
+
+  bool inWindow(int hour) =>
+      start <= end ? (hour >= start && hour < end) : (hour >= start || hour < end);
+  return (
+    localStart: start,
+    localEnd: end,
+    hours: {for (var h = 0; h < 24; h++) if (inWindow(h)) h},
+  );
+}
+
+String _formatFractionalHour(double hour) {
+  final totalMinutes = (hour * 60).round() % (24 * 60);
+  final dt = DateTime(2000, 1, 1, totalMinutes ~/ 60, totalMinutes % 60);
+  return DateFormat(totalMinutes % 60 == 0 ? 'ha' : 'h:mma').format(dt).toLowerCase();
+}
+
+class _HourlyDistributionChart extends StatelessWidget {
+  const _HourlyDistributionChart({required this.hourly});
+
+  final List<AiHourlyUsageBucket> hourly;
+
+  static String _formatHour(int hour) =>
+      DateFormat('ha').format(DateTime(2000, 1, 1, hour)).toLowerCase();
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final maxTokens = hourly.fold<double>(0, (a, b) => b.avgTokens > a ? b.avgTokens : a);
+    final topY = maxTokens <= 0 ? 1.0 : maxTokens * 1.2;
+    final anthropicPeak = _anthropicPeakHourWindow();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Text(
+              'Average Hourly Distribution',
+              style: TextStyle(
+                  color: luma.textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(width: 10),
+            Tooltip(
+              message: 'Anthropic published this window for Claude Code in March 2026; the '
+                  'rate-limit reduction itself was lifted for Pro/Max on May 6, 2026, but the '
+                  'hours are still commonly referenced.',
+              child: Text(
+                'Anthropic peak: ${_formatFractionalHour(anthropicPeak.localStart)}–'
+                '${_formatFractionalHour(anthropicPeak.localEnd)}',
+                style: TextStyle(color: luma.accent, fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Tokens per hour, averaged across the days in this range — local time. '
+          'Highlighted bars fall in the window above (weekdays 5–11am PT).',
+          style: TextStyle(color: luma.textMuted, fontSize: 11),
+        ),
+        const SizedBox(height: 10),
+        Expanded(
+          child: BarChart(
+            BarChartData(
+              maxY: topY,
+              minY: 0,
+              barTouchData: BarTouchData(
+                touchTooltipData: BarTouchTooltipData(
+                  getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                    final b = hourly[groupIndex];
+                    return BarTooltipItem(
+                      '${_formatHour(b.hour)}\n${_formatTokens(b.avgTokens.round())} tokens/day avg\n'
+                      '${b.avgTurns.toStringAsFixed(1)} turns/day avg',
+                      TextStyle(color: luma.textPrimary, fontSize: 12),
+                    );
+                  },
+                ),
+              ),
+              titlesData: FlTitlesData(
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 22,
+                    interval: 3,
+                    getTitlesWidget: (value, meta) {
+                      final hour = value.toInt();
+                      if (hour < 0 || hour > 23 || value != hour.toDouble()) {
+                        return const SizedBox();
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          _formatHour(hour),
+                          style: TextStyle(color: luma.textMuted, fontSize: 10),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 36,
+                    getTitlesWidget: (value, meta) => Text(
+                      _formatTokens(value.round()),
+                      style: TextStyle(color: luma.textMuted, fontSize: 10),
+                    ),
+                  ),
+                ),
+                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              ),
+              gridData: FlGridData(
+                show: true,
+                drawVerticalLine: false,
+                getDrawingHorizontalLine: (_) =>
+                    FlLine(color: luma.border.withValues(alpha: 0.5), strokeWidth: 1),
+              ),
+              borderData: FlBorderData(show: false),
+              barGroups: [
+                for (final b in hourly)
+                  BarChartGroupData(
+                    x: b.hour,
+                    barRods: [
+                      BarChartRodData(
+                        toY: b.avgTokens,
+                        color: anthropicPeak.hours.contains(b.hour)
+                            ? luma.accent
+                            : luma.accent.withValues(alpha: 0.35),
+                        width: 26,
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(5)),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Project breakdown: top projects by tokens, with cost ──────────────────
+
+const int _kTopProjectLimit = 8;
+
+class _ProjectBreakdownSection extends StatelessWidget {
+  const _ProjectBreakdownSection({required this.projects});
+
+  final List<ProjectUsageTotal> projects;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    if (projects.isEmpty) {
+      return const LumaEmptyState(
+        icon: Icons.folder_open_outlined,
+        title: 'No project data in this range',
+      );
+    }
+
+    final top = projects.take(_kTopProjectLimit).toList();
+    final maxTokens = top.fold<int>(0, (a, p) => p.totalTokens > a ? p.totalTokens : a);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Text(
+              'Top Projects by Tokens',
+              style: TextStyle(
+                  color: luma.textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
+            ),
+            const Spacer(),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 9,
+                  height: 9,
+                  decoration: BoxDecoration(color: _kProjectInputColor, shape: BoxShape.circle),
+                ),
+                const SizedBox(width: 5),
+                Text('Input', style: TextStyle(color: luma.textSecondary, fontSize: 11)),
+                const SizedBox(width: 12),
+                Container(
+                  width: 9,
+                  height: 9,
+                  decoration: BoxDecoration(color: _kProjectOutputColor, shape: BoxShape.circle),
+                ),
+                const SizedBox(width: 5),
+                Text('Output', style: TextStyle(color: luma.textSecondary, fontSize: 11)),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          "Claude Code and Codex only — Antigravity has no reliable project source, "
+          'grouped as "Unknown project" instead.',
+          style: TextStyle(color: luma.textMuted, fontSize: 11),
+        ),
+        const SizedBox(height: 12),
+        for (var i = 0; i < top.length; i++) ...[
+          if (i > 0) const SizedBox(height: 12),
+          _ProjectBarRow(total: top[i], maxTokens: maxTokens),
+        ],
+      ],
+    );
+  }
+}
+
+class _ProjectBarRow extends StatelessWidget {
+  const _ProjectBarRow({required this.total, required this.maxTokens});
+
+  final ProjectUsageTotal total;
+  final int maxTokens;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final fraction = maxTokens == 0 ? 0.0 : total.totalTokens / maxTokens;
+    final inputFraction =
+        total.totalTokens == 0 ? 0.0 : total.inputTokens / total.totalTokens;
+
+    return Tooltip(
+      message: 'Input: ${_formatTokens(total.inputTokens)} · '
+          'Output: ${_formatTokens(total.outputTokens)}\n'
+          '${total.turnCount} turns · ${total.sessionCount} sessions',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  total.project,
+                  style: TextStyle(color: luma.textPrimary, fontSize: 12.5),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                _formatTokens(total.totalTokens),
+                style: TextStyle(
+                    color: luma.textSecondary, fontSize: 11.5, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                _formatCost(total.cost),
+                style: TextStyle(color: luma.success, fontSize: 11.5, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final barWidth = constraints.maxWidth * fraction;
+              final inputWidth = barWidth * inputFraction;
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(5),
+                child: Stack(
+                  children: [
+                    Container(height: 10, color: luma.border),
+                    if (barWidth > 0)
+                      Row(
+                        children: [
+                          Container(width: inputWidth, height: 10, color: _kProjectInputColor),
+                          Container(
+                            width: (barWidth - inputWidth).clamp(0, constraints.maxWidth),
+                            height: 10,
+                            color: _kProjectOutputColor,
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
         ],
       ),
     );
@@ -729,7 +1298,11 @@ class _ModelListRow extends StatelessWidget {
         SizedBox(
           width: 72,
           child: Text(
-            total.billable ? _formatCost(total.cost) : 'n/a',
+            total.billable
+                ? (total.source == AiUsageSource.antigravity
+                    ? '~${_formatCost(total.cost)}'
+                    : _formatCost(total.cost))
+                : 'n/a',
             textAlign: TextAlign.right,
             style: TextStyle(
               color: total.billable ? luma.success : luma.textMuted,
@@ -737,6 +1310,179 @@ class _ModelListRow extends StatelessWidget {
               fontWeight: total.billable ? FontWeight.w700 : FontWeight.w400,
             ),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Contribution heatmap: daily intensity over the trailing year ──────────
+
+class _ContributionHeatmap extends StatelessWidget {
+  const _ContributionHeatmap({required this.dayBuckets});
+
+  final List<AiDayUsageBucket> dayBuckets;
+
+  static const _cellSize = 18.0;
+  static const _cellGap = 5.0;
+  static const _colStep = _cellSize + _cellGap;
+
+  /// The Sunday-of-the-week this [week]'th column starts on carries a month
+  /// label when it's the first column containing that month's 1st-7th —
+  /// i.e. roughly one label per month, placed on whichever column that
+  /// month actually begins in.
+  static String? _monthLabelFor(DateTime gridStart, int week) {
+    final date = gridStart.add(Duration(days: week * 7));
+    return date.day <= 7 ? DateFormat('MMM').format(date) : null;
+  }
+
+  static int _levelFor(int tokens, int maxTokens) {
+    if (tokens <= 0 || maxTokens <= 0) return 0;
+    final frac = tokens / maxTokens;
+    if (frac > 0.75) return 4;
+    if (frac > 0.5) return 3;
+    if (frac > 0.25) return 2;
+    return 1;
+  }
+
+  static Color _colorForLevel(LumaPalette luma, int level) => switch (level) {
+        0 => luma.border.withValues(alpha: 0.4),
+        1 => luma.accent.withValues(alpha: 0.25),
+        2 => luma.accent.withValues(alpha: 0.5),
+        3 => luma.accent.withValues(alpha: 0.75),
+        _ => luma.accent,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    if (dayBuckets.isEmpty) {
+      return const LumaEmptyState(
+        icon: Icons.calendar_month_outlined,
+        title: 'No usage recorded yet',
+      );
+    }
+
+    final byDay = {for (final d in dayBuckets) d.day: d};
+    final today = DateTime.now();
+    final endDate = DateTime(today.year, today.month, today.day);
+    final roughStart = endDate.subtract(const Duration(days: 364));
+    final gridStart = roughStart.subtract(Duration(days: roughStart.weekday % 7));
+    final weekCount = ((endDate.difference(gridStart).inDays + 1) / 7).ceil();
+    final maxTokens = dayBuckets.fold<int>(0, (a, d) => d.totalTokens > a ? d.totalTokens : a);
+
+    Widget cellFor(int week, int weekday) {
+      final date = gridStart.add(Duration(days: week * 7 + weekday));
+      if (date.isAfter(endDate)) {
+        return const SizedBox(width: _cellSize, height: _cellSize);
+      }
+      final bucket = byDay[date];
+      final tokens = bucket?.totalTokens ?? 0;
+      final message = tokens > 0
+          ? '${DateFormat('MMM d, yyyy').format(date)}\n'
+              '${_formatTokens(tokens)} tokens · ${_formatCost(bucket!.cost)}'
+          : '${DateFormat('MMM d, yyyy').format(date)}\nNo usage';
+      return Tooltip(
+        message: message,
+        child: Container(
+          width: _cellSize,
+          height: _cellSize,
+          decoration: BoxDecoration(
+            color: _colorForLevel(luma, _levelFor(tokens, maxTokens)),
+            borderRadius: BorderRadius.circular(3.5),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Contribution Heatmap',
+          style: TextStyle(color: luma.textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Daily token intensity over the last year — hover a day for details',
+          style: TextStyle(color: luma.textMuted, fontSize: 11),
+        ),
+        const SizedBox(height: 12),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final gridWidth = weekCount * _colStep;
+            final grid = SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              reverse: true,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: gridWidth,
+                    height: 16,
+                    child: Stack(
+                      children: [
+                        for (var w = 0; w < weekCount; w++)
+                          if (_monthLabelFor(gridStart, w) case final label?)
+                            Positioned(
+                              left: w * _colStep,
+                              child: Text(
+                                label,
+                                maxLines: 1,
+                                softWrap: false,
+                                overflow: TextOverflow.visible,
+                                style: TextStyle(color: luma.textMuted, fontSize: 11),
+                              ),
+                            ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (var w = 0; w < weekCount; w++)
+                        Padding(
+                          padding: const EdgeInsets.only(right: _cellGap),
+                          child: Column(
+                            children: [
+                              for (var d = 0; d < 7; d++)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: _cellGap),
+                                  child: cellFor(w, d),
+                                ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+            // Only worth centering when it actually fits without scrolling —
+            // otherwise let the scroll view own its natural (wider) width.
+            return gridWidth < constraints.maxWidth ? Center(child: grid) : grid;
+          },
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Text('Less', style: TextStyle(color: luma.textMuted, fontSize: 11)),
+            for (var level = 0; level <= 4; level++)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 3),
+                child: Container(
+                  width: _cellSize,
+                  height: _cellSize,
+                  decoration: BoxDecoration(
+                    color: _colorForLevel(luma, level),
+                    borderRadius: BorderRadius.circular(3.5),
+                  ),
+                ),
+              ),
+            Text('More', style: TextStyle(color: luma.textMuted, fontSize: 11)),
+          ],
         ),
       ],
     );

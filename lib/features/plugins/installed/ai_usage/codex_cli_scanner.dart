@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:drift/drift.dart';
 
+import 'ai_usage_project.dart';
 import 'ai_usage_source.dart';
 import 'data/ai_usage_database.dart';
 
@@ -146,6 +147,7 @@ class CodexCliScanner {
     // first scan of a file.
     String? sessionId;
     var model = '';
+    String? cwd;
 
     final lines = file
         .openRead()
@@ -176,6 +178,8 @@ class CodexCliScanner {
         if (payload is Map<String, dynamic>) {
           final id = payload['session_id'];
           if (id is String && id.isNotEmpty) sessionId = id;
+          final c = payload['cwd'];
+          if (c is String && c.isNotEmpty) cwd = c;
         }
       } else if (type == 'turn_context') {
         final payload = record['payload'];
@@ -189,6 +193,7 @@ class CodexCliScanner {
           record,
           sessionId: sessionId ?? _sessionIdFromFilename(file),
           model: model,
+          cwd: cwd,
         );
         if (companion != null) newTurns.add(companion);
       }
@@ -222,6 +227,7 @@ class CodexCliScanner {
     Map<String, dynamic> record, {
     required String? sessionId,
     required String model,
+    required String? cwd,
   }) {
     if (sessionId == null || sessionId.isEmpty) return null;
 
@@ -271,6 +277,7 @@ class CodexCliScanner {
       cacheReadTokens: Value(cacheReadTokens),
       cacheCreationTokens: const Value(0),
       messageId: const Value(null),
+      project: Value(projectNameFromCwd(cwd)),
       source: AiUsageSource.codexCli,
     );
   }

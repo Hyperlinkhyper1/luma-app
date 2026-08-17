@@ -15,6 +15,7 @@ class TransportPrefs {
     this.showVessels = true,
     this.showTransit = false,
     this.transitModes = const {
+      TransitMode.highSpeed,
       TransitMode.train,
       TransitMode.metro,
       TransitMode.tram,
@@ -65,25 +66,55 @@ class TransportPrefs {
     }
   }
 
+  /// Bumped when the stored shape changes, so older files can be migrated
+  /// rather than silently misread.
+  static const schemaVersion = 2;
+
+  /// Modes are persisted by what is *switched off*, not what is on.
+  ///
+  /// Storing the enabled set meant any mode added in a later version was
+  /// absent from every existing file and therefore came back switched off —
+  /// which is exactly how high-speed services ended up invisible for anyone
+  /// who had used the plugin before that mode existed. Recording the hidden
+  /// ones instead makes anything new default to visible.
   Map<String, dynamic> toJson() => {
+        'schema': schemaVersion,
         'showVessels': showVessels,
         'showTransit': showTransit,
-        'transitModes': transitModes.map((m) => m.name).toList(),
+        'hiddenModes': TransitMode.values
+            .where((m) => !transitModes.contains(m))
+            .map((m) => m.name)
+            .toList(),
       };
 
   static TransportPrefs fromJson(Map<String, dynamic> json) {
-    final modeNames = (json['transitModes'] as List?)?.cast<Object?>() ?? const [];
-    final modes = <TransitMode>{};
-    for (final name in modeNames) {
+    final showVessels = json['showVessels'] as bool? ?? true;
+    final showTransit = json['showTransit'] as bool? ?? false;
+    final schema = json['schema'] as int? ?? 1;
+
+    if (schema < schemaVersion) {
+      // A version 1 file listed the enabled modes, so a mode introduced
+      // later is indistinguishable from one the user turned off. The mode
+      // filter is reset to everything visible; the layer toggles, which do
+      // survive the change unambiguously, are kept.
+      return TransportPrefs(
+        showVessels: showVessels,
+        showTransit: showTransit,
+        transitModes: TransitMode.values.toSet(),
+      );
+    }
+
+    final hidden = <TransitMode>{};
+    for (final name in (json['hiddenModes'] as List?) ?? const []) {
       for (final mode in TransitMode.values) {
-        if (mode.name == name) modes.add(mode);
+        if (mode.name == name) hidden.add(mode);
       }
     }
     return TransportPrefs(
-      showVessels: json['showVessels'] as bool? ?? true,
-      showTransit: json['showTransit'] as bool? ?? false,
-      // An empty saved set is honoured; a missing key falls back to all.
-      transitModes: modeNames.isEmpty ? TransitMode.values.toSet() : modes,
+      showVessels: showVessels,
+      showTransit: showTransit,
+      transitModes:
+          TransitMode.values.where((m) => !hidden.contains(m)).toSet(),
     );
   }
 }

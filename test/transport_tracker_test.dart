@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/features/plugins/installed/transport_tracker/gtfs_realtime.dart';
+import 'package:luma/features/plugins/installed/transport_tracker/gtfs_routes.dart';
 import 'package:luma/features/plugins/installed/transport_tracker/gtfs_stops.dart';
 import 'package:luma/features/plugins/installed/transport_tracker/transit_client.dart';
 import 'package:luma/features/plugins/installed/transport_tracker/transit_vehicle.dart';
@@ -289,6 +290,68 @@ void main() {
     });
   });
 
+  group('route classification', () {
+    const csv = 'route_id,agency_id,route_short_name,route_long_name,route_desc,route_type,route_color,route_text_color,route_url\n'
+        '1,IFF:NS_INT,ICE,Amsterdam Centraal <-> Frankfurt (M) Hbf ICE1200,,2,,,\n'
+        '2,IFF:NS_INT,Eurostar,Paris-Nord <-> Amsterdam Centraal EST9300,,2,,,\n'
+        '3,IFF:NS,Sprinter,Rotterdam Centraal <-> Almelo SPR7000,,2,,,\n'
+        '4,ALLGO,326,Lijn 326 Almere Stad - Blaricum,,3,e00713,ffffff,\n'
+        '5,IFF:GVB,52,Noord <-> Zuid,,1,,,\n'
+        '6,IFF:DOEKSEN,V,Harlingen <-> Terschelling,,4,,,\n';
+
+    test('identifies high-speed and international services', () {
+      final routes = GtfsRoutesCache.fromCsv(csv);
+      expect(routes['1']!.isHighSpeed, isTrue);
+      expect(routes['1']!.mode, TransitMode.highSpeed);
+      expect(routes['2']!.mode, TransitMode.highSpeed);
+      // A stopping train is rail but not high-speed.
+      expect(routes['3']!.isHighSpeed, isFalse);
+      expect(routes['3']!.mode, TransitMode.train);
+    });
+
+    test('route_type decides the mode, replacing the operator heuristic', () {
+      final routes = GtfsRoutesCache.fromCsv(csv);
+      expect(routes['4']!.mode, TransitMode.bus);
+      expect(routes['5']!.mode, TransitMode.metro);
+      expect(routes['6']!.mode, TransitMode.ferry);
+    });
+
+    test('strips the internal service code off the destination', () {
+      final routes = GtfsRoutesCache.fromCsv(csv);
+      expect(routes['3']!.endpoints!.to, 'Almelo');
+      expect(routes['1']!.endpoints!.to, 'Frankfurt (M) Hbf');
+      expect(routes['2']!.endpoints!.from, 'Paris-Nord');
+    });
+
+    test('a long name without the arrow form yields no endpoints', () {
+      final routes = GtfsRoutesCache.fromCsv(csv);
+      expect(routes['4']!.endpoints, isNull);
+    });
+  });
+
+  group('call ordering', () {
+    test('orders by time and drops calls that cannot be placed', () {
+      // The train feed leaves stop_sequence empty and emits calls out of
+      // order; without this the drawn route zig-zags across the map.
+      final update = TripUpdate(tripId: 'T', calls: [
+        StopCall(stopId: 'far', departure: DateTime(2026, 8, 18, 7, 56)),
+        const StopCall(stopId: 'untimed'),
+        StopCall(stopId: 'first', departure: DateTime(2026, 8, 17, 19, 22)),
+        StopCall(stopId: 'middle', departure: DateTime(2026, 8, 17, 23, 55)),
+      ]);
+      expect(update.orderedCalls.map((c) => c.stopId),
+          ['first', 'middle', 'far']);
+    });
+
+    test('keeps the publisher order when stops are numbered', () {
+      final update = TripUpdate(tripId: 'T', calls: [
+        StopCall(stopId: 'a', stopSequence: 1, departure: DateTime(2026, 1, 1, 8)),
+        StopCall(stopId: 'b', stopSequence: 2, departure: DateTime(2026, 1, 1, 9)),
+      ]);
+      expect(update.orderedCalls.map((c) => c.stopId), ['a', 'b']);
+    });
+  });
+
   group('layer preferences', () {
     test('round-trip through JSON', () {
       const prefs = TransportPrefs(
@@ -309,13 +372,41 @@ void main() {
       expect(restored.transitModes, TransitMode.values.toSet());
     });
 
-    test('an unknown saved mode is ignored rather than breaking the load', () {
+    test('an unknown hidden mode is ignored rather than breaking the load', () {
       final restored = TransportPrefs.fromJson(const {
+        'schema': 2,
         'showVessels': true,
         'showTransit': true,
-        'transitModes': ['bus', 'hovercraft'],
+        'hiddenModes': ['bus', 'hovercraft'],
       });
-      expect(restored.transitModes, {TransitMode.bus});
+      expect(restored.transitModes.contains(TransitMode.bus), isFalse);
+      expect(restored.transitModes.contains(TransitMode.train), isTrue);
+    });
+
+    test('a mode added after the file was written comes back visible', () {
+      // Exactly the v1 file that hid high-speed services: it lists the
+      // modes that existed then, so a newer one would otherwise be treated
+      // as switched off.
+      final restored = TransportPrefs.fromJson(const {
+        'showVessels': false,
+        'showTransit': true,
+        'transitModes': ['train', 'metro', 'tram', 'bus', 'ferry'],
+      });
+      expect(restored.transitModes.contains(TransitMode.highSpeed), isTrue,
+          reason: 'a legacy file must not hide a newly added mode');
+      // The layer toggles carry over unambiguously and must be preserved.
+      expect(restored.showVessels, isFalse);
+      expect(restored.showTransit, isTrue);
+    });
+
+    test('hiding a mode survives a save/load round-trip', () {
+      final prefs = TransportPrefs(
+        transitModes:
+            TransitMode.values.where((m) => m != TransitMode.bus).toSet(),
+      );
+      final restored = TransportPrefs.fromJson(prefs.toJson());
+      expect(restored.transitModes.contains(TransitMode.bus), isFalse);
+      expect(restored.transitModes.contains(TransitMode.highSpeed), isTrue);
     });
   });
 
