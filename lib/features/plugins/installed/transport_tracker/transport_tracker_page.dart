@@ -13,6 +13,7 @@ import '../_shared/windows_webview.dart';
 import 'ais_key_store.dart';
 import 'ais_stream_client.dart';
 import 'gtfs_realtime.dart';
+import 'gtfs_routes.dart';
 import 'gtfs_stops.dart';
 import 'transit_client.dart';
 import 'transit_vehicle.dart';
@@ -80,6 +81,7 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
   /// place trains at all, so it is fetched the first time transit is
   /// switched on rather than at startup.
   GtfsStopsCache? _stops;
+  GtfsRoutesCache? _routes;
   bool _stopsLoading = false;
   String? _stopsError;
 
@@ -94,6 +96,9 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
       _transitModes = {...prefs.transitModes};
     });
     _applyLayers();
+    // Writes the file back in the current shape, so a migrated older file
+    // is upgraded once instead of being converted on every launch.
+    unawaited(_savePrefs());
   }
 
   Future<void> _savePrefs() => TransportPrefs(
@@ -106,7 +111,9 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
   void _applyLayers() {
     _setLayerVisible('vessels', _showVessels);
     _setLayerVisible('transit', _showTransit);
-    _transit.wantsTrains = _transitModes.contains(TransitMode.train);
+    // Both rail modes come from the same feed, so it is worth fetching if
+    // either is switched on.
+    _transit.wantsTrains = _transitModes.any((m) => m.isRail);
     if (_showTransit) {
       unawaited(_ensureStops());
       _transit.start();
@@ -119,10 +126,18 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
   Future<void> _ensureStops() async {
     if (_stopsLoading) return;
     var cache = _stops ?? await GtfsStopsCache.load();
-    if (cache.isEmpty || cache.isStale) {
+    var routes = _routes ?? await GtfsRoutesCache.load();
+    if (cache.isEmpty || cache.isStale || routes.isEmpty || routes.isStale) {
       setState(() => _stopsLoading = true);
       try {
-        cache = await GtfsStopsCache.download();
+        if (cache.isEmpty || cache.isStale) {
+          cache = await GtfsStopsCache.download();
+        }
+        // Only 40 KB, and it is what supplies real service names, the
+        // authoritative mode per route, and high-speed classification.
+        if (routes.isEmpty || routes.isStale) {
+          routes = await GtfsRoutesCache.download();
+        }
         if (mounted) setState(() => _stopsError = null);
       } catch (e) {
         if (mounted) setState(() => _stopsError = e.toString());
@@ -131,8 +146,12 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
       }
     }
     if (!mounted) return;
-    setState(() => _stops = cache);
+    setState(() {
+      _stops = cache;
+      _routes = routes;
+    });
     _transit.stops = cache;
+    _transit.routes = routes;
     // Trains only exist once stop coordinates are available.
     if (_showTransit) unawaited(_transit.refresh());
   }
@@ -225,7 +244,7 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
     final features = <Map<String, dynamic>>[];
     var minLat = 90.0, maxLat = -90.0, minLon = 180.0, maxLon = -180.0;
 
-    for (final call in update.calls) {
+    for (final call in update.orderedCalls) {
       final stop = stops.lookup(call.stopId);
       // Stops published without coordinates would drag the line to 0,0.
       if (stop == null || !stop.hasPosition) continue;
@@ -1504,7 +1523,7 @@ class _NextStops extends StatelessWidget {
       return note('Stop names unavailable: $stopsError', color: luma.danger);
     }
 
-    final calls = update?.calls ?? const <StopCall>[];
+    final calls = update?.orderedCalls ?? const <StopCall>[];
     if (calls.isEmpty) {
       return note('No stop predictions are published for this journey.');
     }

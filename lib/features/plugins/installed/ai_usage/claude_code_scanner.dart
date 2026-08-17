@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:drift/drift.dart';
 
+import 'ai_usage_project.dart';
 import 'ai_usage_source.dart';
 import 'data/ai_usage_database.dart';
 
@@ -213,6 +214,8 @@ class ClaudeCodeScanner {
           timestampRaw == null ? null : DateTime.tryParse(timestampRaw);
       if (timestamp == null) return null;
 
+      final cwd = record['cwd'] as String?;
+
       return AiUsageTurnsCompanion.insert(
         sessionId: sessionId,
         timestamp: timestamp.toUtc(),
@@ -222,6 +225,7 @@ class ClaudeCodeScanner {
         cacheReadTokens: Value(cacheRead),
         cacheCreationTokens: Value(cacheCreation),
         messageId: Value(messageId),
+        project: Value(projectNameFromCwd(cwd)),
         source: AiUsageSource.claudeCode,
       );
     } catch (_) {

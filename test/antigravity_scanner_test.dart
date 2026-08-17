@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' hide isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -125,6 +125,8 @@ void main() {
     expect(row.outputTokens, 80 ~/ 4);
     expect(row.cacheReadTokens, 0);
     expect(row.cacheCreationTokens, 0);
+    expect(row.project, isNull,
+        reason: 'Antigravity has no reliable per-conversation project source');
   });
 
   test('thinking and tool_calls both contribute to the output estimate', () async {

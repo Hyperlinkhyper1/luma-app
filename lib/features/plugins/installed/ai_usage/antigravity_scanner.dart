@@ -46,9 +46,10 @@ const int _kCharsPerToken = 4;
 /// **the text itself is never stored, displayed, or used for anything else**,
 /// consistent with every other scanner in this plugin never touching
 /// message content. Because it's derived from message length rather than
-/// metered by the provider, every turn from this source is deliberately
-/// left unpriced (see `ai_usage_pricing.dart`) and is shown in the UI
-/// labelled as an estimate, not exact usage.
+/// metered by the provider, every turn from this source is priced (if at
+/// all) more tentatively than Claude Code/Codex's exact figures — see
+/// `ai_usage_pricing.dart`'s `_antigravityPricingFor` — and is shown in the
+/// UI labelled as an estimate, not exact usage.
 ///
 /// Only two record types are counted:
 /// - `type: "USER_INPUT"` — the user's message; its length becomes the
@@ -267,6 +268,8 @@ class AntigravityScanner {
       cacheReadTokens: const Value(0),
       cacheCreationTokens: const Value(0),
       messageId: const Value(null),
+      // No reliable per-conversation project source — see the module doc.
+      project: const Value(null),
       source: AiUsageSource.antigravity,
     );
   }

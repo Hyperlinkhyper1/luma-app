@@ -17,6 +17,7 @@ String _record({
   int outputTokens = 50,
   int cacheRead = 0,
   int cacheCreation = 0,
+  String? cwd,
 }) {
   final message = <String, dynamic>{
     'usage': {
@@ -28,12 +29,14 @@ String _record({
   };
   if (messageId != null) message['id'] = messageId;
   if (model != null) message['model'] = model;
-  return jsonEncode({
+  final record = <String, dynamic>{
     'type': type,
     'sessionId': sessionId,
     'timestamp': timestamp,
     'message': message,
-  });
+  };
+  if (cwd != null) record['cwd'] = cwd;
+  return jsonEncode(record);
 }
 
 void main() {
@@ -127,6 +130,27 @@ void main() {
     final second = await scanner.scanDirectory(db, tempDir);
     expect(second.filesScanned, 0, reason: 'unchanged mtime should be skipped entirely');
     expect(await db.select(db.aiUsageTurns).get(), hasLength(1));
+  });
+
+  test('cwd is reduced to the last two path segments as the project', () async {
+    await writeLog(
+      'a.jsonl',
+      [_record(cwd: r'C:\Users\ayden\Files\Intellij-Programs\luma-app')],
+      mtime: DateTime(2026, 1, 1),
+    );
+
+    await scanner.scanDirectory(db, tempDir);
+
+    final row = (await db.select(db.aiUsageTurns).get()).single;
+    expect(row.project, 'Intellij-Programs/luma-app');
+  });
+
+  test('a record with no cwd leaves project null', () async {
+    await writeLog('a.jsonl', [_record(cwd: null)], mtime: DateTime(2026, 1, 1));
+
+    await scanner.scanDirectory(db, tempDir);
+
+    expect((await db.select(db.aiUsageTurns).get()).single.project, isNull);
   });
 
   test('rescanning after new lines are appended only adds the new turns', () async {
