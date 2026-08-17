@@ -8,10 +8,11 @@ import 'package:flutter/material.dart';
 /// deliberately conservative: anything it can't place confidently stays
 /// [TransitMode.bus], which is what the overwhelming majority of Dutch
 /// vehicles in the feed actually are.
-enum TransitMode { train, metro, tram, bus, ferry }
+enum TransitMode { highSpeed, train, metro, tram, bus, ferry }
 
 extension TransitModeInfo on TransitMode {
   String get label => switch (this) {
+        TransitMode.highSpeed => 'High-speed',
         TransitMode.train => 'Train',
         TransitMode.metro => 'Metro',
         TransitMode.tram => 'Tram',
@@ -20,6 +21,7 @@ extension TransitModeInfo on TransitMode {
       };
 
   Color get color => switch (this) {
+        TransitMode.highSpeed => const Color(0xFFD452C4),
         TransitMode.train => const Color(0xFF7A6FF0),
         TransitMode.metro => const Color(0xFFE05252),
         TransitMode.tram => const Color(0xFF2E9E4F),
@@ -28,12 +30,18 @@ extension TransitModeInfo on TransitMode {
       };
 
   IconData get icon => switch (this) {
+        TransitMode.highSpeed => Icons.bolt_rounded,
         TransitMode.train => Icons.train_rounded,
         TransitMode.metro => Icons.subway_rounded,
         TransitMode.tram => Icons.tram_rounded,
         TransitMode.bus => Icons.directions_bus_rounded,
         TransitMode.ferry => Icons.directions_boat_rounded,
       };
+
+  /// Both rail modes are placed by interpolating the timetable, so they
+  /// share the same data path.
+  bool get isRail =>
+      this == TransitMode.train || this == TransitMode.highSpeed;
 
   String get hex =>
       '#${color.toARGB32().toRadixString(16).padLeft(8, '0').substring(2)}';
@@ -95,6 +103,9 @@ class TransitVehicle {
     this.speed,
     this.timestamp,
     this.tripId,
+    this.routeId,
+    this.serviceName,
+    this.destination,
     this.interpolated = false,
   });
 
@@ -121,13 +132,30 @@ class TransitVehicle {
   /// the remaining calls and their delays come from.
   final String? tripId;
 
+  /// The route this journey runs on, used to look up its published name.
+  final String? routeId;
+
+  /// Published service name from `routes.txt` — "ICE", "Eurostar",
+  /// "Sprinter", "326".
+  final String? serviceName;
+
+  /// Where the journey terminates, when the feed or route says.
+  final String? destination;
+
   /// True when the position was derived from the timetable rather than
-  /// broadcast by the vehicle — currently only trains. Surfaced in the UI so
+  /// broadcast by the vehicle — currently only rail. Surfaced in the UI so
   /// the reading isn't presented as more precise than it is.
   final bool interpolated;
 
   String get displayName {
+    final service = serviceName?.trim();
     final l = line?.trim();
+    if (service != null && service.isNotEmpty) {
+      // "ICE 120" reads better than "High-speed 120"; for a bus the service
+      // name is already the line number, so don't repeat it.
+      if (l != null && l.isNotEmpty && l != service) return '$service $l';
+      return service;
+    }
     if (l != null && l.isNotEmpty) return '${mode.label} $l';
     return mode.label;
   }

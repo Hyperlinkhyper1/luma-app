@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 import 'gtfs_realtime.dart';
+import 'gtfs_routes.dart';
 import 'gtfs_stops.dart';
 import 'transit_vehicle.dart';
 
@@ -104,13 +105,42 @@ class TransitClient {
   void repositionTrains() {
     if (_vehiclesController.isClosed) return;
     final trains =
-        wantsTrains ? interpolateTrains(_trainTrips, stops) : const <TransitVehicle>[];
+        wantsTrains ? interpolateTrains(_trainTrips, stops, routes: routes) : const <TransitVehicle>[];
     _vehiclesController.add([..._positions, ...trains]);
   }
 
   /// Stops used to place interpolated trains and to name calls. Set by the
   /// host once the cache is available; without it trains cannot be placed.
   GtfsStopsCache? stops;
+
+  /// Published route names and types. When present these replace the
+  /// operator/line-number guesswork with the operator's own classification.
+  GtfsRoutesCache? routes;
+
+  /// Re-labels a vehicle from `routes.txt`: authoritative mode, the public
+  /// service name, and the destination taken from the route's `A <-> B`
+  /// long name. Vehicles whose route isn't in the file are left as they are.
+  TransitVehicle _withRoute(TransitVehicle v) {
+    final route = routes?[v.routeId];
+    if (route == null) return v;
+    final endpoints = route.endpoints;
+    return TransitVehicle(
+      id: v.id,
+      latitude: v.latitude,
+      longitude: v.longitude,
+      mode: route.mode,
+      operator: v.operator,
+      line: v.line,
+      label: v.label,
+      speed: v.speed,
+      timestamp: v.timestamp,
+      tripId: v.tripId,
+      routeId: v.routeId,
+      serviceName: route.shortName.isEmpty ? null : route.shortName,
+      destination: endpoints?.to,
+      interpolated: v.interpolated,
+    );
+  }
 
   /// Remaining calls per trip, keyed by trip id, from both update feeds.
   Map<String, TripUpdate> _tripUpdates = const {};
@@ -187,7 +217,9 @@ class TransitClient {
       if (!blocked && _isDue(nlVehiclePositionsUrl, positionsInterval)) {
         final bytes = await _fetch(nlVehiclePositionsUrl);
         if (bytes != null) {
-          _positions = parseVehiclePositions(bytes, idParser: parseOvapiId);
+          _positions = parseVehiclePositions(bytes, idParser: parseOvapiId)
+              .map(_withRoute)
+              .toList();
         }
       }
 
@@ -227,7 +259,7 @@ class TransitClient {
       // Recomputed every tick, not just on fetch, so trains keep moving
       // between the (infrequent) downloads of their journeys.
       final trains =
-          wantsTrains ? interpolateTrains(_trainTrips, stops) : const <TransitVehicle>[];
+          wantsTrains ? interpolateTrains(_trainTrips, stops, routes: routes) : const <TransitVehicle>[];
 
       if (_positions.isNotEmpty || trains.isNotEmpty) {
         _setState(TransitConnectionState.live);
@@ -258,13 +290,17 @@ class TransitClient {
     Iterable<TripUpdate> updates,
     GtfsStopsCache? stops, {
     DateTime? now,
+    GtfsRoutesCache? routes,
   }) {
     if (stops == null || stops.isEmpty) return const [];
     final at = now ?? DateTime.now();
     final out = <TransitVehicle>[];
 
     for (final update in updates) {
-      final calls = update.calls;
+      // Ordered by time: the publisher leaves stop_sequence empty on trains
+      // and emits calls out of order, so the raw list would zig-zag across
+      // the country.
+      final calls = update.orderedCalls;
       if (calls.length < 2) continue;
 
       for (var i = 0; i < calls.length - 1; i++) {
@@ -287,16 +323,22 @@ class TransitClient {
             ? 0.0
             : (at.difference(departure).inMilliseconds / span).clamp(0.0, 1.0);
 
+        final route = routes?[update.routeId];
+        final endpoints = route?.endpoints;
         out.add(TransitVehicle(
           id: 'train:${update.tripId}',
           latitude: fromStop.lat + (toStop.lat - fromStop.lat) * progress,
           longitude: fromStop.lon + (toStop.lon - fromStop.lon) * progress,
-          mode: TransitMode.train,
-          operator: 'NS',
-          line: update.routeId,
-          label: update.vehicleLabel,
+          mode: route?.mode ?? TransitMode.train,
+          operator: route?.agencyId?.replaceFirst('IFF:', '') ?? 'NS',
+          // The train number, not the internal route id.
+          line: update.shortName ?? update.routeId,
+          label: update.vehicleLabel ?? update.shortName,
           timestamp: at,
           tripId: update.tripId,
+          routeId: update.routeId,
+          serviceName: (route?.shortName.isEmpty ?? true) ? null : route!.shortName,
+          destination: update.headsign ?? endpoints?.to,
           interpolated: true,
         ));
         break;

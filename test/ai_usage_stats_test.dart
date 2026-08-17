@@ -15,6 +15,7 @@ AiUsageTurn _turn({
   int outputTokens = 200,
   int cacheReadTokens = 0,
   int cacheCreationTokens = 0,
+  String? project,
 }) =>
     AiUsageTurn(
       id: id,
@@ -27,6 +28,7 @@ AiUsageTurn _turn({
       cacheReadTokens: cacheReadTokens,
       cacheCreationTokens: cacheCreationTokens,
       messageId: null,
+      project: project,
     );
 
 void main() {
@@ -127,16 +129,42 @@ void main() {
   });
 
   group('Antigravity pricing (via dispatcher)', () {
-    test('is always unbillable with no pricing, regardless of the model string', () {
-      // Antigravity's token counts are estimated from message length, not
-      // metered — attaching a dollar figure would compound one
-      // approximation on top of another, so it's deliberately never priced.
-      for (final model in ['Claude Opus 4.6 (Thinking)', 'Gemini 3.1 Pro (High)', null]) {
+    test('a recognized Gemini model prices at its rate, suffix and all', () {
+      final rates = pricingFor(AiUsageSource.antigravity, 'Gemini 3.1 Pro (High)');
+      expect(rates, isNotNull);
+      expect(rates!.input, kGeminiPricing['Gemini 3.1 Pro']!.input);
+      expect(isBillableModel(AiUsageSource.antigravity, 'Gemini 3.1 Pro (High)'), isTrue);
+    });
+
+    test('the reasoning-effort suffix does not change which rate is picked', () {
+      final withSuffix = pricingFor(AiUsageSource.antigravity, 'Gemini 3.5 Flash (Medium)');
+      final withoutSuffix = pricingFor(AiUsageSource.antigravity, 'Gemini 3.5 Flash');
+      expect(withSuffix!.input, withoutSuffix!.input);
+    });
+
+    test('Flash-Lite is never shadowed by the shorter Flash prefix', () {
+      final rates = pricingFor(AiUsageSource.antigravity, 'Gemini 3.5 Flash-Lite (Low)');
+      expect(rates!.input, kGeminiPricing['Gemini 3.5 Flash-Lite']!.input);
+      expect(rates.input, isNot(kGeminiPricing['Gemini 3.5 Flash']!.input));
+    });
+
+    test('a recognized Claude model falls back to the Anthropic family rate', () {
+      // Antigravity's Claude-named turns never hit the Anthropic table's
+      // exact/dated-prefix tiers (those expect slugs like
+      // "claude-opus-4-6", not this prose form) — only its family-word
+      // fallback, so this always resolves to the newest known Opus rate
+      // regardless of which specific version Antigravity's UI names.
+      final rates = pricingFor(AiUsageSource.antigravity, 'Claude Opus 4.6 (Thinking)');
+      expect(rates, isNotNull);
+      expect(rates!.input, kAnthropicPricing['claude-opus-4-8']!.input);
+    });
+
+    test('an unrecognized model stays unbillable with no pricing', () {
+      for (final model in ['Some Local Model', null]) {
         expect(isBillableModel(AiUsageSource.antigravity, model), isFalse, reason: '$model');
         expect(pricingFor(AiUsageSource.antigravity, model), isNull, reason: '$model');
       }
-      expect(costForTurn(AiUsageSource.antigravity, 'Claude Opus 4.6 (Thinking)', 100, 200, 0, 0),
-          0);
+      expect(costForTurn(AiUsageSource.antigravity, 'Some Local Model', 100, 200, 0, 0), 0);
     });
   });
 
@@ -247,6 +275,200 @@ void main() {
       final buckets = aggregateByDay(turns);
       expect(buckets.single.totalTokens, 150,
           reason: 'a huge repeated cache read must not dominate the daily total');
+    });
+
+    test('sums each of the four token categories independently per day', () {
+      final turns = [
+        _turn(
+          timestamp: DateTime(2026, 1, 1, 9),
+          inputTokens: 10,
+          outputTokens: 20,
+          cacheReadTokens: 30,
+          cacheCreationTokens: 40,
+        ),
+        _turn(
+          timestamp: DateTime(2026, 1, 1, 15),
+          inputTokens: 1,
+          outputTokens: 2,
+          cacheReadTokens: 3,
+          cacheCreationTokens: 4,
+        ),
+      ];
+      final bucket = aggregateByDay(turns).single;
+      expect(bucket.inputTokens, 11);
+      expect(bucket.outputTokens, 22);
+      expect(bucket.cacheReadTokens, 33);
+      expect(bucket.cacheCreationTokens, 44);
+    });
+  });
+
+  group('aggregateByProject', () {
+    test('groups by project, sorted by descending tokens', () {
+      final day = DateTime(2026, 1, 1);
+      final turns = [
+        _turn(timestamp: day, project: 'org/small', inputTokens: 10, outputTokens: 0),
+        _turn(timestamp: day, project: 'org/big', inputTokens: 1000, outputTokens: 0),
+        _turn(timestamp: day, project: 'org/big', inputTokens: 500, outputTokens: 0),
+      ];
+
+      final result = aggregateByProject(turns);
+      expect(result, hasLength(2));
+      expect(result.first.project, 'org/big');
+      expect(result.first.turnCount, 2);
+      expect(result.first.totalTokens, 1500);
+    });
+
+    test('a turn with no project folds into "Unknown project"', () {
+      final turns = [_turn(timestamp: DateTime(2026, 1, 1), project: null)];
+      final result = aggregateByProject(turns);
+      expect(result.single.project, kUnknownProject);
+    });
+
+    test('sessionCount counts distinct sessions within the project', () {
+      final day = DateTime(2026, 1, 1);
+      final turns = [
+        _turn(sessionId: 'a', timestamp: day, project: 'org/repo'),
+        _turn(sessionId: 'a', timestamp: day, project: 'org/repo'),
+        _turn(sessionId: 'b', timestamp: day, project: 'org/repo'),
+      ];
+      expect(aggregateByProject(turns).single.sessionCount, 2);
+    });
+
+    test('costs a mixed-source project using each turn\'s own source', () {
+      final day = DateTime(2026, 1, 1);
+      final turns = [
+        _turn(
+          timestamp: day,
+          project: 'org/repo',
+          model: 'claude-sonnet-4-6',
+          source: AiUsageSource.claudeCode,
+          inputTokens: 1000000,
+          outputTokens: 0,
+        ),
+        _turn(
+          timestamp: day,
+          project: 'org/repo',
+          model: 'gpt-5.5',
+          source: AiUsageSource.codexCli,
+          inputTokens: 1000000,
+          outputTokens: 0,
+        ),
+      ];
+      expect(aggregateByProject(turns).single.cost, closeTo(8.00, 0.0001));
+    });
+  });
+
+  group('aggregateBySession', () {
+    test('groups by (source, sessionId), sorted by descending cost', () {
+      final turns = [
+        _turn(sessionId: 'cheap', timestamp: DateTime(2026, 1, 1), inputTokens: 10),
+        _turn(sessionId: 'pricey', timestamp: DateTime(2026, 1, 1), inputTokens: 1000000),
+      ];
+      final result = aggregateBySession(turns);
+      expect(result, hasLength(2));
+      expect(result.first.sessionId, 'pricey');
+    });
+
+    test('the same sessionId from different sources never merges', () {
+      final turns = [
+        _turn(sessionId: 'shared', source: AiUsageSource.claudeCode, timestamp: DateTime(2026, 1, 1)),
+        _turn(sessionId: 'shared', source: AiUsageSource.codexCli, timestamp: DateTime(2026, 1, 1)),
+      ];
+      expect(aggregateBySession(turns), hasLength(2));
+    });
+
+    test('duration spans the first to the last turn in the session', () {
+      final turns = [
+        _turn(sessionId: 'a', timestamp: DateTime(2026, 1, 1, 10, 0)),
+        _turn(sessionId: 'a', timestamp: DateTime(2026, 1, 1, 12, 30)),
+      ];
+      expect(aggregateBySession(turns).single.duration, const Duration(hours: 2, minutes: 30));
+    });
+
+    test('project is carried from the session\'s turns', () {
+      final turns = [_turn(sessionId: 'a', timestamp: DateTime(2026, 1, 1), project: 'org/repo')];
+      expect(aggregateBySession(turns).single.project, 'org/repo');
+    });
+  });
+
+  group('longestActiveDayStreak', () {
+    test('no turns means a zero-length streak', () {
+      final streak = longestActiveDayStreak(const []);
+      expect(streak.days, 0);
+      expect(streak.start, isNull);
+      expect(streak.end, isNull);
+    });
+
+    test('a single active day is a streak of 1', () {
+      final streak = longestActiveDayStreak([_turn(timestamp: DateTime(2026, 1, 1))]);
+      expect(streak.days, 1);
+      expect(streak.start, DateTime(2026, 1, 1));
+      expect(streak.end, DateTime(2026, 1, 1));
+    });
+
+    test('picks the longest of several runs, not the most recent', () {
+      final turns = [
+        // A 3-day run (Jan 1-3), a gap, then a 2-day run (Jan 10-11).
+        _turn(timestamp: DateTime(2026, 1, 1)),
+        _turn(timestamp: DateTime(2026, 1, 2)),
+        _turn(timestamp: DateTime(2026, 1, 3)),
+        _turn(timestamp: DateTime(2026, 1, 10)),
+        _turn(timestamp: DateTime(2026, 1, 11)),
+      ];
+      final streak = longestActiveDayStreak(turns);
+      expect(streak.days, 3);
+      expect(streak.start, DateTime(2026, 1, 1));
+      expect(streak.end, DateTime(2026, 1, 3));
+    });
+
+    test('multiple turns on the same day only count once', () {
+      final turns = [
+        _turn(timestamp: DateTime(2026, 1, 1, 9)),
+        _turn(timestamp: DateTime(2026, 1, 1, 15)),
+        _turn(timestamp: DateTime(2026, 1, 2, 9)),
+      ];
+      expect(longestActiveDayStreak(turns).days, 2);
+    });
+  });
+
+  group('aggregateByHour', () {
+    test('always returns 24 buckets, empty hours included as 0', () {
+      final buckets = aggregateByHour(const []);
+      expect(buckets, hasLength(24));
+      expect(
+        buckets.every((b) => b.totalTurns == 0 && b.avgTurns == 0 && b.avgTokens == 0),
+        isTrue,
+      );
+    });
+
+    test('averages by the number of distinct days present, not the full range', () {
+      final turns = [
+        _turn(timestamp: DateTime(2026, 1, 1, 9), sessionId: 'a'),
+        _turn(timestamp: DateTime(2026, 1, 2, 9), sessionId: 'b'),
+        _turn(timestamp: DateTime(2026, 1, 2, 9), sessionId: 'c'),
+      ];
+      final buckets = aggregateByHour(turns);
+      final hour9 = buckets.firstWhere((b) => b.hour == 9);
+      expect(hour9.totalTurns, 3);
+      expect(hour9.avgTurns, closeTo(1.5, 0.0001), reason: '3 turns over 2 distinct days');
+    });
+
+    test('avgTokens uses the input+output+cache-write definition, averaged by distinct days', () {
+      final turns = [
+        _turn(
+            timestamp: DateTime(2026, 1, 1, 9),
+            sessionId: 'a',
+            inputTokens: 100,
+            outputTokens: 200),
+        _turn(
+            timestamp: DateTime(2026, 1, 2, 9),
+            sessionId: 'b',
+            inputTokens: 50,
+            outputTokens: 50),
+      ];
+      final buckets = aggregateByHour(turns);
+      final hour9 = buckets.firstWhere((b) => b.hour == 9);
+      expect(hour9.avgTokens, closeTo(200, 0.0001), reason: '(300 + 100) new tokens over 2 days');
     });
   });
 

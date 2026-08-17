@@ -20,6 +20,9 @@ class AiUsageTurns extends Table {
   IntColumn get cacheCreationTokens => integer().withDefault(const Constant(0))();
   // Dedup key from the source record only — never the message content.
   TextColumn get messageId => text().nullable()();
+  // Friendly project name derived from cwd (last two path segments). Null
+  // for sources with no reliable project source (Antigravity).
+  TextColumn get project => text().nullable()();
   // Which CLI this turn came from — determines which pricing table applies.
   TextColumn get source => textEnum<AiUsageSource>()();
 }
@@ -49,18 +52,18 @@ class AiUsageDatabase extends _$AiUsageDatabase {
             ));
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) => m.createAll(),
         onUpgrade: (m, from, to) async {
-          if (from < 2) {
-            // Schema 1 predates the required `source` column. Both tables
-            // here are a derived, re-scannable cache of local session
-            // logs — simplest correct migration is to drop and recreate
-            // rather than synthesize a source for old rows; the next
-            // rescan repopulates everything from scratch.
+          if (from < 3) {
+            // Both tables here are a derived, re-scannable cache of local
+            // session logs — simplest correct migration for any schema
+            // change (the required `source` column at v2, `project` at v3)
+            // is to drop and recreate rather than synthesize values for old
+            // rows; the next rescan repopulates everything from scratch.
             await customStatement('DROP TABLE IF EXISTS ai_usage_turns');
             await customStatement('DROP TABLE IF EXISTS ai_usage_scan_files');
             await m.createTable(aiUsageTurns);

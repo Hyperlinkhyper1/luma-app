@@ -130,6 +130,7 @@ TransitVehicle? _parseEntity(
   _Position? position;
   String? label;
   String? tripId;
+  String? routeId;
   int? timestamp;
 
   while (!entity.done) {
@@ -143,7 +144,9 @@ TransitVehicle? _parseEntity(
         final (vf, vw) = v.key();
         if (vf == 1 && vw == 2) {
           final (trs, tre) = v.lengthDelimited();
-          tripId = _parseTrip(v.sub(trs, tre)).tripId;
+          final trip = _parseTrip(v.sub(trs, tre));
+          tripId = trip.tripId;
+          routeId = trip.routeId;
         } else if (vf == 2 && vw == 2) {
           final (ps, pe) = v.lengthDelimited();
           position = _parsePosition(v.sub(ps, pe));
@@ -174,6 +177,7 @@ TransitVehicle? _parseEntity(
     line: meta.line,
     label: label,
     tripId: tripId,
+    routeId: routeId,
     speed: position.speed,
     timestamp: (timestamp != null && timestamp > 0)
         ? DateTime.fromMillisecondsSinceEpoch(timestamp * 1000)
@@ -199,20 +203,47 @@ _Position _parsePosition(_ProtoReader r) {
 }
 
 /// TripDescriptor: `trip_id` = 1, `route_id` = 5.
-({String? tripId, String? routeId}) _parseTrip(_ProtoReader r) {
+///
+/// Field 1003 is OVapi's own extension (see `gtfs-realtime-OVapi.proto`),
+/// which carries the things the base spec has nowhere to put: the public
+/// train number and the commercial service type — "IC", "ICE", "EST" and so
+/// on — which is the only way to tell a high-speed service from a stopping
+/// one without the static dataset.
+({String? tripId, String? routeId, String? shortName, String? commercialMode})
+    _parseTrip(_ProtoReader r) {
   String? tripId;
   String? routeId;
+  String? shortName;
+  String? commercialMode;
   while (!r.done) {
     final (field, wire) = r.key();
     if (field == 1 && wire == 2) {
       tripId = r.string();
     } else if (field == 5 && wire == 2) {
       routeId = r.string();
+    } else if (field == 1003 && wire == 2) {
+      final (s, e) = r.lengthDelimited();
+      final ext = r.sub(s, e);
+      while (!ext.done) {
+        final (ef, ew) = ext.key();
+        if (ef == 2 && ew == 2) {
+          shortName = ext.string();
+        } else if (ef == 3 && ew == 2) {
+          commercialMode = ext.string();
+        } else if (!ext.skip(ew)) {
+          break;
+        }
+      }
     } else if (!r.skip(wire)) {
       break;
     }
   }
-  return (tripId: tripId, routeId: routeId);
+  return (
+    tripId: tripId,
+    routeId: routeId,
+    shortName: shortName,
+    commercialMode: commercialMode,
+  );
 }
 
 /// One predicted call at a stop within a trip.
@@ -245,6 +276,9 @@ class TripUpdate {
     this.routeId,
     this.vehicleLabel,
     this.delaySeconds,
+    this.shortName,
+    this.commercialMode,
+    this.headsign,
   });
 
   final String? tripId;
@@ -252,6 +286,25 @@ class TripUpdate {
   final String? vehicleLabel;
   final int? delaySeconds;
   final List<StopCall> calls;
+
+  /// Public service number, e.g. the train number on the departure board.
+  final String? shortName;
+
+  /// Commercial service type from the operator: `IC`, `ICE`, `EST`, `SPR`…
+  final String? commercialMode;
+
+  /// Where the journey is going — the destination shown on the vehicle.
+  final String? headsign;
+
+  /// Calls that carry a predicted time, in travel order.
+  ///
+  /// The publisher does not populate `stop_sequence` for trains and does not
+  /// emit calls in order, so time is the only reliable ordering signal. Calls
+  /// without one cannot be placed in the sequence and are left out rather
+  /// than drawn in an arbitrary spot.
+  List<StopCall> get orderedCalls =>
+      calls.where((c) => c.time != null).toList()
+        ..sort((a, b) => a.time!.compareTo(b.time!));
 }
 
 /// Decodes a GTFS-realtime `FeedMessage` carrying `TripUpdate` entities.
@@ -289,6 +342,9 @@ List<TripUpdate> parseTripUpdates(Uint8List bytes) {
 TripUpdate? _parseTripUpdate(_ProtoReader r) {
   String? tripId;
   String? routeId;
+  String? shortName;
+  String? commercialMode;
+  String? headsign;
   String? vehicleLabel;
   int? delay;
   final calls = <StopCall>[];
@@ -300,6 +356,20 @@ TripUpdate? _parseTripUpdate(_ProtoReader r) {
       final trip = _parseTrip(r.sub(s, e));
       tripId = trip.tripId;
       routeId = trip.routeId;
+      shortName = trip.shortName;
+      commercialMode = trip.commercialMode;
+    } else if (field == 1003 && wire == 2) {
+      // OVapi's TripUpdate extension: the journey's destination.
+      final (s, e) = r.lengthDelimited();
+      final ext = r.sub(s, e);
+      while (!ext.done) {
+        final (ef, ew) = ext.key();
+        if (ef == 1 && ew == 2) {
+          headsign = ext.string();
+        } else if (!ext.skip(ew)) {
+          break;
+        }
+      }
     } else if (field == 2 && wire == 2) {
       final (s, e) = r.lengthDelimited();
       final call = _parseStopCall(r.sub(s, e));
@@ -315,12 +385,20 @@ TripUpdate? _parseTripUpdate(_ProtoReader r) {
   }
 
   if (tripId == null && calls.isEmpty) return null;
-  calls.sort((a, b) => (a.stopSequence ?? 0).compareTo(b.stopSequence ?? 0));
+  // Only sort here when the publisher actually numbers the stops; ordering
+  // by time is handled by [TripUpdate.orderedCalls], because a plain sort
+  // across a mix of numbered and unnumbered calls is not well defined.
+  if (calls.every((c) => c.stopSequence != null)) {
+    calls.sort((a, b) => a.stopSequence!.compareTo(b.stopSequence!));
+  }
   return TripUpdate(
     tripId: tripId,
     routeId: routeId,
     vehicleLabel: vehicleLabel,
     delaySeconds: delay,
+    shortName: shortName,
+    commercialMode: commercialMode,
+    headsign: headsign,
     calls: calls,
   );
 }

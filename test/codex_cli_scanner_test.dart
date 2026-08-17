@@ -9,13 +9,17 @@ import 'package:luma/features/plugins/installed/ai_usage/ai_usage_source.dart';
 import 'package:luma/features/plugins/installed/ai_usage/codex_cli_scanner.dart';
 import 'package:luma/features/plugins/installed/ai_usage/data/ai_usage_database.dart';
 
-String _sessionMeta({String sessionId = 'sess-1'}) => jsonEncode({
+String _sessionMeta({
+  String sessionId = 'sess-1',
+  String cwd = r'C:\Users\ayden\project',
+}) =>
+    jsonEncode({
       'timestamp': '2026-07-07T21:08:31.261Z',
       'type': 'session_meta',
       'payload': {
         'session_id': sessionId,
         'id': sessionId,
-        'cwd': 'C:\\Users\\ayden\\project',
+        'cwd': cwd,
         'originator': 'Codex Desktop',
         'cli_version': '0.142.5',
         'model_provider': 'openai',
@@ -155,6 +159,24 @@ void main() {
     expect(row.cacheReadTokens, 10112);
     expect(row.outputTokens, 18 + 5, reason: 'output + reasoning tokens are folded together');
     expect(row.cacheCreationTokens, 0);
+  });
+
+  test('cwd from session_meta is reduced to the last two path segments as the project',
+      () async {
+    await writeLog(
+      'a.jsonl',
+      [
+        _sessionMeta(cwd: r'C:\Users\ayden\Files\Intellij-Programs\luma-app'),
+        _turnContext(),
+        _tokenCount(),
+      ],
+      mtime: DateTime(2026, 1, 1),
+    );
+
+    await scanner.scanDirectory(db, tempDir);
+
+    final row = (await db.select(db.aiUsageTurns).get()).single;
+    expect(row.project, 'Intellij-Programs/luma-app');
   });
 
   test('a token_count event with info: null (rate-limit ping) is skipped', () async {
@@ -297,6 +319,8 @@ void main() {
     expect(rows[1].sessionId, 'sess-1');
     expect(rows[1].model, 'gpt-5.5');
     expect(rows[1].inputTokens, 500);
+    expect(rows[1].project, 'ayden/project',
+        reason: 'cwd state must survive the resume cutoff the same way sessionId/model do');
   });
 
   test('rescanning an unchanged file adds nothing', () async {
