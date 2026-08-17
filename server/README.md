@@ -98,6 +98,45 @@ For a containerized run matching production, see `docker-compose.yml` /
   stored. Sliding expiry (`LUMA_TOKEN_TTL_DAYS`, default 90) refreshes past
   the halfway point of the token's remaining life.
 
+### Sign in with Google / GitHub
+
+Optional, off unless the operator sets `LUMA_{GOOGLE,GITHUB}_OAUTH_CLIENT_ID`
+and `_SECRET` (see `.env.example`). The server drives the code exchange, so
+the client secrets never ship inside the app binary. `oauth.dart` has the
+flow in full; the shape is:
+
+```
+POST /auth/oauth/start     {provider}          → {ticket, authUrl}
+  (app opens authUrl in the system browser)
+GET  /auth/oauth/callback/<provider>?code&state   ← the provider redirects here
+POST /auth/oauth/poll      {ticket}            → pending | ready{email, …}
+POST /auth/oauth/complete  {ticket, authKey, …} → {token, …}
+```
+
+Two things this deliberately does *not* do:
+
+- **It does not replace the passphrase.** A provider settles *which account*;
+  it cannot produce the encryption key, because the server never has it.
+  `/complete` still checks a client-derived auth key against the stored hash,
+  exactly as `/auth/login` does — so an existing account is unlocked with the
+  password it already had, and a new one has to choose a passphrase before it
+  exists at all.
+- **It does not trust an unverified address.** Google's `email_verified` must
+  not be false, and GitHub's addresses come from `/user/emails` filtered to
+  `verified` (never the public profile field). Otherwise anyone could add
+  someone else's address to their own provider account and be handed the luma
+  account that owns it.
+
+Matching a provider-verified address to an existing account is what *links*
+the two: the account records the provider's immutable subject id, so both the
+button and the password keep working afterwards, and a later address change at
+the provider still resolves to the same account.
+
+Flows live in memory only (`OAuthFlowStore`, 10 min TTL, 500 concurrent max).
+The `state` travels through the browser; the `ticket` never does, and polling
+requires the ticket — so a leaked state reveals nothing. Five wrong
+passphrases burn the flow.
+
 ## Admin dashboard auth
 
 `/admin/*` requires `LUMA_ADMIN_KEY` to be set — if it isn't, every admin
@@ -137,6 +176,11 @@ POST /auth/register              {email, authKey, kdfSalt, …}  → token
 GET  /auth/verify                ?token=…                       HTML page
 POST /auth/resend-verification   {email}
 POST /auth/login                 {email, authKey}               → token
+GET  /auth/oauth/providers                                      → configured providers
+POST /auth/oauth/start           {provider}                     → {ticket, authUrl}
+GET  /auth/oauth/callback/<p>    ?code&state                     HTML page
+POST /auth/oauth/poll            {ticket}                       → pending | ready
+POST /auth/oauth/complete        {ticket, authKey, kdfSalt, …}  → token
 POST /auth/logout                                                (auth)
 POST /auth/change                {currentAuthKey, newAuthKey,…} (auth)
 GET  /auth/sessions                                              (auth) → active sessions
