@@ -233,6 +233,16 @@
       "version": "1.0.0"
     },
     {
+      "id": "sftp",
+      "name": "SFTP",
+      "description": "A two-pane SFTP client for your own servers, like FileZilla. Connect with a host, username, password and port — or an SSH key — then browse this device and the server side by side, drag files across, and watch the transfer queue. Every connection goes straight from this device to your server; nothing passes through a luma server. A Nova-exclusive plugin.",
+      "icon": "swap_horiz",
+      "category": "Utility",
+      "tags": ["Utility", "System", "Nova"],
+      "free": false,
+      "version": "1.0.0"
+    },
+    {
       "id": "minecraft-launcher",
       "name": "Minecraft Launcher",
       "description": "Install and manage Minecraft instances — Vanilla, Fabric, Forge, NeoForge and Quilt — with mod, resource pack and shader pack downloads, Java management, and live launch logs. Inspired by modern launchers, built with luma's own design.",

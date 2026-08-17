@@ -88,6 +88,10 @@ dependencies:
   google_mlkit_face_detection: ^0.14.0
   google_mlkit_image_labeling: ^0.15.0
   flutter_onnxruntime: ^1.8.3
+  # Pure-Dart SSH/SFTP client for the SFTP plugin. No native dependency, so
+  # it works the same on Windows, Linux and Android, and every byte goes
+  # straight from this device to the user's own server.
+  dartssh2: ^2.13.0
 
 dev_dependencies:
   flutter_test:

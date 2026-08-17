@@ -384,6 +384,159 @@ class SyncService extends ChangeNotifier {
     }
   }
 
+  // ---- Sign in with Google / GitHub -------------------------------------------
+
+  /// Which providers [serverUrl] offers a button for. Never throws: a server
+  /// that is old, unreachable, or simply has none configured all mean the
+  /// same thing to the sign-in screen — show email and password only.
+  Future<List<OAuthProviderInfo>> availableOAuthProviders(
+      String serverUrl) async {
+    if (SyncApi.validateServerUrl(serverUrl) != null) return const [];
+    final api = SyncApi(serverUrl);
+    try {
+      return await api.oauthProviders();
+    } catch (_) {
+      return const [];
+    } finally {
+      api.close();
+    }
+  }
+
+  /// Opens a browser sign-in and hands back the URL to launch. The caller
+  /// then [waitForOAuthIdentity], collects the passphrase, and finishes with
+  /// [completeOAuthSignIn] — nothing here touches this device's account
+  /// state until that last step succeeds.
+  Future<OAuthSignInHandle> startOAuthSignIn({
+    required String serverUrl,
+    required String providerId,
+  }) async {
+    final urlError = SyncApi.validateServerUrl(serverUrl);
+    if (urlError != null) throw SyncApiException(0, 'bad_server_url', urlError);
+    final api = SyncApi(serverUrl);
+    try {
+      final started = await api.oauthStart(providerId);
+      return OAuthSignInHandle._(
+        api: api,
+        providerId: providerId,
+        ticket: started.ticket,
+        authUrl: started.authUrl,
+      );
+    } catch (_) {
+      api.close();
+      rethrow;
+    }
+  }
+
+  /// Polls until the provider has vouched for an address, the attempt fails,
+  /// or [timeout] runs out. The user is in their browser for all of it, so
+  /// the poll is deliberately slow and cheap.
+  Future<OAuthPollResult> waitForOAuthIdentity(
+    OAuthSignInHandle handle, {
+    Duration timeout = const Duration(minutes: 5),
+    Duration interval = const Duration(seconds: 2),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      if (handle._cancelled) {
+        return const OAuthPollResult(
+            status: 'error', message: 'Sign-in cancelled.');
+      }
+      final result = await handle.api.oauthPoll(handle.ticket);
+      if (!result.isPending) return result;
+      await Future<void>.delayed(interval);
+    }
+    return const OAuthPollResult(
+      status: 'error',
+      message: 'Timed out waiting for the browser. Please try again.',
+    );
+  }
+
+  /// Finishes a browser sign-in.
+  ///
+  /// The provider settled which account this is; [passphrase] is what
+  /// actually decrypts its data, and it never leaves this device — only the
+  /// key derived from it does, exactly as in [signIn]. For an account that
+  /// already exists the server checks that key, so a wrong passphrase throws
+  /// rather than quietly producing an account whose data won't open.
+  ///
+  /// Returns null once signed in, or a human-readable message when the
+  /// account still has to be approved (same contract as [register]).
+  Future<String?> completeOAuthSignIn({
+    required OAuthSignInHandle handle,
+    required OAuthPollResult identity,
+    required String passphrase,
+  }) async {
+    if (!identity.isReady || identity.email == null) {
+      throw SyncApiException(
+          0, 'oauth_not_ready', 'That sign-in did not complete.');
+    }
+    final s = _state ?? (_state = await SyncStateStore.load());
+    final api = handle.api;
+    final email = identity.email!;
+
+    // An existing account dictates its own KDF parameters. For a new one,
+    // reuse this device's local-only salt when the address matches, so a
+    // device already paired over P2P is not orphaned by gaining a cloud
+    // account — same reasoning as [register].
+    final reuseLocalSalt =
+        isLocalOnly && s.email == email && s.kdfSalt != null;
+    final kdfSalt = identity.kdfSalt ??
+        (reuseLocalSalt ? s.kdfSalt! : SyncCrypto.randomBytes(16));
+    final iterations =
+        identity.kdfIterations ?? SyncCrypto.defaultKdfIterations;
+
+    final keys = await SyncCrypto.deriveKeys(
+      password: passphrase,
+      kdfSalt: kdfSalt,
+      iterations: iterations,
+    );
+    final result = await api.oauthComplete(
+      ticket: handle.ticket,
+      authKey: keys.authKey,
+      kdfSalt: kdfSalt,
+      kdfIterations: iterations,
+      deviceLabel: _deviceLabel(),
+    );
+
+    if (result.pendingApproval) {
+      handle.close();
+      s
+        ..pendingApprovalEmail = email
+        ..pendingApprovalMode = ServerApprovalMode.manual.name;
+      await s.save();
+      notifyListeners();
+      return result.message ??
+          'Your account has to be approved before you can sign in.';
+    }
+
+    final token = result.token!;
+    api.token = token;
+    handle._adopted = true;
+    _api?.close();
+    _api = api;
+    s
+      ..serverUrl = api.baseUrl
+      ..email = email
+      ..token = token
+      ..encryptionKey = keys.encryptionKey
+      ..kdfSalt = kdfSalt
+      ..kdfIterations = iterations
+      ..accountApproved = true
+      ..pendingApprovalEmail = null
+      ..pendingApprovalMode = null;
+    for (final st in s.collections.values) {
+      st.lastSyncedVersion = null;
+      st.lastSyncedHash = null;
+    }
+    _requiresReauth = false;
+    _lastError = null;
+    await s.save();
+    _applyServerAccess();
+    notifyListeners();
+    unawaited(syncNow(silent: true));
+    return null;
+  }
+
   /// Signs out of this device. Data already on the server stays there.
   Future<void> signOut() async {
     final s = _state;
@@ -1187,5 +1340,45 @@ class AiServerStatus {
       supportUsed: intOf(usage['supportUsed']),
       supportLimit: intOf(usage['supportLimit'], 15),
     );
+  }
+}
+
+/// One browser sign-in in progress, from [SyncService.startOAuthSignIn] to
+/// [SyncService.completeOAuthSignIn].
+///
+/// It owns the [SyncApi] the flow runs over. That client is adopted by
+/// [SyncService] when the sign-in succeeds; on any other ending — cancelled,
+/// timed out, the user backed out of the passphrase step — the caller must
+/// [close] it so the socket does not outlive the attempt.
+class OAuthSignInHandle {
+  OAuthSignInHandle._({
+    required this.api,
+    required this.providerId,
+    required this.ticket,
+    required this.authUrl,
+  });
+
+  final SyncApi api;
+
+  /// 'google' or 'github'.
+  final String providerId;
+
+  /// This attempt's private handle. Never travels through the browser, so
+  /// seeing the provider URL is not enough to hijack the sign-in.
+  final String ticket;
+
+  /// The provider URL to open in the system browser.
+  final String authUrl;
+
+  bool _cancelled = false;
+  bool _adopted = false;
+
+  /// Stops [SyncService.waitForOAuthIdentity] at its next tick.
+  void cancel() => _cancelled = true;
+
+  /// Releases the client unless the service took it over on success.
+  void close() {
+    _cancelled = true;
+    if (!_adopted) api.close();
   }
 }

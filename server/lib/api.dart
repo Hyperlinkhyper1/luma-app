@@ -12,6 +12,7 @@ import 'chat_store.dart';
 import 'family_store.dart';
 import 'mail.dart';
 import 'metrics.dart';
+import 'oauth.dart';
 import 'rate_limit.dart';
 import 'recipe_store.dart';
 import 'store.dart';
@@ -62,6 +63,8 @@ class ServerConfig {
     required this.groceriesUrl,
     required this.groceriesAdminKey,
     required this.wikiDir,
+    required this.publicUrl,
+    required this.oauthProviders,
   });
 
   final int port;
@@ -134,6 +137,31 @@ class ServerConfig {
 
   bool get wikiEnabled => wikiDir != null && wikiDir!.isNotEmpty;
 
+  /// Where this server is reachable from the public internet, without a
+  /// trailing slash. Same value the verification mail uses; OAuth needs it
+  /// too, because the redirect URI has to be an absolute URL the provider
+  /// can send a browser back to.
+  final String publicUrl;
+
+  /// Client credentials per OAuth provider id, from
+  /// LUMA_GOOGLE_OAUTH_CLIENT_ID / _SECRET and the GitHub pair. Providers
+  /// with no credentials configured are simply absent, and the app hides
+  /// their button — "Sign in with Google" is opt-in for the operator, not
+  /// something a self-hosted deployment is forced to set up.
+  final Map<String, OAuthProviderConfig> oauthProviders;
+
+  /// The configured providers, in the order they are shown in the app.
+  List<OAuthProviderSpec> get enabledOAuthProviders => OAuthProviderSpec.all
+      .where((spec) => oauthProviders[spec.id]?.configured ?? false)
+      .toList();
+
+  bool get anyOAuthConfigured => enabledOAuthProviders.isNotEmpty;
+
+  /// Where a provider sends the browser back to after the user approves.
+  /// Must be registered verbatim in the provider's app settings.
+  String oauthRedirectUri(String providerId) =>
+      '$publicUrl/api/v1/auth/oauth/callback/$providerId';
+
   /// Whether new accounts may be created. Open by default; set
   /// LUMA_ALLOW_REGISTRATION=false to close it (existing accounts keep working).
   bool get registrationEnabled => allowRegistration;
@@ -172,6 +200,18 @@ class ServerConfig {
           env['LUMA_GROCERIES_URL'] ?? 'https://groceries.luma-app.cc',
       groceriesAdminKey: env['LUMA_GROCERIES_ADMIN_KEY'],
       wikiDir: env['LUMA_WIKI_DIR'],
+      publicUrl: (env['LUMA_PUBLIC_URL'] ?? 'http://localhost:8080')
+          .replaceAll(RegExp(r'/+$'), ''),
+      oauthProviders: {
+        for (final spec in OAuthProviderSpec.all)
+          spec.id: OAuthProviderConfig(
+            id: spec.id,
+            clientId:
+                env['LUMA_${spec.id.toUpperCase()}_OAUTH_CLIENT_ID'] ?? '',
+            clientSecret:
+                env['LUMA_${spec.id.toUpperCase()}_OAUTH_CLIENT_SECRET'] ?? '',
+          ),
+      },
     );
   }
 }
@@ -198,9 +238,13 @@ const int kAiTokensWeek = 40000;
 const int kSupportMessagesPerDay = 15;
 
 class Api {
+  /// [oauthClient] is only passed by tests, which substitute one that
+  /// resolves an identity without a round trip to Google or GitHub.
   Api(this.store, this.config, this.mailer, this.familyStore, this.chatStore,
-      this.aiUsage, this.subwayStore, this.recipeStore)
-      : _authLimiter = RateLimiter(
+      this.aiUsage, this.subwayStore, this.recipeStore,
+      {OAuthClient? oauthClient})
+      : _oauthClient = oauthClient ?? OAuthClient(),
+        _authLimiter = RateLimiter(
             maxRequests: 15, window: const Duration(minutes: 10)),
         _generalLimiter = RateLimiter(
             maxRequests: 300, window: const Duration(minutes: 1)),
@@ -233,6 +277,11 @@ class Api {
   final RecipeStore recipeStore;
   final SubwayRelay _subwayRelay = SubwayRelay();
   final SubwayTicketStore _subwayTickets = SubwayTicketStore();
+
+  /// Browser sign-ins currently in flight, and the client that talks to
+  /// Google/GitHub on their behalf. See oauth.dart for the whole dance.
+  final OAuthFlowStore _oauthFlows = OAuthFlowStore();
+  final OAuthClient _oauthClient;
   final RateLimiter _authLimiter;
   final RateLimiter _generalLimiter;
 
@@ -286,6 +335,11 @@ class Api {
       ..get('/api/v1/auth/verify', _verify)
       ..post('/api/v1/auth/resend-verification', _resendVerification)
       ..post('/api/v1/auth/login', _login)
+      ..get('/api/v1/auth/oauth/providers', _oauthProviders)
+      ..post('/api/v1/auth/oauth/start', _oauthStart)
+      ..get('/api/v1/auth/oauth/callback/<provider>', _oauthCallback)
+      ..post('/api/v1/auth/oauth/poll', _oauthPoll)
+      ..post('/api/v1/auth/oauth/complete', _oauthComplete)
       ..post('/api/v1/auth/logout', _requireAuth(_logout))
       ..post('/api/v1/auth/change', _requireAuth(_changePassword))
       ..get('/api/v1/auth/sessions', _requireAuth(_listSessions))
@@ -443,6 +497,13 @@ class Api {
   /// Each bucket keys separately (the tag), so e.g. hammering uploads can't
   /// starve the same IP's ordinary API calls or vice versa.
   (String, RateLimiter) _limiterFor(String method, String path) {
+    // The app polls this one every couple of seconds for as long as the user
+    // is in their browser, so it cannot share the 15-per-10-minutes auth
+    // budget — a single sign-in would exhaust it. It does no work beyond a
+    // map lookup and reveals nothing without the ticket.
+    if (path == 'api/v1/auth/oauth/poll') {
+      return ('op', _generalLimiter);
+    }
     if (path.startsWith('api/v1/auth/') && !path.endsWith('/logout')) {
       return ('a', _authLimiter);
     }
@@ -924,6 +985,290 @@ class Api {
     });
   }
 
+  // ---- Handlers: sign in with Google / GitHub -----------------------------
+
+  /// Which providers this deployment has credentials for. Called before the
+  /// sign-in screen is drawn, so an operator who configured neither simply
+  /// never sees the buttons.
+  Response _oauthProviders(Request request) => _json(200, {
+        'providers': config.enabledOAuthProviders
+            .map((spec) => {'id': spec.id, 'name': spec.displayName})
+            .toList(),
+      });
+
+  /// Opens a flow: returns the provider URL for the app to hand to the
+  /// system browser, plus the private ticket it polls with.
+  Future<Response> _oauthStart(Request request) async {
+    final body = await _readJson(request);
+    final spec = OAuthProviderSpec.byId(body['provider'] as String?);
+    final providerConfig =
+        spec == null ? null : config.oauthProviders[spec.id];
+    if (spec == null || providerConfig == null || !providerConfig.configured) {
+      return _error(400, 'unknown_provider',
+          'This server is not set up for that sign-in method.');
+    }
+    final OAuthFlow flow;
+    final String ticket;
+    try {
+      (flow, ticket) = _oauthFlows.create(spec.id);
+    } on OAuthException catch (e) {
+      return _error(503, 'oauth_busy', e.message);
+    }
+    final authUrl = Uri.parse(spec.authorizeUrl).replace(queryParameters: {
+      'client_id': providerConfig.clientId,
+      'redirect_uri': config.oauthRedirectUri(spec.id),
+      'response_type': 'code',
+      'scope': spec.scope,
+      'state': flow.state,
+      ...spec.extraAuthorizeParams,
+    });
+    return _json(200, {
+      'ticket': ticket,
+      'authUrl': authUrl.toString(),
+      'expiresInSeconds': OAuthFlow.ttl.inSeconds,
+    });
+  }
+
+  /// Where the provider sends the browser back. Swaps the code for a
+  /// verified email, parks the result on the flow, and renders a page the
+  /// user can close — the app is polling and picks it up from there.
+  Future<Response> _oauthCallback(Request request) async {
+    final spec = OAuthProviderSpec.byId(request.params['provider']);
+    final providerConfig =
+        spec == null ? null : config.oauthProviders[spec.id];
+    if (spec == null || providerConfig == null || !providerConfig.configured) {
+      return _verifyPage(404, 'Unknown sign-in provider.');
+    }
+    final query = request.url.queryParameters;
+    final flow = _oauthFlows.byState(query['state']);
+    if (flow == null || flow.provider != spec.id) {
+      return _verifyPage(400,
+          'This sign-in link has expired. Start again from the luma app.');
+    }
+    if (query['error'] != null) {
+      flow.error = 'Sign-in was cancelled at ${spec.displayName}.';
+      return _verifyPage(400, flow.error!);
+    }
+    final code = query['code'];
+    if (code == null || code.isEmpty) {
+      flow.error = '${spec.displayName} did not return an authorization code.';
+      return _verifyPage(400, flow.error!);
+    }
+
+    final OAuthIdentity identity;
+    try {
+      identity = await _oauthClient.fetchIdentity(
+        spec: spec,
+        config: providerConfig,
+        code: code,
+        redirectUri: config.oauthRedirectUri(spec.id),
+      );
+    } on OAuthException catch (e) {
+      flow.error = e.message;
+      return _verifyPage(502, e.message);
+    } catch (_) {
+      flow.error = 'Could not complete sign-in with ${spec.displayName}.';
+      return _verifyPage(502, flow.error!);
+    }
+
+    return store.lock.synchronized(() async {
+      // A previously linked identity wins over the address: someone who
+      // changed their email at the provider still lands on their own
+      // account rather than creating a second one (or, worse, being handed
+      // whoever now owns the old address).
+      final linkedId =
+          store.userIdByOAuth[Store.oauthKey(spec.id, identity.subject)];
+      final user = store.usersById[linkedId] ??
+          store.usersById[store.userIdByEmail[identity.email]];
+
+      if (user == null && !config.registrationEnabled) {
+        flow.error = 'This server does not accept new accounts.';
+        return _verifyPage(403, flow.error!);
+      }
+
+      flow.identity = identity;
+      if (user != null) {
+        // Matching an existing account by verified email is exactly what
+        // links the provider to it, so an account made with an email and
+        // password can be signed into with the button from then on.
+        store.linkOAuthIdentity(user, spec.id, identity.subject);
+        await store.saveUsers();
+        flow
+          ..existingAccount = true
+          ..kdfSalt = user.kdfSalt
+          ..kdfIterations = user.kdfIterations;
+      }
+      return _verifyPage(
+        200,
+        'Signed in as ${identity.email}. You can close this window and go '
+        'back to luma.',
+      );
+    });
+  }
+
+  /// Tells the app whether the browser half has landed yet. Requires the
+  /// ticket, so knowing a state (which is visible in the browser) is not
+  /// enough to learn the email address behind a flow.
+  Future<Response> _oauthPoll(Request request) async {
+    final body = await _readJson(request);
+    final flow = _oauthFlows.byTicket(body['ticket'] as String?);
+    if (flow == null) {
+      return _json(200, {
+        'status': 'error',
+        'message': 'This sign-in attempt expired. Please try again.',
+      });
+    }
+    if (flow.error != null) {
+      _oauthFlows.remove(flow);
+      return _json(200, {'status': 'error', 'message': flow.error});
+    }
+    if (!flow.ready) return _json(200, {'status': 'pending'});
+    return _json(200, {
+      'status': 'ready',
+      'provider': flow.provider,
+      'email': flow.identity!.email,
+      'displayName': flow.identity!.displayName,
+      'existingAccount': flow.existingAccount,
+      if (flow.kdfSalt != null) 'kdfSalt': flow.kdfSalt,
+      if (flow.kdfIterations != null) 'kdfIterations': flow.kdfIterations,
+    });
+  }
+
+  /// Finishes the sign-in. The provider settled *who* the user is; this is
+  /// where they prove they hold the passphrase that decrypts their data —
+  /// the server never learns it, only the derived auth key, exactly as with
+  /// [_login]. For a brand new account the supplied key and KDF parameters
+  /// become the account's, which is what makes the passphrase step on first
+  /// sign-in unskippable.
+  Future<Response> _oauthComplete(Request request) async {
+    final body = await _readJson(request);
+    final flow = _oauthFlows.byTicket(body['ticket'] as String?);
+    if (flow == null || !flow.ready) {
+      return _error(400, 'oauth_expired',
+          'This sign-in attempt expired. Please try again.');
+    }
+    final authKey = _decodeB64(body['authKey'], minLen: 32, maxLen: 64);
+    if (authKey == null) {
+      return _error(400, 'bad_auth_key', 'Invalid auth key.');
+    }
+    final identity = flow.identity!;
+    final deviceLabel = body['deviceLabel'] as String?;
+    final spec = OAuthProviderSpec.byId(flow.provider)!;
+
+    return store.lock.synchronized(() async {
+      final linkedId =
+          store.userIdByOAuth[Store.oauthKey(flow.provider, identity.subject)];
+      final existing = store.usersById[linkedId] ??
+          store.usersById[store.userIdByEmail[identity.email]];
+
+      if (existing != null) {
+        final hash = await _hashAuthKey(
+            authKey, Uint8List.fromList(base64Decode(existing.authSalt)));
+        if (!constantTimeEquals(hash, base64Decode(existing.authHash))) {
+          flow.attempts++;
+          if (flow.attempts >= OAuthFlow.maxAttempts) {
+            _oauthFlows.remove(flow);
+            return _error(429, 'too_many_attempts',
+                'Too many wrong passphrases. Start the sign-in again.');
+          }
+          return _error(401, 'invalid_credentials',
+              'That passphrase does not match this account.');
+        }
+        if (existing.isPending) {
+          // The provider vouched for the address, which is precisely what an
+          // email-verification link was there to establish — so accept it in
+          // that mode. Under manual approval the operator's decision is the
+          // gate, and no provider substitutes for it.
+          if (config.approvalMode == ApprovalMode.email) {
+            existing.status = 'active';
+            existing.verificationTokenHash = null;
+            existing.verificationExpiresAtMs = null;
+            await store.logActivity('account_verified',
+                '${existing.email} verified via ${spec.displayName}');
+          } else {
+            return _error(
+                403,
+                'account_pending_approval',
+                'This account is waiting to be approved by the server '
+                    'operator.');
+          }
+        }
+        store.linkOAuthIdentity(existing, flow.provider, identity.subject);
+        _oauthFlows.remove(flow);
+        final token = await _createSession(existing, deviceLabel: deviceLabel);
+        existing.lastLoginAtMs = DateTime.now().millisecondsSinceEpoch;
+        await store.saveUsers();
+        await store.logActivity('login',
+            '${existing.email} logged in with ${spec.displayName}');
+        return _json(200, {
+          'token': token.$1,
+          'expiresAtMs': token.$2,
+          'quotaBytes': existing.quotaBytes,
+          'email': existing.email,
+        });
+      }
+
+      // ---- New account ----------------------------------------------------
+      if (!config.registrationEnabled) {
+        return _error(403, 'registration_closed',
+            'This server does not accept new accounts.');
+      }
+      final kdfSalt = _decodeB64(body['kdfSalt'], minLen: 16, maxLen: 64);
+      if (kdfSalt == null) {
+        return _error(400, 'bad_kdf_salt', 'Invalid KDF salt.');
+      }
+      final iterations = body['kdfIterations'];
+      if (iterations is! int || iterations < 50000 || iterations > 5000000) {
+        return _error(400, 'bad_kdf_iterations', 'Invalid KDF iterations.');
+      }
+      final authSalt = randomBytes(16);
+      // Under manual approval a new account still waits for the operator;
+      // the provider only proves the address is real, not that this
+      // deployment wants the person behind it.
+      final pending = config.approvalMode == ApprovalMode.manual;
+      final user = StoredUser(
+        id: base64UrlEncode(randomBytes(12)).replaceAll('=', ''),
+        email: identity.email,
+        authHash: base64Encode(await _hashAuthKey(authKey, authSalt)),
+        authSalt: base64Encode(authSalt),
+        kdfSalt: base64Encode(kdfSalt),
+        kdfIterations: iterations,
+        quotaBytes: kPlanQuotaBytes[kDefaultPlanId]!,
+        createdAtMs: DateTime.now().millisecondsSinceEpoch,
+        status: pending ? 'pending' : 'active',
+      );
+      store.usersById[user.id] = user;
+      store.userIdByEmail[user.email] = user.id;
+      store.linkOAuthIdentity(user, flow.provider, identity.subject);
+      await store.saveUsers();
+
+      if (pending) {
+        // The account exists now, so this flow can never complete — a retry
+        // on it would only fail the pending check.
+        _oauthFlows.remove(flow);
+        await store.logActivity('account_registered',
+            '${user.email} registered with ${spec.displayName} '
+            '(awaiting approval)');
+        return _json(201, {
+          'status': 'pending_approval',
+          'approval': config.approvalMode.name,
+          'message': 'Account created with ${spec.displayName}. It has to be '
+              'approved by the server operator before you can sign in.',
+        });
+      }
+      _oauthFlows.remove(flow);
+      await store.logActivity('account_registered',
+          '${user.email} registered with ${spec.displayName}');
+      final token = await _createSession(user, deviceLabel: deviceLabel);
+      return _json(201, {
+        'token': token.$1,
+        'expiresAtMs': token.$2,
+        'quotaBytes': user.quotaBytes,
+        'email': user.email,
+      });
+    });
+  }
+
   /// Lists this account's active (non-expired) sessions, newest first, with
   /// the caller's own session flagged via `isCurrent` so the UI can show
   /// "This device" and disable revoking it (use Sign out for that instead).
@@ -1153,6 +1498,7 @@ class Api {
       final email = user.email;
       store.usersById.remove(user.id);
       store.userIdByEmail.remove(user.email.toLowerCase());
+      store.unlinkAllOAuthIdentities(user);
       store.sessionsByTokenHash.removeWhere((_, s) => s.userId == user.id);
       store.collectionsByUser.remove(user.id);
       await store.deleteUserData(user.id);
@@ -1374,6 +1720,8 @@ class Api {
       'usedBytes': store.usedBytes(user.id),
       'quotaBytes': user.quotaBytes,
       'planId': user.planId,
+      // Ids only ('google', 'github') — never the provider-side subject.
+      'linkedProviders': user.oauthSubjects.keys.toList()..sort(),
       // The client mirrors this into its own server-access gate: an account
       // that is back to 'pending' stops talking to the server until it is
       // approved again (see ServerAccessGate in the app).
