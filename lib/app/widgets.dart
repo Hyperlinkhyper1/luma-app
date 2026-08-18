@@ -46,12 +46,14 @@ class LumaCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final decor = context.lumaDecor;
     return Container(
       padding: padding ?? const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: luma.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: luma.border),
+        borderRadius: decor.cardBorderRadius,
+        border: Border.all(color: luma.border, width: decor.borderWidth),
+        boxShadow: decor.cardShadow,
       ),
       child: child,
     );
@@ -85,6 +87,7 @@ class _LumaPrimaryButtonState extends State<LumaPrimaryButton> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final decor = context.lumaDecor;
     final enabled = widget.onTap != null && !widget.loading;
     return MouseRegion(
       cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
@@ -101,7 +104,7 @@ class _LumaPrimaryButtonState extends State<LumaPrimaryButton> {
             color: !enabled
                 ? luma.accent.withValues(alpha: 0.4)
                 : (_hovering ? luma.accentHover : luma.accent),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: decor.buttonBorderRadius,
           ),
           child: Center(
             child: widget.loading
@@ -164,6 +167,7 @@ class _LumaGhostButtonState extends State<LumaGhostButton> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final decor = context.lumaDecor;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovering = true),
@@ -177,8 +181,8 @@ class _LumaGhostButtonState extends State<LumaGhostButton> {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
             color: _hovering ? luma.surfaceHover : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: luma.border),
+            borderRadius: decor.buttonBorderRadius,
+            border: Border.all(color: luma.border, width: decor.borderWidth),
           ),
           child: Center(
             // Scale a long label down rather than let it spill past the
@@ -282,6 +286,7 @@ class _PillState extends State<_Pill> {
   @override
   Widget build(BuildContext context) {
     final luma = widget.luma;
+    final decor = context.lumaDecor;
     final selected = widget.selected;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -296,9 +301,10 @@ class _PillState extends State<_Pill> {
             color: selected
                 ? luma.accentSubtle
                 : (_hovering ? luma.surfaceHover : Colors.transparent),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: decor.pillBorderRadius,
             border: Border.all(
               color: selected ? luma.accent : Colors.transparent,
+              width: decor.borderWidth,
             ),
           ),
           child: Text(
@@ -334,7 +340,8 @@ class LumaIconBadge extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(size * 0.3),
+        borderRadius:
+            BorderRadius.circular(size * context.lumaDecor.badgeRadiusFactor),
       ),
       child: Icon(icon, color: color, size: size * 0.55),
     );
@@ -452,7 +459,8 @@ class LumaEmptyState extends StatelessWidget {
             height: 56,
             decoration: BoxDecoration(
               color: luma.accentSubtle,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius:
+                  BorderRadius.circular(56 * context.lumaDecor.badgeRadiusFactor),
             ),
             child: Icon(icon, color: luma.accent, size: 28),
           ),

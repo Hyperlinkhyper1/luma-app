@@ -319,6 +319,7 @@ Future<bool> confirmDelete(
   BuildContext context, {
   required List<String> names,
   required bool remote,
+  String? extraWarning,
 }) async {
   final result = await _showLumaDialog<bool>(
     context,
@@ -338,6 +339,17 @@ Future<bool> confirmDelete(
                 : 'This deletes them on this device. There is no undo.',
             style: TextStyle(color: luma.textSecondary, fontSize: 13, height: 1.45),
           ),
+          if (extraWarning != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              extraWarning,
+              style: TextStyle(
+                color: luma.textSecondary,
+                fontSize: 13,
+                height: 1.45,
+              ),
+            ),
+          ],
           if (names.length > 1) ...[
             const SizedBox(height: 12),
             Container(

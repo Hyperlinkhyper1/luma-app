@@ -35,11 +35,17 @@ class StorageGuardService extends ChangeNotifier {
   /// EXIF for photos that live in the user's own picture folders; every byte
   /// of it can be rebuilt by rescanning, and counting it would put a 30 MB
   /// Nova device over its cap after a few hundred photos.
+  /// `luma_shared` is the SFTP plugin's device-to-device folder. It holds
+  /// whatever the user chose to move between their own machines — videos,
+  /// archives, disk images — and counting it would put a 30 MB Nova device
+  /// over its cap with one file. It has its own size readout in the plugin
+  /// instead.
   static const _excludedDirNames = {
     'tools',
     'ffmpeg',
     'minecraft',
     'gallery_cache',
+    'luma_shared',
   };
 
   int _limitBytes = _defaultLimitBytes;

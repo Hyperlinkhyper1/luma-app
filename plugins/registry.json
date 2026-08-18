@@ -235,7 +235,7 @@
     {
       "id": "sftp",
       "name": "SFTP",
-      "description": "A two-pane SFTP client for your own servers, like FileZilla. Connect with a host, username, password and port — or an SSH key — then browse this device and the server side by side, drag files across, and watch the transfer queue. Every connection goes straight from this device to your server; nothing passes through a luma server. A Nova-exclusive plugin.",
+      "description": "A two-pane SFTP client for your own servers, like FileZilla. Connect with a host, username, password and port — or an SSH key — then browse this device and the server side by side, drag files across, and watch the transfer queue. It also gives your own devices a shared folder: drop a file in on one, and it appears on every other device signed in to the same account, sent straight over your network. Nothing — no credential, no byte of a file — passes through a luma server. A Nova-exclusive plugin.",
       "icon": "swap_horiz",
       "category": "Utility",
       "tags": ["Utility", "System", "Nova"],

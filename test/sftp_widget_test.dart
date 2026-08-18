@@ -128,6 +128,36 @@ void main() {
     });
   });
 
+  group('devices mode', () {
+    testWidgets('switching to My devices leaves the server browser',
+        (tester) async {
+      await _pumpPage(tester, 'nova');
+
+      await tester.tap(find.text('My devices'));
+      await tester.pump();
+
+      expect(find.text('Site Manager'), findsNothing);
+      // No shared folder is wired up in this test tree, so the view says what
+      // is missing rather than rendering an empty folder.
+      expect(find.text('Sign in on both devices first'), findsOneWidget);
+      expect(
+        find.textContaining('straight between devices signed in to the same'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('and switching back returns to the servers', (tester) async {
+      await _pumpPage(tester, 'nova');
+
+      await tester.tap(find.text('My devices'));
+      await tester.pump();
+      await tester.tap(find.text('Servers'));
+      await tester.pump();
+
+      expect(find.text('Site Manager'), findsOneWidget);
+    });
+  });
+
   group('file pane', () {
     testWidgets('lists entries with their size and permissions',
         (tester) async {
