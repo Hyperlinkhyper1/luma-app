@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'theme_style.dart';
+
 /// Semantic color tokens for luma. Both the dark ("dark gray lavender") and
 /// light ("white lavender") variants are expressed through the same fields so
 /// widgets can read tokens without caring which theme is active.
@@ -85,6 +87,53 @@ class LumaPalette extends ThemeExtension<LumaPalette> {
     success: Color(0xFF12A372),
     danger: Color(0xFFE5484D),
   );
+
+  /// Espresso — the dark half of the Coffee style. Roasted browns under a
+  /// crema accent, with cream (not white) text so nothing glares.
+  static const coffeeDark = LumaPalette(
+    rail: Color(0xFF150E08),
+    background: Color(0xFF1D140D),
+    surface: Color(0xFF291D13),
+    surfaceHover: Color(0xFF35261A),
+    border: Color(0xFF46331F),
+    accent: Color(0xFFDDA96A),
+    accentHover: Color(0xFFF0C68D),
+    accentSubtle: Color(0x3DDDA96A),
+    onAccent: Color(0xFF21150A),
+    textPrimary: Color(0xFFF8EFE2),
+    textSecondary: Color(0xFFCDB69A),
+    textMuted: Color(0xFFA18B70),
+    success: Color(0xFF8FBF6F),
+    danger: Color(0xFFE8836A),
+  );
+
+  /// Latte — the light half of the Coffee style. Steamed-milk surfaces over a
+  /// warm oat background, accented with a dark roast that still clears 4.5:1.
+  static const coffeeLight = LumaPalette(
+    rail: Color(0xFFEDE0CE),
+    background: Color(0xFFF6EEE3),
+    surface: Color(0xFFFFFAF3),
+    surfaceHover: Color(0xFFF2E7D7),
+    border: Color(0xFFE0CFB6),
+    accent: Color(0xFF8A5A2E),
+    accentHover: Color(0xFF6D4522),
+    accentSubtle: Color(0x1F8A5A2E),
+    onAccent: Color(0xFFFFF9F2),
+    textPrimary: Color(0xFF2B1D12),
+    textSecondary: Color(0xFF634F3B),
+    textMuted: Color(0xFF836C55),
+    success: Color(0xFF3C6F3F),
+    danger: Color(0xFFAF4229),
+  );
+
+  /// The base palette for [style] at [brightness], before any accent seed.
+  static LumaPalette forStyle(LumaThemeStyle style, Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    return switch (style) {
+      LumaThemeStyle.coffee => isDark ? coffeeDark : coffeeLight,
+      LumaThemeStyle.standard => isDark ? dark : light,
+    };
+  }
 
   @override
   LumaPalette copyWith({
@@ -178,28 +227,234 @@ class LumaPalette extends ThemeExtension<LumaPalette> {
   }
 }
 
+/// The decorative layer a style paints behind the app's content.
+enum LumaOrnament {
+  /// A flat [LumaPalette.background] — luma's default.
+  none,
+
+  /// Drifting coffee beans over a warm two-pool gradient wash.
+  coffeeBeans,
+}
+
+/// Shape, weight and ornament tokens for the active [LumaThemeStyle].
+///
+/// [LumaPalette] answers "what color"; this answers "what shape". Keeping the
+/// two apart means a style can round every corner in the app without touching
+/// a single color, and widgets read both from the theme rather than
+/// hardcoding a radius.
+@immutable
+class LumaDecor extends ThemeExtension<LumaDecor> {
+  const LumaDecor({
+    required this.style,
+    required this.cardRadius,
+    required this.buttonRadius,
+    required this.pillRadius,
+    required this.badgeRadiusFactor,
+    required this.borderWidth,
+    required this.cardShadow,
+    required this.displayFontFamily,
+    required this.displayFontFallback,
+    required this.ornament,
+  });
+
+  final LumaThemeStyle style;
+
+  /// Corner radius for [LumaCard] and other panel surfaces.
+  final double cardRadius;
+
+  /// Corner radius for buttons. Values at or above half the 44px button
+  /// height read as a stadium.
+  final double buttonRadius;
+
+  /// Corner radius for the segmented-tab pills.
+  final double pillRadius;
+
+  /// [LumaIconBadge]'s radius as a fraction of its size — 0.5 is a circle.
+  final double badgeRadiusFactor;
+
+  /// Stroke width for card and button borders.
+  final double borderWidth;
+
+  /// Shadow cast by cards. Empty for flat styles.
+  final List<BoxShadow> cardShadow;
+
+  /// Typeface for titles and headings, or null to keep the platform default.
+  final String? displayFontFamily;
+
+  /// Fallback chain for [displayFontFamily]. Matters for the CJK locales,
+  /// where a Latin-only display face has no glyphs to offer.
+  final List<String> displayFontFallback;
+
+  final LumaOrnament ornament;
+
+  /// luma's built-in look. These are the values the shared widgets used to
+  /// hardcode, so the default theme is pixel-identical to before.
+  static const standard = LumaDecor(
+    style: LumaThemeStyle.standard,
+    cardRadius: 16,
+    buttonRadius: 12,
+    pillRadius: 10,
+    badgeRadiusFactor: 0.3,
+    borderWidth: 1,
+    cardShadow: [],
+    displayFontFamily: null,
+    displayFontFallback: [],
+    ornament: LumaOrnament.none,
+  );
+
+  /// Rounder, softer and warmer: cup-round cards, stadium buttons, circular
+  /// badges and a serif display face.
+  static const coffee = LumaDecor(
+    style: LumaThemeStyle.coffee,
+    cardRadius: 24,
+    buttonRadius: 999,
+    pillRadius: 999,
+    badgeRadiusFactor: 0.5,
+    borderWidth: 1.4,
+    cardShadow: [
+      BoxShadow(
+        color: Color(0x1F2B1A0C),
+        blurRadius: 22,
+        offset: Offset(0, 8),
+      ),
+    ],
+    displayFontFamily: 'Georgia',
+    displayFontFallback: ['Times New Roman', 'Noto Serif', 'serif'],
+    ornament: LumaOrnament.coffeeBeans,
+  );
+
+  static LumaDecor forStyle(LumaThemeStyle style) => switch (style) {
+        LumaThemeStyle.coffee => coffee,
+        LumaThemeStyle.standard => standard,
+      };
+
+  /// A [BorderRadius] for cards, clamped so a stadium radius can't invert on
+  /// a very short surface.
+  BorderRadius get cardBorderRadius => BorderRadius.circular(cardRadius);
+  BorderRadius get buttonBorderRadius => BorderRadius.circular(buttonRadius);
+  BorderRadius get pillBorderRadius => BorderRadius.circular(pillRadius);
+
+  /// The display [TextStyle] merged onto [base], or [base] unchanged when the
+  /// style keeps the platform typeface.
+  TextStyle? applyDisplayFont(TextStyle? base) {
+    if (displayFontFamily == null) return base;
+    return (base ?? const TextStyle()).copyWith(
+      fontFamily: displayFontFamily,
+      fontFamilyFallback: displayFontFallback,
+    );
+  }
+
+  @override
+  LumaDecor copyWith({
+    LumaThemeStyle? style,
+    double? cardRadius,
+    double? buttonRadius,
+    double? pillRadius,
+    double? badgeRadiusFactor,
+    double? borderWidth,
+    List<BoxShadow>? cardShadow,
+    String? displayFontFamily,
+    List<String>? displayFontFallback,
+    LumaOrnament? ornament,
+  }) {
+    return LumaDecor(
+      style: style ?? this.style,
+      cardRadius: cardRadius ?? this.cardRadius,
+      buttonRadius: buttonRadius ?? this.buttonRadius,
+      pillRadius: pillRadius ?? this.pillRadius,
+      badgeRadiusFactor: badgeRadiusFactor ?? this.badgeRadiusFactor,
+      borderWidth: borderWidth ?? this.borderWidth,
+      cardShadow: cardShadow ?? this.cardShadow,
+      displayFontFamily: displayFontFamily ?? this.displayFontFamily,
+      displayFontFallback: displayFontFallback ?? this.displayFontFallback,
+      ornament: ornament ?? this.ornament,
+    );
+  }
+
+  @override
+  LumaDecor lerp(ThemeExtension<LumaDecor>? other, double t) {
+    if (other is! LumaDecor) return this;
+    // The discrete fields (style, font, ornament) can't be interpolated, so
+    // they flip at the halfway point of the theme crossfade.
+    final past = t < 0.5;
+    return LumaDecor(
+      style: past ? style : other.style,
+      cardRadius: lerpDouble(cardRadius, other.cardRadius, t),
+      buttonRadius: lerpDouble(buttonRadius, other.buttonRadius, t),
+      pillRadius: lerpDouble(pillRadius, other.pillRadius, t),
+      badgeRadiusFactor:
+          lerpDouble(badgeRadiusFactor, other.badgeRadiusFactor, t),
+      borderWidth: lerpDouble(borderWidth, other.borderWidth, t),
+      cardShadow: BoxShadow.lerpList(cardShadow, other.cardShadow, t) ?? const [],
+      displayFontFamily:
+          past ? displayFontFamily : other.displayFontFamily,
+      displayFontFallback:
+          past ? displayFontFallback : other.displayFontFallback,
+      ornament: past ? ornament : other.ornament,
+    );
+  }
+
+  static double lerpDouble(double a, double b, double t) => a + (b - a) * t;
+}
+
 /// Convenience accessor: `context.luma` -> active [LumaPalette].
 extension LumaThemeX on BuildContext {
   LumaPalette get luma => Theme.of(this).extension<LumaPalette>()!;
+
+  /// `context.lumaDecor` -> active [LumaDecor]. Falls back to
+  /// [LumaDecor.standard] so a widget built under a bare [ThemeData] (as in
+  /// some widget tests) still has shapes to read.
+  LumaDecor get lumaDecor =>
+      Theme.of(this).extension<LumaDecor>() ?? LumaDecor.standard;
 }
 
 class LumaTheme {
   const LumaTheme._();
 
-  static ThemeData get dark => _build(LumaPalette.dark, Brightness.dark);
-  static ThemeData get light => _build(LumaPalette.light, Brightness.light);
+  static ThemeData get dark =>
+      _build(LumaPalette.dark, Brightness.dark, LumaDecor.standard);
+  static ThemeData get light =>
+      _build(LumaPalette.light, Brightness.light, LumaDecor.standard);
 
-  /// Builds the theme for [brightness], optionally recoloring the lavender
-  /// accent with a chosen [accentSeed] (null keeps the default lavender).
-  static ThemeData from(Brightness brightness, [Color? accentSeed]) {
-    final base =
-        brightness == Brightness.dark ? LumaPalette.dark : LumaPalette.light;
-    final palette =
-        accentSeed == null ? base : base.withAccent(accentSeed, brightness);
-    return _build(palette, brightness);
+  /// Builds the theme for [brightness] in the given [style], optionally
+  /// recoloring the accent with a chosen [accentSeed] (null keeps the style's
+  /// own accent).
+  ///
+  /// A style that ships a complete palette — Coffee — ignores [accentSeed]:
+  /// re-hueing espresso to teal would undo the very thing the user picked.
+  /// The Settings picker says as much next to the accent swatches.
+  static ThemeData from(
+    Brightness brightness, [
+    Color? accentSeed,
+    LumaThemeStyle style = LumaThemeStyle.standard,
+  ]) {
+    final base = LumaPalette.forStyle(style, brightness);
+    final palette = (accentSeed == null || style != LumaThemeStyle.standard)
+        ? base
+        : base.withAccent(accentSeed, brightness);
+    return _build(palette, brightness, LumaDecor.forStyle(style));
   }
 
-  static ThemeData _build(LumaPalette p, Brightness brightness) {
+  /// The accent this combination resolves to, without building a whole
+  /// [ThemeData] for it. The splash screen paints before the MaterialApp's
+  /// theme is in scope, so it needs the color on its own.
+  static Color accentFor(
+    Brightness brightness,
+    Color? accentSeed, [
+    LumaThemeStyle style = LumaThemeStyle.standard,
+  ]) {
+    final base = LumaPalette.forStyle(style, brightness);
+    if (accentSeed == null || style != LumaThemeStyle.standard) {
+      return base.accent;
+    }
+    return base.withAccent(accentSeed, brightness).accent;
+  }
+
+  static ThemeData _build(
+    LumaPalette p,
+    Brightness brightness,
+    LumaDecor decor,
+  ) {
     final base = ThemeData(brightness: brightness, useMaterial3: true);
 
     final colorScheme = ColorScheme.fromSeed(
@@ -213,22 +468,32 @@ class LumaTheme {
       error: p.danger,
     );
 
-    final textTheme = base.textTheme
-        .apply(bodyColor: p.textPrimary, displayColor: p.textPrimary)
-        .copyWith(
-          titleLarge: base.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: p.textPrimary,
-            letterSpacing: -0.2,
-          ),
-          titleMedium: base.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: p.textPrimary,
-          ),
-        );
+    final applied =
+        base.textTheme.apply(bodyColor: p.textPrimary, displayColor: p.textPrimary);
+    final textTheme = applied.copyWith(
+      // Only the display tiers take the style's typeface — body copy keeps
+      // the platform font so long text stays as legible as it was.
+      displayLarge: decor.applyDisplayFont(applied.displayLarge),
+      displayMedium: decor.applyDisplayFont(applied.displayMedium),
+      displaySmall: decor.applyDisplayFont(applied.displaySmall),
+      headlineLarge: decor.applyDisplayFont(applied.headlineLarge),
+      headlineMedium: decor.applyDisplayFont(applied.headlineMedium),
+      headlineSmall: decor.applyDisplayFont(applied.headlineSmall),
+      titleLarge: decor.applyDisplayFont(
+        applied.titleLarge?.copyWith(
+          fontWeight: FontWeight.w700,
+          color: p.textPrimary,
+          letterSpacing: -0.2,
+        ),
+      ),
+      titleMedium: applied.titleMedium?.copyWith(
+        fontWeight: FontWeight.w600,
+        color: p.textPrimary,
+      ),
+    );
 
     return base.copyWith(
-      extensions: [p],
+      extensions: [p, decor],
       colorScheme: colorScheme,
       scaffoldBackgroundColor: p.background,
       canvasColor: p.background,
@@ -238,8 +503,9 @@ class LumaTheme {
       tooltipTheme: TooltipThemeData(
         decoration: BoxDecoration(
           color: p.surfaceHover,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: p.border),
+          // Half a card's radius: 8 on the default theme, rounder on Coffee.
+          borderRadius: BorderRadius.circular(decor.cardRadius / 2),
+          border: Border.all(color: p.border, width: decor.borderWidth),
         ),
         textStyle: TextStyle(color: p.textPrimary, fontSize: 12),
       ),

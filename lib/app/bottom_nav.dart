@@ -92,8 +92,11 @@ class BottomNav extends StatelessWidget {
       context: context,
       backgroundColor: context.luma.surface,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          // 20 by default, rounder under a style that asks for it.
+          top: Radius.circular(context.lumaDecor.cardRadius * 1.25),
+        ),
       ),
       builder: (sheetContext) => SafeArea(
         child: ConstrainedBox(

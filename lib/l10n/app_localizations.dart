@@ -223,6 +223,54 @@ abstract class L {
   /// **'Accent color'**
   String get settingsAccentColor;
 
+  /// No description provided for @settingsThemeStyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme style'**
+  String get settingsThemeStyle;
+
+  /// No description provided for @settingsThemeStyleDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get settingsThemeStyleDefault;
+
+  /// No description provided for @settingsThemeStyleDefaultSub.
+  ///
+  /// In en, this message translates to:
+  /// **'luma as it comes — clean surfaces and your chosen accent.'**
+  String get settingsThemeStyleDefaultSub;
+
+  /// No description provided for @settingsThemeStyleCoffee.
+  ///
+  /// In en, this message translates to:
+  /// **'Coffee'**
+  String get settingsThemeStyleCoffee;
+
+  /// No description provided for @settingsThemeStyleCoffeeSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Espresso and cream, softer shapes, and beans drifting behind everything.'**
+  String get settingsThemeStyleCoffeeSub;
+
+  /// No description provided for @settingsThemeStyleLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Orbit or Nova'**
+  String get settingsThemeStyleLocked;
+
+  /// No description provided for @settingsThemeStyleUpgrade.
+  ///
+  /// In en, this message translates to:
+  /// **'Coffee is part of Orbit and Nova. Upgrade to pour it.'**
+  String get settingsThemeStyleUpgrade;
+
+  /// No description provided for @settingsAccentCoffeeNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Coffee brings its own palette, so the accent picker is paused while it\'s on.'**
+  String get settingsAccentCoffeeNote;
+
   /// No description provided for @settingsGeneral.
   ///
   /// In en, this message translates to:

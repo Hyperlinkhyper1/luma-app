@@ -48,6 +48,7 @@ import '../settings/settings_controller.dart';
 import '../settings/settings_page.dart';
 import '../settings/settings_scope.dart';
 import '../storage/storage_guard_scope.dart';
+import '../theme/coffee_ornaments.dart';
 import '../theme/luma_theme.dart';
 import 'bottom_nav.dart';
 import 'nav_rail.dart';
@@ -189,26 +190,28 @@ class _AppShellState extends State<AppShell> {
 
         final content = Container(
           color: luma.background,
-          child: showingPlugin
-              ? _pluginPageFor(activePlugin.pluginId, t)
-              : IndexedStack(
-                  index: index,
-                  children: [
-                    HomePage(onNavigate: _selectFixed),
-                    const ConverterPage(),
-                    const FinancePage(),
-                    const PasswordsPage(),
-                    const NotesPage(),
-                    ChatPage(
-                      onOpenSettings: () =>
-                          _selectFixed(NavRail.settingsIndex),
-                      onOpenPlugin: _selectPlugin,
-                    ),
-                    PluginsPage(onOpenPlugin: _selectPlugin),
-                    const SettingsPage(),
-                    const AccountPage(),
-                  ],
-                ),
+          child: StyleBackdrop(
+            child: showingPlugin
+                ? _pluginPageFor(activePlugin.pluginId, t)
+                : IndexedStack(
+                    index: index,
+                    children: [
+                      HomePage(onNavigate: _selectFixed),
+                      const ConverterPage(),
+                      const FinancePage(),
+                      const PasswordsPage(),
+                      const NotesPage(),
+                      ChatPage(
+                        onOpenSettings: () =>
+                            _selectFixed(NavRail.settingsIndex),
+                        onOpenPlugin: _selectPlugin,
+                      ),
+                      PluginsPage(onOpenPlugin: _selectPlugin),
+                      const SettingsPage(),
+                      const AccountPage(),
+                    ],
+                  ),
+          ),
         );
 
         final scaffold = Scaffold(
