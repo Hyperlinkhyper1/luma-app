@@ -379,7 +379,9 @@ class _RailButtonState extends State<_RailButton>
                   height: 44,
                   decoration: BoxDecoration(
                     color: bg,
-                    borderRadius: BorderRadius.circular(12),
+                    // 12 by default; a style with a stadium radius rounds
+                    // this 44px square all the way to a circle.
+                    borderRadius: context.lumaDecor.buttonBorderRadius,
                   ),
                   child: ScaleTransition(
                     scale: _scale,

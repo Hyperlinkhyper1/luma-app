@@ -95,9 +95,9 @@ Worth Counter (a tally counter that keeps a running total of what you've
 counted) · Cloud Files (encrypted file sync) ·
 Media Downloader (YouTube video/audio, plus Spotify tracks via a YouTube
 match) · Auto Clicker · Wi-Fi Speed Test · SFTP (Nova plan exclusive — a
-two-pane file transfer client for your own servers, like FileZilla; the
-connection goes straight from your device to your server, never through a
-luma server)
+two-pane file transfer client for your own servers, like FileZilla, plus a
+shared folder that mirrors between your own devices over your network; both
+go device-to-device and never through a luma server)
 
 **Productivity** — Errand Manager (recurring chore checklist) · Bulletin
 Board (freeform corkboard) · Calendar (month view, repeat rules, reminders)

@@ -1,14 +1,18 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:open_file/open_file.dart';
 
 import '../../../../account/plan.dart';
 import '../../../../account/plan_selection_page.dart';
 import '../../../../app/widgets.dart';
+import '../../../../p2p/peer_sync_scope.dart';
 import '../../../../settings/settings_scope.dart';
 import '../../../../theme/luma_theme.dart';
+import 'share/device_share_scope.dart';
+import 'share/device_share_view.dart';
 import 'sftp_dialogs.dart';
 import 'sftp_file_pane.dart';
 import 'sftp_local_fs.dart';
@@ -57,6 +61,11 @@ class _SftpPageState extends State<SftpPage> {
   bool _queueExpanded = false;
   int _phoneTab = 0;
   Timer? _refreshDebounce;
+
+  /// 0 = Servers (SFTP), 1 = My devices (the shared folder).
+  int _mode = 0;
+  final Set<String> _shareSelection = {};
+  int _phoneShareTab = 0;
 
   @override
   void initState() {
@@ -764,6 +773,82 @@ class _SftpPageState extends State<SftpPage> {
     if (choice != null) _navigateLocal(choice);
   }
 
+  // --------------------------------------------------------- shared folder
+
+  Future<void> _addToShare() async {
+    final repository = DeviceShareScope.of(context);
+    if (repository == null) return;
+    final result = await FilePicker.pickFiles(
+      allowMultiple: true,
+      dialogTitle: 'Add to the shared folder',
+    );
+    final paths = result?.files
+        .map((f) => f.path)
+        .whereType<String>()
+        .map(File.new)
+        .toList();
+    if (paths == null || paths.isEmpty) return;
+    await repository.addFiles(paths);
+  }
+
+  /// Copies whatever was dragged over from the local pane into the shared
+  /// folder — which is all "sending to another device" is: the mirror does
+  /// the rest on its own.
+  Future<void> _shareEntries(List<PaneEntry> entries) async {
+    final repository = DeviceShareScope.of(context);
+    if (repository == null || entries.isEmpty) return;
+    for (final entry in entries) {
+      if (entry.isDirectory) {
+        await repository.addDirectory(Directory(entry.path));
+      } else {
+        await repository.addFiles([File(entry.path)]);
+      }
+    }
+    if (!mounted) return;
+    setState(_localSelection.clear);
+    _announce(
+      entries.length == 1
+          ? '${entries.first.name} is in the shared folder.'
+          : '${entries.length} items are in the shared folder.',
+    );
+  }
+
+  Future<void> _openShareFolder() async {
+    final repository = DeviceShareScope.of(context);
+    if (repository == null) return;
+    final result = await OpenFile.open(repository.folder.root.path);
+    if (result.type != ResultType.done && mounted) {
+      _announce('The folder is at ${repository.folder.root.path}');
+    }
+  }
+
+  Future<void> _openSharedFile(String path) async {
+    final repository = DeviceShareScope.of(context);
+    if (repository == null) return;
+    final result = await OpenFile.open(repository.folder.fileFor(path).path);
+    if (result.type != ResultType.done && mounted) {
+      _announce('Could not open $path. ${result.message}');
+    }
+  }
+
+  Future<void> _deleteFromShare() async {
+    final repository = DeviceShareScope.of(context);
+    if (repository == null || _shareSelection.isEmpty) return;
+    final paths = _shareSelection.toList();
+    final confirmed = await confirmDelete(
+      context,
+      names: paths,
+      remote: false,
+      extraWarning:
+          'They will also disappear from the shared folder on your other '
+          'devices the next time they connect.',
+    );
+    if (!confirmed || !mounted) return;
+    await repository.deleteFiles(paths);
+    if (!mounted) return;
+    setState(_shareSelection.clear);
+  }
+
   // ---------------------------------------------------------- site manager
 
   Future<void> _newSite() async {
@@ -827,26 +912,102 @@ class _SftpPageState extends State<SftpPage> {
             _ConnectionBar(
               session: session,
               connecting: _connectingSiteId != null,
+              mode: _mode,
+              onModeChanged: (mode) => setState(() => _mode = mode),
               onDisconnect: _disconnect,
               onManageSites: _disconnect,
             ),
             Expanded(
-              child: session == null
-                  ? SftpSiteManagerView(
-                      sites: _store.sites,
-                      loading: !_store.loaded,
-                      connectingSiteId: _connectingSiteId,
-                      error: _connectionError,
-                      onConnect: _connect,
-                      onEdit: _editSite,
-                      onDelete: _deleteSite,
-                      onNew: _newSite,
-                    )
-                  : (wide ? _buildWide(session) : _buildNarrow(session)),
+              child: _mode == 1
+                  ? _buildDevices(wide)
+                  : (session == null
+                      ? SftpSiteManagerView(
+                          sites: _store.sites,
+                          loading: !_store.loaded,
+                          connectingSiteId: _connectingSiteId,
+                          error: _connectionError,
+                          onConnect: _connect,
+                          onEdit: _editSite,
+                          onDelete: _deleteSite,
+                          onNew: _newSite,
+                        )
+                      : (wide ? _buildWide(session) : _buildNarrow(session))),
             ),
           ],
         );
       },
+    );
+  }
+
+  Widget _buildDevices(bool wide) {
+    final repository = DeviceShareScope.of(context);
+    if (repository == null) {
+      return DeviceShareUnavailable(
+        onOpenSettings: () => _announce(
+          'Open Settings → Sync & account to set this device up.',
+        ),
+      );
+    }
+    final peerSync = PeerSyncScope.of(context);
+
+    final panel = DeviceSharePanel(
+      repository: repository,
+      peerSync: peerSync,
+      selection: _shareSelection,
+      compact: !wide,
+      onToggleSelect: (path) => setState(() {
+        if (!_shareSelection.remove(path)) _shareSelection.add(path);
+      }),
+      onAddFiles: _addToShare,
+      onOpenFolder: _openShareFolder,
+      onDeleteSelected: _deleteFromShare,
+      onOpenFile: _openSharedFile,
+      onDropped: (payload) => unawaited(_shareEntries(payload.entries)),
+    );
+
+    if (wide) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: _localPane(compact: false)),
+            _ShareArrow(
+              enabled: _localSelection.isNotEmpty,
+              onTap: () => _shareEntries(_selected(PaneSide.local)),
+            ),
+            Expanded(child: panel),
+          ],
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+      child: Column(
+        children: [
+          LumaSegmentedTabs(
+            tabs: const ['This device', 'Shared folder'],
+            selectedIndex: _phoneShareTab,
+            onSelect: (index) => setState(() => _phoneShareTab = index),
+          ),
+          const SizedBox(height: 10),
+          if (_phoneShareTab == 0 && _localSelection.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: LumaPrimaryButton(
+                label: 'Share ${_localSelection.length} '
+                    '${_localSelection.length == 1 ? 'item' : 'items'}',
+                icon: Icons.folder_shared_rounded,
+                expand: true,
+                onTap: () => _shareEntries(_selected(PaneSide.local)),
+              ),
+            ),
+          Expanded(
+            child: _phoneShareTab == 0 ? _localPane(compact: true) : panel,
+          ),
+        ],
+      ),
     );
   }
 
@@ -1002,12 +1163,16 @@ class _ConnectionBar extends StatelessWidget {
   const _ConnectionBar({
     required this.session,
     required this.connecting,
+    required this.mode,
+    required this.onModeChanged,
     required this.onDisconnect,
     required this.onManageSites,
   });
 
   final SftpSession? session;
   final bool connecting;
+  final int mode;
+  final ValueChanged<int> onModeChanged;
   final VoidCallback onDisconnect;
   final VoidCallback onManageSites;
 
@@ -1015,6 +1180,7 @@ class _ConnectionBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final site = session?.site;
+    final devices = mode == 1;
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 14, 16, 12),
       child: Row(
@@ -1023,7 +1189,7 @@ class _ConnectionBar extends StatelessWidget {
             width: 9,
             height: 9,
             decoration: BoxDecoration(
-              color: session != null
+              color: (devices || session != null)
                   ? luma.success
                   : (connecting ? luma.accent : luma.textMuted),
               shape: BoxShape.circle,
@@ -1035,7 +1201,9 @@ class _ConnectionBar extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  site == null ? 'SFTP' : site.displayName,
+                  devices
+                      ? 'My devices'
+                      : (site == null ? 'SFTP' : site.displayName),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -1045,9 +1213,13 @@ class _ConnectionBar extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  site == null
-                      ? 'Connect to your own server — nothing routes through luma.'
-                      : 'Connected to ${site.endpointLabel}',
+                  devices
+                      ? 'One folder, mirrored across your own devices over '
+                          'your network.'
+                      : (site == null
+                          ? 'Connect to your own server — nothing routes '
+                              'through luma.'
+                          : 'Connected to ${site.endpointLabel}'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: luma.textSecondary, fontSize: 12),
@@ -1055,7 +1227,14 @@ class _ConnectionBar extends StatelessWidget {
               ],
             ),
           ),
-          if (session != null) ...[
+          const SizedBox(width: 12),
+          LumaSegmentedTabs(
+            tabs: const ['Servers', 'My devices'],
+            selectedIndex: mode,
+            onSelect: onModeChanged,
+          ),
+          const SizedBox(width: 8),
+          if (!devices && session != null) ...[
             LumaGhostButton(
               label: 'Site Manager',
               icon: Icons.storage_rounded,
@@ -1068,6 +1247,35 @@ class _ConnectionBar extends StatelessWidget {
               onTap: onDisconnect,
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// The Devices view's equivalent of the transfer arrows: one button that
+/// copies the local selection into the shared folder.
+class _ShareArrow extends StatelessWidget {
+  const _ShareArrow({required this.enabled, required this.onTap});
+
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _ArrowButton(
+            icon: Icons.arrow_forward_rounded,
+            tooltip: 'Put the selected files in the shared folder',
+            enabled: enabled,
+            onTap: onTap,
+            luma: luma,
+          ),
         ],
       ),
     );
