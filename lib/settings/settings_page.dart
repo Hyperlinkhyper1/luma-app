@@ -302,14 +302,19 @@ class _ThemeStylePicker extends StatelessWidget {
             ],
           );
         }
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (var i = 0; i < cards.length; i++) ...[
-              if (i > 0) const SizedBox(width: 10),
-              Expanded(child: cards[i]),
+        // IntrinsicHeight gives the Row a bounded height so the cards can
+        // stretch to match each other. Without it the Row inherits the
+        // scroll view's unbounded height and the layout throws.
+        return IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var i = 0; i < cards.length; i++) ...[
+                if (i > 0) const SizedBox(width: 10),
+                Expanded(child: cards[i]),
+              ],
             ],
-          ],
+          ),
         );
       },
     );
