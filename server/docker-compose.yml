@@ -11,6 +11,28 @@ services:
     volumes:
       - luma_data:/data
       - ../wiki:/wiki
+      # Lets the admin dashboard's "Update & restart server" button drive the
+      # *host's* Docker daemon from inside this container (Api._adminDeploy
+      # runs `git pull && docker compose up -d --build`). LUMA_REPO_PATH must
+      # be set in .env for this mount to activate — see .env.example for what
+      # it means and why it has no safe default.
+      #
+      # Mounted at the SAME absolute path inside the container as it is on the
+      # host, not remapped to something shorter: `docker compose` commands run
+      # from inside this container resolve every *relative* volume path in
+      # this file (like ../wiki above) against wherever they're invoked from,
+      # then hand that literal path to the host daemon as a host path. Remap
+      # it and every relative mount here silently breaks the next time a
+      # deploy runs, because the daemon would look for ../wiki somewhere that
+      # only exists inside this container, not on the host.
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Falls back to a harmless placeholder when LUMA_REPO_PATH isn't set,
+      # rather than a hard compose-level requirement — so an operator who
+      # hasn't opted into the deploy button yet can still run ordinary
+      # `docker compose` commands. The server itself refuses the deploy
+      # request outright (Api._adminDeploy checks the env var directly)
+      # rather than ever looking inside this fallback path.
+      - ${LUMA_REPO_PATH:-/var/luma-deploy-disabled}:${LUMA_REPO_PATH:-/var/luma-deploy-disabled}
     # No "ports:" on purpose — only Caddy may reach the app, over the
     # internal network. Never expose 8080 to the internet (plain HTTP).
     networks:

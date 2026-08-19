@@ -20,6 +20,8 @@ import 'features/plugins/installed/mood_journal/mood_journal_scope.dart';
 import 'features/plugins/installed/ai_usage/data/ai_usage_database.dart';
 import 'features/plugins/installed/ai_usage/ai_usage_repository.dart';
 import 'features/plugins/installed/ai_usage/ai_usage_scope.dart';
+import 'features/plugins/installed/ai_usage/leaderboard/ai_catalog_repository.dart';
+import 'features/plugins/installed/ai_usage/leaderboard/ai_catalog_scope.dart';
 import 'features/plugins/installed/data_management/data/data_management_database.dart';
 import 'features/plugins/installed/data_management/data_management_repository.dart';
 import 'features/plugins/installed/server_tycoon/server_tycoon_repository.dart';
@@ -150,6 +152,8 @@ class _LumaAppState extends State<LumaApp> {
   late final MoodJournalRepository _moodJournalRepository = MoodJournalRepository(_moodJournalDb);
   late final AiUsageDatabase _aiUsageDb = AiUsageDatabase();
   late final AiUsageRepository _aiUsageRepository = AiUsageRepository(_aiUsageDb);
+  late final AiCatalogRepository _aiCatalogRepository =
+      AiCatalogRepository(_sync);
   late final SchoolDatabase _schoolDb = SchoolDatabase();
   late final SchoolRepository _schoolRepository = SchoolRepository(_schoolDb);
   late final AutoClickerRepository _autoClickerRepository =
@@ -494,6 +498,8 @@ class _LumaAppState extends State<LumaApp> {
                       repository: _serverTycoonRepository,
                       child: MoodJournalScope(
                       repository: _moodJournalRepository,
+                      child: AiCatalogScope(
+                      repository: _aiCatalogRepository,
                       child: AiUsageScope(
                       repository: _aiUsageRepository,
                       child: SchoolScope(
@@ -566,6 +572,7 @@ class _LumaAppState extends State<LumaApp> {
             ),
           ),
         ),
+      ),
       ),
       ),
       ),

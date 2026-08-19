@@ -39,21 +39,22 @@ const Color _kCacheCreationColor = Color(0xFF93C5FD); // sky
 const Color _kProjectInputColor = Color(0xFFC4B5FD); // lavender
 const Color _kProjectOutputColor = Color(0xFF6EE7B7); // mint
 
-/// A private, offline dashboard for local AI coding CLI usage — token
+/// The plugin's **Usage** section: a private, offline dashboard for local AI
+/// coding CLI usage — token
 /// counts and cost estimates by day and model, read entirely from
 /// `~/.claude/projects`, `~/.codex/sessions`, and
 /// `~/.gemini/antigravity/brain` on this device. The first two are exact,
 /// provider-metered counts; Antigravity's are estimated from message length
 /// (it doesn't record token usage locally at all) and are labelled as such
 /// everywhere they appear.
-class AiUsagePage extends StatefulWidget {
-  const AiUsagePage({super.key});
+class AiUsageDashboardTab extends StatefulWidget {
+  const AiUsageDashboardTab({super.key});
 
   @override
-  State<AiUsagePage> createState() => _AiUsagePageState();
+  State<AiUsageDashboardTab> createState() => _AiUsageDashboardTabState();
 }
 
-class _AiUsagePageState extends State<AiUsagePage> {
+class _AiUsageDashboardTabState extends State<AiUsageDashboardTab> {
   AiUsageRangePreset _preset = AiUsageRangePreset.today;
   AiUsageSource? _sourceFilter; // null = All
   bool _started = false;

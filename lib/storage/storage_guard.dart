@@ -65,12 +65,18 @@ class StorageGuardService extends ChangeNotifier {
   /// archives, disk images — and counting it would put a 30 MB Nova device
   /// over its cap with one file. It has its own size readout in the plugin
   /// instead.
+  /// `ai_catalog_cache` is the AI Usage plugin's downloaded copy of the model
+  /// leaderboard: a few hundred KB that is byte-identical for every user,
+  /// re-fetchable from the server, and already shipped in the app bundle —
+  /// counting it would spend a twentieth of a Core plan's 5 MB cap on data
+  /// the user never created.
   static const _excludedDirNames = {
     'tools',
     'ffmpeg',
     'minecraft',
     'gallery_cache',
     'luma_shared',
+    'ai_catalog_cache',
   };
 
   int _limitBytes = _defaultLimitBytes;

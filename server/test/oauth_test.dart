@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:luma_sync_server/ai_model_catalog.dart';
 import 'package:luma_sync_server/ai_usage_store.dart';
 import 'package:luma_sync_server/api.dart';
 import 'package:luma_sync_server/chat_store.dart';
@@ -131,6 +132,8 @@ void main() {
         googleApiKey: null,
         groceriesUrl: '',
         groceriesAdminKey: null,
+        artificialAnalysisKey: null,
+        repoPath: null,
         wikiDir: null,
         publicUrl: 'https://sync.example.com',
         oauthProviders: const {
@@ -151,6 +154,7 @@ void main() {
         await AiUsageStore.open(dir.path),
         await SubwayStore.open(dir.path),
         await RecipeStore.open(dir.path),
+        await AiModelCatalogStore.open(dir.path),
         oauthClient: oauth,
       ).handler;
     });
