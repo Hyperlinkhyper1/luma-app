@@ -7,11 +7,14 @@ import 'package:crypto/crypto.dart' as c;
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 
+import 'ai_model_catalog.dart';
+import 'ai_model_refresh.dart';
 import 'ai_usage_store.dart';
 import 'chat_store.dart';
 import 'family_store.dart';
 import 'mail.dart';
 import 'metrics.dart';
+import 'oauth.dart';
 import 'rate_limit.dart';
 import 'recipe_store.dart';
 import 'store.dart';
@@ -61,7 +64,11 @@ class ServerConfig {
     required this.googleApiKey,
     required this.groceriesUrl,
     required this.groceriesAdminKey,
+    required this.artificialAnalysisKey,
+    required this.repoPath,
     required this.wikiDir,
+    required this.publicUrl,
+    required this.oauthProviders,
   });
 
   final int port;
@@ -127,12 +134,55 @@ class ServerConfig {
   bool get groceriesAdminEnabled =>
       groceriesAdminKey != null && groceriesAdminKey!.isNotEmpty;
 
+  /// Optional Artificial Analysis data-API key (free tier, 1000 requests a
+  /// day) used only while refreshing the AI model leaderboard. Without it the
+  /// catalogue still builds from OpenRouter and Hugging Face; the reasoning
+  /// column, the speed figures and the per-effort measurements are what go
+  /// missing. Like the other provider keys here it never reaches a client.
+  final String? artificialAnalysisKey;
+
+  bool get artificialAnalysisConfigured =>
+      artificialAnalysisKey != null && artificialAnalysisKey!.isNotEmpty;
+
+  /// Absolute path to this repo's checkout on the host, used only by
+  /// [_adminDeploy] to know where to `git pull` and re-run `docker compose`
+  /// from. See LUMA_REPO_PATH in .env.example for why there is no default —
+  /// a wrong guess here can create files in the wrong place on the host.
+  final String? repoPath;
+
+  bool get repoPathConfigured => repoPath != null && repoPath!.isNotEmpty;
+
   /// Root of the wiki checkout mounted into the container (contains
   /// `source/` with the Astro project and `site/` with the built output).
   /// When unset, the /admin/website editor is disabled.
   final String? wikiDir;
 
   bool get wikiEnabled => wikiDir != null && wikiDir!.isNotEmpty;
+
+  /// Where this server is reachable from the public internet, without a
+  /// trailing slash. Same value the verification mail uses; OAuth needs it
+  /// too, because the redirect URI has to be an absolute URL the provider
+  /// can send a browser back to.
+  final String publicUrl;
+
+  /// Client credentials per OAuth provider id, from
+  /// LUMA_GOOGLE_OAUTH_CLIENT_ID / _SECRET and the GitHub pair. Providers
+  /// with no credentials configured are simply absent, and the app hides
+  /// their button — "Sign in with Google" is opt-in for the operator, not
+  /// something a self-hosted deployment is forced to set up.
+  final Map<String, OAuthProviderConfig> oauthProviders;
+
+  /// The configured providers, in the order they are shown in the app.
+  List<OAuthProviderSpec> get enabledOAuthProviders => OAuthProviderSpec.all
+      .where((spec) => oauthProviders[spec.id]?.configured ?? false)
+      .toList();
+
+  bool get anyOAuthConfigured => enabledOAuthProviders.isNotEmpty;
+
+  /// Where a provider sends the browser back to after the user approves.
+  /// Must be registered verbatim in the provider's app settings.
+  String oauthRedirectUri(String providerId) =>
+      '$publicUrl/api/v1/auth/oauth/callback/$providerId';
 
   /// Whether new accounts may be created. Open by default; set
   /// LUMA_ALLOW_REGISTRATION=false to close it (existing accounts keep working).
@@ -171,7 +221,21 @@ class ServerConfig {
       groceriesUrl:
           env['LUMA_GROCERIES_URL'] ?? 'https://groceries.luma-app.cc',
       groceriesAdminKey: env['LUMA_GROCERIES_ADMIN_KEY'],
+      artificialAnalysisKey: env['LUMA_AA_API_KEY'],
+      repoPath: env['LUMA_REPO_PATH'],
       wikiDir: env['LUMA_WIKI_DIR'],
+      publicUrl: (env['LUMA_PUBLIC_URL'] ?? 'http://localhost:8080')
+          .replaceAll(RegExp(r'/+$'), ''),
+      oauthProviders: {
+        for (final spec in OAuthProviderSpec.all)
+          spec.id: OAuthProviderConfig(
+            id: spec.id,
+            clientId:
+                env['LUMA_${spec.id.toUpperCase()}_OAUTH_CLIENT_ID'] ?? '',
+            clientSecret:
+                env['LUMA_${spec.id.toUpperCase()}_OAUTH_CLIENT_SECRET'] ?? '',
+          ),
+      },
     );
   }
 }
@@ -198,18 +262,34 @@ const int kAiTokensWeek = 40000;
 const int kSupportMessagesPerDay = 15;
 
 class Api {
+  /// [oauthClient] is only passed by tests, which substitute one that
+  /// resolves an identity without a round trip to Google or GitHub.
   Api(this.store, this.config, this.mailer, this.familyStore, this.chatStore,
-      this.aiUsage, this.subwayStore, this.recipeStore)
-      : _authLimiter = RateLimiter(
+      this.aiUsage, this.subwayStore, this.recipeStore, this.aiCatalog,
+      {OAuthClient? oauthClient})
+      : _oauthClient = oauthClient ?? OAuthClient(),
+        _authLimiter = RateLimiter(
             maxRequests: 15, window: const Duration(minutes: 10)),
         _generalLimiter = RateLimiter(
             maxRequests: 300, window: const Duration(minutes: 1)),
         _resendLimiter = RateLimiter(
             maxRequests: 3, window: const Duration(minutes: 15)),
         _adminFailLimiter = RateLimiter(
-            maxRequests: 10, window: const Duration(minutes: 15)),
+            maxRequests: 1, window: const Duration(minutes: 1)),
         _inviteLimiter = RateLimiter(
-            maxRequests: 10, window: const Duration(hours: 1));
+            maxRequests: 10, window: const Duration(hours: 1)),
+        _aiChatLimiter = RateLimiter(
+            maxRequests: 20, window: const Duration(minutes: 1)),
+        _syncWriteLimiter = RateLimiter(
+            maxRequests: 60, window: const Duration(minutes: 1)),
+        _uploadLimiter = RateLimiter(
+            maxRequests: 30, window: const Duration(minutes: 10)),
+        _socketLimiter = RateLimiter(
+            maxRequests: 30, window: const Duration(minutes: 1)),
+        _adminLimiter = RateLimiter(
+            maxRequests: 240, window: const Duration(minutes: 1)),
+        _loginFailLimiter = RateLimiter(
+            maxRequests: 10, window: const Duration(minutes: 15));
 
   final Store store;
   final ServerConfig config;
@@ -219,8 +299,14 @@ class Api {
   final AiUsageStore aiUsage;
   final SubwayStore subwayStore;
   final RecipeStore recipeStore;
+  final AiModelCatalogStore aiCatalog;
   final SubwayRelay _subwayRelay = SubwayRelay();
   final SubwayTicketStore _subwayTickets = SubwayTicketStore();
+
+  /// Browser sign-ins currently in flight, and the client that talks to
+  /// Google/GitHub on their behalf. See oauth.dart for the whole dance.
+  final OAuthFlowStore _oauthFlows = OAuthFlowStore();
+  final OAuthClient _oauthClient;
   final RateLimiter _authLimiter;
   final RateLimiter _generalLimiter;
 
@@ -228,14 +314,34 @@ class Api {
   /// verification mail to one address from many IPs.
   final RateLimiter _resendLimiter;
 
-  /// Per-IP limit on *failed* admin-key attempts, so the admin key cannot be
-  /// brute-forced at the general limiter's 300 req/min.
+  /// Per-IP limit on *failed* admin-key attempts: one wrong guess per
+  /// minute, so the admin key cannot be brute-forced by a bot. Successful
+  /// logins never count against it.
   final RateLimiter _adminFailLimiter;
 
   /// Per-user limit on family/chat invites, each of which sends an email to
   /// an arbitrary address — without this, any account could use the server
   /// as a spam relay at the general limiter's speed.
   final RateLimiter _inviteLimiter;
+
+  /// Tighter per-IP budgets for the expensive endpoint classes, layered into
+  /// [_rateLimit] by [_limiterFor]. The general 300/min budget is fine for
+  /// small JSON calls but far too generous for endpoints that burn upstream
+  /// AI quota, accept multi-megabyte bodies, or hold a socket open.
+  final RateLimiter _aiChatLimiter;
+  final RateLimiter _syncWriteLimiter;
+  final RateLimiter _uploadLimiter;
+  final RateLimiter _socketLimiter;
+
+  /// Per-IP budget for /admin/* — high enough for the dashboard's live
+  /// polling, low enough that the admin surface can't be hammered.
+  final RateLimiter _adminLimiter;
+
+  /// Per-*email* limit on failed logins, so one account's password can't be
+  /// brute-forced from many IPs (the per-IP [_authLimiter] alone doesn't
+  /// stop a distributed guesser). Only failures count — successful logins
+  /// never lock anyone out.
+  final RateLimiter _loginFailLimiter;
 
   /// Admin dashboard login sessions, keyed by SHA-256 of the session cookie
   /// token (mirrors [Store.sessionsByTokenHash] for regular users). In-memory
@@ -254,6 +360,11 @@ class Api {
       ..get('/api/v1/auth/verify', _verify)
       ..post('/api/v1/auth/resend-verification', _resendVerification)
       ..post('/api/v1/auth/login', _login)
+      ..get('/api/v1/auth/oauth/providers', _oauthProviders)
+      ..post('/api/v1/auth/oauth/start', _oauthStart)
+      ..get('/api/v1/auth/oauth/callback/<provider>', _oauthCallback)
+      ..post('/api/v1/auth/oauth/poll', _oauthPoll)
+      ..post('/api/v1/auth/oauth/complete', _oauthComplete)
       ..post('/api/v1/auth/logout', _requireAuth(_logout))
       ..post('/api/v1/auth/change', _requireAuth(_changePassword))
       ..get('/api/v1/auth/sessions', _requireAuth(_listSessions))
@@ -297,6 +408,7 @@ class Api {
           _requireAuth(_listChatMessages))
       ..post('/api/v1/chat/conversations/<id>/messages',
           _requireAuth(_sendChatMessage))
+      ..get('/api/v1/ai-models', _requireAuth(_listAiModels))
       ..get('/api/v1/recipes', _requireAuth(_listPublicRecipes))
       ..post('/api/v1/recipes', _requireAuth(_publishRecipe))
       ..get('/api/v1/recipes/media/<photoId>', _requireAuth(_getRecipeMedia))
@@ -330,9 +442,12 @@ class Api {
       ..get('/admin/metrics/history', _requireAdmin(_adminMetricsHistory))
       ..get('/admin/activity', _requireAdmin(_adminActivity))
       ..post('/admin/verify', _requireAdmin(_adminVerifyUser))
+      ..post('/admin/revoke', _requireAdmin(_adminRevokeUser))
       ..post('/admin/plan', _requireAdmin(_adminSetPlan))
       ..post('/admin/groceries/sync', _requireAdmin(_adminGroceriesSync))
       ..get('/admin/groceries/status', _requireAdmin(_adminGroceriesStatus))
+      ..post('/admin/ai-models/refresh', _requireAdmin(_adminAiModelsRefresh))
+      ..get('/admin/ai-models/status', _requireAdmin(_adminAiModelsStatus))
       ..post('/admin/deploy', _requireAdmin(_adminDeploy))
       ..get('/admin/deploy/status', _requireAdmin(_adminDeployStatus))
       ..get('/admin/website', _requireAdmin(_adminWebsiteIndex))
@@ -387,6 +502,11 @@ class Api {
               'Authorization, Content-Type, X-Base-Version, X-Payload-Saved-At',
           'Access-Control-Expose-Headers': 'X-Version, X-Payload-Saved-At',
           'X-Content-Type-Options': 'nosniff',
+          // Nothing this server serves should ever render inside a frame on
+          // someone else's site (clickjacking the admin dashboard, mainly).
+          // SAMEORIGIN, not DENY: the website editor's live preview frames
+          // its own /admin/website/preview pages.
+          'X-Frame-Options': 'SAMEORIGIN',
         };
         if (request.method == 'OPTIONS') {
           return Response(204, headers: headers);
@@ -397,18 +517,48 @@ class Api {
 
   Handler _rateLimit(Handler inner) => (request) async {
         final key = _clientKey(request);
-        final isAuthRoute = request.url.path.startsWith('api/v1/auth/') &&
-            !request.url.path.endsWith('/logout');
-        final limiter = isAuthRoute ? _authLimiter : _generalLimiter;
-        final limiterKey = '${isAuthRoute ? 'a' : 'g'}:$key';
-        if (!limiter.allow(limiterKey)) {
-          return _error(429, 'rate_limited', 'Too many requests. Slow down.')
-              .change(headers: {
-            'Retry-After': '${limiter.retryAfterSeconds(limiterKey)}',
-          });
+        final (tag, limiter) = _limiterFor(request.method, request.url.path);
+        if (!limiter.allow('$tag:$key')) {
+          return _error(429, 'rate_limited', 'Too many requests. Slow down.');
         }
         return inner(request);
       };
+
+  /// Buckets every request into the limiter matching how expensive it is.
+  /// Each bucket keys separately (the tag), so e.g. hammering uploads can't
+  /// starve the same IP's ordinary API calls or vice versa.
+  (String, RateLimiter) _limiterFor(String method, String path) {
+    // The app polls this one every couple of seconds for as long as the user
+    // is in their browser, so it cannot share the 15-per-10-minutes auth
+    // budget — a single sign-in would exhaust it. It does no work beyond a
+    // map lookup and reveals nothing without the ticket.
+    if (path == 'api/v1/auth/oauth/poll') {
+      return ('op', _generalLimiter);
+    }
+    if (path.startsWith('api/v1/auth/') && !path.endsWith('/logout')) {
+      return ('a', _authLimiter);
+    }
+    if (path.startsWith('api/v1/ai/') && path.endsWith('/chat')) {
+      return ('ai', _aiChatLimiter);
+    }
+    if (path.startsWith('api/v1/sync/') &&
+        (method == 'PUT' || method == 'DELETE')) {
+      return ('w', _syncWriteLimiter);
+    }
+    if (method == 'POST' &&
+        (path.endsWith('/photo') ||
+            path.endsWith('/reviews/photo') ||
+            path == 'admin/website/upload')) {
+      return ('u', _uploadLimiter);
+    }
+    if (path.startsWith('api/v1/subway/room/')) {
+      return ('ws', _socketLimiter);
+    }
+    if (path == 'admin' || path.startsWith('admin/')) {
+      return ('adm', _adminLimiter);
+    }
+    return ('g', _generalLimiter);
+  }
 
   String _clientKey(Request request) {
     if (config.trustProxy) {
@@ -545,6 +695,14 @@ class Api {
   Response _withAdminHeaders(Response response) => response.change(headers: {
         'Referrer-Policy': 'no-referrer',
         'Cache-Control': 'no-store',
+        // The dashboard is self-contained (inline styles/scripts, same-origin
+        // fetches) — everything external is refused, so even an HTML-injection
+        // slip could not load or exfiltrate to an outside host.
+        'Content-Security-Policy': "default-src 'none'; "
+            "style-src 'unsafe-inline'; script-src 'unsafe-inline'; "
+            "img-src 'self' data:; connect-src 'self'; form-action 'self'; "
+            "frame-src 'self'; frame-ancestors 'self'; base-uri 'none'; "
+            "font-src 'self'",
       });
 
   String? _adminSessionToken(Request request) {
@@ -828,6 +986,14 @@ class Api {
       return _error(400, 'bad_request', 'Invalid email or auth key.');
     }
 
+    // Refuse before doing any hashing work while this address is over its
+    // failed-attempt budget. Keyed by email, not IP, so rotating IPs doesn't
+    // buy an attacker more guesses at the same account.
+    if (_loginFailLimiter.isLimited(email)) {
+      return _error(429, 'rate_limited',
+          'Too many failed sign-in attempts for this account. Try again later.');
+    }
+
     final userId = store.userIdByEmail[email];
     final user = userId == null ? null : store.usersById[userId];
 
@@ -840,6 +1006,7 @@ class Api {
 
     if (user == null ||
         !constantTimeEquals(hash, base64Decode(user.authHash))) {
+      _loginFailLimiter.allow(email);
       return _error(401, 'invalid_credentials', 'Wrong email or password.');
     }
 
@@ -862,6 +1029,290 @@ class Api {
         'token': token.$1,
         'expiresAtMs': token.$2,
         'quotaBytes': user.quotaBytes,
+      });
+    });
+  }
+
+  // ---- Handlers: sign in with Google / GitHub -----------------------------
+
+  /// Which providers this deployment has credentials for. Called before the
+  /// sign-in screen is drawn, so an operator who configured neither simply
+  /// never sees the buttons.
+  Response _oauthProviders(Request request) => _json(200, {
+        'providers': config.enabledOAuthProviders
+            .map((spec) => {'id': spec.id, 'name': spec.displayName})
+            .toList(),
+      });
+
+  /// Opens a flow: returns the provider URL for the app to hand to the
+  /// system browser, plus the private ticket it polls with.
+  Future<Response> _oauthStart(Request request) async {
+    final body = await _readJson(request);
+    final spec = OAuthProviderSpec.byId(body['provider'] as String?);
+    final providerConfig =
+        spec == null ? null : config.oauthProviders[spec.id];
+    if (spec == null || providerConfig == null || !providerConfig.configured) {
+      return _error(400, 'unknown_provider',
+          'This server is not set up for that sign-in method.');
+    }
+    final OAuthFlow flow;
+    final String ticket;
+    try {
+      (flow, ticket) = _oauthFlows.create(spec.id);
+    } on OAuthException catch (e) {
+      return _error(503, 'oauth_busy', e.message);
+    }
+    final authUrl = Uri.parse(spec.authorizeUrl).replace(queryParameters: {
+      'client_id': providerConfig.clientId,
+      'redirect_uri': config.oauthRedirectUri(spec.id),
+      'response_type': 'code',
+      'scope': spec.scope,
+      'state': flow.state,
+      ...spec.extraAuthorizeParams,
+    });
+    return _json(200, {
+      'ticket': ticket,
+      'authUrl': authUrl.toString(),
+      'expiresInSeconds': OAuthFlow.ttl.inSeconds,
+    });
+  }
+
+  /// Where the provider sends the browser back. Swaps the code for a
+  /// verified email, parks the result on the flow, and renders a page the
+  /// user can close — the app is polling and picks it up from there.
+  Future<Response> _oauthCallback(Request request) async {
+    final spec = OAuthProviderSpec.byId(request.params['provider']);
+    final providerConfig =
+        spec == null ? null : config.oauthProviders[spec.id];
+    if (spec == null || providerConfig == null || !providerConfig.configured) {
+      return _verifyPage(404, 'Unknown sign-in provider.');
+    }
+    final query = request.url.queryParameters;
+    final flow = _oauthFlows.byState(query['state']);
+    if (flow == null || flow.provider != spec.id) {
+      return _verifyPage(400,
+          'This sign-in link has expired. Start again from the luma app.');
+    }
+    if (query['error'] != null) {
+      flow.error = 'Sign-in was cancelled at ${spec.displayName}.';
+      return _verifyPage(400, flow.error!);
+    }
+    final code = query['code'];
+    if (code == null || code.isEmpty) {
+      flow.error = '${spec.displayName} did not return an authorization code.';
+      return _verifyPage(400, flow.error!);
+    }
+
+    final OAuthIdentity identity;
+    try {
+      identity = await _oauthClient.fetchIdentity(
+        spec: spec,
+        config: providerConfig,
+        code: code,
+        redirectUri: config.oauthRedirectUri(spec.id),
+      );
+    } on OAuthException catch (e) {
+      flow.error = e.message;
+      return _verifyPage(502, e.message);
+    } catch (_) {
+      flow.error = 'Could not complete sign-in with ${spec.displayName}.';
+      return _verifyPage(502, flow.error!);
+    }
+
+    return store.lock.synchronized(() async {
+      // A previously linked identity wins over the address: someone who
+      // changed their email at the provider still lands on their own
+      // account rather than creating a second one (or, worse, being handed
+      // whoever now owns the old address).
+      final linkedId =
+          store.userIdByOAuth[Store.oauthKey(spec.id, identity.subject)];
+      final user = store.usersById[linkedId] ??
+          store.usersById[store.userIdByEmail[identity.email]];
+
+      if (user == null && !config.registrationEnabled) {
+        flow.error = 'This server does not accept new accounts.';
+        return _verifyPage(403, flow.error!);
+      }
+
+      flow.identity = identity;
+      if (user != null) {
+        // Matching an existing account by verified email is exactly what
+        // links the provider to it, so an account made with an email and
+        // password can be signed into with the button from then on.
+        store.linkOAuthIdentity(user, spec.id, identity.subject);
+        await store.saveUsers();
+        flow
+          ..existingAccount = true
+          ..kdfSalt = user.kdfSalt
+          ..kdfIterations = user.kdfIterations;
+      }
+      return _verifyPage(
+        200,
+        'Signed in as ${identity.email}. You can close this window and go '
+        'back to luma.',
+      );
+    });
+  }
+
+  /// Tells the app whether the browser half has landed yet. Requires the
+  /// ticket, so knowing a state (which is visible in the browser) is not
+  /// enough to learn the email address behind a flow.
+  Future<Response> _oauthPoll(Request request) async {
+    final body = await _readJson(request);
+    final flow = _oauthFlows.byTicket(body['ticket'] as String?);
+    if (flow == null) {
+      return _json(200, {
+        'status': 'error',
+        'message': 'This sign-in attempt expired. Please try again.',
+      });
+    }
+    if (flow.error != null) {
+      _oauthFlows.remove(flow);
+      return _json(200, {'status': 'error', 'message': flow.error});
+    }
+    if (!flow.ready) return _json(200, {'status': 'pending'});
+    return _json(200, {
+      'status': 'ready',
+      'provider': flow.provider,
+      'email': flow.identity!.email,
+      'displayName': flow.identity!.displayName,
+      'existingAccount': flow.existingAccount,
+      if (flow.kdfSalt != null) 'kdfSalt': flow.kdfSalt,
+      if (flow.kdfIterations != null) 'kdfIterations': flow.kdfIterations,
+    });
+  }
+
+  /// Finishes the sign-in. The provider settled *who* the user is; this is
+  /// where they prove they hold the passphrase that decrypts their data —
+  /// the server never learns it, only the derived auth key, exactly as with
+  /// [_login]. For a brand new account the supplied key and KDF parameters
+  /// become the account's, which is what makes the passphrase step on first
+  /// sign-in unskippable.
+  Future<Response> _oauthComplete(Request request) async {
+    final body = await _readJson(request);
+    final flow = _oauthFlows.byTicket(body['ticket'] as String?);
+    if (flow == null || !flow.ready) {
+      return _error(400, 'oauth_expired',
+          'This sign-in attempt expired. Please try again.');
+    }
+    final authKey = _decodeB64(body['authKey'], minLen: 32, maxLen: 64);
+    if (authKey == null) {
+      return _error(400, 'bad_auth_key', 'Invalid auth key.');
+    }
+    final identity = flow.identity!;
+    final deviceLabel = body['deviceLabel'] as String?;
+    final spec = OAuthProviderSpec.byId(flow.provider)!;
+
+    return store.lock.synchronized(() async {
+      final linkedId =
+          store.userIdByOAuth[Store.oauthKey(flow.provider, identity.subject)];
+      final existing = store.usersById[linkedId] ??
+          store.usersById[store.userIdByEmail[identity.email]];
+
+      if (existing != null) {
+        final hash = await _hashAuthKey(
+            authKey, Uint8List.fromList(base64Decode(existing.authSalt)));
+        if (!constantTimeEquals(hash, base64Decode(existing.authHash))) {
+          flow.attempts++;
+          if (flow.attempts >= OAuthFlow.maxAttempts) {
+            _oauthFlows.remove(flow);
+            return _error(429, 'too_many_attempts',
+                'Too many wrong passphrases. Start the sign-in again.');
+          }
+          return _error(401, 'invalid_credentials',
+              'That passphrase does not match this account.');
+        }
+        if (existing.isPending) {
+          // The provider vouched for the address, which is precisely what an
+          // email-verification link was there to establish — so accept it in
+          // that mode. Under manual approval the operator's decision is the
+          // gate, and no provider substitutes for it.
+          if (config.approvalMode == ApprovalMode.email) {
+            existing.status = 'active';
+            existing.verificationTokenHash = null;
+            existing.verificationExpiresAtMs = null;
+            await store.logActivity('account_verified',
+                '${existing.email} verified via ${spec.displayName}');
+          } else {
+            return _error(
+                403,
+                'account_pending_approval',
+                'This account is waiting to be approved by the server '
+                    'operator.');
+          }
+        }
+        store.linkOAuthIdentity(existing, flow.provider, identity.subject);
+        _oauthFlows.remove(flow);
+        final token = await _createSession(existing, deviceLabel: deviceLabel);
+        existing.lastLoginAtMs = DateTime.now().millisecondsSinceEpoch;
+        await store.saveUsers();
+        await store.logActivity('login',
+            '${existing.email} logged in with ${spec.displayName}');
+        return _json(200, {
+          'token': token.$1,
+          'expiresAtMs': token.$2,
+          'quotaBytes': existing.quotaBytes,
+          'email': existing.email,
+        });
+      }
+
+      // ---- New account ----------------------------------------------------
+      if (!config.registrationEnabled) {
+        return _error(403, 'registration_closed',
+            'This server does not accept new accounts.');
+      }
+      final kdfSalt = _decodeB64(body['kdfSalt'], minLen: 16, maxLen: 64);
+      if (kdfSalt == null) {
+        return _error(400, 'bad_kdf_salt', 'Invalid KDF salt.');
+      }
+      final iterations = body['kdfIterations'];
+      if (iterations is! int || iterations < 50000 || iterations > 5000000) {
+        return _error(400, 'bad_kdf_iterations', 'Invalid KDF iterations.');
+      }
+      final authSalt = randomBytes(16);
+      // Under manual approval a new account still waits for the operator;
+      // the provider only proves the address is real, not that this
+      // deployment wants the person behind it.
+      final pending = config.approvalMode == ApprovalMode.manual;
+      final user = StoredUser(
+        id: base64UrlEncode(randomBytes(12)).replaceAll('=', ''),
+        email: identity.email,
+        authHash: base64Encode(await _hashAuthKey(authKey, authSalt)),
+        authSalt: base64Encode(authSalt),
+        kdfSalt: base64Encode(kdfSalt),
+        kdfIterations: iterations,
+        quotaBytes: kPlanQuotaBytes[kDefaultPlanId]!,
+        createdAtMs: DateTime.now().millisecondsSinceEpoch,
+        status: pending ? 'pending' : 'active',
+      );
+      store.usersById[user.id] = user;
+      store.userIdByEmail[user.email] = user.id;
+      store.linkOAuthIdentity(user, flow.provider, identity.subject);
+      await store.saveUsers();
+
+      if (pending) {
+        // The account exists now, so this flow can never complete — a retry
+        // on it would only fail the pending check.
+        _oauthFlows.remove(flow);
+        await store.logActivity('account_registered',
+            '${user.email} registered with ${spec.displayName} '
+            '(awaiting approval)');
+        return _json(201, {
+          'status': 'pending_approval',
+          'approval': config.approvalMode.name,
+          'message': 'Account created with ${spec.displayName}. It has to be '
+              'approved by the server operator before you can sign in.',
+        });
+      }
+      _oauthFlows.remove(flow);
+      await store.logActivity('account_registered',
+          '${user.email} registered with ${spec.displayName}');
+      final token = await _createSession(user, deviceLabel: deviceLabel);
+      return _json(201, {
+        'token': token.$1,
+        'expiresAtMs': token.$2,
+        'quotaBytes': user.quotaBytes,
+        'email': user.email,
       });
     });
   }
@@ -918,6 +1369,14 @@ class Api {
   /// Returns a small HTML page (the user opens this in a browser from their
   /// email client, not the app) mirroring the style of [_root].
   Future<Response> _verify(Request request) async {
+    // In manual (or open) mode no verification links are ever issued, so
+    // this endpoint must be inert — it is the only path that could flip an
+    // account to 'active' without the operator pressing Approve.
+    if (config.approvalMode != ApprovalMode.email) {
+      return _verifyPage(403,
+          'This server approves accounts by hand from the admin dashboard — '
+          'email verification links are not used here.');
+    }
     final token = request.url.queryParameters['token'];
     if (token == null || token.isEmpty) {
       return _verifyPage(400, 'Missing verification token.');
@@ -1087,6 +1546,7 @@ class Api {
       final email = user.email;
       store.usersById.remove(user.id);
       store.userIdByEmail.remove(user.email.toLowerCase());
+      store.unlinkAllOAuthIdentities(user);
       store.sessionsByTokenHash.removeWhere((_, s) => s.userId == user.id);
       store.collectionsByUser.remove(user.id);
       await store.deleteUserData(user.id);
@@ -1308,6 +1768,8 @@ class Api {
       'usedBytes': store.usedBytes(user.id),
       'quotaBytes': user.quotaBytes,
       'planId': user.planId,
+      // Ids only ('google', 'github') — never the provider-side subject.
+      'linkedProviders': user.oauthSubjects.keys.toList()..sort(),
       // The client mirrors this into its own server-access gate: an account
       // that is back to 'pending' stops talking to the server until it is
       // approved again (see ServerAccessGate in the app).
@@ -1447,6 +1909,68 @@ class Api {
       });
     });
   }
+
+  // ---- Handlers: AI model leaderboard --------------------------------------
+
+  /// The whole model catalogue plus the news rail, in one response.
+  ///
+  /// Public data — identical for every account and carrying nothing a user
+  /// typed — so unlike the sync collections it is served in the clear, the
+  /// same way the recipe catalogue is. It is still behind [_requireAuth]: the
+  /// app may not talk to a luma server at all before its account is approved
+  /// (see lib/sync/server_access.dart), and this endpoint is no exception.
+  ///
+  /// The payload is a few hundred kilobytes and changes only when the
+  /// operator refreshes it, so it is served with an ETag and the app sends it
+  /// back as `If-None-Match` — a client that is already current pays for a
+  /// 304 and nothing else.
+  Response _listAiModels(Request request, StoredUser user) {
+    final etag = aiCatalog.etag;
+    if (request.headers['if-none-match'] == etag) {
+      return Response.notModified(headers: {'ETag': etag});
+    }
+    return Response(
+      200,
+      body: jsonEncode(aiCatalog.toJson()),
+      headers: {
+        'Content-Type': 'application/json',
+        'ETag': etag,
+        // Must revalidate rather than sit in a cache: a refresh should reach
+        // devices on their next launch, not whenever a TTL happens to lapse.
+        'Cache-Control': 'no-cache',
+      },
+    );
+  }
+
+  /// Rebuilds the catalogue from OpenRouter, Artificial Analysis and Hugging
+  /// Face, and re-polls the news feeds.
+  ///
+  /// A full refresh takes a minute or two — far longer than a dashboard
+  /// request should hold a connection open — so this starts the job and
+  /// returns immediately; the dashboard follows it through
+  /// [_adminAiModelsStatus]. Only one may run at a time, since two concurrent
+  /// refreshes would interleave writes to the same store.
+  Future<Response> _adminAiModelsRefresh(Request request) async {
+    if (aiCatalog.status.running) {
+      return _error(409, 'refresh_running',
+          'A catalogue refresh is already in progress.');
+    }
+    unawaited(refreshAiCatalog(
+      aiCatalog,
+      artificialAnalysisKey: config.artificialAnalysisKey,
+    ));
+    return _json(202, {'started': true});
+  }
+
+  Response _adminAiModelsStatus(Request request) => _json(200, {
+        'status': aiCatalog.status.toJson(),
+        'modelCount': aiCatalog.modelCount,
+        'newsCount': aiCatalog.news.length,
+        'refreshedAtMs': aiCatalog.refreshedAtMs,
+        // Drives the dashboard's "reasoning column needs a key" hint, so an
+        // operator can tell a missing key from a broken upstream.
+        'artificialAnalysisConfigured': config.artificialAnalysisConfigured,
+      });
 
   // ---- Handlers: recipes ---------------------------------------------------
 
@@ -2874,6 +3398,39 @@ class Api {
     });
   }
 
+  /// The opposite of [_adminVerifyUser]: puts an account back to 'pending'
+  /// and revokes every one of its sessions, so its devices are cut off on
+  /// their very next request — [_requireAuth] rejects pending accounts, and
+  /// the app shuts its own server-access gate when it sees
+  /// `account_not_approved`.
+  Future<Response> _adminRevokeUser(Request request) async {
+    final raw = await request.readAsString();
+    String? email;
+    try {
+      email = Uri.splitQueryString(raw)['email'];
+    } catch (_) {}
+    email = email?.trim().toLowerCase();
+    if (email == null || email.isEmpty) {
+      return _error(400, 'bad_request', 'email is required.');
+    }
+    return store.lock.synchronized(() async {
+      final userId = store.userIdByEmail[email];
+      final user = userId == null ? null : store.usersById[userId];
+      if (user == null) {
+        return _error(404, 'not_found', 'No account with that email.');
+      }
+      user.status = 'pending';
+      user.verificationTokenHash = null;
+      user.verificationExpiresAtMs = null;
+      store.sessionsByTokenHash.removeWhere((_, s) => s.userId == user.id);
+      await store.saveUsers();
+      await store.saveSessions();
+      await store.logActivity(
+          'admin_revoked', '$email had their approval revoked by an admin');
+      return _adminFormResponse(request, '/admin');
+    });
+  }
+
   /// The dashboard's forms POST here directly (cookie-authenticated) and
   /// expect an HTML redirect back to the page; a script/API caller
   /// authenticates with the `X-Admin-Key` header instead and expects JSON.
@@ -3002,13 +3559,32 @@ class Api {
     }
   }
 
-  /// Triggers a full server update: git pull → pub get → recompile →
-  /// systemctl restart. The command runs in a fully detached process
-  /// (`setsid`) so it survives the service stop that kills *this* process.
-  /// Output is written to `deploy.log` in the data dir; the PID is tracked
-  /// in `deploy.pid` so the status endpoint can tell whether it's still
-  /// running. The endpoint returns immediately with `{"started": true}`.
+  /// Triggers a full server update: git pull → rebuild the image → recreate
+  /// this container, driven from inside a Docker container via the host's
+  /// Docker daemon over the socket mounted into it (see docker-compose.yml).
+  /// This container has no Dart SDK and cannot compile itself — the
+  /// Dockerfile's build stage does that as part of `docker compose build`.
+  ///
+  /// `git config --global --add safe.directory` is needed first because the
+  /// repo on the host is owned by a different uid than this (root) process;
+  /// git otherwise refuses to touch it. The command runs in a fully detached
+  /// process (`setsid`) — necessary here for a different reason than a plain
+  /// systemd restart would need it for: `docker compose up -d --build` tears
+  /// down *this very container* partway through, killing the process tree
+  /// that launched the deploy along with it. That's expected, not a bug —
+  /// which is why the log and PID files live on the `/data` volume, which
+  /// survives the container being replaced, rather than anywhere that
+  /// wouldn't. A poll from the browser after the swap reads whatever the log
+  /// captured before the kill, then sees the PID as no longer running (a
+  /// fresh container is a fresh PID namespace) and reports the deploy as
+  /// finished either way.
   Future<Response> _adminDeploy(Request request) async {
+    if (!config.repoPathConfigured) {
+      return _error(404, 'not_configured',
+          "LUMA_REPO_PATH is not set on this server. Set it in .env to this "
+          "repo's absolute path on the host, then restart.");
+    }
+
     final logFile = File('${config.dataDir}/deploy.log');
     final pidFile = File('${config.dataDir}/deploy.pid');
 
@@ -3022,11 +3598,11 @@ class Api {
 
     await logFile.parent.create(recursive: true);
 
-    const deployCmd = 'cd ~/luma-app && git pull && cd server && '
-        'dart pub get && sudo systemctl stop luma-sync && '
-        'dart compile exe bin/luma_server.dart -o luma_server && '
-        'sudo systemctl start luma-sync && '
-        'sudo systemctl status luma-sync';
+    final repoPath = config.repoPath!;
+    final deployCmd =
+        "git config --global --add safe.directory '$repoPath' && "
+        "cd '$repoPath' && git pull && cd server && "
+        'docker compose up -d --build luma-sync';
 
     final script = 'echo \$\$ > "${pidFile.path}" && '
         '{ $deployCmd; } > "${logFile.path}" 2>&1; '
@@ -3065,7 +3641,11 @@ class Api {
       } catch (_) {}
     }
 
-    return _json(200, {'running': running, 'log': log});
+    return _json(200, {
+      'running': running,
+      'log': log,
+      'repoPathConfigured': config.repoPathConfigured,
+    });
   }
 
   /// Best-effort check whether a process is still alive (POSIX `kill -0`).
@@ -4531,7 +5111,13 @@ if (window.innerWidth <= 900) document.getElementById('pane-write').classList.ad
               '<input type="hidden" name="email" value="${_htmlEscape(u.email)}">'
               '<button type="submit" class="btn btn-primary btn-sm">Approve</button>'
               '</form>'
-          : '';
+          : '<form method="post" action="/admin/revoke" '
+              'style="margin:0" onsubmit="return confirm(\'Revoke '
+              '${_htmlEscape(u.email)}? All their devices are signed out '
+              'immediately and blocked until you approve them again.\')">'
+              '<input type="hidden" name="email" value="${_htmlEscape(u.email)}">'
+              '<button type="submit" class="btn btn-danger btn-sm">Revoke</button>'
+              '</form>';
       return '<tr>'
           '<td>${_htmlEscape(u.email)}</td>'
           '<td><span class="badge $statusClass">${_htmlEscape(u.status)}</span></td>'
@@ -4731,6 +5317,20 @@ if (window.innerWidth <= 900) document.getElementById('pane-write').classList.ad
         '</div>'
         '</div>'
         '<div class="card">'
+        '<h2>AI model leaderboard</h2>'
+        '<div class="product-form">'
+        '<button id="aiModelsBtn" type="button" class="btn btn-primary">'
+        'Refresh model data</button>'
+        '</div>'
+        '<div id="aiModelsSummary" class="hint">Loading catalogue status…</div>'
+        '<div id="aiModelsLog" style="display:none;max-height:360px;'
+        'overflow:auto;margin-top:16px">'
+        '<table><thead><tr><th>Source</th><th>Status</th><th>Fetched</th>'
+        '<th>Applied</th><th>Detail</th></tr></thead>'
+        '<tbody id="aiModelsRows"></tbody></table>'
+        '</div>'
+        '</div>'
+        '<div class="card">'
         '<h2>Server update</h2>'
         '<div class="product-form">'
         '<button id="deployBtn" type="button" class="btn btn-primary">'
@@ -4744,6 +5344,7 @@ if (window.innerWidth <= 900) document.getElementById('pane-write').classList.ad
         '<script>$_adminTabScript</script>'
         '<script>$_adminMetricsScript</script>'
         '<script>$_adminGroceriesScript</script>'
+        '<script>$_adminAiModelsScript</script>'
         '<script>$_adminDeployScript</script>'
         '</body></html>';
 
@@ -4924,6 +5525,103 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
 })();
 ''';
 
+  /// Control panel tab: "Refresh model data" POSTs to
+  /// /admin/ai-models/refresh and then polls /admin/ai-models/status every
+  /// 2s until the job reports it has stopped running, rendering one row per
+  /// upstream. The job outlives the request that started it, so the poll —
+  /// not the POST response — is what reports the outcome; reloading the
+  /// dashboard mid-refresh picks the same poll back up.
+  static const _adminAiModelsScript = r'''
+(function () {
+  const btn = document.getElementById('aiModelsBtn');
+  const summary = document.getElementById('aiModelsSummary');
+  const logBox = document.getElementById('aiModelsLog');
+  const rows = document.getElementById('aiModelsRows');
+  if (!btn || !summary || !logBox || !rows) return;
+
+  function esc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    })[c]);
+  }
+
+  function when(ms) {
+    if (!ms) return 'never';
+    return new Date(ms).toLocaleString();
+  }
+
+  let timer = null;
+
+  function render(data) {
+    const s = data.status || {};
+    const running = !!s.running;
+    btn.disabled = running;
+    btn.textContent = running ? 'Refreshing…' : 'Refresh model data';
+
+    let text = '<strong>' + data.modelCount + '</strong> models · '
+      + data.newsCount + ' news items · last refreshed ' + when(data.refreshedAtMs);
+    if (running) {
+      text += ' — <strong>refresh running…</strong>';
+    } else if (s.error) {
+      text += ' — <span class="badge err">failed</span> ' + esc(s.error);
+    } else if (s.finishedAtMs) {
+      const added = (s.modelsAdded || []).length;
+      text += added > 0
+        ? ' — <span class="badge ok">' + added + ' new model'
+          + (added === 1 ? '' : 's') + '</span> '
+          + esc((s.modelsAdded || []).slice(0, 6).join(', '))
+          + (added > 6 ? ' …' : '')
+        : ' — <span class="badge ok">no new models</span>';
+    }
+    if (!data.artificialAnalysisConfigured) {
+      text += '<br><span class="muted">Reasoning, speed and effort-level data '
+        + 'need LUMA_AA_API_KEY (free key from artificialanalysis.ai) in this '
+        + "server's .env. Every other column works without it.</span>";
+    }
+    summary.innerHTML = text;
+
+    const results = s.results || [];
+    logBox.style.display = results.length ? 'block' : 'none';
+    rows.innerHTML = results.map((r) => {
+      const cls = r.ok ? 'ok' : 'err';
+      return '<tr><td>' + esc(r.source) + '</td>'
+        + '<td><span class="badge ' + cls + '">'
+        + (r.ok ? 'ok' : 'failed') + '</span></td>'
+        + '<td>' + esc(r.fetched) + '</td>'
+        + '<td>' + esc(r.applied) + '</td>'
+        + '<td>' + esc(r.error || '—') + '</td></tr>';
+    }).join('');
+    return running;
+  }
+
+  function load() {
+    fetch('/admin/ai-models/status')
+      .then((r) => r.json())
+      .then((data) => {
+        clearTimeout(timer);
+        if (render(data)) timer = setTimeout(load, 2000);
+      })
+      .catch(() => {
+        summary.textContent = 'Could not read the catalogue status.';
+      });
+  }
+
+  btn.addEventListener('click', () => {
+    btn.disabled = true;
+    btn.textContent = 'Refreshing…';
+    fetch('/admin/ai-models/refresh', { method: 'POST' })
+      .then(() => setTimeout(load, 500))
+      .catch(() => {
+        btn.disabled = false;
+        btn.textContent = 'Refresh model data';
+        summary.textContent = 'Could not start the refresh.';
+      });
+  });
+
+  load();
+})();
+''';
+
   /// Control panel tab: the "Update & restart server" button POSTs to
   /// /admin/deploy, then polls /admin/deploy/status every 2s to stream the
   /// deploy log into the <pre> below the button. The poll keeps going even
@@ -4966,12 +5664,23 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
           btn.style.opacity = '';
           btn.style.cursor = '';
           var hasLog = !!data.log;
-          var success = hasLog && /Active: active \(running\)/.test(data.log);
+          // The old systemd-restart deploy printed "Active: active
+          // (running)" from `systemctl status`; this one rebuilds and
+          // recreates the container via `docker compose up -d --build`,
+          // whose success line ends in "Started" (or "Healthy" once a
+          // healthcheck confirms it).
+          var success = hasLog && /\b(Started|Healthy)\b/.test(data.log);
           setStatus(
             success ? 'Deploy complete — server is running.' :
             hasLog ? 'Deploy finished — check the log above.' :
                      'Deploy process ended.',
             success ? '#7ee08a' : '#a49fb8');
+        } else if (data.repoPathConfigured === false) {
+          btn.disabled = true;
+          btn.style.opacity = '0.5';
+          btn.style.cursor = 'not-allowed';
+          setStatus('Not configured: set LUMA_REPO_PATH in this server\'s '
+              + '.env (see .env.example), then restart.', '#a49fb8');
         }
       })
       .catch(function () {
@@ -4984,8 +5693,9 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
 
   btn.addEventListener('click', function () {
     if (btn.disabled) return;
-    if (!confirm('This will git pull, recompile, and restart the luma-sync '
-        + 'service. The server will be briefly unavailable. Continue?')) return;
+    if (!confirm('This will git pull, rebuild the image, and recreate the '
+        + 'luma-sync container. The server will be briefly unavailable. '
+        + 'Continue?')) return;
     log.style.display = 'block';
     log.textContent = '';
     setStatus('Starting deploy…', '#e0c87e');

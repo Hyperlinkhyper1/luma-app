@@ -55,6 +55,7 @@ dependencies:
   window_manager: ^0.5.1
   fl_chart: ^0.70.0
   open_file: ^4.0.0
+  url_launcher: ^6.3.2
   # Peer-to-peer (Wi-Fi/LAN) sync between same-account devices.
   nsd: ^5.0.1
   network_info_plus: ^6.1.4
@@ -80,8 +81,17 @@ dependencies:
   # the picture folders with dart:io instead (see gallery_source.dart).
   photo_manager: ^3.11.0
   # Gallery's smart categories on Nova: both models run on-device, offline.
+  # ML Kit covers Android and iOS, where Google ships the models inside the
+  # app. Windows and Linux have no ML Kit, so they run the equivalent models
+  # through ONNX Runtime instead — see gallery/onnx/. Neither path uploads a
+  # photo anywhere.
   google_mlkit_face_detection: ^0.14.0
   google_mlkit_image_labeling: ^0.15.0
+  flutter_onnxruntime: ^1.8.3
+  # Pure-Dart SSH/SFTP client for the SFTP plugin. No native dependency, so
+  # it works the same on Windows, Linux and Android, and every byte goes
+  # straight from this device to the user's own server.
+  dartssh2: ^2.13.0
 
 dev_dependencies:
   flutter_test:
@@ -123,8 +133,11 @@ flutter:
     - assets/city_planner/
     - assets/subway_builder/
     - assets/subway_builder/vendor/
+    - assets/transport_tracker/
+    - assets/transport_tracker/vendor/
     - assets/security/
     - assets/world/
+    - assets/ai_models/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

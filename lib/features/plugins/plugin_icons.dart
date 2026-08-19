@@ -25,6 +25,12 @@ IconData pluginIconFor(String? name) {
       return Icons.mood_rounded;
     case 'smart_display':
       return Icons.smart_display_rounded;
+    case 'download':
+      return Icons.download_rounded;
+    case 'photo_library':
+      return Icons.photo_library_rounded;
+    case 'video_library':
+      return Icons.video_library_rounded;
     case 'rocket_launch':
       return Icons.rocket_launch_rounded;
     case 'directions_subway':
@@ -57,6 +63,14 @@ IconData pluginIconFor(String? name) {
       return Icons.calculate_rounded;
     case 'functions':
       return Icons.functions_rounded;
+    case 'directions_boat':
+      return Icons.directions_boat_rounded;
+    case 'nfc':
+      return Icons.nfc_rounded;
+    case 'query_stats':
+      return Icons.query_stats_rounded;
+    case 'swap_horiz':
+      return Icons.swap_horiz_rounded;
     default:
       return Icons.extension_rounded;
   }

@@ -4,9 +4,13 @@ import 'package:flutter/foundation.dart';
 
 import 'gallery_cache.dart';
 import 'gallery_categories.dart';
+import 'gallery_file_editor.dart';
+import 'gallery_memories.dart';
 import 'gallery_media.dart';
+import 'gallery_people.dart';
 import 'gallery_smart.dart';
 import 'gallery_source.dart';
+import 'onnx/gallery_model_store.dart';
 
 /// Where the library scan has got to.
 enum GalleryStatus { idle, askingAccess, scanning, ready, noAccess, empty }
@@ -16,13 +20,25 @@ enum GalleryStatus { idle, askingAccess, scanning, ready, noAccess, empty }
 /// locations and smart labels, and the cache that means none of it has to
 /// happen twice.
 class GalleryRepository extends ChangeNotifier {
-  GalleryRepository({GallerySource? source, GalleryCache? cache})
-      : _source = source ?? GallerySource.forPlatform(),
-        _cache = cache ?? GalleryCache();
+  GalleryRepository({
+    GallerySource? source,
+    GalleryCache? cache,
+    GalleryPeopleStore? people,
+    GalleryAnalyser? analyser,
+  })  : _source = source ?? GallerySource.forPlatform(),
+        _cache = cache ?? GalleryCache(),
+        _people = people ?? GalleryPeopleStore() {
+    // The real analyser touches path_provider, a real model download and a
+    // real ONNX/ML Kit session — none of which a widget test's fake platform
+    // binding provides. Tests substitute their own here, the same way they
+    // substitute [GallerySource] to avoid touching MediaStore.
+    _analyser = analyser ?? GalleryAnalyser(people: _people);
+  }
 
   final GallerySource _source;
   final GalleryCache _cache;
-  final GallerySmartAnalyser _analyser = GallerySmartAnalyser();
+  final GalleryPeopleStore _people;
+  late final GalleryAnalyser _analyser;
 
   GalleryStatus _status = GalleryStatus.idle;
   GalleryAccess _access = GalleryAccess.denied;
@@ -52,7 +68,7 @@ class GalleryRepository extends ChangeNotifier {
   bool get canPresentPicker => _source.canPresentPicker;
   bool get supportsCustomFolders => _source.supportsCustomFolders;
   List<String> get customRoots => _source.roots;
-  bool get smartModelsAvailable => GallerySmartAnalyser.isSupported;
+  bool get smartModelsAvailable => GalleryAnalyser.isSupported;
 
   /// Photos with a known position, newest first — the pins on the map. Walks
   /// the whole library, so the header asks [hasLocatedItems] instead.
@@ -71,6 +87,44 @@ class GalleryRepository extends ChangeNotifier {
       .where((i) => !i.isVideo && !(_cache[i.cacheKey]?.analysed ?? false))
       .length;
 
+  /// How many the pass reached but couldn't read — cloud placeholders, and
+  /// formats the decoder doesn't handle. Reported rather than hidden: on a
+  /// library that lives mostly in OneDrive this is the difference between
+  /// "the models found nothing" and "the models never saw your photos".
+  int get skippedAnalysis => _items
+      .where((i) => !i.isVideo && (_cache[i.cacheKey]?.skipped ?? false))
+      .length;
+
+  /// How many were actually looked at.
+  int get examinedAnalysis => _items.where((i) {
+        final entry = _cache[i.cacheKey];
+        if (entry == null || i.isVideo) return false;
+        return entry.analysed && !entry.skipped;
+      }).length;
+
+  /// Forgets every verdict and runs the pass again — after the models have
+  /// been improved, or after cloud photos have been made available offline.
+  Future<void> reanalyseAll() async {
+    if (_analysing) return;
+    for (final item in _items) {
+      final entry = _cache[item.cacheKey];
+      if (entry == null || !entry.analysed) continue;
+      _cache.put(
+        item.cacheKey,
+        entry.copyWith(
+          analysed: false,
+          skipped: false,
+          labels: const [],
+          faceCount: 0,
+          personIds: const [],
+        ),
+      );
+    }
+    _smartVersion++;
+    notifyListeners();
+    await analyseSmart();
+  }
+
   /// First call does everything: reads the cache, asks for access, scans, and
   /// kicks off the location pass. Later calls are a no-op unless [force].
   Future<void> initialise({bool force = false}) async {
@@ -81,7 +135,9 @@ class GalleryRepository extends ChangeNotifier {
     }
 
     await _cache.load();
+    await _people.load();
     _source.restoreRoots(_cache.roots);
+    unawaited(refreshModelState());
 
     _set(() => _status = GalleryStatus.askingAccess);
     _access = await _source.requestAccess();
@@ -92,7 +148,6 @@ class GalleryRepository extends ChangeNotifier {
     }
 
     await _scan();
-    unawaited(locateAll());
   }
 
   /// Re-reads the library from scratch, keeping everything already cached.
@@ -104,7 +159,6 @@ class GalleryRepository extends ChangeNotifier {
       return;
     }
     await _scan();
-    unawaited(locateAll());
   }
 
   Future<void> _scan() async {
@@ -112,38 +166,63 @@ class GalleryRepository extends ChangeNotifier {
     final scanned = await _source.load();
     if (_disposed) return;
 
-    // Fold in coordinates learned on an earlier run so the map is populated
-    // before the background pass has read a single file.
+    // Fold in what earlier runs learned — coordinates and frame sizes — so
+    // the map and the shape-based albums are populated before the background
+    // pass has reopened a single file.
     _items = [
-      for (final item in scanned)
-        if (_cache[item.cacheKey]?.hasLocation ?? false)
-          item.copyWith(
-            latitude: _cache[item.cacheKey]!.latitude,
-            longitude: _cache[item.cacheKey]!.longitude,
-          )
-        else
-          item,
+      for (final item in scanned) _withCached(item),
     ]..sort((a, b) => b.takenAt.compareTo(a.takenAt));
 
     _withLocation = _items.where((i) => i.hasLocation).length;
     _cache.retainKeys({for (final item in _items) item.cacheKey});
     _categories = buildCategories(_items);
     _smartVersion++;
+    _libraryVersion++;
     _set(() => _status =
         _items.isEmpty ? GalleryStatus.empty : GalleryStatus.ready);
     unawaited(_cache.flush());
   }
 
-  /// Walks every photo that has no position yet and asks the platform for its
-  /// GPS tag. Slow — one file read each — so it runs in the background, in
-  /// batches, and reports progress as it goes.
+  /// Puts back whatever the cache already knows about [item].
+  GalleryItem _withCached(GalleryItem item) {
+    final entry = _cache[item.cacheKey];
+    if (entry == null) return item;
+    return item.copyWith(
+      latitude: entry.latitude,
+      longitude: entry.longitude,
+      // MediaStore supplies these on the phone; only fall back to the cache
+      // where the scan couldn't know them.
+      width: item.width > 0 ? null : entry.width,
+      height: item.height > 0 ? null : entry.height,
+    );
+  }
+
+  /// Bumped whenever the set of items changes — a rescan, or the end of the
+  /// location pass. The page memoises an album's sorted, date-grouped
+  /// contents against it, so the background passes don't make it re-sort
+  /// thousands of items on every progress notification.
+  int _libraryVersion = 0;
+  int get libraryVersion => _libraryVersion;
+
+  /// How many photos the header pass hasn't read yet.
+  int get pendingDetails => _pendingDetails().length;
+
+  List<GalleryItem> _pendingDetails() => [
+        for (final item in _items)
+          if (!item.isVideo && !(_cache[item.cacheKey]?.detailsRead ?? false))
+            item,
+      ];
+
+  /// Reads each photo's header for its GPS tag and frame size — what the map
+  /// and the shape-based albums are built from.
+  ///
+  /// One file read each, thousands of them, so this is deliberately *not*
+  /// started by [initialise]: doing it on open competes with the thumbnails
+  /// and makes the whole plugin feel stuck. The map page starts it, and on
+  /// desktop the smart albums section offers it.
   Future<void> locateAll() async {
     if (_locating || _status != GalleryStatus.ready) return;
-    final pending = [
-      for (final item in _items)
-        if (!item.hasLocation && !(_cache[item.cacheKey]?.geoChecked ?? false))
-          item,
-    ];
+    final pending = _pendingDetails();
     if (pending.isEmpty) return;
 
     _set(() {
@@ -157,25 +236,24 @@ class GalleryRepository extends ChangeNotifier {
       if (_disposed) return;
       final enriched = await _source.enrich(item);
       final previous = _cache[item.cacheKey] ?? const GalleryCacheEntry();
-      if (enriched.hasLocation) {
-        _replace(enriched);
-        _cache.put(
-          item.cacheKey,
-          previous.copyWith(
-            latitude: enriched.latitude,
-            longitude: enriched.longitude,
-            geoChecked: true,
-          ),
-        );
+      if (enriched.hasLocation && !item.hasLocation) {
         _locatedCount++;
         _withLocation++;
-        _smartVersion++;
-      } else {
-        _cache.put(item.cacheKey, previous.copyWith(geoChecked: true));
       }
+      _replace(enriched);
+      _cache.put(
+        item.cacheKey,
+        previous.copyWith(
+          latitude: enriched.latitude,
+          longitude: enriched.longitude,
+          width: enriched.width > 0 ? enriched.width : null,
+          height: enriched.height > 0 ? enriched.height : null,
+          detailsRead: true,
+        ),
+      );
+      _smartVersion++;
       // Let the UI breathe between batches; a tight loop over thousands of
-      // files makes the grid stutter even though the work is on a platform
-      // thread.
+      // files makes the grid stutter even though the work is off-thread.
       if (++index % batch == 0) {
         notifyListeners();
         await Future<void>.delayed(Duration.zero);
@@ -183,52 +261,166 @@ class GalleryRepository extends ChangeNotifier {
     }
 
     await _cache.flush();
+    // One bump at the end rather than one per photo: the album lists only
+    // change in that they now carry coordinates, and re-sorting the library
+    // a thousand times over would cost more than the pass itself.
+    _libraryVersion++;
     _set(() => _locating = false);
   }
 
   /// Runs the on-device models over photos that haven't been looked at yet,
   /// up to [budget] of them, newest first. Nova-only — the page checks the
   /// plan before calling this.
-  Future<void> analyseSmart({int budget = 400}) async {
-    if (_analysing || !GallerySmartAnalyser.isSupported) return;
-    final pending = [
+  /// Looks at every photo that hasn't been looked at yet, newest first.
+  ///
+  /// This used to stop after a few hundred, which for a 23 000-photo library
+  /// meant clicking the same button sixty times. It now runs the lot; the
+  /// results are cached per photo as it goes, so [stopAnalysing] — or closing
+  /// the app — loses nothing but the photo in flight.
+  Future<void> analyseSmart({int? budget}) async {
+    if (_analysing || !GalleryAnalyser.isSupported) return;
+    final all = [
       for (final item in _items)
         if (!item.isVideo && !(_cache[item.cacheKey]?.analysed ?? false)) item,
-    ].take(budget).toList();
+    ];
+    final pending = budget == null ? all : all.take(budget).toList();
     if (pending.isEmpty) return;
+    _analysisTotal = pending.length;
+    _cancelAnalysis = false;
 
     _set(() {
       _analysing = true;
       _analysedCount = 0;
+      _analysisStatus = null;
     });
 
+    // On desktop this is where the models are fetched, the first time only.
+    final started = await _analyser.prepare(
+      onProgress: (label, progress) => _set(() {
+        _analysisStatus = label;
+        _analysisProgress = progress;
+      }),
+    );
+    _analysisStatus = null;
+    _analysisProgress = null;
+    if (!started || _disposed) {
+      _set(() {
+        _analysing = false;
+        _analysisError = _analyser.lastError ??
+            'The smart album models could not be started.';
+      });
+      return;
+    }
+    _analysisError = null;
+
+    _modelsPresent = true;
+
     for (final item in pending) {
-      if (_disposed) break;
-      final path = await _source.resolvePath(item);
-      if (path == null) {
-        _cache.put(
-          item.cacheKey,
-          (_cache[item.cacheKey] ?? const GalleryCacheEntry())
-              .copyWith(analysed: true),
-        );
-        continue;
-      }
+      if (_disposed || _cancelAnalysis) break;
+      final previous = _cache[item.cacheKey] ?? const GalleryCacheEntry();
+      // ML Kit reads the file; the ONNX path works from the thumbnail the
+      // grid already made, which also means a cloud placeholder — which has
+      // no thumbnail — is skipped rather than downloaded.
       final entry = await _analyser.analyse(
-        path,
-        _cache[item.cacheKey] ?? const GalleryCacheEntry(),
+        previous: previous,
+        cacheKey: item.cacheKey,
+        path: _analyser.usesOnnx ? null : await _source.resolvePath(item),
+        thumbnail:
+            _analyser.usesOnnx ? await thumbnail(item, _analysisPixels) : null,
       );
       _cache.put(item.cacheKey, entry);
       _analysedCount++;
       _smartVersion++;
       if (_analysedCount % 12 == 0) {
         notifyListeners();
+        // Flushed as it goes, not only at the end: a pass over 23 000 photos
+        // takes a while, and closing the app halfway should keep the half
+        // that is done.
+        if (_analysedCount % 240 == 0) {
+          await _cache.flush();
+          await _people.flush();
+        }
         await Future<void>.delayed(Duration.zero);
       }
     }
 
     await _cache.flush();
-    _set(() => _analysing = false);
+    await _people.flush();
+    _set(() {
+      _analysing = false;
+      _cancelAnalysis = false;
+    });
   }
+
+  /// Asks the running pass to stop after the photo it is on.
+  void stopAnalysing() {
+    if (!_analysing) return;
+    _set(() => _cancelAnalysis = true);
+  }
+
+  bool _cancelAnalysis = false;
+  int _analysisTotal = 0;
+
+  /// How many this pass set out to do, for the "N of M" line.
+  int get analysisTotal => _analysisTotal;
+
+  /// The thumbnail size handed to the ONNX models. Big enough for the
+  /// classifier's 224² crop and for a face to survive the 320×240 squash,
+  /// small enough that it costs nothing next to the full-size file.
+  static const _analysisPixels = 384;
+
+  /// What the model download is doing, while it is doing it.
+  String? _analysisStatus;
+  double? _analysisProgress;
+  String? _analysisError;
+
+  String? get analysisStatus => _analysisStatus;
+  double? get analysisProgress => _analysisProgress;
+
+  /// Why the last attempt to start the models failed, if it did.
+  String? get analysisError => _analysisError;
+
+  /// Whether this analyser runs the ONNX label/detector path — desktop only.
+  /// Phone builds use ML Kit for that and only fetch the recognition model.
+  bool get usesOnnxAnalysis => _analyser.usesOnnx;
+
+  /// What this platform actually has to fetch. Every platform now downloads
+  /// something — even the phone, which ships ML Kit but not face
+  /// recognition — but desktop downloads far more, so the UI needs to know
+  /// which situation it's in to word the download prompt correctly.
+  List<GalleryModel> get _modelsToFetch => usesOnnxAnalysis
+      ? const [
+          GalleryModelStore.classifier,
+          GalleryModelStore.faceDetector,
+          GalleryModelStore.embedder,
+        ]
+      : const [GalleryModelStore.embedder];
+
+  /// Whether the models still have to be fetched — this platform downloads
+  /// something *and* it isn't all on disk yet. Checked against the
+  /// filesystem rather than remembered, or the card would keep offering to
+  /// download models that were downloaded an hour ago.
+  bool get smartModelsNeedDownload => !_modelsPresent;
+
+  bool _modelsPresent = false;
+
+  /// Re-checks whether this platform's models are on disk. Cheap (a couple
+  /// of `exists` calls) and only run when the answer could have changed.
+  Future<void> refreshModelState() async {
+    try {
+      final present =
+          await GalleryModelStore.instance.readyFor(_modelsToFetch);
+      if (present == _modelsPresent) return;
+      _set(() => _modelsPresent = present);
+    } catch (_) {
+      // Nothing to check the models against (no filesystem access, a fake
+      // source under test). The existing guess is left in place rather than
+      // throwing out of a call nothing awaits — see initialise().
+    }
+  }
+
+  /// Roughly how much that download is.
+  int get smartModelBytes => GalleryModelStore.bytesFor(_modelsToFetch);
 
   /// Bumped whenever something a smart group is built from changes: the
   /// library itself, a new location, a freshly analysed photo.
@@ -247,23 +439,141 @@ class GalleryRepository extends ChangeNotifier {
     return _smartGroups;
   }
 
+  int _memoriesVersion = -1;
+  List<GalleryMemory> _memories = const [];
+
+  /// The library's trips. Needs no model and no Nova plan — only dates,
+  /// which every item has — so it's memoised against [libraryVersion] alone
+  /// rather than [_smartVersion].
+  List<GalleryMemory> memories() {
+    if (_memoriesVersion == _libraryVersion) return _memories;
+    _memories = buildMemories(_items);
+    _memoriesVersion = _libraryVersion;
+    return _memories;
+  }
+
   /// Thumbnails already decoded this session. Scrolling back up a long grid
   /// is the common case, and re-decoding on the way is what makes a gallery
   /// feel slow.
   final Map<String, Uint8List> _thumbnails = {};
   static const _thumbnailLimit = 300;
 
-  Future<Uint8List?> thumbnail(GalleryItem item, int pixels) async {
+  /// Requests already running or queued, so two tiles asking for the same
+  /// picture — a cover and its first grid tile, say — decode it once.
+  final Map<String, Future<Uint8List?>> _inFlight = {};
+
+  /// How many thumbnails may be produced at once.
+  ///
+  /// Every tile asks for its picture the moment it is built, so opening an
+  /// album asks for a whole screenful in the same frame. Unbounded, that was
+  /// the freeze: thirty requests at once.
+  ///
+  /// The right number differs by platform. On the phone each request is a
+  /// cheap call into MediaStore's own thumbnailer, so a few in parallel keep
+  /// the grid filling quickly. On desktop each one spawns an isolate that
+  /// decodes a full-size JPEG — a 12 MP photo is ~50 MB of pixels while it is
+  /// being resized — so two at a time is as much as is worth risking.
+  static final int _maxConcurrentThumbnails =
+      defaultTargetPlatform == TargetPlatform.android ||
+              defaultTargetPlatform == TargetPlatform.iOS
+          ? 4
+          : 2;
+
+  int _decoding = 0;
+
+  /// Requests waiting for a slot. Served newest-first: after a fast scroll
+  /// the tiles that are actually on screen are the ones that asked last, and
+  /// a queue drained in order would spend its time decoding pictures that
+  /// have already scrolled away.
+  final List<Completer<void>> _thumbnailQueue = [];
+
+  /// Whether files can be renamed and re-dated here. Only the desktop
+  /// sources work in real directories.
+  bool get canEditFiles => _source.supportsCustomFolders;
+
+  /// Renames and/or re-dates one file, then folds the result back into the
+  /// library without a rescan — on a 25 000-photo library, re-walking every
+  /// folder to learn one new name would be absurd.
+  Future<GalleryEditResult> editFile(
+    GalleryItem item, {
+    String? newName,
+    DateTime? newTakenAt,
+  }) async {
+    if (!canEditFiles) {
+      return const GalleryEditResult.failure(
+        'Files can only be renamed in the desktop app.',
+      );
+    }
+    final result = await GalleryFileEditor.apply(
+      item,
+      newName: newName,
+      newTakenAt: newTakenAt,
+    );
+    if (!result.ok) return result;
+
+    final updated = result.item!;
+    final index = _items.indexWhere((i) => i.id == item.id);
+    if (index >= 0) _items[index] = updated;
+
+    // Renaming changes the id, and the date is part of the cache key, so
+    // whatever was learned about this file has to move with it.
+    final previous = _cache[item.cacheKey];
+    if (previous != null && updated.cacheKey != item.cacheKey) {
+      _cache.put(updated.cacheKey, previous);
+    }
+
+    _items.sort((a, b) => b.takenAt.compareTo(a.takenAt));
+    _categories = buildCategories(_items);
+    _libraryVersion++;
+    _smartVersion++;
+    _set(() {});
+    unawaited(_cache.flush());
+    return GalleryEditResult.success(updated);
+  }
+
+  Future<Uint8List?> thumbnail(GalleryItem item, int pixels) {
     final key = '${item.cacheKey}|$pixels';
     final cached = _thumbnails[key];
-    if (cached != null) return cached;
-    final bytes = await _source.thumbnail(item, pixels);
-    if (bytes == null || _disposed) return bytes;
-    if (_thumbnails.length >= _thumbnailLimit) {
-      _thumbnails.remove(_thumbnails.keys.first);
+    if (cached != null) return Future.value(cached);
+    final running = _inFlight[key];
+    if (running != null) return running;
+
+    final request = _decodeThumbnail(key, item, pixels);
+    _inFlight[key] = request;
+    return request;
+  }
+
+  Future<Uint8List?> _decodeThumbnail(
+    String key,
+    GalleryItem item,
+    int pixels,
+  ) async {
+    try {
+      if (_decoding >= _maxConcurrentThumbnails) {
+        final slot = Completer<void>();
+        _thumbnailQueue.add(slot);
+        await slot.future;
+      }
+      if (_disposed) return null;
+
+      _decoding++;
+      try {
+        final bytes = await _source.thumbnail(item, pixels);
+        if (bytes == null || _disposed) return bytes;
+        if (_thumbnails.length >= _thumbnailLimit) {
+          _thumbnails.remove(_thumbnails.keys.first);
+        }
+        _thumbnails[key] = bytes;
+        return bytes;
+      } finally {
+        _decoding--;
+        if (_thumbnailQueue.isNotEmpty) {
+          _thumbnailQueue.removeLast().complete();
+        }
+      }
+    } finally {
+      _inFlight.remove(key);
     }
-    _thumbnails[key] = bytes;
-    return bytes;
   }
 
   Future<String?> resolvePath(GalleryItem item) => _source.resolvePath(item);
@@ -309,9 +619,66 @@ class GalleryRepository extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _thumbnails.clear();
-    _analyser.dispose();
+    unawaited(_analyser.dispose());
     _source.dispose();
     unawaited(_cache.flush());
+    unawaited(_people.flush());
     super.dispose();
+  }
+
+  // ------------------------------------------------------------- people
+
+  int _peopleVersion = -1;
+  List<PersonCluster> _peopleCache = const [];
+
+  /// Every person the clustering has found with at least [kMinPersonPhotos]
+  /// photos, busiest first. Memoised against [_smartVersion] the same way
+  /// [smartGroups] is — this is asked for on every rebuild of the People
+  /// screen, and counting each cluster's photos is an O(items) walk.
+  List<PersonCluster> peopleClusters() {
+    if (_peopleVersion == _smartVersion) return _peopleCache;
+    final counted = <int, int>{};
+    for (final item in _items) {
+      for (final id in _cache[item.cacheKey]?.personIds ?? const <int>[]) {
+        counted[id] = (counted[id] ?? 0) + 1;
+      }
+    }
+    _peopleCache = [
+      for (final cluster in _people.clusters)
+        if ((counted[cluster.id] ?? 0) >= kMinPersonPhotos) cluster,
+    ]..sort((a, b) => (counted[b.id] ?? 0).compareTo(counted[a.id] ?? 0));
+    _peopleVersion = _smartVersion;
+    return _peopleCache;
+  }
+
+  /// Every photo a given person appears in, newest first.
+  List<GalleryItem> itemsForPerson(int personId) => _items
+      .where((item) =>
+          (_cache[item.cacheKey]?.personIds ?? const <int>[]).contains(personId))
+      .toList()
+    ..sort((a, b) => b.takenAt.compareTo(a.takenAt));
+
+  /// The photo to show as a person's avatar: whatever was on hand when their
+  /// cluster was created, falling back to their most recent photo if that one
+  /// has since gone missing (deleted, moved out of a synced folder).
+  GalleryItem? coverForPerson(PersonCluster cluster) {
+    final coverKey = cluster.coverKey;
+    if (coverKey != null) {
+      for (final item in _items) {
+        if (item.cacheKey == coverKey) return item;
+      }
+    }
+    final items = itemsForPerson(cluster.id);
+    return items.isEmpty ? null : items.first;
+  }
+
+  /// Gives a person a name. Nothing here is verified against any identity —
+  /// it only labels a cluster of similar-looking faces with whatever the
+  /// user types.
+  Future<void> renamePerson(int id, String name) async {
+    _people.rename(id, name);
+    _peopleVersion = -1;
+    notifyListeners();
+    await _people.flush();
   }
 }

@@ -14,6 +14,7 @@ import '../minecraft_launcher_repository.dart';
 import '../minecraft_launcher_scope.dart';
 import 'create_instance_wizard.dart';
 import 'download_progress_sheet.dart';
+import 'hover_sync_scroll.dart';
 import 'instance_detail_page.dart';
 
 class LibraryTab extends StatelessWidget {
@@ -75,17 +76,19 @@ class LibraryTab extends StatelessWidget {
                     subtitle: 'Create one to install Minecraft and start playing.',
                   );
                 }
-                return GridView.builder(
-                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: 260,
-                    mainAxisExtent: 150,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                  ),
-                  itemCount: instances.length,
-                  itemBuilder: (context, i) => _InstanceCard(
-                    instance: instances[i],
-                    repository: repository,
+                return HoverSyncScroll(
+                  child: GridView.builder(
+                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 260,
+                      mainAxisExtent: 150,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                    ),
+                    itemCount: instances.length,
+                    itemBuilder: (context, i) => _InstanceCard(
+                      instance: instances[i],
+                      repository: repository,
+                    ),
                   ),
                 );
               },

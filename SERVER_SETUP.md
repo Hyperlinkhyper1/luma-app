@@ -167,13 +167,29 @@ curl https://sync.yourdomain.com/health
 On each device, in luma:
 
 1. **Settings → Sync & account → Sign in or create account**
-2. Server address: `https://sync.yourdomain.com`
+2. Server address: `https://sync.yourdomain.com` (under *Self-hosted
+   server*; the app fills in the default one otherwise)
 3. First device: *Create account* tab → email + password. The app says the
    account is waiting for you to approve it (see 6.1). Other devices:
    *Sign in* with the same account — already-approved accounts sign in
    straight away.
 4. Toggle on the features you want synced (they are all **off** by
    default). The storage bar shows usage against the 3 GB quota.
+
+### 6.2 Optional: Continue with Google / GitHub
+
+Fill in `LUMA_GOOGLE_OAUTH_CLIENT_ID`/`_SECRET` or the GitHub pair in `.env`
+(each provider needs the callback URL registered on its side — the exact URLs
+are in `.env.example`) and the sign-in screen grows a **Continue with Google**
+/ **Continue with GitHub** button. Leave them blank and the buttons simply
+don't appear.
+
+The button replaces typing your address, not your passphrase. Because the
+server can never see your encryption key, the app still asks for one
+afterwards: a new passphrase the first time, and the existing one on every
+device after that. Someone who already has an email + password account can
+use the button as soon as the addresses match — the first such sign-in links
+the two, and both ways in keep working.
 
 ### 6.1 Approving an account
 

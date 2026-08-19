@@ -86,12 +86,39 @@ bool isCameraShot(GalleryItem item) {
 
 const _cameraFolderNames = {'camera', 'open camera', 'opencamera'};
 
-/// Builds the tab strip for [items]: the fixed five (minus any that would be
-/// empty) followed by one tab per folder, busiest first.
+/// How many pictures a folder needs before it earns a card of its own.
 ///
-/// Folders whose contents are already a fixed tab in full — the camera roll,
-/// the screenshot folders — are left out; a "Camera" tab next to "Pictures"
-/// and "Videos" showing the same files is noise.
+/// A real library is surrounded by folders holding one stray image — a
+/// download, an extracted archive, an app's working directory. An albums
+/// screen where the first screenful is single-item folders is worse than one
+/// that admits fewer albums: nothing is lost, because everything is still in
+/// All, and still in the folder it came from on disk.
+const minimumAlbumItems = 3;
+
+/// Whether a folder name was written by a program rather than a person:
+/// a GUID, a millisecond timestamp, or a bare hash. Those never make a
+/// meaningful album name, however many pictures happen to be inside.
+bool looksMachineNamed(String label) {
+  final trimmed = label.trim();
+  if (trimmed.isEmpty) return false;
+  // `{0D75C5A9 8574 42CF 9B99 FFD0D2F44FF5}` — a GUID, with the separators
+  // already tidied into spaces by folderLabel.
+  if (RegExp(r'^\{[0-9A-Fa-f \-]{8,}\}$').hasMatch(trimmed)) return true;
+  // `1761572236343` — epoch milliseconds.
+  if (RegExp(r'^\d{8,}$').hasMatch(trimmed)) return true;
+  // A long run of hex with no vowels to break it up: a checksum or an id.
+  if (RegExp(r'^[0-9A-Fa-f]{16,}$').hasMatch(trimmed)) return true;
+  return false;
+}
+
+/// Builds the album list for [items]: the fixed five (minus any that would be
+/// empty) followed by one per folder, busiest first.
+///
+/// Three kinds of folder are left out. Ones whose contents are already a
+/// fixed album in full — the camera roll, the screenshot folders — because a
+/// "Camera" card next to "Pictures" and "Videos" showing the same files is
+/// noise. Ones with fewer than [minimumAlbumItems] pictures. And ones whose
+/// name no person chose (see [looksMachineNamed]).
 List<GalleryCategory> buildCategories(List<GalleryItem> items) {
   final all = _Bucket();
   final pictures = _Bucket();
@@ -166,7 +193,11 @@ List<GalleryCategory> buildCategories(List<GalleryItem> items) {
   ];
 
   final folders = byLabel.entries
-      .where((e) => !e.value.allCaptures && !e.value.allCamera)
+      .where((e) =>
+          !e.value.allCaptures &&
+          !e.value.allCamera &&
+          e.value.count >= minimumAlbumItems &&
+          !looksMachineNamed(e.key))
       .map(
         (e) => GalleryCategory(
           id: '${GalleryCategoryIds.folderPrefix}${e.key}',
@@ -195,9 +226,20 @@ class _Bucket {
   void add(GalleryItem item) {
     count++;
     final current = cover;
-    if (current == null || item.takenAt.isAfter(current.takenAt)) {
+    if (current == null) {
       cover = item;
+      return;
     }
+    // Newest wins, except that a picture we can actually show beats one we
+    // can't: a cloud placeholder has no thumbnail (fetching it would download
+    // the file), so an album full of OneDrive photos would otherwise show a
+    // blank card whenever its newest item happened to be online-only.
+    if (current.cloudOnly && !item.cloudOnly) {
+      cover = item;
+      return;
+    }
+    if (!current.cloudOnly && item.cloudOnly) return;
+    if (item.takenAt.isAfter(current.takenAt)) cover = item;
   }
 }
 

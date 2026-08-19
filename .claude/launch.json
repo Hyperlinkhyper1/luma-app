@@ -30,6 +30,15 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "8091", "--directory", "build/web"],
       "port": 8091
+    },
+    {
+      "name": "transport-tracker",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "-e",
+        "const h=require('http'),f=require('fs'),p=require('path');const d=p.resolve('assets/transport_tracker');const T={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json'};h.createServer((q,s)=>{let u=decodeURIComponent(q.url.split('?')[0]);if(u==='/')u='/index.html';const fp=p.join(d,u);if(!fp.startsWith(d)){s.writeHead(403);return s.end()}f.readFile(fp,(e,b)=>{if(e){s.writeHead(404);return s.end('not found')}s.writeHead(200,{'Content-Type':T[p.extname(fp)]||'application/octet-stream'});s.end(b)})}).listen(8126,()=>console.log('transport-tracker map on 8126'))"
+      ],
+      "port": 8126
     }
   ]
 }

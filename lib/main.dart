@@ -17,6 +17,11 @@ import 'features/plugins/installed/auto_clicker/auto_clicker_scope.dart';
 import 'features/plugins/installed/mood_journal/data/mood_journal_database.dart';
 import 'features/plugins/installed/mood_journal/mood_journal_repository.dart';
 import 'features/plugins/installed/mood_journal/mood_journal_scope.dart';
+import 'features/plugins/installed/ai_usage/data/ai_usage_database.dart';
+import 'features/plugins/installed/ai_usage/ai_usage_repository.dart';
+import 'features/plugins/installed/ai_usage/ai_usage_scope.dart';
+import 'features/plugins/installed/ai_usage/leaderboard/ai_catalog_repository.dart';
+import 'features/plugins/installed/ai_usage/leaderboard/ai_catalog_scope.dart';
 import 'features/plugins/installed/data_management/data/data_management_database.dart';
 import 'features/plugins/installed/data_management/data_management_repository.dart';
 import 'features/plugins/installed/server_tycoon/server_tycoon_repository.dart';
@@ -65,6 +70,9 @@ import 'features/plugins/installed/minecraft_launcher/minecraft_launcher_reposit
 import 'features/plugins/installed/minecraft_launcher/minecraft_launcher_scope.dart';
 import 'features/plugins/installed/gallery/gallery_repository.dart';
 import 'features/plugins/installed/gallery/gallery_scope.dart';
+import 'features/plugins/installed/sftp/share/device_share_repository.dart';
+import 'features/plugins/installed/sftp/share/device_share_scope.dart';
+import 'features/plugins/installed/sftp/share/shared_folder.dart';
 import 'features/plugins/plugin_catalog_service.dart';
 import 'features/plugins/plugin_repository.dart';
 import 'features/plugins/plugin_scope.dart';
@@ -142,6 +150,10 @@ class _LumaAppState extends State<LumaApp> {
   late final ServerTycoonRepository _serverTycoonRepository = ServerTycoonRepository();
   late final MoodJournalDatabase _moodJournalDb = MoodJournalDatabase();
   late final MoodJournalRepository _moodJournalRepository = MoodJournalRepository(_moodJournalDb);
+  late final AiUsageDatabase _aiUsageDb = AiUsageDatabase();
+  late final AiUsageRepository _aiUsageRepository = AiUsageRepository(_aiUsageDb);
+  late final AiCatalogRepository _aiCatalogRepository =
+      AiCatalogRepository(_sync);
   late final SchoolDatabase _schoolDb = SchoolDatabase();
   late final SchoolRepository _schoolRepository = SchoolRepository(_schoolDb);
   late final AutoClickerRepository _autoClickerRepository =
@@ -252,6 +264,9 @@ class _LumaAppState extends State<LumaApp> {
       icon: Icons.mood_rounded,
       db: _moodJournalDb,
     ),
+    // AI Usage's database is a derived, re-scannable cache of the user's own
+    // local Claude Code logs — deliberately excluded from sync; it can be
+    // rebuilt any time by rescanning and may grow large.
     DriftSyncCollection(
       id: 'school',
       label: 'School',
@@ -299,6 +314,43 @@ class _LumaAppState extends State<LumaApp> {
   // Optional peer-to-peer (Wi-Fi/LAN) sync between same-account devices.
   late final PeerSyncController _peerSync = PeerSyncController(sync: _sync);
 
+  // The SFTP plugin's shared folder, mirrored device-to-device over the same
+  // LAN links. Lives here rather than in the plugin page so files keep
+  // arriving while the user is elsewhere in the app. Nova-only, and null
+  // until it has been built.
+  DeviceShareRepository? _deviceShare;
+  bool _startingDeviceShare = false;
+
+  Future<void> _syncDeviceShareWithPlan() async {
+    final isNova = planById(widget.settings.selectedPlanId).id == 'nova';
+    if (!isNova) {
+      final existing = _deviceShare;
+      if (existing == null) return;
+      _peerSync.detachShareDelegate(existing);
+      setState(() => _deviceShare = null);
+      existing.dispose();
+      return;
+    }
+    if (_deviceShare != null || _startingDeviceShare) return;
+    _startingDeviceShare = true;
+    try {
+      final folder = await SharedFolder.open();
+      final repository = DeviceShareRepository(folder);
+      await repository.start();
+      if (!mounted) {
+        repository.dispose();
+        return;
+      }
+      _peerSync.attachShareDelegate(repository);
+      setState(() => _deviceShare = repository);
+    } catch (_) {
+      // No shared folder on this device (sandboxed storage, read-only
+      // support dir). The plugin shows its "not available" state.
+    } finally {
+      _startingDeviceShare = false;
+    }
+  }
+
   // The real startup work the splash covers: catch up any recurring entries /
   // allocations that came due while closed. Errors are swallowed so a storage
   // hiccup never blocks (or hangs) startup.
@@ -319,6 +371,7 @@ class _LumaAppState extends State<LumaApp> {
     _storageGuard.refresh();
     _sync.init();
     _peerSync.init();
+    unawaited(_syncDeviceShareWithPlan());
     _familyRepository.init();
     unawaited(_passwordRepository.migrateLegacyCiphertexts());
     _secureChatRepository.init();
@@ -334,6 +387,7 @@ class _LumaAppState extends State<LumaApp> {
   void dispose() {
     _lifecycleListener?.dispose();
     widget.settings.removeListener(_onSettingsChanged);
+    _deviceShare?.dispose();
     _peerSync.dispose();
     _cloudFiles.dispose();
     _familyRepository.dispose();
@@ -351,6 +405,7 @@ class _LumaAppState extends State<LumaApp> {
     _calendarDb.close();
     _dataManagementDb.close();
     _moodJournalDb.close();
+    _aiUsageDb.close();
     _schoolDb.close();
     _minecraftDb.close();
     _serverTycoonRepository.dispose();
@@ -389,6 +444,9 @@ class _LumaAppState extends State<LumaApp> {
   void _onSettingsChanged() {
     final before = _storageGuard.limitBytes;
     _applyPlanLimit();
+    // The shared folder is Nova-only, so an upgrade has to start the mirror
+    // and a downgrade has to stop it.
+    unawaited(_syncDeviceShareWithPlan());
     if (_storageGuard.limitBytes != before) {
       // A downgrade may have pushed existing usage over the new (smaller) cap;
       // re-scan so the banner / write-blocking reflects it right away.
@@ -404,6 +462,8 @@ class _LumaAppState extends State<LumaApp> {
       service: _sync,
       child: PeerSyncScope(
       controller: _peerSync,
+      child: DeviceShareScope(
+      repository: _deviceShare,
       child: CloudFilesScope(
       controller: _cloudFiles,
       child: FamilyScope(
@@ -438,6 +498,10 @@ class _LumaAppState extends State<LumaApp> {
                       repository: _serverTycoonRepository,
                       child: MoodJournalScope(
                       repository: _moodJournalRepository,
+                      child: AiCatalogScope(
+                      repository: _aiCatalogRepository,
+                      child: AiUsageScope(
+                      repository: _aiUsageRepository,
                       child: SchoolScope(
                       repository: _schoolRepository,
                       child: AutoClickerScope(
@@ -463,9 +527,10 @@ class _LumaAppState extends State<LumaApp> {
                         return MaterialApp(
                           title: 'luma',
                           debugShowCheckedModeBanner: false,
-                          theme: LumaTheme.from(Brightness.light, s.accentSeed),
-                          darkTheme:
-                              LumaTheme.from(Brightness.dark, s.accentSeed),
+                          theme: LumaTheme.from(
+                              Brightness.light, s.accentSeed, s.themeStyle),
+                          darkTheme: LumaTheme.from(
+                              Brightness.dark, s.accentSeed, s.themeStyle),
                           themeMode: s.themeMode,
                           locale: localeForLanguage(s.appLanguage),
                           supportedLocales: L.supportedLocales,
@@ -476,9 +541,16 @@ class _LumaAppState extends State<LumaApp> {
                             GlobalCupertinoLocalizations.delegate,
                           ],
                           home: _BootGate(
-                              bootstrap: _bootstrap, accentSeed: s.accentSeed),
+                            bootstrap: _bootstrap,
+                            accent: LumaTheme.accentFor(
+                              Brightness.dark,
+                              s.accentSeed,
+                              s.themeStyle,
+                            ),
+                          ),
                         );
                       },
+                    ),
                     ),
                     ),
                     ),
@@ -508,6 +580,8 @@ class _LumaAppState extends State<LumaApp> {
       ),
       ),
       ),
+      ),
+      ),
     );
   }
 }
@@ -516,10 +590,13 @@ class _LumaAppState extends State<LumaApp> {
 /// the splash animation and the startup [bootstrap] work have finished, then
 /// crossfades the splash away to reveal the warm app.
 class _BootGate extends StatefulWidget {
-  const _BootGate({required this.bootstrap, this.accentSeed});
+  const _BootGate({required this.bootstrap, required this.accent});
 
   final Future<void> bootstrap;
-  final Color? accentSeed;
+
+  /// Already resolved for the active style — the splash paints its moon and
+  /// progress fill with it (see [LumaTheme.accentFor]).
+  final Color accent;
 
   @override
   State<_BootGate> createState() => _BootGateState();
@@ -536,7 +613,7 @@ class _BootGateState extends State<_BootGate> {
         if (_showSplash)
           SplashScreen(
             bootstrap: widget.bootstrap,
-            accent: widget.accentSeed ?? const Color(0xFFB49DF5),
+            accent: widget.accent,
             version: AppVersion.isReleaseBuild
                 ? 'v${AppVersion.current}'
                 : 'Dev build',

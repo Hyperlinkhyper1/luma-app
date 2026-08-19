@@ -26,7 +26,8 @@
         android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
 
-    <!-- Read loyalty/membership NFC tags in the Card Wallet plugin. Marked
+    <!-- Read loyalty/membership NFC tags in the Card Wallet plugin, and
+         read/write/format/lock tags in the NFC Tag Editor plugin. Marked
          not-required so the app still installs on devices without NFC. -->
     <uses-permission android:name="android.permission.NFC" />
     <uses-feature android:name="android.hardware.nfc" android:required="false" />

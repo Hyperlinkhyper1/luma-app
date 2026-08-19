@@ -39,7 +39,16 @@ class _PictureConverterViewState extends State<PictureConverterView> {
   Future<void> _pickFile() async {
     final result = await FilePicker.pickFiles(
       type: FileType.custom,
-      allowedExtensions: const ['png', 'jpg', 'jpeg', 'bmp', 'tif', 'tiff', 'svg'],
+      allowedExtensions: const [
+        'png',
+        'jpg',
+        'jpeg',
+        'bmp',
+        'tif',
+        'tiff',
+        'svg',
+        'oip',
+      ],
       withData: true,
     );
     if (result == null || result.files.isEmpty) return;
@@ -58,7 +67,7 @@ class _PictureConverterViewState extends State<PictureConverterView> {
       _source = source;
       _result = null;
       _error = source == null
-          ? 'That file is not a supported image (PNG, JPG, BMP, TIFF or SVG).'
+          ? 'That file is not a supported image (PNG, JPG, BMP, TIFF, SVG or OIP).'
           : null;
       // Default the target to something different from the source.
       _target =
@@ -165,7 +174,7 @@ class _PictureConverterViewState extends State<PictureConverterView> {
     return ToolScaffold(
       icon: Icons.image_outlined,
       title: 'Picture converter',
-      subtitle: 'Convert between PNG, JPG, BMP, TIFF and SVG',
+      subtitle: 'Convert between PNG, JPG, BMP, TIFF, SVG and OIP',
       onBack: widget.onBack,
       children: [
         if (_bytes == null)
@@ -173,7 +182,7 @@ class _PictureConverterViewState extends State<PictureConverterView> {
             onTap: _pickFile,
             icon: Icons.add_photo_alternate_outlined,
             title: 'Click to choose an image',
-            subtitle: 'PNG · JPG · BMP · TIFF · SVG',
+            subtitle: 'PNG · JPG · BMP · TIFF · SVG · OIP',
           )
         else
           ConverterFileCard(
