@@ -49,6 +49,18 @@ Future<AiRefreshStatus> refreshAiCatalog(
       added.addAll(await store.upsertModels(openRouter.models));
     }
 
+    // Fetching already only keeps the allowed vendors, but that alone can't
+    // remove anything a catalogue built before the allowlist existed is
+    // still carrying — so every refresh also actively prunes down to it.
+    final removedVendors = await store.pruneVendorsNotIn(kAllowedVendors);
+    if (removedVendors.isNotEmpty) {
+      results.add(AiRefreshSourceResult(
+        source: 'vendor-filter',
+        ok: true,
+        applied: removedVendors.length,
+      ));
+    }
+
     if (artificialAnalysisKey != null && artificialAnalysisKey.isNotEmpty) {
       final aa = await client.fetchArtificialAnalysis(
           artificialAnalysisKey, store.models);

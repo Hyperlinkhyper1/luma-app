@@ -329,6 +329,7 @@ class AiNewsItem {
     required this.source,
     required this.publishedAtMs,
     this.summary,
+    this.imageUrl,
   });
 
   /// Stable hash of the item's link, so re-polling a feed doesn't duplicate.
@@ -341,6 +342,11 @@ class AiNewsItem {
   final int publishedAtMs;
   final String? summary;
 
+  /// A lead image pulled from the feed entry, or null — most of the feeds
+  /// this catalogue polls carry no image at all, so this is the exception,
+  /// not the rule; the app renders a real fallback for the null case.
+  final String? imageUrl;
+
   factory AiNewsItem.fromJson(Map<String, dynamic> j) => AiNewsItem(
         id: j['id'] as String,
         title: j['title'] as String,
@@ -348,6 +354,7 @@ class AiNewsItem {
         source: j['source'] as String,
         publishedAtMs: (j['publishedAtMs'] as num?)?.toInt() ?? 0,
         summary: j['summary'] as String?,
+        imageUrl: j['imageUrl'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -357,6 +364,7 @@ class AiNewsItem {
         'source': source,
         'publishedAtMs': publishedAtMs,
         if (summary != null) 'summary': summary,
+        if (imageUrl != null) 'imageUrl': imageUrl,
       };
 }
 
@@ -532,6 +540,27 @@ class AiModelCatalogStore {
         _refreshedAtMs = DateTime.now().millisecondsSinceEpoch;
         await _persist();
         return added;
+      });
+
+  /// Removes every stored model whose vendor isn't in [allowed].
+  ///
+  /// [upsertModels] alone can't shrink the roster the leaderboard covers —
+  /// it's deliberately additive so an upstream hiccup mid-refresh never
+  /// wipes models out — so narrowing the vendor list is a real, permanent
+  /// deletion, not something the ordinary refresh path can do on its own.
+  /// Returns the ids removed, for the admin dashboard's refresh log.
+  Future<List<String>> pruneVendorsNotIn(Set<String> allowed) =>
+      _lock.synchronized(() async {
+        final removed = [
+          for (final m in _models.values)
+            if (!allowed.contains(m.vendor)) m.id,
+        ];
+        if (removed.isEmpty) return removed;
+        for (final id in removed) {
+          _models.remove(id);
+        }
+        await _persist();
+        return removed;
       });
 
   Future<void> upsertNews(Iterable<AiNewsItem> items) =>

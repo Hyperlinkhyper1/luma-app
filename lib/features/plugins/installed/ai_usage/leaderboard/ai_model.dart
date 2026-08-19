@@ -208,6 +208,7 @@ class AiNewsItem {
     required this.source,
     required this.publishedAt,
     this.summary,
+    this.imageUrl,
   });
 
   final String id;
@@ -216,6 +217,11 @@ class AiNewsItem {
   final String source;
   final DateTime? publishedAt;
   final String? summary;
+
+  /// A lead image for the article, or null — most feeds carry none, so the
+  /// card always needs a real design for the no-image case, not just an
+  /// occasional one.
+  final String? imageUrl;
 
   factory AiNewsItem.fromJson(Map<String, dynamic> j) {
     final ms = (j['publishedAtMs'] as num?)?.toInt();
@@ -228,6 +234,7 @@ class AiNewsItem {
           ? null
           : DateTime.fromMillisecondsSinceEpoch(ms),
       summary: j['summary'] as String?,
+      imageUrl: j['imageUrl'] as String?,
     );
   }
 }

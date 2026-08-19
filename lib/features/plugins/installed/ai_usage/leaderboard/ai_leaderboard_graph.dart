@@ -7,18 +7,9 @@ import '../../../../../app/widgets.dart';
 import '../../../../../theme/luma_theme.dart';
 import 'ai_catalog_scope.dart';
 import 'ai_leaderboard_metric.dart';
+import 'ai_leaderboard_sort.dart' show vendorsOf;
 import 'ai_model.dart';
-
-const List<Color> _kVendorPalette = [
-  Color(0xFFC4B5FD),
-  Color(0xFF6EE7B7),
-  Color(0xFFFCA5A5),
-  Color(0xFFFDE68A),
-  Color(0xFF93C5FD),
-  Color(0xFFD8B4FE),
-  Color(0xFFFDBA74),
-  Color(0xFF67E8F9),
-];
+import 'ai_vendor_style.dart';
 
 /// The Leaderboard's **Graph** view: any two metrics plotted against each
 /// other, with picked models highlighted.
@@ -197,6 +188,33 @@ class _AxisControls extends StatelessWidget {
             const SizedBox(height: 6),
             _LogToggle(value: logY, onChanged: onLogY),
           ],
+          const SizedBox(height: 22),
+          Text('VENDORS', style: _labelStyle(luma)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 10,
+            runSpacing: 6,
+            children: [
+              for (final vendor in vendorsOf(models))
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 9,
+                      height: 9,
+                      decoration: BoxDecoration(
+                        color: vendorColor(vendor.key),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(vendor.name,
+                        style:
+                            TextStyle(color: luma.textSecondary, fontSize: 11.5)),
+                  ],
+                ),
+            ],
+          ),
           const SizedBox(height: 22),
           Text('HIGHLIGHT MODELS', style: _labelStyle(luma)),
           const SizedBox(height: 4),
@@ -377,13 +395,6 @@ class _Scatter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final vendorColor = <String, Color>{};
-    var nextColor = 0;
-    Color colorFor(String vendor) => vendorColor.putIfAbsent(vendor, () {
-          final c = _kVendorPalette[nextColor % _kVendorPalette.length];
-          nextColor++;
-          return c;
-        });
 
     final anyHighlighted = highlighted.isNotEmpty;
     final spots = [
@@ -393,11 +404,11 @@ class _Scatter extends StatelessWidget {
           _scale(p.y, logY),
           show: true,
           dotPainter: FlDotCirclePainter(
-            radius: highlighted.contains(p.model.id) ? 8 : 4.5,
+            radius: highlighted.contains(p.model.id) ? 9 : 5.5,
             color: highlighted.contains(p.model.id)
                 ? luma.accent
-                : colorFor(p.model.vendor).withValues(
-                    alpha: anyHighlighted ? 0.35 : 0.85),
+                : vendorColor(p.model.vendor)
+                    .withValues(alpha: anyHighlighted ? 0.35 : 1),
             strokeWidth: highlighted.contains(p.model.id) ? 2 : 0,
             strokeColor: luma.textPrimary,
           ),
@@ -471,6 +482,10 @@ class _Scatter extends StatelessWidget {
                   ),
                 ),
                 scatterTouchData: ScatterTouchData(
+                  // Dots on a 300+ model chart are necessarily small; without
+                  // this the hoverable area is exactly the visual dot, which
+                  // is smaller than a mouse can reliably land on.
+                  touchSpotThreshold: 12,
                   touchTooltipData: ScatterTouchTooltipData(
                     getTooltipColor: (_) => luma.surfaceHover,
                     getTooltipItems: (spot) {

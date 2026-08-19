@@ -12,6 +12,7 @@ import 'ai_leaderboard_metric.dart';
 import 'ai_model.dart';
 import 'ai_model_detail_page.dart';
 import 'ai_pareto.dart';
+import 'ai_vendor_style.dart';
 
 /// The Leaderboard's **Insights** view: a scrollable page of everything that
 /// doesn't fit a single table or chart — the price/performance frontier,
@@ -290,16 +291,17 @@ class _FrontierChart extends StatelessWidget {
                   sx(p.cost),
                   p.score,
                   dotPainter: FlDotCirclePainter(
-                    radius: frontierIds.contains(p.model.id) ? 7 : 4,
+                    radius: frontierIds.contains(p.model.id) ? 8 : 5,
                     color: frontierIds.contains(p.model.id)
                         ? luma.success
-                        : luma.textMuted.withValues(alpha: 0.5),
+                        : luma.textMuted.withValues(alpha: 0.6),
                     strokeWidth: frontierIds.contains(p.model.id) ? 1.5 : 0,
                     strokeColor: luma.background,
                   ),
                 ),
             ],
             scatterTouchData: ScatterTouchData(
+              touchSpotThreshold: 12,
               touchTooltipData: ScatterTouchTooltipData(
                 getTooltipColor: (_) => luma.surfaceHover,
                 getTooltipItems: (spot) {
@@ -435,6 +437,8 @@ class _TaskCard extends StatelessWidget {
 
 // ─── News ───────────────────────────────────────────────────────────────────
 
+/// A responsive card grid, wide cards on a wide window and a single column
+/// on a narrow one — the same breakpoint math as [_BestByTask].
 class _NewsList extends StatelessWidget {
   const _NewsList({required this.items});
 
@@ -442,44 +446,71 @@ class _NewsList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        for (final item in items.take(10)) _NewsRow(item: item),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 920
+            ? 3
+            : constraints.maxWidth >= 560
+                ? 2
+                : 1;
+        final width = (constraints.maxWidth - (columns - 1) * 14) / columns;
+        return Wrap(
+          spacing: 14,
+          runSpacing: 14,
+          children: [
+            for (final item in items.take(9))
+              SizedBox(width: width, child: _NewsCard(item: item)),
+          ],
+        );
+      },
     );
   }
 }
 
-class _NewsRow extends StatelessWidget {
-  const _NewsRow({required this.item});
+class _NewsCard extends StatelessWidget {
+  const _NewsCard({required this.item});
 
   final AiNewsItem item;
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: LumaCard(
-        padding: const EdgeInsets.all(14),
+    final badgeColor = newsSourceColor(item.source);
+    return LumaCard(
+      padding: EdgeInsets.zero,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(context.lumaDecor.cardRadius),
         child: InkWell(
-          onTap: () => launchUrl(Uri.parse(item.url),
-              mode: LaunchMode.externalApplication),
-          child: Row(
+          onTap: () =>
+              launchUrl(Uri.parse(item.url), mode: LaunchMode.externalApplication),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(
+              AspectRatio(
+                aspectRatio: 16 / 9,
+                child: _NewsBanner(item: item, badgeColor: badgeColor),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Row(
                       children: [
-                        Text(item.source,
+                        Flexible(
+                          child: Text(
+                            item.source,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                                color: luma.accent,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600)),
+                              color: badgeColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
                         if (item.publishedAt != null) ...[
                           const SizedBox(width: 6),
                           Text('· ${relativeDay(item.publishedAt!)}',
@@ -488,34 +519,101 @@ class _NewsRow extends StatelessWidget {
                         ],
                       ],
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 5),
                     Text(
                       item.title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                           color: luma.textPrimary,
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w600),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          height: 1.3),
                     ),
                     if (item.summary != null) ...[
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 5),
                       Text(
-                        item.summary!,
+                        _firstSentence(item.summary!),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: luma.textMuted, fontSize: 12),
+                        style: TextStyle(
+                            color: luma.textMuted, fontSize: 12.5, height: 1.4),
                       ),
                     ],
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              Icon(Icons.open_in_new_rounded, size: 15, color: luma.textMuted),
             ],
           ),
         ),
       ),
     );
   }
+}
+
+/// The card's top banner: the article's own lead image when the feed
+/// supplied one, or — since most of the feeds here never do — a tinted
+/// gradient in the source's colour with its badge, so a missing photo never
+/// reads as a broken one.
+class _NewsBanner extends StatelessWidget {
+  const _NewsBanner({required this.item, required this.badgeColor});
+
+  final AiNewsItem item;
+  final Color badgeColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final placeholder = Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            badgeColor.withValues(alpha: 0.28),
+            luma.surface,
+          ],
+        ),
+      ),
+      alignment: Alignment.center,
+      child: VendorBadge(
+        vendor: kNewsSourceVendor[item.source] ?? item.source,
+        vendorName: item.source,
+        size: 44,
+      ),
+    );
+
+    if (item.imageUrl == null) return placeholder;
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.network(
+          item.imageUrl!,
+          fit: BoxFit.cover,
+          loadingBuilder: (context, child, progress) =>
+              progress == null ? child : placeholder,
+          errorBuilder: (context, error, stack) => placeholder,
+        ),
+        // The badge still shows over a real photo — it's what identifies the
+        // source at a glance, not just decoration for the empty case.
+        Positioned(
+          left: 10,
+          bottom: 10,
+          child: VendorBadge(
+            vendor: kNewsSourceVendor[item.source] ?? item.source,
+            vendorName: item.source,
+            size: 32,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The excerpt shown under the title: just the opening sentence rather than
+/// a mid-sentence cut wherever the 2-line clamp happens to land.
+String _firstSentence(String text) {
+  final match = RegExp(r'^.*?[.!?](?=\s|$)').firstMatch(text);
+  return match == null ? text : match.group(0)!;
 }

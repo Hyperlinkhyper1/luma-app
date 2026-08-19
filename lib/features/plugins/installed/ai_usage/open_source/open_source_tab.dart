@@ -5,6 +5,7 @@ import '../../../../../theme/luma_theme.dart';
 import '../leaderboard/ai_catalog_scope.dart';
 import '../leaderboard/ai_leaderboard_format.dart';
 import '../leaderboard/ai_model.dart';
+import '../leaderboard/ai_vendor_style.dart';
 import 'vram_estimate.dart';
 
 /// The plugin's **Open Source** section: pick an open-weight model and see
@@ -170,28 +171,37 @@ class _Controls extends StatelessWidget {
         children: [
           _Field(
             label: 'Model',
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<AiModel>(
-                value: model,
-                isExpanded: true,
-                dropdownColor: luma.surface,
-                style: TextStyle(color: luma.textPrimary, fontSize: 13),
-                items: [
-                  for (final m in models)
-                    DropdownMenuItem(
-                      value: m,
-                      child: Text(
-                        '${m.name} · ${m.parametersB!.toStringAsFixed(
-                          m.parametersB! >= 100 ? 0 : 1,
-                        )}B',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                ],
-                onChanged: (m) {
-                  if (m != null) onModel(m);
-                },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              decoration: BoxDecoration(
+                color: luma.background,
+                border: Border.all(color: luma.border),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<AiModel>(
+                  value: model,
+                  isExpanded: true,
+                  dropdownColor: luma.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  itemHeight: 56,
+                  icon: Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: Icon(Icons.expand_more_rounded,
+                        color: luma.textMuted),
+                  ),
+                  selectedItemBuilder: (context) => [
+                    for (final m in models)
+                      _ModelOptionRow(model: m, compact: true),
+                  ],
+                  items: [
+                    for (final m in models)
+                      DropdownMenuItem(value: m, child: _ModelOptionRow(model: m)),
+                  ],
+                  onChanged: (m) {
+                    if (m != null) onModel(m);
+                  },
+                ),
               ),
             ),
           ),
@@ -200,12 +210,12 @@ class _Controls extends StatelessWidget {
             label: 'Quantization',
             help: quantization.blurb,
             child: Wrap(
-              spacing: 6,
-              runSpacing: 6,
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 for (final q in Quantization.values)
-                  _Chip(
-                    label: q.label,
+                  _QuantizationChip(
+                    quantization: q,
                     selected: q == quantization,
                     onTap: () => onQuantization(q),
                   ),
@@ -236,6 +246,154 @@ class _Controls extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// One row in the model picker: a vendor badge, the name, and — in the full
+/// (dropdown-open) form — the parameter count and rating, so choosing a
+/// model doesn't mean reading plain text against plain text.
+class _ModelOptionRow extends StatelessWidget {
+  const _ModelOptionRow({required this.model, this.compact = false});
+
+  final AiModel model;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Row(
+      children: [
+        VendorBadge(
+          vendor: model.vendor,
+          vendorName: model.vendorName,
+          size: compact ? 22 : 28,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                model.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: luma.textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (!compact)
+                Text(
+                  '${model.vendorName} · ${_paramLabel(model.parametersB!)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: luma.textMuted, fontSize: 11.5),
+                ),
+            ],
+          ),
+        ),
+        if (!compact && model.llmStatsIndex != null) ...[
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            decoration: BoxDecoration(
+              color: luma.accentSubtle,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              model.llmStatsIndex!.toStringAsFixed(1),
+              style: TextStyle(
+                color: luma.textPrimary,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+String _paramLabel(double parametersB) =>
+    '${parametersB.toStringAsFixed(parametersB >= 100 ? 0 : 1)}B';
+
+/// A quantization option, styled as a card rather than a bare label: the
+/// filled bar is a direct visual read of "how much of the original
+/// precision survives" — denser fill, closer to lossless.
+class _QuantizationChip extends StatelessWidget {
+  const _QuantizationChip({
+    required this.quantization,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final Quantization quantization;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final fill = (quantization.bitsPerWeight / 16).clamp(0.0, 1.0);
+    return Tooltip(
+      message: quantization.blurb,
+      child: Material(
+        color: selected ? luma.accentSubtle : luma.background,
+        borderRadius: BorderRadius.circular(10),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            width: 92,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+            decoration: BoxDecoration(
+              border: Border.all(color: selected ? luma.accent : luma.border),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  quantization.label,
+                  style: TextStyle(
+                    color: selected ? luma.textPrimary : luma.textSecondary,
+                    fontSize: 12.5,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(3),
+                  child: SizedBox(
+                    height: 5,
+                    child: Stack(
+                      children: [
+                        ColoredBox(color: luma.border),
+                        FractionallySizedBox(
+                          widthFactor: fill,
+                          child: ColoredBox(
+                            color: selected ? luma.accent : luma.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  '${quantization.bitsPerWeight.toStringAsFixed(1)} bit',
+                  style: TextStyle(color: luma.textMuted, fontSize: 10.5),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

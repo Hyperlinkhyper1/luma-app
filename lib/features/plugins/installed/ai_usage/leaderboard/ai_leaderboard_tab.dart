@@ -45,12 +45,16 @@ class _AiLeaderboardTabState extends State<AiLeaderboardTab> {
                       setState(() => _view = _LeaderboardView.values[i]),
                 ),
               ),
-              const Spacer(),
-              LumaGhostButton(
-                label: 'Compare',
-                icon: Icons.compare_arrows_rounded,
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const AiComparePage()),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: LumaGhostButton(
+                    label: 'Compare',
+                    icon: Icons.compare_arrows_rounded,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const AiComparePage()),
+                    ),
+                  ),
                 ),
               ),
             ],

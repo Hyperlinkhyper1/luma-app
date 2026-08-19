@@ -279,5 +279,6 @@ class AiCatalogRepository extends ChangeNotifier {
         'source': n.source,
         'publishedAtMs': n.publishedAt?.millisecondsSinceEpoch ?? 0,
         if (n.summary != null) 'summary': n.summary,
+        if (n.imageUrl != null) 'imageUrl': n.imageUrl,
       };
 }
