@@ -349,6 +349,7 @@ class Api {
       ..post('/admin/website/upload', _requireAdmin(_adminWebsiteUpload))
       ..get('/admin/website/new-devlog', _requireAdmin(_adminNewDevlogForm))
       ..post('/admin/website/new-devlog', _requireAdmin(_adminNewDevlogCreate))
+      ..post('/admin/website/<page|.*>/delete', _requireAdmin(_adminWebsiteDelete))
       ..get('/admin/website/<page|.*>', _requireAdmin(_adminWebsiteEditor))
       ..post('/admin/website/<page|.*>', _requireAdmin(_adminWebsiteSave));
 
@@ -3239,7 +3240,7 @@ class Api {
           '<h2><span>$name</span><span class="count-pill">${entry.value.length}</span></h2>'
           '$newDevlogBtn'
           '</div>'
-          '<div class="tree" role="tree">${_renderWikiTree(tree.children)}</div>'
+          '<div class="tree" role="tree">${_renderWikiTree(tree.children, collection: collection)}</div>'
           '$newPageHint'
           '</div>';
     }).join();
@@ -3285,7 +3286,8 @@ class Api {
   /// screen-reader accessible with zero extra JS). A childless node is
   /// either a real page (only created while walking toward one) or a
   /// "phantom" — a page some other page links to that doesn't exist yet.
-  String _renderWikiTree(Map<String, _WikiTreeNode> nodes, {int depth = 0}) {
+  String _renderWikiTree(Map<String, _WikiTreeNode> nodes,
+      {int depth = 0, required String collection}) {
     final keys = nodes.keys.toList()..sort();
     final buf = StringBuffer();
     for (final key in keys) {
@@ -3303,14 +3305,23 @@ class Api {
             '<span class="tree-label">$label</span></summary>'
             '<div class="tree-children">'
             '$selfRow'
-            '${_renderWikiTree(node.children, depth: depth + 1)}'
+            '${_renderWikiTree(node.children, depth: depth + 1, collection: collection)}'
             '</div></details>');
       } else if (isPhantom) {
         buf.write(_phantomRow(label, node.phantomPath!));
       } else {
+        final deleteBtn = collection == 'blog'
+            ? '<form class="tree-delete-form" method="post" '
+                'action="/admin/website/${_htmlEscape(node.pagePath!)}/delete" '
+                'onsubmit="return confirm(\'Delete this devlog post? This '
+                'cannot be undone.\')">'
+                '<button class="tree-delete" type="submit">Delete</button>'
+                '</form>'
+            : '';
         buf.write('<div class="tree-row tree-leaf">'
             '<a href="/admin/website/${_htmlEscape(node.pagePath!)}">$label</a>'
             '<a class="tree-edit" href="/admin/website/${_htmlEscape(node.pagePath!)}">Edit</a>'
+            '$deleteBtn'
             '</div>');
       }
     }
@@ -3349,6 +3360,13 @@ color:#8d86a8!important;text-decoration:none!important;padding:4px 10px!importan
 border-radius:999px;border:1px solid #262038;opacity:0;transition:opacity .12s}
 .tree-row:hover .tree-edit,.tree-row:focus-within .tree-edit{opacity:1}
 .tree-edit:hover{border-color:#463d6b;color:#ece8f7!important}
+.tree-delete-form{flex:none;margin:0}
+.tree-delete{flex:none;font:inherit;font-size:11px!important;font-weight:600;
+color:#b08d8d!important;background:none;cursor:pointer;padding:4px 10px!important;
+border-radius:999px;border:1px solid #262038;opacity:0;transition:opacity .12s,
+border-color .12s,color .12s}
+.tree-row:hover .tree-delete,.tree-row:focus-within .tree-delete{opacity:1}
+.tree-delete:hover{border-color:#7a3d3d;color:#e08d8d!important}
 .tree-node{position:relative}
 .tree-node > summary{list-style:none;display:flex;align-items:center;gap:8px;
 min-height:40px;padding:0 10px;border-radius:8px;cursor:pointer;user-select:none;
@@ -3851,6 +3869,27 @@ border-radius:999px;padding:2px 8px}
       return Response.found('/admin/website/$page?saved=1');
     }
     return Response.found('/admin/website/$page?saved=1');
+  }
+
+  Future<Response> _adminWebsiteDelete(Request request) async {
+    final unavailable = _wikiUnavailable();
+    if (unavailable != null) return unavailable;
+    if (!_sameOrigin(request)) {
+      return _error(403, 'bad_origin', 'Cross-origin request rejected.');
+    }
+    var page = _wikiPageOf(request);
+    if (page.endsWith('/delete')) {
+      page = page.substring(0, page.length - '/delete'.length);
+    }
+    final file = _wikiPageFile(page);
+    if (file == null) {
+      return _error(400, 'bad_page', 'Invalid page name.');
+    }
+    if (await file.exists()) {
+      await file.delete();
+    }
+    _requestWikiBuild();
+    return Response.found('/admin/website');
   }
 
   void _requestWikiBuild() {
