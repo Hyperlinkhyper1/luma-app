@@ -179,6 +179,25 @@ void main() {
       // past the edge of the page.
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets('the model column fills a wide pane instead of leaving it blank',
+        (tester) async {
+      tester.view.physicalSize = const Size(2000, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(_wrap(const AiLeaderboardTab()));
+      await tester.pumpAndSettle();
+
+      final modelHeaderBox = tester.widget<SizedBox>(find
+          .ancestor(of: find.text('MODEL'), matching: find.byType(SizedBox))
+          .first);
+      // The column's fixed minimum is 240 — on a 2000px pane it must have
+      // grown well past that rather than the table sitting narrow with a
+      // blank strip of card background to its right.
+      expect(modelHeaderBox.width, greaterThan(600));
+    });
   });
 
   group('open source calculator', () {

@@ -413,47 +413,75 @@ class _LeaderboardTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    return Container(
-      decoration: BoxDecoration(
-        color: luma.surface,
-        border: Border.all(color: luma.border),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Scrollbar(
-        controller: horizontal,
-        thumbVisibility: true,
-        child: SingleChildScrollView(
-          controller: horizontal,
-          scrollDirection: Axis.horizontal,
-          child: SizedBox(
-            width: _tableWidth,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _HeaderRow(
-                    sortBy: sortBy, descending: descending, onSort: onSort),
-                Container(height: 1, color: luma.border),
-                Expanded(
-                  child: Scrollbar(
-                    controller: vertical,
-                    thumbVisibility: true,
-                    child: ListView.builder(
-                      controller: vertical,
-                      // 324 rows today and growing with every model release —
-                      // built lazily so scrolling stays smooth.
-                      itemCount: rows.length,
-                      itemExtent: 52,
-                      itemBuilder: (context, i) =>
-                          _ModelRow(model: rows[i], rank: i + 1),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // The Model column is the one with genuinely variable-length
+        // content, so it's the one that absorbs any slack: on a window
+        // wider than the table's minimum width, it grows to fill the pane
+        // instead of leaving a blank strip of card background past the
+        // License column. On a narrower window it stays at its minimum and
+        // the table scrolls sideways as usual — nothing here changes that.
+        final slack = constraints.maxWidth - _tableWidth;
+        final modelWidth = slack > 0 ? _wModel + slack : _wModel;
+        final contentWidth =
+            slack > 0 ? constraints.maxWidth : _tableWidth;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: luma.surface,
+            border: Border.all(color: luma.border),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Scrollbar(
+            controller: horizontal,
+            // Nothing to scroll once the Model column has absorbed the
+            // slack — a full-width thumb representing 100% coverage would
+            // just be visual noise.
+            thumbVisibility: slack <= 0,
+            child: SingleChildScrollView(
+              controller: horizontal,
+              scrollDirection: Axis.horizontal,
+              physics: slack > 0
+                  ? const NeverScrollableScrollPhysics()
+                  : null,
+              child: SizedBox(
+                width: contentWidth,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _HeaderRow(
+                      sortBy: sortBy,
+                      descending: descending,
+                      onSort: onSort,
+                      modelWidth: modelWidth,
                     ),
-                  ),
+                    Container(height: 1, color: luma.border),
+                    Expanded(
+                      child: Scrollbar(
+                        controller: vertical,
+                        thumbVisibility: true,
+                        child: ListView.builder(
+                          controller: vertical,
+                          // 324 rows today and growing with every model
+                          // release — built lazily so scrolling stays smooth.
+                          itemCount: rows.length,
+                          itemExtent: 52,
+                          itemBuilder: (context, i) => _ModelRow(
+                            model: rows[i],
+                            rank: i + 1,
+                            modelWidth: modelWidth,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -463,11 +491,13 @@ class _HeaderRow extends StatelessWidget {
     required this.sortBy,
     required this.descending,
     required this.onSort,
+    required this.modelWidth,
   });
 
   final AiLeaderboardColumn sortBy;
   final bool descending;
   final ValueChanged<AiLeaderboardColumn> onSort;
+  final double modelWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -485,7 +515,7 @@ class _HeaderRow extends StatelessWidget {
               onSort: onSort),
           _HeaderCell(
               column: AiLeaderboardColumn.name,
-              width: _wModel,
+              width: modelWidth,
               align: TextAlign.left,
               sortBy: sortBy,
               descending: descending,
@@ -608,10 +638,15 @@ class _HeaderCell extends StatelessWidget {
 }
 
 class _ModelRow extends StatelessWidget {
-  const _ModelRow({required this.model, required this.rank});
+  const _ModelRow({
+    required this.model,
+    required this.rank,
+    required this.modelWidth,
+  });
 
   final AiModel model;
   final int rank;
+  final double modelWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -642,7 +677,7 @@ class _ModelRow extends StatelessWidget {
             ),
           ),
           SizedBox(
-            width: _wModel,
+            width: modelWidth,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10),
               child: Column(
