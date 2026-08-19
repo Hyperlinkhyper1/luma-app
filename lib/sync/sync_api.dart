@@ -65,6 +65,7 @@ class RemoteAccount {
     required this.collections,
     this.planId,
     this.status = 'active',
+    this.linkedProviders = const [],
   });
 
   final String email;
@@ -87,6 +88,10 @@ class RemoteAccount {
   /// is older than the planId field and didn't include it.
   final String? planId;
 
+  /// Provider ids ('google', 'github') that can sign in to this account
+  /// besides the password. Empty until the first such sign-in links one.
+  final List<String> linkedProviders;
+
   factory RemoteAccount.fromJson(Map<String, dynamic> j) {
     final collections = <String, RemoteCollectionMeta>{};
     for (final raw in (j['collections'] as List<dynamic>? ?? const [])) {
@@ -99,7 +104,81 @@ class RemoteAccount {
       quotaBytes: j['quotaBytes'] as int? ?? 0,
       planId: j['planId'] as String?,
       status: j['status'] as String? ?? 'active',
+      linkedProviders: (j['linkedProviders'] as List<dynamic>? ?? const [])
+          .whereType<String>()
+          .toList(),
       collections: collections,
+    );
+  }
+}
+
+/// A sign-in provider this server is configured for, as returned by
+/// GET /auth/oauth/providers.
+class OAuthProviderInfo {
+  const OAuthProviderInfo({required this.id, required this.name});
+
+  /// 'google' or 'github'.
+  final String id;
+
+  /// Display name for the button ("Continue with Google").
+  final String name;
+
+  factory OAuthProviderInfo.fromJson(Map<String, dynamic> j) =>
+      OAuthProviderInfo(
+        id: j['id'] as String,
+        name: j['name'] as String? ?? j['id'] as String,
+      );
+}
+
+/// Where a browser sign-in has got to.
+class OAuthPollResult {
+  const OAuthPollResult({
+    required this.status,
+    this.email,
+    this.displayName,
+    this.existingAccount = false,
+    this.kdfSalt,
+    this.kdfIterations,
+    this.message,
+  });
+
+  /// `pending` while the user is still in their browser, `ready` once the
+  /// provider has vouched for [email], `error` when it went wrong or the
+  /// attempt timed out.
+  final String status;
+
+  bool get isPending => status == 'pending';
+  bool get isReady => status == 'ready';
+  bool get isError => status == 'error';
+
+  /// The provider-verified address. Only set once [isReady].
+  final String? email;
+  final String? displayName;
+
+  /// Whether that address already has an account here — which is what
+  /// decides between asking for the existing passphrase and having the user
+  /// choose a new one. True for an account originally made with an email and
+  /// password too: matching addresses is exactly what links the two.
+  final bool existingAccount;
+
+  /// The existing account's KDF parameters, so the passphrase derives the
+  /// same keys it would on a password sign-in. Null for a new account.
+  final Uint8List? kdfSalt;
+  final int? kdfIterations;
+
+  /// Set when [isError]; already user-facing.
+  final String? message;
+
+  factory OAuthPollResult.fromJson(Map<String, dynamic> j) {
+    final salt = j['kdfSalt'] as String?;
+    return OAuthPollResult(
+      status: j['status'] as String? ?? 'pending',
+      email: j['email'] as String?,
+      displayName: j['displayName'] as String?,
+      existingAccount: j['existingAccount'] as bool? ?? false,
+      kdfSalt: salt == null ? null : Uint8List.fromList(base64Decode(salt)),
+      kdfIterations: j['kdfIterations'] as int?,
+      message: j['message'] as String?,
     );
   }
 }
@@ -292,6 +371,77 @@ class SyncApi {
       if (deviceLabel != null) 'deviceLabel': deviceLabel,
     });
     return body['token'] as String;
+  }
+
+  // ---- Sign in with Google / GitHub ---------------------------------------
+
+  /// Which providers this server has credentials for. An older server has no
+  /// such endpoint and a self-hosted one may have configured none, so the
+  /// empty list is the normal answer, not an error — callers hide the
+  /// buttons and carry on with email and password.
+  Future<List<OAuthProviderInfo>> oauthProviders() async {
+    final response = await _client
+        .get(_uri('/auth/oauth/providers'))
+        .timeout(_jsonTimeout);
+    if (response.statusCode == 404) return const [];
+    final body = _decodeOrThrow(response);
+    return (body['providers'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(OAuthProviderInfo.fromJson)
+        .toList();
+  }
+
+  /// Opens a browser sign-in. Returns the provider URL to send the user to
+  /// and the private ticket every later step is keyed by.
+  Future<({String ticket, String authUrl})> oauthStart(
+      String providerId) async {
+    final body = await _postJson('/auth/oauth/start', {'provider': providerId});
+    return (
+      ticket: body['ticket'] as String,
+      authUrl: body['authUrl'] as String,
+    );
+  }
+
+  /// Asks whether the browser half has finished. Keeps returning
+  /// [OAuthPollResult.pending] until the user comes back from the provider.
+  Future<OAuthPollResult> oauthPoll(String ticket) async {
+    final body = await _postJson('/auth/oauth/poll', {'ticket': ticket});
+    return OAuthPollResult.fromJson(body);
+  }
+
+  /// Finishes a browser sign-in with the key derived from the passphrase.
+  ///
+  /// [kdfSalt] and [kdfIterations] are only read when the account is new —
+  /// they become its KDF parameters. For an account that already exists the
+  /// server checks [authKey] against what it has on file, so a wrong
+  /// passphrase fails here exactly as it would on a password sign-in.
+  Future<
+      ({
+        String? token,
+        bool pendingApproval,
+        String? message,
+        String? email
+      })> oauthComplete({
+    required String ticket,
+    required Uint8List authKey,
+    required Uint8List kdfSalt,
+    required int kdfIterations,
+    String? deviceLabel,
+  }) async {
+    final body = await _postJson('/auth/oauth/complete', {
+      'ticket': ticket,
+      'authKey': base64Encode(authKey),
+      'kdfSalt': base64Encode(kdfSalt),
+      'kdfIterations': kdfIterations,
+      if (deviceLabel != null) 'deviceLabel': deviceLabel,
+    });
+    final token = body['token'] as String?;
+    return (
+      token: token,
+      pendingApproval: token == null,
+      email: body['email'] as String?,
+      message: body['message'] as String?,
+    );
   }
 
   /// Asks the server to send the approval (verification) mail again for an

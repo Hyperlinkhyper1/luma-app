@@ -243,52 +243,135 @@ class _GreetingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final decor = context.lumaDecor;
     final t = L.of(context);
+    if (decor.style != LumaDecor.coffee.style) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              luma.accent.withValues(alpha: 0.22),
+              luma.accent.withValues(alpha: 0.06),
+            ],
+          ),
+          border: Border.all(color: luma.accent.withValues(alpha: 0.35)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _greeting(now.hour, t),
+              style: TextStyle(
+                color: luma.textPrimary,
+                fontSize: 26,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _longDate(now, t),
+              style: TextStyle(color: luma.textSecondary, fontSize: 13),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              t.homeNetWorth,
+              style: TextStyle(color: luma.textSecondary, fontSize: 13),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              netWorthLabel,
+              style: TextStyle(
+                color: luma.textPrimary,
+                fontSize: 32,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: decor.cardBorderRadius,
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            luma.accent.withValues(alpha: 0.22),
-            luma.accent.withValues(alpha: 0.06),
+            luma.surfaceHover,
+            Color.lerp(luma.surface, luma.background, 0.22)!,
           ],
         ),
-        border: Border.all(color: luma.accent.withValues(alpha: 0.35)),
+        border: Border.all(
+          color: luma.accent.withValues(alpha: 0.42),
+          width: decor.borderWidth,
+        ),
+        boxShadow: decor.cardShadow,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            _greeting(now.hour, t),
-            style: TextStyle(
-              color: luma.textPrimary,
-              fontSize: 26,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.5,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              width: 5,
+              decoration: BoxDecoration(
+                color: luma.accent,
+                borderRadius: BorderRadius.circular(5),
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            _longDate(now, t),
-            style: TextStyle(color: luma.textSecondary, fontSize: 13),
-          ),
-          const SizedBox(height: 20),
-          Text(t.homeNetWorth,
-              style: TextStyle(color: luma.textSecondary, fontSize: 13)),
-          const SizedBox(height: 4),
-          Text(
-            netWorthLabel,
-            style: TextStyle(
-              color: luma.textPrimary,
-              fontSize: 32,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.5,
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _greeting(now.hour, t),
+                    style: decor.applyDisplayFont(
+                      TextStyle(
+                        color: luma.textPrimary,
+                        fontSize: 27,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.6,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _longDate(now, t),
+                    style: TextStyle(color: luma.textSecondary, fontSize: 13),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    t.homeNetWorth,
+                    style: TextStyle(
+                      color: luma.textSecondary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    netWorthLabel,
+                    style: decor.applyDisplayFont(
+                      TextStyle(
+                        color: luma.textPrimary,
+                        fontSize: 32,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -366,6 +449,7 @@ class _QuickActionState extends State<_QuickAction> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final decor = context.lumaDecor;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovering = true),
@@ -377,10 +461,12 @@ class _QuickActionState extends State<_QuickAction> {
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             color: _hovering ? luma.surfaceHover : luma.surface,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: decor.cardBorderRadius,
             border: Border.all(
               color: _hovering ? luma.accent : luma.border,
+              width: decor.borderWidth,
             ),
+            boxShadow: decor.cardShadow,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

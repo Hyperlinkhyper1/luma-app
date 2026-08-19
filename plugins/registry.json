@@ -122,14 +122,24 @@
       "version": "1.0.0"
     },
     {
+      "id": "ai-usage",
+      "name": "AI Usage",
+      "description": "Three tools in one. Usage: a private dashboard for your Claude Code, Codex CLI, and Antigravity spend — token counts and cost estimates by day and model, read entirely from your local session logs, and never sent anywhere. Leaderboard: every major model ranked on reasoning, coding and agent ratings, with context windows, prices and licences side by side. Open Source: work out which downloadable models your own hardware can actually run.",
+      "icon": "query_stats",
+      "category": "Productivity",
+      "tags": ["Productivity", "Analytics", "AI"],
+      "free": true,
+      "version": "1.0.0"
+    },
+    {
       "id": "youtube-downloader",
-      "name": "YouTube Downloader",
-      "description": "Paste a YouTube link and download the video or just the audio, with full control over resolution, bitrate, and output format. Keeps a history of everything you've downloaded.",
-      "icon": "smart_display",
+      "name": "Media Downloader",
+      "description": "Paste a YouTube link and download the video or just the audio, with full control over resolution, bitrate, and output format. Paste a Spotify track link and luma finds and downloads the matching audio from YouTube, tagged with the real title, artist, and cover art. Keeps a history of everything you've downloaded.",
+      "icon": "video_library",
       "category": "Utility",
       "tags": ["Utility", "Media"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.1.1"
     },
     {
       "id": "subway-builder",
@@ -223,6 +233,16 @@
       "version": "1.0.0"
     },
     {
+      "id": "sftp",
+      "name": "SFTP",
+      "description": "A two-pane SFTP client for your own servers, like FileZilla. Connect with a host, username, password and port — or an SSH key — then browse this device and the server side by side, drag files across, and watch the transfer queue. It also gives your own devices a shared folder: drop a file in on one, and it appears on every other device signed in to the same account, sent straight over your network. Nothing — no credential, no byte of a file — passes through a luma server. A Nova-exclusive plugin.",
+      "icon": "swap_horiz",
+      "category": "Utility",
+      "tags": ["Utility", "System", "Nova"],
+      "free": false,
+      "version": "1.0.0"
+    },
+    {
       "id": "minecraft-launcher",
       "name": "Minecraft Launcher",
       "description": "Install and manage Minecraft instances — Vanilla, Fabric, Forge, NeoForge and Quilt — with mod, resource pack and shader pack downloads, Java management, and live launch logs. Inspired by modern launchers, built with luma's own design.",
@@ -259,6 +279,26 @@
       "icon": "photo_library",
       "category": "Utility",
       "tags": ["Utility", "Photos"],
+      "free": true,
+      "version": "1.0.1"
+    },
+    {
+      "id": "transport-tracker",
+      "name": "Transport Tracker",
+      "description": "Live ship tracking on a real-world map, like MarineTraffic or VesselFinder. Pans and zooms freely; track the current view to see nearby vessels update live with speed, course, type and destination, fed by your own free AISStream.io API key.",
+      "icon": "directions_boat",
+      "category": "Utility",
+      "tags": ["Utility", "Travel"],
+      "free": true,
+      "version": "1.0.0"
+    },
+    {
+      "id": "nfc-tag-editor",
+      "name": "NFC Tag Editor",
+      "description": "Scan any NFC tag and rewrite what's on it: plain text, links, phone numbers, email, Wi-Fi details, contact cards and app shortcuts. Reorder, duplicate or delete records, save a set as a reusable template for writing a whole batch of stickers, lock a tag permanently read-only, and keep a full history of everything you've scanned or written. Android only.",
+      "icon": "nfc",
+      "category": "Utility",
+      "tags": ["Utility"],
       "free": true,
       "version": "1.0.0"
     },
