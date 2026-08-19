@@ -46,12 +46,42 @@ class LumaCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final decor = context.lumaDecor;
+    final coffee = decor.style == LumaDecor.coffee.style;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      padding: padding ?? const EdgeInsets.all(20),
+      padding: padding ??
+          (coffee
+              ? const EdgeInsets.fromLTRB(22, 20, 22, 22)
+              : const EdgeInsets.all(20)),
       decoration: BoxDecoration(
         color: luma.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: luma.border),
+        gradient: coffee
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color.lerp(
+                    luma.surface,
+                    isDark ? luma.accent : Colors.white,
+                    isDark ? 0.08 : 0.22,
+                  )!,
+                  Color.lerp(
+                    luma.surface,
+                    isDark ? luma.background : luma.surfaceHover,
+                    isDark ? 0.18 : 0.32,
+                  )!,
+                ],
+              )
+            : null,
+        borderRadius: decor.cardBorderRadius,
+        border: Border.all(
+          color: coffee
+              ? Color.lerp(luma.border, luma.accent, 0.14)!
+              : luma.border,
+          width: decor.borderWidth,
+        ),
+        boxShadow: decor.cardShadow,
       ),
       child: child,
     );
@@ -85,7 +115,10 @@ class _LumaPrimaryButtonState extends State<LumaPrimaryButton> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final decor = context.lumaDecor;
     final enabled = widget.onTap != null && !widget.loading;
+    final coffee = decor.style == LumaDecor.coffee.style;
+    final height = coffee ? 46.0 : 44.0;
     return MouseRegion(
       cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
       onEnter: (_) => setState(() => _hovering = true),
@@ -94,14 +127,35 @@ class _LumaPrimaryButtonState extends State<LumaPrimaryButton> {
         onTap: enabled ? widget.onTap : null,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          height: 44,
+          height: height,
           width: widget.expand ? double.infinity : null,
           padding: const EdgeInsets.symmetric(horizontal: 18),
           decoration: BoxDecoration(
             color: !enabled
                 ? luma.accent.withValues(alpha: 0.4)
-                : (_hovering ? luma.accentHover : luma.accent),
-            borderRadius: BorderRadius.circular(12),
+                : (!coffee
+                    ? (_hovering ? luma.accentHover : luma.accent)
+                    : null),
+            gradient: enabled && coffee
+                ? LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      _hovering ? luma.accentHover : luma.accent,
+                      _hovering
+                          ? luma.accent
+                          : Color.lerp(luma.accent, luma.accentHover, 0.28)!,
+                    ],
+                  )
+                : null,
+            borderRadius: decor.buttonBorderRadius,
+            border: coffee
+                ? Border.all(
+                    color: luma.accentHover.withValues(
+                      alpha: enabled ? 0.42 : 0.18,
+                    ),
+                  )
+                : null,
           ),
           child: Center(
             child: widget.loading
@@ -164,21 +218,35 @@ class _LumaGhostButtonState extends State<LumaGhostButton> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final decor = context.lumaDecor;
+    final coffee = decor.style == LumaDecor.coffee.style;
+    final enabled = widget.onTap != null;
     return MouseRegion(
-      cursor: SystemMouseCursors.click,
+      cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
       onEnter: (_) => setState(() => _hovering = true),
       onExit: (_) => setState(() => _hovering = false),
       child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          height: 44,
+          height: coffee ? 46 : 44,
           width: widget.expand ? double.infinity : null,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: _hovering ? luma.surfaceHover : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: luma.border),
+            color: !enabled
+                ? luma.surfaceHover.withValues(alpha: 0.38)
+                : _hovering
+                    ? luma.surfaceHover
+                    : coffee
+                        ? luma.surface.withValues(alpha: 0.38)
+                        : Colors.transparent,
+            borderRadius: decor.buttonBorderRadius,
+            border: Border.all(
+              color: coffee
+                  ? Color.lerp(luma.border, luma.accent, 0.16)!
+                  : luma.border,
+              width: decor.borderWidth,
+            ),
           ),
           child: Center(
             // Scale a long label down rather than let it spill past the
@@ -282,6 +350,7 @@ class _PillState extends State<_Pill> {
   @override
   Widget build(BuildContext context) {
     final luma = widget.luma;
+    final decor = context.lumaDecor;
     final selected = widget.selected;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -296,9 +365,10 @@ class _PillState extends State<_Pill> {
             color: selected
                 ? luma.accentSubtle
                 : (_hovering ? luma.surfaceHover : Colors.transparent),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: decor.pillBorderRadius,
             border: Border.all(
               color: selected ? luma.accent : Colors.transparent,
+              width: decor.borderWidth,
             ),
           ),
           child: Text(
@@ -334,7 +404,8 @@ class LumaIconBadge extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(size * 0.3),
+        borderRadius:
+            BorderRadius.circular(size * context.lumaDecor.badgeRadiusFactor),
       ),
       child: Icon(icon, color: color, size: size * 0.55),
     );
@@ -452,7 +523,8 @@ class LumaEmptyState extends StatelessWidget {
             height: 56,
             decoration: BoxDecoration(
               color: luma.accentSubtle,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius:
+                  BorderRadius.circular(56 * context.lumaDecor.badgeRadiusFactor),
             ),
             child: Icon(icon, color: luma.accent, size: 28),
           ),

@@ -6,6 +6,7 @@ import '../data/minecraft_launcher_database.dart';
 import '../logic/mod_installer.dart';
 import '../logic/modrinth_api_client.dart';
 import '../minecraft_launcher_repository.dart';
+import 'hover_sync_scroll.dart';
 import 'project_detail_page.dart';
 
 /// Full-screen Modrinth search for one instance: pick a content kind (mods,
@@ -122,56 +123,58 @@ class _BrowseContentPageState extends State<BrowseContentPage> {
         subtitle: 'Try a different search or content type.',
       );
     }
-    return ListView.builder(
-      itemCount: _hits.length,
-      itemBuilder: (context, i) {
-        final hit = _hits[i];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: LumaCard(
-            child: InkWell(
-              onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => ProjectDetailPage(
-                  projectId: hit.projectId,
-                  instance: widget.instance,
-                  kind: _kind,
-                  repository: widget.repository,
-                ),
-              )),
-              child: Row(
-                children: [
-                  if (hit.iconUrl != null)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image.network(hit.iconUrl!, width: 48, height: 48, fit: BoxFit.cover),
-                    )
-                  else
-                    LumaIconBadge(icon: Icons.extension_rounded, color: luma.accent),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(hit.title,
-                            style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700)),
-                        Text(
-                          hit.description,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: luma.textMuted, fontSize: 12),
-                        ),
-                        Text('${hit.downloads} downloads',
-                            style: TextStyle(color: luma.textMuted, fontSize: 11)),
-                      ],
-                    ),
+    return HoverSyncScroll(
+      child: ListView.builder(
+        itemCount: _hits.length,
+        itemBuilder: (context, i) {
+          final hit = _hits[i];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: LumaCard(
+              child: InkWell(
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => ProjectDetailPage(
+                    projectId: hit.projectId,
+                    instance: widget.instance,
+                    kind: _kind,
+                    repository: widget.repository,
                   ),
-                  const Icon(Icons.chevron_right_rounded),
-                ],
+                )),
+                child: Row(
+                  children: [
+                    if (hit.iconUrl != null)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.network(hit.iconUrl!, width: 48, height: 48, fit: BoxFit.cover),
+                      )
+                    else
+                      LumaIconBadge(icon: Icons.extension_rounded, color: luma.accent),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(hit.title,
+                              style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700)),
+                          Text(
+                            hit.description,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: luma.textMuted, fontSize: 12),
+                          ),
+                          Text('${hit.downloads} downloads',
+                              style: TextStyle(color: luma.textMuted, fontSize: 11)),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right_rounded),
+                  ],
+                ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }

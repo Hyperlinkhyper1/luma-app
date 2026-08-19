@@ -102,7 +102,7 @@ class _ProfileTab extends StatelessWidget {
           subtitle: 'How much room luma is using on this device.',
         ),
         const SizedBox(height: 12),
-        const _LocalStorageBar(),
+        const LocalStorageCard(),
 
         const SizedBox(height: 24),
 
@@ -203,8 +203,16 @@ class _ProfileSection extends StatelessWidget {
 
 // ---- Storage --------------------------------------------------------------
 
-class _LocalStorageBar extends StatelessWidget {
-  const _LocalStorageBar();
+class LocalStorageCard extends StatefulWidget {
+  const LocalStorageCard({super.key});
+
+  @override
+  State<LocalStorageCard> createState() => _LocalStorageCardState();
+}
+
+class _LocalStorageCardState extends State<LocalStorageCard> {
+  bool _expanded = false;
+  bool _hovering = false;
 
   @override
   Widget build(BuildContext context) {
@@ -215,57 +223,243 @@ class _LocalStorageBar extends StatelessWidget {
       builder: (context, _) {
         final used = guard.usedBytes;
         final limit = guard.limitBytes;
-        final fraction = (used / limit).clamp(0.0, 1.0);
-        return LumaCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    'Local storage',
-                    style: TextStyle(
-                      color: luma.textSecondary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
+        final fraction = limit == 0 ? 0.0 : (used / limit).clamp(0.0, 1.0);
+        final decor = context.lumaDecor;
+        return Semantics(
+          button: true,
+          expanded: _expanded,
+          label: 'Local storage',
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            onEnter: (_) => setState(() => _hovering = true),
+            onExit: (_) => setState(() => _hovering = false),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                key: const ValueKey('local-storage-card'),
+                borderRadius: decor.cardBorderRadius,
+                onTap: () => setState(() => _expanded = !_expanded),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 140),
+                  curve: Curves.easeOut,
+                  foregroundDecoration: _hovering
+                      ? BoxDecoration(
+                          color: luma.surfaceHover.withValues(alpha: 0.22),
+                          borderRadius: decor.cardBorderRadius,
+                          border: Border.all(
+                            color: luma.accent.withValues(alpha: 0.45),
+                            width: decor.borderWidth,
+                          ),
+                        )
+                      : null,
+                  child: LumaCard(
+                    child: AnimatedSize(
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOutCubic,
+                      alignment: Alignment.topCenter,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _StorageHeader(
+                            used: used,
+                            limit: limit,
+                            expanded: _expanded,
+                          ),
+                          const SizedBox(height: 8),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: LinearProgressIndicator(
+                              value: fraction,
+                              minHeight: 8,
+                              backgroundColor: luma.surfaceHover,
+                              valueColor: AlwaysStoppedAnimation(
+                                fraction > 0.9
+                                    ? Colors.red.shade400
+                                    : luma.accent,
+                              ),
+                            ),
+                          ),
+                          if (guard.isOverLimit) ...[
+                            const SizedBox(height: 10),
+                            Text(
+                              "You've reached your storage limit — new data won't be "
+                              'saved, and sync is paused, until you free up space.',
+                              style: TextStyle(
+                                color: Colors.red.shade400,
+                                fontSize: 12,
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
+                          if (_expanded) ...[
+                            const SizedBox(height: 16),
+                            Divider(color: luma.border, height: 1),
+                            const SizedBox(height: 14),
+                            _StorageBreakdown(
+                              categories: guard.breakdown,
+                              used: used,
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   ),
-                  const Spacer(),
-                  Text(
-                    '${StorageGuardService.formatBytes(used)} of '
-                    '${StorageGuardService.formatBytes(limit)} used',
-                    style: TextStyle(color: luma.textMuted, fontSize: 12),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: LinearProgressIndicator(
-                  value: fraction,
-                  minHeight: 8,
-                  backgroundColor: luma.surfaceHover,
-                  valueColor: AlwaysStoppedAnimation(
-                    fraction > 0.9 ? Colors.red.shade400 : luma.accent,
-                  ),
                 ),
               ),
-              if (guard.isOverLimit) ...[
-                const SizedBox(height: 10),
-                Text(
-                  "You've reached your storage limit — new data won't be "
-                  'saved, and sync is paused, until you free up space.',
-                  style: TextStyle(
-                    color: Colors.red.shade400,
-                    fontSize: 12,
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ],
+            ),
           ),
         );
       },
+    );
+  }
+}
+
+class _StorageHeader extends StatelessWidget {
+  const _StorageHeader({
+    required this.used,
+    required this.limit,
+    required this.expanded,
+  });
+
+  final int used;
+  final int limit;
+  final bool expanded;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final summary = Text(
+      '${StorageGuardService.formatBytes(used)} of '
+      '${StorageGuardService.formatBytes(limit)} used',
+      style: TextStyle(color: luma.textMuted, fontSize: 12),
+      textAlign: TextAlign.end,
+    );
+    final title = Text(
+      'Local storage',
+      style: TextStyle(
+        color: luma.textSecondary,
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+    final chevron = AnimatedRotation(
+      turns: expanded ? 0.5 : 0,
+      duration: const Duration(milliseconds: 150),
+      child: Icon(
+        Icons.expand_more_rounded,
+        size: 20,
+        color: luma.textMuted,
+      ),
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 360) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(children: [title, const Spacer(), chevron]),
+              const SizedBox(height: 4),
+              Align(alignment: Alignment.centerRight, child: summary),
+            ],
+          );
+        }
+        return Row(
+          children: [
+            Expanded(child: title),
+            Flexible(child: summary),
+            const SizedBox(width: 6),
+            chevron,
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _StorageBreakdown extends StatelessWidget {
+  const _StorageBreakdown({required this.categories, required this.used});
+
+  final List<StorageCategory> categories;
+  final int used;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "What's using space?",
+          style: TextStyle(
+            color: luma.textSecondary,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 10),
+        if (categories.isEmpty)
+          Text(
+            'No counted data yet.',
+            style: TextStyle(color: luma.textMuted, fontSize: 12),
+          )
+        else
+          for (final category in categories)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _StorageCategoryRow(category: category, used: used),
+            ),
+      ],
+    );
+  }
+}
+
+class _StorageCategoryRow extends StatelessWidget {
+  const _StorageCategoryRow({required this.category, required this.used});
+
+  final StorageCategory category;
+  final int used;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final fraction = used <= 0 ? 0.0 : (category.bytes / used).clamp(0.0, 1.0);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                category.name,
+                style: TextStyle(color: luma.textPrimary, fontSize: 12),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                StorageGuardService.formatBytes(category.bytes),
+                style: TextStyle(color: luma.textMuted, fontSize: 12),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.end,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 5),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: fraction,
+            minHeight: 5,
+            backgroundColor: luma.surfaceHover,
+            valueColor: AlwaysStoppedAnimation(luma.accent),
+          ),
+        ),
+      ],
     );
   }
 }

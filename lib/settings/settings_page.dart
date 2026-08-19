@@ -4,12 +4,16 @@ import 'package:flutter/material.dart';
 
 import '../app/pin_dialog.dart';
 
+import '../account/plan.dart';
+import '../account/plan_selection_page.dart';
 import '../app/update/app_version.dart';
 import '../app/update/update_gate.dart';
 import '../app/widgets.dart';
 import '../features/chat/ai_settings_section.dart';
 import '../l10n/app_localizations.dart';
+import '../theme/coffee_ornaments.dart';
 import '../theme/luma_theme.dart';
+import '../theme/theme_style.dart';
 import 'settings_controller.dart';
 import 'settings_scope.dart';
 
@@ -56,9 +60,13 @@ class SettingsPage extends StatelessWidget {
                           settings.setThemeMode(_themeModeFor(i)),
                     ),
                     Divider(color: luma.border, height: 32),
+                    _RowLabel(t.settingsThemeStyle),
+                    const SizedBox(height: 12),
+                    _ThemeStylePicker(settings: settings, t: t),
+                    Divider(color: luma.border, height: 32),
                     _RowLabel(t.settingsAccentColor),
                     const SizedBox(height: 14),
-                    _AccentPicker(settings: settings),
+                    _AccentPicker(settings: settings, t: t),
                   ],
                 ),
               ),
@@ -227,25 +235,292 @@ class SettingsPage extends StatelessWidget {
   }
 }
 
-class _AccentPicker extends StatelessWidget {
-  const _AccentPicker({required this.settings});
+/// The two theme styles side by side, each showing a swatch of its own
+/// palette so the choice is visible before it's made. A style the plan
+/// doesn't cover stays visible but locked, with the upgrade route one tap
+/// away — hiding it would leave the user wondering what they're missing.
+class _ThemeStylePicker extends StatelessWidget {
+  const _ThemeStylePicker({required this.settings, required this.t});
   final SettingsController settings;
+  final L t;
+
+  String _name(LumaThemeStyle style) => switch (style) {
+        LumaThemeStyle.standard => t.settingsThemeStyleDefault,
+        LumaThemeStyle.coffee => t.settingsThemeStyleCoffee,
+      };
+
+  String _blurb(LumaThemeStyle style) => switch (style) {
+        LumaThemeStyle.standard => t.settingsThemeStyleDefaultSub,
+        LumaThemeStyle.coffee => t.settingsThemeStyleCoffeeSub,
+      };
+
+  void _onTap(BuildContext context, LumaThemeStyle style) {
+    if (settings.canUseThemeStyle(style)) {
+      settings.setThemeStyle(style);
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(t.settingsThemeStyleUpgrade),
+        action: SnackBarAction(
+          label: planById('orbit').name,
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const PlanSelectionPage()),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Two across when there's room, stacked on a phone.
+        final twoUp = constraints.maxWidth >= 420;
+        final cards = [
+          for (final option in kThemeStyles)
+            _ThemeStyleCard(
+              option: option,
+              name: _name(option.style),
+              blurb: _blurb(option.style),
+              lockedLabel: t.settingsThemeStyleLocked,
+              // The user's pick stays highlighted even while locked, so a
+              // lapsed plan reads as "paused", not "reset".
+              selected: settings.preferredThemeStyle == option.style,
+              locked: !settings.canUseThemeStyle(option.style),
+              onTap: () => _onTap(context, option.style),
+            ),
+        ];
+        if (!twoUp) {
+          return Column(
+            children: [
+              for (var i = 0; i < cards.length; i++) ...[
+                if (i > 0) const SizedBox(height: 10),
+                cards[i],
+              ],
+            ],
+          );
+        }
+        // IntrinsicHeight gives the Row a bounded height so the cards can
+        // stretch to match each other. Without it the Row inherits the
+        // scroll view's unbounded height and the layout throws.
+        return IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var i = 0; i < cards.length; i++) ...[
+                if (i > 0) const SizedBox(width: 10),
+                Expanded(child: cards[i]),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ThemeStyleCard extends StatefulWidget {
+  const _ThemeStyleCard({
+    required this.option,
+    required this.name,
+    required this.blurb,
+    required this.lockedLabel,
+    required this.selected,
+    required this.locked,
+    required this.onTap,
+  });
+
+  final ThemeStyleOption option;
+  final String name;
+  final String blurb;
+  final String lockedLabel;
+  final bool selected;
+  final bool locked;
+  final VoidCallback onTap;
+
+  @override
+  State<_ThemeStyleCard> createState() => _ThemeStyleCardState();
+}
+
+class _ThemeStyleCardState extends State<_ThemeStyleCard> {
+  bool _hovering = false;
+
+  /// The dark palette of the style being offered — the preview shows what
+  /// you'd get, not what you currently have.
+  LumaPalette get _preview =>
+      LumaPalette.forStyle(widget.option.style, Brightness.dark);
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    return Wrap(
-      spacing: 14,
-      runSpacing: 14,
-      children: [
-        for (var i = 0; i < kAccentPresets.length; i++)
-          _Swatch(
-            // The default preset (null seed) renders with the live accent.
-            color: kAccentPresets[i].seed ?? luma.accent,
-            label: kAccentPresets[i].name,
-            selected: settings.accentIndex == i,
-            onTap: () => settings.setAccentIndex(i),
+    final decor = context.lumaDecor;
+    final selected = widget.selected;
+
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: widget.locked
+          ? '${widget.name} — ${widget.lockedLabel}'
+          : widget.name,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hovering = true),
+        onExit: (_) => setState(() => _hovering = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: selected
+                  ? luma.accentSubtle
+                  : (_hovering ? luma.surfaceHover : Colors.transparent),
+              borderRadius: decor.cardBorderRadius,
+              border: Border.all(
+                color: selected ? luma.accent : luma.border,
+                width: decor.borderWidth,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    _StylePreviewChip(
+                      palette: _preview,
+                      showBean: widget.option.style == LumaThemeStyle.coffee,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        widget.name,
+                        style: TextStyle(
+                          color: luma.textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    if (widget.locked)
+                      Icon(Icons.lock_rounded,
+                          size: 15, color: luma.textMuted)
+                    else if (selected)
+                      Icon(Icons.check_circle_rounded,
+                          size: 17, color: luma.accent),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  widget.blurb,
+                  style: TextStyle(
+                    color: luma.textMuted,
+                    fontSize: 12,
+                    height: 1.45,
+                  ),
+                ),
+                if (widget.locked) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 9, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: luma.accentSubtle,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      widget.lockedLabel,
+                      style: TextStyle(
+                        color: luma.accent,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A 40px round chip split between a style's surface and accent, with a bean
+/// laid over the Coffee one.
+class _StylePreviewChip extends StatelessWidget {
+  const _StylePreviewChip({required this.palette, required this.showBean});
+
+  final LumaPalette palette;
+  final bool showBean;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [palette.surface, palette.accent],
+        ),
+        border: Border.all(color: palette.border, width: 1.5),
+      ),
+      child: showBean
+          ? Center(
+              child: CoffeeBeanIcon(color: palette.textPrimary, size: 20),
+            )
+          : null,
+    );
+  }
+}
+
+class _AccentPicker extends StatelessWidget {
+  const _AccentPicker({required this.settings, required this.t});
+  final SettingsController settings;
+  final L t;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    // Coffee ships a complete palette, so re-hueing it would undo the look
+    // the user just chose. Say so rather than silently doing nothing.
+    final paused = settings.themeStyle != LumaThemeStyle.standard;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Opacity(
+          opacity: paused ? 0.4 : 1,
+          child: IgnorePointer(
+            ignoring: paused,
+            child: Wrap(
+              spacing: 14,
+              runSpacing: 14,
+              children: [
+                for (var i = 0; i < kAccentPresets.length; i++)
+                  _Swatch(
+                    // The default preset (null seed) renders with the live
+                    // accent.
+                    color: kAccentPresets[i].seed ?? luma.accent,
+                    label: kAccentPresets[i].name,
+                    selected: settings.accentIndex == i,
+                    onTap: () => settings.setAccentIndex(i),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        if (paused) ...[
+          const SizedBox(height: 10),
+          Text(
+            t.settingsAccentCoffeeNote,
+            style: TextStyle(color: luma.textMuted, fontSize: 12, height: 1.4),
+          ),
+        ],
       ],
     );
   }

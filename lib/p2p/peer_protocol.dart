@@ -23,6 +23,131 @@ const String kLumaPeerServiceType = '_luma-sync._tcp';
 /// while still bounding a hostile or buggy peer's memory blow-up.
 const int kMaxFrameBytes = 8 * 1024 * 1024;
 
+/// How much of a shared file travels in one `share-chunk` frame. Small
+/// enough that progress moves visibly and neither side buffers much, large
+/// enough that a big file isn't thousands of round trips. Must stay well
+/// under [kMaxFrameBytes].
+const int kShareChunkBytes = 256 * 1024;
+
+/// One file in the shared folder, as advertised in a `share-index`.
+///
+/// A tombstone (`deletedAtMs != null`) is how a delete travels: the entry
+/// stays in the index with no bytes behind it, so a device that was offline
+/// when the file was deleted removes its copy instead of pushing it back.
+class SharedFileEntry {
+  const SharedFileEntry({
+    required this.path,
+    required this.size,
+    required this.hash,
+    required this.modifiedMs,
+    this.deletedAtMs,
+  });
+
+  /// Path relative to the shared folder root, always '/'-separated so the
+  /// same file has the same identity on Windows and Android.
+  final String path;
+
+  final int size;
+
+  /// SHA-256 of the contents, hex. Empty for a tombstone.
+  final String hash;
+
+  /// Local modification time when this device last wrote the file.
+  final int modifiedMs;
+
+  /// When the file was deleted, or null while it exists.
+  final int? deletedAtMs;
+
+  bool get isDeleted => deletedAtMs != null;
+
+  /// The moment this entry describes — the delete for a tombstone, the write
+  /// otherwise. Merging compares these, so a delete can beat an older write
+  /// and a newer write can beat an older delete.
+  int get stamp => deletedAtMs ?? modifiedMs;
+
+  SharedFileEntry asDeleted(int deletedAtMs) => SharedFileEntry(
+        path: path,
+        size: 0,
+        hash: '',
+        modifiedMs: modifiedMs,
+        deletedAtMs: deletedAtMs,
+      );
+
+  Map<String, Object?> toJson() => {
+        'p': path,
+        's': size,
+        'h': hash,
+        'm': modifiedMs,
+        if (deletedAtMs != null) 'd': deletedAtMs,
+      };
+
+  static SharedFileEntry? fromJson(Object? raw) {
+    if (raw is! Map<String, dynamic>) return null;
+    final path = raw['p'] as String?;
+    if (path == null || path.isEmpty) return null;
+    return SharedFileEntry(
+      path: path,
+      size: (raw['s'] as num?)?.toInt() ?? 0,
+      hash: raw['h'] as String? ?? '',
+      modifiedMs: (raw['m'] as num?)?.toInt() ?? 0,
+      deletedAtMs: (raw['d'] as num?)?.toInt(),
+    );
+  }
+}
+
+/// The header that precedes a chunk's raw bytes on the wire.
+class SharedChunkHeader {
+  const SharedChunkHeader({
+    required this.path,
+    required this.offset,
+    required this.length,
+    required this.totalSize,
+    required this.modifiedMs,
+    required this.hash,
+    required this.isLast,
+  });
+
+  final String path;
+  final int offset;
+  final int length;
+  final int totalSize;
+  final int modifiedMs;
+
+  /// SHA-256 of the whole file, so the receiver can verify what it assembled
+  /// before putting it in the folder.
+  final String hash;
+  final bool isLast;
+
+  Map<String, Object?> toJson() => {
+        'type': 'share-chunk',
+        'path': path,
+        'offset': offset,
+        'length': length,
+        'total': totalSize,
+        'modifiedMs': modifiedMs,
+        'hash': hash,
+        'last': isLast,
+      };
+
+  static SharedChunkHeader? fromJson(Map<String, dynamic> j) {
+    final path = j['path'] as String?;
+    final length = (j['length'] as num?)?.toInt();
+    if (path == null || path.isEmpty || length == null) return null;
+    // Zero is legal and means "an empty file": the header alone completes
+    // the transfer, with no raw bytes behind it.
+    if (length < 0 || length > kMaxFrameBytes) return null;
+    return SharedChunkHeader(
+      path: path,
+      offset: (j['offset'] as num?)?.toInt() ?? 0,
+      length: length,
+      totalSize: (j['total'] as num?)?.toInt() ?? 0,
+      modifiedMs: (j['modifiedMs'] as num?)?.toInt() ?? 0,
+      hash: j['hash'] as String? ?? '',
+      isLast: j['last'] == true,
+    );
+  }
+}
+
 /// Per-collection state advertised in `hello`/`welcome`.
 ///
 /// - [cloudVersion] is the last server version this device agrees it has seen

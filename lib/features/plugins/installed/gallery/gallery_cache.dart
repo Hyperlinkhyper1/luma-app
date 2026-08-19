@@ -3,6 +3,19 @@ import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
 
+/// Bumped whenever a stored verdict stops meaning what it used to.
+///
+/// Version 2 introduced [GalleryCacheEntry.skipped]. Before it, a photo the
+/// pass couldn't read — a cloud placeholder, a HEIC — was written as
+/// `analysed` with no labels, indistinguishable from one that was looked at
+/// and found to contain nothing. A library whose entries all predate the
+/// flag would report tens of thousands of photos examined when almost none
+/// were, so those verdicts are thrown away and re-taken.
+///
+/// Coordinates and frame sizes survive a bump: they are facts about the file,
+/// not judgements, and re-reading them costs a pass over every header.
+const kGalleryAnalysisVersion = 2;
+
 /// What has already been learned about one file, so opening the gallery a
 /// second time doesn't re-read every EXIF header and re-run every model.
 class GalleryCacheEntry {
@@ -12,16 +25,25 @@ class GalleryCacheEntry {
     this.labels = const [],
     this.faceCount = 0,
     this.analysed = false,
-    this.geoChecked = false,
+    this.skipped = false,
+    this.detailsRead = false,
+    this.width,
+    this.height,
+    this.personIds = const [],
   });
 
   final double? latitude;
   final double? longitude;
 
-  /// Whether the GPS tag has been read. Most photos don't have one, and
-  /// without this the background pass would re-read every untagged file on
-  /// every launch.
-  final bool geoChecked;
+  /// Frame size, learned from the file header on desktop. MediaStore already
+  /// knows it on the phone.
+  final int? width;
+  final int? height;
+
+  /// Whether the file header has been read. Most photos carry no GPS tag at
+  /// all, and without this the background pass would re-read every untagged
+  /// file on every launch.
+  final bool detailsRead;
 
   /// Smart-category labels from the on-device image labeller.
   final List<String> labels;
@@ -33,6 +55,19 @@ class GalleryCacheEntry {
   /// is the difference between re-running a model on every launch and not.
   final bool analysed;
 
+  /// Set when the pass *couldn't* look — the file is a cloud placeholder, or
+  /// it's in a format the decoder doesn't read. Without this, a library that
+  /// is mostly online-only reports every photo as done and shows nearly
+  /// empty albums with no hint as to why.
+  final bool skipped;
+
+  /// Which [PersonCluster]s this photo's faces were assigned to. Only the
+  /// ids live here — the fingerprints themselves are discarded once a face
+  /// has been placed, and the clusters' running centroids live in
+  /// `GalleryPeopleStore`, so this stays a couple of small integers per
+  /// photo rather than a float vector per face.
+  final List<int> personIds;
+
   bool get hasLocation => latitude != null && longitude != null;
 
   Map<String, dynamic> toJson() => {
@@ -41,7 +76,11 @@ class GalleryCacheEntry {
         if (labels.isNotEmpty) 'labels': labels,
         if (faceCount > 0) 'faces': faceCount,
         if (analysed) 'done': true,
-        if (geoChecked) 'geo': true,
+        if (skipped) 'skip': true,
+        if (detailsRead) 'read': true,
+        if (width != null) 'w': width,
+        if (height != null) 'h': height,
+        if (personIds.isNotEmpty) 'people': personIds,
       };
 
   factory GalleryCacheEntry.fromJson(Map<String, dynamic> json) =>
@@ -54,7 +93,18 @@ class GalleryCacheEntry {
         ],
         faceCount: (json['faces'] as num?)?.toInt() ?? 0,
         analysed: json['done'] == true,
-        geoChecked: json['geo'] == true,
+        skipped: json['skip'] == true,
+        // Entries written before the header pass also learned frame sizes
+        // carry the old 'geo' flag. Treating those as unread costs one extra
+        // header read per photo, once, and fills in the dimensions they
+        // never had.
+        detailsRead: json['read'] == true,
+        width: (json['w'] as num?)?.toInt(),
+        height: (json['h'] as num?)?.toInt(),
+        personIds: [
+          for (final id in (json['people'] as List<dynamic>? ?? const []))
+            (id as num).toInt(),
+        ],
       );
 
   GalleryCacheEntry copyWith({
@@ -63,7 +113,11 @@ class GalleryCacheEntry {
     List<String>? labels,
     int? faceCount,
     bool? analysed,
-    bool? geoChecked,
+    bool? skipped,
+    bool? detailsRead,
+    int? width,
+    int? height,
+    List<int>? personIds,
   }) =>
       GalleryCacheEntry(
         latitude: latitude ?? this.latitude,
@@ -71,7 +125,11 @@ class GalleryCacheEntry {
         labels: labels ?? this.labels,
         faceCount: faceCount ?? this.faceCount,
         analysed: analysed ?? this.analysed,
-        geoChecked: geoChecked ?? this.geoChecked,
+        skipped: skipped ?? this.skipped,
+        detailsRead: detailsRead ?? this.detailsRead,
+        width: width ?? this.width,
+        height: height ?? this.height,
+        personIds: personIds ?? this.personIds,
       );
 }
 
@@ -112,10 +170,26 @@ class GalleryCache {
           }
         });
       }
+
+      final storedVersion = (decoded['analysisVersion'] as num?)?.toInt() ?? 0;
+      if (storedVersion != kGalleryAnalysisVersion) _forgetVerdicts();
     } catch (_) {
       // A cache that won't parse is a cache worth throwing away.
       _entries.clear();
     }
+  }
+
+  /// Drops what the models decided, keeping what was measured.
+  void _forgetVerdicts() {
+    _entries.updateAll(
+      (_, entry) => entry.copyWith(
+        analysed: false,
+        skipped: false,
+        labels: const [],
+        faceCount: 0,
+      ),
+    );
+    _dirty = true;
   }
 
   void put(String key, GalleryCacheEntry entry) {
@@ -145,6 +219,7 @@ class GalleryCache {
       final file = await _open();
       await file.writeAsString(jsonEncode({
         'version': 1,
+        'analysisVersion': kGalleryAnalysisVersion,
         'roots': _roots,
         'entries': {
           for (final entry in _entries.entries)

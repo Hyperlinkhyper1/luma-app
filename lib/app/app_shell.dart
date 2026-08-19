@@ -22,18 +22,22 @@ import '../features/plugins/installed/file_viewer/file_viewer_page.dart';
 import '../features/plugins/installed/groceries/groceries_page.dart';
 import '../features/plugins/installed/minecraft_launcher/minecraft_launcher_page.dart';
 import '../features/plugins/installed/mood_journal/mood_journal_page.dart';
+import '../features/plugins/installed/ai_usage/ai_usage_shell.dart';
+import '../features/plugins/installed/nfc_tag_editor/nfc_tag_editor_page.dart';
 import '../features/plugins/installed/bulletin_board/bulletin_board_page.dart';
 import '../features/plugins/installed/price_tracker/price_tracker_page.dart';
 import '../features/plugins/installed/qr_code_generator/qr_code_generator_page.dart';
 import '../features/plugins/installed/school/school_page.dart';
 import '../features/plugins/installed/secure_chat/secure_chat_page.dart';
+import '../features/plugins/installed/sftp/sftp_page.dart';
 import '../features/plugins/installed/server_tycoon/server_tycoon_page.dart';
 import '../features/plugins/installed/space_colony/space_colony_page.dart';
 import '../features/plugins/installed/subway_builder/subway_builder_page.dart';
+import '../features/plugins/installed/transport_tracker/transport_tracker_page.dart';
 import '../features/plugins/installed/usage/usage_page.dart';
 import '../features/plugins/installed/wifi_speed_test/wifi_speed_test_page.dart';
 import '../features/plugins/installed/worth_counter/worth_counter_page.dart';
-import '../features/plugins/installed/youtube_downloader/youtube_downloader_page.dart';
+import '../features/plugins/installed/media_downloader/media_downloader_page.dart';
 import '../features/plugins/installed/recipe_book/recipe_book_page.dart';
 import '../features/plugins/plugin_repository.dart';
 import '../features/plugins/plugin_scope.dart';
@@ -44,6 +48,7 @@ import '../settings/settings_controller.dart';
 import '../settings/settings_page.dart';
 import '../settings/settings_scope.dart';
 import '../storage/storage_guard_scope.dart';
+import '../theme/coffee_ornaments.dart';
 import '../theme/luma_theme.dart';
 import 'bottom_nav.dart';
 import 'nav_rail.dart';
@@ -142,7 +147,11 @@ class _AppShellState extends State<AppShell> {
   // full-canvas games): on phone, the top title bar and bottom nav just eat
   // space the game desperately needs, so they're hidden and replaced with a
   // single floating back button instead.
-  static const _phoneImmersivePlugins = {'subway-builder', 'server-tycoon'};
+  static const _phoneImmersivePlugins = {
+    'subway-builder',
+    'server-tycoon',
+    'transport-tracker',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -181,26 +190,28 @@ class _AppShellState extends State<AppShell> {
 
         final content = Container(
           color: luma.background,
-          child: showingPlugin
-              ? _pluginPageFor(activePlugin.pluginId, t)
-              : IndexedStack(
-                  index: index,
-                  children: [
-                    HomePage(onNavigate: _selectFixed),
-                    const ConverterPage(),
-                    const FinancePage(),
-                    const PasswordsPage(),
-                    const NotesPage(),
-                    ChatPage(
-                      onOpenSettings: () =>
-                          _selectFixed(NavRail.settingsIndex),
-                      onOpenPlugin: _selectPlugin,
-                    ),
-                    PluginsPage(onOpenPlugin: _selectPlugin),
-                    const SettingsPage(),
-                    const AccountPage(),
-                  ],
-                ),
+          child: StyleBackdrop(
+            child: showingPlugin
+                ? _pluginPageFor(activePlugin.pluginId, t)
+                : IndexedStack(
+                    index: index,
+                    children: [
+                      HomePage(onNavigate: _selectFixed),
+                      const ConverterPage(),
+                      const FinancePage(),
+                      const PasswordsPage(),
+                      const NotesPage(),
+                      ChatPage(
+                        onOpenSettings: () =>
+                            _selectFixed(NavRail.settingsIndex),
+                        onOpenPlugin: _selectPlugin,
+                      ),
+                      PluginsPage(onOpenPlugin: _selectPlugin),
+                      const SettingsPage(),
+                      const AccountPage(),
+                    ],
+                  ),
+          ),
         );
 
         final scaffold = Scaffold(
@@ -347,9 +358,11 @@ class _AppShellState extends State<AppShell> {
         'server-tycoon' => const ServerTycoonPage(),
         'space-colony' => const SpaceColonyPage(),
         'subway-builder' => const SubwayBuilderPage(),
+        'transport-tracker' => const TransportTrackerPage(),
         'city-planner' => const CityPlannerPage(),
         'mood-journal' => const MoodJournalPage(),
-        'youtube-downloader' => const YoutubeDownloaderPage(),
+        'ai-usage' => const AiUsagePage(),
+        'youtube-downloader' => const MediaDownloaderPage(),
         'school' => const SchoolPage(),
         'auto-clicker' => const AutoClickerPage(),
         'usage' => const UsagePage(),
@@ -357,9 +370,11 @@ class _AppShellState extends State<AppShell> {
         'groceries-list' => const GroceriesPage(),
         'minecraft-launcher' => const MinecraftLauncherPage(),
         'secure-chat' => const SecureChatPage(),
+        'sftp' => const SftpPage(),
         'recipe-book' => const RecipeBookPage(),
         'worth-counter' => const WorthCounterPage(),
         'gallery' => const GalleryPage(),
+        'nfc-tag-editor' => const NfcTagEditorPage(),
         _ => LumaEmptyState(
             icon: Icons.extension_off_rounded,
             title: t.shellPluginUnavailable,

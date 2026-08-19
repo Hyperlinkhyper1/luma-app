@@ -3,12 +3,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:open_file/open_file.dart';
 
-import '../../../../theme/luma_theme.dart';
-import 'gallery_cache.dart';
+import 'gallery_details_panel.dart';
 import 'gallery_media.dart';
 import 'gallery_repository.dart';
 import 'gallery_scope.dart';
-import 'gallery_smart.dart';
 import 'gallery_tile.dart';
 
 /// Full-screen photo and video viewer. Swipes through whatever list it was
@@ -55,60 +53,116 @@ class _GalleryViewerPageState extends State<GalleryViewerPage> {
     );
   }
 
+  /// Local overrides for files renamed or re-dated from the panel, so the
+  /// viewer shows the new name immediately without the caller having to
+  /// rebuild the list it handed us.
+  final Map<String, GalleryItem> _edited = {};
+
+  bool _detailsOpen = false;
+
+  GalleryItem _itemAt(int index) {
+    final original = widget.items[index];
+    return _edited[original.id] ?? original;
+  }
+
   @override
   Widget build(BuildContext context) {
     final repo = GalleryScope.of(context);
-    final item = widget.items[_index];
+    final item = _itemAt(_index);
+    // Below this the drawer would leave no room for the picture, so it
+    // becomes a sheet instead (§5 content-priority).
+    final wide = MediaQuery.sizeOf(context).width >= 720;
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Stack(
+      body: Row(
         children: [
-          PageView.builder(
-            controller: _controller,
-            itemCount: widget.items.length,
-            onPageChanged: (index) => setState(() => _index = index),
-            itemBuilder: (context, index) {
-              final current = widget.items[index];
-              return _Page(
-                item: current,
-                repository: repo,
-                path: _pathFor(repo, current),
-                onPlay: () => _play(repo, current),
-              );
-            },
+          Expanded(
+            child: Stack(
+              children: [
+                PageView.builder(
+                  controller: _controller,
+                  itemCount: widget.items.length,
+                  onPageChanged: (index) => setState(() => _index = index),
+                  itemBuilder: (context, index) {
+                    final current = _itemAt(index);
+                    return _Page(
+                      item: current,
+                      repository: repo,
+                      path: _pathFor(repo, current),
+                      onPlay: () => _play(repo, current),
+                    );
+                  },
+                ),
+                _TopBar(
+                  title: item.name,
+                  subtitle: '${_index + 1} of ${widget.items.length}',
+                  onClose: () => Navigator.of(context).pop(),
+                  detailsOpen: _detailsOpen,
+                  onDetails: () {
+                    if (wide) {
+                      setState(() => _detailsOpen = !_detailsOpen);
+                    } else {
+                      _showDetailsSheet(context, repo, item);
+                    }
+                  },
+                ),
+              ],
+            ),
           ),
-          _TopBar(
-            title: item.name,
-            subtitle: '${_index + 1} of ${widget.items.length}',
-            onClose: () => Navigator.of(context).pop(),
-            onInfo: () => _showDetails(context, repo, item),
+          // §7: enters over 200ms with an ease-out curve, leaves faster —
+          // AnimatedSize handles both, and honours reduced-motion because
+          // Flutter scales animation durations from the platform setting.
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
+            child: wide && _detailsOpen
+                ? GalleryDetailsPanel(
+                    key: ValueKey(item.id),
+                    item: item,
+                    repository: repo,
+                    onClose: () => setState(() => _detailsOpen = false),
+                    onEdited: (updated) => setState(() {
+                      _edited[widget.items[_index].id] = updated;
+                    }),
+                  )
+                : const SizedBox(height: double.infinity),
           ),
         ],
       ),
     );
   }
+
+  /// On a narrow window the same panel arrives as a sheet from the bottom.
+  void _showDetailsSheet(
+    BuildContext context,
+    GalleryRepository repo,
+    GalleryItem item,
+  ) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) => FractionallySizedBox(
+        heightFactor: 0.85,
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          child: GalleryDetailsPanel(
+            item: item,
+            repository: repo,
+            onClose: () => Navigator.of(sheetContext).pop(),
+            onEdited: (updated) {
+              setState(() => _edited[item.id] = updated);
+              Navigator.of(sheetContext).pop();
+            },
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-void _showDetails(
-  BuildContext context,
-  GalleryRepository repo,
-  GalleryItem item,
-) {
-  final luma = context.luma;
-  showModalBottomSheet<void>(
-    context: context,
-    backgroundColor: luma.surface,
-    showDragHandle: true,
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    builder: (context) => _DetailsSheet(item: item, repository: repo),
-  );
-}
-
-class _Page extends StatelessWidget {
+class _Page extends StatefulWidget {
   const _Page({
     required this.item,
     required this.repository,
@@ -122,9 +176,30 @@ class _Page extends StatelessWidget {
   final VoidCallback onPlay;
 
   @override
+  State<_Page> createState() => _PageState();
+}
+
+class _PageState extends State<_Page> {
+  /// Set once the user has asked for a cloud placeholder to be fetched.
+  /// Rendering the file is what triggers the download, so nothing reads it
+  /// until this is true.
+  bool _fetchApproved = false;
+
+  @override
   Widget build(BuildContext context) {
+    final item = widget.item;
+    final repository = widget.repository;
+    final onPlay = widget.onPlay;
+
+    if (item.cloudOnly && !_fetchApproved) {
+      return _CloudOnlyNotice(
+        item: item,
+        onFetch: () => setState(() => _fetchApproved = true),
+      );
+    }
+
     return FutureBuilder<String?>(
-      future: path,
+      future: widget.path,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return const Center(
@@ -174,6 +249,56 @@ class _Page extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// What stands in for a photo that lives in the cloud. Opening it is a
+/// download, and a download is the user's call — the gallery will happily
+/// list a 40 GB OneDrive library, but it won't put it on their disk for them.
+class _CloudOnlyNotice extends StatelessWidget {
+  const _CloudOnlyNotice({required this.item, required this.onFetch});
+
+  final GalleryItem item;
+  final VoidCallback onFetch;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_outlined, color: Colors.white54, size: 44),
+            const SizedBox(height: 16),
+            const Text(
+              'This one is only in the cloud',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${item.name} is stored online and isn\'t on this PC. Showing '
+              'it downloads it${item.sizeBytes == null ? '' : ' '
+                  '(${formatBytes(item.sizeBytes!)})'} and keeps it here '
+              'until your cloud app frees it up again.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white70, fontSize: 12.5),
+            ),
+            const SizedBox(height: 18),
+            FilledButton.icon(
+              onPressed: onFetch,
+              icon: const Icon(Icons.cloud_download_rounded, size: 18),
+              label: const Text('Download and show'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -233,13 +358,15 @@ class _TopBar extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onClose,
-    required this.onInfo,
+    required this.onDetails,
+    required this.detailsOpen,
   });
 
   final String title;
   final String subtitle;
   final VoidCallback onClose;
-  final VoidCallback onInfo;
+  final VoidCallback onDetails;
+  final bool detailsOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -292,8 +419,15 @@ class _TopBar extends StatelessWidget {
               ),
             ),
             IconButton(
-              onPressed: onInfo,
-              icon: const Icon(Icons.info_outline_rounded, color: Colors.white),
+              // §1 aria-labels / §4 state-clarity: named, and the label says
+              // which way the toggle will go.
+              tooltip: detailsOpen ? 'Hide details' : 'Show details',
+              isSelected: detailsOpen,
+              onPressed: onDetails,
+              icon: Icon(
+                Icons.more_vert_rounded,
+                color: detailsOpen ? Colors.white : Colors.white70,
+              ),
             ),
           ],
         ),
@@ -302,140 +436,3 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-/// Everything known about one file, including what the smart pass found.
-class _DetailsSheet extends StatelessWidget {
-  const _DetailsSheet({required this.item, required this.repository});
-
-  final GalleryItem item;
-  final GalleryRepository repository;
-
-  @override
-  Widget build(BuildContext context) {
-    final luma = context.luma;
-    final entry = repository.cacheEntries[item.cacheKey];
-    final labels = _readableLabels(entry);
-
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              item.name,
-              style: TextStyle(
-                color: luma.textPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 14),
-            _Row(label: 'Taken', value: _formatDate(item.takenAt)),
-            _Row(
-              label: 'Folder',
-              value: item.folder.isEmpty ? 'Unknown' : item.folder,
-            ),
-            if (item.width > 0 && item.height > 0)
-              _Row(label: 'Size', value: '${item.width} × ${item.height}'),
-            if (item.isVideo)
-              _Row(label: 'Length', value: formatDuration(item.duration)),
-            FutureBuilder<int?>(
-              future: repository.fileSize(item),
-              initialData: item.sizeBytes,
-              builder: (context, snapshot) {
-                final bytes = snapshot.data;
-                if (bytes == null) return const SizedBox.shrink();
-                return _Row(label: 'On disk', value: formatBytes(bytes));
-              },
-            ),
-            if (item.hasLocation)
-              _Row(
-                label: 'Location',
-                value: '${item.latitude!.toStringAsFixed(5)}, '
-                    '${item.longitude!.toStringAsFixed(5)}',
-              ),
-            if (labels.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  for (final label in labels)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: luma.accentSubtle,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        label,
-                        style: TextStyle(color: luma.accent, fontSize: 11),
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// The model's own labels are raw vocabulary; only show the ones that map
-  /// to a category a person would recognise, plus the face count.
-  List<String> _readableLabels(GalleryCacheEntry? entry) {
-    if (entry == null) return const [];
-    final buckets = <String>{
-      for (final label in entry.labels)
-        if (bucketForLabel(label) != null) bucketForLabel(label)!,
-    };
-    return [
-      if (entry.faceCount == 1) '1 face',
-      if (entry.faceCount > 1) '${entry.faceCount} faces',
-      ...buckets,
-    ];
-  }
-}
-
-class _Row extends StatelessWidget {
-  const _Row({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final luma = context.luma;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 84,
-            child: Text(
-              label,
-              style: TextStyle(color: luma.textMuted, fontSize: 12),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(color: luma.textPrimary, fontSize: 12),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-String _formatDate(DateTime when) {
-  String two(int value) => value.toString().padLeft(2, '0');
-  return '${when.year}-${two(when.month)}-${two(when.day)} '
-      '${two(when.hour)}:${two(when.minute)}';
-}

@@ -1,13 +1,16 @@
-import 'dart:typed_data';
+import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:luma/features/plugins/installed/gallery/gallery_cache.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_categories.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_exif.dart';
+import 'package:luma/features/plugins/installed/gallery/gallery_file_editor.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_map_page.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_media.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_smart.dart';
+import 'package:luma/features/plugins/installed/gallery/gallery_source_folders.dart';
 
 GalleryItem item({
   required String name,
@@ -18,6 +21,7 @@ GalleryItem item({
   int height = 3000,
   double? latitude,
   double? longitude,
+  bool cloudOnly = false,
 }) =>
     GalleryItem(
       id: '$folder/$name',
@@ -29,6 +33,7 @@ GalleryItem item({
       height: height,
       latitude: latitude,
       longitude: longitude,
+      cloudOnly: cloudOnly,
     );
 
 void main() {
@@ -111,15 +116,17 @@ void main() {
       item(name: 'Screenshot_2.png', folder: 'DCIM/Screenshots'),
       item(name: 'IMG-2026-WA0001.jpg', folder: 'WhatsApp/Media/WhatsApp Images'),
       item(name: 'IMG-2026-WA0002.jpg', folder: 'WhatsApp/Media/WhatsApp Images'),
+      item(name: 'IMG-2026-WA0003.jpg', folder: 'WhatsApp/Media/WhatsApp Images'),
       item(name: 'meme.gif', folder: 'Download'),
       item(name: 'invoice.png', folder: 'Download'),
+      item(name: 'receipt.png', folder: 'Download'),
     ];
 
     test('the fixed tabs count only what belongs to them', () {
       final categories = buildCategories(library);
       final byId = {for (final c in categories) c.id: c};
 
-      expect(byId[GalleryCategoryIds.all]!.count, 9);
+      expect(byId[GalleryCategoryIds.all]!.count, 11);
       expect(byId[GalleryCategoryIds.pictures]!.count, 2);
       expect(byId[GalleryCategoryIds.videos]!.count, 1);
       expect(byId[GalleryCategoryIds.screenshots]!.count, 2);
@@ -146,6 +153,11 @@ void main() {
           takenAt: DateTime(2020, 1, 1),
         ),
         item(
+          name: 'middle.jpg',
+          folder: 'Download',
+          takenAt: DateTime(2023, 1, 1),
+        ),
+        item(
           name: 'newest.jpg',
           folder: 'Download',
           takenAt: DateTime(2026, 5, 5),
@@ -159,6 +171,62 @@ void main() {
       );
     });
 
+    test('a cover prefers a local photo over a newer cloud placeholder', () {
+      // A cloud placeholder has no thumbnail — asking for one would download
+      // the file — so it must not win the cover slot from a photo that can
+      // actually be shown.
+      final categories = buildCategories([
+        item(
+          name: 'local.jpg',
+          folder: 'OneDrive/Holidays',
+          takenAt: DateTime(2024, 1, 1),
+        ),
+        item(
+          name: 'in-the-cloud.jpg',
+          folder: 'OneDrive/Holidays',
+          takenAt: DateTime(2026, 6, 6),
+          cloudOnly: true,
+        ),
+        item(
+          name: 'also-cloud.jpg',
+          folder: 'OneDrive/Holidays',
+          takenAt: DateTime(2026, 6, 7),
+          cloudOnly: true,
+        ),
+      ]);
+      expect(
+        categories.firstWhere((c) => c.label == 'Holidays').cover?.name,
+        'local.jpg',
+      );
+    });
+
+    test('an all-cloud album still gets a cover', () {
+      final categories = buildCategories([
+        item(
+          name: 'a.jpg',
+          folder: 'OneDrive/Holidays',
+          takenAt: DateTime(2024),
+          cloudOnly: true,
+        ),
+        item(
+          name: 'b.jpg',
+          folder: 'OneDrive/Holidays',
+          takenAt: DateTime(2026),
+          cloudOnly: true,
+        ),
+        item(
+          name: 'c.jpg',
+          folder: 'OneDrive/Holidays',
+          takenAt: DateTime(2025),
+          cloudOnly: true,
+        ),
+      ]);
+      expect(
+        categories.firstWhere((c) => c.label == 'Holidays').cover?.name,
+        'b.jpg',
+      );
+    });
+
     test('an album with nothing in it has no cover', () {
       final categories = buildCategories(const []);
       expect(categories.single.id, GalleryCategoryIds.all);
@@ -168,13 +236,62 @@ void main() {
     test('the same album in two places is one tab', () {
       final categories = buildCategories([
         item(name: 'a.jpg', folder: 'Pictures/Instagram'),
-        item(name: 'b.jpg', folder: 'DCIM/Instagram'),
+        item(name: 'b.jpg', folder: 'Pictures/Instagram'),
+        item(name: 'c.jpg', folder: 'DCIM/Instagram'),
       ]);
       final instagram =
           categories.where((c) => c.label == 'Instagram').toList();
       expect(instagram, hasLength(1));
-      expect(instagram.single.count, 2);
+      expect(instagram.single.count, 3);
       expect(instagram.single.folders, hasLength(2));
+    });
+
+    test('a folder with a picture or two in it earns no album', () {
+      // Nothing is lost: these are still in All, and still in their folder on
+      // disk. What is gained is an albums screen that isn't buried under
+      // one-item strays from downloads and extracted archives.
+      final categories = buildCategories([
+        for (var i = 0; i < minimumAlbumItems - 1; i++)
+          item(name: 'stray$i.jpg', folder: 'Download/Extracted'),
+        for (var i = 0; i < minimumAlbumItems; i++)
+          item(name: 'holiday$i.jpg', folder: 'Pictures/Rome'),
+      ]);
+      final labels = [for (final c in categories) c.label];
+      expect(labels, contains('Rome'));
+      expect(labels, isNot(contains('Extracted')));
+      // All still holds every one of them.
+      expect(
+        categories.first.count,
+        (minimumAlbumItems - 1) + minimumAlbumItems,
+      );
+    });
+
+    test('folders no person named get no album, however full', () {
+      final categories = buildCategories([
+        for (var i = 0; i < 20; i++)
+          item(name: 'x$i.jpg', folder: 'Download/1761572236343'),
+        for (var i = 0; i < 20; i++)
+          item(
+            name: 'y$i.jpg',
+            folder: 'Download/{0D75C5A9-8574-42CF-9B99-FFD0D2F44FF5}',
+          ),
+        for (var i = 0; i < 20; i++)
+          item(name: 'z$i.jpg', folder: 'Pictures/Wedding'),
+      ]);
+      final labels = [for (final c in categories) c.label];
+      expect(labels, contains('Wedding'));
+      expect(labels.where(looksMachineNamed), isEmpty);
+    });
+
+    test('machine-named folders are recognised, human ones are not', () {
+      expect(looksMachineNamed('1761572236343'), isTrue);
+      expect(looksMachineNamed('{0D75C5A9 8574 42CF 9B99 FFD0D2F44FF5}'),
+          isTrue);
+      expect(looksMachineNamed('a3f5b8c9d0e1f2a3'), isTrue);
+      expect(looksMachineNamed('Wedding'), isFalse);
+      expect(looksMachineNamed('2026'), isFalse, reason: 'a year is a name');
+      expect(looksMachineNamed('Trip 2024'), isFalse);
+      expect(looksMachineNamed('Boat'), isFalse);
     });
 
     test('empty fixed tabs are left out, All never is', () {
@@ -196,7 +313,7 @@ void main() {
 
       final whatsapp =
           categories.firstWhere((c) => c.label == 'WhatsApp Images');
-      expect(itemsInCategory(whatsapp, library), hasLength(2));
+      expect(itemsInCategory(whatsapp, library), hasLength(3));
     });
 
     test('items come back newest first', () {
@@ -246,7 +363,7 @@ void main() {
     test('labels map into the buckets people browse by', () {
       expect(bucketForLabel('Dog'), 'Pets');
       expect(bucketForLabel('dessert'), 'Food');
-      expect(bucketForLabel('Skyscraper'), 'City');
+      expect(bucketForLabel('Skyscraper'), 'Architecture');
       expect(bucketForLabel('Nothing In Particular'), isNull);
     });
 
@@ -340,7 +457,7 @@ void main() {
         longitudeRef: 'E',
         taken: '2026:07:31 14:12:33',
       );
-      final metadata = parseJpegMetadata(bytes);
+      final metadata = parseImageDetails(bytes);
 
       expect(metadata, isNotNull);
       expect(metadata!.latitude, closeTo(52.3730, 0.001));
@@ -355,22 +472,316 @@ void main() {
         longitude: [151, 12, 36],
         longitudeRef: 'W',
       );
-      final metadata = parseJpegMetadata(bytes)!;
+      final metadata = parseImageDetails(bytes)!;
       expect(metadata.latitude, lessThan(0));
       expect(metadata.longitude, lessThan(0));
     });
 
-    test('a file that is not a JPEG is simply metadata-free', () {
-      expect(parseJpegMetadata(Uint8List.fromList([0x89, 0x50, 0x4E, 0x47])),
-          isNull);
-      expect(parseJpegMetadata(Uint8List(0)), isNull);
+    test('a file in no known format is simply detail-free', () {
+      expect(parseImageDetails(Uint8List.fromList([1, 2, 3, 4])), isNull);
+      expect(parseImageDetails(Uint8List(0)), isNull);
     });
 
-    test('a JPEG without an EXIF block reads as null', () {
+    test('a JPEG with no EXIF still gives up its size', () {
+      // Frame size is what the Panoramas album is built from, and it lives in
+      // the SOF header that every JPEG has — EXIF or not.
       final plain = Uint8List.fromList(
-        img.encodeJpg(img.Image(width: 4, height: 4)),
+        img.encodeJpg(img.Image(width: 1600, height: 400)),
       );
-      expect(parseJpegMetadata(plain), isNull);
+      final details = parseImageDetails(plain)!;
+      expect(details.width, 1600);
+      expect(details.height, 400);
+      expect(details.latitude, isNull);
+    });
+
+    test('a PNG gives up its size from IHDR', () {
+      final png = Uint8List.fromList(
+        img.encodePng(img.Image(width: 300, height: 120)),
+      );
+      final details = parseImageDetails(png)!;
+      expect(details.width, 300);
+      expect(details.height, 120);
+    });
+
+    test('a GIF gives up its size from the screen descriptor', () {
+      final gif = Uint8List.fromList(
+        img.encodeGif(img.Image(width: 48, height: 64)),
+      );
+      final details = parseImageDetails(gif)!;
+      expect(details.width, 48);
+      expect(details.height, 64);
+    });
+
+    test('a geotagged JPEG reports both its place and its shape', () {
+      final bytes = _jpegWithGps(
+        latitude: [52, 22, 23],
+        latitudeRef: 'N',
+        longitude: [4, 53, 32],
+        longitudeRef: 'E',
+      );
+      final details = parseImageDetails(bytes)!;
+      expect(details.latitude, isNotNull);
+      expect(details.width, 8);
+      expect(details.height, 8);
+    });
+  });
+
+  group('cloud placeholders', () {
+    // OneDrive's Files On-Demand leaves a file listed in the folder while its
+    // contents sit online. Reading one downloads it, so the desktop source
+    // must refuse — a gallery that thumbnails everything it finds would drag
+    // someone's whole cloud library onto their disk. Each test here pairs the
+    // guarded call with the identical unguarded one, so it fails if the guard
+    // is dropped rather than passing because the file was unreadable anyway.
+    late Directory temp;
+    late FolderGallerySource source;
+
+    setUp(() async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      temp = await Directory.systemTemp.createTemp('luma_gallery');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('plugins.flutter.io/path_provider'),
+        (call) async => temp.path,
+      );
+      source = FolderGallerySource();
+    });
+
+    tearDown(() async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('plugins.flutter.io/path_provider'),
+        null,
+      );
+      source.dispose();
+      if (temp.existsSync()) await temp.delete(recursive: true);
+    });
+
+    GalleryItem onDisk(String name, {required bool cloudOnly}) => GalleryItem(
+          id: '$name#${cloudOnly ? 'cloud' : 'local'}',
+          name: name,
+          type: GalleryMediaType.image,
+          folder: 'OneDrive/Pictures',
+          takenAt: DateTime(2026, 3, 3),
+          path: '${temp.path}${Platform.pathSeparator}$name',
+          cloudOnly: cloudOnly,
+        );
+
+    test('no thumbnail is decoded for a file that lives in the cloud',
+        () async {
+      final file = File('${temp.path}${Platform.pathSeparator}photo.jpg')
+        ..writeAsBytesSync(img.encodeJpg(img.Image(width: 64, height: 64)));
+      expect(file.existsSync(), isTrue);
+
+      // The same readable file, twice: only the flag differs.
+      expect(
+        await source.thumbnail(onDisk('photo.jpg', cloudOnly: false), 64),
+        isNotNull,
+        reason: 'a local photo should still get a thumbnail',
+      );
+      expect(
+        await source.thumbnail(onDisk('photo.jpg', cloudOnly: true), 64),
+        isNull,
+        reason: 'reading a placeholder would download it',
+      );
+    });
+
+    test('a scanned photo learns its shape, so Panoramas can exist', () async {
+      // The desktop walk has no media index to ask for dimensions, so
+      // without this pass every desktop photo has width 0 and the Panoramas
+      // album can never appear.
+      final wide = Uint8List.fromList(
+        img.encodeJpg(img.Image(width: 4000, height: 1000)),
+      );
+      File('${temp.path}${Platform.pathSeparator}pano.jpg')
+          .writeAsBytesSync(wide);
+
+      final scanned = onDisk('pano.jpg', cloudOnly: false);
+      expect(scanned.width, 0, reason: 'the walk itself knows no dimensions');
+
+      final enriched = await source.enrich(scanned);
+      expect(enriched.width, 4000);
+      expect(enriched.height, 1000);
+      expect(isPanorama(enriched), isTrue);
+    });
+
+    test('no EXIF is read from a file that lives in the cloud', () async {
+      final bytes = _jpegWithGps(
+        latitude: [52, 22, 23],
+        latitudeRef: 'N',
+        longitude: [4, 53, 32],
+        longitudeRef: 'E',
+      );
+      File('${temp.path}${Platform.pathSeparator}geo.jpg')
+          .writeAsBytesSync(bytes);
+
+      final local = await source.enrich(onDisk('geo.jpg', cloudOnly: false));
+      expect(local.hasLocation, isTrue,
+          reason: 'a local photo should still land on the map');
+
+      final cloud = await source.enrich(onDisk('geo.jpg', cloudOnly: true));
+      expect(cloud.hasLocation, isFalse,
+          reason: 'a placeholder has no pin rather than being downloaded');
+    });
+  });
+
+  group('what the desktop walk refuses to pick up', () {
+    test('technical folders are never descended into', () {
+      for (final junk in [
+        'node_modules',
+        '.git',
+        'AppData',
+        'resourcepacks',
+        'Textures',
+        'build',
+        'Program Files (x86)',
+      ]) {
+        expect(isSkippedFolder(junk), isTrue, reason: junk);
+      }
+      for (final real in ['Rome 2024', 'Camera', 'WhatsApp Images', 'Boat']) {
+        expect(isSkippedFolder(real), isFalse, reason: real);
+      }
+    });
+
+    test('tiny images are icons and sprites, not photographs', () {
+      expect(isLikelyPhotoFile(GalleryMediaType.image, 400), isFalse);
+      expect(
+        isLikelyPhotoFile(
+          GalleryMediaType.image,
+          FolderGallerySource.minimumImageBytes - 1,
+        ),
+        isFalse,
+      );
+      expect(
+        isLikelyPhotoFile(GalleryMediaType.image, 2 * 1024 * 1024),
+        isTrue,
+      );
+      // A video is a video whatever it weighs.
+      expect(isLikelyPhotoFile(GalleryMediaType.video, 400), isTrue);
+    });
+  });
+
+  group('editing a file', () {
+    const original = 'IMG_2026.jpg';
+    String? check(String name) =>
+        GalleryFileEditor.validateName(name, originalName: original);
+
+    test('an ordinary rename is allowed', () {
+      expect(check('Rome rooftop.jpg'), isNull);
+      expect(check('holiday-01.jpg'), isNull);
+    });
+
+    test('names the filesystem would refuse are caught before writing', () {
+      expect(check(''), isNotNull);
+      expect(check('   '), isNotNull);
+      expect(check('a/b.jpg'), isNotNull);
+      expect(check(r'a\b.jpg'), isNotNull);
+      expect(check('what?.jpg'), isNotNull);
+      expect(check('trailing.jpg.'), isNotNull);
+      expect(check('.hidden.jpg'), isNotNull);
+      expect(check('CON.jpg'), isNotNull, reason: 'reserved on Windows');
+    });
+
+    test('the extension is protected', () {
+      // Renaming a JPEG to .txt stops it opening; the field says so rather
+      // than letting it happen.
+      expect(check('IMG_2026.txt'), isNotNull);
+      expect(check('IMG_2026'), isNotNull);
+      expect(check('IMG_2026.JPG'), isNull, reason: 'case is not a change');
+    });
+
+    test('impossible dates are rejected', () {
+      final now = DateTime(2026, 8, 10);
+      expect(
+        GalleryFileEditor.validateDate(DateTime(2026, 7, 1), now: now),
+        isNull,
+      );
+      expect(
+        GalleryFileEditor.validateDate(DateTime(2030), now: now),
+        isNotNull,
+      );
+      expect(
+        GalleryFileEditor.validateDate(DateTime(1500), now: now),
+        isNotNull,
+      );
+    });
+
+    test('renaming moves the file and keeps the rest of the item', () async {
+      final temp = await Directory.systemTemp.createTemp('luma_edit');
+      addTearDown(() => temp.delete(recursive: true));
+      final path = '${temp.path}${Platform.pathSeparator}$original';
+      File(path).writeAsBytesSync(
+        img.encodeJpg(img.Image(width: 32, height: 32)),
+      );
+
+      final item = GalleryItem(
+        id: path,
+        name: original,
+        type: GalleryMediaType.image,
+        folder: 'Pictures',
+        takenAt: DateTime(2026, 7, 31),
+        path: path,
+        latitude: 52.1,
+        longitude: 4.9,
+      );
+
+      final result = await GalleryFileEditor.apply(item, newName: 'Rome.jpg');
+      expect(result.ok, isTrue, reason: result.error);
+      expect(result.item!.name, 'Rome.jpg');
+      expect(File(result.item!.path!).existsSync(), isTrue);
+      expect(File(path).existsSync(), isFalse);
+      // Everything learned about the photo survives the rename.
+      expect(result.item!.latitude, 52.1);
+      expect(result.item!.folder, 'Pictures');
+    });
+
+    test('a rename onto an existing file is refused, not silently merged',
+        () async {
+      final temp = await Directory.systemTemp.createTemp('luma_edit');
+      addTearDown(() => temp.delete(recursive: true));
+      final separator = Platform.pathSeparator;
+      final bytes = img.encodeJpg(img.Image(width: 8, height: 8));
+      File('${temp.path}${separator}a.jpg').writeAsBytesSync(bytes);
+      File('${temp.path}${separator}b.jpg').writeAsBytesSync(bytes);
+
+      final item = GalleryItem(
+        id: '${temp.path}${separator}a.jpg',
+        name: 'a.jpg',
+        type: GalleryMediaType.image,
+        folder: 'Pictures',
+        takenAt: DateTime(2026),
+        path: '${temp.path}${separator}a.jpg',
+      );
+
+      final result = await GalleryFileEditor.apply(item, newName: 'b.jpg');
+      expect(result.ok, isFalse);
+      expect(result.error, contains('already'));
+      expect(File('${temp.path}${separator}a.jpg').existsSync(), isTrue);
+    });
+
+    test('the date is written to the file, not re-encoded into it', () async {
+      final temp = await Directory.systemTemp.createTemp('luma_edit');
+      addTearDown(() => temp.delete(recursive: true));
+      final path = '${temp.path}${Platform.pathSeparator}dated.jpg';
+      final bytes = img.encodeJpg(img.Image(width: 16, height: 16));
+      File(path).writeAsBytesSync(bytes);
+
+      final item = GalleryItem(
+        id: path,
+        name: 'dated.jpg',
+        type: GalleryMediaType.image,
+        folder: 'Pictures',
+        takenAt: DateTime(2020),
+        path: path,
+      );
+
+      final when = DateTime(2024, 5, 6, 7, 8);
+      final result = await GalleryFileEditor.apply(item, newTakenAt: when);
+      expect(result.ok, isTrue, reason: result.error);
+      expect(result.item!.takenAt, when);
+      expect(File(path).lastModifiedSync(), when);
+      // The pixels are untouched — nothing was re-compressed.
+      expect(File(path).readAsBytesSync(), bytes);
     });
   });
 

@@ -65,6 +65,7 @@ jobs:
 
   build-linux:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -84,10 +85,45 @@ jobs:
 
       - run: flutter pub get
 
+      # The runner's mirror list puts azure.archive.ubuntu.com first, and when
+      # that mirror stalls apt has no timeout of its own — a release run once
+      # sat in `apt-get update` for four hours, holding the `release`
+      # concurrency group (cancel-in-progress: false) the entire time. Pin the
+      # canonical mirror, cap every fetch, retry a few times, and let the step
+      # die in minutes instead of hours. NEEDRESTART_MODE=a keeps the 24.04
+      # needrestart hook from opening an interactive service-restart prompt.
       - name: Install Linux build dependencies
+        timeout-minutes: 15
+        env:
+          DEBIAN_FRONTEND: noninteractive
+          NEEDRESTART_MODE: a
         run: |
-          sudo apt-get update -y
-          sudo apt-get install -y clang cmake ninja-build pkg-config \
+          set -euo pipefail
+
+          sudo tee /etc/apt/apt-mirrors.txt >/dev/null <<'EOF'
+          https://archive.ubuntu.com/ubuntu/
+          http://azure.archive.ubuntu.com/ubuntu/
+          EOF
+          sudo tee /etc/apt/apt.conf.d/99-ci-timeouts >/dev/null <<'EOF'
+          Acquire::http::Timeout "20";
+          Acquire::https::Timeout "20";
+          Acquire::Retries "2";
+          EOF
+
+          retry() {
+            for attempt in 1 2 3; do
+              if "$@"; then
+                return 0
+              fi
+              echo "attempt $attempt failed: $*"
+              sleep 15
+            done
+            return 1
+          }
+
+          retry sudo apt-get update -y
+          retry sudo apt-get install -y \
+            clang cmake ninja-build pkg-config \
             libgtk-3-dev libglib2.0-dev libkeybinder-3.0-dev \
             libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
 

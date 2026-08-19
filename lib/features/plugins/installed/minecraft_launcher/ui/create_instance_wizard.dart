@@ -8,6 +8,7 @@ import '../logic/neoforge_installer.dart';
 import '../logic/piston_meta_client.dart';
 import '../logic/quilt_installer.dart';
 import '../minecraft_launcher_scope.dart';
+import 'hover_sync_scroll.dart';
 
 /// Instance creation flow: pick a name, a Minecraft version (releases by
 /// default, snapshots optional, with search), optionally a mod loader, and
@@ -250,27 +251,29 @@ class _CreateInstanceWizardState extends State<CreateInstanceWizard> {
           Expanded(
             child: LumaCard(
               padding: EdgeInsets.zero,
-              child: ListView.builder(
-                itemCount: _filtered.length,
-                itemBuilder: (context, i) {
-                  final v = _filtered[i];
-                  final selected = v.id == _selected?.id;
-                  return ListTile(
-                    dense: true,
-                    selected: selected,
-                    selectedTileColor: luma.accentSubtle,
-                    title: Text(v.id, style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w600)),
-                    subtitle: Text(v.type, style: TextStyle(color: luma.textMuted, fontSize: 12)),
-                    onTap: () => setState(() {
-                      _selected = v;
-                      if (_nameController.text.isEmpty ||
-                          _manifest!.versions.any((m) => m.id == _nameController.text)) {
-                        _nameController.text = v.id;
-                      }
-                      if (_loader != 'vanilla') _loadLoaderVersions();
-                    }),
-                  );
-                },
+              child: HoverSyncScroll(
+                child: ListView.builder(
+                  itemCount: _filtered.length,
+                  itemBuilder: (context, i) {
+                    final v = _filtered[i];
+                    final selected = v.id == _selected?.id;
+                    return ListTile(
+                      dense: true,
+                      selected: selected,
+                      selectedTileColor: luma.accentSubtle,
+                      title: Text(v.id, style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w600)),
+                      subtitle: Text(v.type, style: TextStyle(color: luma.textMuted, fontSize: 12)),
+                      onTap: () => setState(() {
+                        _selected = v;
+                        if (_nameController.text.isEmpty ||
+                            _manifest!.versions.any((m) => m.id == _nameController.text)) {
+                          _nameController.text = v.id;
+                        }
+                        if (_loader != 'vanilla') _loadLoaderVersions();
+                      }),
+                    );
+                  },
+                ),
               ),
             ),
           ),
