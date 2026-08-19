@@ -50,15 +50,29 @@ class BottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final coffee = context.lumaDecor.style == LumaDecor.coffee.style;
     final t = L.of(context);
     final primary = _primary(t);
     return SafeArea(
       top: false,
       child: Container(
         height: 64,
+        margin: coffee ? const EdgeInsets.fromLTRB(12, 8, 12, 8) : null,
         decoration: BoxDecoration(
           color: luma.rail,
-          border: Border(top: BorderSide(color: luma.border)),
+          border: coffee
+              ? Border.all(color: luma.border)
+              : Border(top: BorderSide(color: luma.border)),
+          borderRadius: coffee ? BorderRadius.circular(24) : null,
+          boxShadow: coffee
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                ]
+              : null,
         ),
         child: Row(
           children: [

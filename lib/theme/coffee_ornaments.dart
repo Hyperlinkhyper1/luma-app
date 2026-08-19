@@ -173,7 +173,7 @@ class _CoffeeBackdropState extends State<_CoffeeBackdrop>
                 center: const Alignment(-0.85, -0.9),
                 radius: 1.25,
                 colors: [
-                  luma.accent.withValues(alpha: isDark ? 0.10 : 0.09),
+                  luma.accent.withValues(alpha: isDark ? 0.09 : 0.055),
                   luma.background.withValues(alpha: 0),
                 ],
               ),
@@ -187,7 +187,7 @@ class _CoffeeBackdropState extends State<_CoffeeBackdrop>
                 center: const Alignment(0.95, 1.0),
                 radius: 1.1,
                 colors: [
-                  luma.accent.withValues(alpha: isDark ? 0.08 : 0.07),
+                  luma.accent.withValues(alpha: isDark ? 0.07 : 0.045),
                   luma.background.withValues(alpha: 0),
                 ],
               ),
@@ -202,9 +202,9 @@ class _CoffeeBackdropState extends State<_CoffeeBackdrop>
                 builder: (context, _) => CustomPaint(
                   painter: _BeanFieldPainter(
                     progress: _controller.value,
-                    bean: luma.accent.withValues(alpha: isDark ? 0.09 : 0.07),
+                    bean: luma.accent.withValues(alpha: isDark ? 0.08 : 0.045),
                     crease: luma.background,
-                    steam: luma.accent.withValues(alpha: isDark ? 0.05 : 0.04),
+                    steam: luma.accent.withValues(alpha: isDark ? 0.045 : 0.028),
                   ),
                 ),
               ),
