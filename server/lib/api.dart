@@ -4648,7 +4648,7 @@ if (window.innerWidth <= 900) document.getElementById('pane-write').classList.ad
         '<button class="tab-btn" data-tab="activity">Activity</button>'
         '<button class="tab-btn" data-tab="plugins">Plugins</button>'
         '<button class="tab-btn" data-tab="metrics">Metrics</button>'
-        '<button class="tab-btn" data-tab="control">Control panel</button>'
+        '<button class="tab-btn" data-tab="control">Maintenance</button>'
         '</div>'
         '<div class="tab-panel" id="panel-users">'
         '<div class="card table-card">'

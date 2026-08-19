@@ -294,6 +294,25 @@ void main() {
       expect(store.byId('a/two'), isNotNull);
     });
 
+    test('pruneVendorsNotIn removes only disallowed vendors, permanently',
+        () async {
+      final store = await AiModelCatalogStore.open(dir.path);
+      await store.upsertModels(
+          [model('openai/gpt'), model('baidu/ernie'), model('qwen/max')]);
+
+      final removed = await store.pruneVendorsNotIn({'openai', 'qwen'});
+      expect(removed, ['baidu/ernie']);
+      expect(store.byId('baidu/ernie'), isNull);
+      expect(store.byId('openai/gpt'), isNotNull);
+      expect(store.byId('qwen/max'), isNotNull);
+
+      // A later upsertModels can't bring it back on its own — the vendor
+      // filter runs upstream of the store, so nothing should be re-adding
+      // pruned vendors in the first place.
+      await store.upsertModels([model('a/one')]);
+      expect(store.byId('baidu/ernie'), isNull);
+    });
+
     test('sorts rated models first and leaves unrated ones at the end',
         () async {
       final store = await AiModelCatalogStore.open(dir.path);

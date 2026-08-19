@@ -235,30 +235,10 @@ class _FilterBar extends StatelessWidget {
             shown == total ? '$total models' : '$shown of $total models',
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _FreshnessLabel(repo: repo),
-              if (repo.canRefresh)
-                IconButton(
-                  tooltip: 'Check the luma server for newer model data',
-                  icon: repo.refreshing
-                      ? SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor:
-                                AlwaysStoppedAnimation(luma.textSecondary),
-                          ),
-                        )
-                      : Icon(Icons.refresh_rounded, color: luma.textSecondary),
-                  onPressed: repo.refreshing
-                      ? null
-                      : () => repo.refreshFromServer(force: true),
-                ),
-            ],
-          ),
+          // Refreshing is an operator action (the admin dashboard's
+          // Maintenance tab), not something every client re-triggers — this
+          // just states how current the data already is.
+          _FreshnessLabel(repo: repo),
         ],
       ),
     );
