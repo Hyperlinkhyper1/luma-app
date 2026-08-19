@@ -89,12 +89,16 @@ void main() {
       expect(find.text('Qwen3 8B'), findsOneWidget);
       expect(find.text('3 models'), findsOneWidget);
 
-      // The four rating columns and the arena column are all present.
+      // The three rating columns and the arena column are all present.
+      // Reasoning has no column of its own — it stays on the model detail
+      // page and the graph/compare metric pickers, but not this table.
       expect(find.text('63.1'), findsOneWidget);
-      expect(find.text('71.4'), findsOneWidget);
       expect(find.text('78.0'), findsOneWidget);
       expect(find.text('59.2'), findsOneWidget);
       expect(find.text('1344'), findsOneWidget);
+      // The Params column, using the open-weight models' parameter counts.
+      expect(find.text('1.0T'), findsOneWidget);
+      expect(find.text('8.0B'), findsOneWidget);
     });
 
     testWidgets('shows the average price and the context window',

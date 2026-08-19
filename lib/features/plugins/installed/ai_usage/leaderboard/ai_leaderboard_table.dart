@@ -377,18 +377,22 @@ class _OpenWeightsToggle extends StatelessWidget {
 
 /// Column widths, in the order the table renders them. Fixed rather than
 /// flexible so the header and every row line up while the whole table scrolls
-/// sideways on a narrow window.
-const double _wRank = 46;
+/// sideways on a narrow window. Each is sized to its own header *label*, not
+/// just its data — "CODE ARENA" and "LLM STATS" are the longest words in the
+/// row and set the floor other columns don't need.
+const double _wRank = 58;
 const double _wModel = 240;
-const double _wScore = 84;
-const double _wArena = 88;
-const double _wContext = 84;
-const double _wPrice = 92;
-const double _wLicense = 74;
+const double _wScore = 100;
+const double _wArena = 104;
+const double _wParams = 80;
+const double _wContext = 90;
+const double _wPrice = 96;
+const double _wLicense = 78;
 const double _tableWidth = _wRank +
     _wModel +
-    _wScore * 4 +
+    _wScore * 3 +
     _wArena +
+    _wParams +
     _wContext +
     _wPrice +
     _wLicense;
@@ -522,7 +526,6 @@ class _HeaderRow extends StatelessWidget {
               onSort: onSort),
           for (final column in const [
             AiLeaderboardColumn.llmStats,
-            AiLeaderboardColumn.reasoning,
             AiLeaderboardColumn.coding,
             AiLeaderboardColumn.agent,
           ])
@@ -535,6 +538,12 @@ class _HeaderRow extends StatelessWidget {
           _HeaderCell(
               column: AiLeaderboardColumn.codeArena,
               width: _wArena,
+              sortBy: sortBy,
+              descending: descending,
+              onSort: onSort),
+          _HeaderCell(
+              column: AiLeaderboardColumn.params,
+              width: _wParams,
               sortBy: sortBy,
               descending: descending,
               onSort: onSort),
@@ -705,13 +714,13 @@ class _ModelRow extends StatelessWidget {
             ),
           ),
           _ScoreCell(value: model.llmStatsIndex),
-          _ScoreCell(value: model.reasoningIndex),
           _ScoreCell(value: model.codingIndex),
           _ScoreCell(value: model.agentIndex),
           _NumberCell(
             width: _wArena,
             text: model.codeArena?.round().toString(),
           ),
+          _NumberCell(width: _wParams, text: formatParams(model.parametersB)),
           _NumberCell(width: _wContext, text: formatTokens(model.contextTokens)),
           _NumberCell(width: _wPrice, text: formatPrice(model.avgPricePerM)),
           _LicenseCell(model: model),

@@ -16,10 +16,6 @@ enum AiLeaderboardColumn {
     label: 'LLM STATS',
     help: 'Overall composite rating across every benchmark in the index',
   ),
-  reasoning(
-    label: 'REASONING',
-    help: 'Graduate-level reasoning and knowledge benchmarks',
-  ),
   coding(
     label: 'CODING',
     help: 'Code generation and repair benchmarks',
@@ -31,6 +27,11 @@ enum AiLeaderboardColumn {
   codeArena(
     label: 'CODE ARENA',
     help: 'Head-to-head Elo from human preference on coding tasks',
+  ),
+  params(
+    label: 'PARAMS',
+    help: 'Total parameter count, in billions — only known for open-weight '
+        'models',
   ),
   context(
     label: 'CONTEXT',
@@ -121,10 +122,10 @@ Comparable<Object>? _sortValue(AiModel m, AiLeaderboardColumn column) =>
       AiLeaderboardColumn.rank ||
       AiLeaderboardColumn.llmStats =>
         m.llmStatsIndex,
-      AiLeaderboardColumn.reasoning => m.reasoningIndex,
       AiLeaderboardColumn.coding => m.codingIndex,
       AiLeaderboardColumn.agent => m.agentIndex,
       AiLeaderboardColumn.codeArena => m.codeArena,
+      AiLeaderboardColumn.params => m.parametersB,
       AiLeaderboardColumn.context => m.contextTokens,
       AiLeaderboardColumn.price => m.avgPricePerM,
     };
