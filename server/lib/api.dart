@@ -7,6 +7,8 @@ import 'package:crypto/crypto.dart' as c;
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 
+import 'ai_model_catalog.dart';
+import 'ai_model_refresh.dart';
 import 'ai_usage_store.dart';
 import 'chat_store.dart';
 import 'family_store.dart';
@@ -62,6 +64,8 @@ class ServerConfig {
     required this.googleApiKey,
     required this.groceriesUrl,
     required this.groceriesAdminKey,
+    required this.artificialAnalysisKey,
+    required this.repoPath,
     required this.wikiDir,
     required this.publicUrl,
     required this.oauthProviders,
@@ -129,6 +133,24 @@ class ServerConfig {
 
   bool get groceriesAdminEnabled =>
       groceriesAdminKey != null && groceriesAdminKey!.isNotEmpty;
+
+  /// Optional Artificial Analysis data-API key (free tier, 1000 requests a
+  /// day) used only while refreshing the AI model leaderboard. Without it the
+  /// catalogue still builds from OpenRouter and Hugging Face; the reasoning
+  /// column, the speed figures and the per-effort measurements are what go
+  /// missing. Like the other provider keys here it never reaches a client.
+  final String? artificialAnalysisKey;
+
+  bool get artificialAnalysisConfigured =>
+      artificialAnalysisKey != null && artificialAnalysisKey!.isNotEmpty;
+
+  /// Absolute path to this repo's checkout on the host, used only by
+  /// [_adminDeploy] to know where to `git pull` and re-run `docker compose`
+  /// from. See LUMA_REPO_PATH in .env.example for why there is no default —
+  /// a wrong guess here can create files in the wrong place on the host.
+  final String? repoPath;
+
+  bool get repoPathConfigured => repoPath != null && repoPath!.isNotEmpty;
 
   /// Root of the wiki checkout mounted into the container (contains
   /// `source/` with the Astro project and `site/` with the built output).
@@ -199,6 +221,8 @@ class ServerConfig {
       groceriesUrl:
           env['LUMA_GROCERIES_URL'] ?? 'https://groceries.luma-app.cc',
       groceriesAdminKey: env['LUMA_GROCERIES_ADMIN_KEY'],
+      artificialAnalysisKey: env['LUMA_AA_API_KEY'],
+      repoPath: env['LUMA_REPO_PATH'],
       wikiDir: env['LUMA_WIKI_DIR'],
       publicUrl: (env['LUMA_PUBLIC_URL'] ?? 'http://localhost:8080')
           .replaceAll(RegExp(r'/+$'), ''),
@@ -241,7 +265,7 @@ class Api {
   /// [oauthClient] is only passed by tests, which substitute one that
   /// resolves an identity without a round trip to Google or GitHub.
   Api(this.store, this.config, this.mailer, this.familyStore, this.chatStore,
-      this.aiUsage, this.subwayStore, this.recipeStore,
+      this.aiUsage, this.subwayStore, this.recipeStore, this.aiCatalog,
       {OAuthClient? oauthClient})
       : _oauthClient = oauthClient ?? OAuthClient(),
         _authLimiter = RateLimiter(
@@ -275,6 +299,7 @@ class Api {
   final AiUsageStore aiUsage;
   final SubwayStore subwayStore;
   final RecipeStore recipeStore;
+  final AiModelCatalogStore aiCatalog;
   final SubwayRelay _subwayRelay = SubwayRelay();
   final SubwayTicketStore _subwayTickets = SubwayTicketStore();
 
@@ -383,6 +408,7 @@ class Api {
           _requireAuth(_listChatMessages))
       ..post('/api/v1/chat/conversations/<id>/messages',
           _requireAuth(_sendChatMessage))
+      ..get('/api/v1/ai-models', _requireAuth(_listAiModels))
       ..get('/api/v1/recipes', _requireAuth(_listPublicRecipes))
       ..post('/api/v1/recipes', _requireAuth(_publishRecipe))
       ..get('/api/v1/recipes/media/<photoId>', _requireAuth(_getRecipeMedia))
@@ -420,6 +446,8 @@ class Api {
       ..post('/admin/plan', _requireAdmin(_adminSetPlan))
       ..post('/admin/groceries/sync', _requireAdmin(_adminGroceriesSync))
       ..get('/admin/groceries/status', _requireAdmin(_adminGroceriesStatus))
+      ..post('/admin/ai-models/refresh', _requireAdmin(_adminAiModelsRefresh))
+      ..get('/admin/ai-models/status', _requireAdmin(_adminAiModelsStatus))
       ..post('/admin/deploy', _requireAdmin(_adminDeploy))
       ..get('/admin/deploy/status', _requireAdmin(_adminDeployStatus))
       ..get('/admin/website', _requireAdmin(_adminWebsiteIndex))
@@ -1861,6 +1889,68 @@ class Api {
       });
     });
   }
+
+  // ---- Handlers: AI model leaderboard --------------------------------------
+
+  /// The whole model catalogue plus the news rail, in one response.
+  ///
+  /// Public data — identical for every account and carrying nothing a user
+  /// typed — so unlike the sync collections it is served in the clear, the
+  /// same way the recipe catalogue is. It is still behind [_requireAuth]: the
+  /// app may not talk to a luma server at all before its account is approved
+  /// (see lib/sync/server_access.dart), and this endpoint is no exception.
+  ///
+  /// The payload is a few hundred kilobytes and changes only when the
+  /// operator refreshes it, so it is served with an ETag and the app sends it
+  /// back as `If-None-Match` — a client that is already current pays for a
+  /// 304 and nothing else.
+  Response _listAiModels(Request request, StoredUser user) {
+    final etag = aiCatalog.etag;
+    if (request.headers['if-none-match'] == etag) {
+      return Response.notModified(headers: {'ETag': etag});
+    }
+    return Response(
+      200,
+      body: jsonEncode(aiCatalog.toJson()),
+      headers: {
+        'Content-Type': 'application/json',
+        'ETag': etag,
+        // Must revalidate rather than sit in a cache: a refresh should reach
+        // devices on their next launch, not whenever a TTL happens to lapse.
+        'Cache-Control': 'no-cache',
+      },
+    );
+  }
+
+  /// Rebuilds the catalogue from OpenRouter, Artificial Analysis and Hugging
+  /// Face, and re-polls the news feeds.
+  ///
+  /// A full refresh takes a minute or two — far longer than a dashboard
+  /// request should hold a connection open — so this starts the job and
+  /// returns immediately; the dashboard follows it through
+  /// [_adminAiModelsStatus]. Only one may run at a time, since two concurrent
+  /// refreshes would interleave writes to the same store.
+  Future<Response> _adminAiModelsRefresh(Request request) async {
+    if (aiCatalog.status.running) {
+      return _error(409, 'refresh_running',
+          'A catalogue refresh is already in progress.');
+    }
+    unawaited(refreshAiCatalog(
+      aiCatalog,
+      artificialAnalysisKey: config.artificialAnalysisKey,
+    ));
+    return _json(202, {'started': true});
+  }
+
+  Response _adminAiModelsStatus(Request request) => _json(200, {
+        'status': aiCatalog.status.toJson(),
+        'modelCount': aiCatalog.modelCount,
+        'newsCount': aiCatalog.news.length,
+        'refreshedAtMs': aiCatalog.refreshedAtMs,
+        // Drives the dashboard's "reasoning column needs a key" hint, so an
+        // operator can tell a missing key from a broken upstream.
+        'artificialAnalysisConfigured': config.artificialAnalysisConfigured,
+      });
 
   // ---- Handlers: recipes ---------------------------------------------------
 
@@ -3449,13 +3539,32 @@ class Api {
     }
   }
 
-  /// Triggers a full server update: git pull → pub get → recompile →
-  /// systemctl restart. The command runs in a fully detached process
-  /// (`setsid`) so it survives the service stop that kills *this* process.
-  /// Output is written to `deploy.log` in the data dir; the PID is tracked
-  /// in `deploy.pid` so the status endpoint can tell whether it's still
-  /// running. The endpoint returns immediately with `{"started": true}`.
+  /// Triggers a full server update: git pull → rebuild the image → recreate
+  /// this container, driven from inside a Docker container via the host's
+  /// Docker daemon over the socket mounted into it (see docker-compose.yml).
+  /// This container has no Dart SDK and cannot compile itself — the
+  /// Dockerfile's build stage does that as part of `docker compose build`.
+  ///
+  /// `git config --global --add safe.directory` is needed first because the
+  /// repo on the host is owned by a different uid than this (root) process;
+  /// git otherwise refuses to touch it. The command runs in a fully detached
+  /// process (`setsid`) — necessary here for a different reason than a plain
+  /// systemd restart would need it for: `docker compose up -d --build` tears
+  /// down *this very container* partway through, killing the process tree
+  /// that launched the deploy along with it. That's expected, not a bug —
+  /// which is why the log and PID files live on the `/data` volume, which
+  /// survives the container being replaced, rather than anywhere that
+  /// wouldn't. A poll from the browser after the swap reads whatever the log
+  /// captured before the kill, then sees the PID as no longer running (a
+  /// fresh container is a fresh PID namespace) and reports the deploy as
+  /// finished either way.
   Future<Response> _adminDeploy(Request request) async {
+    if (!config.repoPathConfigured) {
+      return _error(404, 'not_configured',
+          "LUMA_REPO_PATH is not set on this server. Set it in .env to this "
+          "repo's absolute path on the host, then restart.");
+    }
+
     final logFile = File('${config.dataDir}/deploy.log');
     final pidFile = File('${config.dataDir}/deploy.pid');
 
@@ -3469,11 +3578,11 @@ class Api {
 
     await logFile.parent.create(recursive: true);
 
-    const deployCmd = 'cd ~/luma-app && git pull && cd server && '
-        'dart pub get && sudo systemctl stop luma-sync && '
-        'dart compile exe bin/luma_server.dart -o luma_server && '
-        'sudo systemctl start luma-sync && '
-        'sudo systemctl status luma-sync';
+    final repoPath = config.repoPath!;
+    final deployCmd =
+        "git config --global --add safe.directory '$repoPath' && "
+        "cd '$repoPath' && git pull && cd server && "
+        'docker compose up -d --build luma-sync';
 
     final script = 'echo \$\$ > "${pidFile.path}" && '
         '{ $deployCmd; } > "${logFile.path}" 2>&1; '
@@ -3512,7 +3621,11 @@ class Api {
       } catch (_) {}
     }
 
-    return _json(200, {'running': running, 'log': log});
+    return _json(200, {
+      'running': running,
+      'log': log,
+      'repoPathConfigured': config.repoPathConfigured,
+    });
   }
 
   /// Best-effort check whether a process is still alive (POSIX `kill -0`).
@@ -4636,6 +4749,20 @@ if (window.innerWidth <= 900) document.getElementById('pane-write').classList.ad
         '</div>'
         '</div>'
         '<div class="card">'
+        '<h2>AI model leaderboard</h2>'
+        '<div class="product-form">'
+        '<button id="aiModelsBtn" type="button" class="btn btn-primary">'
+        'Refresh model data</button>'
+        '</div>'
+        '<div id="aiModelsSummary" class="hint">Loading catalogue status…</div>'
+        '<div id="aiModelsLog" style="display:none;max-height:360px;'
+        'overflow:auto;margin-top:16px">'
+        '<table><thead><tr><th>Source</th><th>Status</th><th>Fetched</th>'
+        '<th>Applied</th><th>Detail</th></tr></thead>'
+        '<tbody id="aiModelsRows"></tbody></table>'
+        '</div>'
+        '</div>'
+        '<div class="card">'
         '<h2>Server update</h2>'
         '<div class="product-form">'
         '<button id="deployBtn" type="button" class="btn btn-primary">'
@@ -4649,6 +4776,7 @@ if (window.innerWidth <= 900) document.getElementById('pane-write').classList.ad
         '<script>$_adminTabScript</script>'
         '<script>$_adminMetricsScript</script>'
         '<script>$_adminGroceriesScript</script>'
+        '<script>$_adminAiModelsScript</script>'
         '<script>$_adminDeployScript</script>'
         '</body></html>';
 
@@ -4829,6 +4957,103 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
 })();
 ''';
 
+  /// Control panel tab: "Refresh model data" POSTs to
+  /// /admin/ai-models/refresh and then polls /admin/ai-models/status every
+  /// 2s until the job reports it has stopped running, rendering one row per
+  /// upstream. The job outlives the request that started it, so the poll —
+  /// not the POST response — is what reports the outcome; reloading the
+  /// dashboard mid-refresh picks the same poll back up.
+  static const _adminAiModelsScript = r'''
+(function () {
+  const btn = document.getElementById('aiModelsBtn');
+  const summary = document.getElementById('aiModelsSummary');
+  const logBox = document.getElementById('aiModelsLog');
+  const rows = document.getElementById('aiModelsRows');
+  if (!btn || !summary || !logBox || !rows) return;
+
+  function esc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    })[c]);
+  }
+
+  function when(ms) {
+    if (!ms) return 'never';
+    return new Date(ms).toLocaleString();
+  }
+
+  let timer = null;
+
+  function render(data) {
+    const s = data.status || {};
+    const running = !!s.running;
+    btn.disabled = running;
+    btn.textContent = running ? 'Refreshing…' : 'Refresh model data';
+
+    let text = '<strong>' + data.modelCount + '</strong> models · '
+      + data.newsCount + ' news items · last refreshed ' + when(data.refreshedAtMs);
+    if (running) {
+      text += ' — <strong>refresh running…</strong>';
+    } else if (s.error) {
+      text += ' — <span class="badge err">failed</span> ' + esc(s.error);
+    } else if (s.finishedAtMs) {
+      const added = (s.modelsAdded || []).length;
+      text += added > 0
+        ? ' — <span class="badge ok">' + added + ' new model'
+          + (added === 1 ? '' : 's') + '</span> '
+          + esc((s.modelsAdded || []).slice(0, 6).join(', '))
+          + (added > 6 ? ' …' : '')
+        : ' — <span class="badge ok">no new models</span>';
+    }
+    if (!data.artificialAnalysisConfigured) {
+      text += '<br><span class="muted">Reasoning, speed and effort-level data '
+        + 'need LUMA_AA_API_KEY (free key from artificialanalysis.ai) in this '
+        + "server's .env. Every other column works without it.</span>";
+    }
+    summary.innerHTML = text;
+
+    const results = s.results || [];
+    logBox.style.display = results.length ? 'block' : 'none';
+    rows.innerHTML = results.map((r) => {
+      const cls = r.ok ? 'ok' : 'err';
+      return '<tr><td>' + esc(r.source) + '</td>'
+        + '<td><span class="badge ' + cls + '">'
+        + (r.ok ? 'ok' : 'failed') + '</span></td>'
+        + '<td>' + esc(r.fetched) + '</td>'
+        + '<td>' + esc(r.applied) + '</td>'
+        + '<td>' + esc(r.error || '—') + '</td></tr>';
+    }).join('');
+    return running;
+  }
+
+  function load() {
+    fetch('/admin/ai-models/status')
+      .then((r) => r.json())
+      .then((data) => {
+        clearTimeout(timer);
+        if (render(data)) timer = setTimeout(load, 2000);
+      })
+      .catch(() => {
+        summary.textContent = 'Could not read the catalogue status.';
+      });
+  }
+
+  btn.addEventListener('click', () => {
+    btn.disabled = true;
+    btn.textContent = 'Refreshing…';
+    fetch('/admin/ai-models/refresh', { method: 'POST' })
+      .then(() => setTimeout(load, 500))
+      .catch(() => {
+        btn.disabled = false;
+        btn.textContent = 'Refresh model data';
+        summary.textContent = 'Could not start the refresh.';
+      });
+  });
+
+  load();
+})();
+''';
+
   /// Control panel tab: the "Update & restart server" button POSTs to
   /// /admin/deploy, then polls /admin/deploy/status every 2s to stream the
   /// deploy log into the <pre> below the button. The poll keeps going even
@@ -4871,12 +5096,23 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
           btn.style.opacity = '';
           btn.style.cursor = '';
           var hasLog = !!data.log;
-          var success = hasLog && /Active: active \(running\)/.test(data.log);
+          // The old systemd-restart deploy printed "Active: active
+          // (running)" from `systemctl status`; this one rebuilds and
+          // recreates the container via `docker compose up -d --build`,
+          // whose success line ends in "Started" (or "Healthy" once a
+          // healthcheck confirms it).
+          var success = hasLog && /\b(Started|Healthy)\b/.test(data.log);
           setStatus(
             success ? 'Deploy complete — server is running.' :
             hasLog ? 'Deploy finished — check the log above.' :
                      'Deploy process ended.',
             success ? '#7ee08a' : '#a49fb8');
+        } else if (data.repoPathConfigured === false) {
+          btn.disabled = true;
+          btn.style.opacity = '0.5';
+          btn.style.cursor = 'not-allowed';
+          setStatus('Not configured: set LUMA_REPO_PATH in this server\'s '
+              + '.env (see .env.example), then restart.', '#a49fb8');
         }
       })
       .catch(function () {
@@ -4889,8 +5125,9 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
 
   btn.addEventListener('click', function () {
     if (btn.disabled) return;
-    if (!confirm('This will git pull, recompile, and restart the luma-sync '
-        + 'service. The server will be briefly unavailable. Continue?')) return;
+    if (!confirm('This will git pull, rebuild the image, and recreate the '
+        + 'luma-sync container. The server will be briefly unavailable. '
+        + 'Continue?')) return;
     log.style.display = 'block';
     log.textContent = '';
     setStatus('Starting deploy…', '#e0c87e');
