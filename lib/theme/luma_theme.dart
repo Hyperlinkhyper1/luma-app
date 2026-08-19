@@ -35,7 +35,7 @@ class LumaPalette extends ThemeExtension<LumaPalette> {
   final Color surfaceHover;
   final Color border;
 
-  /// Lavender brand accent.
+  /// Brand accent.
   final Color accent;
   final Color accentHover;
 
@@ -88,42 +88,40 @@ class LumaPalette extends ThemeExtension<LumaPalette> {
     danger: Color(0xFFE5484D),
   );
 
-  /// Espresso — the dark half of the Coffee style. Roasted browns under a
-  /// crema accent, with cream (not white) text so nothing glares.
+  /// Espresso — a layered cacao ground with a quiet crema highlight.
   static const coffeeDark = LumaPalette(
-    rail: Color(0xFF150E08),
-    background: Color(0xFF1D140D),
-    surface: Color(0xFF291D13),
-    surfaceHover: Color(0xFF35261A),
-    border: Color(0xFF46331F),
-    accent: Color(0xFFDDA96A),
-    accentHover: Color(0xFFF0C68D),
-    accentSubtle: Color(0x3DDDA96A),
-    onAccent: Color(0xFF21150A),
-    textPrimary: Color(0xFFF8EFE2),
-    textSecondary: Color(0xFFCDB69A),
-    textMuted: Color(0xFFA18B70),
-    success: Color(0xFF8FBF6F),
-    danger: Color(0xFFE8836A),
+    rail: Color(0xFF100A06),
+    background: Color(0xFF1A110B),
+    surface: Color(0xFF25180F),
+    surfaceHover: Color(0xFF322117),
+    border: Color(0xFF493321),
+    accent: Color(0xFFDFB77F),
+    accentHover: Color(0xFFF0C995),
+    accentSubtle: Color(0x3DDFB77F),
+    onAccent: Color(0xFF25160B),
+    textPrimary: Color(0xFFF6EBDD),
+    textSecondary: Color(0xFFC9B399),
+    textMuted: Color(0xFFA58D73),
+    success: Color(0xFF8FBE70),
+    danger: Color(0xFFE47B63),
   );
 
-  /// Latte — the light half of the Coffee style. Steamed-milk surfaces over a
-  /// warm oat background, accented with a dark roast that still clears 4.5:1.
+  /// Latte — warm paper, oat shadows and a dark-roast editorial accent.
   static const coffeeLight = LumaPalette(
-    rail: Color(0xFFEDE0CE),
-    background: Color(0xFFF6EEE3),
+    rail: Color(0xFFD8C7B3),
+    background: Color(0xFFF0E5D7),
     surface: Color(0xFFFFFAF3),
-    surfaceHover: Color(0xFFF2E7D7),
-    border: Color(0xFFE0CFB6),
-    accent: Color(0xFF8A5A2E),
-    accentHover: Color(0xFF6D4522),
-    accentSubtle: Color(0x1F8A5A2E),
-    onAccent: Color(0xFFFFF9F2),
-    textPrimary: Color(0xFF2B1D12),
-    textSecondary: Color(0xFF634F3B),
-    textMuted: Color(0xFF836C55),
-    success: Color(0xFF3C6F3F),
-    danger: Color(0xFFAF4229),
+    surfaceHover: Color(0xFFF2E5D7),
+    border: Color(0xFFC5B19A),
+    accent: Color(0xFF623619),
+    accentHover: Color(0xFF4D2914),
+    accentSubtle: Color(0x1F6B3B1D),
+    onAccent: Color(0xFFFFF8EE),
+    textPrimary: Color(0xFF2A1B10),
+    textSecondary: Color(0xFF59412F),
+    textMuted: Color(0xFF6B523D),
+    success: Color(0xFF3E6D40),
+    danger: Color(0xFFA8442D),
   );
 
   /// The base palette for [style] at [brightness], before any accent seed.
@@ -266,7 +264,7 @@ class LumaDecor extends ThemeExtension<LumaDecor> {
   /// height read as a stadium.
   final double buttonRadius;
 
-  /// Corner radius for the segmented-tab pills.
+  /// Corner radius for segmented tabs and compact chips.
   final double pillRadius;
 
   /// [LumaIconBadge]'s radius as a fraction of its size — 0.5 is a circle.
@@ -302,13 +300,13 @@ class LumaDecor extends ThemeExtension<LumaDecor> {
     ornament: LumaOrnament.none,
   );
 
-  /// Rounder, softer and warmer: cup-round cards, stadium buttons, circular
-  /// badges and a serif display face.
+  /// A tailored coffee-house system: generous cards, stadium actions, compact
+  /// tab corners, circular badges and a serif display face.
   static const coffee = LumaDecor(
     style: LumaThemeStyle.coffee,
     cardRadius: 24,
     buttonRadius: 999,
-    pillRadius: 999,
+    pillRadius: 14,
     badgeRadiusFactor: 0.5,
     borderWidth: 1.4,
     cardShadow: [
@@ -466,6 +464,16 @@ class LumaTheme {
       surface: p.surface,
       onSurface: p.textPrimary,
       error: p.danger,
+      onError: p.onAccent,
+      outline: p.border,
+      outlineVariant: p.border,
+    );
+
+    final coffee = decor.style == LumaThemeStyle.coffee;
+    final fieldRadius = coffee ? 16.0 : 12.0;
+    final fieldBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(fieldRadius),
+      borderSide: BorderSide(color: p.border, width: decor.borderWidth),
     );
 
     final applied =
@@ -500,6 +508,186 @@ class LumaTheme {
       dividerColor: p.border,
       textTheme: textTheme,
       iconTheme: IconThemeData(color: p.textSecondary),
+      cardTheme: coffee
+          ? CardThemeData(
+              color: p.surface,
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              margin: EdgeInsets.zero,
+              shape: RoundedRectangleBorder(
+                borderRadius: decor.cardBorderRadius,
+                side: BorderSide(color: p.border, width: decor.borderWidth),
+              ),
+            )
+          : base.cardTheme,
+      dialogTheme: coffee
+          ? DialogThemeData(
+              backgroundColor: p.surface,
+              surfaceTintColor: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: decor.cardBorderRadius,
+                side: BorderSide(color: p.border, width: decor.borderWidth),
+              ),
+            )
+          : base.dialogTheme,
+      inputDecorationTheme: coffee
+          ? InputDecorationThemeData(
+              filled: true,
+              fillColor: p.surfaceHover.withValues(
+                alpha: brightness == Brightness.dark ? 0.72 : 0.88,
+              ),
+              labelStyle: TextStyle(color: p.textSecondary),
+              hintStyle: TextStyle(color: p.textMuted),
+              prefixIconColor: p.textSecondary,
+              suffixIconColor: p.textSecondary,
+              border: fieldBorder,
+              enabledBorder: fieldBorder,
+              focusedBorder: fieldBorder.copyWith(
+                borderSide: BorderSide(color: p.accent, width: 1.6),
+              ),
+              errorBorder: fieldBorder.copyWith(
+                borderSide: BorderSide(color: p.danger),
+              ),
+              focusedErrorBorder: fieldBorder.copyWith(
+                borderSide: BorderSide(color: p.danger, width: 1.6),
+              ),
+            )
+          : base.inputDecorationTheme,
+      filledButtonTheme: coffee
+          ? FilledButtonThemeData(
+              style: ButtonStyle(
+                minimumSize: const WidgetStatePropertyAll(Size(0, 44)),
+                padding: const WidgetStatePropertyAll(
+                  EdgeInsets.symmetric(horizontal: 20),
+                ),
+                foregroundColor: WidgetStatePropertyAll(p.onAccent),
+                backgroundColor: WidgetStatePropertyAll(p.accent),
+                shape: WidgetStatePropertyAll(
+                  RoundedRectangleBorder(
+                    borderRadius: decor.buttonBorderRadius,
+                  ),
+                ),
+              ),
+            )
+          : base.filledButtonTheme,
+      outlinedButtonTheme: coffee
+          ? OutlinedButtonThemeData(
+              style: ButtonStyle(
+                minimumSize: const WidgetStatePropertyAll(Size(0, 44)),
+                padding: const WidgetStatePropertyAll(
+                  EdgeInsets.symmetric(horizontal: 20),
+                ),
+                foregroundColor: WidgetStatePropertyAll(p.textPrimary),
+                side: WidgetStatePropertyAll(
+                  BorderSide(color: p.border, width: decor.borderWidth),
+                ),
+                shape: WidgetStatePropertyAll(
+                  RoundedRectangleBorder(
+                    borderRadius: decor.buttonBorderRadius,
+                  ),
+                ),
+              ),
+            )
+          : base.outlinedButtonTheme,
+      textButtonTheme: coffee
+          ? TextButtonThemeData(
+              style: ButtonStyle(
+                foregroundColor: WidgetStatePropertyAll(p.accent),
+                padding: const WidgetStatePropertyAll(
+                  EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                ),
+                shape: WidgetStatePropertyAll(
+                  RoundedRectangleBorder(
+                    borderRadius: decor.buttonBorderRadius,
+                  ),
+                ),
+              ),
+            )
+          : base.textButtonTheme,
+      appBarTheme: coffee
+          ? AppBarThemeData(
+              backgroundColor: p.background,
+              foregroundColor: p.textPrimary,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              surfaceTintColor: Colors.transparent,
+              titleTextStyle: decor.applyDisplayFont(
+                TextStyle(
+                  color: p.textPrimary,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            )
+          : base.appBarTheme,
+      bottomSheetTheme: coffee
+          ? BottomSheetThemeData(
+              backgroundColor: p.surface,
+              modalBackgroundColor: p.surface,
+              surfaceTintColor: Colors.transparent,
+              showDragHandle: true,
+              dragHandleColor: p.border,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(decor.cardRadius),
+                ),
+                side: BorderSide(color: p.border, width: decor.borderWidth),
+              ),
+            )
+          : base.bottomSheetTheme,
+      popupMenuTheme: coffee
+          ? PopupMenuThemeData(
+              color: p.surface,
+              surfaceTintColor: Colors.transparent,
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(decor.cardRadius / 1.5),
+                side: BorderSide(color: p.border, width: decor.borderWidth),
+              ),
+              textStyle: TextStyle(color: p.textPrimary, fontSize: 14),
+            )
+          : base.popupMenuTheme,
+      navigationBarTheme: coffee
+          ? NavigationBarThemeData(
+              backgroundColor: p.rail,
+              surfaceTintColor: Colors.transparent,
+              indicatorColor: p.accentSubtle,
+              indicatorShape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(decor.pillRadius),
+                side: BorderSide(color: p.accent, width: decor.borderWidth),
+              ),
+              labelTextStyle: WidgetStatePropertyAll(
+                TextStyle(color: p.textSecondary, fontWeight: FontWeight.w600),
+              ),
+              iconTheme: WidgetStateProperty.resolveWith(
+                (states) => IconThemeData(
+                  color: states.contains(WidgetState.selected)
+                      ? p.accent
+                      : p.textSecondary,
+                ),
+              ),
+            )
+          : base.navigationBarTheme,
+      navigationRailTheme: coffee
+          ? NavigationRailThemeData(
+              backgroundColor: p.rail,
+              indicatorColor: p.accentSubtle,
+              selectedIconTheme: IconThemeData(color: p.accent),
+              unselectedIconTheme: IconThemeData(color: p.textSecondary),
+              selectedLabelTextStyle: TextStyle(
+                color: p.accent,
+                fontWeight: FontWeight.w700,
+              ),
+              unselectedLabelTextStyle: TextStyle(color: p.textSecondary),
+            )
+          : base.navigationRailTheme,
+      progressIndicatorTheme: coffee
+          ? ProgressIndicatorThemeData(
+              color: p.accent,
+              linearTrackColor: p.border,
+              circularTrackColor: p.border,
+            )
+          : base.progressIndicatorTheme,
       tooltipTheme: TooltipThemeData(
         decoration: BoxDecoration(
           color: p.surfaceHover,

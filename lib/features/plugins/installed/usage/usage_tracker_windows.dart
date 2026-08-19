@@ -15,6 +15,13 @@ import 'usage_tracker_base.dart';
 class UsageTracker {
   UsageTracker._();
 
+  // Most samples are for the same window as the previous sample. Keeping the
+  // last PID/path pair avoids opening a process handle and allocating a path
+  // buffer on every timer tick, while still refreshing whenever focus moves
+  // to another process.
+  static int? _cachedPid;
+  static String? _cachedProcessPath;
+
   static bool get supported => Platform.isWindows;
 
   /// Returns the foreground app right now, or null when nothing useful is
@@ -27,6 +34,12 @@ class UsageTracker {
     final hwnd = GetForegroundWindow();
     if (hwnd == 0) return null;
 
+    // GetForegroundWindow is normally enough, but Windows can briefly return
+    // a stale or non-interactive handle while a window is being minimized,
+    // restored, or switched. Those handles belong to background windows and
+    // must never become usage samples.
+    if (IsWindowVisible(hwnd) == FALSE || IsIconic(hwnd) != FALSE) return null;
+
     final pidPtr = calloc<DWORD>();
     String? windowTitle;
     String processPath = '';
@@ -35,14 +48,30 @@ class UsageTracker {
       final pid = pidPtr.value;
       if (pid == 0) return null;
 
-      windowTitle = _readWindowText(hwnd);
-      processPath = _readProcessPath(pid) ?? '';
+      final reusedProcessPath =
+          _cachedPid == pid && _cachedProcessPath != null;
+      if (reusedProcessPath) {
+        processPath = _cachedProcessPath!;
+      } else {
+        processPath = _readProcessPath(pid) ?? '';
+        _cachedPid = pid;
+        _cachedProcessPath = processPath.isEmpty ? null : processPath;
+      }
+      // The repository only stores a title when a new process session opens;
+      // avoid reading and allocating the title buffer on every same-process
+      // sample.
+      if (!reusedProcessPath && processPath.isNotEmpty) {
+        windowTitle = _readWindowText(hwnd);
+      }
     } finally {
       calloc.free(pidPtr);
     }
 
     if (processPath.isEmpty) return null;
-    final fileName = processPath.split('\\').last;
+    final separator = processPath.lastIndexOf('\\');
+    final fileName = separator < 0
+        ? processPath
+        : processPath.substring(separator + 1);
     if (fileName.isEmpty) return null;
 
     return UsageAppInfo(
