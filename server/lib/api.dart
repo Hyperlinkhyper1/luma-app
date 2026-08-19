@@ -462,6 +462,9 @@ class Api {
       ..get('/admin/website/preview/public/<path|.*>',
           _requireAdmin(_wikiPreviewPublicAsset))
       ..post('/admin/website/upload', _requireAdmin(_adminWebsiteUpload))
+      ..get('/admin/website/new-devlog', _requireAdmin(_adminNewDevlogForm))
+      ..post('/admin/website/new-devlog', _requireAdmin(_adminNewDevlogCreate))
+      ..post('/admin/website/<page|.*>/delete', _requireAdmin(_adminWebsiteDelete))
       ..get('/admin/website/<page|.*>', _requireAdmin(_adminWebsiteEditor))
       ..post('/admin/website/<page|.*>', _requireAdmin(_adminWebsiteSave));
 
@@ -634,7 +637,10 @@ class Api {
       // locks a legitimate operator out.
       if (_adminFailLimiter.isLimited(clientKey)) {
         return _error(429, 'rate_limited',
-            'Too many failed admin attempts. Try again later.');
+                'Too many failed admin attempts. Try again later.')
+            .change(headers: {
+          'Retry-After': '${_adminFailLimiter.retryAfterSeconds(clientKey)}',
+        });
       }
 
       if (_hasValidAdminSession(request)) {
@@ -740,27 +746,40 @@ class Api {
     return !(host.startsWith('localhost') || host.startsWith('127.'));
   }
 
-  String _adminLoginFormHtml({bool failed = false}) =>
-      '<!doctype html><html><head><meta charset="utf-8">'
-      '<meta name="viewport" content="width=device-width, initial-scale=1">'
-      '<title>luma admin — sign in</title>'
-      '<style>$_adminCss</style></head><body><div class="wrap" '
-      'style="max-width:360px;padding-top:15vh">'
-      '<header class="top"><h1>luma<span class="dot">.</span> admin</h1></header>'
-      '<div class="card">'
-      '${failed ? '<p class="hint" style="color:#e07e7e">Invalid admin key, or too many attempts — try again shortly.</p>' : ''}'
-      '<form method="post" action="/admin/login">'
-      '<div class="product-form" style="flex-direction:column;align-items:stretch">'
-      '<input type="password" name="key" placeholder="Admin key" autofocus required '
-      'style="width:100%">'
-      '<button type="submit" class="btn btn-primary">Sign in</button>'
-      '</div></form></div></div></body></html>';
+  static String _fmtWait(int seconds) {
+    if (seconds < 60) return '$seconds second${seconds == 1 ? '' : 's'}';
+    final minutes = (seconds / 60).ceil();
+    return '$minutes minute${minutes == 1 ? '' : 's'}';
+  }
+
+  String _adminLoginFormHtml({bool failed = false, int? lockedSeconds}) {
+    final message = lockedSeconds != null
+        ? 'Too many failed attempts — try again in ${_fmtWait(lockedSeconds)}.'
+        : (failed ? 'Invalid admin key.' : null);
+    return '<!doctype html><html><head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        '<title>luma admin — sign in</title>'
+        '<style>$_adminCss</style></head><body><div class="wrap" '
+        'style="max-width:360px;padding-top:15vh">'
+        '<header class="top"><h1>luma<span class="dot">.</span> admin</h1></header>'
+        '<div class="card">'
+        '${message != null ? '<p class="hint" style="color:#e07e7e">${_htmlEscape(message)}</p>' : ''}'
+        '<form method="post" action="/admin/login">'
+        '<div class="product-form" style="flex-direction:column;align-items:stretch">'
+        '<input type="password" name="key" placeholder="Admin key" autofocus required '
+        '${lockedSeconds != null ? 'disabled' : ''} style="width:100%">'
+        '<button type="submit" class="btn btn-primary" '
+        '${lockedSeconds != null ? 'disabled' : ''}>Sign in</button>'
+        '</div></form></div></div></body></html>';
+  }
 
   Response _adminLoginPage(Request request) {
     if (!config.adminEnabled) return _error(404, 'not_found', 'Not found.');
+    final locked = int.tryParse(request.url.queryParameters['locked'] ?? '');
     return Response(200,
         body: _adminLoginFormHtml(
-            failed: request.url.queryParameters.containsKey('failed')),
+            failed: request.url.queryParameters.containsKey('failed'),
+            lockedSeconds: locked),
         headers: {
           'Content-Type': 'text/html; charset=utf-8',
           'Cache-Control': 'no-store',
@@ -771,7 +790,8 @@ class Api {
     if (!config.adminEnabled) return _error(404, 'not_found', 'Not found.');
     final clientKey = _clientKey(request);
     if (_adminFailLimiter.isLimited(clientKey)) {
-      return Response.found('/admin/login?failed=1');
+      final wait = _adminFailLimiter.retryAfterSeconds(clientKey);
+      return Response.found('/admin/login?locked=$wait');
     }
     Map<String, String> form = const {};
     try {
@@ -3709,32 +3729,254 @@ class Api {
           .replaceFirst(RegExp(r'\.md$'), ''));
     }
     pages.sort();
+    final pageSet = pages.toSet();
 
-    final rows = pages
-        .map((p) => '<tr><td><a href="/admin/website/${_htmlEscape(p)}">'
-            '${_htmlEscape(p)}</a></td></tr>')
-        .join();
+    // Scan every page's body for links to a wiki/blog/admin-editor page that
+    // doesn't exist yet, so a page like simply-cozy can reference
+    // "coffee-machine" before that page is created and the tree shows it as
+    // a pending stub instead of the link silently going nowhere.
+    final referencedMissing = <String>{};
+    final linkRe = RegExp(r'\]\(([^)\s]+)\)');
+    for (final p in pages) {
+      final file = _wikiPageFile(p);
+      if (file == null) continue;
+      String content;
+      try {
+        content = await file.readAsString();
+      } catch (_) {
+        continue;
+      }
+      for (final m in linkRe.allMatches(content)) {
+        final uri = Uri.tryParse(m[1]!);
+        if (uri == null) continue;
+        final path = uri.path;
+        String? target;
+        if (path.startsWith('/admin/website/')) {
+          target = path.substring('/admin/website/'.length);
+        } else if (path.startsWith('/wiki/') || path.startsWith('/blog/')) {
+          target = path.substring(1);
+        }
+        if (target == null) continue;
+        target = target.replaceAll(RegExp(r'/+$'), '');
+        if (target.isEmpty || !_wikiPageRe.hasMatch(target)) continue;
+        if (pageSet.contains(target)) continue; // already a real page
+        referencedMissing.add(target);
+      }
+    }
+
+    // Group by top-level folder — each is a content collection (wiki, blog…).
+    final byCollection = <String, List<String>>{};
+    for (final p in pages) {
+      final slash = p.indexOf('/');
+      final collection = slash > 0 ? p.substring(0, slash) : p;
+      (byCollection[collection] ??= []).add(p);
+    }
+    for (final target in referencedMissing) {
+      final slash = target.indexOf('/');
+      final collection = slash > 0 ? target.substring(0, slash) : target;
+      // A link to a collection with no real pages yet still gets its own
+      // section (empty count, all-phantom tree) — that's a useful signal
+      // too, e.g. a typo'd collection name in a link.
+      byCollection.putIfAbsent(collection, () => []);
+    }
+    final collectionNames = {'wiki': 'Wiki', 'blog': 'Devlog'};
+
+    final sections = byCollection.entries.map((entry) {
+      final collection = entry.key;
+      final name = collectionNames[collection] ?? collection;
+      final tree = _WikiTreeNode();
+      for (final p in entry.value) {
+        final rel = p.contains('/') ? p.substring(p.indexOf('/') + 1) : p;
+        var node = tree;
+        for (final segment in rel.split('/')) {
+          node = node.children.putIfAbsent(segment, () => _WikiTreeNode());
+        }
+        node.pagePath = p;
+      }
+      for (final target
+          in referencedMissing.where((t) => t.startsWith('$collection/'))) {
+        final rel = target.substring(collection.length + 1);
+        var node = tree;
+        for (final segment in rel.split('/')) {
+          node = node.children.putIfAbsent(segment, () => _WikiTreeNode());
+        }
+        if (node.pagePath == null) node.phantomPath = target;
+      }
+      final newDevlogBtn = collection == 'blog'
+          ? '<a href="/admin/website/new-devlog" class="btn btn-primary btn-sm">'
+              '+ New devlog</a>'
+          : '';
+      final newPageHint = collection == 'wiki'
+          ? '<p class="hint tree-hint">New page: open '
+              '<code>/admin/website/wiki/&lt;name&gt;</code> — nest it under an '
+              'existing page the same way, e.g. '
+              '<code>wiki/simply-cozy/&lt;name&gt;</code>. Link to a page that '
+              'doesn\'t exist yet and it shows up below as '
+              '<span class="tree-phantom-badge">not created</span> with a '
+              'shortcut to make it.</p>'
+          : '';
+      return '<div class="card table-card">'
+          '<div class="tree-head">'
+          '<h2><span>$name</span><span class="count-pill">${entry.value.length}</span></h2>'
+          '$newDevlogBtn'
+          '</div>'
+          '<div class="tree" role="tree">${_renderWikiTree(tree.children, collection: collection)}</div>'
+          '$newPageHint'
+          '</div>';
+    }).join();
 
     return Response(200,
         body: '<!doctype html><html><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width, initial-scale=1">'
-            '<title>luma admin — website</title><style>$_adminCss</style></head>'
+            '<title>luma admin — website</title>'
+            '<style>$_adminCss$_wikiTreeCss</style></head>'
             '<body><div class="wrap">'
             '<header class="top"><h1>luma<span class="dot">.</span> website</h1>'
-            '<nav><a href="/admin">← dashboard</a></nav></header>'
-            '<div class="card"><h2>Pages</h2>'
-            '<table><tbody>$rows</tbody></table>'
-            '<p class="hint">Open a page to edit it, or go to '
-            '/admin/website/&lt;collection&gt;/&lt;new-name&gt; to create one '
-            '(e.g. wiki/my-new-page).</p>'
-            '<form method="post" action="/admin/website/build">'
+            '<span class="sub">page editor</span>'
+            '<nav style="margin-left:auto">'
+            '<a href="/admin" class="btn btn-ghost btn-sm">← dashboard</a>'
+            '</nav></header>'
+            '<div class="stats">'
+            '<div class="stat"><div class="n">${pages.length}</div>'
+            '<div class="l">Pages</div></div>'
+            '<div class="stat"><div class="n">${byCollection.length}</div>'
+            '<div class="l">Collections</div></div>'
+            '</div>'
+            '$sections'
+            '<div class="card">'
+            '<h2>Publish</h2>'
+            '<p class="hint">Saved edits stay in draft on the server until you '
+            'publish — this commits them to git, rebuilds the site with '
+            'Astro, and rsyncs the result live.</p>'
+            '<div class="product-form">'
+            '<form method="post" action="/admin/website/build" style="margin:0">'
             '<button type="submit" class="btn btn-primary">Publish site '
             '(rebuild)</button></form>'
-            '<pre id="buildlog" style="white-space:pre-wrap"></pre>'
+            '<span id="buildbadge" class="badge" style="display:none"></span>'
+            '</div>'
+            '<pre id="buildlog" class="log" style="display:none;margin-top:12px"></pre>'
+            '</div>'
             '<script>$_wikiBuildScript</script>'
-            '</div></div></body></html>',
+            '</div></body></html>',
         headers: {'Content-Type': 'text/html; charset=utf-8'});
   }
+
+  /// Renders one level of the page tree. A node with children becomes an
+  /// expandable `<details>` (native disclosure semantics — keyboard and
+  /// screen-reader accessible with zero extra JS). A childless node is
+  /// either a real page (only created while walking toward one) or a
+  /// "phantom" — a page some other page links to that doesn't exist yet.
+  String _renderWikiTree(Map<String, _WikiTreeNode> nodes,
+      {int depth = 0, required String collection}) {
+    final keys = nodes.keys.toList()..sort();
+    final buf = StringBuffer();
+    for (final key in keys) {
+      final node = nodes[key]!;
+      final label = _htmlEscape(key);
+      final isPhantom = node.pagePath == null && node.phantomPath != null;
+      if (node.children.isNotEmpty) {
+        final selfRow = node.pagePath != null
+            ? '<div class="tree-row tree-self">'
+                '<a href="/admin/website/${_htmlEscape(node.pagePath!)}">'
+                'This page<span class="tree-self-name"> — $label</span></a></div>'
+            : (isPhantom ? _phantomRow(label, node.phantomPath!) : '');
+        buf.write('<details class="tree-node">'
+            '<summary><span class="tree-toggle" aria-hidden="true"></span>'
+            '<span class="tree-label">$label</span></summary>'
+            '<div class="tree-children">'
+            '$selfRow'
+            '${_renderWikiTree(node.children, depth: depth + 1, collection: collection)}'
+            '</div></details>');
+      } else if (isPhantom) {
+        buf.write(_phantomRow(label, node.phantomPath!));
+      } else {
+        final deleteBtn = collection == 'blog'
+            ? '<form class="tree-delete-form" method="post" '
+                'action="/admin/website/${_htmlEscape(node.pagePath!)}/delete" '
+                'onsubmit="return confirm(\'Delete this devlog post? This '
+                'cannot be undone.\')">'
+                '<button class="tree-delete" type="submit">Delete</button>'
+                '</form>'
+            : '';
+        buf.write('<div class="tree-row tree-leaf">'
+            '<a href="/admin/website/${_htmlEscape(node.pagePath!)}">$label</a>'
+            '<a class="tree-edit" href="/admin/website/${_htmlEscape(node.pagePath!)}">Edit</a>'
+            '$deleteBtn'
+            '</div>');
+      }
+    }
+    return buf.toString();
+  }
+
+  /// A page some other page links to, that doesn't have a file yet —
+  /// dimmed, dashed, with a shortcut straight into a blank editor for it.
+  String _phantomRow(String label, String phantomPath) =>
+      '<div class="tree-row tree-leaf tree-phantom">'
+      '<a class="tree-phantom-link" href="/admin/website/${_htmlEscape(phantomPath)}">'
+      '$label</a>'
+      '<span class="tree-phantom-badge">not created</span>'
+      '<a class="tree-edit" href="/admin/website/${_htmlEscape(phantomPath)}">Create</a>'
+      '</div>';
+
+  static const _wikiTreeCss = r'''
+.tree-head{display:flex;align-items:center;justify-content:space-between;
+gap:12px;padding:6px 6px 2px;margin-bottom:2px}
+.tree-head h2{display:flex;align-items:center;gap:8px;margin:0;padding:0}
+.count-pill{display:inline-flex;align-items:center;justify-content:center;
+min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:#241e3c;
+color:#a89fd6;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums}
+.tree{padding:2px 6px 8px}
+.tree-row{display:flex;align-items:center;justify-content:space-between;gap:10px;
+min-height:40px;padding:0 10px 0 30px;border-radius:8px}
+.tree-row:hover{background:#1a1530}
+.tree-row a{color:#d3cef0;text-decoration:none;font-size:13.5px;
+padding:8px 0;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;
+white-space:nowrap}
+.tree-row a:hover{color:#ece8f7;text-decoration:underline}
+.tree-row a:focus-visible{outline:2px solid #8a7ee0;outline-offset:2px;
+border-radius:4px}
+.tree-edit{flex:none!important;font-size:11px!important;font-weight:600;
+color:#8d86a8!important;text-decoration:none!important;padding:4px 10px!important;
+border-radius:999px;border:1px solid #262038;opacity:0;transition:opacity .12s}
+.tree-row:hover .tree-edit,.tree-row:focus-within .tree-edit{opacity:1}
+.tree-edit:hover{border-color:#463d6b;color:#ece8f7!important}
+.tree-delete-form{flex:none;margin:0}
+.tree-delete{flex:none;font:inherit;font-size:11px!important;font-weight:600;
+color:#b08d8d!important;background:none;cursor:pointer;padding:4px 10px!important;
+border-radius:999px;border:1px solid #262038;opacity:0;transition:opacity .12s,
+border-color .12s,color .12s}
+.tree-row:hover .tree-delete,.tree-row:focus-within .tree-delete{opacity:1}
+.tree-delete:hover{border-color:#7a3d3d;color:#e08d8d!important}
+.tree-node{position:relative}
+.tree-node > summary{list-style:none;display:flex;align-items:center;gap:8px;
+min-height:40px;padding:0 10px;border-radius:8px;cursor:pointer;user-select:none;
+font-size:13.5px;font-weight:600;color:#c7c1e6}
+.tree-node > summary::-webkit-details-marker{display:none}
+.tree-node > summary:hover{background:#1a1530}
+.tree-node > summary:focus-visible{outline:2px solid #8a7ee0;outline-offset:-2px}
+.tree-toggle{flex:none;width:16px;height:16px;position:relative}
+.tree-toggle::before{content:'';position:absolute;left:3px;top:6px;
+border:4px solid transparent;border-left-color:#7f7898;border-right:none;
+transition:transform .15s var(--ease-out,ease)}
+.tree-node[open] > summary .tree-toggle::before{transform:rotate(90deg)
+translate(2px,-2px)}
+.tree-children{position:relative;margin-left:19px;padding-left:12px;
+border-left:1px solid #262038}
+.tree-children .tree-row,.tree-children .tree-node>summary{padding-left:11px}
+.tree-self{opacity:.85}
+.tree-self a{font-style:italic}
+.tree-self-name{font-style:normal}
+.tree-hint{margin:8px 6px 0;padding-top:10px;border-top:1px solid #1d1830}
+.tree-hint code{background:#1a1530;border:1px solid #262038;border-radius:5px;
+padding:1px 6px;font-size:11.5px;color:#c7c1e6}
+.tree-hint .tree-phantom-badge{position:relative;top:-1px}
+.tree-phantom-link{color:#9089b0!important;font-style:italic}
+.tree-phantom-link:hover{color:#c7c1e6!important}
+.tree-phantom-badge{flex:none;font-size:10px;font-weight:700;
+letter-spacing:.03em;text-transform:uppercase;color:#e0c87e;
+background:rgba(224,200,126,.12);border:1px dashed rgba(224,200,126,.4);
+border-radius:999px;padding:2px 8px}
+''';
 
   /// Page name from the request path, e.g. /admin/website/wiki/simply-cozy
   /// → "wiki/simply-cozy". The single-arg [_requireAdmin] wrapper hides the
@@ -3772,12 +4014,34 @@ class Api {
             '<h1 class="ed-name">${_htmlEscape(page)}</h1>'
             '<span id="status" class="ed-status" role="status" aria-live="polite"></span>'
             '<div class="ed-actions">'
-            '<button id="imgbtn" class="ed-btn" type="button">Image</button>'
-            '<input id="imgfile" type="file" accept="image/*" hidden>'
             '<button id="savebtn" class="ed-btn" type="button">Save</button>'
             '<button id="pubbtn" class="ed-btn ed-primary" type="button">'
             'Save &amp; publish</button>'
             '</div></header>'
+            '<div class="ed-format" role="toolbar" aria-label="Formatting">'
+            '<button id="fmt-bold" class="ed-fmt" type="button" '
+            'title="Bold (Ctrl+B)"><strong>B</strong></button>'
+            '<button id="fmt-italic" class="ed-fmt" type="button" '
+            'title="Italic (Ctrl+I)"><em>i</em></button>'
+            '<button id="fmt-h2" class="ed-fmt" type="button" '
+            'title="Heading">H2</button>'
+            '<button id="fmt-list" class="ed-fmt" type="button" '
+            'title="Bullet list">•⁠ ⁠list</button>'
+            '<span class="ed-fmt-sep"></span>'
+            '<button id="linkbtn" class="ed-fmt" type="button" '
+            'title="Insert link — turns a name into a clickable link '
+            'instead of a bare URL" aria-expanded="false">Link</button>'
+            '<button id="imgbtn" class="ed-fmt" type="button" '
+            'title="Insert image">Image</button>'
+            '<input id="imgfile" type="file" accept="image/*" hidden>'
+            '<div id="linkpop" class="ed-linkpop" hidden>'
+            '<input id="linktext" type="text" placeholder="Text readers see" '
+            'aria-label="Link text">'
+            '<input id="linkurl" type="url" placeholder="https://…" '
+            'aria-label="Link URL">'
+            '<button id="linkgo" type="button" class="ed-btn ed-primary">Add</button>'
+            '</div>'
+            '</div>'
             '<div class="ed-tabs" role="tablist">'
             '<button class="ed-tab is-on" data-pane="write" role="tab">Write</button>'
             '<button class="ed-tab" data-pane="preview" role="tab">Preview</button>'
@@ -3988,6 +4252,168 @@ class Api {
     return _json(200, {'url': '/images/uploads/$name'});
   }
 
+  // ---- Quick devlog creation: a small form instead of hand-writing
+  // frontmatter YAML in the raw editor. Writes the post as a draft by
+  // default and hands off to the full split editor for everything else. ----
+
+  static String _slugify(String s) {
+    final slug = s
+        .toLowerCase()
+        .trim()
+        .replaceAll(RegExp(r"[^a-z0-9\s-]"), '')
+        .replaceAll(RegExp(r'[\s_-]+'), '-')
+        .replaceAll(RegExp(r'^-+|-+$'), '');
+    return slug.isEmpty ? 'post' : slug;
+  }
+
+  static String _yamlStr(String s) =>
+      '"${s.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"';
+
+  Response _adminNewDevlogForm(Request request) {
+    final unavailable = _wikiUnavailable();
+    if (unavailable != null) return unavailable;
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    return Response(200,
+        body: '<!doctype html><html><head><meta charset="utf-8">'
+            '<meta name="viewport" content="width=device-width, initial-scale=1">'
+            '<title>luma admin — new devlog</title>'
+            '<style>$_adminCss'
+            '.product-form{flex-direction:column;align-items:stretch;gap:6px}'
+            '.product-form label{font-size:11px;letter-spacing:.05em;'
+            'text-transform:uppercase;color:#8d86a8;margin:10px 0 -2px}'
+            '.product-form label:first-child{margin-top:0}'
+            '.product-form input,.product-form select{width:100%}'
+            '.product-form textarea{background:#1a1530;color:#ece8f7;'
+            'border:1px solid #2d2645;border-radius:9px;padding:10px 12px;'
+            'font-size:13px;font-family:inherit;outline:none;width:100%;'
+            'min-height:220px;resize:vertical}'
+            '.product-form textarea:focus{border-color:#8a7ee0}'
+            '.devlog-row{display:flex;gap:10px}'
+            '.devlog-row > div{flex:1}'
+            '.devlog-check{flex-direction:row!important;align-items:center;'
+            'gap:8px;text-transform:none!important;letter-spacing:0!important;'
+            'font-size:13px!important;color:#ece8f7!important}'
+            '.devlog-check input{width:auto!important}'
+            '</style></head><body><div class="wrap">'
+            '<header class="top"><h1>luma<span class="dot">.</span> new devlog</h1>'
+            '<nav style="margin-left:auto">'
+            '<a href="/admin/website" class="btn btn-ghost btn-sm">← all pages</a>'
+            '</nav></header>'
+            '<div class="card" style="max-width:640px">'
+            '<h2>New devlog post</h2>'
+            '<form method="post" action="/admin/website/new-devlog">'
+            '<div class="product-form">'
+            '<label for="title">Title</label>'
+            '<input id="title" name="title" type="text" required autofocus '
+            'placeholder="What happened this week">'
+            '<label for="description">Description</label>'
+            '<input id="description" name="description" type="text" required '
+            'placeholder="One line for the devlog list">'
+            '<div class="devlog-row">'
+            '<div><label for="topic">Topic</label>'
+            '<select id="topic" name="topic">'
+            '<option value="site">Site</option>'
+            '<option value="luma">Luma</option>'
+            '<option value="minecraft">Minecraft</option>'
+            '</select></div>'
+            '<div><label for="date">Date</label>'
+            '<input id="date" name="date" type="date" value="$today"></div>'
+            '</div>'
+            '<label for="tags">Tags (comma separated)</label>'
+            '<input id="tags" name="tags" type="text" placeholder="update, mods">'
+            '<label for="body">Body (Markdown)</label>'
+            '<textarea id="body" name="body" '
+            'placeholder="Write the devlog here — you can keep editing after '
+            'it is created."></textarea>'
+            '<label class="devlog-check">'
+            '<input type="checkbox" name="draft" value="1" checked>'
+            'Save as draft (hidden from the site until you publish it)</label>'
+            '<button type="submit" class="btn btn-primary" '
+            'style="align-self:flex-start;margin-top:6px">Create devlog</button>'
+            '</div></form></div></div></body></html>',
+        headers: {'Content-Type': 'text/html; charset=utf-8'});
+  }
+
+  Future<Response> _adminNewDevlogCreate(Request request) async {
+    final unavailable = _wikiUnavailable();
+    if (unavailable != null) return unavailable;
+    if (!_sameOrigin(request)) {
+      return _error(403, 'bad_origin', 'Cross-origin request rejected.');
+    }
+    Map<String, String> form = const {};
+    try {
+      form = Uri.splitQueryString(await request.readAsString());
+    } catch (_) {}
+    final title = (form['title'] ?? '').trim();
+    final description = (form['description'] ?? '').trim();
+    if (title.isEmpty || description.isEmpty) {
+      return _error(
+          400, 'bad_request', 'Title and description are required.');
+    }
+    final topic = {'luma', 'minecraft', 'site'}.contains(form['topic'])
+        ? form['topic']!
+        : 'site';
+    final date = RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(form['date'] ?? '')
+        ? form['date']!
+        : DateTime.now().toIso8601String().substring(0, 10);
+    final tags = (form['tags'] ?? '')
+        .split(',')
+        .map((t) => t.trim())
+        .where((t) => t.isNotEmpty)
+        .toList();
+    final draft = form['draft'] == '1';
+    final body = (form['body'] ?? '').trim();
+
+    final dir = Directory('$_wikiContentPath/blog');
+    await dir.create(recursive: true);
+    final baseSlug = _slugify(title);
+    var file = File('${dir.path}/$baseSlug.md');
+    var n = 2;
+    while (await file.exists()) {
+      file = File('${dir.path}/$baseSlug-${n++}.md');
+    }
+    final slug =
+        file.path.replaceAll('\\', '/').split('/').last.replaceFirst(RegExp(r'\.md$'), '');
+
+    final tagsYaml = tags.map(_yamlStr).join(', ');
+    final frontmatter = 'title: ${_yamlStr(title)}\n'
+        'description: ${_yamlStr(description)}\n'
+        'date: $date\n'
+        'tags: [$tagsYaml]\n'
+        'topic: $topic\n'
+        'draft: $draft\n';
+    await file.writeAsString('---\n$frontmatter---\n\n$body\n', flush: true);
+
+    return Response.found('/admin/website/blog/$slug?saved=1');
+  }
+
+  /// A frontmatter line like `description:` with nothing after the colon
+  /// parses as YAML `null` — which a schema field like
+  /// `z.string().optional()` rejects (optional allows the key to be
+  /// *missing*, not present-but-null), and fails the whole site build with
+  /// an opaque schema error. Dropping such lines makes the key genuinely
+  /// absent instead, which every `.optional()` field accepts. Only drops a
+  /// line when the next line isn't more indented — a real block sequence
+  /// (`links:` followed by `  - ...`) is left alone.
+  static String _dropEmptyFrontmatterKeys(String content) {
+    if (!content.startsWith('---\n')) return content;
+    final close = content.indexOf('\n---', 4);
+    if (close < 0) return content;
+    final lines = content.substring(4, close).split('\n');
+    final kept = <String>[];
+    for (var i = 0; i < lines.length; i++) {
+      final line = lines[i];
+      if (RegExp(r'^[A-Za-z0-9_-]+:\s*$').hasMatch(line)) {
+        final next = i + 1 < lines.length ? lines[i + 1] : '';
+        final isBlockContinuation =
+            next.isNotEmpty && RegExp(r'^\s').hasMatch(next);
+        if (!isBlockContinuation) continue;
+      }
+      kept.add(line);
+    }
+    return '---\n${kept.join('\n')}${content.substring(close)}';
+  }
+
   Future<Response> _adminWebsiteSave(Request request) async {
     final unavailable = _wikiUnavailable();
     if (unavailable != null) return unavailable;
@@ -4013,7 +4439,9 @@ class Api {
     await file.parent.create(recursive: true);
     // Write-then-rename so the builder never sees a half-written file.
     final tmp = File('${file.path}.tmp');
-    await tmp.writeAsString(content.replaceAll('\r\n', '\n'), flush: true);
+    await tmp.writeAsString(
+        _dropEmptyFrontmatterKeys(content.replaceAll('\r\n', '\n')),
+        flush: true);
     await tmp.rename(file.path);
 
     if (form['publish'] == '1') {
@@ -4021,6 +4449,27 @@ class Api {
       return Response.found('/admin/website/$page?saved=1');
     }
     return Response.found('/admin/website/$page?saved=1');
+  }
+
+  Future<Response> _adminWebsiteDelete(Request request) async {
+    final unavailable = _wikiUnavailable();
+    if (unavailable != null) return unavailable;
+    if (!_sameOrigin(request)) {
+      return _error(403, 'bad_origin', 'Cross-origin request rejected.');
+    }
+    var page = _wikiPageOf(request);
+    if (page.endsWith('/delete')) {
+      page = page.substring(0, page.length - '/delete'.length);
+    }
+    final file = _wikiPageFile(page);
+    if (file == null) {
+      return _error(400, 'bad_page', 'Invalid page name.');
+    }
+    if (await file.exists()) {
+      await file.delete();
+    }
+    _requestWikiBuild();
+    return Response.found('/admin/website');
   }
 
   void _requestWikiBuild() {
@@ -4072,19 +4521,29 @@ class Api {
 (function () {
   var el = document.getElementById('buildlog');
   if (!el) return;
+  var badge = document.getElementById('buildbadge');
   var timer = null, idle = 0;
+  function setBadge(text, cls) {
+    if (!badge) return;
+    badge.style.display = 'inline-block';
+    badge.textContent = text;
+    badge.className = 'badge' + (cls ? ' ' + cls : '');
+  }
   function poll() {
     fetch('/admin/website/build/status', {credentials: 'same-origin'})
       .then(function (r) { return r.json(); })
       .then(function (s) {
         var state = (s.status && s.status.state) || '';
         var busy = s.pending || state === 'building';
+        if (busy) setBadge('Building…', 'warn');
+        else if (state === 'ok') setBadge('Live', 'ok');
+        else if (state === 'error') setBadge('Build failed', 'err');
         if (busy || state === 'error') {
-          el.textContent = '[build ' + (busy ? 'running' : state) + ']\n' +
-            (s.log || '');
+          el.style.display = 'block';
+          el.textContent = s.log || '(no output yet)';
           el.scrollTop = el.scrollHeight;
-        } else if (state === 'ok' && el.textContent) {
-          el.textContent = '[build ok — site published]';
+        } else if (state === 'ok' && el.style.display !== 'none') {
+          el.style.display = 'none';
         }
         idle = busy ? 0 : idle + 1;
         if (idle > 4 && timer) { clearInterval(timer); timer = null; }
@@ -4132,6 +4591,27 @@ outline:2px solid var(--focus);outline-offset:2px}
 .ed-primary{background:var(--accent);border-color:var(--accent);
 color:var(--accent-tx);font-weight:600}
 .ed-primary:hover{background:#f2b465}
+.ed-format{position:relative;display:flex;align-items:center;gap:4px;
+padding:6px 10px;background:var(--bg2);border-bottom:1px solid var(--line);
+flex:0 0 auto;flex-wrap:wrap}
+.ed-fmt{min-height:32px;min-width:32px;padding:0 10px;border-radius:7px;
+border:1px solid transparent;background:none;color:var(--tx2);cursor:pointer;
+font:13px/1 inherit}
+.ed-fmt:hover{background:var(--line);color:var(--tx)}
+.ed-fmt:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
+.ed-fmt[aria-expanded="true"]{background:var(--line);color:var(--tx);
+border-color:var(--accent)}
+.ed-fmt-sep{width:1px;align-self:stretch;margin:4px 4px;background:var(--line)}
+/* In normal flow (not an overlay) — a floating popover here would sit right
+   on top of the frontmatter panel below and swallow clicks meant for it. */
+.ed-linkpop{width:100%;display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;
+padding:10px;background:var(--bg2);border:1px solid var(--line);
+border-radius:10px}
+.ed-linkpop input{min-height:36px;padding:0 10px;border-radius:7px;
+border:1px solid var(--line);background:var(--bg);color:var(--tx);
+font:13px inherit;flex:1;min-width:140px}
+.ed-linkpop input:focus{outline:2px solid var(--focus);outline-offset:1px}
+.ed-linkpop .ed-btn{min-height:36px;padding:0 14px}
 .ed-tabs{display:none;flex:0 0 auto;border-bottom:1px solid var(--line)}
 .ed-tab{flex:1;min-height:44px;background:none;border:0;color:var(--tx2);
 font:inherit;cursor:pointer;border-bottom:2px solid transparent}
@@ -4421,6 +4901,91 @@ document.getElementById('imgfile').addEventListener('change', function () {
   if (this.files.length) uploadFiles(this.files, null);
   this.value = '';
 });
+
+/* ---------- formatting toolbar ---------- */
+function wrapSelection(before, after, placeholder) {
+  var s = src.selectionStart, e = src.selectionEnd;
+  var sel = src.value.slice(s, e) || placeholder || '';
+  src.value = src.value.slice(0, s) + before + sel + after + src.value.slice(e);
+  var caretStart = s + before.length;
+  src.focus();
+  src.setSelectionRange(caretStart, caretStart + sel.length);
+  markDirty();
+  render();
+}
+function prefixLines(marker) {
+  var s = src.selectionStart, e = src.selectionEnd;
+  var lineStart = src.value.lastIndexOf('\n', s - 1) + 1;
+  var lineEnd = src.value.indexOf('\n', e);
+  if (lineEnd === -1) lineEnd = src.value.length;
+  var chunk = src.value.slice(lineStart, lineEnd);
+  var out = chunk.split('\n').map(function (l) {
+    return /^\s*[-#]/.test(l) ? l : marker + l;
+  }).join('\n');
+  src.value = src.value.slice(0, lineStart) + out + src.value.slice(lineEnd);
+  src.focus();
+  markDirty();
+  render();
+}
+document.getElementById('fmt-bold').addEventListener('click', function () {
+  wrapSelection('**', '**', 'bold text');
+});
+document.getElementById('fmt-italic').addEventListener('click', function () {
+  wrapSelection('*', '*', 'italic text');
+});
+document.getElementById('fmt-h2').addEventListener('click', function () {
+  prefixLines('## ');
+});
+document.getElementById('fmt-list').addEventListener('click', function () {
+  prefixLines('- ');
+});
+
+/* ---------- link insert: turns a name/sentence into a clickable link
+   instead of a bare URL sitting in the text ---------- */
+var linkbtn = document.getElementById('linkbtn');
+var linkpop = document.getElementById('linkpop');
+var linktext = document.getElementById('linktext');
+var linkurl = document.getElementById('linkurl');
+var linkSelRange = null;
+function openLinkPop() {
+  linkSelRange = [src.selectionStart, src.selectionEnd];
+  linktext.value = src.value.slice(linkSelRange[0], linkSelRange[1]);
+  linkurl.value = '';
+  linkpop.hidden = false;
+  linkbtn.setAttribute('aria-expanded', 'true');
+  (linktext.value ? linkurl : linktext).focus();
+}
+function closeLinkPop() {
+  linkpop.hidden = true;
+  linkbtn.setAttribute('aria-expanded', 'false');
+}
+linkbtn.addEventListener('click', function () {
+  if (linkpop.hidden) openLinkPop(); else closeLinkPop();
+});
+document.getElementById('linkgo').addEventListener('click', function () {
+  var url = linkurl.value.trim();
+  if (!url) { linkurl.focus(); return; }
+  var text = linktext.value.trim() || url;
+  var r = linkSelRange || [src.selectionStart, src.selectionEnd];
+  src.value = src.value.slice(0, r[0]) + '[' + text + '](' + url + ')' + src.value.slice(r[1]);
+  closeLinkPop();
+  src.focus();
+  markDirty();
+  render();
+});
+linkurl.addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') { e.preventDefault(); document.getElementById('linkgo').click(); }
+  if (e.key === 'Escape') closeLinkPop();
+});
+document.addEventListener('click', function (e) {
+  if (!linkpop.hidden && !linkpop.contains(e.target) && e.target !== linkbtn) closeLinkPop();
+});
+document.addEventListener('keydown', function (e) {
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'b' &&
+      document.activeElement === src) { e.preventDefault(); wrapSelection('**', '**', 'bold text'); }
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'i' &&
+      document.activeElement === src) { e.preventDefault(); wrapSelection('*', '*', 'italic text'); }
+});
 src.addEventListener('dragover', function (e) {
   e.preventDefault(); src.classList.add('dragover');
 });
@@ -4631,9 +5196,12 @@ if (window.innerWidth <= 900) document.getElementById('pane-write').classList.ad
         '</head><body><div class="wrap">'
         '<header class="top"><h1>luma<span class="dot">.</span> admin</h1>'
         '<span class="sub">server console</span>'
-        '<form method="post" action="/admin/logout" style="margin-left:auto">'
+        '<div style="margin-left:auto;display:flex;gap:8px;align-items:center">'
+        '<a href="/admin/website" class="btn btn-ghost btn-sm">Website</a>'
+        '<form method="post" action="/admin/logout" style="margin:0">'
         '<button type="submit" class="btn btn-ghost btn-sm">Sign out</button>'
-        '</form></header>'
+        '</form>'
+        '</div></header>'
         '<div class="stats">'
         '<div class="stat"><div class="n">${stats['totalAccounts']}</div><div class="l">Total accounts</div></div>'
         '<div class="stat"><div class="n">${stats['activeAccounts']}</div><div class="l">Active</div></div>'
@@ -5584,6 +6152,17 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
   static Response _error(int status, String code, String message,
           {Map<String, dynamic>? extra}) =>
       _json(status, {'error': code, 'message': message, ...?extra});
+}
+
+/// One node of the /admin/website page tree: a path segment that either is
+/// an actual page ([pagePath] set), a folder grouping deeper pages
+/// ([children] non-empty), or both — e.g. `wiki/simply-cozy` existing
+/// alongside `wiki/simply-cozy/sub-page`.
+class _WikiTreeNode {
+  final Map<String, _WikiTreeNode> children = {};
+  String? pagePath;
+  /// Set when no page exists at this path, but some other page links to it.
+  String? phantomPath;
 }
 
 /// Result type for [Api._parseSharedEventBody]: either a validated set of
