@@ -17,6 +17,18 @@ String? formatTokens(int? tokens) {
   return '$tokens';
 }
 
+/// A parameter count as people write it: `685` → `685B`, `2780` → `2.8T`.
+/// Null for an unknown count, which the table shows as "–" — most closed
+/// models never publish one.
+String? formatParams(double? parametersB) {
+  if (parametersB == null || parametersB <= 0) return null;
+  if (parametersB >= 1000) {
+    final trillions = parametersB / 1000;
+    return '${trillions.toStringAsFixed(trillions >= 10 ? 0 : 1)}T';
+  }
+  return '${parametersB.toStringAsFixed(parametersB >= 100 ? 0 : 1)}B';
+}
+
 /// USD per million tokens. Sub-dollar prices keep enough decimals to stay
 /// distinguishable — at two decimals a third of the board reads `$0.00`.
 String? formatPrice(double? usdPerMillion) {
