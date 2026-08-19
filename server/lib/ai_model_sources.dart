@@ -83,6 +83,29 @@ const Map<String, String> kAiVendorNames = {
   'openrouter': 'OpenRouter',
 };
 
+/// The only vendors the leaderboard shows. OpenRouter carries dozens of
+/// smaller labs and research groups; the app deliberately narrows that down
+/// to the names people actually recognize, so every refresh re-applies this
+/// filter rather than it being a one-time trim.
+///
+/// `meta` and `meta-llama` both appear on OpenRouter for different Meta
+/// releases; both map to the same brand here.
+const Set<String> kAllowedVendors = {
+  'openai',
+  'anthropic',
+  'google',
+  'x-ai',
+  'z-ai',
+  'qwen',
+  'deepseek',
+  'meta',
+  'meta-llama',
+  'moonshotai',
+  'mistralai',
+  'nvidia',
+  'minimax',
+};
+
 /// One vendor blog polled for the leaderboard's news rail.
 ///
 /// Only feeds that actually exist are listed — Anthropic, Meta, Mistral and
@@ -159,7 +182,9 @@ class AiCatalogFetcher {
       for (final entry in raw) {
         if (entry is! Map<String, dynamic>) continue;
         final model = parseOpenRouterModel(entry, nowMs: now);
-        if (model != null) models.add(model);
+        if (model != null && kAllowedVendors.contains(model.vendor)) {
+          models.add(model);
+        }
       }
       return (
         models: models,
@@ -617,6 +642,7 @@ List<AiNewsItem> parseFeed(String xml, String source) {
       publishedAtMs: published,
       summary: _clampSummary(
           _tagText(chunk, 'description') ?? _tagText(chunk, 'summary')),
+      imageUrl: _feedImage(chunk),
     ));
   }
   return items;
@@ -718,6 +744,45 @@ String _decodeEntities(String raw) {
       .replaceAll('&apos;', "'")
       .replaceAll('&nbsp;', ' ')
       .replaceAll('&amp;', '&');
+}
+
+/// A representative image for the entry, or null if the feed carries none —
+/// most of the feeds here never do (see the class doc on [kAiNewsFeeds]), so
+/// the news rail always has to have a real placeholder design, not just an
+/// occasional one.
+///
+/// Tries the RSS Media extension first (`media:thumbnail` / `media:content`,
+/// what Google's blogs actually publish), then a plain `<enclosure>`, then
+/// falls back to the first `<img>` sitting inside the description's own HTML
+/// — some feeds embed a lead image there instead of a dedicated image tag.
+String? _feedImage(String chunk) {
+  final media = RegExp(r'<media:(?:thumbnail|content)\b[^>]*\burl="([^"]+)"',
+          caseSensitive: false)
+      .firstMatch(chunk);
+  if (media != null) return media.group(1);
+
+  final enclosure = RegExp(
+              r'<enclosure\b[^>]*\burl="([^"]+)"[^>]*\btype="image',
+              caseSensitive: false)
+          .firstMatch(chunk) ??
+      RegExp(r'<enclosure\b[^>]*\btype="image[^>]*\burl="([^"]+)"',
+              caseSensitive: false)
+          .firstMatch(chunk);
+  if (enclosure != null) return enclosure.group(1);
+
+  final rawDescription = RegExp(
+          r'<description(?:\s[^>]*)?>([\s\S]*?)</description>',
+          caseSensitive: false)
+      .firstMatch(chunk)
+      ?.group(1);
+  if (rawDescription == null) return null;
+  var html = rawDescription.trim();
+  final cdata = RegExp(r'^<!\[CDATA\[([\s\S]*?)\]\]>$').firstMatch(html);
+  if (cdata != null) html = cdata.group(1)!;
+  html = _decodeEntities(html);
+  return RegExp(r'<img\b[^>]*\bsrc="([^"]+)"', caseSensitive: false)
+      .firstMatch(html)
+      ?.group(1);
 }
 
 String? _clampSummary(String? raw) {
