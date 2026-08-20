@@ -312,7 +312,14 @@ class _EffortSection extends StatelessWidget {
     final luma = context.luma;
     final points = [
       for (final e in model.effortProfiles)
-        if (e.intelligenceIndex != null && e.medianOutputTokens != null) e,
+        if (e.intelligenceIndex != null) e,
+    ];
+    // Artificial Analysis doesn't publish a token count for every tier it
+    // rates — the intelligence trend is the point of this chart, so it draws
+    // with or without that second dimension.
+    final tokenPoints = [
+      for (final p in points)
+        if (p.medianOutputTokens != null) p,
     ];
 
     return LumaCard(
@@ -397,9 +404,14 @@ class _EffortSection extends StatelessWidget {
                     getTooltipItems: (spots) => [
                       for (final s in spots)
                         LineTooltipItem(
-                          '${points[s.x.round()].label}\n'
-                          'Index ${s.y.toStringAsFixed(1)} · '
-                          '${formatExactTokens(points[s.x.round()].medianOutputTokens!)} tok',
+                          () {
+                            final p = points[s.x.round()];
+                            final index = 'Index ${s.y.toStringAsFixed(1)}';
+                            final tokens = p.medianOutputTokens == null
+                                ? ''
+                                : ' · ${formatExactTokens(p.medianOutputTokens!)} tok';
+                            return '${p.label}\n$index$tokens';
+                          }(),
                           TextStyle(color: luma.textPrimary, fontSize: 12),
                         ),
                     ],
@@ -408,18 +420,20 @@ class _EffortSection extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 14,
-            runSpacing: 6,
-            children: [
-              for (final p in points)
-                Text(
-                  '${p.label}: ${formatExactTokens(p.medianOutputTokens!)} tok',
-                  style: TextStyle(color: luma.textMuted, fontSize: 11.5),
-                ),
-            ],
-          ),
+          if (tokenPoints.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 14,
+              runSpacing: 6,
+              children: [
+                for (final p in tokenPoints)
+                  Text(
+                    '${p.label}: ${formatExactTokens(p.medianOutputTokens!)} tok',
+                    style: TextStyle(color: luma.textMuted, fontSize: 11.5),
+                  ),
+              ],
+            ),
+          ],
         ],
       ),
     );

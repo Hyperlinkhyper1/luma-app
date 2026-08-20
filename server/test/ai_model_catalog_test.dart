@@ -148,6 +148,40 @@ void main() {
     });
   });
 
+  group('splitEffortSuffix', () {
+    test('recognises a bare tier in parentheses', () {
+      expect(splitEffortSuffix('GPT-5.6 Sol (max)'), ('GPT-5.6 Sol', 'max'));
+      expect(splitEffortSuffix('gpt-oss-20B (high)'), ('gpt-oss-20B', 'high'));
+    });
+
+    test('finds the tier inside a longer descriptive phrase', () {
+      // Artificial Analysis describes Anthropic's variants this way rather
+      // than with the bare tier name — this is the exact shape that let
+      // every one of these rows silently fail to become a graph point.
+      expect(
+        splitEffortSuffix('Claude Opus 5 (Adaptive Reasoning, Max Effort)'),
+        ('Claude Opus 5', 'max'),
+      );
+      expect(
+        splitEffortSuffix('Claude Opus 5 (Adaptive Reasoning, Xhigh Effort)'),
+        ('Claude Opus 5', 'xhigh'),
+      );
+    });
+
+    test('does not mistake "xhigh" for "high"', () {
+      final (base, effort) =
+          splitEffortSuffix('Some Model (Adaptive Reasoning, Xhigh Effort)');
+      expect(base, 'Some Model');
+      expect(effort, 'xhigh');
+    });
+
+    test('leaves a non-effort parenthetical alone', () {
+      expect(splitEffortSuffix('Claude Opus 5 (Preview)'),
+          ('Claude Opus 5 (Preview)', null));
+      expect(splitEffortSuffix('Plain Model Name'), ('Plain Model Name', null));
+    });
+  });
+
   group('AiModel.mergedWith', () {
     test('a later source refines earlier values but never blanks them', () {
       final base = parseOpenRouterModel(_openRouterEntry(), nowMs: 1)!;
