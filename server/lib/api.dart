@@ -3560,24 +3560,22 @@ class Api {
   }
 
   /// Triggers a full server update: git pull → rebuild the image → recreate
-  /// this container, driven from inside a Docker container via the host's
-  /// Docker daemon over the socket mounted into it (see docker-compose.yml).
-  /// This container has no Dart SDK and cannot compile itself — the
-  /// Dockerfile's build stage does that as part of `docker compose build`.
+  /// the luma-sync container.
   ///
-  /// `git config --global --add safe.directory` is needed first because the
-  /// repo on the host is owned by a different uid than this (root) process;
-  /// git otherwise refuses to touch it. The command runs in a fully detached
-  /// process (`setsid`) — necessary here for a different reason than a plain
-  /// systemd restart would need it for: `docker compose up -d --build` tears
-  /// down *this very container* partway through, killing the process tree
-  /// that launched the deploy along with it. That's expected, not a bug —
-  /// which is why the log and PID files live on the `/data` volume, which
-  /// survives the container being replaced, rather than anywhere that
-  /// wouldn't. A poll from the browser after the swap reads whatever the log
-  /// captured before the kill, then sees the PID as no longer running (a
-  /// fresh container is a fresh PID namespace) and reports the deploy as
-  /// finished either way.
+  /// This can't be driven directly from inside the luma-sync container
+  /// (even over the host Docker socket mounted into it, see
+  /// docker-compose.yml): `docker compose up -d --build` recreating *this
+  /// very container* is a multi-step swap (stop old -> rename -> create new
+  /// -> start new -> remove old), and stopping the old container kills every
+  /// process inside it — including the `docker compose` CLI orchestrating
+  /// the rest of the swap — before it ever starts the new one. The container
+  /// gets stuck at "Created" and the deploy goes nowhere.
+  ///
+  /// So this only drops a request file on the `/data` volume.
+  /// `deploy-watcher.sh`, running as a systemd service directly on the host
+  /// (outside any container, see luma-deploy-watcher.service), polls for
+  /// that file and does the actual git pull + rebuild — unaffected by the
+  /// luma-sync container being torn down and recreated out from under it.
   Future<Response> _adminDeploy(Request request) async {
     if (!config.repoPathConfigured) {
       return _error(404, 'not_configured',
@@ -3585,39 +3583,20 @@ class Api {
           "repo's absolute path on the host, then restart.");
     }
 
-    final logFile = File('${config.dataDir}/deploy.log');
+    final requestFile = File('${config.dataDir}/deploy.request');
     final pidFile = File('${config.dataDir}/deploy.pid');
 
+    // The PID in this file is a host PID, meaningless to check for
+    // liveness from inside this container's own PID namespace — its mere
+    // existence (written when deploy-watcher.sh picks up a request, removed
+    // when it finishes) is the running signal instead.
     if (await pidFile.exists()) {
-      final pid = int.tryParse((await pidFile.readAsString()).trim());
-      if (pid != null && _isProcessAlive(pid)) {
-        return _error(409, 'deploy_running',
-            'A deploy is already in progress. Wait for it to finish.');
-      }
+      return _error(409, 'deploy_running',
+          'A deploy is already in progress. Wait for it to finish.');
     }
 
-    await logFile.parent.create(recursive: true);
-
-    final repoPath = config.repoPath!;
-    final deployCmd =
-        "git config --global --add safe.directory '$repoPath' && "
-        "cd '$repoPath' && git pull && cd server && "
-        'docker compose up -d --build luma-sync';
-
-    final script = 'echo \$\$ > "${pidFile.path}" && '
-        '{ $deployCmd; } > "${logFile.path}" 2>&1; '
-        'rm -f "${pidFile.path}"';
-
-    try {
-      await Process.start(
-        'setsid',
-        ['bash', '-c', script],
-        mode: ProcessStartMode.detached,
-      );
-    } catch (e) {
-      stderr.writeln('[luma] could not start deploy process: $e');
-      return _error(500, 'deploy_failed', 'Could not start the deploy process.');
-    }
+    await requestFile.parent.create(recursive: true);
+    await requestFile.writeAsString(DateTime.now().toIso8601String());
 
     return _json(200, {'started': true});
   }
@@ -3628,11 +3607,11 @@ class Api {
     final logFile = File('${config.dataDir}/deploy.log');
     final pidFile = File('${config.dataDir}/deploy.pid');
 
-    int? pid;
-    if (await pidFile.exists()) {
-      pid = int.tryParse((await pidFile.readAsString()).trim());
-    }
-    final running = pid != null && _isProcessAlive(pid);
+    // See the note in _adminDeploy: the PID belongs to deploy-watcher.sh on
+    // the host, not to anything in this container's PID namespace, so
+    // existence of the file (written/removed by that script) is the signal,
+    // not a `kill -0` liveness check.
+    final running = await pidFile.exists();
 
     String log = '';
     if (await logFile.exists()) {
@@ -3646,16 +3625,6 @@ class Api {
       'log': log,
       'repoPathConfigured': config.repoPathConfigured,
     });
-  }
-
-  /// Best-effort check whether a process is still alive (POSIX `kill -0`).
-  bool _isProcessAlive(int pid) {
-    try {
-      final result = Process.runSync('kill', ['-0', pid.toString()]);
-      return result.exitCode == 0;
-    } catch (_) {
-      return false;
-    }
   }
 
   // ---------------------------------------------------------------------
