@@ -251,6 +251,14 @@ class AiCatalogFetcher {
         if (entry is! Map<String, dynamic>) continue;
         final name = entry['name'] as String?;
         if (name == null) continue;
+        // "Claude Sonnet 5 (Non-reasoning, High Effort)" is a completely
+        // different mode (thinking disabled), not a rung on the reasoning-
+        // effort ladder — but its parenthetical contains "High" as a whole
+        // word, so splitEffortSuffix would otherwise fold its score in as
+        // if it were the `high` tier. Drop it rather than mislabelling it;
+        // it isn't the model's default config either, so it can't stand in
+        // for the base overlay when there's no effort suffix to strip.
+        if (name.toLowerCase().contains('non-reasoning')) continue;
         final (base, effort) = splitEffortSuffix(name);
         final match = byName[_normalizeName(base)];
         if (match == null) continue;
