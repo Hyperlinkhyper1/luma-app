@@ -8,15 +8,13 @@ RUN dart pub get --offline && dart compile exe bin/luma_server.dart -o /app/luma
 
 # Runtime stage: minimal image.
 #
-# Runs as root and gets the host's Docker socket mounted (see
-# docker-compose.yml) so the admin dashboard's "Update & restart server"
-# button can git-pull, rebuild and redeploy this very container — see
-# Api._adminDeploy. That socket already grants root-equivalent control of the
-# host to anything that can reach it, so keeping this process itself
-# unprivileged would add negligible defense in depth; the actual security
-# boundary here is LUMA_ADMIN_KEY. Deployments that don't set LUMA_REPO_PATH
-# never mount the socket and the deploy button refuses to run — see
-# .env.example.
+# The admin dashboard's "Update & restart server" button (Api._adminDeploy)
+# only drops a request file on the /data volume — the actual git pull and
+# `docker compose up -d --build` run on the host via deploy-watcher.sh (a
+# systemd service, see luma-deploy-watcher.service), not in this container.
+# This image no longer needs the host's Docker socket for that reason; git,
+# docker-ce-cli and docker-compose-plugin below are kept only because
+# they're occasionally useful for in-container debugging over `docker exec`.
 FROM debian:bookworm-slim
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \

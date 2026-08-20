@@ -120,5 +120,44 @@ void main() {
       final set = await get('/admin/deploy/status');
       expect(set['repoPathConfigured'], isTrue);
     });
+
+    // deploy-watcher.sh (running on the host, outside any container) is
+    // what actually does the git pull + rebuild — this process only ever
+    // drops a request file for it to pick up. See Api._adminDeploy's doc
+    // comment for why: running `docker compose up -d --build` on this very
+    // container from inside itself kills the process driving the recreate
+    // before it starts the new container.
+    test('a deploy request drops a request file rather than running '
+        'anything itself', () async {
+      handler = await buildHandler(repoPath: '/home/example/luma-app');
+      final result = await post('/admin/deploy');
+      expect(result['httpStatus'], 200);
+      expect(result['started'], isTrue);
+      expect(await File('${dir.path}/deploy.request').exists(), isTrue);
+    });
+
+    test('refuses a second deploy while the watcher\'s PID file is present',
+        () async {
+      handler = await buildHandler(repoPath: '/home/example/luma-app');
+      await File('${dir.path}/deploy.pid').writeAsString('12345');
+      final result = await post('/admin/deploy');
+      expect(result['httpStatus'], 409);
+      expect(result['error'], 'deploy_running');
+    });
+
+    test('status reflects the watcher\'s PID file and log, not this '
+        'process\'s own state', () async {
+      handler = await buildHandler(repoPath: '/home/example/luma-app');
+
+      final idle = await get('/admin/deploy/status');
+      expect(idle['running'], isFalse);
+      expect(idle['log'], '');
+
+      await File('${dir.path}/deploy.pid').writeAsString('12345');
+      await File('${dir.path}/deploy.log').writeAsString('git pull...\n');
+      final active = await get('/admin/deploy/status');
+      expect(active['running'], isTrue);
+      expect(active['log'], 'git pull...\n');
+    });
   });
 }
