@@ -5634,6 +5634,14 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
 
   var timer = null;
   var sawRunning = false;
+  // True from the moment the click handler's POST succeeds until we either
+  // observe the deploy actually running or give up. Needed because the
+  // detached script (echo $$ > pidFile; ... > logFile) takes a moment to
+  // create those files — a status poll landing before that happens must
+  // not be read as "already finished with no output".
+  var deploying = false;
+  var startAttempts = 0;
+  var maxStartAttempts = 10;
 
   function setStatus(text, color) {
     status.textContent = text;
@@ -5651,6 +5659,7 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
         }
         if (data.running) {
           sawRunning = true;
+          deploying = false;
           btn.disabled = true;
           btn.style.opacity = '0.5';
           btn.style.cursor = 'not-allowed';
@@ -5672,6 +5681,32 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
             hasLog ? 'Deploy finished — check the log above.' :
                      'Deploy process ended.',
             success ? '#7ee08a' : '#a49fb8');
+          sawRunning = false;
+        } else if (deploying) {
+          // Not running yet and we've never seen it running — either the
+          // script hasn't started up, or (for a fast no-op deploy where
+          // nothing needed rebuilding) it already finished between the
+          // POST and this poll. A non-empty log means the latter.
+          if (data.log) {
+            btn.disabled = false;
+            btn.style.opacity = '';
+            btn.style.cursor = '';
+            var success2 = /\b(Started|Healthy)\b/.test(data.log);
+            setStatus(
+              success2 ? 'Deploy complete — server is running.' :
+                         'Deploy finished — check the log above.',
+              success2 ? '#7ee08a' : '#a49fb8');
+            deploying = false;
+          } else if (startAttempts < maxStartAttempts) {
+            startAttempts++;
+            timer = setTimeout(poll, 500);
+          } else {
+            btn.disabled = false;
+            btn.style.opacity = '';
+            btn.style.cursor = '';
+            setStatus('Deploy did not start — check the server logs.', '#e07e7e');
+            deploying = false;
+          }
         } else if (data.repoPathConfigured === false) {
           btn.disabled = true;
           btn.style.opacity = '0.5';
@@ -5684,6 +5719,8 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
         if (sawRunning) {
           setStatus('Server restarting… waiting for it to come back.', '#e0c87e');
           timer = setTimeout(poll, 2000);
+        } else if (deploying) {
+          timer = setTimeout(poll, 1000);
         }
       });
   }
@@ -5709,7 +5746,8 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
           setStatus(data.message || data.error, '#e07e7e');
           return;
         }
-        sawRunning = true;
+        deploying = true;
+        startAttempts = 0;
         poll();
       })
       .catch(function () {
