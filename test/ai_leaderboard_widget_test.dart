@@ -4,6 +4,7 @@ import 'package:luma/features/plugins/installed/ai_usage/leaderboard/ai_catalog_
 import 'package:luma/features/plugins/installed/ai_usage/leaderboard/ai_catalog_scope.dart';
 import 'package:luma/features/plugins/installed/ai_usage/leaderboard/ai_leaderboard_tab.dart';
 import 'package:luma/features/plugins/installed/ai_usage/leaderboard/ai_model.dart';
+import 'package:luma/features/plugins/installed/ai_usage/leaderboard/ai_model_detail_page.dart';
 import 'package:luma/features/plugins/installed/ai_usage/open_source/open_source_tab.dart';
 import 'package:luma/theme/luma_theme.dart';
 import 'package:luma/theme/theme_style.dart';
@@ -56,11 +57,11 @@ const _catalog = AiCatalog(
   refreshedAt: null,
 );
 
-Widget _wrap(Widget child) => MaterialApp(
+Widget _wrap(Widget child, {AiCatalog catalog = _catalog}) => MaterialApp(
       theme: LumaTheme.from(Brightness.dark, null, LumaThemeStyle.standard),
       home: Scaffold(
         body: AiCatalogScope(
-          repository: AiCatalogRepository.withCatalog(_catalog),
+          repository: AiCatalogRepository.withCatalog(catalog),
           child: child,
         ),
       ),
@@ -255,6 +256,91 @@ void main() {
 
       // Claude has no downloadable weights, so it can't be sized.
       expect(find.textContaining('Claude Opus 5'), findsNothing);
+    });
+  });
+
+  group('model detail page', () {
+    testWidgets(
+        'the effort graph draws from intelligence alone when no tier has a '
+        'token count', (tester) async {
+      // Artificial Analysis doesn't publish a token count for every model it
+      // rates — the graph is the point here, not the token side-note, so it
+      // has to draw without that second dimension rather than staying blank.
+      const catalog = AiCatalog(
+        models: [
+          AiModel(
+            id: 'anthropic/claude-opus-5',
+            slug: 'claude-opus-5',
+            name: 'Claude Opus 5',
+            vendor: 'anthropic',
+            vendorName: 'Anthropic',
+            supportedEfforts: ['low', 'high', 'max'],
+            effortProfiles: [
+              AiEffortProfile(effort: 'low', intelligenceIndex: 50),
+              AiEffortProfile(effort: 'high', intelligenceIndex: 60),
+              AiEffortProfile(effort: 'max', intelligenceIndex: 65),
+            ],
+          ),
+        ],
+        news: [],
+        refreshedAt: null,
+      );
+
+      await tester.pumpWidget(_wrap(
+        const AiModelDetailPage(modelId: 'anthropic/claude-opus-5'),
+        catalog: catalog,
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('EFFORT VS TOKENS USED'), findsOneWidget);
+      // fl_chart's axis builder runs more than once per label during layout,
+      // so these are findsWidgets rather than findsOneWidget.
+      expect(find.text('Low'), findsWidgets);
+      expect(find.text('High'), findsWidgets);
+      expect(find.text('Max'), findsWidgets);
+      // No tier carries a token count in this fixture, so the token-count
+      // row underneath the chart (formatted like "Low: 400 tok") has
+      // nothing to show — the section's fixed subtitle also mentions
+      // "tokens" in prose, so this matches the specific "<number> tok"
+      // shape rather than the word.
+      expect(
+        find.byWidgetPredicate((w) =>
+            w is Text && RegExp(r'[\d,]+ tok$').hasMatch(w.data ?? '')),
+        findsNothing,
+      );
+    });
+
+    testWidgets('shows token counts under the chart when they are known',
+        (tester) async {
+      const catalog = AiCatalog(
+        models: [
+          AiModel(
+            id: 'anthropic/claude-opus-5',
+            slug: 'claude-opus-5',
+            name: 'Claude Opus 5',
+            vendor: 'anthropic',
+            vendorName: 'Anthropic',
+            supportedEfforts: ['low', 'high'],
+            effortProfiles: [
+              AiEffortProfile(
+                  effort: 'low', intelligenceIndex: 50, medianOutputTokens: 400),
+              AiEffortProfile(
+                  effort: 'high', intelligenceIndex: 60, medianOutputTokens: 1200),
+            ],
+          ),
+        ],
+        news: [],
+        refreshedAt: null,
+      );
+
+      await tester.pumpWidget(_wrap(
+        const AiModelDetailPage(modelId: 'anthropic/claude-opus-5'),
+        catalog: catalog,
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('400 tok'), findsOneWidget);
+      expect(find.textContaining('1,200 tok'), findsOneWidget);
     });
   });
 }

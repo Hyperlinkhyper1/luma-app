@@ -251,7 +251,7 @@ class AiCatalogFetcher {
         if (entry is! Map<String, dynamic>) continue;
         final name = entry['name'] as String?;
         if (name == null) continue;
-        final (base, effort) = _splitEffortSuffix(name);
+        final (base, effort) = splitEffortSuffix(name);
         final match = byName[_normalizeName(base)];
         if (match == null) continue;
 
@@ -862,16 +862,24 @@ double? _secondsToMs(double? seconds) =>
 String _normalizeName(String raw) =>
     raw.toLowerCase().replaceAll(RegExp('[^a-z0-9]'), '');
 
-/// Splits Artificial Analysis' `"GPT-5.6 (high)"` into its base name and the
-/// effort tier. Returns a null effort when the parenthetical isn't one of the
-/// known tiers, so `"Claude Opus 5 (Preview)"` stays a model rather than
-/// becoming a bogus point on an effort graph.
-(String, String?) _splitEffortSuffix(String name) {
+/// Splits Artificial Analysis' effort-tier suffix off a model name. Simple
+/// providers use the bare tier — `"GPT-5.6 Sol (max)"` — but others describe
+/// it as a longer phrase — `"Claude Opus 5 (Adaptive Reasoning, Xhigh
+/// Effort)"` — so this looks for a known tier as a whole word inside the
+/// parenthetical rather than requiring the whole thing to match. Returns a
+/// null effort when nothing recognisable is found, so `"Claude Opus 5
+/// (Preview)"` stays a model rather than becoming a bogus point on an effort
+/// graph.
+(String, String?) splitEffortSuffix(String name) {
   final match = RegExp(r'^(.*?)\s*\(([^()]+)\)\s*$').firstMatch(name);
   if (match == null) return (name, null);
-  final tier = match.group(2)!.toLowerCase().trim();
-  if (!kEffortTiers.contains(tier)) return (name, null);
-  return (match.group(1)!.trim(), tier);
+  final descriptor = match.group(2)!.toLowerCase();
+  for (final tier in kEffortTiers) {
+    if (RegExp('\\b${RegExp.escape(tier)}\\b').hasMatch(descriptor)) {
+      return (match.group(1)!.trim(), tier);
+    }
+  }
+  return (name, null);
 }
 
 /// Effort tiers, cheapest first — the order the effort graph plots them in.
