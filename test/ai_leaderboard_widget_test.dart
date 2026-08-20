@@ -184,7 +184,8 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('the model column fills a wide pane instead of leaving it blank',
+    testWidgets(
+        'a wide pane fills with extra column width instead of leaving it blank',
         (tester) async {
       tester.view.physicalSize = const Size(2000, 900);
       tester.view.devicePixelRatio = 1.0;
@@ -194,13 +195,20 @@ void main() {
       await tester.pumpWidget(_wrap(const AiLeaderboardTab()));
       await tester.pumpAndSettle();
 
-      final modelHeaderBox = tester.widget<SizedBox>(find
-          .ancestor(of: find.text('MODEL'), matching: find.byType(SizedBox))
+      SizedBox headerBoxFor(String label) => tester.widget<SizedBox>(find
+          .ancestor(of: find.text(label), matching: find.byType(SizedBox))
           .first);
-      // The column's fixed minimum is 240 — on a 2000px pane it must have
-      // grown well past that rather than the table sitting narrow with a
-      // blank strip of card background to its right.
-      expect(modelHeaderBox.width, greaterThan(600));
+
+      // The model column grows a little on a wide pane so long names still
+      // have room, but it's capped well short of swallowing the window.
+      final modelBox = headerBoxFor('MODEL');
+      expect(modelBox.width, greaterThan(220));
+      expect(modelBox.width, lessThan(400));
+
+      // The rest of the extra space goes to the data columns instead, so
+      // they read comfortably rather than staying pinned at their minimum.
+      final priceBox = headerBoxFor(r'PRICE $/M');
+      expect(priceBox.width, greaterThan(150));
     });
   });
 
