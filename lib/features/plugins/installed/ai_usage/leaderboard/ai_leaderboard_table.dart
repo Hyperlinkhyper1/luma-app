@@ -380,8 +380,11 @@ class _OpenWeightsToggle extends StatelessWidget {
 /// sideways on a narrow window. Each is sized to its own header *label*, not
 /// just its data — "CODE ARENA" and "LLM STATS" are the longest words in the
 /// row and set the floor other columns don't need.
+///
+/// These are the *minimums*; on a wide pane [_ColumnWidths.forWidth] grows
+/// them — see there for how the extra space is split.
 const double _wRank = 58;
-const double _wModel = 240;
+const double _wModel = 220;
 const double _wScore = 100;
 const double _wArena = 104;
 const double _wParams = 80;
@@ -396,6 +399,62 @@ const double _tableWidth = _wRank +
     _wContext +
     _wPrice +
     _wLicense;
+
+/// How much wider than its minimum the model name column is allowed to grow.
+/// Long names still get a little more room on a wide pane, but the column
+/// isn't the thing that should soak up most of the window — the data
+/// columns are, so they stay legible instead of pinned at their minimum.
+const double _wModelMaxGrowth = 140;
+
+/// The widths actually used for one layout pass: the minimums above on a
+/// narrow window, grown to fill a wide one. The model column takes a capped
+/// share of the extra space ([_wModelMaxGrowth]); everything past that is
+/// split across the data columns in proportion to their own minimum width,
+/// so a wide pane reads more comfortably everywhere rather than just growing
+/// the name column into empty space.
+class _ColumnWidths {
+  const _ColumnWidths({
+    required this.model,
+    required this.score,
+    required this.arena,
+    required this.params,
+    required this.context,
+    required this.price,
+  });
+
+  factory _ColumnWidths.forWidth(double maxWidth) {
+    final slack = maxWidth - _tableWidth;
+    if (slack <= 0) {
+      return const _ColumnWidths(
+        model: _wModel,
+        score: _wScore,
+        arena: _wArena,
+        params: _wParams,
+        context: _wContext,
+        price: _wPrice,
+      );
+    }
+    final modelGrowth = slack < _wModelMaxGrowth ? slack : _wModelMaxGrowth;
+    final remaining = slack - modelGrowth;
+    const flexBase = _wScore * 3 + _wArena + _wParams + _wContext + _wPrice;
+    final scale = 1 + remaining / flexBase;
+    return _ColumnWidths(
+      model: _wModel + modelGrowth,
+      score: _wScore * scale,
+      arena: _wArena * scale,
+      params: _wParams * scale,
+      context: _wContext * scale,
+      price: _wPrice * scale,
+    );
+  }
+
+  final double model;
+  final double score;
+  final double arena;
+  final double params;
+  final double context;
+  final double price;
+}
 
 class _LeaderboardTable extends StatelessWidget {
   const _LeaderboardTable({
@@ -419,16 +478,14 @@ class _LeaderboardTable extends StatelessWidget {
     final luma = context.luma;
     return LayoutBuilder(
       builder: (context, constraints) {
-        // The Model column is the one with genuinely variable-length
-        // content, so it's the one that absorbs any slack: on a window
-        // wider than the table's minimum width, it grows to fill the pane
-        // instead of leaving a blank strip of card background past the
-        // License column. On a narrower window it stays at its minimum and
-        // the table scrolls sideways as usual — nothing here changes that.
-        final slack = constraints.maxWidth - _tableWidth;
-        final modelWidth = slack > 0 ? _wModel + slack : _wModel;
-        final contentWidth =
-            slack > 0 ? constraints.maxWidth : _tableWidth;
+        // On a window wider than the table's minimum width, the columns grow
+        // to fill the pane instead of leaving a blank strip of card
+        // background past the License column. On a narrower window
+        // everything stays at its minimum and the table scrolls sideways as
+        // usual — nothing here changes that.
+        final fills = constraints.maxWidth > _tableWidth;
+        final widths = _ColumnWidths.forWidth(constraints.maxWidth);
+        final contentWidth = fills ? constraints.maxWidth : _tableWidth;
 
         return Container(
           decoration: BoxDecoration(
@@ -439,16 +496,14 @@ class _LeaderboardTable extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           child: Scrollbar(
             controller: horizontal,
-            // Nothing to scroll once the Model column has absorbed the
-            // slack — a full-width thumb representing 100% coverage would
-            // just be visual noise.
-            thumbVisibility: slack <= 0,
+            // Nothing to scroll once the columns have absorbed the slack — a
+            // full-width thumb representing 100% coverage would just be
+            // visual noise.
+            thumbVisibility: !fills,
             child: SingleChildScrollView(
               controller: horizontal,
               scrollDirection: Axis.horizontal,
-              physics: slack > 0
-                  ? const NeverScrollableScrollPhysics()
-                  : null,
+              physics: fills ? const NeverScrollableScrollPhysics() : null,
               child: SizedBox(
                 width: contentWidth,
                 child: Column(
@@ -458,7 +513,7 @@ class _LeaderboardTable extends StatelessWidget {
                       sortBy: sortBy,
                       descending: descending,
                       onSort: onSort,
-                      modelWidth: modelWidth,
+                      widths: widths,
                     ),
                     Container(height: 1, color: luma.border),
                     Expanded(
@@ -474,7 +529,7 @@ class _LeaderboardTable extends StatelessWidget {
                           itemBuilder: (context, i) => _ModelRow(
                             model: rows[i],
                             rank: i + 1,
-                            modelWidth: modelWidth,
+                            widths: widths,
                           ),
                         ),
                       ),
@@ -495,13 +550,13 @@ class _HeaderRow extends StatelessWidget {
     required this.sortBy,
     required this.descending,
     required this.onSort,
-    required this.modelWidth,
+    required this.widths,
   });
 
   final AiLeaderboardColumn sortBy;
   final bool descending;
   final ValueChanged<AiLeaderboardColumn> onSort;
-  final double modelWidth;
+  final _ColumnWidths widths;
 
   @override
   Widget build(BuildContext context) {
@@ -519,7 +574,7 @@ class _HeaderRow extends StatelessWidget {
               onSort: onSort),
           _HeaderCell(
               column: AiLeaderboardColumn.name,
-              width: modelWidth,
+              width: widths.model,
               align: TextAlign.left,
               sortBy: sortBy,
               descending: descending,
@@ -531,31 +586,31 @@ class _HeaderRow extends StatelessWidget {
           ])
             _HeaderCell(
                 column: column,
-                width: _wScore,
+                width: widths.score,
                 sortBy: sortBy,
                 descending: descending,
                 onSort: onSort),
           _HeaderCell(
               column: AiLeaderboardColumn.codeArena,
-              width: _wArena,
+              width: widths.arena,
               sortBy: sortBy,
               descending: descending,
               onSort: onSort),
           _HeaderCell(
               column: AiLeaderboardColumn.params,
-              width: _wParams,
+              width: widths.params,
               sortBy: sortBy,
               descending: descending,
               onSort: onSort),
           _HeaderCell(
               column: AiLeaderboardColumn.context,
-              width: _wContext,
+              width: widths.context,
               sortBy: sortBy,
               descending: descending,
               onSort: onSort),
           _HeaderCell(
               column: AiLeaderboardColumn.price,
-              width: _wPrice,
+              width: widths.price,
               sortBy: sortBy,
               descending: descending,
               onSort: onSort),
@@ -650,12 +705,12 @@ class _ModelRow extends StatelessWidget {
   const _ModelRow({
     required this.model,
     required this.rank,
-    required this.modelWidth,
+    required this.widths,
   });
 
   final AiModel model;
   final int rank;
-  final double modelWidth;
+  final _ColumnWidths widths;
 
   @override
   Widget build(BuildContext context) {
@@ -686,7 +741,7 @@ class _ModelRow extends StatelessWidget {
             ),
           ),
           SizedBox(
-            width: modelWidth,
+            width: widths.model,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10),
               child: Column(
@@ -713,16 +768,16 @@ class _ModelRow extends StatelessWidget {
               ),
             ),
           ),
-          _ScoreCell(value: model.llmStatsIndex),
-          _ScoreCell(value: model.codingIndex),
-          _ScoreCell(value: model.agentIndex),
+          _ScoreCell(value: model.llmStatsIndex, width: widths.score),
+          _ScoreCell(value: model.codingIndex, width: widths.score),
+          _ScoreCell(value: model.agentIndex, width: widths.score),
           _NumberCell(
-            width: _wArena,
+            width: widths.arena,
             text: model.codeArena?.round().toString(),
           ),
-          _NumberCell(width: _wParams, text: formatParams(model.parametersB)),
-          _NumberCell(width: _wContext, text: formatTokens(model.contextTokens)),
-          _NumberCell(width: _wPrice, text: formatPrice(model.avgPricePerM)),
+          _NumberCell(width: widths.params, text: formatParams(model.parametersB)),
+          _NumberCell(width: widths.context, text: formatTokens(model.contextTokens)),
+          _NumberCell(width: widths.price, text: formatPrice(model.avgPricePerM)),
           _LicenseCell(model: model),
         ],
       ),
@@ -734,16 +789,17 @@ class _ModelRow extends StatelessWidget {
 /// One of the four rating columns. The number is always spelled out; the tint
 /// behind it is a secondary cue, never the only one.
 class _ScoreCell extends StatelessWidget {
-  const _ScoreCell({required this.value});
+  const _ScoreCell({required this.value, required this.width});
 
   final double? value;
+  final double width;
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
     if (value == null) {
       return SizedBox(
-        width: _wScore,
+        width: width,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10),
           child: Text('–',
@@ -756,7 +812,7 @@ class _ScoreCell extends StatelessWidget {
     // tint is stretched over 30–80 to make the top of the board legible.
     final t = ((value! - 30) / 50).clamp(0.0, 1.0);
     return SizedBox(
-      width: _wScore,
+      width: width,
       child: Align(
         alignment: Alignment.centerRight,
         child: Padding(
