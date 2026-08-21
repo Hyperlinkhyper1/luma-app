@@ -31,7 +31,8 @@ class ClaudeCodeScanResult {
 /// stores per-turn token usage into [AiUsageDatabase].
 ///
 /// Only usage metadata is ever read out of a record: `type`, `sessionId`,
-/// `timestamp`, `message.id`, `message.model`, and `message.usage.*`.
+/// `timestamp`, `message.id`, `message.model`, `message.usage.*`, and
+/// `effort`.
 /// `message.content` — the actual prompt/response text — is never read,
 /// stored, or displayed. This mirrors the reference `claude-usage` CLI tool's
 /// own scanner (`C:\Users\ayden\claude-usage\scanner.py`), including its
@@ -215,6 +216,7 @@ class ClaudeCodeScanner {
       if (timestamp == null) return null;
 
       final cwd = record['cwd'] as String?;
+      final effort = record['effort'] as String?;
 
       return AiUsageTurnsCompanion.insert(
         sessionId: sessionId,
@@ -227,6 +229,7 @@ class ClaudeCodeScanner {
         messageId: Value(messageId),
         project: Value(projectNameFromCwd(cwd)),
         source: AiUsageSource.claudeCode,
+        effort: Value(effort != null && effort.isNotEmpty ? effort : null),
       );
     } catch (_) {
       return null;

@@ -240,6 +240,65 @@ List<ModelUsageTotal> aggregateByModel(Iterable<AiUsageTurn> turns) {
   return totals;
 }
 
+/// Total usage for one (model, effort) pair within a queried range — Claude
+/// Code only, since it's the only source that records a reasoning-effort
+/// tier per turn.
+class ModelEffortUsageTotal {
+  const ModelEffortUsageTotal({
+    required this.model,
+    required this.effort,
+    required this.turnCount,
+    required this.inputTokens,
+    required this.outputTokens,
+    required this.cacheCreationTokens,
+    required this.cost,
+  });
+
+  final String model;
+
+  /// Null when the turn predates this app tracking effort (rescan repopulates
+  /// it) — shown as "Unspecified" rather than dropped.
+  final String? effort;
+  final int turnCount;
+  final int inputTokens;
+  final int outputTokens;
+  final int cacheCreationTokens;
+  final double cost;
+
+  int get totalTokens => inputTokens + outputTokens + cacheCreationTokens;
+}
+
+/// Totals per (model, effort) pair, Claude Code turns only, sorted by
+/// descending token count. Powers the effort-level breakdown at the bottom
+/// of the Usage tab.
+List<ModelEffortUsageTotal> aggregateByModelAndEffort(Iterable<AiUsageTurn> turns) {
+  final byKey = <(String, String?), List<AiUsageTurn>>{};
+  for (final t in turns) {
+    if (t.source != AiUsageSource.claudeCode) continue;
+    byKey.putIfAbsent((t.model, t.effort), () => []).add(t);
+  }
+
+  final totals = [
+    for (final entry in byKey.entries)
+      ModelEffortUsageTotal(
+        model: entry.key.$1,
+        effort: entry.key.$2,
+        turnCount: entry.value.length,
+        inputTokens: entry.value.fold(0, (a, t) => a + t.inputTokens),
+        outputTokens: entry.value.fold(0, (a, t) => a + t.outputTokens),
+        cacheCreationTokens: entry.value.fold(0, (a, t) => a + t.cacheCreationTokens),
+        cost: entry.value.fold(
+          0.0,
+          (a, t) => a +
+              costForTurn(t.source, t.model, t.inputTokens, t.outputTokens,
+                  t.cacheReadTokens, t.cacheCreationTokens),
+        ),
+      ),
+  ];
+  totals.sort((a, b) => b.totalTokens.compareTo(a.totalTokens));
+  return totals;
+}
+
 /// Buckets [turns] by local calendar day, for the daily bar chart. Days with
 /// no turns are omitted; callers wanting a continuous axis fill gaps
 /// themselves.
