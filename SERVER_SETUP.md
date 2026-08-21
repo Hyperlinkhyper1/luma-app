@@ -251,6 +251,29 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now luma-deploy-watcher
 ```
 
+The watcher heartbeats onto the shared data dir, so the dashboard says
+plainly when it isn't running instead of the button appearing to do
+nothing. If it reports that, check it:
+
+```bash
+systemctl status luma-deploy-watcher
+```
+
+The checkout at `LUMA_REPO_PATH` is a deploy target, not a workspace: the
+watcher updates it with `git fetch` + `git reset --hard origin/<branch>`.
+Local edits to tracked files (a hand-tweaked `server/docker-compose.yml`,
+typically) used to abort the pull and wedge the button permanently — they
+are now moved aside into a stash first, and the deploy carries on. Nothing
+is lost; recover them on the host with:
+
+```bash
+git -C <LUMA_REPO_PATH> stash list
+git -C <LUMA_REPO_PATH> stash show -p 'stash@{0}'
+```
+
+Anything you want to keep across deploys belongs in a commit (or in `.env`,
+which is untracked and never touched).
+
 To update manually instead:
 
 ```bash
