@@ -3585,33 +3585,77 @@ class Api {
 
     final requestFile = File('${config.dataDir}/deploy.request');
     final pidFile = File('${config.dataDir}/deploy.pid');
+    final logFile = File('${config.dataDir}/deploy.log');
+    final statusFile = File('${config.dataDir}/deploy.status');
 
     // The PID in this file is a host PID, meaningless to check for
     // liveness from inside this container's own PID namespace — its mere
     // existence (written when deploy-watcher.sh picks up a request, removed
-    // when it finishes) is the running signal instead.
-    if (await pidFile.exists()) {
+    // when it finishes) is the running signal instead. A run killed
+    // mid-flight (host reboot, systemctl stop) leaves one behind though, so
+    // an old file is treated as debris rather than as a deploy that has been
+    // running for days — otherwise the button stays refused forever.
+    if (await _deployRunning()) {
       return _error(409, 'deploy_running',
           'A deploy is already in progress. Wait for it to finish.');
     }
+    await _deleteQuietly(pidFile);
+
+    // Clear the previous run's output before asking for a new one. The
+    // dashboard reads the log to decide how the deploy went, so leaving the
+    // last one in place makes a request the watcher never picks up look
+    // like a deploy that finished instantly.
+    await _deleteQuietly(logFile);
+    await _deleteQuietly(statusFile);
 
     await requestFile.parent.create(recursive: true);
     await requestFile.writeAsString(DateTime.now().toIso8601String());
 
-    return _json(200, {'started': true});
+    return _json(200, {'started': true, 'watcherAlive': await _watcherAlive()});
   }
+
+  /// A `deploy.pid` younger than this belongs to a running deploy; an older
+  /// one is left over from a run that was killed, and is ignored.
+  static const _deployPidMaxAge = Duration(minutes: 30);
+
+  /// deploy-watcher.sh counts as alive while its heartbeat file has been
+  /// touched recently — it rewrites it every ~10s.
+  static const _deployWatcherMaxAge = Duration(seconds: 60);
+
+  Future<void> _deleteQuietly(File file) async {
+    try {
+      if (await file.exists()) await file.delete();
+    } catch (_) {}
+  }
+
+  Future<bool> _fileNewerThan(String name, Duration maxAge) async {
+    final file = File('${config.dataDir}/$name');
+    try {
+      if (!await file.exists()) return false;
+      return DateTime.now().difference(await file.lastModified()) < maxAge;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> _deployRunning() =>
+      _fileNewerThan('deploy.pid', _deployPidMaxAge);
+
+  Future<bool> _watcherAlive() =>
+      _fileNewerThan('deploy.watcher', _deployWatcherMaxAge);
 
   /// Returns the current deploy log contents and whether the deploy process
   /// is still running. Polled by the Control panel's deploy button JS.
   Future<Response> _adminDeployStatus(Request request) async {
     final logFile = File('${config.dataDir}/deploy.log');
-    final pidFile = File('${config.dataDir}/deploy.pid');
+    final requestFile = File('${config.dataDir}/deploy.request');
+    final statusFile = File('${config.dataDir}/deploy.status');
 
     // See the note in _adminDeploy: the PID belongs to deploy-watcher.sh on
     // the host, not to anything in this container's PID namespace, so
     // existence of the file (written/removed by that script) is the signal,
     // not a `kill -0` liveness check.
-    final running = await pidFile.exists();
+    final running = await _deployRunning();
 
     String log = '';
     if (await logFile.exists()) {
@@ -3620,10 +3664,27 @@ class Api {
       } catch (_) {}
     }
 
+    // The watcher writes the deploy's exit code here when it finishes.
+    // Whether the run worked is that number — not something inferred by
+    // grepping the log for hopeful-looking words, which reported a `git
+    // pull` that aborted on local changes as a neutral "deploy finished".
+    int? exitCode;
+    if (!running && await statusFile.exists()) {
+      try {
+        exitCode = int.tryParse((await statusFile.readAsString()).trim());
+      } catch (_) {}
+    }
+
     return _json(200, {
       'running': running,
       'log': log,
       'repoPathConfigured': config.repoPathConfigured,
+      // Non-null only once a run has finished; true means it succeeded.
+      'ok': exitCode == null ? null : exitCode == 0,
+      'exitCode': exitCode,
+      // A request still on disk means nothing has claimed it yet.
+      'pending': await requestFile.exists(),
+      'watcherAlive': await _watcherAlive(),
     });
   }
 
@@ -5589,11 +5650,17 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
 ''';
 
   /// Control panel tab: the "Update & restart server" button POSTs to
-  /// /admin/deploy, then polls /admin/deploy/status every 2s to stream the
-  /// deploy log into the <pre> below the button. The poll keeps going even
-  /// after the server restarts (the fetch will fail mid-restart and resume
-  /// once the new process is up), so the operator sees the final
-  /// `systemctl status` output without manually refreshing.
+  /// /admin/deploy, then polls /admin/deploy/status to stream the deploy log
+  /// into the <pre> below the button. The poll keeps going even after the
+  /// server restarts (the fetch fails mid-restart and resumes once the new
+  /// container is up), so the operator sees the outcome without manually
+  /// refreshing.
+  ///
+  /// Success or failure comes from the exit code deploy-watcher.sh records
+  /// (`ok` in the status JSON), never from reading the log — a `git pull`
+  /// that aborted on local changes used to be reported as a bland "deploy
+  /// finished". A request nothing picks up (watcher stopped) says exactly
+  /// that instead of timing out into a generic error.
   static const _adminDeployScript = r'''
 (function () {
   const btn = document.getElementById('deployBtn');
@@ -5601,95 +5668,123 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
   const log = document.getElementById('deployLog');
   if (!btn || !status || !log) return;
 
+  var GREY = '#a49fb8', AMBER = '#e0c87e', GREEN = '#7ee08a', RED = '#e07e7e';
+
   var timer = null;
-  var sawRunning = false;
-  // True from the moment the click handler's POST succeeds until we either
-  // observe the deploy actually running or give up. Needed because the
-  // detached script (echo $$ > pidFile; ... > logFile) takes a moment to
-  // create those files — a status poll landing before that happens must
-  // not be read as "already finished with no output".
+  // True from the moment the POST is accepted until the run's exit code
+  // lands. deploy-watcher.sh polls for the request file every 2s, so a
+  // status poll arriving before it has claimed the request must not be
+  // read as "finished with no output".
   var deploying = false;
-  var startAttempts = 0;
-  var maxStartAttempts = 10;
+  var sawRunning = false;
+  var waited = 0;
+  var maxWaited = 30;
 
   function setStatus(text, color) {
     status.textContent = text;
-    status.style.color = color || '#a49fb8';
+    status.style.color = color || GREY;
+  }
+
+  function setBusy(busy) {
+    btn.disabled = busy;
+    btn.style.opacity = busy ? '0.5' : '';
+    btn.style.cursor = busy ? 'not-allowed' : '';
+  }
+
+  function showLog(data) {
+    if (!data.log) return;
+    log.style.display = 'block';
+    log.textContent = data.log;
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function finished(data) {
+    deploying = false;
+    sawRunning = false;
+    waited = 0;
+    setBusy(false);
+    if (data.ok) {
+      setStatus('Deploy complete — server rebuilt and restarted.', GREEN);
+    } else {
+      setStatus('Deploy failed (exit ' + data.exitCode + ') — see the log '
+          + 'below for the step that stopped it.', RED);
+    }
+  }
+
+  function watcherHint() {
+    return 'The deploy watcher is not running on the host, so nothing picked '
+        + 'up the request. Start it with: sudo systemctl start '
+        + 'luma-deploy-watcher';
+  }
+
+  function idle(data) {
+    if (data.repoPathConfigured === false) {
+      setBusy(true);
+      setStatus('Not configured: set LUMA_REPO_PATH in this server\'s .env '
+          + '(see .env.example), then restart.', GREY);
+      return;
+    }
+    setBusy(false);
+    if (data.watcherAlive === false) {
+      setStatus(watcherHint(), AMBER);
+    } else if (data.ok === false) {
+      setStatus('Last deploy failed (exit ' + data.exitCode + ').', RED);
+    } else if (data.ok === true) {
+      setStatus('Last deploy succeeded.', GREY);
+    }
   }
 
   function poll() {
     fetch('/admin/deploy/status')
       .then(function (r) { return r.json(); })
       .then(function (data) {
-        if (data.log) {
-          log.style.display = 'block';
-          log.textContent = data.log;
-          log.scrollTop = log.scrollHeight;
-        }
+        showLog(data);
+
         if (data.running) {
           sawRunning = true;
-          deploying = false;
-          btn.disabled = true;
-          btn.style.opacity = '0.5';
-          btn.style.cursor = 'not-allowed';
-          setStatus('Deploying… (the server will restart briefly)', '#e0c87e');
+          deploying = true;
+          waited = 0;
+          setBusy(true);
+          setStatus('Deploying… (the server will restart briefly)', AMBER);
           timer = setTimeout(poll, 2000);
-        } else if (sawRunning) {
-          btn.disabled = false;
-          btn.style.opacity = '';
-          btn.style.cursor = '';
-          var hasLog = !!data.log;
-          // The old systemd-restart deploy printed "Active: active
-          // (running)" from `systemctl status`; this one rebuilds and
-          // recreates the container via `docker compose up -d --build`,
-          // whose success line ends in "Started" (or "Healthy" once a
-          // healthcheck confirms it).
-          var success = hasLog && /\b(Started|Healthy)\b/.test(data.log);
-          setStatus(
-            success ? 'Deploy complete — server is running.' :
-            hasLog ? 'Deploy finished — check the log above.' :
-                     'Deploy process ended.',
-            success ? '#7ee08a' : '#a49fb8');
-          sawRunning = false;
-        } else if (deploying) {
-          // Not running yet and we've never seen it running — either the
-          // script hasn't started up, or (for a fast no-op deploy where
-          // nothing needed rebuilding) it already finished between the
-          // POST and this poll. A non-empty log means the latter.
-          if (data.log) {
-            btn.disabled = false;
-            btn.style.opacity = '';
-            btn.style.cursor = '';
-            var success2 = /\b(Started|Healthy)\b/.test(data.log);
-            setStatus(
-              success2 ? 'Deploy complete — server is running.' :
-                         'Deploy finished — check the log above.',
-              success2 ? '#7ee08a' : '#a49fb8');
-            deploying = false;
-          } else if (startAttempts < maxStartAttempts) {
-            startAttempts++;
-            timer = setTimeout(poll, 500);
-          } else {
-            btn.disabled = false;
-            btn.style.opacity = '';
-            btn.style.cursor = '';
-            setStatus('Deploy did not start — check the server logs.', '#e07e7e');
-            deploying = false;
-          }
-        } else if (data.repoPathConfigured === false) {
-          btn.disabled = true;
-          btn.style.opacity = '0.5';
-          btn.style.cursor = 'not-allowed';
-          setStatus('Not configured: set LUMA_REPO_PATH in this server\'s '
-              + '.env (see .env.example), then restart.', '#a49fb8');
+          return;
         }
+
+        if (deploying || sawRunning) {
+          // The exit code is the only thing that settles this.
+          if (data.ok === true || data.ok === false) {
+            finished(data);
+            return;
+          }
+          if (data.watcherAlive === false) {
+            deploying = false;
+            sawRunning = false;
+            setBusy(false);
+            setStatus(watcherHint(), RED);
+            return;
+          }
+          if (waited < maxWaited) {
+            waited++;
+            timer = setTimeout(poll, 1000);
+            return;
+          }
+          deploying = false;
+          sawRunning = false;
+          setBusy(false);
+          setStatus(data.pending
+              ? 'The watcher has not picked up the request — check '
+                  + '`systemctl status luma-deploy-watcher` on the host.'
+              : 'Deploy did not start — check the server logs.', RED);
+          return;
+        }
+
+        idle(data);
       })
       .catch(function () {
-        if (sawRunning) {
-          setStatus('Server restarting… waiting for it to come back.', '#e0c87e');
+        // Expected while the container is being recreated out from under us.
+        if (sawRunning || deploying) {
+          setStatus('Server restarting… waiting for it to come back.', AMBER);
           timer = setTimeout(poll, 2000);
-        } else if (deploying) {
-          timer = setTimeout(poll, 1000);
         }
       });
   }
@@ -5699,31 +5794,32 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
     if (!confirm('This will git pull, rebuild the image, and recreate the '
         + 'luma-sync container. The server will be briefly unavailable. '
         + 'Continue?')) return;
+    if (timer) { clearTimeout(timer); timer = null; }
     log.style.display = 'block';
     log.textContent = '';
-    setStatus('Starting deploy…', '#e0c87e');
-    btn.disabled = true;
-    btn.style.opacity = '0.5';
-    btn.style.cursor = 'not-allowed';
+    setStatus('Starting deploy…', AMBER);
+    setBusy(true);
     fetch('/admin/deploy', { method: 'POST' })
       .then(function (r) { return r.json(); })
       .then(function (data) {
         if (data.error) {
-          btn.disabled = false;
-          btn.style.opacity = '';
-          btn.style.cursor = '';
-          setStatus(data.message || data.error, '#e07e7e');
+          setBusy(false);
+          setStatus(data.message || data.error, RED);
+          return;
+        }
+        if (data.watcherAlive === false) {
+          setBusy(false);
+          setStatus(watcherHint(), RED);
           return;
         }
         deploying = true;
-        startAttempts = 0;
+        sawRunning = false;
+        waited = 0;
         poll();
       })
       .catch(function () {
-        btn.disabled = false;
-        btn.style.opacity = '';
-        btn.style.cursor = '';
-        setStatus('Could not start the deploy.', '#e07e7e');
+        setBusy(false);
+        setStatus('Could not start the deploy.', RED);
       });
   });
 

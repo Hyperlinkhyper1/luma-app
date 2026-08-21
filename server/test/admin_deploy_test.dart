@@ -159,5 +159,88 @@ void main() {
       expect(active['running'], isTrue);
       expect(active['log'], 'git pull...\n');
     });
+
+    // Whether a deploy worked is the exit code the watcher records, never
+    // something guessed from the log text — a `git pull` that aborted on
+    // local changes reads as perfectly calm prose.
+    test('status reports success and failure from the recorded exit code',
+        () async {
+      handler = await buildHandler(repoPath: '/home/example/luma-app');
+
+      final unknown = await get('/admin/deploy/status');
+      expect(unknown['ok'], isNull);
+      expect(unknown['exitCode'], isNull);
+
+      await File('${dir.path}/deploy.status').writeAsString('0\n');
+      final good = await get('/admin/deploy/status');
+      expect(good['ok'], isTrue);
+      expect(good['exitCode'], 0);
+
+      await File('${dir.path}/deploy.status').writeAsString('1\n');
+      await File('${dir.path}/deploy.log')
+          .writeAsString('error: Your local changes would be overwritten\n');
+      final bad = await get('/admin/deploy/status');
+      expect(bad['ok'], isFalse);
+      expect(bad['exitCode'], 1);
+    });
+
+    test('a finished run\'s exit code is hidden while the next one runs',
+        () async {
+      handler = await buildHandler(repoPath: '/home/example/luma-app');
+      await File('${dir.path}/deploy.status').writeAsString('0\n');
+      await File('${dir.path}/deploy.pid').writeAsString('12345');
+
+      final running = await get('/admin/deploy/status');
+      expect(running['running'], isTrue);
+      expect(running['ok'], isNull);
+    });
+
+    // The dashboard reads the log to decide how the deploy went, so the
+    // previous run's output must not be left lying around — otherwise a
+    // request nothing picks up looks like a deploy that finished instantly.
+    test('requesting a deploy clears the previous run\'s log and status',
+        () async {
+      handler = await buildHandler(repoPath: '/home/example/luma-app');
+      await File('${dir.path}/deploy.log').writeAsString('old output\n');
+      await File('${dir.path}/deploy.status').writeAsString('1\n');
+
+      expect((await post('/admin/deploy'))['httpStatus'], 200);
+      expect(await File('${dir.path}/deploy.log').exists(), isFalse);
+      expect(await File('${dir.path}/deploy.status').exists(), isFalse);
+
+      final status = await get('/admin/deploy/status');
+      expect(status['log'], '');
+      expect(status['ok'], isNull);
+      expect(status['pending'], isTrue);
+    });
+
+    // A watcher killed mid-deploy (host reboot, systemctl stop) leaves its
+    // PID file behind. Without an age check that debris refuses every later
+    // deploy forever.
+    test('a stale PID file does not block deploys for good', () async {
+      handler = await buildHandler(repoPath: '/home/example/luma-app');
+      final pidFile = File('${dir.path}/deploy.pid');
+      await pidFile.writeAsString('12345');
+      pidFile.setLastModifiedSync(
+          DateTime.now().subtract(const Duration(hours: 6)));
+
+      expect((await get('/admin/deploy/status'))['running'], isFalse);
+      expect((await post('/admin/deploy'))['httpStatus'], 200);
+      expect(await pidFile.exists(), isFalse);
+    });
+
+    test('the watcher counts as alive only while its heartbeat is fresh',
+        () async {
+      handler = await buildHandler(repoPath: '/home/example/luma-app');
+      expect((await get('/admin/deploy/status'))['watcherAlive'], isFalse);
+
+      final beat = File('${dir.path}/deploy.watcher');
+      await beat.writeAsString('');
+      expect((await get('/admin/deploy/status'))['watcherAlive'], isTrue);
+
+      beat.setLastModifiedSync(
+          DateTime.now().subtract(const Duration(minutes: 5)));
+      expect((await get('/admin/deploy/status'))['watcherAlive'], isFalse);
+    });
   });
 }
