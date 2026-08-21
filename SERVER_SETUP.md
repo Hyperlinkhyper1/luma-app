@@ -222,20 +222,36 @@ being able to read anything.
 
 ### Backups
 
-All state lives in one Docker volume. Back it up on a schedule:
+All state lives in a host directory bind-mounted into the container
+(`/opt/luma-sync-data:/data` in docker-compose.yml) — back that directory
+up directly, no container needed:
 
 ```bash
 # Manual backup
-docker run --rm -v luma-sync_luma_data:/data -v /root/backups:/backup \
-  debian tar czf /backup/luma-$(date +%F).tar.gz -C /data .
+tar czf /root/backups/luma-$(date +%F).tar.gz -C /opt/luma-sync-data .
 
 # Automatic: crontab -e, then add (daily at 04:00, keep it simple):
-0 4 * * * docker run --rm -v luma-sync_luma_data:/data -v /root/backups:/backup debian tar czf /backup/luma-$(date +\%F).tar.gz -C /data . && find /root/backups -name 'luma-*.tar.gz' -mtime +14 -delete
+0 4 * * * tar czf /root/backups/luma-$(date +\%F).tar.gz -C /opt/luma-sync-data . && find /root/backups -name 'luma-*.tar.gz' -mtime +14 -delete
 ```
 
 The backups only contain ciphertext — safe to copy anywhere.
 
 ### Updating the server
+
+The admin dashboard's "Update & restart server" button does this for you
+(git pull + rebuild + recreate). It needs `LUMA_REPO_PATH` set in `.env`
+(the absolute path to this repo's checkout on the host) and a small systemd
+service installed once per host — the button can't safely run `docker
+compose up -d --build` on its own container from inside that container, so
+it hands the work to a watcher running directly on the host instead:
+
+```bash
+sudo cp server/luma-deploy-watcher.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now luma-deploy-watcher
+```
+
+To update manually instead:
 
 ```bash
 cd /opt/luma-sync
@@ -257,9 +273,8 @@ account). To force-remove one yourself:
 
 ```bash
 docker compose stop luma-sync
-docker run --rm -it -v luma-sync_luma_data:/data debian bash
-# inside: edit /data/users.json (remove the user's entry),
-#         delete /data/blobs/<their-user-id>/
+# edit /opt/luma-sync-data/users.json directly (remove the user's entry),
+# delete /opt/luma-sync-data/blobs/<their-user-id>/
 docker compose start luma-sync
 ```
 
