@@ -229,6 +229,66 @@ void main() {
       expect(await pidFile.exists(), isFalse);
     });
 
+    // The button's whole job is to restart this process, so a dashboard
+    // session that dies with it makes the deploy fail from the second click
+    // onwards: the poll silently 302s to the login form and the POST comes
+    // back as HTML, which the panel could only report as "Could not start
+    // the deploy".
+    test('a dashboard session survives the restart the deploy button causes',
+        () async {
+      handler = await buildHandler(repoPath: '/home/example/luma-app');
+
+      final login = await handler(Request(
+        'POST',
+        Uri.parse('http://localhost/admin/login'),
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'key=test-admin-key',
+      ));
+      final cookie = login.headers['set-cookie'];
+      expect(cookie, isNotNull);
+      final token = cookie!.split(';').first.split('=').last;
+
+      // A fresh Api over the same data dir is what a restarted container is.
+      handler = await buildHandler(repoPath: '/home/example/luma-app');
+      final response = await handler(Request(
+        'POST',
+        Uri.parse('http://localhost/admin/deploy'),
+        headers: {'cookie': 'luma_admin=$token'},
+      ));
+
+      expect(response.statusCode, 200,
+          reason: 'the session cookie should still be honoured, not sent to '
+              '/admin/login');
+      expect(jsonDecode(await response.readAsString())['started'], isTrue);
+    });
+
+    test('logging out drops the stored session for good', () async {
+      handler = await buildHandler(repoPath: '/home/example/luma-app');
+      final login = await handler(Request(
+        'POST',
+        Uri.parse('http://localhost/admin/login'),
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'key=test-admin-key',
+      ));
+      final token =
+          login.headers['set-cookie']!.split(';').first.split('=').last;
+
+      await handler(Request(
+        'POST',
+        Uri.parse('http://localhost/admin/logout'),
+        headers: {'cookie': 'luma_admin=$token'},
+      ));
+
+      handler = await buildHandler(repoPath: '/home/example/luma-app');
+      final response = await handler(Request(
+        'POST',
+        Uri.parse('http://localhost/admin/deploy'),
+        headers: {'cookie': 'luma_admin=$token'},
+      ));
+      expect(response.statusCode, 302);
+      expect(response.headers['location'], '/admin/login');
+    });
+
     test('the watcher counts as alive only while its heartbeat is fresh',
         () async {
       handler = await buildHandler(repoPath: '/home/example/luma-app');
