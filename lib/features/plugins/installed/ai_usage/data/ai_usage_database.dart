@@ -25,6 +25,9 @@ class AiUsageTurns extends Table {
   TextColumn get project => text().nullable()();
   // Which CLI this turn came from — determines which pricing table applies.
   TextColumn get source => textEnum<AiUsageSource>()();
+  // Reasoning-effort tier ("low"/"medium"/"high"/…), Claude Code only — null
+  // for sources that don't record it (Codex CLI, Antigravity).
+  TextColumn get effort => text().nullable()();
 }
 
 /// Tracks which JSONL files have already been scanned (path + mtime + how
@@ -52,18 +55,19 @@ class AiUsageDatabase extends _$AiUsageDatabase {
             ));
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) => m.createAll(),
         onUpgrade: (m, from, to) async {
-          if (from < 3) {
+          if (from < 4) {
             // Both tables here are a derived, re-scannable cache of local
             // session logs — simplest correct migration for any schema
-            // change (the required `source` column at v2, `project` at v3)
-            // is to drop and recreate rather than synthesize values for old
-            // rows; the next rescan repopulates everything from scratch.
+            // change (the required `source` column at v2, `project` at v3,
+            // `effort` at v4) is to drop and recreate rather than synthesize
+            // values for old rows; the next rescan repopulates everything
+            // from scratch.
             await customStatement('DROP TABLE IF EXISTS ai_usage_turns');
             await customStatement('DROP TABLE IF EXISTS ai_usage_scan_files');
             await m.createTable(aiUsageTurns);
