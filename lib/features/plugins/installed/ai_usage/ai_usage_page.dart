@@ -7,11 +7,13 @@ import '../../../../app/widgets.dart';
 import '../../../../theme/luma_theme.dart';
 import '../../../chat/ai_key_store.dart';
 import '../../../chat/providers/ai_providers.dart';
+import 'ai_usage_format.dart';
 import 'ai_usage_repository.dart';
 import 'ai_usage_scope.dart';
 import 'ai_usage_source.dart';
 import 'ai_usage_stats.dart';
 import 'data/ai_usage_database.dart';
+import 'effort_breakdown_section.dart';
 
 /// How many models get their own pie slice / legend row before the rest are
 /// folded into a single "Other" bucket.
@@ -257,6 +259,9 @@ class _AiUsageBody extends StatelessWidget {
 
     final dayBuckets = aggregateByDay(turns);
     final summary = totals(turns);
+    // One pass over every turn in range, kept here rather than repeated as
+    // both an emptiness check and the section's own input.
+    final effortTiers = aggregateByModelAndEffort(turns);
     final colorByModel = <(AiUsageSource, String), Color>{
       for (var i = 0; i < modelTotals.length && i < _kTopModelLimit; i++)
         (modelTotals[i].source, modelTotals[i].model): _kPalette[i % _kPalette.length],
@@ -272,7 +277,7 @@ class _AiUsageBody extends StatelessWidget {
             children: [
               _SummaryChip(
                 label: 'Total tokens',
-                value: _formatTokens(summary.totalTokens),
+                value: formatTokens(summary.totalTokens),
                 tooltip: 'New tokens only: input + output + first-time cache writes. '
                     "Doesn't include cache reads (see that tile) — a long session re-reads "
                     "the same growing context on nearly every turn, which would otherwise "
@@ -281,7 +286,7 @@ class _AiUsageBody extends StatelessWidget {
               if (summary.cacheReadTokens > 0)
                 _SummaryChip(
                   label: 'Cache reads',
-                  value: _formatTokens(summary.cacheReadTokens),
+                  value: formatTokens(summary.cacheReadTokens),
                   tooltip: 'Cached context re-read across all turns in range — real and '
                       'billed, but at a steep discount, and not counted in "Total tokens" '
                       'since it\'s re-use of content rather than new content.',
@@ -289,8 +294,8 @@ class _AiUsageBody extends StatelessWidget {
               _SummaryChip(
                 label: 'Est. cost',
                 value: summary.hasUnbillable
-                    ? '${_formatCost(summary.cost)}*'
-                    : _formatCost(summary.cost),
+                    ? '${formatCost(summary.cost)}*'
+                    : formatCost(summary.cost),
                 tooltip: 'Estimated cost at API rates, including cache reads/writes at '
                     'their discounted rate — so this reflects more usage than "Total '
                     'tokens" shows on its own. Subscription plans (Max/Pro) bill '
@@ -300,7 +305,7 @@ class _AiUsageBody extends StatelessWidget {
               _SummaryChip(label: 'Sessions', value: '${summary.sessionCount}'),
               _SummaryChip(
                 label: 'Top model',
-                value: _displayName(modelTotals.first.source, modelTotals.first.model),
+                value: displayName(modelTotals.first.source, modelTotals.first.model),
               ),
             ],
           ),
@@ -419,9 +424,9 @@ class _AiUsageBody extends StatelessWidget {
                     ),
                   ),
           ),
-          if (aggregateByModelAndEffort(turns).isNotEmpty) ...[
+          if (effortTiers.isNotEmpty) ...[
             const SizedBox(height: 16),
-            LumaCard(child: _EffortBreakdownSection(turns: turns)),
+            LumaCard(child: EffortBreakdownSection(tiers: effortTiers)),
           ],
           const SizedBox(height: 16),
           const _OtherAiToolsSection(),
@@ -505,7 +510,7 @@ class _HighlightsSection extends StatelessWidget {
           icon: Icons.payments_outlined,
           color: _kOutputColor,
           label: 'Priciest session',
-          value: _formatCost(priciest.cost),
+          value: formatCost(priciest.cost),
           caption: '${priciest.project ?? kUnknownProject} · '
               '${dateFmt.format(priciest.start.toLocal())}',
         ),
@@ -620,7 +625,7 @@ class _ModelPieChartState extends State<_ModelPieChart> {
     return [
       for (final t in top)
         (
-          _displayName(t.source, t.model),
+          displayName(t.source, t.model),
           t.totalTokens,
           widget.colorByModel[(t.source, t.model)]!,
         ),
@@ -665,7 +670,7 @@ class _ModelPieChartState extends State<_ModelPieChart> {
                               border: Border.all(color: luma.border),
                             ),
                             child: Text(
-                              _formatTokens(slices[i].$2),
+                              formatTokens(slices[i].$2),
                               style: TextStyle(
                                   color: luma.textPrimary,
                                   fontSize: 11,
@@ -753,11 +758,11 @@ class _DailyBarChart extends StatelessWidget {
                     final d = dayBuckets[groupIndex];
                     return BarTooltipItem(
                       '${DateFormat('MMM d').format(d.day)}\n'
-                      'Input: ${_formatTokens(d.inputTokens)}\n'
-                      'Output: ${_formatTokens(d.outputTokens)}\n'
-                      'Cache read: ${_formatTokens(d.cacheReadTokens)}\n'
-                      'Cache write: ${_formatTokens(d.cacheCreationTokens)}\n'
-                      '${_formatCost(d.cost)}',
+                      'Input: ${formatTokens(d.inputTokens)}\n'
+                      'Output: ${formatTokens(d.outputTokens)}\n'
+                      'Cache read: ${formatTokens(d.cacheReadTokens)}\n'
+                      'Cache write: ${formatTokens(d.cacheCreationTokens)}\n'
+                      '${formatCost(d.cost)}',
                       TextStyle(color: luma.textPrimary, fontSize: 12),
                     );
                   },
@@ -789,7 +794,7 @@ class _DailyBarChart extends StatelessWidget {
                     showTitles: true,
                     reservedSize: 46,
                     getTitlesWidget: (value, meta) => Text(
-                      _formatTokens(value.round()),
+                      formatTokens(value.round()),
                       style: TextStyle(color: luma.textMuted, fontSize: 10),
                     ),
                   ),
@@ -979,7 +984,7 @@ class _HourlyDistributionChart extends StatelessWidget {
                   getTooltipItem: (group, groupIndex, rod, rodIndex) {
                     final b = hourly[groupIndex];
                     return BarTooltipItem(
-                      '${_formatHour(b.hour)}\n${_formatTokens(b.avgTokens.round())} tokens/day avg\n'
+                      '${_formatHour(b.hour)}\n${formatTokens(b.avgTokens.round())} tokens/day avg\n'
                       '${b.avgTurns.toStringAsFixed(1)} turns/day avg',
                       TextStyle(color: luma.textPrimary, fontSize: 12),
                     );
@@ -1012,7 +1017,7 @@ class _HourlyDistributionChart extends StatelessWidget {
                     showTitles: true,
                     reservedSize: 36,
                     getTitlesWidget: (value, meta) => Text(
-                      _formatTokens(value.round()),
+                      formatTokens(value.round()),
                       style: TextStyle(color: luma.textMuted, fontSize: 10),
                     ),
                   ),
@@ -1136,8 +1141,8 @@ class _ProjectBarRow extends StatelessWidget {
         total.totalTokens == 0 ? 0.0 : total.inputTokens / total.totalTokens;
 
     return Tooltip(
-      message: 'Input: ${_formatTokens(total.inputTokens)} · '
-          'Output: ${_formatTokens(total.outputTokens)}\n'
+      message: 'Input: ${formatTokens(total.inputTokens)} · '
+          'Output: ${formatTokens(total.outputTokens)}\n'
           '${total.turnCount} turns · ${total.sessionCount} sessions',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1154,13 +1159,13 @@ class _ProjectBarRow extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                _formatTokens(total.totalTokens),
+                formatTokens(total.totalTokens),
                 style: TextStyle(
                     color: luma.textSecondary, fontSize: 11.5, fontWeight: FontWeight.w600),
               ),
               const SizedBox(width: 8),
               Text(
-                _formatCost(total.cost),
+                formatCost(total.cost),
                 style: TextStyle(color: luma.success, fontSize: 11.5, fontWeight: FontWeight.w700),
               ),
             ],
@@ -1273,7 +1278,7 @@ class _ModelListRow extends StatelessWidget {
         Expanded(
           flex: 2,
           child: Text(
-            _displayName(total.source, total.model),
+            displayName(total.source, total.model),
             style: TextStyle(color: luma.textPrimary, fontSize: 13),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -1293,8 +1298,8 @@ class _ModelListRow extends StatelessWidget {
           width: 72,
           child: Text(
             total.source == AiUsageSource.antigravity
-                ? '~${_formatTokens(total.totalTokens)}'
-                : _formatTokens(total.totalTokens),
+                ? '~${formatTokens(total.totalTokens)}'
+                : formatTokens(total.totalTokens),
             textAlign: TextAlign.right,
             style: TextStyle(color: luma.textSecondary, fontSize: 12),
           ),
@@ -1305,8 +1310,8 @@ class _ModelListRow extends StatelessWidget {
           child: Text(
             total.billable
                 ? (total.source == AiUsageSource.antigravity
-                    ? '~${_formatCost(total.cost)}'
-                    : _formatCost(total.cost))
+                    ? '~${formatCost(total.cost)}'
+                    : formatCost(total.cost))
                 : 'n/a',
             textAlign: TextAlign.right,
             style: TextStyle(
@@ -1317,168 +1322,6 @@ class _ModelListRow extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-// ─── Effort breakdown: each Claude model split by reasoning-effort tier ────
-
-/// "low" -> "Low", "xhigh" -> "Extra high" — same tiers Claude Code itself
-/// uses, title-cased for display; an unrecognized or missing tier falls back
-/// to "Unspecified" rather than a blank row.
-String _effortLabel(String? effort) => switch (effort?.toLowerCase()) {
-      null => 'Unspecified',
-      'minimal' => 'Minimal',
-      'low' => 'Low',
-      'medium' => 'Medium',
-      'high' => 'High',
-      'xhigh' => 'Extra high',
-      'max' => 'Max',
-      final e when e.isEmpty => 'Unspecified',
-      final e => e[0].toUpperCase() + e.substring(1),
-    };
-
-/// Claude-only: every model actually used, broken down by the reasoning-effort
-/// tier Claude Code ran it at. Other sources don't record an effort tier at
-/// all, so this section says nothing about Codex/Antigravity usage.
-class _EffortBreakdownSection extends StatelessWidget {
-  const _EffortBreakdownSection({required this.turns});
-
-  final List<AiUsageTurn> turns;
-
-  @override
-  Widget build(BuildContext context) {
-    final luma = context.luma;
-    final byModel = <String, List<ModelEffortUsageTotal>>{};
-    for (final t in aggregateByModelAndEffort(turns)) {
-      byModel.putIfAbsent(t.model, () => []).add(t);
-    }
-    // Models ordered by their own total tokens, most-used first — matches
-    // the ordering convention of the model table above.
-    final models = byModel.keys.toList()
-      ..sort((a, b) {
-        final aTokens = byModel[a]!.fold<int>(0, (s, e) => s + e.totalTokens);
-        final bTokens = byModel[b]!.fold<int>(0, (s, e) => s + e.totalTokens);
-        return bTokens.compareTo(aTokens);
-      });
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Claude Effort Breakdown',
-          style: TextStyle(color: luma.textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'How hard each Claude model was asked to think, by turns and tokens spent.',
-          style: TextStyle(color: luma.textMuted, fontSize: 11),
-        ),
-        const SizedBox(height: 12),
-        for (var i = 0; i < models.length; i++) ...[
-          if (i > 0) const SizedBox(height: 16),
-          _EffortModelGroup(
-            model: models[i],
-            tiers: byModel[models[i]]!,
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _EffortModelGroup extends StatelessWidget {
-  const _EffortModelGroup({required this.model, required this.tiers});
-
-  final String model;
-  final List<ModelEffortUsageTotal> tiers;
-
-  @override
-  Widget build(BuildContext context) {
-    final luma = context.luma;
-    final maxTokens = tiers.fold<int>(0, (a, t) => t.totalTokens > a ? t.totalTokens : a);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          _displayName(AiUsageSource.claudeCode, model),
-          style: TextStyle(color: luma.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 8),
-        for (var i = 0; i < tiers.length; i++) ...[
-          if (i > 0) const SizedBox(height: 8),
-          _EffortTierRow(tier: tiers[i], maxTokens: maxTokens),
-        ],
-      ],
-    );
-  }
-}
-
-class _EffortTierRow extends StatelessWidget {
-  const _EffortTierRow({required this.tier, required this.maxTokens});
-
-  final ModelEffortUsageTotal tier;
-  final int maxTokens;
-
-  @override
-  Widget build(BuildContext context) {
-    final luma = context.luma;
-    final fraction = maxTokens == 0 ? 0.0 : tier.totalTokens / maxTokens;
-    return Padding(
-      padding: const EdgeInsets.only(left: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  _effortLabel(tier.effort),
-                  style: TextStyle(color: luma.textSecondary, fontSize: 12.5),
-                ),
-              ),
-              Text(
-                '${tier.turnCount} turns',
-                style: TextStyle(color: luma.textMuted, fontSize: 11.5),
-              ),
-              const SizedBox(width: 10),
-              SizedBox(
-                width: 60,
-                child: Text(
-                  _formatTokens(tier.totalTokens),
-                  textAlign: TextAlign.right,
-                  style: TextStyle(color: luma.textSecondary, fontSize: 11.5),
-                ),
-              ),
-              const SizedBox(width: 10),
-              SizedBox(
-                width: 64,
-                child: Text(
-                  _formatCost(tier.cost),
-                  textAlign: TextAlign.right,
-                  style: TextStyle(color: luma.success, fontSize: 11.5, fontWeight: FontWeight.w700),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          LayoutBuilder(
-            builder: (context, constraints) => ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: Stack(
-                children: [
-                  Container(height: 6, color: luma.border),
-                  Container(
-                    height: 6,
-                    width: constraints.maxWidth * fraction,
-                    color: luma.accent,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -1547,7 +1390,7 @@ class _ContributionHeatmap extends StatelessWidget {
       final tokens = bucket?.totalTokens ?? 0;
       final message = tokens > 0
           ? '${DateFormat('MMM d, yyyy').format(date)}\n'
-              '${_formatTokens(tokens)} tokens · ${_formatCost(bucket!.cost)}'
+              '${formatTokens(tokens)} tokens · ${formatCost(bucket!.cost)}'
           : '${DateFormat('MMM d, yyyy').format(date)}\nNo usage';
       return Tooltip(
         message: message,
@@ -1763,56 +1606,3 @@ class _ProviderRow extends StatelessWidget {
 
 // ─── Formatting helpers ──────────────────────────────────────────────────────
 
-/// Source-prefixed display name, e.g. "claude-opus-4-8" -> "Claude · Opus
-/// 4.8", "gpt-5.4-mini" -> "Codex · GPT 5.4 mini". Names outside the
-/// recognized families for that source fall back to the raw model string
-/// with just the source prefix.
-String _displayName(AiUsageSource source, String model) => switch (source) {
-      AiUsageSource.claudeCode => 'Claude · ${_shortModelName(model)}',
-      AiUsageSource.codexCli => 'Codex · ${_shortOpenAiModelName(model)}',
-      // Already a human-readable name extracted from Antigravity's own UI
-      // text (e.g. "Claude Opus 4.6 (Thinking)") — no family-name shortening
-      // needed the way the other two sources' raw API model IDs require.
-      AiUsageSource.antigravity => 'Antigravity · $model',
-    };
-
-/// "claude-opus-4-8" -> "Opus 4.8", "claude-fable-5" -> "Fable 5". Names
-/// outside the recognized Anthropic families fall back to the raw string.
-String _shortModelName(String model) {
-  final m = model.toLowerCase();
-  String? family;
-  if (m.contains('fable')) {
-    family = 'Fable';
-  } else if (m.contains('mythos')) {
-    family = 'Mythos';
-  } else if (m.contains('opus')) {
-    family = 'Opus';
-  } else if (m.contains('sonnet')) {
-    family = 'Sonnet';
-  } else if (m.contains('haiku')) {
-    family = 'Haiku';
-  }
-  if (family == null) return model;
-  final versioned = RegExp(r'(\d+)[._-](\d+)').firstMatch(model);
-  if (versioned != null) return '$family ${versioned.group(1)}.${versioned.group(2)}';
-  final single = RegExp(r'(\d+)').firstMatch(model);
-  return single != null ? '$family ${single.group(1)}' : family;
-}
-
-/// "gpt-5.4-mini" -> "GPT 5.4 mini", "gpt-5.5" -> "GPT 5.5". Names outside
-/// the "gpt-" naming convention fall back to the raw string.
-String _shortOpenAiModelName(String model) {
-  final m = model.toLowerCase();
-  if (!m.startsWith('gpt-')) return model;
-  final rest = model.substring('gpt-'.length); // e.g. "5.4-mini"
-  return 'GPT ${rest.replaceAll('-', ' ')}';
-}
-
-String _formatTokens(int n) {
-  if (n >= 1000000000) return '${(n / 1000000000).toStringAsFixed(2)}B';
-  if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(2)}M';
-  if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
-  return '$n';
-}
-
-String _formatCost(double cost) => '\$${cost.toStringAsFixed(2)}';

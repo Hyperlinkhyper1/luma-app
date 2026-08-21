@@ -208,32 +208,60 @@ class AiUsageTotals {
 int _totalTokensFor(AiUsageTurn t) =>
     t.inputTokens + t.outputTokens + t.cacheCreationTokens;
 
+/// Running sums for one bucket of turns.
+///
+/// Every "totals per X" aggregation in this file needs exactly these six
+/// numbers over exactly this set of fields, and the cost expression in
+/// particular must not drift between them — so it is written once, here.
+class _Bucket {
+  int turnCount = 0;
+  int inputTokens = 0;
+  int outputTokens = 0;
+  int cacheReadTokens = 0;
+  int cacheCreationTokens = 0;
+  double cost = 0;
+
+  void add(AiUsageTurn t) {
+    turnCount++;
+    inputTokens += t.inputTokens;
+    outputTokens += t.outputTokens;
+    cacheReadTokens += t.cacheReadTokens;
+    cacheCreationTokens += t.cacheCreationTokens;
+    cost += costForTurn(t.source, t.model, t.inputTokens, t.outputTokens,
+        t.cacheReadTokens, t.cacheCreationTokens);
+  }
+}
+
+/// Groups [turns] by [keyOf] and sums each group in a single pass, skipping
+/// anything [where] rejects.
+Map<K, _Bucket> _bucketBy<K>(
+  Iterable<AiUsageTurn> turns,
+  K Function(AiUsageTurn) keyOf, {
+  bool Function(AiUsageTurn)? where,
+}) {
+  final byKey = <K, _Bucket>{};
+  for (final t in turns) {
+    if (where != null && !where(t)) continue;
+    (byKey[keyOf(t)] ??= _Bucket()).add(t);
+  }
+  return byKey;
+}
+
 /// Totals per (source, model) pair across [turns], sorted by descending
 /// token count.
 List<ModelUsageTotal> aggregateByModel(Iterable<AiUsageTurn> turns) {
-  final byKey = <(AiUsageSource, String), List<AiUsageTurn>>{};
-  for (final t in turns) {
-    byKey.putIfAbsent((t.source, t.model), () => []).add(t);
-  }
-
   final totals = [
-    for (final entry in byKey.entries)
+    for (final e in _bucketBy(turns, (t) => (t.source, t.model)).entries)
       ModelUsageTotal(
-        source: entry.key.$1,
-        model: entry.key.$2,
-        turnCount: entry.value.length,
-        inputTokens: entry.value.fold(0, (a, t) => a + t.inputTokens),
-        outputTokens: entry.value.fold(0, (a, t) => a + t.outputTokens),
-        cacheReadTokens: entry.value.fold(0, (a, t) => a + t.cacheReadTokens),
-        cacheCreationTokens:
-            entry.value.fold(0, (a, t) => a + t.cacheCreationTokens),
-        cost: entry.value.fold(
-          0.0,
-          (a, t) => a +
-              costForTurn(t.source, t.model, t.inputTokens, t.outputTokens,
-                  t.cacheReadTokens, t.cacheCreationTokens),
-        ),
-        billable: isBillableModel(entry.key.$1, entry.key.$2),
+        source: e.key.$1,
+        model: e.key.$2,
+        turnCount: e.value.turnCount,
+        inputTokens: e.value.inputTokens,
+        outputTokens: e.value.outputTokens,
+        cacheReadTokens: e.value.cacheReadTokens,
+        cacheCreationTokens: e.value.cacheCreationTokens,
+        cost: e.value.cost,
+        billable: isBillableModel(e.key.$1, e.key.$2),
       ),
   ];
   totals.sort((a, b) => b.totalTokens.compareTo(a.totalTokens));
@@ -256,43 +284,39 @@ class ModelEffortUsageTotal {
 
   final String model;
 
-  /// Null when the turn predates this app tracking effort (rescan repopulates
-  /// it) — shown as "Unspecified" rather than dropped.
-  final String? effort;
+  /// Null when the source didn't record a tier, or recorded one this app
+  /// doesn't know — shown as "Unspecified" rather than dropped.
+  final AiEffort? effort;
   final int turnCount;
   final int inputTokens;
   final int outputTokens;
   final int cacheCreationTokens;
   final double cost;
 
+  /// Same definition as [ModelUsageTotal.totalTokens] — see there for why
+  /// cache reads are excluded.
   int get totalTokens => inputTokens + outputTokens + cacheCreationTokens;
 }
 
 /// Totals per (model, effort) pair, Claude Code turns only, sorted by
 /// descending token count. Powers the effort-level breakdown at the bottom
 /// of the Usage tab.
-List<ModelEffortUsageTotal> aggregateByModelAndEffort(Iterable<AiUsageTurn> turns) {
-  final byKey = <(String, String?), List<AiUsageTurn>>{};
-  for (final t in turns) {
-    if (t.source != AiUsageSource.claudeCode) continue;
-    byKey.putIfAbsent((t.model, t.effort), () => []).add(t);
-  }
-
+List<ModelEffortUsageTotal> aggregateByModelAndEffort(
+    Iterable<AiUsageTurn> turns) {
   final totals = [
-    for (final entry in byKey.entries)
+    for (final e in _bucketBy(
+      turns,
+      (t) => (t.model, t.effort),
+      where: (t) => t.source == AiUsageSource.claudeCode,
+    ).entries)
       ModelEffortUsageTotal(
-        model: entry.key.$1,
-        effort: entry.key.$2,
-        turnCount: entry.value.length,
-        inputTokens: entry.value.fold(0, (a, t) => a + t.inputTokens),
-        outputTokens: entry.value.fold(0, (a, t) => a + t.outputTokens),
-        cacheCreationTokens: entry.value.fold(0, (a, t) => a + t.cacheCreationTokens),
-        cost: entry.value.fold(
-          0.0,
-          (a, t) => a +
-              costForTurn(t.source, t.model, t.inputTokens, t.outputTokens,
-                  t.cacheReadTokens, t.cacheCreationTokens),
-        ),
+        model: e.key.$1,
+        effort: e.key.$2,
+        turnCount: e.value.turnCount,
+        inputTokens: e.value.inputTokens,
+        outputTokens: e.value.outputTokens,
+        cacheCreationTokens: e.value.cacheCreationTokens,
+        cost: e.value.cost,
       ),
   ];
   totals.sort((a, b) => b.totalTokens.compareTo(a.totalTokens));

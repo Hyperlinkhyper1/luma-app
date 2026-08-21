@@ -17,7 +17,7 @@ import 'package:test/test.dart';
 /// deploy button refuses outright — rather than running a broken shell
 /// command — when LUMA_REPO_PATH isn't set. The actual `docker compose`
 /// deploy itself needs a live Docker daemon and isn't something a unit test
-/// can exercise; see Api._adminDeploy's doc comment for what it runs and why.
+/// can exercise; see DeployConsole's doc comment for what it runs and why.
 void main() {
   group('admin deploy gate', () {
     late Directory dir;
@@ -96,11 +96,28 @@ void main() {
       };
     }
 
+
+    /// Writes [name] on the shared volume, optionally backdated so the
+    /// freshness checks can be exercised.
+    Future<File> volumeFile(String name, String content,
+        {Duration? age}) async {
+      final file = File('${dir.path}/$name');
+      await file.writeAsString(content);
+      if (age != null) {
+        file.setLastModifiedSync(DateTime.now().subtract(age));
+      }
+      return file;
+    }
+
+    Future<String> phase() async =>
+        (await get('/admin/deploy/status'))['phase'] as String;
+
     test('refuses to deploy when LUMA_REPO_PATH is unset', () async {
       handler = await buildHandler(repoPath: null);
       final result = await post('/admin/deploy');
       expect(result['httpStatus'], 404);
       expect(result['error'], 'not_configured');
+      expect(await phase(), 'notConfigured');
     });
 
     test('refuses to deploy when LUMA_REPO_PATH is blank', () async {
@@ -108,55 +125,59 @@ void main() {
       final result = await post('/admin/deploy');
       expect(result['httpStatus'], 404);
       expect(result['error'], 'not_configured');
+      expect(await phase(), 'notConfigured');
     });
 
-    test('the status endpoint reports whether the button is configured',
-        () async {
-      handler = await buildHandler(repoPath: null);
-      final unset = await get('/admin/deploy/status');
-      expect(unset['repoPathConfigured'], isFalse);
-
+    // deploy-watcher.sh (running on the host, outside any container) is what
+    // actually does the git pull + rebuild — this process only ever drops a
+    // request file for it to pick up. See DeployConsole's doc comment for
+    // why: running `docker compose up -d --build` on this very container
+    // from inside itself kills the process driving the recreate before it
+    // ever starts the new container.
+    test(
+        'a deploy request drops a request file rather than running anything '
+        'itself', () async {
       handler = await buildHandler(repoPath: '/home/example/luma-app');
-      final set = await get('/admin/deploy/status');
-      expect(set['repoPathConfigured'], isTrue);
-    });
+      await volumeFile('deploy.watcher', '');
 
-    // deploy-watcher.sh (running on the host, outside any container) is
-    // what actually does the git pull + rebuild — this process only ever
-    // drops a request file for it to pick up. See Api._adminDeploy's doc
-    // comment for why: running `docker compose up -d --build` on this very
-    // container from inside itself kills the process driving the recreate
-    // before it starts the new container.
-    test('a deploy request drops a request file rather than running '
-        'anything itself', () async {
-      handler = await buildHandler(repoPath: '/home/example/luma-app');
       final result = await post('/admin/deploy');
       expect(result['httpStatus'], 200);
-      expect(result['started'], isTrue);
+      expect(result['phase'], 'queued');
       expect(await File('${dir.path}/deploy.request').exists(), isTrue);
+      expect(await phase(), 'queued');
     });
 
-    test('refuses a second deploy while the watcher\'s PID file is present',
-        () async {
+    // A request nobody can claim is its own phase, not a timeout. The
+    // browser used to discover this by giving up after 30 polls.
+    test('a request with no watcher alive is stalled, not queued', () async {
       handler = await buildHandler(repoPath: '/home/example/luma-app');
-      await File('${dir.path}/deploy.pid').writeAsString('12345');
+
+      final result = await post('/admin/deploy');
+      expect(result['phase'], 'stalled');
+      expect(result['watcherAlive'], isFalse);
+      expect(await phase(), 'stalled');
+    });
+
+    test('refuses a second deploy while the lock is fresh', () async {
+      handler = await buildHandler(repoPath: '/home/example/luma-app');
+      await volumeFile('deploy.lock', '');
       final result = await post('/admin/deploy');
       expect(result['httpStatus'], 409);
       expect(result['error'], 'deploy_running');
     });
 
-    test('status reflects the watcher\'s PID file and log, not this '
-        'process\'s own state', () async {
+    test(
+        "status reflects the watcher's lock and log, not this process's own "
+        'state', () async {
       handler = await buildHandler(repoPath: '/home/example/luma-app');
 
-      final idle = await get('/admin/deploy/status');
-      expect(idle['running'], isFalse);
-      expect(idle['log'], '');
+      expect(await phase(), 'idle');
+      expect((await get('/admin/deploy/status'))['log'], '');
 
-      await File('${dir.path}/deploy.pid').writeAsString('12345');
-      await File('${dir.path}/deploy.log').writeAsString('git pull...\n');
+      await volumeFile('deploy.lock', '');
+      await volumeFile('deploy.log', 'git pull...\n');
       final active = await get('/admin/deploy/status');
-      expect(active['running'], isTrue);
+      expect(active['phase'], 'running');
       expect(active['log'], 'git pull...\n');
     });
 
@@ -168,65 +189,81 @@ void main() {
       handler = await buildHandler(repoPath: '/home/example/luma-app');
 
       final unknown = await get('/admin/deploy/status');
-      expect(unknown['ok'], isNull);
+      expect(unknown['phase'], 'idle');
       expect(unknown['exitCode'], isNull);
 
-      await File('${dir.path}/deploy.status').writeAsString('0\n');
+      await volumeFile('deploy.status', '0\n');
       final good = await get('/admin/deploy/status');
-      expect(good['ok'], isTrue);
+      expect(good['phase'], 'succeeded');
       expect(good['exitCode'], 0);
 
-      await File('${dir.path}/deploy.status').writeAsString('1\n');
-      await File('${dir.path}/deploy.log')
-          .writeAsString('error: Your local changes would be overwritten\n');
+      await volumeFile('deploy.status', '1\n');
+      await volumeFile(
+          'deploy.log', 'error: Your local changes would be overwritten\n');
       final bad = await get('/admin/deploy/status');
-      expect(bad['ok'], isFalse);
+      expect(bad['phase'], 'failed');
       expect(bad['exitCode'], 1);
     });
 
-    test('a finished run\'s exit code is hidden while the next one runs',
+    test("a finished run's exit code is hidden while the next one runs",
         () async {
       handler = await buildHandler(repoPath: '/home/example/luma-app');
-      await File('${dir.path}/deploy.status').writeAsString('0\n');
-      await File('${dir.path}/deploy.pid').writeAsString('12345');
+      await volumeFile('deploy.status', '0\n');
+      await volumeFile('deploy.lock', '');
 
       final running = await get('/admin/deploy/status');
-      expect(running['running'], isTrue);
-      expect(running['ok'], isNull);
+      expect(running['phase'], 'running');
+      expect(running['exitCode'], isNull);
     });
 
-    // The dashboard reads the log to decide how the deploy went, so the
-    // previous run's output must not be left lying around — otherwise a
-    // request nothing picks up looks like a deploy that finished instantly.
-    test('requesting a deploy clears the previous run\'s log and status',
-        () async {
+    // deploy-watcher.sh owns every artifact of a run and clears them when it
+    // claims the request. This process clearing them too left a window where
+    // the request was pending and everything else had been wiped — a state
+    // indistinguishable from a deploy that finished instantly, which the
+    // browser could only paper over with a timeout.
+    test(
+        "requesting a deploy leaves the previous run's artifacts to the "
+        'watcher', () async {
       handler = await buildHandler(repoPath: '/home/example/luma-app');
-      await File('${dir.path}/deploy.log').writeAsString('old output\n');
-      await File('${dir.path}/deploy.status').writeAsString('1\n');
+      await volumeFile('deploy.watcher', '');
+      await volumeFile('deploy.log', 'old output\n');
+      await volumeFile('deploy.status', '1\n');
 
       expect((await post('/admin/deploy'))['httpStatus'], 200);
-      expect(await File('${dir.path}/deploy.log').exists(), isFalse);
-      expect(await File('${dir.path}/deploy.status').exists(), isFalse);
+      expect(await File('${dir.path}/deploy.log').exists(), isTrue);
+      expect(await File('${dir.path}/deploy.status').exists(), isTrue);
 
+      // ...but the queued phase reports neither, so the operator never sees
+      // the last run's output attributed to the one they just started.
       final status = await get('/admin/deploy/status');
+      expect(status['phase'], 'queued');
       expect(status['log'], '');
-      expect(status['ok'], isNull);
-      expect(status['pending'], isTrue);
+      expect(status['exitCode'], isNull);
     });
 
     // A watcher killed mid-deploy (host reboot, systemctl stop) leaves its
-    // PID file behind. Without an age check that debris refuses every later
+    // lock behind. Without an age check that debris refuses every later
     // deploy forever.
-    test('a stale PID file does not block deploys for good', () async {
+    test('a stale lock does not block deploys for good', () async {
       handler = await buildHandler(repoPath: '/home/example/luma-app');
-      final pidFile = File('${dir.path}/deploy.pid');
-      await pidFile.writeAsString('12345');
-      pidFile.setLastModifiedSync(
-          DateTime.now().subtract(const Duration(hours: 6)));
+      await volumeFile('deploy.lock', '', age: const Duration(hours: 6));
 
-      expect((await get('/admin/deploy/status'))['running'], isFalse);
+      expect(await phase(), 'idle');
       expect((await post('/admin/deploy'))['httpStatus'], 200);
-      expect(await pidFile.exists(), isFalse);
+    });
+
+    // The lock is refreshed by the watcher for the whole run (see
+    // refresher_start in deploy-watcher.sh), so a deploy taking longer than
+    // the staleness window keeps reporting itself as running instead of
+    // silently freeing the button mid-rebuild.
+    test('a lock refreshed during a long run keeps reporting running',
+        () async {
+      handler = await buildHandler(repoPath: '/home/example/luma-app');
+      await volumeFile('deploy.lock', '', age: const Duration(hours: 2));
+      expect(await phase(), 'idle');
+
+      await volumeFile('deploy.lock', '');
+      expect(await phase(), 'running');
     });
 
     // The button's whole job is to restart this process, so a dashboard
@@ -259,7 +296,8 @@ void main() {
       expect(response.statusCode, 200,
           reason: 'the session cookie should still be honoured, not sent to '
               '/admin/login');
-      expect(jsonDecode(await response.readAsString())['started'], isTrue);
+      expect(jsonDecode(await response.readAsString())['phase'],
+          anyOf('queued', 'stalled'));
     });
 
     test('logging out drops the stored session for good', () async {
@@ -294,12 +332,10 @@ void main() {
       handler = await buildHandler(repoPath: '/home/example/luma-app');
       expect((await get('/admin/deploy/status'))['watcherAlive'], isFalse);
 
-      final beat = File('${dir.path}/deploy.watcher');
-      await beat.writeAsString('');
+      await volumeFile('deploy.watcher', '');
       expect((await get('/admin/deploy/status'))['watcherAlive'], isTrue);
 
-      beat.setLastModifiedSync(
-          DateTime.now().subtract(const Duration(minutes: 5)));
+      await volumeFile('deploy.watcher', '', age: const Duration(minutes: 5));
       expect((await get('/admin/deploy/status'))['watcherAlive'], isFalse);
     });
   });

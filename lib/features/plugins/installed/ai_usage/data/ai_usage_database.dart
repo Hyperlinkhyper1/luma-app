@@ -25,9 +25,9 @@ class AiUsageTurns extends Table {
   TextColumn get project => text().nullable()();
   // Which CLI this turn came from — determines which pricing table applies.
   TextColumn get source => textEnum<AiUsageSource>()();
-  // Reasoning-effort tier ("low"/"medium"/"high"/…), Claude Code only — null
-  // for sources that don't record it (Codex CLI, Antigravity).
-  TextColumn get effort => text().nullable()();
+  // Reasoning-effort tier, Claude Code only — null for sources that don't
+  // record it (Codex CLI, Antigravity) and for values it didn't recognise.
+  TextColumn get effort => textEnum<AiEffort>().nullable()();
 }
 
 /// Tracks which JSONL files have already been scanned (path + mtime + how
