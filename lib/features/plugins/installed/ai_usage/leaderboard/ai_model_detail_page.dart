@@ -356,6 +356,12 @@ class _EffortSection extends StatelessWidget {
                     sideTitles: SideTitles(
                       showTitles: true,
                       reservedSize: 24,
+                      // Without an explicit interval, fl_chart spaces ticks by
+                      // pixel width rather than by point — on a short 2-3
+                      // point axis that draws dozens of fractional ticks that
+                      // all round to the same one or two indices, so the same
+                      // label repeats itself across the whole axis.
+                      interval: 1,
                       getTitlesWidget: (value, meta) {
                         final i = value.round();
                         if (i < 0 || i >= points.length) return const SizedBox.shrink();
