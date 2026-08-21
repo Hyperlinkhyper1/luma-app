@@ -701,7 +701,7 @@ class _HeaderCell extends StatelessWidget {
   }
 }
 
-class _ModelRow extends StatefulWidget {
+class _ModelRow extends StatelessWidget {
   const _ModelRow({
     required this.model,
     required this.rank,
@@ -713,28 +713,17 @@ class _ModelRow extends StatefulWidget {
   final _ColumnWidths widths;
 
   @override
-  State<_ModelRow> createState() => _ModelRowState();
-}
-
-class _ModelRowState extends State<_ModelRow> {
-  bool _hovered = false;
-
-  @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final model = widget.model;
-    final rank = widget.rank;
-    final widths = widget.widths;
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: InkWell(
+    return InkWell(
+      // The row's own decoration paints no fill, so the ink layer's hover
+      // highlight shows through — no MouseRegion or hover state of our own.
+      hoverColor: luma.accentSubtle,
       onTap: () => Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => AiModelDetailPage(modelId: model.id),
       )),
       child: Container(
       decoration: BoxDecoration(
-        color: _hovered ? luma.accentSubtle : null,
         border: Border(bottom: BorderSide(color: luma.border.withValues(alpha: 0.5))),
       ),
       child: Row(
@@ -794,7 +783,6 @@ class _ModelRowState extends State<_ModelRow> {
           _NumberCell(width: widths.price, text: formatPrice(model.avgPricePerM)),
           _LicenseCell(model: model),
         ],
-      ),
       ),
       ),
     );
