@@ -16,6 +16,7 @@ AiUsageTurn _turn({
   int cacheReadTokens = 0,
   int cacheCreationTokens = 0,
   String? project,
+  AiEffort? effort,
 }) =>
     AiUsageTurn(
       id: id,
@@ -29,6 +30,7 @@ AiUsageTurn _turn({
       cacheCreationTokens: cacheCreationTokens,
       messageId: null,
       project: project,
+      effort: effort,
     );
 
 void main() {

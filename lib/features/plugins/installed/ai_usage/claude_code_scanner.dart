@@ -216,7 +216,6 @@ class ClaudeCodeScanner {
       if (timestamp == null) return null;
 
       final cwd = record['cwd'] as String?;
-      final effort = record['effort'] as String?;
 
       return AiUsageTurnsCompanion.insert(
         sessionId: sessionId,
@@ -229,7 +228,7 @@ class ClaudeCodeScanner {
         messageId: Value(messageId),
         project: Value(projectNameFromCwd(cwd)),
         source: AiUsageSource.claudeCode,
-        effort: Value(effort != null && effort.isNotEmpty ? effort : null),
+        effort: Value(effortFromLog(record['effort'] as String?)),
       );
     } catch (_) {
       return null;

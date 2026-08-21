@@ -11,3 +11,25 @@
 /// `antigravity_scanner.dart` and `_displayName`/the `~` cost prefix in
 /// `ai_usage_page.dart` for how this is surfaced distinctly in the UI.
 enum AiUsageSource { claudeCode, codexCli, antigravity }
+
+/// Reasoning-effort tier a turn was run at — the same tiers Claude Code
+/// itself uses. Claude Code is the only source that records one, so turns
+/// from [AiUsageSource.codexCli] and [AiUsageSource.antigravity] store null.
+///
+/// A closed set, stored via `textEnum` like [AiUsageSource] rather than as a
+/// free string, so the UI's switch over it is exhaustive and no display code
+/// has to defend against blanks or unknown spellings. `effortFromLog`
+/// is the single place a raw log value is turned into one of these.
+enum AiEffort { minimal, low, medium, high, xhigh, max }
+
+/// Parses the raw `effort` field of a Claude Code JSONL record. Returns null
+/// for absent, blank, or unrecognised values — all of which display as
+/// "Unspecified" rather than inventing a tier.
+AiEffort? effortFromLog(String? raw) {
+  if (raw == null) return null;
+  final normalized = raw.trim().toLowerCase();
+  for (final effort in AiEffort.values) {
+    if (effort.name == normalized) return effort;
+  }
+  return null;
+}

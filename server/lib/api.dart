@@ -11,6 +11,7 @@ import 'ai_model_catalog.dart';
 import 'ai_model_refresh.dart';
 import 'ai_usage_store.dart';
 import 'chat_store.dart';
+import 'deploy_console.dart';
 import 'family_store.dart';
 import 'mail.dart';
 import 'metrics.dart';
@@ -145,7 +146,7 @@ class ServerConfig {
       artificialAnalysisKey != null && artificialAnalysisKey!.isNotEmpty;
 
   /// Absolute path to this repo's checkout on the host, used only by
-  /// [_adminDeploy] to know where to `git pull` and re-run `docker compose`
+  /// [DeployConsole] to know where to `git pull` and re-run `docker compose`
   /// from. See LUMA_REPO_PATH in .env.example for why there is no default —
   /// a wrong guess here can create files in the wrong place on the host.
   final String? repoPath;
@@ -290,7 +291,7 @@ class Api {
             maxRequests: 240, window: const Duration(minutes: 1)),
         _loginFailLimiter = RateLimiter(
             maxRequests: 10, window: const Duration(minutes: 15)) {
-    _loadAdminSessions();
+    _adminSessionExpiryByTokenHash.addAll(_adminSessions.load());
   }
 
   final Store store;
@@ -350,13 +351,8 @@ class Api {
   /// admin key no longer has to travel in every dashboard URL/log line/Referer
   /// header.
   ///
-  /// Kept on disk as well as in memory. These used to be in-memory only, on
-  /// the reasoning that an operator can just log in again after a restart —
-  /// but that quietly broke the one page whose whole job is to restart the
-  /// server: the deploy button killed the session of the very operator
-  /// driving it, so the dashboard's polling silently 302'd to the login page
-  /// and the next click failed with "Could not start the deploy". Only the
-  /// hashes are stored, so the file can't be replayed into a session.
+  /// Kept on disk as well as in memory, by [AdminSessionStore] — see there
+  /// for why a restart must not sign the operator out.
   final Map<String, int> _adminSessionExpiryByTokenHash = {};
   static const _adminSessionTtl = Duration(hours: 12);
   static const _adminCookieName = 'luma_admin';
@@ -458,8 +454,8 @@ class Api {
       ..get('/admin/groceries/status', _requireAdmin(_adminGroceriesStatus))
       ..post('/admin/ai-models/refresh', _requireAdmin(_adminAiModelsRefresh))
       ..get('/admin/ai-models/status', _requireAdmin(_adminAiModelsStatus))
-      ..post('/admin/deploy', _requireAdmin(_adminDeploy))
-      ..get('/admin/deploy/status', _requireAdmin(_adminDeployStatus))
+      ..post('/admin/deploy', _requireAdmin(_deploy.requestDeploy))
+      ..get('/admin/deploy/status', _requireAdmin(_deploy.deployStatus))
       ..get('/admin/website', _requireAdmin(_adminWebsiteIndex))
       ..post('/admin/website/build', _requireAdmin(_adminWebsiteBuild))
       ..get('/admin/website/build/status',
@@ -497,10 +493,10 @@ class Api {
           // get converted into a 500.
           rethrow;
         } on FormatException {
-          return _error(400, 'bad_request', 'Malformed request.');
+          return errorResponse(400, 'bad_request', 'Malformed request.');
         } catch (e, st) {
           stderr.writeln('[luma] unhandled error: $e\n$st');
-          return _error(500, 'internal', 'Internal server error.');
+          return errorResponse(500, 'internal', 'Internal server error.');
         }
       };
 
@@ -529,7 +525,7 @@ class Api {
         final key = _clientKey(request);
         final (tag, limiter) = _limiterFor(request.method, request.url.path);
         if (!limiter.allow('$tag:$key')) {
-          return _error(429, 'rate_limited', 'Too many requests. Slow down.');
+          return errorResponse(429, 'rate_limited', 'Too many requests. Slow down.');
         }
         return inner(request);
       };
@@ -592,24 +588,24 @@ class Api {
     return (request) async {
       final auth = request.headers['authorization'] ?? '';
       if (!auth.startsWith('Bearer ') || auth.length < 20) {
-        return _error(401, 'unauthorized', 'Missing or invalid token.');
+        return errorResponse(401, 'unauthorized', 'Missing or invalid token.');
       }
       final token = auth.substring(7).trim();
       final tokenHash = c.sha256.convert(utf8.encode(token)).toString();
       final session = store.sessionsByTokenHash[tokenHash];
       final now = DateTime.now().millisecondsSinceEpoch;
       if (session == null || session.expiresAtMs <= now) {
-        return _error(401, 'unauthorized', 'Session expired. Sign in again.');
+        return errorResponse(401, 'unauthorized', 'Session expired. Sign in again.');
       }
       final user = store.usersById[session.userId];
       if (user == null) {
-        return _error(401, 'unauthorized', 'Account no longer exists.');
+        return errorResponse(401, 'unauthorized', 'Account no longer exists.');
       }
       // An account that is (back to) waiting for approval gets nothing but
       // the account handshake — the app mirrors this by shutting its own
       // server-access gate when it sees this code.
       if (user.isPending) {
-        return _error(403, 'account_not_approved',
+        return errorResponse(403, 'account_not_approved',
             'This account is waiting to be approved.');
       }
       // Sliding expiry: refresh when past the halfway point.
@@ -639,14 +635,14 @@ class Api {
   Handler _requireAdmin(FutureOr<Response> Function(Request) handler) {
     return (request) async {
       if (!config.adminEnabled) {
-        return _error(404, 'not_found', 'Not found.');
+        return errorResponse(404, 'not_found', 'Not found.');
       }
       final clientKey = _clientKey(request);
       // Refuse outright while this IP is over its failed-attempt budget —
       // only *failed* attempts count, so the dashboard's own polling never
       // locks a legitimate operator out.
       if (_adminFailLimiter.isLimited(clientKey)) {
-        return _error(429, 'rate_limited',
+        return errorResponse(429, 'rate_limited',
                 'Too many failed admin attempts. Try again later.')
             .change(headers: {
           'Retry-After': '${_adminFailLimiter.retryAfterSeconds(clientKey)}',
@@ -671,7 +667,7 @@ class Api {
           utf8.encode(provided), utf8.encode(expected));
       if (!match) {
         _adminFailLimiter.allow(clientKey);
-        return _error(401, 'unauthorized', 'Invalid or missing admin key.');
+        return errorResponse(401, 'unauthorized', 'Invalid or missing admin key.');
       }
       final response = _withAdminHeaders(await handler(request));
       // Loading the dashboard itself via an old `?key=` bookmark: piggyback a
@@ -689,7 +685,7 @@ class Api {
     _pruneAdminSessions();
     _adminSessionExpiryByTokenHash[tokenHash] =
         DateTime.now().millisecondsSinceEpoch + _adminSessionTtl.inMilliseconds;
-    _saveAdminSessions();
+    _adminSessions.save(_adminSessionExpiryByTokenHash);
     final secure = _isSecureRequest(request);
     return response.change(headers: {
       'Set-Cookie': '$_adminCookieName=$token; Path=/admin; HttpOnly; '
@@ -746,34 +742,9 @@ class Api {
     _adminSessionExpiryByTokenHash.removeWhere((_, exp) => exp <= now);
   }
 
-  File get _adminSessionsFile => File('${config.dataDir}/admin_sessions.json');
+  late final AdminSessionStore _adminSessions =
+      AdminSessionStore(config.dataDir);
 
-  /// Restores logged-in dashboard sessions after a restart — most often the
-  /// restart the deploy button just triggered. Expired entries are dropped on
-  /// the way in; anything malformed is ignored, which only costs a re-login.
-  void _loadAdminSessions() {
-    try {
-      final file = _adminSessionsFile;
-      if (!file.existsSync()) return;
-      final decoded = jsonDecode(file.readAsStringSync());
-      if (decoded is! Map) return;
-      final now = DateTime.now().millisecondsSinceEpoch;
-      decoded.forEach((hash, expiry) {
-        if (hash is String && expiry is int && expiry > now) {
-          _adminSessionExpiryByTokenHash[hash] = expiry;
-        }
-      });
-    } catch (_) {}
-  }
-
-  /// Called on login and logout only — a handful of writes a day, not a
-  /// per-request cost.
-  void _saveAdminSessions() {
-    try {
-      _adminSessionsFile
-          .writeAsStringSync(jsonEncode(_adminSessionExpiryByTokenHash));
-    } catch (_) {}
-  }
 
   /// Whether to mark the session cookie `Secure` (HTTPS-only). Mirrors the
   /// scheme-detection [_originHint] already uses for the landing page: trust
@@ -814,7 +785,7 @@ class Api {
   }
 
   Response _adminLoginPage(Request request) {
-    if (!config.adminEnabled) return _error(404, 'not_found', 'Not found.');
+    if (!config.adminEnabled) return errorResponse(404, 'not_found', 'Not found.');
     final locked = int.tryParse(request.url.queryParameters['locked'] ?? '');
     return Response(200,
         body: _adminLoginFormHtml(
@@ -827,7 +798,7 @@ class Api {
   }
 
   Future<Response> _adminLoginSubmit(Request request) async {
-    if (!config.adminEnabled) return _error(404, 'not_found', 'Not found.');
+    if (!config.adminEnabled) return errorResponse(404, 'not_found', 'Not found.');
     final clientKey = _clientKey(request);
     if (_adminFailLimiter.isLimited(clientKey)) {
       final wait = _adminFailLimiter.retryAfterSeconds(clientKey);
@@ -853,7 +824,7 @@ class Api {
     if (token != null) {
       _adminSessionExpiryByTokenHash
           .remove(c.sha256.convert(utf8.encode(token)).toString());
-      _saveAdminSessions();
+      _adminSessions.save(_adminSessionExpiryByTokenHash);
     }
     return Response.found('/admin/login', headers: {
       'Set-Cookie': '$_adminCookieName=; Path=/admin; HttpOnly; '
@@ -896,7 +867,7 @@ class Api {
     return '$scheme://$host';
   }
 
-  Response _health(Request request) => _json(200, {
+  Response _health(Request request) => jsonResponse(200, {
         'ok': true,
         'name': 'luma-sync-server',
         'registration': config.registrationEnabled ? 'open' : 'closed',
@@ -910,12 +881,12 @@ class Api {
   Future<Response> _authParams(Request request) async {
     final body = await _readJson(request);
     final email = _normalizeEmail(body['email']);
-    if (email == null) return _error(400, 'bad_email', 'Invalid email.');
+    if (email == null) return errorResponse(400, 'bad_email', 'Invalid email.');
 
     final userId = store.userIdByEmail[email];
     final user = userId == null ? null : store.usersById[userId];
     if (user != null) {
-      return _json(200, {
+      return jsonResponse(200, {
         'kdfSalt': user.kdfSalt,
         'kdfIterations': user.kdfIterations,
       });
@@ -924,7 +895,7 @@ class Api {
         .convert(utf8.encode('kdf-salt:$email'))
         .bytes
         .sublist(0, 16);
-    return _json(200, {
+    return jsonResponse(200, {
       'kdfSalt': base64Encode(fake),
       'kdfIterations': _defaultClientIterations,
     });
@@ -932,31 +903,31 @@ class Api {
 
   Future<Response> _register(Request request) async {
     if (!config.registrationEnabled) {
-      return _error(403, 'registration_closed',
+      return errorResponse(403, 'registration_closed',
           'This server does not accept new accounts.');
     }
     final body = await _readJson(request);
 
     final email = _normalizeEmail(body['email']);
-    if (email == null) return _error(400, 'bad_email', 'Invalid email.');
+    if (email == null) return errorResponse(400, 'bad_email', 'Invalid email.');
 
     final authKey = _decodeB64(body['authKey'], minLen: 32, maxLen: 64);
     if (authKey == null) {
-      return _error(400, 'bad_auth_key', 'Invalid auth key.');
+      return errorResponse(400, 'bad_auth_key', 'Invalid auth key.');
     }
     final kdfSalt = _decodeB64(body['kdfSalt'], minLen: 16, maxLen: 64);
     if (kdfSalt == null) {
-      return _error(400, 'bad_kdf_salt', 'Invalid KDF salt.');
+      return errorResponse(400, 'bad_kdf_salt', 'Invalid KDF salt.');
     }
     final iterations = body['kdfIterations'];
     if (iterations is! int || iterations < 50000 || iterations > 5000000) {
-      return _error(400, 'bad_kdf_iterations', 'Invalid KDF iterations.');
+      return errorResponse(400, 'bad_kdf_iterations', 'Invalid KDF iterations.');
     }
     final deviceLabel = body['deviceLabel'] as String?;
 
     return store.lock.synchronized(() async {
       if (store.userIdByEmail.containsKey(email)) {
-        return _error(409, 'email_taken', 'An account already exists for this email.');
+        return errorResponse(409, 'email_taken', 'An account already exists for this email.');
       }
       final authSalt = randomBytes(16);
       final authHash = await _hashAuthKey(authKey, authSalt);
@@ -981,7 +952,7 @@ class Api {
         await store.saveUsers();
         await store.logActivity('account_registered', '$email registered');
         final token = await _createSession(user, deviceLabel: deviceLabel);
-        return _json(201, {
+        return jsonResponse(201, {
           'token': token.$1,
           'expiresAtMs': token.$2,
           'quotaBytes': user.quotaBytes,
@@ -995,7 +966,7 @@ class Api {
         await store.saveUsers();
         await store.logActivity(
             'account_registered', '$email registered (awaiting approval)');
-        return _json(201, {
+        return jsonResponse(201, {
           'status': 'pending_approval',
           'approval': mode.name,
           'message': 'Account created. It has to be approved by the server '
@@ -1009,7 +980,7 @@ class Api {
       await store.logActivity(
           'account_registered', '$email registered (pending verification)');
       await _sendVerificationEmail(user, verificationToken);
-      return _json(201, {
+      return jsonResponse(201, {
         'status': 'pending_approval',
         'approval': mode.name,
         'message':
@@ -1024,14 +995,14 @@ class Api {
     final authKey = _decodeB64(body['authKey'], minLen: 32, maxLen: 64);
     final deviceLabel = body['deviceLabel'] as String?;
     if (email == null || authKey == null) {
-      return _error(400, 'bad_request', 'Invalid email or auth key.');
+      return errorResponse(400, 'bad_request', 'Invalid email or auth key.');
     }
 
     // Refuse before doing any hashing work while this address is over its
     // failed-attempt budget. Keyed by email, not IP, so rotating IPs doesn't
     // buy an attacker more guesses at the same account.
     if (_loginFailLimiter.isLimited(email)) {
-      return _error(429, 'rate_limited',
+      return errorResponse(429, 'rate_limited',
           'Too many failed sign-in attempts for this account. Try again later.');
     }
 
@@ -1048,11 +1019,11 @@ class Api {
     if (user == null ||
         !constantTimeEquals(hash, base64Decode(user.authHash))) {
       _loginFailLimiter.allow(email);
-      return _error(401, 'invalid_credentials', 'Wrong email or password.');
+      return errorResponse(401, 'invalid_credentials', 'Wrong email or password.');
     }
 
     if (user.isPending) {
-      return _error(
+      return errorResponse(
           403,
           'account_pending_approval',
           config.approvalMode == ApprovalMode.email
@@ -1066,7 +1037,7 @@ class Api {
       user.lastLoginAtMs = DateTime.now().millisecondsSinceEpoch;
       await store.saveUsers();
       await store.logActivity('login', '${user.email} logged in');
-      return _json(200, {
+      return jsonResponse(200, {
         'token': token.$1,
         'expiresAtMs': token.$2,
         'quotaBytes': user.quotaBytes,
@@ -1079,7 +1050,7 @@ class Api {
   /// Which providers this deployment has credentials for. Called before the
   /// sign-in screen is drawn, so an operator who configured neither simply
   /// never sees the buttons.
-  Response _oauthProviders(Request request) => _json(200, {
+  Response _oauthProviders(Request request) => jsonResponse(200, {
         'providers': config.enabledOAuthProviders
             .map((spec) => {'id': spec.id, 'name': spec.displayName})
             .toList(),
@@ -1093,7 +1064,7 @@ class Api {
     final providerConfig =
         spec == null ? null : config.oauthProviders[spec.id];
     if (spec == null || providerConfig == null || !providerConfig.configured) {
-      return _error(400, 'unknown_provider',
+      return errorResponse(400, 'unknown_provider',
           'This server is not set up for that sign-in method.');
     }
     final OAuthFlow flow;
@@ -1101,7 +1072,7 @@ class Api {
     try {
       (flow, ticket) = _oauthFlows.create(spec.id);
     } on OAuthException catch (e) {
-      return _error(503, 'oauth_busy', e.message);
+      return errorResponse(503, 'oauth_busy', e.message);
     }
     final authUrl = Uri.parse(spec.authorizeUrl).replace(queryParameters: {
       'client_id': providerConfig.clientId,
@@ -1111,7 +1082,7 @@ class Api {
       'state': flow.state,
       ...spec.extraAuthorizeParams,
     });
-    return _json(200, {
+    return jsonResponse(200, {
       'ticket': ticket,
       'authUrl': authUrl.toString(),
       'expiresInSeconds': OAuthFlow.ttl.inSeconds,
@@ -1202,17 +1173,17 @@ class Api {
     final body = await _readJson(request);
     final flow = _oauthFlows.byTicket(body['ticket'] as String?);
     if (flow == null) {
-      return _json(200, {
+      return jsonResponse(200, {
         'status': 'error',
         'message': 'This sign-in attempt expired. Please try again.',
       });
     }
     if (flow.error != null) {
       _oauthFlows.remove(flow);
-      return _json(200, {'status': 'error', 'message': flow.error});
+      return jsonResponse(200, {'status': 'error', 'message': flow.error});
     }
-    if (!flow.ready) return _json(200, {'status': 'pending'});
-    return _json(200, {
+    if (!flow.ready) return jsonResponse(200, {'status': 'pending'});
+    return jsonResponse(200, {
       'status': 'ready',
       'provider': flow.provider,
       'email': flow.identity!.email,
@@ -1233,12 +1204,12 @@ class Api {
     final body = await _readJson(request);
     final flow = _oauthFlows.byTicket(body['ticket'] as String?);
     if (flow == null || !flow.ready) {
-      return _error(400, 'oauth_expired',
+      return errorResponse(400, 'oauth_expired',
           'This sign-in attempt expired. Please try again.');
     }
     final authKey = _decodeB64(body['authKey'], minLen: 32, maxLen: 64);
     if (authKey == null) {
-      return _error(400, 'bad_auth_key', 'Invalid auth key.');
+      return errorResponse(400, 'bad_auth_key', 'Invalid auth key.');
     }
     final identity = flow.identity!;
     final deviceLabel = body['deviceLabel'] as String?;
@@ -1257,10 +1228,10 @@ class Api {
           flow.attempts++;
           if (flow.attempts >= OAuthFlow.maxAttempts) {
             _oauthFlows.remove(flow);
-            return _error(429, 'too_many_attempts',
+            return errorResponse(429, 'too_many_attempts',
                 'Too many wrong passphrases. Start the sign-in again.');
           }
-          return _error(401, 'invalid_credentials',
+          return errorResponse(401, 'invalid_credentials',
               'That passphrase does not match this account.');
         }
         if (existing.isPending) {
@@ -1275,7 +1246,7 @@ class Api {
             await store.logActivity('account_verified',
                 '${existing.email} verified via ${spec.displayName}');
           } else {
-            return _error(
+            return errorResponse(
                 403,
                 'account_pending_approval',
                 'This account is waiting to be approved by the server '
@@ -1289,7 +1260,7 @@ class Api {
         await store.saveUsers();
         await store.logActivity('login',
             '${existing.email} logged in with ${spec.displayName}');
-        return _json(200, {
+        return jsonResponse(200, {
           'token': token.$1,
           'expiresAtMs': token.$2,
           'quotaBytes': existing.quotaBytes,
@@ -1299,16 +1270,16 @@ class Api {
 
       // ---- New account ----------------------------------------------------
       if (!config.registrationEnabled) {
-        return _error(403, 'registration_closed',
+        return errorResponse(403, 'registration_closed',
             'This server does not accept new accounts.');
       }
       final kdfSalt = _decodeB64(body['kdfSalt'], minLen: 16, maxLen: 64);
       if (kdfSalt == null) {
-        return _error(400, 'bad_kdf_salt', 'Invalid KDF salt.');
+        return errorResponse(400, 'bad_kdf_salt', 'Invalid KDF salt.');
       }
       final iterations = body['kdfIterations'];
       if (iterations is! int || iterations < 50000 || iterations > 5000000) {
-        return _error(400, 'bad_kdf_iterations', 'Invalid KDF iterations.');
+        return errorResponse(400, 'bad_kdf_iterations', 'Invalid KDF iterations.');
       }
       final authSalt = randomBytes(16);
       // Under manual approval a new account still waits for the operator;
@@ -1338,7 +1309,7 @@ class Api {
         await store.logActivity('account_registered',
             '${user.email} registered with ${spec.displayName} '
             '(awaiting approval)');
-        return _json(201, {
+        return jsonResponse(201, {
           'status': 'pending_approval',
           'approval': config.approvalMode.name,
           'message': 'Account created with ${spec.displayName}. It has to be '
@@ -1349,7 +1320,7 @@ class Api {
       await store.logActivity('account_registered',
           '${user.email} registered with ${spec.displayName}');
       final token = await _createSession(user, deviceLabel: deviceLabel);
-      return _json(201, {
+      return jsonResponse(201, {
         'token': token.$1,
         'expiresAtMs': token.$2,
         'quotaBytes': user.quotaBytes,
@@ -1370,7 +1341,7 @@ class Api {
         .where((s) => s.userId == user.id && s.expiresAtMs > now)
         .toList()
       ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
-    return _json(200, {
+    return jsonResponse(200, {
       'sessions': sessions
           .map((s) => {
                 'id': s.tokenHash,
@@ -1392,17 +1363,17 @@ class Api {
     final currentTokenHash =
         c.sha256.convert(utf8.encode(auth.substring(7).trim())).toString();
     if (id == currentTokenHash) {
-      return _error(400, 'cannot_revoke_current',
+      return errorResponse(400, 'cannot_revoke_current',
           'Cannot revoke the session you are currently using — sign out instead.');
     }
     return store.lock.synchronized(() async {
       final session = store.sessionsByTokenHash[id];
       if (session == null || session.userId != user.id) {
-        return _error(404, 'not_found', 'Session not found.');
+        return errorResponse(404, 'not_found', 'Session not found.');
       }
       store.sessionsByTokenHash.remove(id);
       await store.saveSessions();
-      return _json(200, {'ok': true});
+      return jsonResponse(200, {'ok': true});
     });
   }
 
@@ -1459,12 +1430,12 @@ class Api {
   Future<Response> _resendVerification(Request request) async {
     final body = await _readJson(request);
     final email = _normalizeEmail(body['email']);
-    if (email == null) return _error(400, 'bad_email', 'Invalid email.');
+    if (email == null) return errorResponse(400, 'bad_email', 'Invalid email.');
 
     if (config.approvalMode != ApprovalMode.email) {
       // No link exists to resend. Answered the same way for every address,
       // so this still says nothing about whether the account exists.
-      return _json(200, {
+      return jsonResponse(200, {
         'status': 'pending_approval',
         'approval': config.approvalMode.name,
         'message': config.approvalMode == ApprovalMode.manual
@@ -1475,7 +1446,7 @@ class Api {
     }
 
     if (!_resendLimiter.allow(email)) {
-      return _error(429, 'rate_limited',
+      return errorResponse(429, 'rate_limited',
           'Too many verification requests for this address. Try again later.');
     }
 
@@ -1490,12 +1461,12 @@ class Api {
       final userId = store.userIdByEmail[email];
       final user = userId == null ? null : store.usersById[userId];
       if (user == null || !user.isPending) {
-        return _json(200, genericResponse);
+        return jsonResponse(200, genericResponse);
       }
       final verificationToken = await _issueVerificationToken(user);
       await store.saveUsers();
       await _sendVerificationEmail(user, verificationToken);
-      return _json(200, genericResponse);
+      return jsonResponse(200, genericResponse);
     });
   }
 
@@ -1526,7 +1497,7 @@ class Api {
     return store.lock.synchronized(() async {
       store.sessionsByTokenHash.remove(tokenHash);
       await store.saveSessions();
-      return _json(200, {'ok': true});
+      return jsonResponse(200, {'ok': true});
     });
   }
 
@@ -1545,13 +1516,13 @@ class Api {
         iterations is! int ||
         iterations < 50000 ||
         iterations > 5000000) {
-      return _error(400, 'bad_request', 'Invalid change-password payload.');
+      return errorResponse(400, 'bad_request', 'Invalid change-password payload.');
     }
 
     final currentHash =
         await _hashAuthKey(current, Uint8List.fromList(base64Decode(user.authSalt)));
     if (!constantTimeEquals(currentHash, base64Decode(user.authHash))) {
-      return _error(401, 'invalid_credentials', 'Current password is wrong.');
+      return errorResponse(401, 'invalid_credentials', 'Current password is wrong.');
     }
 
     final auth = request.headers['authorization']!;
@@ -1568,7 +1539,7 @@ class Api {
           (hash, s) => s.userId == user.id && hash != keepTokenHash);
       await store.saveUsers();
       await store.saveSessions();
-      return _json(200, {'ok': true});
+      return jsonResponse(200, {'ok': true});
     });
   }
 
@@ -1576,12 +1547,12 @@ class Api {
     final body = await _readJson(request);
     final authKey = _decodeB64(body['authKey'], minLen: 32, maxLen: 64);
     if (authKey == null) {
-      return _error(400, 'bad_request', 'Auth key required to delete account.');
+      return errorResponse(400, 'bad_request', 'Auth key required to delete account.');
     }
     final hash = await _hashAuthKey(
         authKey, Uint8List.fromList(base64Decode(user.authSalt)));
     if (!constantTimeEquals(hash, base64Decode(user.authHash))) {
-      return _error(401, 'invalid_credentials', 'Wrong password.');
+      return errorResponse(401, 'invalid_credentials', 'Wrong password.');
     }
     return store.lock.synchronized(() async {
       final email = user.email;
@@ -1595,7 +1566,7 @@ class Api {
       await store.saveSessions();
       await store.saveCollections();
       await store.logActivity('account_deleted', '$email deleted their account');
-      return _json(200, {'ok': true});
+      return jsonResponse(200, {'ok': true});
     });
   }
 
@@ -1606,7 +1577,7 @@ class Api {
   /// app show "a key is available" in Settings without exposing the secret;
   /// the actual key is only ever used server-side, by [_mistralChatProxy].
   Response _mistralKeyStatus(Request request, StoredUser user) =>
-      _json(200, {'configured': config.mistralKeyConfigured});
+      jsonResponse(200, {'configured': config.mistralKeyConfigured});
 
   /// Which shared AI keys the operator has configured, plus this user's
   /// usage — expressed only as percentages / message counts, never raw
@@ -1614,7 +1585,7 @@ class Api {
   Response _aiStatus(Request request, StoredUser user) {
     int pct(int used, int limit) =>
         ((used * 100) / limit).clamp(0, 100).round();
-    return _json(200, {
+    return jsonResponse(200, {
       'mistralConfigured': config.mistralKeyConfigured,
       'googleConfigured': config.googleKeyConfigured,
       'usage': {
@@ -1660,25 +1631,25 @@ class Api {
   /// exact `usage.total_tokens` Google reports per call.
   Future<Response> _googleChatProxy(Request request, StoredUser user) async {
     if (!config.googleKeyConfigured) {
-      return _error(404, 'not_configured',
+      return errorResponse(404, 'not_configured',
           'No server-wide Google AI key is configured.');
     }
     Map<String, dynamic> body;
     try {
       body = await _readJson(request);
     } on FormatException {
-      return _error(400, 'bad_request', 'Malformed request.');
+      return errorResponse(400, 'bad_request', 'Malformed request.');
     }
     if (body['messages'] is! List) {
-      return _error(400, 'bad_request', 'messages is required.');
+      return errorResponse(400, 'bad_request', 'messages is required.');
     }
     if (aiUsage.tokensUsed(user.id, const Duration(hours: 5)) >= kAiTokens5h) {
-      return _error(429, 'usage_limit',
+      return errorResponse(429, 'usage_limit',
           "You've hit your assistant usage limit for now — it frees up again "
           'over the next few hours.');
     }
     if (aiUsage.tokensUsed(user.id, const Duration(days: 7)) >= kAiTokensWeek) {
-      return _error(429, 'usage_limit',
+      return errorResponse(429, 'usage_limit',
           "You've hit your weekly assistant usage limit — it frees up again "
           'over the coming days.');
     }
@@ -1717,7 +1688,7 @@ class Api {
       return Response(upstreamResponse.statusCode,
           body: responseBody, headers: {'Content-Type': 'application/json'});
     } catch (e) {
-      return _error(502, 'upstream_error', 'Could not reach the AI service.');
+      return errorResponse(502, 'upstream_error', 'Could not reach the AI service.');
     } finally {
       httpClient.close();
     }
@@ -1734,17 +1705,17 @@ class Api {
   /// would otherwise cap their own spend.
   Future<Response> _mistralChatProxy(Request request, StoredUser user) async {
     if (!config.mistralKeyConfigured) {
-      return _error(404, 'not_configured',
+      return errorResponse(404, 'not_configured',
           'No server-wide Mistral API key is configured.');
     }
     Map<String, dynamic> body;
     try {
       body = await _readJson(request);
     } on FormatException {
-      return _error(400, 'bad_request', 'Malformed request.');
+      return errorResponse(400, 'bad_request', 'Malformed request.');
     }
     if (body['messages'] is! List) {
-      return _error(400, 'bad_request', 'messages is required.');
+      return errorResponse(400, 'bad_request', 'messages is required.');
     }
     // One "support message" = one user turn. A single turn can trigger
     // several upstream calls when the model uses tools (the follow-up calls
@@ -1757,7 +1728,7 @@ class Api {
     final isNewUserTurn = lastMessage?['role'] == 'user';
     if (isNewUserTurn &&
         aiUsage.supportMessagesUsed(user.id) >= kSupportMessagesPerDay) {
-      return _error(429, 'usage_limit',
+      return errorResponse(429, 'usage_limit',
           "You've used all $kSupportMessagesPerDay Luma Support messages for "
           'today — more tomorrow.');
     }
@@ -1794,7 +1765,7 @@ class Api {
       return Response(upstreamResponse.statusCode,
           body: responseBody, headers: {'Content-Type': 'application/json'});
     } catch (e) {
-      return _error(502, 'upstream_error', 'Could not reach Mistral.');
+      return errorResponse(502, 'upstream_error', 'Could not reach Mistral.');
     } finally {
       httpClient.close();
     }
@@ -1804,7 +1775,7 @@ class Api {
 
   Response _accountInfo(Request request, StoredUser user) {
     final collections = store.collectionsByUser[user.id] ?? const {};
-    return _json(200, {
+    return jsonResponse(200, {
       'email': user.email,
       'usedBytes': store.usedBytes(user.id),
       'quotaBytes': user.quotaBytes,
@@ -1822,12 +1793,12 @@ class Api {
   Future<Response> _getBlob(Request request, StoredUser user) async {
     final name = request.params['collection']!;
     if (!collectionPattern.hasMatch(name)) {
-      return _error(400, 'bad_collection', 'Invalid collection name.');
+      return errorResponse(400, 'bad_collection', 'Invalid collection name.');
     }
     final meta = store.collectionsByUser[user.id]?[name];
     final bytes = meta == null ? null : await store.readBlob(user.id, name);
     if (meta == null || bytes == null) {
-      return _error(404, 'not_found', 'No data for this collection.');
+      return errorResponse(404, 'not_found', 'No data for this collection.');
     }
     return Response(200, body: bytes, headers: {
       'Content-Type': 'application/octet-stream',
@@ -1839,7 +1810,7 @@ class Api {
   Future<Response> _putBlob(Request request, StoredUser user) async {
     final name = request.params['collection']!;
     if (!collectionPattern.hasMatch(name)) {
-      return _error(400, 'bad_collection', 'Invalid collection name.');
+      return errorResponse(400, 'bad_collection', 'Invalid collection name.');
     }
     final baseVersion =
         int.tryParse(request.headers['x-base-version'] ?? '') ?? -1;
@@ -1847,7 +1818,7 @@ class Api {
         int.tryParse(request.headers['x-payload-saved-at'] ?? '') ??
             DateTime.now().millisecondsSinceEpoch;
     if (baseVersion < 0) {
-      return _error(400, 'bad_version', 'X-Base-Version header required.');
+      return errorResponse(400, 'bad_version', 'X-Base-Version header required.');
     }
 
     // Read the body with a hard cap so oversized uploads cannot exhaust RAM.
@@ -1863,25 +1834,25 @@ class Api {
         ? quotaHeadroom
         : config.maxBlobBytes;
     if (cap <= 0) {
-      return _error(413, 'quota_exceeded',
+      return errorResponse(413, 'quota_exceeded',
           'Storage quota exceeded (${user.quotaBytes} bytes).');
     }
     final declared = request.contentLength ?? -1;
     if (declared > cap) {
-      return _error(413, 'blob_too_large',
+      return errorResponse(413, 'blob_too_large',
           'Snapshot exceeds the allowed upload size of $cap bytes.');
     }
     final builder = BytesBuilder(copy: false);
     await for (final chunk in request.read()) {
       builder.add(chunk);
       if (builder.length > cap) {
-        return _error(413, 'blob_too_large',
+        return errorResponse(413, 'blob_too_large',
             'Snapshot exceeds the allowed upload size of $cap bytes.');
       }
     }
     final bytes = builder.takeBytes();
     if (bytes.isEmpty) {
-      return _error(400, 'empty_body', 'Empty snapshot rejected.');
+      return errorResponse(400, 'empty_body', 'Empty snapshot rejected.');
     }
 
     return store.lock.synchronized(() async {
@@ -1891,7 +1862,7 @@ class Api {
       final currentVersion = existing?.version ?? 0;
 
       if (baseVersion != currentVersion) {
-        return _error(409, 'version_conflict', 'Server has a newer snapshot.',
+        return errorResponse(409, 'version_conflict', 'Server has a newer snapshot.',
             extra: {
               'version': currentVersion,
               'payloadSavedAtMs': existing?.payloadSavedAtMs ?? 0,
@@ -1901,7 +1872,7 @@ class Api {
       final newUsed =
           store.usedBytes(user.id) - (existing?.size ?? 0) + bytes.length;
       if (newUsed > user.quotaBytes) {
-        return _error(413, 'quota_exceeded',
+        return errorResponse(413, 'quota_exceeded',
             'Storage quota exceeded (${user.quotaBytes} bytes).',
             extra: {
               'usedBytes': store.usedBytes(user.id),
@@ -1926,7 +1897,7 @@ class Api {
       perUser[name] = meta;
       await store.saveCollections();
 
-      return _json(200, {
+      return jsonResponse(200, {
         'version': meta.version,
         'usedBytes': store.usedBytes(user.id),
         'quotaBytes': user.quotaBytes,
@@ -1937,13 +1908,13 @@ class Api {
   Future<Response> _deleteBlobHandler(Request request, StoredUser user) async {
     final name = request.params['collection']!;
     if (!collectionPattern.hasMatch(name)) {
-      return _error(400, 'bad_collection', 'Invalid collection name.');
+      return errorResponse(400, 'bad_collection', 'Invalid collection name.');
     }
     return store.lock.synchronized(() async {
       store.collectionsByUser[user.id]?.remove(name);
       await store.deleteBlob(user.id, name);
       await store.saveCollections();
-      return _json(200, {
+      return jsonResponse(200, {
         'ok': true,
         'usedBytes': store.usedBytes(user.id),
         'quotaBytes': user.quotaBytes,
@@ -1993,17 +1964,17 @@ class Api {
   /// refreshes would interleave writes to the same store.
   Future<Response> _adminAiModelsRefresh(Request request) async {
     if (aiCatalog.status.running) {
-      return _error(409, 'refresh_running',
+      return errorResponse(409, 'refresh_running',
           'A catalogue refresh is already in progress.');
     }
     unawaited(refreshAiCatalog(
       aiCatalog,
       artificialAnalysisKey: config.artificialAnalysisKey,
     ));
-    return _json(202, {'started': true});
+    return jsonResponse(202, {'started': true});
   }
 
-  Response _adminAiModelsStatus(Request request) => _json(200, {
+  Response _adminAiModelsStatus(Request request) => jsonResponse(200, {
         'status': aiCatalog.status.toJson(),
         'modelCount': aiCatalog.modelCount,
         'newsCount': aiCatalog.news.length,
@@ -2064,15 +2035,15 @@ class Api {
         'createdAtMs': r.createdAtMs,
       };
 
-  Response _listPublicRecipes(Request request, StoredUser user) => _json(200, {
+  Response _listPublicRecipes(Request request, StoredUser user) => jsonResponse(200, {
         'recipes':
             recipeStore.browse().map((r) => _recipeJson(r, user)).toList(),
       });
 
   Response _getPublicRecipe(Request request, StoredUser user) {
     final recipe = recipeStore.recipesById[request.params['id']];
-    if (recipe == null) return _error(404, 'not_found', 'Recipe not found.');
-    return _json(200, _recipeJson(recipe, user, includeReviews: true));
+    if (recipe == null) return errorResponse(404, 'not_found', 'Recipe not found.');
+    return jsonResponse(200, _recipeJson(recipe, user, includeReviews: true));
   }
 
   /// Validates the shared recipe body used by publish + update. Returns either
@@ -2089,17 +2060,17 @@ class Api {
   })? _parseRecipeBody(Map<String, dynamic> body, {required void Function(Response) fail}) {
     final title = (body['title'] as String? ?? '').trim();
     if (title.isEmpty || title.length > 200) {
-      fail(_error(400, 'bad_title', 'A title of up to 200 characters is required.'));
+      fail(errorResponse(400, 'bad_title', 'A title of up to 200 characters is required.'));
       return null;
     }
     final descRaw = (body['description'] as String?)?.trim();
     if (descRaw != null && descRaw.length > 2000) {
-      fail(_error(400, 'bad_description', 'Description is too long.'));
+      fail(errorResponse(400, 'bad_description', 'Description is too long.'));
       return null;
     }
     final category = (body['category'] as String? ?? 'Other').trim();
     if (category.length > 40) {
-      fail(_error(400, 'bad_category', 'Category is too long.'));
+      fail(errorResponse(400, 'bad_category', 'Category is too long.'));
       return null;
     }
     int clampInt(dynamic v, int lo, int hi, int fallback) {
@@ -2109,11 +2080,11 @@ class Api {
     final ingredientsRaw = body['ingredients'];
     final stepsRaw = body['steps'];
     if (ingredientsRaw is! List || stepsRaw is! List) {
-      fail(_error(400, 'bad_body', 'ingredients and steps must be lists.'));
+      fail(errorResponse(400, 'bad_body', 'ingredients and steps must be lists.'));
       return null;
     }
     if (ingredientsRaw.length > 100 || stepsRaw.length > 100) {
-      fail(_error(400, 'too_many', 'Too many ingredients or steps.'));
+      fail(errorResponse(400, 'too_many', 'Too many ingredients or steps.'));
       return null;
     }
     final ingredients = <Map<String, dynamic>>[];
@@ -2136,7 +2107,7 @@ class Api {
     final ingredientsJson = jsonEncode(ingredients);
     final stepsJson = jsonEncode(steps);
     if (ingredientsJson.length + stepsJson.length > 32 * 1024) {
-      fail(_error(400, 'too_large', 'Recipe body is too large.'));
+      fail(errorResponse(400, 'too_large', 'Recipe body is too large.'));
       return null;
     }
     return (
@@ -2173,15 +2144,15 @@ class Api {
       );
       recipeStore.recipesById[recipe.id] = recipe;
       await recipeStore.saveRecipes();
-      return _json(201, _recipeJson(recipe, user));
+      return jsonResponse(201, _recipeJson(recipe, user));
     });
   }
 
   Future<Response> _updatePublicRecipe(Request request, StoredUser user) async {
     final recipe = recipeStore.recipesById[request.params['id']];
-    if (recipe == null) return _error(404, 'not_found', 'Recipe not found.');
+    if (recipe == null) return errorResponse(404, 'not_found', 'Recipe not found.');
     if (recipe.authorId != user.id) {
-      return _error(403, 'forbidden', 'You can only edit your own recipes.');
+      return errorResponse(403, 'forbidden', 'You can only edit your own recipes.');
     }
     final body = await _readJson(request);
     Response? error;
@@ -2199,26 +2170,26 @@ class Api {
         ..steps = fields.steps
         ..updatedAtMs = DateTime.now().millisecondsSinceEpoch;
       await recipeStore.saveRecipes();
-      return _json(200, _recipeJson(recipe, user, includeReviews: true));
+      return jsonResponse(200, _recipeJson(recipe, user, includeReviews: true));
     });
   }
 
   Future<Response> _deletePublicRecipe(Request request, StoredUser user) async {
     final recipe = recipeStore.recipesById[request.params['id']];
-    if (recipe == null) return _error(404, 'not_found', 'Recipe not found.');
+    if (recipe == null) return errorResponse(404, 'not_found', 'Recipe not found.');
     if (recipe.authorId != user.id) {
-      return _error(403, 'forbidden', 'You can only delete your own recipes.');
+      return errorResponse(403, 'forbidden', 'You can only delete your own recipes.');
     }
     return store.lock.synchronized(() async {
       await recipeStore.deleteRecipe(recipe.id);
-      return _json(200, {'ok': true});
+      return jsonResponse(200, {'ok': true});
     });
   }
 
   Response _listRecipeReviews(Request request, StoredUser user) {
     final recipe = recipeStore.recipesById[request.params['id']];
-    if (recipe == null) return _error(404, 'not_found', 'Recipe not found.');
-    return _json(200, {
+    if (recipe == null) return errorResponse(404, 'not_found', 'Recipe not found.');
+    return jsonResponse(200, {
       'reviews': recipeStore
           .reviewsFor(recipe.id)
           .map((r) => _reviewJson(r, user))
@@ -2230,15 +2201,15 @@ class Api {
   /// (1..5); text is optional.
   Future<Response> _putRecipeReview(Request request, StoredUser user) async {
     final recipe = recipeStore.recipesById[request.params['id']];
-    if (recipe == null) return _error(404, 'not_found', 'Recipe not found.');
+    if (recipe == null) return errorResponse(404, 'not_found', 'Recipe not found.');
     final body = await _readJson(request);
     final rating = body['rating'];
     if (rating is! int || rating < 1 || rating > 5) {
-      return _error(400, 'bad_rating', 'A rating from 1 to 5 is required.');
+      return errorResponse(400, 'bad_rating', 'A rating from 1 to 5 is required.');
     }
     final text = (body['text'] as String? ?? '').trim();
     if (text.length > 2000) {
-      return _error(400, 'bad_text', 'Review text is too long.');
+      return errorResponse(400, 'bad_text', 'Review text is too long.');
     }
     return store.lock.synchronized(() async {
       final now = DateTime.now().millisecondsSinceEpoch;
@@ -2264,13 +2235,13 @@ class Api {
                 ));
       }
       await recipeStore.saveReviews();
-      return _json(200, _recipeJson(recipe, user, includeReviews: true));
+      return jsonResponse(200, _recipeJson(recipe, user, includeReviews: true));
     });
   }
 
   Future<Response> _deleteRecipeReview(Request request, StoredUser user) async {
     final recipe = recipeStore.recipesById[request.params['id']];
-    if (recipe == null) return _error(404, 'not_found', 'Recipe not found.');
+    if (recipe == null) return errorResponse(404, 'not_found', 'Recipe not found.');
     return store.lock.synchronized(() async {
       final list = recipeStore.reviewsByRecipeId[recipe.id];
       if (list != null) {
@@ -2281,19 +2252,19 @@ class Api {
         list.removeWhere((r) => r.userId == user.id);
         await recipeStore.saveReviews();
       }
-      return _json(200, _recipeJson(recipe, user, includeReviews: true));
+      return jsonResponse(200, _recipeJson(recipe, user, includeReviews: true));
     });
   }
 
   Future<Response> _uploadRecipePhoto(Request request, StoredUser user) async {
     final recipe = recipeStore.recipesById[request.params['id']];
-    if (recipe == null) return _error(404, 'not_found', 'Recipe not found.');
+    if (recipe == null) return errorResponse(404, 'not_found', 'Recipe not found.');
     if (recipe.authorId != user.id) {
-      return _error(403, 'forbidden', 'You can only edit your own recipes.');
+      return errorResponse(403, 'forbidden', 'You can only edit your own recipes.');
     }
     final bytes = await _readCappedBytes(request, RecipeStore.maxPhotoBytes);
     if (bytes == null) {
-      return _error(413, 'photo_too_large', 'That image is too large.');
+      return errorResponse(413, 'photo_too_large', 'That image is too large.');
     }
     return store.lock.synchronized(() async {
       final photoId = 'r_${recipe.id}';
@@ -2302,37 +2273,37 @@ class Api {
         ..photoId = photoId
         ..updatedAtMs = DateTime.now().millisecondsSinceEpoch;
       await recipeStore.saveRecipes();
-      return _json(200, {'photoId': photoId});
+      return jsonResponse(200, {'photoId': photoId});
     });
   }
 
   Future<Response> _uploadReviewPhoto(Request request, StoredUser user) async {
     final recipe = recipeStore.recipesById[request.params['id']];
-    if (recipe == null) return _error(404, 'not_found', 'Recipe not found.');
+    if (recipe == null) return errorResponse(404, 'not_found', 'Recipe not found.');
     final review = recipeStore.reviewBy(recipe.id, user.id);
     if (review == null) {
-      return _error(404, 'no_review', 'Post your review before adding a photo.');
+      return errorResponse(404, 'no_review', 'Post your review before adding a photo.');
     }
     final bytes = await _readCappedBytes(request, RecipeStore.maxPhotoBytes);
     if (bytes == null) {
-      return _error(413, 'photo_too_large', 'That image is too large.');
+      return errorResponse(413, 'photo_too_large', 'That image is too large.');
     }
     return store.lock.synchronized(() async {
       final photoId = 'v_${review.id}';
       await recipeStore.writeMedia(photoId, bytes);
       review.photoId = photoId;
       await recipeStore.saveReviews();
-      return _json(200, {'photoId': photoId});
+      return jsonResponse(200, {'photoId': photoId});
     });
   }
 
   Future<Response> _getRecipeMedia(Request request, StoredUser user) async {
     final photoId = request.params['photoId']!;
     if (!_photoIdPattern.hasMatch(photoId)) {
-      return _error(400, 'bad_photo_id', 'Invalid photo id.');
+      return errorResponse(400, 'bad_photo_id', 'Invalid photo id.');
     }
     final bytes = await recipeStore.readMedia(photoId);
-    if (bytes == null) return _error(404, 'not_found', 'No such photo.');
+    if (bytes == null) return errorResponse(404, 'not_found', 'No such photo.');
     return Response(200, body: bytes, headers: {
       'Content-Type': 'image/jpeg',
       'Cache-Control': 'private, max-age=86400',
@@ -2367,11 +2338,11 @@ class Api {
     try {
       body = await _readJson(request);
     } on FormatException {
-      return _error(400, 'bad_request', 'Malformed request.');
+      return errorResponse(400, 'bad_request', 'Malformed request.');
     }
     final pluginId = body['pluginId'];
     if (pluginId is! String || !pluginIdPattern.hasMatch(pluginId)) {
-      return _error(400, 'bad_plugin_id', 'Invalid plugin id.');
+      return errorResponse(400, 'bad_plugin_id', 'Invalid plugin id.');
     }
     final name = (body['name'] as String?)?.trim();
     final safeName =
@@ -2379,7 +2350,7 @@ class Api {
 
     return store.lock.synchronized(() async {
       await store.recordPluginDownload(pluginId, safeName);
-      return _json(200, {'ok': true});
+      return jsonResponse(200, {'ok': true});
     });
   }
 
@@ -2404,13 +2375,13 @@ class Api {
       );
       subwayStore.roomsByCode[code] = room;
       await subwayStore.saveRooms();
-      return _json(201, {'code': code, 'createdAtMs': room.createdAtMs});
+      return jsonResponse(201, {'code': code, 'createdAtMs': room.createdAtMs});
     });
   }
 
   Response _listSubwayRooms(Request request, StoredUser user) {
     final rooms = subwayStore.roomsForUser(user.id);
-    return _json(200, {
+    return jsonResponse(200, {
       'rooms': rooms
           .map((r) => {
                 'code': r.code,
@@ -2434,22 +2405,22 @@ class Api {
     final body = await _readJson(request);
     final contactUserId = body['contactUserId'];
     if (contactUserId is! String || contactUserId.isEmpty) {
-      return _error(400, 'bad_request', 'Missing contactUserId.');
+      return errorResponse(400, 'bad_request', 'Missing contactUserId.');
     }
     return store.lock.synchronized(() async {
       final room = subwayStore.roomsByCode[code];
-      if (room == null) return _error(404, 'not_found', 'Room not found.');
+      if (room == null) return errorResponse(404, 'not_found', 'Room not found.');
       if (room.ownerId != user.id) {
-        return _error(403, 'forbidden', 'Only the room owner can invite.');
+        return errorResponse(403, 'forbidden', 'Only the room owner can invite.');
       }
       if (chatStore.conversationBetween(user.id, contactUserId) == null) {
-        return _error(403, 'not_a_contact',
+        return errorResponse(403, 'not_a_contact',
             'You can only invite people you already chat with.');
       }
       room.memberIds.add(contactUserId);
       room.updatedAtMs = _nowMs;
       await subwayStore.saveRooms();
-      return _json(200, {'ok': true});
+      return jsonResponse(200, {'ok': true});
     });
   }
 
@@ -2461,13 +2432,13 @@ class Api {
     final code = (request.params['code'] ?? '').toUpperCase();
     return store.lock.synchronized(() async {
       final room = subwayStore.roomsByCode[code];
-      if (room == null) return _error(404, 'not_found', 'Room not found.');
+      if (room == null) return errorResponse(404, 'not_found', 'Room not found.');
       if (room.memberIds.add(user.id)) {
         room.updatedAtMs = _nowMs;
         await subwayStore.saveRooms();
       }
       final stateJson = await subwayStore.readState(code);
-      return _json(200, {
+      return jsonResponse(200, {
         'ok': true,
         'code': room.code,
         'ownerId': room.ownerId,
@@ -2480,37 +2451,37 @@ class Api {
   Future<Response> _putSubwayState(Request request, StoredUser user) async {
     final code = (request.params['code'] ?? '').toUpperCase();
     final room = subwayStore.roomsByCode[code];
-    if (room == null) return _error(404, 'not_found', 'Room not found.');
+    if (room == null) return errorResponse(404, 'not_found', 'Room not found.');
     if (!room.isMember(user.id)) {
-      return _error(403, 'forbidden', 'Not a member of this room.');
+      return errorResponse(403, 'forbidden', 'Not a member of this room.');
     }
     final raw = await request.readAsString();
     if (raw.length > _maxSubwayStateBytes) {
-      return _error(413, 'too_large', 'Room state too large.');
+      return errorResponse(413, 'too_large', 'Room state too large.');
     }
     try {
       jsonDecode(raw); // shape-validate without needing to understand it
     } on FormatException {
-      return _error(400, 'bad_request', 'Malformed state.');
+      return errorResponse(400, 'bad_request', 'Malformed state.');
     }
     return store.lock.synchronized(() async {
       await subwayStore.writeState(code, raw);
       room.stateVersion++;
       room.updatedAtMs = _nowMs;
       await subwayStore.saveRooms();
-      return _json(200, {'ok': true, 'version': room.stateVersion});
+      return jsonResponse(200, {'ok': true, 'version': room.stateVersion});
     });
   }
 
   Future<Response> _getSubwayState(Request request, StoredUser user) async {
     final code = (request.params['code'] ?? '').toUpperCase();
     final room = subwayStore.roomsByCode[code];
-    if (room == null) return _error(404, 'not_found', 'Room not found.');
+    if (room == null) return errorResponse(404, 'not_found', 'Room not found.');
     if (!room.isMember(user.id)) {
-      return _error(403, 'forbidden', 'Not a member of this room.');
+      return errorResponse(403, 'forbidden', 'Not a member of this room.');
     }
     final stateJson = await subwayStore.readState(code);
-    if (stateJson == null) return _error(404, 'no_state', 'Room has no state yet.');
+    if (stateJson == null) return errorResponse(404, 'no_state', 'Room has no state yet.');
     return Response.ok(stateJson, headers: {'Content-Type': 'application/json'});
   }
 
@@ -2522,21 +2493,21 @@ class Api {
     final code = (request.params['code'] ?? '').toUpperCase();
     return store.lock.synchronized(() async {
       final room = subwayStore.roomsByCode[code];
-      if (room == null) return _error(404, 'not_found', 'Room not found.');
+      if (room == null) return errorResponse(404, 'not_found', 'Room not found.');
       if (!room.isMember(user.id)) {
-        return _error(403, 'forbidden', 'Not a member of this room.');
+        return errorResponse(403, 'forbidden', 'Not a member of this room.');
       }
       final now = _nowMs;
       final held = room.clockHolderId != null &&
           room.clockLeaseExpiresAtMs != null &&
           room.clockLeaseExpiresAtMs! > now;
       if (held && room.clockHolderId != user.id) {
-        return _json(200, {'granted': false, 'holderId': room.clockHolderId});
+        return jsonResponse(200, {'granted': false, 'holderId': room.clockHolderId});
       }
       room.clockHolderId = user.id;
       room.clockLeaseExpiresAtMs = now + _clockLeaseTtl.inMilliseconds;
       await subwayStore.saveRooms();
-      return _json(200, {
+      return jsonResponse(200, {
         'granted': true,
         'leaseExpiresAtMs': room.clockLeaseExpiresAtMs,
       });
@@ -2547,13 +2518,13 @@ class Api {
     final code = (request.params['code'] ?? '').toUpperCase();
     return store.lock.synchronized(() async {
       final room = subwayStore.roomsByCode[code];
-      if (room == null) return _error(404, 'not_found', 'Room not found.');
+      if (room == null) return errorResponse(404, 'not_found', 'Room not found.');
       if (room.clockHolderId == user.id) {
         room.clockHolderId = null;
         room.clockLeaseExpiresAtMs = null;
         await subwayStore.saveRooms();
       }
-      return _json(200, {'ok': true});
+      return jsonResponse(200, {'ok': true});
     });
   }
 
@@ -2565,12 +2536,12 @@ class Api {
   Future<Response> _mintSubwayTicket(Request request, StoredUser user) async {
     final code = (request.params['code'] ?? '').toUpperCase();
     final room = subwayStore.roomsByCode[code];
-    if (room == null) return _error(404, 'not_found', 'Room not found.');
+    if (room == null) return errorResponse(404, 'not_found', 'Room not found.');
     if (!room.isMember(user.id)) {
-      return _error(403, 'forbidden', 'Not a member of this room.');
+      return errorResponse(403, 'forbidden', 'Not a member of this room.');
     }
     final ticket = _subwayTickets.mint(user.id, code);
-    return _json(200, {
+    return jsonResponse(200, {
       'ticket': ticket,
       'ttlSeconds': SubwayTicketStore.ttl.inSeconds,
     });
@@ -2584,15 +2555,15 @@ class Api {
     final code = (request.params['room'] ?? '').toUpperCase();
     final ticket = request.url.queryParameters['ticket'];
     if (ticket == null) {
-      return _error(401, 'unauthorized', 'Missing ticket.');
+      return errorResponse(401, 'unauthorized', 'Missing ticket.');
     }
     final redeemed = _subwayTickets.redeem(ticket, code);
     if (redeemed == null) {
-      return _error(401, 'unauthorized', 'Invalid or expired ticket.');
+      return errorResponse(401, 'unauthorized', 'Invalid or expired ticket.');
     }
     final room = subwayStore.roomsByCode[code];
     if (room == null || !room.isMember(redeemed.userId)) {
-      return _error(403, 'forbidden', 'Not a member of this room.');
+      return errorResponse(403, 'forbidden', 'Not a member of this room.');
     }
     return _subwayRelay.subwayRoomHandler(request);
   }
@@ -2674,24 +2645,24 @@ class Api {
 
   Future<Response> _createFamily(Request request, StoredUser user) async {
     if (familyStore.familyIdByUserId.containsKey(user.id)) {
-      return _error(409, 'already_in_family',
+      return errorResponse(409, 'already_in_family',
           'You already belong to a family. Leave it before creating another.');
     }
     final body = await _readJson(request);
     final name = (body['name'] as String?)?.trim() ?? '';
     if (name.isEmpty || name.length > 60) {
-      return _error(400, 'bad_name', 'Family name must be 1–60 characters.');
+      return errorResponse(400, 'bad_name', 'Family name must be 1–60 characters.');
     }
     // No control characters: the name is later interpolated into an email
     // Subject header (see Mailer.sendFamilyInviteEmail), where a CR/LF would
     // be an SMTP header-injection vector.
     if (name.codeUnits.any((c) => c < 0x20 || c == 0x7f)) {
-      return _error(400, 'bad_name', 'Family name contains invalid characters.');
+      return errorResponse(400, 'bad_name', 'Family name contains invalid characters.');
     }
 
     return store.lock.synchronized(() async {
       if (familyStore.familyIdByUserId.containsKey(user.id)) {
-        return _error(409, 'already_in_family',
+        return errorResponse(409, 'already_in_family',
             'You already belong to a family. Leave it before creating another.');
       }
       final now = _nowMs;
@@ -2708,7 +2679,7 @@ class Api {
       familyStore.familyIdByUserId[user.id] = family.id;
       await familyStore.saveFamilies();
       await familyStore.saveMembers();
-      return _json(
+      return jsonResponse(
           201, _familyJson(family, user, includeInvites: true));
     });
   }
@@ -2716,23 +2687,23 @@ class Api {
   Response _getMyFamily(Request request, StoredUser user) {
     final family = familyStore.familyForUser(user.id);
     if (family == null) {
-      return _error(404, 'no_family', 'You are not in a family yet.');
+      return errorResponse(404, 'no_family', 'You are not in a family yet.');
     }
-    return _json(200, _familyJson(family, user, includeInvites: true));
+    return jsonResponse(200, _familyJson(family, user, includeInvites: true));
   }
 
   Future<Response> _inviteFamilyMember(Request request, StoredUser user) async {
     final familyId = request.params['id']!;
     final family = familyStore.familiesById[familyId];
-    if (family == null) return _error(404, 'not_found', 'Family not found.');
+    if (family == null) return errorResponse(404, 'not_found', 'Family not found.');
     if (family.ownerUserId != user.id) {
-      return _error(403, 'forbidden', 'Only the family owner can invite members.');
+      return errorResponse(403, 'forbidden', 'Only the family owner can invite members.');
     }
     final body = await _readJson(request);
     final email = _normalizeEmail(body['email']);
-    if (email == null) return _error(400, 'bad_email', 'Invalid email.');
+    if (email == null) return errorResponse(400, 'bad_email', 'Invalid email.');
     if (!_inviteLimiter.allow(user.id)) {
-      return _error(429, 'rate_limited',
+      return errorResponse(429, 'rate_limited',
           'Too many invites sent recently. Try again later.');
     }
 
@@ -2740,18 +2711,18 @@ class Api {
       final now = _nowMs;
       final existingUserId = store.userIdByEmail[email];
       if (existingUserId != null && familyStore.isMember(familyId, existingUserId)) {
-        return _error(409, 'already_member', 'That person is already in the family.');
+        return errorResponse(409, 'already_member', 'That person is already in the family.');
       }
       final alreadyPending = familyStore.invitesById.values.any((i) =>
           i.familyId == familyId && i.inviteeEmail == email && i.isPendingAt(now));
       if (alreadyPending) {
-        return _error(409, 'invite_pending', 'An invite is already pending for that email.');
+        return errorResponse(409, 'invite_pending', 'An invite is already pending for that email.');
       }
 
       final owner = store.usersById[user.id]!;
       final limit = _familyMemberLimitFor(owner);
       if (familyStore.slotsUsed(familyId, now) >= limit) {
-        return _error(403, 'family_limit_exceeded',
+        return errorResponse(403, 'family_limit_exceeded',
             'Your plan allows up to $limit family members. Upgrade your plan to invite more.');
       }
 
@@ -2767,7 +2738,7 @@ class Api {
       await familyStore.saveInvites();
       await _sendFamilyInviteEmail(
           toEmail: email, inviterEmail: user.email, familyName: family.name);
-      return _json(201, {
+      return jsonResponse(201, {
         'id': invite.id,
         'email': invite.inviteeEmail,
         'expiresAtMs': invite.expiresAtMs,
@@ -2779,7 +2750,7 @@ class Api {
     final now = _nowMs;
     final invites =
         familyStore.pendingInvitesForEmail(user.email.toLowerCase(), now);
-    return _json(200, {
+    return jsonResponse(200, {
       'invites': invites.map((i) {
         final family = familyStore.familiesById[i.familyId];
         final inviter = store.usersById[i.invitedByUserId];
@@ -2801,17 +2772,17 @@ class Api {
       final now = _nowMs;
       final invite = familyStore.invitesById[inviteId];
       if (invite == null || invite.inviteeEmail != user.email.toLowerCase()) {
-        return _error(404, 'not_found', 'Invite not found.');
+        return errorResponse(404, 'not_found', 'Invite not found.');
       }
       if (!invite.isPendingAt(now)) {
-        return _error(410, 'invite_not_pending', 'This invite is no longer available.');
+        return errorResponse(410, 'invite_not_pending', 'This invite is no longer available.');
       }
       final family = familyStore.familiesById[invite.familyId];
       if (family == null) {
-        return _error(404, 'not_found', 'This family no longer exists.');
+        return errorResponse(404, 'not_found', 'This family no longer exists.');
       }
       if (familyStore.familyIdByUserId.containsKey(user.id)) {
-        return _error(409, 'already_in_family',
+        return errorResponse(409, 'already_in_family',
             'You already belong to a family. Leave it before accepting a new invite.');
       }
       final owner = store.usersById[family.ownerUserId];
@@ -2819,7 +2790,7 @@ class Api {
           ? kFamilyMemberLimit[kDefaultPlanId]!
           : _familyMemberLimitFor(owner);
       if (familyStore.membersOf(family.id).length >= limit) {
-        return _error(403, 'family_limit_exceeded',
+        return errorResponse(403, 'family_limit_exceeded',
             'This family is full.');
       }
 
@@ -2834,7 +2805,7 @@ class Api {
       invite.respondedAtMs = now;
       await familyStore.saveMembers();
       await familyStore.saveInvites();
-      return _json(200, _familyJson(family, user, includeInvites: false));
+      return jsonResponse(200, _familyJson(family, user, includeInvites: false));
     });
   }
 
@@ -2844,15 +2815,15 @@ class Api {
       final now = _nowMs;
       final invite = familyStore.invitesById[inviteId];
       if (invite == null || invite.inviteeEmail != user.email.toLowerCase()) {
-        return _error(404, 'not_found', 'Invite not found.');
+        return errorResponse(404, 'not_found', 'Invite not found.');
       }
       if (!invite.isPendingAt(now)) {
-        return _error(410, 'invite_not_pending', 'This invite is no longer available.');
+        return errorResponse(410, 'invite_not_pending', 'This invite is no longer available.');
       }
       invite.status = 'declined';
       invite.respondedAtMs = now;
       await familyStore.saveInvites();
-      return _json(200, {'ok': true});
+      return jsonResponse(200, {'ok': true});
     });
   }
 
@@ -2860,14 +2831,14 @@ class Api {
     final familyId = request.params['id']!;
     final targetUserId = request.params['userId']!;
     final family = familyStore.familiesById[familyId];
-    if (family == null) return _error(404, 'not_found', 'Family not found.');
+    if (family == null) return errorResponse(404, 'not_found', 'Family not found.');
     final isOwner = family.ownerUserId == user.id;
     final isSelf = targetUserId == user.id;
     if (!isOwner && !isSelf) {
-      return _error(403, 'forbidden', 'Only the family owner can remove other members.');
+      return errorResponse(403, 'forbidden', 'Only the family owner can remove other members.');
     }
     if (targetUserId == family.ownerUserId) {
-      return _error(409, 'owner_cannot_leave',
+      return errorResponse(409, 'owner_cannot_leave',
           'The owner cannot leave the family. Delete the family instead.');
     }
     return store.lock.synchronized(() async {
@@ -2876,16 +2847,16 @@ class Api {
         familyStore.familyIdByUserId.remove(targetUserId);
       }
       await familyStore.saveMembers();
-      return _json(200, {'ok': true});
+      return jsonResponse(200, {'ok': true});
     });
   }
 
   Future<Response> _deleteFamily(Request request, StoredUser user) async {
     final familyId = request.params['id']!;
     final family = familyStore.familiesById[familyId];
-    if (family == null) return _error(404, 'not_found', 'Family not found.');
+    if (family == null) return errorResponse(404, 'not_found', 'Family not found.');
     if (family.ownerUserId != user.id) {
-      return _error(403, 'forbidden', 'Only the family owner can delete the family.');
+      return errorResponse(403, 'forbidden', 'Only the family owner can delete the family.');
     }
     return store.lock.synchronized(() async {
       familyStore.deleteFamilyData(familyId);
@@ -2893,27 +2864,27 @@ class Api {
       await familyStore.saveMembers();
       await familyStore.saveInvites();
       await familyStore.saveEvents();
-      return _json(200, {'ok': true});
+      return jsonResponse(200, {'ok': true});
     });
   }
 
   Future<Response> _addSharedEvent(Request request, StoredUser user) async {
     final familyId = request.params['id']!;
     final family = familyStore.familiesById[familyId];
-    if (family == null) return _error(404, 'not_found', 'Family not found.');
+    if (family == null) return errorResponse(404, 'not_found', 'Family not found.');
     if (!familyStore.isMember(familyId, user.id)) {
-      return _error(403, 'forbidden', 'You are not a member of this family.');
+      return errorResponse(403, 'forbidden', 'You are not a member of this family.');
     }
     final body = await _readJson(request);
     final parsed = _parseSharedEventBody(body, familyId);
     if (parsed is _ParseError) {
-      return _error(400, parsed.code, parsed.message);
+      return errorResponse(400, parsed.code, parsed.message);
     }
     final fields = parsed as _ParsedSharedEvent;
     if (fields.visibility == 'subset') {
       for (final id in fields.visibleMemberUserIds) {
         if (!familyStore.isMember(familyId, id)) {
-          return _error(400, 'bad_member', 'One of the chosen members is not in this family.');
+          return errorResponse(400, 'bad_member', 'One of the chosen members is not in this family.');
         }
       }
     }
@@ -2942,42 +2913,42 @@ class Api {
       familyStore.sharedEventsByFamilyId
           .putIfAbsent(familyId, () => {})[event.id] = event;
       await familyStore.saveEvents();
-      return _json(201, _sharedEventJson(event));
+      return jsonResponse(201, _sharedEventJson(event));
     });
   }
 
   Response _listSharedEvents(Request request, StoredUser user) {
     final familyId = request.params['id']!;
     if (familyStore.familiesById[familyId] == null) {
-      return _error(404, 'not_found', 'Family not found.');
+      return errorResponse(404, 'not_found', 'Family not found.');
     }
     if (!familyStore.isMember(familyId, user.id)) {
-      return _error(403, 'forbidden', 'You are not a member of this family.');
+      return errorResponse(403, 'forbidden', 'You are not a member of this family.');
     }
     final events = familyStore.visibleEvents(familyId, user.id);
-    return _json(200, {'events': events.map(_sharedEventJson).toList()});
+    return jsonResponse(200, {'events': events.map(_sharedEventJson).toList()});
   }
 
   Future<Response> _updateSharedEvent(Request request, StoredUser user) async {
     final familyId = request.params['id']!;
     final eventId = request.params['eventId']!;
     final family = familyStore.familiesById[familyId];
-    if (family == null) return _error(404, 'not_found', 'Family not found.');
+    if (family == null) return errorResponse(404, 'not_found', 'Family not found.');
     final event = familyStore.sharedEventsByFamilyId[familyId]?[eventId];
-    if (event == null) return _error(404, 'not_found', 'Event not found.');
+    if (event == null) return errorResponse(404, 'not_found', 'Event not found.');
     if (event.authorUserId != user.id && family.ownerUserId != user.id) {
-      return _error(403, 'forbidden', 'Only the author or family owner can edit this event.');
+      return errorResponse(403, 'forbidden', 'Only the author or family owner can edit this event.');
     }
     final body = await _readJson(request);
     final parsed = _parseSharedEventBody(body, familyId);
     if (parsed is _ParseError) {
-      return _error(400, parsed.code, parsed.message);
+      return errorResponse(400, parsed.code, parsed.message);
     }
     final fields = parsed as _ParsedSharedEvent;
     if (fields.visibility == 'subset') {
       for (final id in fields.visibleMemberUserIds) {
         if (!familyStore.isMember(familyId, id)) {
-          return _error(400, 'bad_member', 'One of the chosen members is not in this family.');
+          return errorResponse(400, 'bad_member', 'One of the chosen members is not in this family.');
         }
       }
     }
@@ -2998,7 +2969,7 @@ class Api {
         ..visibleMemberUserIds = fields.visibleMemberUserIds
         ..updatedAtMs = _nowMs;
       await familyStore.saveEvents();
-      return _json(200, _sharedEventJson(event));
+      return jsonResponse(200, _sharedEventJson(event));
     });
   }
 
@@ -3006,16 +2977,16 @@ class Api {
     final familyId = request.params['id']!;
     final eventId = request.params['eventId']!;
     final family = familyStore.familiesById[familyId];
-    if (family == null) return _error(404, 'not_found', 'Family not found.');
+    if (family == null) return errorResponse(404, 'not_found', 'Family not found.');
     final event = familyStore.sharedEventsByFamilyId[familyId]?[eventId];
-    if (event == null) return _error(404, 'not_found', 'Event not found.');
+    if (event == null) return errorResponse(404, 'not_found', 'Event not found.');
     if (event.authorUserId != user.id && family.ownerUserId != user.id) {
-      return _error(403, 'forbidden', 'Only the author or family owner can delete this event.');
+      return errorResponse(403, 'forbidden', 'Only the author or family owner can delete this event.');
     }
     return store.lock.synchronized(() async {
       familyStore.sharedEventsByFamilyId[familyId]?.remove(eventId);
       await familyStore.saveEvents();
-      return _json(200, {'ok': true});
+      return jsonResponse(200, {'ok': true});
     });
   }
 
@@ -3098,42 +3069,42 @@ class Api {
     // Must be exactly a base64-encoded 32-byte X25519 public key — anything
     // else would silently break every peer that tries to encrypt to it.
     if (key is! String || key.isEmpty || key.length > 200) {
-      return _error(400, 'bad_key', 'Invalid public key.');
+      return errorResponse(400, 'bad_key', 'Invalid public key.');
     }
     try {
       if (base64Decode(key).length != 32) {
-        return _error(400, 'bad_key', 'Invalid public key.');
+        return errorResponse(400, 'bad_key', 'Invalid public key.');
       }
     } on FormatException {
-      return _error(400, 'bad_key', 'Invalid public key.');
+      return errorResponse(400, 'bad_key', 'Invalid public key.');
     }
     return store.lock.synchronized(() async {
       chatStore.publicKeyByUserId[user.id] = key;
       await chatStore.saveKeys();
-      return _json(200, {'ok': true});
+      return jsonResponse(200, {'ok': true});
     });
   }
 
   Response _getChatKey(Request request, StoredUser user) {
     final userId = request.params['userId']!;
     final key = chatStore.publicKeyByUserId[userId];
-    if (key == null) return _error(404, 'not_found', 'No public key for that user.');
-    return _json(200, {'userId': userId, 'publicKey': key});
+    if (key == null) return errorResponse(404, 'not_found', 'No public key for that user.');
+    return jsonResponse(200, {'userId': userId, 'publicKey': key});
   }
 
   Future<Response> _sendChatInvite(Request request, StoredUser user) async {
     if (!chatStore.publicKeyByUserId.containsKey(user.id)) {
-      return _error(400, 'no_key',
+      return errorResponse(400, 'no_key',
           'Set up chat encryption on this device first.');
     }
     final body = await _readJson(request);
     final email = _normalizeEmail(body['email']);
-    if (email == null) return _error(400, 'bad_email', 'Invalid email.');
+    if (email == null) return errorResponse(400, 'bad_email', 'Invalid email.');
     if (email == user.email.toLowerCase()) {
-      return _error(400, 'bad_email', 'You cannot invite yourself.');
+      return errorResponse(400, 'bad_email', 'You cannot invite yourself.');
     }
     if (!_inviteLimiter.allow(user.id)) {
-      return _error(429, 'rate_limited',
+      return errorResponse(429, 'rate_limited',
           'Too many invites sent recently. Try again later.');
     }
 
@@ -3142,12 +3113,12 @@ class Api {
       final existingUserId = store.userIdByEmail[email];
       if (existingUserId != null &&
           chatStore.conversationBetween(user.id, existingUserId) != null) {
-        return _error(409, 'already_chatting', 'You already have a chat with that person.');
+        return errorResponse(409, 'already_chatting', 'You already have a chat with that person.');
       }
       final alreadyPending = chatStore.invitesById.values.any((i) =>
           i.fromUserId == user.id && i.toEmail == email && i.isPendingAt(now));
       if (alreadyPending) {
-        return _error(409, 'invite_pending', 'An invite is already pending for that email.');
+        return errorResponse(409, 'invite_pending', 'An invite is already pending for that email.');
       }
 
       final invite = ChatInvite(
@@ -3160,7 +3131,7 @@ class Api {
       chatStore.invitesById[invite.id] = invite;
       await chatStore.saveInvites();
       await _sendChatInviteEmail(toEmail: email, inviterEmail: user.email);
-      return _json(201, {
+      return jsonResponse(201, {
         'id': invite.id,
         'email': invite.toEmail,
         'expiresAtMs': invite.expiresAtMs,
@@ -3171,7 +3142,7 @@ class Api {
   Response _listChatInvites(Request request, StoredUser user) {
     final now = _nowMs;
     final invites = chatStore.pendingInvitesForEmail(user.email.toLowerCase(), now);
-    return _json(200, {
+    return jsonResponse(200, {
       'invites': invites.map((i) {
         final inviter = store.usersById[i.fromUserId];
         return {
@@ -3186,7 +3157,7 @@ class Api {
 
   Future<Response> _acceptChatInvite(Request request, StoredUser user) async {
     if (!chatStore.publicKeyByUserId.containsKey(user.id)) {
-      return _error(400, 'no_key',
+      return errorResponse(400, 'no_key',
           'Set up chat encryption on this device first.');
     }
     final inviteId = request.params['inviteId']!;
@@ -3194,10 +3165,10 @@ class Api {
       final now = _nowMs;
       final invite = chatStore.invitesById[inviteId];
       if (invite == null || invite.toEmail != user.email.toLowerCase()) {
-        return _error(404, 'not_found', 'Invite not found.');
+        return errorResponse(404, 'not_found', 'Invite not found.');
       }
       if (!invite.isPendingAt(now)) {
-        return _error(410, 'invite_not_pending', 'This invite is no longer available.');
+        return errorResponse(410, 'invite_not_pending', 'This invite is no longer available.');
       }
 
       var conversation = chatStore.conversationBetween(invite.fromUserId, user.id);
@@ -3214,7 +3185,7 @@ class Api {
       await chatStore.saveInvites();
 
       final peer = store.usersById[invite.fromUserId];
-      return _json(200, _conversationJson(conversation, user.id, peer));
+      return jsonResponse(200, _conversationJson(conversation, user.id, peer));
     });
   }
 
@@ -3224,12 +3195,12 @@ class Api {
       final now = _nowMs;
       final invite = chatStore.invitesById[inviteId];
       if (invite == null || invite.toEmail != user.email.toLowerCase()) {
-        return _error(404, 'not_found', 'Invite not found.');
+        return errorResponse(404, 'not_found', 'Invite not found.');
       }
       invite.status = 'declined';
       invite.respondedAtMs = now;
       await chatStore.saveInvites();
-      return _json(200, {'ok': true});
+      return jsonResponse(200, {'ok': true});
     });
   }
 
@@ -3247,7 +3218,7 @@ class Api {
 
   Response _listChatConversations(Request request, StoredUser user) {
     final conversations = chatStore.conversationsForUser(user.id);
-    return _json(200, {
+    return jsonResponse(200, {
       'conversations': conversations.map((c) {
         final peer = store.usersById[c.otherUser(user.id)];
         return _conversationJson(c, user.id, peer);
@@ -3259,11 +3230,11 @@ class Api {
     final conversationId = request.params['id']!;
     final conversation = chatStore.conversationsById[conversationId];
     if (conversation == null || !conversation.hasUser(user.id)) {
-      return _error(404, 'not_found', 'Conversation not found.');
+      return errorResponse(404, 'not_found', 'Conversation not found.');
     }
     final sinceMs = int.tryParse(request.url.queryParameters['since'] ?? '');
     final messages = chatStore.messagesFor(conversationId, sinceMs: sinceMs);
-    return _json(200, {
+    return jsonResponse(200, {
       'messages': messages.map((m) => {
             'id': m.id,
             'senderUserId': m.senderUserId,
@@ -3277,7 +3248,7 @@ class Api {
     final conversationId = request.params['id']!;
     final conversation = chatStore.conversationsById[conversationId];
     if (conversation == null || !conversation.hasUser(user.id)) {
-      return _error(404, 'not_found', 'Conversation not found.');
+      return errorResponse(404, 'not_found', 'Conversation not found.');
     }
     final body = await _readJson(request);
     final forRecipient = body['blobForRecipient'];
@@ -3288,7 +3259,7 @@ class Api {
         forSender.isEmpty ||
         forRecipient.length > _maxChatBlobLength ||
         forSender.length > _maxChatBlobLength) {
-      return _error(400, 'bad_message', 'Invalid message payload.');
+      return errorResponse(400, 'bad_message', 'Invalid message payload.');
     }
 
     return store.lock.synchronized(() async {
@@ -3308,7 +3279,7 @@ class Api {
             0, messages.length - _maxChatMessagesPerConversation);
       }
       await chatStore.saveMessages();
-      return _json(201, {'id': message.id, 'createdAtMs': message.createdAtMs});
+      return jsonResponse(201, {'id': message.id, 'createdAtMs': message.createdAtMs});
     });
   }
 
@@ -3344,7 +3315,7 @@ class Api {
   Response _adminUsers(Request request) {
     final users = store.usersById.values.toList()
       ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
-    return _json(200, {'users': users.map(_adminUserJson).toList()});
+    return jsonResponse(200, {'users': users.map(_adminUserJson).toList()});
   }
 
   Map<String, dynamic> _adminStatsJson() {
@@ -3374,12 +3345,12 @@ class Api {
     };
   }
 
-  Response _adminStats(Request request) => _json(200, _adminStatsJson());
+  Response _adminStats(Request request) => jsonResponse(200, _adminStatsJson());
 
   Future<Response> _adminMetrics(Request request) async {
     final metrics = await SystemMetrics.sample();
     await store.metricsHistory.addSample(metrics);
-    return _json(200, metrics.toJson());
+    return jsonResponse(200, metrics.toJson());
   }
 
   /// Persisted graph history for the admin dashboard's range selector —
@@ -3390,7 +3361,7 @@ class Api {
   Response _adminMetricsHistory(Request request) {
     final range = request.url.queryParameters['range'] ?? 'minute';
     final points = store.metricsHistory.pointsForRange(range);
-    return _json(200, {
+    return jsonResponse(200, {
       'range': range,
       'points': points.map((p) => p.toJson()).toList(),
     });
@@ -3406,7 +3377,7 @@ class Api {
         Duration(hours: hours).inMilliseconds;
     final events = store.activity.where((a) => a.createdAtMs >= cutoff).toList()
       ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
-    return _json(200, {'events': events.map((e) => e.toJson()).toList()});
+    return jsonResponse(200, {'events': events.map((e) => e.toJson()).toList()});
   }
 
   /// Approves a pending account, which is how accounts normally become
@@ -3421,13 +3392,13 @@ class Api {
     } catch (_) {}
     email = email?.trim().toLowerCase();
     if (email == null || email.isEmpty) {
-      return _error(400, 'bad_request', 'email is required.');
+      return errorResponse(400, 'bad_request', 'email is required.');
     }
     return store.lock.synchronized(() async {
       final userId = store.userIdByEmail[email];
       final user = userId == null ? null : store.usersById[userId];
       if (user == null) {
-        return _error(404, 'not_found', 'No account with that email.');
+        return errorResponse(404, 'not_found', 'No account with that email.');
       }
       user.status = 'active';
       user.verificationTokenHash = null;
@@ -3452,13 +3423,13 @@ class Api {
     } catch (_) {}
     email = email?.trim().toLowerCase();
     if (email == null || email.isEmpty) {
-      return _error(400, 'bad_request', 'email is required.');
+      return errorResponse(400, 'bad_request', 'email is required.');
     }
     return store.lock.synchronized(() async {
       final userId = store.userIdByEmail[email];
       final user = userId == null ? null : store.usersById[userId];
       if (user == null) {
-        return _error(404, 'not_found', 'No account with that email.');
+        return errorResponse(404, 'not_found', 'No account with that email.');
       }
       user.status = 'pending';
       user.verificationTokenHash = null;
@@ -3480,7 +3451,7 @@ class Api {
   Response _adminFormResponse(Request request, String path,
       {Map<String, dynamic>? json, String? fragment}) {
     if (request.headers['x-admin-key'] != null) {
-      return _json(200, json ?? {'ok': true});
+      return jsonResponse(200, json ?? {'ok': true});
     }
     final key = request.url.queryParameters['key'];
     final withKey = key != null ? '$path?key=${Uri.encodeQueryComponent(key)}' : path;
@@ -3499,17 +3470,17 @@ class Api {
     final email = form['email']?.trim().toLowerCase();
     final planId = form['planId'];
     if (email == null || email.isEmpty) {
-      return _error(400, 'bad_request', 'email is required.');
+      return errorResponse(400, 'bad_request', 'email is required.');
     }
     if (planId == null || !kPlanQuotaBytes.containsKey(planId)) {
-      return _error(400, 'bad_plan',
+      return errorResponse(400, 'bad_plan',
           'planId must be one of: ${kPlanQuotaBytes.keys.join(', ')}.');
     }
     return store.lock.synchronized(() async {
       final userId = store.userIdByEmail[email];
       final user = userId == null ? null : store.usersById[userId];
       if (user == null) {
-        return _error(404, 'not_found', 'No account with that email.');
+        return errorResponse(404, 'not_found', 'No account with that email.');
       }
       user.planId = planId;
       user.quotaBytes = kPlanQuotaBytes[planId]!;
@@ -3527,7 +3498,7 @@ class Api {
   /// page only ever carries this server's admin key.
   Future<Response> _adminGroceriesSync(Request request) async {
     if (!config.groceriesAdminEnabled) {
-      return _error(404, 'not_configured',
+      return errorResponse(404, 'not_configured',
           'LUMA_GROCERIES_ADMIN_KEY is not set on this server.');
     }
     Map<String, String> form = const {};
@@ -3562,7 +3533,7 @@ class Api {
           key != null ? '/admin?key=${Uri.encodeQueryComponent(key)}' : '/admin';
       return Response.found('$withKey#control');
     } catch (_) {
-      return _error(
+      return errorResponse(
           502, 'upstream_error', 'Could not reach the groceries server.');
     } finally {
       httpClient.close();
@@ -3575,7 +3546,7 @@ class Api {
   /// operator hasn't wired the groceries server up.
   Future<Response> _adminGroceriesStatus(Request request) async {
     if (!config.groceriesAdminEnabled) {
-      return _json(200, {'configured': false});
+      return jsonResponse(200, {'configured': false});
     }
     final httpClient = HttpClient();
     try {
@@ -3586,148 +3557,29 @@ class Api {
           await upstream.close().timeout(const Duration(seconds: 15));
       final body = await response.transform(utf8.decoder).join();
       if (response.statusCode != 200) {
-        return _error(502, 'upstream_error',
+        return errorResponse(502, 'upstream_error',
             'Groceries server returned ${response.statusCode}.');
       }
       return Response(200,
           body: '{"configured":true,"status":$body}',
           headers: {'Content-Type': 'application/json'});
     } catch (_) {
-      return _error(
+      return errorResponse(
           502, 'upstream_error', 'Could not reach the groceries server.');
     } finally {
       httpClient.close();
     }
   }
 
-  /// Triggers a full server update: git pull → rebuild the image → recreate
-  /// the luma-sync container.
-  ///
-  /// This can't be driven directly from inside the luma-sync container
-  /// (even over the host Docker socket mounted into it, see
-  /// docker-compose.yml): `docker compose up -d --build` recreating *this
-  /// very container* is a multi-step swap (stop old -> rename -> create new
-  /// -> start new -> remove old), and stopping the old container kills every
-  /// process inside it — including the `docker compose` CLI orchestrating
-  /// the rest of the swap — before it ever starts the new one. The container
-  /// gets stuck at "Created" and the deploy goes nowhere.
-  ///
-  /// So this only drops a request file on the `/data` volume.
-  /// `deploy-watcher.sh`, running as a systemd service directly on the host
-  /// (outside any container, see luma-deploy-watcher.service), polls for
-  /// that file and does the actual git pull + rebuild — unaffected by the
-  /// luma-sync container being torn down and recreated out from under it.
-  Future<Response> _adminDeploy(Request request) async {
-    if (!config.repoPathConfigured) {
-      return _error(404, 'not_configured',
-          "LUMA_REPO_PATH is not set on this server. Set it in .env to this "
-          "repo's absolute path on the host, then restart.");
-    }
+  /// The "Update & restart server" button. All of it — the phase model, the
+  /// request handling and the dashboard's script — lives in
+  /// deploy_console.dart; see [DeployConsole] for why a deploy can't run
+  /// inside this container.
+  late final DeployConsole _deploy = DeployConsole(
+    dataDir: config.dataDir,
+    repoPathConfigured: config.repoPathConfigured,
+  );
 
-    final requestFile = File('${config.dataDir}/deploy.request');
-    final pidFile = File('${config.dataDir}/deploy.pid');
-    final logFile = File('${config.dataDir}/deploy.log');
-    final statusFile = File('${config.dataDir}/deploy.status');
-
-    // The PID in this file is a host PID, meaningless to check for
-    // liveness from inside this container's own PID namespace — its mere
-    // existence (written when deploy-watcher.sh picks up a request, removed
-    // when it finishes) is the running signal instead. A run killed
-    // mid-flight (host reboot, systemctl stop) leaves one behind though, so
-    // an old file is treated as debris rather than as a deploy that has been
-    // running for days — otherwise the button stays refused forever.
-    if (await _deployRunning()) {
-      return _error(409, 'deploy_running',
-          'A deploy is already in progress. Wait for it to finish.');
-    }
-    await _deleteQuietly(pidFile);
-
-    // Clear the previous run's output before asking for a new one. The
-    // dashboard reads the log to decide how the deploy went, so leaving the
-    // last one in place makes a request the watcher never picks up look
-    // like a deploy that finished instantly.
-    await _deleteQuietly(logFile);
-    await _deleteQuietly(statusFile);
-
-    await requestFile.parent.create(recursive: true);
-    await requestFile.writeAsString(DateTime.now().toIso8601String());
-
-    return _json(200, {'started': true, 'watcherAlive': await _watcherAlive()});
-  }
-
-  /// A `deploy.pid` younger than this belongs to a running deploy; an older
-  /// one is left over from a run that was killed, and is ignored.
-  static const _deployPidMaxAge = Duration(minutes: 30);
-
-  /// deploy-watcher.sh counts as alive while its heartbeat file has been
-  /// touched recently — it rewrites it every ~10s.
-  static const _deployWatcherMaxAge = Duration(seconds: 60);
-
-  Future<void> _deleteQuietly(File file) async {
-    try {
-      if (await file.exists()) await file.delete();
-    } catch (_) {}
-  }
-
-  Future<bool> _fileNewerThan(String name, Duration maxAge) async {
-    final file = File('${config.dataDir}/$name');
-    try {
-      if (!await file.exists()) return false;
-      return DateTime.now().difference(await file.lastModified()) < maxAge;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  Future<bool> _deployRunning() =>
-      _fileNewerThan('deploy.pid', _deployPidMaxAge);
-
-  Future<bool> _watcherAlive() =>
-      _fileNewerThan('deploy.watcher', _deployWatcherMaxAge);
-
-  /// Returns the current deploy log contents and whether the deploy process
-  /// is still running. Polled by the Control panel's deploy button JS.
-  Future<Response> _adminDeployStatus(Request request) async {
-    final logFile = File('${config.dataDir}/deploy.log');
-    final requestFile = File('${config.dataDir}/deploy.request');
-    final statusFile = File('${config.dataDir}/deploy.status');
-
-    // See the note in _adminDeploy: the PID belongs to deploy-watcher.sh on
-    // the host, not to anything in this container's PID namespace, so
-    // existence of the file (written/removed by that script) is the signal,
-    // not a `kill -0` liveness check.
-    final running = await _deployRunning();
-
-    String log = '';
-    if (await logFile.exists()) {
-      try {
-        log = await logFile.readAsString();
-      } catch (_) {}
-    }
-
-    // The watcher writes the deploy's exit code here when it finishes.
-    // Whether the run worked is that number — not something inferred by
-    // grepping the log for hopeful-looking words, which reported a `git
-    // pull` that aborted on local changes as a neutral "deploy finished".
-    int? exitCode;
-    if (!running && await statusFile.exists()) {
-      try {
-        exitCode = int.tryParse((await statusFile.readAsString()).trim());
-      } catch (_) {}
-    }
-
-    return _json(200, {
-      'running': running,
-      'log': log,
-      'repoPathConfigured': config.repoPathConfigured,
-      // Non-null only once a run has finished; true means it succeeded.
-      'ok': exitCode == null ? null : exitCode == 0,
-      'exitCode': exitCode,
-      // A request still on disk means nothing has claimed it yet.
-      'pending': await requestFile.exists(),
-      'watcherAlive': await _watcherAlive(),
-    });
-  }
 
   // ---------------------------------------------------------------------
   // Website (wiki) editor — /admin/website
@@ -3773,11 +3625,11 @@ class Api {
 
   Response? _wikiUnavailable() {
     if (!config.wikiEnabled) {
-      return _error(404, 'not_found',
+      return errorResponse(404, 'not_found',
           'Website editing is not configured (LUMA_WIKI_DIR unset).');
     }
     if (!Directory(_wikiContentPath).existsSync()) {
-      return _error(500, 'wiki_missing',
+      return errorResponse(500, 'wiki_missing',
           'Wiki source not found at $_wikiContentPath — run deploy.sh once '
           'to upload it.');
     }
@@ -4064,7 +3916,7 @@ border-radius:999px;padding:2px 8px}
     final page = _wikiPageOf(request);
     final file = _wikiPageFile(page);
     if (file == null) {
-      return _error(400, 'bad_page',
+      return errorResponse(400, 'bad_page',
           'Invalid page name. Use lowercase letters, digits, dashes, and "/".');
     }
     final exists = await file.exists();
@@ -4156,10 +4008,10 @@ border-radius:999px;padding:2px 8px}
   static final _assetNameRe = RegExp(r'^[A-Za-z0-9][A-Za-z0-9._-]*$');
 
   Response _serveFile(File file, String name, {String cache = 'no-store'}) {
-    if (!file.existsSync()) return _error(404, 'not_found', 'Not found.');
+    if (!file.existsSync()) return errorResponse(404, 'not_found', 'Not found.');
     final ext = name.contains('.') ? name.split('.').last.toLowerCase() : '';
     final type = _assetTypes[ext];
-    if (type == null) return _error(404, 'not_found', 'Not found.');
+    if (type == null) return errorResponse(404, 'not_found', 'Not found.');
     return Response(200, body: file.openRead(), headers: {
       'Content-Type': type,
       'Content-Length': '${file.lengthSync()}',
@@ -4174,7 +4026,7 @@ border-radius:999px;padding:2px 8px}
     if (unavailable != null) return unavailable;
     final dir = Directory('${config.wikiDir}/site/_astro');
     if (!dir.existsSync()) {
-      return _error(404, 'not_found', 'No built site yet — publish once.');
+      return errorResponse(404, 'not_found', 'No built site yet — publish once.');
     }
     // Use exactly the stylesheets a built wiki page links, in order —
     // concatenating every page's CSS lets unrelated pages override the
@@ -4246,7 +4098,7 @@ border-radius:999px;padding:2px 8px}
     if (unavailable != null) return unavailable;
     final name = request.url.pathSegments.last;
     if (!_assetNameRe.hasMatch(name) || name.contains('..')) {
-      return _error(404, 'not_found', 'Not found.');
+      return errorResponse(404, 'not_found', 'Not found.');
     }
     return _serveFile(File('${config.wikiDir}/site/_astro/$name'), name,
         cache: 'private, max-age=3600');
@@ -4264,13 +4116,13 @@ border-radius:999px;padding:2px 8px}
     if (rel.isEmpty ||
         rel.contains('..') ||
         !RegExp(r'^[A-Za-z0-9._/-]+$').hasMatch(rel)) {
-      return _error(404, 'not_found', 'Not found.');
+      return errorResponse(404, 'not_found', 'Not found.');
     }
     final root = '${config.wikiDir}/source/public';
     final file = File('$root/$rel');
     if (!file.absolute.path.replaceAll('\\', '/')
         .startsWith(Directory(root).absolute.path.replaceAll('\\', '/'))) {
-      return _error(404, 'not_found', 'Not found.');
+      return errorResponse(404, 'not_found', 'Not found.');
     }
     // Fall back to the built site (already-published assets like wiki-bg.jpg).
     final fallback = File('${config.wikiDir}/site/$rel');
@@ -4285,14 +4137,14 @@ border-radius:999px;padding:2px 8px}
     final unavailable = _wikiUnavailable();
     if (unavailable != null) return unavailable;
     if (!_sameOrigin(request)) {
-      return _error(403, 'bad_origin', 'Cross-origin request rejected.');
+      return errorResponse(403, 'bad_origin', 'Cross-origin request rejected.');
     }
     final rawName = request.url.queryParameters['name'] ?? '';
     final dot = rawName.lastIndexOf('.');
-    if (dot <= 0) return _error(400, 'bad_name', 'Filename needs an extension.');
+    if (dot <= 0) return errorResponse(400, 'bad_name', 'Filename needs an extension.');
     final ext = rawName.substring(dot + 1).toLowerCase();
     if (!{'png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'avif'}.contains(ext)) {
-      return _error(400, 'bad_type',
+      return errorResponse(400, 'bad_type',
           'Only png, jpg, webp, gif, svg, and avif images are allowed.');
     }
     var stem = rawName
@@ -4307,10 +4159,10 @@ border-radius:999px;padding:2px 8px}
     await for (final chunk in request.read()) {
       bytes.add(chunk);
       if (bytes.length > _wikiUploadMax) {
-        return _error(413, 'too_large', 'Image too large (max 8 MB).');
+        return errorResponse(413, 'too_large', 'Image too large (max 8 MB).');
       }
     }
-    if (bytes.length == 0) return _error(400, 'empty', 'Empty upload.');
+    if (bytes.length == 0) return errorResponse(400, 'empty', 'Empty upload.');
 
     final dir = Directory('${config.wikiDir}/source/public/images/uploads');
     await dir.create(recursive: true);
@@ -4320,7 +4172,7 @@ border-radius:999px;padding:2px 8px}
       name = '$stem-${++n}.$ext';
     }
     await File('${dir.path}/$name').writeAsBytes(bytes.takeBytes(), flush: true);
-    return _json(200, {'url': '/images/uploads/$name'});
+    return jsonResponse(200, {'url': '/images/uploads/$name'});
   }
 
   // ---- Quick devlog creation: a small form instead of hand-writing
@@ -4409,7 +4261,7 @@ border-radius:999px;padding:2px 8px}
     final unavailable = _wikiUnavailable();
     if (unavailable != null) return unavailable;
     if (!_sameOrigin(request)) {
-      return _error(403, 'bad_origin', 'Cross-origin request rejected.');
+      return errorResponse(403, 'bad_origin', 'Cross-origin request rejected.');
     }
     Map<String, String> form = const {};
     try {
@@ -4418,7 +4270,7 @@ border-radius:999px;padding:2px 8px}
     final title = (form['title'] ?? '').trim();
     final description = (form['description'] ?? '').trim();
     if (title.isEmpty || description.isEmpty) {
-      return _error(
+      return errorResponse(
           400, 'bad_request', 'Title and description are required.');
     }
     final topic = {'luma', 'minecraft', 'site'}.contains(form['topic'])
@@ -4489,12 +4341,12 @@ border-radius:999px;padding:2px 8px}
     final unavailable = _wikiUnavailable();
     if (unavailable != null) return unavailable;
     if (!_sameOrigin(request)) {
-      return _error(403, 'bad_origin', 'Cross-origin request rejected.');
+      return errorResponse(403, 'bad_origin', 'Cross-origin request rejected.');
     }
     final page = _wikiPageOf(request);
     final file = _wikiPageFile(page);
     if (file == null) {
-      return _error(400, 'bad_page', 'Invalid page name.');
+      return errorResponse(400, 'bad_page', 'Invalid page name.');
     }
     Map<String, String> form = const {};
     try {
@@ -4502,10 +4354,10 @@ border-radius:999px;padding:2px 8px}
     } catch (_) {}
     final content = form['content'];
     if (content == null) {
-      return _error(400, 'bad_request', 'Missing content field.');
+      return errorResponse(400, 'bad_request', 'Missing content field.');
     }
     if (content.length > 2 * 1024 * 1024) {
-      return _error(413, 'too_large', 'Page content too large.');
+      return errorResponse(413, 'too_large', 'Page content too large.');
     }
     await file.parent.create(recursive: true);
     // Write-then-rename so the builder never sees a half-written file.
@@ -4526,7 +4378,7 @@ border-radius:999px;padding:2px 8px}
     final unavailable = _wikiUnavailable();
     if (unavailable != null) return unavailable;
     if (!_sameOrigin(request)) {
-      return _error(403, 'bad_origin', 'Cross-origin request rejected.');
+      return errorResponse(403, 'bad_origin', 'Cross-origin request rejected.');
     }
     var page = _wikiPageOf(request);
     if (page.endsWith('/delete')) {
@@ -4534,7 +4386,7 @@ border-radius:999px;padding:2px 8px}
     }
     final file = _wikiPageFile(page);
     if (file == null) {
-      return _error(400, 'bad_page', 'Invalid page name.');
+      return errorResponse(400, 'bad_page', 'Invalid page name.');
     }
     if (await file.exists()) {
       await file.delete();
@@ -4552,7 +4404,7 @@ border-radius:999px;padding:2px 8px}
     final unavailable = _wikiUnavailable();
     if (unavailable != null) return unavailable;
     if (!_sameOrigin(request)) {
-      return _error(403, 'bad_origin', 'Cross-origin request rejected.');
+      return errorResponse(403, 'bad_origin', 'Cross-origin request rejected.');
     }
     _requestWikiBuild();
     return Response.found('/admin/website');
@@ -4580,7 +4432,7 @@ border-radius:999px;padding:2px 8px}
       } catch (_) {}
     }
     final pending = File('${config.wikiDir}/.build-request').existsSync();
-    return _json(200, {
+    return jsonResponse(200, {
       'pending': pending,
       'status': jsonDecode(status),
       'log': log,
@@ -5413,7 +5265,7 @@ if (window.innerWidth <= 900) document.getElementById('pane-write').classList.ad
         '<script>$_adminMetricsScript</script>'
         '<script>$_adminGroceriesScript</script>'
         '<script>$_adminAiModelsScript</script>'
-        '<script>$_adminDeployScript</script>'
+        '<script>${DeployConsole.deployScript}</script>'
         '</body></html>';
 
     return Response(200,
@@ -5690,207 +5542,6 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
 })();
 ''';
 
-  /// Control panel tab: the "Update & restart server" button POSTs to
-  /// /admin/deploy, then polls /admin/deploy/status to stream the deploy log
-  /// into the <pre> below the button. The poll keeps going even after the
-  /// server restarts (the fetch fails mid-restart and resumes once the new
-  /// container is up), so the operator sees the outcome without manually
-  /// refreshing.
-  ///
-  /// Success or failure comes from the exit code deploy-watcher.sh records
-  /// (`ok` in the status JSON), never from reading the log — a `git pull`
-  /// that aborted on local changes used to be reported as a bland "deploy
-  /// finished". A request nothing picks up (watcher stopped) says exactly
-  /// that instead of timing out into a generic error.
-  static const _adminDeployScript = r'''
-(function () {
-  const btn = document.getElementById('deployBtn');
-  const status = document.getElementById('deployStatus');
-  const log = document.getElementById('deployLog');
-  if (!btn || !status || !log) return;
-
-  var GREY = '#a49fb8', AMBER = '#e0c87e', GREEN = '#7ee08a', RED = '#e07e7e';
-
-  var timer = null;
-  // True from the moment the POST is accepted until the run's exit code
-  // lands. deploy-watcher.sh polls for the request file every 2s, so a
-  // status poll arriving before it has claimed the request must not be
-  // read as "finished with no output".
-  var deploying = false;
-  var sawRunning = false;
-  var waited = 0;
-  var maxWaited = 30;
-
-  function setStatus(text, color) {
-    status.textContent = text;
-    status.style.color = color || GREY;
-  }
-
-  function setBusy(busy) {
-    btn.disabled = busy;
-    btn.style.opacity = busy ? '0.5' : '';
-    btn.style.cursor = busy ? 'not-allowed' : '';
-  }
-
-  function showLog(data) {
-    if (!data.log) return;
-    log.style.display = 'block';
-    log.textContent = data.log;
-    log.scrollTop = log.scrollHeight;
-  }
-
-  function finished(data) {
-    deploying = false;
-    sawRunning = false;
-    waited = 0;
-    setBusy(false);
-    if (data.ok) {
-      setStatus('Deploy complete — server rebuilt and restarted.', GREEN);
-    } else {
-      setStatus('Deploy failed (exit ' + data.exitCode + ') — see the log '
-          + 'below for the step that stopped it.', RED);
-    }
-  }
-
-  function watcherHint() {
-    return 'The deploy watcher is not running on the host, so nothing picked '
-        + 'up the request. Start it with: sudo systemctl start '
-        + 'luma-deploy-watcher';
-  }
-
-  // An admin session that has run out redirects to the login form, so the
-  // response is HTML and .json() blows up. Say that plainly instead of
-  // reporting it as a deploy that would not start.
-  function readJson(r) {
-    if (r.redirected && r.url.indexOf('/admin/login') !== -1) {
-      var err = new Error('admin session expired');
-      err.sessionExpired = true;
-      throw err;
-    }
-    return r.json();
-  }
-
-  function sessionExpired(err) {
-    if (!err || !err.sessionExpired) return false;
-    deploying = false;
-    sawRunning = false;
-    setBusy(false);
-    setStatus('Admin session expired — reload this page and sign in again.',
-        RED);
-    return true;
-  }
-
-  function idle(data) {
-    if (data.repoPathConfigured === false) {
-      setBusy(true);
-      setStatus('Not configured: set LUMA_REPO_PATH in this server\'s .env '
-          + '(see .env.example), then restart.', GREY);
-      return;
-    }
-    setBusy(false);
-    if (data.watcherAlive === false) {
-      setStatus(watcherHint(), AMBER);
-    } else if (data.ok === false) {
-      setStatus('Last deploy failed (exit ' + data.exitCode + ').', RED);
-    } else if (data.ok === true) {
-      setStatus('Last deploy succeeded.', GREY);
-    }
-  }
-
-  function poll() {
-    fetch('/admin/deploy/status')
-      .then(readJson)
-      .then(function (data) {
-        showLog(data);
-
-        if (data.running) {
-          sawRunning = true;
-          deploying = true;
-          waited = 0;
-          setBusy(true);
-          setStatus('Deploying… (the server will restart briefly)', AMBER);
-          timer = setTimeout(poll, 2000);
-          return;
-        }
-
-        if (deploying || sawRunning) {
-          // The exit code is the only thing that settles this.
-          if (data.ok === true || data.ok === false) {
-            finished(data);
-            return;
-          }
-          if (data.watcherAlive === false) {
-            deploying = false;
-            sawRunning = false;
-            setBusy(false);
-            setStatus(watcherHint(), RED);
-            return;
-          }
-          if (waited < maxWaited) {
-            waited++;
-            timer = setTimeout(poll, 1000);
-            return;
-          }
-          deploying = false;
-          sawRunning = false;
-          setBusy(false);
-          setStatus(data.pending
-              ? 'The watcher has not picked up the request — check '
-                  + '`systemctl status luma-deploy-watcher` on the host.'
-              : 'Deploy did not start — check the server logs.', RED);
-          return;
-        }
-
-        idle(data);
-      })
-      .catch(function (err) {
-        if (sessionExpired(err)) return;
-        // Expected while the container is being recreated out from under us.
-        if (sawRunning || deploying) {
-          setStatus('Server restarting… waiting for it to come back.', AMBER);
-          timer = setTimeout(poll, 2000);
-        }
-      });
-  }
-
-  btn.addEventListener('click', function () {
-    if (btn.disabled) return;
-    if (!confirm('This will git pull, rebuild the image, and recreate the '
-        + 'luma-sync container. The server will be briefly unavailable. '
-        + 'Continue?')) return;
-    if (timer) { clearTimeout(timer); timer = null; }
-    log.style.display = 'block';
-    log.textContent = '';
-    setStatus('Starting deploy…', AMBER);
-    setBusy(true);
-    fetch('/admin/deploy', { method: 'POST' })
-      .then(readJson)
-      .then(function (data) {
-        if (data.error) {
-          setBusy(false);
-          setStatus(data.message || data.error, RED);
-          return;
-        }
-        if (data.watcherAlive === false) {
-          setBusy(false);
-          setStatus(watcherHint(), RED);
-          return;
-        }
-        deploying = true;
-        sawRunning = false;
-        waited = 0;
-        poll();
-      })
-      .catch(function (err) {
-        if (sessionExpired(err)) return;
-        setBusy(false);
-        setStatus('Could not start the deploy.', RED);
-      });
-  });
-
-  poll();
-})();
-''';
 
   /// Vanilla JS (no external deps, per the self-contained-dashboard style):
   /// polls /admin/metrics every 2s for a live reading, and separately loads
@@ -6309,14 +5960,6 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
     return decoded;
   }
 
-  static Response _json(int status, Map<String, dynamic> body) =>
-      Response(status,
-          body: jsonEncode(body),
-          headers: {'Content-Type': 'application/json'});
-
-  static Response _error(int status, String code, String message,
-          {Map<String, dynamic>? extra}) =>
-      _json(status, {'error': code, 'message': message, ...?extra});
 }
 
 /// One node of the /admin/website page tree: a path segment that either is

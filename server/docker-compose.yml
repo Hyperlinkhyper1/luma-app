@@ -16,7 +16,7 @@ services:
       # `git pull && docker compose up -d --build` directly inside this
       # container over a mounted host socket — but that command recreating
       # *this very container* killed the process orchestrating the recreate
-      # partway through, before it ever started the new one. Api._adminDeploy
+      # partway through, before it ever started the new one. DeployConsole
       # now only drops a request file on the shared /data volume;
       # deploy-watcher.sh, a systemd service running directly on the host
       # (see luma-deploy-watcher.service), does the actual git pull and
