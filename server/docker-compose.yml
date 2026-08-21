@@ -9,7 +9,7 @@ services:
       # Enables the /admin/website editor over the mounted wiki checkout.
       LUMA_WIKI_DIR: /wiki
     volumes:
-      - luma_data:/data
+      - /opt/luma-sync-data:/data
       - ../wiki:/wiki
       # No Docker socket and no repo bind mount here on purpose. The admin
       # dashboard's "Update & restart server" button used to run
@@ -49,7 +49,6 @@ services:
       - luma-sync
 
 volumes:
-  luma_data:
   caddy_data:
   caddy_config:
 
