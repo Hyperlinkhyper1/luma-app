@@ -289,7 +289,9 @@ class Api {
         _adminLimiter = RateLimiter(
             maxRequests: 240, window: const Duration(minutes: 1)),
         _loginFailLimiter = RateLimiter(
-            maxRequests: 10, window: const Duration(minutes: 15));
+            maxRequests: 10, window: const Duration(minutes: 15)) {
+    _loadAdminSessions();
+  }
 
   final Store store;
   final ServerConfig config;
@@ -344,9 +346,17 @@ class Api {
   final RateLimiter _loginFailLimiter;
 
   /// Admin dashboard login sessions, keyed by SHA-256 of the session cookie
-  /// token (mirrors [Store.sessionsByTokenHash] for regular users). In-memory
-  /// only — an operator just logs in again after a restart — so the admin key
-  /// no longer has to travel in every dashboard URL/log line/Referer header.
+  /// token (mirrors [Store.sessionsByTokenHash] for regular users), so the
+  /// admin key no longer has to travel in every dashboard URL/log line/Referer
+  /// header.
+  ///
+  /// Kept on disk as well as in memory. These used to be in-memory only, on
+  /// the reasoning that an operator can just log in again after a restart —
+  /// but that quietly broke the one page whose whole job is to restart the
+  /// server: the deploy button killed the session of the very operator
+  /// driving it, so the dashboard's polling silently 302'd to the login page
+  /// and the next click failed with "Could not start the deploy". Only the
+  /// hashes are stored, so the file can't be replayed into a session.
   final Map<String, int> _adminSessionExpiryByTokenHash = {};
   static const _adminSessionTtl = Duration(hours: 12);
   static const _adminCookieName = 'luma_admin';
@@ -679,6 +689,7 @@ class Api {
     _pruneAdminSessions();
     _adminSessionExpiryByTokenHash[tokenHash] =
         DateTime.now().millisecondsSinceEpoch + _adminSessionTtl.inMilliseconds;
+    _saveAdminSessions();
     final secure = _isSecureRequest(request);
     return response.change(headers: {
       'Set-Cookie': '$_adminCookieName=$token; Path=/admin; HttpOnly; '
@@ -733,6 +744,35 @@ class Api {
   void _pruneAdminSessions() {
     final now = DateTime.now().millisecondsSinceEpoch;
     _adminSessionExpiryByTokenHash.removeWhere((_, exp) => exp <= now);
+  }
+
+  File get _adminSessionsFile => File('${config.dataDir}/admin_sessions.json');
+
+  /// Restores logged-in dashboard sessions after a restart — most often the
+  /// restart the deploy button just triggered. Expired entries are dropped on
+  /// the way in; anything malformed is ignored, which only costs a re-login.
+  void _loadAdminSessions() {
+    try {
+      final file = _adminSessionsFile;
+      if (!file.existsSync()) return;
+      final decoded = jsonDecode(file.readAsStringSync());
+      if (decoded is! Map) return;
+      final now = DateTime.now().millisecondsSinceEpoch;
+      decoded.forEach((hash, expiry) {
+        if (hash is String && expiry is int && expiry > now) {
+          _adminSessionExpiryByTokenHash[hash] = expiry;
+        }
+      });
+    } catch (_) {}
+  }
+
+  /// Called on login and logout only — a handful of writes a day, not a
+  /// per-request cost.
+  void _saveAdminSessions() {
+    try {
+      _adminSessionsFile
+          .writeAsStringSync(jsonEncode(_adminSessionExpiryByTokenHash));
+    } catch (_) {}
   }
 
   /// Whether to mark the session cookie `Secure` (HTTPS-only). Mirrors the
@@ -813,6 +853,7 @@ class Api {
     if (token != null) {
       _adminSessionExpiryByTokenHash
           .remove(c.sha256.convert(utf8.encode(token)).toString());
+      _saveAdminSessions();
     }
     return Response.found('/admin/login', headers: {
       'Set-Cookie': '$_adminCookieName=; Path=/admin; HttpOnly; '
@@ -5717,6 +5758,28 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
         + 'luma-deploy-watcher';
   }
 
+  // An admin session that has run out redirects to the login form, so the
+  // response is HTML and .json() blows up. Say that plainly instead of
+  // reporting it as a deploy that would not start.
+  function readJson(r) {
+    if (r.redirected && r.url.indexOf('/admin/login') !== -1) {
+      var err = new Error('admin session expired');
+      err.sessionExpired = true;
+      throw err;
+    }
+    return r.json();
+  }
+
+  function sessionExpired(err) {
+    if (!err || !err.sessionExpired) return false;
+    deploying = false;
+    sawRunning = false;
+    setBusy(false);
+    setStatus('Admin session expired — reload this page and sign in again.',
+        RED);
+    return true;
+  }
+
   function idle(data) {
     if (data.repoPathConfigured === false) {
       setBusy(true);
@@ -5736,7 +5799,7 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
 
   function poll() {
     fetch('/admin/deploy/status')
-      .then(function (r) { return r.json(); })
+      .then(readJson)
       .then(function (data) {
         showLog(data);
 
@@ -5780,7 +5843,8 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
 
         idle(data);
       })
-      .catch(function () {
+      .catch(function (err) {
+        if (sessionExpired(err)) return;
         // Expected while the container is being recreated out from under us.
         if (sawRunning || deploying) {
           setStatus('Server restarting… waiting for it to come back.', AMBER);
@@ -5800,7 +5864,7 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
     setStatus('Starting deploy…', AMBER);
     setBusy(true);
     fetch('/admin/deploy', { method: 'POST' })
-      .then(function (r) { return r.json(); })
+      .then(readJson)
       .then(function (data) {
         if (data.error) {
           setBusy(false);
@@ -5817,7 +5881,8 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
         waited = 0;
         poll();
       })
-      .catch(function () {
+      .catch(function (err) {
+        if (sessionExpired(err)) return;
         setBusy(false);
         setStatus('Could not start the deploy.', RED);
       });
