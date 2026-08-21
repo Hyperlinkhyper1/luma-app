@@ -131,6 +131,15 @@ class $AiUsageTurnsTable extends AiUsageTurns
         type: DriftSqlType.string,
         requiredDuringInsert: true,
       ).withConverter<AiUsageSource>($AiUsageTurnsTable.$convertersource);
+  static const VerificationMeta _effortMeta = const VerificationMeta('effort');
+  @override
+  late final GeneratedColumn<String> effort = GeneratedColumn<String>(
+    'effort',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -144,6 +153,7 @@ class $AiUsageTurnsTable extends AiUsageTurns
     messageId,
     project,
     source,
+    effort,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -232,6 +242,12 @@ class $AiUsageTurnsTable extends AiUsageTurns
         project.isAcceptableOrUnknown(data['project']!, _projectMeta),
       );
     }
+    if (data.containsKey('effort')) {
+      context.handle(
+        _effortMeta,
+        effort.isAcceptableOrUnknown(data['effort']!, _effortMeta),
+      );
+    }
     return context;
   }
 
@@ -287,6 +303,10 @@ class $AiUsageTurnsTable extends AiUsageTurns
           data['${effectivePrefix}source'],
         )!,
       ),
+      effort: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}effort'],
+      ),
     );
   }
 
@@ -311,6 +331,7 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
   final String? messageId;
   final String? project;
   final AiUsageSource source;
+  final String? effort;
   const AiUsageTurn({
     required this.id,
     required this.sessionId,
@@ -323,6 +344,7 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
     this.messageId,
     this.project,
     required this.source,
+    this.effort,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -346,6 +368,9 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
         $AiUsageTurnsTable.$convertersource.toSql(source),
       );
     }
+    if (!nullToAbsent || effort != null) {
+      map['effort'] = Variable<String>(effort);
+    }
     return map;
   }
 
@@ -366,6 +391,9 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
           ? const Value.absent()
           : Value(project),
       source: Value(source),
+      effort: effort == null && nullToAbsent
+          ? const Value.absent()
+          : Value(effort),
     );
   }
 
@@ -390,6 +418,7 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
       source: $AiUsageTurnsTable.$convertersource.fromJson(
         serializer.fromJson<String>(json['source']),
       ),
+      effort: serializer.fromJson<String?>(json['effort']),
     );
   }
   @override
@@ -409,6 +438,7 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
       'source': serializer.toJson<String>(
         $AiUsageTurnsTable.$convertersource.toJson(source),
       ),
+      'effort': serializer.toJson<String?>(effort),
     };
   }
 
@@ -424,6 +454,7 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
     Value<String?> messageId = const Value.absent(),
     Value<String?> project = const Value.absent(),
     AiUsageSource? source,
+    Value<String?> effort = const Value.absent(),
   }) => AiUsageTurn(
     id: id ?? this.id,
     sessionId: sessionId ?? this.sessionId,
@@ -436,6 +467,7 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
     messageId: messageId.present ? messageId.value : this.messageId,
     project: project.present ? project.value : this.project,
     source: source ?? this.source,
+    effort: effort.present ? effort.value : this.effort,
   );
   AiUsageTurn copyWithCompanion(AiUsageTurnsCompanion data) {
     return AiUsageTurn(
@@ -458,6 +490,7 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
       messageId: data.messageId.present ? data.messageId.value : this.messageId,
       project: data.project.present ? data.project.value : this.project,
       source: data.source.present ? data.source.value : this.source,
+      effort: data.effort.present ? data.effort.value : this.effort,
     );
   }
 
@@ -474,7 +507,8 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
           ..write('cacheCreationTokens: $cacheCreationTokens, ')
           ..write('messageId: $messageId, ')
           ..write('project: $project, ')
-          ..write('source: $source')
+          ..write('source: $source, ')
+          ..write('effort: $effort')
           ..write(')'))
         .toString();
   }
@@ -492,6 +526,7 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
     messageId,
     project,
     source,
+    effort,
   );
   @override
   bool operator ==(Object other) =>
@@ -507,7 +542,8 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
           other.cacheCreationTokens == this.cacheCreationTokens &&
           other.messageId == this.messageId &&
           other.project == this.project &&
-          other.source == this.source);
+          other.source == this.source &&
+          other.effort == this.effort);
 }
 
 class AiUsageTurnsCompanion extends UpdateCompanion<AiUsageTurn> {
@@ -522,6 +558,7 @@ class AiUsageTurnsCompanion extends UpdateCompanion<AiUsageTurn> {
   final Value<String?> messageId;
   final Value<String?> project;
   final Value<AiUsageSource> source;
+  final Value<String?> effort;
   const AiUsageTurnsCompanion({
     this.id = const Value.absent(),
     this.sessionId = const Value.absent(),
@@ -534,6 +571,7 @@ class AiUsageTurnsCompanion extends UpdateCompanion<AiUsageTurn> {
     this.messageId = const Value.absent(),
     this.project = const Value.absent(),
     this.source = const Value.absent(),
+    this.effort = const Value.absent(),
   });
   AiUsageTurnsCompanion.insert({
     this.id = const Value.absent(),
@@ -547,6 +585,7 @@ class AiUsageTurnsCompanion extends UpdateCompanion<AiUsageTurn> {
     this.messageId = const Value.absent(),
     this.project = const Value.absent(),
     required AiUsageSource source,
+    this.effort = const Value.absent(),
   }) : sessionId = Value(sessionId),
        timestamp = Value(timestamp),
        model = Value(model),
@@ -563,6 +602,7 @@ class AiUsageTurnsCompanion extends UpdateCompanion<AiUsageTurn> {
     Expression<String>? messageId,
     Expression<String>? project,
     Expression<String>? source,
+    Expression<String>? effort,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -577,6 +617,7 @@ class AiUsageTurnsCompanion extends UpdateCompanion<AiUsageTurn> {
       if (messageId != null) 'message_id': messageId,
       if (project != null) 'project': project,
       if (source != null) 'source': source,
+      if (effort != null) 'effort': effort,
     });
   }
 
@@ -592,6 +633,7 @@ class AiUsageTurnsCompanion extends UpdateCompanion<AiUsageTurn> {
     Value<String?>? messageId,
     Value<String?>? project,
     Value<AiUsageSource>? source,
+    Value<String?>? effort,
   }) {
     return AiUsageTurnsCompanion(
       id: id ?? this.id,
@@ -605,6 +647,7 @@ class AiUsageTurnsCompanion extends UpdateCompanion<AiUsageTurn> {
       messageId: messageId ?? this.messageId,
       project: project ?? this.project,
       source: source ?? this.source,
+      effort: effort ?? this.effort,
     );
   }
 
@@ -646,6 +689,9 @@ class AiUsageTurnsCompanion extends UpdateCompanion<AiUsageTurn> {
         $AiUsageTurnsTable.$convertersource.toSql(source.value),
       );
     }
+    if (effort.present) {
+      map['effort'] = Variable<String>(effort.value);
+    }
     return map;
   }
 
@@ -662,7 +708,8 @@ class AiUsageTurnsCompanion extends UpdateCompanion<AiUsageTurn> {
           ..write('cacheCreationTokens: $cacheCreationTokens, ')
           ..write('messageId: $messageId, ')
           ..write('project: $project, ')
-          ..write('source: $source')
+          ..write('source: $source, ')
+          ..write('effort: $effort')
           ..write(')'))
         .toString();
   }
@@ -960,6 +1007,7 @@ typedef $$AiUsageTurnsTableCreateCompanionBuilder =
       Value<String?> messageId,
       Value<String?> project,
       required AiUsageSource source,
+      Value<String?> effort,
     });
 typedef $$AiUsageTurnsTableUpdateCompanionBuilder =
     AiUsageTurnsCompanion Function({
@@ -974,6 +1022,7 @@ typedef $$AiUsageTurnsTableUpdateCompanionBuilder =
       Value<String?> messageId,
       Value<String?> project,
       Value<AiUsageSource> source,
+      Value<String?> effort,
     });
 
 class $$AiUsageTurnsTableFilterComposer
@@ -1040,6 +1089,11 @@ class $$AiUsageTurnsTableFilterComposer
     column: $table.source,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
+
+  ColumnFilters<String> get effort => $composableBuilder(
+    column: $table.effort,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$AiUsageTurnsTableOrderingComposer
@@ -1105,6 +1159,11 @@ class $$AiUsageTurnsTableOrderingComposer
     column: $table.source,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get effort => $composableBuilder(
+    column: $table.effort,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AiUsageTurnsTableAnnotationComposer
@@ -1156,6 +1215,9 @@ class $$AiUsageTurnsTableAnnotationComposer
 
   GeneratedColumnWithTypeConverter<AiUsageSource, String> get source =>
       $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<String> get effort =>
+      $composableBuilder(column: $table.effort, builder: (column) => column);
 }
 
 class $$AiUsageTurnsTableTableManager
@@ -1202,6 +1264,7 @@ class $$AiUsageTurnsTableTableManager
                 Value<String?> messageId = const Value.absent(),
                 Value<String?> project = const Value.absent(),
                 Value<AiUsageSource> source = const Value.absent(),
+                Value<String?> effort = const Value.absent(),
               }) => AiUsageTurnsCompanion(
                 id: id,
                 sessionId: sessionId,
@@ -1214,6 +1277,7 @@ class $$AiUsageTurnsTableTableManager
                 messageId: messageId,
                 project: project,
                 source: source,
+                effort: effort,
               ),
           createCompanionCallback:
               ({
@@ -1228,6 +1292,7 @@ class $$AiUsageTurnsTableTableManager
                 Value<String?> messageId = const Value.absent(),
                 Value<String?> project = const Value.absent(),
                 required AiUsageSource source,
+                Value<String?> effort = const Value.absent(),
               }) => AiUsageTurnsCompanion.insert(
                 id: id,
                 sessionId: sessionId,
@@ -1240,6 +1305,7 @@ class $$AiUsageTurnsTableTableManager
                 messageId: messageId,
                 project: project,
                 source: source,
+                effort: effort,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
