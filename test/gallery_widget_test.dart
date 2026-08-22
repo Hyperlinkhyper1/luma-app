@@ -50,7 +50,31 @@ class FakeGallerySource extends GallerySource {
   Future<GalleryAccess> requestAccess() async => access;
 
   @override
-  Future<List<GalleryItem>> load() async => List.of(items);
+  bool get supportsScanRoot => true;
+
+  @override
+  String? get scanRoot => _scanRoot;
+  String? _scanRoot;
+
+  @override
+  Future<void> setScanRoot(String? path) async => _scanRoot = path;
+
+  @override
+  void restoreScanRoot(String? path) => _scanRoot = path;
+
+  @override
+  List<String> get knownFolders =>
+      {for (final item in items) item.folder}.toList()..sort();
+
+  @override
+  Future<List<GalleryItem>> load({GalleryScanProgress? onProgress}) async {
+    final within = [
+      for (final item in items)
+        if (folderWithinScanRoot(item.folder, _scanRoot)) item,
+    ];
+    onProgress?.call(within.length, within.length);
+    return within;
+  }
 
   @override
   Future<Uint8List?> thumbnail(GalleryItem item, int pixels) async {
@@ -303,6 +327,52 @@ void main() {
     expect(find.text('July 31'), findsOneWidget);
   });
 
+  testWidgets('a library spanning years builds only the visible days',
+      (tester) async {
+    // The phone crash. An album used to be two slivers per day inside one
+    // CustomScrollView; a sliver list is lazy in its children but never in
+    // the list of slivers, so a camera roll covering a few years laid out —
+    // and kept alive — thousands of them before it could draw a frame. On a
+    // desktop that is a stutter; on a phone the OS kills the app.
+    //
+    // 600 photos on 600 separate days is a modest version of that shape. What
+    // is checked is that the number of days costs nothing: only the handful
+    // on screen are built.
+    final library = [
+      for (var day = 0; day < 600; day++)
+        _item(
+          name: 'IMG_$day.jpg',
+          folder: 'DCIM/Camera',
+          takenAt: DateTime(2026, 7, 31, 12).subtract(Duration(days: day)),
+        ),
+    ];
+    await _pump(tester, items: library);
+
+    await _openAlbum(tester, 'All');
+
+    final tiles = tester.widgetList(find.byType(GalleryTile)).length;
+    expect(tiles, greaterThan(0), reason: 'the grid still shows photos');
+    expect(
+      tiles,
+      lessThan(library.length ~/ 4),
+      reason: 'a screenful and its cache, not the whole library',
+    );
+
+    // Each day carries a heading, so headings are the direct count of how
+    // much of the album got built. Under the old layout all 600 existed.
+    final headings = tester
+        .widgetList<Text>(find.byType(Text))
+        .where((text) => (text.data ?? '').startsWith('July') ||
+            (text.data ?? '').startsWith('August') ||
+            (text.data ?? '').startsWith('June'))
+        .length;
+    expect(
+      headings,
+      lessThan(60),
+      reason: 'a day heading off screen must not be built at all',
+    );
+  });
+
   testWidgets('each album opens only its own photos', (tester) async {
     await _pump(tester);
 
@@ -540,6 +610,24 @@ void main() {
       ),
     );
     expect(button.onPressed, isNotNull);
+  });
+
+  testWidgets('a confined scan says so, and says how to undo it',
+      (tester) async {
+    final repository = await _pump(tester, items: _library);
+    expect(find.textContaining('Only scanning'), findsNothing);
+
+    await tester.runAsync(() => repository.setScanRoot('DCIM'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Only scanning DCIM'), findsOneWidget);
+    // §1 escape-routes: the confinement outlives a restart, so the way back
+    // has to be on the screen rather than buried in the picker.
+    expect(find.text('Scan everything'), findsOneWidget);
+
+    await tester.tap(find.text('Scan everything'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Only scanning'), findsNothing);
   });
 
   testWidgets('the scan does not read locations on its own', (tester) async {
