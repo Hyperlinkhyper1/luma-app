@@ -15,6 +15,14 @@ import 'gallery_source.dart';
 /// The desktop half of the gallery. Windows and Linux have no media index to
 /// query, so the plugin walks the folders where pictures normally live —
 /// Pictures, Videos, Downloads — plus anything the user points it at.
+///
+/// The walk takes in however many pictures it finds. There used to be a
+/// 50 000-file ceiling on it, which is a number a real photo library reaches
+/// and then silently stops at — a gallery that quietly hides the second half
+/// of someone's photos is worse than a slow one. What keeps a scan sane is
+/// what it refuses to look at rather than what it counts: [skippedFolders],
+/// [_maxDepth], [minimumImageBytes], and [scanRoot] when the user points it
+/// at one folder.
 class FolderGallerySource extends GallerySource {
   final List<String> _customRoots = [];
 
@@ -28,10 +36,6 @@ class FolderGallerySource extends GallerySource {
   /// long scroll through a large library can't grow without limit.
   final Map<String, Uint8List> _memoryThumbs = {};
   static const _memoryThumbLimit = 400;
-
-  /// At most this many files, so a folder pointed at a whole drive doesn't
-  /// scan forever.
-  static const _fileLimit = 50000;
 
   /// Directory nesting to follow below a root.
   static const _maxDepth = 8;
@@ -131,7 +135,6 @@ class FolderGallerySource extends GallerySource {
     // reported as a count with no total — the bar spins, the number climbs.
     onProgress?.call(0, null);
     for (final root in _scanRoots()) {
-      if (items.length >= _fileLimit) break;
       await _walk(root, root, 0, seen, items, onProgress);
     }
     onProgress?.call(items.length, items.length);
@@ -151,7 +154,7 @@ class FolderGallerySource extends GallerySource {
     List<GalleryItem> into,
     GalleryScanProgress? onProgress,
   ) async {
-    if (depth > _maxDepth || into.length >= _fileLimit) return;
+    if (depth > _maxDepth) return;
 
     final List<FileSystemEntity> entries;
     try {
@@ -163,7 +166,6 @@ class FolderGallerySource extends GallerySource {
     }
 
     for (final entry in entries) {
-      if (into.length >= _fileLimit) return;
       final name = _basename(entry.path);
       if (name.startsWith('.')) continue;
 
