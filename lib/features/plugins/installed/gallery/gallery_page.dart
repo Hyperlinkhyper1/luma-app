@@ -95,6 +95,106 @@ class _GalleryPageState extends State<GalleryPage> {
     await repo.addFolder(path);
   }
 
+  /// Points the scan at one folder and nothing else, everything nested below
+  /// it included.
+  ///
+  /// The two platforms pick a folder in different ways because only one of
+  /// them has a directory to browse. On desktop that is the system chooser.
+  /// On the phone there are no paths to browse — MediaStore hands out
+  /// library-relative names — so the choice is made from the folders the last
+  /// scan actually saw.
+  Future<void> _chooseScanRoot(GalleryRepository repo) async {
+    if (!repo.supportsScanRoot) return;
+    final picked = repo.supportsCustomFolders
+        ? await FilePicker.getDirectoryPath(
+            dialogTitle: 'Scan only this folder',
+          )
+        : await _pickKnownFolder(repo);
+    if (picked == null || !mounted) return;
+    await repo.setScanRoot(picked.isEmpty ? null : picked);
+  }
+
+  /// The phone's folder chooser: the folders the library already contains,
+  /// plus the way back out. Returns an empty string for "the whole library",
+  /// which the repository reads as no confinement at all.
+  Future<String?> _pickKnownFolder(GalleryRepository repo) async {
+    final folders = [
+      for (final folder in repo.knownFolders)
+        if (folder.trim().isNotEmpty) folder,
+    ];
+    if (folders.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No folders found yet — let the first scan finish.'),
+        ),
+      );
+      return null;
+    }
+
+    final current = repo.scanRoot;
+    return showDialog<String>(
+      context: context,
+      builder: (context) {
+        final luma = context.luma;
+        return AlertDialog(
+          title: const Text('Scan one folder'),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 420,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    'Everything inside the folder you pick is included, '
+                    'sub-folders and all. Nothing else is looked at.',
+                    style: TextStyle(color: luma.textSecondary, fontSize: 12),
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: folders.length + 1,
+                    itemBuilder: (context, index) {
+                      if (index == 0) {
+                        return ListTile(
+                          leading: Icon(
+                            Icons.photo_library_outlined,
+                            color: luma.textSecondary,
+                          ),
+                          title: const Text('The whole library'),
+                          selected: current == null,
+                          onTap: () => Navigator.of(context).pop(''),
+                        );
+                      }
+                      final folder = folders[index - 1];
+                      return ListTile(
+                        leading: Icon(
+                          Icons.folder_rounded,
+                          color: luma.textSecondary,
+                        ),
+                        title: Text(folder),
+                        selected: folder == current,
+                        onTap: () => Navigator.of(context).pop(folder),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // §1 escape-routes: a way out that isn't picking something.
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _openViewer(List<GalleryItem> items, int index) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -165,7 +265,18 @@ class _GalleryPageState extends State<GalleryPage> {
           repository: repo,
           onAddFolder:
               repo.supportsCustomFolders ? () => _addFolder(repo) : null,
+          onChooseScanRoot:
+              repo.supportsScanRoot ? () => _chooseScanRoot(repo) : null,
         ),
+        if (repo.scanRoot != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+            child: _ScanRootNote(
+              root: repo.scanRoot!,
+              onChange: () => _chooseScanRoot(repo),
+              onClear: () => repo.setScanRoot(null),
+            ),
+          ),
         if (repo.access == GalleryAccess.limited && repo.canPresentPicker)
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
@@ -198,18 +309,35 @@ class _GalleryPageState extends State<GalleryPage> {
           label: repo.status == GalleryStatus.askingAccess
               ? 'Waiting for permission…'
               : 'Finding your photos and videos…',
+          progress: repo.status == GalleryStatus.scanning
+              ? repo.scanProgress
+              : null,
+          detail: repo.status == GalleryStatus.scanning
+              ? _scanDetail(repo)
+              : null,
         );
 
       case GalleryStatus.noAccess:
-        return _NoAccess(repo: repo, onAddFolder: () => _addFolder(repo));
+        return _NoAccess(
+          repo: repo,
+          onAddFolder: () => _addFolder(repo),
+          onScanEverything:
+              repo.scanRoot == null ? null : () => repo.setScanRoot(null),
+        );
 
       case GalleryStatus.empty:
         return Padding(
           padding: const EdgeInsets.all(24),
           child: LumaEmptyState(
             icon: Icons.photo_library_outlined,
-            title: 'No photos or videos yet',
-            subtitle: 'Anything you shoot or download shows up here.',
+            title: repo.scanError != null
+                ? 'The library could not be read'
+                : 'No photos or videos yet',
+            subtitle: repo.scanError ??
+                (repo.scanRoot != null
+                    ? 'Nothing in ${repo.scanRoot}. The gallery is only '
+                        'scanning that folder.'
+                    : 'Anything you shoot or download shows up here.'),
             action: LumaGhostButton(label: 'Rescan', onTap: repo.refresh),
           ),
         );
@@ -400,8 +528,22 @@ class _GalleryPageState extends State<GalleryPage> {
         ),
       ];
 
+  /// The "1 204 of 5 309" line under the scan bar, or null before the scan
+  /// has anything to report.
+  String? _scanDetail(GalleryRepository repo) {
+    final total = repo.scanTotal;
+    if (total != null && total > 0) {
+      return '${repo.scannedCount} of $total';
+    }
+    if (repo.scannedCount == 0) return null;
+    final noun = repo.scannedCount == 1 ? 'item' : 'items';
+    return '${repo.scannedCount} $noun found';
+  }
+
   String? _librarySubtitle(GalleryRepository repo) {
-    if (repo.status == GalleryStatus.scanning) return 'Reading your library…';
+    if (repo.status == GalleryStatus.scanning) {
+      return _scanDetail(repo) ?? 'Reading your library…';
+    }
     if (repo.status != GalleryStatus.ready) return null;
     final count = repo.items.length;
     final noun = count == 1 ? 'item' : 'items';
@@ -703,6 +845,7 @@ class _Header extends StatelessWidget {
     required this.repository,
     this.onBack,
     this.onAddFolder,
+    this.onChooseScanRoot,
   });
 
   final String title;
@@ -710,6 +853,7 @@ class _Header extends StatelessWidget {
   final GalleryRepository repository;
   final VoidCallback? onBack;
   final VoidCallback? onAddFolder;
+  final VoidCallback? onChooseScanRoot;
 
   @override
   Widget build(BuildContext context) {
@@ -760,6 +904,17 @@ class _Header extends StatelessWidget {
               icon: Icon(
                 Icons.create_new_folder_rounded,
                 color: luma.textSecondary,
+              ),
+            ),
+          if (onChooseScanRoot != null)
+            IconButton(
+              tooltip: 'Scan one folder only',
+              onPressed: onChooseScanRoot,
+              icon: Icon(
+                Icons.folder_special_rounded,
+                color: repository.scanRoot == null
+                    ? luma.textSecondary
+                    : luma.accent,
               ),
             ),
           IconButton(
@@ -922,17 +1077,49 @@ class _Grid extends StatefulWidget {
 }
 
 class _GridState extends State<_Grid> {
-  List<GalleryItem>? _grouped;
-  List<GalleryDateGroup> _groups = const [];
+  List<GalleryItem>? _rowsFor;
+  int _rowsColumns = -1;
+  List<_GridRow> _rows = const [];
 
-  /// The day sections, recomputed only when the album's contents actually
-  /// change. The caller hands back the same list instance until then, so
-  /// identity is the whole test.
-  List<GalleryDateGroup> _groupsFor(List<GalleryItem> items) {
-    if (identical(_grouped, items)) return _groups;
-    _groups = groupByDate(items, DateTime.now());
-    _grouped = items;
-    return _groups;
+  /// The album flattened into one row per line of the grid, with the day
+  /// headings as rows of their own.
+  ///
+  /// This used to be two slivers per day inside a [CustomScrollView], which is
+  /// fine for a desktop Pictures folder and fatal on a phone: a camera roll
+  /// covering five years is close to two thousand days, so opening All built
+  /// four thousand slivers before it could draw a single frame. A sliver list
+  /// is lazy in its children but never in the list of slivers itself — every
+  /// one of them was laid out and kept alive, and on a phone that is the
+  /// memory the OS kills the app over.
+  ///
+  /// One [SliverList] over rows means the number of days costs nothing beyond
+  /// the rows themselves, and only the visible handful are ever built.
+  ///
+  /// Recomputed only when the contents or the column count actually change.
+  /// The caller hands back the same list instance until then, so identity is
+  /// the whole test.
+  List<_GridRow> _rowsIn(List<GalleryItem> items, int columns) {
+    if (identical(_rowsFor, items) && _rowsColumns == columns) return _rows;
+
+    final rows = <_GridRow>[];
+    var offset = 0;
+    for (final group in groupByDate(items, DateTime.now())) {
+      rows.add(_GridRow.heading(group.label, first: rows.isEmpty));
+      for (var start = 0; start < group.items.length; start += columns) {
+        final end = start + columns > group.items.length
+            ? group.items.length
+            : start + columns;
+        rows.add(
+          _GridRow.tiles(group.items, start, end - start, offset + start),
+        );
+      }
+      offset += group.items.length;
+    }
+
+    _rows = rows;
+    _rowsFor = items;
+    _rowsColumns = columns;
+    return rows;
   }
 
   @override
@@ -953,67 +1140,125 @@ class _GridState extends State<_Grid> {
       );
     }
 
-    final groups = _groupsFor(items);
-
     return LayoutBuilder(
       builder: (context, constraints) {
         // Tiles want to be about 120 logical pixels; three across is the
         // floor so a phone never shows a wall of stamps.
         final columns = (constraints.maxWidth / 132).floor().clamp(3, 10);
-        var offset = 0;
-        final slivers = <Widget>[];
+        // A grid delegate worked the tile size out on its own; a row of plain
+        // boxes has to be told, so it comes from the same three numbers.
+        final tile =
+            (constraints.maxWidth - 40 - (columns - 1) * _tileGap) / columns;
+        final rows = _rowsIn(items, columns);
 
-        for (final group in groups) {
-          final start = offset;
-          slivers.add(
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(20, start == 0 ? 0 : 20, 20, 8),
-                child: Text(
-                  group.label,
-                  style: TextStyle(
-                    color: luma.textPrimary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+        return CustomScrollView(
+          slivers: [
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final row = rows[index];
+                  final label = row.label;
+                  if (label != null) {
+                    return Padding(
+                      padding:
+                          EdgeInsets.fromLTRB(20, row.first ? 0 : 20, 20, 8),
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          color: luma.textPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    );
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, _tileGap),
+                    child: SizedBox(
+                      height: tile,
+                      child: Row(
+                        children: [
+                          for (var column = 0; column < row.count; column++)
+                            Padding(
+                              padding: EdgeInsets.only(
+                                right: column == columns - 1 ? 0 : _tileGap,
+                              ),
+                              child: SizedBox(
+                                width: tile,
+                                height: tile,
+                                child: GalleryTile(
+                                  item: row.items[row.from + column],
+                                  repository: repository,
+                                  onTap: () =>
+                                      onOpen(items, row.offset + column),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+                childCount: rows.length,
               ),
             ),
-          );
-          slivers.add(
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              sliver: SliverGrid(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: columns,
-                  mainAxisSpacing: 4,
-                  crossAxisSpacing: 4,
-                ),
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) => GalleryTile(
-                    item: group.items[index],
-                    repository: repository,
-                    onTap: () => onOpen(items, start + index),
-                  ),
-                  childCount: group.items.length,
-                ),
-              ),
-            ),
-          );
-          offset += group.items.length;
-        }
-
-        slivers.add(const SliverToBoxAdapter(child: SizedBox(height: 24)));
-        return CustomScrollView(slivers: slivers);
+            const SliverToBoxAdapter(child: SizedBox(height: 24)),
+          ],
+        );
       },
     );
   }
 }
 
+/// Gap between one tile and the next, across and down.
+const double _tileGap = 4;
+
+/// One line of an album: either a day heading or a run of tiles.
+///
+/// A run points into the day's own list rather than copying a slice of it —
+/// an album of 20 000 photos is 6 000-odd rows, and 6 000 three-element lists
+/// is memory spent for nothing.
+@immutable
+class _GridRow {
+  const _GridRow.heading(this.label, {required this.first})
+      : items = const [],
+        from = 0,
+        count = 0,
+        offset = 0;
+
+  const _GridRow.tiles(this.items, this.from, this.count, this.offset)
+      : label = null,
+        first = false;
+
+  /// The heading's text, or null on a row of tiles.
+  final String? label;
+
+  /// Whether this is the album's first heading, which needs no gap above it.
+  final bool first;
+
+  /// The day's items, of which this row shows [count] starting at [from].
+  final List<GalleryItem> items;
+  final int from;
+  final int count;
+
+  /// Index of this row's first tile in the whole album, which is what the
+  /// viewer is opened at.
+  final int offset;
+}
+
+/// The whole-page waiting state, with the scan's progress bar on it.
 class _Busy extends StatelessWidget {
-  const _Busy({required this.label});
+  const _Busy({required this.label, this.progress, this.detail});
 
   final String label;
+
+  /// 0..1 where the work knows how much there is — MediaStore says up front —
+  /// and null where it can only count as it goes, which is what a folder walk
+  /// does. The bar is indeterminate in that case and [detail] carries the
+  /// running count instead.
+  final double? progress;
+
+  final String? detail;
 
   @override
   Widget build(BuildContext context) {
@@ -1022,12 +1267,34 @@ class _Busy extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircularProgressIndicator(color: luma.accent, strokeWidth: 2.5),
+          SizedBox(
+            width: 220,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 5,
+                color: luma.accent,
+                backgroundColor: luma.accentSubtle,
+              ),
+            ),
+          ),
           const SizedBox(height: 16),
           Text(
             label,
             style: TextStyle(color: luma.textSecondary, fontSize: 13),
           ),
+          if (detail != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              detail!,
+              style: TextStyle(
+                color: luma.textMuted,
+                fontSize: 12,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -1035,10 +1302,18 @@ class _Busy extends StatelessWidget {
 }
 
 class _NoAccess extends StatelessWidget {
-  const _NoAccess({required this.repo, required this.onAddFolder});
+  const _NoAccess({
+    required this.repo,
+    required this.onAddFolder,
+    this.onScanEverything,
+  });
 
   final GalleryRepository repo;
   final VoidCallback onAddFolder;
+
+  /// Offered only while the scan is confined to a folder that has since
+  /// stopped existing — otherwise this screen has no way back.
+  final VoidCallback? onScanEverything;
 
   @override
   Widget build(BuildContext context) {
@@ -1046,21 +1321,42 @@ class _NoAccess extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       child: LumaEmptyState(
         icon: Icons.no_photography_rounded,
-        title: repo.supportsCustomFolders
-            ? 'No picture folders found'
-            : 'Gallery needs access to your photos',
-        subtitle: repo.supportsCustomFolders
-            ? 'Nothing was found in Pictures, Videos or Downloads. Point the '
-                'gallery at a folder and it will scan that instead.'
-            : 'Photos and videos stay on this device — the gallery only reads '
-                'them to show them here.',
-        action: repo.supportsCustomFolders
-            ? LumaPrimaryButton(
-                label: 'Add a folder',
-                icon: Icons.create_new_folder_rounded,
-                onTap: onAddFolder,
+        title: repo.scanRoot != null
+            ? 'That folder is not there any more'
+            : repo.supportsCustomFolders
+                ? 'No picture folders found'
+                : 'Gallery needs access to your photos',
+        subtitle: repo.scanRoot != null
+            ? 'The gallery is only scanning ${repo.scanRoot}, and that folder '
+                'can no longer be read.'
+            : repo.supportsCustomFolders
+                ? 'Nothing was found in Pictures, Videos or Downloads. Point '
+                    'the gallery at a folder and it will scan that instead.'
+                : 'Photos and videos stay on this device — the gallery only '
+                    'reads them to show them here.',
+        action: onScanEverything != null
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  LumaPrimaryButton(
+                    label: 'Scan everything',
+                    icon: Icons.photo_library_rounded,
+                    onTap: onScanEverything!,
+                  ),
+                  const SizedBox(width: 8),
+                  LumaGhostButton(
+                    label: 'Pick another folder',
+                    onTap: onAddFolder,
+                  ),
+                ],
               )
-            : Row(
+            : repo.supportsCustomFolders
+                ? LumaPrimaryButton(
+                    label: 'Add a folder',
+                    icon: Icons.create_new_folder_rounded,
+                    onTap: onAddFolder,
+                  )
+                : Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   LumaPrimaryButton(
@@ -1075,6 +1371,64 @@ class _NoAccess extends StatelessWidget {
                   ),
                 ],
               ),
+      ),
+    );
+  }
+}
+
+/// Shown while the scan is confined to one folder. Standing in the way of
+/// "where are the rest of my photos?" is the whole job: the confinement
+/// survives restarts, so it has to say so, and say how to undo it.
+class _ScanRootNote extends StatelessWidget {
+  const _ScanRootNote({
+    required this.root,
+    required this.onChange,
+    required this.onClear,
+  });
+
+  final String root;
+  final VoidCallback onChange;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+      decoration: BoxDecoration(
+        color: luma.accentSubtle,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.folder_special_rounded, size: 18, color: luma.accent),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Only scanning $root and everything in it.',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: luma.textSecondary, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Wrapped rather than laid beside the sentence: a phone is not wide
+          // enough for a folder path and two buttons on one line.
+          Wrap(
+            alignment: WrapAlignment.end,
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              LumaGhostButton(label: 'Change', onTap: onChange),
+              LumaGhostButton(label: 'Scan everything', onTap: onClear),
+            ],
+          ),
+        ],
       ),
     );
   }

@@ -165,6 +165,16 @@ String normaliseFolder(String raw) {
   return folder;
 }
 
+/// Whether [folder] is the folder a confined scan was pointed at, or nested
+/// inside it. Both sources normalise folders to `a/b/c` first, so testing the
+/// prefix on a segment boundary is the whole of "and folders in that folder".
+///
+/// A null [root] means no confinement, so everything is within it.
+bool folderWithinScanRoot(String folder, String? root) {
+  if (root == null || root.isEmpty) return true;
+  return folder == root || folder.startsWith('$root/');
+}
+
 /// Whether a file name is media this plugin shows, judged by extension. Used
 /// by the desktop walker, where there is no MediaStore to ask.
 GalleryMediaType? mediaTypeForName(String name) {

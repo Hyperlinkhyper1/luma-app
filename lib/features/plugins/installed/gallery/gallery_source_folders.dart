@@ -18,6 +18,12 @@ import 'gallery_source.dart';
 class FolderGallerySource extends GallerySource {
   final List<String> _customRoots = [];
 
+  /// The one directory the scan is confined to, or null for the usual set of
+  /// picture folders plus whatever the user added. When it is set nothing
+  /// else is walked at all — that is the point: a library kept in one place
+  /// shouldn't cost a crawl of Downloads to find.
+  String? _scanRoot;
+
   /// Thumbnails already made this session, keyed by cache key. Bounded so a
   /// long scroll through a large library can't grow without limit.
   final Map<String, Uint8List> _memoryThumbs = {};
@@ -33,16 +39,33 @@ class FolderGallerySource extends GallerySource {
   Directory? _thumbDirectory;
 
   @override
-  Future<GalleryAccess> requestAccess() async =>
-      _defaultRoots().isEmpty && _customRoots.isEmpty
-          ? GalleryAccess.unsupported
-          : GalleryAccess.granted;
+  Future<GalleryAccess> requestAccess() async => _scanRoots().isEmpty
+      ? GalleryAccess.unsupported
+      : GalleryAccess.granted;
 
   @override
   bool get supportsCustomFolders => true;
 
   @override
   List<String> get roots => List.unmodifiable(_customRoots);
+
+  @override
+  bool get supportsScanRoot => true;
+
+  @override
+  String? get scanRoot => _scanRoot;
+
+  @override
+  Future<void> setScanRoot(String? path) async {
+    final normalised = _trimTrailingSeparator(path ?? '');
+    _scanRoot = normalised.isEmpty ? null : normalised;
+  }
+
+  @override
+  void restoreScanRoot(String? path) {
+    final normalised = _trimTrailingSeparator(path ?? '');
+    _scanRoot = normalised.isEmpty ? null : normalised;
+  }
 
   @override
   void restoreRoots(List<String> paths) {
@@ -84,22 +107,41 @@ class FolderGallerySource extends GallerySource {
     ];
   }
 
-  @override
-  Future<List<GalleryItem>> load() async {
-    final seen = <String>{};
-    final items = <GalleryItem>[];
-    final roots = <Directory>[
+  /// The directories this scan will walk: the one it is confined to, or the
+  /// usual picture folders plus everything the user added.
+  List<Directory> _scanRoots() {
+    final confined = _scanRoot;
+    if (confined != null) {
+      final directory = Directory(confined);
+      return directory.existsSync() ? [directory] : const [];
+    }
+    return [
       ..._defaultRoots(),
       for (final path in _customRoots)
         if (Directory(path).existsSync()) Directory(path),
     ];
+  }
 
-    for (final root in roots) {
+  @override
+  Future<List<GalleryItem>> load({GalleryScanProgress? onProgress}) async {
+    final seen = <String>{};
+    final items = <GalleryItem>[];
+
+    // A walk cannot know how much there is until it is done, so progress is
+    // reported as a count with no total — the bar spins, the number climbs.
+    onProgress?.call(0, null);
+    for (final root in _scanRoots()) {
       if (items.length >= _fileLimit) break;
-      await _walk(root, root, 0, seen, items);
+      await _walk(root, root, 0, seen, items, onProgress);
     }
+    onProgress?.call(items.length, items.length);
     return items;
   }
+
+  /// How many files to take in before pausing to report progress and let the
+  /// framework draw. Small enough that the count visibly moves, large enough
+  /// that the yield isn't what makes the scan slow.
+  static const _progressStride = 64;
 
   Future<void> _walk(
     Directory root,
@@ -107,6 +149,7 @@ class FolderGallerySource extends GallerySource {
     int depth,
     Set<String> seen,
     List<GalleryItem> into,
+    GalleryScanProgress? onProgress,
   ) async {
     if (depth > _maxDepth || into.length >= _fileLimit) return;
 
@@ -126,7 +169,7 @@ class FolderGallerySource extends GallerySource {
 
       if (entry is Directory) {
         if (isSkippedFolder(name)) continue;
-        await _walk(root, entry, depth + 1, seen, into);
+        await _walk(root, entry, depth + 1, seen, into, onProgress);
         continue;
       }
       if (entry is! File) continue;
@@ -159,6 +202,11 @@ class FolderGallerySource extends GallerySource {
         sizeBytes: stat.size,
         cloudOnly: CloudFiles.isCloudOnly(entry.path),
       ));
+
+      if (into.length % _progressStride == 0) {
+        onProgress?.call(into.length, null);
+        await Future<void>.delayed(Duration.zero);
+      }
     }
   }
 
