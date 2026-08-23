@@ -132,6 +132,16 @@
       "version": "1.0.0"
     },
     {
+      "id": "ai-detector",
+      "name": "AI Detector",
+      "description": "Paste any text and get a verdict on whether it reads as human-written or AI-generated — using pure statistics, no AI involved. It scores sentence-length variety, buzzword density, transition-word habits, contraction use and more, then lists every signal that fired and the exact phrases that triggered it. Nothing you paste leaves your device.",
+      "icon": "fact_check",
+      "category": "Utility",
+      "tags": ["Utility", "Writing"],
+      "free": true,
+      "version": "1.0.0"
+    },
+    {
       "id": "youtube-downloader",
       "name": "Media Downloader",
       "description": "Paste a YouTube link and download the video or just the audio, with full control over resolution, bitrate, and output format. Paste a Spotify track link and luma finds and downloads the matching audio from YouTube, tagged with the real title, artist, and cover art. Keeps a history of everything you've downloaded.",
