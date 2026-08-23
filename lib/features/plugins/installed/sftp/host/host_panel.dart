@@ -8,7 +8,7 @@ import 'package:flutter/services.dart';
 import '../../../../../app/widgets.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../sftp_dialogs.dart';
-import '../sftp_paths.dart';
+import 'host_cards.dart';
 import 'host_crypto.dart';
 import 'host_protocol.dart';
 import 'host_server.dart';
@@ -197,14 +197,19 @@ class _SftpHostPanelState extends State<SftpHostPanel> {
                 ),
                 const SizedBox(height: 12),
                 if (server.pendingApproval != null) ...[
-                  _ApprovalCard(
+                  HostApprovalCard(
                     client: server.pendingApproval!,
                     onAllow: server.approvePending,
                     onRefuse: server.rejectPending,
                   ),
                   const SizedBox(height: 12),
                 ],
-                _ClientsCard(server: server),
+                HostClientsCard(
+                  server: server,
+                  emptyMessage:
+                      'Nothing is reading this folder. It stays shared until '
+                      'you press Stop or close luma.',
+                ),
               ] else
                 _SetupCard(
                   directory: _directory,
@@ -516,7 +521,7 @@ class _PairingCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          _CopyRow(
+          HostCopyRow(
             label: 'Address',
             value: address ?? 'No network connection',
             monospace: true,
@@ -531,14 +536,14 @@ class _PairingCard extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 10),
-          _CopyRow(
+          HostCopyRow(
             label: 'Port',
             value: '${server.port}',
             monospace: true,
             onCopy: () => onCopy('${server.port}', 'Port'),
           ),
           const SizedBox(height: 10),
-          _CopyRow(
+          HostCopyRow(
             label: 'Pairing password',
             value: revealed ? server.password : '••••-••••-••••-••••-••••',
             monospace: true,
@@ -565,164 +570,6 @@ class _PairingCard extends StatelessWidget {
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-}
-
-/// The prompt shown when a device has the password but still needs a yes.
-class _ApprovalCard extends StatelessWidget {
-  const _ApprovalCard({
-    required this.client,
-    required this.onAllow,
-    required this.onRefuse,
-  });
-
-  final HostClient client;
-  final VoidCallback onAllow;
-  final VoidCallback onRefuse;
-
-  @override
-  Widget build(BuildContext context) {
-    final luma = context.luma;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: luma.accentSubtle,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: luma.accent.withValues(alpha: 0.45)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.person_add_alt_1_rounded, size: 18, color: luma.accent),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  '${client.deviceName} wants to connect',
-                  style: TextStyle(
-                    color: luma.textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'It is at ${client.address} and gave the right pairing password.',
-            style: TextStyle(color: luma.textSecondary, fontSize: 12),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              LumaPrimaryButton(
-                label: 'Allow',
-                icon: Icons.check_rounded,
-                onTap: onAllow,
-              ),
-              const SizedBox(width: 8),
-              LumaGhostButton(
-                label: 'Refuse',
-                icon: Icons.close_rounded,
-                onTap: onRefuse,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Who is attached right now, and the way to throw one off.
-class _ClientsCard extends StatelessWidget {
-  const _ClientsCard({required this.server});
-
-  final SftpHostServer server;
-
-  @override
-  Widget build(BuildContext context) {
-    final luma = context.luma;
-    final clients =
-        server.clients.where((c) => !c.awaitingApproval).toList();
-    return LumaCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            clients.isEmpty
-                ? 'No devices connected'
-                : '${clients.length} device${clients.length == 1 ? '' : 's'} connected',
-            style: TextStyle(
-              color: luma.textPrimary,
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 10),
-          if (clients.isEmpty)
-            Text(
-              'Nothing is reading this folder. It stays shared until you press '
-              'Stop or close luma.',
-              style: TextStyle(
-                color: luma.textMuted,
-                fontSize: 12,
-                height: 1.4,
-              ),
-            )
-          else
-            for (final client in clients) ...[
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.devices_rounded,
-                      size: 18,
-                      color: luma.textSecondary,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            client.deviceName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: luma.textPrimary,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          Text(
-                            '${client.address} · '
-                            'sent ${formatFileSize(client.bytesSent)} · '
-                            'received ${formatFileSize(client.bytesReceived)}',
-                            style: TextStyle(
-                              color: luma.textMuted,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    LumaGhostButton(
-                      label: 'Disconnect',
-                      icon: Icons.link_off_rounded,
-                      onTap: () =>
-                          unawaited(server.disconnectClient(client.id)),
-                    ),
-                  ],
-                ),
-              ),
-            ],
         ],
       ),
     );
@@ -764,75 +611,6 @@ class _SecurityNote extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _CopyRow extends StatelessWidget {
-  const _CopyRow({
-    required this.label,
-    required this.value,
-    required this.onCopy,
-    this.monospace = false,
-    this.enabled = true,
-    this.trailing,
-  });
-
-  final String label;
-  final String value;
-  final Future<void> Function()? onCopy;
-  final bool monospace;
-  final bool enabled;
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    final luma = context.luma;
-    return Row(
-      children: [
-        SizedBox(
-          width: 128,
-          child: Text(
-            label,
-            style: TextStyle(
-              color: luma.textSecondary,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        Expanded(
-          child: Container(
-            height: 42,
-            alignment: Alignment.centerLeft,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: luma.background,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: luma.border),
-            ),
-            child: Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: enabled ? luma.textPrimary : luma.textMuted,
-                fontSize: monospace ? 14 : 13,
-                fontWeight: monospace ? FontWeight.w700 : FontWeight.w500,
-                fontFamily: monospace ? 'monospace' : null,
-                letterSpacing: monospace ? 0.6 : null,
-              ),
-            ),
-          ),
-        ),
-        ?trailing,
-        IconButton(
-          onPressed: onCopy == null ? null : () => unawaited(onCopy!()),
-          iconSize: 18,
-          tooltip: 'Copy',
-          icon: Icon(Icons.copy_rounded, color: luma.textSecondary),
-        ),
-      ],
     );
   }
 }
