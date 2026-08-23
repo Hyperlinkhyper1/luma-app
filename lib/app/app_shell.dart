@@ -23,6 +23,7 @@ import '../features/plugins/installed/groceries/groceries_page.dart';
 import '../features/plugins/installed/minecraft_launcher/minecraft_launcher_page.dart';
 import '../features/plugins/installed/mood_journal/mood_journal_page.dart';
 import '../features/plugins/installed/ai_usage/ai_usage_shell.dart';
+import '../features/plugins/installed/ai_detector/ai_detector_page.dart';
 import '../features/plugins/installed/nfc_tag_editor/nfc_tag_editor_page.dart';
 import '../features/plugins/installed/bulletin_board/bulletin_board_page.dart';
 import '../features/plugins/installed/price_tracker/price_tracker_page.dart';
@@ -362,6 +363,7 @@ class _AppShellState extends State<AppShell> {
         'city-planner' => const CityPlannerPage(),
         'mood-journal' => const MoodJournalPage(),
         'ai-usage' => const AiUsagePage(),
+        'ai-detector' => const AiDetectorPage(),
         'youtube-downloader' => const MediaDownloaderPage(),
         'school' => const SchoolPage(),
         'auto-clicker' => const AutoClickerPage(),
