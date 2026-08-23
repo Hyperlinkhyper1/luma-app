@@ -13,6 +13,7 @@ import '../../../../settings/settings_scope.dart';
 import '../../../../theme/luma_theme.dart';
 import 'host/host_panel.dart';
 import 'host/host_server.dart';
+import 'host/this_device_page.dart';
 import 'share/device_share_scope.dart';
 import 'share/device_share_view.dart';
 import 'sftp_dialogs.dart';
@@ -875,6 +876,15 @@ class _SftpPageState extends State<SftpPage> {
     await _store.upsert(draft.site, secret: draft.secret);
   }
 
+  /// Opens the screen that makes this device reachable. Its listener lives
+  /// and dies with the route — see [SftpThisDevicePage] — which is why it is
+  /// pushed rather than shown as another tab in the page's `IndexedStack`.
+  Future<void> _openThisDevice() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const SftpThisDevicePage()),
+    );
+  }
+
   Future<void> _editSite(SftpSite site) async {
     final existing = await _store.secretFor(site);
     if (!mounted) return;
@@ -955,6 +965,7 @@ class _SftpPageState extends State<SftpPage> {
                           onEdit: _editSite,
                           onDelete: _deleteSite,
                           onNew: _newSite,
+                          onThisDevice: () => unawaited(_openThisDevice()),
                         )
                       : (wide ? _buildWide(session) : _buildNarrow(session))),
             ),

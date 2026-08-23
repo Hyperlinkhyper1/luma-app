@@ -23,6 +23,7 @@ class SftpSiteManagerView extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onNew,
+    required this.onThisDevice,
     this.error,
   });
 
@@ -36,6 +37,11 @@ class SftpSiteManagerView extends StatelessWidget {
   final ValueChanged<SftpSite> onEdit;
   final ValueChanged<SftpSite> onDelete;
   final VoidCallback onNew;
+
+  /// Opens the "This device" screen: the credentials another device needs to
+  /// connect *to* this one, live only while that screen is open.
+  final VoidCallback onThisDevice;
+
   final String? error;
 
   @override
@@ -49,40 +55,7 @@ class SftpSiteManagerView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                children: [
-                  LumaIconBadge(icon: Icons.storage_rounded, color: luma.accent),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Site Manager',
-                          style: TextStyle(
-                            color: luma.textPrimary,
-                            fontSize: 19,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Your servers, saved on this device only.',
-                          style: TextStyle(
-                            color: luma.textSecondary,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  LumaPrimaryButton(
-                    label: 'New site',
-                    icon: Icons.add_rounded,
-                    onTap: onNew,
-                  ),
-                ],
-              ),
+              _Header(onNew: onNew, onThisDevice: onThisDevice),
               const SizedBox(height: 18),
               if (error != null) ...[
                 _ErrorCard(message: error!),
@@ -103,11 +76,12 @@ class SftpSiteManagerView extends StatelessWidget {
                     icon: Icons.dns_rounded,
                     title: 'No servers yet',
                     subtitle:
-                        'Add a server with its host name, username, password '
-                        'and port — luma connects straight to it from this '
-                        'device.',
+                        'A site is one saved server — its host name, user '
+                        'name, password and port. luma connects straight to '
+                        'it from this device. To go the other way and let a '
+                        'device connect to this one, open This device.',
                     action: LumaPrimaryButton(
-                      label: 'Add a server',
+                      label: 'New site',
                       icon: Icons.add_rounded,
                       onTap: onNew,
                     ),
@@ -131,6 +105,91 @@ class SftpSiteManagerView extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Title, and the two directions this screen offers: out to a saved server,
+/// or in to this device. On a phone the buttons drop below the title rather
+/// than squeezing it.
+class _Header extends StatelessWidget {
+  const _Header({required this.onNew, required this.onThisDevice});
+
+  final VoidCallback onNew;
+  final VoidCallback onThisDevice;
+
+  static const double _stackBelow = 560;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+
+    final title = Row(
+      children: [
+        LumaIconBadge(icon: Icons.storage_rounded, color: luma.accent),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Site Manager',
+                style: TextStyle(
+                  color: luma.textPrimary,
+                  fontSize: 19,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Your servers, saved on this device only.',
+                style: TextStyle(color: luma.textSecondary, fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final stacked = constraints.maxWidth < _stackBelow;
+        final thisDevice = LumaGhostButton(
+          label: 'This device',
+          icon: Icons.smartphone_rounded,
+          onTap: onThisDevice,
+        );
+        final newSite = LumaPrimaryButton(
+          label: 'New site',
+          icon: Icons.add_rounded,
+          onTap: onNew,
+        );
+
+        if (!stacked) {
+          return Row(
+            children: [
+              Expanded(child: title),
+              thisDevice,
+              const SizedBox(width: 8),
+              newSite,
+            ],
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            title,
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(child: thisDevice),
+                const SizedBox(width: 8),
+                Expanded(child: newSite),
+              ],
+            ),
+          ],
+        );
+      },
     );
   }
 }
