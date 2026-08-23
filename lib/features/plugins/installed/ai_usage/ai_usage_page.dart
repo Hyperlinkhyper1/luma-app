@@ -96,10 +96,11 @@ class _AiUsageDashboardTabState extends State<AiUsageDashboardTab> {
               icon: Icons.smart_toy_outlined,
               title: 'No local AI usage logs found',
               subtitle: 'AI Usage reads session logs from Claude Code '
-                  '(~/.claude/projects), Codex CLI (~/.codex/sessions), and '
-                  'Antigravity (~/.gemini/antigravity) on this device — '
-                  'nothing is ever sent anywhere. Use one of these tools '
-                  'here, then rescan.',
+                  '(~/.claude/projects), Codex CLI (~/.codex/sessions), '
+                  'Antigravity (~/.gemini/antigravity), and opencode '
+                  '(~/.local/share/opencode) on this device — nothing is '
+                  'ever sent anywhere. Use one of these tools here, then '
+                  'rescan.',
               action: LumaGhostButton(
                 label: repo.scanning ? 'Scanning…' : 'Rescan',
                 icon: Icons.refresh_rounded,
@@ -206,7 +207,7 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-// ─── Source filter: All / Claude Code / Codex CLI ───────────────────────────
+// ─── Source filter: All / Claude Code / Codex CLI / Antigravity / OpenCode ──
 
 class _SourceFilterBar extends StatelessWidget {
   const _SourceFilterBar({required this.selected, required this.onSelect});
@@ -219,12 +220,13 @@ class _SourceFilterBar extends StatelessWidget {
     AiUsageSource.claudeCode,
     AiUsageSource.codexCli,
     AiUsageSource.antigravity,
+    AiUsageSource.opencode,
   ];
 
   @override
   Widget build(BuildContext context) {
     return LumaSegmentedTabs(
-      tabs: const ['All', 'Claude Code', 'Codex CLI', 'Antigravity (est.)'],
+      tabs: const ['All', 'Claude Code', 'Codex CLI', 'Antigravity (est.)', 'OpenCode'],
       selectedIndex: _options.indexOf(selected),
       onSelect: (i) => onSelect(_options[i]),
     );

@@ -17,7 +17,26 @@ String displayName(AiUsageSource source, String model) => switch (source) {
       // text (e.g. "Claude Opus 4.6 (Thinking)") — no family-name shortening
       // needed the way the other two sources' raw API model IDs require.
       AiUsageSource.antigravity => 'Antigravity · $model',
+      AiUsageSource.opencode => 'OpenCode · ${_shortOpencodeModelName(model)}',
     };
+
+/// "anthropic/claude-opus-4-6" -> "Opus 4.6", "openai/gpt-5.4" -> "GPT 5.4",
+/// "opencode/x-preview-f-free" -> "x-preview-f-free". Undoes the
+/// `"<providerID>/<modelID>"` prefix opencode_scanner.dart stores models
+/// with (so cost can route to the right provider's pricing table — see
+/// ai_usage_pricing.dart), applying that provider's own short-name style
+/// where recognized and falling back to the raw model id otherwise.
+String _shortOpencodeModelName(String model) {
+  final slash = model.indexOf('/');
+  if (slash < 0) return model;
+  final provider = model.substring(0, slash);
+  final modelId = model.substring(slash + 1);
+  return switch (provider) {
+    'anthropic' => _shortModelName(modelId),
+    'openai' => _shortOpenAiModelName(modelId),
+    _ => modelId,
+  };
+}
 
 /// "claude-opus-4-8" -> "Opus 4.8", "claude-fable-5" -> "Fable 5". Names
 /// outside the recognized Anthropic families fall back to the raw string.
