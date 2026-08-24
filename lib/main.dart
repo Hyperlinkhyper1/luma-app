@@ -22,6 +22,9 @@ import 'features/plugins/installed/ai_usage/ai_usage_repository.dart';
 import 'features/plugins/installed/ai_usage/ai_usage_scope.dart';
 import 'features/plugins/installed/ai_usage/leaderboard/ai_catalog_repository.dart';
 import 'features/plugins/installed/ai_usage/leaderboard/ai_catalog_scope.dart';
+import 'features/plugins/installed/steam_tools/data/steam_database.dart';
+import 'features/plugins/installed/steam_tools/steam_repository.dart';
+import 'features/plugins/installed/steam_tools/steam_scope.dart';
 import 'features/plugins/installed/data_management/data/data_management_database.dart';
 import 'features/plugins/installed/data_management/data_management_repository.dart';
 import 'features/plugins/installed/server_tycoon/server_tycoon_repository.dart';
@@ -152,6 +155,8 @@ class _LumaAppState extends State<LumaApp> {
   late final MoodJournalRepository _moodJournalRepository = MoodJournalRepository(_moodJournalDb);
   late final AiUsageDatabase _aiUsageDb = AiUsageDatabase();
   late final AiUsageRepository _aiUsageRepository = AiUsageRepository(_aiUsageDb);
+  late final SteamDatabase _steamDb = SteamDatabase();
+  late final SteamRepository _steamRepository = SteamRepository(_steamDb);
   late final AiCatalogRepository _aiCatalogRepository =
       AiCatalogRepository(_sync);
   late final SchoolDatabase _schoolDb = SchoolDatabase();
@@ -406,6 +411,8 @@ class _LumaAppState extends State<LumaApp> {
     _dataManagementDb.close();
     _moodJournalDb.close();
     _aiUsageDb.close();
+    _steamRepository.dispose();
+    _steamDb.close();
     _schoolDb.close();
     _minecraftDb.close();
     _serverTycoonRepository.dispose();
@@ -500,6 +507,8 @@ class _LumaAppState extends State<LumaApp> {
                       repository: _moodJournalRepository,
                       child: AiCatalogScope(
                       repository: _aiCatalogRepository,
+                      child: SteamScope(
+                      repository: _steamRepository,
                       child: AiUsageScope(
                       repository: _aiUsageRepository,
                       child: SchoolScope(
@@ -550,6 +559,7 @@ class _LumaAppState extends State<LumaApp> {
                           ),
                         );
                       },
+                    ),
                     ),
                     ),
                     ),

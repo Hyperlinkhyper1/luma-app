@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_onnxruntime/flutter_onnxruntime.dart';
@@ -10,42 +11,85 @@ import 'gallery_face_embedder.dart';
 import 'gallery_model_store.dart';
 import 'imagenet_buckets.dart';
 
-/// Everything one photo needs, built in a worker isolate by
-/// [_preparePhoto]: a ready tensor per model, the two pixel-read markers,
-/// and the decoded pixels themselves for the face-recognition crops.
-class _PreparedPhoto {
-  const _PreparedPhoto({
-    required this.classifier,
-    required this.detector,
-    required this.sky,
-    required this.night,
-    required this.pixels,
-  });
+/// A decoded picture: its pixels as tightly-packed RGBA, row-major from the
+/// top left, with the dimensions to walk them by.
+@immutable
+class DecodedPixels {
+  const DecodedPixels(this.rgba, this.width, this.height);
 
-  final Float32List classifier;
-  final Float32List detector;
-  final bool sky;
-  final bool night;
-
-  /// The decoded thumbnail. Small — it was a few hundred pixels before it
-  /// was ever decoded — so handing it back across the isolate boundary costs
-  /// nothing next to what made it.
-  final img.Image pixels;
+  final Uint8List rgba;
+  final int width;
+  final int height;
 }
 
-/// The CPU half of one photo's analysis: decode, both models' input tensors,
-/// and the sky/night heuristics. Runs on a worker isolate via [compute] —
-/// see [GalleryOnnxAnalyser.analyse].
-_PreparedPhoto? _preparePhoto(Uint8List bytes) {
-  final decoded = img.decodeImage(bytes);
-  if (decoded == null) return null;
-  return _PreparedPhoto(
-    classifier: preprocessClassifier(decoded),
-    detector: preprocessFaceDetector(decoded),
-    sky: hasSky(decoded),
-    night: isNightShot(decoded),
-    pixels: decoded,
-  );
+/// Decodes an already-encoded picture (the PNG or JPEG bytes a thumbnail
+/// cache stores) into [DecodedPixels].
+///
+/// This goes through the engine's own codecs rather than `package:image`.
+/// The difference is not subtle: a pure-Dart decoder walks every pixel of
+/// the picture in Dart, while libjpeg-turbo and friends do the same work an
+/// order of magnitude faster and off the UI thread entirely. At a photo a
+/// second the slow way, decoding alone was most of the budget.
+Future<DecodedPixels?> decodeToRgba(Uint8List bytes) async {
+  ui.Codec? codec;
+  ui.Image? image;
+  try {
+    codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    image = frame.image;
+    final data =
+        await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+    if (data == null) return null;
+    return DecodedPixels(
+      Uint8List.view(
+        data.buffer,
+        data.offsetInBytes,
+        data.lengthInBytes,
+      ),
+      image.width,
+      image.height,
+    );
+  } catch (_) {
+    return null;
+  } finally {
+    image?.dispose();
+    codec?.dispose();
+  }
+}
+
+/// Scratch space for [_bilinearSample]; reused across calls so the hot loops
+/// never allocate per pixel.
+final Float64List _sampled = Float64List(3);
+
+/// Reads the colour at ([fx], [fy]) in source-pixel coordinates, blending the
+/// four neighbours — the same resampling `copyResize` does, just without
+/// materialising an intermediate image first.
+void _bilinearSample(
+  Uint8List pixels,
+  int width,
+  int height,
+  int channels,
+  double fx,
+  double fy,
+) {
+  final x = fx.clamp(0.0, (width - 1).toDouble());
+  final y = fy.clamp(0.0, (height - 1).toDouble());
+  final x0 = x.floor();
+  final y0 = y.floor();
+  final x1 = math.min(x0 + 1, width - 1);
+  final y1 = math.min(y0 + 1, height - 1);
+  final ax = x - x0;
+  final ay = y - y0;
+
+  for (var c = 0; c < 3; c++) {
+    final tl = pixels[(y0 * width + x0) * channels + c].toDouble();
+    final tr = pixels[(y0 * width + x1) * channels + c].toDouble();
+    final bl = pixels[(y1 * width + x0) * channels + c].toDouble();
+    final br = pixels[(y1 * width + x1) * channels + c].toDouble();
+    final top = tl + (tr - tl) * ax;
+    final bottom = bl + (br - bl) * ax;
+    _sampled[c] = top + (bottom - top) * ay;
+  }
 }
 
 /// The desktop half of the smart albums: the same two jobs ML Kit does on the
@@ -113,12 +157,9 @@ class GalleryOnnxAnalyser {
   /// re-reading the full-size file would be wasted work, and a cloud
   /// placeholder (which has no thumbnail) is skipped for free.
   ///
-  /// Decoding the thumbnail, building both input tensors and reading the sky
-  /// and night markers are all pixel loops that take longer than the models
-  /// themselves on the UI thread — a photo every couple of seconds is fine,
-  /// but a jank frame per photo is what made the pass feel like a crawl. They
-  /// run in a worker isolate instead; only the sessions, which must stay on
-  /// the isolate that opened them, run here.
+  /// The two sessions run together: they are independent models on separate
+  /// ORT sessions, so paying the classifier's latency and then the detector's
+  /// was half again as long per photo as it needed to be.
   ///
   /// [embedder] and [people] are the cross-platform recognition step (see
   /// [GalleryFaceEmbedder]) — passed in rather than owned here, since the
@@ -132,27 +173,37 @@ class GalleryOnnxAnalyser {
   }) async {
     if (!ready) return previous.copyWith(analysed: true, skipped: true);
     try {
-      final prepared = await compute(_preparePhoto, bytes);
-      if (prepared == null) {
+      final photo = await decodeToRgba(bytes);
+      if (photo == null) {
         return previous.copyWith(analysed: true, skipped: true);
       }
 
-      final buckets = await _classify(prepared.classifier);
-      final faces = await _detectFaces(prepared.detector);
-      final personIds = await identifyPeople(
-        prepared.pixels,
-        faces,
-        embedder: embedder,
-        people: people,
-        coverKey: cacheKey,
-      );
+      final results = await Future.wait([
+        _classify(classifierTensorFromRgba(photo)),
+        _detectFaces(detectorTensorFromRgba(photo)),
+      ]);
+      final buckets = results[0] as Set<String>;
+      final faces = results[1] as List<GalleryFace>;
+
+      var personIds = const <int>[];
+      if (faces.isNotEmpty && embedder.ready) {
+        personIds = await identifyPeopleRgba(
+          photo,
+          faces,
+          embedder: embedder,
+          people: people,
+          coverKey: cacheKey,
+        );
+      }
+
       return previous.copyWith(
         faceCount: faces.length,
         labels: [
           ...buckets,
           if (isSelfieShaped(faces)) selfieLabel,
-          if (prepared.sky) skyLabel,
-          if (prepared.night) nightLabel,
+          if (hasSkyInPixels(photo.rgba, photo.width, photo.height)) skyLabel,
+          if (isNightShotInPixels(photo.rgba, photo.width, photo.height))
+            nightLabel,
         ],
         personIds: personIds,
         analysed: true,
@@ -262,20 +313,47 @@ const nightHighlight = 150.0;
 /// Only blue sky is claimed. Overcast white would need separating from walls,
 /// ceilings and paper, and a Sky album full of indoor shots is worse than one
 /// that misses grey days.
-bool hasSky(img.Image image) {
-  if (image.width < 4 || image.height < 4) return false;
-  final bottom = math.max(1, image.height ~/ 3);
+bool hasSky(img.Image image) =>
+    hasSkyInPixels(
+      image.getBytes(order: img.ChannelOrder.rgb),
+      image.width,
+      image.height,
+      channels: 3,
+    );
+
+/// Whether the picture was taken in the dark: mostly shadow, but with
+/// something bright in it.
+bool isNightShot(img.Image image) =>
+    isNightShotInPixels(
+      image.getBytes(order: img.ChannelOrder.rgb),
+      image.width,
+      image.height,
+      channels: 3,
+    );
+
+/// The same two questions, asked of a raw pixel buffer — RGBA or RGB, per
+/// [channels]. This is the form the analyser actually has in hand, and
+/// walking a `Uint8List` by index is an order of magnitude cheaper than the
+/// per-pixel object access a decoded [img.Image] costs.
+bool hasSkyInPixels(
+  Uint8List pixels,
+  int width,
+  int height, {
+  int channels = 4,
+}) {
+  if (width < 4 || height < 4) return false;
+  final bottom = math.max(1, height ~/ 3);
   // Every fourth pixel is plenty to judge a region this size.
   const step = 4;
   var sampled = 0;
   var skyLike = 0;
 
   for (var y = 0; y < bottom; y += step) {
-    for (var x = 0; x < image.width; x += step) {
-      final pixel = image.getPixel(x, y);
-      final r = pixel.r.toDouble();
-      final g = pixel.g.toDouble();
-      final b = pixel.b.toDouble();
+    for (var x = 0; x < width; x += step) {
+      final offset = (y * width + x) * channels;
+      final r = pixels[offset].toDouble();
+      final g = pixels[offset + 1].toDouble();
+      final b = pixels[offset + 2].toDouble();
       sampled++;
       // Blue ahead of both other channels, and bright enough to be daylight
       // rather than a navy jumper.
@@ -286,21 +364,26 @@ bool hasSky(img.Image image) {
   return skyLike / sampled >= skyCoverage;
 }
 
-/// Whether the picture was taken in the dark: mostly shadow, but with
-/// something bright in it.
-bool isNightShot(img.Image image) {
-  if (image.width < 2 || image.height < 2) return false;
+/// The night test against a raw pixel buffer. See [isNightShot].
+bool isNightShotInPixels(
+  Uint8List pixels,
+  int width,
+  int height, {
+  int channels = 4,
+}) {
+  if (width < 2 || height < 2) return false;
   const step = 4;
   var sampled = 0;
   var total = 0.0;
   var brightest = 0.0;
 
-  for (var y = 0; y < image.height; y += step) {
-    for (var x = 0; x < image.width; x += step) {
-      final pixel = image.getPixel(x, y);
+  for (var y = 0; y < height; y += step) {
+    for (var x = 0; x < width; x += step) {
+      final offset = (y * width + x) * channels;
       // Rec. 601 luma, which is what "how bright does this look" means.
-      final luma =
-          0.299 * pixel.r + 0.587 * pixel.g + 0.114 * pixel.b;
+      final luma = 0.299 * pixels[offset] +
+          0.587 * pixels[offset + 1] +
+          0.114 * pixels[offset + 2];
       total += luma;
       if (luma > brightest) brightest = luma;
       sampled++;
@@ -358,6 +441,77 @@ Float32List preprocessFaceDetector(img.Image image) {
       out[offset] = (pixel.r - 127) / 128;
       out[plane + offset] = (pixel.g - 127) / 128;
       out[2 * plane + offset] = (pixel.b - 127) / 128;
+    }
+  }
+  return out;
+}
+
+/// [preprocessClassifier]'s transform, straight from RGBA pixels.
+///
+/// Same maths as the img.Image version — short edge scaled to
+/// [classifierSize], middle square cropped, ImageNet-normalised, NCHW — but
+/// sampling bilinearly out of the buffer the decoder already produced, with
+/// no intermediate image materialised and no per-pixel object access. This is
+/// the one the analyser runs; the img.Image form above stays for tests.
+Float32List classifierTensorFromRgba(DecodedPixels photo) {
+  final out = Float32List(3 * classifierSize * classifierSize);
+  const plane = classifierSize * classifierSize;
+  final shortest = math.min(photo.width, photo.height);
+  if (shortest <= 0) return out;
+
+  final scale = classifierSize / shortest;
+  final scaledWidth =
+      math.max(classifierSize, (photo.width * scale).round());
+  final scaledHeight =
+      math.max(classifierSize, (photo.height * scale).round());
+  // The crop is taken in resized coordinates; mapping a destination pixel
+  // back through it lands directly in source coordinates, so no intermediate
+  // resized image is ever built.
+  final cropX = (scaledWidth - classifierSize) ~/ 2;
+  final cropY = (scaledHeight - classifierSize) ~/ 2;
+
+  for (var y = 0; y < classifierSize; y++) {
+    final sy = (y + cropY + 0.5) / scale - 0.5;
+    for (var x = 0; x < classifierSize; x++) {
+      final sx = (x + cropX + 0.5) / scale - 0.5;
+      _bilinearSample(
+        photo.rgba,
+        photo.width,
+        photo.height,
+        4,
+        sx,
+        sy,
+      );
+      final offset = y * classifierSize + x;
+      out[offset] = (_sampled[0] / 255.0 - _mean[0]) / _std[0];
+      out[plane + offset] = (_sampled[1] / 255.0 - _mean[1]) / _std[1];
+      out[2 * plane + offset] = (_sampled[2] / 255.0 - _mean[2]) / _std[2];
+    }
+  }
+  return out;
+}
+
+/// [preprocessFaceDetector]'s transform, straight from RGBA pixels — whole
+/// frame squashed to 320×240, centred on 127, channel-first. See
+/// [classifierTensorFromRgba] for why this form exists.
+Float32List detectorTensorFromRgba(DecodedPixels photo) {
+  if (photo.width < 2 || photo.height < 2) {
+    return Float32List(3 * faceDetectorHeight * faceDetectorWidth);
+  }
+  final out = Float32List(3 * faceDetectorHeight * faceDetectorWidth);
+  const plane = faceDetectorHeight * faceDetectorWidth;
+  final scaleX = photo.width / faceDetectorWidth;
+  final scaleY = photo.height / faceDetectorHeight;
+
+  for (var y = 0; y < faceDetectorHeight; y++) {
+    final sy = (y + 0.5) * scaleY - 0.5;
+    for (var x = 0; x < faceDetectorWidth; x++) {
+      final sx = (x + 0.5) * scaleX - 0.5;
+      _bilinearSample(photo.rgba, photo.width, photo.height, 4, sx, sy);
+      final offset = y * faceDetectorWidth + x;
+      out[offset] = (_sampled[0] - 127) / 128;
+      out[plane + offset] = (_sampled[1] - 127) / 128;
+      out[2 * plane + offset] = (_sampled[2] - 127) / 128;
     }
   }
   return out;

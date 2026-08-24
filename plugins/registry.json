@@ -122,6 +122,16 @@
       "version": "1.0.0"
     },
     {
+      "id": "steam-tools",
+      "name": "Steam Tools",
+      "description": "A hub for your Steam library. Price Tracker lists every game you own and keeps a price history for each one — Steam only publishes what a game costs right now, so luma records the price itself and charts it over 1D, 1W, 1M, 6M, 1Y and 5Y. Open a game for its banner, current price and discount, description, tags and full PC system requirements. Your Steam API key stays encrypted on this device and is sent only to Steam.",
+      "icon": "sports_esports",
+      "category": "Utility",
+      "tags": ["Utility", "Gaming", "Shopping"],
+      "free": true,
+      "version": "1.0.0"
+    },
+    {
       "id": "ai-usage",
       "name": "AI Usage",
       "description": "Three tools in one. Usage: a private dashboard for your Claude Code, Codex CLI, Antigravity and OpenCode spend — token counts and cost estimates by day and model, read entirely from your local session logs, and never sent anywhere. Leaderboard: every major model ranked on reasoning, coding and agent ratings, with context windows, prices and licences side by side. Open Source: work out which downloadable models your own hardware can actually run.",
