@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// Bumped whenever a stored verdict stops meaning what it used to.
@@ -231,17 +232,20 @@ class GalleryCache {
     _dirty = false;
     try {
       final file = await _open();
-      await file.writeAsString(jsonEncode({
+      final entriesJson = <String, Map<String, dynamic>>{
+        for (final entry in _entries.entries)
+          if (entry.value.toJson().isNotEmpty)
+            entry.key: entry.value.toJson(),
+      };
+      final snapshot = <String, dynamic>{
         'version': 1,
         'analysisVersion': kGalleryAnalysisVersion,
         'roots': _roots,
         if (_scanRoot != null) 'scanRoot': _scanRoot,
-        'entries': {
-          for (final entry in _entries.entries)
-            if (entry.value.toJson().isNotEmpty)
-              entry.key: entry.value.toJson(),
-        },
-      }));
+        'entries': entriesJson,
+      };
+      final text = await compute(_encodeGalleryCache, snapshot);
+      await file.writeAsString(text);
     } catch (_) {
       _dirty = true;
     } finally {
@@ -261,3 +265,5 @@ class GalleryCache {
     return _file = File('${directory.path}${separator}index.json');
   }
 }
+
+String _encodeGalleryCache(Map<String, dynamic> snapshot) => jsonEncode(snapshot);

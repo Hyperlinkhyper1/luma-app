@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
@@ -410,7 +411,11 @@ class FolderGallerySource extends GallerySource {
       return bytes;
     }
 
-    final bytes = await compute(
+    Uint8List? bytes = await _renderThumbnailNative(
+      item.path ?? item.id,
+      pixels,
+    );
+    bytes ??= await compute(
       _renderThumbnail,
       _ThumbnailRequest(item.path ?? item.id, pixels),
     );
@@ -472,6 +477,46 @@ class _ThumbnailRequest {
   const _ThumbnailRequest(this.path, this.pixels);
   final String path;
   final int pixels;
+}
+
+/// Tries the engine's own codecs first — JPEG, PNG, WebP, BMP, GIF, HEIF on
+/// a platform that supports it. libjpeg-turbo and friends decode with
+/// subsampling (`targetWidth`), so a 12 MP picture is read as a 384 px strip
+/// rather than fully in Dart. Anything the engine cannot read falls back to
+/// the old `package:image` path.
+Future<Uint8List?> _renderThumbnailNative(String path, int pixels) async {
+  Uint8List bytes;
+  try {
+    bytes = await File(path).readAsBytes();
+  } catch (_) {
+    return null;
+  }
+
+  ui.Codec? codec;
+  ui.Image? image;
+  try {
+    try {
+      codec = await ui.instantiateImageCodec(
+        bytes,
+        targetWidth: pixels,
+        allowUpscaling: false,
+      );
+    } catch (_) {
+      return null;
+    }
+    final frame = await codec.getNextFrame();
+    image = frame.image;
+    final data = await image.toByteData(format: ui.ImageByteFormat.png);
+    return data?.buffer.asUint8List(
+      data.offsetInBytes,
+      data.lengthInBytes,
+    );
+  } catch (_) {
+    return null;
+  } finally {
+    image?.dispose();
+    codec?.dispose();
+  }
 }
 
 /// Runs on a worker isolate: decoding a 12 MP JPEG takes long enough to drop

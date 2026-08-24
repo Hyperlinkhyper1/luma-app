@@ -401,18 +401,42 @@ class GalleryRepository extends ChangeNotifier {
 
     _modelsPresent = true;
 
-    for (final item in pending) {
+    final usesOnnx = _analyser.usesOnnx;
+    Future<Uint8List?>? nextThumb;
+    Future<String?>? nextPath;
+    if (pending.isNotEmpty) {
+      if (usesOnnx) {
+        nextThumb = thumbnail(pending.first, _analysisPixels);
+      } else {
+        nextPath = _source.resolvePath(pending.first);
+      }
+    }
+
+    for (var i = 0; i < pending.length; i++) {
       if (_disposed || _cancelAnalysis) break;
+      final item = pending[i];
       final previous = _cache[item.cacheKey] ?? const GalleryCacheEntry();
+      Uint8List? thumb;
+      String? resolvedPath;
+      if (usesOnnx) {
+        thumb = await nextThumb;
+        if (i + 1 < pending.length && !_cancelAnalysis && !_disposed) {
+          nextThumb = thumbnail(pending[i + 1], _analysisPixels);
+        }
+      } else {
+        resolvedPath = await nextPath;
+        if (i + 1 < pending.length && !_cancelAnalysis && !_disposed) {
+          nextPath = _source.resolvePath(pending[i + 1]);
+        }
+      }
       // ML Kit reads the file; the ONNX path works from the thumbnail the
       // grid already made, which also means a cloud placeholder — which has
       // no thumbnail — is skipped rather than downloaded.
       final entry = await _analyser.analyse(
         previous: previous,
         cacheKey: item.cacheKey,
-        path: _analyser.usesOnnx ? null : await _source.resolvePath(item),
-        thumbnail:
-            _analyser.usesOnnx ? await thumbnail(item, _analysisPixels) : null,
+        path: resolvedPath,
+        thumbnail: thumb,
       );
       _cache.put(item.cacheKey, entry);
       _analysedCount++;
