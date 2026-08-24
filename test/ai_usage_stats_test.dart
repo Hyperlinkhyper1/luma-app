@@ -17,6 +17,7 @@ AiUsageTurn _turn({
   int cacheCreationTokens = 0,
   String? project,
   AiEffort? effort,
+  double? reportedCost,
 }) =>
     AiUsageTurn(
       id: id,
@@ -31,6 +32,7 @@ AiUsageTurn _turn({
       messageId: null,
       project: project,
       effort: effort,
+      reportedCost: reportedCost,
     );
 
 void main() {
@@ -539,6 +541,131 @@ void main() {
       final result = totals(turns);
       expect(result.cost, closeTo(8.00, 0.0001));
       expect(result.hasUnbillable, isFalse);
+    });
+  });
+
+  group("cost from the tool's own figure", () {
+    final at = DateTime(2026, 3, 15, 10);
+
+    test('prices an otherwise-unpriced opencode model from reportedCost', () {
+      final turn = _turn(
+        timestamp: at,
+        source: AiUsageSource.opencode,
+        model: 'minimax/MiniMax-M3',
+        reportedCost: 0.25,
+      );
+      expect(rowHasKnownCost(turn), isTrue);
+      expect(costForRow(turn), closeTo(0.25, 1e-9));
+    });
+
+    test("this app's own pricing wins over the tool's figure", () {
+      final turn = _turn(
+        timestamp: at,
+        source: AiUsageSource.opencode,
+        model: 'anthropic/claude-sonnet-4-6',
+        inputTokens: 1000000,
+        outputTokens: 0,
+        reportedCost: 999,
+      );
+      final expected = costForTurn(
+          AiUsageSource.opencode, 'anthropic/claude-sonnet-4-6', 1000000, 0, 0, 0);
+      expect(expected, greaterThan(0));
+      expect(costForRow(turn), closeTo(expected, 1e-9));
+    });
+
+    test('a reported cost of zero is a known cost, not a missing one', () {
+      final turn = _turn(
+        timestamp: at,
+        source: AiUsageSource.opencode,
+        model: 'opencode/x-preview-f-free',
+        reportedCost: 0,
+      );
+      expect(rowHasKnownCost(turn), isTrue);
+      expect(costForRow(turn), 0);
+      expect(totals([turn]).hasUnbillable, isFalse);
+    });
+
+    test('an unpriced turn with no reported cost stays unbillable', () {
+      final turn = _turn(
+        timestamp: at,
+        source: AiUsageSource.opencode,
+        model: 'openrouter/some-model',
+      );
+      expect(rowHasKnownCost(turn), isFalse);
+      expect(costForRow(turn), 0);
+      expect(totals([turn]).hasUnbillable, isTrue);
+      expect(aggregateByModel([turn]).single.billable, isFalse);
+    });
+
+    test('a model priced only by the tool still reads as billable', () {
+      final turn = _turn(
+        timestamp: at,
+        source: AiUsageSource.opencode,
+        model: 'minimax/MiniMax-M3',
+        reportedCost: 0.25,
+      );
+      expect(aggregateByModel([turn]).single.billable, isTrue);
+    });
+  });
+
+  group('aggregateOpencodeByProvider', () {
+    final at = DateTime(2026, 3, 15, 10);
+
+    test('groups by the provider half of the model id', () {
+      final result = aggregateOpencodeByProvider([
+        _turn(
+          timestamp: at,
+          source: AiUsageSource.opencode,
+          model: 'minimax/MiniMax-M3',
+          inputTokens: 500,
+          outputTokens: 100,
+          reportedCost: 0.20,
+        ),
+        _turn(
+          timestamp: at,
+          source: AiUsageSource.opencode,
+          model: 'minimax/MiniMax-M2.7',
+          inputTokens: 100,
+          outputTokens: 50,
+          reportedCost: 0.05,
+        ),
+        _turn(
+          timestamp: at,
+          source: AiUsageSource.opencode,
+          model: 'opencode/x-preview-f-free',
+          inputTokens: 10,
+          outputTokens: 10,
+          reportedCost: 0,
+        ),
+      ]);
+
+      expect(result.map((p) => p.provider), ['minimax', 'opencode']);
+      final minimax = result.first;
+      expect(minimax.turnCount, 2);
+      expect(minimax.modelCount, 2);
+      expect(minimax.totalTokens, 750);
+      expect(minimax.cost, closeTo(0.25, 1e-9));
+      expect(minimax.billable, isTrue);
+    });
+
+    test('ignores turns from every other source', () {
+      final result = aggregateOpencodeByProvider([
+        _turn(timestamp: at, model: 'claude-sonnet-4-6'),
+        _turn(timestamp: at, source: AiUsageSource.codexCli, model: 'gpt-5.5'),
+      ]);
+      expect(result, isEmpty);
+    });
+
+    test('a model with no provider prefix falls into the unknown bucket', () {
+      final result = aggregateOpencodeByProvider([
+        _turn(
+          timestamp: at,
+          source: AiUsageSource.opencode,
+          model: 'bare-model-id',
+        ),
+      ]);
+      expect(result.single.provider, kUnknownProvider);
+      expect(result.single.billable, isFalse);
     });
   });
 }

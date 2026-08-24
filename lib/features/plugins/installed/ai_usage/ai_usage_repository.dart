@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../../storage/storage_guard.dart';
+import 'ai_usage_source.dart';
 import 'antigravity_scanner.dart';
 import 'claude_code_scanner.dart';
 import 'codex_cli_scanner.dart';
@@ -56,6 +57,16 @@ class AiUsageRepository extends ChangeNotifier {
   /// Whether opencode's `opencode.db` was found on this device — null until
   /// the first [rescan] completes.
   bool? get opencodeDbFound => _opencodeDbFound;
+
+  /// Whether one specific source's logs were found on this device — null
+  /// until the first [rescan] completes. Backs the empty-state gate of a
+  /// dashboard pinned to a single tool.
+  bool? dirFoundFor(AiUsageSource source) => switch (source) {
+        AiUsageSource.claudeCode => _claudeCodeDirFound,
+        AiUsageSource.codexCli => _codexCliDirFound,
+        AiUsageSource.antigravity => _antigravityDirFound,
+        AiUsageSource.opencode => _opencodeDbFound,
+      };
 
   /// Whether *any* source was found — drives the page's empty-state gate.
   /// Null until the first [rescan] completes.

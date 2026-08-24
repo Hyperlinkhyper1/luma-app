@@ -10,17 +10,42 @@ import 'gallery_face_embedder.dart';
 import 'gallery_model_store.dart';
 import 'imagenet_buckets.dart';
 
-/// What one photo turned into.
-@immutable
-class OnnxVerdict {
-  const OnnxVerdict({required this.buckets, required this.faces});
+/// Everything one photo needs, built in a worker isolate by
+/// [_preparePhoto]: a ready tensor per model, the two pixel-read markers,
+/// and the decoded pixels themselves for the face-recognition crops.
+class _PreparedPhoto {
+  const _PreparedPhoto({
+    required this.classifier,
+    required this.detector,
+    required this.sky,
+    required this.night,
+    required this.pixels,
+  });
 
-  /// Smart album names, e.g. `{'Food', 'Nature'}`.
-  final Set<String> buckets;
+  final Float32List classifier;
+  final Float32List detector;
+  final bool sky;
+  final bool night;
 
-  /// Detected faces, as fractions of the frame's short edge — enough to tell
-  /// a selfie (one big face) from a group shot (several small ones).
-  final List<GalleryFace> faces;
+  /// The decoded thumbnail. Small — it was a few hundred pixels before it
+  /// was ever decoded — so handing it back across the isolate boundary costs
+  /// nothing next to what made it.
+  final img.Image pixels;
+}
+
+/// The CPU half of one photo's analysis: decode, both models' input tensors,
+/// and the sky/night heuristics. Runs on a worker isolate via [compute] —
+/// see [GalleryOnnxAnalyser.analyse].
+_PreparedPhoto? _preparePhoto(Uint8List bytes) {
+  final decoded = img.decodeImage(bytes);
+  if (decoded == null) return null;
+  return _PreparedPhoto(
+    classifier: preprocessClassifier(decoded),
+    detector: preprocessFaceDetector(decoded),
+    sky: hasSky(decoded),
+    night: isNightShot(decoded),
+    pixels: decoded,
+  );
 }
 
 /// The desktop half of the smart albums: the same two jobs ML Kit does on the
@@ -88,6 +113,13 @@ class GalleryOnnxAnalyser {
   /// re-reading the full-size file would be wasted work, and a cloud
   /// placeholder (which has no thumbnail) is skipped for free.
   ///
+  /// Decoding the thumbnail, building both input tensors and reading the sky
+  /// and night markers are all pixel loops that take longer than the models
+  /// themselves on the UI thread — a photo every couple of seconds is fine,
+  /// but a jank frame per photo is what made the pass feel like a crawl. They
+  /// run in a worker isolate instead; only the sessions, which must stay on
+  /// the isolate that opened them, run here.
+  ///
   /// [embedder] and [people] are the cross-platform recognition step (see
   /// [GalleryFaceEmbedder]) — passed in rather than owned here, since the
   /// phone's ML Kit path needs the exact same two objects.
@@ -100,26 +132,27 @@ class GalleryOnnxAnalyser {
   }) async {
     if (!ready) return previous.copyWith(analysed: true, skipped: true);
     try {
-      final decoded = img.decodeImage(bytes);
-      if (decoded == null) {
+      final prepared = await compute(_preparePhoto, bytes);
+      if (prepared == null) {
         return previous.copyWith(analysed: true, skipped: true);
       }
 
-      final verdict = await run(decoded);
+      final buckets = await _classify(prepared.classifier);
+      final faces = await _detectFaces(prepared.detector);
       final personIds = await identifyPeople(
-        decoded,
-        verdict.faces,
+        prepared.pixels,
+        faces,
         embedder: embedder,
         people: people,
         coverKey: cacheKey,
       );
       return previous.copyWith(
-        faceCount: verdict.faces.length,
+        faceCount: faces.length,
         labels: [
-          ...verdict.buckets,
-          if (isSelfieShaped(verdict.faces)) selfieLabel,
-          if (hasSky(decoded)) skyLabel,
-          if (isNightShot(decoded)) nightLabel,
+          ...buckets,
+          if (isSelfieShaped(faces)) selfieLabel,
+          if (prepared.sky) skyLabel,
+          if (prepared.night) nightLabel,
         ],
         personIds: personIds,
         analysed: true,
@@ -131,20 +164,12 @@ class GalleryOnnxAnalyser {
     }
   }
 
-  /// The inference proper, split out so it can be driven from a test with a
-  /// synthetic image.
-  Future<OnnxVerdict> run(img.Image image) async {
-    final buckets = await _classify(image);
-    final faces = await _detectFaces(image);
-    return OnnxVerdict(buckets: buckets, faces: faces);
-  }
-
-  Future<Set<String>> _classify(img.Image image) async {
+  Future<Set<String>> _classify(Float32List tensor) async {
     final session = _classifier;
     if (session == null) return {};
 
     final input = await OrtValue.fromList(
-      preprocessClassifier(image),
+      tensor,
       [1, 3, classifierSize, classifierSize],
     );
     Map<String, OrtValue>? outputs;
@@ -161,12 +186,12 @@ class GalleryOnnxAnalyser {
     }
   }
 
-  Future<List<GalleryFace>> _detectFaces(img.Image image) async {
+  Future<List<GalleryFace>> _detectFaces(Float32List tensor) async {
     final session = _faceDetector;
     if (session == null) return const [];
 
     final input = await OrtValue.fromList(
-      preprocessFaceDetector(image),
+      tensor,
       [1, 3, faceDetectorHeight, faceDetectorWidth],
     );
     Map<String, OrtValue>? outputs;

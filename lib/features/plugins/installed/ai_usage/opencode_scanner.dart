@@ -26,8 +26,9 @@ class OpencodeScanResult {
 /// Unlike the other scanners, opencode keeps one row per message in a
 /// `message` table (`id`, `session_id`, `time_created`, `data` — a JSON blob)
 /// rather than a JSONL log per session. Only `role`, `tokens`, `modelID`,
-/// `providerID`, and `path.cwd` are ever read out of `data`; the actual
-/// prompt/response content (in the separate `part` table) is never touched.
+/// `providerID`, `cost`, and `path.cwd` are ever read out of `data`; the
+/// actual prompt/response content (in the separate `part` table) is never
+/// touched.
 ///
 /// Incremental rescans work by watermark rather than file position: the
 /// highest `time_created` seen so far is stored in the shared
@@ -113,7 +114,7 @@ class OpencodeScanner {
     } catch (_) {
       return const OpencodeScanResult(dbFound: true);
     } finally {
-      sqliteDb.dispose();
+      sqliteDb.close();
     }
   }
 
@@ -154,6 +155,13 @@ class OpencodeScanner {
       final path = decoded['path'];
       final cwd = path is Map<String, dynamic> ? path['cwd'] as String? : null;
 
+      // opencode prices every turn itself, from models.dev — including the
+      // providers this app has no table for (MiniMax, OpenRouter, its own
+      // gateway). Stored so cost can fall back to it rather than showing
+      // "n/a" for everything outside anthropic/openai. A recorded 0 is a
+      // real answer (a free model), not a missing one.
+      final reportedCost = (decoded['cost'] as num?)?.toDouble();
+
       return AiUsageTurnsCompanion.insert(
         sessionId: sessionId,
         timestamp: DateTime.fromMillisecondsSinceEpoch(timeCreated, isUtc: true),
@@ -165,6 +173,7 @@ class OpencodeScanner {
         messageId: Value(id),
         project: Value(projectNameFromCwd(cwd)),
         source: AiUsageSource.opencode,
+        reportedCost: Value(reportedCost),
       );
     } catch (_) {
       return null;

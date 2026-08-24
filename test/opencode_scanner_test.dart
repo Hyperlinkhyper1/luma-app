@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
@@ -50,12 +49,13 @@ Map<String, dynamic> _assistantData({
   int cacheWrite = 0,
   String? cwd = r'C:\Users\ayden\project',
   int timeCreated = 1787479979983,
+  num? cost = 0,
 }) =>
     {
       'role': 'assistant',
       'mode': 'build',
       'agent': 'build',
-      'cost': 0,
+      'cost': ?cost,
       'tokens': {
         'input': input,
         'output': output,
@@ -95,7 +95,7 @@ void main() {
       timeCreated: 1787479979983,
       data: _assistantData(input: 1000, output: 200, reasoning: 50, cacheRead: 300, cacheWrite: 20),
     );
-    sqliteDb.dispose();
+    sqliteDb.close();
 
     final result = await scanner.scanFile(db, path);
     expect(result.dbFound, isTrue);
@@ -123,7 +123,7 @@ void main() {
       timeCreated: 1787479979983,
       data: {'role': 'user', 'time': {'created': 1787479979983}},
     );
-    sqliteDb.dispose();
+    sqliteDb.close();
 
     final result = await scanner.scanFile(db, path);
     expect(result.turnsAdded, 0);
@@ -140,7 +140,7 @@ void main() {
       timeCreated: 1787479979983,
       data: _assistantData(input: 0, output: 0),
     );
-    sqliteDb.dispose();
+    sqliteDb.close();
 
     final result = await scanner.scanFile(db, path);
     expect(result.turnsAdded, 0);
@@ -168,7 +168,7 @@ void main() {
       timeCreated: 1000,
       data: _assistantData(timeCreated: 1000),
     );
-    sqliteDb.dispose();
+    sqliteDb.close();
 
     final first = await scanner.scanFile(db, path);
     expect(first.turnsAdded, 1);
@@ -181,7 +181,7 @@ void main() {
       timeCreated: 2000,
       data: _assistantData(timeCreated: 2000),
     );
-    sqliteDb.dispose();
+    sqliteDb.close();
 
     final second = await scanner.scanFile(db, path);
     expect(second.turnsAdded, 1, reason: 'only msg-2 is newer than the stored watermark');
@@ -200,7 +200,7 @@ void main() {
       timeCreated: 1000,
       data: _assistantData(timeCreated: 1000),
     );
-    sqliteDb.dispose();
+    sqliteDb.close();
 
     await scanner.scanFile(db, path);
     final second = await scanner.scanFile(db, path);
@@ -218,11 +218,73 @@ void main() {
       timeCreated: 1000,
       data: _assistantData(providerId: 'opencode', modelId: 'x-preview-f-free', input: 500, output: 50),
     );
-    sqliteDb.dispose();
+    sqliteDb.close();
 
     await scanner.scanFile(db, path);
 
     final row = (await db.select(db.aiUsageTurns).get()).single;
     expect(row.model, 'opencode/x-preview-f-free');
+  });
+
+  test("stores opencode's own per-turn cost", () async {
+    final path = dbPath('opencode.db');
+    final sqliteDb = _openFixtureDb(path.path);
+    _insertMessage(
+      sqliteDb,
+      id: 'msg-1',
+      sessionId: 'ses-1',
+      timeCreated: 1000,
+      data: _assistantData(
+        providerId: 'minimax',
+        modelId: 'MiniMax-M3',
+        cost: 0.0042,
+      ),
+    );
+    sqliteDb.close();
+
+    await scanner.scanFile(db, path);
+
+    final row = (await db.select(db.aiUsageTurns).get()).single;
+    expect(row.reportedCost, closeTo(0.0042, 1e-9));
+  });
+
+  test('a recorded cost of zero is kept, not treated as absent', () async {
+    final path = dbPath('opencode.db');
+    final sqliteDb = _openFixtureDb(path.path);
+    _insertMessage(
+      sqliteDb,
+      id: 'msg-1',
+      sessionId: 'ses-1',
+      timeCreated: 1000,
+      data: _assistantData(
+        providerId: 'opencode',
+        modelId: 'x-preview-f-free',
+        cost: 0,
+      ),
+    );
+    sqliteDb.close();
+
+    await scanner.scanFile(db, path);
+
+    final row = (await db.select(db.aiUsageTurns).get()).single;
+    expect(row.reportedCost, 0);
+  });
+
+  test('a record with no cost field stores a null cost', () async {
+    final path = dbPath('opencode.db');
+    final sqliteDb = _openFixtureDb(path.path);
+    _insertMessage(
+      sqliteDb,
+      id: 'msg-1',
+      sessionId: 'ses-1',
+      timeCreated: 1000,
+      data: _assistantData(cost: null),
+    );
+    sqliteDb.close();
+
+    await scanner.scanFile(db, path);
+
+    final row = (await db.select(db.aiUsageTurns).get()).single;
+    expect(row.reportedCost, null);
   });
 }

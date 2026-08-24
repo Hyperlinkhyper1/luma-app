@@ -124,7 +124,7 @@
     {
       "id": "ai-usage",
       "name": "AI Usage",
-      "description": "Three tools in one. Usage: a private dashboard for your Claude Code, Codex CLI, and Antigravity spend — token counts and cost estimates by day and model, read entirely from your local session logs, and never sent anywhere. Leaderboard: every major model ranked on reasoning, coding and agent ratings, with context windows, prices and licences side by side. Open Source: work out which downloadable models your own hardware can actually run.",
+      "description": "Three tools in one. Usage: a private dashboard for your Claude Code, Codex CLI, Antigravity and OpenCode spend — token counts and cost estimates by day and model, read entirely from your local session logs, and never sent anywhere. Leaderboard: every major model ranked on reasoning, coding and agent ratings, with context windows, prices and licences side by side. Open Source: work out which downloadable models your own hardware can actually run.",
       "icon": "query_stats",
       "category": "Productivity",
       "tags": ["Productivity", "Analytics", "AI"],

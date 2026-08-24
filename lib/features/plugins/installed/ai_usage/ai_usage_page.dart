@@ -42,15 +42,24 @@ const Color _kProjectInputColor = Color(0xFFC4B5FD); // lavender
 const Color _kProjectOutputColor = Color(0xFF6EE7B7); // mint
 
 /// The plugin's **Usage** section: a private, offline dashboard for local AI
-/// coding CLI usage — token
-/// counts and cost estimates by day and model, read entirely from
-/// `~/.claude/projects`, `~/.codex/sessions`, and
-/// `~/.gemini/antigravity/brain` on this device. The first two are exact,
-/// provider-metered counts; Antigravity's are estimated from message length
-/// (it doesn't record token usage locally at all) and are labelled as such
-/// everywhere they appear.
+/// coding CLI usage — token counts and cost estimates by day and model, read
+/// entirely from `~/.claude/projects`, `~/.codex/sessions`,
+/// `~/.gemini/antigravity/brain`, and OpenCode's `opencode.db` on this
+/// device. All but one are exact, provider-metered counts; Antigravity's are
+/// estimated from message length (it doesn't record token usage locally at
+/// all) and are labelled as such everywhere they appear.
+///
+/// Also serves the plugin's OpenCode section, via [fixedSource] — same
+/// dashboard, pinned to that one tool.
 class AiUsageDashboardTab extends StatefulWidget {
-  const AiUsageDashboardTab({super.key});
+  const AiUsageDashboardTab({super.key, this.fixedSource});
+
+  /// When set, this dashboard covers that one tool instead of all of them:
+  /// the All/Claude Code/… filter bar is dropped (there is nothing left to
+  /// filter), the empty state speaks about that tool alone, and any
+  /// source-specific section it has is shown. Drives the plugin's dedicated
+  /// OpenCode section — see `AiUsageSection` in `ai_usage_shell.dart`.
+  final AiUsageSource? fixedSource;
 
   @override
   State<AiUsageDashboardTab> createState() => _AiUsageDashboardTabState();
@@ -60,6 +69,10 @@ class _AiUsageDashboardTabState extends State<AiUsageDashboardTab> {
   AiUsageRangePreset _preset = AiUsageRangePreset.today;
   AiUsageSource? _sourceFilter; // null = All
   bool _started = false;
+
+  /// The source actually being shown: the fixed one when this dashboard is
+  /// pinned to a tool, otherwise whatever the filter bar has selected.
+  AiUsageSource? get _source => widget.fixedSource ?? _sourceFilter;
 
   @override
   void didChangeDependencies() {
@@ -76,10 +89,15 @@ class _AiUsageDashboardTabState extends State<AiUsageDashboardTab> {
   Widget build(BuildContext context) {
     final repo = AiUsageScope.of(context);
 
+    final fixed = widget.fixedSource;
+
     return ListenableBuilder(
       listenable: repo,
       builder: (context, _) {
-        if (repo.anyDirFound == null) {
+        final found =
+            fixed == null ? repo.anyDirFound : repo.dirFoundFor(fixed);
+
+        if (found == null) {
           return const Center(
             child: SizedBox(
               width: 22,
@@ -89,18 +107,15 @@ class _AiUsageDashboardTabState extends State<AiUsageDashboardTab> {
           );
         }
 
-        if (repo.anyDirFound == false) {
+        if (found == false) {
           return Padding(
             padding: const EdgeInsets.all(24),
             child: LumaEmptyState(
               icon: Icons.smart_toy_outlined,
-              title: 'No local AI usage logs found',
-              subtitle: 'AI Usage reads session logs from Claude Code '
-                  '(~/.claude/projects), Codex CLI (~/.codex/sessions), '
-                  'Antigravity (~/.gemini/antigravity), and opencode '
-                  '(~/.local/share/opencode) on this device — nothing is '
-                  'ever sent anywhere. Use one of these tools here, then '
-                  'rescan.',
+              title: fixed == null
+                  ? 'No local AI usage logs found'
+                  : 'No ${_sourceLabel(fixed)} logs found',
+              subtitle: _notFoundSubtitle(fixed),
               action: LumaGhostButton(
                 label: repo.scanning ? 'Scanning…' : 'Rescan',
                 icon: Icons.refresh_rounded,
@@ -122,20 +137,23 @@ class _AiUsageDashboardTabState extends State<AiUsageDashboardTab> {
                 preset: _preset,
                 onSelectPreset: (p) => setState(() => _preset = p),
               ),
-              const SizedBox(height: 10),
-              _SourceFilterBar(
-                selected: _sourceFilter,
-                onSelect: (s) => setState(() => _sourceFilter = s),
-              ),
+              if (fixed == null) ...[
+                const SizedBox(height: 10),
+                _SourceFilterBar(
+                  selected: _sourceFilter,
+                  onSelect: (s) => setState(() => _sourceFilter = s),
+                ),
+              ],
               const SizedBox(height: 16),
               Expanded(
                 child: StreamData<List<AiUsageTurn>>(
                   stream: repo.watchRange(start, end),
                   builder: (context, turns) => _AiUsageBody(
-                    turns: _sourceFilter == null
+                    turns: _source == null
                         ? turns
-                        : turns.where((t) => t.source == _sourceFilter).toList(),
+                        : turns.where((t) => t.source == _source).toList(),
                     preset: _preset,
+                    fixedSource: fixed,
                   ),
                 ),
               ),
@@ -146,6 +164,43 @@ class _AiUsageDashboardTabState extends State<AiUsageDashboardTab> {
     );
   }
 }
+
+/// Plain tool name for [source], for titles and prose. Distinct from
+/// `displayName` in ai_usage_format.dart, which names a *model* and always
+/// carries a model string with it.
+String _sourceLabel(AiUsageSource source) => switch (source) {
+      AiUsageSource.claudeCode => 'Claude Code',
+      AiUsageSource.codexCli => 'Codex CLI',
+      AiUsageSource.antigravity => 'Antigravity',
+      AiUsageSource.opencode => 'OpenCode',
+    };
+
+/// Where [source]'s logs are expected to live, for the "nothing found"
+/// state. A null [source] is the all-tools dashboard, which lists them all.
+String _notFoundSubtitle(AiUsageSource? source) => switch (source) {
+      null => 'AI Usage reads session logs from Claude Code '
+          '(~/.claude/projects), Codex CLI (~/.codex/sessions), '
+          'Antigravity (~/.gemini/antigravity), and OpenCode '
+          '(~/.local/share/opencode) on this device — nothing is ever sent '
+          'anywhere. Use one of these tools here, then rescan.',
+      AiUsageSource.claudeCode =>
+        'AI Usage reads Claude Code\'s session logs from ~/.claude/projects '
+            'on this device — nothing is ever sent anywhere. Use Claude Code '
+            'here, then rescan.',
+      AiUsageSource.codexCli =>
+        'AI Usage reads Codex CLI\'s session logs from ~/.codex/sessions on '
+            'this device — nothing is ever sent anywhere. Use Codex CLI here, '
+            'then rescan.',
+      AiUsageSource.antigravity =>
+        'AI Usage reads Antigravity\'s local logs from ~/.gemini/antigravity '
+            'on this device — nothing is ever sent anywhere. Use Antigravity '
+            'here, then rescan.',
+      AiUsageSource.opencode =>
+        'AI Usage reads OpenCode\'s own database (opencode.db under '
+            'OPENCODE_DATA_DIR, or ~/.local/share/opencode) on this device — '
+            'only token counts and the model name, never your prompts, and '
+            'nothing is ever sent anywhere. Use OpenCode here, then rescan.',
+    };
 
 // ─── Top bar: range presets, rescan, status ─────────────────────────────────
 
@@ -236,10 +291,19 @@ class _SourceFilterBar extends StatelessWidget {
 // ─── Body: stat tiles, charts, table, once turns for the range arrive ──────
 
 class _AiUsageBody extends StatelessWidget {
-  const _AiUsageBody({required this.turns, required this.preset});
+  const _AiUsageBody({
+    required this.turns,
+    required this.preset,
+    this.fixedSource,
+  });
 
   final List<AiUsageTurn> turns;
   final AiUsageRangePreset preset;
+
+  /// Set when this dashboard is pinned to one tool — see
+  /// [AiUsageDashboardTab.fixedSource]. Only used to decide whether that
+  /// tool's own section belongs on the page.
+  final AiUsageSource? fixedSource;
 
   @override
   Widget build(BuildContext context) {
@@ -252,10 +316,12 @@ class _AiUsageBody extends StatelessWidget {
         .toList();
 
     if (modelTotals.isEmpty) {
-      return const LumaEmptyState(
+      return LumaEmptyState(
         icon: Icons.smart_toy_outlined,
         title: 'No usage recorded in this range',
-        subtitle: 'Try a wider range, or use one of the supported tools and rescan.',
+        subtitle: fixedSource == null
+            ? 'Try a wider range, or use one of the supported tools and rescan.'
+            : 'Try a wider range, or use ${_sourceLabel(fixedSource!)} and rescan.',
       );
     }
 
@@ -346,6 +412,14 @@ class _AiUsageBody extends StatelessWidget {
           ],
           const SizedBox(height: 16),
           _HighlightsSection(turns: turns),
+          if (fixedSource == AiUsageSource.opencode) ...[
+            const SizedBox(height: 16),
+            LumaCard(
+              child: _OpencodeProviderSection(
+                providers: aggregateOpencodeByProvider(turns),
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -1115,8 +1189,8 @@ class _ProjectBreakdownSection extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          "Claude Code and Codex only — Antigravity has no reliable project source, "
-          'grouped as "Unknown project" instead.',
+          "Claude Code, Codex CLI and OpenCode only — Antigravity has no "
+          'reliable project source, grouped as "Unknown project" instead.',
           style: TextStyle(color: luma.textMuted, fontSize: 11),
         ),
         const SizedBox(height: 12),
@@ -1193,6 +1267,144 @@ class _ProjectBarRow extends StatelessWidget {
                           ),
                         ],
                       ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── OpenCode: where the spend actually went ─────────────────────────────────
+
+/// OpenCode's own section: totals per underlying provider.
+///
+/// Every other source is one tool talking to one vendor, so "which provider
+/// did this go to" is only a question here — a single OpenCode session can
+/// route through Anthropic, MiniMax, OpenRouter or OpenCode's own gateway,
+/// and the model table alone doesn't add that up.
+class _OpencodeProviderSection extends StatelessWidget {
+  const _OpencodeProviderSection({required this.providers});
+
+  final List<ProviderUsageTotal> providers;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    if (providers.isEmpty) {
+      return const LumaEmptyState(
+        icon: Icons.hub_outlined,
+        title: 'No provider data in this range',
+      );
+    }
+
+    final maxTokens =
+        providers.fold<int>(0, (a, p) => p.totalTokens > a ? p.totalTokens : a);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Providers',
+          style: TextStyle(
+              color: luma.textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Which provider each OpenCode turn was routed to. Cost comes from '
+          "this app's own pricing for Anthropic and OpenAI models, and from "
+          "OpenCode's own per-turn figure for everything else.",
+          style: TextStyle(color: luma.textMuted, fontSize: 11),
+        ),
+        const SizedBox(height: 12),
+        for (var i = 0; i < providers.length; i++) ...[
+          if (i > 0) const SizedBox(height: 12),
+          _ProviderBarRow(
+            total: providers[i],
+            maxTokens: maxTokens,
+            color: _kPalette[i % _kPalette.length],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _ProviderBarRow extends StatelessWidget {
+  const _ProviderBarRow({
+    required this.total,
+    required this.maxTokens,
+    required this.color,
+  });
+
+  final ProviderUsageTotal total;
+  final int maxTokens;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final fraction = maxTokens == 0 ? 0.0 : total.totalTokens / maxTokens;
+    final models = total.modelCount == 1 ? '1 model' : '${total.modelCount} models';
+
+    return Tooltip(
+      message: 'Input: ${formatTokens(total.inputTokens)} · '
+          'Output: ${formatTokens(total.outputTokens)}\n'
+          'Cache reads: ${formatTokens(total.cacheReadTokens)}\n'
+          '${total.turnCount} turns · $models',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  total.provider,
+                  style: TextStyle(color: luma.textPrimary, fontSize: 12.5),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                models,
+                style: TextStyle(color: luma.textMuted, fontSize: 11),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                formatTokens(total.totalTokens),
+                style: TextStyle(
+                    color: luma.textSecondary,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                total.billable ? formatCost(total.cost) : 'n/a',
+                style: TextStyle(
+                  color: total.billable ? luma.success : luma.textMuted,
+                  fontSize: 11.5,
+                  fontWeight: total.billable ? FontWeight.w700 : FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(5),
+                child: Stack(
+                  children: [
+                    Container(height: 10, color: luma.border),
+                    Container(
+                      width: constraints.maxWidth * fraction,
+                      height: 10,
+                      color: color,
+                    ),
                   ],
                 ),
               );

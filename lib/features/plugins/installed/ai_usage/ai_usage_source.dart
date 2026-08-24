@@ -18,6 +18,17 @@
 /// provider — see `opencode_scanner.dart`.
 enum AiUsageSource { claudeCode, codexCli, antigravity, opencode }
 
+/// Splits an opencode turn's stored `"<providerID>/<modelID>"` model into
+/// its two halves, or null when it carries no provider prefix (a turn whose
+/// record had no `providerID`). The single place that format is taken apart
+/// — pricing, display names and the per-provider breakdown all route
+/// through it so they can never disagree about where the boundary is.
+(String provider, String modelId)? splitOpencodeModel(String model) {
+  final slash = model.indexOf('/');
+  if (slash < 0) return null;
+  return (model.substring(0, slash), model.substring(slash + 1));
+}
+
 /// Reasoning-effort tier a turn was run at — the same tiers Claude Code
 /// itself uses. Claude Code is the only source that records one, so turns
 /// from the other sources store null.
