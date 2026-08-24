@@ -49,17 +49,11 @@ const Color _kProjectOutputColor = Color(0xFF6EE7B7); // mint
 /// estimated from message length (it doesn't record token usage locally at
 /// all) and are labelled as such everywhere they appear.
 ///
-/// Also serves the plugin's OpenCode section, via [fixedSource] — same
-/// dashboard, pinned to that one tool.
+/// Narrowing to one tool is done with the All/Claude Code/… filter bar, not
+/// by giving each tool its own page — a source is a lens on this dashboard,
+/// not a separate destination.
 class AiUsageDashboardTab extends StatefulWidget {
-  const AiUsageDashboardTab({super.key, this.fixedSource});
-
-  /// When set, this dashboard covers that one tool instead of all of them:
-  /// the All/Claude Code/… filter bar is dropped (there is nothing left to
-  /// filter), the empty state speaks about that tool alone, and any
-  /// source-specific section it has is shown. Drives the plugin's dedicated
-  /// OpenCode section — see `AiUsageSection` in `ai_usage_shell.dart`.
-  final AiUsageSource? fixedSource;
+  const AiUsageDashboardTab({super.key});
 
   @override
   State<AiUsageDashboardTab> createState() => _AiUsageDashboardTabState();
@@ -69,10 +63,6 @@ class _AiUsageDashboardTabState extends State<AiUsageDashboardTab> {
   AiUsageRangePreset _preset = AiUsageRangePreset.today;
   AiUsageSource? _sourceFilter; // null = All
   bool _started = false;
-
-  /// The source actually being shown: the fixed one when this dashboard is
-  /// pinned to a tool, otherwise whatever the filter bar has selected.
-  AiUsageSource? get _source => widget.fixedSource ?? _sourceFilter;
 
   @override
   void didChangeDependencies() {
@@ -89,13 +79,10 @@ class _AiUsageDashboardTabState extends State<AiUsageDashboardTab> {
   Widget build(BuildContext context) {
     final repo = AiUsageScope.of(context);
 
-    final fixed = widget.fixedSource;
-
     return ListenableBuilder(
       listenable: repo,
       builder: (context, _) {
-        final found =
-            fixed == null ? repo.anyDirFound : repo.dirFoundFor(fixed);
+        final found = repo.anyDirFound;
 
         if (found == null) {
           return const Center(
@@ -112,10 +99,8 @@ class _AiUsageDashboardTabState extends State<AiUsageDashboardTab> {
             padding: const EdgeInsets.all(24),
             child: LumaEmptyState(
               icon: Icons.smart_toy_outlined,
-              title: fixed == null
-                  ? 'No local AI usage logs found'
-                  : 'No ${_sourceLabel(fixed)} logs found',
-              subtitle: _notFoundSubtitle(fixed),
+              title: 'No local AI usage logs found',
+              subtitle: _kNoLogsSubtitle,
               action: LumaGhostButton(
                 label: repo.scanning ? 'Scanning…' : 'Rescan',
                 icon: Icons.refresh_rounded,
@@ -137,23 +122,21 @@ class _AiUsageDashboardTabState extends State<AiUsageDashboardTab> {
                 preset: _preset,
                 onSelectPreset: (p) => setState(() => _preset = p),
               ),
-              if (fixed == null) ...[
-                const SizedBox(height: 10),
-                _SourceFilterBar(
-                  selected: _sourceFilter,
-                  onSelect: (s) => setState(() => _sourceFilter = s),
-                ),
-              ],
+              const SizedBox(height: 10),
+              _SourceFilterBar(
+                selected: _sourceFilter,
+                onSelect: (s) => setState(() => _sourceFilter = s),
+              ),
               const SizedBox(height: 16),
               Expanded(
                 child: StreamData<List<AiUsageTurn>>(
                   stream: repo.watchRange(start, end),
                   builder: (context, turns) => _AiUsageBody(
-                    turns: _source == null
+                    turns: _sourceFilter == null
                         ? turns
-                        : turns.where((t) => t.source == _source).toList(),
+                        : turns.where((t) => t.source == _sourceFilter).toList(),
                     preset: _preset,
-                    fixedSource: fixed,
+                    selectedSource: _sourceFilter,
                   ),
                 ),
               ),
@@ -175,32 +158,12 @@ String _sourceLabel(AiUsageSource source) => switch (source) {
       AiUsageSource.opencode => 'OpenCode',
     };
 
-/// Where [source]'s logs are expected to live, for the "nothing found"
-/// state. A null [source] is the all-tools dashboard, which lists them all.
-String _notFoundSubtitle(AiUsageSource? source) => switch (source) {
-      null => 'AI Usage reads session logs from Claude Code '
-          '(~/.claude/projects), Codex CLI (~/.codex/sessions), '
-          'Antigravity (~/.gemini/antigravity), and OpenCode '
-          '(~/.local/share/opencode) on this device — nothing is ever sent '
-          'anywhere. Use one of these tools here, then rescan.',
-      AiUsageSource.claudeCode =>
-        'AI Usage reads Claude Code\'s session logs from ~/.claude/projects '
-            'on this device — nothing is ever sent anywhere. Use Claude Code '
-            'here, then rescan.',
-      AiUsageSource.codexCli =>
-        'AI Usage reads Codex CLI\'s session logs from ~/.codex/sessions on '
-            'this device — nothing is ever sent anywhere. Use Codex CLI here, '
-            'then rescan.',
-      AiUsageSource.antigravity =>
-        'AI Usage reads Antigravity\'s local logs from ~/.gemini/antigravity '
-            'on this device — nothing is ever sent anywhere. Use Antigravity '
-            'here, then rescan.',
-      AiUsageSource.opencode =>
-        'AI Usage reads OpenCode\'s own database (opencode.db under '
-            'OPENCODE_DATA_DIR, or ~/.local/share/opencode) on this device — '
-            'only token counts and the model name, never your prompts, and '
-            'nothing is ever sent anywhere. Use OpenCode here, then rescan.',
-    };
+/// Shown when not one of the four tools has left anything on this device.
+const String _kNoLogsSubtitle =
+    'AI Usage reads session logs from Claude Code (~/.claude/projects), '
+    'Codex CLI (~/.codex/sessions), Antigravity (~/.gemini/antigravity), '
+    'and OpenCode (~/.local/share/opencode) on this device — nothing is '
+    'ever sent anywhere. Use one of these tools here, then rescan.';
 
 // ─── Top bar: range presets, rescan, status ─────────────────────────────────
 
@@ -294,16 +257,16 @@ class _AiUsageBody extends StatelessWidget {
   const _AiUsageBody({
     required this.turns,
     required this.preset,
-    this.fixedSource,
+    this.selectedSource,
   });
 
   final List<AiUsageTurn> turns;
   final AiUsageRangePreset preset;
 
-  /// Set when this dashboard is pinned to one tool — see
-  /// [AiUsageDashboardTab.fixedSource]. Only used to decide whether that
-  /// tool's own section belongs on the page.
-  final AiUsageSource? fixedSource;
+  /// Which source the filter bar has narrowed to, or null for "All". Decides
+  /// whether a source's own section belongs on the page — currently just
+  /// OpenCode's provider breakdown.
+  final AiUsageSource? selectedSource;
 
   @override
   Widget build(BuildContext context) {
@@ -319,9 +282,9 @@ class _AiUsageBody extends StatelessWidget {
       return LumaEmptyState(
         icon: Icons.smart_toy_outlined,
         title: 'No usage recorded in this range',
-        subtitle: fixedSource == null
+        subtitle: selectedSource == null
             ? 'Try a wider range, or use one of the supported tools and rescan.'
-            : 'Try a wider range, or use ${_sourceLabel(fixedSource!)} and rescan.',
+            : 'Try a wider range, or use ${_sourceLabel(selectedSource!)} and rescan.',
       );
     }
 
@@ -412,7 +375,7 @@ class _AiUsageBody extends StatelessWidget {
           ],
           const SizedBox(height: 16),
           _HighlightsSection(turns: turns),
-          if (fixedSource == AiUsageSource.opencode) ...[
+          if (selectedSource == AiUsageSource.opencode) ...[
             const SizedBox(height: 16),
             LumaCard(
               child: _OpencodeProviderSection(

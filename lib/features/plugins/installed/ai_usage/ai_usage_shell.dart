@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../../theme/luma_theme.dart';
 import 'ai_usage_page.dart';
-import 'ai_usage_source.dart';
 import 'leaderboard/ai_leaderboard_tab.dart';
 import 'open_source/open_source_tab.dart';
 
@@ -12,11 +11,6 @@ enum AiUsageSection {
     icon: Icons.query_stats_rounded,
     label: 'AI Usage',
     blurb: 'Your own token spend',
-  ),
-  opencode(
-    icon: Icons.terminal_rounded,
-    label: 'OpenCode',
-    blurb: 'That one tool, in detail',
   ),
   leaderboard(
     icon: Icons.leaderboard_rounded,
@@ -79,7 +73,6 @@ class _AiUsagePageState extends State<AiUsagePage> {
             index: _section.index,
             children: const [
               AiUsageDashboardTab(),
-              AiUsageDashboardTab(fixedSource: AiUsageSource.opencode),
               AiLeaderboardTab(),
               OpenSourceTab(),
             ],
