@@ -208,7 +208,7 @@ void main() {
     expect(await db.select(db.aiUsageTurns).get(), hasLength(1));
   });
 
-  test('an opencode-provider (unbillable) model still records the turn', () async {
+  test('an opencode-provider (OpenCode Zen catalog) model still records the turn', () async {
     final path = dbPath('opencode.db');
     final sqliteDb = _openFixtureDb(path.path);
     _insertMessage(

@@ -172,6 +172,78 @@ void main() {
     });
   });
 
+  group('OpenCode Zen pricing (via dispatcher)', () {
+    test("a named free model is billable, not treated as actually free", () {
+      expect(
+        isBillableModel(AiUsageSource.opencode, 'opencode/x-preview-f-free'),
+        isTrue,
+      );
+      expect(
+        isBillableModel(
+            AiUsageSource.opencode, 'opencode/muse-spark-1.2-contributor-free'),
+        isTrue,
+      );
+    });
+
+    test('prices as if reached through a normal paid API key', () {
+      // 1M input + 1M output tokens on x-preview-f-free at the assumed
+      // Haiku-tier rate: $1.00 + $5.00.
+      final cost = costForTurn(
+          AiUsageSource.opencode, 'opencode/x-preview-f-free', 1000000, 1000000, 0, 0);
+      expect(cost, closeTo(6.00, 0.0001));
+    });
+
+    test('a different named Zen model gets its own distinct rate', () {
+      final sparkRates =
+          pricingFor(AiUsageSource.opencode, 'opencode/muse-spark-1.2-contributor-free');
+      final previewRates = pricingFor(AiUsageSource.opencode, 'opencode/x-preview-f-free');
+      expect(sparkRates, isNotNull);
+      expect(sparkRates!.input, isNot(previewRates!.input));
+    });
+
+    test('an unnamed future Zen model still prices, via the fallback rate', () {
+      final rates = pricingFor(AiUsageSource.opencode, 'opencode/some-new-free-model');
+      expect(rates, isNotNull);
+      expect(rates, kOpencodeZenFallback);
+      expect(isBillableModel(AiUsageSource.opencode, 'opencode/some-new-free-model'), isTrue);
+    });
+
+    test('a named third-party provider gets its own estimated rate', () {
+      expect(isBillableModel(AiUsageSource.opencode, 'openrouter/some-model'), isTrue);
+      expect(isBillableModel(AiUsageSource.opencode, 'minimax/MiniMax-M3'), isTrue);
+      final rates = pricingFor(AiUsageSource.opencode, 'minimax/MiniMax-M3');
+      expect(rates, kOpencodeProviderPricing['minimax']);
+    });
+
+    test('a provider this app has never been told about still prices, generically', () {
+      expect(
+        isBillableModel(AiUsageSource.opencode, 'some-brand-new-provider/model-x'),
+        isTrue,
+      );
+      expect(
+        pricingFor(AiUsageSource.opencode, 'some-brand-new-provider/model-x'),
+        kOpencodeGenericProviderFallback,
+      );
+    });
+
+    test('a provider that runs entirely on local hardware prices at a real \$0', () {
+      final turn = _turn(
+        timestamp: DateTime(2026, 3, 15, 10),
+        source: AiUsageSource.opencode,
+        model: 'ollama/llama3.3',
+        inputTokens: 1000000,
+        outputTokens: 1000000,
+      );
+      expect(isBillableModel(AiUsageSource.opencode, 'ollama/llama3.3'), isTrue);
+      expect(costForRow(turn), 0);
+      expect(totals([turn]).hasUnbillable, isFalse);
+    });
+
+    test('a bare model id with no provider prefix stays unbillable — nothing to price', () {
+      expect(isBillableModel(AiUsageSource.opencode, 'bare-model-id'), isFalse);
+    });
+  });
+
   group('costForTurn', () {
     test('non-billable model costs nothing', () {
       expect(costForTurn(AiUsageSource.claudeCode, 'gpt-4o-mini', 1000000, 1000000, 0, 0), 0);
@@ -547,11 +619,11 @@ void main() {
   group("cost from the tool's own figure", () {
     final at = DateTime(2026, 3, 15, 10);
 
-    test('prices an otherwise-unpriced opencode model from reportedCost', () {
+    test('prices a model this app has no provider-prefixed pricing for from reportedCost', () {
       final turn = _turn(
         timestamp: at,
         source: AiUsageSource.opencode,
-        model: 'minimax/MiniMax-M3',
+        model: 'bare-model-id',
         reportedCost: 0.25,
       );
       expect(rowHasKnownCost(turn), isTrue);
@@ -574,10 +646,15 @@ void main() {
     });
 
     test('a reported cost of zero is a known cost, not a missing one', () {
+      // A model string with no provider prefix at all is the one case this
+      // app truly has nothing to price against — every named provider,
+      // including unrecognized ones, now resolves to some estimated rate
+      // (see opencodeProviderPricingFor), so a reported 0 has nothing left
+      // to be overridden by only here.
       final turn = _turn(
         timestamp: at,
         source: AiUsageSource.opencode,
-        model: 'opencode/x-preview-f-free',
+        model: 'bare-model-id',
         reportedCost: 0,
       );
       expect(rowHasKnownCost(turn), isTrue);
@@ -589,7 +666,7 @@ void main() {
       final turn = _turn(
         timestamp: at,
         source: AiUsageSource.opencode,
-        model: 'openrouter/some-model',
+        model: 'bare-model-id',
       );
       expect(rowHasKnownCost(turn), isFalse);
       expect(costForRow(turn), 0);
@@ -597,11 +674,11 @@ void main() {
       expect(aggregateByModel([turn]).single.billable, isFalse);
     });
 
-    test('a model priced only by the tool still reads as billable', () {
+    test('a model priced only by the tool (no provider prefix at all) still reads as billable', () {
       final turn = _turn(
         timestamp: at,
         source: AiUsageSource.opencode,
-        model: 'minimax/MiniMax-M3',
+        model: 'bare-model-id',
         reportedCost: 0.25,
       );
       expect(aggregateByModel([turn]).single.billable, isTrue);
@@ -617,17 +694,17 @@ void main() {
           timestamp: at,
           source: AiUsageSource.opencode,
           model: 'minimax/MiniMax-M3',
-          inputTokens: 500,
-          outputTokens: 100,
-          reportedCost: 0.20,
+          inputTokens: 1000000,
+          outputTokens: 500000,
+          reportedCost: 999, // ignored — this app's own minimax rate wins
         ),
         _turn(
           timestamp: at,
           source: AiUsageSource.opencode,
           model: 'minimax/MiniMax-M2.7',
-          inputTokens: 100,
-          outputTokens: 50,
-          reportedCost: 0.05,
+          inputTokens: 500000,
+          outputTokens: 250000,
+          reportedCost: 999,
         ),
         _turn(
           timestamp: at,
@@ -643,8 +720,10 @@ void main() {
       final minimax = result.first;
       expect(minimax.turnCount, 2);
       expect(minimax.modelCount, 2);
-      expect(minimax.totalTokens, 750);
-      expect(minimax.cost, closeTo(0.25, 1e-9));
+      expect(minimax.totalTokens, 2250000);
+      // At kOpencodeProviderPricing['minimax'] ($0.30/$1.20 per M):
+      // (1M*0.30 + 0.5M*1.20)/1e6 + (0.5M*0.30 + 0.25M*1.20)/1e6 = 0.90 + 0.45.
+      expect(minimax.cost, closeTo(1.35, 1e-9));
       expect(minimax.billable, isTrue);
     });
 
