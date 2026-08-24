@@ -286,8 +286,10 @@ class _GalleryPageState extends State<GalleryPage> {
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
             child: _ProgressNote(
-              label: 'Sorting photos into People and Categories — '
-                  '${repo.analysedCount} done',
+              label: repo.analysisTotal > 0
+                  ? 'Sorting photos into People and Categories — '
+                      '${repo.analysedCount} of ${repo.analysisTotal}'
+                  : 'Sorting photos into People and Categories…',
             ),
           ),
         Expanded(child: _albumsBody(context, repo, isNova, luma)),
@@ -352,6 +354,18 @@ class _GalleryPageState extends State<GalleryPage> {
             ? repo.smartGroups().where((g) => g.id != 'people').toList()
             : const <GallerySmartGroup>[];
 
+        // One photo from each of the first few smart categories makes the
+        // Categories card a preview of what the models actually found, in the
+        // same way a folder card previews its newest picture.
+        final categoryPreview = [
+          for (final group in smartCats.take(4))
+            if (group.items.isNotEmpty) group.items.first,
+        ];
+        final peoplePreview = <GalleryItem>[
+          for (final person in people.take(4))
+            ?repo.coverForPerson(person),
+        ];
+
         return _cardGrid(
           sections: [
             _CardSection(
@@ -400,6 +414,9 @@ class _GalleryPageState extends State<GalleryPage> {
                       : '${memories.length} '
                           '${memories.length == 1 ? 'trip' : 'trips'}',
                   cover: memories.isEmpty ? null : memories.first.cover,
+                  covers: memories.isEmpty
+                      ? const []
+                      : memories.first.items.take(4).toList(),
                   repository: repo,
                   onTap: () => setState(() => _open = _memoriesId),
                 ),
@@ -412,7 +429,10 @@ class _GalleryPageState extends State<GalleryPage> {
                         ? 'None found yet'
                         : '${people.length} '
                             '${people.length == 1 ? 'person' : 'people'}',
-                    cover: people.isEmpty ? null : repo.coverForPerson(people.first),
+                    cover: people.isEmpty
+                        ? null
+                        : repo.coverForPerson(people.first),
+                    covers: peoplePreview,
                     repository: repo,
                     onTap: () => setState(() => _open = _peopleId),
                   ),
@@ -423,9 +443,11 @@ class _GalleryPageState extends State<GalleryPage> {
                     subtitle: smartCats.isEmpty
                         ? 'None found yet'
                         : '${smartCats.length} categories',
-                    cover: smartCats.isEmpty || smartCats.first.items.isEmpty
-                        ? null
-                        : smartCats.first.items.first,
+                    cover:
+                        smartCats.isEmpty || smartCats.first.items.isEmpty
+                            ? null
+                            : smartCats.first.items.first,
+                    covers: categoryPreview,
                     repository: repo,
                     onTap: () => setState(() => _open = _categoriesId),
                   ),
@@ -436,6 +458,7 @@ class _GalleryPageState extends State<GalleryPage> {
                     count: 0,
                     subtitle: 'Included with Nova',
                     badge: 'Nova',
+                    spotlight: true,
                     repository: repo,
                     onTap: () => setState(() => _open = _smartTeaserId),
                   ),
@@ -759,6 +782,7 @@ class _GalleryPageState extends State<GalleryPage> {
                         icon: Icons.auto_awesome_motion_rounded,
                         count: memory.count,
                         cover: memory.cover,
+                        covers: memory.items.take(4).toList(),
                         repository: repo,
                         onTap: () => setState(
                           () => _open = '$_memoriesPrefix${memory.id}',
@@ -805,7 +829,9 @@ class _GalleryPageState extends State<GalleryPage> {
                         label: group.label,
                         icon: group.icon,
                         count: group.count,
-                        cover: group.items.isEmpty ? null : group.items.first,
+                        cover:
+                            group.items.isEmpty ? null : group.items.first,
+                        covers: group.items.take(4).toList(),
                         repository: repo,
                         onTap: () => setState(
                           () => _open = '$_smartPrefix${group.id}',

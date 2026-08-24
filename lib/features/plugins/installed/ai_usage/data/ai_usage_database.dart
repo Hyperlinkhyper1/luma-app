@@ -28,6 +28,12 @@ class AiUsageTurns extends Table {
   // Reasoning-effort tier, Claude Code only — null for sources that don't
   // record it (Codex CLI, Antigravity) and for values it didn't recognise.
   TextColumn get effort => textEnum<AiEffort>().nullable()();
+  // USD cost the source tool worked out for this turn itself, when it
+  // records one — opencode only, which computes it from models.dev and so
+  // covers providers this app has no pricing table for. Null means "the
+  // tool didn't say"; 0 is a real answer (a free model). Used only as a
+  // fallback — see `costForRow` in ai_usage_stats.dart.
+  RealColumn get reportedCost => real().nullable()();
 }
 
 /// Tracks which JSONL files have already been scanned (path + mtime + how
@@ -55,19 +61,19 @@ class AiUsageDatabase extends _$AiUsageDatabase {
             ));
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) => m.createAll(),
         onUpgrade: (m, from, to) async {
-          if (from < 4) {
+          if (from < 5) {
             // Both tables here are a derived, re-scannable cache of local
             // session logs — simplest correct migration for any schema
             // change (the required `source` column at v2, `project` at v3,
-            // `effort` at v4) is to drop and recreate rather than synthesize
-            // values for old rows; the next rescan repopulates everything
-            // from scratch.
+            // `effort` at v4, `reportedCost` at v5) is to drop and recreate
+            // rather than synthesize values for old rows; the next rescan
+            // repopulates everything from scratch.
             await customStatement('DROP TABLE IF EXISTS ai_usage_turns');
             await customStatement('DROP TABLE IF EXISTS ai_usage_scan_files');
             await m.createTable(aiUsageTurns);

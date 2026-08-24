@@ -200,13 +200,39 @@ class AiUsageTotals {
   final int cacheReadTokens;
   final double cost;
 
-  /// Whether any turn in range came from a model outside its provider's
-  /// known pricing table — drives the cost tile's "*" footnote.
+  /// Whether any turn in range has no resolvable cost at all — outside this
+  /// app's pricing tables *and* without a figure from the tool itself (see
+  /// [rowHasKnownCost]). Drives the cost tile's "*" footnote.
   final bool hasUnbillable;
 }
 
 int _totalTokensFor(AiUsageTurn t) =>
     t.inputTokens + t.outputTokens + t.cacheCreationTokens;
+
+/// Whether this app can put a real number on [t]'s cost — either because
+/// the model is in its own pricing table, or because the source tool priced
+/// the turn itself (opencode's [AiUsageTurn.reportedCost]). Anything else
+/// shows as "n/a" rather than a misleading $0.00.
+///
+/// A stored `reportedCost` of 0 counts as known: opencode's free models
+/// genuinely cost nothing, and saying so is more informative than "n/a".
+bool rowHasKnownCost(AiUsageTurn t) =>
+    isBillableModel(t.source, t.model) || t.reportedCost != null;
+
+/// This turn's cost in USD, or 0 when neither source of truth applies.
+///
+/// This app's own pricing table wins where it has the model, so the same
+/// model costs the same whether it was run through Claude Code/Codex or
+/// through opencode. The tool's own figure is the fallback, which is what
+/// covers every provider outside the anthropic/openai tables — MiniMax,
+/// OpenRouter, opencode's gateway and so on.
+double costForRow(AiUsageTurn t) {
+  if (isBillableModel(t.source, t.model)) {
+    return costForTurn(t.source, t.model, t.inputTokens, t.outputTokens,
+        t.cacheReadTokens, t.cacheCreationTokens);
+  }
+  return t.reportedCost ?? 0;
+}
 
 /// Running sums for one bucket of turns.
 ///
@@ -221,14 +247,19 @@ class _Bucket {
   int cacheCreationTokens = 0;
   double cost = 0;
 
+  /// Whether any turn in this bucket had a cost this app could resolve —
+  /// what [ModelUsageTotal.billable] reports, so a bucket priced only by
+  /// the tool's own figure still shows its cost instead of "n/a".
+  bool knownCost = false;
+
   void add(AiUsageTurn t) {
     turnCount++;
     inputTokens += t.inputTokens;
     outputTokens += t.outputTokens;
     cacheReadTokens += t.cacheReadTokens;
     cacheCreationTokens += t.cacheCreationTokens;
-    cost += costForTurn(t.source, t.model, t.inputTokens, t.outputTokens,
-        t.cacheReadTokens, t.cacheCreationTokens);
+    cost += costForRow(t);
+    if (rowHasKnownCost(t)) knownCost = true;
   }
 }
 
@@ -261,7 +292,85 @@ List<ModelUsageTotal> aggregateByModel(Iterable<AiUsageTurn> turns) {
         cacheReadTokens: e.value.cacheReadTokens,
         cacheCreationTokens: e.value.cacheCreationTokens,
         cost: e.value.cost,
-        billable: isBillableModel(e.key.$1, e.key.$2),
+        billable: e.value.knownCost,
+      ),
+  ];
+  totals.sort((a, b) => b.totalTokens.compareTo(a.totalTokens));
+  return totals;
+}
+
+/// Fallback label for an opencode turn whose record carried no provider id.
+const String kUnknownProvider = 'unknown';
+
+/// Total usage routed through one underlying provider, for opencode turns.
+class ProviderUsageTotal {
+  const ProviderUsageTotal({
+    required this.provider,
+    required this.turnCount,
+    required this.modelCount,
+    required this.inputTokens,
+    required this.outputTokens,
+    required this.cacheReadTokens,
+    required this.cacheCreationTokens,
+    required this.cost,
+    required this.billable,
+  });
+
+  /// The `providerID` half of the stored model string — `anthropic`,
+  /// `minimax`, `opencode`, … — or [kUnknownProvider].
+  final String provider;
+  final int turnCount;
+
+  /// How many distinct models were used through this provider.
+  final int modelCount;
+  final int inputTokens;
+  final int outputTokens;
+  final int cacheReadTokens;
+  final int cacheCreationTokens;
+  final double cost;
+
+  /// Whether this app could resolve a cost for this provider's turns at all
+  /// — see [rowHasKnownCost].
+  final bool billable;
+
+  /// Same "new tokens only" definition as [ModelUsageTotal.totalTokens].
+  int get totalTokens => inputTokens + outputTokens + cacheCreationTokens;
+}
+
+/// Totals per underlying provider across the opencode turns in [turns],
+/// sorted by descending token count. Non-opencode turns are ignored.
+///
+/// This grouping only means something for opencode: it is the one source
+/// where a single tool fans out across providers, so "which provider did my
+/// spend actually go to" is a question the other three can't even ask.
+List<ProviderUsageTotal> aggregateOpencodeByProvider(
+    Iterable<AiUsageTurn> turns) {
+  String providerOf(AiUsageTurn t) {
+    final provider = splitOpencodeModel(t.model)?.$1.trim() ?? '';
+    return provider.isEmpty ? kUnknownProvider : provider;
+  }
+
+  bool isOpencode(AiUsageTurn t) => t.source == AiUsageSource.opencode;
+
+  final buckets = _bucketBy(turns, providerOf, where: isOpencode);
+
+  final modelsByProvider = <String, Set<String>>{};
+  for (final t in turns.where(isOpencode)) {
+    (modelsByProvider[providerOf(t)] ??= <String>{}).add(t.model);
+  }
+
+  final totals = [
+    for (final e in buckets.entries)
+      ProviderUsageTotal(
+        provider: e.key,
+        turnCount: e.value.turnCount,
+        modelCount: modelsByProvider[e.key]?.length ?? 0,
+        inputTokens: e.value.inputTokens,
+        outputTokens: e.value.outputTokens,
+        cacheReadTokens: e.value.cacheReadTokens,
+        cacheCreationTokens: e.value.cacheCreationTokens,
+        cost: e.value.cost,
+        billable: e.value.knownCost,
       ),
   ];
   totals.sort((a, b) => b.totalTokens.compareTo(a.totalTokens));
@@ -342,8 +451,7 @@ List<AiDayUsageBucket> aggregateByDay(Iterable<AiUsageTurn> turns) {
         ifAbsent: () => t.cacheReadTokens);
     cacheCreationByDay.update(day, (v) => v + t.cacheCreationTokens,
         ifAbsent: () => t.cacheCreationTokens);
-    final cost = costForTurn(t.source, t.model, t.inputTokens, t.outputTokens,
-        t.cacheReadTokens, t.cacheCreationTokens);
+    final cost = costForRow(t);
     costByDay.update(day, (v) => v + cost, ifAbsent: () => cost);
   }
 
@@ -382,9 +490,7 @@ List<ProjectUsageTotal> aggregateByProject(Iterable<AiUsageTurn> turns) {
         outputTokens: entry.value.fold(0, (a, t) => a + t.outputTokens),
         cost: entry.value.fold(
           0.0,
-          (a, t) => a +
-              costForTurn(t.source, t.model, t.inputTokens, t.outputTokens,
-                  t.cacheReadTokens, t.cacheCreationTokens),
+          (a, t) => a + costForRow(t),
         ),
       ),
   ];
@@ -412,9 +518,7 @@ List<SessionUsageTotal> aggregateBySession(Iterable<AiUsageTurn> turns) {
         end: entry.value.map((t) => t.timestamp).reduce((a, b) => a.isAfter(b) ? a : b),
         cost: entry.value.fold(
           0.0,
-          (a, t) => a +
-              costForTurn(t.source, t.model, t.inputTokens, t.outputTokens,
-                  t.cacheReadTokens, t.cacheCreationTokens),
+          (a, t) => a + costForRow(t),
         ),
       ),
   ];
@@ -500,9 +604,8 @@ AiUsageTotals totals(Iterable<AiUsageTurn> turns) {
     turnCount++;
     totalTokens += _totalTokensFor(t);
     cacheReadTokens += t.cacheReadTokens;
-    cost += costForTurn(t.source, t.model, t.inputTokens, t.outputTokens,
-        t.cacheReadTokens, t.cacheCreationTokens);
-    if (!isBillableModel(t.source, t.model)) hasUnbillable = true;
+    cost += costForRow(t);
+    if (!rowHasKnownCost(t)) hasUnbillable = true;
     sessions.add(t.sessionId);
   }
 

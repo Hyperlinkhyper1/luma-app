@@ -27,10 +27,9 @@ String displayName(AiUsageSource source, String model) => switch (source) {
 /// ai_usage_pricing.dart), applying that provider's own short-name style
 /// where recognized and falling back to the raw model id otherwise.
 String _shortOpencodeModelName(String model) {
-  final slash = model.indexOf('/');
-  if (slash < 0) return model;
-  final provider = model.substring(0, slash);
-  final modelId = model.substring(slash + 1);
+  final split = splitOpencodeModel(model);
+  if (split == null) return model;
+  final (provider, modelId) = split;
   return switch (provider) {
     'anthropic' => _shortModelName(modelId),
     'openai' => _shortOpenAiModelName(modelId),
