@@ -8,7 +8,7 @@ RUN dart pub get --offline && dart compile exe bin/luma_server.dart -o /app/luma
 
 # Runtime stage: minimal image.
 #
-# The admin dashboard's "Update & restart server" button (Api._adminDeploy)
+# The admin dashboard's "Update & restart server" button (DeployConsole)
 # only drops a request file on the /data volume — the actual git pull and
 # `docker compose up -d --build` run on the host via deploy-watcher.sh (a
 # systemd service, see luma-deploy-watcher.service), not in this container.

@@ -24,6 +24,16 @@ enum GalleryAccess {
   unsupported,
 }
 
+/// Reports how far a scan has got.
+///
+/// [done] is how much of the library has been been through, and [total] how
+/// much there is where that is knowable — MediaStore says up front, a folder
+/// walk cannot know until it has finished. A walk therefore reports the files
+/// it has taken in and no total; an index reports its position in the index,
+/// which is what the bar should follow even when a confined scan is keeping
+/// only a fraction of what it passes.
+typedef GalleryScanProgress = void Function(int done, int? total);
+
 /// Where a build gets its photos and videos from. Two implementations:
 /// [MediaStoreGallerySource] on the phone, where the OS keeps the index, and
 /// [FolderGallerySource] on desktop, where we walk the picture folders
@@ -45,8 +55,12 @@ abstract class GallerySource {
   /// once a decision exists the OS returns it without prompting again.
   Future<GalleryAccess> requestAccess();
 
-  /// The whole library, in no particular order.
-  Future<List<GalleryItem>> load();
+  /// The whole library, in no particular order — or, when [scanRoot] is set,
+  /// only what lives under that one folder.
+  ///
+  /// [onProgress] is called as the scan goes, often enough for a progress bar
+  /// to move and rarely enough not to be the reason the scan is slow.
+  Future<List<GalleryItem>> load({GalleryScanProgress? onProgress});
 
   /// A square-ish thumbnail of at most [pixels] on the long edge, or null if
   /// one can't be made (a video on desktop, a corrupt file).
@@ -87,6 +101,27 @@ abstract class GallerySource {
 
   /// Called once at startup with the roots persisted from last time.
   void restoreRoots(List<String> paths) {}
+
+  /// Whether the scan can be confined to a single folder. Both real sources
+  /// can; they differ only in what a folder is called — an absolute directory
+  /// on desktop, a library-relative path like `DCIM/Camera` on the phone.
+  bool get supportsScanRoot => false;
+
+  /// The one folder the scan is confined to, everything nested below it
+  /// included, or null for the whole library.
+  String? get scanRoot => null;
+
+  /// Confines the next scan to [path], or lifts the confinement when null.
+  /// Takes effect on the next [load]; the caller rescans.
+  Future<void> setScanRoot(String? path) async {}
+
+  /// Called once at startup with the confinement persisted from last time.
+  void restoreScanRoot(String? path) {}
+
+  /// Every folder the last scan saw *before* [scanRoot] was applied, so the
+  /// picker can still offer the rest of the library while confined. Empty on
+  /// sources where the user browses for a directory instead.
+  List<String> get knownFolders => const [];
 
   /// Releases anything the source is holding (decoded thumbnails, caches).
   void dispose() {}
