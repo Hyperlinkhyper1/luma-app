@@ -28,6 +28,24 @@ AiPricingRates? _antigravityPricingFor(String? model) {
   return null;
 }
 
+/// opencode's scanner stores each turn's model as `"<providerID>/<modelID>"`
+/// (see `opencode_scanner.dart`) since a single turn can go through any
+/// provider the user configured. Routes to that provider's own pricing
+/// table when it's one this app already prices exactly (raw API model IDs,
+/// same as Claude Code/Codex's own turns); everything else — opencode's own
+/// gateway/free models, OpenRouter, Groq, etc. — is unpriced rather than
+/// guessed at.
+AiPricingRates? _opencodePricingFor(String model) {
+  final split = splitOpencodeModel(model);
+  if (split == null) return null;
+  final (provider, modelId) = split;
+  return switch (provider) {
+    'anthropic' => anthropicPricingFor(modelId),
+    'openai' => openAiPricingFor(modelId),
+    _ => null,
+  };
+}
+
 /// Whether [model] is a recognized, priced model for [source]. Anything else
 /// is grouped as "Other" in the UI, with cost shown as n/a. For Antigravity,
 /// "recognized" means its detected model matched a known Gemini or Claude
@@ -39,6 +57,7 @@ bool isBillableModel(AiUsageSource source, String? model) => switch (source) {
       AiUsageSource.claudeCode => isAnthropicBillableModel(model),
       AiUsageSource.codexCli => isOpenAiBillableModel(model),
       AiUsageSource.antigravity => _antigravityPricingFor(model) != null,
+      AiUsageSource.opencode => model != null && _opencodePricingFor(model) != null,
     };
 
 /// Resolves [model]'s pricing rates for [source], or null if unrecognized.
@@ -46,6 +65,7 @@ AiPricingRates? pricingFor(AiUsageSource source, String? model) => switch (sourc
       AiUsageSource.claudeCode => anthropicPricingFor(model),
       AiUsageSource.codexCli => openAiPricingFor(model),
       AiUsageSource.antigravity => _antigravityPricingFor(model),
+      AiUsageSource.opencode => model == null ? null : _opencodePricingFor(model),
     };
 
 /// Estimated USD cost of one turn's token usage, or 0 for a non-billable /

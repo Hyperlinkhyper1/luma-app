@@ -785,6 +785,121 @@ void main() {
     });
   });
 
+  group('scanning one folder only', () {
+    // Pointing the gallery at a single folder is what makes it usable on a
+    // phone whose camera roll is 20 000 photos, and what makes a desktop
+    // library that lives in one place cost one walk rather than a crawl of
+    // Downloads. Both halves of it are here: the rule that decides what is
+    // "inside" a folder, and the desktop walk that has to obey it.
+    test('a folder contains itself and everything nested in it', () {
+      expect(folderWithinScanRoot('DCIM/Camera', 'DCIM'), isTrue);
+      expect(folderWithinScanRoot('DCIM', 'DCIM'), isTrue);
+      expect(folderWithinScanRoot('DCIM/Camera/2026', 'DCIM/Camera'), isTrue);
+    });
+
+    test('a sibling with the same prefix is not inside it', () {
+      // The bug a bare startsWith would have: DCIM-old is not in DCIM.
+      expect(folderWithinScanRoot('DCIM-old', 'DCIM'), isFalse);
+      expect(folderWithinScanRoot('Pictures', 'DCIM'), isFalse);
+      expect(folderWithinScanRoot('', 'DCIM'), isFalse);
+    });
+
+    test('no confinement means everything is in scope', () {
+      expect(folderWithinScanRoot('anything/at/all', null), isTrue);
+      expect(folderWithinScanRoot('', null), isTrue);
+    });
+
+    group('the desktop walk', () {
+      late Directory temp;
+      late FolderGallerySource source;
+
+      setUp(() async {
+        TestWidgetsFlutterBinding.ensureInitialized();
+        temp = await Directory.systemTemp.createTemp('luma_scan_root');
+        source = FolderGallerySource();
+      });
+
+      tearDown(() async {
+        source.dispose();
+        if (temp.existsSync()) await temp.delete(recursive: true);
+      });
+
+      /// A JPEG big enough to clear [FolderGallerySource.minimumImageBytes],
+      /// so the walk keeps it rather than writing it off as interface art.
+      void photo(String relative) {
+        final path = '${temp.path}${Platform.pathSeparator}'
+            '${relative.replaceAll('/', Platform.pathSeparator)}';
+        final file = File(path);
+        file.parent.createSync(recursive: true);
+        // Noise, not a blank frame: a flat image compresses to well under
+        // the size floor the walk uses to tell photographs from icons.
+        final image = img.Image(width: 256, height: 256);
+        var seed = 1;
+        for (final pixel in image) {
+          seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+          pixel.setRgb(seed & 0xff, (seed >> 8) & 0xff, (seed >> 16) & 0xff);
+        }
+        file.writeAsBytesSync(img.encodeJpg(image, quality: 100));
+        expect(
+          file.lengthSync(),
+          greaterThanOrEqualTo(FolderGallerySource.minimumImageBytes),
+        );
+      }
+
+      test('only the chosen folder and its children are walked', () async {
+        photo('Trips/rome.jpg');
+        photo('Trips/2026/venice.jpg');
+        photo('Elsewhere/stray.jpg');
+
+        await source.setScanRoot('${temp.path}${Platform.pathSeparator}Trips');
+        final names = [for (final item in await source.load()) item.name];
+
+        expect(names, containsAll(<String>['rome.jpg', 'venice.jpg']));
+        expect(
+          names,
+          isNot(contains('stray.jpg')),
+          reason: 'a folder outside the chosen one must never be walked',
+        );
+      });
+
+      test('lifting the confinement is one call, not a reinstall', () async {
+        photo('Trips/rome.jpg');
+        await source.setScanRoot('${temp.path}${Platform.pathSeparator}Trips');
+        expect(source.scanRoot, isNotNull);
+
+        await source.setScanRoot(null);
+        expect(source.scanRoot, isNull);
+        // With no confinement the walk is back to the picture folders, which
+        // this temp directory is not one of — the point is only that the
+        // confinement is gone.
+        expect(
+          [for (final item in await source.load()) item.name],
+          isNot(contains('rome.jpg')),
+        );
+      });
+
+      test('a confined scan reports how much it has found', () async {
+        for (var i = 0; i < 3; i++) {
+          photo('Trips/photo$i.jpg');
+        }
+        await source.setScanRoot('${temp.path}${Platform.pathSeparator}Trips');
+
+        final reported = <int>[];
+        final items = await source.load(
+          onProgress: (found, total) => reported.add(found),
+        );
+
+        expect(items, hasLength(3));
+        expect(reported.first, 0, reason: 'the bar starts empty');
+        expect(
+          reported.last,
+          items.length,
+          reason: 'and ends on what the scan actually found',
+        );
+      });
+    });
+  });
+
   group('folder normalisation', () {
     test('slashes are levelled and trimmed', () {
       expect(normaliseFolder('/DCIM/Camera/'), 'DCIM/Camera');

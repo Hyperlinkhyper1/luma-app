@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/widgets.dart';
 import '../../../../theme/luma_theme.dart';
+import 'host/host_protocol.dart';
 import 'sftp_dialogs.dart';
 import 'sftp_site.dart';
 
@@ -22,6 +23,7 @@ class SftpSiteManagerView extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onNew,
+    required this.onThisDevice,
     this.error,
   });
 
@@ -35,6 +37,11 @@ class SftpSiteManagerView extends StatelessWidget {
   final ValueChanged<SftpSite> onEdit;
   final ValueChanged<SftpSite> onDelete;
   final VoidCallback onNew;
+
+  /// Opens the "This device" screen: the credentials another device needs to
+  /// connect *to* this one, live only while that screen is open.
+  final VoidCallback onThisDevice;
+
   final String? error;
 
   @override
@@ -48,40 +55,7 @@ class SftpSiteManagerView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                children: [
-                  LumaIconBadge(icon: Icons.storage_rounded, color: luma.accent),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Site Manager',
-                          style: TextStyle(
-                            color: luma.textPrimary,
-                            fontSize: 19,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Your servers, saved on this device only.',
-                          style: TextStyle(
-                            color: luma.textSecondary,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  LumaPrimaryButton(
-                    label: 'New site',
-                    icon: Icons.add_rounded,
-                    onTap: onNew,
-                  ),
-                ],
-              ),
+              _Header(onNew: onNew, onThisDevice: onThisDevice),
               const SizedBox(height: 18),
               if (error != null) ...[
                 _ErrorCard(message: error!),
@@ -102,11 +76,12 @@ class SftpSiteManagerView extends StatelessWidget {
                     icon: Icons.dns_rounded,
                     title: 'No servers yet',
                     subtitle:
-                        'Add a server with its host name, username, password '
-                        'and port — luma connects straight to it from this '
-                        'device.',
+                        'A site is one saved server — its host name, user '
+                        'name, password and port. luma connects straight to '
+                        'it from this device. To go the other way and let a '
+                        'device connect to this one, open This device.',
                     action: LumaPrimaryButton(
-                      label: 'Add a server',
+                      label: 'New site',
                       icon: Icons.add_rounded,
                       onTap: onNew,
                     ),
@@ -130,6 +105,91 @@ class SftpSiteManagerView extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Title, and the two directions this screen offers: out to a saved server,
+/// or in to this device. On a phone the buttons drop below the title rather
+/// than squeezing it.
+class _Header extends StatelessWidget {
+  const _Header({required this.onNew, required this.onThisDevice});
+
+  final VoidCallback onNew;
+  final VoidCallback onThisDevice;
+
+  static const double _stackBelow = 560;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+
+    final title = Row(
+      children: [
+        LumaIconBadge(icon: Icons.storage_rounded, color: luma.accent),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Site Manager',
+                style: TextStyle(
+                  color: luma.textPrimary,
+                  fontSize: 19,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Your servers, saved on this device only.',
+                style: TextStyle(color: luma.textSecondary, fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final stacked = constraints.maxWidth < _stackBelow;
+        final thisDevice = LumaGhostButton(
+          label: 'This device',
+          icon: Icons.smartphone_rounded,
+          onTap: onThisDevice,
+        );
+        final newSite = LumaPrimaryButton(
+          label: 'New site',
+          icon: Icons.add_rounded,
+          onTap: onNew,
+        );
+
+        if (!stacked) {
+          return Row(
+            children: [
+              Expanded(child: title),
+              thisDevice,
+              const SizedBox(width: 8),
+              newSite,
+            ],
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            title,
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(child: thisDevice),
+                const SizedBox(width: 8),
+                Expanded(child: newSite),
+              ],
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -242,9 +302,11 @@ class _SiteCardState extends State<_SiteCard> {
           child: Row(
             children: [
               LumaIconBadge(
-                icon: site.authMode == SftpAuthMode.key
-                    ? Icons.key_rounded
-                    : Icons.dns_rounded,
+                icon: site.isLumaHost
+                    ? Icons.devices_rounded
+                    : site.authMode == SftpAuthMode.key
+                        ? Icons.key_rounded
+                        : Icons.dns_rounded,
                 color: luma.accent,
                 size: 38,
               ),
@@ -353,25 +415,52 @@ class _SiteEditorDialogState extends State<_SiteEditorDialog> {
   late final TextEditingController _secret;
   late final TextEditingController _remoteDirectory;
 
+  late SftpTransport _transport;
   late SftpAuthMode _authMode;
   late bool _saveSecret;
   String? _keyPath;
   bool _obscure = true;
   String? _error;
 
+  bool get _isLumaHost => _transport == SftpTransport.lumaHost;
+
   @override
   void initState() {
     super.initState();
     final site = widget.site;
+    _transport = site?.transport ?? SftpTransport.ssh;
     _name = TextEditingController(text: site?.name ?? '');
     _host = TextEditingController(text: site?.host ?? '');
-    _port = TextEditingController(text: (site?.port ?? 22).toString());
+    _port = TextEditingController(
+      text: (site?.port ?? (_isLumaHost ? kDefaultHostPort : 22)).toString(),
+    );
     _username = TextEditingController(text: site?.username ?? '');
     _secret = TextEditingController(text: widget.existingSecret ?? '');
     _remoteDirectory = TextEditingController(text: site?.remoteDirectory ?? '');
     _authMode = site?.authMode ?? SftpAuthMode.password;
     _saveSecret = site?.saveSecret ?? true;
     _keyPath = site?.keyPath;
+  }
+
+  /// Switches the kind of endpoint, moving the port to the new default when
+  /// it is still the old one — someone who typed their own port keeps it.
+  void _setTransport(SftpTransport transport) {
+    if (transport == _transport) return;
+    setState(() {
+      final previousDefault =
+          _isLumaHost ? kDefaultHostPort : 22;
+      _transport = transport;
+      if (_port.text.trim() == '$previousDefault') {
+        _port.text = '${_isLumaHost ? kDefaultHostPort : 22}';
+      }
+      if (_isLumaHost) {
+        // A luma device has no accounts and no key files; the pairing password
+        // is the whole of its authentication.
+        _authMode = SftpAuthMode.password;
+        _keyPath = null;
+      }
+      _error = null;
+    });
   }
 
   @override
@@ -401,7 +490,7 @@ class _SiteEditorDialogState extends State<_SiteEditorDialog> {
       return;
     }
     final username = _username.text.trim();
-    if (username.isEmpty) {
+    if (!_isLumaHost && username.isEmpty) {
       setState(() => _error = 'A username is required.');
       return;
     }
@@ -410,7 +499,8 @@ class _SiteEditorDialogState extends State<_SiteEditorDialog> {
       setState(() => _error = 'Port must be a number between 1 and 65535.');
       return;
     }
-    if (_authMode == SftpAuthMode.key &&
+    if (!_isLumaHost &&
+        _authMode == SftpAuthMode.key &&
         (_keyPath == null || _keyPath!.isEmpty)) {
       setState(() => _error = 'Choose the private key file to sign in with.');
       return;
@@ -423,8 +513,10 @@ class _SiteEditorDialogState extends State<_SiteEditorDialog> {
       host: host,
       port: port,
       username: username,
-      authMode: _authMode,
-      keyPath: _authMode == SftpAuthMode.key ? _keyPath : null,
+      transport: _transport,
+      authMode: _isLumaHost ? SftpAuthMode.password : _authMode,
+      keyPath:
+          !_isLumaHost && _authMode == SftpAuthMode.key ? _keyPath : null,
       saveSecret: _saveSecret,
       secretToken: existing?.secretToken,
       remoteDirectory: _remoteDirectory.text.trim(),
@@ -441,7 +533,7 @@ class _SiteEditorDialogState extends State<_SiteEditorDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final isKey = _authMode == SftpAuthMode.key;
+    final isKey = !_isLumaHost && _authMode == SftpAuthMode.key;
 
     return Dialog(
       backgroundColor: luma.surface,
@@ -483,7 +575,39 @@ class _SiteEditorDialogState extends State<_SiteEditorDialog> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _field(_name, 'Name', hint: 'My VPS'),
+                    Text(
+                      'What is on the other end',
+                      style: TextStyle(color: luma.textSecondary, fontSize: 12),
+                    ),
+                    const SizedBox(height: 8),
+                    LumaSegmentedTabs(
+                      tabs: const ['SSH server', 'luma device'],
+                      selectedIndex: _isLumaHost ? 1 : 0,
+                      onSelect: (index) => _setTransport(
+                        index == 0
+                            ? SftpTransport.ssh
+                            : SftpTransport.lumaHost,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _isLumaHost
+                          ? 'Another device running luma with hosting turned '
+                              'on. Read its address, port and pairing password '
+                              'off its Host tab.'
+                          : 'Any server that speaks SSH — a VPS, a NAS, a Pi.',
+                      style: TextStyle(
+                        color: luma.textMuted,
+                        fontSize: 11.5,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    _field(
+                      _name,
+                      'Name',
+                      hint: _isLumaHost ? 'My laptop' : 'My VPS',
+                    ),
                     const SizedBox(height: 12),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -492,8 +616,10 @@ class _SiteEditorDialogState extends State<_SiteEditorDialog> {
                           flex: 3,
                           child: _field(
                             _host,
-                            'Host',
-                            hint: 'example.com or 203.0.113.10',
+                            _isLumaHost ? 'Address' : 'Host',
+                            hint: _isLumaHost
+                                ? '192.168.1.42'
+                                : 'example.com or 203.0.113.10',
                             autofocus: widget.site == null,
                           ),
                         ),
@@ -507,24 +633,27 @@ class _SiteEditorDialogState extends State<_SiteEditorDialog> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    _field(_username, 'Username', hint: 'root'),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Sign in with',
-                      style: TextStyle(color: luma.textSecondary, fontSize: 12),
-                    ),
-                    const SizedBox(height: 8),
-                    LumaSegmentedTabs(
-                      tabs: const ['Password', 'SSH key'],
-                      selectedIndex: isKey ? 1 : 0,
-                      onSelect: (index) => setState(() {
-                        _authMode = index == 0
-                            ? SftpAuthMode.password
-                            : SftpAuthMode.key;
-                        _error = null;
-                      }),
-                    ),
+                    if (!_isLumaHost) ...[
+                      const SizedBox(height: 12),
+                      _field(_username, 'Username', hint: 'root'),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Sign in with',
+                        style:
+                            TextStyle(color: luma.textSecondary, fontSize: 12),
+                      ),
+                      const SizedBox(height: 8),
+                      LumaSegmentedTabs(
+                        tabs: const ['Password', 'SSH key'],
+                        selectedIndex: isKey ? 1 : 0,
+                        onSelect: (index) => setState(() {
+                          _authMode = index == 0
+                              ? SftpAuthMode.password
+                              : SftpAuthMode.key;
+                          _error = null;
+                        }),
+                      ),
+                    ],
                     const SizedBox(height: 12),
                     if (isKey) ...[
                       _KeyFileRow(
@@ -539,10 +668,16 @@ class _SiteEditorDialogState extends State<_SiteEditorDialog> {
                       obscureText: _obscure,
                       style: TextStyle(color: luma.textPrimary, fontSize: 14),
                       decoration: InputDecoration(
-                        labelText: isKey ? 'Key passphrase' : 'Password',
-                        helperText: isKey
-                            ? 'Leave empty if the key has no passphrase.'
-                            : null,
+                        labelText: _isLumaHost
+                            ? 'Pairing password'
+                            : isKey
+                                ? 'Key passphrase'
+                                : 'Password',
+                        helperText: _isLumaHost
+                            ? 'The one shown on that device right now.'
+                            : isKey
+                                ? 'Leave empty if the key has no passphrase.'
+                                : null,
                         suffixIcon: IconButton(
                           tooltip: _obscure ? 'Show' : 'Hide',
                           icon: Icon(
@@ -557,19 +692,25 @@ class _SiteEditorDialogState extends State<_SiteEditorDialog> {
                     ),
                     SftpCheckRow(
                       value: _saveSecret,
-                      label: isKey
-                          ? 'Save the passphrase for this site'
-                          : 'Save the password for this site',
-                      subtitle:
-                          'Encrypted on this device. Untick and luma asks '
-                          'every time you connect.',
+                      label: _isLumaHost
+                          ? 'Save the pairing password for this device'
+                          : isKey
+                              ? 'Save the passphrase for this site'
+                              : 'Save the password for this site',
+                      subtitle: _isLumaHost
+                          ? 'Encrypted on this device — but the other device '
+                              'changes it every time it starts hosting.'
+                          : 'Encrypted on this device. Untick and luma asks '
+                              'every time you connect.',
                       onChanged: (value) => setState(() => _saveSecret = value),
                     ),
                     const SizedBox(height: 6),
                     _field(
                       _remoteDirectory,
                       'Open this folder on connect',
-                      hint: '/var/www (optional)',
+                      hint: _isLumaHost
+                          ? '/photos (optional)'
+                          : '/var/www (optional)',
                     ),
                     if (_error != null) ...[
                       const SizedBox(height: 14),

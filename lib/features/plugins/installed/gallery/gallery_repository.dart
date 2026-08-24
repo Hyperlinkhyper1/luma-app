@@ -68,6 +68,62 @@ class GalleryRepository extends ChangeNotifier {
   bool get canPresentPicker => _source.canPresentPicker;
   bool get supportsCustomFolders => _source.supportsCustomFolders;
   List<String> get customRoots => _source.roots;
+
+  /// Whether the scan can be pointed at a single folder.
+  bool get supportsScanRoot => _source.supportsScanRoot;
+
+  /// The folder the scan is confined to — an absolute directory on desktop,
+  /// a library-relative path like `DCIM/Camera` on the phone — or null when
+  /// the whole library is scanned.
+  String? get scanRoot => _source.scanRoot;
+
+  /// Folders the last scan saw, for the picker on platforms without a
+  /// directory chooser.
+  List<String> get knownFolders => _source.knownFolders;
+
+  /// Confines the scan to [path] and everything nested below it, or lifts the
+  /// confinement when null, then rescans.
+  Future<void> setScanRoot(String? path) async {
+    if (!_source.supportsScanRoot) return;
+    if (_source.scanRoot == path) return;
+    await _source.setScanRoot(path);
+    _cache.setScanRoot(_source.scanRoot);
+    await _cache.flush();
+    // The access check is re-taken rather than reused: on desktop a folder
+    // that has since been unplugged is "no picture folders", not "nothing in
+    // here". Going through initialise() instead would re-read the whole
+    // cache from disk for nothing.
+    _set(() => _status = GalleryStatus.askingAccess);
+    _access = await _source.requestAccess();
+    if (_access == GalleryAccess.denied ||
+        _access == GalleryAccess.unsupported) {
+      _set(() => _status = GalleryStatus.noAccess);
+      return;
+    }
+    await _scan();
+  }
+
+  /// How far the running scan has got, and how much there is where that is
+  /// knowable. Zero and null outside a scan.
+  int get scannedCount => _scannedCount;
+  int? get scanTotal => _scanTotal;
+
+  /// 0..1 for the progress bar, or null while the total is unknown — a folder
+  /// walk cannot know how much there is until it has finished walking.
+  double? get scanProgress {
+    final total = _scanTotal;
+    if (total == null || total <= 0) return null;
+    return (_scannedCount / total).clamp(0.0, 1.0);
+  }
+
+  int _scannedCount = 0;
+  int? _scanTotal;
+
+  /// Why the last scan gave up, if it did. Surfaced rather than thrown: a
+  /// media index that refuses to answer should leave an empty gallery with a
+  /// reason on it, not an unhandled error.
+  String? get scanError => _scanError;
+  String? _scanError;
   bool get smartModelsAvailable => GalleryAnalyser.isSupported;
 
   /// Photos with a known position, newest first — the pins on the map. Walks
@@ -137,6 +193,7 @@ class GalleryRepository extends ChangeNotifier {
     await _cache.load();
     await _people.load();
     _source.restoreRoots(_cache.roots);
+    _source.restoreScanRoot(_cache.scanRoot);
     unawaited(refreshModelState());
 
     _set(() => _status = GalleryStatus.askingAccess);
@@ -162,8 +219,32 @@ class GalleryRepository extends ChangeNotifier {
   }
 
   Future<void> _scan() async {
-    _set(() => _status = GalleryStatus.scanning);
-    final scanned = await _source.load();
+    _set(() {
+      _status = GalleryStatus.scanning;
+      _scannedCount = 0;
+      _scanTotal = null;
+      _scanError = null;
+    });
+
+    final List<GalleryItem> scanned;
+    try {
+      scanned = await _source.load(onProgress: (found, total) {
+        if (_disposed) return;
+        _scannedCount = found;
+        _scanTotal = total;
+        notifyListeners();
+      });
+    } catch (error) {
+      // The media index can refuse mid-scan — a revoked grant, a card pulled
+      // out. Nothing above here catches it, and an unhandled error out of a
+      // scan started from didChangeDependencies takes the page down with it.
+      if (_disposed) return;
+      _set(() {
+        _scanError = '$error';
+        _status = GalleryStatus.empty;
+      });
+      return;
+    }
     if (_disposed) return;
 
     // Fold in what earlier runs learned — coordinates and frame sizes — so
@@ -174,7 +255,12 @@ class GalleryRepository extends ChangeNotifier {
     ]..sort((a, b) => b.takenAt.compareTo(a.takenAt));
 
     _withLocation = _items.where((i) => i.hasLocation).length;
-    _cache.retainKeys({for (final item in _items) item.cacheKey});
+    // A confined scan has only seen one folder, so everything it didn't see
+    // is still on the device — dropping those notes would mean re-reading
+    // every header the moment the confinement is lifted.
+    if (scanRoot == null) {
+      _cache.retainKeys({for (final item in _items) item.cacheKey});
+    }
     _categories = buildCategories(_items);
     _smartVersion++;
     _libraryVersion++;

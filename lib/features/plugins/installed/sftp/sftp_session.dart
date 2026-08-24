@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:dartssh2/dartssh2.dart';
 
+import 'host/host_client.dart';
 import 'sftp_known_hosts.dart';
 import 'sftp_paths.dart';
 import 'sftp_site.dart';
@@ -125,35 +126,171 @@ abstract class TransferBackend {
   Future<void> makeDirectories(String path);
 }
 
-/// A live connection to one server: the SSH transport, the SFTP channel on
-/// top of it, and every file operation the panes and the queue perform.
+/// A live connection to whatever is on the other side of the remote pane.
 ///
-/// The socket is opened straight from this device to the address the user
-/// typed. None of this is luma-server traffic, so none of it goes through
-/// `GatedServerClient` — and no host, credential or byte of a transfer ever
-/// reaches a luma server.
-class SftpSession implements TransferBackend {
-  SftpSession._(this._client, this._sftp, this.site, this.homeDirectory);
+/// There are two kinds, and the panes, the queue and the context menus cannot
+/// tell them apart:
+///
+/// * [SshSftpSession] — a real SSH server the user runs somewhere, reached
+///   with dartssh2.
+/// * `LumaHostSession` — another luma device that has turned hosting on, over
+///   the protocol in `host/`.
+///
+/// Either way the socket is opened straight from this device to the address
+/// the user typed. None of it is luma-server traffic, so none of it goes
+/// through `GatedServerClient` — and no host, credential or byte of a
+/// transfer ever reaches a luma server.
+abstract class SftpSession implements TransferBackend {
+  const SftpSession();
+
+  /// The saved site this connection came from.
+  SftpSite get site;
+
+  /// Where the other end put us on login — the "home" button's target.
+  String get homeDirectory;
+
+  bool get isClosed;
+
+  /// Completes when the connection goes away, whether we closed it or the
+  /// other end dropped us.
+  Future<void> get done;
+
+  /// Opens a connection for [site], picking the transport the site is set to.
+  ///
+  /// [secret] is the password, the private key's passphrase, or — for a luma
+  /// device — the pairing password shown on its screen. [onHostKey] is asked
+  /// whenever an SSH server's key is unknown or has changed; returning false
+  /// aborts the connection before any credential is sent. It is never called
+  /// for a luma device, whose identity is proved by the handshake itself.
+  static Future<SftpSession> connect({
+    required SftpSite site,
+    String? secret,
+    required Future<bool> Function(SftpHostKeyPrompt prompt) onHostKey,
+    Duration timeout = const Duration(seconds: 20),
+  }) {
+    switch (site.transport) {
+      case SftpTransport.ssh:
+        return SshSftpSession.connect(
+          site: site,
+          secret: secret,
+          onHostKey: onHostKey,
+          timeout: timeout,
+        );
+      case SftpTransport.lumaHost:
+        return LumaHostSession.connect(
+          site: site,
+          secret: secret,
+          timeout: timeout,
+        );
+    }
+  }
+
+  Future<List<SftpEntry>> list(String path);
+
+  /// Resolves what [path] actually is, following symlinks — so opening a
+  /// linked directory behaves like opening the directory.
+  Future<SftpEntry> statEntry(String path);
+
+  Future<void> makeDirectory(String path);
+
+  Future<void> rename(String from, String to);
+
+  Future<void> removeFile(String path);
+
+  /// Removes [path], which the caller has already emptied.
+  Future<void> removeEmptyDirectory(String path);
+
+  Future<void> chmod(String path, int mode);
+
+  void close();
+
+  /// Directories first, then files, each alphabetical and case-insensitive —
+  /// the order both panes list in.
+  static int compareEntries(SftpEntry a, SftpEntry b) {
+    if (a.isDirectory != b.isDirectory) return a.isDirectory ? -1 : 1;
+    return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+  }
+
+  /// Deletes a directory, emptying it first — neither transport removes a
+  /// non-empty one, so a recursive delete has to walk the tree itself.
+  Future<void> removeDirectory(String path) async {
+    final normalized = RemotePath.normalize(path);
+    for (final entry in await list(normalized)) {
+      if (entry.isDirectory && !entry.isLink) {
+        await removeDirectory(entry.path);
+      } else {
+        await removeFile(entry.path);
+      }
+    }
+    await removeEmptyDirectory(normalized);
+  }
+
+  /// Creates [path] and every missing directory above it. Existing levels are
+  /// left alone, so this is safe to call once per file in a folder upload.
+  @override
+  Future<void> makeDirectories(String path) async {
+    final normalized = RemotePath.normalize(path);
+    if (normalized == RemotePath.separator) return;
+    final segments =
+        normalized.split(RemotePath.separator).where((s) => s.isNotEmpty);
+    var walked = '';
+    for (final segment in segments) {
+      walked = '$walked${RemotePath.separator}$segment';
+      var exists = false;
+      try {
+        exists = (await statEntry(walked)).isDirectory;
+      } catch (_) {
+        exists = false;
+      }
+      if (!exists) await makeDirectory(walked);
+    }
+  }
+
+  /// Every file under [path], flattened, each with its path relative to
+  /// [path] — what a recursive download expands a folder into.
+  Future<List<({SftpEntry entry, String relativePath})>> walk(
+    String path,
+  ) async {
+    final results = <({SftpEntry entry, String relativePath})>[];
+
+    Future<void> descend(String directory, String prefix) async {
+      for (final entry in await list(directory)) {
+        final relative = prefix.isEmpty
+            ? entry.name
+            : '$prefix${RemotePath.separator}${entry.name}';
+        if (entry.isDirectory && !entry.isLink) {
+          await descend(entry.path, relative);
+        } else {
+          results.add((entry: entry, relativePath: relative));
+        }
+      }
+    }
+
+    await descend(RemotePath.normalize(path), '');
+    return results;
+  }
+}
+
+/// A connection to a real SSH server, over dartssh2.
+class SshSftpSession extends SftpSession {
+  SshSftpSession._(this._client, this._sftp, this.site, this.homeDirectory);
 
   final SSHClient _client;
   final SftpClient _sftp;
+
+  @override
   final SftpSite site;
 
-  /// Where the server put us on login — the "home" button's target.
+  @override
   final String homeDirectory;
 
+  @override
   bool get isClosed => _client.isClosed;
 
-  /// Completes when the transport goes away, whether we closed it or the
-  /// server dropped us.
+  @override
   Future<void> get done => _client.done;
 
-  /// Opens a connection for [site].
-  ///
-  /// [secret] is the password, or the private key's passphrase when the site
-  /// authenticates with a key. [onHostKey] is asked whenever the server's key
-  /// is unknown or has changed; returning false aborts the connection before
-  /// any credential is sent.
+  /// Opens a connection for [site]. See [SftpSession.connect].
   static Future<SftpSession> connect({
     required SftpSite site,
     String? secret,
@@ -251,7 +388,7 @@ class SftpSession implements TransferBackend {
       // Some servers refuse realpath; the root is a safe landing spot.
     }
 
-    return SftpSession._(client, sftp, site, home);
+    return SshSftpSession._(client, sftp, site, home);
   }
 
   static Future<List<SSHKeyPair>> _loadIdentities(
@@ -311,6 +448,7 @@ class SftpSession implements TransferBackend {
 
   /// Lists [path], directories first then files, each A to Z. '.' and '..'
   /// are dropped — the panes navigate with their own up button.
+  @override
   Future<List<SftpEntry>> list(String path) async {
     final normalized = RemotePath.normalize(path);
     final names = await _sftp.listdir(normalized);
@@ -319,7 +457,7 @@ class SftpSession implements TransferBackend {
       if (name.filename == '.' || name.filename == '..') continue;
       entries.add(_toEntry(name.filename, normalized, name.attr));
     }
-    entries.sort(compareEntries);
+    entries.sort(SftpSession.compareEntries);
     return entries;
   }
 
@@ -339,15 +477,7 @@ class SftpSession implements TransferBackend {
     );
   }
 
-  /// Directories first, then files, each alphabetical and case-insensitive —
-  /// the order both panes list in.
-  static int compareEntries(SftpEntry a, SftpEntry b) {
-    if (a.isDirectory != b.isDirectory) return a.isDirectory ? -1 : 1;
-    return a.name.toLowerCase().compareTo(b.name.toLowerCase());
-  }
-
-  /// Resolves what [path] actually is, following symlinks — so opening a
-  /// linked directory behaves like opening the directory.
+  @override
   Future<SftpEntry> statEntry(String path) async {
     final normalized = RemotePath.normalize(path);
     final attr = await _sftp.stat(normalized);
@@ -358,77 +488,27 @@ class SftpSession implements TransferBackend {
     );
   }
 
+  @override
   Future<void> makeDirectory(String path) =>
       _sftp.mkdir(RemotePath.normalize(path));
 
+  @override
   Future<void> rename(String from, String to) =>
       _sftp.rename(RemotePath.normalize(from), RemotePath.normalize(to));
 
+  @override
   Future<void> removeFile(String path) =>
       _sftp.remove(RemotePath.normalize(path));
 
-  /// Deletes a directory, emptying it first — SFTP's rmdir only removes empty
-  /// ones, so a recursive delete has to walk the tree itself.
-  Future<void> removeDirectory(String path) async {
-    final normalized = RemotePath.normalize(path);
-    for (final entry in await list(normalized)) {
-      if (entry.isDirectory && !entry.isLink) {
-        await removeDirectory(entry.path);
-      } else {
-        await _sftp.remove(entry.path);
-      }
-    }
-    await _sftp.rmdir(normalized);
-  }
+  @override
+  Future<void> removeEmptyDirectory(String path) =>
+      _sftp.rmdir(RemotePath.normalize(path));
 
+  @override
   Future<void> chmod(String path, int mode) => _sftp.setStat(
         RemotePath.normalize(path),
         SftpFileAttrs(mode: SftpFileMode.value(mode)),
       );
-
-  /// Creates [path] and every missing directory above it. Existing levels are
-  /// left alone, so this is safe to call once per file in a folder upload.
-  @override
-  Future<void> makeDirectories(String path) async {
-    final normalized = RemotePath.normalize(path);
-    if (normalized == RemotePath.separator) return;
-    final segments =
-        normalized.split(RemotePath.separator).where((s) => s.isNotEmpty);
-    var walked = '';
-    for (final segment in segments) {
-      walked = '$walked${RemotePath.separator}$segment';
-      var exists = false;
-      try {
-        exists = (await _sftp.stat(walked)).isDirectory;
-      } catch (_) {
-        exists = false;
-      }
-      if (!exists) await _sftp.mkdir(walked);
-    }
-  }
-
-  /// Every file under [path], flattened, each with its path relative to
-  /// [path] — what a recursive download expands a folder into.
-  Future<List<({SftpEntry entry, String relativePath})>> walk(
-    String path,
-  ) async {
-    final results = <({SftpEntry entry, String relativePath})>[];
-
-    Future<void> descend(String directory, String prefix) async {
-      for (final entry in await list(directory)) {
-        final relative =
-            prefix.isEmpty ? entry.name : '$prefix${RemotePath.separator}${entry.name}';
-        if (entry.isDirectory && !entry.isLink) {
-          await descend(entry.path, relative);
-        } else {
-          results.add((entry: entry, relativePath: relative));
-        }
-      }
-    }
-
-    await descend(RemotePath.normalize(path), '');
-    return results;
-  }
 
   /// Streams [remotePath] into [destination]. [onProgress] receives the byte
   /// count written so far.
@@ -509,6 +589,7 @@ class SftpSession implements TransferBackend {
     }
   }
 
+  @override
   void close() {
     _sftp.close();
     _client.close();
