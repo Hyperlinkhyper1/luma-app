@@ -1277,9 +1277,13 @@ class _OpencodeProviderSection extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'Which provider each OpenCode turn was routed to. Cost comes from '
-          "this app's own pricing for Anthropic and OpenAI models, and from "
-          "OpenCode's own per-turn figure for everything else.",
+          'Which provider each OpenCode turn was routed to. Every provider '
+          'is priced as if reached with a normal paid API key — including '
+          "OpenCode's own \"free\" models and any provider this app hasn't "
+          'been specifically taught, both at an estimated rate rather than '
+          'taken at face value or shown as n/a. A provider that genuinely '
+          "runs on your own hardware (Ollama, llama.cpp, ...) still shows a "
+          r'real $0.00.',
           style: TextStyle(color: luma.textMuted, fontSize: 11),
         ),
         const SizedBox(height: 12),
