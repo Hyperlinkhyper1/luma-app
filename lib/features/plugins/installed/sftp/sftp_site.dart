@@ -1,5 +1,16 @@
 import 'dart:math';
 
+/// What is on the other end of a saved site.
+enum SftpTransport {
+  /// A real SSH server, reached over SFTP with dartssh2.
+  ssh,
+
+  /// Another luma device with hosting turned on, reached over the protocol
+  /// in `host/`. Authentication is the pairing password that device shows;
+  /// [SftpSite.username] and [SftpSite.keyPath] are unused.
+  lumaHost,
+}
+
 /// How a site proves who it is to the server.
 enum SftpAuthMode {
   /// Username + password, typed or remembered.
@@ -20,6 +31,7 @@ class SftpSite {
     required this.host,
     required this.port,
     required this.username,
+    this.transport = SftpTransport.ssh,
     this.authMode = SftpAuthMode.password,
     this.keyPath,
     this.saveSecret = false,
@@ -37,6 +49,10 @@ class SftpSite {
   final String host;
   final int port;
   final String username;
+
+  /// Which kind of endpoint this is. Sites saved before hosting existed have
+  /// no value for it and load as [SftpTransport.ssh].
+  final SftpTransport transport;
 
   final SftpAuthMode authMode;
 
@@ -64,15 +80,22 @@ class SftpSite {
   /// What the Site Manager shows as the site's title.
   String get displayName => name.trim().isEmpty ? host : name.trim();
 
-  /// `user@host:port`, the subtitle under [displayName].
-  String get endpointLabel =>
-      '${username.isEmpty ? '' : '$username@'}$host${port == 22 ? '' : ':$port'}';
+  /// True for a site that points at another luma device rather than a server.
+  bool get isLumaHost => transport == SftpTransport.lumaHost;
+
+  /// `user@host:port`, the subtitle under [displayName]. A luma device has no
+  /// user name to show, and always shows its port — there is no well-known
+  /// one to leave off.
+  String get endpointLabel => isLumaHost
+      ? '$host:$port'
+      : '${username.isEmpty ? '' : '$username@'}$host${port == 22 ? '' : ':$port'}';
 
   SftpSite copyWith({
     String? name,
     String? host,
     int? port,
     String? username,
+    SftpTransport? transport,
     SftpAuthMode? authMode,
     String? keyPath,
     bool? saveSecret,
@@ -88,6 +111,7 @@ class SftpSite {
         host: host ?? this.host,
         port: port ?? this.port,
         username: username ?? this.username,
+        transport: transport ?? this.transport,
         authMode: authMode ?? this.authMode,
         keyPath: keyPath ?? this.keyPath,
         saveSecret: saveSecret ?? this.saveSecret,
@@ -103,6 +127,7 @@ class SftpSite {
         'host': host,
         'port': port,
         'username': username,
+        'transport': transport.name,
         'authMode': authMode.name,
         'keyPath': keyPath,
         'saveSecret': saveSecret,
@@ -118,6 +143,10 @@ class SftpSite {
         host: json['host']?.toString() ?? '',
         port: (json['port'] as num?)?.toInt() ?? 22,
         username: json['username']?.toString() ?? '',
+        transport: SftpTransport.values.firstWhere(
+          (t) => t.name == json['transport'],
+          orElse: () => SftpTransport.ssh,
+        ),
         authMode: SftpAuthMode.values.firstWhere(
           (m) => m.name == json['authMode'],
           orElse: () => SftpAuthMode.password,

@@ -14,9 +14,23 @@ class MediaStoreGallerySource extends GallerySource {
   /// Assets are kept by id so a thumbnail request doesn't have to re-query.
   final Map<String, AssetEntity> _assets = {};
 
-  /// How many assets to pull over the platform channel at a time. A single
-  /// call for a 20 000-photo library stalls the UI isolate for seconds.
-  static const _pageSize = 2000;
+  /// How many assets to pull over the platform channel at a time.
+  ///
+  /// This used to be 2 000, which on a phone is both a large single message
+  /// to decode and a long stretch with no chance for the framework to draw —
+  /// a 20 000-photo library spent ten uninterrupted pages inside `load`, and
+  /// Android kills an app that stops answering. Smaller pages with a yield
+  /// between them keep the UI alive and give the progress bar something to
+  /// move to.
+  static const _pageSize = 400;
+
+  /// The one folder the scan is confined to, as a library-relative path
+  /// (`DCIM/Camera`). Null scans everything.
+  String? _scanRoot;
+
+  /// Every folder the last scan saw, confinement or not — what the folder
+  /// picker offers, since the phone has no usable directory chooser.
+  final Set<String> _folders = {};
 
   @override
   Future<GalleryAccess> requestAccess() async {
@@ -29,7 +43,28 @@ class MediaStoreGallerySource extends GallerySource {
   }
 
   @override
-  Future<List<GalleryItem>> load() async {
+  bool get supportsScanRoot => true;
+
+  @override
+  String? get scanRoot => _scanRoot;
+
+  @override
+  Future<void> setScanRoot(String? path) async {
+    final trimmed = normaliseFolder(path?.trim() ?? '');
+    _scanRoot = trimmed.isEmpty ? null : trimmed;
+  }
+
+  @override
+  void restoreScanRoot(String? path) {
+    final trimmed = normaliseFolder(path?.trim() ?? '');
+    _scanRoot = trimmed.isEmpty ? null : trimmed;
+  }
+
+  @override
+  List<String> get knownFolders => _folders.toList()..sort();
+
+  @override
+  Future<List<GalleryItem>> load({GalleryScanProgress? onProgress}) async {
     final albums = await PhotoManager.getAssetPathList(
       onlyAll: true,
       type: RequestType.common,
@@ -45,14 +80,30 @@ class MediaStoreGallerySource extends GallerySource {
     final total = await all.assetCountAsync;
     final items = <GalleryItem>[];
     _assets.clear();
+    _folders.clear();
+    onProgress?.call(0, total);
 
     for (var start = 0; start < total; start += _pageSize) {
       final end = (start + _pageSize) > total ? total : start + _pageSize;
       final page = await all.getAssetListRange(start: start, end: end);
       for (final asset in page) {
+        final item = _toItem(asset);
+        _folders.add(item.folder);
+        // Confined scans drop the asset here rather than after the fact: the
+        // entity kept in [_assets] is what a thumbnail request needs, and
+        // holding 20 000 of them for photos that will never be shown is the
+        // memory this feature exists to avoid.
+        if (!folderWithinScanRoot(item.folder, _scanRoot)) continue;
         _assets[asset.id] = asset;
-        items.add(_toItem(asset));
+        items.add(item);
       }
+      // Reported as a position in the index rather than as items kept: a scan
+      // confined to one folder passes far more than it keeps, and a bar that
+      // crawled to 5% and then finished would be lying about the wait.
+      onProgress?.call(end, total);
+      // Let the framework draw a frame between pages. Without this the whole
+      // scan is one uninterrupted stretch of platform-channel work.
+      await Future<void>.delayed(Duration.zero);
     }
     return items;
   }
@@ -101,10 +152,13 @@ class MediaStoreGallerySource extends GallerySource {
     }
     // Removable cards mount as /storage/XXXX-XXXX/…, which no fixed prefix
     // covers.
-    final card = RegExp(r'^/storage/[A-Za-z0-9-]+/');
-    raw = raw.replaceFirst(card, '');
+    raw = raw.replaceFirst(_removableCard, '');
     return normaliseFolder(raw);
   }
+
+  /// Compiled once rather than per asset — this runs tens of thousands of
+  /// times in a single scan.
+  static final _removableCard = RegExp(r'^/storage/[A-Za-z0-9-]+/');
 
   static const _storagePrefixes = [
     '/storage/emulated/0/',
@@ -173,6 +227,7 @@ class MediaStoreGallerySource extends GallerySource {
   @override
   void dispose() {
     _assets.clear();
+    _folders.clear();
     PhotoManager.clearFileCache();
   }
 }

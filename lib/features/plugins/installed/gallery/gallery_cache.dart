@@ -141,6 +141,7 @@ class GalleryCacheEntry {
 class GalleryCache {
   final Map<String, GalleryCacheEntry> _entries = {};
   List<String> _roots = [];
+  String? _scanRoot;
   File? _file;
   bool _dirty = false;
   bool _writing = false;
@@ -149,6 +150,11 @@ class GalleryCache {
 
   /// Extra folders the user added on desktop.
   List<String> get roots => List.unmodifiable(_roots);
+
+  /// The single folder the scan is confined to, or null for the whole
+  /// library. Survives a restart — a confinement that quietly lifted itself
+  /// on the next launch would be worse than not having one.
+  String? get scanRoot => _scanRoot;
 
   GalleryCacheEntry? operator [](String key) => _entries[key];
 
@@ -162,6 +168,9 @@ class GalleryCache {
         for (final root in (decoded['roots'] as List<dynamic>? ?? const []))
           root.toString(),
       ];
+      final storedScanRoot = (decoded['scanRoot'] as String?)?.trim();
+      _scanRoot =
+          (storedScanRoot == null || storedScanRoot.isEmpty) ? null : storedScanRoot;
       final entries = decoded['entries'];
       if (entries is Map<String, dynamic>) {
         entries.forEach((key, value) {
@@ -202,6 +211,11 @@ class GalleryCache {
     _dirty = true;
   }
 
+  void setScanRoot(String? root) {
+    _scanRoot = (root == null || root.trim().isEmpty) ? null : root.trim();
+    _dirty = true;
+  }
+
   /// Drops notes about files that are no longer in the library, so the cache
   /// tracks the device rather than growing forever.
   void retainKeys(Set<String> keys) {
@@ -221,6 +235,7 @@ class GalleryCache {
         'version': 1,
         'analysisVersion': kGalleryAnalysisVersion,
         'roots': _roots,
+        if (_scanRoot != null) 'scanRoot': _scanRoot,
         'entries': {
           for (final entry in _entries.entries)
             if (entry.value.toJson().isNotEmpty)

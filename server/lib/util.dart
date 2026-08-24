@@ -5,6 +5,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
+import 'package:shelf/shelf.dart';
 
 /// Cryptographically secure random bytes.
 Uint8List randomBytes(int length) {
@@ -80,3 +81,14 @@ class AsyncLock {
     return previous.then((_) => action()).whenComplete(completer.complete);
   }
 }
+
+/// The two response shapes every handler in this server returns. Kept here
+/// rather than as private statics on `Api` so modules split out of it
+/// (deploy_console.dart and any that follow) answer in the same shape
+/// instead of growing their own near-duplicates.
+Response jsonResponse(int status, Map<String, dynamic> body) => Response(status,
+    body: jsonEncode(body), headers: {'Content-Type': 'application/json'});
+
+Response errorResponse(int status, String code, String message,
+        {Map<String, dynamic>? extra}) =>
+    jsonResponse(status, {'error': code, 'message': message, ...?extra});

@@ -11,6 +11,9 @@ import '../../../../app/widgets.dart';
 import '../../../../p2p/peer_sync_scope.dart';
 import '../../../../settings/settings_scope.dart';
 import '../../../../theme/luma_theme.dart';
+import 'host/host_panel.dart';
+import 'host/host_server.dart';
+import 'host/this_device_page.dart';
 import 'share/device_share_scope.dart';
 import 'share/device_share_view.dart';
 import 'sftp_dialogs.dart';
@@ -62,7 +65,12 @@ class _SftpPageState extends State<SftpPage> {
   int _phoneTab = 0;
   Timer? _refreshDebounce;
 
-  /// 0 = Servers (SFTP), 1 = My devices (the shared folder).
+  /// Owned here rather than by the Host tab's widget so that switching tabs
+  /// never tears a listener down mid-transfer. It is stopped in [dispose], so
+  /// leaving the plugin stops hosting.
+  final _host = SftpHostServer();
+
+  /// 0 = Servers (SFTP), 1 = My devices (the shared folder), 2 = Host.
   int _mode = 0;
   final Set<String> _shareSelection = {};
   int _phoneShareTab = 0;
@@ -71,6 +79,9 @@ class _SftpPageState extends State<SftpPage> {
   void initState() {
     super.initState();
     _store.addListener(_onStoreChanged);
+    // The connection bar shows a dot while hosting, so it has to rebuild when
+    // the listener starts or stops.
+    _host.addListener(_onStoreChanged);
     _queue.onItemComplete = _onTransferComplete;
     _bootstrapLocalPane();
   }
@@ -80,8 +91,10 @@ class _SftpPageState extends State<SftpPage> {
     _refreshDebounce?.cancel();
     _sessionWatch?.cancel();
     _store.removeListener(_onStoreChanged);
+    _host.removeListener(_onStoreChanged);
     _queue.dispose();
     _session?.close();
+    _host.dispose();
     super.dispose();
   }
 
@@ -216,8 +229,12 @@ class _SftpPageState extends State<SftpPage> {
       if (!mounted) return;
       final answer = await promptSecret(
         context,
-        title: 'Password for ${site.displayName}',
-        message: 'Signing in as ${site.username} on ${site.host}.',
+        title: site.isLumaHost
+            ? 'Pairing password for ${site.displayName}'
+            : 'Password for ${site.displayName}',
+        message: site.isLumaHost
+            ? 'Type the password shown on that device\'s Host tab.'
+            : 'Signing in as ${site.username} on ${site.host}.',
         offerSave: true,
         initialSave: site.saveSecret,
       );
@@ -252,9 +269,11 @@ class _SftpPageState extends State<SftpPage> {
         }
         final answer = await promptSecret(
           context,
-          title: site.authMode == SftpAuthMode.key
-              ? 'Passphrase for ${site.displayName}'
-              : 'Password for ${site.displayName}',
+          title: site.isLumaHost
+              ? 'Pairing password for ${site.displayName}'
+              : site.authMode == SftpAuthMode.key
+                  ? 'Passphrase for ${site.displayName}'
+                  : 'Password for ${site.displayName}',
           message: e.message,
           offerSave: true,
           initialSave: promptedSave,
@@ -857,6 +876,15 @@ class _SftpPageState extends State<SftpPage> {
     await _store.upsert(draft.site, secret: draft.secret);
   }
 
+  /// Opens the screen that makes this device reachable. Its listener lives
+  /// and dies with the route — see [SftpThisDevicePage] — which is why it is
+  /// pushed rather than shown as another tab in the page's `IndexedStack`.
+  Future<void> _openThisDevice() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const SftpThisDevicePage()),
+    );
+  }
+
   Future<void> _editSite(SftpSite site) async {
     final existing = await _store.secretFor(site);
     if (!mounted) return;
@@ -913,12 +941,19 @@ class _SftpPageState extends State<SftpPage> {
               session: session,
               connecting: _connectingSiteId != null,
               mode: _mode,
+              hosting: _host.isRunning,
               onModeChanged: (mode) => setState(() => _mode = mode),
               onDisconnect: _disconnect,
               onManageSites: _disconnect,
             ),
             Expanded(
-              child: _mode == 1
+              child: _mode == 2
+                  ? SftpHostPanel(
+                      server: _host,
+                      compact: !wide,
+                      onAnnounce: _announce,
+                    )
+                  : _mode == 1
                   ? _buildDevices(wide)
                   : (session == null
                       ? SftpSiteManagerView(
@@ -930,6 +965,7 @@ class _SftpPageState extends State<SftpPage> {
                           onEdit: _editSite,
                           onDelete: _deleteSite,
                           onNew: _newSite,
+                          onThisDevice: () => unawaited(_openThisDevice()),
                         )
                       : (wide ? _buildWide(session) : _buildNarrow(session))),
             ),
@@ -1164,6 +1200,7 @@ class _ConnectionBar extends StatelessWidget {
     required this.session,
     required this.connecting,
     required this.mode,
+    required this.hosting,
     required this.onModeChanged,
     required this.onDisconnect,
     required this.onManageSites,
@@ -1172,6 +1209,11 @@ class _ConnectionBar extends StatelessWidget {
   final SftpSession? session;
   final bool connecting;
   final int mode;
+
+  /// Whether this device is currently serving its own folder, so the Host tab
+  /// reads as live from the other tabs too.
+  final bool hosting;
+
   final ValueChanged<int> onModeChanged;
   final VoidCallback onDisconnect;
   final VoidCallback onManageSites;
@@ -1181,6 +1223,8 @@ class _ConnectionBar extends StatelessWidget {
     final luma = context.luma;
     final site = session?.site;
     final devices = mode == 1;
+    final host = mode == 2;
+    final live = host ? hosting : (devices || session != null);
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 14, 16, 12),
       child: Row(
@@ -1189,7 +1233,7 @@ class _ConnectionBar extends StatelessWidget {
             width: 9,
             height: 9,
             decoration: BoxDecoration(
-              color: (devices || session != null)
+              color: live
                   ? luma.success
                   : (connecting ? luma.accent : luma.textMuted),
               shape: BoxShape.circle,
@@ -1201,9 +1245,11 @@ class _ConnectionBar extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  devices
-                      ? 'My devices'
-                      : (site == null ? 'SFTP' : site.displayName),
+                  host
+                      ? 'Host this device'
+                      : devices
+                          ? 'My devices'
+                          : (site == null ? 'SFTP' : site.displayName),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -1213,13 +1259,19 @@ class _ConnectionBar extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  devices
-                      ? 'One folder, mirrored across your own devices over '
-                          'your network.'
-                      : (site == null
-                          ? 'Connect to your own server — nothing routes '
-                              'through luma.'
-                          : 'Connected to ${site.endpointLabel}'),
+                  host
+                      ? (hosting
+                          ? 'Sharing a folder — any device with the pairing '
+                              'password can connect.'
+                          : 'Let another device connect to this one over your '
+                              'network.')
+                      : devices
+                          ? 'One folder, mirrored across your own devices over '
+                              'your network.'
+                          : (site == null
+                              ? 'Connect to your own server — nothing routes '
+                                  'through luma.'
+                              : 'Connected to ${site.endpointLabel}'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: luma.textSecondary, fontSize: 12),
@@ -1229,12 +1281,12 @@ class _ConnectionBar extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           LumaSegmentedTabs(
-            tabs: const ['Servers', 'My devices'],
+            tabs: const ['Servers', 'My devices', 'Host'],
             selectedIndex: mode,
             onSelect: onModeChanged,
           ),
           const SizedBox(width: 8),
-          if (!devices && session != null) ...[
+          if (!devices && !host && session != null) ...[
             LumaGhostButton(
               label: 'Site Manager',
               icon: Icons.storage_rounded,

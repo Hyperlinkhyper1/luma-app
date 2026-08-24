@@ -12,19 +12,30 @@
 # picks it up and does the actual git pull + rebuild from outside the
 # container's blast radius, so it survives the recreate.
 #
-# Files on the shared volume, all of them read by Api._adminDeployStatus:
+# Files on the shared volume, all of them read by DeployConsole.status():
 #   deploy.request  the container asking for a deploy (deleted when claimed)
-#   deploy.pid      present only while a deploy is running
 #   deploy.log      output of the run in progress, or the last one
 #   deploy.status   exit code of the last finished run ("0" = success)
+#   deploy.lock     present and freshly touched while a deploy is running
 #   deploy.watcher  heartbeat; its mtime proves this script is alive
+#
+# This script owns every one of those except deploy.request. The container
+# only ever asks; it never clears the log or the status, so there is no
+# window where a request is pending and the previous run's artifacts have
+# already been wiped — a state that read as "finished instantly".
+#
+# deploy.lock and deploy.watcher are both *freshness* signals, not mere
+# presence: a background refresher (see refresher_start) re-touches them
+# every few seconds for the whole duration of a deploy. Writing them once
+# and walking away made any deploy longer than the container's staleness
+# window report itself as dead while it was still going.
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DATA_DIR="/opt/luma-sync-data"
 REQUEST_FILE="$DATA_DIR/deploy.request"
 LOG_FILE="$DATA_DIR/deploy.log"
-PID_FILE="$DATA_DIR/deploy.pid"
+LOCK_FILE="$DATA_DIR/deploy.lock"
 STATUS_FILE="$DATA_DIR/deploy.status"
 HEARTBEAT_FILE="$DATA_DIR/deploy.watcher"
 
@@ -41,6 +52,33 @@ step() {
   echo
   echo "==> $*"
 }
+
+touch_files() {
+  : 2>/dev/null > "$LOCK_FILE" || true
+  : 2>/dev/null > "$HEARTBEAT_FILE" || true
+}
+
+# A deploy runs synchronously in the main loop below, so nothing there can
+# keep the freshness files current while `docker compose build` takes its
+# several minutes. This subshell does it instead, and is killed the moment
+# the deploy returns.
+REFRESHER_PID=""
+refresher_start() {
+  ( while :; do touch_files; sleep 5; done ) &
+  REFRESHER_PID=$!
+}
+
+refresher_stop() {
+  if [ -n "$REFRESHER_PID" ]; then
+    kill "$REFRESHER_PID" 2>/dev/null || true
+    wait "$REFRESHER_PID" 2>/dev/null || true
+    REFRESHER_PID=""
+  fi
+}
+
+# Leaving the refresher alive after a `systemctl stop` would keep the lock
+# looking fresh forever, and the button would refuse every later deploy.
+trap 'refresher_stop; exit 0' TERM INT
 
 # A deploy can update this script itself, but the running copy keeps
 # executing the old file (git swaps the inode, so the open fd survives).
@@ -88,15 +126,15 @@ deploy() {
   docker compose up -d --build luma-sync || return 1
 }
 
-# systemd restarts this script on failure; a deploy.pid left behind by a
+# systemd restarts this script on failure; a stale lock left behind by a
 # killed run would otherwise make the button answer "a deploy is already in
-# progress" forever.
-rm -f "$PID_FILE"
+# progress" until it aged out.
+rm -f "$LOCK_FILE"
 
 SELF_HASH="$(script_hash)"
 beat=0
 while true; do
-  # Heartbeat every ~10s. Api._adminDeployStatus reports the button as
+  # Heartbeat every ~10s. DeployConsole.status() reports the button as
   # unbacked when this file goes stale, so a stopped watcher says so
   # instead of the deploy just quietly never happening.
   if [ "$beat" -le 0 ]; then
@@ -106,17 +144,26 @@ while true; do
   beat=$((beat - 1))
 
   if [ -f "$REQUEST_FILE" ]; then
+    # Lock first, then drop the request: the container checks the lock
+    # before the request, so an instant where both exist reads as "running",
+    # whereas an instant where neither exists would read as "idle" and show
+    # the previous run's log as if this one had finished already.
+    touch_files
     rm -f "$REQUEST_FILE" "$STATUS_FILE"
-    echo $$ > "$PID_FILE"
+    refresher_start
     ( deploy ) > "$LOG_FILE" 2>&1
     code=$?
+    refresher_stop
     if [ "$code" -eq 0 ]; then
       echo "==> Deploy finished successfully." >> "$LOG_FILE"
     else
       echo "==> Deploy FAILED (exit $code) — nothing was restarted." >> "$LOG_FILE"
     fi
+    # Status before lock: the container reads the lock to decide whether a
+    # run is still going, so clearing it first would briefly expose a
+    # finished deploy with no recorded exit code.
     echo "$code" > "$STATUS_FILE"
-    rm -f "$PID_FILE"
+    rm -f "$LOCK_FILE"
     beat=0
 
     # The deploy just shipped a new version of this script — swap onto it
