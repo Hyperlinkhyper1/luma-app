@@ -470,6 +470,11 @@ class Api {
       ..post('/admin/website/upload', _requireAdmin(_adminWebsiteUpload))
       ..get('/admin/website/new-devlog', _requireAdmin(_adminNewDevlogForm))
       ..post('/admin/website/new-devlog', _requireAdmin(_adminNewDevlogCreate))
+      // Registered before the <page|.*> catch-all, which would otherwise
+      // treat "team" as a Markdown page at the content root rather than the
+      // roster form.
+      ..get('/admin/website/team', _requireAdmin(_adminTeamEditor))
+      ..post('/admin/website/team', _requireAdmin(_adminTeamSave))
       ..post('/admin/website/<page|.*>/delete', _requireAdmin(_adminWebsiteDelete))
       ..get('/admin/website/<page|.*>', _requireAdmin(_adminWebsiteEditor))
       ..post('/admin/website/<page|.*>', _requireAdmin(_adminWebsiteSave));
@@ -3704,6 +3709,18 @@ class Api {
     }
     final collectionNames = {'wiki': 'Wiki', 'blog': 'Devlog'};
 
+    // The team roster is data, not a Markdown page, so it never shows up in
+    // the tree above — surface it here with its own count instead.
+    var teamCount = 0;
+    if (await _wikiTeamFile.exists()) {
+      try {
+        final decoded = jsonDecode(await _wikiTeamFile.readAsString());
+        if (decoded is Map && decoded['members'] is List) {
+          teamCount = (decoded['members'] as List).length;
+        }
+      } catch (_) {}
+    }
+
     final sections = byCollection.entries.map((entry) {
       final collection = entry.key;
       final name = collectionNames[collection] ?? collection;
@@ -3764,8 +3781,22 @@ class Api {
             '<div class="l">Pages</div></div>'
             '<div class="stat"><div class="n">${byCollection.length}</div>'
             '<div class="l">Collections</div></div>'
+            '<div class="stat"><div class="n">$teamCount</div>'
+            '<div class="l">Team members</div></div>'
             '</div>'
             '$sections'
+            '<div class="card table-card">'
+            '<div class="tree-head">'
+            '<h2><span>Team</span><span class="count-pill">$teamCount</span></h2>'
+            '<a href="/admin/website/team" class="btn btn-primary btn-sm">'
+            'Edit roster</a>'
+            '</div>'
+            '<p class="hint tree-hint">The cards on '
+            '<code>/wiki/team</code> — name, role, description, icon and '
+            'avatar per person. Stored as <code>team.json</code> rather than a '
+            'Markdown page, so it has its own form instead of appearing in the '
+            'tree above.</p>'
+            '</div>'
             '<div class="card">'
             '<h2>Publish</h2>'
             '<p class="hint">Saved edits stay in draft on the server until you '
@@ -4175,6 +4206,193 @@ border-radius:999px;padding:2px 8px}
     return jsonResponse(200, {'url': '/images/uploads/$name'});
   }
 
+  // ---------------------------------------------------------------------
+  // Team roster editor — /admin/website/team
+  //
+  // The wiki's Team page renders src/content/team.json rather than Markdown,
+  // because a roster is a list of records and not prose. This is the form for
+  // that file: it writes into the same mounted source tree the page editor
+  // uses, and publishes through the same .build-request flag, so a member
+  // added here shows up on /wiki/team after the next build.
+  // ---------------------------------------------------------------------
+
+  /// Icons offered for a member, kept in step with TEAM_ICONS in the site's
+  /// `src/data/team.ts`. A name outside the site's icon set renders as
+  /// nothing at all, so anything unrecognised is replaced with the fallback
+  /// on save rather than trusted through.
+  static const _teamIcons = [
+    'user', 'users', 'star', 'sparkles', 'leaf', 'coffee', 'moon', 'rocket',
+    'brush', 'palette', 'wrench', 'braces', 'bot', 'book', 'shield', 'zap',
+    'globe', 'compass', 'gamepad', 'package', 'server', 'key', 'image',
+    'message', 'pencil', 'activity', 'smile', 'puzzle', 'cloud', 'mail',
+    'github', 'discord',
+  ];
+
+  File get _wikiTeamFile => File('$_wikiContentPath/team.json');
+
+  static String _teamStr(Object? v, {int max = 200}) {
+    if (v is! String) return '';
+    final s = v.trim();
+    return s.length > max ? s.substring(0, max) : s;
+  }
+
+  static String _teamIcon(Object? v, String fallback) {
+    final s = v is String ? v.trim() : '';
+    return _teamIcons.contains(s) ? s : fallback;
+  }
+
+  /// Site-relative paths and http(s)/mailto only. These end up as `href`s and
+  /// image sources on a public page, so `javascript:` and protocol-relative
+  /// URLs are dropped rather than escaped.
+  static String _teamHref(Object? v) {
+    final s = _teamStr(v, max: 500);
+    if (s.isEmpty) return '';
+    if (s.startsWith('//')) return '';
+    if (s.startsWith('/')) return s;
+    return RegExp(r'^(https?:|mailto:)', caseSensitive: false).hasMatch(s)
+        ? s
+        : '';
+  }
+
+  Future<Response> _adminTeamEditor(Request request) async {
+    final unavailable = _wikiUnavailable();
+    if (unavailable != null) return unavailable;
+
+    var members = const <dynamic>[];
+    if (await _wikiTeamFile.exists()) {
+      try {
+        final decoded = jsonDecode(await _wikiTeamFile.readAsString());
+        if (decoded is Map && decoded['members'] is List) {
+          members = decoded['members'] as List;
+        }
+      } catch (_) {
+        // A corrupt or hand-edited file must not lock the operator out of the
+        // only UI that can fix it — start empty and let a save overwrite it.
+      }
+    }
+    // JSON in a <script>; escaping "<" closes the door on a literal
+    // "</script>" arriving through a member's description.
+    final initial = jsonEncode({'members': members, 'icons': _teamIcons})
+        .replaceAll('<', '\\u003c');
+
+    return Response(200,
+        body: '<!doctype html><html><head><meta charset="utf-8">'
+            '<meta name="viewport" content="width=device-width, initial-scale=1">'
+            '<title>luma admin — team</title>'
+            '<style>$_adminCss$_teamEditorCss</style></head>'
+            '<body><div class="wrap">'
+            '<header class="top"><h1>luma<span class="dot">.</span> team</h1>'
+            '<span class="sub">wiki roster</span>'
+            '<nav style="margin-left:auto">'
+            '<a href="/admin/website" class="btn btn-ghost btn-sm">← all pages</a>'
+            '</nav></header>'
+            '<div class="card">'
+            '<h2>Members</h2>'
+            '<p class="hint">One card each on <code>/wiki/team</code>, shown in '
+            'this order. Only the name is required — a member with no avatar '
+            'falls back to the icon you pick.</p>'
+            '<div id="tmlist" class="tm-list"></div>'
+            '<button type="button" class="btn btn-ghost tm-addbtn" id="tmadd">'
+            '+ Add member</button>'
+            '</div>'
+            '<div class="card">'
+            '<h2>Save</h2>'
+            '<p class="hint"><strong>Save</strong> writes the roster to '
+            '<code>src/content/team.json</code> on the server and leaves it as '
+            'a draft. <strong>Save &amp; publish</strong> also rebuilds the '
+            'site, which is when the page actually changes.</p>'
+            '<div class="product-form">'
+            '<button type="button" class="btn btn-primary" id="tmsave">Save</button>'
+            '<button type="button" class="btn btn-ghost" id="tmpub">Save &amp; publish</button>'
+            '<span id="tmstatus" class="tm-status" role="status" aria-live="polite"></span>'
+            '<span id="buildbadge" class="badge" style="display:none"></span>'
+            '</div>'
+            '<pre id="buildlog" class="log" style="display:none;margin-top:12px"></pre>'
+            '</div>'
+            '</div>'
+            '<script type="application/json" id="teamdata">$initial</script>'
+            '<script>$_teamEditorScript</script>'
+            '</body></html>',
+        headers: {'Content-Type': 'text/html; charset=utf-8'});
+  }
+
+  Future<Response> _adminTeamSave(Request request) async {
+    final unavailable = _wikiUnavailable();
+    if (unavailable != null) return unavailable;
+    if (!_sameOrigin(request)) {
+      return errorResponse(403, 'bad_origin', 'Cross-origin request rejected.');
+    }
+    Map<String, String> form = const {};
+    try {
+      form = Uri.splitQueryString(await request.readAsString());
+    } catch (_) {}
+    final data = form['data'];
+    if (data == null) {
+      return errorResponse(400, 'bad_request', 'Missing data field.');
+    }
+    if (data.length > 512 * 1024) {
+      return errorResponse(413, 'too_large', 'Roster too large.');
+    }
+    Object? decoded;
+    try {
+      decoded = jsonDecode(data);
+    } catch (_) {
+      return errorResponse(400, 'bad_json', 'Roster is not valid JSON.');
+    }
+    if (decoded is! Map || decoded['members'] is! List) {
+      return errorResponse(
+          400, 'bad_shape', 'Expected an object with a "members" list.');
+    }
+
+    // Normalised here as well as in the browser: the form is convenience, the
+    // server is the thing that decides what lands in the file.
+    final members = <Map<String, Object?>>[];
+    for (final raw in decoded['members'] as List) {
+      if (raw is! Map) continue;
+      final name = _teamStr(raw['name'], max: 120);
+      // A nameless row is a half-filled form, not a person.
+      if (name.isEmpty) continue;
+      final links = <Map<String, String>>[];
+      final rawLinks = raw['links'];
+      if (rawLinks is List) {
+        for (final rl in rawLinks.take(8)) {
+          if (rl is! Map) continue;
+          final href = _teamHref(rl['href']);
+          if (href.isEmpty) continue;
+          links.add({
+            'label': _teamStr(rl['label'], max: 60),
+            'href': href,
+            'icon': _teamIcon(rl['icon'], 'globe'),
+          });
+        }
+      }
+      members.add({
+        'name': name,
+        'role': _teamStr(raw['role'], max: 120),
+        'description': _teamStr(raw['description'], max: 2000),
+        'icon': _teamIcon(raw['icon'], 'user'),
+        'avatar': _teamHref(raw['avatar']),
+        'links': links,
+      });
+      if (members.length >= 100) break;
+    }
+
+    final file = _wikiTeamFile;
+    await file.parent.create(recursive: true);
+    // Indented so the file stays readable to anyone who opens it in the repo,
+    // and write-then-rename so a build never reads a half-written roster.
+    final encoded =
+        const JsonEncoder.withIndent('  ').convert({'members': members});
+    final tmp = File('${file.path}.tmp');
+    await tmp.writeAsString('$encoded\n', flush: true);
+    await tmp.rename(file.path);
+
+    final publish = form['publish'] == '1';
+    if (publish) _requestWikiBuild();
+    return jsonResponse(
+        200, {'ok': true, 'count': members.length, 'publishing': publish});
+  }
+
   // ---- Quick devlog creation: a small form instead of hand-writing
   // frontmatter YAML in the raw editor. Writes the post as a draft by
   // default and hands off to the full split editor for everything else. ----
@@ -4480,6 +4698,390 @@ border-radius:999px;padding:2px 8px}
   });
   // If a build is already running when the page loads, start polling.
   poll(); timer = setInterval(poll, 2000);
+})();
+''';
+
+  /// Roster editor. Layered on top of _adminCss so it inherits the
+  /// dashboard's buttons, cards and spacing — this is one more panel of the
+  /// admin, not a second design.
+  static const _teamEditorCss = r'''
+.tm-list{display:grid;gap:14px;margin-bottom:16px}
+.tm-card{background:#191430;border:1px solid #262038;border-radius:12px;
+padding:14px 16px 16px}
+.tm-head{display:flex;align-items:center;gap:10px;padding-bottom:12px;
+margin-bottom:14px;border-bottom:1px solid #241e36}
+.tm-avatar{flex:none;display:grid;place-items:center;width:38px;height:38px;
+overflow:hidden;border-radius:9px;border:1px solid #322a52;background:#221b3d}
+.tm-avatar img{width:100%;height:100%;object-fit:cover}
+.tm-avatar-icon{font-size:9px;line-height:1.1;text-align:center;padding:2px;
+color:#9089b0;word-break:break-all}
+.tm-title{flex:1;min-width:0;margin:0;font-size:14px;font-weight:600;
+line-height:1.4;letter-spacing:0;text-transform:none;color:#ece8f7;
+overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tm-pos{flex:none;font-size:11px;color:#7f7898;font-variant-numeric:tabular-nums}
+.tm-icon-btn{flex:none;width:32px;height:32px;display:grid;place-items:center;
+background:#1c1730;color:#b4addc;border:1px solid #2d2645;border-radius:8px;
+font:inherit;font-size:14px;line-height:1;cursor:pointer;
+transition:border-color .15s,color .15s,opacity .15s}
+.tm-icon-btn:hover:not(:disabled){border-color:#463d6b;color:#ece8f7}
+.tm-icon-btn:disabled{opacity:.35;cursor:not-allowed}
+.tm-icon-btn:focus-visible{outline:2px solid #8a7ee0;outline-offset:2px}
+.tm-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+gap:14px 16px}
+.tm-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.tm-field.tm-wide{grid-column:1/-1}
+.tm-label{font-size:11px;font-weight:600;letter-spacing:.05em;
+text-transform:uppercase;color:#8d86a8}
+.tm-input{width:100%;background:#1a1530;color:#ece8f7;border:1px solid #2d2645;
+border-radius:9px;padding:9px 12px;font-size:13px;font-family:inherit;
+outline:none;transition:border-color .15s}
+.tm-input:focus{border-color:#8a7ee0}
+.tm-input:focus-visible{outline:2px solid #8a7ee0;outline-offset:1px}
+.tm-area{resize:vertical;line-height:1.55;min-height:74px}
+.tm-help{margin:0;font-size:11.5px;line-height:1.45;color:#8d86a8}
+.tm-file{display:flex;gap:8px;align-items:center}
+.tm-file .tm-input{flex:1;min-width:0}
+.tm-file .btn{flex:none}
+.tm-links{margin-top:16px;padding-top:14px;border-top:1px solid #241e36;
+display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.tm-links .tm-label{margin-bottom:2px}
+.tm-link-row{display:flex;gap:8px;width:100%}
+.tm-link-row .tm-input:nth-child(1){flex:0 1 30%}
+.tm-link-row .tm-input:nth-child(2){flex:1 1 45%;min-width:0}
+.tm-link-row select.tm-input{flex:0 1 25%}
+.tm-none{font-style:italic}
+.tm-addbtn{width:100%}
+.tm-status{font-size:12.5px;color:#9b94b3}
+.tm-status.ok{color:#7ee08a}
+.tm-status.err{color:#e07e7e}
+@media (max-width:720px){
+.tm-grid{grid-template-columns:1fr}
+.tm-link-row{flex-wrap:wrap}
+.tm-link-row .tm-input{flex:1 1 100%}
+}
+''';
+
+  /// The roster form itself. State lives in one array; text edits mutate it
+  /// in place and only structural changes (add / remove / reorder) re-render,
+  /// so typing never loses the caret.
+  static const _teamEditorScript = r'''
+(function () {
+  var data = {};
+  try { data = JSON.parse(document.getElementById('teamdata').textContent); }
+  catch (e) { data = {}; }
+  var ICONS = (Array.isArray(data.icons) && data.icons.length)
+    ? data.icons : ['user'];
+  var list = document.getElementById('tmlist');
+  var statusEl = document.getElementById('tmstatus');
+  var badge = document.getElementById('buildbadge');
+  var logEl = document.getElementById('buildlog');
+  var dirty = false, saving = false, buildTimer = null, buildIdle = 0;
+
+  function esc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;',
+               "'": '&#39;' }[c];
+    });
+  }
+  function str(v) { return typeof v === 'string' ? v : ''; }
+  function icon(v, fallback) {
+    return ICONS.indexOf(v) >= 0 ? v : fallback;
+  }
+  function normalise(m) {
+    if (!m || typeof m !== 'object') m = {};
+    return {
+      name: str(m.name), role: str(m.role), description: str(m.description),
+      icon: icon(m.icon, 'user'), avatar: str(m.avatar),
+      links: (Array.isArray(m.links) ? m.links : []).map(function (l) {
+        if (!l || typeof l !== 'object') l = {};
+        return { label: str(l.label), href: str(l.href),
+                 icon: icon(l.icon, 'globe') };
+      })
+    };
+  }
+  var members = (Array.isArray(data.members) ? data.members : []).map(normalise);
+
+  function setStatus(msg, cls) {
+    statusEl.textContent = msg || '';
+    statusEl.className = 'tm-status' + (cls ? ' ' + cls : '');
+  }
+  function markDirty() { dirty = true; setStatus('Unsaved changes'); }
+
+  /* ---------- markup ---------- */
+  function field(id, label, control, help, wide) {
+    return '<div class="tm-field' + (wide ? ' tm-wide' : '') + '">' +
+      '<label class="tm-label" for="' + id + '">' + esc(label) + '</label>' +
+      control +
+      '<p class="tm-help" id="' + id + '-h">' + esc(help) + '</p></div>';
+  }
+  function iconSelect(id, selected, i, li) {
+    var attrs = 'data-i="' + i + '" data-f="icon"' +
+      (li == null ? '' : ' data-li="' + li + '"');
+    var opts = ICONS.map(function (n) {
+      return '<option value="' + esc(n) + '"' +
+        (n === selected ? ' selected' : '') + '>' + esc(n) + '</option>';
+    }).join('');
+    return '<select class="tm-input" id="' + id + '" ' + attrs +
+      (li == null ? ' aria-describedby="' + id + '-h"'
+                  : ' aria-label="Link icon"') + '>' + opts + '</select>';
+  }
+  function avatarPreview(m) {
+    return m.avatar
+      ? '<img src="' + esc(m.avatar) + '" alt="">'
+      : '<span class="tm-avatar-icon">' + esc(m.icon) + '</span>';
+  }
+  function linksBlock(m, i) {
+    var rows = m.links.map(function (l, j) {
+      var n = j + 1;
+      return '<div class="tm-link-row">' +
+        '<input class="tm-input" type="text" data-i="' + i + '" data-li="' + j +
+          '" data-f="label" value="' + esc(l.label) +
+          '" placeholder="Modrinth" aria-label="Link ' + n + ' label">' +
+        '<input class="tm-input" type="url" data-i="' + i + '" data-li="' + j +
+          '" data-f="href" value="' + esc(l.href) +
+          '" placeholder="https://..." aria-label="Link ' + n + ' address">' +
+        iconSelect('f' + i + 'l' + j + '-icon', l.icon, i, j) +
+        '<button type="button" class="tm-icon-btn" data-act="dellink" data-i="' +
+          i + '" data-li="' + j + '" aria-label="Remove link ' + n +
+          '">&times;</button>' +
+        '</div>';
+    }).join('');
+    return '<div class="tm-links"><span class="tm-label">Links</span>' +
+      (rows || '<p class="tm-help tm-none">No links yet.</p>') +
+      '<button type="button" class="btn btn-ghost btn-sm" data-act="addlink" ' +
+      'data-i="' + i + '">+ Add link</button></div>';
+  }
+  function card(m, i) {
+    var total = members.length;
+    // Button names are positional, not the person's — the name changes as you
+    // type and only the visible heading is refreshed, so a name in here would
+    // go stale for screen readers.
+    var n = i + 1;
+    var p = 'f' + i + '-';
+    return '<section class="tm-card" aria-labelledby="' + p + 'title">' +
+      '<div class="tm-head">' +
+        '<span class="tm-avatar" data-avatar="' + i + '">' +
+          avatarPreview(m) + '</span>' +
+        '<h3 class="tm-title" id="' + p + 'title" data-title="' + i + '">' +
+          esc(m.name || 'New member') + '</h3>' +
+        '<span class="tm-pos">' + n + ' / ' + total + '</span>' +
+        '<button type="button" class="tm-icon-btn" data-act="up" data-i="' + i +
+          '" aria-label="Move member ' + n + ' up"' +
+          (i === 0 ? ' disabled' : '') + '>&uarr;</button>' +
+        '<button type="button" class="tm-icon-btn" data-act="down" data-i="' + i +
+          '" aria-label="Move member ' + n + ' down"' +
+          (i === total - 1 ? ' disabled' : '') + '>&darr;</button>' +
+        '<button type="button" class="btn btn-danger btn-sm" data-act="del" ' +
+          'data-i="' + i + '" aria-label="Remove member ' + n + '">Remove</button>' +
+      '</div><div class="tm-grid">' +
+        field(p + 'name', 'Name',
+          '<input class="tm-input" type="text" id="' + p + 'name" data-i="' + i +
+          '" data-f="name" value="' + esc(m.name) + '" placeholder="Ada" ' +
+          'aria-describedby="' + p + 'name-h">',
+          'Required. A row left without a name is dropped when you save.') +
+        field(p + 'role', 'Role',
+          '<input class="tm-input" type="text" id="' + p + 'role" data-i="' + i +
+          '" data-f="role" value="' + esc(m.role) + '" placeholder="Textures" ' +
+          'aria-describedby="' + p + 'role-h">',
+          'Short line under the name. Job, area, anything.') +
+        field(p + 'icon', 'Icon', iconSelect(p + 'icon', m.icon, i, null),
+          'Shown in place of an avatar when there is no image.') +
+        field(p + 'avatar', 'Avatar',
+          '<div class="tm-file"><input class="tm-input" type="url" id="' + p +
+          'avatar" data-i="' + i + '" data-f="avatar" value="' + esc(m.avatar) +
+          '" placeholder="/images/uploads/ada.png" aria-describedby="' + p +
+          'avatar-h">' +
+          '<button type="button" class="btn btn-ghost btn-sm" data-act="pick" ' +
+          'data-i="' + i + '">Upload...</button>' +
+          '<input type="file" accept="image/*" hidden data-up="' + i + '"></div>',
+          'Square images look best. Uploading files it under the site uploads ' +
+          'folder and fills this in for you.') +
+        field(p + 'desc', 'Description',
+          '<textarea class="tm-input tm-area" rows="3" id="' + p + 'desc" ' +
+          'data-i="' + i + '" data-f="description" placeholder="What they work ' +
+          'on." aria-describedby="' + p + 'desc-h">' + esc(m.description) +
+          '</textarea>',
+          'A sentence or two. Plain text, not Markdown.', true) +
+      '</div>' + linksBlock(m, i) + '</section>';
+  }
+  function render(focusId) {
+    list.innerHTML = members.length
+      ? members.map(card).join('')
+      : '<p class="tm-help tm-none">Nobody on the roster yet. Add the first ' +
+        'member below.</p>';
+    if (focusId) {
+      var el = document.getElementById(focusId);
+      if (el) el.focus();
+    }
+  }
+
+  /* ---------- edits ---------- */
+  list.addEventListener('input', function (e) {
+    var t = e.target;
+    var i = t.getAttribute('data-i'), f = t.getAttribute('data-f');
+    if (i === null || !f) return;
+    i = +i;
+    var li = t.getAttribute('data-li');
+    if (li !== null) { members[i].links[+li][f] = t.value; markDirty(); return; }
+    members[i][f] = t.value;
+    if (f === 'name') {
+      var title = list.querySelector('[data-title="' + i + '"]');
+      if (title) title.textContent = t.value || 'New member';
+    }
+    if (f === 'avatar' || f === 'icon') {
+      var av = list.querySelector('[data-avatar="' + i + '"]');
+      if (av) av.innerHTML = avatarPreview(members[i]);
+    }
+    markDirty();
+  });
+
+  list.addEventListener('change', function (e) {
+    var t = e.target;
+    if (t.type !== 'file' || !t.hasAttribute('data-up')) return;
+    var i = +t.getAttribute('data-up');
+    if (t.files && t.files[0]) upload(t.files[0], i);
+    t.value = '';
+  });
+
+  list.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-act]');
+    if (!btn) return;
+    var i = +btn.getAttribute('data-i');
+    var act = btn.getAttribute('data-act');
+    if (act === 'up' && i > 0) swap(i, i - 1);
+    else if (act === 'down' && i < members.length - 1) swap(i, i + 1);
+    else if (act === 'del') {
+      var who = members[i].name || 'this member';
+      if (!confirm('Remove ' + who + ' from the team page?')) return;
+      members.splice(i, 1);
+      markDirty(); render();
+    } else if (act === 'addlink') {
+      members[i].links.push({ label: '', href: '', icon: 'globe' });
+      markDirty();
+      render('f' + i + 'l' + (members[i].links.length - 1) + '-icon');
+    } else if (act === 'dellink') {
+      members[i].links.splice(+btn.getAttribute('data-li'), 1);
+      markDirty(); render();
+    } else if (act === 'pick') {
+      var f = list.querySelector('input[type=file][data-up="' + i + '"]');
+      if (f) f.click();
+    }
+  });
+
+  function swap(a, b) {
+    var tmp = members[a]; members[a] = members[b]; members[b] = tmp;
+    markDirty();
+    render('f' + b + '-name');
+  }
+
+  document.getElementById('tmadd').addEventListener('click', function () {
+    members.push(normalise({}));
+    markDirty();
+    render('f' + (members.length - 1) + '-name');
+  });
+
+  /* ---------- avatar upload ---------- */
+  function upload(file, i) {
+    setStatus('Uploading ' + file.name + '...');
+    fetch('/admin/website/upload?name=' + encodeURIComponent(file.name), {
+      method: 'POST', body: file, credentials: 'same-origin'
+    }).then(function (r) {
+      return r.json().then(function (j) {
+        if (!r.ok) throw new Error(j.message || 'HTTP ' + r.status);
+        return j;
+      });
+    }).then(function (j) {
+      members[i].avatar = j.url;
+      var input = document.getElementById('f' + i + '-avatar');
+      if (input) input.value = j.url;
+      var av = list.querySelector('[data-avatar="' + i + '"]');
+      if (av) av.innerHTML = avatarPreview(members[i]);
+      markDirty();
+      setStatus('Image uploaded', 'ok');
+    }).catch(function (err) {
+      setStatus('Upload failed: ' + err.message, 'err');
+    });
+  }
+
+  /* ---------- save & publish ---------- */
+  function setBadge(text, cls) {
+    badge.style.display = 'inline-block';
+    badge.textContent = text;
+    badge.className = 'badge' + (cls ? ' ' + cls : '');
+  }
+  function pollBuild() {
+    fetch('/admin/website/build/status', { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (s) {
+        var st = (s.status && s.status.state) || '';
+        var busy = s.pending || st === 'building';
+        if (busy) setBadge('Building...', 'warn');
+        else if (st === 'ok') setBadge('Live', 'ok');
+        else if (st === 'error') setBadge('Build failed', 'err');
+        if (busy || st === 'error') {
+          logEl.style.display = 'block';
+          logEl.textContent = s.log || '(no output yet)';
+          logEl.scrollTop = logEl.scrollHeight;
+        } else if (st === 'ok') {
+          logEl.style.display = 'none';
+        }
+        buildIdle = busy ? 0 : buildIdle + 1;
+        if (buildIdle > 4 && buildTimer) {
+          clearInterval(buildTimer); buildTimer = null;
+        }
+      }).catch(function () {});
+  }
+  function save(publish) {
+    if (saving) return;
+    saving = true;
+    var btn = document.getElementById(publish ? 'tmpub' : 'tmsave');
+    btn.disabled = true;
+    setStatus('Saving...');
+    var body = new URLSearchParams();
+    body.set('data', JSON.stringify({ members: members }));
+    if (publish) body.set('publish', '1');
+    fetch(location.pathname, {
+      method: 'POST', body: body, credentials: 'same-origin'
+    }).then(function (r) {
+      return r.json().then(function (j) {
+        if (!r.ok) throw new Error(j.message || 'HTTP ' + r.status);
+        return j;
+      });
+    }).then(function (j) {
+      dirty = false;
+      var kept = j.count;
+      var dropped = members.length - kept;
+      var msg = 'Saved ' + kept + (kept === 1 ? ' member' : ' members');
+      if (dropped > 0) {
+        msg += ' - ' + dropped + (dropped === 1 ? ' row' : ' rows') +
+          ' skipped (no name)';
+      }
+      setStatus(msg, 'ok');
+      if (publish) {
+        buildIdle = 0;
+        if (!buildTimer) buildTimer = setInterval(pollBuild, 2000);
+        pollBuild();
+      }
+    }).catch(function (err) {
+      setStatus('Save failed: ' + err.message, 'err');
+    }).finally(function () { saving = false; btn.disabled = false; });
+  }
+  document.getElementById('tmsave')
+    .addEventListener('click', function () { save(false); });
+  document.getElementById('tmpub')
+    .addEventListener('click', function () { save(true); });
+  document.addEventListener('keydown', function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault(); save(false);
+    }
+  });
+  window.addEventListener('beforeunload', function (e) {
+    if (!dirty) return;
+    e.preventDefault();
+    e.returnValue = '';
+  });
+
+  render();
 })();
 ''';
 
