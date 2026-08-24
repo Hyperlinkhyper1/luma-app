@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
@@ -36,6 +37,10 @@ class FolderGallerySource extends GallerySource {
   /// long scroll through a large library can't grow without limit.
   final Map<String, Uint8List> _memoryThumbs = {};
   static const _memoryThumbLimit = 400;
+
+  /// Set by [dispose]; the walk checks it between folders so closing the
+  /// plugin mid-scan doesn't leave a crawl running in the background.
+  bool _disposed = false;
 
   /// Directory nesting to follow below a root.
   static const _maxDepth = 8;
@@ -146,6 +151,15 @@ class FolderGallerySource extends GallerySource {
   /// that the yield isn't what makes the scan slow.
   static const _progressStride = 64;
 
+  /// How many files are `stat()`ed at once. One awaited call per file was the
+  /// shape of the old walk, and on Windows each of those round-trips costs
+  /// about a millisecond of pure latency — thirty thousand photos spent half
+  /// a minute waiting on the filesystem between doing any work. A batch pays
+  /// the latency once and lets the runtime interleave the rest; past a few
+  /// dozen the returns vanish, because the disk becomes the bottleneck
+  /// instead of the message loop.
+  static const _statBatch = 24;
+
   Future<void> _walk(
     Directory root,
     Directory directory,
@@ -165,13 +179,21 @@ class FolderGallerySource extends GallerySource {
       return;
     }
 
+    var sinceYield = 0;
+    Future<void> breathe() async {
+      onProgress?.call(into.length, null);
+      await Future<void>.delayed(Duration.zero);
+    }
+
+    final subDirectories = <Directory>[];
+    final candidates = <File, GalleryMediaType>{};
+
     for (final entry in entries) {
       final name = _basename(entry.path);
       if (name.startsWith('.')) continue;
 
       if (entry is Directory) {
-        if (isSkippedFolder(name)) continue;
-        await _walk(root, entry, depth + 1, seen, into, onProgress);
+        if (!isSkippedFolder(name)) subDirectories.add(entry);
         continue;
       }
       if (entry is! File) continue;
@@ -179,36 +201,65 @@ class FolderGallerySource extends GallerySource {
       final type = mediaTypeForName(name);
       if (type == null) continue;
       if (!seen.add(entry.path)) continue;
+      candidates[entry] = type;
+    }
 
-      FileStat stat;
-      try {
-        stat = await entry.stat();
-      } on FileSystemException {
-        continue;
+    final files = candidates.keys.toList(growable: false);
+    for (var start = 0; start < files.length; start += _statBatch) {
+      final end = math.min(start + _statBatch, files.length);
+      final batch = files.sublist(start, end);
+      final stats = await Future.wait(
+        [for (final file in batch) _quietStat(file)],
+      );
+
+      for (var i = 0; i < batch.length; i++) {
+        final stat = stats[i];
+        if (stat == null) continue;
+        final type = candidates[batch[i]]!;
+        if (!isLikelyPhotoFile(type, stat.size)) continue;
+
+        into.add(GalleryItem(
+          id: batch[i].path,
+          name: _basename(batch[i].path),
+          type: type,
+          folder: _folderFor(root, batch[i].path),
+          // The file's own timestamp. EXIF knows better for photos, but
+          // reading it for every file would turn a scan into a crawl; the
+          // detail view reads the real capture time when a photo is opened.
+          takenAt: stat.modified,
+          path: batch[i].path,
+          // stat() is safe on a placeholder — it reports the real size
+          // without fetching anything.
+          sizeBytes: stat.size,
+          cloudOnly: CloudFiles.isCloudOnly(batch[i].path),
+        ));
+
+        if (into.length % _progressStride == 0) {
+          await breathe();
+          sinceYield = 0;
+        }
       }
+      sinceYield += batch.length;
+    }
 
-      if (!isLikelyPhotoFile(type, stat.size)) continue;
-
-      into.add(GalleryItem(
-        id: entry.path,
-        name: name,
-        type: type,
-        folder: _folderFor(root, entry.path),
-        // The file's own timestamp. EXIF knows better for photos, but
-        // reading it for every file would turn a scan into a crawl; the
-        // detail view reads the real capture time when a photo is opened.
-        takenAt: stat.modified,
-        path: entry.path,
-        // stat() is safe on a placeholder — it reports the real size without
-        // fetching anything.
-        sizeBytes: stat.size,
-        cloudOnly: CloudFiles.isCloudOnly(entry.path),
-      ));
-
-      if (into.length % _progressStride == 0) {
-        onProgress?.call(into.length, null);
-        await Future<void>.delayed(Duration.zero);
+    for (final subDirectory in subDirectories) {
+      if (_disposed) return;
+      await _walk(root, subDirectory, depth + 1, seen, into, onProgress);
+      // Deep, media-free trees used to go silent for whole seconds at a
+      // stretch, which reads as a hung scan.
+      if (++sinceYield >= _progressStride) {
+        await breathe();
+        sinceYield = 0;
       }
+    }
+  }
+
+  /// A file that vanishes or refuses access mid-scan is skipped, not fatal.
+  static Future<FileStat?> _quietStat(File file) async {
+    try {
+      return await file.stat();
+    } on FileSystemException {
+      return null;
     }
   }
 
@@ -290,13 +341,19 @@ class FolderGallerySource extends GallerySource {
   }
 
   static String _basename(String path) {
-    final index = path.lastIndexOf(RegExp(r'[/\\]'));
-    return index < 0 ? path : path.substring(index + 1);
+    for (var i = path.length - 1; i >= 0; i--) {
+      final unit = path.codeUnitAt(i);
+      if (unit == 0x2F || unit == 0x5C) return path.substring(i + 1);
+    }
+    return path;
   }
 
   static String _dirname(String path) {
-    final index = path.lastIndexOf(RegExp(r'[/\\]'));
-    return index < 0 ? '' : path.substring(0, index);
+    for (var i = path.length - 1; i >= 0; i--) {
+      final unit = path.codeUnitAt(i);
+      if (unit == 0x2F || unit == 0x5C) return path.substring(0, i);
+    }
+    return '';
   }
 
   static String _trimTrailingSeparator(String path) {
@@ -395,6 +452,7 @@ class FolderGallerySource extends GallerySource {
 
   @override
   void dispose() {
+    _disposed = true;
     _memoryThumbs.clear();
   }
 }

@@ -36,10 +36,9 @@ AiPricingRates? _antigravityPricingFor(String? model) {
 /// gateway/free models, OpenRouter, Groq, etc. — is unpriced rather than
 /// guessed at.
 AiPricingRates? _opencodePricingFor(String model) {
-  final slash = model.indexOf('/');
-  if (slash < 0) return null;
-  final provider = model.substring(0, slash);
-  final modelId = model.substring(slash + 1);
+  final split = splitOpencodeModel(model);
+  if (split == null) return null;
+  final (provider, modelId) = split;
   return switch (provider) {
     'anthropic' => anthropicPricingFor(modelId),
     'openai' => openAiPricingFor(modelId),

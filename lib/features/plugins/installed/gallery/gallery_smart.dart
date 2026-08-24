@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart'
-    show TargetPlatform, defaultTargetPlatform, immutable, kIsWeb;
+    show TargetPlatform, compute, defaultTargetPlatform, immutable, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart';
@@ -73,7 +73,10 @@ class GallerySmartAnalyser {
   /// never who they belong to — so when there is at least one face, the file
   /// is decoded a second time (once, via `package:image`, in the same
   /// coordinate space `Face.boundingBox` reports in) purely to crop faces out
-  /// of it for [embedder]. Photos with no face skip that decode entirely.
+  /// of it for [embedder]. That decode happens on a worker isolate — it is
+  /// the single slowest thing this path does, and on the UI thread it froze
+  /// the grid for most of a second per photo. Photos with no face skip it
+  /// entirely.
   Future<GalleryCacheEntry> analyse(
     String path,
     GalleryCacheEntry previous, {
@@ -88,12 +91,21 @@ class GallerySmartAnalyser {
         return previous.copyWith(analysed: true);
       }
       final input = InputImage.fromFilePath(path);
-      final faces = await _faceDetector.processImage(input);
-      final labels = await _imageLabeller.processImage(input);
+      // Two independent calls into platform code; run together rather than
+      // paying each model's latency after the other's.
+      final results = await Future.wait([
+        _faceDetector.processImage(input),
+        _imageLabeller.processImage(input),
+      ]);
+      final faces = results[0] as List<Face>;
+      final labels = results[1] as List<ImageLabel>;
 
       var personIds = const <int>[];
       if (faces.isNotEmpty && embedder.ready) {
-        final decoded = img.decodeImage(await file.readAsBytes());
+        final decoded = await compute(
+          decodeStillImage,
+          await file.readAsBytes(),
+        );
         if (decoded != null) {
           personIds = await identifyPeople(
             decoded,
@@ -419,3 +431,7 @@ bool isPanorama(GalleryItem item) {
   final ratio = item.width / item.height;
   return ratio >= 2.0 || ratio <= 0.5;
 }
+
+/// Decodes image bytes into pixels. Top-level so it can run on a worker
+/// isolate via [compute] — see [GallerySmartAnalyser.analyse].
+img.Image? decodeStillImage(Uint8List bytes) => img.decodeImage(bytes);
