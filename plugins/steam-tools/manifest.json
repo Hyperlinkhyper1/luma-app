@@ -1,0 +1,8 @@
+{
+  "id": "steam-tools",
+  "name": "Steam Tools",
+  "version": "1.0.0",
+  "description": "A hub for your Steam library. Price Tracker lists every game you own and keeps a price history for each one — Steam only publishes what a game costs right now, so luma records the price itself and charts it over 1D, 1W, 1M, 6M, 1Y and 5Y. Open a game for its banner, current price and discount, description, tags and full PC system requirements. Your Steam API key stays encrypted on this device and is sent only to Steam.",
+  "icon": "sports_esports",
+  "category": "Utility"
+}

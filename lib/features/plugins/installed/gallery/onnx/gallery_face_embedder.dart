@@ -1,12 +1,13 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_onnxruntime/flutter_onnxruntime.dart';
 import 'package:image/image.dart' as img;
 
 import '../gallery_people.dart';
 import 'gallery_model_store.dart';
-import 'gallery_onnx_analyser.dart' show GalleryFace;
+import 'gallery_onnx_analyser.dart' show DecodedPixels, GalleryFace;
 
 /// Turns a face crop into a fingerprint — a vector where two photos of the
 /// same person land close together and two different people land apart.
@@ -64,23 +65,43 @@ class GalleryFaceEmbedder {
 
     final crop = cropFace(image, box);
     if (crop == null) return null;
+    return _runEmbed(preprocessFaceEmbedding(crop));
+  }
 
-    final input = await OrtValue.fromList(
-      preprocessFaceEmbedding(crop),
+  /// The same, straight from RGBA pixels — the form the desktop analyser
+  /// already holds. The padded square is sampled out of the buffer in one
+  /// pass into the model's input tensor; no intermediate image is built.
+  ///
+  /// Sampling is nearest-neighbour: a face crop lands on SFace's 112² input
+  /// from a box that was itself detected on a 384 px thumbnail, so the extra
+  /// smoothing bilinear would buy is smaller than what the detector's own
+  /// box error costs.
+  Future<List<double>?> embedRgba(DecodedPixels photo, GalleryFace box) async {
+    final input = embeddingTensorFromRgba(photo, box);
+    if (input == null) return null;
+    return _runEmbed(input);
+  }
+
+  Future<List<double>?> _runEmbed(Float32List input) async {
+    final session = _session;
+    if (session == null) return null;
+
+    final value = await OrtValue.fromList(
+      input,
       [1, 3, faceEmbedInputSize, faceEmbedInputSize],
     );
     Map<String, OrtValue>? outputs;
     try {
-      outputs = await session.run({session.inputNames.first: input});
+      outputs = await session.run({session.inputNames.first: value});
       final flat =
           await outputs[session.outputNames.first]!.asFlattenedList();
       return [for (final v in flat) (v as num).toDouble()];
     } catch (_) {
       return null;
     } finally {
-      await input.dispose();
-      for (final value in outputs?.values ?? const <OrtValue>[]) {
-        await value.dispose();
+      await value.dispose();
+      for (final output in outputs?.values ?? const <OrtValue>[]) {
+        await output.dispose();
       }
     }
   }
@@ -184,4 +205,64 @@ Float32List preprocessFaceEmbedding(img.Image face) {
     }
   }
   return out;
+}
+
+/// Same tensor, sampled straight from RGBA pixels — the form the desktop
+/// analyser speaks.
+Float32List? embeddingTensorFromRgba(
+  DecodedPixels photo,
+  GalleryFace box,
+) {
+  final centreX = box.centreX * photo.width;
+  final centreY = box.centreY * photo.height;
+  final halfSide =
+      math.max(box.width * photo.width, box.height * photo.height) *
+          (1 + faceEmbedMargin) /
+          2;
+
+  final left = (centreX - halfSide).round().clamp(0, photo.width - 1);
+  final top = (centreY - halfSide).round().clamp(0, photo.height - 1);
+  final right = (centreX + halfSide).round().clamp(left + 1, photo.width);
+  final bottom = (centreY + halfSide).round().clamp(top + 1, photo.height);
+
+  final width = right - left;
+  final height = bottom - top;
+  if (width < 4 || height < 4) return null;
+
+  final out = Float32List(3 * faceEmbedInputSize * faceEmbedInputSize);
+  const plane = faceEmbedInputSize * faceEmbedInputSize;
+  final scaleX = width / faceEmbedInputSize;
+  final scaleY = height / faceEmbedInputSize;
+
+  for (var y = 0; y < faceEmbedInputSize; y++) {
+    final srcY = top + ((y + 0.5) * scaleY).floor().clamp(0, photo.height - 1);
+    for (var x = 0; x < faceEmbedInputSize; x++) {
+      final srcX =
+          left + ((x + 0.5) * scaleX).floor().clamp(0, photo.width - 1);
+      final base = (srcY * photo.width + srcX) * 4;
+      final offset = y * faceEmbedInputSize + x;
+      out[offset] = photo.rgba[base].toDouble();
+      out[plane + offset] = photo.rgba[base + 1].toDouble();
+      out[2 * plane + offset] = photo.rgba[base + 2].toDouble();
+    }
+  }
+  return out;
+}
+
+/// The RGBA sibling of [identifyPeople].
+Future<List<int>> identifyPeopleRgba(
+  DecodedPixels photo,
+  List<GalleryFace> faces, {
+  required GalleryFaceEmbedder embedder,
+  required GalleryPeopleStore people,
+  required String coverKey,
+}) async {
+  if (!embedder.ready || faces.isEmpty) return const [];
+  final ids = <int>[];
+  for (final face in faces) {
+    final embedding = await embedder.embedRgba(photo, face);
+    if (embedding == null) continue;
+    ids.add(people.assign(embedding, coverKey: coverKey));
+  }
+  return ids;
 }
