@@ -266,7 +266,11 @@ async function fetchCategoryPage(page, { categoryName, categoryTitle = '', pageN
       }
 
       // Price: join all price-ish spans so "4 <sup>27</sup>" still matches.
+      // On-offer tiles render the current price inside ".non-strikethrough"
+      // (paired with the crossed-out original in ".strikethrough") — prefer
+      // that when present since it's the most specific match.
       const priceScope =
+        container.querySelector('.non-strikethrough') ||
         container.querySelector('[data-test*="price"]') ||
         container.querySelector('.price') ||
         container.querySelector('.product-price') ||
@@ -276,7 +280,9 @@ async function fetchCategoryPage(page, { categoryName, categoryTitle = '', pageN
       // as the main price by preferring the first prominent price element,
       // falling back to the largest numeric match in the container.
       const priceCandidates = Array.from(
-        container.querySelectorAll('.price, [data-test*="price"], .current-price, .sales-price'),
+        container.querySelectorAll(
+          '.non-strikethrough, .price, [data-test*="price"], .current-price, .sales-price',
+        ),
       )
         .map((el) => text(el))
         .filter(Boolean);
@@ -302,9 +308,12 @@ async function fetchCategoryPage(page, { categoryName, categoryTitle = '', pageN
         text(container.querySelector('.label-promotion'))
       ).trim();
 
-      // Old price (crossed out) — only present when on offer
+      // Old price (crossed out) — only present when on offer. Hoogvliet tiles
+      // render this as ".strikethrough" (verified live 2026-08-25), not any
+      // of the more generic class names tried first.
       let oldPriceText = null;
       const oldPriceEl =
+        container.querySelector('.strikethrough') ||
         container.querySelector('.old-price') ||
         container.querySelector('.was-price') ||
         container.querySelector('[data-test*="old-price"]') ||
