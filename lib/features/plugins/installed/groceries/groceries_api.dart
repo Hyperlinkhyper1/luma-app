@@ -114,7 +114,7 @@ class GroceriesApiException implements Exception {
 }
 
 /// Talks to the supermarket-db HTTP API (search/filter/sort across Jumbo,
-/// Albert Heijn and Lidl). Defaults to the hosted server so it works out of
+/// Albert Heijn, Hoogvliet and Lidl). Defaults to the hosted server so it works out of
 /// the box; the address is still user-configurable (gear icon on the search
 /// page) and persisted locally in case someone points it at their own
 /// deployment instead (see supermarket-db/ at the repo root).

@@ -6,7 +6,7 @@ import '../data/steam_database.dart';
 import '../steam_models.dart';
 import '../steam_price_history.dart';
 import '../steam_scope.dart';
-import 'steam_connect_view.dart';
+import 'steam_account_dialog.dart';
 import 'steam_game_detail_page.dart';
 
 /// How the library grid is ordered.
@@ -64,7 +64,7 @@ class _SteamPriceTrackerTabState extends State<SteamPriceTrackerTab> {
         ),
       );
     }
-    if (!repository.connected) return const SteamConnectView();
+    final connected = repository.connected;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -72,6 +72,7 @@ class _SteamPriceTrackerTabState extends State<SteamPriceTrackerTab> {
         _Toolbar(
           controller: _searchController,
           sort: _sort,
+          connected: connected,
           onQuery: (value) => setState(() => _query = value),
           onSort: (value) => setState(() => _sort = value),
         ),
@@ -82,36 +83,49 @@ class _SteamPriceTrackerTabState extends State<SteamPriceTrackerTab> {
           ),
         if (repository.refreshingPrices) const _PriceRefreshBar(),
         Expanded(
-          child: StreamData<List<SteamGame>>(
-            stream: repository.watchLibrary(),
-            builder: (context, games) {
-              final visible = _filterAndSort(games);
-              if (games.isEmpty) {
-                return LumaEmptyState(
+          child: !connected
+              ? LumaEmptyState(
                   icon: Icons.videogame_asset_off_rounded,
-                  title: 'No games in your library yet',
+                  title: 'Connect your Steam account',
                   subtitle:
-                      'Refresh to read your library from Steam again.',
+                      'Add a Steam Web API key and ID to see your library '
+                      'and its prices.',
                   action: LumaPrimaryButton(
-                    label: 'Refresh library',
-                    icon: Icons.refresh_rounded,
-                    loading: repository.syncing,
-                    onTap: repository.syncing
-                        ? null
-                        : repository.refreshLibrary,
+                    label: 'Connect',
+                    icon: Icons.link_rounded,
+                    onTap: () => showSteamAccountDialog(context),
                   ),
-                );
-              }
-              if (visible.isEmpty) {
-                return LumaEmptyState(
-                  icon: Icons.search_off_rounded,
-                  title: 'No games match "$_query"',
-                  subtitle: 'Try a shorter search.',
-                );
-              }
-              return _GameGrid(games: visible);
-            },
-          ),
+                )
+              : StreamData<List<SteamGame>>(
+                  stream: repository.watchLibrary(),
+                  builder: (context, games) {
+                    final visible = _filterAndSort(games);
+                    if (games.isEmpty) {
+                      return LumaEmptyState(
+                        icon: Icons.videogame_asset_off_rounded,
+                        title: 'No games in your library yet',
+                        subtitle:
+                            'Refresh to read your library from Steam again.',
+                        action: LumaPrimaryButton(
+                          label: 'Refresh library',
+                          icon: Icons.refresh_rounded,
+                          loading: repository.syncing,
+                          onTap: repository.syncing
+                              ? null
+                              : repository.refreshLibrary,
+                        ),
+                      );
+                    }
+                    if (visible.isEmpty) {
+                      return LumaEmptyState(
+                        icon: Icons.search_off_rounded,
+                        title: 'No games match "$_query"',
+                        subtitle: 'Try a shorter search.',
+                      );
+                    }
+                    return _GameGrid(games: visible);
+                  },
+                ),
         ),
       ],
     );
@@ -154,12 +168,14 @@ class _Toolbar extends StatelessWidget {
   const _Toolbar({
     required this.controller,
     required this.sort,
+    required this.connected,
     required this.onQuery,
     required this.onSort,
   });
 
   final TextEditingController controller;
   final _LibrarySort sort;
+  final bool connected;
   final ValueChanged<String> onQuery;
   final ValueChanged<_LibrarySort> onSort;
 
@@ -193,86 +209,140 @@ class _Toolbar extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      _subtitle(repository.lastSyncAt),
+                      _subtitle(connected, repository.lastSyncAt),
                       style: TextStyle(color: luma.textMuted, fontSize: 11.5),
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: 12),
-              LumaGhostButton(
-                label: 'Refresh library',
-                icon: Icons.sync_rounded,
-                onTap: repository.syncing ? null : repository.refreshLibrary,
-              ),
-              const SizedBox(width: 8),
-              LumaPrimaryButton(
-                label: repository.refreshingPrices
-                    ? 'Checking…'
-                    : 'Refresh prices',
-                icon: Icons.price_change_rounded,
-                onTap: repository.refreshingPrices
-                    ? null
-                    : repository.refreshAllPrices,
+              if (connected) ...[
+                LumaGhostButton(
+                  label: 'Refresh library',
+                  icon: Icons.sync_rounded,
+                  onTap:
+                      repository.syncing ? null : repository.refreshLibrary,
+                ),
+                const SizedBox(width: 8),
+                LumaPrimaryButton(
+                  label: repository.refreshingPrices
+                      ? 'Checking…'
+                      : 'Refresh prices',
+                  icon: Icons.price_change_rounded,
+                  onTap: repository.refreshingPrices
+                      ? null
+                      : repository.refreshAllPrices,
+                ),
+                const SizedBox(width: 8),
+              ],
+              _SettingsButton(
+                onTap: () => showSteamAccountDialog(context),
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: SizedBox(
-                  height: 40,
-                  child: TextField(
-                    controller: controller,
-                    onChanged: onQuery,
-                    style: TextStyle(color: luma.textPrimary, fontSize: 13),
-                    decoration: InputDecoration(
-                      isDense: true,
-                      hintText: 'Search your library',
-                      hintStyle:
-                          TextStyle(color: luma.textMuted, fontSize: 13),
-                      prefixIcon:
-                          Icon(Icons.search_rounded, size: 18, color: luma.textMuted),
-                      filled: true,
-                      fillColor: luma.surface,
-                      contentPadding: EdgeInsets.zero,
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: luma.border),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: luma.accent),
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: luma.border),
+          if (connected) ...[
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 40,
+                    child: TextField(
+                      controller: controller,
+                      onChanged: onQuery,
+                      style: TextStyle(color: luma.textPrimary, fontSize: 13),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        hintText: 'Search your library',
+                        hintStyle:
+                            TextStyle(color: luma.textMuted, fontSize: 13),
+                        prefixIcon: Icon(Icons.search_rounded,
+                            size: 18, color: luma.textMuted),
+                        filled: true,
+                        fillColor: luma.surface,
+                        contentPadding: EdgeInsets.zero,
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: luma.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: luma.accent),
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: luma.border),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              LumaSegmentedTabs(
-                tabs: [for (final s in _LibrarySort.values) s.label],
-                selectedIndex: sort.index,
-                onSelect: (i) => onSort(_LibrarySort.values[i]),
-              ),
-            ],
-          ),
+                const SizedBox(width: 12),
+                LumaSegmentedTabs(
+                  tabs: [for (final s in _LibrarySort.values) s.label],
+                  selectedIndex: sort.index,
+                  onSelect: (i) => onSort(_LibrarySort.values[i]),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
   }
 
-  static String _subtitle(DateTime? lastSyncAt) {
+  static String _subtitle(bool connected, DateTime? lastSyncAt) {
+    if (!connected) {
+      return 'Not connected — add your Steam account to see your library.';
+    }
     if (lastSyncAt == null) return 'Your Steam library, with recorded prices.';
     final ago = DateTime.now().difference(lastSyncAt);
     if (ago.inMinutes < 1) return 'Library synced just now.';
     if (ago.inHours < 1) return 'Library synced ${ago.inMinutes} min ago.';
     if (ago.inDays < 1) return 'Library synced ${ago.inHours} h ago.';
     return 'Library synced ${ago.inDays} d ago.';
+  }
+}
+
+/// The always-present way into Steam account settings — connect, replace
+/// the key, or disconnect. A gear rather than a full page: nothing else in
+/// the toolbar should have to disappear just because no account is
+/// connected yet.
+class _SettingsButton extends StatelessWidget {
+  const _SettingsButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Material(
+      color: luma.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: luma.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        hoverColor: luma.surfaceHover,
+        child: Tooltip(
+          message: 'Steam account settings',
+          child: Semantics(
+            label: 'Steam account settings',
+            button: true,
+            child: SizedBox(
+              width: 44,
+              height: 44,
+              child: Center(
+                child: Icon(Icons.settings_outlined,
+                    size: 18, color: luma.textSecondary),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
