@@ -19,10 +19,10 @@ SteamPricePoint _point(DateTime at, int cents, {int discount = 0}) =>
 
 Widget _card(
   List<SteamPricePoint> points, {
-  bool hasItadKey = true,
+  bool canFetchHistory = true,
   int? lowestEverCents,
   DateTime? lowestEverAt,
-  VoidCallback? onAddItadKey,
+  VoidCallback? onSignIn,
 }) =>
     MaterialApp(
       theme: LumaTheme.dark,
@@ -31,10 +31,10 @@ Widget _card(
           child: SteamPriceHistoryCard(
             points: points,
             fallbackCurrency: 'USD',
-            hasItadKey: hasItadKey,
+            canFetchHistory: canFetchHistory,
             lowestEverCents: lowestEverCents,
             lowestEverAt: lowestEverAt,
-            onAddItadKey: onAddItadKey,
+            onSignIn: onSignIn,
           ),
         ),
       ),
@@ -49,22 +49,19 @@ void main() {
     }
   });
 
-  testWidgets('asks for an ITAD key instead of showing an empty chart',
+  testWidgets('asks for sign-in instead of showing an empty chart',
       (tester) async {
     var tapped = false;
     await tester.pumpWidget(_card(
       const [],
-      hasItadKey: false,
-      onAddItadKey: () => tapped = true,
+      canFetchHistory: false,
+      onSignIn: () => tapped = true,
     ));
 
     expect(find.byType(LineChart), findsNothing);
-    expect(
-      find.textContaining('Add an IsThereAnyDeal key'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('Sign in for price history'), findsOneWidget);
 
-    await tester.tap(find.text('Add key'));
+    await tester.tap(find.text('Sign in'));
     await tester.pump();
     expect(tapped, isTrue);
   });

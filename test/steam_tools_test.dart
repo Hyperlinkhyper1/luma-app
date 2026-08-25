@@ -1,9 +1,11 @@
+import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/features/plugins/installed/steam_tools/data/steam_database.dart';
 import 'package:luma/features/plugins/installed/steam_tools/steam_models.dart';
 import 'package:luma/features/plugins/installed/steam_tools/steam_price_history.dart';
 import 'package:luma/features/plugins/installed/steam_tools/steam_repository.dart';
 import 'package:luma/features/plugins/installed/steam_tools/steam_requirements.dart';
+import 'package:luma/sync/sync_service.dart';
 
 /// The shape Steam actually serves — a heading, a bare note, then labelled
 /// `<li>` rows. Taken from the live `appdetails` response for Cyberpunk 2077.
@@ -279,6 +281,52 @@ void main() {
         steamHeaderImage(1091500),
         'https://cdn.cloudflare.steamstatic.com/steam/apps/1091500/header.jpg',
       );
+    });
+  });
+
+  group('price history requires a signed-in luma account', () {
+    late SteamDatabase db;
+
+    setUp(() async {
+      db = SteamDatabase(NativeDatabase.memory());
+      await db.replaceLibrary(const [
+        (appId: 1091500, name: 'Cyberpunk 2077', playtimeMinutes: 0),
+      ]);
+    });
+
+    tearDown(() async {
+      await db.close();
+    });
+
+    test('canFetchHistory is false with no sync service at all', () {
+      final repository = SteamRepository(db);
+      expect(repository.canFetchHistory, isFalse);
+    });
+
+    test('ensureHistory is a no-op with no sync service — never reaches the '
+        'network, never touches the price table', () async {
+      final repository = SteamRepository(db);
+
+      // No itadApiFactory is supplied, so if the gate failed to hold and this
+      // tried to build a real ItadApi and call it, it would hang or throw on
+      // a real network request rather than completing quietly.
+      await repository.ensureHistory(1091500);
+
+      expect(repository.isFetchingHistory(1091500), isFalse);
+      expect(await db.watchPriceHistory(1091500).first, isEmpty);
+    });
+
+    test('canFetchHistory and ensureHistory both respect an unapproved sync '
+        'account the same way as having none', () async {
+      final sync = SyncService(collections: const []);
+      final repository = SteamRepository(db, sync: sync);
+
+      expect(repository.canFetchHistory, isFalse);
+
+      await repository.ensureHistory(1091500);
+
+      expect(repository.isFetchingHistory(1091500), isFalse);
+      expect(await db.watchPriceHistory(1091500).first, isEmpty);
     });
   });
 }

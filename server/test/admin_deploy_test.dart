@@ -39,6 +39,7 @@ void main() {
         mistralApiKey: null,
         mistralAgentId: null,
         googleApiKey: null,
+        itadApiKey: null,
         groceriesUrl: '',
         groceriesAdminKey: null,
         artificialAnalysisKey: null,
