@@ -18,13 +18,15 @@ enum UpdateCheckPhase {
   idle,
 
   /// The request file is on disk and the watcher is alive, so it's about to
-  /// be claimed (polls every 2s).
+  /// be claimed (polls every 2s) or the update is currently installing and
+  /// restarting the server and wiki.
   checking,
 
   /// A request is on disk but no watcher is alive to pick it up.
   stalled,
 
-  /// The last check finished; [UpdateCheckStatus.log] holds its output.
+  /// The last update finished; [UpdateCheckStatus.log] holds its output and
+  /// the server and wiki have been restarted.
   done;
 
   String get wireName => name;
@@ -40,9 +42,10 @@ class UpdateCheckStatus {
 
   final UpdateCheckPhase phase;
 
-  /// `apt`/`ubuntu-drivers` output from the last finished check. Empty while
-  /// [phase] is [UpdateCheckPhase.checking] — the previous check's log is
-  /// still on disk until the watcher claims the new request and truncates it.
+  /// `apt`/`ubuntu-drivers` output plus server/wiki restart log from the last
+  /// finished update. Empty while [phase] is [UpdateCheckPhase.checking] — the
+  /// previous run's log is still on disk until the watcher claims the new
+  /// request and truncates it.
   final String log;
 
   /// When the last check finished, or null if none has finished yet.
@@ -58,13 +61,13 @@ class UpdateCheckStatus {
       };
 }
 
-/// The admin dashboard's "Check for updates" button. Reports available `apt`
+/// The admin dashboard's "System updates" button. Installs available `apt`
 /// package upgrades and graphics-driver updates for the host running the
-/// server (Ubuntu Desktop) — a read-only check, so unlike [DeployConsole] it
-/// never restarts anything. It still can't run inside this container though:
-/// the container's own filesystem has nothing to do with the host's package
-/// state, so this reuses the same deploy-watcher.sh request/log handoff on
-/// the shared `/data` volume, just with its own file names.
+/// server (Ubuntu Desktop), then immediately restarts the server and wiki.
+/// It still can't run inside this container though: the container's own
+/// filesystem has nothing to do with the host's package state, so this
+/// reuses the same deploy-watcher.sh request/log handoff on the shared
+/// `/data` volume, just with its own file names.
 class UpdateCheckConsole {
   UpdateCheckConsole({required this.dataDir, required this.repoPathConfigured});
 
@@ -162,7 +165,7 @@ class UpdateCheckConsole {
 
     if (await isChecking) {
       return errorResponse(409, 'check_running',
-          'An update check is already in progress. Wait for it to finish.');
+          'A system update is already in progress. Wait for it to finish.');
     }
 
     await _requestFile.parent.create(recursive: true);
@@ -182,7 +185,7 @@ class UpdateCheckConsole {
   Future<Response> checkStatus(Request request) async =>
       jsonResponse(200, (await status()).toJson());
 
-  /// Maintenance tab: the "Check for updates" button POSTs the request, then
+  /// Maintenance tab: the "System updates" button POSTs the request, then
   /// polls the status endpoint to stream the result into the <pre> below it.
   static const updateCheckScript = r'''
 (function () {
@@ -215,8 +218,24 @@ class UpdateCheckConsole {
 
   function watcherHint() {
     return 'The deploy watcher is not running on the host, so nothing will '
-        + 'run this check. Start it with: sudo systemctl start '
+        + 'run this update. Start it with: sudo systemctl start '
         + 'luma-deploy-watcher';
+  }
+
+  function readJson(r) {
+    if (r.redirected && r.url.indexOf('/admin/login') !== -1) {
+      var err = new Error('admin session expired');
+      err.sessionExpired = true;
+      throw err;
+    }
+    return r.json();
+  }
+
+  function sessionExpired(err) {
+    if (!err || !err.sessionExpired) return false;
+    setBusy(false);
+    setStatus('Admin session expired — reload this page and sign in again.', RED);
+    return true;
   }
 
   var PHASES = {
@@ -228,15 +247,15 @@ class UpdateCheckConsole {
     idle: { busy: false, color: GREY, poll: 0, text: '' },
     checking: {
       busy: true, color: AMBER, poll: 1500,
-      text: 'Checking for package and driver updates…'
+      text: 'Installing updates and restarting server and wiki… (the server will be briefly unavailable)'
     },
     stalled: { busy: false, color: RED, poll: 0, text: watcherHint },
     done: {
       busy: false, color: GREEN, poll: 0,
       text: function (data) {
         return data.checkedAt
-            ? 'Last checked ' + new Date(data.checkedAt).toLocaleString()
-            : 'Check complete.';
+            ? 'Last updated ' + new Date(data.checkedAt).toLocaleString() + ' — server and wiki restarted.'
+            : 'Update complete — server and wiki restarted.';
       }
     }
   };
@@ -258,21 +277,24 @@ class UpdateCheckConsole {
 
   function poll() {
     fetch('/admin/system/check-updates/status')
-      .then(function (r) { return r.json(); })
+      .then(readJson)
       .then(render)
-      .catch(function () {
-        setStatus('Could not reach the server.', RED);
+      .catch(function (err) {
+        if (sessionExpired(err)) return;
+        setStatus('Server restarting… waiting for it to come back.', AMBER);
+        timer = setTimeout(poll, 2000);
       });
   }
 
   btn.addEventListener('click', function () {
+    if (!confirm('This will install all available apt and driver updates, then immediately restart the server and wiki. The server will be briefly unavailable. Continue?')) return;
     if (timer) { clearTimeout(timer); timer = null; }
     log.style.display = 'none';
     log.textContent = '';
-    setStatus('Starting check…', AMBER);
+    setStatus('Starting system update…', AMBER);
     setBusy(true);
     fetch('/admin/system/check-updates', { method: 'POST' })
-      .then(function (r) { return r.json(); })
+      .then(readJson)
       .then(function (data) {
         if (data.error) {
           setBusy(false);
@@ -282,9 +304,10 @@ class UpdateCheckConsole {
         render({ phase: data.phase, log: '', checkedAt: null,
                  watcherAlive: data.watcherAlive });
       })
-      .catch(function () {
+      .catch(function (err) {
+        if (sessionExpired(err)) return;
         setBusy(false);
-        setStatus('Could not start the check.', RED);
+        setStatus('Could not start the update.', RED);
       });
   });
 
