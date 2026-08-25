@@ -90,8 +90,13 @@ class Product {
     const params = { limit, offset };
 
     if (query) {
-      conditions.push('(p.name LIKE :query OR p.brand LIKE :query)');
-      params.query = `%${query}%`;
+      // Match each word independently (in any order) rather than the whole
+      // phrase as one substring, so "kaas jonge" finds "jonge kaas".
+      const words = query.trim().split(/\s+/).filter(Boolean);
+      words.forEach((word, i) => {
+        conditions.push(`(p.name LIKE :queryWord${i} OR p.brand LIKE :queryWord${i})`);
+        params[`queryWord${i}`] = `%${word}%`;
+      });
     }
 
     if (marketSlugs && marketSlugs.length > 0) {
