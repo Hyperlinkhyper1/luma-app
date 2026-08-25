@@ -3909,10 +3909,10 @@ class Api {
     repoPathConfigured: config.repoPathConfigured,
   );
 
-  /// The "Check for updates" button. Lives in update_check.dart for the same
+  /// The "System updates" button. Lives in update_check.dart for the same
   /// reason as [_deploy]: it needs deploy-watcher.sh on the host to run
-  /// `apt`/`ubuntu-drivers` against the actual Ubuntu Desktop install, not
-  /// this container's own filesystem.
+  /// `apt`/`ubuntu-drivers` against the actual Ubuntu Desktop install and
+  /// restart the server and wiki, not this container's own filesystem.
   late final UpdateCheckConsole _updateCheck = UpdateCheckConsole(
     dataDir: config.dataDir,
     repoPathConfigured: config.repoPathConfigured,
@@ -6159,7 +6159,7 @@ if (window.innerWidth <= 900) document.getElementById('pane-write').classList.ad
         '<div class="maint-desc">Pulls the latest products and prices from '
         'each supermarket, records price changes, and marks products that '
         'disappeared as unavailable.</div>'
-        '<div class="maint-actions" style="align-items:flex-start">'
+        '<div class="maint-actions" style="align-items:flex-start;gap:8px">'
         '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start">'
         '<form method="post" action="/admin/groceries/sync" style="margin:0">'
         '<button type="submit" class="btn btn-primary">Sync all markets</button></form>'
@@ -6221,12 +6221,13 @@ if (window.innerWidth <= 900) document.getElementById('pane-write').classList.ad
         '</div>'
         '<div class="card">'
         '<h2>System updates</h2>'
-        '<div class="maint-desc">Checks the host (Ubuntu Desktop) for apt '
-        'package upgrades and graphics driver updates. Read-only — nothing '
-        'is installed or restarted.</div>'
+        '<div class="maint-desc">Installs apt package upgrades and graphics '
+        'driver updates on the host (Ubuntu Desktop), then immediately '
+        'restarts the server and wiki. <strong>The server is briefly '
+        'unavailable during the restart.</strong></div>'
         '<div class="maint-actions">'
         '<button id="updateCheckBtn" type="button" class="btn btn-primary">'
-        'Check for updates</button>'
+        'Install updates &amp; restart</button>'
         '</div>'
         '<div id="updateCheckStatus" class="maint-status"></div>'
         '<pre id="updateCheckLog" class="log maint-out" style="display:none"></pre>'

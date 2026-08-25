@@ -39,12 +39,11 @@ LOCK_FILE="$DATA_DIR/deploy.lock"
 STATUS_FILE="$DATA_DIR/deploy.status"
 HEARTBEAT_FILE="$DATA_DIR/deploy.watcher"
 
-# "Check for updates" button (system_updates.dart / UpdateCheckConsole) — a
-# read-only sibling of the deploy request above, handled in the same loop so
-# it shares the heartbeat file. It never touches deploy.lock: a check and a
-# deploy can't collide since neither takes long enough to overlap in
-# practice, and keeping them on separate lock files means a check in flight
-# never makes the deploy button report "already running".
+# "System updates" button (UpdateCheckConsole) — installs apt upgrades and
+# driver updates for the host, then immediately restarts the server and wiki.
+# Handled in the same loop so it shares the heartbeat file. It never touches
+# deploy.lock: keeping them on separate lock files means a system update in
+# flight never makes the deploy button report "already running".
 UPDATE_REQUEST_FILE="$DATA_DIR/update-check.request"
 UPDATE_LOG_FILE="$DATA_DIR/update-check.log"
 UPDATE_LOCK_FILE="$DATA_DIR/update-check.lock"
@@ -87,9 +86,30 @@ refresher_stop() {
   fi
 }
 
+touch_update_files() {
+  : 2>/dev/null > "$UPDATE_LOCK_FILE" || true
+  : 2>/dev/null > "$HEARTBEAT_FILE" || true
+}
+
+# System updates can also take minutes (apt upgrade + driver autoinstall +
+# docker restarts), so keep the update lock and heartbeat fresh the same way.
+UPDATE_REFRESHER_PID=""
+update_refresher_start() {
+  ( while :; do touch_update_files; sleep 5; done ) &
+  UPDATE_REFRESHER_PID=$!
+}
+
+update_refresher_stop() {
+  if [ -n "$UPDATE_REFRESHER_PID" ]; then
+    kill "$UPDATE_REFRESHER_PID" 2>/dev/null || true
+    wait "$UPDATE_REFRESHER_PID" 2>/dev/null || true
+    UPDATE_REFRESHER_PID=""
+  fi
+}
+
 # Leaving the refresher alive after a `systemctl stop` would keep the lock
 # looking fresh forever, and the button would refuse every later deploy.
-trap 'refresher_stop; exit 0' TERM INT
+trap 'refresher_stop; update_refresher_stop; exit 0' TERM INT
 
 # A deploy can update this script itself, but the running copy keeps
 # executing the old file (git swaps the inode, so the open fd survives).
@@ -137,11 +157,12 @@ deploy() {
   docker compose up -d --build luma-sync || return 1
 }
 
-# Read-only: apt package upgrades + graphics driver updates for the host.
-# Runs on the host (not in the luma-sync container) for the same reason
-# `deploy` does — the container's filesystem has nothing to do with the
-# host's installed packages, so an in-container `apt` would just report the
-# container's own minimal image as fully up to date.
+# Installs apt upgrades + graphics driver updates for the host, then
+# immediately restarts the server and wiki. Runs on the host (not in the
+# luma-sync container) for the same reason `deploy` does — the container's
+# filesystem has nothing to do with the host's installed packages, so an
+# in-container `apt` would just report the container's own minimal image as
+# fully up to date.
 check_updates() {
   step "Refreshing apt package lists"
   if command -v sudo >/dev/null 2>&1; then
@@ -150,15 +171,103 @@ check_updates() {
     apt-get update -qq 2>&1 || true
   fi
 
-  step "Upgradable packages"
+  step "Upgradable packages (before)"
   apt list --upgradable 2>/dev/null | grep -v '^Listing...' || echo "(none, or apt is unavailable on this host)"
 
-  step "Graphics / driver updates"
+  step "Graphics / driver updates (before)"
   if command -v ubuntu-drivers >/dev/null 2>&1; then
     ubuntu-drivers devices 2>&1 || echo "ubuntu-drivers failed to run."
   else
     echo "ubuntu-drivers-common is not installed — skipping driver check."
   fi
+
+  step "Installing package upgrades"
+  if command -v sudo >/dev/null 2>&1; then
+    sudo -n env DEBIAN_FRONTEND=noninteractive apt-get upgrade -y 2>&1 || echo "apt-get upgrade needs passwordless sudo or failed — continuing."
+    sudo -n env DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y 2>&1 || true
+  else
+    env DEBIAN_FRONTEND=noninteractive apt-get upgrade -y 2>&1 || true
+    env DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y 2>&1 || true
+  fi
+
+  step "Installing driver updates"
+  if command -v ubuntu-drivers >/dev/null 2>&1; then
+    if command -v sudo >/dev/null 2>&1; then
+      sudo -n ubuntu-drivers autoinstall 2>&1 || echo "ubuntu-drivers autoinstall needs passwordless sudo or failed."
+    else
+      ubuntu-drivers autoinstall 2>&1 || true
+    fi
+  else
+    echo "ubuntu-drivers-common is not installed — skipping driver install."
+  fi
+
+  step "Upgradable packages (after)"
+  apt list --upgradable 2>/dev/null | grep -v '^Listing...' || echo "(none, or apt is unavailable on this host)"
+
+  step "Cleaning up"
+  if command -v sudo >/dev/null 2>&1; then
+    sudo -n apt-get autoremove -y 2>&1 || true
+  else
+    apt-get autoremove -y 2>&1 || true
+  fi
+
+  step "Restarting server and wiki"
+  echo "Restarting luma-sync stack (server)…"
+  if [ -d "$REPO_PATH/server" ]; then
+    if (cd "$REPO_PATH/server" && docker compose restart 2>&1); then
+      echo "luma-sync restarted via docker compose restart."
+    elif (cd "$REPO_PATH/server" && sudo -n docker compose restart 2>&1); then
+      echo "luma-sync restarted via sudo docker compose restart."
+    elif (cd "$REPO_PATH/server" && docker compose up -d 2>&1); then
+      echo "luma-sync restarted via docker compose up -d."
+    elif (cd "$REPO_PATH/server" && sudo -n docker compose up -d 2>&1); then
+      echo "luma-sync restarted via sudo docker compose up -d."
+    else
+      echo "Warning: could not restart luma-sync — docker compose not available or needs passwordless sudo."
+    fi
+    # Ensure caddy (fronting server and wiki) is also fresh
+    (cd "$REPO_PATH/server" && (docker compose restart caddy 2>&1 || sudo -n docker compose restart caddy 2>&1)) || true
+  else
+    echo "Server directory $REPO_PATH/server not found — skipping luma-sync restart."
+  fi
+
+  echo "Restarting wiki…"
+  WIKI_RESTARTED=false
+  if [ -f "$REPO_PATH/wiki/docker-compose.yml" ] || [ -f "$REPO_PATH/wiki/compose.yml" ]; then
+    if (cd "$REPO_PATH/wiki" && docker compose restart 2>&1) || (cd "$REPO_PATH/wiki" && sudo -n docker compose restart 2>&1); then
+      echo "wiki restarted via docker compose (wiki project)."
+      WIKI_RESTARTED=true
+    fi
+  fi
+  if [ "$WIKI_RESTARTED" = false ]; then
+    for name in wiki wiki.js luma-wiki luma_wiki; do
+      if docker restart "$name" 2>&1; then
+        echo "wiki container '$name' restarted."
+        WIKI_RESTARTED=true
+        break
+      fi
+      if sudo -n docker restart "$name" 2>&1; then
+        echo "wiki container '$name' restarted (via sudo)."
+        WIKI_RESTARTED=true
+        break
+      fi
+    done
+  fi
+  if [ "$WIKI_RESTARTED" = false ]; then
+    for svc in wiki wiki.js luma-wiki; do
+      if sudo -n systemctl restart "$svc" 2>&1; then
+        echo "wiki systemd service '$svc' restarted."
+        WIKI_RESTARTED=true
+        break
+      fi
+    done
+  fi
+  if [ "$WIKI_RESTARTED" = false ]; then
+    echo "No separate wiki container/service found — wiki (if served via luma-sync/caddy) was already restarted with the server."
+  fi
+
+  echo
+  echo "==> System update and restart complete."
 }
 
 # systemd restarts this script on failure; a stale lock left behind by a
@@ -216,7 +325,9 @@ while true; do
     : 2>/dev/null > "$UPDATE_LOCK_FILE" || true
     : 2>/dev/null > "$HEARTBEAT_FILE" || true
     rm -f "$UPDATE_REQUEST_FILE"
+    update_refresher_start
     ( check_updates ) > "$UPDATE_LOG_FILE" 2>&1
+    update_refresher_stop
     date -Is > "$UPDATE_DONE_FILE"
     rm -f "$UPDATE_LOCK_FILE"
     beat=0
