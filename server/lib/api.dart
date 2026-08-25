@@ -63,6 +63,7 @@ class ServerConfig {
     required this.mistralApiKey,
     required this.mistralAgentId,
     required this.googleApiKey,
+    required this.itadApiKey,
     required this.groceriesUrl,
     required this.groceriesAdminKey,
     required this.artificialAnalysisKey,
@@ -124,6 +125,18 @@ class ServerConfig {
 
   bool get googleKeyConfigured =>
       googleApiKey != null && googleApiKey!.isNotEmpty;
+
+  /// An IsThereAnyDeal key configured once by the operator, so individual
+  /// users never register for one of their own. Same deal as [mistralApiKey]:
+  /// used only server-side by Api._itadLookupProxy / _itadHistoryProxy /
+  /// _itadOverviewProxy, never sent to clients. IsThereAnyDeal is where the
+  /// Steam Tools plugin's price-history chart gets its data — Steam's own
+  /// store API only ever answers with today's price. Without this key the
+  /// plugin's library and store details still work; only the chart is
+  /// unavailable.
+  final String? itadApiKey;
+
+  bool get itadKeyConfigured => itadApiKey != null && itadApiKey!.isNotEmpty;
 
   /// Where the supermarket-db API lives (see supermarket-db/ at the repo
   /// root) and its admin key, so the dashboard's Control panel tab can
@@ -219,6 +232,7 @@ class ServerConfig {
       mistralApiKey: env['LUMA_MISTRAL_API_KEY'],
       mistralAgentId: env['LUMA_MISTRAL_AGENT_ID'],
       googleApiKey: env['LUMA_GOOGLE_API_KEY'],
+      itadApiKey: env['LUMA_ITAD_API_KEY'],
       groceriesUrl:
           env['LUMA_GROCERIES_URL'] ?? 'https://groceries.luma-app.cc',
       groceriesAdminKey: env['LUMA_GROCERIES_ADMIN_KEY'],
@@ -281,6 +295,8 @@ class Api {
             maxRequests: 10, window: const Duration(hours: 1)),
         _aiChatLimiter = RateLimiter(
             maxRequests: 20, window: const Duration(minutes: 1)),
+        _itadLimiter = RateLimiter(
+            maxRequests: 60, window: const Duration(minutes: 1)),
         _syncWriteLimiter = RateLimiter(
             maxRequests: 60, window: const Duration(minutes: 1)),
         _uploadLimiter = RateLimiter(
@@ -332,6 +348,7 @@ class Api {
   /// small JSON calls but far too generous for endpoints that burn upstream
   /// AI quota, accept multi-megabyte bodies, or hold a socket open.
   final RateLimiter _aiChatLimiter;
+  final RateLimiter _itadLimiter;
   final RateLimiter _syncWriteLimiter;
   final RateLimiter _uploadLimiter;
   final RateLimiter _socketLimiter;
@@ -381,6 +398,10 @@ class Api {
       ..get('/api/v1/ai/status', _requireAuth(_aiStatus))
       ..post('/api/v1/ai/mistral/chat', _requireAuth(_mistralChatProxy))
       ..post('/api/v1/ai/google/chat', _requireAuth(_googleChatProxy))
+      ..get('/api/v1/steam/itad/status', _requireAuth(_itadStatus))
+      ..get('/api/v1/steam/itad/lookup', _requireAuth(_itadLookupProxy))
+      ..get('/api/v1/steam/itad/history', _requireAuth(_itadHistoryProxy))
+      ..post('/api/v1/steam/itad/overview', _requireAuth(_itadOverviewProxy))
       ..get('/api/v1/sync/<collection>', _requireAuth(_getBlob))
       ..put('/api/v1/sync/<collection>', _requireAuth(_putBlob))
       ..delete('/api/v1/sync/<collection>', _requireAuth(_deleteBlobHandler))
@@ -551,6 +572,9 @@ class Api {
     }
     if (path.startsWith('api/v1/ai/') && path.endsWith('/chat')) {
       return ('ai', _aiChatLimiter);
+    }
+    if (path.startsWith('api/v1/steam/itad/')) {
+      return ('itad', _itadLimiter);
     }
     if (path.startsWith('api/v1/sync/') &&
         (method == 'PUT' || method == 'DELETE')) {
@@ -1694,6 +1718,115 @@ class Api {
           body: responseBody, headers: {'Content-Type': 'application/json'});
     } catch (e) {
       return errorResponse(502, 'upstream_error', 'Could not reach the AI service.');
+    } finally {
+      httpClient.close();
+    }
+  }
+
+  Response _itadStatus(Request request, StoredUser user) =>
+      jsonResponse(200, {'configured': config.itadKeyConfigured});
+
+  /// A Steam app id has no meaning to IsThereAnyDeal — it identifies games by
+  /// its own id, resolved once here and then cached client-side.
+  Future<Response> _itadLookupProxy(Request request, StoredUser user) async {
+    if (!config.itadKeyConfigured) {
+      return errorResponse(404, 'not_configured',
+          'No server-wide IsThereAnyDeal key is configured.');
+    }
+    final appId = int.tryParse(request.url.queryParameters['appid'] ?? '');
+    if (appId == null) {
+      return errorResponse(
+          400, 'bad_request', 'appid must be a Steam app id.');
+    }
+    return _forwardToItad(
+      Uri.https('api.isthereanydeal.com', '/games/lookup/v1', {
+        'key': config.itadApiKey,
+        'appid': '$appId',
+      }),
+    );
+  }
+
+  /// Every Steam price change IsThereAnyDeal has on file for one game.
+  Future<Response> _itadHistoryProxy(Request request, StoredUser user) async {
+    if (!config.itadKeyConfigured) {
+      return errorResponse(404, 'not_configured',
+          'No server-wide IsThereAnyDeal key is configured.');
+    }
+    final id = request.url.queryParameters['id'] ?? '';
+    if (!_itadIdPattern.hasMatch(id)) {
+      return errorResponse(
+          400, 'bad_request', 'id must be an IsThereAnyDeal game id.');
+    }
+    return _forwardToItad(
+      Uri.https('api.isthereanydeal.com', '/games/history/v2', {
+        'key': config.itadApiKey,
+        'id': id,
+        'country': _sanitizeCountry(request.url.queryParameters['country']),
+      }),
+    );
+  }
+
+  /// Current price and all-time low for up to a handful of games at once.
+  Future<Response> _itadOverviewProxy(Request request, StoredUser user) async {
+    if (!config.itadKeyConfigured) {
+      return errorResponse(404, 'not_configured',
+          'No server-wide IsThereAnyDeal key is configured.');
+    }
+    Object? body;
+    try {
+      body = jsonDecode(await request.readAsString());
+    } catch (_) {
+      return errorResponse(400, 'bad_request', 'Malformed request body.');
+    }
+    // Kept narrow on purpose: this exists to answer "what does this one game
+    // cost", not to become a general-purpose batch passthrough to ITAD.
+    if (body is! List ||
+        body.isEmpty ||
+        body.length > 5 ||
+        body.any((e) => e is! String || !_itadIdPattern.hasMatch(e))) {
+      return errorResponse(400, 'bad_request',
+          'Body must be a JSON array of 1-5 IsThereAnyDeal game ids.');
+    }
+    return _forwardToItad(
+      Uri.https('api.isthereanydeal.com', '/games/overview/v2', {
+        'key': config.itadApiKey,
+        'country': _sanitizeCountry(request.url.queryParameters['country']),
+      }),
+      body: jsonEncode(body),
+    );
+  }
+
+  static final _itadIdPattern = RegExp(r'^[0-9a-fA-F-]{8,40}$');
+
+  String _sanitizeCountry(String? raw) {
+    final upper = (raw ?? 'US').toUpperCase();
+    return RegExp(r'^[A-Z]{2}$').hasMatch(upper) ? upper : 'US';
+  }
+
+  /// Shared GET/POST forwarder for the three ITAD proxy endpoints above:
+  /// same upstream host, same timeout, same "pass the status and body
+  /// straight through" behaviour as the AI chat proxies. IsThereAnyDeal's
+  /// response shape is untouched, so the client's existing parsing keeps
+  /// working unchanged — only the URL and the (now server-held) key moved.
+  Future<Response> _forwardToItad(Uri upstream, {String? body}) async {
+    final httpClient = HttpClient();
+    try {
+      final upstreamRequest = body == null
+          ? await httpClient.getUrl(upstream)
+          : await httpClient.postUrl(upstream);
+      if (body != null) {
+        upstreamRequest.headers.contentType = ContentType.json;
+        upstreamRequest.write(body);
+      }
+      final upstreamResponse =
+          await upstreamRequest.close().timeout(const Duration(seconds: 30));
+      final responseBody =
+          await upstreamResponse.transform(utf8.decoder).join();
+      return Response(upstreamResponse.statusCode,
+          body: responseBody, headers: {'Content-Type': 'application/json'});
+    } catch (e) {
+      return errorResponse(
+          502, 'upstream_error', 'Could not reach IsThereAnyDeal.');
     } finally {
       httpClient.close();
     }

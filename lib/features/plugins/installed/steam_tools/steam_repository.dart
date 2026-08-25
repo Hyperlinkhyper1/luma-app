@@ -6,6 +6,8 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../../storage/storage_guard.dart';
+import '../../../../sync/server_access.dart';
+import '../../../../sync/sync_service.dart';
 import 'data/steam_database.dart';
 import 'itad_api.dart';
 import 'steam_api.dart';
@@ -14,20 +16,28 @@ import 'steam_models.dart';
 import 'steam_requirements.dart';
 
 /// Owns the Steam library, the store details fetched for it, and the price
-/// history this device has recorded.
+/// history read (through the luma server) from IsThereAnyDeal.
 class SteamRepository extends ChangeNotifier {
   SteamRepository(
     this._db, {
+    this.sync,
     SteamApi? api,
-    ItadApi? itad,
+    ItadApi Function(String baseUrl, String? token)? itadApiFactory,
     SteamCredentialStore? credentialStore,
   })  : _api = api ?? SteamApi(),
-        _itad = itad ?? ItadApi(),
+        _itadApiFactory = itadApiFactory ??
+            ((baseUrl, token) => ItadApi(baseUrl: baseUrl, authToken: token)),
         _store = credentialStore;
 
   final SteamDatabase _db;
   final SteamApi _api;
-  final ItadApi _itad;
+  final ItadApi Function(String baseUrl, String? token) _itadApiFactory;
+
+  /// Null in tests that never touch the network. Price history needs this —
+  /// it is read through the luma server's IsThereAnyDeal proxy, using an
+  /// operator-configured key, so nobody has to register for one of their
+  /// own. The library and store details never touch it at all.
+  final SyncService? sync;
   SteamCredentialStore? _store;
 
   SteamCredentials? _credentials;
@@ -68,9 +78,11 @@ class SteamRepository extends ChangeNotifier {
   bool isFetchingDetails(int appId) => _fetching.contains(appId);
   bool isFetchingHistory(int appId) => _fetchingHistory.contains(appId);
 
-  /// Whether an IsThereAnyDeal key has been saved. Without one there is no
-  /// price history to show — the library and store details still work.
-  bool get hasItadKey => _credentials?.hasItadKey ?? false;
+  /// Whether this device can even attempt to fetch price history: it needs
+  /// a signed-in, approved luma account, because that is what the server's
+  /// IsThereAnyDeal proxy is gated behind. The library and store details
+  /// need none of this.
+  bool get canFetchHistory => sync?.serverReady ?? false;
 
   Stream<List<SteamGame>> watchLibrary() => _db.watchLibrary();
   Stream<SteamGame?> watchGame(int appId) => _db.watchGame(appId);
@@ -107,7 +119,6 @@ class SteamRepository extends ChangeNotifier {
   Future<bool> connect({
     required String apiKey,
     required String steamIdOrUrl,
-    String itadKey = '',
   }) async {
     if (_connecting) return false;
     _connecting = true;
@@ -122,11 +133,7 @@ class SteamRepository extends ChangeNotifier {
       final steamId = await _api.resolveSteamId(steamIdOrUrl, apiKey: key);
       final games = await _api.ownedGames(apiKey: key, steamId: steamId);
 
-      final credentials = SteamCredentials(
-        apiKey: key,
-        steamId: steamId,
-        itadKey: itadKey.trim(),
-      );
+      final credentials = SteamCredentials(apiKey: key, steamId: steamId);
       await (await _credentialStore()).save(credentials);
       _credentials = credentials;
 
@@ -260,36 +267,25 @@ class SteamRepository extends ChangeNotifier {
       currency: Value(price?.currency),
       detailsFetchedAt: Value(DateTime.now()),
     ));
-
-  }
-
-  /// Saves the IsThereAnyDeal key, which is what unlocks price history.
-  ///
-  /// Any history already cached is dropped: it was fetched with whatever key
-  /// was there before, and a new key can mean a different ITAD account and a
-  /// different region, so re-reading is cheaper than reasoning about which
-  /// rows are still valid.
-  Future<void> saveItadKey(String key) async {
-    final current = _credentials;
-    if (current == null) return;
-    final updated = current.withItadKey(key.trim());
-    await (await _credentialStore()).save(updated);
-    _credentials = updated;
-    await _db.forgetAllHistory();
-    notifyListeners();
   }
 
   /// How long a cached ITAD history stays good before it is refetched.
   static const _historyFreshness = Duration(hours: 12);
 
-  /// Pulls the game's Steam price history from IsThereAnyDeal, unless a
-  /// recent copy is already cached.
+  /// Pulls the game's Steam price history from IsThereAnyDeal, through the
+  /// luma server, unless a recent copy is already cached.
   ///
-  /// Does nothing without an ITAD key — the chart shows a prompt to add one
-  /// rather than an error, since the rest of the plugin works fine without.
+  /// Does nothing without a signed-in, approved account — the chart shows a
+  /// sign-in prompt rather than an error, since the rest of the plugin works
+  /// fine without one. If the account is fine but the operator simply hasn't
+  /// configured a server-side ITAD key, that surfaces as an ordinary error
+  /// message instead (see ItadApi's 404 handling).
   Future<void> ensureHistory(int appId, {bool force = false}) async {
-    final itadKey = _credentials?.itadKey ?? '';
-    if (itadKey.isEmpty) return;
+    final syncService = sync;
+    final baseUrl = syncService?.serverUrl;
+    if (syncService == null || !syncService.serverReady || baseUrl == null) {
+      return;
+    }
     if (_fetchingHistory.contains(appId)) return;
 
     final row = await (_db.select(_db.steamGames)
@@ -310,12 +306,13 @@ class SteamRepository extends ChangeNotifier {
 
     _fetchingHistory.add(appId);
     notifyListeners();
+    final itad = _itadApiFactory(baseUrl, syncService.authToken);
     try {
       StorageGuard.instance.ensureWithinLimit();
 
       var gameId = row.itadId;
       if (gameId == null || force) {
-        gameId = await _itad.lookupGameId(appId, apiKey: itadKey);
+        gameId = await itad.lookupGameId(appId);
         if (gameId == null) {
           await (_db.update(_db.steamGames)
                 ..where((g) => g.appId.equals(appId)))
@@ -328,9 +325,8 @@ class SteamRepository extends ChangeNotifier {
       }
 
       final (history, overview) = await (
-        _itad.steamPriceHistory(gameId,
-            apiKey: itadKey, country: countryCode),
-        _itad.overview(gameId, apiKey: itadKey, country: countryCode),
+        itad.steamPriceHistory(gameId, country: countryCode),
+        itad.overview(gameId, country: countryCode),
       ).wait;
 
       await _db.replacePriceHistory(appId, [
@@ -354,6 +350,9 @@ class SteamRepository extends ChangeNotifier {
         historyFetchedAt: Value(DateTime.now()),
       ));
       StorageGuard.instance.scheduleRefresh();
+    } on ServerAccessDeniedException {
+      // The gate shut between the check above and the request. Nothing to
+      // report — the UI already reflects "not signed in".
     } on ItadApiException catch (e) {
       _error = e.message;
     } on StorageLimitExceededException {
@@ -361,6 +360,7 @@ class SteamRepository extends ChangeNotifier {
     } catch (_) {
       // One unreadable history is not worth an error banner.
     } finally {
+      itad.close();
       _fetchingHistory.remove(appId);
       notifyListeners();
     }
@@ -438,7 +438,6 @@ class SteamRepository extends ChangeNotifier {
   void dispose() {
     _cancelPriceRefresh = true;
     _api.close();
-    _itad.close();
     super.dispose();
   }
 }

@@ -156,7 +156,8 @@ class _LumaAppState extends State<LumaApp> {
   late final AiUsageDatabase _aiUsageDb = AiUsageDatabase();
   late final AiUsageRepository _aiUsageRepository = AiUsageRepository(_aiUsageDb);
   late final SteamDatabase _steamDb = SteamDatabase();
-  late final SteamRepository _steamRepository = SteamRepository(_steamDb);
+  late final SteamRepository _steamRepository =
+      SteamRepository(_steamDb, sync: _sync);
   late final AiCatalogRepository _aiCatalogRepository =
       AiCatalogRepository(_sync);
   late final SchoolDatabase _schoolDb = SchoolDatabase();

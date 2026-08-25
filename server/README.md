@@ -33,6 +33,9 @@ atomic replace.
   Google using operator-configured keys (`LUMA_MISTRAL_API_KEY` /
   `LUMA_GOOGLE_API_KEY`), so individual users don't need their own. Usage
   is metered per user against rolling token/message budgets.
+- **Steam price history proxy** (`/api/v1/steam/itad/*`) — same idea for
+  the Steam Tools plugin: proxies IsThereAnyDeal using an operator-configured
+  key (`LUMA_ITAD_API_KEY`) so users never register for one themselves.
 - **Admin dashboard** (`/admin`) — a self-contained HTML+JS page (no
   build step, no external assets) showing accounts, storage, activity,
   plugin download stats, live system metrics, and a "Control panel" tab
