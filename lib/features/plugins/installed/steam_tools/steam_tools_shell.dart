@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
 
 import '../../../../theme/luma_theme.dart';
+import 'ui/cs2_market_tab.dart';
 import 'ui/steam_price_tracker_tab.dart';
 
 /// The plugin's sections, in sidebar order.
-///
-/// Only one tool ships so far. The rail is here from the start anyway
-/// because the plugin is a hub by design — adding the second tool should be
-/// a new enum value and a new child, not a rewrite of the frame.
 enum SteamToolsSection {
   priceTracker(
     icon: Icons.trending_down_rounded,
     label: 'Price Tracker',
     blurb: 'Your library, priced',
+  ),
+  cs2Market(
+    icon: Icons.diamond_outlined,
+    label: 'CS2 Market',
+    blurb: 'Skins, priced and charted',
   );
 
   const SteamToolsSection({
@@ -65,6 +67,7 @@ class _SteamToolsPageState extends State<SteamToolsPage> {
             index: _section.index,
             children: const [
               SteamPriceTrackerTab(),
+              Cs2MarketTab(),
             ],
           ),
         ),
