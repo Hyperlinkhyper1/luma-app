@@ -108,6 +108,7 @@ class HoogvlietSync extends BaseSync {
           try {
             tiles = await fetchCategoryPage(page, {
               categoryName: cat.categoryName,
+              categoryTitle: cat.categoryTitle,
               pageNumber,
               pageSize: PAGE_SIZE,
             });
