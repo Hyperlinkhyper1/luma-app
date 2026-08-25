@@ -4,17 +4,27 @@ import 'package:path_provider/path_provider.dart';
 
 part 'steam_database.g.dart';
 
-/// One game from the account's Steam library, plus whatever of its store
-/// page has been fetched so far.
+/// One game this device is tracking the price of, plus whatever of its
+/// store page has been fetched so far.
 ///
-/// The library rows are written by a library sync; the store columns stay
-/// null until the game is opened for the first time, because the store API
-/// is rate limited and a library of several hundred games would blow through
-/// that budget on a screen where none of it is shown.
+/// A row gets here one of two ways: the user searched for it and chose to
+/// track it, or it came in through a Steam library sync. [owned] is the only
+/// thing that distinguishes the two — connecting a Steam account is an
+/// optional way to bulk-add the games already owned, not a requirement to
+/// track anything, so a row is never deleted just because a sync no longer
+/// returns it. The store columns stay null until the game is opened for the
+/// first time, because the store API is rate limited and a large tracked
+/// list would blow through that budget on a screen where none of it shows.
 class SteamGames extends Table {
   IntColumn get appId => integer()();
   TextColumn get name => text()();
   IntColumn get playtimeMinutes => integer().withDefault(const Constant(0))();
+
+  /// Whether the last Steam library sync confirmed this account owns it.
+  /// False for anything added by search, and for a game that used to be
+  /// owned but dropped out of a later sync (refunded, account changed) —
+  /// the row itself is left alone either way; only tracking removes it.
+  BoolColumn get owned => boolean().withDefault(const Constant(false))();
 
   TextColumn get shortDescription => text().nullable()();
   TextColumn get headerImage => text().nullable()();
@@ -35,8 +45,8 @@ class SteamGames extends Table {
   BoolColumn get onMac => boolean().withDefault(const Constant(false))();
   BoolColumn get onLinux => boolean().withDefault(const Constant(false))();
 
-  /// The most recent price seen, mirrored here so the library grid can show
-  /// a price without reading the history table once per tile.
+  /// The most recent price seen, mirrored here so the tracked-games grid can
+  /// show a price without reading the history table once per tile.
   IntColumn get lastPriceCents => integer().nullable()();
   IntColumn get lastInitialCents => integer().nullable()();
   IntColumn get lastDiscountPercent => integer().nullable()();
@@ -94,8 +104,8 @@ class SteamDatabase extends _$SteamDatabase {
   @override
   int get schemaVersion => 1;
 
-  /// Every game in the library, alphabetical.
-  Stream<List<SteamGame>> watchLibrary() {
+  /// Every game this device is tracking, alphabetical.
+  Stream<List<SteamGame>> watchTrackedGames() {
     final query = select(steamGames)
       ..orderBy([(g) => OrderingTerm.asc(g.name)]);
     return query.watch();
@@ -114,39 +124,62 @@ class SteamDatabase extends _$SteamDatabase {
     return query.watch();
   }
 
-  /// Replaces the stored library with [games], keeping every column the
-  /// store fetch filled in.
-  ///
-  /// Games no longer in the library are deleted along with their history —
-  /// a library row that the account does not own is not something the user
-  /// can act on, and leaving its price points behind would grow the file
-  /// forever.
-  Future<void> replaceLibrary(
+  /// Adds [appId] to the tracked list if it isn't there yet. A no-op for a
+  /// game already tracked — this starts tracking, it does not refresh
+  /// details for a game that has some already.
+  Future<void> addTrackedGame({required int appId, required String name}) =>
+      into(steamGames).insert(
+        SteamGamesCompanion.insert(appId: Value(appId), name: name),
+        mode: InsertMode.insertOrIgnore,
+      );
+
+  /// Stops tracking a game and drops its price history with it.
+  Future<void> removeTrackedGame(int appId) async {
+    await transaction(() async {
+      await (delete(steamPricePoints)..where((p) => p.appId.equals(appId)))
+          .go();
+      await (delete(steamGames)..where((g) => g.appId.equals(appId))).go();
+    });
+  }
+
+  /// Folds a Steam library read into the tracked list: every game in
+  /// [games] is added (or updated) and marked [SteamGames.owned]; anything
+  /// that was owned before but is missing from this sync is marked unowned,
+  /// never deleted — a refund or an account swap should not silently drop a
+  /// game whose price the user was watching.
+  Future<void> syncOwnedLibrary(
     Iterable<({int appId, String name, int playtimeMinutes})> games,
   ) async {
-    final keep = <int>{};
+    final owned = <int>{};
     await batch((b) {
       for (final game in games) {
-        keep.add(game.appId);
+        owned.add(game.appId);
         b.insert(
           steamGames,
           SteamGamesCompanion.insert(
             appId: Value(game.appId),
             name: game.name,
             playtimeMinutes: Value(game.playtimeMinutes),
+            owned: const Value(true),
           ),
           onConflict: DoUpdate(
             (_) => SteamGamesCompanion(
               name: Value(game.name),
               playtimeMinutes: Value(game.playtimeMinutes),
+              owned: const Value(true),
             ),
           ),
         );
       }
     });
-    if (keep.isEmpty) return;
-    await (delete(steamGames)..where((g) => g.appId.isNotIn(keep))).go();
-    await (delete(steamPricePoints)..where((p) => p.appId.isNotIn(keep))).go();
+
+    final stillOwned = update(steamGames)..where((g) => g.owned.equals(true));
+    if (owned.isEmpty) {
+      await stillOwned.write(const SteamGamesCompanion(owned: Value(false)));
+    } else {
+      await (stillOwned..where((g) => g.appId.isNotIn(owned)))
+          .write(const SteamGamesCompanion(owned: Value(false)));
+    }
   }
 
   /// Swaps a game's cached history for [points].
@@ -178,10 +211,5 @@ class SteamDatabase extends _$SteamDatabase {
         historyFetchedAt: Value(null),
       ));
     });
-  }
-
-  Future<void> clearLibrary() async {
-    await delete(steamPricePoints).go();
-    await delete(steamGames).go();
   }
 }

@@ -5,6 +5,7 @@ import 'package:luma/features/plugins/installed/steam_tools/steam_models.dart';
 import 'package:luma/features/plugins/installed/steam_tools/steam_price_history.dart';
 import 'package:luma/features/plugins/installed/steam_tools/steam_repository.dart';
 import 'package:luma/features/plugins/installed/steam_tools/steam_requirements.dart';
+import 'package:luma/storage/storage_guard.dart';
 import 'package:luma/sync/sync_service.dart';
 
 /// The shape Steam actually serves — a heading, a bare note, then labelled
@@ -30,6 +31,10 @@ SteamPricePoint _point(DateTime at, int cents, {int discount = 0}) =>
     );
 
 void main() {
+  // SteamRepository consults the app-wide storage cap before every write;
+  // outside of main.dart's real startup this static is never set.
+  setUpAll(() => StorageGuardService.instance = StorageGuardService());
+
   group('requirements parsing', () {
     test('reads labelled specs out of Steam store HTML', () {
       final lines = parseSteamRequirementBlock(_cyberpunkMinimum);
@@ -289,7 +294,7 @@ void main() {
 
     setUp(() async {
       db = SteamDatabase(NativeDatabase.memory());
-      await db.replaceLibrary(const [
+      await db.syncOwnedLibrary(const [
         (appId: 1091500, name: 'Cyberpunk 2077', playtimeMinutes: 0),
       ]);
     });
@@ -327,6 +332,115 @@ void main() {
 
       expect(repository.isFetchingHistory(1091500), isFalse);
       expect(await db.watchPriceHistory(1091500).first, isEmpty);
+    });
+  });
+
+  group('tracking a game needs no Steam account', () {
+    late SteamDatabase db;
+
+    setUp(() {
+      db = SteamDatabase(NativeDatabase.memory());
+    });
+
+    tearDown(() async {
+      await db.close();
+    });
+
+    test('adding a searched game does not require ownership', () async {
+      await db.addTrackedGame(appId: 367520, name: 'Hollow Knight');
+
+      final tracked = await db.watchTrackedGames().first;
+      expect(tracked, hasLength(1));
+      expect(tracked.single.owned, isFalse);
+    });
+
+    test('adding an already-tracked game a second time changes nothing',
+        () async {
+      await db.addTrackedGame(appId: 367520, name: 'Hollow Knight');
+      // A library sync could easily race a manual add of the same game —
+      // the second write must not clobber whatever the first one set.
+      await db.addTrackedGame(appId: 367520, name: 'Hollow Knight (dupe)');
+
+      final tracked = await db.watchTrackedGames().first;
+      expect(tracked, hasLength(1));
+      expect(tracked.single.name, 'Hollow Knight');
+    });
+
+    test('untracking removes the game and its price history', () async {
+      await db.addTrackedGame(appId: 367520, name: 'Hollow Knight');
+      await db.replacePriceHistory(367520, [
+        SteamPricePointsCompanion.insert(
+          appId: 367520,
+          observedAt: DateTime(2026, 1, 1),
+          finalCents: 1499,
+          initialCents: 1499,
+          currency: 'USD',
+        ),
+      ]);
+
+      await db.removeTrackedGame(367520);
+
+      expect(await db.watchTrackedGames().first, isEmpty);
+      expect(await db.watchPriceHistory(367520).first, isEmpty);
+    });
+
+    test('a library sync merges in rather than replacing the tracked list',
+        () async {
+      // Manually tracked, unowned.
+      await db.addTrackedGame(appId: 367520, name: 'Hollow Knight');
+
+      await db.syncOwnedLibrary(const [
+        (appId: 570, name: 'Dota 2', playtimeMinutes: 120),
+      ]);
+
+      final tracked = await db.watchTrackedGames().first;
+      final byId = {for (final g in tracked) g.appId: g};
+      // The manually tracked game survives a sync it was never part of.
+      expect(byId.containsKey(367520), isTrue);
+      expect(byId[367520]!.owned, isFalse);
+      expect(byId[570]!.owned, isTrue);
+      expect(byId[570]!.playtimeMinutes, 120);
+    });
+
+    test('a game dropping out of the owned set is marked unowned, not '
+        'deleted', () async {
+      await db.syncOwnedLibrary(const [
+        (appId: 570, name: 'Dota 2', playtimeMinutes: 120),
+      ]);
+      // The account no longer owns it (refund, different account, etc.).
+      await db.syncOwnedLibrary(const []);
+
+      final tracked = await db.watchTrackedGames().first;
+      expect(tracked, hasLength(1));
+      expect(tracked.single.appId, 570);
+      expect(tracked.single.owned, isFalse);
+    });
+
+    test('a re-sync brings a previously untracked-but-still-owned game '
+        'back', () async {
+      await db.syncOwnedLibrary(const [
+        (appId: 570, name: 'Dota 2', playtimeMinutes: 120),
+      ]);
+      await db.removeTrackedGame(570);
+      expect(await db.watchTrackedGames().first, isEmpty);
+
+      await db.syncOwnedLibrary(const [
+        (appId: 570, name: 'Dota 2', playtimeMinutes: 130),
+      ]);
+
+      final tracked = await db.watchTrackedGames().first;
+      expect(tracked, hasLength(1));
+      expect(tracked.single.playtimeMinutes, 130);
+    });
+
+    test('SteamRepository.untrackGame reaches the database without needing '
+        'a Steam account or the network', () async {
+      await db.addTrackedGame(appId: 367520, name: 'Hollow Knight');
+      final repository = SteamRepository(db);
+
+      await repository.untrackGame(367520);
+
+      expect(await db.watchTrackedGames().first, isEmpty);
     });
   });
 }

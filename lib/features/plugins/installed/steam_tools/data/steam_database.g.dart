@@ -39,6 +39,19 @@ class $SteamGamesTable extends SteamGames
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _ownedMeta = const VerificationMeta('owned');
+  @override
+  late final GeneratedColumn<bool> owned = GeneratedColumn<bool>(
+    'owned',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("owned" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _shortDescriptionMeta = const VerificationMeta(
     'shortDescription',
   );
@@ -310,6 +323,7 @@ class $SteamGamesTable extends SteamGames
     appId,
     name,
     playtimeMinutes,
+    owned,
     shortDescription,
     headerImage,
     backgroundImage,
@@ -367,6 +381,12 @@ class $SteamGamesTable extends SteamGames
           data['playtime_minutes']!,
           _playtimeMinutesMeta,
         ),
+      );
+    }
+    if (data.containsKey('owned')) {
+      context.handle(
+        _ownedMeta,
+        owned.isAcceptableOrUnknown(data['owned']!, _ownedMeta),
       );
     }
     if (data.containsKey('short_description')) {
@@ -567,6 +587,10 @@ class $SteamGamesTable extends SteamGames
         DriftSqlType.int,
         data['${effectivePrefix}playtime_minutes'],
       )!,
+      owned: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}owned'],
+      )!,
       shortDescription: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}short_description'],
@@ -672,6 +696,12 @@ class SteamGame extends DataClass implements Insertable<SteamGame> {
   final int appId;
   final String name;
   final int playtimeMinutes;
+
+  /// Whether the last Steam library sync confirmed this account owns it.
+  /// False for anything added by search, and for a game that used to be
+  /// owned but dropped out of a later sync (refunded, account changed) —
+  /// the row itself is left alone either way; only tracking removes it.
+  final bool owned;
   final String? shortDescription;
   final String? headerImage;
   final String? backgroundImage;
@@ -690,8 +720,8 @@ class SteamGame extends DataClass implements Insertable<SteamGame> {
   final bool onMac;
   final bool onLinux;
 
-  /// The most recent price seen, mirrored here so the library grid can show
-  /// a price without reading the history table once per tile.
+  /// The most recent price seen, mirrored here so the tracked-games grid can
+  /// show a price without reading the history table once per tile.
   final int? lastPriceCents;
   final int? lastInitialCents;
   final int? lastDiscountPercent;
@@ -717,6 +747,7 @@ class SteamGame extends DataClass implements Insertable<SteamGame> {
     required this.appId,
     required this.name,
     required this.playtimeMinutes,
+    required this.owned,
     this.shortDescription,
     this.headerImage,
     this.backgroundImage,
@@ -747,6 +778,7 @@ class SteamGame extends DataClass implements Insertable<SteamGame> {
     map['app_id'] = Variable<int>(appId);
     map['name'] = Variable<String>(name);
     map['playtime_minutes'] = Variable<int>(playtimeMinutes);
+    map['owned'] = Variable<bool>(owned);
     if (!nullToAbsent || shortDescription != null) {
       map['short_description'] = Variable<String>(shortDescription);
     }
@@ -814,6 +846,7 @@ class SteamGame extends DataClass implements Insertable<SteamGame> {
       appId: Value(appId),
       name: Value(name),
       playtimeMinutes: Value(playtimeMinutes),
+      owned: Value(owned),
       shortDescription: shortDescription == null && nullToAbsent
           ? const Value.absent()
           : Value(shortDescription),
@@ -883,6 +916,7 @@ class SteamGame extends DataClass implements Insertable<SteamGame> {
       appId: serializer.fromJson<int>(json['appId']),
       name: serializer.fromJson<String>(json['name']),
       playtimeMinutes: serializer.fromJson<int>(json['playtimeMinutes']),
+      owned: serializer.fromJson<bool>(json['owned']),
       shortDescription: serializer.fromJson<String?>(json['shortDescription']),
       headerImage: serializer.fromJson<String?>(json['headerImage']),
       backgroundImage: serializer.fromJson<String?>(json['backgroundImage']),
@@ -921,6 +955,7 @@ class SteamGame extends DataClass implements Insertable<SteamGame> {
       'appId': serializer.toJson<int>(appId),
       'name': serializer.toJson<String>(name),
       'playtimeMinutes': serializer.toJson<int>(playtimeMinutes),
+      'owned': serializer.toJson<bool>(owned),
       'shortDescription': serializer.toJson<String?>(shortDescription),
       'headerImage': serializer.toJson<String?>(headerImage),
       'backgroundImage': serializer.toJson<String?>(backgroundImage),
@@ -951,6 +986,7 @@ class SteamGame extends DataClass implements Insertable<SteamGame> {
     int? appId,
     String? name,
     int? playtimeMinutes,
+    bool? owned,
     Value<String?> shortDescription = const Value.absent(),
     Value<String?> headerImage = const Value.absent(),
     Value<String?> backgroundImage = const Value.absent(),
@@ -978,6 +1014,7 @@ class SteamGame extends DataClass implements Insertable<SteamGame> {
     appId: appId ?? this.appId,
     name: name ?? this.name,
     playtimeMinutes: playtimeMinutes ?? this.playtimeMinutes,
+    owned: owned ?? this.owned,
     shortDescription: shortDescription.present
         ? shortDescription.value
         : this.shortDescription,
@@ -1025,6 +1062,7 @@ class SteamGame extends DataClass implements Insertable<SteamGame> {
       playtimeMinutes: data.playtimeMinutes.present
           ? data.playtimeMinutes.value
           : this.playtimeMinutes,
+      owned: data.owned.present ? data.owned.value : this.owned,
       shortDescription: data.shortDescription.present
           ? data.shortDescription.value
           : this.shortDescription,
@@ -1089,6 +1127,7 @@ class SteamGame extends DataClass implements Insertable<SteamGame> {
           ..write('appId: $appId, ')
           ..write('name: $name, ')
           ..write('playtimeMinutes: $playtimeMinutes, ')
+          ..write('owned: $owned, ')
           ..write('shortDescription: $shortDescription, ')
           ..write('headerImage: $headerImage, ')
           ..write('backgroundImage: $backgroundImage, ')
@@ -1121,6 +1160,7 @@ class SteamGame extends DataClass implements Insertable<SteamGame> {
     appId,
     name,
     playtimeMinutes,
+    owned,
     shortDescription,
     headerImage,
     backgroundImage,
@@ -1152,6 +1192,7 @@ class SteamGame extends DataClass implements Insertable<SteamGame> {
           other.appId == this.appId &&
           other.name == this.name &&
           other.playtimeMinutes == this.playtimeMinutes &&
+          other.owned == this.owned &&
           other.shortDescription == this.shortDescription &&
           other.headerImage == this.headerImage &&
           other.backgroundImage == this.backgroundImage &&
@@ -1181,6 +1222,7 @@ class SteamGamesCompanion extends UpdateCompanion<SteamGame> {
   final Value<int> appId;
   final Value<String> name;
   final Value<int> playtimeMinutes;
+  final Value<bool> owned;
   final Value<String?> shortDescription;
   final Value<String?> headerImage;
   final Value<String?> backgroundImage;
@@ -1208,6 +1250,7 @@ class SteamGamesCompanion extends UpdateCompanion<SteamGame> {
     this.appId = const Value.absent(),
     this.name = const Value.absent(),
     this.playtimeMinutes = const Value.absent(),
+    this.owned = const Value.absent(),
     this.shortDescription = const Value.absent(),
     this.headerImage = const Value.absent(),
     this.backgroundImage = const Value.absent(),
@@ -1236,6 +1279,7 @@ class SteamGamesCompanion extends UpdateCompanion<SteamGame> {
     this.appId = const Value.absent(),
     required String name,
     this.playtimeMinutes = const Value.absent(),
+    this.owned = const Value.absent(),
     this.shortDescription = const Value.absent(),
     this.headerImage = const Value.absent(),
     this.backgroundImage = const Value.absent(),
@@ -1264,6 +1308,7 @@ class SteamGamesCompanion extends UpdateCompanion<SteamGame> {
     Expression<int>? appId,
     Expression<String>? name,
     Expression<int>? playtimeMinutes,
+    Expression<bool>? owned,
     Expression<String>? shortDescription,
     Expression<String>? headerImage,
     Expression<String>? backgroundImage,
@@ -1292,6 +1337,7 @@ class SteamGamesCompanion extends UpdateCompanion<SteamGame> {
       if (appId != null) 'app_id': appId,
       if (name != null) 'name': name,
       if (playtimeMinutes != null) 'playtime_minutes': playtimeMinutes,
+      if (owned != null) 'owned': owned,
       if (shortDescription != null) 'short_description': shortDescription,
       if (headerImage != null) 'header_image': headerImage,
       if (backgroundImage != null) 'background_image': backgroundImage,
@@ -1323,6 +1369,7 @@ class SteamGamesCompanion extends UpdateCompanion<SteamGame> {
     Value<int>? appId,
     Value<String>? name,
     Value<int>? playtimeMinutes,
+    Value<bool>? owned,
     Value<String?>? shortDescription,
     Value<String?>? headerImage,
     Value<String?>? backgroundImage,
@@ -1351,6 +1398,7 @@ class SteamGamesCompanion extends UpdateCompanion<SteamGame> {
       appId: appId ?? this.appId,
       name: name ?? this.name,
       playtimeMinutes: playtimeMinutes ?? this.playtimeMinutes,
+      owned: owned ?? this.owned,
       shortDescription: shortDescription ?? this.shortDescription,
       headerImage: headerImage ?? this.headerImage,
       backgroundImage: backgroundImage ?? this.backgroundImage,
@@ -1388,6 +1436,9 @@ class SteamGamesCompanion extends UpdateCompanion<SteamGame> {
     }
     if (playtimeMinutes.present) {
       map['playtime_minutes'] = Variable<int>(playtimeMinutes.value);
+    }
+    if (owned.present) {
+      map['owned'] = Variable<bool>(owned.value);
     }
     if (shortDescription.present) {
       map['short_description'] = Variable<String>(shortDescription.value);
@@ -1467,6 +1518,7 @@ class SteamGamesCompanion extends UpdateCompanion<SteamGame> {
           ..write('appId: $appId, ')
           ..write('name: $name, ')
           ..write('playtimeMinutes: $playtimeMinutes, ')
+          ..write('owned: $owned, ')
           ..write('shortDescription: $shortDescription, ')
           ..write('headerImage: $headerImage, ')
           ..write('backgroundImage: $backgroundImage, ')
@@ -1981,6 +2033,7 @@ typedef $$SteamGamesTableCreateCompanionBuilder =
       Value<int> appId,
       required String name,
       Value<int> playtimeMinutes,
+      Value<bool> owned,
       Value<String?> shortDescription,
       Value<String?> headerImage,
       Value<String?> backgroundImage,
@@ -2010,6 +2063,7 @@ typedef $$SteamGamesTableUpdateCompanionBuilder =
       Value<int> appId,
       Value<String> name,
       Value<int> playtimeMinutes,
+      Value<bool> owned,
       Value<String?> shortDescription,
       Value<String?> headerImage,
       Value<String?> backgroundImage,
@@ -2056,6 +2110,11 @@ class $$SteamGamesTableFilterComposer
 
   ColumnFilters<int> get playtimeMinutes => $composableBuilder(
     column: $table.playtimeMinutes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get owned => $composableBuilder(
+    column: $table.owned,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2199,6 +2258,11 @@ class $$SteamGamesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get owned => $composableBuilder(
+    column: $table.owned,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get shortDescription => $composableBuilder(
     column: $table.shortDescription,
     builder: (column) => ColumnOrderings(column),
@@ -2334,6 +2398,9 @@ class $$SteamGamesTableAnnotationComposer
     column: $table.playtimeMinutes,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get owned =>
+      $composableBuilder(column: $table.owned, builder: (column) => column);
 
   GeneratedColumn<String> get shortDescription => $composableBuilder(
     column: $table.shortDescription,
@@ -2471,6 +2538,7 @@ class $$SteamGamesTableTableManager
                 Value<int> appId = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<int> playtimeMinutes = const Value.absent(),
+                Value<bool> owned = const Value.absent(),
                 Value<String?> shortDescription = const Value.absent(),
                 Value<String?> headerImage = const Value.absent(),
                 Value<String?> backgroundImage = const Value.absent(),
@@ -2498,6 +2566,7 @@ class $$SteamGamesTableTableManager
                 appId: appId,
                 name: name,
                 playtimeMinutes: playtimeMinutes,
+                owned: owned,
                 shortDescription: shortDescription,
                 headerImage: headerImage,
                 backgroundImage: backgroundImage,
@@ -2527,6 +2596,7 @@ class $$SteamGamesTableTableManager
                 Value<int> appId = const Value.absent(),
                 required String name,
                 Value<int> playtimeMinutes = const Value.absent(),
+                Value<bool> owned = const Value.absent(),
                 Value<String?> shortDescription = const Value.absent(),
                 Value<String?> headerImage = const Value.absent(),
                 Value<String?> backgroundImage = const Value.absent(),
@@ -2554,6 +2624,7 @@ class $$SteamGamesTableTableManager
                 appId: appId,
                 name: name,
                 playtimeMinutes: playtimeMinutes,
+                owned: owned,
                 shortDescription: shortDescription,
                 headerImage: headerImage,
                 backgroundImage: backgroundImage,

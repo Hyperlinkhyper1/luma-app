@@ -84,7 +84,7 @@ class SteamRepository extends ChangeNotifier {
   /// need none of this.
   bool get canFetchHistory => sync?.serverReady ?? false;
 
-  Stream<List<SteamGame>> watchLibrary() => _db.watchLibrary();
+  Stream<List<SteamGame>> watchTrackedGames() => _db.watchTrackedGames();
   Stream<SteamGame?> watchGame(int appId) => _db.watchGame(appId);
   Stream<List<SteamPricePoint>> watchPriceHistory(int appId) =>
       _db.watchPriceHistory(appId);
@@ -137,7 +137,7 @@ class SteamRepository extends ChangeNotifier {
       await (await _credentialStore()).save(credentials);
       _credentials = credentials;
 
-      await _storeLibrary(games);
+      await _syncLibrary(games);
       _lastSyncAt = DateTime.now();
       return true;
     } on SteamApiException catch (e) {
@@ -155,17 +155,19 @@ class SteamRepository extends ChangeNotifier {
     }
   }
 
-  /// Forgets the account and everything read with it.
+  /// Forgets the Steam account. Everything already tracked — whether it
+  /// came from this account's library or from a search — stays tracked;
+  /// connecting Steam was only ever a bulk way to add to that list, so
+  /// losing the connection is not a reason to lose what was added with it.
   Future<void> disconnect() async {
     await (await _credentialStore()).clear();
     _credentials = null;
     _lastSyncAt = null;
     _error = null;
-    await _db.clearLibrary();
     notifyListeners();
   }
 
-  /// Re-reads the library from Steam.
+  /// Reads the account's Steam library and folds it into the tracked list.
   Future<void> refreshLibrary() async {
     final credentials = _credentials;
     if (credentials == null || _syncing) return;
@@ -178,7 +180,7 @@ class SteamRepository extends ChangeNotifier {
         apiKey: credentials.apiKey,
         steamId: credentials.steamId,
       );
-      await _storeLibrary(games);
+      await _syncLibrary(games);
       _lastSyncAt = DateTime.now();
     } on SteamApiException catch (e) {
       _error = e.message;
@@ -192,12 +194,33 @@ class SteamRepository extends ChangeNotifier {
     }
   }
 
-  Future<void> _storeLibrary(List<SteamLibraryGame> games) async {
+  Future<void> _syncLibrary(List<SteamLibraryGame> games) async {
     StorageGuard.instance.ensureWithinLimit();
-    await _db.replaceLibrary([
+    await _db.syncOwnedLibrary([
       for (final g in games)
         (appId: g.appId, name: g.name, playtimeMinutes: g.playtimeMinutes),
     ]);
+    StorageGuard.instance.scheduleRefresh();
+  }
+
+  /// Steam's public store search — no key or connected account needed. This
+  /// is the plugin's main way to start tracking a game.
+  Future<List<SteamSearchResult>> search(String term) =>
+      _api.search(term, countryCode: countryCode);
+
+  /// Starts tracking [appId], then fetches its store page right away so the
+  /// new tile has a price instead of sitting blank until the next open.
+  Future<void> trackGame({required int appId, required String name}) async {
+    StorageGuard.instance.ensureWithinLimit();
+    await _db.addTrackedGame(appId: appId, name: name);
+    StorageGuard.instance.scheduleRefresh();
+    unawaited(ensureDetails(appId, force: true));
+    if (canFetchHistory) unawaited(ensureHistory(appId));
+  }
+
+  /// Stops tracking a game entirely, including its price history.
+  Future<void> untrackGame(int appId) async {
+    await _db.removeTrackedGame(appId);
     StorageGuard.instance.scheduleRefresh();
   }
 
@@ -371,15 +394,16 @@ class SteamRepository extends ChangeNotifier {
   /// large library takes a while rather than getting the device throttled.
   static const _storeCallSpacing = Duration(milliseconds: 1600);
 
-  /// Re-reads every game's current Steam price, one at a time.
+  /// Re-reads every tracked game's current Steam price, one at a time.
+  /// Needs no Steam connection at all — the store API behind it is keyless.
   ///
-  /// This is the price on the library tiles, which comes from Steam itself
-  /// rather than ITAD — Steam is authoritative for what a game costs on
-  /// Steam right now. The chart's history is a separate concern; see
+  /// This is the price on the tracked-games tiles, which comes from Steam
+  /// itself rather than ITAD — Steam is authoritative for what a game costs
+  /// on Steam right now. The chart's history is a separate concern; see
   /// [ensureHistory].
   Future<void> refreshAllPrices() async {
     if (_priceTotal > 0) return;
-    final games = await _db.watchLibrary().first;
+    final games = await _db.watchTrackedGames().first;
     if (games.isEmpty) return;
 
     _cancelPriceRefresh = false;

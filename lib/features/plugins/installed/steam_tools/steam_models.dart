@@ -9,6 +9,42 @@ const _cdn = 'https://cdn.cloudflare.steamstatic.com/steam/apps';
 /// The wide 460x215 capsule, used for the grid tile and the detail hero.
 String steamHeaderImage(int appId) => '$_cdn/$appId/header.jpg';
 
+/// One hit from Steam's public store search — no key, no account, which is
+/// what makes it the plugin's primary way to start tracking a game rather
+/// than a fallback for people without a Steam library connected.
+class SteamSearchResult {
+  const SteamSearchResult({
+    required this.appId,
+    required this.name,
+    this.tinyImage,
+  });
+
+  final int appId;
+  final String name;
+
+  /// A small capsule thumbnail for the search result row. Steam's search
+  /// response includes this directly rather than the plugin needing a
+  /// second request per result.
+  final String? tinyImage;
+
+  static SteamSearchResult? fromJson(Map<String, dynamic> json) {
+    final appId = switch (json['id']) {
+      final int v => v,
+      final String v => int.tryParse(v),
+      _ => null,
+    };
+    final name = json['name'];
+    if (appId == null || name is! String || name.trim().isEmpty) return null;
+    return SteamSearchResult(
+      appId: appId,
+      name: name.trim(),
+      tinyImage: json['tiny_image'] is String
+          ? json['tiny_image'] as String
+          : null,
+    );
+  }
+}
+
 /// One game in the signed-in account's Steam library, as returned by
 /// `IPlayerService/GetOwnedGames`.
 class SteamLibraryGame {
