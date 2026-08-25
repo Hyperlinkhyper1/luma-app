@@ -68,7 +68,11 @@ async function fetchCategories(page) {
       try {
         const url = new URL(a.href, location.origin);
         const categoryName = url.searchParams.get('CategoryName');
-        const title = (url.searchParams.get('CategoryTitle') || a.textContent || '')
+        // Raw CategoryTitle as the URL carries it (e.g. "Producten--Aardappelen,
+        // groente, fruit") — the listing endpoint requires this exact value to
+        // be replayed on every request or it silently returns 0 products.
+        const categoryTitle = url.searchParams.get('CategoryTitle') || '';
+        const title = (categoryTitle || a.textContent || '')
           .replace(/--/g, ' / ')
           .replace(/\+/g, ' ')
           .trim();
@@ -78,7 +82,11 @@ async function fetchCategories(page) {
         // Still stash any non-999999 top categories that slip through (e.g.
         // seasonal "Alles voor de barbecue" with CategoryName 20221604).
         if (!seen.has(categoryName)) {
-          seen.set(categoryName, { categoryName, title: title || a.textContent.trim() || categoryName });
+          seen.set(categoryName, {
+            categoryName,
+            categoryTitle,
+            title: title || a.textContent.trim() || categoryName,
+          });
         }
       } catch (_) {}
     }
@@ -98,7 +106,15 @@ async function fetchCategories(page) {
       { categoryName: '999999-900', title: 'Frisdrank, sappen, koffie, thee' },
       { categoryName: '999999-1100', title: 'Chips, zoutjes, noten' },
       { categoryName: '999999', title: 'Producten' },
-    ].map((c) => ({ name: c.title, categoryName: c.categoryName, title: c.title }));
+      // Matches the "Producten--<title>" shape observed in real CategoryTitle
+      // values (see fetchCategories above) — the endpoint requires this exact
+      // param to return results at all.
+    ].map((c) => ({
+      name: c.title,
+      categoryName: c.categoryName,
+      categoryTitle: `Producten--${c.title}`,
+      title: c.title,
+    }));
   }
 
   // Prefer the 999999-family roots; keep a seasonal top category if it's the
@@ -112,21 +128,31 @@ async function fetchCategories(page) {
   for (const c of chosen) {
     if (seenNames.has(c.categoryName)) continue;
     seenNames.add(c.categoryName);
-    deduped.push({ name: c.title || c.categoryName, categoryName: c.categoryName, title: c.title || c.categoryName });
+    deduped.push({
+      name: c.title || c.categoryName,
+      categoryName: c.categoryName,
+      categoryTitle: c.categoryTitle || '',
+      title: c.title || c.categoryName,
+    });
   }
   // Include seasonal non-root categories that don't overlap a chosen root's
   // numeric range (e.g. barbecue special).
   for (const c of nonRoots) {
     if (!seenNames.has(c.categoryName)) {
       seenNames.add(c.categoryName);
-      deduped.push({ name: c.title || c.categoryName, categoryName: c.categoryName, title: c.title || c.categoryName });
+      deduped.push({
+        name: c.title || c.categoryName,
+        categoryName: c.categoryName,
+        categoryTitle: c.categoryTitle || '',
+        title: c.title || c.categoryName,
+      });
     }
   }
 
   return deduped;
 }
 
-function categoryUrl(categoryName, pageNumber, pageSize = 48) {
+function categoryUrl(categoryName, categoryTitle, pageNumber, pageSize = 48) {
   const params = new URLSearchParams({
     PageNumber: String(pageNumber),
     PageSize: String(pageSize),
@@ -136,9 +162,11 @@ function categoryUrl(categoryName, pageNumber, pageSize = 48) {
     SortingOption: 'Relevantie',
     CategoryName: categoryName,
   });
-  // CategoryTitle / CatalogPermalink are not required for the server to return
-  // products, but carrying an empty title avoids a redirect loop on some
-  // categories — same pattern the storefront's own next-page links use.
+  // CategoryTitle is required — without it the endpoint silently falls back
+  // to a generic (empty) search page instead of the category listing, even
+  // though CategoryName alone looks like it should be enough. Verified live
+  // on 2026-08-25: identical request minus CategoryTitle returns 0 products.
+  if (categoryTitle) params.set('CategoryTitle', categoryTitle);
   return `${BASE_URL}/INTERSHOP/web/WFS/org-webshop-Site/nl_NL/-/EUR/ViewTWParametricSearch-SimpleOfferSearch?${params.toString()}`;
 }
 
@@ -152,8 +180,8 @@ function categoryUrl(categoryName, pageNumber, pageSize = 48) {
  * cents as a superscript — joining all price spans and running a single
  * (\d+)[\.,](\d{2}) match catches both that and a plain "2,39").
  */
-async function fetchCategoryPage(page, { categoryName, pageNumber = 0, pageSize = 48 } = {}) {
-  const url = categoryUrl(categoryName, pageNumber, pageSize);
+async function fetchCategoryPage(page, { categoryName, categoryTitle = '', pageNumber = 0, pageSize = 48 } = {}) {
+  const url = categoryUrl(categoryName, categoryTitle, pageNumber, pageSize);
   const response = await page.goto(url, { waitUntil: 'load', timeout: 45000 });
   if (response && !response.ok() && response.status() !== 200) {
     throw new Error(`Hoogvliet request failed: HTTP ${response.status()} for category ${categoryName} page ${pageNumber}`);
