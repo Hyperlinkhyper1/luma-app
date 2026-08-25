@@ -140,6 +140,35 @@ class SteamApi {
     return SteamAppDetails.fromJson(appId, data.cast<String, dynamic>());
   }
 
+  /// Steam's public store search — no key, no account. This is what lets
+  /// anyone start tracking a game's price without ever connecting Steam;
+  /// connecting is only for bulk-importing an existing library.
+  Future<List<SteamSearchResult>> search(
+    String term, {
+    String countryCode = 'us',
+  }) async {
+    final query = term.trim();
+    if (query.isEmpty) return const [];
+
+    final uri = Uri.https(_storeHost, '/api/storesearch/', {
+      'term': query,
+      'l': 'english',
+      'cc': countryCode,
+    });
+    final body = await _getJson(uri, what: 'search the store');
+    final items = body['items'];
+    if (items is! List) return const [];
+
+    final out = <SteamSearchResult>[];
+    for (final entry in items) {
+      if (entry is! Map) continue;
+      if (entry['type'] != 'app') continue;
+      final result = SteamSearchResult.fromJson(entry.cast<String, dynamic>());
+      if (result != null) out.add(result);
+    }
+    return out;
+  }
+
   void close() => _client.close();
 
   Future<Map<String, dynamic>> _getJson(

@@ -8,8 +8,9 @@ import '../steam_price_history.dart';
 import '../steam_scope.dart';
 import 'steam_account_dialog.dart';
 import 'steam_game_detail_page.dart';
+import 'steam_game_search_dialog.dart';
 
-/// How the library grid is ordered.
+/// How the tracked-games grid is ordered.
 enum _LibrarySort {
   name('A–Z'),
   playtime('Playtime'),
@@ -19,8 +20,14 @@ enum _LibrarySort {
   final String label;
 }
 
-/// The Price Tracker: every game on the account, and a way into each one's
+/// The Price Tracker: every game being tracked, and a way into each one's
 /// price history.
+///
+/// Tracking a game needs nothing but a search — Steam's account API is
+/// private and needs a key, but its store search does not, so that is the
+/// main way in. Connecting a Steam account (the gear icon) is an optional
+/// extra for bulk-adding an existing library, not a prerequisite for using
+/// the tracker at all.
 class SteamPriceTrackerTab extends StatefulWidget {
   const SteamPriceTrackerTab({super.key});
 
@@ -64,15 +71,13 @@ class _SteamPriceTrackerTabState extends State<SteamPriceTrackerTab> {
         ),
       );
     }
-    final connected = repository.connected;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _Toolbar(
           controller: _searchController,
           sort: _sort,
-          connected: connected,
+          connected: repository.connected,
           onQuery: (value) => setState(() => _query = value),
           onSort: (value) => setState(() => _sort = value),
         ),
@@ -83,49 +88,33 @@ class _SteamPriceTrackerTabState extends State<SteamPriceTrackerTab> {
           ),
         if (repository.refreshingPrices) const _PriceRefreshBar(),
         Expanded(
-          child: !connected
-              ? LumaEmptyState(
+          child: StreamData<List<SteamGame>>(
+            stream: repository.watchTrackedGames(),
+            builder: (context, games) {
+              final visible = _filterAndSort(games);
+              if (games.isEmpty) {
+                return LumaEmptyState(
                   icon: Icons.videogame_asset_off_rounded,
-                  title: 'Connect your Steam account',
-                  subtitle:
-                      'Add a Steam Web API key and ID to see your library '
-                      'and its prices.',
+                  title: 'Track your first game',
+                  subtitle: "Search for a game to start watching its price "
+                      "— no Steam account needed.",
                   action: LumaPrimaryButton(
-                    label: 'Connect',
-                    icon: Icons.link_rounded,
-                    onTap: () => showSteamAccountDialog(context),
+                    label: 'Track a game',
+                    icon: Icons.search_rounded,
+                    onTap: () => showSteamGameSearchDialog(context),
                   ),
-                )
-              : StreamData<List<SteamGame>>(
-                  stream: repository.watchLibrary(),
-                  builder: (context, games) {
-                    final visible = _filterAndSort(games);
-                    if (games.isEmpty) {
-                      return LumaEmptyState(
-                        icon: Icons.videogame_asset_off_rounded,
-                        title: 'No games in your library yet',
-                        subtitle:
-                            'Refresh to read your library from Steam again.',
-                        action: LumaPrimaryButton(
-                          label: 'Refresh library',
-                          icon: Icons.refresh_rounded,
-                          loading: repository.syncing,
-                          onTap: repository.syncing
-                              ? null
-                              : repository.refreshLibrary,
-                        ),
-                      );
-                    }
-                    if (visible.isEmpty) {
-                      return LumaEmptyState(
-                        icon: Icons.search_off_rounded,
-                        title: 'No games match "$_query"',
-                        subtitle: 'Try a shorter search.',
-                      );
-                    }
-                    return _GameGrid(games: visible);
-                  },
-                ),
+                );
+              }
+              if (visible.isEmpty) {
+                return LumaEmptyState(
+                  icon: Icons.search_off_rounded,
+                  title: 'No games match "$_query"',
+                  subtitle: 'Try a shorter search.',
+                );
+              }
+              return _GameGrid(games: visible);
+            },
+          ),
         ),
       ],
     );
@@ -224,68 +213,72 @@ class _Toolbar extends StatelessWidget {
                       repository.syncing ? null : repository.refreshLibrary,
                 ),
                 const SizedBox(width: 8),
-                LumaPrimaryButton(
-                  label: repository.refreshingPrices
-                      ? 'Checking…'
-                      : 'Refresh prices',
-                  icon: Icons.price_change_rounded,
-                  onTap: repository.refreshingPrices
-                      ? null
-                      : repository.refreshAllPrices,
-                ),
-                const SizedBox(width: 8),
               ],
+              LumaGhostButton(
+                label: repository.refreshingPrices
+                    ? 'Checking…'
+                    : 'Refresh prices',
+                icon: Icons.price_change_rounded,
+                onTap: repository.refreshingPrices
+                    ? null
+                    : repository.refreshAllPrices,
+              ),
+              const SizedBox(width: 8),
+              LumaPrimaryButton(
+                label: 'Track a game',
+                icon: Icons.search_rounded,
+                onTap: () => showSteamGameSearchDialog(context),
+              ),
+              const SizedBox(width: 8),
               _SettingsButton(
                 onTap: () => showSteamAccountDialog(context),
               ),
             ],
           ),
-          if (connected) ...[
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 40,
-                    child: TextField(
-                      controller: controller,
-                      onChanged: onQuery,
-                      style: TextStyle(color: luma.textPrimary, fontSize: 13),
-                      decoration: InputDecoration(
-                        isDense: true,
-                        hintText: 'Search your library',
-                        hintStyle:
-                            TextStyle(color: luma.textMuted, fontSize: 13),
-                        prefixIcon: Icon(Icons.search_rounded,
-                            size: 18, color: luma.textMuted),
-                        filled: true,
-                        fillColor: luma.surface,
-                        contentPadding: EdgeInsets.zero,
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: luma.border),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: luma.accent),
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: luma.border),
-                        ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 40,
+                  child: TextField(
+                    controller: controller,
+                    onChanged: onQuery,
+                    style: TextStyle(color: luma.textPrimary, fontSize: 13),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      hintText: 'Search tracked games',
+                      hintStyle:
+                          TextStyle(color: luma.textMuted, fontSize: 13),
+                      prefixIcon: Icon(Icons.search_rounded,
+                          size: 18, color: luma.textMuted),
+                      filled: true,
+                      fillColor: luma.surface,
+                      contentPadding: EdgeInsets.zero,
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: luma.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: luma.accent),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: luma.border),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                LumaSegmentedTabs(
-                  tabs: [for (final s in _LibrarySort.values) s.label],
-                  selectedIndex: sort.index,
-                  onSelect: (i) => onSort(_LibrarySort.values[i]),
-                ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(width: 12),
+              LumaSegmentedTabs(
+                tabs: [for (final s in _LibrarySort.values) s.label],
+                selectedIndex: sort.index,
+                onSelect: (i) => onSort(_LibrarySort.values[i]),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -293,9 +286,10 @@ class _Toolbar extends StatelessWidget {
 
   static String _subtitle(bool connected, DateTime? lastSyncAt) {
     if (!connected) {
-      return 'Not connected — add your Steam account to see your library.';
+      return 'Tracking prices — connect a Steam account to bulk-add your '
+          'library too.';
     }
-    if (lastSyncAt == null) return 'Your Steam library, with recorded prices.';
+    if (lastSyncAt == null) return 'Connected. Refresh library to import it.';
     final ago = DateTime.now().difference(lastSyncAt);
     if (ago.inMinutes < 1) return 'Library synced just now.';
     if (ago.inHours < 1) return 'Library synced ${ago.inMinutes} min ago.';
@@ -535,13 +529,18 @@ class _GameTileState extends State<_GameTile> {
                         Row(
                           children: [
                             Expanded(child: _TilePrice(game: game)),
-                            Text(
-                              _playtimeLabel(game.playtimeMinutes),
-                              style: TextStyle(
-                                color: luma.textMuted,
-                                fontSize: 11,
+                            // Playtime only means anything for a game the
+                            // library sync actually confirmed is owned —
+                            // showing "Unplayed" on a searched-and-tracked
+                            // game would wrongly imply it was ever owned.
+                            if (game.owned)
+                              Text(
+                                _playtimeLabel(game.playtimeMinutes),
+                                style: TextStyle(
+                                  color: luma.textMuted,
+                                  fontSize: 11,
+                                ),
                               ),
-                            ),
                           ],
                         ),
                       ],
