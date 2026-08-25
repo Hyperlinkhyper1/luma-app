@@ -39,6 +39,17 @@ LOCK_FILE="$DATA_DIR/deploy.lock"
 STATUS_FILE="$DATA_DIR/deploy.status"
 HEARTBEAT_FILE="$DATA_DIR/deploy.watcher"
 
+# "Check for updates" button (system_updates.dart / UpdateCheckConsole) — a
+# read-only sibling of the deploy request above, handled in the same loop so
+# it shares the heartbeat file. It never touches deploy.lock: a check and a
+# deploy can't collide since neither takes long enough to overlap in
+# practice, and keeping them on separate lock files means a check in flight
+# never makes the deploy button report "already running".
+UPDATE_REQUEST_FILE="$DATA_DIR/update-check.request"
+UPDATE_LOG_FILE="$DATA_DIR/update-check.log"
+UPDATE_LOCK_FILE="$DATA_DIR/update-check.lock"
+UPDATE_DONE_FILE="$DATA_DIR/update-check.done"
+
 # Read LUMA_REPO_PATH from server/.env rather than hardcoding it, so this
 # can never drift from the same value the container's gate check
 # (Api._adminDeploy, via config.repoPathConfigured) is enforcing.
@@ -126,10 +137,34 @@ deploy() {
   docker compose up -d --build luma-sync || return 1
 }
 
+# Read-only: apt package upgrades + graphics driver updates for the host.
+# Runs on the host (not in the luma-sync container) for the same reason
+# `deploy` does — the container's filesystem has nothing to do with the
+# host's installed packages, so an in-container `apt` would just report the
+# container's own minimal image as fully up to date.
+check_updates() {
+  step "Refreshing apt package lists"
+  if command -v sudo >/dev/null 2>&1; then
+    sudo -n apt-get update -qq 2>&1 || echo "(apt-get update needs passwordless sudo — showing the last cached package list instead)"
+  else
+    apt-get update -qq 2>&1 || true
+  fi
+
+  step "Upgradable packages"
+  apt list --upgradable 2>/dev/null | grep -v '^Listing...' || echo "(none, or apt is unavailable on this host)"
+
+  step "Graphics / driver updates"
+  if command -v ubuntu-drivers >/dev/null 2>&1; then
+    ubuntu-drivers devices 2>&1 || echo "ubuntu-drivers failed to run."
+  else
+    echo "ubuntu-drivers-common is not installed — skipping driver check."
+  fi
+}
+
 # systemd restarts this script on failure; a stale lock left behind by a
 # killed run would otherwise make the button answer "a deploy is already in
 # progress" until it aged out.
-rm -f "$LOCK_FILE"
+rm -f "$LOCK_FILE" "$UPDATE_LOCK_FILE"
 
 SELF_HASH="$(script_hash)"
 beat=0
@@ -175,6 +210,16 @@ while true; do
         >> "$LOG_FILE"
       exec "$SCRIPT_DIR/deploy-watcher.sh"
     fi
+  fi
+
+  if [ -f "$UPDATE_REQUEST_FILE" ]; then
+    : 2>/dev/null > "$UPDATE_LOCK_FILE" || true
+    : 2>/dev/null > "$HEARTBEAT_FILE" || true
+    rm -f "$UPDATE_REQUEST_FILE"
+    ( check_updates ) > "$UPDATE_LOG_FILE" 2>&1
+    date -Is > "$UPDATE_DONE_FILE"
+    rm -f "$UPDATE_LOCK_FILE"
+    beat=0
   fi
   sleep 2
 done
