@@ -3,8 +3,12 @@ const { launch, fetchCategories, fetchCategoryPage } = require('./hoogvlietClien
 const { sleep } = require('../util');
 
 const REQUEST_DELAY_MS = 350;
-const PAGE_SIZE = 48;
-const MAX_PAGES_PER_CATEGORY = 40;
+// Hoogvliet's listing endpoint silently caps at 16 tiles per page no matter
+// what PageSize is requested (verified live 2026-08-25) — requesting more
+// just makes every page look "short" and the < PAGE_SIZE stop condition
+// below fires after page 0, truncating every category to ~16 products.
+const PAGE_SIZE = 16;
+const MAX_PAGES_PER_CATEGORY = 120;
 
 function parsePrice(text) {
   if (!text) return null;
