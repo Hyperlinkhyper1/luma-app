@@ -468,11 +468,13 @@ class Api {
       ..get('/admin/stats', _requireAdmin(_adminStats))
       ..get('/admin/metrics', _requireAdmin(_adminMetrics))
       ..get('/admin/metrics/history', _requireAdmin(_adminMetricsHistory))
+      ..get('/admin/storage', _requireAdmin(_adminStorage))
       ..get('/admin/activity', _requireAdmin(_adminActivity))
       ..post('/admin/verify', _requireAdmin(_adminVerifyUser))
       ..post('/admin/revoke', _requireAdmin(_adminRevokeUser))
       ..post('/admin/plan', _requireAdmin(_adminSetPlan))
       ..post('/admin/groceries/sync', _requireAdmin(_adminGroceriesSync))
+      ..post('/admin/groceries/reload', _requireAdmin(_adminGroceriesReload))
       ..get('/admin/groceries/status', _requireAdmin(_adminGroceriesStatus))
       ..post('/admin/ai-models/refresh', _requireAdmin(_adminAiModelsRefresh))
       ..get('/admin/ai-models/status', _requireAdmin(_adminAiModelsStatus))
@@ -3510,6 +3512,142 @@ class Api {
     });
   }
 
+  /// Storage breakdown for the admin dashboard's metrics tab: how many bytes
+  /// each logical "database" (JSON store file or blob/media directory) is
+  /// using on disk. Enables the doughnut chart in the metrics panel.
+  Future<Response> _adminStorage(Request request) async {
+    final root = config.dataDir;
+
+    Future<int> fileBytes(String name) async {
+      try {
+        final f = File('$root/$name');
+        if (!await f.exists()) return 0;
+        return await f.length();
+      } catch (_) {
+        return 0;
+      }
+    }
+
+    Future<int> dirBytes(String name) async {
+      try {
+        final d = Directory('$root/$name');
+        if (!await d.exists()) return 0;
+        var total = 0;
+        await for (final e in d.list(recursive: true, followLinks: false)) {
+          if (e is File) {
+            try {
+              total += await e.length();
+            } catch (_) {}
+          }
+        }
+        return total;
+      } catch (_) {
+        return 0;
+      }
+    }
+
+    final raw = <Map<String, dynamic>>[
+      {'id': 'blobs', 'label': 'Sync blobs', 'bytes': await dirBytes('blobs')},
+      {'id': 'users', 'label': 'Users', 'bytes': await fileBytes('users.json')},
+      {
+        'id': 'sessions',
+        'label': 'Sessions',
+        'bytes': await fileBytes('sessions.json')
+      },
+      {
+        'id': 'collections',
+        'label': 'Collections',
+        'bytes': await fileBytes('collections.json')
+      },
+      {'id': 'activity', 'label': 'Activity', 'bytes': await fileBytes('activity.json')},
+      {
+        'id': 'plugin_downloads',
+        'label': 'Plugin stats',
+        'bytes': await fileBytes('plugin_downloads.json')
+      },
+      {
+        'id': 'metrics_history',
+        'label': 'Metrics history',
+        'bytes': await fileBytes('metrics_history.json')
+      },
+      {'id': 'families', 'label': 'Families', 'bytes': await fileBytes('families.json')},
+      {
+        'id': 'family_members',
+        'label': 'Family members',
+        'bytes': await fileBytes('family_members.json')
+      },
+      {
+        'id': 'family_invites',
+        'label': 'Family invites',
+        'bytes': await fileBytes('family_invites.json')
+      },
+      {
+        'id': 'family_events',
+        'label': 'Shared events',
+        'bytes': await fileBytes('family_shared_events.json')
+      },
+      {'id': 'chat_keys', 'label': 'Chat keys', 'bytes': await fileBytes('chat_keys.json')},
+      {
+        'id': 'chat_invites',
+        'label': 'Chat invites',
+        'bytes': await fileBytes('chat_invites.json')
+      },
+      {
+        'id': 'chat_conversations',
+        'label': 'Chat conversations',
+        'bytes': await fileBytes('chat_conversations.json')
+      },
+      {
+        'id': 'chat_messages',
+        'label': 'Chat messages',
+        'bytes': await fileBytes('chat_messages.json')
+      },
+      {'id': 'recipes', 'label': 'Recipes', 'bytes': await fileBytes('recipes.json')},
+      {
+        'id': 'recipe_reviews',
+        'label': 'Recipe reviews',
+        'bytes': await fileBytes('recipe_reviews.json')
+      },
+      {
+        'id': 'recipe_media',
+        'label': 'Recipe media',
+        'bytes': await dirBytes('recipe_media')
+      },
+      {
+        'id': 'subway_rooms',
+        'label': 'Subway rooms',
+        'bytes': await fileBytes('subway_rooms.json')
+      },
+      {
+        'id': 'subway_state',
+        'label': 'Subway states',
+        'bytes': await dirBytes('subway_state')
+      },
+      {'id': 'ai_models', 'label': 'AI models', 'bytes': await fileBytes('ai_models.json')},
+      {'id': 'ai_usage', 'label': 'AI usage', 'bytes': await fileBytes('ai_usage.json')},
+      {
+        'id': 'admin_sessions',
+        'label': 'Admin sessions',
+        'bytes': await fileBytes('admin_sessions.json')
+      },
+    ];
+
+    // Drop empty stores so the chart doesn't render 20 zero-width slices;
+    // keep at least one entry so the total is still reported.
+    final entries = raw.where((e) => (e['bytes'] as int) > 0).toList()
+      ..sort((a, b) => (b['bytes'] as int).compareTo(a['bytes'] as int));
+
+    final total = raw.fold<int>(0, (s, e) => s + (e['bytes'] as int));
+
+    // If every store is empty (fresh install) report zeros without filtering.
+    final payloadEntries = entries.isEmpty && total == 0 ? raw : entries;
+
+    return jsonResponse(200, {
+      'totalBytes': total,
+      'entries': payloadEntries,
+    });
+  }
+
   /// Persisted activity feed (see Store.logActivity), filtered to the last
   /// [hours] (default 24) and newest first — unlike /admin/metrics this
   /// survives a server restart.
@@ -3654,6 +3792,54 @@ class Api {
     try {
       final upstream = await httpClient
           .postUrl(Uri.parse('${config.groceriesUrl}/admin/sync'));
+      upstream.headers.set('x-admin-key', config.groceriesAdminKey!);
+      upstream.headers.contentType =
+          ContentType('application', 'x-www-form-urlencoded');
+      if (market != null && market.isNotEmpty) {
+        upstream.write('market=${Uri.encodeQueryComponent(market)}');
+      }
+      final response =
+          await upstream.close().timeout(const Duration(seconds: 30));
+      final body = await response.transform(utf8.decoder).join();
+      if (response.statusCode >= 400) {
+        return Response(response.statusCode,
+            body: body, headers: {'Content-Type': 'application/json'});
+      }
+      if (request.headers['x-admin-key'] != null) {
+        return Response(200,
+            body: body, headers: {'Content-Type': 'application/json'});
+      }
+      final key = request.url.queryParameters['key'];
+      final withKey =
+          key != null ? '/admin?key=${Uri.encodeQueryComponent(key)}' : '/admin';
+      return Response.found('$withKey#control');
+    } catch (_) {
+      return errorResponse(
+          502, 'upstream_error', 'Could not reach the groceries server.');
+    } finally {
+      httpClient.close();
+    }
+  }
+
+  /// Wipes and re-fetches the groceries catalog. Unlike [_adminGroceriesSync]
+  /// (incremental), this deletes existing rows for the chosen scope first, so
+  /// stale unavailable products don't linger. Proxied so the groceries admin
+  /// key never leaves this process.
+  Future<Response> _adminGroceriesReload(Request request) async {
+    if (!config.groceriesAdminEnabled) {
+      return errorResponse(404, 'not_configured',
+          'LUMA_GROCERIES_ADMIN_KEY is not set on this server.');
+    }
+    Map<String, String> form = const {};
+    try {
+      form = Uri.splitQueryString(await request.readAsString());
+    } catch (_) {}
+    final market = form['market'];
+
+    final httpClient = HttpClient();
+    try {
+      final upstream = await httpClient
+          .postUrl(Uri.parse('${config.groceriesUrl}/admin/database/reload'));
       upstream.headers.set('x-admin-key', config.groceriesAdminKey!);
       upstream.headers.contentType =
           ContentType('application', 'x-www-form-urlencoded');
@@ -5956,6 +6142,15 @@ if (window.innerWidth <= 900) document.getElementById('pane-write').classList.ad
         '<canvas id="diskGraph" width="280" height="120"></canvas>'
         '<div class="metric-value" id="diskValue">–</div></div>'
         '</div>'
+        '<div class="card" style="margin-top:18px">'
+        '<h2>Storage by database</h2>'
+        '<div class="storage-wrap">'
+        '<div class="storage-chart-box"><canvas id="storageChart" width="220" height="220"></canvas></div>'
+        '<div id="storageLegend" class="storage-legend"></div>'
+        '</div>'
+        '<div class="muted" id="storageTotal" style="margin-top:14px;font-size:12px"></div>'
+        '<div class="muted" id="storageHint" style="margin-top:4px;font-size:11px;color:#6f688a">Each slice is one store file or directory on disk. Zero-byte stores are hidden.</div>'
+        '</div>'
         '</div>'
         '<div class="tab-panel" id="panel-control">'
         '<div class="maint-grid">'
@@ -5964,17 +6159,26 @@ if (window.innerWidth <= 900) document.getElementById('pane-write').classList.ad
         '<div class="maint-desc">Pulls the latest products and prices from '
         'each supermarket, records price changes, and marks products that '
         'disappeared as unavailable.</div>'
-        '<div class="maint-actions">'
+        '<div class="maint-actions" style="align-items:flex-start">'
+        '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start">'
         '<form method="post" action="/admin/groceries/sync" style="margin:0">'
         '<button type="submit" class="btn btn-primary">Sync all markets</button></form>'
+        '<div style="display:flex;gap:6px">'
+        '<button id="groceriesLogBtn" type="button" class="btn btn-ghost btn-sm">'
+        'Show sync log</button>'
+        '<form method="post" action="/admin/groceries/reload" style="margin:0" onsubmit="return confirm(\'Reload the entire groceries database — this deletes all products and re-fetches every market. Continue?\')">'
+        '<button type="submit" class="btn btn-ghost btn-sm" style="color:#e0a0a0;border-color:#4a2a3a">Reload DB</button></form>'
+        '</div>'
+        '</div>'
         '<form method="post" action="/admin/groceries/sync" style="margin:0">'
         '<input type="hidden" name="market" value="jumbo">'
         '<button type="submit" class="btn btn-ghost">Jumbo</button></form>'
         '<form method="post" action="/admin/groceries/sync" style="margin:0">'
         '<input type="hidden" name="market" value="ah">'
         '<button type="submit" class="btn btn-ghost">Albert Heijn</button></form>'
-        '<button id="groceriesLogBtn" type="button" class="btn btn-ghost btn-sm">'
-        'Show log</button>'
+        '<form method="post" action="/admin/groceries/sync" style="margin:0">'
+        '<input type="hidden" name="market" value="hoogvliet">'
+        '<button type="submit" class="btn btn-ghost">Hoogvliet</button></form>'
         '</div>'
         '<div id="groceriesSummary" class="maint-status">Loading groceries '
         'status…</div>'
@@ -6124,6 +6328,16 @@ tbody tr:hover td{background:#181330}
 canvas{display:block;width:100%;height:170px;cursor:crosshair}
 .chart-tip{position:fixed;pointer-events:none;background:#1e1834;border:1px solid #352c55;border-radius:8px;padding:6px 10px;font-size:12px;line-height:1.6;color:#ece8f7;z-index:100;display:none;box-shadow:0 6px 20px rgba(0,0,0,.45);font-variant-numeric:tabular-nums;white-space:nowrap}
 .chart-tip .t{color:#8d86a8;font-size:11px}
+.storage-wrap{display:flex;gap:24px;align-items:center;flex-wrap:wrap}
+.storage-chart-box{flex:0 0 220px;width:220px;height:220px;display:flex;align-items:center;justify-content:center}
+#storageChart{width:220px;height:220px;max-width:220px;max-height:220px;cursor:default}
+.storage-legend{display:flex;flex-direction:column;gap:7px;min-width:220px;flex:1}
+.storage-legend-item{display:flex;align-items:center;gap:8px;font-size:13px;line-height:1.4}
+.storage-legend-swatch{width:12px;height:12px;border-radius:3px;flex-shrink:0;display:inline-block}
+.storage-legend-label{flex:1;color:#ece8f7}
+.storage-legend-value{color:#9b94b3;font-variant-numeric:tabular-nums;white-space:nowrap}
+.storage-legend-pct{color:#6f688a;font-size:11px;min-width:38px;text-align:right}
+@media (max-width:640px){.storage-wrap{flex-direction:column;align-items:flex-start}.storage-legend{width:100%}}
 pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:16px;font-size:12px;line-height:1.55;max-height:400px;overflow:auto;white-space:pre-wrap;word-break:break-all;color:#b9b2d4;margin:0}
 @media (max-width:640px){.wrap{padding:24px 16px 48px}.card{padding:16px}}
 ''';
@@ -6629,12 +6843,174 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
     }
   }
 
+  // ---- Storage doughnut (bytes per database) ---------------------------
+  const STORAGE_COLORS = [
+    '#8a7ee0','#7ee08a','#e0c87e','#e07e7e','#7ec8e0','#c87ee0',
+    '#7ee0c8','#e0a07e','#a07ee0','#e07ea0','#a0c8e0','#c8e07e',
+    '#e0c8a0','#8ae0a0','#a0a0e0','#e08a7e','#8ac87e','#c8a0e0',
+    '#7ea0e0','#e0c87e','#8ae0c8','#a0e0c8',
+  ];
+
+  function drawStorageChart(entries, totalBytes) {
+    const canvas = document.getElementById('storageChart');
+    const legend = document.getElementById('storageLegend');
+    const totalEl = document.getElementById('storageTotal');
+    if (!canvas || !legend || !totalEl) return;
+    if (!entries || !entries.length || totalBytes === 0) {
+      const ctx0 = ensureHiDPI(canvas);
+      if (ctx0) {
+        ctx0.clearRect(0,0,canvas._cssW||220,canvas._cssH||220);
+        ctx0.fillStyle = '#6f688a';
+        ctx0.font = '12px system-ui, sans-serif';
+        ctx0.textAlign = 'center';
+        const w = canvas._cssW || 220, h = canvas._cssH || 220;
+        ctx0.fillText('No storage used yet', w/2, h/2);
+      }
+      legend.innerHTML = '<span class="muted" style="font-size:13px">All stores are empty — data appears here once accounts and content exist.</span>';
+      totalEl.textContent = 'Total: ' + fmtBytes(0);
+      return;
+    }
+    const ctx = ensureHiDPI(canvas);
+    if (!ctx) {
+      // Canvas hidden (tab not active) — still build legend; chart draws on next frame.
+      let html = '';
+      entries.forEach((e, i) => {
+        const color = STORAGE_COLORS[i % STORAGE_COLORS.length];
+        const pct = ((e.bytes / totalBytes) * 100);
+        html += '<div class="storage-legend-item">'
+          + '<span class="storage-legend-swatch" style="background:' + color + '"></span>'
+          + '<span class="storage-legend-label">' + esc(e.label) + '</span>'
+          + '<span class="storage-legend-value">' + esc(fmtBytes(e.bytes)) + '</span>'
+          + '<span class="storage-legend-pct">' + pct.toFixed(1) + '%</span>'
+          + '</div>';
+      });
+      legend.innerHTML = html;
+      totalEl.textContent = 'Total: ' + fmtBytes(totalBytes) + ' across ' + entries.length + ' stores';
+      return;
+    }
+    const w = canvas._cssW, h = canvas._cssH;
+    const cx = w / 2, cy = h / 2;
+    const outerR = Math.min(w, h) / 2 - 6;
+    const innerR = outerR * 0.58;
+    ctx.clearRect(0, 0, w, h);
+
+    let angle = -Math.PI / 2;
+    entries.forEach((e, i) => {
+      const color = STORAGE_COLORS[i % STORAGE_COLORS.length];
+      const slice = (e.bytes / totalBytes) * Math.PI * 2;
+      if (slice <= 0) return;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(angle) * innerR, cy + Math.sin(angle) * innerR);
+      ctx.arc(cx, cy, outerR, angle, angle + slice);
+      ctx.arc(cx, cy, innerR, angle + slice, angle, true);
+      ctx.closePath();
+      ctx.fillStyle = color;
+      ctx.fill();
+      // thin separator between slices
+      ctx.strokeStyle = '#151122';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      // stash slice for hit-test tooltip
+      e._start = angle; e._end = angle + slice; e._color = color;
+      angle += slice;
+    });
+
+    // center label
+    ctx.fillStyle = '#ece8f7';
+    ctx.font = '700 14px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(fmtBytes(totalBytes), cx, cy - 4);
+    ctx.fillStyle = '#8d86a8';
+    ctx.font = '10px system-ui, sans-serif';
+    ctx.fillText('total', cx, cy + 12);
+
+    // legend
+    let html2 = '';
+    entries.forEach((e, i) => {
+      const color = STORAGE_COLORS[i % STORAGE_COLORS.length];
+      const pct = ((e.bytes / totalBytes) * 100);
+      html2 += '<div class="storage-legend-item">'
+        + '<span class="storage-legend-swatch" style="background:' + color + '"></span>'
+        + '<span class="storage-legend-label">' + esc(e.label) + '</span>'
+        + '<span class="storage-legend-value">' + esc(fmtBytes(e.bytes)) + '</span>'
+        + '<span class="storage-legend-pct">' + pct.toFixed(1) + '%</span>'
+        + '</div>';
+    });
+    legend.innerHTML = html2;
+    totalEl.textContent = 'Total: ' + fmtBytes(totalBytes) + ' across ' + entries.length + ' stores';
+
+    // hover tooltip for slices
+    if (!canvas._storageHoverBound) {
+      canvas._storageHoverBound = true;
+      const hoverTip = tip;
+      canvas.addEventListener('mousemove', (ev) => {
+        const rect = canvas.getBoundingClientRect();
+        const x = ev.clientX - rect.left, y = ev.clientY - rect.top;
+        const scaleX = (canvas._cssW || 220) / rect.width;
+        const scaleY = (canvas._cssH || 220) / rect.height;
+        const lx = x * scaleX, ly = y * scaleY;
+        const dx = lx - cx, dy = ly - cy;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < innerR || dist > outerR) { hoverTip.style.display = 'none'; return; }
+        let a = Math.atan2(dy, dx);
+        if (a < -Math.PI/2) a += Math.PI*2;
+        let hit = null;
+        for (const e of entries) {
+          let s = e._start, en = e._end;
+          if (a >= s && a < en) { hit = e; break; }
+        }
+        if (!hit) { hoverTip.style.display = 'none'; return; }
+        const pct2 = ((hit.bytes / totalBytes)*100).toFixed(1);
+        hoverTip.innerHTML = '<div><span style="color:' + hit._color + '">●</span> '
+          + esc(hit.label) + ' <strong>' + esc(fmtBytes(hit.bytes)) + '</strong>'
+          + ' <span class="t">' + pct2 + '%</span></div>';
+        hoverTip.style.display = 'block';
+        const tw = hoverTip.offsetWidth;
+        const left = ev.clientX + 14 + tw > window.innerWidth ? ev.clientX - 14 - tw : ev.clientX + 14;
+        hoverTip.style.left = left + 'px';
+        hoverTip.style.top = (ev.clientY - 12) + 'px';
+      });
+      canvas.addEventListener('mouseleave', () => { hoverTip.style.display = 'none'; });
+    }
+  }
+
+  let storageCache = null;
+  async function loadStorage() {
+    try {
+      const res = await fetch('/admin/storage');
+      if (!res.ok) return;
+      const data = await res.json();
+      storageCache = data;
+      drawStorageChart(data.entries || [], data.totalBytes || 0);
+    } catch (_) {}
+  }
+
+  // Redraw cached storage chart when tab becomes visible (canvas was 0×0 before).
+  const metricsPanel = document.getElementById('panel-metrics');
+  if (metricsPanel) {
+    const obs = new MutationObserver(() => {
+      if (metricsPanel.classList.contains('active') && storageCache) {
+        drawStorageChart(storageCache.entries || [], storageCache.totalBytes || 0);
+      }
+      // also keep live graphs crisp after tab switch
+      redrawAll();
+    });
+    obs.observe(metricsPanel, { attributes: true, attributeFilter: ['class'] });
+    window.addEventListener('resize', () => {
+      if (storageCache) drawStorageChart(storageCache.entries || [], storageCache.totalBytes || 0);
+      redrawAll();
+    });
+  }
+
   loadRange('minute');
   poll();
+  loadStorage();
   setInterval(poll, 2000);
   setInterval(() => {
     if (currentRange !== 'minute') loadRange(currentRange);
   }, 30000);
+  setInterval(loadStorage, 30000);
 })();
 ''';
 
