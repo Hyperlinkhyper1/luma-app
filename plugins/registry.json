@@ -124,7 +124,7 @@
     {
       "id": "steam-tools",
       "name": "Steam Tools",
-      "description": "A hub for your Steam library. Price Tracker lists every game you own and charts its real Steam price history over 1D, 1W, 1M, 6M, 1Y and 5Y — years of it, sourced from IsThereAnyDeal, plus the all-time low. Open a game for its banner, current price and discount, description, tags and full PC system requirements. Your keys stay encrypted on this device: the Steam one goes only to Steam, the IsThereAnyDeal one only to IsThereAnyDeal.",
+      "description": "A hub for your Steam library. Price Tracker lists every game you own and charts its real Steam price history over 1D, 1W, 1M, 6M, 1Y and 5Y — years of it, sourced from IsThereAnyDeal, plus the all-time low. Open a game for its banner, current price and discount, description, tags and full PC system requirements. Your Steam key stays encrypted on this device and goes only to Steam; price history is read through the luma server with your account, so there is no second key to find or paste in.",
       "icon": "sports_esports",
       "category": "Utility",
       "tags": ["Utility", "Gaming", "Shopping"],
@@ -325,7 +325,7 @@
     {
       "id": "roblox-tools",
       "name": "Roblox Tools",
-      "description": "A hub of calculators and helpers for Roblox games, organized by game in a sidebar. Mafia is first: Role Counting takes your lobby size (2-20 players) and shows exactly which roles are in play and how many of each, sourced from the official wiki's role chart.",
+      "description": "A hub of calculators and helpers for Roblox games, organized by game in a sidebar. Mafia is first: Role Counting takes your lobby size (2-20 players) and shows exactly which roles are in play, sourced from the official wiki's role chart. Check off each role as it's claimed during the round and optionally note who claimed it, searched against the wiki's full disguise-name list. Reset clears every claim for the next round.",
       "icon": "sports_esports",
       "category": "Games",
       "tags": ["Games", "Utility"],

@@ -5,6 +5,9 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../settings/sync_section.dart';
+import '../../../../../sync/sync_scope.dart';
+import '../../../../../sync/sync_service.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/steam_database.dart';
 import '../steam_models.dart';
@@ -27,6 +30,7 @@ class SteamGameDetailPage extends StatefulWidget {
 
 class _SteamGameDetailPageState extends State<SteamGameDetailPage> {
   bool _started = false;
+  SyncService? _sync;
 
   @override
   void didChangeDependencies() {
@@ -40,6 +44,23 @@ class _SteamGameDetailPageState extends State<SteamGameDetailPage> {
     final repository = SteamScope.of(context);
     repository.ensureDetails(widget.appId);
     repository.ensureHistory(widget.appId);
+
+    // Price history needs a signed-in account; if the user signs in from the
+    // prompt below while this page is open, fetch it immediately rather than
+    // waiting for the next visit. ensureHistory already no-ops when nothing
+    // changed, so re-calling it on every sync event is cheap.
+    _sync = SyncScope.of(context)..addListener(_onSyncChanged);
+  }
+
+  void _onSyncChanged() {
+    if (!mounted) return;
+    SteamScope.of(context).ensureHistory(widget.appId);
+  }
+
+  @override
+  void dispose() {
+    _sync?.removeListener(_onSyncChanged);
+    super.dispose();
   }
 
   @override
@@ -119,19 +140,29 @@ class _DetailBody extends StatelessWidget {
                     children: [
                       _PriceCard(game: game, repository: repository),
                       const SizedBox(height: 16),
-                      StreamBuilder<List<SteamPricePoint>>(
-                        stream: repository.watchPriceHistory(game.appId),
-                        builder: (context, snapshot) => SteamPriceHistoryCard(
-                          points: snapshot.data ?? const [],
-                          fallbackCurrency: game.currency ?? 'USD',
-                          loading: repository.isFetchingHistory(game.appId) ||
-                              snapshot.connectionState ==
-                                  ConnectionState.waiting,
-                          hasItadKey: repository.hasItadKey,
-                          lowestEverCents: game.lowestEverCents,
-                          lowestEverAt: game.lowestEverAt,
-                          onAddItadKey: () =>
-                              _promptForItadKey(context, game.appId),
+                      // Merged so the card reacts to both a fetch starting
+                      // or finishing (repository) and a sign-in happening
+                      // (sync) — either alone would leave the other stale.
+                      ListenableBuilder(
+                        listenable:
+                            Listenable.merge([repository, SyncScope.of(context)]),
+                        builder: (context, _) =>
+                            StreamBuilder<List<SteamPricePoint>>(
+                          stream: repository.watchPriceHistory(game.appId),
+                          builder: (context, snapshot) =>
+                              SteamPriceHistoryCard(
+                            points: snapshot.data ?? const [],
+                            fallbackCurrency: game.currency ?? 'USD',
+                            loading:
+                                repository.isFetchingHistory(game.appId) ||
+                                    snapshot.connectionState ==
+                                        ConnectionState.waiting,
+                            canFetchHistory: repository.canFetchHistory,
+                            lowestEverCents: game.lowestEverCents,
+                            lowestEverAt: game.lowestEverAt,
+                            onSignIn: () => showAccountSetupDialog(
+                                context, SyncScope.of(context)),
+                          ),
                         ),
                       ),
                       if (game.shortDescription?.isNotEmpty ?? false) ...[
@@ -160,23 +191,6 @@ class _DetailBody extends StatelessWidget {
         const _BackButton(),
       ],
     );
-  }
-
-  /// Collects an IsThereAnyDeal key without sending the user back to the
-  /// connect screen, which would mean disconnecting Steam to add an optional
-  /// extra.
-  static Future<void> _promptForItadKey(
-    BuildContext context,
-    int appId,
-  ) async {
-    final repository = SteamScope.of(context);
-    final key = await showDialog<String>(
-      context: context,
-      builder: (_) => const _ItadKeyDialog(),
-    );
-    if (key == null || key.trim().isEmpty) return;
-    await repository.saveItadKey(key);
-    await repository.ensureHistory(appId, force: true);
   }
 
   static List<String> _tagsOf(SteamGame game) {
@@ -791,106 +805,6 @@ class _FactsCard extends StatelessWidget {
   }
 }
 
-/// Collects an IsThereAnyDeal key. Obscured by default with a reveal
-/// toggle, like every other key field in the app.
-class _ItadKeyDialog extends StatefulWidget {
-  const _ItadKeyDialog();
-
-  @override
-  State<_ItadKeyDialog> createState() => _ItadKeyDialogState();
-}
-
-class _ItadKeyDialogState extends State<_ItadKeyDialog> {
-  final _controller = TextEditingController();
-  bool _show = false;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _submit() => Navigator.of(context).pop(_controller.text);
-
-  @override
-  Widget build(BuildContext context) {
-    final luma = context.luma;
-    return AlertDialog(
-      backgroundColor: luma.surface,
-      title: Text(
-        'IsThereAnyDeal key',
-        style: TextStyle(color: luma.textPrimary, fontSize: 16),
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Price history comes from IsThereAnyDeal. The key is free, stays '
-            'encrypted on this device, and is sent only to them.',
-            style: TextStyle(
-              color: luma.textSecondary,
-              fontSize: 12.5,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 14),
-          TextField(
-            controller: _controller,
-            autofocus: true,
-            obscureText: !_show,
-            autocorrect: false,
-            enableSuggestions: false,
-            style: TextStyle(color: luma.textPrimary, fontSize: 13),
-            decoration: InputDecoration(
-              isDense: true,
-              labelText: 'API key',
-              labelStyle: TextStyle(color: luma.textMuted, fontSize: 13),
-              filled: true,
-              fillColor: luma.background,
-              suffixIcon: IconButton(
-                onPressed: () => setState(() => _show = !_show),
-                icon: Icon(
-                  _show
-                      ? Icons.visibility_off_rounded
-                      : Icons.visibility_rounded,
-                  size: 18,
-                  color: luma.textMuted,
-                ),
-                tooltip: _show ? 'Hide key' : 'Show key',
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: luma.border),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: luma.accent),
-              ),
-            ),
-            onSubmitted: (_) => _submit(),
-          ),
-          const SizedBox(height: 10),
-          LumaGhostButton(
-            label: 'Get a key',
-            icon: Icons.open_in_new_rounded,
-            onTap: () => launchUrl(
-              Uri.parse('https://isthereanydeal.com/apps/'),
-              mode: LaunchMode.externalApplication,
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text('Cancel', style: TextStyle(color: luma.textMuted)),
-        ),
-        LumaPrimaryButton(label: 'Save', onTap: _submit),
-      ],
-    );
-  }
-}
 
 class _CardTitle extends StatelessWidget {
   const _CardTitle({required this.icon, required this.label});

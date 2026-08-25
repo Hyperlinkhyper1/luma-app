@@ -24,25 +24,26 @@ class SteamPriceHistoryCard extends StatefulWidget {
     required this.points,
     required this.fallbackCurrency,
     this.loading = false,
-    this.hasItadKey = true,
+    this.canFetchHistory = true,
     this.lowestEverCents,
     this.lowestEverAt,
-    this.onAddItadKey,
+    this.onSignIn,
   });
 
   final List<SteamPricePoint> points;
   final String fallbackCurrency;
   final bool loading;
 
-  /// Without a key there is no history to draw, so the card offers a way to
-  /// add one instead of showing an empty chart with no explanation.
-  final bool hasItadKey;
+  /// Price history is read through the luma server, so without a signed-in
+  /// account there is nothing to draw — the card offers a way to sign in
+  /// instead of showing an empty chart with no explanation.
+  final bool canFetchHistory;
 
   /// The all-time low across the whole record, not just the shown window.
   final int? lowestEverCents;
   final DateTime? lowestEverAt;
 
-  final VoidCallback? onAddItadKey;
+  final VoidCallback? onSignIn;
 
   @override
   State<SteamPriceHistoryCard> createState() => _SteamPriceHistoryCardState();
@@ -92,15 +93,15 @@ class _SteamPriceHistoryCardState extends State<SteamPriceHistoryCard> {
           const SizedBox(height: 16),
           SizedBox(
             height: 220,
-            child: !widget.hasItadKey
-                ? _NeedsKey(onAdd: widget.onAddItadKey)
+            child: !widget.canFetchHistory
+                ? _NeedsAccount(onSignIn: widget.onSignIn)
                 : widget.loading && widget.points.isEmpty
                     ? const _ChartSkeleton()
                     : series.isEmpty
                         ? _ChartEmpty(range: _range)
                         : _PriceChart(series: series),
           ),
-          if (widget.hasItadKey && !series.isEmpty) ...[
+          if (widget.canFetchHistory && !series.isEmpty) ...[
             const SizedBox(height: 14),
             _SeriesSummary(
               series: series,
@@ -483,12 +484,14 @@ class _HistoryNote extends StatelessWidget {
   }
 }
 
-/// Shown in place of the chart when no IsThereAnyDeal key has been added.
-/// The library and store details work without one; only history needs it.
-class _NeedsKey extends StatelessWidget {
-  const _NeedsKey({this.onAdd});
+/// Shown in place of the chart when this device has no signed-in luma
+/// account. The library and store details work without one; only history
+/// needs it, since that is what the server's IsThereAnyDeal proxy is gated
+/// behind — no separate key for the user to find or paste in here.
+class _NeedsAccount extends StatelessWidget {
+  const _NeedsAccount({this.onSignIn});
 
-  final VoidCallback? onAdd;
+  final VoidCallback? onSignIn;
 
   @override
   Widget build(BuildContext context) {
@@ -499,10 +502,10 @@ class _NeedsKey extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.key_rounded, size: 26, color: luma.textMuted),
+            Icon(Icons.person_outline_rounded, size: 26, color: luma.textMuted),
             const SizedBox(height: 10),
             Text(
-              'Add an IsThereAnyDeal key for price history',
+              'Sign in for price history',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: luma.textSecondary,
@@ -512,8 +515,9 @@ class _NeedsKey extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Steam only publishes what a game costs today. '
-              'IsThereAnyDeal has the years behind it.',
+              'Steam only publishes what a game costs today. A signed-in '
+              'luma account reads the years behind it — no extra key to '
+              'find or paste in.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: luma.textMuted,
@@ -521,12 +525,12 @@ class _NeedsKey extends StatelessWidget {
                 height: 1.45,
               ),
             ),
-            if (onAdd != null) ...[
+            if (onSignIn != null) ...[
               const SizedBox(height: 14),
               LumaPrimaryButton(
-                label: 'Add key',
-                icon: Icons.key_rounded,
-                onTap: onAdd,
+                label: 'Sign in',
+                icon: Icons.person_add_rounded,
+                onTap: onSignIn,
               ),
             ],
           ],
