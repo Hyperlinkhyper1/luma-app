@@ -6,13 +6,17 @@ import '../../../../../theme/luma_theme.dart';
 import '../steam_scope.dart';
 
 const _apiKeyUrl = 'https://steamcommunity.com/dev/apikey';
+const _itadKeyUrl = 'https://isthereanydeal.com/apps/';
 
-/// Asks for the Steam Web API key and account id, and explains why both are
-/// needed before asking for either.
+/// Asks for the credentials this plugin needs, and explains why before
+/// asking for any of them.
 ///
-/// Which games an account owns is private, so unlike the store pages this
-/// plugin reads, the library cannot be fetched anonymously. Both values stay
-/// on this device, encrypted at rest, and are sent only to Steam.
+/// Two services are involved and only the first is required. Which games an
+/// account owns is private, so the library cannot be fetched anonymously —
+/// that needs a Steam key and id. Price history needs an IsThereAnyDeal key,
+/// because Steam publishes only today's price; skip it and everything except
+/// the chart still works. All three stay on this device, encrypted at rest,
+/// and each is sent only to the service it belongs to.
 class SteamConnectView extends StatefulWidget {
   const SteamConnectView({super.key});
 
@@ -23,10 +27,12 @@ class SteamConnectView extends StatefulWidget {
 class _SteamConnectViewState extends State<SteamConnectView> {
   final _keyController = TextEditingController();
   final _idController = TextEditingController();
+  final _itadController = TextEditingController();
   final _keyFocus = FocusNode();
   final _idFocus = FocusNode();
 
   bool _showKey = false;
+  bool _showItadKey = false;
   String? _keyError;
   String? _idError;
 
@@ -34,6 +40,7 @@ class _SteamConnectViewState extends State<SteamConnectView> {
   void dispose() {
     _keyController.dispose();
     _idController.dispose();
+    _itadController.dispose();
     _keyFocus.dispose();
     _idFocus.dispose();
     super.dispose();
@@ -60,7 +67,11 @@ class _SteamConnectViewState extends State<SteamConnectView> {
       return;
     }
 
-    await repository.connect(apiKey: key, steamIdOrUrl: id);
+    await repository.connect(
+      apiKey: key,
+      steamIdOrUrl: id,
+      itadKey: _itadController.text,
+    );
   }
 
   @override
@@ -175,6 +186,46 @@ class _SteamConnectViewState extends State<SteamConnectView> {
                     },
                   ),
                 ),
+                const SizedBox(height: 18),
+                _Field(
+                  label: 'IsThereAnyDeal API key (optional)',
+                  helper:
+                      'Needed for price history. Steam only publishes today’s price.',
+                  child: TextField(
+                    controller: _itadController,
+                    obscureText: !_showItadKey,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    style: TextStyle(color: luma.textPrimary, fontSize: 13),
+                    decoration: _decoration(
+                      context,
+                      hint: 'Leave empty to skip price history',
+                      hasError: false,
+                      suffix: IconButton(
+                        onPressed: () =>
+                            setState(() => _showItadKey = !_showItadKey),
+                        icon: Icon(
+                          _showItadKey
+                              ? Icons.visibility_off_rounded
+                              : Icons.visibility_rounded,
+                          size: 18,
+                          color: luma.textMuted,
+                        ),
+                        tooltip: _showItadKey ? 'Hide key' : 'Show key',
+                      ),
+                    ),
+                    onSubmitted: (_) => _connect(),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                LumaGhostButton(
+                  label: 'Get a key from IsThereAnyDeal',
+                  icon: Icons.open_in_new_rounded,
+                  onTap: () => launchUrl(
+                    Uri.parse(_itadKeyUrl),
+                    mode: LaunchMode.externalApplication,
+                  ),
+                ),
                 if (repository.error case final message?) ...[
                   const SizedBox(height: 16),
                   _ErrorBanner(message: message),
@@ -204,8 +255,10 @@ class _SteamConnectViewState extends State<SteamConnectView> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Your key is stored encrypted on this device and is '
-                          'sent only to Steam — never to a luma server.',
+                          'Both keys are stored encrypted on this device. The '
+                          'Steam key goes only to Steam and the '
+                          'IsThereAnyDeal key only to IsThereAnyDeal — never '
+                          'to a luma server.',
                           style: TextStyle(
                             color: luma.textSecondary,
                             fontSize: 11.5,

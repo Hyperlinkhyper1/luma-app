@@ -247,6 +247,64 @@ class $SteamGamesTable extends SteamGames
         type: DriftSqlType.dateTime,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _itadIdMeta = const VerificationMeta('itadId');
+  @override
+  late final GeneratedColumn<String> itadId = GeneratedColumn<String>(
+    'itad_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _itadUnknownMeta = const VerificationMeta(
+    'itadUnknown',
+  );
+  @override
+  late final GeneratedColumn<bool> itadUnknown = GeneratedColumn<bool>(
+    'itad_unknown',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("itad_unknown" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _lowestEverCentsMeta = const VerificationMeta(
+    'lowestEverCents',
+  );
+  @override
+  late final GeneratedColumn<int> lowestEverCents = GeneratedColumn<int>(
+    'lowest_ever_cents',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lowestEverAtMeta = const VerificationMeta(
+    'lowestEverAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lowestEverAt = GeneratedColumn<DateTime>(
+    'lowest_ever_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _historyFetchedAtMeta = const VerificationMeta(
+    'historyFetchedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> historyFetchedAt =
+      GeneratedColumn<DateTime>(
+        'history_fetched_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     appId,
@@ -270,6 +328,11 @@ class $SteamGamesTable extends SteamGames
     lastDiscountPercent,
     currency,
     detailsFetchedAt,
+    itadId,
+    itadUnknown,
+    lowestEverCents,
+    lowestEverAt,
+    historyFetchedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -441,6 +504,48 @@ class $SteamGamesTable extends SteamGames
         ),
       );
     }
+    if (data.containsKey('itad_id')) {
+      context.handle(
+        _itadIdMeta,
+        itadId.isAcceptableOrUnknown(data['itad_id']!, _itadIdMeta),
+      );
+    }
+    if (data.containsKey('itad_unknown')) {
+      context.handle(
+        _itadUnknownMeta,
+        itadUnknown.isAcceptableOrUnknown(
+          data['itad_unknown']!,
+          _itadUnknownMeta,
+        ),
+      );
+    }
+    if (data.containsKey('lowest_ever_cents')) {
+      context.handle(
+        _lowestEverCentsMeta,
+        lowestEverCents.isAcceptableOrUnknown(
+          data['lowest_ever_cents']!,
+          _lowestEverCentsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('lowest_ever_at')) {
+      context.handle(
+        _lowestEverAtMeta,
+        lowestEverAt.isAcceptableOrUnknown(
+          data['lowest_ever_at']!,
+          _lowestEverAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('history_fetched_at')) {
+      context.handle(
+        _historyFetchedAtMeta,
+        historyFetchedAt.isAcceptableOrUnknown(
+          data['history_fetched_at']!,
+          _historyFetchedAtMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -534,6 +639,26 @@ class $SteamGamesTable extends SteamGames
         DriftSqlType.dateTime,
         data['${effectivePrefix}details_fetched_at'],
       ),
+      itadId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}itad_id'],
+      ),
+      itadUnknown: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}itad_unknown'],
+      )!,
+      lowestEverCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}lowest_ever_cents'],
+      ),
+      lowestEverAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}lowest_ever_at'],
+      ),
+      historyFetchedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}history_fetched_at'],
+      ),
     );
   }
 
@@ -574,6 +699,20 @@ class SteamGame extends DataClass implements Insertable<SteamGame> {
 
   /// When the store page was last read. Null means "never".
   final DateTime? detailsFetchedAt;
+
+  /// IsThereAnyDeal's own UUID for this game, resolved once from the Steam
+  /// app id and then reused — the lookup is a whole extra round trip.
+  /// Null means "not looked up"; [itadUnknown] distinguishes that from
+  /// "looked up, and ITAD does not carry it".
+  final String? itadId;
+  final bool itadUnknown;
+
+  /// The all-time low ITAD has on record, and when it happened.
+  final int? lowestEverCents;
+  final DateTime? lowestEverAt;
+
+  /// When the price history was last pulled from ITAD.
+  final DateTime? historyFetchedAt;
   const SteamGame({
     required this.appId,
     required this.name,
@@ -596,6 +735,11 @@ class SteamGame extends DataClass implements Insertable<SteamGame> {
     this.lastDiscountPercent,
     this.currency,
     this.detailsFetchedAt,
+    this.itadId,
+    required this.itadUnknown,
+    this.lowestEverCents,
+    this.lowestEverAt,
+    this.historyFetchedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -649,6 +793,19 @@ class SteamGame extends DataClass implements Insertable<SteamGame> {
     if (!nullToAbsent || detailsFetchedAt != null) {
       map['details_fetched_at'] = Variable<DateTime>(detailsFetchedAt);
     }
+    if (!nullToAbsent || itadId != null) {
+      map['itad_id'] = Variable<String>(itadId);
+    }
+    map['itad_unknown'] = Variable<bool>(itadUnknown);
+    if (!nullToAbsent || lowestEverCents != null) {
+      map['lowest_ever_cents'] = Variable<int>(lowestEverCents);
+    }
+    if (!nullToAbsent || lowestEverAt != null) {
+      map['lowest_ever_at'] = Variable<DateTime>(lowestEverAt);
+    }
+    if (!nullToAbsent || historyFetchedAt != null) {
+      map['history_fetched_at'] = Variable<DateTime>(historyFetchedAt);
+    }
     return map;
   }
 
@@ -701,6 +858,19 @@ class SteamGame extends DataClass implements Insertable<SteamGame> {
       detailsFetchedAt: detailsFetchedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(detailsFetchedAt),
+      itadId: itadId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(itadId),
+      itadUnknown: Value(itadUnknown),
+      lowestEverCents: lowestEverCents == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lowestEverCents),
+      lowestEverAt: lowestEverAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lowestEverAt),
+      historyFetchedAt: historyFetchedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(historyFetchedAt),
     );
   }
 
@@ -735,6 +905,13 @@ class SteamGame extends DataClass implements Insertable<SteamGame> {
       detailsFetchedAt: serializer.fromJson<DateTime?>(
         json['detailsFetchedAt'],
       ),
+      itadId: serializer.fromJson<String?>(json['itadId']),
+      itadUnknown: serializer.fromJson<bool>(json['itadUnknown']),
+      lowestEverCents: serializer.fromJson<int?>(json['lowestEverCents']),
+      lowestEverAt: serializer.fromJson<DateTime?>(json['lowestEverAt']),
+      historyFetchedAt: serializer.fromJson<DateTime?>(
+        json['historyFetchedAt'],
+      ),
     );
   }
   @override
@@ -762,6 +939,11 @@ class SteamGame extends DataClass implements Insertable<SteamGame> {
       'lastDiscountPercent': serializer.toJson<int?>(lastDiscountPercent),
       'currency': serializer.toJson<String?>(currency),
       'detailsFetchedAt': serializer.toJson<DateTime?>(detailsFetchedAt),
+      'itadId': serializer.toJson<String?>(itadId),
+      'itadUnknown': serializer.toJson<bool>(itadUnknown),
+      'lowestEverCents': serializer.toJson<int?>(lowestEverCents),
+      'lowestEverAt': serializer.toJson<DateTime?>(lowestEverAt),
+      'historyFetchedAt': serializer.toJson<DateTime?>(historyFetchedAt),
     };
   }
 
@@ -787,6 +969,11 @@ class SteamGame extends DataClass implements Insertable<SteamGame> {
     Value<int?> lastDiscountPercent = const Value.absent(),
     Value<String?> currency = const Value.absent(),
     Value<DateTime?> detailsFetchedAt = const Value.absent(),
+    Value<String?> itadId = const Value.absent(),
+    bool? itadUnknown,
+    Value<int?> lowestEverCents = const Value.absent(),
+    Value<DateTime?> lowestEverAt = const Value.absent(),
+    Value<DateTime?> historyFetchedAt = const Value.absent(),
   }) => SteamGame(
     appId: appId ?? this.appId,
     name: name ?? this.name,
@@ -821,6 +1008,15 @@ class SteamGame extends DataClass implements Insertable<SteamGame> {
     detailsFetchedAt: detailsFetchedAt.present
         ? detailsFetchedAt.value
         : this.detailsFetchedAt,
+    itadId: itadId.present ? itadId.value : this.itadId,
+    itadUnknown: itadUnknown ?? this.itadUnknown,
+    lowestEverCents: lowestEverCents.present
+        ? lowestEverCents.value
+        : this.lowestEverCents,
+    lowestEverAt: lowestEverAt.present ? lowestEverAt.value : this.lowestEverAt,
+    historyFetchedAt: historyFetchedAt.present
+        ? historyFetchedAt.value
+        : this.historyFetchedAt,
   );
   SteamGame copyWithCompanion(SteamGamesCompanion data) {
     return SteamGame(
@@ -871,6 +1067,19 @@ class SteamGame extends DataClass implements Insertable<SteamGame> {
       detailsFetchedAt: data.detailsFetchedAt.present
           ? data.detailsFetchedAt.value
           : this.detailsFetchedAt,
+      itadId: data.itadId.present ? data.itadId.value : this.itadId,
+      itadUnknown: data.itadUnknown.present
+          ? data.itadUnknown.value
+          : this.itadUnknown,
+      lowestEverCents: data.lowestEverCents.present
+          ? data.lowestEverCents.value
+          : this.lowestEverCents,
+      lowestEverAt: data.lowestEverAt.present
+          ? data.lowestEverAt.value
+          : this.lowestEverAt,
+      historyFetchedAt: data.historyFetchedAt.present
+          ? data.historyFetchedAt.value
+          : this.historyFetchedAt,
     );
   }
 
@@ -897,7 +1106,12 @@ class SteamGame extends DataClass implements Insertable<SteamGame> {
           ..write('lastInitialCents: $lastInitialCents, ')
           ..write('lastDiscountPercent: $lastDiscountPercent, ')
           ..write('currency: $currency, ')
-          ..write('detailsFetchedAt: $detailsFetchedAt')
+          ..write('detailsFetchedAt: $detailsFetchedAt, ')
+          ..write('itadId: $itadId, ')
+          ..write('itadUnknown: $itadUnknown, ')
+          ..write('lowestEverCents: $lowestEverCents, ')
+          ..write('lowestEverAt: $lowestEverAt, ')
+          ..write('historyFetchedAt: $historyFetchedAt')
           ..write(')'))
         .toString();
   }
@@ -925,6 +1139,11 @@ class SteamGame extends DataClass implements Insertable<SteamGame> {
     lastDiscountPercent,
     currency,
     detailsFetchedAt,
+    itadId,
+    itadUnknown,
+    lowestEverCents,
+    lowestEverAt,
+    historyFetchedAt,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -950,7 +1169,12 @@ class SteamGame extends DataClass implements Insertable<SteamGame> {
           other.lastInitialCents == this.lastInitialCents &&
           other.lastDiscountPercent == this.lastDiscountPercent &&
           other.currency == this.currency &&
-          other.detailsFetchedAt == this.detailsFetchedAt);
+          other.detailsFetchedAt == this.detailsFetchedAt &&
+          other.itadId == this.itadId &&
+          other.itadUnknown == this.itadUnknown &&
+          other.lowestEverCents == this.lowestEverCents &&
+          other.lowestEverAt == this.lowestEverAt &&
+          other.historyFetchedAt == this.historyFetchedAt);
 }
 
 class SteamGamesCompanion extends UpdateCompanion<SteamGame> {
@@ -975,6 +1199,11 @@ class SteamGamesCompanion extends UpdateCompanion<SteamGame> {
   final Value<int?> lastDiscountPercent;
   final Value<String?> currency;
   final Value<DateTime?> detailsFetchedAt;
+  final Value<String?> itadId;
+  final Value<bool> itadUnknown;
+  final Value<int?> lowestEverCents;
+  final Value<DateTime?> lowestEverAt;
+  final Value<DateTime?> historyFetchedAt;
   const SteamGamesCompanion({
     this.appId = const Value.absent(),
     this.name = const Value.absent(),
@@ -997,6 +1226,11 @@ class SteamGamesCompanion extends UpdateCompanion<SteamGame> {
     this.lastDiscountPercent = const Value.absent(),
     this.currency = const Value.absent(),
     this.detailsFetchedAt = const Value.absent(),
+    this.itadId = const Value.absent(),
+    this.itadUnknown = const Value.absent(),
+    this.lowestEverCents = const Value.absent(),
+    this.lowestEverAt = const Value.absent(),
+    this.historyFetchedAt = const Value.absent(),
   });
   SteamGamesCompanion.insert({
     this.appId = const Value.absent(),
@@ -1020,6 +1254,11 @@ class SteamGamesCompanion extends UpdateCompanion<SteamGame> {
     this.lastDiscountPercent = const Value.absent(),
     this.currency = const Value.absent(),
     this.detailsFetchedAt = const Value.absent(),
+    this.itadId = const Value.absent(),
+    this.itadUnknown = const Value.absent(),
+    this.lowestEverCents = const Value.absent(),
+    this.lowestEverAt = const Value.absent(),
+    this.historyFetchedAt = const Value.absent(),
   }) : name = Value(name);
   static Insertable<SteamGame> custom({
     Expression<int>? appId,
@@ -1043,6 +1282,11 @@ class SteamGamesCompanion extends UpdateCompanion<SteamGame> {
     Expression<int>? lastDiscountPercent,
     Expression<String>? currency,
     Expression<DateTime>? detailsFetchedAt,
+    Expression<String>? itadId,
+    Expression<bool>? itadUnknown,
+    Expression<int>? lowestEverCents,
+    Expression<DateTime>? lowestEverAt,
+    Expression<DateTime>? historyFetchedAt,
   }) {
     return RawValuesInsertable({
       if (appId != null) 'app_id': appId,
@@ -1067,6 +1311,11 @@ class SteamGamesCompanion extends UpdateCompanion<SteamGame> {
         'last_discount_percent': lastDiscountPercent,
       if (currency != null) 'currency': currency,
       if (detailsFetchedAt != null) 'details_fetched_at': detailsFetchedAt,
+      if (itadId != null) 'itad_id': itadId,
+      if (itadUnknown != null) 'itad_unknown': itadUnknown,
+      if (lowestEverCents != null) 'lowest_ever_cents': lowestEverCents,
+      if (lowestEverAt != null) 'lowest_ever_at': lowestEverAt,
+      if (historyFetchedAt != null) 'history_fetched_at': historyFetchedAt,
     });
   }
 
@@ -1092,6 +1341,11 @@ class SteamGamesCompanion extends UpdateCompanion<SteamGame> {
     Value<int?>? lastDiscountPercent,
     Value<String?>? currency,
     Value<DateTime?>? detailsFetchedAt,
+    Value<String?>? itadId,
+    Value<bool>? itadUnknown,
+    Value<int?>? lowestEverCents,
+    Value<DateTime?>? lowestEverAt,
+    Value<DateTime?>? historyFetchedAt,
   }) {
     return SteamGamesCompanion(
       appId: appId ?? this.appId,
@@ -1115,6 +1369,11 @@ class SteamGamesCompanion extends UpdateCompanion<SteamGame> {
       lastDiscountPercent: lastDiscountPercent ?? this.lastDiscountPercent,
       currency: currency ?? this.currency,
       detailsFetchedAt: detailsFetchedAt ?? this.detailsFetchedAt,
+      itadId: itadId ?? this.itadId,
+      itadUnknown: itadUnknown ?? this.itadUnknown,
+      lowestEverCents: lowestEverCents ?? this.lowestEverCents,
+      lowestEverAt: lowestEverAt ?? this.lowestEverAt,
+      historyFetchedAt: historyFetchedAt ?? this.historyFetchedAt,
     );
   }
 
@@ -1184,6 +1443,21 @@ class SteamGamesCompanion extends UpdateCompanion<SteamGame> {
     if (detailsFetchedAt.present) {
       map['details_fetched_at'] = Variable<DateTime>(detailsFetchedAt.value);
     }
+    if (itadId.present) {
+      map['itad_id'] = Variable<String>(itadId.value);
+    }
+    if (itadUnknown.present) {
+      map['itad_unknown'] = Variable<bool>(itadUnknown.value);
+    }
+    if (lowestEverCents.present) {
+      map['lowest_ever_cents'] = Variable<int>(lowestEverCents.value);
+    }
+    if (lowestEverAt.present) {
+      map['lowest_ever_at'] = Variable<DateTime>(lowestEverAt.value);
+    }
+    if (historyFetchedAt.present) {
+      map['history_fetched_at'] = Variable<DateTime>(historyFetchedAt.value);
+    }
     return map;
   }
 
@@ -1210,7 +1484,12 @@ class SteamGamesCompanion extends UpdateCompanion<SteamGame> {
           ..write('lastInitialCents: $lastInitialCents, ')
           ..write('lastDiscountPercent: $lastDiscountPercent, ')
           ..write('currency: $currency, ')
-          ..write('detailsFetchedAt: $detailsFetchedAt')
+          ..write('detailsFetchedAt: $detailsFetchedAt, ')
+          ..write('itadId: $itadId, ')
+          ..write('itadUnknown: $itadUnknown, ')
+          ..write('lowestEverCents: $lowestEverCents, ')
+          ..write('lowestEverAt: $lowestEverAt, ')
+          ..write('historyFetchedAt: $historyFetchedAt')
           ..write(')'))
         .toString();
   }
@@ -1720,6 +1999,11 @@ typedef $$SteamGamesTableCreateCompanionBuilder =
       Value<int?> lastDiscountPercent,
       Value<String?> currency,
       Value<DateTime?> detailsFetchedAt,
+      Value<String?> itadId,
+      Value<bool> itadUnknown,
+      Value<int?> lowestEverCents,
+      Value<DateTime?> lowestEverAt,
+      Value<DateTime?> historyFetchedAt,
     });
 typedef $$SteamGamesTableUpdateCompanionBuilder =
     SteamGamesCompanion Function({
@@ -1744,6 +2028,11 @@ typedef $$SteamGamesTableUpdateCompanionBuilder =
       Value<int?> lastDiscountPercent,
       Value<String?> currency,
       Value<DateTime?> detailsFetchedAt,
+      Value<String?> itadId,
+      Value<bool> itadUnknown,
+      Value<int?> lowestEverCents,
+      Value<DateTime?> lowestEverAt,
+      Value<DateTime?> historyFetchedAt,
     });
 
 class $$SteamGamesTableFilterComposer
@@ -1857,6 +2146,31 @@ class $$SteamGamesTableFilterComposer
 
   ColumnFilters<DateTime> get detailsFetchedAt => $composableBuilder(
     column: $table.detailsFetchedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get itadId => $composableBuilder(
+    column: $table.itadId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get itadUnknown => $composableBuilder(
+    column: $table.itadUnknown,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lowestEverCents => $composableBuilder(
+    column: $table.lowestEverCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lowestEverAt => $composableBuilder(
+    column: $table.lowestEverAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get historyFetchedAt => $composableBuilder(
+    column: $table.historyFetchedAt,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -1974,6 +2288,31 @@ class $$SteamGamesTableOrderingComposer
     column: $table.detailsFetchedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get itadId => $composableBuilder(
+    column: $table.itadId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get itadUnknown => $composableBuilder(
+    column: $table.itadUnknown,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lowestEverCents => $composableBuilder(
+    column: $table.lowestEverCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lowestEverAt => $composableBuilder(
+    column: $table.lowestEverAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get historyFetchedAt => $composableBuilder(
+    column: $table.historyFetchedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SteamGamesTableAnnotationComposer
@@ -2073,6 +2412,29 @@ class $$SteamGamesTableAnnotationComposer
     column: $table.detailsFetchedAt,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get itadId =>
+      $composableBuilder(column: $table.itadId, builder: (column) => column);
+
+  GeneratedColumn<bool> get itadUnknown => $composableBuilder(
+    column: $table.itadUnknown,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get lowestEverCents => $composableBuilder(
+    column: $table.lowestEverCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lowestEverAt => $composableBuilder(
+    column: $table.lowestEverAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get historyFetchedAt => $composableBuilder(
+    column: $table.historyFetchedAt,
+    builder: (column) => column,
+  );
 }
 
 class $$SteamGamesTableTableManager
@@ -2127,6 +2489,11 @@ class $$SteamGamesTableTableManager
                 Value<int?> lastDiscountPercent = const Value.absent(),
                 Value<String?> currency = const Value.absent(),
                 Value<DateTime?> detailsFetchedAt = const Value.absent(),
+                Value<String?> itadId = const Value.absent(),
+                Value<bool> itadUnknown = const Value.absent(),
+                Value<int?> lowestEverCents = const Value.absent(),
+                Value<DateTime?> lowestEverAt = const Value.absent(),
+                Value<DateTime?> historyFetchedAt = const Value.absent(),
               }) => SteamGamesCompanion(
                 appId: appId,
                 name: name,
@@ -2149,6 +2516,11 @@ class $$SteamGamesTableTableManager
                 lastDiscountPercent: lastDiscountPercent,
                 currency: currency,
                 detailsFetchedAt: detailsFetchedAt,
+                itadId: itadId,
+                itadUnknown: itadUnknown,
+                lowestEverCents: lowestEverCents,
+                lowestEverAt: lowestEverAt,
+                historyFetchedAt: historyFetchedAt,
               ),
           createCompanionCallback:
               ({
@@ -2173,6 +2545,11 @@ class $$SteamGamesTableTableManager
                 Value<int?> lastDiscountPercent = const Value.absent(),
                 Value<String?> currency = const Value.absent(),
                 Value<DateTime?> detailsFetchedAt = const Value.absent(),
+                Value<String?> itadId = const Value.absent(),
+                Value<bool> itadUnknown = const Value.absent(),
+                Value<int?> lowestEverCents = const Value.absent(),
+                Value<DateTime?> lowestEverAt = const Value.absent(),
+                Value<DateTime?> historyFetchedAt = const Value.absent(),
               }) => SteamGamesCompanion.insert(
                 appId: appId,
                 name: name,
@@ -2195,6 +2572,11 @@ class $$SteamGamesTableTableManager
                 lastDiscountPercent: lastDiscountPercent,
                 currency: currency,
                 detailsFetchedAt: detailsFetchedAt,
+                itadId: itadId,
+                itadUnknown: itadUnknown,
+                lowestEverCents: lowestEverCents,
+                lowestEverAt: lowestEverAt,
+                historyFetchedAt: historyFetchedAt,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

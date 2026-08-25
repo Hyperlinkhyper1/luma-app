@@ -17,13 +17,24 @@ SteamPricePoint _point(DateTime at, int cents, {int discount = 0}) =>
       currency: 'USD',
     );
 
-Widget _card(List<SteamPricePoint> points) => MaterialApp(
+Widget _card(
+  List<SteamPricePoint> points, {
+  bool hasItadKey = true,
+  int? lowestEverCents,
+  DateTime? lowestEverAt,
+  VoidCallback? onAddItadKey,
+}) =>
+    MaterialApp(
       theme: LumaTheme.dark,
       home: Scaffold(
         body: SingleChildScrollView(
           child: SteamPriceHistoryCard(
             points: points,
             fallbackCurrency: 'USD',
+            hasItadKey: hasItadKey,
+            lowestEverCents: lowestEverCents,
+            lowestEverAt: lowestEverAt,
+            onAddItadKey: onAddItadKey,
           ),
         ),
       ),
@@ -38,23 +49,39 @@ void main() {
     }
   });
 
-  testWidgets('says so plainly when nothing has been recorded',
+  testWidgets('asks for an ITAD key instead of showing an empty chart',
       (tester) async {
-    await tester.pumpWidget(_card(const []));
+    var tapped = false;
+    await tester.pumpWidget(_card(
+      const [],
+      hasItadKey: false,
+      onAddItadKey: () => tapped = true,
+    ));
 
     expect(find.byType(LineChart), findsNothing);
     expect(
-      find.textContaining('No prices recorded'),
+      find.textContaining('Add an IsThereAnyDeal key'),
       findsOneWidget,
     );
+
+    await tester.tap(find.text('Add key'));
+    await tester.pump();
+    expect(tapped, isTrue);
+  });
+
+  testWidgets('says so plainly when ITAD carries no history', (tester) async {
+    await tester.pumpWidget(_card(const []));
+
+    expect(find.byType(LineChart), findsNothing);
+    expect(find.textContaining('No price history'), findsOneWidget);
     // The note has to explain *why* the chart is empty, not just that it is.
     expect(
-      find.textContaining('Steam publishes no price history'),
+      find.textContaining('IsThereAnyDeal has nothing on file'),
       findsOneWidget,
     );
   });
 
-  testWidgets('draws the line and the low/high once prices exist',
+  testWidgets('draws the line and the range low/high once history exists',
       (tester) async {
     final now = DateTime.now();
     await tester.pumpWidget(_card([
@@ -65,10 +92,26 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(LineChart), findsOneWidget);
-    expect(find.text('Lowest seen'), findsOneWidget);
+    expect(find.text('Lowest in range'), findsOneWidget);
     expect(find.text('\$29.99'), findsOneWidget);
-    expect(find.text('Highest seen'), findsOneWidget);
+    expect(find.text('Highest in range'), findsOneWidget);
     expect(find.text('\$59.99'), findsOneWidget);
+  });
+
+  testWidgets('shows the all-time low even when it is outside the window',
+      (tester) async {
+    final now = DateTime.now();
+    await tester.pumpWidget(_card(
+      [_point(now.subtract(const Duration(days: 5)), 5999)],
+      lowestEverCents: 1499,
+      lowestEverAt: DateTime(2023, 11, 20),
+    ));
+    await tester.pumpAndSettle();
+
+    // The window is flat at 59.99, but the number worth knowing is the 14.99
+    // the game once hit — that is what people wait for.
+    expect(find.textContaining('All-time low'), findsOneWidget);
+    expect(find.text('\$14.99'), findsOneWidget);
   });
 
   testWidgets('switching range redraws against the shorter window',
@@ -81,7 +124,7 @@ void main() {
     ]));
     await tester.pumpAndSettle();
 
-    // The full year shows the 29.99 dip...
+    // The full year shows the 29.99 sale...
     expect(find.text('\$29.99'), findsOneWidget);
 
     await tester.tap(find.text('1W'));
@@ -91,22 +134,35 @@ void main() {
     // was only ever 49.99 and the card must not keep claiming a low it did
     // not observe inside that window.
     expect(find.text('\$29.99'), findsNothing);
-    expect(
-      find.textContaining('Unchanged at \$49.99'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('Unchanged at \$49.99'), findsOneWidget);
   });
 
-  testWidgets('warns when the window is longer than the history', (tester) async {
+  testWidgets('names the date the record starts when it is shorter than the '
+      'range', (tester) async {
     final now = DateTime.now();
     await tester.pumpWidget(_card([
       _point(now.subtract(const Duration(days: 3)), 5999),
     ]));
     await tester.pumpAndSettle();
 
-    // Default range is 1Y against three days of data.
+    // Default range is 1Y against three days of record.
     expect(
-      find.textContaining('3 days so far, not the last year'),
+      find.textContaining('which is less than the last year'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('credits the source when the record covers the whole range',
+      (tester) async {
+    final now = DateTime.now();
+    await tester.pumpWidget(_card([
+      _point(now.subtract(const Duration(days: 900)), 5999),
+      _point(now.subtract(const Duration(days: 30)), 2999, discount: 50),
+    ]));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('covering all of the last year'),
       findsOneWidget,
     );
   });

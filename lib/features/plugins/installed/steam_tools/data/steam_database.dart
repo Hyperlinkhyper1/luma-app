@@ -45,16 +45,31 @@ class SteamGames extends Table {
   /// When the store page was last read. Null means "never".
   DateTimeColumn get detailsFetchedAt => dateTime().nullable()();
 
+  /// IsThereAnyDeal's own UUID for this game, resolved once from the Steam
+  /// app id and then reused — the lookup is a whole extra round trip.
+  /// Null means "not looked up"; [itadUnknown] distinguishes that from
+  /// "looked up, and ITAD does not carry it".
+  TextColumn get itadId => text().nullable()();
+  BoolColumn get itadUnknown => boolean().withDefault(const Constant(false))();
+
+  /// The all-time low ITAD has on record, and when it happened.
+  IntColumn get lowestEverCents => integer().nullable()();
+  DateTimeColumn get lowestEverAt => dateTime().nullable()();
+
+  /// When the price history was last pulled from ITAD.
+  DateTimeColumn get historyFetchedAt => dateTime().nullable()();
+
   @override
   Set<Column> get primaryKey => {appId};
 }
 
-/// A price this device observed, and the moment it saw it.
+/// One price change on Steam, as recorded by IsThereAnyDeal.
 ///
-/// Steam exposes only the current price, so this table *is* the price
-/// history: one row per observed change. Unchanged checks write nothing,
-/// which keeps a game that has not moved in a year to a single row rather
-/// than one per poll.
+/// Steam exposes only the current price, so the history behind the chart
+/// comes from ITAD, which has been logging shop prices for years. These rows
+/// are a local cache of that: [SteamDatabase.replacePriceHistory] swaps the
+/// whole set for a game whenever it is refetched, so the cache can never
+/// drift from what ITAD says.
 class SteamPricePoints extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get appId => integer()();
@@ -99,14 +114,6 @@ class SteamDatabase extends _$SteamDatabase {
     return query.watch();
   }
 
-  Future<SteamPricePoint?> latestPricePoint(int appId) {
-    final query = select(steamPricePoints)
-      ..where((p) => p.appId.equals(appId))
-      ..orderBy([(p) => OrderingTerm.desc(p.observedAt)])
-      ..limit(1);
-    return query.getSingleOrNull();
-  }
-
   /// Replaces the stored library with [games], keeping every column the
   /// store fetch filled in.
   ///
@@ -140,6 +147,37 @@ class SteamDatabase extends _$SteamDatabase {
     if (keep.isEmpty) return;
     await (delete(steamGames)..where((g) => g.appId.isNotIn(keep))).go();
     await (delete(steamPricePoints)..where((p) => p.appId.isNotIn(keep))).go();
+  }
+
+  /// Swaps a game's cached history for [points].
+  ///
+  /// A wholesale replace rather than an append: ITAD is the source of truth
+  /// here, and it can revise or drop entries, so merging would let a stale
+  /// row survive forever.
+  Future<void> replacePriceHistory(
+    int appId,
+    Iterable<SteamPricePointsCompanion> points,
+  ) async {
+    await transaction(() async {
+      await (delete(steamPricePoints)..where((p) => p.appId.equals(appId)))
+          .go();
+      await batch((b) => b.insertAll(steamPricePoints, points.toList()));
+    });
+  }
+
+  /// Drops every cached history and the ITAD ids behind them, so the next
+  /// open refetches. Used when the ITAD key changes.
+  Future<void> forgetAllHistory() async {
+    await transaction(() async {
+      await delete(steamPricePoints).go();
+      await update(steamGames).write(const SteamGamesCompanion(
+        itadId: Value(null),
+        itadUnknown: Value(false),
+        lowestEverCents: Value(null),
+        lowestEverAt: Value(null),
+        historyFetchedAt: Value(null),
+      ));
+    });
   }
 
   Future<void> clearLibrary() async {
