@@ -25,6 +25,8 @@ import 'features/plugins/installed/ai_usage/leaderboard/ai_catalog_scope.dart';
 import 'features/plugins/installed/steam_tools/data/steam_database.dart';
 import 'features/plugins/installed/steam_tools/steam_repository.dart';
 import 'features/plugins/installed/steam_tools/steam_scope.dart';
+import 'features/plugins/installed/steam_tools/cs2_market_repository.dart';
+import 'features/plugins/installed/steam_tools/cs2_market_scope.dart';
 import 'features/plugins/installed/data_management/data/data_management_database.dart';
 import 'features/plugins/installed/data_management/data_management_repository.dart';
 import 'features/plugins/installed/server_tycoon/server_tycoon_repository.dart';
@@ -158,6 +160,8 @@ class _LumaAppState extends State<LumaApp> {
   late final SteamDatabase _steamDb = SteamDatabase();
   late final SteamRepository _steamRepository =
       SteamRepository(_steamDb, sync: _sync);
+  late final Cs2MarketRepository _cs2MarketRepository =
+      Cs2MarketRepository(_steamDb);
   late final AiCatalogRepository _aiCatalogRepository =
       AiCatalogRepository(_sync);
   late final SchoolDatabase _schoolDb = SchoolDatabase();
@@ -510,6 +514,8 @@ class _LumaAppState extends State<LumaApp> {
                       repository: _aiCatalogRepository,
                       child: SteamScope(
                       repository: _steamRepository,
+                      child: Cs2MarketScope(
+                      repository: _cs2MarketRepository,
                       child: AiUsageScope(
                       repository: _aiUsageRepository,
                       child: SchoolScope(
@@ -583,6 +589,7 @@ class _LumaAppState extends State<LumaApp> {
             ),
           ),
         ),
+      ),
       ),
       ),
       ),

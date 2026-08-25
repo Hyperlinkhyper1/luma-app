@@ -2011,6 +2011,1329 @@ class SteamPricePointsCompanion extends UpdateCompanion<SteamPricePoint> {
   }
 }
 
+class $Cs2MarketItemsTable extends Cs2MarketItems
+    with TableInfo<$Cs2MarketItemsTable, Cs2MarketItem> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $Cs2MarketItemsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _marketHashNameMeta = const VerificationMeta(
+    'marketHashName',
+  );
+  @override
+  late final GeneratedColumn<String> marketHashName = GeneratedColumn<String>(
+    'market_hash_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _skinIdMeta = const VerificationMeta('skinId');
+  @override
+  late final GeneratedColumn<String> skinId = GeneratedColumn<String>(
+    'skin_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _displayNameMeta = const VerificationMeta(
+    'displayName',
+  );
+  @override
+  late final GeneratedColumn<String> displayName = GeneratedColumn<String>(
+    'display_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _weaponNameMeta = const VerificationMeta(
+    'weaponName',
+  );
+  @override
+  late final GeneratedColumn<String> weaponName = GeneratedColumn<String>(
+    'weapon_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _rarityNameMeta = const VerificationMeta(
+    'rarityName',
+  );
+  @override
+  late final GeneratedColumn<String> rarityName = GeneratedColumn<String>(
+    'rarity_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _rarityColorMeta = const VerificationMeta(
+    'rarityColor',
+  );
+  @override
+  late final GeneratedColumn<String> rarityColor = GeneratedColumn<String>(
+    'rarity_color',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _caseNameMeta = const VerificationMeta(
+    'caseName',
+  );
+  @override
+  late final GeneratedColumn<String> caseName = GeneratedColumn<String>(
+    'case_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _imageUrlMeta = const VerificationMeta(
+    'imageUrl',
+  );
+  @override
+  late final GeneratedColumn<String> imageUrl = GeneratedColumn<String>(
+    'image_url',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _wearMeta = const VerificationMeta('wear');
+  @override
+  late final GeneratedColumn<String> wear = GeneratedColumn<String>(
+    'wear',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _statTrakMeta = const VerificationMeta(
+    'statTrak',
+  );
+  @override
+  late final GeneratedColumn<bool> statTrak = GeneratedColumn<bool>(
+    'stat_trak',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("stat_trak" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _lastLowestCentsMeta = const VerificationMeta(
+    'lastLowestCents',
+  );
+  @override
+  late final GeneratedColumn<int> lastLowestCents = GeneratedColumn<int>(
+    'last_lowest_cents',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lastMedianCentsMeta = const VerificationMeta(
+    'lastMedianCents',
+  );
+  @override
+  late final GeneratedColumn<int> lastMedianCents = GeneratedColumn<int>(
+    'last_median_cents',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _currencyMeta = const VerificationMeta(
+    'currency',
+  );
+  @override
+  late final GeneratedColumn<String> currency = GeneratedColumn<String>(
+    'currency',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('USD'),
+  );
+  static const VerificationMeta _priceFetchedAtMeta = const VerificationMeta(
+    'priceFetchedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> priceFetchedAt =
+      GeneratedColumn<DateTime>(
+        'price_fetched_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _trackedAtMeta = const VerificationMeta(
+    'trackedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> trackedAt = GeneratedColumn<DateTime>(
+    'tracked_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    marketHashName,
+    skinId,
+    displayName,
+    weaponName,
+    rarityName,
+    rarityColor,
+    caseName,
+    imageUrl,
+    wear,
+    statTrak,
+    lastLowestCents,
+    lastMedianCents,
+    currency,
+    priceFetchedAt,
+    trackedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cs2_market_items';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Cs2MarketItem> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('market_hash_name')) {
+      context.handle(
+        _marketHashNameMeta,
+        marketHashName.isAcceptableOrUnknown(
+          data['market_hash_name']!,
+          _marketHashNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_marketHashNameMeta);
+    }
+    if (data.containsKey('skin_id')) {
+      context.handle(
+        _skinIdMeta,
+        skinId.isAcceptableOrUnknown(data['skin_id']!, _skinIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_skinIdMeta);
+    }
+    if (data.containsKey('display_name')) {
+      context.handle(
+        _displayNameMeta,
+        displayName.isAcceptableOrUnknown(
+          data['display_name']!,
+          _displayNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_displayNameMeta);
+    }
+    if (data.containsKey('weapon_name')) {
+      context.handle(
+        _weaponNameMeta,
+        weaponName.isAcceptableOrUnknown(data['weapon_name']!, _weaponNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_weaponNameMeta);
+    }
+    if (data.containsKey('rarity_name')) {
+      context.handle(
+        _rarityNameMeta,
+        rarityName.isAcceptableOrUnknown(data['rarity_name']!, _rarityNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_rarityNameMeta);
+    }
+    if (data.containsKey('rarity_color')) {
+      context.handle(
+        _rarityColorMeta,
+        rarityColor.isAcceptableOrUnknown(
+          data['rarity_color']!,
+          _rarityColorMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_rarityColorMeta);
+    }
+    if (data.containsKey('case_name')) {
+      context.handle(
+        _caseNameMeta,
+        caseName.isAcceptableOrUnknown(data['case_name']!, _caseNameMeta),
+      );
+    }
+    if (data.containsKey('image_url')) {
+      context.handle(
+        _imageUrlMeta,
+        imageUrl.isAcceptableOrUnknown(data['image_url']!, _imageUrlMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_imageUrlMeta);
+    }
+    if (data.containsKey('wear')) {
+      context.handle(
+        _wearMeta,
+        wear.isAcceptableOrUnknown(data['wear']!, _wearMeta),
+      );
+    }
+    if (data.containsKey('stat_trak')) {
+      context.handle(
+        _statTrakMeta,
+        statTrak.isAcceptableOrUnknown(data['stat_trak']!, _statTrakMeta),
+      );
+    }
+    if (data.containsKey('last_lowest_cents')) {
+      context.handle(
+        _lastLowestCentsMeta,
+        lastLowestCents.isAcceptableOrUnknown(
+          data['last_lowest_cents']!,
+          _lastLowestCentsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_median_cents')) {
+      context.handle(
+        _lastMedianCentsMeta,
+        lastMedianCents.isAcceptableOrUnknown(
+          data['last_median_cents']!,
+          _lastMedianCentsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('currency')) {
+      context.handle(
+        _currencyMeta,
+        currency.isAcceptableOrUnknown(data['currency']!, _currencyMeta),
+      );
+    }
+    if (data.containsKey('price_fetched_at')) {
+      context.handle(
+        _priceFetchedAtMeta,
+        priceFetchedAt.isAcceptableOrUnknown(
+          data['price_fetched_at']!,
+          _priceFetchedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('tracked_at')) {
+      context.handle(
+        _trackedAtMeta,
+        trackedAt.isAcceptableOrUnknown(data['tracked_at']!, _trackedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {marketHashName};
+  @override
+  Cs2MarketItem map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Cs2MarketItem(
+      marketHashName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}market_hash_name'],
+      )!,
+      skinId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}skin_id'],
+      )!,
+      displayName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}display_name'],
+      )!,
+      weaponName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}weapon_name'],
+      )!,
+      rarityName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rarity_name'],
+      )!,
+      rarityColor: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rarity_color'],
+      )!,
+      caseName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}case_name'],
+      ),
+      imageUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}image_url'],
+      )!,
+      wear: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}wear'],
+      ),
+      statTrak: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}stat_trak'],
+      )!,
+      lastLowestCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_lowest_cents'],
+      ),
+      lastMedianCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_median_cents'],
+      ),
+      currency: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}currency'],
+      )!,
+      priceFetchedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}price_fetched_at'],
+      ),
+      trackedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}tracked_at'],
+      )!,
+    );
+  }
+
+  @override
+  $Cs2MarketItemsTable createAlias(String alias) {
+    return $Cs2MarketItemsTable(attachedDatabase, alias);
+  }
+}
+
+class Cs2MarketItem extends DataClass implements Insertable<Cs2MarketItem> {
+  final String marketHashName;
+
+  /// The dataset id of the underlying finish, so a row can be re-associated
+  /// with its catalog entry (image, rarity, case) after a catalog refresh.
+  final String skinId;
+  final String displayName;
+  final String weaponName;
+  final String rarityName;
+  final String rarityColor;
+  final String? caseName;
+  final String imageUrl;
+  final String? wear;
+  final bool statTrak;
+
+  /// The most recent read, mirrored here so the browse grid can show a price
+  /// without a join into the history table per tile.
+  final int? lastLowestCents;
+  final int? lastMedianCents;
+  final String currency;
+  final DateTime? priceFetchedAt;
+  final DateTime trackedAt;
+  const Cs2MarketItem({
+    required this.marketHashName,
+    required this.skinId,
+    required this.displayName,
+    required this.weaponName,
+    required this.rarityName,
+    required this.rarityColor,
+    this.caseName,
+    required this.imageUrl,
+    this.wear,
+    required this.statTrak,
+    this.lastLowestCents,
+    this.lastMedianCents,
+    required this.currency,
+    this.priceFetchedAt,
+    required this.trackedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['market_hash_name'] = Variable<String>(marketHashName);
+    map['skin_id'] = Variable<String>(skinId);
+    map['display_name'] = Variable<String>(displayName);
+    map['weapon_name'] = Variable<String>(weaponName);
+    map['rarity_name'] = Variable<String>(rarityName);
+    map['rarity_color'] = Variable<String>(rarityColor);
+    if (!nullToAbsent || caseName != null) {
+      map['case_name'] = Variable<String>(caseName);
+    }
+    map['image_url'] = Variable<String>(imageUrl);
+    if (!nullToAbsent || wear != null) {
+      map['wear'] = Variable<String>(wear);
+    }
+    map['stat_trak'] = Variable<bool>(statTrak);
+    if (!nullToAbsent || lastLowestCents != null) {
+      map['last_lowest_cents'] = Variable<int>(lastLowestCents);
+    }
+    if (!nullToAbsent || lastMedianCents != null) {
+      map['last_median_cents'] = Variable<int>(lastMedianCents);
+    }
+    map['currency'] = Variable<String>(currency);
+    if (!nullToAbsent || priceFetchedAt != null) {
+      map['price_fetched_at'] = Variable<DateTime>(priceFetchedAt);
+    }
+    map['tracked_at'] = Variable<DateTime>(trackedAt);
+    return map;
+  }
+
+  Cs2MarketItemsCompanion toCompanion(bool nullToAbsent) {
+    return Cs2MarketItemsCompanion(
+      marketHashName: Value(marketHashName),
+      skinId: Value(skinId),
+      displayName: Value(displayName),
+      weaponName: Value(weaponName),
+      rarityName: Value(rarityName),
+      rarityColor: Value(rarityColor),
+      caseName: caseName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(caseName),
+      imageUrl: Value(imageUrl),
+      wear: wear == null && nullToAbsent ? const Value.absent() : Value(wear),
+      statTrak: Value(statTrak),
+      lastLowestCents: lastLowestCents == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastLowestCents),
+      lastMedianCents: lastMedianCents == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastMedianCents),
+      currency: Value(currency),
+      priceFetchedAt: priceFetchedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(priceFetchedAt),
+      trackedAt: Value(trackedAt),
+    );
+  }
+
+  factory Cs2MarketItem.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Cs2MarketItem(
+      marketHashName: serializer.fromJson<String>(json['marketHashName']),
+      skinId: serializer.fromJson<String>(json['skinId']),
+      displayName: serializer.fromJson<String>(json['displayName']),
+      weaponName: serializer.fromJson<String>(json['weaponName']),
+      rarityName: serializer.fromJson<String>(json['rarityName']),
+      rarityColor: serializer.fromJson<String>(json['rarityColor']),
+      caseName: serializer.fromJson<String?>(json['caseName']),
+      imageUrl: serializer.fromJson<String>(json['imageUrl']),
+      wear: serializer.fromJson<String?>(json['wear']),
+      statTrak: serializer.fromJson<bool>(json['statTrak']),
+      lastLowestCents: serializer.fromJson<int?>(json['lastLowestCents']),
+      lastMedianCents: serializer.fromJson<int?>(json['lastMedianCents']),
+      currency: serializer.fromJson<String>(json['currency']),
+      priceFetchedAt: serializer.fromJson<DateTime?>(json['priceFetchedAt']),
+      trackedAt: serializer.fromJson<DateTime>(json['trackedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'marketHashName': serializer.toJson<String>(marketHashName),
+      'skinId': serializer.toJson<String>(skinId),
+      'displayName': serializer.toJson<String>(displayName),
+      'weaponName': serializer.toJson<String>(weaponName),
+      'rarityName': serializer.toJson<String>(rarityName),
+      'rarityColor': serializer.toJson<String>(rarityColor),
+      'caseName': serializer.toJson<String?>(caseName),
+      'imageUrl': serializer.toJson<String>(imageUrl),
+      'wear': serializer.toJson<String?>(wear),
+      'statTrak': serializer.toJson<bool>(statTrak),
+      'lastLowestCents': serializer.toJson<int?>(lastLowestCents),
+      'lastMedianCents': serializer.toJson<int?>(lastMedianCents),
+      'currency': serializer.toJson<String>(currency),
+      'priceFetchedAt': serializer.toJson<DateTime?>(priceFetchedAt),
+      'trackedAt': serializer.toJson<DateTime>(trackedAt),
+    };
+  }
+
+  Cs2MarketItem copyWith({
+    String? marketHashName,
+    String? skinId,
+    String? displayName,
+    String? weaponName,
+    String? rarityName,
+    String? rarityColor,
+    Value<String?> caseName = const Value.absent(),
+    String? imageUrl,
+    Value<String?> wear = const Value.absent(),
+    bool? statTrak,
+    Value<int?> lastLowestCents = const Value.absent(),
+    Value<int?> lastMedianCents = const Value.absent(),
+    String? currency,
+    Value<DateTime?> priceFetchedAt = const Value.absent(),
+    DateTime? trackedAt,
+  }) => Cs2MarketItem(
+    marketHashName: marketHashName ?? this.marketHashName,
+    skinId: skinId ?? this.skinId,
+    displayName: displayName ?? this.displayName,
+    weaponName: weaponName ?? this.weaponName,
+    rarityName: rarityName ?? this.rarityName,
+    rarityColor: rarityColor ?? this.rarityColor,
+    caseName: caseName.present ? caseName.value : this.caseName,
+    imageUrl: imageUrl ?? this.imageUrl,
+    wear: wear.present ? wear.value : this.wear,
+    statTrak: statTrak ?? this.statTrak,
+    lastLowestCents: lastLowestCents.present
+        ? lastLowestCents.value
+        : this.lastLowestCents,
+    lastMedianCents: lastMedianCents.present
+        ? lastMedianCents.value
+        : this.lastMedianCents,
+    currency: currency ?? this.currency,
+    priceFetchedAt: priceFetchedAt.present
+        ? priceFetchedAt.value
+        : this.priceFetchedAt,
+    trackedAt: trackedAt ?? this.trackedAt,
+  );
+  Cs2MarketItem copyWithCompanion(Cs2MarketItemsCompanion data) {
+    return Cs2MarketItem(
+      marketHashName: data.marketHashName.present
+          ? data.marketHashName.value
+          : this.marketHashName,
+      skinId: data.skinId.present ? data.skinId.value : this.skinId,
+      displayName: data.displayName.present
+          ? data.displayName.value
+          : this.displayName,
+      weaponName: data.weaponName.present
+          ? data.weaponName.value
+          : this.weaponName,
+      rarityName: data.rarityName.present
+          ? data.rarityName.value
+          : this.rarityName,
+      rarityColor: data.rarityColor.present
+          ? data.rarityColor.value
+          : this.rarityColor,
+      caseName: data.caseName.present ? data.caseName.value : this.caseName,
+      imageUrl: data.imageUrl.present ? data.imageUrl.value : this.imageUrl,
+      wear: data.wear.present ? data.wear.value : this.wear,
+      statTrak: data.statTrak.present ? data.statTrak.value : this.statTrak,
+      lastLowestCents: data.lastLowestCents.present
+          ? data.lastLowestCents.value
+          : this.lastLowestCents,
+      lastMedianCents: data.lastMedianCents.present
+          ? data.lastMedianCents.value
+          : this.lastMedianCents,
+      currency: data.currency.present ? data.currency.value : this.currency,
+      priceFetchedAt: data.priceFetchedAt.present
+          ? data.priceFetchedAt.value
+          : this.priceFetchedAt,
+      trackedAt: data.trackedAt.present ? data.trackedAt.value : this.trackedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Cs2MarketItem(')
+          ..write('marketHashName: $marketHashName, ')
+          ..write('skinId: $skinId, ')
+          ..write('displayName: $displayName, ')
+          ..write('weaponName: $weaponName, ')
+          ..write('rarityName: $rarityName, ')
+          ..write('rarityColor: $rarityColor, ')
+          ..write('caseName: $caseName, ')
+          ..write('imageUrl: $imageUrl, ')
+          ..write('wear: $wear, ')
+          ..write('statTrak: $statTrak, ')
+          ..write('lastLowestCents: $lastLowestCents, ')
+          ..write('lastMedianCents: $lastMedianCents, ')
+          ..write('currency: $currency, ')
+          ..write('priceFetchedAt: $priceFetchedAt, ')
+          ..write('trackedAt: $trackedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    marketHashName,
+    skinId,
+    displayName,
+    weaponName,
+    rarityName,
+    rarityColor,
+    caseName,
+    imageUrl,
+    wear,
+    statTrak,
+    lastLowestCents,
+    lastMedianCents,
+    currency,
+    priceFetchedAt,
+    trackedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Cs2MarketItem &&
+          other.marketHashName == this.marketHashName &&
+          other.skinId == this.skinId &&
+          other.displayName == this.displayName &&
+          other.weaponName == this.weaponName &&
+          other.rarityName == this.rarityName &&
+          other.rarityColor == this.rarityColor &&
+          other.caseName == this.caseName &&
+          other.imageUrl == this.imageUrl &&
+          other.wear == this.wear &&
+          other.statTrak == this.statTrak &&
+          other.lastLowestCents == this.lastLowestCents &&
+          other.lastMedianCents == this.lastMedianCents &&
+          other.currency == this.currency &&
+          other.priceFetchedAt == this.priceFetchedAt &&
+          other.trackedAt == this.trackedAt);
+}
+
+class Cs2MarketItemsCompanion extends UpdateCompanion<Cs2MarketItem> {
+  final Value<String> marketHashName;
+  final Value<String> skinId;
+  final Value<String> displayName;
+  final Value<String> weaponName;
+  final Value<String> rarityName;
+  final Value<String> rarityColor;
+  final Value<String?> caseName;
+  final Value<String> imageUrl;
+  final Value<String?> wear;
+  final Value<bool> statTrak;
+  final Value<int?> lastLowestCents;
+  final Value<int?> lastMedianCents;
+  final Value<String> currency;
+  final Value<DateTime?> priceFetchedAt;
+  final Value<DateTime> trackedAt;
+  final Value<int> rowid;
+  const Cs2MarketItemsCompanion({
+    this.marketHashName = const Value.absent(),
+    this.skinId = const Value.absent(),
+    this.displayName = const Value.absent(),
+    this.weaponName = const Value.absent(),
+    this.rarityName = const Value.absent(),
+    this.rarityColor = const Value.absent(),
+    this.caseName = const Value.absent(),
+    this.imageUrl = const Value.absent(),
+    this.wear = const Value.absent(),
+    this.statTrak = const Value.absent(),
+    this.lastLowestCents = const Value.absent(),
+    this.lastMedianCents = const Value.absent(),
+    this.currency = const Value.absent(),
+    this.priceFetchedAt = const Value.absent(),
+    this.trackedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  Cs2MarketItemsCompanion.insert({
+    required String marketHashName,
+    required String skinId,
+    required String displayName,
+    required String weaponName,
+    required String rarityName,
+    required String rarityColor,
+    this.caseName = const Value.absent(),
+    required String imageUrl,
+    this.wear = const Value.absent(),
+    this.statTrak = const Value.absent(),
+    this.lastLowestCents = const Value.absent(),
+    this.lastMedianCents = const Value.absent(),
+    this.currency = const Value.absent(),
+    this.priceFetchedAt = const Value.absent(),
+    this.trackedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : marketHashName = Value(marketHashName),
+       skinId = Value(skinId),
+       displayName = Value(displayName),
+       weaponName = Value(weaponName),
+       rarityName = Value(rarityName),
+       rarityColor = Value(rarityColor),
+       imageUrl = Value(imageUrl);
+  static Insertable<Cs2MarketItem> custom({
+    Expression<String>? marketHashName,
+    Expression<String>? skinId,
+    Expression<String>? displayName,
+    Expression<String>? weaponName,
+    Expression<String>? rarityName,
+    Expression<String>? rarityColor,
+    Expression<String>? caseName,
+    Expression<String>? imageUrl,
+    Expression<String>? wear,
+    Expression<bool>? statTrak,
+    Expression<int>? lastLowestCents,
+    Expression<int>? lastMedianCents,
+    Expression<String>? currency,
+    Expression<DateTime>? priceFetchedAt,
+    Expression<DateTime>? trackedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (marketHashName != null) 'market_hash_name': marketHashName,
+      if (skinId != null) 'skin_id': skinId,
+      if (displayName != null) 'display_name': displayName,
+      if (weaponName != null) 'weapon_name': weaponName,
+      if (rarityName != null) 'rarity_name': rarityName,
+      if (rarityColor != null) 'rarity_color': rarityColor,
+      if (caseName != null) 'case_name': caseName,
+      if (imageUrl != null) 'image_url': imageUrl,
+      if (wear != null) 'wear': wear,
+      if (statTrak != null) 'stat_trak': statTrak,
+      if (lastLowestCents != null) 'last_lowest_cents': lastLowestCents,
+      if (lastMedianCents != null) 'last_median_cents': lastMedianCents,
+      if (currency != null) 'currency': currency,
+      if (priceFetchedAt != null) 'price_fetched_at': priceFetchedAt,
+      if (trackedAt != null) 'tracked_at': trackedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  Cs2MarketItemsCompanion copyWith({
+    Value<String>? marketHashName,
+    Value<String>? skinId,
+    Value<String>? displayName,
+    Value<String>? weaponName,
+    Value<String>? rarityName,
+    Value<String>? rarityColor,
+    Value<String?>? caseName,
+    Value<String>? imageUrl,
+    Value<String?>? wear,
+    Value<bool>? statTrak,
+    Value<int?>? lastLowestCents,
+    Value<int?>? lastMedianCents,
+    Value<String>? currency,
+    Value<DateTime?>? priceFetchedAt,
+    Value<DateTime>? trackedAt,
+    Value<int>? rowid,
+  }) {
+    return Cs2MarketItemsCompanion(
+      marketHashName: marketHashName ?? this.marketHashName,
+      skinId: skinId ?? this.skinId,
+      displayName: displayName ?? this.displayName,
+      weaponName: weaponName ?? this.weaponName,
+      rarityName: rarityName ?? this.rarityName,
+      rarityColor: rarityColor ?? this.rarityColor,
+      caseName: caseName ?? this.caseName,
+      imageUrl: imageUrl ?? this.imageUrl,
+      wear: wear ?? this.wear,
+      statTrak: statTrak ?? this.statTrak,
+      lastLowestCents: lastLowestCents ?? this.lastLowestCents,
+      lastMedianCents: lastMedianCents ?? this.lastMedianCents,
+      currency: currency ?? this.currency,
+      priceFetchedAt: priceFetchedAt ?? this.priceFetchedAt,
+      trackedAt: trackedAt ?? this.trackedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (marketHashName.present) {
+      map['market_hash_name'] = Variable<String>(marketHashName.value);
+    }
+    if (skinId.present) {
+      map['skin_id'] = Variable<String>(skinId.value);
+    }
+    if (displayName.present) {
+      map['display_name'] = Variable<String>(displayName.value);
+    }
+    if (weaponName.present) {
+      map['weapon_name'] = Variable<String>(weaponName.value);
+    }
+    if (rarityName.present) {
+      map['rarity_name'] = Variable<String>(rarityName.value);
+    }
+    if (rarityColor.present) {
+      map['rarity_color'] = Variable<String>(rarityColor.value);
+    }
+    if (caseName.present) {
+      map['case_name'] = Variable<String>(caseName.value);
+    }
+    if (imageUrl.present) {
+      map['image_url'] = Variable<String>(imageUrl.value);
+    }
+    if (wear.present) {
+      map['wear'] = Variable<String>(wear.value);
+    }
+    if (statTrak.present) {
+      map['stat_trak'] = Variable<bool>(statTrak.value);
+    }
+    if (lastLowestCents.present) {
+      map['last_lowest_cents'] = Variable<int>(lastLowestCents.value);
+    }
+    if (lastMedianCents.present) {
+      map['last_median_cents'] = Variable<int>(lastMedianCents.value);
+    }
+    if (currency.present) {
+      map['currency'] = Variable<String>(currency.value);
+    }
+    if (priceFetchedAt.present) {
+      map['price_fetched_at'] = Variable<DateTime>(priceFetchedAt.value);
+    }
+    if (trackedAt.present) {
+      map['tracked_at'] = Variable<DateTime>(trackedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Cs2MarketItemsCompanion(')
+          ..write('marketHashName: $marketHashName, ')
+          ..write('skinId: $skinId, ')
+          ..write('displayName: $displayName, ')
+          ..write('weaponName: $weaponName, ')
+          ..write('rarityName: $rarityName, ')
+          ..write('rarityColor: $rarityColor, ')
+          ..write('caseName: $caseName, ')
+          ..write('imageUrl: $imageUrl, ')
+          ..write('wear: $wear, ')
+          ..write('statTrak: $statTrak, ')
+          ..write('lastLowestCents: $lastLowestCents, ')
+          ..write('lastMedianCents: $lastMedianCents, ')
+          ..write('currency: $currency, ')
+          ..write('priceFetchedAt: $priceFetchedAt, ')
+          ..write('trackedAt: $trackedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $Cs2MarketPricePointsTable extends Cs2MarketPricePoints
+    with TableInfo<$Cs2MarketPricePointsTable, Cs2MarketPricePoint> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $Cs2MarketPricePointsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _marketHashNameMeta = const VerificationMeta(
+    'marketHashName',
+  );
+  @override
+  late final GeneratedColumn<String> marketHashName = GeneratedColumn<String>(
+    'market_hash_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _observedAtMeta = const VerificationMeta(
+    'observedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> observedAt = GeneratedColumn<DateTime>(
+    'observed_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lowestCentsMeta = const VerificationMeta(
+    'lowestCents',
+  );
+  @override
+  late final GeneratedColumn<int> lowestCents = GeneratedColumn<int>(
+    'lowest_cents',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _medianCentsMeta = const VerificationMeta(
+    'medianCents',
+  );
+  @override
+  late final GeneratedColumn<int> medianCents = GeneratedColumn<int>(
+    'median_cents',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _currencyMeta = const VerificationMeta(
+    'currency',
+  );
+  @override
+  late final GeneratedColumn<String> currency = GeneratedColumn<String>(
+    'currency',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    marketHashName,
+    observedAt,
+    lowestCents,
+    medianCents,
+    currency,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cs2_market_price_points';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Cs2MarketPricePoint> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('market_hash_name')) {
+      context.handle(
+        _marketHashNameMeta,
+        marketHashName.isAcceptableOrUnknown(
+          data['market_hash_name']!,
+          _marketHashNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_marketHashNameMeta);
+    }
+    if (data.containsKey('observed_at')) {
+      context.handle(
+        _observedAtMeta,
+        observedAt.isAcceptableOrUnknown(data['observed_at']!, _observedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_observedAtMeta);
+    }
+    if (data.containsKey('lowest_cents')) {
+      context.handle(
+        _lowestCentsMeta,
+        lowestCents.isAcceptableOrUnknown(
+          data['lowest_cents']!,
+          _lowestCentsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('median_cents')) {
+      context.handle(
+        _medianCentsMeta,
+        medianCents.isAcceptableOrUnknown(
+          data['median_cents']!,
+          _medianCentsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('currency')) {
+      context.handle(
+        _currencyMeta,
+        currency.isAcceptableOrUnknown(data['currency']!, _currencyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_currencyMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Cs2MarketPricePoint map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Cs2MarketPricePoint(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      marketHashName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}market_hash_name'],
+      )!,
+      observedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}observed_at'],
+      )!,
+      lowestCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}lowest_cents'],
+      ),
+      medianCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}median_cents'],
+      ),
+      currency: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}currency'],
+      )!,
+    );
+  }
+
+  @override
+  $Cs2MarketPricePointsTable createAlias(String alias) {
+    return $Cs2MarketPricePointsTable(attachedDatabase, alias);
+  }
+}
+
+class Cs2MarketPricePoint extends DataClass
+    implements Insertable<Cs2MarketPricePoint> {
+  final int id;
+  final String marketHashName;
+  final DateTime observedAt;
+  final int? lowestCents;
+  final int? medianCents;
+  final String currency;
+  const Cs2MarketPricePoint({
+    required this.id,
+    required this.marketHashName,
+    required this.observedAt,
+    this.lowestCents,
+    this.medianCents,
+    required this.currency,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['market_hash_name'] = Variable<String>(marketHashName);
+    map['observed_at'] = Variable<DateTime>(observedAt);
+    if (!nullToAbsent || lowestCents != null) {
+      map['lowest_cents'] = Variable<int>(lowestCents);
+    }
+    if (!nullToAbsent || medianCents != null) {
+      map['median_cents'] = Variable<int>(medianCents);
+    }
+    map['currency'] = Variable<String>(currency);
+    return map;
+  }
+
+  Cs2MarketPricePointsCompanion toCompanion(bool nullToAbsent) {
+    return Cs2MarketPricePointsCompanion(
+      id: Value(id),
+      marketHashName: Value(marketHashName),
+      observedAt: Value(observedAt),
+      lowestCents: lowestCents == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lowestCents),
+      medianCents: medianCents == null && nullToAbsent
+          ? const Value.absent()
+          : Value(medianCents),
+      currency: Value(currency),
+    );
+  }
+
+  factory Cs2MarketPricePoint.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Cs2MarketPricePoint(
+      id: serializer.fromJson<int>(json['id']),
+      marketHashName: serializer.fromJson<String>(json['marketHashName']),
+      observedAt: serializer.fromJson<DateTime>(json['observedAt']),
+      lowestCents: serializer.fromJson<int?>(json['lowestCents']),
+      medianCents: serializer.fromJson<int?>(json['medianCents']),
+      currency: serializer.fromJson<String>(json['currency']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'marketHashName': serializer.toJson<String>(marketHashName),
+      'observedAt': serializer.toJson<DateTime>(observedAt),
+      'lowestCents': serializer.toJson<int?>(lowestCents),
+      'medianCents': serializer.toJson<int?>(medianCents),
+      'currency': serializer.toJson<String>(currency),
+    };
+  }
+
+  Cs2MarketPricePoint copyWith({
+    int? id,
+    String? marketHashName,
+    DateTime? observedAt,
+    Value<int?> lowestCents = const Value.absent(),
+    Value<int?> medianCents = const Value.absent(),
+    String? currency,
+  }) => Cs2MarketPricePoint(
+    id: id ?? this.id,
+    marketHashName: marketHashName ?? this.marketHashName,
+    observedAt: observedAt ?? this.observedAt,
+    lowestCents: lowestCents.present ? lowestCents.value : this.lowestCents,
+    medianCents: medianCents.present ? medianCents.value : this.medianCents,
+    currency: currency ?? this.currency,
+  );
+  Cs2MarketPricePoint copyWithCompanion(Cs2MarketPricePointsCompanion data) {
+    return Cs2MarketPricePoint(
+      id: data.id.present ? data.id.value : this.id,
+      marketHashName: data.marketHashName.present
+          ? data.marketHashName.value
+          : this.marketHashName,
+      observedAt: data.observedAt.present
+          ? data.observedAt.value
+          : this.observedAt,
+      lowestCents: data.lowestCents.present
+          ? data.lowestCents.value
+          : this.lowestCents,
+      medianCents: data.medianCents.present
+          ? data.medianCents.value
+          : this.medianCents,
+      currency: data.currency.present ? data.currency.value : this.currency,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Cs2MarketPricePoint(')
+          ..write('id: $id, ')
+          ..write('marketHashName: $marketHashName, ')
+          ..write('observedAt: $observedAt, ')
+          ..write('lowestCents: $lowestCents, ')
+          ..write('medianCents: $medianCents, ')
+          ..write('currency: $currency')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    marketHashName,
+    observedAt,
+    lowestCents,
+    medianCents,
+    currency,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Cs2MarketPricePoint &&
+          other.id == this.id &&
+          other.marketHashName == this.marketHashName &&
+          other.observedAt == this.observedAt &&
+          other.lowestCents == this.lowestCents &&
+          other.medianCents == this.medianCents &&
+          other.currency == this.currency);
+}
+
+class Cs2MarketPricePointsCompanion
+    extends UpdateCompanion<Cs2MarketPricePoint> {
+  final Value<int> id;
+  final Value<String> marketHashName;
+  final Value<DateTime> observedAt;
+  final Value<int?> lowestCents;
+  final Value<int?> medianCents;
+  final Value<String> currency;
+  const Cs2MarketPricePointsCompanion({
+    this.id = const Value.absent(),
+    this.marketHashName = const Value.absent(),
+    this.observedAt = const Value.absent(),
+    this.lowestCents = const Value.absent(),
+    this.medianCents = const Value.absent(),
+    this.currency = const Value.absent(),
+  });
+  Cs2MarketPricePointsCompanion.insert({
+    this.id = const Value.absent(),
+    required String marketHashName,
+    required DateTime observedAt,
+    this.lowestCents = const Value.absent(),
+    this.medianCents = const Value.absent(),
+    required String currency,
+  }) : marketHashName = Value(marketHashName),
+       observedAt = Value(observedAt),
+       currency = Value(currency);
+  static Insertable<Cs2MarketPricePoint> custom({
+    Expression<int>? id,
+    Expression<String>? marketHashName,
+    Expression<DateTime>? observedAt,
+    Expression<int>? lowestCents,
+    Expression<int>? medianCents,
+    Expression<String>? currency,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (marketHashName != null) 'market_hash_name': marketHashName,
+      if (observedAt != null) 'observed_at': observedAt,
+      if (lowestCents != null) 'lowest_cents': lowestCents,
+      if (medianCents != null) 'median_cents': medianCents,
+      if (currency != null) 'currency': currency,
+    });
+  }
+
+  Cs2MarketPricePointsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? marketHashName,
+    Value<DateTime>? observedAt,
+    Value<int?>? lowestCents,
+    Value<int?>? medianCents,
+    Value<String>? currency,
+  }) {
+    return Cs2MarketPricePointsCompanion(
+      id: id ?? this.id,
+      marketHashName: marketHashName ?? this.marketHashName,
+      observedAt: observedAt ?? this.observedAt,
+      lowestCents: lowestCents ?? this.lowestCents,
+      medianCents: medianCents ?? this.medianCents,
+      currency: currency ?? this.currency,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (marketHashName.present) {
+      map['market_hash_name'] = Variable<String>(marketHashName.value);
+    }
+    if (observedAt.present) {
+      map['observed_at'] = Variable<DateTime>(observedAt.value);
+    }
+    if (lowestCents.present) {
+      map['lowest_cents'] = Variable<int>(lowestCents.value);
+    }
+    if (medianCents.present) {
+      map['median_cents'] = Variable<int>(medianCents.value);
+    }
+    if (currency.present) {
+      map['currency'] = Variable<String>(currency.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Cs2MarketPricePointsCompanion(')
+          ..write('id: $id, ')
+          ..write('marketHashName: $marketHashName, ')
+          ..write('observedAt: $observedAt, ')
+          ..write('lowestCents: $lowestCents, ')
+          ..write('medianCents: $medianCents, ')
+          ..write('currency: $currency')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$SteamDatabase extends GeneratedDatabase {
   _$SteamDatabase(QueryExecutor e) : super(e);
   $SteamDatabaseManager get managers => $SteamDatabaseManager(this);
@@ -2018,6 +3341,9 @@ abstract class _$SteamDatabase extends GeneratedDatabase {
   late final $SteamPricePointsTable steamPricePoints = $SteamPricePointsTable(
     this,
   );
+  late final $Cs2MarketItemsTable cs2MarketItems = $Cs2MarketItemsTable(this);
+  late final $Cs2MarketPricePointsTable cs2MarketPricePoints =
+      $Cs2MarketPricePointsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2025,6 +3351,8 @@ abstract class _$SteamDatabase extends GeneratedDatabase {
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     steamGames,
     steamPricePoints,
+    cs2MarketItems,
+    cs2MarketPricePoints,
   ];
 }
 
@@ -2921,6 +4249,655 @@ typedef $$SteamPricePointsTableProcessedTableManager =
       SteamPricePoint,
       PrefetchHooks Function()
     >;
+typedef $$Cs2MarketItemsTableCreateCompanionBuilder =
+    Cs2MarketItemsCompanion Function({
+      required String marketHashName,
+      required String skinId,
+      required String displayName,
+      required String weaponName,
+      required String rarityName,
+      required String rarityColor,
+      Value<String?> caseName,
+      required String imageUrl,
+      Value<String?> wear,
+      Value<bool> statTrak,
+      Value<int?> lastLowestCents,
+      Value<int?> lastMedianCents,
+      Value<String> currency,
+      Value<DateTime?> priceFetchedAt,
+      Value<DateTime> trackedAt,
+      Value<int> rowid,
+    });
+typedef $$Cs2MarketItemsTableUpdateCompanionBuilder =
+    Cs2MarketItemsCompanion Function({
+      Value<String> marketHashName,
+      Value<String> skinId,
+      Value<String> displayName,
+      Value<String> weaponName,
+      Value<String> rarityName,
+      Value<String> rarityColor,
+      Value<String?> caseName,
+      Value<String> imageUrl,
+      Value<String?> wear,
+      Value<bool> statTrak,
+      Value<int?> lastLowestCents,
+      Value<int?> lastMedianCents,
+      Value<String> currency,
+      Value<DateTime?> priceFetchedAt,
+      Value<DateTime> trackedAt,
+      Value<int> rowid,
+    });
+
+class $$Cs2MarketItemsTableFilterComposer
+    extends Composer<_$SteamDatabase, $Cs2MarketItemsTable> {
+  $$Cs2MarketItemsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get marketHashName => $composableBuilder(
+    column: $table.marketHashName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get skinId => $composableBuilder(
+    column: $table.skinId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get weaponName => $composableBuilder(
+    column: $table.weaponName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rarityName => $composableBuilder(
+    column: $table.rarityName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rarityColor => $composableBuilder(
+    column: $table.rarityColor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get caseName => $composableBuilder(
+    column: $table.caseName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get imageUrl => $composableBuilder(
+    column: $table.imageUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get wear => $composableBuilder(
+    column: $table.wear,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get statTrak => $composableBuilder(
+    column: $table.statTrak,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastLowestCents => $composableBuilder(
+    column: $table.lastLowestCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastMedianCents => $composableBuilder(
+    column: $table.lastMedianCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get currency => $composableBuilder(
+    column: $table.currency,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get priceFetchedAt => $composableBuilder(
+    column: $table.priceFetchedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get trackedAt => $composableBuilder(
+    column: $table.trackedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$Cs2MarketItemsTableOrderingComposer
+    extends Composer<_$SteamDatabase, $Cs2MarketItemsTable> {
+  $$Cs2MarketItemsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get marketHashName => $composableBuilder(
+    column: $table.marketHashName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get skinId => $composableBuilder(
+    column: $table.skinId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get weaponName => $composableBuilder(
+    column: $table.weaponName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rarityName => $composableBuilder(
+    column: $table.rarityName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rarityColor => $composableBuilder(
+    column: $table.rarityColor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get caseName => $composableBuilder(
+    column: $table.caseName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get imageUrl => $composableBuilder(
+    column: $table.imageUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get wear => $composableBuilder(
+    column: $table.wear,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get statTrak => $composableBuilder(
+    column: $table.statTrak,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastLowestCents => $composableBuilder(
+    column: $table.lastLowestCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastMedianCents => $composableBuilder(
+    column: $table.lastMedianCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get currency => $composableBuilder(
+    column: $table.currency,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get priceFetchedAt => $composableBuilder(
+    column: $table.priceFetchedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get trackedAt => $composableBuilder(
+    column: $table.trackedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$Cs2MarketItemsTableAnnotationComposer
+    extends Composer<_$SteamDatabase, $Cs2MarketItemsTable> {
+  $$Cs2MarketItemsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get marketHashName => $composableBuilder(
+    column: $table.marketHashName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get skinId =>
+      $composableBuilder(column: $table.skinId, builder: (column) => column);
+
+  GeneratedColumn<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get weaponName => $composableBuilder(
+    column: $table.weaponName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get rarityName => $composableBuilder(
+    column: $table.rarityName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get rarityColor => $composableBuilder(
+    column: $table.rarityColor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get caseName =>
+      $composableBuilder(column: $table.caseName, builder: (column) => column);
+
+  GeneratedColumn<String> get imageUrl =>
+      $composableBuilder(column: $table.imageUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get wear =>
+      $composableBuilder(column: $table.wear, builder: (column) => column);
+
+  GeneratedColumn<bool> get statTrak =>
+      $composableBuilder(column: $table.statTrak, builder: (column) => column);
+
+  GeneratedColumn<int> get lastLowestCents => $composableBuilder(
+    column: $table.lastLowestCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get lastMedianCents => $composableBuilder(
+    column: $table.lastMedianCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get currency =>
+      $composableBuilder(column: $table.currency, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get priceFetchedAt => $composableBuilder(
+    column: $table.priceFetchedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get trackedAt =>
+      $composableBuilder(column: $table.trackedAt, builder: (column) => column);
+}
+
+class $$Cs2MarketItemsTableTableManager
+    extends
+        RootTableManager<
+          _$SteamDatabase,
+          $Cs2MarketItemsTable,
+          Cs2MarketItem,
+          $$Cs2MarketItemsTableFilterComposer,
+          $$Cs2MarketItemsTableOrderingComposer,
+          $$Cs2MarketItemsTableAnnotationComposer,
+          $$Cs2MarketItemsTableCreateCompanionBuilder,
+          $$Cs2MarketItemsTableUpdateCompanionBuilder,
+          (
+            Cs2MarketItem,
+            BaseReferences<
+              _$SteamDatabase,
+              $Cs2MarketItemsTable,
+              Cs2MarketItem
+            >,
+          ),
+          Cs2MarketItem,
+          PrefetchHooks Function()
+        > {
+  $$Cs2MarketItemsTableTableManager(
+    _$SteamDatabase db,
+    $Cs2MarketItemsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$Cs2MarketItemsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$Cs2MarketItemsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$Cs2MarketItemsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> marketHashName = const Value.absent(),
+                Value<String> skinId = const Value.absent(),
+                Value<String> displayName = const Value.absent(),
+                Value<String> weaponName = const Value.absent(),
+                Value<String> rarityName = const Value.absent(),
+                Value<String> rarityColor = const Value.absent(),
+                Value<String?> caseName = const Value.absent(),
+                Value<String> imageUrl = const Value.absent(),
+                Value<String?> wear = const Value.absent(),
+                Value<bool> statTrak = const Value.absent(),
+                Value<int?> lastLowestCents = const Value.absent(),
+                Value<int?> lastMedianCents = const Value.absent(),
+                Value<String> currency = const Value.absent(),
+                Value<DateTime?> priceFetchedAt = const Value.absent(),
+                Value<DateTime> trackedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => Cs2MarketItemsCompanion(
+                marketHashName: marketHashName,
+                skinId: skinId,
+                displayName: displayName,
+                weaponName: weaponName,
+                rarityName: rarityName,
+                rarityColor: rarityColor,
+                caseName: caseName,
+                imageUrl: imageUrl,
+                wear: wear,
+                statTrak: statTrak,
+                lastLowestCents: lastLowestCents,
+                lastMedianCents: lastMedianCents,
+                currency: currency,
+                priceFetchedAt: priceFetchedAt,
+                trackedAt: trackedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String marketHashName,
+                required String skinId,
+                required String displayName,
+                required String weaponName,
+                required String rarityName,
+                required String rarityColor,
+                Value<String?> caseName = const Value.absent(),
+                required String imageUrl,
+                Value<String?> wear = const Value.absent(),
+                Value<bool> statTrak = const Value.absent(),
+                Value<int?> lastLowestCents = const Value.absent(),
+                Value<int?> lastMedianCents = const Value.absent(),
+                Value<String> currency = const Value.absent(),
+                Value<DateTime?> priceFetchedAt = const Value.absent(),
+                Value<DateTime> trackedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => Cs2MarketItemsCompanion.insert(
+                marketHashName: marketHashName,
+                skinId: skinId,
+                displayName: displayName,
+                weaponName: weaponName,
+                rarityName: rarityName,
+                rarityColor: rarityColor,
+                caseName: caseName,
+                imageUrl: imageUrl,
+                wear: wear,
+                statTrak: statTrak,
+                lastLowestCents: lastLowestCents,
+                lastMedianCents: lastMedianCents,
+                currency: currency,
+                priceFetchedAt: priceFetchedAt,
+                trackedAt: trackedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$Cs2MarketItemsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$SteamDatabase,
+      $Cs2MarketItemsTable,
+      Cs2MarketItem,
+      $$Cs2MarketItemsTableFilterComposer,
+      $$Cs2MarketItemsTableOrderingComposer,
+      $$Cs2MarketItemsTableAnnotationComposer,
+      $$Cs2MarketItemsTableCreateCompanionBuilder,
+      $$Cs2MarketItemsTableUpdateCompanionBuilder,
+      (
+        Cs2MarketItem,
+        BaseReferences<_$SteamDatabase, $Cs2MarketItemsTable, Cs2MarketItem>,
+      ),
+      Cs2MarketItem,
+      PrefetchHooks Function()
+    >;
+typedef $$Cs2MarketPricePointsTableCreateCompanionBuilder =
+    Cs2MarketPricePointsCompanion Function({
+      Value<int> id,
+      required String marketHashName,
+      required DateTime observedAt,
+      Value<int?> lowestCents,
+      Value<int?> medianCents,
+      required String currency,
+    });
+typedef $$Cs2MarketPricePointsTableUpdateCompanionBuilder =
+    Cs2MarketPricePointsCompanion Function({
+      Value<int> id,
+      Value<String> marketHashName,
+      Value<DateTime> observedAt,
+      Value<int?> lowestCents,
+      Value<int?> medianCents,
+      Value<String> currency,
+    });
+
+class $$Cs2MarketPricePointsTableFilterComposer
+    extends Composer<_$SteamDatabase, $Cs2MarketPricePointsTable> {
+  $$Cs2MarketPricePointsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get marketHashName => $composableBuilder(
+    column: $table.marketHashName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get observedAt => $composableBuilder(
+    column: $table.observedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lowestCents => $composableBuilder(
+    column: $table.lowestCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get medianCents => $composableBuilder(
+    column: $table.medianCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get currency => $composableBuilder(
+    column: $table.currency,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$Cs2MarketPricePointsTableOrderingComposer
+    extends Composer<_$SteamDatabase, $Cs2MarketPricePointsTable> {
+  $$Cs2MarketPricePointsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get marketHashName => $composableBuilder(
+    column: $table.marketHashName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get observedAt => $composableBuilder(
+    column: $table.observedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lowestCents => $composableBuilder(
+    column: $table.lowestCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get medianCents => $composableBuilder(
+    column: $table.medianCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get currency => $composableBuilder(
+    column: $table.currency,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$Cs2MarketPricePointsTableAnnotationComposer
+    extends Composer<_$SteamDatabase, $Cs2MarketPricePointsTable> {
+  $$Cs2MarketPricePointsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get marketHashName => $composableBuilder(
+    column: $table.marketHashName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get observedAt => $composableBuilder(
+    column: $table.observedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get lowestCents => $composableBuilder(
+    column: $table.lowestCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get medianCents => $composableBuilder(
+    column: $table.medianCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get currency =>
+      $composableBuilder(column: $table.currency, builder: (column) => column);
+}
+
+class $$Cs2MarketPricePointsTableTableManager
+    extends
+        RootTableManager<
+          _$SteamDatabase,
+          $Cs2MarketPricePointsTable,
+          Cs2MarketPricePoint,
+          $$Cs2MarketPricePointsTableFilterComposer,
+          $$Cs2MarketPricePointsTableOrderingComposer,
+          $$Cs2MarketPricePointsTableAnnotationComposer,
+          $$Cs2MarketPricePointsTableCreateCompanionBuilder,
+          $$Cs2MarketPricePointsTableUpdateCompanionBuilder,
+          (
+            Cs2MarketPricePoint,
+            BaseReferences<
+              _$SteamDatabase,
+              $Cs2MarketPricePointsTable,
+              Cs2MarketPricePoint
+            >,
+          ),
+          Cs2MarketPricePoint,
+          PrefetchHooks Function()
+        > {
+  $$Cs2MarketPricePointsTableTableManager(
+    _$SteamDatabase db,
+    $Cs2MarketPricePointsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$Cs2MarketPricePointsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$Cs2MarketPricePointsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$Cs2MarketPricePointsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> marketHashName = const Value.absent(),
+                Value<DateTime> observedAt = const Value.absent(),
+                Value<int?> lowestCents = const Value.absent(),
+                Value<int?> medianCents = const Value.absent(),
+                Value<String> currency = const Value.absent(),
+              }) => Cs2MarketPricePointsCompanion(
+                id: id,
+                marketHashName: marketHashName,
+                observedAt: observedAt,
+                lowestCents: lowestCents,
+                medianCents: medianCents,
+                currency: currency,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String marketHashName,
+                required DateTime observedAt,
+                Value<int?> lowestCents = const Value.absent(),
+                Value<int?> medianCents = const Value.absent(),
+                required String currency,
+              }) => Cs2MarketPricePointsCompanion.insert(
+                id: id,
+                marketHashName: marketHashName,
+                observedAt: observedAt,
+                lowestCents: lowestCents,
+                medianCents: medianCents,
+                currency: currency,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$Cs2MarketPricePointsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$SteamDatabase,
+      $Cs2MarketPricePointsTable,
+      Cs2MarketPricePoint,
+      $$Cs2MarketPricePointsTableFilterComposer,
+      $$Cs2MarketPricePointsTableOrderingComposer,
+      $$Cs2MarketPricePointsTableAnnotationComposer,
+      $$Cs2MarketPricePointsTableCreateCompanionBuilder,
+      $$Cs2MarketPricePointsTableUpdateCompanionBuilder,
+      (
+        Cs2MarketPricePoint,
+        BaseReferences<
+          _$SteamDatabase,
+          $Cs2MarketPricePointsTable,
+          Cs2MarketPricePoint
+        >,
+      ),
+      Cs2MarketPricePoint,
+      PrefetchHooks Function()
+    >;
 
 class $SteamDatabaseManager {
   final _$SteamDatabase _db;
@@ -2929,4 +4906,8 @@ class $SteamDatabaseManager {
       $$SteamGamesTableTableManager(_db, _db.steamGames);
   $$SteamPricePointsTableTableManager get steamPricePoints =>
       $$SteamPricePointsTableTableManager(_db, _db.steamPricePoints);
+  $$Cs2MarketItemsTableTableManager get cs2MarketItems =>
+      $$Cs2MarketItemsTableTableManager(_db, _db.cs2MarketItems);
+  $$Cs2MarketPricePointsTableTableManager get cs2MarketPricePoints =>
+      $$Cs2MarketPricePointsTableTableManager(_db, _db.cs2MarketPricePoints);
 }
