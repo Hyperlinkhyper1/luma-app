@@ -9,26 +9,40 @@ import '../../../../../theme/luma_theme.dart';
 import '../data/steam_database.dart';
 import '../steam_price_history.dart';
 
-/// The price-history card: a range selector, a step chart of every price
-/// this device has recorded, and an honest note about how much history that
-/// actually is.
+/// The price-history card: a range selector, a step chart of the game's
+/// Steam price, and a note about where the record actually begins.
 ///
 /// Steam publishes no price history of its own — only what a game costs
-/// right now — so the line is built from luma's own observations. That makes
-/// the "tracking since" note load-bearing rather than decorative: without
-/// it, a flat line under a "5Y" button reads as five years of unchanged
-/// price instead of a week of watching.
+/// right now — so the line comes from IsThereAnyDeal, which has been logging
+/// shop prices for years. That is what makes "5Y" meaningful on the first
+/// day the plugin is opened. The note below the chart still matters though:
+/// a game released last month has no five-year history and never will, and a
+/// short flat line under a "5Y" button should not imply otherwise.
 class SteamPriceHistoryCard extends StatefulWidget {
   const SteamPriceHistoryCard({
     super.key,
     required this.points,
     required this.fallbackCurrency,
     this.loading = false,
+    this.hasItadKey = true,
+    this.lowestEverCents,
+    this.lowestEverAt,
+    this.onAddItadKey,
   });
 
   final List<SteamPricePoint> points;
   final String fallbackCurrency;
   final bool loading;
+
+  /// Without a key there is no history to draw, so the card offers a way to
+  /// add one instead of showing an empty chart with no explanation.
+  final bool hasItadKey;
+
+  /// The all-time low across the whole record, not just the shown window.
+  final int? lowestEverCents;
+  final DateTime? lowestEverAt;
+
+  final VoidCallback? onAddItadKey;
 
   @override
   State<SteamPriceHistoryCard> createState() => _SteamPriceHistoryCardState();
@@ -78,18 +92,24 @@ class _SteamPriceHistoryCardState extends State<SteamPriceHistoryCard> {
           const SizedBox(height: 16),
           SizedBox(
             height: 220,
-            child: widget.loading && widget.points.isEmpty
-                ? const _ChartSkeleton()
-                : series.isEmpty
-                    ? _ChartEmpty(range: _range)
-                    : _PriceChart(series: series),
+            child: !widget.hasItadKey
+                ? _NeedsKey(onAdd: widget.onAddItadKey)
+                : widget.loading && widget.points.isEmpty
+                    ? const _ChartSkeleton()
+                    : series.isEmpty
+                        ? _ChartEmpty(range: _range)
+                        : _PriceChart(series: series),
           ),
-          if (!series.isEmpty) ...[
+          if (widget.hasItadKey && !series.isEmpty) ...[
             const SizedBox(height: 14),
-            _SeriesSummary(series: series),
+            _SeriesSummary(
+              series: series,
+              lowestEverCents: widget.lowestEverCents,
+              lowestEverAt: widget.lowestEverAt,
+            ),
+            const SizedBox(height: 10),
+            _HistoryNote(series: series, range: _range),
           ],
-          const SizedBox(height: 10),
-          _TrackingNote(series: series, range: _range),
         ],
       ),
     );
@@ -300,7 +320,7 @@ class _AxisDates {
 String _chartSummary(SteamPriceSeries series) {
   final low = series.lowestCents;
   final high = series.highestCents;
-  if (low == null || high == null) return 'No price history yet.';
+  if (low == null || high == null) return 'No price history available.';
   if (series.isFlat) {
     return 'Price history over ${series.range.blurb}: unchanged at '
         '${formatSteamPrice(low, series.currency)}.';
@@ -310,13 +330,20 @@ String _chartSummary(SteamPriceSeries series) {
       '${formatSteamPrice(high, series.currency)}.';
 }
 
-/// Lowest / highest across the shown window. Suppressed when the price never
+/// Lowest / highest across the shown window, plus the all-time low across
+/// the whole record. The window pair is suppressed when the price never
 /// moved, where it would print the same number twice and imply a range that
 /// does not exist.
 class _SeriesSummary extends StatelessWidget {
-  const _SeriesSummary({required this.series});
+  const _SeriesSummary({
+    required this.series,
+    this.lowestEverCents,
+    this.lowestEverAt,
+  });
 
   final SteamPriceSeries series;
+  final int? lowestEverCents;
+  final DateTime? lowestEverAt;
 
   @override
   Widget build(BuildContext context) {
@@ -325,30 +352,58 @@ class _SeriesSummary extends StatelessWidget {
     final high = series.highestCents;
     if (low == null || high == null) return const SizedBox.shrink();
 
+    final allTime = lowestEverCents;
+
     if (series.isFlat) {
-      return Text(
-        'Unchanged at ${formatSteamPrice(low, series.currency)} across '
-        '${series.range.blurb}.',
-        style: TextStyle(color: luma.textSecondary, fontSize: 12),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Unchanged at ${formatSteamPrice(low, series.currency)} across '
+            '${series.range.blurb}.',
+            style: TextStyle(color: luma.textSecondary, fontSize: 12),
+          ),
+          if (allTime != null) ...[
+            const SizedBox(height: 10),
+            _Stat(
+              label: _allTimeLabel(lowestEverAt),
+              value: formatSteamPrice(allTime, series.currency),
+              color: luma.success,
+            ),
+          ],
+        ],
       );
     }
 
-    return Row(
+    return Wrap(
+      spacing: 20,
+      runSpacing: 12,
       children: [
         _Stat(
-          label: 'Lowest seen',
+          label: 'Lowest in range',
           value: formatSteamPrice(low, series.currency),
           color: luma.success,
         ),
-        const SizedBox(width: 20),
         _Stat(
-          label: 'Highest seen',
+          label: 'Highest in range',
           value: formatSteamPrice(high, series.currency),
           color: luma.textPrimary,
         ),
+        // The all-time low is the number people actually shop on, and it is
+        // rarely inside the window they happen to be looking at.
+        if (allTime != null)
+          _Stat(
+            label: _allTimeLabel(lowestEverAt),
+            value: formatSteamPrice(allTime, series.currency),
+            color: luma.success,
+          ),
       ],
     );
   }
+
+  static String _allTimeLabel(DateTime? at) => at == null
+      ? 'All-time low'
+      : 'All-time low (${DateFormat.yMMM().format(at)})';
 }
 
 class _Stat extends StatelessWidget {
@@ -381,9 +436,10 @@ class _Stat extends StatelessWidget {
   }
 }
 
-/// Says plainly how much of the selected window is real data.
-class _TrackingNote extends StatelessWidget {
-  const _TrackingNote({required this.series, required this.range});
+/// Says plainly where the record starts, so a short line under a long range
+/// is never mistaken for a long flat one.
+class _HistoryNote extends StatelessWidget {
+  const _HistoryNote({required this.series, required this.range});
 
   final SteamPriceSeries series;
   final SteamPriceRange range;
@@ -391,24 +447,19 @@ class _TrackingNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final since = series.trackedSince;
+    final from = series.historyFrom;
 
     final String message;
-    if (since == null) {
-      message = 'Steam publishes no price history, so luma records the price '
-          'itself. Nothing has been recorded for this game yet.';
+    if (from == null) {
+      message = 'Steam price history from IsThereAnyDeal.';
     } else if (series.coversFullRange) {
-      message = 'Recorded by luma on this device since '
-          '${DateFormat.yMMMd().format(since)}.';
+      message = 'Steam price history from IsThereAnyDeal, covering all of '
+          '${range.blurb}.';
     } else {
-      final days = DateTime.now().difference(since).inDays;
-      final tracked = days < 1
-          ? 'today'
-          : days == 1
-              ? '1 day'
-              : '$days days';
-      message = 'Steam publishes no price history, so this chart is what luma '
-          'has recorded on this device — $tracked so far, not '
+      // A game released recently has no long history and never will, so the
+      // shortfall is stated as a fact about the record, not a fault.
+      message = 'IsThereAnyDeal has this game from '
+          '${DateFormat.yMMMd().format(from)}, which is less than '
           '${range.blurb}.';
     }
 
@@ -432,6 +483,59 @@ class _TrackingNote extends StatelessWidget {
   }
 }
 
+/// Shown in place of the chart when no IsThereAnyDeal key has been added.
+/// The library and store details work without one; only history needs it.
+class _NeedsKey extends StatelessWidget {
+  const _NeedsKey({this.onAdd});
+
+  final VoidCallback? onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.key_rounded, size: 26, color: luma.textMuted),
+            const SizedBox(height: 10),
+            Text(
+              'Add an IsThereAnyDeal key for price history',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: luma.textSecondary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Steam only publishes what a game costs today. '
+              'IsThereAnyDeal has the years behind it.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: luma.textMuted,
+                fontSize: 12,
+                height: 1.45,
+              ),
+            ),
+            if (onAdd != null) ...[
+              const SizedBox(height: 14),
+              LumaPrimaryButton(
+                label: 'Add key',
+                icon: Icons.key_rounded,
+                onTap: onAdd,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ChartEmpty extends StatelessWidget {
   const _ChartEmpty({required this.range});
 
@@ -447,7 +551,7 @@ class _ChartEmpty extends StatelessWidget {
           Icon(Icons.timeline_rounded, size: 26, color: luma.textMuted),
           const SizedBox(height: 10),
           Text(
-            'No prices recorded over ${range.blurb}',
+            'No price history over ${range.blurb}',
             style: TextStyle(
               color: luma.textSecondary,
               fontSize: 13,
@@ -456,7 +560,8 @@ class _ChartEmpty extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Refresh prices to take the first reading.',
+            'IsThereAnyDeal has nothing on file for this game.',
+            textAlign: TextAlign.center,
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
         ],

@@ -126,18 +126,18 @@ void main() {
   group('price series', () {
     final now = DateTime(2026, 8, 25, 12);
 
-    test('is empty when nothing has been recorded', () {
+    test('is empty when there is no history at all', () {
       final series = buildSteamPriceSeries([], SteamPriceRange.year, now);
 
       expect(series.isEmpty, isTrue);
-      expect(series.trackedSince, isNull);
+      expect(series.historyFrom, isNull);
       expect(series.coversFullRange, isFalse);
     });
 
     test('carries the last price before the window across the whole range',
         () {
-      // The price last moved two years ago, so a one-month window contains no
-      // stored point at all — the line still has to span it.
+      // The price last changed two years ago, so a one-month window contains
+      // no recorded point at all — the line still has to span it.
       final points = [_point(now.subtract(const Duration(days: 730)), 5999)];
 
       final series = buildSteamPriceSeries(points, SteamPriceRange.month, now);
@@ -180,7 +180,7 @@ void main() {
       // confident flat line across years it never watched.
       expect(week.coversFullRange, isTrue);
       expect(fiveYears.coversFullRange, isFalse);
-      expect(fiveYears.trackedSince, points.first.observedAt);
+      expect(fiveYears.historyFrom, points.first.observedAt);
     });
 
     test('history shorter than the window is never claimed as full', () {
