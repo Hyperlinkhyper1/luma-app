@@ -615,7 +615,7 @@ class GroceryListItem extends DataClass implements Insertable<GroceryListItem> {
   /// manually-added items down the line).
   final String? productId;
 
-  /// Supermarket slug: 'jumbo', 'ah', or 'lidl'.
+  /// Supermarket slug: 'jumbo', 'ah', 'hoogvliet', or 'lidl'.
   final String market;
   final String marketName;
   final String name;

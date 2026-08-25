@@ -746,7 +746,9 @@ class _FactsCard extends StatelessWidget {
         ('Released', game.releaseDate!),
       if (game.metacritic != null) ('Metacritic', '${game.metacritic}/100'),
       if (platforms.isNotEmpty) ('Platforms', platforms.join(', ')),
-      ('Your playtime', _playtime(game.playtimeMinutes)),
+      // Only meaningful for a game the Steam library sync actually
+      // confirmed is owned — a searched-and-tracked game has no playtime.
+      if (game.owned) ('Your playtime', _playtime(game.playtimeMinutes)),
     ];
 
     return LumaCard(
@@ -783,13 +785,25 @@ class _FactsCard extends StatelessWidget {
               ),
             ),
           const SizedBox(height: 4),
-          LumaGhostButton(
-            label: 'Open on Steam',
-            icon: Icons.open_in_new_rounded,
-            onTap: () => launchUrl(
-              Uri.parse('https://store.steampowered.com/app/${game.appId}'),
-              mode: LaunchMode.externalApplication,
-            ),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              LumaGhostButton(
+                label: 'Open on Steam',
+                icon: Icons.open_in_new_rounded,
+                onTap: () => launchUrl(
+                  Uri.parse(
+                      'https://store.steampowered.com/app/${game.appId}'),
+                  mode: LaunchMode.externalApplication,
+                ),
+              ),
+              LumaGhostButton(
+                label: 'Stop tracking',
+                icon: Icons.delete_outline_rounded,
+                onTap: () => _confirmUntrack(context, game),
+              ),
+            ],
           ),
         ],
       ),
@@ -802,6 +816,46 @@ class _FactsCard extends StatelessWidget {
     final hours = minutes / 60;
     if (hours < 10) return '${hours.toStringAsFixed(1)} hours';
     return '${hours.round()} hours';
+  }
+
+  static Future<void> _confirmUntrack(
+    BuildContext context,
+    SteamGame game,
+  ) async {
+    final luma = context.luma;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: luma.surface,
+        title: Text('Stop tracking ${game.name}?',
+            style: TextStyle(color: luma.textPrimary)),
+        content: Text(
+          game.owned
+              ? 'This removes it from your tracked games and deletes its '
+                  'price history on this device. It is still in your Steam '
+                  'library, so refreshing the library later will add it '
+                  'back.'
+              : 'This removes it from your tracked games and deletes its '
+                  'price history on this device.',
+          style: TextStyle(color: luma.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child:
+                Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text('Stop tracking', style: TextStyle(color: luma.danger)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    await SteamScope.of(context).untrackGame(game.appId);
+    if (context.mounted) Navigator.of(context).pop();
   }
 }
 
