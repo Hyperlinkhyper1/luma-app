@@ -1,0 +1,8 @@
+{
+  "id": "roblox-tools",
+  "name": "Roblox Tools",
+  "version": "1.0.0",
+  "description": "A hub of calculators and helpers for Roblox games, organized by game in a sidebar. Mafia is first: Role Counting takes your lobby size (2-20 players) and shows exactly which roles are in play and how many of each, sourced from the official wiki's role chart.",
+  "icon": "sports_esports",
+  "category": "Games"
+}
