@@ -40,6 +40,11 @@ async function collectStatus() {
   const [[priceCounts]] = await pool.query(
     'SELECT COUNT(*) AS total FROM product_prices'
   );
+  const [perMarket] = await pool.query(
+    `SELECT sm.slug, sm.name, COUNT(p.id) AS total
+     FROM supermarkets sm LEFT JOIN products p ON p.supermarket_id = sm.id
+     GROUP BY sm.id ORDER BY sm.slug`
+  );
   const logs = await SyncLog.findRecent({ limit: 20 });
   return {
     products: {
@@ -47,6 +52,7 @@ async function collectStatus() {
       available: Number(productCounts.available),
     },
     priceSnapshots: Number(priceCounts.total),
+    perMarket: perMarket.map((r) => ({ slug: r.slug, name: r.name, total: Number(r.total) })),
     markets: syncService.slugs,
     running: logs.some((l) => l.status === 'running'),
     syncs: logs.map((l) => ({
@@ -72,6 +78,35 @@ function startSync(market) {
   run.catch((error) => console.error('Admin-triggered sync failed:', error));
 }
 
+async function reloadDatabase(market) {
+  const pool = getPool();
+  if (market) {
+    const [markets] = await pool.query('SELECT id FROM supermarkets WHERE slug = :slug', { slug: market });
+    if (markets.length === 0) throw new Error(`Unknown market "${market}"`);
+    const marketId = markets[0].id;
+    // DELETE cascades to product_prices + product_history via FKs
+    await pool.query('DELETE FROM products WHERE supermarket_id = :marketId', { marketId });
+  } else {
+    // Reload all = wipe the whole catalog (useful after schema changes or to
+    // force a clean re-import without stale unavailable rows lingering).
+    await pool.query('DELETE FROM products');
+  }
+}
+
+function startReload(market) {
+  // Like startSync but wipes that market's rows first so the next crawl
+  // produces a truly fresh catalog (no stale unavailable rows carried over).
+  const run = (async () => {
+    await reloadDatabase(market);
+    if (market) {
+      return syncService.syncOne(market);
+    }
+    return syncService.syncAll();
+  })();
+  run.catch((error) => console.error('Admin-triggered reload failed:', error));
+  return run;
+}
+
 function esc(value) {
   return String(value ?? '').replace(/[&<>"']/g, (ch) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -85,6 +120,16 @@ function controlPanelHtml(status, key) {
     `<input type="hidden" name="market" value="${esc(slug)}">` +
     `<button type="submit" class="ghost">Sync ${esc(slug)}</button></form>`
   ).join('');
+
+  const reloadButtons = status.markets.map((slug) =>
+    `<form method="post" action="/admin/database/reload?key=${encodedKey}" style="margin:0" onsubmit="return confirm('Reload ${esc(slug)} — this deletes all ${esc(slug)} products and re-fetches the full catalog. Continue?')">` +
+    `<input type="hidden" name="market" value="${esc(slug)}">` +
+    `<button type="submit" class="ghost danger">Reload ${esc(slug)}</button></form>`
+  ).join('');
+
+  const perMarketLine = (status.perMarket || [])
+    .map((m) => `${esc(m.name)} (${esc(m.slug)}): ${m.total}`)
+    .join(' · ');
 
   const rows = status.syncs.map((s) => {
     const color = s.status === 'success' ? '#7ee08a'
@@ -115,10 +160,14 @@ h1{font-size:20px;margin:0 0 24px}h2{font-size:15px;margin:28px 0 12px}
 button{background:#8a7ee0;color:#161320;border:none;border-radius:8px;padding:8px 16px;
 font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
 button.ghost{background:#1e1a2b;color:#a49fb8;border:1px solid #2c2640;font-weight:500}
+button.ghost.danger{color:#f0a0a0;border-color:#4a2a3a}
+button.danger{background:#c0392b;color:#fff;border-color:#c0392b}
 table{border-collapse:collapse;width:100%;font-size:13px}
 th{text-align:left;color:#a49fb8;font-weight:500;padding:8px 12px;border-bottom:1px solid #2c2640}
 td{padding:8px 12px;border-bottom:1px solid #201c2c}
 .note{color:#a49fb8;font-size:12px;margin-top:8px}
+.reload-box{margin-top:18px;padding:16px;border:1px solid #2c2640;border-radius:8px;background:#1e1a2b}
+.reload-box h3{margin:0 0 8px;font-size:13px;color:#e8e4f3}
 </style></head><body>
 <h1>luma groceries — control panel</h1>
 <div class="stats">
@@ -126,6 +175,7 @@ td{padding:8px 12px;border-bottom:1px solid #201c2c}
 <div class="stat"><div class="n">${status.products.available}</div><div class="l">Available</div></div>
 <div class="stat"><div class="n">${status.priceSnapshots}</div><div class="l">Price snapshots</div></div>
 </div>
+${perMarketLine ? `<div class="note">${perMarketLine}</div>` : ''}
 <h2>Reload / update database</h2>
 <div class="actions">
 <form method="post" action="/admin/sync?key=${encodedKey}" style="margin:0">
@@ -136,6 +186,15 @@ ${marketButtons}
 adds new products, updates existing ones, records price changes, and marks
 products that disappeared as unavailable.${status.running
     ? ' <strong>A sync is running — this page refreshes automatically.</strong>' : ''}</div>
+<div class="reload-box">
+<h3>Reload database (wipe + re-fetch)</h3>
+<div class="actions">
+<form method="post" action="/admin/database/reload?key=${encodedKey}" style="margin:0" onsubmit="return confirm('Reload the entire database — this deletes ALL products and re-fetches every market. Continue?')">
+<button type="submit" class="danger">Reload entire DB</button></form>
+${reloadButtons}
+</div>
+<div class="note">Deletes existing products for the chosen market (cascades to prices/history) and immediately starts a fresh sync. Use after catalog fixes or to drop stale unavailable rows without waiting for them to age out.</div>
+</div>
 <h2>Recent syncs</h2>
 <table><thead><tr><th>Market</th><th>Status</th><th>Started</th><th>Finished</th>
 <th>Checked</th><th>Added</th><th>Updated</th><th>Failed</th><th>Error</th></tr></thead>
@@ -189,6 +248,41 @@ function registerAdminRoutes(app) {
       res.redirect(303, `/admin?key=${encodeURIComponent(String(req.query.key || ''))}`);
     } else {
       res.status(202).json({ started: true, market: market || 'all' });
+    }
+  });
+
+  // Wipe + re-fetch: deletes existing rows for the chosen scope, then starts
+  // the corresponding sync. Blocked while any sync is active so rows aren't
+  // deleted mid-write.
+  app.post('/admin/database/reload', requireAdmin, form, async (req, res, next) => {
+    try {
+      const market = typeof req.body.market === 'string' && req.body.market.trim()
+        ? req.body.market.trim()
+        : null;
+      if (market && !syncService.slugs.includes(market)) {
+        res.status(400).json({ error: `Unknown market "${market}".` });
+        return;
+      }
+      const anyRunning = syncService.slugs.some((s) => syncService.isRunning(s));
+      if (anyRunning) {
+        const msg = 'A sync is already running — wait for it to finish before reloading the database.';
+        if ((req.headers.accept || '').includes('text/html')) {
+          res.status(409).type('html').send(`<p>${esc(msg)}</p><p><a href="/admin?key=${encodeURIComponent(String(req.query.key || ''))}">Back to control panel</a></p>`);
+        } else {
+          res.status(409).json({ error: msg });
+        }
+        return;
+      }
+      // Fire and forget — same pattern as /admin/sync — but wiping first.
+      // The panel auto-refreshes via meta refresh while running.
+      startReload(market);
+      if ((req.headers.accept || '').includes('text/html')) {
+        res.redirect(303, `/admin?key=${encodeURIComponent(String(req.query.key || ''))}`);
+      } else {
+        res.status(202).json({ started: true, reload: true, market: market || 'all' });
+      }
+    } catch (error) {
+      next(error);
     }
   });
 }
