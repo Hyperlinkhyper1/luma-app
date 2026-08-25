@@ -5961,23 +5961,24 @@ if (window.innerWidth <= 900) document.getElementById('pane-write').classList.ad
         '<div class="maint-grid">'
         '<div class="card">'
         '<h2>Groceries database</h2>'
-        '<div class="product-form">'
+        '<div class="maint-desc">Pulls the latest products and prices from '
+        'each supermarket, records price changes, and marks products that '
+        'disappeared as unavailable.</div>'
+        '<div class="maint-actions">'
         '<form method="post" action="/admin/groceries/sync" style="margin:0">'
         '<button type="submit" class="btn btn-primary">Sync all markets</button></form>'
         '<form method="post" action="/admin/groceries/sync" style="margin:0">'
         '<input type="hidden" name="market" value="jumbo">'
-        '<button type="submit" class="btn btn-ghost">Sync Jumbo</button></form>'
+        '<button type="submit" class="btn btn-ghost">Jumbo</button></form>'
         '<form method="post" action="/admin/groceries/sync" style="margin:0">'
         '<input type="hidden" name="market" value="ah">'
-        '<button type="submit" class="btn btn-ghost">Sync Albert Heijn</button></form>'
+        '<button type="submit" class="btn btn-ghost">Albert Heijn</button></form>'
+        '<button id="groceriesLogBtn" type="button" class="btn btn-ghost btn-sm">'
+        'Show log</button>'
         '</div>'
-        '<div id="groceriesSummary" class="hint">Loading groceries status…</div>'
-        '<div class="product-form" style="margin-bottom:0">'
-        '<button id="groceriesLogBtn" type="button" class="btn btn-ghost">'
-        'Show sync log</button>'
-        '</div>'
-        '<div id="groceriesLog" style="display:none;max-height:400px;'
-        'overflow:auto;margin-top:16px">'
+        '<div id="groceriesSummary" class="maint-status">Loading groceries '
+        'status…</div>'
+        '<div id="groceriesLog" class="maint-out" style="display:none">'
         '<table><thead><tr><th>Market</th><th>Status</th><th>Started</th>'
         '<th>Finished</th><th>Checked</th><th>Added</th><th>Updated</th>'
         '<th>Failed</th><th>Error</th></tr></thead>'
@@ -5988,13 +5989,15 @@ if (window.innerWidth <= 900) document.getElementById('pane-write').classList.ad
         '</div>'
         '<div class="card">'
         '<h2>AI model leaderboard</h2>'
-        '<div class="product-form">'
+        '<div class="maint-desc">Re-fetches the model catalogue and news '
+        'that back the AI Usage plugin\'s leaderboard.</div>'
+        '<div class="maint-actions">'
         '<button id="aiModelsBtn" type="button" class="btn btn-primary">'
         'Refresh model data</button>'
         '</div>'
-        '<div id="aiModelsSummary" class="hint">Loading catalogue status…</div>'
-        '<div id="aiModelsLog" style="display:none;max-height:360px;'
-        'overflow:auto;margin-top:16px">'
+        '<div id="aiModelsSummary" class="maint-status">Loading catalogue '
+        'status…</div>'
+        '<div id="aiModelsLog" class="maint-out" style="display:none">'
         '<table><thead><tr><th>Source</th><th>Status</th><th>Fetched</th>'
         '<th>Applied</th><th>Detail</th></tr></thead>'
         '<tbody id="aiModelsRows"></tbody></table>'
@@ -6002,24 +6005,27 @@ if (window.innerWidth <= 900) document.getElementById('pane-write').classList.ad
         '</div>'
         '<div class="card">'
         '<h2>Server update</h2>'
-        '<div class="product-form">'
+        '<div class="maint-desc">Pulls the latest code, rebuilds the image '
+        'and recreates the container. <strong>The server restarts and is '
+        'briefly unavailable.</strong></div>'
+        '<div class="maint-actions">'
         '<button id="deployBtn" type="button" class="btn btn-primary">'
         'Update &amp; restart server</button>'
         '</div>'
-        '<div id="deployStatus" class="hint" style="margin-bottom:12px"></div>'
-        '<pre id="deployLog" class="log" style="display:none"></pre>'
+        '<div id="deployStatus" class="maint-status"></div>'
+        '<pre id="deployLog" class="log maint-out" style="display:none"></pre>'
         '</div>'
         '<div class="card">'
         '<h2>System updates</h2>'
-        '<div class="hint">Checks for apt package upgrades and graphics '
-        'driver updates on the host (Ubuntu Desktop). Read-only — nothing '
+        '<div class="maint-desc">Checks the host (Ubuntu Desktop) for apt '
+        'package upgrades and graphics driver updates. Read-only — nothing '
         'is installed or restarted.</div>'
-        '<div class="product-form">'
+        '<div class="maint-actions">'
         '<button id="updateCheckBtn" type="button" class="btn btn-primary">'
         'Check for updates</button>'
         '</div>'
-        '<div id="updateCheckStatus" class="hint" style="margin-bottom:12px"></div>'
-        '<pre id="updateCheckLog" class="log" style="display:none"></pre>'
+        '<div id="updateCheckStatus" class="maint-status"></div>'
+        '<pre id="updateCheckLog" class="log maint-out" style="display:none"></pre>'
         '</div>'
         '</div>'
         '</div>'
@@ -6091,9 +6097,24 @@ tbody tr:hover td{background:#181330}
 .range-btn.active{background:#8a7ee0;color:#14111f;font-weight:600}
 .metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(440px,1fr));gap:14px}
 @media (max-width:960px){.metrics-grid{grid-template-columns:1fr}}
-.maint-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:18px;align-items:start}
-.maint-grid .card{margin-bottom:0}
-@media (max-width:960px){.maint-grid{grid-template-columns:1fr}}
+/* Four maintenance cards, each "button + status + output". Their natural
+   heights differ wildly (a deploy log is 20x a one-line status), so this is
+   a 2-col grid of equal-height cards with every output box capped and
+   scrolling internally — an auto-fit 3-col grid left one card stranded on a
+   second row and the tall deploy log punched a hole through the first. */
+.maint-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:18px}
+.maint-grid .card{margin-bottom:0;display:flex;flex-direction:column;min-width:0}
+.maint-grid .card h2{margin-bottom:8px}
+.maint-desc{color:#8d86a8;font-size:12.5px;line-height:1.55;margin:0 0 16px;max-width:62ch}
+.maint-desc strong{color:#b4addc;font-weight:600}
+.maint-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+/* Reserves its line so an arriving status message doesn't shift the card. */
+.maint-status{font-size:13px;color:#9b94b3;line-height:1.5;min-height:20px}
+/* Both output kinds — the sync tables and the deploy/update logs — render as
+   the same inset panel, so the four cards read as one family. */
+.maint-out{margin-top:14px;max-height:220px;overflow:auto;background:#12101e;border:1px solid #241e36;border-radius:10px}
+.maint-grid pre.log{margin-top:14px;max-height:220px}
+@media (max-width:900px){.maint-grid{grid-template-columns:1fr}}
 .metric-card{background:#151122;border:1px solid #241e36;border-radius:14px;padding:16px 18px}
 .metric-title{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#8d86a8;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px}
 .metric-title .legend{display:inline-flex;gap:10px;text-transform:none;letter-spacing:0}

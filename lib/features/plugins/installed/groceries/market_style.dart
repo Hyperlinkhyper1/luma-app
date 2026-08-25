@@ -8,6 +8,7 @@ const marketColors = <String, Color>{
   'jumbo': Color(0xFFF6C500),
   'ah': Color(0xFF4FA8DE),
   'lidl': Color(0xFF3D6DC7),
+  'hoogvliet': Color(0xFFE53935),
 };
 
 Color colorForMarket(String slug, LumaPalette luma) =>
