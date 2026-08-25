@@ -41,6 +41,7 @@ import '../features/plugins/installed/wifi_speed_test/wifi_speed_test_page.dart'
 import '../features/plugins/installed/worth_counter/worth_counter_page.dart';
 import '../features/plugins/installed/media_downloader/media_downloader_page.dart';
 import '../features/plugins/installed/recipe_book/recipe_book_page.dart';
+import '../features/plugins/installed/roblox_tools/roblox_tools_page.dart';
 import '../features/plugins/plugin_repository.dart';
 import '../features/plugins/plugin_scope.dart';
 import '../features/plugins/plugins_page.dart';
@@ -379,6 +380,7 @@ class _AppShellState extends State<AppShell> {
         'worth-counter' => const WorthCounterPage(),
         'gallery' => const GalleryPage(),
         'nfc-tag-editor' => const NfcTagEditorPage(),
+        'roblox-tools' => const RobloxToolsPage(),
         _ => LumaEmptyState(
             icon: Icons.extension_off_rounded,
             title: t.shellPluginUnavailable,
