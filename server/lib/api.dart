@@ -12,6 +12,7 @@ import 'ai_model_refresh.dart';
 import 'ai_usage_store.dart';
 import 'chat_store.dart';
 import 'deploy_console.dart';
+import 'update_check.dart';
 import 'family_store.dart';
 import 'mail.dart';
 import 'metrics.dart';
@@ -477,6 +478,10 @@ class Api {
       ..get('/admin/ai-models/status', _requireAdmin(_adminAiModelsStatus))
       ..post('/admin/deploy', _requireAdmin(_deploy.requestDeploy))
       ..get('/admin/deploy/status', _requireAdmin(_deploy.deployStatus))
+      ..post('/admin/system/check-updates',
+          _requireAdmin(_updateCheck.requestCheck))
+      ..get('/admin/system/check-updates/status',
+          _requireAdmin(_updateCheck.checkStatus))
       ..get('/admin/website', _requireAdmin(_adminWebsiteIndex))
       ..post('/admin/website/build', _requireAdmin(_adminWebsiteBuild))
       ..get('/admin/website/build/status',
@@ -3718,6 +3723,15 @@ class Api {
     repoPathConfigured: config.repoPathConfigured,
   );
 
+  /// The "Check for updates" button. Lives in update_check.dart for the same
+  /// reason as [_deploy]: it needs deploy-watcher.sh on the host to run
+  /// `apt`/`ubuntu-drivers` against the actual Ubuntu Desktop install, not
+  /// this container's own filesystem.
+  late final UpdateCheckConsole _updateCheck = UpdateCheckConsole(
+    dataDir: config.dataDir,
+    repoPathConfigured: config.repoPathConfigured,
+  );
+
 
   // ---------------------------------------------------------------------
   // Website (wiki) editor — /admin/website
@@ -5944,6 +5958,7 @@ if (window.innerWidth <= 900) document.getElementById('pane-write').classList.ad
         '</div>'
         '</div>'
         '<div class="tab-panel" id="panel-control">'
+        '<div class="maint-grid">'
         '<div class="card">'
         '<h2>Groceries database</h2>'
         '<div class="product-form">'
@@ -5994,6 +6009,18 @@ if (window.innerWidth <= 900) document.getElementById('pane-write').classList.ad
         '<div id="deployStatus" class="hint" style="margin-bottom:12px"></div>'
         '<pre id="deployLog" class="log" style="display:none"></pre>'
         '</div>'
+        '<div class="card">'
+        '<h2>System updates</h2>'
+        '<div class="hint">Checks for apt package upgrades and graphics '
+        'driver updates on the host (Ubuntu Desktop). Read-only — nothing '
+        'is installed or restarted.</div>'
+        '<div class="product-form">'
+        '<button id="updateCheckBtn" type="button" class="btn btn-primary">'
+        'Check for updates</button>'
+        '</div>'
+        '<div id="updateCheckStatus" class="hint" style="margin-bottom:12px"></div>'
+        '<pre id="updateCheckLog" class="log" style="display:none"></pre>'
+        '</div>'
         '</div>'
         '</div>'
         '<script>$_adminTabScript</script>'
@@ -6001,6 +6028,7 @@ if (window.innerWidth <= 900) document.getElementById('pane-write').classList.ad
         '<script>$_adminGroceriesScript</script>'
         '<script>$_adminAiModelsScript</script>'
         '<script>${DeployConsole.deployScript}</script>'
+        '<script>${UpdateCheckConsole.updateCheckScript}</script>'
         '</body></html>';
 
     return Response(200,
@@ -6063,6 +6091,9 @@ tbody tr:hover td{background:#181330}
 .range-btn.active{background:#8a7ee0;color:#14111f;font-weight:600}
 .metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(440px,1fr));gap:14px}
 @media (max-width:960px){.metrics-grid{grid-template-columns:1fr}}
+.maint-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:18px;align-items:start}
+.maint-grid .card{margin-bottom:0}
+@media (max-width:960px){.maint-grid{grid-template-columns:1fr}}
 .metric-card{background:#151122;border:1px solid #241e36;border-radius:14px;padding:16px 18px}
 .metric-title{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#8d86a8;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px}
 .metric-title .legend{display:inline-flex;gap:10px;text-transform:none;letter-spacing:0}

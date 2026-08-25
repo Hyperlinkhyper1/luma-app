@@ -8,6 +8,12 @@ const MODULES = {
   lidl: lidlSync,
 };
 
+// Lidl has no real fetchProducts() implementation (see supermarkets/lidl/sync.js
+// — it's a permanent stub that always returns []), so "sync all" skips it
+// rather than running a no-op sync every time. It stays in MODULES/slugs so
+// it can still be synced individually if that ever changes.
+const AUTO_SYNC_SLUGS = Object.keys(MODULES).filter((slug) => slug !== 'lidl');
+
 class SyncService {
   get slugs() {
     return Object.keys(MODULES);
@@ -32,7 +38,7 @@ class SyncService {
 
   async syncAll() {
     const results = {};
-    for (const slug of Object.keys(MODULES)) {
+    for (const slug of AUTO_SYNC_SLUGS) {
       if (this.isRunning(slug)) {
         results[slug] = { skipped: 'already running' };
         continue;
