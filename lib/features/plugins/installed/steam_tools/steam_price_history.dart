@@ -42,7 +42,7 @@ class SteamPriceSeries {
     required this.samples,
     required this.range,
     required this.currency,
-    this.trackedSince,
+    this.historyFrom,
     this.coversFullRange = false,
   });
 
@@ -50,15 +50,15 @@ class SteamPriceSeries {
   final SteamPriceRange range;
   final String currency;
 
-  /// The first price this device ever recorded for the game. Null when
-  /// nothing has been recorded yet.
+  /// The oldest price IsThereAnyDeal has on file for this game. Null when
+  /// there is no history at all.
   ///
-  /// Steam publishes no price history of its own, so the chart can only show
-  /// what luma has watched since the game was added. This is what the UI
-  /// uses to say so instead of implying the flat line is five years of data.
-  final DateTime? trackedSince;
+  /// A game released last month has no five-year history, and never will.
+  /// The UI uses this to say where the record actually starts instead of
+  /// letting a short flat line imply five unchanging years.
+  final DateTime? historyFrom;
 
-  /// Whether tracking started at or before the window opened — i.e. whether
+  /// Whether the record starts at or before the window opened — i.e. whether
   /// the line really does span the whole range the user picked.
   final bool coversFullRange;
 
@@ -78,13 +78,12 @@ class SteamPriceSeries {
   bool get isFlat => lowestCents != null && lowestCents == highestCents;
 }
 
-/// Builds the series for [range] out of every price ever recorded for a
-/// game.
+/// Builds the series for [range] out of a game's full price history.
 ///
-/// [points] must be ordered oldest first. Prices are only written when they
-/// change, so drawing the stored points alone would leave the line starting
-/// wherever the last change happened and stopping there too. Two fixes make
-/// the window whole:
+/// [points] must be ordered oldest first, and holds one row per price
+/// *change* — that is how IsThereAnyDeal records them. Drawing those points
+/// alone would leave the line starting wherever the last change happened and
+/// stopping there too. Two fixes make the window whole:
 ///
 ///  * the most recent price from *before* the window is carried forward to
 ///    the window's start, so a game whose price last moved two years ago
@@ -108,7 +107,7 @@ SteamPriceSeries buildSteamPriceSeries(
     );
   }
 
-  final trackedSince = points.first.observedAt;
+  final historyFrom = points.first.observedAt;
   final inWindow = points.where((p) => !p.observedAt.isBefore(start)).toList();
 
   SteamPricePoint? carried;
@@ -140,7 +139,7 @@ SteamPriceSeries buildSteamPriceSeries(
       samples: const [],
       range: range,
       currency: currency,
-      trackedSince: trackedSince,
+      historyFrom: historyFrom,
     );
   }
 
@@ -157,8 +156,8 @@ SteamPriceSeries buildSteamPriceSeries(
     samples: samples,
     range: range,
     currency: currency,
-    trackedSince: trackedSince,
-    coversFullRange: !trackedSince.isAfter(start),
+    historyFrom: historyFrom,
+    coversFullRange: !historyFrom.isAfter(start),
   );
 }
 

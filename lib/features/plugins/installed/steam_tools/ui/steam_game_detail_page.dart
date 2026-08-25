@@ -33,10 +33,13 @@ class _SteamGameDetailPageState extends State<SteamGameDetailPage> {
     super.didChangeDependencies();
     if (_started) return;
     _started = true;
-    // The store page is fetched on open rather than during the library sync:
-    // Steam rate limits it, and a 300-game library would spend that budget
-    // on pages nobody looked at.
-    SteamScope.of(context).ensureDetails(widget.appId);
+    // Both fetches happen on open rather than during the library sync: Steam
+    // rate limits its store API, and a 300-game library would spend that
+    // budget on pages nobody looked at. They are independent, so the price
+    // can land while the history is still coming.
+    final repository = SteamScope.of(context);
+    repository.ensureDetails(widget.appId);
+    repository.ensureHistory(widget.appId);
   }
 
   @override
@@ -121,8 +124,14 @@ class _DetailBody extends StatelessWidget {
                         builder: (context, snapshot) => SteamPriceHistoryCard(
                           points: snapshot.data ?? const [],
                           fallbackCurrency: game.currency ?? 'USD',
-                          loading: snapshot.connectionState ==
-                              ConnectionState.waiting,
+                          loading: repository.isFetchingHistory(game.appId) ||
+                              snapshot.connectionState ==
+                                  ConnectionState.waiting,
+                          hasItadKey: repository.hasItadKey,
+                          lowestEverCents: game.lowestEverCents,
+                          lowestEverAt: game.lowestEverAt,
+                          onAddItadKey: () =>
+                              _promptForItadKey(context, game.appId),
                         ),
                       ),
                       if (game.shortDescription?.isNotEmpty ?? false) ...[
@@ -151,6 +160,23 @@ class _DetailBody extends StatelessWidget {
         const _BackButton(),
       ],
     );
+  }
+
+  /// Collects an IsThereAnyDeal key without sending the user back to the
+  /// connect screen, which would mean disconnecting Steam to add an optional
+  /// extra.
+  static Future<void> _promptForItadKey(
+    BuildContext context,
+    int appId,
+  ) async {
+    final repository = SteamScope.of(context);
+    final key = await showDialog<String>(
+      context: context,
+      builder: (_) => const _ItadKeyDialog(),
+    );
+    if (key == null || key.trim().isEmpty) return;
+    await repository.saveItadKey(key);
+    await repository.ensureHistory(appId, force: true);
   }
 
   static List<String> _tagsOf(SteamGame game) {
@@ -762,6 +788,107 @@ class _FactsCard extends StatelessWidget {
     final hours = minutes / 60;
     if (hours < 10) return '${hours.toStringAsFixed(1)} hours';
     return '${hours.round()} hours';
+  }
+}
+
+/// Collects an IsThereAnyDeal key. Obscured by default with a reveal
+/// toggle, like every other key field in the app.
+class _ItadKeyDialog extends StatefulWidget {
+  const _ItadKeyDialog();
+
+  @override
+  State<_ItadKeyDialog> createState() => _ItadKeyDialogState();
+}
+
+class _ItadKeyDialogState extends State<_ItadKeyDialog> {
+  final _controller = TextEditingController();
+  bool _show = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() => Navigator.of(context).pop(_controller.text);
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return AlertDialog(
+      backgroundColor: luma.surface,
+      title: Text(
+        'IsThereAnyDeal key',
+        style: TextStyle(color: luma.textPrimary, fontSize: 16),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Price history comes from IsThereAnyDeal. The key is free, stays '
+            'encrypted on this device, and is sent only to them.',
+            style: TextStyle(
+              color: luma.textSecondary,
+              fontSize: 12.5,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            obscureText: !_show,
+            autocorrect: false,
+            enableSuggestions: false,
+            style: TextStyle(color: luma.textPrimary, fontSize: 13),
+            decoration: InputDecoration(
+              isDense: true,
+              labelText: 'API key',
+              labelStyle: TextStyle(color: luma.textMuted, fontSize: 13),
+              filled: true,
+              fillColor: luma.background,
+              suffixIcon: IconButton(
+                onPressed: () => setState(() => _show = !_show),
+                icon: Icon(
+                  _show
+                      ? Icons.visibility_off_rounded
+                      : Icons.visibility_rounded,
+                  size: 18,
+                  color: luma.textMuted,
+                ),
+                tooltip: _show ? 'Hide key' : 'Show key',
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: luma.border),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: luma.accent),
+              ),
+            ),
+            onSubmitted: (_) => _submit(),
+          ),
+          const SizedBox(height: 10),
+          LumaGhostButton(
+            label: 'Get a key',
+            icon: Icons.open_in_new_rounded,
+            onTap: () => launchUrl(
+              Uri.parse('https://isthereanydeal.com/apps/'),
+              mode: LaunchMode.externalApplication,
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text('Cancel', style: TextStyle(color: luma.textMuted)),
+        ),
+        LumaPrimaryButton(label: 'Save', onTap: _submit),
+      ],
+    );
   }
 }
 

@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../../storage/storage_guard.dart';
 import 'data/steam_database.dart';
+import 'itad_api.dart';
 import 'steam_api.dart';
 import 'steam_credentials.dart';
 import 'steam_models.dart';
@@ -18,12 +19,15 @@ class SteamRepository extends ChangeNotifier {
   SteamRepository(
     this._db, {
     SteamApi? api,
+    ItadApi? itad,
     SteamCredentialStore? credentialStore,
   })  : _api = api ?? SteamApi(),
+        _itad = itad ?? ItadApi(),
         _store = credentialStore;
 
   final SteamDatabase _db;
   final SteamApi _api;
+  final ItadApi _itad;
   SteamCredentialStore? _store;
 
   SteamCredentials? _credentials;
@@ -36,6 +40,10 @@ class SteamRepository extends ChangeNotifier {
   /// Games whose store page is being fetched right now, so each detail page
   /// can show its own spinner without a rebuild storm across the grid.
   final Set<int> _fetching = {};
+
+  /// Games whose ITAD history is in flight, tracked separately: the store
+  /// page and the history arrive independently and each has its own spinner.
+  final Set<int> _fetchingHistory = {};
 
   /// How far through a full price refresh we are, for the progress line.
   int _priceChecked = 0;
@@ -58,6 +66,11 @@ class SteamRepository extends ChangeNotifier {
   bool get refreshingPrices => _priceTotal > 0;
 
   bool isFetchingDetails(int appId) => _fetching.contains(appId);
+  bool isFetchingHistory(int appId) => _fetchingHistory.contains(appId);
+
+  /// Whether an IsThereAnyDeal key has been saved. Without one there is no
+  /// price history to show — the library and store details still work.
+  bool get hasItadKey => _credentials?.hasItadKey ?? false;
 
   Stream<List<SteamGame>> watchLibrary() => _db.watchLibrary();
   Stream<SteamGame?> watchGame(int appId) => _db.watchGame(appId);
@@ -94,6 +107,7 @@ class SteamRepository extends ChangeNotifier {
   Future<bool> connect({
     required String apiKey,
     required String steamIdOrUrl,
+    String itadKey = '',
   }) async {
     if (_connecting) return false;
     _connecting = true;
@@ -108,7 +122,11 @@ class SteamRepository extends ChangeNotifier {
       final steamId = await _api.resolveSteamId(steamIdOrUrl, apiKey: key);
       final games = await _api.ownedGames(apiKey: key, steamId: steamId);
 
-      final credentials = SteamCredentials(apiKey: key, steamId: steamId);
+      final credentials = SteamCredentials(
+        apiKey: key,
+        steamId: steamId,
+        itadKey: itadKey.trim(),
+      );
       await (await _credentialStore()).save(credentials);
       _credentials = credentials;
 
@@ -243,34 +261,109 @@ class SteamRepository extends ChangeNotifier {
       detailsFetchedAt: Value(DateTime.now()),
     ));
 
-    if (price != null) await _recordPrice(details.appId, price);
   }
 
-  /// Appends a price point, but only when the price actually moved.
+  /// Saves the IsThereAnyDeal key, which is what unlocks price history.
   ///
-  /// The chart is a step line, so a run of identical observations adds
-  /// nothing to it — recording every poll would grow the file without ever
-  /// changing what is drawn.
-  Future<void> _recordPrice(int appId, SteamPrice price) async {
-    final latest = await _db.latestPricePoint(appId);
-    if (latest != null &&
-        latest.finalCents == price.finalCents &&
-        latest.initialCents == price.initialCents &&
-        latest.discountPercent == price.discountPercent &&
-        latest.currency == price.currency) {
-      return;
+  /// Any history already cached is dropped: it was fetched with whatever key
+  /// was there before, and a new key can mean a different ITAD account and a
+  /// different region, so re-reading is cheaper than reasoning about which
+  /// rows are still valid.
+  Future<void> saveItadKey(String key) async {
+    final current = _credentials;
+    if (current == null) return;
+    final updated = current.withItadKey(key.trim());
+    await (await _credentialStore()).save(updated);
+    _credentials = updated;
+    await _db.forgetAllHistory();
+    notifyListeners();
+  }
+
+  /// How long a cached ITAD history stays good before it is refetched.
+  static const _historyFreshness = Duration(hours: 12);
+
+  /// Pulls the game's Steam price history from IsThereAnyDeal, unless a
+  /// recent copy is already cached.
+  ///
+  /// Does nothing without an ITAD key — the chart shows a prompt to add one
+  /// rather than an error, since the rest of the plugin works fine without.
+  Future<void> ensureHistory(int appId, {bool force = false}) async {
+    final itadKey = _credentials?.itadKey ?? '';
+    if (itadKey.isEmpty) return;
+    if (_fetchingHistory.contains(appId)) return;
+
+    final row = await (_db.select(_db.steamGames)
+          ..where((g) => g.appId.equals(appId)))
+        .getSingleOrNull();
+    if (row == null) return;
+
+    if (!force) {
+      // ITAD has already said it does not carry this game; asking again on
+      // every open would spend a round trip to be told the same thing.
+      if (row.itadUnknown) return;
+      final fetchedAt = row.historyFetchedAt;
+      if (fetchedAt != null &&
+          DateTime.now().difference(fetchedAt) < _historyFreshness) {
+        return;
+      }
     }
-    await _db.into(_db.steamPricePoints).insert(
+
+    _fetchingHistory.add(appId);
+    notifyListeners();
+    try {
+      StorageGuard.instance.ensureWithinLimit();
+
+      var gameId = row.itadId;
+      if (gameId == null || force) {
+        gameId = await _itad.lookupGameId(appId, apiKey: itadKey);
+        if (gameId == null) {
+          await (_db.update(_db.steamGames)
+                ..where((g) => g.appId.equals(appId)))
+              .write(SteamGamesCompanion(
+            itadUnknown: const Value(true),
+            historyFetchedAt: Value(DateTime.now()),
+          ));
+          return;
+        }
+      }
+
+      final (history, overview) = await (
+        _itad.steamPriceHistory(gameId,
+            apiKey: itadKey, country: countryCode),
+        _itad.overview(gameId, apiKey: itadKey, country: countryCode),
+      ).wait;
+
+      await _db.replacePriceHistory(appId, [
+        for (final point in history)
           SteamPricePointsCompanion.insert(
             appId: appId,
-            observedAt: DateTime.now(),
-            finalCents: price.finalCents,
-            initialCents: price.initialCents,
-            discountPercent: Value(price.discountPercent),
-            currency: price.currency,
+            observedAt: point.timestamp,
+            finalCents: point.finalCents,
+            initialCents: point.regularCents,
+            discountPercent: Value(point.cut),
+            currency: point.currency,
           ),
-        );
-    StorageGuard.instance.scheduleRefresh();
+      ]);
+
+      await (_db.update(_db.steamGames)..where((g) => g.appId.equals(appId)))
+          .write(SteamGamesCompanion(
+        itadId: Value(gameId),
+        itadUnknown: const Value(false),
+        lowestEverCents: Value(overview?.lowestCents),
+        lowestEverAt: Value(overview?.lowestAt),
+        historyFetchedAt: Value(DateTime.now()),
+      ));
+      StorageGuard.instance.scheduleRefresh();
+    } on ItadApiException catch (e) {
+      _error = e.message;
+    } on StorageLimitExceededException {
+      // Over the storage cap: leave whatever history is already cached.
+    } catch (_) {
+      // One unreadable history is not worth an error banner.
+    } finally {
+      _fetchingHistory.remove(appId);
+      notifyListeners();
+    }
   }
 
   /// Steam's store API allows roughly 200 requests per five minutes per
@@ -278,7 +371,12 @@ class SteamRepository extends ChangeNotifier {
   /// large library takes a while rather than getting the device throttled.
   static const _storeCallSpacing = Duration(milliseconds: 1600);
 
-  /// Re-reads every game's price, one at a time, to extend the history.
+  /// Re-reads every game's current Steam price, one at a time.
+  ///
+  /// This is the price on the library tiles, which comes from Steam itself
+  /// rather than ITAD — Steam is authoritative for what a game costs on
+  /// Steam right now. The chart's history is a separate concern; see
+  /// [ensureHistory].
   Future<void> refreshAllPrices() async {
     if (_priceTotal > 0) return;
     final games = await _db.watchLibrary().first;
@@ -340,6 +438,7 @@ class SteamRepository extends ChangeNotifier {
   void dispose() {
     _cancelPriceRefresh = true;
     _api.close();
+    _itad.close();
     super.dispose();
   }
 }

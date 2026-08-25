@@ -8,14 +8,31 @@ import 'package:path_provider/path_provider.dart';
 
 /// The pair that identifies a Steam account to the Web API.
 class SteamCredentials {
-  const SteamCredentials({required this.apiKey, required this.steamId});
+  const SteamCredentials({
+    required this.apiKey,
+    required this.steamId,
+    this.itadKey = '',
+  });
 
   final String apiKey;
 
   /// The 64-bit account id, as a decimal string.
   final String steamId;
 
+  /// The IsThereAnyDeal API key, which is what price history is read with.
+  /// Empty when the user has not added one — the library still works, but
+  /// there is no history to chart.
+  final String itadKey;
+
   bool get isComplete => apiKey.isNotEmpty && steamId.isNotEmpty;
+
+  bool get hasItadKey => itadKey.isNotEmpty;
+
+  SteamCredentials withItadKey(String key) => SteamCredentials(
+        apiKey: apiKey,
+        steamId: steamId,
+        itadKey: key,
+      );
 
   /// The key with everything but its last four characters masked, for
   /// showing that a key is saved without putting it back on screen.
@@ -77,7 +94,12 @@ class SteamCredentialStore {
       final steamId = json['steamId'];
       if (apiKey is! String || steamId is! String) return null;
       if (apiKey.isEmpty || steamId.isEmpty) return null;
-      return SteamCredentials(apiKey: apiKey, steamId: steamId);
+      final itadKey = json['itadKey'];
+      return SteamCredentials(
+        apiKey: apiKey,
+        steamId: steamId,
+        itadKey: itadKey is String ? itadKey : '',
+      );
     } catch (_) {
       return null;
     }
@@ -87,6 +109,7 @@ class SteamCredentialStore {
     final payload = jsonEncode({
       'apiKey': credentials.apiKey,
       'steamId': credentials.steamId,
+      'itadKey': credentials.itadKey,
     });
     await _dataFile.writeAsString(_encrypt(payload), flush: true);
   }
