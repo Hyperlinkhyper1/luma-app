@@ -3334,6 +3334,219 @@ class Cs2MarketPricePointsCompanion
   }
 }
 
+class $Cs2PinnedSkinsTable extends Cs2PinnedSkins
+    with TableInfo<$Cs2PinnedSkinsTable, Cs2PinnedSkin> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $Cs2PinnedSkinsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _skinIdMeta = const VerificationMeta('skinId');
+  @override
+  late final GeneratedColumn<String> skinId = GeneratedColumn<String>(
+    'skin_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _pinnedAtMeta = const VerificationMeta(
+    'pinnedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> pinnedAt = GeneratedColumn<DateTime>(
+    'pinned_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [skinId, pinnedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cs2_pinned_skins';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Cs2PinnedSkin> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('skin_id')) {
+      context.handle(
+        _skinIdMeta,
+        skinId.isAcceptableOrUnknown(data['skin_id']!, _skinIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_skinIdMeta);
+    }
+    if (data.containsKey('pinned_at')) {
+      context.handle(
+        _pinnedAtMeta,
+        pinnedAt.isAcceptableOrUnknown(data['pinned_at']!, _pinnedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {skinId};
+  @override
+  Cs2PinnedSkin map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Cs2PinnedSkin(
+      skinId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}skin_id'],
+      )!,
+      pinnedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}pinned_at'],
+      )!,
+    );
+  }
+
+  @override
+  $Cs2PinnedSkinsTable createAlias(String alias) {
+    return $Cs2PinnedSkinsTable(attachedDatabase, alias);
+  }
+}
+
+class Cs2PinnedSkin extends DataClass implements Insertable<Cs2PinnedSkin> {
+  final String skinId;
+  final DateTime pinnedAt;
+  const Cs2PinnedSkin({required this.skinId, required this.pinnedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['skin_id'] = Variable<String>(skinId);
+    map['pinned_at'] = Variable<DateTime>(pinnedAt);
+    return map;
+  }
+
+  Cs2PinnedSkinsCompanion toCompanion(bool nullToAbsent) {
+    return Cs2PinnedSkinsCompanion(
+      skinId: Value(skinId),
+      pinnedAt: Value(pinnedAt),
+    );
+  }
+
+  factory Cs2PinnedSkin.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Cs2PinnedSkin(
+      skinId: serializer.fromJson<String>(json['skinId']),
+      pinnedAt: serializer.fromJson<DateTime>(json['pinnedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'skinId': serializer.toJson<String>(skinId),
+      'pinnedAt': serializer.toJson<DateTime>(pinnedAt),
+    };
+  }
+
+  Cs2PinnedSkin copyWith({String? skinId, DateTime? pinnedAt}) => Cs2PinnedSkin(
+    skinId: skinId ?? this.skinId,
+    pinnedAt: pinnedAt ?? this.pinnedAt,
+  );
+  Cs2PinnedSkin copyWithCompanion(Cs2PinnedSkinsCompanion data) {
+    return Cs2PinnedSkin(
+      skinId: data.skinId.present ? data.skinId.value : this.skinId,
+      pinnedAt: data.pinnedAt.present ? data.pinnedAt.value : this.pinnedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Cs2PinnedSkin(')
+          ..write('skinId: $skinId, ')
+          ..write('pinnedAt: $pinnedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(skinId, pinnedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Cs2PinnedSkin &&
+          other.skinId == this.skinId &&
+          other.pinnedAt == this.pinnedAt);
+}
+
+class Cs2PinnedSkinsCompanion extends UpdateCompanion<Cs2PinnedSkin> {
+  final Value<String> skinId;
+  final Value<DateTime> pinnedAt;
+  final Value<int> rowid;
+  const Cs2PinnedSkinsCompanion({
+    this.skinId = const Value.absent(),
+    this.pinnedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  Cs2PinnedSkinsCompanion.insert({
+    required String skinId,
+    this.pinnedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : skinId = Value(skinId);
+  static Insertable<Cs2PinnedSkin> custom({
+    Expression<String>? skinId,
+    Expression<DateTime>? pinnedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (skinId != null) 'skin_id': skinId,
+      if (pinnedAt != null) 'pinned_at': pinnedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  Cs2PinnedSkinsCompanion copyWith({
+    Value<String>? skinId,
+    Value<DateTime>? pinnedAt,
+    Value<int>? rowid,
+  }) {
+    return Cs2PinnedSkinsCompanion(
+      skinId: skinId ?? this.skinId,
+      pinnedAt: pinnedAt ?? this.pinnedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (skinId.present) {
+      map['skin_id'] = Variable<String>(skinId.value);
+    }
+    if (pinnedAt.present) {
+      map['pinned_at'] = Variable<DateTime>(pinnedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Cs2PinnedSkinsCompanion(')
+          ..write('skinId: $skinId, ')
+          ..write('pinnedAt: $pinnedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$SteamDatabase extends GeneratedDatabase {
   _$SteamDatabase(QueryExecutor e) : super(e);
   $SteamDatabaseManager get managers => $SteamDatabaseManager(this);
@@ -3344,6 +3557,7 @@ abstract class _$SteamDatabase extends GeneratedDatabase {
   late final $Cs2MarketItemsTable cs2MarketItems = $Cs2MarketItemsTable(this);
   late final $Cs2MarketPricePointsTable cs2MarketPricePoints =
       $Cs2MarketPricePointsTable(this);
+  late final $Cs2PinnedSkinsTable cs2PinnedSkins = $Cs2PinnedSkinsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3353,6 +3567,7 @@ abstract class _$SteamDatabase extends GeneratedDatabase {
     steamPricePoints,
     cs2MarketItems,
     cs2MarketPricePoints,
+    cs2PinnedSkins,
   ];
 }
 
@@ -4898,6 +5113,155 @@ typedef $$Cs2MarketPricePointsTableProcessedTableManager =
       Cs2MarketPricePoint,
       PrefetchHooks Function()
     >;
+typedef $$Cs2PinnedSkinsTableCreateCompanionBuilder =
+    Cs2PinnedSkinsCompanion Function({
+      required String skinId,
+      Value<DateTime> pinnedAt,
+      Value<int> rowid,
+    });
+typedef $$Cs2PinnedSkinsTableUpdateCompanionBuilder =
+    Cs2PinnedSkinsCompanion Function({
+      Value<String> skinId,
+      Value<DateTime> pinnedAt,
+      Value<int> rowid,
+    });
+
+class $$Cs2PinnedSkinsTableFilterComposer
+    extends Composer<_$SteamDatabase, $Cs2PinnedSkinsTable> {
+  $$Cs2PinnedSkinsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get skinId => $composableBuilder(
+    column: $table.skinId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get pinnedAt => $composableBuilder(
+    column: $table.pinnedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$Cs2PinnedSkinsTableOrderingComposer
+    extends Composer<_$SteamDatabase, $Cs2PinnedSkinsTable> {
+  $$Cs2PinnedSkinsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get skinId => $composableBuilder(
+    column: $table.skinId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get pinnedAt => $composableBuilder(
+    column: $table.pinnedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$Cs2PinnedSkinsTableAnnotationComposer
+    extends Composer<_$SteamDatabase, $Cs2PinnedSkinsTable> {
+  $$Cs2PinnedSkinsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get skinId =>
+      $composableBuilder(column: $table.skinId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get pinnedAt =>
+      $composableBuilder(column: $table.pinnedAt, builder: (column) => column);
+}
+
+class $$Cs2PinnedSkinsTableTableManager
+    extends
+        RootTableManager<
+          _$SteamDatabase,
+          $Cs2PinnedSkinsTable,
+          Cs2PinnedSkin,
+          $$Cs2PinnedSkinsTableFilterComposer,
+          $$Cs2PinnedSkinsTableOrderingComposer,
+          $$Cs2PinnedSkinsTableAnnotationComposer,
+          $$Cs2PinnedSkinsTableCreateCompanionBuilder,
+          $$Cs2PinnedSkinsTableUpdateCompanionBuilder,
+          (
+            Cs2PinnedSkin,
+            BaseReferences<
+              _$SteamDatabase,
+              $Cs2PinnedSkinsTable,
+              Cs2PinnedSkin
+            >,
+          ),
+          Cs2PinnedSkin,
+          PrefetchHooks Function()
+        > {
+  $$Cs2PinnedSkinsTableTableManager(
+    _$SteamDatabase db,
+    $Cs2PinnedSkinsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$Cs2PinnedSkinsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$Cs2PinnedSkinsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$Cs2PinnedSkinsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> skinId = const Value.absent(),
+                Value<DateTime> pinnedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => Cs2PinnedSkinsCompanion(
+                skinId: skinId,
+                pinnedAt: pinnedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String skinId,
+                Value<DateTime> pinnedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => Cs2PinnedSkinsCompanion.insert(
+                skinId: skinId,
+                pinnedAt: pinnedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$Cs2PinnedSkinsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$SteamDatabase,
+      $Cs2PinnedSkinsTable,
+      Cs2PinnedSkin,
+      $$Cs2PinnedSkinsTableFilterComposer,
+      $$Cs2PinnedSkinsTableOrderingComposer,
+      $$Cs2PinnedSkinsTableAnnotationComposer,
+      $$Cs2PinnedSkinsTableCreateCompanionBuilder,
+      $$Cs2PinnedSkinsTableUpdateCompanionBuilder,
+      (
+        Cs2PinnedSkin,
+        BaseReferences<_$SteamDatabase, $Cs2PinnedSkinsTable, Cs2PinnedSkin>,
+      ),
+      Cs2PinnedSkin,
+      PrefetchHooks Function()
+    >;
 
 class $SteamDatabaseManager {
   final _$SteamDatabase _db;
@@ -4910,4 +5274,6 @@ class $SteamDatabaseManager {
       $$Cs2MarketItemsTableTableManager(_db, _db.cs2MarketItems);
   $$Cs2MarketPricePointsTableTableManager get cs2MarketPricePoints =>
       $$Cs2MarketPricePointsTableTableManager(_db, _db.cs2MarketPricePoints);
+  $$Cs2PinnedSkinsTableTableManager get cs2PinnedSkins =>
+      $$Cs2PinnedSkinsTableTableManager(_db, _db.cs2PinnedSkins);
 }

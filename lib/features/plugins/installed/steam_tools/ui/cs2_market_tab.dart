@@ -5,21 +5,21 @@ import '../../../../../theme/luma_theme.dart';
 import '../cs2_market_repository.dart';
 import '../cs2_market_scope.dart';
 import '../cs2_models.dart';
-import '../data/steam_database.dart';
-import '../steam_price_history.dart' show formatSteamPrice;
 import 'cs2_item_detail_page.dart';
 import 'cs2_shared.dart';
 
-/// The CS2 Market tool: search the whole item schema by name, rarity or
-/// case, and watch a listing's Community Market price and its history.
+/// The CS2 Market tool: every CS2 item, browsable A–Z or narrowed by name,
+/// rarity or case, with a pin to keep favourites at the top and a way into
+/// each listing's Community Market price and history.
 ///
-/// Unlike the game Price Tracker, search here browses everything rather
-/// than seeding a watchlist from a keyed API — the catalog behind it is a
-/// single public dataset covering every skin at once (see
-/// `Cs2CatalogService`), so there is no per-search network cost to spare.
-/// What *is* rationed is price checks: a search result shows no price at
-/// all, only once opened does its listing get read from Steam, the same
-/// restraint the game tracker applies to store pages.
+/// Unlike the game Price Tracker, this browses everything rather than
+/// seeding a watchlist from a keyed API — the catalog behind it is a single
+/// public dataset covering every skin at once (see `Cs2CatalogService`), so
+/// there is no per-search network cost to spare and nothing gates the grid
+/// on having searched or tracked anything first. What *is* rationed is
+/// price checks: a tile shows no price at all, only once opened does its
+/// listing get read from Steam, the same restraint the game tracker applies
+/// to store pages.
 class Cs2MarketTab extends StatefulWidget {
   const Cs2MarketTab({super.key});
 
@@ -100,7 +100,7 @@ class _Cs2MarketTabState extends State<Cs2MarketTab> {
               }
               final trimmed = _query.trim();
               if (trimmed.isEmpty) {
-                return _WatchlistBody(repository: repository);
+                return _BrowseBody(repository: repository);
               }
               // A single letter matches a huge share of a 2000+ item
               // catalog — "a" alone turns up hundreds of skins, which reads
@@ -340,30 +340,45 @@ class _InlineError extends StatelessWidget {
   }
 }
 
-/// The empty-query view: every listing this device is watching, with its
-/// most recent price.
-class _WatchlistBody extends StatelessWidget {
-  const _WatchlistBody({required this.repository});
+/// Puts pinned skins first, otherwise leaving the incoming order (already
+/// A–Z from the catalog, or already relevance-ordered from a search) alone.
+List<Cs2SkinDef> _pinnedFirst(List<Cs2SkinDef> items, Set<String> pinned) {
+  if (pinned.isEmpty) return items;
+  final pinnedItems = <Cs2SkinDef>[];
+  final rest = <Cs2SkinDef>[];
+  for (final item in items) {
+    (pinned.contains(item.id) ? pinnedItems : rest).add(item);
+  }
+  return [...pinnedItems, ...rest];
+}
+
+/// The empty-query view: the whole catalog, A–Z, pinned skins first — there
+/// is always something to look at here, never a prompt to search first.
+class _BrowseBody extends StatelessWidget {
+  const _BrowseBody({required this.repository});
 
   final Cs2MarketRepository repository;
 
   @override
   Widget build(BuildContext context) {
-    return StreamData<List<Cs2MarketItem>>(
-      stream: repository.watchTrackedItems(),
-      builder: (context, items) {
-        if (items.isEmpty) {
-          return LumaEmptyState(
-            icon: Icons.diamond_outlined,
-            title: 'Search to find an item to watch',
-            subtitle: "Every CS2 skin is searchable by name, weapon, "
-                'rarity or the case it drops from. Track one to start '
-                'building its price history.',
-          );
-        }
+    if (repository.catalog.isEmpty) {
+      return LumaEmptyState(
+        icon: Icons.diamond_outlined,
+        title: 'Catalog is empty',
+        subtitle: 'Refresh the catalog to load every CS2 item.',
+      );
+    }
+    return StreamBuilder<Set<String>>(
+      stream: repository.watchPinnedSkinIds(),
+      builder: (context, snapshot) {
+        final pinned = snapshot.data ?? const <String>{};
+        final items = _pinnedFirst(repository.catalog, pinned);
         return _ItemGrid(
           itemCount: items.length,
-          tileBuilder: (context, index) => _TrackedTile(item: items[index]),
+          tileBuilder: (context, index) => _CatalogTile(
+            skin: items[index],
+            pinned: pinned.contains(items[index].id),
+          ),
         );
       },
     );
@@ -386,7 +401,8 @@ class _ShortQueryHint extends StatelessWidget {
   }
 }
 
-/// The search-query view: a live filter over the whole catalog.
+/// The search-query view: a live filter over the whole catalog, pinned
+/// matches still surfaced first.
 class _SearchBody extends StatelessWidget {
   const _SearchBody({required this.query, required this.repository});
 
@@ -404,9 +420,19 @@ class _SearchBody extends StatelessWidget {
             'name.',
       );
     }
-    return _ItemGrid(
-      itemCount: results.length,
-      tileBuilder: (context, index) => _CatalogTile(skin: results[index]),
+    return StreamBuilder<Set<String>>(
+      stream: repository.watchPinnedSkinIds(),
+      builder: (context, snapshot) {
+        final pinned = snapshot.data ?? const <String>{};
+        final items = _pinnedFirst(results, pinned);
+        return _ItemGrid(
+          itemCount: items.length,
+          tileBuilder: (context, index) => _CatalogTile(
+            skin: items[index],
+            pinned: pinned.contains(items[index].id),
+          ),
+        );
+      },
     );
   }
 }
@@ -433,152 +459,11 @@ class _ItemGrid extends StatelessWidget {
   }
 }
 
-class _TrackedTile extends StatefulWidget {
-  const _TrackedTile({required this.item});
-
-  final Cs2MarketItem item;
-
-  @override
-  State<_TrackedTile> createState() => _TrackedTileState();
-}
-
-class _TrackedTileState extends State<_TrackedTile> {
-  bool _hovering = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final luma = context.luma;
-    final decor = context.lumaDecor;
-    final item = widget.item;
-    final radius = BorderRadius.circular(decor.cardRadius);
-
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovering = true),
-      onExit: (_) => setState(() => _hovering = false),
-      child: Material(
-        color: _hovering ? luma.surfaceHover : luma.surface,
-        borderRadius: radius,
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => Cs2ItemDetailPage(
-                skinId: item.skinId,
-                initialWear: item.wear,
-                initialStatTrak: item.statTrak,
-              ),
-            ),
-          ),
-          child: Semantics(
-            label: '${item.displayName}, ${item.rarityName}. '
-                '${_priceSemantics(item)}',
-            button: true,
-            excludeSemantics: true,
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: radius,
-                border: Border.all(
-                  color: _hovering ? luma.accent : luma.border,
-                  width: decor.borderWidth,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Stack(
-                    children: [
-                      AspectRatio(
-                        aspectRatio: 1.4,
-                        child: Cs2ItemImage(url: item.imageUrl),
-                      ),
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: Icon(Icons.star_rounded,
-                            size: 16, color: luma.accent),
-                      ),
-                    ],
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _fullName(item),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: luma.textPrimary,
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w600,
-                            height: 1.25,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Cs2RarityChip(
-                          name: item.rarityName,
-                          colorHex: item.rarityColor,
-                        ),
-                        const SizedBox(height: 6),
-                        _TrackedPrice(item: item),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  static String _fullName(Cs2MarketItem item) {
-    final prefix = item.statTrak ? 'StatTrak™ ' : '';
-    final wear = item.wear == null ? '' : ' (${item.wear})';
-    return '$prefix${item.displayName}$wear';
-  }
-
-  static String _priceSemantics(Cs2MarketItem item) {
-    final cents = item.lastLowestCents ?? item.lastMedianCents;
-    if (cents == null) return 'Price not checked yet.';
-    return 'Priced at ${formatSteamPrice(cents, item.currency)}.';
-  }
-}
-
-class _TrackedPrice extends StatelessWidget {
-  const _TrackedPrice({required this.item});
-
-  final Cs2MarketItem item;
-
-  @override
-  Widget build(BuildContext context) {
-    final luma = context.luma;
-    final cents = item.lastLowestCents ?? item.lastMedianCents;
-    if (cents == null) {
-      return Text(
-        'Not checked yet',
-        style: TextStyle(color: luma.textMuted, fontSize: 12),
-      );
-    }
-    return Text(
-      formatSteamPrice(cents, item.currency),
-      style: TextStyle(
-        color: luma.textPrimary,
-        fontSize: 13,
-        fontWeight: FontWeight.w700,
-        fontFeatures: const [FontFeature.tabularFigures()],
-      ),
-    );
-  }
-}
-
 class _CatalogTile extends StatefulWidget {
-  const _CatalogTile({required this.skin});
+  const _CatalogTile({required this.skin, required this.pinned});
 
   final Cs2SkinDef skin;
+  final bool pinned;
 
   @override
   State<_CatalogTile> createState() => _CatalogTileState();
@@ -592,82 +477,146 @@ class _CatalogTileState extends State<_CatalogTile> {
     final luma = context.luma;
     final decor = context.lumaDecor;
     final skin = widget.skin;
+    final pinned = widget.pinned;
     final radius = BorderRadius.circular(decor.cardRadius);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovering = true),
       onExit: (_) => setState(() => _hovering = false),
-      child: Material(
-        color: _hovering ? luma.surfaceHover : luma.surface,
-        borderRadius: radius,
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => Cs2ItemDetailPage(skinId: skin.id),
-            ),
-          ),
-          child: Semantics(
-            label: '${skin.name}, ${skin.rarityName}. '
-                '${skin.caseName == null ? 'No case' : 'From ${skin.caseName}'}',
-            button: true,
-            excludeSemantics: true,
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: radius,
-                border: Border.all(
-                  color: _hovering ? luma.accent : luma.border,
-                  width: decor.borderWidth,
-                ),
+      child: GestureDetector(
+        onSecondaryTapDown: (details) =>
+            _showPinMenu(context, details.globalPosition, skin, pinned),
+        child: Material(
+          color: _hovering ? luma.surfaceHover : luma.surface,
+          borderRadius: radius,
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => Cs2ItemDetailPage(skinId: skin.id),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  AspectRatio(
-                    aspectRatio: 1.4,
-                    child: Cs2ItemImage(url: skin.imageUrl),
+            ),
+            onLongPress: () => _showPinMenu(context, null, skin, pinned),
+            child: Semantics(
+              label: '${skin.name}, ${skin.rarityName}. '
+                  '${skin.caseName == null ? 'No case' : 'From ${skin.caseName}'}'
+                  '${pinned ? '. Pinned' : ''}',
+              button: true,
+              excludeSemantics: true,
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: radius,
+                  border: Border.all(
+                    color: _hovering ? luma.accent : luma.border,
+                    width: decor.borderWidth,
                   ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Stack(
                       children: [
-                        Text(
-                          skin.name,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: luma.textPrimary,
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w600,
-                            height: 1.25,
+                        AspectRatio(
+                          aspectRatio: 1.4,
+                          child: Cs2ItemImage(url: skin.imageUrl),
+                        ),
+                        if (pinned)
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Container(
+                              padding: const EdgeInsets.all(5),
+                              decoration: BoxDecoration(
+                                color: luma.accentSubtle,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(Icons.push_pin_rounded,
+                                  size: 13, color: luma.accent),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 6),
-                        Cs2RarityChip(
-                          name: skin.rarityName,
-                          colorHex: skin.rarityColor,
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          skin.caseName ?? 'No case',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: luma.textMuted,
-                            fontSize: 11,
-                          ),
-                        ),
                       ],
                     ),
-                  ),
-                ],
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            skin.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: luma.textPrimary,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              height: 1.25,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Cs2RarityChip(
+                            name: skin.rarityName,
+                            colorHex: skin.rarityColor,
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            skin.caseName ?? 'No case',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: luma.textMuted,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
       ),
     );
+  }
+}
+
+/// Right-click (desktop) or long-press (touch) menu for pinning a skin —
+/// mirrors the pin/unpin context menu already used for chat conversations
+/// (`chat_page.dart`) rather than adding a second always-visible icon button
+/// to an already dense grid tile. [globalPosition] anchors the menu at the
+/// click point; pass null (long-press has no useful point) to centre it.
+Future<void> _showPinMenu(
+  BuildContext context,
+  Offset? globalPosition,
+  Cs2SkinDef skin,
+  bool pinned,
+) async {
+  final luma = context.luma;
+  final overlay = Overlay.of(context).context.findRenderObject()! as RenderBox;
+  final anchor = globalPosition ?? overlay.size.center(Offset.zero);
+  final position = RelativeRect.fromRect(
+    Rect.fromPoints(anchor, anchor),
+    Offset.zero & overlay.size,
+  );
+
+  final action = await showMenu<String>(
+    context: context,
+    position: position,
+    color: luma.surface,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(14),
+      side: BorderSide(color: luma.border),
+    ),
+    items: [
+      PopupMenuItem(
+        value: 'pin',
+        child: Text(pinned ? 'Unpin' : 'Pin to top'),
+      ),
+    ],
+  );
+  if (action == 'pin' && context.mounted) {
+    Cs2MarketScope.of(context).togglePin(skin.id, pinned: pinned);
   }
 }

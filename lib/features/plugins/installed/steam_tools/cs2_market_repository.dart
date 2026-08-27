@@ -154,6 +154,16 @@ class Cs2MarketRepository extends ChangeNotifier {
   Future<bool> isTracked(String marketHashName) async =>
       await _db.cs2Item(marketHashName) != null;
 
+  /// Skins pinned to the top of the browse grid — a bookmark on the finish
+  /// itself, independent of whether any of its wears are being tracked.
+  Stream<Set<String>> watchPinnedSkinIds() => _db.watchPinnedSkinIds();
+
+  Future<void> pinSkin(String skinId) => _db.pinSkin(skinId);
+  Future<void> unpinSkin(String skinId) => _db.unpinSkin(skinId);
+
+  Future<void> togglePin(String skinId, {required bool pinned}) =>
+      pinned ? unpinSkin(skinId) : pinSkin(skinId);
+
   /// A one-off price read that is never persisted — how the detail page
   /// shows "price now" for a listing that isn't being watched yet, without
   /// starting a history for something the user was only glancing at.
