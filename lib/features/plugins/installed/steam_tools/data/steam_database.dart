@@ -141,8 +141,28 @@ class Cs2MarketPricePoints extends Table {
   TextColumn get currency => text()();
 }
 
+/// A skin pinned to the top of the CS2 Market browse grid.
+///
+/// Deliberately separate from [Cs2MarketItems]: pinning is a bookmark on the
+/// *finish* ("I care about AK-47 | Redline"), not on one priced wear/StatTrak
+/// listing of it, and it carries no price data of its own — it only changes
+/// sort order in the UI.
+class Cs2PinnedSkins extends Table {
+  TextColumn get skinId => text()();
+  DateTimeColumn get pinnedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {skinId};
+}
+
 @DriftDatabase(
-  tables: [SteamGames, SteamPricePoints, Cs2MarketItems, Cs2MarketPricePoints],
+  tables: [
+    SteamGames,
+    SteamPricePoints,
+    Cs2MarketItems,
+    Cs2MarketPricePoints,
+    Cs2PinnedSkins,
+  ],
 )
 class SteamDatabase extends _$SteamDatabase {
   SteamDatabase([QueryExecutor? executor])
@@ -155,7 +175,7 @@ class SteamDatabase extends _$SteamDatabase {
             ));
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -164,6 +184,9 @@ class SteamDatabase extends _$SteamDatabase {
           if (from < 2) {
             await m.createTable(cs2MarketItems);
             await m.createTable(cs2MarketPricePoints);
+          }
+          if (from < 3) {
+            await m.createTable(cs2PinnedSkins);
           }
         },
       );
@@ -353,5 +376,20 @@ class SteamDatabase extends _$SteamDatabase {
         ),
       );
     });
+  }
+
+  /// Every pinned skin id, unordered — the browse grid sorts by this
+  /// membership, not by [Cs2PinnedSkins.pinnedAt].
+  Stream<Set<String>> watchPinnedSkinIds() => select(cs2PinnedSkins)
+      .watch()
+      .map((rows) => {for (final row in rows) row.skinId});
+
+  Future<void> pinSkin(String skinId) => into(cs2PinnedSkins).insert(
+        Cs2PinnedSkinsCompanion.insert(skinId: skinId),
+        mode: InsertMode.insertOrIgnore,
+      );
+
+  Future<void> unpinSkin(String skinId) async {
+    await (delete(cs2PinnedSkins)..where((p) => p.skinId.equals(skinId))).go();
   }
 }
