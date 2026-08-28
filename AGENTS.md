@@ -22,6 +22,10 @@ lib/
     chat/                    The Assistant. providers/ holds one client per AI provider + the
                              Aurora/Nebula/Pulsar modes; keys live encrypted in ai_key_store.dart
     converter/               File converter; platform-split via _io.dart / _stub.dart / _web.dart suffix pattern
+      tools/                 One screen per tool; the hub tiles in converter_page.dart map to these
+      schematic/             Minecraft block formats: a read/write NBT codec, block tables, and
+                             formats/ with one reader+writer per format, all going through the
+                             shared Schematic model so any format converts to any other
     home/                    Dashboard home page
     notes/                   Simple notes (JSON store, no drift)
     passwords/               AES-encrypted vault (drift DB + PasswordCrypto)
