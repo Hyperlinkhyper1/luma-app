@@ -2,11 +2,14 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 
 import '../../../theme/luma_theme.dart';
+import '../converter_widgets.dart';
 import '../schematic/block_colors.dart';
+import '../schematic/textures/block_atlas.dart';
 import '../schematic/schematic_model.dart';
 
 /// An interactive 3D preview of a block build, in the spirit of the litematic
@@ -32,6 +35,11 @@ class _SchematicViewerState extends State<SchematicViewer> {
 
   late _VoxelGeometry _geometry;
 
+  /// Block textures, once they have been read out of the local Minecraft
+  /// installation. Null until then, and the preview draws flat colours.
+  BlockAtlas? _atlas;
+  bool _loadingTextures = false;
+
   double _yaw = -0.7;
   double _pitch = 0.5;
   double _zoom = 1;
@@ -45,7 +53,9 @@ class _SchematicViewerState extends State<SchematicViewer> {
   @override
   void initState() {
     super.initState();
+    _atlas = BlockAtlas.current;
     _rebuild();
+    if (_atlas == null) _loadTextures();
   }
 
   @override
@@ -57,8 +67,45 @@ class _SchematicViewerState extends State<SchematicViewer> {
   }
 
   void _rebuild() {
-    _geometry = _VoxelGeometry.build(widget.schematic);
+    _geometry = _VoxelGeometry.build(widget.schematic, _atlas);
     _layers = RangeValues(0, _geometry.height.toDouble());
+  }
+
+  /// Reads the block textures out of the local Minecraft installation. The
+  /// preview is usable on flat colours in the meantime, so this never blocks.
+  Future<void> _loadTextures({String? fromPath}) async {
+    if (_loadingTextures) return;
+    setState(() => _loadingTextures = true);
+    final atlas = fromPath == null
+        ? await BlockAtlas.load()
+        : await BlockAtlas.loadFrom(fromPath);
+    if (!mounted) return;
+    setState(() {
+      _loadingTextures = false;
+      if (atlas != null) {
+        _atlas = atlas;
+        // The geometry caches per-face texture lookups, so it has to be
+        // rebuilt — but keep the camera and layer range where the user left
+        // them.
+        final layers = _layers;
+        _geometry = _VoxelGeometry.build(widget.schematic, atlas);
+        _layers = RangeValues(
+          layers.start.clamp(0, _geometry.height.toDouble()),
+          layers.end.clamp(0, _geometry.height.toDouble()),
+        );
+      }
+    });
+  }
+
+  Future<void> _pickTextureSource() async {
+    final picked = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['jar', 'zip'],
+    );
+    if (picked == null || picked.files.isEmpty) return;
+    final path = picked.files.first.path;
+    if (path == null) return;
+    await _loadTextures(fromPath: path);
   }
 
   void _resetView() {
@@ -140,6 +187,7 @@ class _SchematicViewerState extends State<SchematicViewer> {
                     child: CustomPaint(
                       painter: _VoxelPainter(
                         geometry: _geometry,
+                        atlas: _atlas,
                         yaw: _yaw,
                         pitch: _pitch,
                         zoom: _zoom,
@@ -168,6 +216,13 @@ class _SchematicViewerState extends State<SchematicViewer> {
           onZoomOut: () => _nudgeZoom(0.8),
           onReset: _resetView,
         ),
+        const SizedBox(height: 10),
+        _TextureStatus(
+          atlas: _atlas,
+          loading: _loadingTextures,
+          failure: BlockAtlas.failure,
+          onPick: _pickTextureSource,
+        ),
         if (_geometry.stride > 1) ...[
           const SizedBox(height: 10),
           Row(
@@ -186,6 +241,75 @@ class _SchematicViewerState extends State<SchematicViewer> {
             ],
           ),
         ],
+      ],
+    );
+  }
+}
+
+/// Says where the block textures came from, or why the preview is falling back
+/// to flat colours and what to do about it.
+///
+/// luma cannot ship Minecraft's textures, so being explicit about borrowing
+/// them from the local installation is part of the feature rather than an
+/// apology for it.
+class _TextureStatus extends StatelessWidget {
+  const _TextureStatus({
+    required this.atlas,
+    required this.loading,
+    required this.failure,
+    required this.onPick,
+  });
+
+  final BlockAtlas? atlas;
+  final bool loading;
+  final String? failure;
+  final VoidCallback onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final loaded = atlas;
+
+    final Widget leading;
+    final String message;
+    if (loading) {
+      leading = SizedBox(
+        width: 14,
+        height: 14,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          valueColor: AlwaysStoppedAnimation(luma.accent),
+        ),
+      );
+      message = 'Reading block textures from your Minecraft installation…';
+    } else if (loaded != null) {
+      leading = Icon(Icons.check_circle_outline_rounded,
+          size: 15, color: luma.success);
+      message = 'Textures from ${loaded.label} '
+          '(${loaded.textureCount} blocks)';
+    } else {
+      leading =
+          Icon(Icons.palette_outlined, size: 15, color: luma.textMuted);
+      message = failure == null
+          ? 'Showing flat block colours.'
+          : '$failure Showing flat block colours.';
+    }
+
+    return Row(
+      children: [
+        leading,
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            message,
+            style: TextStyle(color: luma.textMuted, fontSize: 12),
+          ),
+        ),
+        if (!loading)
+          ConverterTextButton(
+            label: loaded == null ? 'Choose Minecraft .jar' : 'Change',
+            onTap: onPick,
+          ),
       ],
     );
   }
@@ -362,6 +486,9 @@ class _VoxelGeometry {
     required this.colors,
     required this.layerStart,
     required this.rowStart,
+    required this.faceUv,
+    required this.faceColors,
+    required this.paletteIndex,
   });
 
   /// Preview grid size, which is the build's size divided by [stride].
@@ -380,16 +507,50 @@ class _VoxelGeometry {
   /// set when that side is not buried behind another solid block.
   final Uint8List faces;
 
-  /// ARGB per voxel.
+  /// ARGB per voxel. Used on its own when there are no textures, and as the
+  /// multiplier on the texture when there are.
   final Int32List colors;
 
   final Int32List layerStart;
   final Int32List rowStart;
 
+  /// Palette entry per voxel, the key into [faceUv] and [faceColors].
+  final Uint16List paletteIndex;
+
+  /// Atlas rectangle per palette entry per face, four floats each
+  /// (left, top, right, bottom), indexed `(palette * 6 + face) * 4`.
+  /// Empty when the preview is running without textures.
+  final Float32List faceUv;
+
+  /// Already-shaded ARGB per palette entry per face, indexed
+  /// `palette * 6 + face`. Folding the block colour, its biome tint and the
+  /// face's shading together here keeps the per-frame inner loop to a copy.
+  final Int32List faceColors;
+
+  bool get isTextured => faceUv.isNotEmpty;
+
   /// Reusable vertex buffers, kept here so they survive the painter being
   /// rebuilt every frame of a drag.
   Float32List scratchPositions = Float32List(0);
+  Float32List scratchTexCoords = Float32List(0);
   Int32List scratchColors = Int32List(0);
+
+  Paint? _texturePaint;
+
+  /// The paint that samples the block atlas, built once and kept.
+  ///
+  /// A shader made inside `paint()` and thrown away there would already be
+  /// disposed by the time the recorded frame is rasterised, and the build
+  /// would come out blank.
+  Paint paintFor(ui.Image atlasImage) => _texturePaint ??= (Paint()
+    ..filterQuality = FilterQuality.none
+    ..shader = ui.ImageShader(
+      atlasImage,
+      TileMode.clamp,
+      TileMode.clamp,
+      Matrix4.identity().storage,
+      filterQuality: FilterQuality.none,
+    ));
 
   bool get isEmpty => xs.isEmpty;
 
@@ -404,22 +565,51 @@ class _VoxelGeometry {
   /// voxels a frame stops fitting in the 16ms budget.
   static const int maxVoxels = 120000;
 
-  static _VoxelGeometry build(Schematic schematic) {
+  static _VoxelGeometry build(Schematic schematic, BlockAtlas? atlas) {
     final stride = _strideFor(schematic);
     final w = (schematic.width + stride - 1) ~/ stride;
     final h = (schematic.height + stride - 1) ~/ stride;
     final l = (schematic.length + stride - 1) ~/ stride;
 
+    final paletteLength = schematic.palette.length;
     // Palette colours are looked up once rather than per voxel.
-    final paletteColors = Int32List(schematic.palette.length);
-    final paletteSolid = Uint8List(schematic.palette.length);
-    for (var i = 0; i < schematic.palette.length; i++) {
+    final paletteColors = Int32List(paletteLength);
+    final paletteSolid = Uint8List(paletteLength);
+    final textured = atlas != null && atlas.isUsable;
+    final faceUv = Float32List(textured ? paletteLength * 6 * 4 : 0);
+    final faceColors = Int32List(textured ? paletteLength * 6 : 0);
+
+    for (var i = 0; i < paletteLength; i++) {
       final state = schematic.palette[i];
       final color = BlockColors.of(state);
       paletteColors[i] = _argb(color);
       // A translucent block should not hide the faces behind it.
-      paletteSolid[i] =
-          state.isAir ? 0 : ((color.a >= 0.99) ? 1 : 2);
+      var solid = state.isAir ? 0 : ((color.a >= 0.99) ? 1 : 2);
+
+      if (textured) {
+        final faces = atlas.texturesFor(state);
+        // Leaves and glass have see-through pixels, so their neighbours have
+        // to keep drawing even though the flat colour looks opaque.
+        if (faces.hasTransparency && solid == 1) solid = 2;
+
+        for (var face = 0; face < 6; face++) {
+          final rect = faces.rects[face] ?? atlas.solidUv;
+          final base = (i * 6 + face) * 4;
+          faceUv[base] = rect.left;
+          faceUv[base + 1] = rect.top;
+          faceUv[base + 2] = rect.right;
+          faceUv[base + 3] = rect.bottom;
+
+          // With a texture the vertex colour is the multiplier: the biome
+          // tint, dimmed by this face's shading. Without one it also has to
+          // carry the block's flat colour.
+          final tint = faces.rects[face] == null
+              ? paletteColors[i]
+              : faces.tints[face];
+          faceColors[i * 6 + face] = _shade(tint, _faceShades[face]);
+        }
+      }
+      paletteSolid[i] = solid;
     }
 
     final grid = Uint16List(w * h * l);
@@ -450,6 +640,9 @@ class _VoxelGeometry {
         colors: Int32List(0),
         layerStart: Int32List(h + 1),
         rowStart: Int32List(h * l + 1),
+        faceUv: faceUv,
+        faceColors: faceColors,
+        paletteIndex: Uint16List(0),
       );
     }
 
@@ -458,6 +651,7 @@ class _VoxelGeometry {
     final zs = Int32List(count);
     final faces = Uint8List(count);
     final colors = Int32List(count);
+    final paletteIndex = Uint16List(count);
     final layerStart = Int32List(h + 1);
     final rowStart = Int32List(h * l + 1);
 
@@ -494,6 +688,7 @@ class _VoxelGeometry {
           zs[cursor] = z;
           faces[cursor] = mask;
           colors[cursor] = paletteColors[index];
+          paletteIndex[cursor] = index;
           cursor++;
         }
       }
@@ -514,7 +709,23 @@ class _VoxelGeometry {
       colors: colors,
       layerStart: layerStart,
       rowStart: rowStart,
+      faceUv: faceUv,
+      faceColors: faceColors,
+      paletteIndex: paletteIndex,
     );
+  }
+
+  /// How much each face direction is darkened, so the shape reads without any
+  /// lighting model: the top is lit, the sides step down, the base is darkest.
+  /// Ordered +X, -X, +Y, -Y, +Z, -Z.
+  static const List<double> _faceShades = [0.82, 0.82, 1.0, 0.5, 0.65, 0.65];
+
+  static int _shade(int argb, double factor) {
+    final a = (argb >> 24) & 0xFF;
+    final r = (((argb >> 16) & 0xFF) * factor).round().clamp(0, 255);
+    final g = (((argb >> 8) & 0xFF) * factor).round().clamp(0, 255);
+    final b = ((argb & 0xFF) * factor).round().clamp(0, 255);
+    return (a << 24) | (r << 16) | (g << 8) | b;
   }
 
   /// Picks the coarsest preview that still fits under [maxVoxels].
@@ -583,6 +794,7 @@ class _VoxelGeometry {
 class _VoxelPainter extends CustomPainter {
   _VoxelPainter({
     required this.geometry,
+    required this.atlas,
     required this.yaw,
     required this.pitch,
     required this.zoom,
@@ -591,6 +803,10 @@ class _VoxelPainter extends CustomPainter {
   });
 
   final _VoxelGeometry geometry;
+
+  /// The block textures, when a Minecraft installation was found to read them
+  /// from. Null falls back to flat per-block colours.
+  final BlockAtlas? atlas;
   final double yaw;
   final double pitch;
   final double zoom;
@@ -615,6 +831,21 @@ class _VoxelPainter extends CustomPainter {
     [0, 2, 3, 1],
   ];
 
+  /// Which corner of the texture tile each quad corner takes, as a two-bit
+  /// code: bit 0 picks right over left, bit 1 picks bottom over top. Worked
+  /// out per face so textures land upright rather than rotated or mirrored.
+  static const List<List<int>> _faceUvCorners = [
+    [2, 0, 1, 3],
+    [2, 3, 1, 0],
+    [0, 2, 3, 1],
+    [0, 1, 3, 2],
+    [2, 3, 1, 0],
+    [2, 0, 1, 3],
+  ];
+
+  /// The two triangles a quad is split into, as indices into its four corners.
+  static const List<int> _quadVertexOrder = [0, 1, 2, 0, 2, 3];
+
   static final Paint _neutral = Paint()..color = const Color(0xFFFFFFFF);
 
   @override
@@ -624,7 +855,11 @@ class _VoxelPainter extends CustomPainter {
     final cosY = math.cos(yaw);
     final sinY = math.sin(yaw);
     final cosP = math.cos(pitch);
-    final sinP = math.sin(pitch);
+    // Negated so that a positive pitch lifts the camera above the build and
+    // shows its top. Without this the whole thing is drawn from underneath:
+    // tilting the model's top away from the viewer turns the top face away
+    // too, leaving only the dimly shaded undersides on screen.
+    final sinP = -math.sin(pitch);
 
     final span = math.max(
       geometry.width,
@@ -694,16 +929,25 @@ class _VoxelPainter extends CustomPainter {
     // Worst case every kept voxel shows three faces. The buffers live on the
     // geometry rather than the painter because a new painter is built on every
     // frame of a drag, and reallocating megabytes each time would dominate.
+    final atlasImage = atlas;
+    final textured = geometry.isTextured && atlasImage != null;
     final capacity = geometry.xs.length * 3 * 6 * 2;
     if (geometry.scratchPositions.length < capacity) {
       geometry.scratchPositions = Float32List(capacity);
       geometry.scratchColors = Int32List(capacity ~/ 2);
     }
+    if (textured && geometry.scratchTexCoords.length < capacity) {
+      geometry.scratchTexCoords = Float32List(capacity);
+    }
     final positions = geometry.scratchPositions;
     final colors = geometry.scratchColors;
+    final texCoords = geometry.scratchTexCoords;
+    final faceUv = geometry.faceUv;
+    final faceColors = geometry.faceColors;
 
     var p = 0;
     var q = 0;
+    var t = 0;
 
     void emitVoxel(int i, bool forceTop) {
       var mask = geometry.faces[i];
@@ -720,14 +964,21 @@ class _VoxelPainter extends CustomPainter {
       final red = (argb >> 16) & 0xFF;
       final green = (argb >> 8) & 0xFF;
       final blue = argb & 0xFF;
+      final palette = textured ? geometry.paletteIndex[i] : 0;
 
       for (final face in visible) {
         if ((mask & (1 << face)) == 0) continue;
-        final shade = shades[face];
-        final shaded = (alpha << 24) |
-            ((red * shade).round() << 16) |
-            ((green * shade).round() << 8) |
-            (blue * shade).round();
+
+        final int shaded;
+        if (textured) {
+          shaded = faceColors[palette * 6 + face];
+        } else {
+          final shade = shades[face];
+          shaded = (alpha << 24) |
+              ((red * shade).round() << 16) |
+              ((green * shade).round() << 8) |
+              (blue * shade).round();
+        }
 
         final corners = _faceCorners[face];
         final x0 = baseX + cornerX[corners[0]];
@@ -753,6 +1004,21 @@ class _VoxelPainter extends CustomPainter {
         positions[p++] = y3;
         for (var v = 0; v < 6; v++) {
           colors[q++] = shaded;
+        }
+
+        if (!textured) continue;
+        // Each quad corner takes one of the tile's four corners, chosen so the
+        // texture sits upright and unmirrored on that face.
+        final uvBase = (palette * 6 + face) * 4;
+        final left = faceUv[uvBase];
+        final top = faceUv[uvBase + 1];
+        final right = faceUv[uvBase + 2];
+        final bottom = faceUv[uvBase + 3];
+        final picks = _faceUvCorners[face];
+        for (final vertex in _quadVertexOrder) {
+          final pick = picks[vertex];
+          texCoords[t++] = (pick & 1) == 0 ? left : right;
+          texCoords[t++] = (pick & 2) == 0 ? top : bottom;
         }
       }
     }
@@ -785,8 +1051,27 @@ class _VoxelPainter extends CustomPainter {
     final vertices = ui.Vertices.raw(
       ui.VertexMode.triangles,
       Float32List.sublistView(positions, 0, p),
+      textureCoordinates:
+          textured ? Float32List.sublistView(texCoords, 0, t) : null,
       colors: Int32List.sublistView(colors, 0, q),
     );
+
+    if (textured) {
+      // Modulate multiplies the block texture by the vertex colour, which is
+      // where the face shading and the biome tint come from. Nearest sampling
+      // keeps the pixels crisp instead of smearing them at close zoom.
+      //
+      // The paint is cached on the geometry rather than built here: the
+      // shader has to outlive this method, because the canvas only records
+      // the draw now and rasterises it later.
+      canvas.drawVertices(
+        vertices,
+        BlendMode.modulate,
+        geometry.paintFor(atlasImage.image),
+      );
+      return;
+    }
+
     // Modulating against opaque white passes the vertex colours through
     // untouched, whichever operand the engine treats as the source.
     canvas.drawVertices(vertices, BlendMode.modulate, _neutral);
@@ -795,6 +1080,7 @@ class _VoxelPainter extends CustomPainter {
   @override
   bool shouldRepaint(_VoxelPainter old) =>
       old.geometry != geometry ||
+      old.atlas != atlas ||
       old.yaw != yaw ||
       old.pitch != pitch ||
       old.zoom != zoom ||

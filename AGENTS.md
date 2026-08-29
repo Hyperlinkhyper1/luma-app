@@ -26,6 +26,8 @@ lib/
       schematic/             Minecraft block formats: a read/write NBT codec, block tables, and
                              formats/ with one reader+writer per format, all going through the
                              shared Schematic model so any format converts to any other
+        textures/            Block textures for the 3D preview, read at runtime from the user's
+                             own Minecraft install. luma ships no Mojang assets — see below
     home/                    Dashboard home page
     notes/                   Simple notes (JSON store, no drift)
     passwords/               AES-encrypted vault (drift DB + PasswordCrypto)
@@ -64,6 +66,13 @@ from the admin dashboard). Two layers enforce it:
 Plugins that are useless without the server are listed in
 `AppShell.serverOnlyPlugins` and render a `ServerAccountGate` instead of their
 page until an account is approved.
+
+**No Minecraft assets are bundled.** The schematic preview's block textures
+are Mojang's, so they are never committed or shipped. `converter/schematic/
+textures/` finds a client jar or resource pack already on the user's machine
+(luma's own launcher plugin, `.minecraft`, or a third-party launcher) and
+reads the textures and block models out of it at runtime, falling back to flat
+per-block colours when there is nothing to read. Keep it that way.
 
 **Platform-specific code** uses the suffix convention: `feature_io.dart` (Windows/Android/native), `feature_stub.dart` (unsupported platforms), `feature_web.dart` (web). The main `feature.dart` file exports the right one via conditional imports.
 

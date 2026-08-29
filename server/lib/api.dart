@@ -741,8 +741,12 @@ class Api {
         // The dashboard is self-contained (inline styles/scripts, same-origin
         // fetches) — everything external is refused, so even an HTML-injection
         // slip could not load or exfiltrate to an outside host.
+        // 'self' in style-src is what lets the wiki editor's preview iframe
+        // load /admin/website/preview/page.css — a srcdoc iframe inherits this
+        // policy, and 'unsafe-inline' alone covers <style> blocks but refuses
+        // <link rel=stylesheet>, which left the live preview unstyled.
         'Content-Security-Policy': "default-src 'none'; "
-            "style-src 'unsafe-inline'; script-src 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline'; script-src 'unsafe-inline'; "
             "img-src 'self' data:; connect-src 'self'; form-action 'self'; "
             "frame-src 'self'; frame-ancestors 'self'; base-uri 'none'; "
             "font-src 'self'",
@@ -4383,6 +4387,32 @@ border-radius:999px;padding:2px 8px}
     });
   }
 
+  /// Built wiki pages worth sampling the preview's CSS from, best first:
+  /// top-level articles, then one level of nesting (simply-cozy/trellis),
+  /// then the wiki landing page as a last resort.
+  List<File> _wikiPreviewSamples() {
+    final root = Directory('${config.wikiDir}/site/wiki');
+    if (!root.existsSync()) return const [];
+    final dirs = root.listSync().whereType<Directory>().toList()
+      ..sort((a, b) => a.path.compareTo(b.path));
+    final out = <File>[];
+    for (final d in dirs) {
+      final f = File('${d.path}/index.html');
+      if (f.existsSync()) out.add(f);
+    }
+    for (final d in dirs) {
+      final subs = d.listSync().whereType<Directory>().toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
+      for (final s in subs) {
+        final f = File('${s.path}/index.html');
+        if (f.existsSync()) out.add(f);
+      }
+    }
+    final landing = File('${root.path}/index.html');
+    if (landing.existsSync()) out.add(landing);
+    return out;
+  }
+
   /// All of the built site's stylesheets concatenated, with asset URLs
   /// rewritten to our authed proxy so fonts/images resolve too.
   Future<Response> _wikiPreviewCss(Request request) async {
@@ -4394,39 +4424,39 @@ border-radius:999px;padding:2px 8px}
     }
     // Use exactly the stylesheets a built wiki page links, in order —
     // concatenating every page's CSS lets unrelated pages override the
-    // wiki's own rules. Fall back to all of them if the page is missing.
+    // wiki's own rules. Fall back to all of them if no page qualifies.
     var files = <File>[];
-    // An *article* page, not the wiki landing page — they link different CSS
-    // bundles and the editor previews articles.
-    File? sample;
-    final wikiRoot = Directory('${config.wikiDir}/site/wiki');
-    if (wikiRoot.existsSync()) {
-      for (final e in wikiRoot.listSync()..sort((a, b) => a.path.compareTo(b.path))) {
-        if (e is Directory) {
-          final f = File('${e.path}/index.html');
-          if (f.existsSync()) {
-            sample = f;
-            break;
-          }
-        }
-      }
-      sample ??= File('${wikiRoot.path}/index.html');
-    }
-    // Astro inlines the page-specific CSS (prose/wiki styles) as <style>
-    // blocks in the HTML and links only the shared bundles — the preview
-    // needs both.
+    // Astro inlines the page-specific CSS (the prose/wiki rules that
+    // actually style an article) as <style> blocks and links only the
+    // shared bundles, so the preview needs both halves.
     var inline = '';
-    if (sample != null && sample.existsSync()) {
-      final html = sample.readAsStringSync();
-      files = RegExp(r'<link rel="stylesheet" href="/_astro/([^"]+)"')
-          .allMatches(html)
-          .map((m) => File('${dir.path}/${m[1]}'))
-          .where((f) => f.existsSync())
-          .toList();
-      inline = RegExp(r'<style>(.*?)</style>', dotAll: true)
-          .allMatches(html)
-          .map((m) => m[1]!)
-          .join('\n');
+    // Sample a real *article* page — the exact template the preview mirrors.
+    // The wiki landing page and /wiki/changelog link different bundles, and a
+    // page retired through Astro's `redirects:` is left as a bare meta-refresh
+    // stub carrying no CSS at all. Sampling one of those (/wiki/about-
+    // hyperlinkhyper, first alphabetically, did exactly that) drops every
+    // inlined prose rule and the preview falls back to browser defaults, so
+    // hold out for a page that renders `class="prose"`; settle for any page
+    // with the wiki chrome only if none does.
+    for (final strict in [true, false]) {
+      for (final sample in _wikiPreviewSamples()) {
+        final html = sample.readAsStringSync();
+        if (html.contains('http-equiv="refresh"')) continue;
+        if (!html.contains(strict ? 'class="prose"' : 'wiki-card')) continue;
+        final links = RegExp(r'<link rel="stylesheet" href="/_astro/([^"]+)"')
+            .allMatches(html)
+            .map((m) => File('${dir.path}/${m[1]}'))
+            .where((f) => f.existsSync())
+            .toList();
+        if (links.isEmpty) continue;
+        files = links;
+        inline = RegExp(r'<style>(.*?)</style>', dotAll: true)
+            .allMatches(html)
+            .map((m) => m[1]!)
+            .join('\n');
+        break;
+      }
+      if (files.isNotEmpty) break;
     }
     if (files.isEmpty) {
       files = dir
@@ -5521,8 +5551,10 @@ function splitFM(text) {
   if (text.slice(0, 4) === '---\n' || text === '---') {
     var end = text.indexOf('\n---', 3);
     if (end > 0) {
-      var rest = text.slice(end + 4);
-      if (rest[0] === '\n') rest = rest.slice(1);
+      // Drop the newline that closes the "---" line plus any blank lines
+      // after it: fullContent() always re-adds exactly one, so keeping them
+      // grew the empty gap above the first paragraph by a line on every save.
+      var rest = text.slice(end + 4).replace(/^(?:[ \t]*\n)+/, '');
       return { fm: text.slice(4, end), body: rest };
     }
   }
@@ -5860,7 +5892,7 @@ src.addEventListener('paste', function (e) {
 /* ---------- save & publish ---------- */
 function fullContent() {
   var f = fm.value.replace(/\s+$/, '');
-  var b = src.value.replace(/\s+$/, '') + '\n';
+  var b = src.value.replace(/^(?:[ \t]*\n)+/, '').replace(/\s+$/, '') + '\n';
   return f ? '---\n' + f + '\n---\n\n' + b : b;
 }
 function save(publish) {
