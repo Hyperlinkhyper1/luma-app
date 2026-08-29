@@ -101,3 +101,29 @@ class AtlasBitmap {
 /// the same single draw call — by pointing at a white tile and letting its
 /// flat colour through unchanged.
 const String kSolidTileName = 'luma:solid';
+
+/// How far along a texture download is, for the UI to show.
+class TextureDownloadProgress {
+  const TextureDownloadProgress({
+    required this.stage,
+    this.received = 0,
+    this.total = 0,
+  });
+
+  /// What the downloader is doing, phrased for the user.
+  final String stage;
+
+  final int received;
+  final int total;
+
+  /// 0..1 once the total is known, null while it is not.
+  double? get fraction =>
+      total > 0 ? (received / total).clamp(0.0, 1.0) : null;
+}
+
+class TextureDownloadException implements Exception {
+  TextureDownloadException(this.message);
+  final String message;
+  @override
+  String toString() => message;
+}

@@ -1,4 +1,8 @@
+import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
+
+import 'package:archive/archive.dart';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
@@ -376,4 +380,89 @@ void main() {
       expect(versions.first, '1.20.1');
     });
   });
+
+  group('reading a pack off disk', () {
+    late Directory temp;
+
+    setUp(() => temp = Directory.systemTemp.createTempSync('luma_tex'));
+    tearDown(() => temp.deleteSync(recursive: true));
+
+    test('names a client jar after the version directory it sits in', () {
+      // A client jar is always `versions/<id>/<id>.jar`, and "Minecraft
+      // 1.21.4" reads better under the preview than a bare file name — which
+      // is also how the source picker lists it.
+      final jar = _writeJar(
+        '${temp.path}${Platform.pathSeparator}versions'
+        '${Platform.pathSeparator}1.21.4'
+        '${Platform.pathSeparator}1.21.4.jar',
+      );
+
+      final data = readTexturePack(jar.path);
+
+      expect(data.label, 'Minecraft 1.21.4');
+      expect(data.textures.keys, contains('block/stone'));
+      expect(data.blockstates.keys, contains('stone'));
+      expect(data.models.keys, contains('block/stone'));
+    });
+
+    test('names a loose pack after its file', () {
+      final jar = _writeJar(
+        '${temp.path}${Platform.pathSeparator}FaithfulPack.zip',
+      );
+
+      expect(readTexturePack(jar.path).label, 'FaithfulPack');
+    });
+
+    test('a downloaded jar is discoverable where the downloader puts it', () {
+      // The downloader writes to the same `versions/<id>/<id>.jar` layout the
+      // launcher plugin uses, which is exactly what findTextureSources scans —
+      // so a jar fetched once is found again on the next run for free.
+      _writeJar(
+        '${temp.path}${Platform.pathSeparator}versions'
+        '${Platform.pathSeparator}1.21.4'
+        '${Platform.pathSeparator}1.21.4.jar',
+      );
+
+      final found = <String>[];
+      final versions = Directory(
+        '${temp.path}${Platform.pathSeparator}versions',
+      );
+      for (final entry in versions.listSync()) {
+        if (entry is! Directory) continue;
+        final id = entry.path.split(RegExp(r'[\\/]')).last;
+        final jar = File(
+          '${entry.path}${Platform.pathSeparator}$id.jar',
+        );
+        if (jar.existsSync()) found.add(id);
+      }
+
+      expect(found, ['1.21.4']);
+    });
+  });
 }
+
+/// Writes a minimal client-jar-shaped zip so the reader is exercised against a
+/// real archive on disk rather than a hand-built [RawTextureData].
+File _writeJar(String path) {
+  final archive = Archive()
+    ..addFile(ArchiveFile.bytes(
+      'assets/minecraft/textures/block/stone.png',
+      _png(126, 126, 126),
+    ))
+    ..addFile(ArchiveFile.bytes(
+      'assets/minecraft/blockstates/stone.json',
+      Uint8List.fromList(utf8.encode(
+        '{"variants":{"":{"model":"minecraft:block/stone"}}}',
+      )),
+    ))
+    ..addFile(ArchiveFile.bytes(
+      'assets/minecraft/models/block/stone.json',
+      Uint8List.fromList(utf8.encode(
+        '{"parent":"block/cube_all","textures":{"all":"block/stone"}}',
+      )),
+    ));
+  final file = File(path)..createSync(recursive: true);
+  file.writeAsBytesSync(ZipEncoder().encode(archive));
+  return file;
+}
+

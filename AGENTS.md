@@ -71,8 +71,13 @@ page until an account is approved.
 are Mojang's, so they are never committed or shipped. `converter/schematic/
 textures/` finds a client jar or resource pack already on the user's machine
 (luma's own launcher plugin, `.minecraft`, or a third-party launcher) and
-reads the textures and block models out of it at runtime, falling back to flat
-per-block colours when there is nothing to read. Keep it that way.
+reads the textures and block models out of it at runtime. When there is
+nothing to borrow, `texture_downloader.dart` can fetch the vanilla client jar
+from Mojang's public CDN on request — the same unauthenticated endpoint the
+launcher plugin uses, cached to the shared `<app support>/minecraft/versions/
+<id>/<id>.jar` so the two never download it twice. That fetch is always the
+user's explicit choice, and the fallback is still flat per-block colours.
+Keep it that way: nothing Mojang-owned enters the repo or a build artifact.
 
 **Platform-specific code** uses the suffix convention: `feature_io.dart` (Windows/Android/native), `feature_stub.dart` (unsupported platforms), `feature_web.dart` (web). The main `feature.dart` file exports the right one via conditional imports.
 
