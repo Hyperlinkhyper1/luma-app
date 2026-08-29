@@ -10,6 +10,8 @@ import '../../../theme/luma_theme.dart';
 import '../converter_widgets.dart';
 import '../schematic/block_colors.dart';
 import '../schematic/textures/block_atlas.dart';
+import '../schematic/textures/texture_downloader.dart';
+import '../schematic/textures/texture_pack_types.dart';
 import '../schematic/schematic_model.dart';
 
 /// An interactive 3D preview of a block build, in the spirit of the litematic
@@ -39,6 +41,11 @@ class _SchematicViewerState extends State<SchematicViewer> {
   /// installation. Null until then, and the preview draws flat colours.
   BlockAtlas? _atlas;
   bool _loadingTextures = false;
+
+  /// Set while the vanilla assets are being fetched from Mojang, so the status
+  /// line can show how far along a download of tens of megabytes is rather
+  /// than sitting on a spinner.
+  TextureDownloadProgress? _download;
 
   double _yaw = -0.7;
   double _pitch = 0.5;
@@ -73,15 +80,41 @@ class _SchematicViewerState extends State<SchematicViewer> {
 
   /// Reads the block textures out of the local Minecraft installation. The
   /// preview is usable on flat colours in the meantime, so this never blocks.
-  Future<void> _loadTextures({String? fromPath}) async {
+  Future<void> _loadTextures({String? fromPath}) => _withAtlas(
+        () => fromPath == null
+            ? BlockAtlas.load()
+            : BlockAtlas.loadFrom(fromPath),
+      );
+
+  /// Fetches the vanilla assets from Mojang, for the machine that has never
+  /// had Minecraft on it and so has nothing to borrow textures from.
+  Future<void> _downloadTextures() {
+    var lastPercent = -1;
+    return _withAtlas(
+      () => BlockAtlas.downloadAndLoad(
+        onProgress: (progress) {
+          if (!mounted) return;
+          // A rebuild per chunk would be thousands of frames of work for a
+          // progress bar that only moves a hundred times.
+          final percent = ((progress.fraction ?? 0) * 100).round();
+          if (percent == lastPercent && progress.stage == _download?.stage) {
+            return;
+          }
+          lastPercent = percent;
+          setState(() => _download = progress);
+        },
+      ),
+    );
+  }
+
+  Future<void> _withAtlas(Future<BlockAtlas?> Function() produce) async {
     if (_loadingTextures) return;
     setState(() => _loadingTextures = true);
-    final atlas = fromPath == null
-        ? await BlockAtlas.load()
-        : await BlockAtlas.loadFrom(fromPath);
+    final atlas = await produce();
     if (!mounted) return;
     setState(() {
       _loadingTextures = false;
+      _download = null;
       if (atlas != null) {
         _atlas = atlas;
         // The geometry caches per-face texture lookups, so it has to be
@@ -220,8 +253,10 @@ class _SchematicViewerState extends State<SchematicViewer> {
         _TextureStatus(
           atlas: _atlas,
           loading: _loadingTextures,
+          download: _download,
           failure: BlockAtlas.failure,
           onPick: _pickTextureSource,
+          onDownload: _downloadTextures,
         ),
         if (_geometry.stride > 1) ...[
           const SizedBox(height: 10),
@@ -256,19 +291,27 @@ class _TextureStatus extends StatelessWidget {
   const _TextureStatus({
     required this.atlas,
     required this.loading,
+    required this.download,
     required this.failure,
     required this.onPick,
+    required this.onDownload,
   });
 
   final BlockAtlas? atlas;
   final bool loading;
+  final TextureDownloadProgress? download;
   final String? failure;
   final VoidCallback onPick;
+  final VoidCallback onDownload;
+
+  static String _megabytes(int bytes) =>
+      '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
     final loaded = atlas;
+    final progress = download;
 
     final Widget leading;
     final String message;
@@ -278,10 +321,19 @@ class _TextureStatus extends StatelessWidget {
         height: 14,
         child: CircularProgressIndicator(
           strokeWidth: 2,
+          value: progress?.fraction,
           valueColor: AlwaysStoppedAnimation(luma.accent),
         ),
       );
-      message = 'Reading block textures from your Minecraft installation…';
+      if (progress == null) {
+        message = 'Reading block textures…';
+      } else if (progress.total > 0) {
+        message = '${progress.stage} '
+            '${_megabytes(progress.received)} of '
+            '${_megabytes(progress.total)}';
+      } else {
+        message = progress.stage;
+      }
     } else if (loaded != null) {
       leading = Icon(Icons.check_circle_outline_rounded,
           size: 15, color: luma.success);
@@ -290,12 +342,18 @@ class _TextureStatus extends StatelessWidget {
     } else {
       leading =
           Icon(Icons.palette_outlined, size: 15, color: luma.textMuted);
+      // Naming the source and the size up front: this is the one place in the
+      // feature that reaches out to the network, and it should be the user's
+      // decision rather than something that quietly happens to them.
       message = failure == null
-          ? 'Showing flat block colours.'
+          ? 'Flat colours — no Minecraft found. Download the textures from '
+              'Mojang (~${_megabytes(kApproximateClientJarBytes)}) or use '
+              'your own copy.'
           : '$failure Showing flat block colours.';
     }
 
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         leading,
         const SizedBox(width: 8),
@@ -305,11 +363,19 @@ class _TextureStatus extends StatelessWidget {
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
         ),
-        if (!loading)
+        if (!loading) ...[
+          if (loaded == null) ...[
+            ConverterTextButton(
+              label: 'Download textures',
+              onTap: onDownload,
+            ),
+            const SizedBox(width: 4),
+          ],
           ConverterTextButton(
-            label: loaded == null ? 'Choose Minecraft .jar' : 'Change',
+            label: loaded == null ? 'Use my install' : 'Change',
             onTap: onPick,
           ),
+        ],
       ],
     );
   }

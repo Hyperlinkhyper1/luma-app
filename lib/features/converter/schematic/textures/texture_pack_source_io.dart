@@ -176,6 +176,30 @@ Future<List<TexturePackSource>> findTextureSources() async {
   return found;
 }
 
+/// Names a pack for the status line under the preview.
+///
+/// A client jar always sits at `versions/<id>/<id>.jar`, so the directory name
+/// is the version — which reads better than the bare file name and matches
+/// what the source picker calls it.
+String _labelFor(String path) {
+  final segments = path.split(RegExp(r'[\\/]'))
+    ..removeWhere((s) => s.isEmpty);
+  if (segments.isEmpty) return path;
+  final file = segments.last;
+  final stem = file.endsWith('.jar')
+      ? file.substring(0, file.length - 4)
+      : file.endsWith('.zip')
+          ? file.substring(0, file.length - 4)
+          : file;
+  if (segments.length >= 3 &&
+      file.endsWith('.jar') &&
+      segments[segments.length - 2] == stem &&
+      segments[segments.length - 3] == 'versions') {
+    return 'Minecraft $stem';
+  }
+  return stem;
+}
+
 /// Reads every block texture, blockstate and model out of [path].
 ///
 /// Runs off the UI isolate — a client jar holds several thousand entries and
@@ -223,9 +247,7 @@ RawTextureData readTexturePack(String path) {
     }
   }
 
-  final label = file.uri.pathSegments.isEmpty
-      ? path
-      : file.uri.pathSegments.last.replaceAll('.jar', '');
+  final label = _labelFor(path);
   return RawTextureData(
     textures: textures,
     blockstates: blockstates,

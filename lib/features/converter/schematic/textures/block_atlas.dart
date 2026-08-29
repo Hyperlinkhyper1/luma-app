@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import '../schematic_model.dart';
 import 'block_model_resolver.dart';
+import 'texture_downloader.dart';
 import 'texture_pack_source.dart';
 
 /// A loaded block-texture atlas plus the model data needed to decide which
@@ -120,6 +121,27 @@ class BlockAtlas {
     _pending = null;
     await saveTextureSourcePath(path);
     return _pending ??= _load(explicitPath: path);
+  }
+
+  /// Fetches the vanilla client jar from Mojang and builds the atlas from it.
+  ///
+  /// For the common case of a machine that has never had Minecraft on it. The
+  /// preview needs textures from somewhere, and "go and install the game
+  /// first" is not an answer.
+  static Future<BlockAtlas?> downloadAndLoad({
+    void Function(TextureDownloadProgress)? onProgress,
+  }) async {
+    try {
+      final path = await downloadVanillaTextures(onProgress: onProgress);
+      return await loadFrom(path);
+    } catch (e) {
+      _current = null;
+      _pending = null;
+      _failure = e is TextureDownloadException
+          ? e.message
+          : 'Could not download block textures: $e';
+      return null;
+    }
   }
 
   static Future<BlockAtlas?> _load({String? explicitPath}) async {

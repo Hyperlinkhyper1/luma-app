@@ -269,13 +269,28 @@ void main() {
       );
     });
 
-    testWidgets('says it is on flat colours when no textures were found',
+    testWidgets('offers both ways to get textures when none were found',
         (tester) async {
       await tester.pumpWidget(_app(SchematicViewer(schematic: _sample())));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('flat block colours'), findsOneWidget);
-      expect(find.text('Choose Minecraft .jar'), findsOneWidget);
+      expect(find.textContaining('Flat colours'), findsOneWidget);
+      // A machine with no Minecraft on it is the common case, so the download
+      // has to be offered rather than only a file picker pointed at a game
+      // the user may not have.
+      expect(find.text('Download textures'), findsOneWidget);
+      expect(find.text('Use my install'), findsOneWidget);
+    });
+
+    testWidgets('names the source and the size before downloading anything',
+        (tester) async {
+      await tester.pumpWidget(_app(SchematicViewer(schematic: _sample())));
+      await tester.pumpAndSettle();
+
+      // Reaching out to the network should be the user's decision, made with
+      // the source and the cost in front of them.
+      expect(find.textContaining('Mojang'), findsOneWidget);
+      expect(find.textContaining('MB'), findsOneWidget);
     });
 
     testWidgets('draws real block textures when an atlas is available',
