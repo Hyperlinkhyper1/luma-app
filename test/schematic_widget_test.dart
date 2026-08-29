@@ -5,10 +5,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/features/converter/converter_page.dart';
+import 'package:image/image.dart' as img;
 import 'package:luma/features/converter/schematic/schematic_model.dart';
+import 'package:luma/features/converter/schematic/textures/block_atlas.dart';
+import 'package:luma/features/converter/schematic/textures/texture_pack_source_io.dart';
+import 'package:luma/features/converter/schematic/textures/texture_pack_types.dart';
 import 'package:luma/features/converter/tools/schematic_converter_view.dart';
 import 'package:luma/features/converter/tools/schematic_viewer.dart';
 import 'package:luma/theme/luma_theme.dart';
+
+/// A flat-colour 16x16 PNG standing in for a block texture.
+Uint8List _solidPng(int r, int g, int b) {
+  final image = img.Image(width: 16, height: 16, numChannels: 4);
+  img.fill(image, color: img.ColorRgba8(r, g, b, 255));
+  return Uint8List.fromList(img.encodePng(image));
+}
 
 Widget _app(Widget child) => MaterialApp(
       theme: LumaTheme.dark,
@@ -64,6 +75,18 @@ Future<void> _openOtherCategory(WidgetTester tester) async {
 }
 
 void main() {
+  setUp(() {
+    // Otherwise the preview would go looking for whatever Minecraft happens
+    // to be installed on the machine running the tests.
+    BlockAtlas.autoLoad = false;
+    BlockAtlas.resetForTesting();
+  });
+
+  tearDown(() {
+    BlockAtlas.resetForTesting();
+    BlockAtlas.autoLoad = true;
+  });
+
   group('converter hub', () {
     testWidgets('has an Other tile that opens the Other category',
         (tester) async {
@@ -244,6 +267,100 @@ void main() {
         greaterThan(total ~/ 50),
         reason: 'the build should be drawn in gold, not a flat silhouette',
       );
+    });
+
+    testWidgets('says it is on flat colours when no textures were found',
+        (tester) async {
+      await tester.pumpWidget(_app(SchematicViewer(schematic: _sample())));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('flat block colours'), findsOneWidget);
+      expect(find.text('Choose Minecraft .jar'), findsOneWidget);
+    });
+
+    testWidgets('draws real block textures when an atlas is available',
+        (tester) async {
+      // The textured path is where the interesting mistakes live: a wrong UV
+      // corner mirrors the texture, a wrong blend mode loses it entirely, and
+      // a wrong face index paints the top texture down the sides. So give it
+      // a block whose top and sides are unmistakably different colours and
+      // check both actually land on screen.
+      final bitmap = buildAtlas(
+        RawTextureData(
+          textures: {
+            'block/test_top': _solidPng(20, 230, 40),
+            'block/test_side': _solidPng(230, 20, 40),
+          },
+          blockstates: {
+            'test_block': '{"variants":{"":'
+                '{"model":"minecraft:block/test_block"}}}',
+          },
+          models: {
+            'block/test_block': '{"textures":{'
+                '"up":"minecraft:block/test_top",'
+                '"down":"minecraft:block/test_side",'
+                '"north":"minecraft:block/test_side",'
+                '"south":"minecraft:block/test_side",'
+                '"east":"minecraft:block/test_side",'
+                '"west":"minecraft:block/test_side"}}',
+          },
+          label: 'Test pack',
+        ),
+      );
+
+      late BlockAtlas atlas;
+      await tester.runAsync(() async {
+        atlas = await BlockAtlas.fromBitmap(bitmap);
+      });
+      BlockAtlas.installForTesting(atlas);
+
+      final builder = PaletteBuilder();
+      final block = builder.add(BlockState('minecraft:test_block'));
+      final blocks = Uint16List(4 * 4 * 4);
+      for (var i = 0; i < blocks.length; i++) {
+        blocks[i] = block;
+      }
+      final schematic = Schematic(
+        width: 4,
+        height: 4,
+        length: 4,
+        palette: builder.build(),
+        blocks: blocks,
+      );
+
+      await tester.pumpWidget(_app(SchematicViewer(schematic: schematic)));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Textures from Test pack'), findsOneWidget);
+
+      final boundary = tester.renderObject<RenderRepaintBoundary>(
+        find.byType(RepaintBoundary).last,
+      );
+      late ByteData pixels;
+      late ui.Image image;
+      await tester.runAsync(() async {
+        image = await boundary.toImage();
+        pixels = (await image.toByteData(format: ui.ImageByteFormat.rawRgba))!;
+      });
+
+      var greenTop = 0;
+      var redSide = 0;
+      for (var i = 0; i < pixels.lengthInBytes; i += 4) {
+        final r = pixels.getUint8(i);
+        final g = pixels.getUint8(i + 1);
+        final b = pixels.getUint8(i + 2);
+        if (g > 90 && g > r * 2 && g > b * 2) greenTop++;
+        if (r > 90 && r > g * 2 && r > b * 2) redSide++;
+      }
+      image.dispose();
+
+      // Green only appears if the camera is actually above the build. Getting
+      // the pitch sign wrong draws every block from underneath, which a
+      // single-colour check cannot see but this one can.
+      expect(greenTop, greaterThan(200),
+          reason: 'the top face should be drawn, and wear the top texture');
+      expect(redSide, greaterThan(200),
+          reason: 'the side faces should wear the side texture');
     });
 
     testWidgets('simplifies a build too large to draw block-for-block',
