@@ -350,6 +350,68 @@ void main() {
       expect(packed.pixels[offset + 1], 30);
     });
 
+    test('packs an animated paletted texture without falling over', () {
+      // Vanilla stores several animated textures — water_still among them — as
+      // 4-bit paletted PNGs with only a handful of colours. Cropping one to
+      // its first frame while it is still in that format leaves pixels
+      // indexing past the end of the palette, and reading one throws
+      // RangeError, which used to take the whole atlas down and leave the
+      // preview on flat colours. Normalising to RGBA8 before any geometry is
+      // what keeps that from happening.
+      // Eight palette entries behind four-bit indices, exactly the shape
+      // water_still is stored in.
+      final palette = img.PaletteUint8(8, 4);
+      palette.setRgba(0, 30, 60, 200, 255);
+      palette.setRgba(1, 40, 90, 220, 255);
+      final strip = img.Image(
+        width: 16,
+        height: 320,
+        format: img.Format.uint4,
+        numChannels: 4,
+        palette: palette,
+      );
+      for (var y = 0; y < strip.height; y++) {
+        for (var x = 0; x < strip.width; x++) {
+          strip.setPixelIndex(x, y, y < 16 ? 0 : 1);
+        }
+      }
+
+      final packed = buildAtlas(RawTextureData(
+        textures: {
+          'block/water_still': Uint8List.fromList(img.encodePng(strip)),
+        },
+        blockstates: const <String, String>{},
+        models: const <String, String>{},
+        label: 'Paletted',
+      ));
+
+      expect(packed.tiles.keys, contains('block/water_still'));
+      final index = packed.tiles['block/water_still']!;
+      final x = (index % packed.columns) * packed.tileStride + 1 + 8;
+      final y = (index ~/ packed.columns) * packed.tileStride + 1 + 8;
+      final offset = (y * packed.width + x) * 4;
+      expect(packed.pixels[offset], 30);
+      expect(packed.pixels[offset + 1], 60);
+      expect(packed.pixels[offset + 2], 200);
+    });
+
+    test('one unreadable texture does not cost the whole pack', () {
+      // A pack is thousands of files the user did not author; one of them
+      // being malformed should lose that block's texture, not every block's.
+      final packed = buildAtlas(RawTextureData(
+        textures: {
+          'block/stone': _png(126, 126, 126),
+          'block/broken': Uint8List.fromList(const [1, 2, 3, 4, 5, 6, 7, 8]),
+        },
+        blockstates: const <String, String>{},
+        models: const <String, String>{},
+        label: 'Partly broken',
+      ));
+
+      expect(packed.tiles.keys, contains('block/stone'));
+      expect(packed.tiles.keys, isNot(contains('block/broken')));
+    });
+
     test('a pack with no block textures is rejected, not left all white', () {
       // The reserved white tile must not be enough on its own to make an
       // unusable pack look loadable — that would paint every block white.
