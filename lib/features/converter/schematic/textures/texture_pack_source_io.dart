@@ -275,45 +275,54 @@ AtlasBitmap buildAtlas(RawTextureData data) {
   for (final name in names) {
     final bytes = data.textures[name];
     if (bytes == null) continue;
-    img.Image? frame;
+    // One malformed texture must not cost the user every other one, so the
+    // whole per-texture job is guarded rather than just the decode.
     try {
-      frame = img.decodePng(bytes);
-    } catch (_) {
-      frame = null;
-    }
-    if (frame == null) continue;
+      final raw = img.decodePng(bytes);
+      if (raw == null) continue;
 
-    // Animated textures are a vertical strip of frames; the first one is what
-    // the block looks like at rest.
-    if (frame.height > frame.width && frame.width > 0) {
-      frame = img.copyCrop(
-        frame,
-        x: 0,
-        y: 0,
-        width: frame.width,
-        height: frame.width,
-      );
-    }
-    if (frame.width != _tileSize || frame.height != _tileSize) {
-      frame = img.copyResize(
-        frame,
-        width: _tileSize,
-        height: _tileSize,
-        interpolation: img.Interpolation.nearest,
-      );
-    }
-    // Leaves, glass and bars have holes in them, and a block wearing one must
-    // not be treated as hiding whatever sits behind it.
-    for (var y = 0; y < frame.height && !transparent.contains(name); y++) {
-      for (var x = 0; x < frame.width; x++) {
-        if (frame.getPixel(x, y).a < 250) {
-          transparent.add(name);
-          break;
+      // Normalised to straight RGBA8 before anything geometric happens to it.
+      // A good few vanilla textures are 4-bit paletted (water_still and the
+      // other animated ones, with palettes of six to thirteen colours), and
+      // cropping or resizing one in its native format leaves pixels indexing
+      // past the end of that palette — reading them then throws RangeError
+      // and takes the whole atlas down with it.
+      var frame = raw.convert(format: img.Format.uint8, numChannels: 4);
+
+      // Animated textures are a vertical strip of frames; the first one is
+      // what the block looks like at rest.
+      if (frame.height > frame.width && frame.width > 0) {
+        frame = img.copyCrop(
+          frame,
+          x: 0,
+          y: 0,
+          width: frame.width,
+          height: frame.width,
+        );
+      }
+      if (frame.width != _tileSize || frame.height != _tileSize) {
+        frame = img.copyResize(
+          frame,
+          width: _tileSize,
+          height: _tileSize,
+          interpolation: img.Interpolation.nearest,
+        );
+      }
+      // Leaves, glass and bars have holes in them, and a block wearing one
+      // must not be treated as hiding whatever sits behind it.
+      for (var y = 0; y < frame.height && !transparent.contains(name); y++) {
+        for (var x = 0; x < frame.width; x++) {
+          if (frame.getPixel(x, y).a < 250) {
+            transparent.add(name);
+            break;
+          }
         }
       }
-    }
 
-    decoded[name] = frame;
+      decoded[name] = frame;
+    } catch (_) {
+      continue;
+    }
   }
 
   // A pack with no block textures in it is not a pack this can use, and must
