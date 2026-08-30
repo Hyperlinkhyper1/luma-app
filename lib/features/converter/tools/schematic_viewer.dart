@@ -1089,23 +1089,27 @@ class _VoxelPainter extends CustomPainter {
       }
     }
 
+    // Painter's algorithm: there is no depth buffer, so the far side has to be
+    // drawn first and the near side last, over the top of it. Each axis is
+    // therefore walked starting at its far end — when the near side is at high
+    // coordinates that means ascending, and descending when it is at low ones.
     for (var yi = 0; yi < geometry.height; yi++) {
-      final y = yNearHigh ? geometry.height - 1 - yi : yi;
+      final y = yNearHigh ? yi : geometry.height - 1 - yi;
       if (y < lowLayer || y >= highLayer) continue;
       // The cut face of a sliced build would otherwise be missing, because a
       // buried voxel has no top face of its own.
       final forceTop = y == highLayer - 1 && highLayer < geometry.height;
 
       for (var zi = 0; zi < geometry.length; zi++) {
-        final z = zNearHigh ? geometry.length - 1 - zi : zi;
+        final z = zNearHigh ? zi : geometry.length - 1 - zi;
         final start = geometry.rowStart[y * geometry.length + z];
         final end = geometry.rowStart[y * geometry.length + z + 1];
         if (xNearHigh) {
-          for (var i = end - 1; i >= start; i--) {
+          for (var i = start; i < end; i++) {
             emitVoxel(i, forceTop);
           }
         } else {
-          for (var i = start; i < end; i++) {
+          for (var i = end - 1; i >= start; i--) {
             emitVoxel(i, forceTop);
           }
         }

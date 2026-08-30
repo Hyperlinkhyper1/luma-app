@@ -378,6 +378,116 @@ void main() {
           reason: 'the side faces should wear the side texture');
     });
 
+    testWidgets('the near wall hides the far one', (tester) async {
+      // There is no depth buffer — the order faces go into the vertex buffer
+      // is the order they land on screen. Get it backwards and the far side
+      // of a hollow build paints over the near side, so you look straight
+      // through the wall facing you into the interior.
+      //
+      // A single-block-colour build cannot catch this, and neither can a
+      // hollow box of one block: the near wall's outer face and the far
+      // wall's inner face point the same way and wear the same texture. The
+      // two walls have to be different blocks.
+      String cube(String texture) => '{"textures":{'
+          '"east":"minecraft:$texture","west":"minecraft:$texture",'
+          '"up":"minecraft:$texture","down":"minecraft:$texture",'
+          '"north":"minecraft:$texture","south":"minecraft:$texture"}}';
+
+      final bitmap = buildAtlas(RawTextureData(
+        textures: {
+          'block/t_near': _solidPng(230, 20, 20),
+          'block/t_far': _solidPng(20, 20, 230),
+          'block/t_rest': _solidPng(60, 60, 60),
+        },
+        blockstates: {
+          for (final n in ['near', 'far', 'rest'])
+            'b_$n': '{"variants":{"":{"model":"minecraft:block/b_$n"}}}',
+        },
+        models: {
+          for (final n in ['near', 'far', 'rest'])
+            'block/b_$n': cube('block/t_$n'),
+        },
+        label: 'Occlusion pack',
+      ));
+
+      late BlockAtlas atlas;
+      await tester.runAsync(() async {
+        atlas = await BlockAtlas.fromBitmap(bitmap);
+      });
+      BlockAtlas.installForTesting(atlas);
+      addTearDown(BlockAtlas.resetForTesting);
+
+      // The default camera sits on the low-x, low-z side and above, so the
+      // x == 0 wall is the one facing the viewer.
+      final builder = PaletteBuilder();
+      final near = builder.add(BlockState('minecraft:b_near'));
+      final far = builder.add(BlockState('minecraft:b_far'));
+      final rest = builder.add(BlockState('minecraft:b_rest'));
+
+      const w = 12, h = 8, l = 12;
+      final blocks = Uint16List(w * h * l);
+      for (var y = 0; y < h; y++) {
+        for (var z = 0; z < l; z++) {
+          for (var x = 0; x < w; x++) {
+            final int block;
+            if (x == 0) {
+              block = near;
+            } else if (x == w - 1) {
+              block = far;
+            } else if (z == 0 || z == l - 1 || y == 0 || y == h - 1) {
+              block = rest;
+            } else {
+              continue;
+            }
+            blocks[x + z * w + y * w * l] = block;
+          }
+        }
+      }
+
+      await tester.pumpWidget(_app(SchematicViewer(
+        schematic: Schematic(
+          width: w,
+          height: h,
+          length: l,
+          palette: builder.build(),
+          blocks: blocks,
+        ),
+      )));
+      await tester.pumpAndSettle();
+
+      final boundary = tester.renderObject<RenderRepaintBoundary>(
+        find.byType(RepaintBoundary).last,
+      );
+      late ByteData pixels;
+      late ui.Image image;
+      await tester.runAsync(() async {
+        image = await boundary.toImage();
+        pixels = (await image.toByteData(format: ui.ImageByteFormat.rawRgba))!;
+      });
+
+      var nearWall = 0;
+      var farWall = 0;
+      for (var i = 0; i < pixels.lengthInBytes; i += 4) {
+        final r = pixels.getUint8(i);
+        final g = pixels.getUint8(i + 1);
+        final b = pixels.getUint8(i + 2);
+        if (r > 60 && r > g * 2 && r > b * 2) nearWall++;
+        if (b > 60 && b > r * 2 && b > g * 2) farWall++;
+      }
+      image.dispose();
+
+      expect(nearWall, greaterThan(0),
+          reason: 'the wall facing the viewer has to be drawn at all');
+      // The far wall is not fully hidden — it runs past the near wall's
+      // silhouette at the edges — but it must not be the dominant one.
+      expect(
+        nearWall,
+        greaterThan(farWall * 2),
+        reason: 'the near wall should cover the far wall, not the other '
+            'way round',
+      );
+    });
+
     testWidgets('simplifies a build too large to draw block-for-block',
         (tester) async {
       // Comfortably past the viewer's voxel budget, so the preview has to
