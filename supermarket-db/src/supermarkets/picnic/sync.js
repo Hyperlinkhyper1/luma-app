@@ -80,32 +80,42 @@ class PicnicSync extends BaseSync {
     }
 
     const byId = new Map();
+    let sawAnySuccess = false;
+
     for (const term of CATEGORY_SEARCH_TERMS) {
-      let units;
       try {
-        units = await searchProducts(term, {
+        const units = await searchProducts(term, {
           username: config.picnic.username,
           password: config.picnic.password,
         });
+        sawAnySuccess = true;
+        for (const unit of units) {
+          if (!unit.id || !unit.name) continue;
+          byId.set(unit.id, mapProduct(unit, term));
+        }
+        await this.reportProgress(byId.size);
       } catch (error) {
+        if (!sawAnySuccess) {
+          // Every other term would fail identically (bad credentials, the
+          // endpoint down, a changed response shape) — surface the real
+          // error now instead of silently burning through all ~45 terms
+          // just to land on the same generic "0 products" message anyway.
+          throw new Error(`Picnic: search "${term}" failed: ${error.message}`);
+        }
+        // A later term failing on its own doesn't necessarily mean the
+        // rest will too — log it and keep going rather than losing
+        // everything collected so far.
         console.error(`Picnic sync: search "${term}" failed:`, error.message);
-        continue; // Move on to the next term rather than aborting the whole sync.
       }
-
-      for (const unit of units) {
-        if (!unit.id || !unit.name) continue;
-        byId.set(unit.id, mapProduct(unit, term));
-      }
-
-      await this.reportProgress(byId.size);
       await sleep(REQUEST_DELAY_MS);
     }
 
     const products = Array.from(byId.values());
     if (products.length === 0) {
       throw new Error(
-        'Picnic: every search term returned 0 products — login may have failed, or ' +
-          'Picnic changed the search-page-results response shape again'
+        'Picnic: every search request succeeded but found 0 products — Picnic likely ' +
+          'changed the search-page-results response shape again (see findSellingUnits ' +
+          'in picnicClient.js)'
       );
     }
     return products;
