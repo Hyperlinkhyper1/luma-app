@@ -4291,8 +4291,15 @@ border-radius:999px;padding:2px 8px}
     final content = exists ? await file.readAsString() : '';
     // JSON-embedded into a <script>; <-escape closes the XSS door of a
     // literal "</script>" inside page content.
-    final initial = jsonEncode({'page': page, 'content': content, 'isNew': !exists})
-        .replaceAll('<', '\\u003c');
+    final initial = jsonEncode({
+      'page': page,
+      'content': content,
+      'isNew': !exists,
+      // The editing chrome rides along with the page content: the surface
+      // lives in a srcdoc iframe, which has no URL of its own to resolve a
+      // stylesheet against, so its CSS is handed to the client instead.
+      'frameCss': _wikiFrameCss,
+    }).replaceAll('<', '\\u003c');
 
     return Response(200,
         body: '<!doctype html><html><head><meta charset="utf-8">'
@@ -4301,30 +4308,71 @@ border-radius:999px;padding:2px 8px}
             '<style>$_wikiEditorCss</style></head>'
             '<body>'
             '<header class="ed-top">'
-            '<a class="ed-back" href="/admin/website" aria-label="All pages">←</a>'
+            '<a class="ed-back" href="/admin/website" aria-label="All pages" '
+            'title="All pages">'
+            '<svg viewBox="0 0 16 16" aria-hidden="true">'
+            '<path d="M9.5 3.5 5 8l4.5 4.5"/></svg></a>'
             '<h1 class="ed-name">${_htmlEscape(page)}</h1>'
-            '<span id="status" class="ed-status" role="status" aria-live="polite"></span>'
+            '<span id="status" class="ed-status" role="status" '
+            'aria-live="polite"></span>'
+            '<button id="undobtn" class="ed-undo" type="button" hidden>Undo</button>'
             '<div class="ed-actions">'
+            '<button id="setbtn" class="ed-btn" type="button" '
+            'aria-expanded="false" aria-controls="ed-panel">'
+            '<svg viewBox="0 0 16 16" aria-hidden="true">'
+            '<circle cx="8" cy="8" r="2.1"/>'
+            '<path d="M8 1.6v1.7M8 12.7v1.7M2.5 8H4.2M11.8 8h1.7'
+            'M4.1 4.1l1.2 1.2M10.7 10.7l1.2 1.2M11.9 4.1l-1.2 1.2'
+            'M5.3 10.7l-1.2 1.2"/></svg><span>Page settings</span></button>'
             '<button id="savebtn" class="ed-btn" type="button">Save</button>'
             '<button id="pubbtn" class="ed-btn ed-primary" type="button">'
             'Save &amp; publish</button>'
             '</div></header>'
             '<div class="ed-format" role="toolbar" aria-label="Formatting">'
-            '<button id="fmt-bold" class="ed-fmt" type="button" '
-            'title="Bold (Ctrl+B)"><strong>B</strong></button>'
-            '<button id="fmt-italic" class="ed-fmt" type="button" '
-            'title="Italic (Ctrl+I)"><em>i</em></button>'
-            '<button id="fmt-h2" class="ed-fmt" type="button" '
-            'title="Heading">H2</button>'
-            '<button id="fmt-list" class="ed-fmt" type="button" '
-            'title="Bullet list">•⁠ ⁠list</button>'
+            '<button class="ed-fmt" type="button" data-fmt="bold" data-block '
+            'title="Bold (Ctrl+B)" aria-label="Bold"><strong>B</strong></button>'
+            '<button class="ed-fmt" type="button" data-fmt="italic" data-block '
+            'title="Italic (Ctrl+I)" aria-label="Italic"><em>I</em></button>'
+            '<button class="ed-fmt ed-fmt-t" type="button" data-fmt="code" '
+            'data-block title="Inline code" aria-label="Inline code">'
+            '<svg viewBox="0 0 16 16" aria-hidden="true">'
+            '<path d="M6 3.5 2.5 8 6 12.5M10 3.5 13.5 8 10 12.5"/></svg></button>'
             '<span class="ed-fmt-sep"></span>'
-            '<button id="linkbtn" class="ed-fmt" type="button" '
-            'title="Insert link — turns a name into a clickable link '
-            'instead of a bare URL" aria-expanded="false">Link</button>'
-            '<button id="imgbtn" class="ed-fmt" type="button" '
-            'title="Insert image">Image</button>'
+            '<button class="ed-fmt" type="button" data-fmt="h2" data-block '
+            'title="Heading" aria-label="Heading level 2">H2</button>'
+            '<button class="ed-fmt" type="button" data-fmt="h3" data-block '
+            'title="Subheading" aria-label="Heading level 3">H3</button>'
+            '<button class="ed-fmt ed-fmt-t" type="button" data-fmt="list" '
+            'data-block title="Bullet list" aria-label="Bullet list">'
+            '<svg viewBox="0 0 16 16" aria-hidden="true">'
+            '<path d="M6 4h8M6 8h8M6 12h6"/>'
+            '<circle class="f" cx="3" cy="4" r="1"/>'
+            '<circle class="f" cx="3" cy="8" r="1"/>'
+            '<circle class="f" cx="3" cy="12" r="1"/></svg></button>'
+            '<button class="ed-fmt ed-fmt-t" type="button" data-fmt="quote" '
+            'data-block title="Quote" aria-label="Block quote">'
+            '<svg viewBox="0 0 16 16" aria-hidden="true">'
+            '<path d="M3 3.5v9" stroke-width="2.2"/>'
+            '<path d="M6.8 5.5h6.4M6.8 8h6.4M6.8 10.5h4"/></svg></button>'
+            '<span class="ed-fmt-sep"></span>'
+            '<button id="linkbtn" class="ed-fmt ed-fmt-t" type="button" '
+            'data-block aria-expanded="false" aria-label="Insert link" '
+            'title="Insert link (Ctrl+K) — turns a name into a clickable link '
+            'instead of a bare URL">'
+            '<svg viewBox="0 0 16 16" aria-hidden="true">'
+            '<path d="M6.8 9.2a2.7 2.7 0 0 0 3.8 0l2-2a2.7 2.7 0 0 0-3.8-3.8l-1 1"/>'
+            '<path d="M9.2 6.8a2.7 2.7 0 0 0-3.8 0l-2 2a2.7 2.7 0 0 0 3.8 3.8l1-1"/>'
+            '</svg></button>'
+            '<button id="imgbtn" class="ed-fmt ed-fmt-t" type="button" '
+            'title="Insert image — or drag one straight onto the page" '
+            'aria-label="Insert image">'
+            '<svg viewBox="0 0 16 16" aria-hidden="true">'
+            '<rect x="2" y="3" width="12" height="10" rx="1.6"/>'
+            '<circle cx="5.6" cy="6.4" r="1.1"/>'
+            '<path d="m2.6 11.5 3.2-3 2.4 2.2 2-1.8 3.2 2.9"/></svg></button>'
             '<input id="imgfile" type="file" accept="image/*" hidden>'
+            '<span class="ed-tip" id="tip">Click anywhere on the page to edit it'
+            '</span>'
             '<div id="linkpop" class="ed-linkpop" hidden>'
             '<input id="linktext" type="text" placeholder="Text readers see" '
             'aria-label="Link text">'
@@ -4333,23 +4381,42 @@ border-radius:999px;padding:2px 8px}
             '<button id="linkgo" type="button" class="ed-btn ed-primary">Add</button>'
             '</div>'
             '</div>'
-            '<div class="ed-tabs" role="tablist">'
-            '<button class="ed-tab is-on" data-pane="write" role="tab">Write</button>'
-            '<button class="ed-tab" data-pane="preview" role="tab">Preview</button>'
-            '</div>'
-            '<main class="ed-split">'
-            '<section class="ed-pane" id="pane-write">'
-            '<details class="ed-fm"><summary>Page settings (frontmatter)</summary>'
-            '<textarea id="fm" spellcheck="false" rows="8" '
-            'aria-label="Frontmatter"></textarea></details>'
-            '<textarea id="src" spellcheck="false" '
-            'aria-label="Page content (Markdown)" '
-            'placeholder="Write Markdown here…"></textarea>'
-            '</section>'
-            '<section class="ed-pane" id="pane-preview">'
-            '<iframe id="pv" title="Live preview"></iframe>'
-            '</section>'
+            '<main class="ed-stage">'
+            '<iframe id="pv" title="Page — click any part of it to edit"></iframe>'
             '</main>'
+            '<div id="ed-scrim" class="ed-scrim" hidden></div>'
+            '<aside id="ed-panel" class="ed-panel" hidden role="dialog" '
+            'aria-modal="true" aria-labelledby="ed-panel-h">'
+            '<header class="ed-panel-top">'
+            '<h2 id="ed-panel-h">Page settings</h2>'
+            '<button id="setclose" class="ed-icon" type="button" '
+            'aria-label="Close page settings">'
+            '<svg viewBox="0 0 16 16" aria-hidden="true">'
+            '<path d="M4 4l8 8M12 4l-8 8"/></svg></button>'
+            '</header>'
+            '<div class="ed-panel-body">'
+            '<label class="ed-lab" for="fm">Frontmatter</label>'
+            '<p class="ed-help">YAML at the top of the file. The page title is '
+            'edited on the page itself and kept in sync here.</p>'
+            '<textarea id="fm" spellcheck="false" rows="10" '
+            'aria-describedby="fm-help"></textarea>'
+            '<p class="ed-help" id="fm-help">One <code>key: value</code> per '
+            'line. Empty values are dropped when the page is saved.</p>'
+            '<details class="ed-det"><summary>Keyboard shortcuts</summary>'
+            '<dl class="ed-keys">'
+            '<dt>Ctrl+S</dt><dd>Save</dd>'
+            '<dt>Ctrl+B / Ctrl+I</dt><dd>Bold / italic</dd>'
+            '<dt>Ctrl+K</dt><dd>Insert link</dd>'
+            '<dt>Enter</dt><dd>New block below</dd>'
+            '<dt>Shift+Enter</dt><dd>Line break inside the block</dd>'
+            '<dt>Alt+↑ / Alt+↓</dt><dd>Move the block up or down</dd>'
+            '<dt>↑ / ↓</dt><dd>Step between blocks</dd>'
+            '<dt>Backspace</dt><dd>On an empty block, removes it</dd>'
+            '<dt>Esc</dt><dd>Stop editing the block</dd>'
+            '</dl></details>'
+            '<details class="ed-det"><summary>Markdown source</summary>'
+            '<pre class="ed-src" id="srcview" tabindex="0"></pre></details>'
+            '</div></aside>'
             '<script>window.__initial=$initial;</script>'
             '<script>$_wikiEditorJs</script>'
             '</body></html>',
@@ -5451,130 +5518,256 @@ display:flex;flex-direction:column;gap:8px;align-items:flex-start}
   /// Chrome for the split-view page editor. Dark, warm-neutral, amber accent
   /// to sit visually alongside the wiki itself; the preview pane's inside is
   /// styled entirely by the built site's own CSS.
+  /// Chrome around the page: top bar, formatting toolbar, and the settings
+  /// panel. The editing surface itself lives inside the iframe and is styled
+  /// by `_wikiFrameCss`, on top of the built site's own stylesheet.
   static const _wikiEditorCss = '''
-:root{--bg:#131110;--bg2:#1b1917;--line:#2c2825;--tx:#ece7e1;--tx2:#a89f94;
---accent:#e8a44e;--accent-tx:#241a0c;--ok:#8fc98f;--err:#e07e7e;--focus:#7db3e8}
+:root{--bg:#131110;--bg2:#1b1917;--bg3:#232019;--line:#2c2825;--tx:#ece7e1;
+--tx2:#a89f94;--tx3:#7c7369;--accent:#e8a44e;--accent-tx:#241a0c;--ok:#8fc98f;
+--err:#e07e7e;--focus:#7db3e8}
 *{box-sizing:border-box}
 html,body{height:100%}
-body{margin:0;background:var(--bg);color:var(--tx);
+body{margin:0;background:var(--bg);color:var(--tx);overflow:hidden;
 font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;
 display:flex;flex-direction:column}
-.ed-top{display:flex;align-items:center;gap:12px;padding:8px 14px;
+svg{width:16px;height:16px;display:block;fill:none;stroke:currentColor;
+stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+svg .f{fill:currentColor;stroke:none}
+.ed-top{display:flex;align-items:center;gap:10px;padding:8px 12px;
 background:var(--bg2);border-bottom:1px solid var(--line);flex:0 0 auto}
-.ed-back{color:var(--tx2);text-decoration:none;font-size:19px;padding:8px 10px;
-border-radius:8px;min-width:40px;text-align:center}
+.ed-back{display:grid;place-items:center;color:var(--tx2);text-decoration:none;
+width:40px;height:40px;border-radius:9px;flex:0 0 auto}
 .ed-back:hover{background:var(--line);color:var(--tx)}
-.ed-name{font-size:15px;font-weight:600;margin:0;white-space:nowrap;
+.ed-name{font-size:14px;font-weight:600;margin:0;color:var(--tx2);
+white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.ed-status{margin-left:auto;font-size:13px;color:var(--tx2);white-space:nowrap;
 overflow:hidden;text-overflow:ellipsis}
-.ed-status{margin-left:auto;font-size:13px;color:var(--tx2);white-space:nowrap}
 .ed-status.ok{color:var(--ok)}.ed-status.err{color:var(--err)}
-.ed-actions{display:flex;gap:8px}
-.ed-btn{min-height:40px;padding:0 16px;border-radius:9px;cursor:pointer;
+.ed-undo{min-height:32px;padding:0 12px;border-radius:8px;cursor:pointer;
 border:1px solid var(--line);background:var(--bg);color:var(--tx);
-font:inherit;font-weight:500}
+font:13px/1 inherit;font-weight:600;flex:0 0 auto}
+.ed-undo:hover{background:var(--line)}
+.ed-undo[hidden]{display:none}
+.ed-actions{display:flex;gap:8px;flex:0 0 auto}
+.ed-btn{display:inline-flex;align-items:center;gap:7px;min-height:40px;
+padding:0 15px;border-radius:9px;cursor:pointer;border:1px solid var(--line);
+background:var(--bg);color:var(--tx);font:inherit;font-weight:500}
 .ed-btn:hover{background:var(--line)}
-.ed-btn:focus-visible,.ed-tab:focus-visible,.ed-back:focus-visible{
-outline:2px solid var(--focus);outline-offset:2px}
 .ed-btn:disabled{opacity:.45;cursor:default}
 .ed-primary{background:var(--accent);border-color:var(--accent);
 color:var(--accent-tx);font-weight:600}
 .ed-primary:hover{background:#f2b465}
-.ed-format{position:relative;display:flex;align-items:center;gap:4px;
-padding:6px 10px;background:var(--bg2);border-bottom:1px solid var(--line);
+.ed-icon{display:grid;place-items:center;width:36px;height:36px;padding:0;
+border-radius:9px;border:1px solid transparent;background:none;
+color:var(--tx2);cursor:pointer}
+.ed-icon:hover{background:var(--line);color:var(--tx)}
+.ed-btn:focus-visible,.ed-fmt:focus-visible,.ed-back:focus-visible,
+.ed-icon:focus-visible,.ed-undo:focus-visible,.ed-src:focus-visible,
+.ed-det summary:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+/* ---- formatting toolbar ---- */
+.ed-format{position:relative;display:flex;align-items:center;gap:3px;
+padding:6px 12px;background:var(--bg2);border-bottom:1px solid var(--line);
 flex:0 0 auto;flex-wrap:wrap}
-.ed-fmt{min-height:32px;min-width:32px;padding:0 10px;border-radius:7px;
-border:1px solid transparent;background:none;color:var(--tx2);cursor:pointer;
-font:13px/1 inherit}
-.ed-fmt:hover{background:var(--line);color:var(--tx)}
-.ed-fmt:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
+.ed-fmt{display:grid;place-items:center;min-height:34px;min-width:34px;
+padding:0 9px;border-radius:8px;border:1px solid transparent;background:none;
+color:var(--tx2);cursor:pointer;font:13px/1 inherit}
+.ed-fmt:hover:not(:disabled){background:var(--line);color:var(--tx)}
+.ed-fmt:disabled{opacity:.34;cursor:default}
 .ed-fmt[aria-expanded="true"]{background:var(--line);color:var(--tx);
 border-color:var(--accent)}
-.ed-fmt-sep{width:1px;align-self:stretch;margin:4px 4px;background:var(--line)}
-/* In normal flow (not an overlay) — a floating popover here would sit right
-   on top of the frontmatter panel below and swallow clicks meant for it. */
+.ed-fmt-sep{width:1px;height:20px;margin:0 5px;background:var(--line)}
+.ed-tip{margin-left:8px;font-size:12.5px;color:var(--tx2)}
+.ed-tip[hidden]{display:none}
+/* In normal flow, not floating: a popover here would sit over the page and
+   swallow clicks meant for the block being linked. */
+.ed-linkpop[hidden]{display:none}
 .ed-linkpop{width:100%;display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;
-padding:10px;background:var(--bg2);border:1px solid var(--line);
+padding:10px;background:var(--bg);border:1px solid var(--line);
 border-radius:10px}
-.ed-linkpop input{min-height:36px;padding:0 10px;border-radius:7px;
-border:1px solid var(--line);background:var(--bg);color:var(--tx);
-font:13px inherit;flex:1;min-width:140px}
+.ed-linkpop input{min-height:38px;padding:0 11px;border-radius:8px;
+border:1px solid var(--line);background:var(--bg2);color:var(--tx);
+font:14px inherit;flex:1;min-width:150px}
 .ed-linkpop input:focus{outline:2px solid var(--focus);outline-offset:1px}
-.ed-linkpop .ed-btn{min-height:36px;padding:0 14px}
-.ed-tabs{display:none;flex:0 0 auto;border-bottom:1px solid var(--line)}
-.ed-tab{flex:1;min-height:44px;background:none;border:0;color:var(--tx2);
-font:inherit;cursor:pointer;border-bottom:2px solid transparent}
-.ed-tab.is-on{color:var(--tx);border-bottom-color:var(--accent)}
-.ed-split{flex:1;display:grid;grid-template-columns:1fr 1fr;min-height:0}
-.ed-pane{display:flex;flex-direction:column;min-width:0;min-height:0}
-#pane-write{border-right:1px solid var(--line)}
-.ed-fm{flex:0 0 auto;border-bottom:1px solid var(--line);background:var(--bg2)}
-.ed-fm summary{padding:9px 14px;font-size:13px;color:var(--tx2);cursor:pointer;
-user-select:none}
-.ed-fm summary:hover{color:var(--tx)}
-.ed-fm textarea{width:100%;border:0;background:var(--bg2);color:var(--tx);
-resize:vertical;padding:4px 14px 12px;
-font:13px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace}
-#src{flex:1;width:100%;border:0;resize:none;background:var(--bg);
-color:var(--tx);padding:18px 16px 40vh;
-font:14.5px/1.65 ui-monospace,SFMono-Regular,Consolas,monospace}
-#src:focus,.ed-fm textarea:focus{outline:none}
-#src.dragover{box-shadow:inset 0 0 0 2px var(--accent)}
-#pv{flex:1;width:100%;border:0;background:#161311}
-@media(max-width:900px){
-.ed-tabs{display:flex}
-.ed-split{grid-template-columns:1fr}
-.ed-pane{display:none}
-.ed-pane.is-on{display:flex}
-#pane-write{border-right:0}
+.ed-linkpop .ed-btn{min-height:38px;padding:0 16px}
+/* ---- the page ---- */
+.ed-stage{flex:1;min-height:0;display:flex}
+#pv{flex:1;width:100%;border:0;background:#161311;display:block}
+/* ---- settings panel ---- */
+.ed-scrim{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.55);
+opacity:0;transition:opacity .2s ease-out}
+.ed-scrim.is-open{opacity:1}
+.ed-scrim[hidden]{display:none}
+.ed-panel{position:fixed;top:0;right:0;bottom:0;z-index:40;
+width:min(430px,100%);display:flex;flex-direction:column;
+background:var(--bg2);border-left:1px solid var(--line);
+box-shadow:-24px 0 60px rgba(0,0,0,.45);
+transform:translateX(100%);transition:transform .22s cubic-bezier(.2,.8,.3,1)}
+.ed-panel.is-open{transform:none}
+.ed-panel[hidden]{display:none}
+.ed-panel-top{display:flex;align-items:center;gap:10px;padding:10px 10px 10px 18px;
+border-bottom:1px solid var(--line);flex:0 0 auto}
+.ed-panel-top h2{margin:0;font-size:15px;font-weight:600;flex:1}
+.ed-panel-body{flex:1;overflow:auto;padding:18px}
+.ed-lab{display:block;font-size:13px;font-weight:600;margin-bottom:4px}
+.ed-help{margin:0 0 10px;font-size:12.5px;line-height:1.55;color:var(--tx2)}
+.ed-help code{font:12px ui-monospace,SFMono-Regular,Consolas,monospace;
+background:var(--bg);padding:1px 4px;border-radius:4px}
+#fm{width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--line);
+background:var(--bg);color:var(--tx);resize:vertical;min-height:150px;
+font:13px/1.7 ui-monospace,SFMono-Regular,Consolas,monospace}
+#fm:focus{outline:2px solid var(--focus);outline-offset:1px}
+.ed-det{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
+.ed-det summary{font-size:13px;color:var(--tx2);cursor:pointer;
+user-select:none;border-radius:6px}
+.ed-det summary:hover{color:var(--tx)}
+.ed-keys{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;
+margin:12px 0 0;font-size:12.5px}
+.ed-keys dt{color:var(--tx);font-weight:600;white-space:nowrap}
+.ed-keys dd{margin:0;color:var(--tx2)}
+.ed-src{margin:12px 0 0;padding:12px;max-height:320px;overflow:auto;
+background:var(--bg);border:1px solid var(--line);border-radius:9px;
+color:var(--tx2);white-space:pre-wrap;word-break:break-word;
+font:12px/1.65 ui-monospace,SFMono-Regular,Consolas,monospace}
+@media(max-width:760px){
 .ed-name{display:none}
+.ed-btn>span{display:none}
+#setbtn{padding:0 11px}
+.ed-tip{display:none}
+}
+/* Nine tools, one row: wrapping left a single icon stranded on a second
+   line, which read as a broken toolbar rather than a compact one. */
+@media(max-width:480px){
+.ed-format{gap:1px;padding:6px 8px}
+.ed-fmt{min-width:32px;padding:0 5px}
+.ed-fmt-sep{margin:0 2px}
+.ed-top{gap:6px;padding:8px}
+.ed-btn{padding:0 12px}
+}
+@media(prefers-reduced-motion:reduce){
+.ed-panel,.ed-scrim{transition:none}
 }
 @media(prefers-reduced-motion:no-preference){
-.ed-btn{transition:background .15s ease-out}
+.ed-btn,.ed-fmt,.ed-icon{transition:background .15s ease-out,color .15s ease-out}
 }''';
 
-  /// The whole client side of the editor: a small Markdown renderer, the
-  /// live preview iframe (styled by the site's real CSS), image upload
-  /// (button, paste, or drag a file in), and drag-to-reposition for image
-  /// blocks inside the preview.
+  /// Styling for the editing surface itself. It is injected into the iframe on
+  /// top of the built site's real stylesheet, so a block being edited keeps the
+  /// exact typography of the block it replaces and nothing jumps on the swap.
+  static const _wikiFrameCss = '''
+html{scrollbar-color:#3a352f transparent}
+body{padding:0}
+.wiki-shell{display:block!important;min-height:0!important;max-width:1000px;
+margin:0 auto;padding:2.2rem 1rem 45vh!important}
+.wiki-card{padding-left:62px}
+.wiki-title-row{position:relative}
+.wiki-title{outline:0;border-radius:6px}
+.wiki-title:focus{box-shadow:0 0 0 2px rgba(232,164,78,.5)}
+.wiki-title:empty:before{content:attr(data-ph);color:#978c7d}
+.blk{position:relative}
+.blk-in{min-width:0}
+.blk:not(.is-edit){cursor:text}
+.blk:not(.is-edit):hover{border-radius:3px;background:rgba(232,164,78,.06);
+box-shadow:0 0 0 7px rgba(232,164,78,.06)}
+.blk.is-edit:before{content:"";position:absolute;left:-14px;top:.15em;
+bottom:.15em;width:2px;border-radius:2px;background:#e8a44e}
+.blk-in a{cursor:text}
+.blk img{pointer-events:none}
+.blk-ph{color:#978c7d}
+.blk-gut{position:absolute;right:100%;top:0;padding-right:9px;display:flex;
+flex-direction:column;gap:2px;opacity:0;transition:opacity .12s ease-out}
+.blk:hover>.blk-gut,.blk.is-edit>.blk-gut,.blk-gut:focus-within{opacity:1}
+.blk-g{width:26px;height:26px;padding:0;display:grid;place-items:center;
+border-radius:7px;border:1px solid transparent;background:none;color:#7c7369;
+cursor:pointer;-webkit-appearance:none}
+.blk-g:hover{background:#2b2622;color:#ece7e1}
+.blk-g:focus-visible{outline:2px solid #7db3e8;outline-offset:1px}
+.blk-g.drag{cursor:grab}
+.blk-g.drag:active{cursor:grabbing}
+.blk-g svg{width:15px;height:15px;display:block;fill:none;stroke:currentColor;
+stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.blk-g svg .f{fill:currentColor;stroke:none}
+.blk.dragging{opacity:.35}
+.blk.drop-before{box-shadow:0 -3px 0 0 #e8a44e}
+.blk.drop-after{box-shadow:0 3px 0 0 #e8a44e}
+.blk-ed{display:block;width:100%;margin:0;padding:0;border:0;background:none;
+color:inherit;font:inherit;line-height:inherit;letter-spacing:inherit;
+resize:none;overflow:hidden;outline:0;caret-color:#e8a44e;
+-webkit-appearance:none}
+.blk-ed::placeholder{color:#978c7d}
+.blk-list{padding-left:1.35em}
+.blk-mono{font:13px/1.7 ui-monospace,SFMono-Regular,Consolas,monospace;
+color:#d6cfc6;background:rgba(255,255,255,.035);border-radius:9px;
+border:1px solid rgba(255,255,255,.08);padding:12px 14px}
+#tail{min-height:30vh;cursor:text}
+@media(max-width:820px){
+.wiki-card{padding-left:46px}
+.blk-gut{padding-right:5px}
+}
+@media(pointer:coarse){
+.blk-g{width:38px;height:38px}
+.blk:hover>.blk-gut{opacity:0}
+.blk.is-edit>.blk-gut{opacity:1}
+}
+@media(prefers-reduced-motion:reduce){
+.blk-gut{transition:none}
+}''';
+
+  /// The whole client side of the editor. The page is rendered once with the
+  /// built site's own CSS, and every block is edited *in place*: clicking a
+  /// paragraph swaps it for a textarea holding that block's Markdown, sized and
+  /// typeset exactly like the text it replaced; leaving re-renders it. Markdown
+  /// is therefore never round-tripped through HTML — what gets saved is what
+  /// was typed, which is why there is no separate source pane to reconcile.
   static const _wikiEditorJs = r'''
 (function () {
 'use strict';
-var page = window.__initial.page;
-var src = document.getElementById('src');
-var fm = document.getElementById('fm');
 var pv = document.getElementById('pv');
+var fm = document.getElementById('fm');
 var statusEl = document.getElementById('status');
-var dirty = false, saving = false, pollTimer = null;
+var undoBtn = document.getElementById('undobtn');
+var tipEl = document.getElementById('tip');
+var srcView = document.getElementById('srcview');
+var dirty = false, saving = false, pollTimer = null, undoTimer = null;
+var doc = null, prose = null, ttl = null;
+var blocks = [], active = null, holdFocus = false, pendingUndo = null;
 
-/* ---------- frontmatter split ---------- */
+/* ---------- frontmatter ---------- */
 function splitFM(text) {
   if (text.slice(0, 4) === '---\n' || text === '---') {
     var end = text.indexOf('\n---', 3);
     if (end > 0) {
-      // Drop the newline that closes the "---" line plus any blank lines
-      // after it: fullContent() always re-adds exactly one, so keeping them
-      // grew the empty gap above the first paragraph by a line on every save.
+      // Drop the newline closing the "---" line plus any blank lines after it:
+      // fullContent() always re-adds exactly one, so keeping them grew the gap
+      // above the first paragraph by a line on every save.
       var rest = text.slice(end + 4).replace(/^(?:[ \t]*\n)+/, '');
       return { fm: text.slice(4, end), body: rest };
     }
   }
   return { fm: '', body: text };
 }
-var parts = splitFM(window.__initial.content);
-fm.value = parts.fm;
-src.value = parts.body;
-if (!parts.fm && window.__initial.isNew) {
-  fm.value = 'title: New page\ndescription: ';
-  document.querySelector('.ed-fm').open = true;
+function titleOf() {
+  var m = fm.value.match(/^title:\s*["']?(.*?)["']?\s*$/m);
+  return m && m[1] ? m[1] : '';
+}
+function yamlScalar(v) {
+  if (v === '') return '""';
+  if (/^[A-Za-z][^:#\n"']*$/.test(v) && !/\s$/.test(v)) return v;
+  return '"' + v.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+}
+function fmSetTitle(v) {
+  var line = 'title: ' + yamlScalar(v);
+  var t = fm.value;
+  fm.value = /^title:/m.test(t) ? t.replace(/^title:.*$/m, line)
+    : (t.trim() ? line + '\n' + t.replace(/^\n+/, '') : line);
 }
 
-/* ---------- tiny markdown renderer (block-level, for preview only) ------ */
+/* ---------- markdown -> html (block level, for the page view) ---------- */
 function esc(s) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 function mapSrc(u) {
-  // site-absolute assets go through the authed preview proxy so unpublished
-  // uploads render too
+  // Site-absolute assets go through the authed preview proxy, so uploads that
+  // have not been published yet still render.
   return u.charAt(0) === '/' ? '/admin/website/preview/public' + u : u;
 }
 function inline(s) {
@@ -5588,43 +5781,49 @@ function inline(s) {
   s = s.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
   return s;
 }
+var RE_LIST = /^\s*([-*]|\d+\.)\s+/;
+var RE_QUOTE = /^\s*>/;
 function blockHtml(b) {
   var m;
+  if (!b || !b.trim())
+    return { h: '<p class="blk-ph">Empty block — click to write</p>', kind: 'p', tag: 'p' };
   if ((m = b.match(/^```(\w*)\n?([\s\S]*?)\n?```\s*$/)))
-    return { h: '<pre><code>' + esc(m[2]) + '</code></pre>' };
+    return { h: '<pre><code>' + esc(m[2]) + '</code></pre>', kind: 'code', tag: 'div' };
   if ((m = b.match(/^(#{1,6})\s+(.*)$/m))) {
     var lvl = m[1].length; // same mapping as the site's markdown renderer
-    return { h: '<h' + lvl + '>' + inline(m[2]) + '</h' + lvl + '>' };
+    return { h: '<h' + lvl + '>' + inline(m[2]) + '</h' + lvl + '>',
+      kind: 'h', tag: 'h' + lvl };
   }
-  if (/^(-{3,}|\*{3,})\s*$/.test(b)) return { h: '<hr>' };
+  if (/^(-{3,}|\*{3,})\s*$/.test(b)) return { h: '<hr>', kind: 'hr', tag: 'p' };
   var lines = b.split('\n');
-  if (lines.every(function (l) { return /^\s*([-*]|\d+\.)\s+/.test(l); })) {
+  if (lines.every(function (l) { return RE_LIST.test(l); })) {
     var ordered = /^\s*\d+\./.test(lines[0]);
     var items = lines.map(function (l) {
-      return '<li>' + inline(l.replace(/^\s*([-*]|\d+\.)\s+/, '')) + '</li>';
+      return '<li>' + inline(l.replace(RE_LIST, '')) + '</li>';
     }).join('');
-    return { h: (ordered ? '<ol>' : '<ul>') + items + (ordered ? '</ol>' : '</ul>') };
+    return { h: (ordered ? '<ol>' : '<ul>') + items + (ordered ? '</ol>' : '</ul>'),
+      kind: 'list', tag: 'p' };
   }
-  if (lines.every(function (l) { return /^\s*>/.test(l); })) {
+  if (lines.every(function (l) { return RE_QUOTE.test(l); })) {
     return { h: '<blockquote><p>' + lines.map(function (l) {
       return inline(l.replace(/^\s*>\s?/, ''));
-    }).join('<br>') + '</p></blockquote>' };
+    }).join('<br>') + '</p></blockquote>', kind: 'quote', tag: 'blockquote' };
   }
   if (lines.length > 1 && lines[0].indexOf('|') >= 0 &&
       /^[\s|:-]+$/.test(lines[1] || '')) {
-    var row = function (l, tag) {
+    var row = function (l, tg) {
       var cells = l.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|');
       return '<tr>' + cells.map(function (c) {
-        return '<' + tag + '>' + inline(c.trim()) + '</' + tag + '>';
+        return '<' + tg + '>' + inline(c.trim()) + '</' + tg + '>';
       }).join('') + '</tr>';
     };
     return { h: '<table><thead>' + row(lines[0], 'th') + '</thead><tbody>' +
       lines.slice(2).map(function (l) { return row(l, 'td'); }).join('') +
-      '</tbody></table>' };
+      '</tbody></table>', kind: 'table', tag: 'div' };
   }
-  var onlyImg = b.match(/^\s*!\[([^\]]*)\]\(([^)\s]+)\)\s*$/);
-  if (onlyImg) return { h: '<p>' + inline(b.trim()) + '</p>', img: true };
-  return { h: '<p>' + inline(lines.join('\n')) + '</p>' };
+  if (/^\s*!\[([^\]]*)\]\(([^)\s]+)\)\s*$/.test(b))
+    return { h: '<p>' + inline(b.trim()) + '</p>', kind: 'img', tag: 'p' };
+  return { h: '<p>' + inline(lines.join('\n')) + '</p>', kind: 'p', tag: 'p' };
 }
 function blocksOf(body) {
   var out = [], cur = [], inFence = false;
@@ -5637,81 +5836,431 @@ function blocksOf(body) {
     }
   });
   if (cur.length) out.push(cur.join('\n'));
-  return out;
-}
-function titleOf() {
-  var m = fm.value.match(/^title:\s*["']?(.+?)["']?\s*$/m);
-  return m ? m[1] : page;
+  return out.length ? out : [''];
 }
 
-/* ---------- preview iframe (uses the built site's real CSS) ---------- */
-pv.srcdoc = '<!doctype html><html data-theme="wiki"><head>' +
-  '<meta charset="utf-8">' +
+/* ---------- the page frame ---------- */
+var SVG = '<svg viewBox="0 0 16 16" aria-hidden="true">';
+var GUT = '<div class="blk-gut" contenteditable="false">' +
+  '<span class="blk-g drag" role="button" tabindex="0" draggable="true" ' +
+  'aria-label="Move this block" title="Drag to move — or Alt+Up / Alt+Down">' + SVG +
+  '<circle class="f" cx="6" cy="3.6" r="1.15"/><circle class="f" cx="10" cy="3.6" r="1.15"/>' +
+  '<circle class="f" cx="6" cy="8" r="1.15"/><circle class="f" cx="10" cy="8" r="1.15"/>' +
+  '<circle class="f" cx="6" cy="12.4" r="1.15"/><circle class="f" cx="10" cy="12.4" r="1.15"/>' +
+  '</svg></span>' +
+  '<button class="blk-g" type="button" data-act="add" ' +
+  'aria-label="Insert a block below" title="Insert a block below">' + SVG +
+  '<path d="M8 3.5v9M3.5 8h9"/></svg></button>' +
+  '<button class="blk-g" type="button" data-act="del" ' +
+  'aria-label="Delete this block" title="Delete this block">' + SVG +
+  '<path d="M4 4l8 8M12 4l-8 8"/></svg></button>' +
+  '</div>';
+
+pv.srcdoc = '<!doctype html><html data-theme="wiki"><head><meta charset="utf-8">' +
   '<link rel="stylesheet" href="/admin/website/preview/page.css">' +
-  '<style>' +
-  'html{scrollbar-color:#3a352f transparent}' +
-  '.wiki-shell{display:block!important;max-width:900px;margin:0 auto}' +
-  'body{padding:2rem 1.25rem 40vh}' +
-  '.blk.drag-img{cursor:grab}' +
-  '.blk.drag-img:hover{outline:2px dashed rgba(232,164,78,.55);outline-offset:4px;border-radius:6px}' +
-  '.blk.dragging{opacity:.35}' +
-  '.blk.drop-before{box-shadow:0 -3px 0 0 #e8a44e}' +
-  '.blk.drop-after{box-shadow:0 3px 0 0 #e8a44e}' +
-  '.prose:empty:before{content:"Start typing on the left…";color:#8d8375}' +
-  '</style></head><body>' +
+  '<style>' + window.__initial.frameCss + '</style></head><body>' +
   '<main id="main"><div class="wiki-shell"><article class="wiki-card">' +
-  '<div class="wiki-title-row"><h1 class="wiki-title" id="_top"></h1></div>' +
+  '<div class="wiki-title-row"><h1 class="wiki-title" id="ttl" spellcheck="false" ' +
+  'data-ph="Untitled page"></h1></div>' +
   '<div class="prose" style="margin-top:2rem" id="prose"></div>' +
+  '<div id="tail"></div>' +
   '</article></div></main></body></html>';
 
-var doc = null, prose = null, blocks = blocksOf(src.value);
-
-function render() {
+function blkEl(i) {
+  return prose ? prose.querySelector('.blk[data-i="' + i + '"]') : null;
+}
+function blkHtml(md, i) {
+  var r = blockHtml(md == null ? '' : md);
+  return '<div class="blk" data-i="' + i + '" data-kind="' + r.kind +
+    '" data-tag="' + r.tag + '">' + GUT + '<div class="blk-in">' + r.h + '</div></div>';
+}
+function renderAll() {
   if (!prose) return;
-  blocks = blocksOf(src.value);
-  doc.querySelector('.wiki-title').textContent = titleOf();
-  prose.innerHTML = blocks.map(function (b, i) {
-    var r = blockHtml(b);
-    return '<div class="blk' + (r.img ? ' drag-img' : '') + '" data-i="' + i +
-      '"' + (r.img ? ' draggable="true"' : '') + '>' + r.h + '</div>';
-  }).join('');
+  var h = '';
+  for (var i = 0; i < blocks.length; i++) h += blkHtml(blocks[i], i);
+  prose.innerHTML = h;
+}
+function renderBlock(i) {
+  var el = blkEl(i);
+  if (!el) { renderAll(); return; }
+  var box = doc.createElement('div');
+  box.innerHTML = blkHtml(blocks[i], i);
+  el.parentNode.replaceChild(box.firstChild, el);
 }
 
-/* ---------- drag to reposition image blocks ---------- */
-var dragFrom = -1;
-function clearDrop() {
-  prose.querySelectorAll('.drop-before,.drop-after').forEach(function (el) {
-    el.classList.remove('drop-before', 'drop-after');
-  });
+/* ---------- click -> caret ----------
+   The click gives an offset into the *rendered* text while the textarea holds
+   Markdown. Walking the two together and skipping the source characters that
+   produce no visible text (**, [](), #) maps one to the other closely enough
+   that the caret lands on the word that was clicked. */
+function visOffsetAt(inEl, x, y) {
+  var r = null;
+  if (doc.caretRangeFromPoint) r = doc.caretRangeFromPoint(x, y);
+  else if (doc.caretPositionFromPoint) {
+    var cp = doc.caretPositionFromPoint(x, y);
+    if (cp) { r = doc.createRange(); r.setStart(cp.offsetNode, cp.offset); }
+  }
+  if (!r || !inEl.contains(r.startContainer)) return null;
+  var pre = doc.createRange();
+  pre.selectNodeContents(inEl);
+  try { pre.setEnd(r.startContainer, r.startOffset); } catch (e) { return null; }
+  return pre.toString().length;
+}
+function mdOffset(md, vis, n) {
+  if (!n || n <= 0) return 0;
+  var i = 0, j = 0, ws = /\s/;
+  while (i < md.length && j < n) {
+    var a = md.charAt(i), b = vis.charAt(j);
+    if (a === b || (ws.test(a) && ws.test(b))) { i++; j++; } else { i++; }
+  }
+  return i;
+}
+
+/* ---------- editing a block in place ---------- */
+function autosize(ta) {
+  ta.style.height = 'auto';
+  ta.style.height = ta.scrollHeight + 'px';
+}
+function exitEdit() {           // returns the index removed, else null
+  if (!active) return null;
+  var i = active.i, v = active.ta.value.replace(/\s+$/, '');
+  active = null;
+  syncToolbar();
+  blocks[i] = v;
+  if (!v.trim() && blocks.length > 1) { blocks.splice(i, 1); renderAll(); return i; }
+  renderBlock(i);
+  return null;
+}
+function enterEdit(i, caret) {
+  if (active && active.i === i) return;
+  var removed = exitEdit();
+  if (removed !== null && removed < i) i--;
+  if (i < 0 || i >= blocks.length) return;
+  var el = blkEl(i);
+  if (!el) return;
+  var md = blocks[i] == null ? '' : blocks[i];
+  var kind = el.getAttribute('data-kind') || 'p';
+  var tag = el.getAttribute('data-tag') || 'p';
+  var pos = caret === 'start' ? 0
+    : (caret === 'end' || caret == null) ? md.length
+    : Math.max(0, Math.min(md.length, caret));
+  var mim = doc.createElement(tag);
+  mim.className = 'blk-mim' +
+    (kind === 'code' || kind === 'table' ? ' blk-mono' : '') +
+    (kind === 'list' ? ' blk-list' : '');
+  var ta = doc.createElement('textarea');
+  ta.className = 'blk-ed';
+  ta.rows = 1;
+  ta.spellcheck = kind !== 'code';
+  ta.value = md;
+  ta.setAttribute('aria-label',
+    'Block ' + (i + 1) + ' of ' + blocks.length + ', Markdown source');
+  if (!md) ta.placeholder = 'Write here — Markdown works: **bold**, ## Heading, - list';
+  mim.appendChild(ta);
+  var inEl = el.querySelector('.blk-in');
+  inEl.innerHTML = '';
+  inEl.appendChild(mim);
+  el.classList.add('is-edit');
+  active = { i: i, ta: ta, kind: kind };
+  bindTa(ta);
+  autosize(ta);
+  ta.focus();
+  try { ta.setSelectionRange(pos, pos); } catch (e) {}
+  syncToolbar();
+}
+function enterEditAt(i, x, y) {
+  var el = blkEl(i), vis = null;
+  if (el) {
+    var inEl = el.querySelector('.blk-in');
+    var n = visOffsetAt(inEl, x, y);
+    if (n !== null) vis = mdOffset(blocks[i] || '', inEl.textContent, n);
+  }
+  enterEdit(i, vis === null ? 'end' : vis);
+}
+function editTail() {
+  var last = blocks.length - 1;
+  if (last >= 0 && !(blocks[last] || '').trim()) { enterEdit(last, 'end'); return; }
+  exitEdit();
+  blocks.push('');
+  renderAll();
+  enterEdit(blocks.length - 1, 'start');
+}
+
+/* ---------- structural edits ----------
+   Typing is covered by the textarea's own undo stack; moving, inserting and
+   deleting whole blocks is not, so those offer an explicit Undo instead. */
+function snapshot() { pendingUndo = blocks.slice(); showUndo(); }
+function showUndo() {
+  undoBtn.hidden = false;
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(function () {
+    undoBtn.hidden = true;
+    pendingUndo = null;
+  }, 15000);
+}
+undoBtn.addEventListener('click', function () {
+  if (!pendingUndo) return;
+  blocks = pendingUndo;
+  pendingUndo = null;
+  undoBtn.hidden = true;
+  active = null;
+  markDirty();
+  renderAll();
+  syncToolbar();
+  setStatus('Reverted', 'ok');
+});
+function insertBlock(at, text) {
+  snapshot();
+  blocks.splice(at, 0, text || '');
+  markDirty();
+  renderAll();
+}
+function delBlock(i) {
+  snapshot();
+  blocks.splice(i, 1);
+  if (!blocks.length) blocks = [''];
+  markDirty();
+  renderAll();
+  setStatus('Block removed', 'ok');
 }
 function moveBlock(from, to) {
-  if (from < 0 || from === to || from + 1 === to) return;
+  if (from < 0 || from >= blocks.length || from === to || from + 1 === to) return null;
+  snapshot();
   var b = blocks.splice(from, 1)[0];
-  blocks.splice(from < to ? to - 1 : to, 0, b);
-  src.value = blocks.join('\n\n');
+  var at = from < to ? to - 1 : to;
+  if (at < 0) at = 0;
+  if (at > blocks.length) at = blocks.length;
+  blocks.splice(at, 0, b);
   markDirty();
-  render();
+  renderAll();
+  return at;
 }
-function bindPreview() {
+function splitAt(pos) {
+  var i = active.i, v = active.ta.value;
+  var before = v.slice(0, pos).replace(/\s+$/, '');
+  var after = v.slice(pos).replace(/^[ \t]+/, '');
+  active = null;
+  blocks[i] = before;
+  blocks.splice(i + 1, 0, after);
+  markDirty();
+  renderAll();
+  enterEdit(i + 1, 'start');
+}
+
+/* ---------- keyboard inside a block ---------- */
+function curLine(ta) {
+  var s = ta.selectionStart;
+  return ta.value.slice(ta.value.lastIndexOf('\n', s - 1) + 1, s);
+}
+function insertAt(ta, text) {
+  var s = ta.selectionStart, e = ta.selectionEnd;
+  ta.value = ta.value.slice(0, s) + text + ta.value.slice(e);
+  blocks[active.i] = ta.value;
+  ta.setSelectionRange(s + text.length, s + text.length);
+  markDirty();
+  autosize(ta);
+}
+function onTaKey(e) {
+  var ta = e.currentTarget;
+  if (!active || active.ta !== ta) return;
+  var k = active.kind, i = active.i;
+  if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+    e.preventDefault();
+    var caret = ta.selectionStart;
+    blocks[i] = ta.value;
+    active = null;
+    var at = moveBlock(i, e.key === 'ArrowUp' ? i - 1 : i + 2);
+    enterEdit(at == null ? i : at, caret);
+    return;
+  }
+  if (e.key === 'Escape') { e.preventDefault(); exitEdit(); return; }
+  if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+    if (k === 'code' || k === 'table') return;      // a newline belongs here
+    if (k === 'quote') { e.preventDefault(); insertAt(ta, '\n> '); return; }
+    if (k === 'list') {
+      var m = curLine(ta).match(/^(\s*)([-*]|\d+\.)\s+(.*)$/);
+      if (m && m[3]) {
+        e.preventDefault();
+        var next = /^\d+\./.test(m[2]) ? (parseInt(m[2], 10) + 1) + '. ' : m[2] + ' ';
+        insertAt(ta, '\n' + m[1] + next);
+        return;
+      }
+      if (m) {              // empty item: leave the list, start a block below
+        e.preventDefault();
+        var cut = ta.value.lastIndexOf('\n', ta.selectionStart - 1) + 1;
+        ta.value = ta.value.slice(0, cut).replace(/\s+$/, '');
+        blocks[i] = ta.value;
+        splitAt(ta.value.length);
+        return;
+      }
+    }
+    e.preventDefault();
+    splitAt(ta.selectionStart);
+    return;
+  }
+  if (e.key === 'Backspace' && ta.selectionStart === 0 && ta.selectionEnd === 0) {
+    if (!ta.value) {
+      e.preventDefault();
+      if (blocks.length === 1) return;
+      active = null;
+      delBlock(i);
+      if (i - 1 >= 0) enterEdit(i - 1, 'end');
+      return;
+    }
+    // Merging is only safe between two plain paragraphs; anything else would
+    // silently change what the block is.
+    if (i > 0 && k === 'p' && blockHtml(blocks[i - 1] || '').kind === 'p') {
+      e.preventDefault();
+      snapshot();
+      var joinAt = blocks[i - 1].length + 1;
+      blocks[i - 1] = blocks[i - 1] + '\n' + ta.value;
+      blocks.splice(i, 1);
+      active = null;
+      markDirty();
+      renderAll();
+      enterEdit(i - 1, joinAt);
+      return;
+    }
+  }
+  if (e.key === 'ArrowUp' && !e.shiftKey && ta.selectionStart === ta.selectionEnd &&
+      ta.value.lastIndexOf('\n', ta.selectionStart - 1) < 0 && i > 0) {
+    e.preventDefault();
+    enterEdit(i - 1, 'end');
+    return;
+  }
+  if (e.key === 'ArrowDown' && !e.shiftKey && ta.selectionStart === ta.selectionEnd &&
+      ta.value.indexOf('\n', ta.selectionStart) < 0 && i < blocks.length - 1) {
+    e.preventDefault();
+    enterEdit(i + 1, 'start');
+    return;
+  }
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
+    var key = e.key.toLowerCase();
+    if (key === 'b') { e.preventDefault(); doFmt('bold'); }
+    else if (key === 'i') { e.preventDefault(); doFmt('italic'); }
+    else if (key === 'k') { e.preventDefault(); openLinkPop(); }
+    else if (key === 's') { e.preventDefault(); save(false); }
+  }
+}
+function bindTa(ta) {
+  ta.addEventListener('input', function () {
+    if (active && active.ta === ta) blocks[active.i] = ta.value;
+    markDirty();
+    autosize(ta);
+  });
+  ta.addEventListener('keydown', onTaKey);
+  ta.addEventListener('blur', function () {
+    if (holdFocus) return;
+    setTimeout(function () {
+      if (holdFocus || !active || active.ta !== ta) return;
+      if (doc.activeElement === ta) return;
+      exitEdit();
+    }, 0);
+  });
+  ta.addEventListener('paste', function (e) {
+    var files = e.clipboardData && e.clipboardData.files;
+    if (files && files.length) { e.preventDefault(); uploadFiles(files, active.i + 1); }
+  });
+}
+
+/* ---------- wiring the frame ---------- */
+var dragFrom = -1;
+function clearDrop() {
+  Array.prototype.forEach.call(prose.querySelectorAll('.drop-before,.drop-after'),
+    function (el) { el.classList.remove('drop-before', 'drop-after'); });
+}
+function bindFrame() {
   doc = pv.contentDocument;
   prose = doc.getElementById('prose');
-  render();
+  ttl = doc.getElementById('ttl');
+  ttl.setAttribute('contenteditable', 'plaintext-only');
+  if (ttl.contentEditable !== 'plaintext-only') ttl.setAttribute('contenteditable', 'true');
+  ttl.textContent = titleOf();
+  ttl.addEventListener('input', function () {
+    fmSetTitle(ttl.textContent.replace(/\n/g, ' ').trim());
+    markDirty();
+  });
+  ttl.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); enterEdit(0, 'start'); }
+    else if (e.key === 'Escape') ttl.blur();
+    else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault(); save(false);
+    }
+  });
+  ttl.addEventListener('paste', function (e) {
+    e.preventDefault();
+    var t = (e.clipboardData && e.clipboardData.getData('text')) || '';
+    doc.execCommand('insertText', false, t.replace(/\s+/g, ' '));
+  });
+  renderAll();
+
+  doc.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t || !t.closest) return;
+    if (!linkpop.hidden) closeLinkPop(false);
+    var g = t.closest('.blk-g');
+    if (g) {
+      e.preventDefault();
+      var act = g.getAttribute('data-act');
+      if (!act) return;                       // the drag handle
+      var gi = +g.closest('.blk').getAttribute('data-i');
+      var removed = exitEdit();
+      if (removed !== null && removed < gi) gi--;
+      if (act === 'add') { insertBlock(gi + 1, ''); enterEdit(gi + 1, 'start'); }
+      else delBlock(gi);
+      return;
+    }
+    if (t.closest('.wiki-title')) return;
+    if (t.closest('#tail')) { e.preventDefault(); editTail(); return; }
+    var blk = t.closest('.blk');
+    if (!blk) { exitEdit(); return; }
+    if (blk.classList.contains('is-edit')) return;
+    if (t.closest('a')) e.preventDefault();   // never navigate out of the editor
+    enterEditAt(+blk.getAttribute('data-i'), e.clientX, e.clientY);
+  });
+
+  doc.addEventListener('keydown', function (e) {
+    var t = e.target;
+    var onHandle = t && t.classList && t.classList.contains('drag');
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' &&
+        !(t && t.classList && t.classList.contains('blk-ed'))) {
+      e.preventDefault();
+      save(false);
+      return;
+    }
+    if (!onHandle) return;
+    if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      e.preventDefault();
+      var hi = +t.closest('.blk').getAttribute('data-i');
+      var removed = exitEdit();
+      if (removed !== null && removed < hi) hi--;
+      var at = moveBlock(hi, e.key === 'ArrowUp' ? hi - 1 : hi + 2);
+      var moved = blkEl(at == null ? hi : at);
+      if (moved) moved.querySelector('.blk-g.drag').focus();
+    }
+    if (e.key === 'Enter' || e.key === ' ') e.preventDefault();
+  });
+
   doc.addEventListener('dragstart', function (e) {
-    var blk = e.target.closest && e.target.closest('.blk.drag-img');
-    if (!blk) return;
-    dragFrom = +blk.dataset.i;
+    var h = e.target.closest && e.target.closest('.blk-g.drag');
+    if (!h) { e.preventDefault(); return; }
+    var blk = h.closest('.blk');
+    // Deliberately no re-render here: replacing the drag source mid-dragstart
+    // cancels the drag. The textarea's value is already mirrored into blocks
+    // on every keystroke, and dragend repaints.
+    if (active) { blocks[active.i] = active.ta.value; active = null; syncToolbar(); }
+    dragFrom = +blk.getAttribute('data-i');
     blk.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
-    try { e.dataTransfer.setData('text/plain', 'blk'); } catch (_) {}
+    try { e.dataTransfer.setData('text/plain', 'blk'); } catch (x) {}
   });
   doc.addEventListener('dragend', function () {
-    dragFrom = -1; clearDrop();
-    prose.querySelectorAll('.dragging').forEach(function (el) {
-      el.classList.remove('dragging');
-    });
+    dragFrom = -1;
+    clearDrop();
+    renderAll();
   });
   doc.addEventListener('dragover', function (e) {
-    e.preventDefault(); // allow drop (both block moves and OS files)
+    e.preventDefault();               // allow the drop (block moves and OS files)
     var blk = e.target.closest && e.target.closest('.blk');
     clearDrop();
     if (!blk) return;
@@ -5724,7 +6273,7 @@ function bindPreview() {
     var idx = blocks.length;
     if (blk) {
       var r = blk.getBoundingClientRect();
-      idx = +blk.dataset.i + (e.clientY < r.top + r.height / 2 ? 0 : 1);
+      idx = +blk.getAttribute('data-i') + (e.clientY < r.top + r.height / 2 ? 0 : 1);
     }
     clearDrop();
     if (e.dataTransfer.files && e.dataTransfer.files.length) {
@@ -5734,173 +6283,222 @@ function bindPreview() {
     }
     dragFrom = -1;
   });
+
+  // Web fonts land after first paint; a textarea sized before they do is short.
+  if (doc.fonts && doc.fonts.ready) {
+    doc.fonts.ready.then(function () { if (active) autosize(active.ta); });
+  }
 }
-pv.addEventListener('load', bindPreview);
+pv.addEventListener('load', bindFrame);
 
-/* ---------- editing ---------- */
-var renderT = null;
-function markDirty() { dirty = true; setStatus(''); }
-src.addEventListener('input', function () {
-  markDirty();
-  clearTimeout(renderT); renderT = setTimeout(render, 120);
-});
-fm.addEventListener('input', function () {
-  markDirty();
-  clearTimeout(renderT); renderT = setTimeout(render, 120);
-});
-// rough scroll sync: keep preview at the same relative position
-src.addEventListener('scroll', function () {
-  if (!doc) return;
-  var p = src.scrollTop / Math.max(1, src.scrollHeight - src.clientHeight);
-  var d = doc.scrollingElement;
-  d.scrollTop = p * Math.max(0, d.scrollHeight - d.clientHeight);
-});
-
-/* ---------- image upload ---------- */
+/* ---------- toolbar ---------- */
 function setStatus(msg, cls) {
   statusEl.textContent = msg;
   statusEl.className = 'ed-status' + (cls ? ' ' + cls : '');
 }
-function insertBlockAt(text, idx) {
-  blocks = blocksOf(src.value);
-  if (idx == null || idx > blocks.length) idx = blocks.length;
-  blocks.splice(idx, 0, text);
-  src.value = blocks.join('\n\n');
-  markDirty();
-  render();
+function markDirty() { dirty = true; setStatus(''); }
+function syncToolbar() {
+  var on = !!active;
+  Array.prototype.forEach.call(document.querySelectorAll('.ed-fmt[data-block]'),
+    function (b) { b.disabled = !on; });
+  tipEl.hidden = on;
 }
+function stripMarkers(l) {
+  return l.replace(/^\s*#{1,6}\s+/, '').replace(/^\s*>\s?/, '').replace(RE_LIST, '');
+}
+function applyBlock(v, caret) {
+  var i = active.i;
+  blocks[i] = v;
+  active = null;
+  markDirty();
+  renderBlock(i);
+  enterEdit(i, caret == null ? 'end' : caret);
+}
+function wrapSel(before, after, ph) {
+  var ta = active.ta, s = ta.selectionStart, e = ta.selectionEnd;
+  var sel = ta.value.slice(s, e) || ph || '';
+  ta.value = ta.value.slice(0, s) + before + sel + after + ta.value.slice(e);
+  blocks[active.i] = ta.value;
+  markDirty();
+  autosize(ta);
+  ta.focus();
+  ta.setSelectionRange(s + before.length, s + before.length + sel.length);
+}
+function blockFmt(marker, re) {
+  var ta = active.ta, lines = ta.value.split('\n');
+  var real = lines.filter(function (l) { return l.trim(); });
+  var on = real.length > 0 && real.every(function (l) { return re.test(l); });
+  var caret = ta.selectionStart;
+  var out = lines.map(function (l) {
+    if (!l.trim()) return l;
+    var bare = stripMarkers(l);
+    return on ? bare : marker + bare;
+  }).join('\n');
+  applyBlock(out, Math.max(0, caret + (out.length - ta.value.length)));
+}
+function doFmt(name) {
+  if (!active) return;
+  if (name === 'bold') wrapSel('**', '**', 'bold text');
+  else if (name === 'italic') wrapSel('*', '*', 'italic text');
+  else if (name === 'code') wrapSel('`', '`', 'code');
+  else if (name === 'h2') blockFmt('## ', /^\s*##\s+/);
+  else if (name === 'h3') blockFmt('### ', /^\s*###\s+/);
+  else if (name === 'list') blockFmt('- ', RE_LIST);
+  else if (name === 'quote') blockFmt('> ', /^\s*>\s?/);
+}
+Array.prototype.forEach.call(document.querySelectorAll('.ed-fmt'), function (b) {
+  // Keep the block focused: a focus change here would end the edit mid-action.
+  b.addEventListener('mousedown', function (e) { e.preventDefault(); });
+});
+document.querySelector('.ed-format').addEventListener('click', function (e) {
+  var b = e.target.closest && e.target.closest('.ed-fmt[data-fmt]');
+  if (!b || b.disabled) return;
+  doFmt(b.getAttribute('data-fmt'));
+});
+
+/* ---------- link popover: a name readers can click, not a bare URL ------- */
+var linkbtn = document.getElementById('linkbtn');
+var linkpop = document.getElementById('linkpop');
+var linktext = document.getElementById('linktext');
+var linkurl = document.getElementById('linkurl');
+var linkgo = document.getElementById('linkgo');
+var linkAt = null;
+function openLinkPop() {
+  if (!active) return;
+  var ta = active.ta;
+  linkAt = { i: active.i, s: ta.selectionStart, e: ta.selectionEnd };
+  linktext.value = ta.value.slice(linkAt.s, linkAt.e);
+  linkurl.value = '';
+  linkpop.hidden = false;
+  linkbtn.setAttribute('aria-expanded', 'true');
+  holdFocus = true;                 // the popover inputs take focus by design
+  (linktext.value ? linkurl : linktext).focus();
+}
+function closeLinkPop(refocus) {
+  linkpop.hidden = true;
+  linkbtn.setAttribute('aria-expanded', 'false');
+  holdFocus = false;
+  linkAt = null;
+  if (refocus && active) active.ta.focus();
+}
+linkbtn.addEventListener('click', function () {
+  if (linkpop.hidden) openLinkPop(); else closeLinkPop(true);
+});
+linkgo.addEventListener('click', function () {
+  var url = linkurl.value.trim();
+  if (!url) { linkurl.focus(); return; }
+  if (!linkAt || !active || active.i !== linkAt.i) { closeLinkPop(false); return; }
+  var text = linktext.value.trim() || url;
+  var ta = active.ta, s = linkAt.s, e = linkAt.e;
+  var md = '[' + text + '](' + url + ')';
+  ta.value = ta.value.slice(0, s) + md + ta.value.slice(e);
+  blocks[active.i] = ta.value;
+  markDirty();
+  autosize(ta);
+  closeLinkPop(true);
+  ta.setSelectionRange(s + md.length, s + md.length);
+});
+linkurl.addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') { e.preventDefault(); linkgo.click(); }
+  else if (e.key === 'Escape') closeLinkPop(true);
+});
+linktext.addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') { e.preventDefault(); linkurl.focus(); }
+  else if (e.key === 'Escape') closeLinkPop(true);
+});
+
+/* ---------- images ---------- */
 function uploadFiles(files, atIdx) {
   Array.prototype.forEach.call(files, function (file) {
     if (!/^image\//.test(file.type)) return;
     setStatus('Uploading ' + file.name + '…');
     fetch('/admin/website/upload?name=' + encodeURIComponent(file.name), {
       method: 'POST', body: file, credentials: 'same-origin'
-    }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-      .then(function (res) {
-        if (!res.ok) throw new Error(res.j.message || 'upload failed');
-        insertBlockAt('![' + file.name.replace(/\.[^.]+$/, '') + '](' + res.j.url + ')', atIdx);
-        setStatus('Image added — drag it in the preview to move it', 'ok');
-      })
-      .catch(function (e) { setStatus('Upload failed: ' + e.message, 'err'); });
+    }).then(function (r) {
+      return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+    }).then(function (res) {
+      if (!res.ok) throw new Error(res.j.message || 'upload failed');
+      var at = atIdx == null || atIdx > blocks.length ? blocks.length : atIdx;
+      var removed = exitEdit();
+      if (removed !== null && removed < at) at--;
+      insertBlock(at, '![' + file.name.replace(/\.[^.]+$/, '') + '](' + res.j.url + ')');
+      var el = blkEl(at);
+      if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
+      setStatus('Image added — drag its handle to move it', 'ok');
+    }).catch(function (e) {
+      setStatus('Upload failed: ' + e.message, 'err');
+    });
   });
 }
-document.getElementById('imgbtn').addEventListener('click', function () {
+var imgbtn = document.getElementById('imgbtn');
+imgbtn.addEventListener('mousedown', function (e) { e.preventDefault(); });
+imgbtn.addEventListener('click', function () {
   document.getElementById('imgfile').click();
 });
 document.getElementById('imgfile').addEventListener('change', function () {
-  if (this.files.length) uploadFiles(this.files, null);
+  if (this.files.length) uploadFiles(this.files, active ? active.i + 1 : null);
   this.value = '';
 });
 
-/* ---------- formatting toolbar ---------- */
-function wrapSelection(before, after, placeholder) {
-  var s = src.selectionStart, e = src.selectionEnd;
-  var sel = src.value.slice(s, e) || placeholder || '';
-  src.value = src.value.slice(0, s) + before + sel + after + src.value.slice(e);
-  var caretStart = s + before.length;
-  src.focus();
-  src.setSelectionRange(caretStart, caretStart + sel.length);
+/* ---------- page settings panel ---------- */
+var panel = document.getElementById('ed-panel');
+var scrim = document.getElementById('ed-scrim');
+var setbtn = document.getElementById('setbtn');
+function openPanel() {
+  exitEdit();
+  closeLinkPop(false);
+  srcView.textContent = fullContent();
+  panel.hidden = false;
+  scrim.hidden = false;
+  // Flush layout so the panel starts at translateX(100%) and the transition
+  // actually runs. requestAnimationFrame would do, but it is throttled hard in
+  // background/offscreen frames, and the panel would then never slide in.
+  void panel.offsetWidth;
+  panel.classList.add('is-open');
+  scrim.classList.add('is-open');
+  setbtn.setAttribute('aria-expanded', 'true');
+  fm.focus();
+}
+function closePanel() {
+  panel.classList.remove('is-open');
+  scrim.classList.remove('is-open');
+  setbtn.setAttribute('aria-expanded', 'false');
+  setTimeout(function () {
+    if (panel.classList.contains('is-open')) return;
+    panel.hidden = true;
+    scrim.hidden = true;
+  }, 220);
+  setbtn.focus();
+}
+setbtn.addEventListener('click', function () {
+  if (panel.hidden) openPanel(); else closePanel();
+});
+document.getElementById('setclose').addEventListener('click', closePanel);
+scrim.addEventListener('click', closePanel);
+panel.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') { e.preventDefault(); closePanel(); }
+});
+fm.addEventListener('input', function () {
   markDirty();
-  render();
-}
-function prefixLines(marker) {
-  var s = src.selectionStart, e = src.selectionEnd;
-  var lineStart = src.value.lastIndexOf('\n', s - 1) + 1;
-  var lineEnd = src.value.indexOf('\n', e);
-  if (lineEnd === -1) lineEnd = src.value.length;
-  var chunk = src.value.slice(lineStart, lineEnd);
-  var out = chunk.split('\n').map(function (l) {
-    return /^\s*[-#]/.test(l) ? l : marker + l;
-  }).join('\n');
-  src.value = src.value.slice(0, lineStart) + out + src.value.slice(lineEnd);
-  src.focus();
-  markDirty();
-  render();
-}
-document.getElementById('fmt-bold').addEventListener('click', function () {
-  wrapSelection('**', '**', 'bold text');
-});
-document.getElementById('fmt-italic').addEventListener('click', function () {
-  wrapSelection('*', '*', 'italic text');
-});
-document.getElementById('fmt-h2').addEventListener('click', function () {
-  prefixLines('## ');
-});
-document.getElementById('fmt-list').addEventListener('click', function () {
-  prefixLines('- ');
-});
-
-/* ---------- link insert: turns a name/sentence into a clickable link
-   instead of a bare URL sitting in the text ---------- */
-var linkbtn = document.getElementById('linkbtn');
-var linkpop = document.getElementById('linkpop');
-var linktext = document.getElementById('linktext');
-var linkurl = document.getElementById('linkurl');
-var linkSelRange = null;
-function openLinkPop() {
-  linkSelRange = [src.selectionStart, src.selectionEnd];
-  linktext.value = src.value.slice(linkSelRange[0], linkSelRange[1]);
-  linkurl.value = '';
-  linkpop.hidden = false;
-  linkbtn.setAttribute('aria-expanded', 'true');
-  (linktext.value ? linkurl : linktext).focus();
-}
-function closeLinkPop() {
-  linkpop.hidden = true;
-  linkbtn.setAttribute('aria-expanded', 'false');
-}
-linkbtn.addEventListener('click', function () {
-  if (linkpop.hidden) openLinkPop(); else closeLinkPop();
-});
-document.getElementById('linkgo').addEventListener('click', function () {
-  var url = linkurl.value.trim();
-  if (!url) { linkurl.focus(); return; }
-  var text = linktext.value.trim() || url;
-  var r = linkSelRange || [src.selectionStart, src.selectionEnd];
-  src.value = src.value.slice(0, r[0]) + '[' + text + '](' + url + ')' + src.value.slice(r[1]);
-  closeLinkPop();
-  src.focus();
-  markDirty();
-  render();
-});
-linkurl.addEventListener('keydown', function (e) {
-  if (e.key === 'Enter') { e.preventDefault(); document.getElementById('linkgo').click(); }
-  if (e.key === 'Escape') closeLinkPop();
-});
-document.addEventListener('click', function (e) {
-  if (!linkpop.hidden && !linkpop.contains(e.target) && e.target !== linkbtn) closeLinkPop();
-});
-document.addEventListener('keydown', function (e) {
-  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'b' &&
-      document.activeElement === src) { e.preventDefault(); wrapSelection('**', '**', 'bold text'); }
-  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'i' &&
-      document.activeElement === src) { e.preventDefault(); wrapSelection('*', '*', 'italic text'); }
-});
-src.addEventListener('dragover', function (e) {
-  e.preventDefault(); src.classList.add('dragover');
-});
-src.addEventListener('dragleave', function () { src.classList.remove('dragover'); });
-src.addEventListener('drop', function (e) {
-  e.preventDefault(); src.classList.remove('dragover');
-  if (e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files, null);
-});
-src.addEventListener('paste', function (e) {
-  var files = e.clipboardData && e.clipboardData.files;
-  if (files && files.length) { e.preventDefault(); uploadFiles(files, null); }
+  if (ttl && doc && doc.activeElement !== ttl) ttl.textContent = titleOf();
 });
 
 /* ---------- save & publish ---------- */
 function fullContent() {
   var f = fm.value.replace(/\s+$/, '');
-  var b = src.value.replace(/^(?:[ \t]*\n)+/, '').replace(/\s+$/, '') + '\n';
-  return f ? '---\n' + f + '\n---\n\n' + b : b;
+  var body = blocks
+    .map(function (b) { return (b || '').replace(/\s+$/, ''); })
+    .filter(function (b) { return b.trim() !== ''; })
+    .join('\n\n');
+  if (body) body += '\n';
+  return f ? '---\n' + f + '\n---\n\n' + body : body;
 }
 function save(publish) {
   if (saving) return;
   saving = true;
   var btn = document.getElementById(publish ? 'pubbtn' : 'savebtn');
   btn.disabled = true;
-  setStatus(publish ? 'Saving…' : 'Saving…');
+  setStatus('Saving…');
   var body = new URLSearchParams();
   body.set('content', fullContent());
   if (publish) body.set('publish', '1');
@@ -5932,24 +6530,24 @@ function pollBuild() {
 document.getElementById('savebtn').addEventListener('click', function () { save(false); });
 document.getElementById('pubbtn').addEventListener('click', function () { save(true); });
 document.addEventListener('keydown', function (e) {
-  if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); save(false); }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+    e.preventDefault();
+    save(false);
+  } else if (e.key === 'Escape' && !linkpop.hidden) {
+    closeLinkPop(true);
+  }
 });
 window.addEventListener('beforeunload', function (e) {
   if (dirty) { e.preventDefault(); e.returnValue = ''; }
 });
+window.addEventListener('resize', function () { if (active) autosize(active.ta); });
 
-/* ---------- mobile tabs ---------- */
-document.querySelectorAll('.ed-tab').forEach(function (t) {
-  t.addEventListener('click', function () {
-    document.querySelectorAll('.ed-tab').forEach(function (x) {
-      x.classList.toggle('is-on', x === t);
-    });
-    document.querySelectorAll('.ed-pane').forEach(function (p) {
-      p.classList.toggle('is-on', p.id === 'pane-' + t.dataset.pane);
-    });
-  });
-});
-if (window.innerWidth <= 900) document.getElementById('pane-write').classList.add('is-on');
+/* ---------- boot ---------- */
+var parts = splitFM(window.__initial.content);
+fm.value = parts.fm;
+blocks = blocksOf(parts.body);
+if (!parts.fm && window.__initial.isNew) fm.value = 'title: New page\ndescription: ';
+syncToolbar();
 })();
 ''';
 
