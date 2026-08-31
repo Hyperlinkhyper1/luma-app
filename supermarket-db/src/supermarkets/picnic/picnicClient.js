@@ -1,23 +1,31 @@
 /**
- * Client for Picnic NL's storefront API (undocumented, reverse engineered —
- * the same endpoints used by community projects like
- * MikeBrink/python-picnic-api and Home Assistant's Picnic integration).
+ * Client for Picnic NL's storefront API (undocumented, reverse engineered).
  *
- * Unlike every other store in this project, Picnic has no anonymous access
- * at all: it's a delivery-app-only grocer (picnic.app is pure marketing /
- * download-the-app content, no browsable web catalog), so every request
- * needs a real logged-in account. The catalog and prices you get back are
- * whatever that account's registered delivery address sees — there's no
- * separate store/location selection step the way Lidl's site has.
+ * Picnic rebuilt this API at some point after the older community
+ * libraries (python-picnic-api etc.) were written: the classic `/my_store`
+ * catalog endpoint is gone (confirmed 404 live, 2026-08-31), replaced by a
+ * single generic `GET /pages/<page-id>` endpoint that returns a page's UI
+ * as a tree of typed components ("PML" — Picnic Markup Language). Login
+ * (`/user/login`) is unchanged and still works the same way.
+ *
+ * Every product tile anywhere on any page — search results, category
+ * pages, wherever — is a `SELLING_UNIT_TILE` component wrapping a
+ * `sellingUnit` object, regardless of how deep it's nested. That's
+ * confirmed by the actively-maintained MRVDH/picnic-api client, which
+ * extracts search results the exact same way (`jsonpath-plus`'s
+ * `$..sellingUnit`) and tests it against the live API. `findSellingUnits`
+ * below reimplements that one fixed lookup directly to avoid pulling in
+ * jsonpath-plus for a single use.
+ *
+ * Picnic has no reverse-engineered "list the whole catalog" page left
+ * anywhere public, so sync.js covers the assortment by searching a broad
+ * set of category terms instead — see CATEGORY_SEARCH_TERMS there.
  */
 
 const crypto = require('crypto');
 
 const BASE_URL = 'https://storefront-prod.nl.picnicinternational.com/api/15';
-// Mirrors the Android app's own HTTP client — same header/client_id values
-// python-picnic-api uses, since Picnic's backend expects real app traffic
-// (parallel to ahClient.js mimicking AH's Android app for the same reason).
-const USER_AGENT = 'okhttp/3.9.0';
+const USER_AGENT = 'okhttp/4.9.0';
 const CLIENT_ID = 30100;
 
 let cachedAuthToken = null;
@@ -56,8 +64,8 @@ async function authedGet(path, { username, password, _retried = false } = {}) {
     headers: { 'x-picnic-auth': cachedAuthToken, 'User-Agent': USER_AGENT },
   });
   const data = await response.json().catch(() => null);
-  const authErrorCode = data && data.error && data.error.code;
-  const isAuthError = authErrorCode === 'AUTH_ERROR' || authErrorCode === 'AUTH_INVALID_CRED';
+  const errorCode = data && data.error && data.error.code;
+  const isAuthError = errorCode === 'AUTH_ERROR' || errorCode === 'AUTH_INVALID_CRED';
 
   if (isAuthError && !_retried) {
     // Cached token expired/invalidated server-side — log in again and
@@ -75,24 +83,32 @@ async function authedGet(path, { username, password, _retried = false } = {}) {
 }
 
 /**
- * Full nested category tree with product leaves inline. `depth` controls
- * how many levels down real products (`type: "SINGLE_ARTICLE"`, nested
- * inside `type: "CATEGORY"` groups via an `items` array) get included —
- * too shallow and you only get category names back with no products.
- *
- * Not verified against a live account (none was available while writing
- * this — Picnic requires a real signed-up account with a delivery address,
- * see PICNIC_USERNAME/PICNIC_PASSWORD in .env.example). If a real sync
- * comes back thin or empty, try raising `depth` first.
+ * Deep-scans a Fusion page response for every `sellingUnit` object,
+ * regardless of nesting depth or which components wrap it.
  */
-async function fetchCatalog({ username, password, depth = 6 } = {}) {
-  const data = await authedGet(`/my_store?depth=${depth}`, { username, password });
-  return data.catalog || [];
+function findSellingUnits(node, out = []) {
+  if (Array.isArray(node)) {
+    for (const item of node) findSellingUnits(item, out);
+    return out;
+  }
+  if (node && typeof node === 'object') {
+    if (node.sellingUnit && typeof node.sellingUnit === 'object') {
+      out.push(node.sellingUnit);
+    }
+    for (const value of Object.values(node)) {
+      findSellingUnits(value, out);
+    }
+  }
+  return out;
 }
 
-function imageUrl(imageId, size = 'medium') {
-  if (!imageId) return null;
-  return `https://storefront-prod.nl.picnicinternational.com/static/images/${imageId}/${size}.png`;
+/** One page of search results for `term`, as raw `SellingUnit` objects. */
+async function searchProducts(term, { username, password } = {}) {
+  const page = await authedGet(
+    `/pages/search-page-results?search_term=${encodeURIComponent(term)}`,
+    { username, password }
+  );
+  return findSellingUnits(page);
 }
 
-module.exports = { fetchCatalog, imageUrl };
+module.exports = { searchProducts };

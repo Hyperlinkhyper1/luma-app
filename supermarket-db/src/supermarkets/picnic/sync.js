@@ -1,28 +1,57 @@
 const BaseSync = require('../baseSync');
 const config = require('../../config/env');
-const { fetchCatalog, imageUrl } = require('./picnicClient');
+const { searchProducts } = require('./picnicClient');
+const { sleep } = require('../util');
 
-function mapProduct(node, { category, subcategory }) {
-  // Both prices arrive as integer cents; `display_price` is the shown/list
-  // price and `price` is what's actually charged — equal when there's no
-  // discount, `price < display_price` when there is one.
-  const price = typeof node.price === 'number' ? node.price / 100 : null;
-  const displayPrice = typeof node.display_price === 'number' ? node.display_price / 100 : null;
+const REQUEST_DELAY_MS = 400;
+
+// Picnic has no reverse-engineered "list the whole catalog" endpoint left
+// (see picnicClient.js's header comment) — this covers the assortment by
+// searching a broad set of Dutch grocery terms instead and deduplicating
+// by product id. An approximation of the full catalog, not a guaranteed-
+// complete crawl the way Jumbo/AH's category trees are.
+const CATEGORY_SEARCH_TERMS = [
+  'groente', 'fruit', 'aardappelen', 'sla',
+  'melk', 'kaas', 'yoghurt', 'eieren', 'boter', 'room',
+  'vlees', 'kip', 'vis', 'vegetarisch', 'worst', 'vleeswaren',
+  'brood', 'beleg', 'ontbijtgranen', 'muesli',
+  'pasta', 'rijst', 'noedels', 'wereldkeuken', 'saus',
+  'diepvries', 'ijs',
+  'snoep', 'chocolade', 'koek', 'chips', 'noten',
+  'koffie', 'thee', 'frisdrank', 'sap', 'water',
+  'bier', 'wijn',
+  'baby',
+  'wasmiddel', 'schoonmaak', 'toiletpapier',
+  'shampoo', 'tandpasta', 'deodorant',
+  'hondenvoer', 'kattenvoer',
+];
+
+function mapProduct(unit, category) {
+  const displayPrice = typeof unit.display_price === 'number' ? unit.display_price / 100 : null;
+  // `price_ranges` holds per-quantity price tiers; the from_quantity: 1 tier
+  // is the actual current per-unit charge, which sits below `display_price`
+  // when the item is discounted. No `price_ranges` at all means there's no
+  // separate current price to compare against.
+  const baseTier = Array.isArray(unit.price_ranges)
+    ? unit.price_ranges.find((tier) => tier.from_quantity === 1)
+    : null;
+  const price = baseTier ? baseTier.price / 100 : displayPrice;
   const isDiscounted = price !== null && displayPrice !== null && displayPrice > price;
 
   return {
-    external_id: String(node.id),
+    external_id: String(unit.id),
     barcode: null,
-    name: node.name,
+    name: unit.name,
     brand: null,
     description: null,
     category,
-    subcategory,
-    image_url: imageUrl(node.image_id),
-    // Picnic has no per-product web page (app-only), so there's nothing to
-    // link to.
+    subcategory: null,
+    image_url: unit.image_id
+      ? `https://storefront-prod.nl.picnicinternational.com/static/images/${unit.image_id}/medium.png`
+      : null,
+    // Picnic has no per-product web page (app-only).
     product_url: null,
-    quantity: node.unit_quantity || null,
+    quantity: unit.unit_quantity || null,
     unit: null,
     price,
     old_price: isDiscounted ? displayPrice : null,
@@ -35,31 +64,6 @@ function mapProduct(node, { category, subcategory }) {
     valid_from: null,
     valid_until: null,
   };
-}
-
-/**
- * Recursively walks the `/my_store` category tree, collecting every
- * `SINGLE_ARTICLE` leaf. Category nesting is flattened to the same
- * two-level category/subcategory pair Jumbo/Hoogvliet use: the top-level
- * group name is `category`, and the first level below that is
- * `subcategory` — any deeper nesting keeps that same subcategory rather
- * than overwriting it, since BaseSync's schema has no room for a deeper
- * taxonomy.
- */
-function walkCatalog(nodes, path, out) {
-  for (const node of nodes || []) {
-    if (node.type === 'SINGLE_ARTICLE') {
-      out.push(mapProduct(node, path));
-      continue;
-    }
-    if (!Array.isArray(node.items) || node.items.length === 0) continue;
-
-    const nextPath =
-      path.category === null
-        ? { category: node.name, subcategory: null }
-        : { category: path.category, subcategory: path.subcategory ?? node.name };
-    walkCatalog(node.items, nextPath, out);
-  }
 }
 
 class PicnicSync extends BaseSync {
@@ -75,22 +79,35 @@ class PicnicSync extends BaseSync {
       );
     }
 
-    const catalog = await fetchCatalog({
-      username: config.picnic.username,
-      password: config.picnic.password,
-    });
+    const byId = new Map();
+    for (const term of CATEGORY_SEARCH_TERMS) {
+      let units;
+      try {
+        units = await searchProducts(term, {
+          username: config.picnic.username,
+          password: config.picnic.password,
+        });
+      } catch (error) {
+        console.error(`Picnic sync: search "${term}" failed:`, error.message);
+        continue; // Move on to the next term rather than aborting the whole sync.
+      }
 
-    const products = [];
-    walkCatalog(catalog, { category: null, subcategory: null }, products);
+      for (const unit of units) {
+        if (!unit.id || !unit.name) continue;
+        byId.set(unit.id, mapProduct(unit, term));
+      }
 
-    if (products.length === 0) {
-      throw new Error(
-        'Picnic: catalog crawl returned 0 products — login may have failed, or the ' +
-          'category depth needs raising (see fetchCatalog in picnicClient.js)'
-      );
+      await this.reportProgress(byId.size);
+      await sleep(REQUEST_DELAY_MS);
     }
 
-    await this.reportProgress(products.length);
+    const products = Array.from(byId.values());
+    if (products.length === 0) {
+      throw new Error(
+        'Picnic: every search term returned 0 products — login may have failed, or ' +
+          'Picnic changed the search-page-results response shape again'
+      );
+    }
     return products;
   }
 }
