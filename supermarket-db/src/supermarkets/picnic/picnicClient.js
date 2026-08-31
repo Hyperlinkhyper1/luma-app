@@ -27,6 +27,13 @@ const crypto = require('crypto');
 const BASE_URL = 'https://storefront-prod.nl.picnicinternational.com/api/15';
 const USER_AGENT = 'okhttp/4.9.0';
 const CLIENT_ID = 30100;
+// `/pages/...` requests 500 without these — Picnic's backend needs a
+// device identity on top of the auth token (parallel to ahClient.js's
+// 'x-application' header, required for the same reason: without it the
+// endpoint 500s rather than routing the request). Fixed dummy values, not
+// tied to a real device — the same ones community clients use.
+const PICNIC_AGENT = '30100;1.236.1-15553;';
+const PICNIC_DEVICE_ID = '3C417201548B2E3B';
 
 let cachedAuthToken = null;
 
@@ -61,7 +68,12 @@ async function authedGet(path, { username, password, _retried = false } = {}) {
     await login(username, password);
   }
   const response = await fetch(`${BASE_URL}${path}`, {
-    headers: { 'x-picnic-auth': cachedAuthToken, 'User-Agent': USER_AGENT },
+    headers: {
+      'x-picnic-auth': cachedAuthToken,
+      'x-picnic-agent': PICNIC_AGENT,
+      'x-picnic-did': PICNIC_DEVICE_ID,
+      'User-Agent': USER_AGENT,
+    },
   });
   const data = await response.json().catch(() => null);
   const errorCode = data && data.error && data.error.code;
