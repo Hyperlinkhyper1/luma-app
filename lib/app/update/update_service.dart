@@ -158,9 +158,9 @@ class UpdateService {
       // hand-off fails with a permission error.
       final dir = await getTemporaryDirectory();
       final installerPath = '${dir.path}/${info.assetName}';
-      final bytes = await _download(info.downloadUrl, onProgress);
-      if (bytes == null) return null;
-      await File(installerPath).writeAsBytes(bytes);
+      if (!await _download(info.downloadUrl, installerPath, onProgress)) {
+        return null;
+      }
       return installerPath;
     } catch (e, st) {
       lastError = 'Download failed: $e';
@@ -209,8 +209,14 @@ class UpdateService {
     }
   }
 
-  Future<List<int>?> _download(
+  /// Streams the response body straight to [destPath] rather than buffering
+  /// it in a `List<int>` first. Buffering a whole installer (tens of MB) into
+  /// a boxed `List<int>` and then writing it out is cheap on a desktop CPU
+  /// but was the actual bottleneck on Android — per-byte boxing plus the
+  /// list's growth copies dominate on a phone CPU, not the network.
+  Future<bool> _download(
     String url,
+    String destPath,
     void Function(double)? onProgress,
   ) async {
     final req = http.Request('GET', Uri.parse(url));
@@ -218,19 +224,31 @@ class UpdateService {
     if (res.statusCode != 200) {
       lastError = 'Server returned HTTP ${res.statusCode} for the installer.';
       await _logError('download', 'HTTP ${res.statusCode} for $url');
-      return null;
+      return false;
     }
     final total = res.contentLength ?? 0;
-    final bytes = <int>[];
-    // Resets on every chunk, so this only fires if the connection actually
-    // stalls — a slow-but-steady download is unaffected. Without this, a
-    // stalled connection leaves the non-dismissible UpdatingScreen stuck
-    // forever with no way to back out.
-    await for (final chunk in res.stream.timeout(const Duration(seconds: 30))) {
-      bytes.addAll(chunk);
-      if (total > 0) onProgress?.call(bytes.length / total);
+    var received = 0;
+    final file = File(destPath);
+    final sink = file.openWrite();
+    try {
+      // Resets on every chunk, so this only fires if the connection actually
+      // stalls — a slow-but-steady download is unaffected. Without this, a
+      // stalled connection leaves the non-dismissible UpdatingScreen stuck
+      // forever with no way to back out.
+      await for (final chunk
+          in res.stream.timeout(const Duration(seconds: 30))) {
+        sink.add(chunk);
+        received += chunk.length;
+        if (total > 0) onProgress?.call(received / total);
+      }
+      await sink.flush();
+      await sink.close();
+    } catch (_) {
+      await sink.close();
+      if (await file.exists()) await file.delete();
+      rethrow;
     }
-    return bytes;
+    return true;
   }
 
   /// Appends a timestamped line to `update.log` in the app's support
