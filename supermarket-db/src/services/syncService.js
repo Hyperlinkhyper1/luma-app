@@ -2,12 +2,14 @@ const jumboSync = require('../supermarkets/jumbo/sync');
 const ahSync = require('../supermarkets/ah/sync');
 const lidlSync = require('../supermarkets/lidl/sync');
 const hoogvlietSync = require('../supermarkets/hoogvliet/sync');
+const picnicSync = require('../supermarkets/picnic/sync');
 
 const MODULES = {
   jumbo: jumboSync,
   ah: ahSync,
   lidl: lidlSync,
   hoogvliet: hoogvlietSync,
+  picnic: picnicSync,
 };
 
 class SyncService {

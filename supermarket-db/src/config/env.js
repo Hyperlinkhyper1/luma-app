@@ -22,6 +22,13 @@ const config = {
     database: required('DB_NAME', 'luma_supermarkets'),
     connectionLimit: Number(process.env.DB_CONNECTION_LIMIT || 10),
   },
+  // Picnic has no anonymous API — every request needs a real logged-in
+  // account (see picnicClient.js). Left blank until someone sets it, at
+  // which point PicnicSync starts working with no code changes needed.
+  picnic: {
+    username: process.env.PICNIC_USERNAME || '',
+    password: process.env.PICNIC_PASSWORD || '',
+  },
 };
 
 module.exports = config;
