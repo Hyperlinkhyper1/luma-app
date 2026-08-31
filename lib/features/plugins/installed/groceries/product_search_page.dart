@@ -8,16 +8,14 @@ import 'groceries_api.dart';
 import 'groceries_scope.dart';
 import 'market_style.dart';
 
-// Lidl has no real product feed yet (LidlSync is a stub — see
-// supermarket-db/src/supermarkets/lidl/sync.js), so its filter tab would
-// always show zero results. Left out until that catalog actually exists.
-const _marketFilters = <String?>[null, 'jumbo', 'ah', 'hoogvliet'];
-const _marketFilterLabels = ['All stores', 'Jumbo', 'Albert Heijn', 'Hoogvliet'];
+const _marketFilters = <String?>[null, 'jumbo', 'ah', 'lidl', 'hoogvliet'];
+const _marketFilterLabels = ['All stores', 'Jumbo', 'Albert Heijn', 'Lidl', 'Hoogvliet'];
 const _sortOptions = [ProductSort.relevance, ProductSort.priceAsc, ProductSort.priceDesc];
 const _sortLabels = ['Relevance', 'Price ↑', 'Price ↓'];
 
-/// Search Jumbo/Albert Heijn/Hoogvliet products (via the supermarket-db API),
-/// filter by store, sort by price, and add results straight onto [listId].
+/// Search Jumbo/Albert Heijn/Lidl/Hoogvliet products (via the supermarket-db
+/// API), filter by store, sort by price, and add results straight onto
+/// [listId].
 class ProductSearchPage extends StatefulWidget {
   const ProductSearchPage({super.key, required this.listId, required this.onBack});
 
