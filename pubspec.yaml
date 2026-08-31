@@ -139,6 +139,7 @@ flutter:
     - assets/security/
     - assets/world/
     - assets/ai_models/
+    - assets/device_health/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -341,6 +341,16 @@
       "tags": ["Utility", "Finance"],
       "free": true,
       "version": "1.0.0"
+    },
+    {
+      "id": "device-health",
+      "name": "Device Health",
+      "description": "A Norton-style health dashboard for this PC: CPU, RAM and GPU usage, battery wear, background processes, outdated apps and drivers, and Windows Defender's protection status — check one thing or everything at once, and update outdated apps with one click. Windows only. luma never scans a file itself: the virus check reads and triggers Windows Defender's own scan, and driver updates always hand off to the vendor's official tool.",
+      "icon": "health_and_safety",
+      "category": "Utility",
+      "tags": ["Utility", "System"],
+      "free": true,
+      "version": "1.0.0"
     }
   ]
 }

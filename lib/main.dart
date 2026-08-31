@@ -27,6 +27,8 @@ import 'features/plugins/installed/steam_tools/steam_repository.dart';
 import 'features/plugins/installed/steam_tools/steam_scope.dart';
 import 'features/plugins/installed/steam_tools/cs2_market_repository.dart';
 import 'features/plugins/installed/steam_tools/cs2_market_scope.dart';
+import 'features/plugins/installed/device_health/device_health_repository.dart';
+import 'features/plugins/installed/device_health/device_health_scope.dart';
 import 'features/plugins/installed/data_management/data/data_management_database.dart';
 import 'features/plugins/installed/data_management/data_management_repository.dart';
 import 'features/plugins/installed/server_tycoon/server_tycoon_repository.dart';
@@ -191,6 +193,12 @@ class _LumaAppState extends State<LumaApp> {
   // its own, only a rebuildable cache next to the thumbnails. The scan starts
   // when the page is first opened, not here.
   late final GalleryRepository _galleryRepository = GalleryRepository();
+
+  // Device Health reads live hardware/process/update state on demand — every
+  // reading is stale the moment it's taken, so there's nothing to persist and
+  // nothing to sync, unlike AI Usage's rebuildable-but-still-stored cache.
+  late final DeviceHealthRepository _deviceHealthRepository =
+      DeviceHealthRepository();
 
   // Global local-storage cap, enforced regardless of which plugins are
   // installed — see StorageGuardService.
@@ -428,6 +436,7 @@ class _LumaAppState extends State<LumaApp> {
     _groceriesApi.dispose();
     _recipeBookDb.close();
     _galleryRepository.dispose();
+    _deviceHealthRepository.dispose();
     super.dispose();
   }
 
@@ -536,6 +545,8 @@ class _LumaAppState extends State<LumaApp> {
                       repository: _minecraftRepository,
                       child: GalleryScope(
                       repository: _galleryRepository,
+                      child: DeviceHealthScope(
+                      repository: _deviceHealthRepository,
                       child: ListenableBuilder(
                       listenable: widget.settings,
                       builder: (context, _) {
@@ -566,6 +577,7 @@ class _LumaAppState extends State<LumaApp> {
                           ),
                         );
                       },
+                    ),
                     ),
                     ),
                     ),

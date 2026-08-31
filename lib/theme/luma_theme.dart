@@ -22,6 +22,7 @@ class LumaPalette extends ThemeExtension<LumaPalette> {
     required this.textMuted,
     required this.success,
     required this.danger,
+    required this.warning,
   });
 
   /// The far-left vertical icon sidebar.
@@ -52,6 +53,10 @@ class LumaPalette extends ThemeExtension<LumaPalette> {
   final Color success;
   final Color danger;
 
+  /// Cautionary status — sits between [success] and [danger] (e.g. "3
+  /// updates available", "battery health fading").
+  final Color warning;
+
   /// Dark gray lavender.
   static const dark = LumaPalette(
     rail: Color(0xFF121019),
@@ -68,6 +73,7 @@ class LumaPalette extends ThemeExtension<LumaPalette> {
     textMuted: Color(0xFF6F6981),
     success: Color(0xFF57D9A3),
     danger: Color(0xFFFF6B81),
+    warning: Color(0xFFFFC15E),
   );
 
   /// White lavender.
@@ -86,6 +92,7 @@ class LumaPalette extends ThemeExtension<LumaPalette> {
     textMuted: Color(0xFF918BA1),
     success: Color(0xFF12A372),
     danger: Color(0xFFE5484D),
+    warning: Color(0xFFC2760C),
   );
 
   /// Espresso — a layered cacao ground with a quiet crema highlight.
@@ -104,6 +111,7 @@ class LumaPalette extends ThemeExtension<LumaPalette> {
     textMuted: Color(0xFFA58D73),
     success: Color(0xFF8FBE70),
     danger: Color(0xFFE47B63),
+    warning: Color(0xFFD9A441),
   );
 
   /// Latte — warm paper, oat shadows and a dark-roast editorial accent.
@@ -122,6 +130,7 @@ class LumaPalette extends ThemeExtension<LumaPalette> {
     textMuted: Color(0xFF6B523D),
     success: Color(0xFF3E6D40),
     danger: Color(0xFFA8442D),
+    warning: Color(0xFF9C6B12),
   );
 
   /// The base palette for [style] at [brightness], before any accent seed.
@@ -149,6 +158,7 @@ class LumaPalette extends ThemeExtension<LumaPalette> {
     Color? textMuted,
     Color? success,
     Color? danger,
+    Color? warning,
   }) {
     return LumaPalette(
       rail: rail ?? this.rail,
@@ -165,6 +175,7 @@ class LumaPalette extends ThemeExtension<LumaPalette> {
       textMuted: textMuted ?? this.textMuted,
       success: success ?? this.success,
       danger: danger ?? this.danger,
+      warning: warning ?? this.warning,
     );
   }
 
@@ -221,6 +232,7 @@ class LumaPalette extends ThemeExtension<LumaPalette> {
       textMuted: Color.lerp(textMuted, other.textMuted, t)!,
       success: Color.lerp(success, other.success, t)!,
       danger: Color.lerp(danger, other.danger, t)!,
+      warning: Color.lerp(warning, other.warning, t)!,
     );
   }
 }
