@@ -74,6 +74,10 @@ async function authedGet(path, { username, password, _retried = false } = {}) {
       'x-picnic-did': PICNIC_DEVICE_ID,
       'User-Agent': USER_AGENT,
       'Accept-Language': 'nl',
+      // Sent on every request by the reference app client, GETs included —
+      // matching the full header set exactly in case a gateway/WAF in
+      // front of `/pages/*` fingerprints requests missing it.
+      'Content-Type': 'application/json; charset=UTF-8',
     },
   });
 
