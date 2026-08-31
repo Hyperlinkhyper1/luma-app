@@ -73,9 +73,21 @@ async function authedGet(path, { username, password, _retried = false } = {}) {
       'x-picnic-agent': PICNIC_AGENT,
       'x-picnic-did': PICNIC_DEVICE_ID,
       'User-Agent': USER_AGENT,
+      'Accept-Language': 'nl',
     },
   });
-  const data = await response.json().catch(() => null);
+
+  // Read the body as text first so a failure can show what actually came
+  // back (an error JSON's `message`, an HTML block page, an empty body,
+  // whatever it is) instead of silently swallowing a JSON.parse failure.
+  const rawBody = await response.text();
+  let data = null;
+  try {
+    data = JSON.parse(rawBody);
+  } catch (_) {
+    // Not JSON — data stays null, rawBody carries the diagnostic value.
+  }
+
   const errorCode = data && data.error && data.error.code;
   const isAuthError = errorCode === 'AUTH_ERROR' || errorCode === 'AUTH_INVALID_CRED';
 
@@ -88,7 +100,7 @@ async function authedGet(path, { username, password, _retried = false } = {}) {
   }
   if (!response.ok || isAuthError) {
     throw new Error(
-      `Picnic request failed: HTTP ${response.status} for ${path} ${JSON.stringify(data).slice(0, 300)}`
+      `Picnic request failed: HTTP ${response.status} for ${path} — ${rawBody.slice(0, 500)}`
     );
   }
   return data;
