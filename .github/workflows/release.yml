@@ -242,8 +242,35 @@ jobs:
       # but isn't installable on a device as-is — the .ipa needs resigning
       # with at least a free Apple ID (e.g. via AltStore or Sideloadly)
       # before it can be sideloaded.
+      #
+      # flutter_onnxruntime (used by Gallery's smart categories on desktop
+      # only — see pubspec.yaml) still links on iOS, and it pulls its
+      # onnxruntime_extensions binary target via Swift Package Manager
+      # straight from download.onnxruntime.ai rather than a GitHub release,
+      # with no cache in front of it. That download has no retry of its own
+      # and occasionally times out on the runner's network, failing an
+      # otherwise-unrelated build — the same class of flake the Linux job
+      # works around above for apt. Retry the whole build a couple of times
+      # before giving up; anything already resolved (pods, other SPM
+      # checkouts) is cached on disk, so a retry only has to re-fetch what
+      # actually failed.
       - name: Build unsigned iOS app
-        run: flutter build ios --release --no-codesign --no-tree-shake-icons --dart-define=APP_VERSION=${{ steps.ver.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          retry() {
+            for attempt in 1 2 3; do
+              if "$@"; then
+                return 0
+              fi
+              echo "attempt $attempt failed: $*"
+              sleep 20
+            done
+            return 1
+          }
+
+          retry flutter build ios --release --no-codesign --no-tree-shake-icons --dart-define=APP_VERSION=${{ steps.ver.outputs.version }}
 
       # An .ipa is just a zip of Payload/<App>.app, so this doesn't require
       # Xcode's archive/export step (which needs a signing identity).
