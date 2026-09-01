@@ -369,6 +369,34 @@ class _AllowanceDialog extends StatefulWidget {
   State<_AllowanceDialog> createState() => _AllowanceDialogState();
 }
 
+/// GitHub's own published per-plan numbers, so the allowance fields can be
+/// one tap instead of a trip to the billing page and a calculator.
+///
+/// Storage and Actions minutes come from the repo-hosting plan
+/// (Free/Pro/Team/Enterprise Cloud); Copilot is a separate subscription with
+/// its own tiers, so it gets its own set of chips.
+const _kStorageGbByPlan = {
+  'Free': 0.5,
+  'Pro': 2.0,
+  'Team': 2.0,
+  'Enterprise': 50.0,
+};
+
+const _kActionsMinutesByPlan = {
+  'Free': 2000.0,
+  'Pro': 3000.0,
+  'Team': 3000.0,
+  'Enterprise': 50000.0,
+};
+
+const _kCopilotRequestsByPlan = {
+  'Free': 50.0,
+  'Pro': 300.0,
+  'Pro+': 1500.0,
+  'Business': 300.0,
+  'Enterprise': 1000.0,
+};
+
 class _AllowanceDialogState extends State<_AllowanceDialog> {
   final _copilot = TextEditingController();
   final _storage = TextEditingController();
@@ -463,16 +491,19 @@ class _AllowanceDialogState extends State<_AllowanceDialog> {
                 controller: _copilot,
                 label: 'Copilot allowance',
                 helper: 'Included AI credits or premium requests per month',
+                quickFills: _kCopilotRequestsByPlan,
               ),
               _field(
                 controller: _storage,
                 label: 'Storage allowance',
                 helper: 'Included Packages and Actions storage, in GB',
+                quickFills: _kStorageGbByPlan,
               ),
               _field(
                 controller: _minutes,
                 label: 'Actions compute allowance',
                 helper: 'Included workflow minutes per month',
+                quickFills: _kActionsMinutesByPlan,
               ),
             ],
           ),
@@ -508,6 +539,7 @@ class _AllowanceDialogState extends State<_AllowanceDialog> {
     required TextEditingController controller,
     required String label,
     required String helper,
+    Map<String, double> quickFills = const {},
   }) {
     final luma = context.luma;
     return Padding(
@@ -550,7 +582,57 @@ class _AllowanceDialogState extends State<_AllowanceDialog> {
               ),
             ),
           ),
+          if (quickFills.isNotEmpty) ...[
+            const SizedBox(height: 7),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final entry in quickFills.entries)
+                  _PlanChip(
+                    label: entry.key,
+                    onTap: _busy
+                        ? null
+                        : () => setState(
+                            () => controller.text = _asText(entry.value)),
+                  ),
+              ],
+            ),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+/// A small tappable plan-name chip that fills its field with GitHub's
+/// published allowance for that plan.
+class _PlanChip extends StatelessWidget {
+  const _PlanChip({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Material(
+      color: luma.surfaceHover,
+      borderRadius: BorderRadius.circular(999),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: luma.textSecondary,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
       ),
     );
   }
