@@ -9,17 +9,28 @@ import 'package:luma/features/plugins/installed/account_overview/mc_content_scop
 import 'package:luma/features/plugins/installed/account_overview/mc_credentials.dart';
 import 'package:luma/features/plugins/installed/account_overview/mc_history.dart';
 import 'package:luma/features/plugins/installed/account_overview/mc_models.dart';
+import 'package:luma/features/plugins/installed/account_overview/youtube_repository.dart';
+import 'package:luma/features/plugins/installed/account_overview/youtube_scope.dart';
 import 'package:luma/theme/luma_theme.dart';
 
-/// The plugin under both scopes, the way `main.dart` nests them.
-Widget _app(AccountOverviewRepository github, McContentRepository mc) =>
+/// The plugin under every scope, the way `main.dart` nests them — the shell
+/// reads every service's state to build its rail, so YouTube's scope is part
+/// of the harness even though this file's tests never open its sections.
+Widget _app(
+  AccountOverviewRepository github,
+  McContentRepository mc,
+  YoutubeRepository youtube,
+) =>
     MaterialApp(
       theme: LumaTheme.dark,
       home: AccountOverviewScope(
         repository: github,
         child: McContentScope(
           repository: mc,
-          child: const Scaffold(body: AccountOverviewPage()),
+          child: YoutubeScope(
+            repository: youtube,
+            child: const Scaffold(body: AccountOverviewPage()),
+          ),
         ),
       ),
     );
@@ -125,13 +136,29 @@ Future<void> _pump(
   addTearDown(() => tester.binding.setSurfaceSize(null));
   await tester.runAsync(() => github.load());
   await tester.runAsync(() => mc.load());
-  await tester.pumpWidget(_app(github, mc));
+  await tester.runAsync(() => _youtube.load());
+  await tester.pumpWidget(_app(github, mc, _youtube));
   await tester.pumpAndSettle();
 }
 
+late YoutubeRepository _youtube;
+
 Future<void> _openMcContent(WidgetTester tester) async {
-  // Below 640px the rail collapses to icons on its own, so there is no label
-  // to tap — the icon is the destination there.
+  // The rail is an accordion — only the currently-selected service's
+  // sections are in the tree — so Minecraft's heading needs a tap first
+  // whenever GitHub (the default selection) is the one currently expanded.
+  // Below 640px the rail also collapses to icons on its own, so the heading
+  // has no label to tap there either — its icon still works.
+  if (find.text(AccountSection.mcContent.label).evaluate().isEmpty &&
+      find.byIcon(AccountSection.mcContent.icon).evaluate().isEmpty) {
+    final headingByLabel = find.text(AccountService.minecraft.label);
+    await tester.tap(
+      headingByLabel.evaluate().isEmpty
+          ? find.byIcon(AccountService.minecraft.icon).first
+          : headingByLabel.first,
+    );
+    await tester.pumpAndSettle();
+  }
   final byLabel = find.text(AccountSection.mcContent.label);
   await tester.tap(
     byLabel.evaluate().isEmpty
@@ -163,10 +190,12 @@ void main() {
   setUp(() {
     github = AccountOverviewRepository();
     mc = McContentRepository();
+    _youtube = YoutubeRepository();
   });
   tearDown(() {
     github.dispose();
     mc.dispose();
+    _youtube.dispose();
   });
 
   testWidgets('the sidebar groups GitHub and Minecraft separately',
@@ -177,6 +206,10 @@ void main() {
       expect(find.text(service.label), findsWidgets,
           reason: '${service.label} should head its own group');
     }
+    // The rail is an accordion, so Minecraft's own section only shows once
+    // its heading is opened — GitHub's group is the one expanded by default.
+    await tester.tap(find.text(AccountService.minecraft.label));
+    await tester.pumpAndSettle();
     expect(find.text('MC Content'), findsWidgets);
   });
 

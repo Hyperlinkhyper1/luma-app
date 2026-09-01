@@ -33,6 +33,8 @@ import 'features/plugins/installed/account_overview/account_overview_repository.
 import 'features/plugins/installed/account_overview/account_overview_scope.dart';
 import 'features/plugins/installed/account_overview/mc_content_repository.dart';
 import 'features/plugins/installed/account_overview/mc_content_scope.dart';
+import 'features/plugins/installed/account_overview/youtube_repository.dart';
+import 'features/plugins/installed/account_overview/youtube_scope.dart';
 import 'features/plugins/installed/data_management/data/data_management_database.dart';
 import 'features/plugins/installed/data_management/data_management_repository.dart';
 import 'features/plugins/installed/server_tycoon/server_tycoon_repository.dart';
@@ -212,6 +214,11 @@ class _LumaAppState extends State<LumaApp> {
   // MC Content is its own repository: CurseForge, Modrinth and Planet
   // Minecraft refresh and fail independently of the GitHub side.
   late final McContentRepository _mcContentRepository = McContentRepository();
+
+  // YouTube is its own repository too: an OAuth credential and token refresh
+  // that have nothing to do with GitHub's pasted PAT or Minecraft's
+  // per-platform keys, so a revoked Google grant can't take either down.
+  late final YoutubeRepository _youtubeRepository = YoutubeRepository();
 
   // Global local-storage cap, enforced regardless of which plugins are
   // installed — see StorageGuardService.
@@ -452,6 +459,7 @@ class _LumaAppState extends State<LumaApp> {
     _deviceHealthRepository.dispose();
     _accountOverviewRepository.dispose();
     _mcContentRepository.dispose();
+    _youtubeRepository.dispose();
     super.dispose();
   }
 
@@ -566,6 +574,8 @@ class _LumaAppState extends State<LumaApp> {
                       repository: _accountOverviewRepository,
                       child: McContentScope(
                       repository: _mcContentRepository,
+                      child: YoutubeScope(
+                      repository: _youtubeRepository,
                       child: ListenableBuilder(
                       listenable: widget.settings,
                       builder: (context, _) {
@@ -596,6 +606,7 @@ class _LumaAppState extends State<LumaApp> {
                           ),
                         );
                       },
+                    ),
                     ),
                     ),
                     ),

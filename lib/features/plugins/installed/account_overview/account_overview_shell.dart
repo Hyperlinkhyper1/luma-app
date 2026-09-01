@@ -14,6 +14,12 @@ import 'ui/github_overview_tab.dart';
 import 'ui/github_repositories_tab.dart';
 import 'ui/github_usage_tab.dart';
 import 'ui/mc_content_tab.dart';
+import 'ui/youtube_analytics_tab.dart';
+import 'ui/youtube_connect_dialog.dart';
+import 'ui/youtube_overview_tab.dart';
+import 'ui/youtube_videos_tab.dart';
+import 'youtube_repository.dart';
+import 'youtube_scope.dart';
 
 /// A service the sidebar groups its sections under.
 ///
@@ -22,7 +28,8 @@ import 'ui/mc_content_tab.dart';
 /// so adding the next one is a new value here rather than a new rail.
 enum AccountService {
   github('GitHub', Icons.hub_rounded),
-  minecraft('Minecraft', Icons.widgets_rounded);
+  minecraft('Minecraft', Icons.widgets_rounded),
+  youtube('YouTube', Icons.smart_display_rounded);
 
   const AccountService(this.label, this.icon);
 
@@ -73,6 +80,27 @@ enum AccountSection {
     icon: Icons.grid_view_rounded,
     label: 'MC Content',
     blurb: 'CurseForge, Modrinth, PMC',
+  ),
+  youtubeOverview(
+    service: AccountService.youtube,
+    id: 'youtube-overview',
+    icon: Icons.dashboard_outlined,
+    label: 'Overview',
+    blurb: 'Subscribers, views, videos',
+  ),
+  youtubeVideos(
+    service: AccountService.youtube,
+    id: 'youtube-videos',
+    icon: Icons.video_library_outlined,
+    label: 'Videos',
+    blurb: 'Every recent upload',
+  ),
+  youtubeAnalytics(
+    service: AccountService.youtube,
+    id: 'youtube-analytics',
+    icon: Icons.insights_rounded,
+    label: 'Analytics',
+    blurb: 'Watch time, traffic, subscribers',
   );
 
   const AccountSection({
@@ -111,15 +139,21 @@ class _AccountOverviewPageState extends State<AccountOverviewPage> {
   bool _collapsed = false;
   bool _started = false;
 
-  /// Services whose sections are currently shown under their heading. Both
-  /// start expanded so the rail reads the same as before this was added.
-  final Set<AccountService> _expandedServices = {...AccountService.values};
+  /// The one service whose sections are currently shown under its heading —
+  /// an accordion, not independent toggles, so picking a section in one
+  /// service folds every other one away.
+  late AccountService? _expandedService = _section.service;
+
+  void _selectSection(AccountSection section) {
+    setState(() {
+      _section = section;
+      _expandedService = section.service;
+    });
+  }
 
   void _toggleServiceExpanded(AccountService service) {
     setState(() {
-      if (!_expandedServices.remove(service)) {
-        _expandedServices.add(service);
-      }
+      _expandedService = _expandedService == service ? null : service;
     });
   }
 
@@ -138,7 +172,7 @@ class _AccountOverviewPageState extends State<AccountOverviewPage> {
       (s) => s.id == id,
       orElse: () => AccountSection.overview,
     );
-    setState(() => _section = target);
+    _selectSection(target);
   }
 
   /// Names the platforms that are actually set up, so the rail says
@@ -159,6 +193,7 @@ class _AccountOverviewPageState extends State<AccountOverviewPage> {
     final repository = AccountOverviewScope.of(context);
 
     final mc = McContentScope.of(context);
+    final youtube = YoutubeScope.of(context);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -179,13 +214,15 @@ class _AccountOverviewPageState extends State<AccountOverviewPage> {
               connectedServices: {
                 AccountService.github: repository.connected,
                 AccountService.minecraft: mc.configured,
+                AccountService.youtube: youtube.connected,
               },
               subtitles: {
                 AccountService.github: repository.credentials?.login,
                 AccountService.minecraft: _mcSubtitle(mc),
+                AccountService.youtube: youtube.credentials?.channelTitle,
               },
-              expandedServices: _expandedServices,
-              onSelect: (s) => setState(() => _section = s),
+              expandedService: _expandedService,
+              onSelect: _selectSection,
               onToggleCollapsed: () => setState(() => _collapsed = !_collapsed),
               onToggleServiceExpanded: _toggleServiceExpanded,
             ),
@@ -214,6 +251,12 @@ final _githubSections = [
     if (section.service == AccountService.github) section,
 ];
 
+/// YouTube's sections, in the order its [IndexedStack] builds them.
+final _youtubeSections = [
+  for (final section in AccountSection.values)
+    if (section.service == AccountService.youtube) section,
+];
+
 /// Chooses between the connect screen, the loading state and the section.
 class _SectionBody extends StatelessWidget {
   const _SectionBody({required this.section, required this.onOpenSection});
@@ -235,6 +278,54 @@ class _SectionBody extends StatelessWidget {
         children: [
           _SectionHeader(section: section),
           const Expanded(child: McContentTab()),
+        ],
+      );
+    }
+
+    // YouTube carries its own OAuth credential and its own connect prompt,
+    // so it bypasses the GitHub gate below exactly like Minecraft does.
+    if (section.service == AccountService.youtube) {
+      final youtube = YoutubeScope.of(context);
+      if (!youtube.loaded) {
+        return Center(
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2, color: luma.accent),
+          ),
+        );
+      }
+      if (!youtube.connected) return const _YoutubeConnectPrompt();
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SectionHeader(section: section),
+          if (youtube.refreshing) const _YoutubeRefreshBar(),
+          if (youtube.error case final message?)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+              child: AccountNotice(
+                message: message,
+                icon: Icons.error_outline_rounded,
+                tone: luma.danger,
+                onDismiss: youtube.clearError,
+              ),
+            ),
+          if (youtube.warnings.isNotEmpty && !youtube.refreshing)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+              child: AccountNotice(message: youtube.warnings.join('\n')),
+            ),
+          Expanded(
+            child: IndexedStack(
+              index: _youtubeSections.indexOf(section).clamp(0, 2),
+              children: [
+                YoutubeOverviewTab(onOpenSection: onOpenSection),
+                const YoutubeVideosTab(),
+                const YoutubeAnalyticsTab(),
+              ],
+            ),
+          ),
         ],
       );
     }
@@ -307,12 +398,32 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final repository = AccountOverviewScope.of(context);
-    final isGithub = section.service == AccountService.github;
-    final login = isGithub ? (repository.credentials?.login ?? '') : '';
+    final service = section.service;
+
+    // Minecraft's refresh and settings live in its own toolbar, next to the
+    // view switcher they belong with — repeating them here would give the
+    // section two of each, so it gets neither a chip nor these actions.
+    var chip = '';
+    var refreshing = false;
+    VoidCallback? onRefresh;
+    VoidCallback? onSettings;
+    if (service == AccountService.github) {
+      final repository = AccountOverviewScope.of(context);
+      chip = repository.credentials?.login ?? '';
+      refreshing = repository.refreshing;
+      onRefresh = refreshing ? null : repository.unawaitedRefresh;
+      onSettings = () => showGithubConnectDialog(context);
+    } else if (service == AccountService.youtube) {
+      final youtube = YoutubeScope.of(context);
+      chip = youtube.credentials?.channelTitle ?? '';
+      refreshing = youtube.refreshing;
+      onRefresh = refreshing ? null : youtube.unawaitedRefresh;
+      onSettings = () => showYoutubeConnectDialog(context);
+    }
+    final hasActions = onSettings != null;
 
     return Container(
-      padding: EdgeInsets.fromLTRB(20, 14, isGithub ? 14 : 20, 14),
+      padding: EdgeInsets.fromLTRB(20, 14, hasActions ? 14 : 20, 14),
       decoration: BoxDecoration(
         color: luma.surface,
         border: Border(bottom: BorderSide(color: luma.border)),
@@ -343,7 +454,7 @@ class _SectionHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          if (login.isNotEmpty)
+          if (chip.isNotEmpty)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
@@ -353,10 +464,10 @@ class _SectionHeader extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.hub_rounded, size: 13, color: luma.accent),
+                  Icon(service.icon, size: 13, color: luma.accent),
                   const SizedBox(width: 6),
                   Text(
-                    login,
+                    chip,
                     style: TextStyle(
                       color: luma.accent,
                       fontSize: 12,
@@ -366,22 +477,18 @@ class _SectionHeader extends StatelessWidget {
                 ],
               ),
             ),
-          // Minecraft's refresh and settings live in its own toolbar, next to
-          // the view switcher they belong with — repeating them here would
-          // give the section two of each.
-          if (isGithub) ...[
+          if (hasActions) ...[
             const SizedBox(width: 4),
             IconButton(
-              tooltip: repository.refreshing ? 'Refreshing…' : 'Refresh',
-              onPressed:
-                  repository.refreshing ? null : repository.unawaitedRefresh,
+              tooltip: refreshing ? 'Refreshing…' : 'Refresh',
+              onPressed: onRefresh,
               icon: const Icon(Icons.refresh_rounded, size: 19),
               color: luma.textSecondary,
               constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
             ),
             IconButton(
               tooltip: 'Account settings',
-              onPressed: () => showGithubConnectDialog(context),
+              onPressed: onSettings,
               icon: const Icon(Icons.settings_outlined, size: 18),
               color: luma.textSecondary,
               constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
@@ -428,6 +535,52 @@ class _RefreshBar extends StatelessWidget {
           ),
           Text(
             'Step ${stage.index} of ${GithubLoadStage.values.length - 1}',
+            style: TextStyle(
+              color: luma.textMuted,
+              fontSize: 11,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// [_RefreshBar]'s YouTube counterpart — same shape, keyed off
+/// [YoutubeLoadStage] instead of [GithubLoadStage].
+class _YoutubeRefreshBar extends StatelessWidget {
+  const _YoutubeRefreshBar();
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final youtube = YoutubeScope.of(context);
+    final stage = youtube.stage;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
+      color: luma.accentSubtle,
+      child: Row(
+        children: [
+          SizedBox(
+            width: 13,
+            height: 13,
+            child: CircularProgressIndicator(strokeWidth: 2, color: luma.accent),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              stage == YoutubeLoadStage.idle ? 'Refreshing…' : '${stage.label}…',
+              style: TextStyle(
+                color: luma.textSecondary,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Text(
+            'Step ${stage.index} of ${YoutubeLoadStage.values.length - 1}',
             style: TextStyle(
               color: luma.textMuted,
               fontSize: 11,
@@ -504,6 +657,71 @@ class _ConnectPrompt extends StatelessWidget {
   }
 }
 
+/// [_ConnectPrompt]'s YouTube counterpart.
+class _YoutubeConnectPrompt extends StatelessWidget {
+  const _YoutubeConnectPrompt();
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(28),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              LumaEmptyState(
+                icon: Icons.smart_display_rounded,
+                title: 'Connect your YouTube channel',
+                subtitle: 'See your subscribers, views, recent uploads and '
+                    'deep analytics — watch time, traffic sources and '
+                    'subscriber trends — in one place.',
+                action: LumaPrimaryButton(
+                  label: 'Connect YouTube',
+                  icon: Icons.link_rounded,
+                  onTap: () => showYoutubeConnectDialog(context),
+                ),
+              ),
+              const SizedBox(height: 26),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: luma.surface,
+                  borderRadius: context.lumaDecor.cardBorderRadius,
+                  border: Border.all(color: luma.border),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.shield_outlined, size: 17, color: luma.success),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        "luma stores your Google OAuth credentials encrypted "
+                        "on this device and talks to Google directly. "
+                        "Nothing about your account is sent to a luma "
+                        "server, and no luma account is needed to use this "
+                        "plugin.",
+                        style: TextStyle(
+                          color: luma.textSecondary,
+                          fontSize: 12,
+                          height: 1.55,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// The collapsible rail. Expanded it shows an icon, a label and a blurb;
 /// collapsed it is icons only, each with a tooltip so the destination is
 /// still nameable — an icon with no accessible name is not a navigation
@@ -515,7 +733,7 @@ class _SectionRail extends StatelessWidget {
     required this.showToggle,
     required this.connectedServices,
     required this.subtitles,
-    required this.expandedServices,
+    required this.expandedService,
     required this.onSelect,
     required this.onToggleCollapsed,
     required this.onToggleServiceExpanded,
@@ -536,8 +754,9 @@ class _SectionRail extends StatelessWidget {
   /// that are configured.
   final Map<AccountService, String?> subtitles;
 
-  /// Services whose section list is currently shown under their heading.
-  final Set<AccountService> expandedServices;
+  /// The one service whose section list is currently shown under its
+  /// heading — null while every service is folded away.
+  final AccountService? expandedService;
 
   final ValueChanged<AccountSection> onSelect;
   final VoidCallback onToggleCollapsed;
@@ -578,16 +797,18 @@ class _SectionRail extends StatelessWidget {
                 collapsed: collapsed,
                 connected: connectedServices[service] ?? false,
                 subtitle: subtitles[service],
-                expanded: expandedServices.contains(service),
-                // Collapsing the whole rail to icons leaves no room for a
-                // section list anyway, so the toggle only matters expanded.
-                onTap: collapsed ? null : () => onToggleServiceExpanded(service),
+                expanded: expandedService == service,
+                // Collapsed or not, a service still has its own row of
+                // icons to fold away — heading taps must keep working here
+                // or a narrow rail can never reach any service but the one
+                // it started on.
+                onTap: () => onToggleServiceExpanded(service),
               ),
               AnimatedSize(
                 duration: const Duration(milliseconds: 160),
                 curve: Curves.easeOutCubic,
                 alignment: Alignment.topCenter,
-                child: !expandedServices.contains(service)
+                child: expandedService != service
                     ? const SizedBox.shrink()
                     : Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,

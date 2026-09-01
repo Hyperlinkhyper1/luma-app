@@ -7,6 +7,8 @@ import 'package:luma/features/plugins/installed/account_overview/github_credenti
 import 'package:luma/features/plugins/installed/account_overview/mc_content_repository.dart';
 import 'package:luma/features/plugins/installed/account_overview/mc_content_scope.dart';
 import 'package:luma/features/plugins/installed/account_overview/github_models.dart';
+import 'package:luma/features/plugins/installed/account_overview/youtube_repository.dart';
+import 'package:luma/features/plugins/installed/account_overview/youtube_scope.dart';
 import 'package:luma/theme/luma_theme.dart';
 
 /// The plugin under its scope, the way `main.dart` nests it.
@@ -16,7 +18,8 @@ import 'package:luma/theme/luma_theme.dart';
 /// first-run path worth covering.
 Widget _app(
   AccountOverviewRepository repository,
-  McContentRepository mc, {
+  McContentRepository mc,
+  YoutubeRepository youtube, {
   Size? size,
 }) =>
     MediaQuery(
@@ -25,11 +28,14 @@ Widget _app(
         theme: LumaTheme.dark,
         home: AccountOverviewScope(
           repository: repository,
-          // The shell reads both services' state to build its rail, so the
-          // Minecraft scope is part of the harness even for GitHub tests.
+          // The shell reads every service's state to build its rail, so the
+          // other scopes are part of the harness even for GitHub-only tests.
           child: McContentScope(
             repository: mc,
-            child: const Scaffold(body: AccountOverviewPage()),
+            child: YoutubeScope(
+              repository: youtube,
+              child: const Scaffold(body: AccountOverviewPage()),
+            ),
           ),
         ),
       ),
@@ -48,23 +54,26 @@ Future<void> _pumpApp(
 }) async {
   await tester.runAsync(() => repository.load());
   await tester.runAsync(() => _mc.load());
-  await tester.pumpWidget(_app(repository, _mc, size: size));
+  await tester.runAsync(() => _youtube.load());
+  await tester.pumpWidget(_app(repository, _mc, _youtube, size: size));
   await tester.pumpAndSettle();
 }
 
 late McContentRepository _mc;
+late YoutubeRepository _youtube;
 
 /// Pumps a repository that was seeded rather than loaded.
 ///
-/// The Minecraft repository still needs its own startup read even for GitHub
-/// tests: MC Content is reachable from the rail, and an unloaded one leaves a
-/// spinner that `pumpAndSettle` would wait on forever.
+/// The Minecraft and YouTube repositories still need their own startup read
+/// even for GitHub tests: both are reachable from the rail, and an unloaded
+/// one leaves a spinner that `pumpAndSettle` would wait on forever.
 Future<void> _pumpSeeded(
   WidgetTester tester,
   AccountOverviewRepository repository,
 ) async {
   await tester.runAsync(() => _mc.load());
-  await tester.pumpWidget(_app(repository, _mc));
+  await tester.runAsync(() => _youtube.load());
+  await tester.pumpWidget(_app(repository, _mc, _youtube));
   await tester.pumpAndSettle();
 }
 
@@ -74,16 +83,25 @@ void main() {
   setUp(() {
     repository = AccountOverviewRepository();
     _mc = McContentRepository();
+    _youtube = YoutubeRepository();
   });
   tearDown(() {
     repository.dispose();
     _mc.dispose();
+    _youtube.dispose();
   });
 
   testWidgets('shows every section in the sidebar', (tester) async {
     await _pumpApp(tester, repository);
 
     for (final section in AccountSection.values) {
+      // The rail is an accordion — only one service's sections show at a
+      // time — so a section belonging to a folded-away service needs its
+      // heading tapped open first.
+      if (find.text(section.label).evaluate().isEmpty) {
+        await tester.tap(find.text(section.service.label));
+        await tester.pumpAndSettle();
+      }
       expect(
         find.text(section.label),
         findsWidgets,
@@ -221,6 +239,12 @@ void main() {
       await _pumpSeeded(tester, repository);
 
       for (final section in AccountSection.values) {
+        // Accordion rail: fold the section's own service open first if it
+        // is not the one currently expanded.
+        if (find.text(section.label).evaluate().isEmpty) {
+          await tester.tap(find.text(section.service.label));
+          await tester.pumpAndSettle();
+        }
         await tester.tap(find.text(section.label).first);
         await tester.pumpAndSettle();
         expect(
