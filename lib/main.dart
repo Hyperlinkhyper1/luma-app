@@ -29,6 +29,10 @@ import 'features/plugins/installed/steam_tools/cs2_market_repository.dart';
 import 'features/plugins/installed/steam_tools/cs2_market_scope.dart';
 import 'features/plugins/installed/device_health/device_health_repository.dart';
 import 'features/plugins/installed/device_health/device_health_scope.dart';
+import 'features/plugins/installed/account_overview/account_overview_repository.dart';
+import 'features/plugins/installed/account_overview/account_overview_scope.dart';
+import 'features/plugins/installed/account_overview/mc_content_repository.dart';
+import 'features/plugins/installed/account_overview/mc_content_scope.dart';
 import 'features/plugins/installed/data_management/data/data_management_database.dart';
 import 'features/plugins/installed/data_management/data_management_repository.dart';
 import 'features/plugins/installed/server_tycoon/server_tycoon_repository.dart';
@@ -199,6 +203,15 @@ class _LumaAppState extends State<LumaApp> {
   // nothing to sync, unlike AI Usage's rebuildable-but-still-stored cache.
   late final DeviceHealthRepository _deviceHealthRepository =
       DeviceHealthRepository();
+
+  // Account Overview keeps no local database either: it is a cached snapshot
+  // of a remote account, written to one JSON file by the repository itself.
+  late final AccountOverviewRepository _accountOverviewRepository =
+      AccountOverviewRepository();
+
+  // MC Content is its own repository: CurseForge, Modrinth and Planet
+  // Minecraft refresh and fail independently of the GitHub side.
+  late final McContentRepository _mcContentRepository = McContentRepository();
 
   // Global local-storage cap, enforced regardless of which plugins are
   // installed — see StorageGuardService.
@@ -437,6 +450,8 @@ class _LumaAppState extends State<LumaApp> {
     _recipeBookDb.close();
     _galleryRepository.dispose();
     _deviceHealthRepository.dispose();
+    _accountOverviewRepository.dispose();
+    _mcContentRepository.dispose();
     super.dispose();
   }
 
@@ -547,6 +562,10 @@ class _LumaAppState extends State<LumaApp> {
                       repository: _galleryRepository,
                       child: DeviceHealthScope(
                       repository: _deviceHealthRepository,
+                      child: AccountOverviewScope(
+                      repository: _accountOverviewRepository,
+                      child: McContentScope(
+                      repository: _mcContentRepository,
                       child: ListenableBuilder(
                       listenable: widget.settings,
                       builder: (context, _) {
@@ -577,6 +596,8 @@ class _LumaAppState extends State<LumaApp> {
                           ),
                         );
                       },
+                    ),
+                    ),
                     ),
                     ),
                     ),

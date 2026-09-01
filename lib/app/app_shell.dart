@@ -19,6 +19,7 @@ import '../features/plugins/installed/city_planner/city_planner_page.dart';
 import '../features/plugins/installed/file_tree/file_tree_page.dart';
 import '../features/plugins/installed/gallery/gallery_page.dart';
 import '../features/plugins/installed/device_health/device_health_page.dart';
+import '../features/plugins/installed/account_overview/account_overview_shell.dart';
 import '../features/plugins/installed/file_viewer/file_viewer_page.dart';
 import '../features/plugins/installed/groceries/groceries_page.dart';
 import '../features/plugins/installed/minecraft_launcher/minecraft_launcher_page.dart';
@@ -383,6 +384,7 @@ class _AppShellState extends State<AppShell> {
         'nfc-tag-editor' => const NfcTagEditorPage(),
         'roblox-tools' => const RobloxToolsPage(),
         'device-health' => const DeviceHealthPage(),
+        'account-overview' => const AccountOverviewPage(),
         _ => LumaEmptyState(
             icon: Icons.extension_off_rounded,
             title: t.shellPluginUnavailable,
