@@ -37,6 +37,10 @@ class _McSetupDialogState extends State<_McSetupDialog> {
   String? _trackError;
   String? _trackNotice;
 
+  bool _testBusy = false;
+  bool? _testOk;
+  String? _testResult;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -116,6 +120,48 @@ class _McSetupDialogState extends State<_McSetupDialog> {
     }
   }
 
+  /// Hits CurseForge directly with whatever key is currently typed, so the
+  /// user sees the real HTTP status and body instead of the generic
+  /// "rejected" message a normal fetch collapses everything into.
+  Future<void> _testCurseKey() async {
+    final key = _clean(_curseKey);
+    if (key == null) {
+      setState(() {
+        _testOk = false;
+        _testResult = 'Enter a key first.';
+      });
+      return;
+    }
+    setState(() {
+      _testBusy = true;
+      _testOk = null;
+      _testResult = null;
+    });
+    try {
+      final result =
+          await McContentScope.of(context).testCurseforgeKey(key);
+      if (!mounted) return;
+      setState(() {
+        _testOk = result.ok;
+        _testResult = result.ok
+            ? 'Key works — CurseForge answered HTTP 200.'
+            : 'HTTP ${result.statusCode}: ${_trimBody(result.body)}';
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _testOk = false;
+          _testResult = e.toString();
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _testBusy = false);
+    }
+  }
+
+  String _trimBody(String body) =>
+      body.length > 220 ? '${body.substring(0, 220)}…' : body;
+
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
@@ -193,6 +239,38 @@ class _McSetupDialogState extends State<_McSetupDialog> {
                 hint: 'x-api-key from the Studios console',
                 obscure: true,
               ),
+              Row(
+                children: [
+                  AccountLinkButton(
+                    label: 'CurseForge API keys',
+                    icon: Icons.open_in_new_rounded,
+                    onTap: () => openExternal(
+                        'https://console.curseforge.com/#/api-keys'),
+                  ),
+                  const SizedBox(width: 14),
+                  SizedBox(
+                    height: 30,
+                    child: LumaGhostButton(
+                      label: _testBusy ? 'Testing…' : 'Test key',
+                      icon: Icons.wifi_tethering_rounded,
+                      onTap: _busy || _testBusy ? null : _testCurseKey,
+                    ),
+                  ),
+                ],
+              ),
+              if (_testResult != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    _testResult!,
+                    style: TextStyle(
+                      color: _testOk == true ? luma.success : luma.danger,
+                      fontSize: 11.5,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 10),
               _field(
                 controller: _curseAuthor,
                 label: 'Author id (optional)',

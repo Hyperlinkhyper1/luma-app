@@ -181,6 +181,9 @@ class McContentRepository extends ChangeNotifier {
     return project;
   }
 
+  Future<McKeyTestResult> testCurseforgeKey(String apiKey) =>
+      _curseforge.testKey(apiKey);
+
   Future<void> untrackCurseforgeProject(String id) async {
     if (!_credentials.curseforgeProjectIds.contains(id)) return;
     _history.forget('project:${McPlatform.curseforge.id}:$id');

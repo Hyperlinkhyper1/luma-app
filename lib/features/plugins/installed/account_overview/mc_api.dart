@@ -16,6 +16,17 @@ class McApiException implements Exception {
   String toString() => message;
 }
 
+/// Raw result of a connection test, so the UI can show why a key was
+/// rejected instead of the generic error [McApiException] wraps it in.
+class McKeyTestResult {
+  const McKeyTestResult({required this.statusCode, required this.body});
+
+  final int statusCode;
+  final String body;
+
+  bool get ok => statusCode == 200;
+}
+
 /// Modrinth asks every client to identify itself with a contactable
 /// User-Agent, and refuses generic ones.
 const _userAgent = 'luma/1.0 (account-overview plugin; +https://github.com)';
@@ -192,6 +203,19 @@ class CurseForgeApi {
         'x-api-key': apiKey,
         'User-Agent': _userAgent,
       };
+
+  /// Hits the cheapest possible endpoint and hands back the raw status and
+  /// body, since [_get] only ever surfaces a generic "rejected" message and
+  /// the UI's test button needs the actual reason.
+  Future<McKeyTestResult> testKey(String apiKey) async {
+    final response = await _client
+        .get(Uri.parse('$_base/games'), headers: _headers(apiKey))
+        .timeout(const Duration(seconds: 30));
+    return McKeyTestResult(
+      statusCode: response.statusCode,
+      body: utf8.decode(response.bodyBytes),
+    );
+  }
 
   Future<dynamic> _get(String url, String apiKey) async {
     final response = await _client
