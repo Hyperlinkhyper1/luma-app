@@ -659,11 +659,25 @@ class GithubBilling {
       .where((i) => i.product.toLowerCase().contains('action'))
       .toList();
 
+  /// Actions compute minutes read from the enhanced usage endpoint. The
+  /// legacy `/settings/billing/actions` endpoint 404s for many personal
+  /// accounts now, so this is the fallback the "Actions minutes" meter uses
+  /// when that legacy call comes back empty.
+  double get actionsQuantity =>
+      actionsItems.fold(0.0, (sum, i) => sum + i.quantity);
+
   List<GithubUsageItem> get storageItems => usageItems
       .where((i) =>
           i.product.toLowerCase().contains('storage') ||
           i.product.toLowerCase().contains('package'))
       .toList();
+
+  /// Shared-storage usage read from the enhanced endpoint, kept separate
+  /// from packages bandwidth so the two meters don't add each other's
+  /// numbers in. Same fallback story as [actionsQuantity].
+  double get sharedStorageQuantity => usageItems
+      .where((i) => i.product.toLowerCase().contains('storage'))
+      .fold(0.0, (sum, i) => sum + i.quantity);
 
   GithubBilling copyWith({
     bool? available,

@@ -111,6 +111,18 @@ class _AccountOverviewPageState extends State<AccountOverviewPage> {
   bool _collapsed = false;
   bool _started = false;
 
+  /// Services whose sections are currently shown under their heading. Both
+  /// start expanded so the rail reads the same as before this was added.
+  final Set<AccountService> _expandedServices = {...AccountService.values};
+
+  void _toggleServiceExpanded(AccountService service) {
+    setState(() {
+      if (!_expandedServices.remove(service)) {
+        _expandedServices.add(service);
+      }
+    });
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -172,8 +184,10 @@ class _AccountOverviewPageState extends State<AccountOverviewPage> {
                 AccountService.github: repository.credentials?.login,
                 AccountService.minecraft: _mcSubtitle(mc),
               },
+              expandedServices: _expandedServices,
               onSelect: (s) => setState(() => _section = s),
               onToggleCollapsed: () => setState(() => _collapsed = !_collapsed),
+              onToggleServiceExpanded: _toggleServiceExpanded,
             ),
             Container(width: 1, color: luma.border),
             Expanded(
@@ -501,8 +515,10 @@ class _SectionRail extends StatelessWidget {
     required this.showToggle,
     required this.connectedServices,
     required this.subtitles,
+    required this.expandedServices,
     required this.onSelect,
     required this.onToggleCollapsed,
+    required this.onToggleServiceExpanded,
   });
 
   final AccountSection selected;
@@ -520,8 +536,12 @@ class _SectionRail extends StatelessWidget {
   /// that are configured.
   final Map<AccountService, String?> subtitles;
 
+  /// Services whose section list is currently shown under their heading.
+  final Set<AccountService> expandedServices;
+
   final ValueChanged<AccountSection> onSelect;
   final VoidCallback onToggleCollapsed;
+  final ValueChanged<AccountService> onToggleServiceExpanded;
 
   static const double _expandedWidth = 210;
   static const double _collapsedWidth = 64;
@@ -558,22 +578,41 @@ class _SectionRail extends StatelessWidget {
                 collapsed: collapsed,
                 connected: connectedServices[service] ?? false,
                 subtitle: subtitles[service],
+                expanded: expandedServices.contains(service),
+                // Collapsing the whole rail to icons leaves no room for a
+                // section list anyway, so the toggle only matters expanded.
+                onTap: collapsed ? null : () => onToggleServiceExpanded(service),
               ),
-              const SizedBox(height: 4),
-              for (final section in AccountSection.values)
-                if (section.service == service)
-                  _RailItem(
-                    section: section,
-                    selected: section == selected,
-                    collapsed: collapsed,
-                    // A service that is not set up still needs a way in, or
-                    // its setup screen is unreachable. Its first section
-                    // stays live and carries the prompt; the rest read as
-                    // unavailable until there is something behind them.
-                    enabled: (connectedServices[service] ?? false) ||
-                        section == _firstSectionOf(service),
-                    onTap: () => onSelect(section),
-                  ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 160),
+                curve: Curves.easeOutCubic,
+                alignment: Alignment.topCenter,
+                child: !expandedServices.contains(service)
+                    ? const SizedBox.shrink()
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const SizedBox(height: 4),
+                          for (final section in AccountSection.values)
+                            if (section.service == service)
+                              _RailItem(
+                                section: section,
+                                selected: section == selected,
+                                collapsed: collapsed,
+                                // A service that is not set up still needs a
+                                // way in, or its setup screen is
+                                // unreachable. Its first section stays live
+                                // and carries the prompt; the rest read as
+                                // unavailable until there is something
+                                // behind them.
+                                enabled: (connectedServices[service] ??
+                                        false) ||
+                                    section == _firstSectionOf(service),
+                                onTap: () => onSelect(section),
+                              ),
+                        ],
+                      ),
+              ),
               const SizedBox(height: 10),
             ],
             const Spacer(),
@@ -595,6 +634,8 @@ class _ServiceHeading extends StatelessWidget {
     required this.collapsed,
     required this.connected,
     required this.subtitle,
+    required this.expanded,
+    required this.onTap,
   });
 
   final AccountService service;
@@ -604,78 +645,112 @@ class _ServiceHeading extends StatelessWidget {
   /// The account name, or the platforms configured for this service.
   final String? subtitle;
 
+  /// Whether this service's sections are currently shown below it.
+  final bool expanded;
+
+  /// Null while the rail itself is icon-only — there is no list to fold.
+  final VoidCallback? onTap;
+
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
     final line =
         connected ? (subtitle ?? 'Connected') : 'Not set up';
 
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: collapsed ? 8 : 12, vertical: 8),
-      child: Tooltip(
-        message: collapsed ? '${service.label} — $line' : '',
-        child: Row(
-          mainAxisAlignment:
-              collapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
-          children: [
-            Container(
-              width: 30,
-              height: 30,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: luma.accentSubtle,
-                borderRadius: BorderRadius.circular(9),
-              ),
-              child: Icon(service.icon, size: 17, color: luma.accent),
-            ),
-            if (!collapsed) ...[
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
+    final content = Row(
+      mainAxisAlignment:
+          collapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
+      children: [
+        Container(
+          width: 30,
+          height: 30,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: luma.accentSubtle,
+            borderRadius: BorderRadius.circular(9),
+          ),
+          child: Icon(service.icon, size: 17, color: luma.accent),
+        ),
+        if (!collapsed) ...[
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  service.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: luma.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Row(
                   children: [
-                    Text(
-                      service.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: luma.textPrimary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: connected ? luma.success : luma.textMuted,
+                        shape: BoxShape.circle,
                       ),
                     ),
-                    Row(
-                      children: [
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            color: connected ? luma.success : luma.textMuted,
-                            shape: BoxShape.circle,
-                          ),
+                    const SizedBox(width: 5),
+                    Expanded(
+                      child: Text(
+                        line,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: luma.textMuted,
+                          fontSize: 10.5,
                         ),
-                        const SizedBox(width: 5),
-                        Expanded(
-                          child: Text(
-                            line,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: luma.textMuted,
-                              fontSize: 10.5,
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
+              ],
+            ),
+          ),
+          if (onTap != null)
+            AnimatedRotation(
+              duration: const Duration(milliseconds: 160),
+              turns: expanded ? 0 : -0.25,
+              child: Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 18,
+                color: luma.textMuted,
               ),
-            ],
-          ],
-        ),
-      ),
+            ),
+        ],
+      ],
+    );
+
+    final padded = Padding(
+      padding: EdgeInsets.symmetric(horizontal: collapsed ? 8 : 12, vertical: 8),
+      child: content,
+    );
+
+    return Tooltip(
+      message: collapsed ? '${service.label} — $line' : '',
+      child: onTap == null
+          ? padded
+          : Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: onTap,
+                hoverColor: luma.surfaceHover,
+                child: Semantics(
+                  label: '${service.label} section list',
+                  button: true,
+                  expanded: expanded,
+                  child: padded,
+                ),
+              ),
+            ),
     );
   }
 }

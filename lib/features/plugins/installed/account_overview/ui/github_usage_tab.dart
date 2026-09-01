@@ -24,8 +24,15 @@ class GithubUsageTab extends StatelessWidget {
     final credentials = repository.credentials;
 
     final copilotUsed = billing.copilotQuantity;
-    final storageUsed = billing.storageGbUsed;
-    final minutesUsed = billing.minutesUsed;
+    // The legacy per-product endpoints 404 for many personal accounts now;
+    // when that leaves these at zero, fall back to the enhanced usage
+    // endpoint's per-product totals rather than showing "0" next to a
+    // breakdown table that clearly has activity.
+    final storageUsed = billing.storageGbUsed > 0
+        ? billing.storageGbUsed
+        : billing.sharedStorageQuantity;
+    final minutesUsed =
+        billing.minutesUsed > 0 ? billing.minutesUsed : billing.actionsQuantity;
 
     // GitHub's own included figure wins; the user's recorded allowance is
     // the fallback, never an override.
