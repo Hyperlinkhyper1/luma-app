@@ -188,6 +188,27 @@ class McHistoryStore {
     return out;
   }
 
+  /// Per-day gains for several series added together, day by day.
+  ///
+  /// Deliberately *not* `deltasFor(combined(keys))`: diffing the summed
+  /// totals would count a series' entire existing total as one giant "gain"
+  /// on the day it first appears (a platform that already has 100k downloads
+  /// does not gain 100k the day luma starts tracking it). Diffing each
+  /// series on its own first — which already requires two of its own points
+  /// before it produces anything — and summing the diffs afterwards avoids
+  /// that: a series contributes nothing until it has real day-over-day
+  /// change of its own to report.
+  List<McDelta> combinedDeltas(List<String> keys) {
+    final byDay = <DateTime, int>{};
+    for (final key in keys) {
+      for (final delta in deltasFor(key)) {
+        byDay[delta.day] = (byDay[delta.day] ?? 0) + delta.gained;
+      }
+    }
+    final days = byDay.keys.toList()..sort();
+    return [for (final day in days) McDelta(day: day, gained: byDay[day]!)];
+  }
+
   /// Total gained across the last [days] days of a series.
   int gainedInLast(String key, int days) {
     final cutoff = DateTime.now().subtract(Duration(days: days));

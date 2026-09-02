@@ -885,6 +885,8 @@ class _McTrendsViewState extends State<_McTrendsView> {
     final history = repository.history;
     final combinedKeys = [for (final p in McSnapshot.combinedPlatforms) p.id];
     final combined = history.combined(combinedKeys);
+    final projectBreakdown =
+        projectGainsByDay(history, repository.snapshot.combinedProjects);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
@@ -913,12 +915,13 @@ class _McTrendsViewState extends State<_McTrendsView> {
         AccountPanel(
           title: 'Downloads gained per day',
           icon: Icons.bar_chart_rounded,
-          subtitle: 'The difference between consecutive daily totals',
+          subtitle: 'Hover a bar for the top projects that day',
           child: SizedBox(
             height: 200,
             child: McDailyGainChart(
-              deltas: _combinedDeltas(history, combinedKeys),
+              deltas: history.combinedDeltas(combinedKeys),
               range: _range,
+              projectBreakdown: projectBreakdown,
             ),
           ),
         ),
@@ -980,19 +983,6 @@ class _McTrendsViewState extends State<_McTrendsView> {
         ),
       ],
     );
-  }
-
-  /// Per-day gains for the combined series, derived the same way the store
-  /// derives a single platform's.
-  List<McDelta> _combinedDeltas(McHistoryStore history, List<String> keys) {
-    final points = history.combined(keys);
-    if (points.length < 2) return const [];
-    final out = <McDelta>[];
-    for (var i = 1; i < points.length; i++) {
-      final gained = points[i].downloads - points[i - 1].downloads;
-      out.add(McDelta(day: points[i].day, gained: gained < 0 ? 0 : gained));
-    }
-    return out;
   }
 }
 

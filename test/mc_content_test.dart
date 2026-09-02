@@ -8,6 +8,7 @@ import 'package:luma/features/plugins/installed/account_overview/mc_credentials.
 import 'package:luma/features/plugins/installed/account_overview/mc_history.dart';
 import 'package:luma/features/plugins/installed/account_overview/mc_models.dart';
 import 'package:luma/features/plugins/installed/account_overview/pmc_extract.dart';
+import 'package:luma/features/plugins/installed/account_overview/ui/mc_charts.dart';
 
 /// A real extractor payload, captured by running [pmcExtractorScript] against
 /// a live Planet Minecraft member page.
@@ -235,6 +236,87 @@ void main() {
       store.forgetWithPrefix('project:curseforge:');
 
       expect(store.seriesKeys, ['modrinth']);
+    });
+
+    test(
+        'combined deltas do not spike when a platform starts tracking with '
+        'an existing total', () {
+      final store = McHistoryStore.inMemory({
+        'mr': [
+          _point(DateTime(2026, 9, 1), 1000),
+          _point(DateTime(2026, 9, 2), 1010),
+          _point(DateTime(2026, 9, 3), 1025),
+        ],
+        // CurseForge already has 120,000 downloads by the time luma starts
+        // tracking it, on day 2. Summing totals first and diffing would
+        // show that whole figure as a "gain" on day 2.
+        'cf': [
+          _point(DateTime(2026, 9, 2), 120000),
+          _point(DateTime(2026, 9, 3), 120050),
+        ],
+      });
+
+      final deltas = store.combinedDeltas(['mr', 'cf']);
+
+      // Day 2 only carries Modrinth's own gain — CurseForge needs a second
+      // point of its own before it can report any change at all.
+      expect(deltas[0].day, DateTime(2026, 9, 2));
+      expect(deltas[0].gained, 10);
+      // Day 3 finally adds CurseForge's own day-over-day gain (50).
+      expect(deltas[1].day, DateTime(2026, 9, 3));
+      expect(deltas[1].gained, 15 + 50);
+    });
+  });
+
+  group('project gains by day', () {
+    McProject project(McPlatform platform, String id, String name) =>
+        McProject(
+          platform: platform,
+          id: id,
+          slug: id,
+          name: name,
+          url: 'https://example.invalid/$id',
+        );
+
+    test('buckets each project\'s own gains by day, highest first', () {
+      final store = McHistoryStore.inMemory();
+      for (final (i, total) in [10, 20, 45].indexed) {
+        store.record(
+          'project:curseforge:a',
+          downloads: total,
+          at: DateTime(2026, 9, 1).add(Duration(days: i)),
+        );
+      }
+      // Starts a day later than 'a', so it has no delta at all on day 2.
+      for (final (i, total) in [1000, 1005].indexed) {
+        store.record(
+          'project:curseforge:b',
+          downloads: total,
+          at: DateTime(2026, 9, 2).add(Duration(days: i)),
+        );
+      }
+      // Never moves, so it must never show up in a breakdown.
+      store.record('project:curseforge:c', downloads: 5, at: DateTime(2026, 9, 2));
+      store.record('project:curseforge:c', downloads: 5, at: DateTime(2026, 9, 3));
+
+      final projects = [
+        project(McPlatform.curseforge, 'a', 'Alloy'),
+        project(McPlatform.curseforge, 'b', 'Bits'),
+        project(McPlatform.curseforge, 'c', 'Calm'),
+      ];
+
+      final byDay = projectGainsByDay(store, projects);
+
+      expect(
+        byDay[DateTime(2026, 9, 2)]!.map((g) => g.name),
+        ['Alloy'],
+      );
+      expect(
+        byDay[DateTime(2026, 9, 3)]!
+            .map((g) => (g.name, g.gained))
+            .toList(),
+        [('Alloy', 25), ('Bits', 5)],
+      );
     });
   });
 

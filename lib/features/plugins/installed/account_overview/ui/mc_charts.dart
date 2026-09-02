@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../../theme/luma_theme.dart';
 import '../mc_history.dart';
+import '../mc_models.dart';
 import 'account_shared.dart';
 
 /// How far back a trend chart looks.
@@ -229,6 +230,35 @@ enum McMetric {
   }
 }
 
+/// One project's share of a day's gain, for a gain chart's tooltip.
+class McProjectGain {
+  const McProjectGain({required this.name, required this.gained});
+
+  final String name;
+  final int gained;
+}
+
+/// Buckets every project's own daily gains by day, highest first — the
+/// per-project breakdown a combined "downloads gained per day" bar cannot
+/// show on its own.
+Map<DateTime, List<McProjectGain>> projectGainsByDay(
+  McHistoryStore history,
+  List<McProject> projects,
+) {
+  final byDay = <DateTime, List<McProjectGain>>{};
+  for (final project in projects) {
+    for (final delta in history.deltasFor(project.historyKey)) {
+      if (delta.gained <= 0) continue;
+      (byDay[delta.day] ??= [])
+          .add(McProjectGain(name: project.name, gained: delta.gained));
+    }
+  }
+  for (final gains in byDay.values) {
+    gains.sort((a, b) => b.gained.compareTo(a.gained));
+  }
+  return byDay;
+}
+
 /// Per-day gains as bars — the "how am I doing lately" view that a
 /// cumulative line hides.
 class McDailyGainChart extends StatelessWidget {
@@ -236,10 +266,16 @@ class McDailyGainChart extends StatelessWidget {
     super.key,
     required this.deltas,
     required this.range,
+    this.projectBreakdown = const {},
   });
 
   final List<McDelta> deltas;
   final McRange range;
+
+  /// Which projects made up a day's gain, keyed by that day — shown as extra
+  /// lines in the bar's tooltip. Empty when the caller has nothing to break
+  /// a day down by (e.g. a single-platform chart).
+  final Map<DateTime, List<McProjectGain>> projectBreakdown;
 
   @override
   Widget build(BuildContext context) {
@@ -330,14 +366,29 @@ class McDailyGainChart extends StatelessWidget {
               fitInsideVertically: true,
               getTooltipItem: (group, groupIndex, rod, rodIndex) {
                 final day = visible[group.x.toInt()].day;
+                final topProjects = (projectBreakdown[day] ?? const [])
+                    .take(5);
                 return BarTooltipItem(
-                  '+${formatCount(rod.toY)}\n${formatDate(day)}',
+                  '+${formatCount(rod.toY)} downloads\n${formatDate(day)}',
                   TextStyle(
                     color: luma.textPrimary,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     fontFeatures: const [FontFeature.tabularFigures()],
                   ),
+                  children: [
+                    for (final project in topProjects)
+                      TextSpan(
+                        text: '\n${project.name}: '
+                            '+${formatCount(project.gained)}',
+                        style: TextStyle(
+                          color: luma.textSecondary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                  ],
                 );
               },
             ),
