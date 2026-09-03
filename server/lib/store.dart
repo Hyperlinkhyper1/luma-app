@@ -38,6 +38,7 @@ class StoredUser {
     this.verificationExpiresAtMs,
     this.lastLoginAtMs,
     this.planId = kDefaultPlanId,
+    this.passwordResetRequiredAtMs,
     Map<String, String>? oauthSubjects,
   }) : oauthSubjects = oauthSubjects ?? {};
 
@@ -62,6 +63,20 @@ class StoredUser {
   /// 'pending' until the email is verified, then 'active'. Accounts created
   /// before this field existed default to 'active' so they keep working.
   String status;
+
+  /// When an admin forced a password reset from the dashboard, or null when
+  /// there is no reset outstanding.
+  ///
+  /// While this is set the old password no longer signs in — [_login]
+  /// refuses with `password_reset_required`. Existing sessions are
+  /// deliberately *kept*: sync is zero-knowledge, so only a device that
+  /// still holds the current encryption key can re-seal the stored snapshots
+  /// under the new password (see Api._resetPassword, which mirrors
+  /// SyncService.changePassword's re-encryption pass). Cleared by finishing
+  /// the reset, by an ordinary password change, or by the admin cancelling.
+  int? passwordResetRequiredAtMs;
+
+  bool get passwordResetRequired => passwordResetRequiredAtMs != null;
 
   /// SHA-256 of the current email-verification token, or null if there is
   /// none outstanding (never verified yet, or already verified/used).
@@ -94,6 +109,7 @@ class StoredUser {
         'verificationExpiresAtMs': verificationExpiresAtMs,
         'lastLoginAtMs': lastLoginAtMs,
         'planId': planId,
+        'passwordResetRequiredAtMs': passwordResetRequiredAtMs,
         'oauthSubjects': oauthSubjects,
       };
 
@@ -111,6 +127,7 @@ class StoredUser {
         verificationExpiresAtMs: j['verificationExpiresAtMs'] as int?,
         lastLoginAtMs: j['lastLoginAtMs'] as int?,
         planId: j['planId'] as String? ?? kDefaultPlanId,
+        passwordResetRequiredAtMs: j['passwordResetRequiredAtMs'] as int?,
         oauthSubjects: (j['oauthSubjects'] as Map?)
             ?.map((k, v) => MapEntry('$k', '$v')),
       );
@@ -220,6 +237,76 @@ class PluginDownloadStat {
       );
 }
 
+/// One account-data deletion the user asked for from inside the app, waiting
+/// on the operator in the admin dashboard's Inbox tab.
+///
+/// The app never deletes anything server-side through this path: it only
+/// files the request (with the user's own reason), and the operator accepts
+/// or declines it. Accepting runs the same teardown as the self-service
+/// delete (Api._deleteAccount); declining leaves the account untouched and
+/// hands the user back the operator's note.
+class DeletionRequest {
+  DeletionRequest({
+    required this.id,
+    required this.userId,
+    required this.email,
+    required this.reason,
+    required this.createdAtMs,
+    this.status = statusPending,
+    this.decidedAtMs,
+    this.adminNote,
+  });
+
+  static const statusPending = 'pending';
+  static const statusAccepted = 'accepted';
+  static const statusDeclined = 'declined';
+
+  final String id;
+
+  /// The account the request was filed for. Stays on the record after an
+  /// accepted request wiped the account, so the Inbox keeps its history.
+  final String userId;
+  final String email;
+
+  /// Why the user wants their data gone, in their own words. Free text —
+  /// always escape it before rendering.
+  final String reason;
+
+  final int createdAtMs;
+
+  /// [statusPending], [statusAccepted] or [statusDeclined].
+  String status;
+  int? decidedAtMs;
+
+  /// Optional note the operator left when deciding — shown to the user in
+  /// the app so a decline can say why.
+  String? adminNote;
+
+  bool get isPending => status == statusPending;
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'userId': userId,
+        'email': email,
+        'reason': reason,
+        'createdAtMs': createdAtMs,
+        'status': status,
+        'decidedAtMs': decidedAtMs,
+        'adminNote': adminNote,
+      };
+
+  factory DeletionRequest.fromJson(Map<String, dynamic> j) => DeletionRequest(
+        id: j['id'] as String,
+        userId: j['userId'] as String,
+        email: j['email'] as String,
+        reason: j['reason'] as String? ?? '',
+        createdAtMs: j['createdAtMs'] as int,
+        status: j['status'] as String? ?? statusPending,
+        decidedAtMs: j['decidedAtMs'] as int?,
+        adminNote: j['adminNote'] as String?,
+      );
+}
+
 /// File-backed store. Everything is held in memory and written through to
 /// JSON files with atomic replace; blobs are stored as individual files.
 /// All mutations must go through [lock] (the API layer does this).
@@ -252,6 +339,11 @@ class Store {
   /// pluginId.
   final Map<String, PluginDownloadStat> pluginDownloadsById = {};
 
+  /// Admin dashboard's "Inbox" tab — account-data deletion requests filed
+  /// from the app, newest last. Keyed by request id; at most one pending
+  /// request per account (see Api._requestAccountDeletion).
+  final Map<String, DeletionRequest> deletionRequestsById = {};
+
   /// Admin dashboard's "Metrics" graphs history — see MetricsHistory for the
   /// downsampling/persistence scheme. Set during [open].
   late final MetricsHistory metricsHistory;
@@ -265,6 +357,7 @@ class Store {
   String get _collectionsFile => '$rootPath/collections.json';
   String get _activityFile => '$rootPath/activity.json';
   String get _pluginDownloadsFile => '$rootPath/plugin_downloads.json';
+  String get _deletionRequestsFile => '$rootPath/deletion_requests.json';
   String get _secretFile => '$rootPath/secret.key';
 
   static Future<Store> open(String path) async {
@@ -329,6 +422,12 @@ class Store {
     for (final p in pluginDownloads) {
       final stat = PluginDownloadStat.fromJson(p as Map<String, dynamic>);
       store.pluginDownloadsById[stat.pluginId] = stat;
+    }
+
+    final deletionRequests = await _readJsonList(store._deletionRequestsFile);
+    for (final r in deletionRequests) {
+      final req = DeletionRequest.fromJson(r as Map<String, dynamic>);
+      store.deletionRequestsById[req.id] = req;
     }
 
     store.metricsHistory = await MetricsHistory.open(path);
@@ -426,6 +525,29 @@ class Store {
       existing.lastDownloadedAtMs = now;
     }
     await savePluginDownloads();
+  }
+
+  Future<void> saveDeletionRequests() => atomicWriteString(
+      _deletionRequestsFile,
+      jsonEncode(deletionRequestsById.values.map((r) => r.toJson()).toList()));
+
+  /// The account's open deletion request, or null when it has none.
+  DeletionRequest? pendingDeletionRequestFor(String userId) {
+    for (final r in deletionRequestsById.values) {
+      if (r.userId == userId && r.isPending) return r;
+    }
+    return null;
+  }
+
+  /// The account's most recent deletion request whatever its state — what the
+  /// app shows so a decline (and the operator's note) is visible once.
+  DeletionRequest? latestDeletionRequestFor(String userId) {
+    DeletionRequest? newest;
+    for (final r in deletionRequestsById.values) {
+      if (r.userId != userId) continue;
+      if (newest == null || r.createdAtMs > newest.createdAtMs) newest = r;
+    }
+    return newest;
   }
 
   // ---- Blobs -------------------------------------------------------------

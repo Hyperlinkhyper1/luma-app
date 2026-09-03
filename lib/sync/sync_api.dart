@@ -66,6 +66,8 @@ class RemoteAccount {
     this.planId,
     this.status = 'active',
     this.linkedProviders = const [],
+    this.passwordResetRequired = false,
+    this.deletionRequest,
   });
 
   final String email;
@@ -92,6 +94,19 @@ class RemoteAccount {
   /// besides the password. Empty until the first such sign-in links one.
   final List<String> linkedProviders;
 
+  /// The operator reset this account's password from the admin dashboard.
+  /// The old password no longer signs in anywhere, but *this* device keeps
+  /// its session on purpose — it is the only thing that still holds the
+  /// encryption key, so it is what re-seals the synced snapshots under the
+  /// new password (see SyncService.completePasswordReset). Servers older
+  /// than this field omit it, which reads as "no reset outstanding".
+  final bool passwordResetRequired;
+
+  /// The account's most recent account-data deletion request, or null if it
+  /// has never filed one. Comes along with every /account fetch so a decision
+  /// by the operator shows up on the sync the app was doing anyway.
+  final DataDeletionRequest? deletionRequest;
+
   factory RemoteAccount.fromJson(Map<String, dynamic> j) {
     final collections = <String, RemoteCollectionMeta>{};
     for (final raw in (j['collections'] as List<dynamic>? ?? const [])) {
@@ -107,9 +122,64 @@ class RemoteAccount {
       linkedProviders: (j['linkedProviders'] as List<dynamic>? ?? const [])
           .whereType<String>()
           .toList(),
+      passwordResetRequired: j['passwordResetRequired'] == true,
+      deletionRequest: j['deletionRequest'] == null
+          ? null
+          : DataDeletionRequest.fromJson(
+              j['deletionRequest'] as Map<String, dynamic>),
       collections: collections,
     );
   }
+}
+
+/// A request to have every trace of this account deleted from the server,
+/// waiting on (or already decided by) the operator in the admin dashboard's
+/// Inbox. Filed by the user from Account → Sync & account; nothing is deleted
+/// until the operator accepts it.
+class DataDeletionRequest {
+  const DataDeletionRequest({
+    required this.id,
+    required this.reason,
+    required this.status,
+    required this.createdAt,
+    this.decidedAt,
+    this.adminNote,
+  });
+
+  static const statusPending = 'pending';
+  static const statusAccepted = 'accepted';
+  static const statusDeclined = 'declined';
+
+  final String id;
+
+  /// Why the user asked, in their own words — echoed back so the app can
+  /// show what is on the operator's desk.
+  final String reason;
+
+  /// [statusPending], [statusAccepted] or [statusDeclined].
+  final String status;
+  final DateTime createdAt;
+  final DateTime? decidedAt;
+
+  /// What the operator wrote when deciding, if anything. Worth showing on a
+  /// decline — it is the only explanation the user gets.
+  final String? adminNote;
+
+  bool get isPending => status == statusPending;
+  bool get isDeclined => status == statusDeclined;
+
+  factory DataDeletionRequest.fromJson(Map<String, dynamic> j) =>
+      DataDeletionRequest(
+        id: j['id'] as String? ?? '',
+        reason: j['reason'] as String? ?? '',
+        status: j['status'] as String? ?? statusPending,
+        createdAt: DateTime.fromMillisecondsSinceEpoch(
+            j['createdAtMs'] as int? ?? 0),
+        decidedAt: j['decidedAtMs'] == null
+            ? null
+            : DateTime.fromMillisecondsSinceEpoch(j['decidedAtMs'] as int),
+        adminNote: j['adminNote'] as String?,
+      );
 }
 
 /// A sign-in provider this server is configured for, as returned by
@@ -491,8 +561,44 @@ class SyncApi {
     });
   }
 
+  /// Finishes an admin-forced password reset. No current password is sent —
+  /// this session token is the proof of identity, and the server only accepts
+  /// the call while a reset is actually outstanding.
+  Future<void> resetPassword({
+    required Uint8List newAuthKey,
+    required Uint8List newKdfSalt,
+    required int newKdfIterations,
+  }) async {
+    await _postJson('/auth/reset', {
+      'newAuthKey': base64Encode(newAuthKey),
+      'newKdfSalt': base64Encode(newKdfSalt),
+      'newKdfIterations': newKdfIterations,
+    });
+  }
+
   Future<void> deleteAccount({required Uint8List authKey}) async {
     await _postJson('/account/delete', {'authKey': base64Encode(authKey)});
+  }
+
+  // ---- Account-data deletion requests --------------------------------------
+  //
+  // Reading the current request is part of [account] — see
+  // RemoteAccount.deletionRequest. These two are the writes.
+
+  /// Files a request for the operator to delete everything this account has
+  /// on the server. Deletes nothing by itself — it lands in the admin
+  /// dashboard's Inbox for a decision.
+  Future<DataDeletionRequest> requestDeletion(String reason) async {
+    final body = await _postJson('/account/deletion-request', {
+      'reason': reason,
+    });
+    return DataDeletionRequest.fromJson(
+        body['request'] as Map<String, dynamic>);
+  }
+
+  /// Withdraws a still-undecided request.
+  Future<void> cancelDeletionRequest() async {
+    await _postJson('/account/deletion-request/cancel', const {});
   }
 
   // ---- AI ------------------------------------------------------------------

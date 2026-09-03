@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'account/password_reset_page.dart';
 import 'account/plan.dart';
 import 'app/app_shell.dart';
 import 'app/splash_screen.dart';
@@ -669,9 +670,20 @@ class _BootGateState extends State<_BootGate> {
 
   @override
   Widget build(BuildContext context) {
+    final sync = SyncScope.of(context);
     return Stack(
       children: [
         const AppShell(),
+        // An admin-forced password reset layers over the (already built) app
+        // rather than replacing it: the shell keeps its state, and the moment
+        // the new password is set this comes down again. See
+        // PasswordResetPage for why this device stays signed in meanwhile.
+        ListenableBuilder(
+          listenable: sync,
+          builder: (context, _) => sync.passwordResetRequired
+              ? PasswordResetPage(sync: sync)
+              : const SizedBox.shrink(),
+        ),
         if (_showSplash)
           SplashScreen(
             bootstrap: widget.bootstrap,

@@ -391,10 +391,15 @@ class Api {
       ..post('/api/v1/auth/oauth/complete', _oauthComplete)
       ..post('/api/v1/auth/logout', _requireAuth(_logout))
       ..post('/api/v1/auth/change', _requireAuth(_changePassword))
+      ..post('/api/v1/auth/reset', _requireAuth(_resetPassword))
       ..get('/api/v1/auth/sessions', _requireAuth(_listSessions))
       ..post('/api/v1/auth/sessions/<id>/revoke', _requireAuth(_revokeSession))
       ..get('/api/v1/account', _requireAuth(_accountInfo))
       ..post('/api/v1/account/delete', _requireAuth(_deleteAccount))
+      ..post('/api/v1/account/deletion-request',
+          _requireAuth(_requestAccountDeletion))
+      ..post('/api/v1/account/deletion-request/cancel',
+          _requireAuth(_cancelAccountDeletionRequest))
       ..get('/api/v1/ai/mistral-key-configured', _requireAuth(_mistralKeyStatus))
       ..get('/api/v1/ai/status', _requireAuth(_aiStatus))
       ..post('/api/v1/ai/mistral/chat', _requireAuth(_mistralChatProxy))
@@ -472,6 +477,12 @@ class Api {
       ..get('/admin/activity', _requireAdmin(_adminActivity))
       ..post('/admin/verify', _requireAdmin(_adminVerifyUser))
       ..post('/admin/revoke', _requireAdmin(_adminRevokeUser))
+      ..post('/admin/password-reset', _requireAdmin(_adminResetPassword))
+      ..post('/admin/password-reset/cancel',
+          _requireAdmin(_adminCancelPasswordReset))
+      ..get('/admin/deletion-requests', _requireAdmin(_adminDeletionRequests))
+      ..post('/admin/deletion-requests/decide',
+          _requireAdmin(_adminDecideDeletionRequest))
       ..post('/admin/plan', _requireAdmin(_adminSetPlan))
       ..post('/admin/groceries/sync', _requireAdmin(_adminGroceriesSync))
       ..post('/admin/groceries/reload', _requireAdmin(_adminGroceriesReload))
@@ -1029,6 +1040,16 @@ class Api {
     });
   }
 
+  /// Refusal handed to a sign-in attempt on an account an admin has flagged
+  /// for a password reset. The app matches on the code and shows its
+  /// "choose a new password" screen (see PasswordResetPage).
+  Response _passwordResetRequiredResponse() => errorResponse(
+      403,
+      'password_reset_required',
+      'The server operator reset this account\'s password. Open luma on a '
+          'device that is still signed in and choose a new password there, '
+          'then sign in with it here.');
+
   Future<Response> _login(Request request) async {
     final body = await _readJson(request);
     final email = _normalizeEmail(body['email']);
@@ -1059,7 +1080,19 @@ class Api {
     if (user == null ||
         !constantTimeEquals(hash, base64Decode(user.authHash))) {
       _loginFailLimiter.allow(email);
+      // A forced reset is announced even on a wrong password, because the
+      // password that is on file is exactly the one the user can no longer
+      // use — telling them "wrong password" would send them round in
+      // circles. It reveals nothing an attacker can act on: the reset can
+      // only be finished from a device that already holds a session.
+      if (user != null && user.passwordResetRequired) {
+        return _passwordResetRequiredResponse();
+      }
       return errorResponse(401, 'invalid_credentials', 'Wrong email or password.');
+    }
+
+    if (user.passwordResetRequired) {
+      return _passwordResetRequiredResponse();
     }
 
     if (user.isPending) {
@@ -1575,10 +1608,59 @@ class Api {
       user.authHash = base64Encode(await _hashAuthKey(next, authSalt));
       user.kdfSalt = base64Encode(newSalt);
       user.kdfIterations = iterations;
+      // Choosing a new password is exactly what a forced reset was asking
+      // for, so satisfy it here too rather than leaving the account flagged.
+      user.passwordResetRequiredAtMs = null;
       store.sessionsByTokenHash.removeWhere(
           (hash, s) => s.userId == user.id && hash != keepTokenHash);
       await store.saveUsers();
       await store.saveSessions();
+      return jsonResponse(200, {'ok': true});
+    });
+  }
+
+  /// Finishes an admin-forced password reset (see
+  /// [StoredUser.passwordResetRequiredAtMs]). Same payload as
+  /// [_changePassword] minus `currentAuthKey` — the caller's session token is
+  /// the proof of identity, which is why the reset leaves sessions alone.
+  ///
+  /// Only accepted while a reset is actually outstanding, so this is never an
+  /// alternative route around [_changePassword]'s current-password check.
+  Future<Response> _resetPassword(Request request, StoredUser user) async {
+    if (!user.passwordResetRequired) {
+      return errorResponse(409, 'no_reset_pending',
+          'There is no password reset outstanding on this account.');
+    }
+    final body = await _readJson(request);
+    final next = _decodeB64(body['newAuthKey'], minLen: 32, maxLen: 64);
+    final newSalt = _decodeB64(body['newKdfSalt'], minLen: 16, maxLen: 64);
+    final iterations = body['newKdfIterations'];
+    if (next == null ||
+        newSalt == null ||
+        iterations is! int ||
+        iterations < 50000 ||
+        iterations > 5000000) {
+      return errorResponse(
+          400, 'bad_request', 'Invalid password-reset payload.');
+    }
+
+    final auth = request.headers['authorization']!;
+    final keepTokenHash =
+        c.sha256.convert(utf8.encode(auth.substring(7).trim())).toString();
+
+    return store.lock.synchronized(() async {
+      final authSalt = randomBytes(16);
+      user.authSalt = base64Encode(authSalt);
+      user.authHash = base64Encode(await _hashAuthKey(next, authSalt));
+      user.kdfSalt = base64Encode(newSalt);
+      user.kdfIterations = iterations;
+      user.passwordResetRequiredAtMs = null;
+      store.sessionsByTokenHash.removeWhere(
+          (hash, s) => s.userId == user.id && hash != keepTokenHash);
+      await store.saveUsers();
+      await store.saveSessions();
+      await store.logActivity('password_reset_done',
+          '${user.email} set a new password after an admin reset');
       return jsonResponse(200, {'ok': true});
     });
   }
@@ -1596,17 +1678,96 @@ class Api {
     }
     return store.lock.synchronized(() async {
       final email = user.email;
-      store.usersById.remove(user.id);
-      store.userIdByEmail.remove(user.email.toLowerCase());
-      store.unlinkAllOAuthIdentities(user);
-      store.sessionsByTokenHash.removeWhere((_, s) => s.userId == user.id);
-      store.collectionsByUser.remove(user.id);
-      await store.deleteUserData(user.id);
-      await store.saveUsers();
-      await store.saveSessions();
-      await store.saveCollections();
+      await _tearDownAccount(user);
       await store.logActivity('account_deleted', '$email deleted their account');
       return jsonResponse(200, {'ok': true});
+    });
+  }
+
+  /// Removes [user] and everything the server holds for it: identity, OAuth
+  /// links, sessions, collection metadata and blobs on disk. Caller holds
+  /// [Store.lock] and logs whatever activity line fits the reason.
+  ///
+  /// Shared by the self-service delete ([_deleteAccount]) and by the operator
+  /// accepting a deletion request from the Inbox
+  /// ([_adminDecideDeletionRequest]) so the two can never drift apart.
+  Future<void> _tearDownAccount(StoredUser user) async {
+    store.usersById.remove(user.id);
+    store.userIdByEmail.remove(user.email.toLowerCase());
+    store.unlinkAllOAuthIdentities(user);
+    store.sessionsByTokenHash.removeWhere((_, s) => s.userId == user.id);
+    store.collectionsByUser.remove(user.id);
+    await store.deleteUserData(user.id);
+    await store.saveUsers();
+    await store.saveSessions();
+    await store.saveCollections();
+  }
+
+  // ---- Handlers: account-data deletion requests ---------------------------
+
+  /// The shape the app reads: the account's most recent deletion request, or
+  /// `{'request': null}` when it has never filed one.
+  Map<String, dynamic> _deletionRequestJson(DeletionRequest r) => {
+        'id': r.id,
+        'reason': r.reason,
+        'status': r.status,
+        'createdAtMs': r.createdAtMs,
+        'decidedAtMs': r.decidedAtMs,
+        'adminNote': r.adminNote,
+      };
+
+  /// Files a request to have every trace of this account deleted from the
+  /// server. Deliberately does *not* delete anything — it lands in the admin
+  /// dashboard's Inbox, where the operator accepts or declines it.
+  Future<Response> _requestAccountDeletion(
+      Request request, StoredUser user) async {
+    final body = await _readJson(request);
+    final reason = (body['reason'] as String? ?? '').trim();
+    if (reason.isEmpty) {
+      return errorResponse(400, 'bad_request',
+          'Tell the operator why you want your data deleted.');
+    }
+    if (reason.length > 2000) {
+      return errorResponse(400, 'reason_too_long',
+          'Keep the reason under 2000 characters.');
+    }
+    return store.lock.synchronized(() async {
+      final existing = store.pendingDeletionRequestFor(user.id);
+      if (existing != null) {
+        return errorResponse(409, 'already_pending',
+            'You already have a deletion request waiting for a decision.');
+      }
+      final id = base64Url.encode(randomBytes(12));
+      store.deletionRequestsById[id] = DeletionRequest(
+        id: id,
+        userId: user.id,
+        email: user.email,
+        reason: reason,
+        createdAtMs: DateTime.now().millisecondsSinceEpoch,
+      );
+      await store.saveDeletionRequests();
+      await store.logActivity('deletion_requested',
+          '${user.email} asked for all their account data to be deleted');
+      return jsonResponse(200, {
+        'request': _deletionRequestJson(store.deletionRequestsById[id]!),
+      });
+    });
+  }
+
+  /// Withdraws the account's own still-undecided request.
+  Future<Response> _cancelAccountDeletionRequest(
+      Request request, StoredUser user) async {
+    return store.lock.synchronized(() async {
+      final pending = store.pendingDeletionRequestFor(user.id);
+      if (pending == null) {
+        return errorResponse(404, 'not_found',
+            'You have no deletion request waiting for a decision.');
+      }
+      store.deletionRequestsById.remove(pending.id);
+      await store.saveDeletionRequests();
+      await store.logActivity('deletion_cancelled',
+          '${user.email} withdrew their data-deletion request');
+      return jsonResponse(200, {'request': null});
     });
   }
 
@@ -1935,6 +2096,19 @@ class Api {
       // that is back to 'pending' stops talking to the server until it is
       // approved again (see ServerAccessGate in the app).
       'status': user.status,
+      // Set by an admin from the dashboard. The app turns this into a
+      // blocking "choose a new password" screen; until then this device keeps
+      // working, which is what lets it re-seal the snapshots under the new
+      // key (see _resetPassword).
+      'passwordResetRequired': user.passwordResetRequired,
+      // The account's latest data-deletion request (see
+      // _requestAccountDeletion), or null. Rides along here rather than on its
+      // own endpoint so the app learns about a decision on the sync it was
+      // already doing.
+      'deletionRequest': () {
+        final latest = store.latestDeletionRequestFor(user.id);
+        return latest == null ? null : _deletionRequestJson(latest);
+      }(),
       'collections': collections.values.map((m) => m.toJson()).toList(),
     });
   }
@@ -3726,6 +3900,129 @@ class Api {
           'admin_revoked', '$email had their approval revoked by an admin');
       return _adminFormResponse(request, '/admin');
     });
+  }
+
+  /// Forces a password reset on one account — the "Reset password" button on
+  /// the dashboard's Users tab.
+  ///
+  /// The account's current password stops signing in immediately, but its
+  /// already-signed-in devices keep their sessions on purpose: sync is
+  /// zero-knowledge, so only a device still holding the encryption key can
+  /// re-seal the stored snapshots under the new password. The next of those
+  /// devices to talk to the server sees `passwordResetRequired` on /account
+  /// and puts the user in front of a "choose a new password" screen.
+  Future<Response> _adminResetPassword(Request request) async {
+    final email = await _adminFormEmail(request);
+    if (email == null) {
+      return errorResponse(400, 'bad_request', 'email is required.');
+    }
+    return store.lock.synchronized(() async {
+      final userId = store.userIdByEmail[email];
+      final user = userId == null ? null : store.usersById[userId];
+      if (user == null) {
+        return errorResponse(404, 'not_found', 'No account with that email.');
+      }
+      user.passwordResetRequiredAtMs = DateTime.now().millisecondsSinceEpoch;
+      await store.saveUsers();
+      await store.logActivity('admin_password_reset',
+          '$email had their password reset by an admin');
+      return _adminFormResponse(request, '/admin');
+    });
+  }
+
+  /// Undoes [_adminResetPassword] while the user has not acted on it yet, so
+  /// a misclick doesn't cost anyone their password.
+  Future<Response> _adminCancelPasswordReset(Request request) async {
+    final email = await _adminFormEmail(request);
+    if (email == null) {
+      return errorResponse(400, 'bad_request', 'email is required.');
+    }
+    return store.lock.synchronized(() async {
+      final userId = store.userIdByEmail[email];
+      final user = userId == null ? null : store.usersById[userId];
+      if (user == null) {
+        return errorResponse(404, 'not_found', 'No account with that email.');
+      }
+      user.passwordResetRequiredAtMs = null;
+      await store.saveUsers();
+      await store.logActivity('admin_password_reset_cancelled',
+          '$email\'s pending password reset was cancelled by an admin');
+      return _adminFormResponse(request, '/admin');
+    });
+  }
+
+  /// Every deletion request, newest first — the JSON behind the Inbox tab for
+  /// script/API callers.
+  Response _adminDeletionRequests(Request request) {
+    final requests = store.deletionRequestsById.values.toList()
+      ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
+    return jsonResponse(200, {
+      'requests': requests
+          .map((r) => {...r.toJson(), 'pending': r.isPending})
+          .toList(),
+    });
+  }
+
+  /// Accepts or declines one deletion request from the Inbox tab.
+  ///
+  /// Accepting runs the very same teardown as the self-service delete
+  /// ([_tearDownAccount]): the account, its sessions, its OAuth links and
+  /// every blob on disk go. The request record itself stays so the Inbox
+  /// keeps a history of what was decided and why.
+  Future<Response> _adminDecideDeletionRequest(Request request) async {
+    Map<String, String> form = const {};
+    try {
+      form = Uri.splitQueryString(await request.readAsString());
+    } catch (_) {}
+    final id = form['id']?.trim();
+    final decision = form['decision'];
+    final note = (form['note'] ?? '').trim();
+    if (id == null || id.isEmpty) {
+      return errorResponse(400, 'bad_request', 'id is required.');
+    }
+    if (decision != 'accept' && decision != 'decline') {
+      return errorResponse(
+          400, 'bad_decision', "decision must be 'accept' or 'decline'.");
+    }
+    return store.lock.synchronized(() async {
+      final req = store.deletionRequestsById[id];
+      if (req == null) {
+        return errorResponse(404, 'not_found', 'No such deletion request.');
+      }
+      if (!req.isPending) {
+        return errorResponse(409, 'already_decided',
+            'That request was already ${req.status}.');
+      }
+      req.decidedAtMs = DateTime.now().millisecondsSinceEpoch;
+      req.adminNote = note.isEmpty ? null : note;
+      if (decision == 'decline') {
+        req.status = DeletionRequest.statusDeclined;
+        await store.saveDeletionRequests();
+        await store.logActivity('deletion_declined',
+            '${req.email}\'s data-deletion request was declined');
+        return _adminFormResponse(request, '/admin', fragment: 'inbox');
+      }
+
+      req.status = DeletionRequest.statusAccepted;
+      final user = store.usersById[req.userId];
+      if (user != null) await _tearDownAccount(user);
+      await store.saveDeletionRequests();
+      await store.logActivity('deletion_accepted',
+          '${req.email}\'s account data was deleted on request');
+      return _adminFormResponse(request, '/admin', fragment: 'inbox');
+    });
+  }
+
+  /// Reads the single `email` field the Users tab's little forms POST,
+  /// normalised the same way sign-in normalises it. Null when absent.
+  Future<String?> _adminFormEmail(Request request) async {
+    final raw = await request.readAsString();
+    String? email;
+    try {
+      email = Uri.splitQueryString(raw)['email'];
+    } catch (_) {}
+    email = email?.trim().toLowerCase();
+    return (email == null || email.isEmpty) ? null : email;
   }
 
   /// The dashboard's forms POST here directly (cookie-authenticated) and
@@ -6592,7 +6889,7 @@ syncToolbar();
           ? (used / u.quotaBytes * 100).clamp(0, 100)
           : 0.0;
       final statusClass = u.status == 'active' ? 'ok' : 'warn';
-      final action = u.isPending
+      final approvalAction = u.isPending
           ? '<form method="post" action="/admin/verify" '
               'style="margin:0" onsubmit="return confirm(\'Approve '
               '${_htmlEscape(u.email)}? They can sign in straight after.\')">'
@@ -6606,9 +6903,33 @@ syncToolbar();
               '<input type="hidden" name="email" value="${_htmlEscape(u.email)}">'
               '<button type="submit" class="btn btn-danger btn-sm">Revoke</button>'
               '</form>';
+      // A reset in flight is the account's more urgent state, so it replaces
+      // the status pill and swaps the button for the way out of it.
+      final resetAction = u.passwordResetRequired
+          ? '<form method="post" action="/admin/password-reset/cancel" '
+              'style="margin:0" onsubmit="return confirm(\'Cancel the pending '
+              'password reset for ${_htmlEscape(u.email)}? Their old password '
+              'starts working again.\')">'
+              '<input type="hidden" name="email" value="${_htmlEscape(u.email)}">'
+              '<button type="submit" class="btn btn-ghost btn-sm">Cancel reset</button>'
+              '</form>'
+          : '<form method="post" action="/admin/password-reset" '
+              'style="margin:0" onsubmit="return confirm(\'Reset the password '
+              'for ${_htmlEscape(u.email)}?\\n\\nTheir current password stops '
+              'working right away. luma will ask them to choose a new one the '
+              'next time they open it on a device that is still signed in — '
+              'that device is also the only thing that can re-encrypt their '
+              'synced data, so do not sign them out first.\')">'
+              '<input type="hidden" name="email" value="${_htmlEscape(u.email)}">'
+              '<button type="submit" class="btn btn-ghost btn-sm">Reset password</button>'
+              '</form>';
+      final action = '<div class="row-actions">$approvalAction$resetAction</div>';
+      final statusBadge = u.passwordResetRequired
+          ? '<span class="badge warn">reset pending</span>'
+          : '<span class="badge $statusClass">${_htmlEscape(u.status)}</span>';
       return '<tr>'
           '<td>${_htmlEscape(u.email)}</td>'
-          '<td><span class="badge $statusClass">${_htmlEscape(u.status)}</span></td>'
+          '<td>$statusBadge</td>'
           '<td>${_htmlEscape(planLabels[u.planId] ?? u.planId)}</td>'
           '<td>'
           '<div class="meter"><div style="width:${pct.toStringAsFixed(0)}%"></div></div>'
@@ -6653,7 +6974,15 @@ syncToolbar();
       'login': 'Login',
       'account_deleted': 'Account deleted',
       'admin_verified': 'Admin verified',
+      'admin_revoked': 'Admin revoked',
       'plan_granted': 'Plan granted',
+      'admin_password_reset': 'Password reset',
+      'admin_password_reset_cancelled': 'Password reset cancelled',
+      'password_reset_done': 'New password set',
+      'deletion_requested': 'Deletion requested',
+      'deletion_cancelled': 'Deletion withdrawn',
+      'deletion_accepted': 'Deletion accepted',
+      'deletion_declined': 'Deletion declined',
     };
 
     final activityRows = recentActivity.map((a) {
@@ -6661,6 +6990,56 @@ syncToolbar();
           '<td>${fmtDate(a.createdAtMs)}</td>'
           '<td>${_htmlEscape(activityLabels[a.type] ?? a.type)}</td>'
           '<td>${_htmlEscape(a.message)}</td>'
+          '</tr>';
+    }).join();
+
+    // ---- Inbox: data-deletion requests ------------------------------------
+    final deletionRequests = store.deletionRequestsById.values.toList()
+      ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
+    final pendingDeletions = deletionRequests.where((r) => r.isPending).toList();
+    final decidedDeletions =
+        deletionRequests.where((r) => !r.isPending).toList();
+
+    /// One pending request as a card: who asked, when, why, and the two
+    /// buttons — with the reason and an optional note in plain sight so the
+    /// operator never has to decide blind.
+    String deletionCard(DeletionRequest r) {
+      final safeEmail = _htmlEscape(r.email);
+      return '<div class="inbox-item">'
+          '<div class="inbox-head">'
+          '<span class="inbox-from">$safeEmail</span>'
+          '<span class="badge warn">awaiting decision</span>'
+          '<span class="muted inbox-when">${fmtDate(r.createdAtMs)}</span>'
+          '</div>'
+          '<div class="inbox-reason">${_htmlEscape(r.reason)}</div>'
+          '<form method="post" action="/admin/deletion-requests/decide" '
+          'class="inbox-actions">'
+          '<input type="hidden" name="id" value="${_htmlEscape(r.id)}">'
+          '<input type="text" name="note" maxlength="500" '
+          'placeholder="Note back to the user (optional)">'
+          '<button type="submit" name="decision" value="accept" '
+          'class="btn btn-danger btn-sm" '
+          'onclick="return confirm(\'Accept $safeEmail\\\'s request?\\n\\nThis '
+          'permanently deletes their account and every synced snapshot the '
+          'server holds. It cannot be undone.\')">Accept &amp; delete</button>'
+          '<button type="submit" name="decision" value="decline" '
+          'class="btn btn-ghost btn-sm">Decline</button>'
+          '</form>'
+          '</div>';
+    }
+
+    final deletionCards = pendingDeletions.map(deletionCard).join();
+
+    final decidedDeletionRows = decidedDeletions.map((r) {
+      final badge = r.status == DeletionRequest.statusAccepted
+          ? '<span class="badge err">deleted</span>'
+          : '<span class="badge ok">declined</span>';
+      return '<tr>'
+          '<td>${fmtDate(r.decidedAtMs ?? r.createdAtMs)}</td>'
+          '<td>${_htmlEscape(r.email)}</td>'
+          '<td>$badge</td>'
+          '<td>${_htmlEscape(r.reason)}</td>'
+          '<td>${r.adminNote == null ? '<span class="muted">—</span>' : _htmlEscape(r.adminNote!)}</td>'
           '</tr>';
     }).join();
 
@@ -6700,6 +7079,9 @@ syncToolbar();
         '</div>'
         '<div class="tabs">'
         '<button class="tab-btn" data-tab="users">Users</button>'
+        '<button class="tab-btn" data-tab="inbox">Inbox'
+        '${pendingDeletions.isEmpty ? '' : '<span class="tab-count">${pendingDeletions.length}</span>'}'
+        '</button>'
         '<button class="tab-btn" data-tab="products">Products</button>'
         '<button class="tab-btn" data-tab="activity">Activity</button>'
         '<button class="tab-btn" data-tab="plugins">Plugins</button>'
@@ -6711,6 +7093,22 @@ syncToolbar();
         '<table><thead><tr><th>Email</th><th>Status</th><th>Plan</th>'
         '<th>Storage</th><th>Created</th><th>Last login</th><th></th></tr></thead>'
         '<tbody>$rows</tbody></table>'
+        '</div>'
+        '</div>'
+        '<div class="tab-panel" id="panel-inbox">'
+        '<div class="card">'
+        '<h2>Data-deletion requests</h2>'
+        '<div class="maint-desc">Filed by users from Account → Sync &amp; '
+        'account in the app. Accepting one permanently deletes that account '
+        'and every synced snapshot the server holds; declining leaves the '
+        'account untouched and shows the user your note.</div>'
+        '${deletionCards.isEmpty ? '<div class="empty">Nothing waiting. New requests show up here.</div>' : '<div class="inbox-list">$deletionCards</div>'}'
+        '</div>'
+        '<div class="card table-card">'
+        '<h2>Decided</h2>'
+        '<table><thead><tr><th>Decided</th><th>Account</th><th>Outcome</th>'
+        '<th>Their reason</th><th>Your note</th></tr></thead>'
+        '<tbody>${decidedDeletionRows.isEmpty ? '<tr><td colspan="5" class="muted">No decisions yet.</td></tr>' : decidedDeletionRows}</tbody></table>'
         '</div>'
         '</div>'
         '<div class="tab-panel" id="panel-products">'
@@ -6903,6 +7301,28 @@ h2{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
 .tab-btn:hover{color:#ece8f7}
 .tab-btn.active{background:#8a7ee0;color:#14111f;font-weight:600}
 .tab-panel{display:none}.tab-panel.active{display:block}
+/* Pending-work count on the Inbox tab. Sits inside the button so the number
+   travels with the label, and inverts on the active tab so it stays legible
+   against the accent fill. */
+.tab-btn{display:inline-flex;align-items:center;gap:7px}
+.tab-count{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#e0c87e;color:#1b1608;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums}
+.tab-btn.active .tab-count{background:#14111f;color:#e0c87e}
+/* Two little stacked forms per user row (approve/revoke + reset). Wraps
+   rather than stretching the column on a narrow window. */
+.row-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+/* Inbox: one card per request. The reason is the point of the card, so it
+   gets the readable measure and the buttons sit under it, destructive one
+   first but coloured as the danger it is. */
+.inbox-list{display:flex;flex-direction:column;gap:12px}
+.inbox-item{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:14px 16px}
+.inbox-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.inbox-from{font-weight:600;font-size:13.5px}
+.inbox-when{font-size:12px;margin-left:auto;font-variant-numeric:tabular-nums}
+.inbox-reason{color:#cdc7e2;font-size:13.5px;line-height:1.6;white-space:pre-wrap;max-width:70ch;border-left:2px solid #2f2749;padding-left:12px;margin-bottom:14px}
+.inbox-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0}
+.inbox-actions input[type=text]{flex:1 1 220px;min-width:180px;background:#1a1530;color:#ece8f7;border:1px solid #2d2645;border-radius:9px;padding:7px 12px;font-size:13px;font-family:inherit;outline:none}
+.inbox-actions input[type=text]:focus{border-color:#8a7ee0}
+.empty{color:#8d86a8;font-size:13px;padding:10px 0}
 .card{background:#151122;border:1px solid #241e36;border-radius:14px;padding:20px 22px;margin-bottom:18px}
 .card.table-card{padding:14px 16px}
 .card.table-card h2{padding:6px 6px 0}
@@ -6987,6 +7407,7 @@ pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:1
   const buttons = document.querySelectorAll('.tab-btn');
   const panels = {
     users: document.getElementById('panel-users'),
+    inbox: document.getElementById('panel-inbox'),
     products: document.getElementById('panel-products'),
     activity: document.getElementById('panel-activity'),
     plugins: document.getElementById('panel-plugins'),

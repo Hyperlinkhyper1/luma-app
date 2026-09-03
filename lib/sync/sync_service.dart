@@ -173,6 +173,14 @@ class SyncService extends ChangeNotifier {
   /// Latest known storage usage / quota, refreshed on every sync.
   RemoteAccount? get account => _account;
 
+  /// The operator reset this account's password from the admin dashboard and
+  /// the user has not chosen a new one yet. While this is true the app puts
+  /// a blocking "choose a new password" screen over everything (see
+  /// PasswordResetPage) — and this device deliberately keeps working until
+  /// then, because it holds the only copy of the encryption key that can
+  /// re-seal the synced snapshots under the new password.
+  bool get passwordResetRequired => _account?.passwordResetRequired ?? false;
+
   bool isEnabled(String collectionId) =>
       _state?.collection(collectionId).enabled ?? false;
 
@@ -683,6 +691,69 @@ class SyncService extends ChangeNotifier {
       newKdfIterations: newIterations,
     );
 
+    await _adoptNewPassword(
+      newKeys: newKeys,
+      newSalt: newSalt,
+      newIterations: newIterations,
+    );
+    notifyListeners();
+  }
+
+  /// Finishes a password reset the server operator forced from the admin
+  /// dashboard ([passwordResetRequired]).
+  ///
+  /// There is no current password to prove anything with — that is the whole
+  /// point of a reset — so this device's session token stands in for it, and
+  /// the server only accepts the call while a reset is outstanding. Because
+  /// this device still holds the old encryption key in memory, the same
+  /// re-seal pass as [changePassword] keeps every synced snapshot readable;
+  /// that is why an admin reset does *not* sign the account's devices out.
+  Future<void> completePasswordReset({required String newPassword}) async {
+    final s = _state;
+    final api = _api;
+    if (s == null || api == null || !s.serverReady) {
+      throw StateError('Not signed in with an approved account.');
+    }
+
+    final newSalt = SyncCrypto.randomBytes(16);
+    const newIterations = SyncCrypto.defaultKdfIterations;
+    final newKeys = await SyncCrypto.deriveKeys(
+      password: newPassword,
+      kdfSalt: newSalt,
+      iterations: newIterations,
+    );
+
+    await api.resetPassword(
+      newAuthKey: newKeys.authKey,
+      newKdfSalt: newSalt,
+      newKdfIterations: newIterations,
+    );
+
+    await _adoptNewPassword(
+      newKeys: newKeys,
+      newSalt: newSalt,
+      newIterations: newIterations,
+    );
+    // Pull the account snapshot again so [passwordResetRequired] flips back
+    // to false and the blocking screen comes down.
+    await _refreshAccount();
+    notifyListeners();
+  }
+
+  /// Switches this device onto [newKeys] and re-encrypts every snapshot the
+  /// server holds so the account's *other* devices — which will derive the
+  /// same new key from the new password — can still read them.
+  ///
+  /// Shared by [changePassword] and [completePasswordReset]: the server-side
+  /// credential rotation differs between the two, everything after it does
+  /// not. Caller has already rotated the credentials server-side.
+  Future<void> _adoptNewPassword({
+    required DerivedKeys newKeys,
+    required Uint8List newSalt,
+    required int newIterations,
+  }) async {
+    final s = _state!;
+    final api = _api!;
     final oldEncryptionKey = s.encryptionKey!;
     s
       ..encryptionKey = newKeys.encryptionKey
@@ -717,7 +788,6 @@ class SyncService extends ChangeNotifier {
       }
     }
     await s.save();
-    notifyListeners();
   }
 
   /// Lists every active cloud session on this account (across all
@@ -785,6 +855,41 @@ class SyncService extends ChangeNotifier {
       ..pendingApprovalMode = null;
     await s.save();
     _applyServerAccess();
+    notifyListeners();
+  }
+
+  // ---- Account-data deletion requests --------------------------------------
+  //
+  // The self-service [deleteAccount] above is instant and needs the password.
+  // This is the other route: the user asks the server's operator to wipe
+  // everything, with a reason, and the request waits in the admin dashboard's
+  // Inbox for a decision. Nothing is deleted until the operator accepts.
+
+  /// This account's most recent deletion request, or null if it has never
+  /// filed one. Read off the last /account snapshot, so it is as fresh as the
+  /// last sync — no extra request per rebuild.
+  DataDeletionRequest? get dataDeletionRequest => _account?.deletionRequest;
+
+  /// Files a request to have every trace of this account deleted from the
+  /// server. [reason] is what the operator reads before deciding.
+  Future<void> requestDataDeletion(String reason) async {
+    final api = _api;
+    if (api == null || !serverReady) {
+      throw StateError('Not signed in with an approved account.');
+    }
+    await api.requestDeletion(reason);
+    await _refreshAccount();
+    notifyListeners();
+  }
+
+  /// Withdraws a request the operator has not decided on yet.
+  Future<void> cancelDataDeletionRequest() async {
+    final api = _api;
+    if (api == null || !serverReady) {
+      throw StateError('Not signed in with an approved account.');
+    }
+    await api.cancelDeletionRequest();
+    await _refreshAccount();
     notifyListeners();
   }
 
