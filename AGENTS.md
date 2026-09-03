@@ -28,6 +28,10 @@ lib/
                              shared Schematic model so any format converts to any other
         textures/            Block textures for the 3D preview, read at runtime from the user's
                              own Minecraft install. luma ships no Mojang assets — see below
+      corruption/            The file corruptor + fixer pair. Damage is a list of DamageOps that
+                             know how to undo themselves, recorded in a .lumafix sidecar; the
+                             fixer either replays that or falls back to repairers/, one
+                             structural repairer per format family
     home/                    Dashboard home page
     notes/                   Simple notes (JSON store, no drift)
     passwords/               AES-encrypted vault (drift DB + PasswordCrypto)

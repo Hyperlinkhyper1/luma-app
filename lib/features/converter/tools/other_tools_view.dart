@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../../theme/luma_theme.dart';
 import '../converter_widgets.dart';
+import 'file_corruptor_view.dart';
+import 'file_fixer_view.dart';
 import 'schematic_converter_view.dart';
 
 /// The converter's "Other" category: the tools that are not audio, image or
 /// video work. Each one opens its own screen, the same way the main hub works.
-enum OtherTool { minecraftSchematic }
+enum OtherTool { minecraftSchematic, fileCorruptor, fileFixer }
 
 class OtherToolsView extends StatefulWidget {
   const OtherToolsView({super.key, required this.onBack});
@@ -27,6 +29,10 @@ class _OtherToolsViewState extends State<OtherToolsView> {
         return SchematicConverterView(
           onBack: () => setState(() => _active = null),
         );
+      case OtherTool.fileCorruptor:
+        return FileCorruptorView(onBack: () => setState(() => _active = null));
+      case OtherTool.fileFixer:
+        return FileFixerView(onBack: () => setState(() => _active = null));
       case null:
         return _OtherHub(
           onBack: widget.onBack,
@@ -60,12 +66,29 @@ class _OtherHub extends StatelessWidget {
               badge: 'MINECRAFT',
               onTap: () => onOpen(OtherTool.minecraftSchematic),
             ),
+            ConverterToolTile(
+              icon: Icons.broken_image_outlined,
+              title: 'File corruptor',
+              subtitle: 'Break a file on purpose, recoverably or for good',
+              badge: 'DAMAGE',
+              onTap: () => onOpen(OtherTool.fileCorruptor),
+            ),
+            ConverterToolTile(
+              icon: Icons.healing_outlined,
+              title: 'File fixer',
+              subtitle: 'Undo a corruption, or rebuild a broken file',
+              badge: 'REPAIR',
+              onTap: () => onOpen(OtherTool.fileFixer),
+            ),
           ],
         ),
         const SizedBox(height: 16),
         Text(
-          'Converts any of the five block formats into any other, and shows '
-          'the build in 3D before you save it.',
+          'The schematic tool converts any of the five block formats into any '
+          'other and shows the build in 3D before you save it. The corruptor '
+          'and fixer are a pair: corrupt with a recipe and the fixer rebuilds '
+          'the original byte for byte, or point the fixer at any damaged file '
+          'and it rebuilds what structure it can.',
           style: TextStyle(color: luma.textMuted, fontSize: 12.5),
         ),
       ],
