@@ -1117,8 +1117,10 @@ class SyncService extends ChangeNotifier {
         s.token = null;
         _applyServerAccess();
         errors.add('Session expired — please sign in again.');
-      } else if (e.isNotApproved) {
-        // The server put this account back to "waiting for approval".
+      } else if (e.isAccountBlocked) {
+        // The server put this account back to "waiting for approval", or an
+        // operator revoked its access outright. Either way: shut the gate and
+        // show the server's own explanation rather than guessing at one.
         s.accountApproved = false;
         _applyServerAccess();
         errors.add(e.message);

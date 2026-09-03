@@ -480,6 +480,11 @@ class Api {
       ..post('/admin/password-reset', _requireAdmin(_adminResetPassword))
       ..post('/admin/password-reset/cancel',
           _requireAdmin(_adminCancelPasswordReset))
+      ..post('/admin/access/revoke', _requireAdmin(_adminRevokeAccess))
+      ..post('/admin/access/restore', _requireAdmin(_adminRestoreAccess))
+      ..post('/admin/ip-ban', _requireAdmin(_adminBanIp))
+      ..post('/admin/ip-unban', _requireAdmin(_adminUnbanIp))
+      ..get('/admin/ip-bans', _requireAdmin(_adminIpBans))
       ..get('/admin/deletion-requests', _requireAdmin(_adminDeletionRequests))
       ..post('/admin/deletion-requests/decide',
           _requireAdmin(_adminDecideDeletionRequest))
@@ -521,11 +526,31 @@ class Api {
     return const Pipeline()
         .addMiddleware(_recover)
         .addMiddleware(_cors)
+        .addMiddleware(_ipBan)
         .addMiddleware(_rateLimit)
         .addHandler(router.call);
   }
 
   // ---- Middleware ---------------------------------------------------------
+
+  /// Refuses every request from a banned address (see [BannedIp]), before any
+  /// route or rate limiter runs.
+  ///
+  /// `/admin/*` is deliberately exempt: banning is done from the dashboard by
+  /// address, and an operator who bans an address that turns out to be their
+  /// own must still be able to reach the dashboard to lift it. The admin key
+  /// (and its own failed-attempt limiter) is what protects those routes.
+  Handler _ipBan(Handler inner) => (request) async {
+        final path = request.url.path;
+        if (path == 'admin' || path.startsWith('admin/')) {
+          return inner(request);
+        }
+        if (store.bansByIp.containsKey(_clientKey(request))) {
+          return errorResponse(
+              403, 'ip_banned', 'This address is blocked by the operator.');
+        }
+        return inner(request);
+      };
 
   /// Turns unexpected exceptions into a clean 500 without leaking internals.
   Handler _recover(Handler inner) => (request) async {
@@ -647,6 +672,13 @@ class Api {
       final user = store.usersById[session.userId];
       if (user == null) {
         return errorResponse(401, 'unauthorized', 'Account no longer exists.');
+      }
+      // Revoking access kills the account's sessions, but this second check
+      // keeps the block absolute: it holds for any session issued before the
+      // revocation that somehow survived, and it is what the app sees when
+      // an operator revokes a device mid-use.
+      if (user.accessRevoked) {
+        return _accessRevokedResponse(user);
       }
       // An account that is (back to) waiting for approval gets nothing but
       // the account handshake — the app mirrors this by shutting its own
@@ -996,6 +1028,10 @@ class Api {
         createdAtMs: DateTime.now().millisecondsSinceEpoch,
         status: mode.holdsNewAccounts ? 'pending' : 'active',
       );
+      // Noted here as well as at login so an account that never got as far as
+      // signing in — the common case for one waiting on manual approval —
+      // still has an address the dashboard's "IP ban" action can act on.
+      user.noteIp(_clientKey(request));
       store.usersById[user.id] = user;
       store.userIdByEmail[email] = user.id;
 
@@ -1050,6 +1086,18 @@ class Api {
           'device that is still signed in and choose a new password there, '
           'then sign in with it here.');
 
+  /// Refusal handed to an account whose access an operator revoked. Carries
+  /// their note when there is one, because "you are locked out" with no
+  /// reason is the worst version of this message.
+  Response _accessRevokedResponse(StoredUser user) => errorResponse(
+      403,
+      'access_revoked',
+      user.accessRevokedReason == null || user.accessRevokedReason!.isEmpty
+          ? 'The server operator has revoked this account\'s access. Contact '
+              'them to have it restored.'
+          : 'The server operator has revoked this account\'s access: '
+              '${user.accessRevokedReason}');
+
   Future<Response> _login(Request request) async {
     final body = await _readJson(request);
     final email = _normalizeEmail(body['email']);
@@ -1091,6 +1139,13 @@ class Api {
       return errorResponse(401, 'invalid_credentials', 'Wrong email or password.');
     }
 
+    // Checked only once the password is known to be right, so this never
+    // becomes a way to probe which addresses have accounts. (The reset check
+    // above cannot afford that luxury — there, no password is correct.)
+    if (user.accessRevoked) {
+      return _accessRevokedResponse(user);
+    }
+
     if (user.passwordResetRequired) {
       return _passwordResetRequiredResponse();
     }
@@ -1108,6 +1163,9 @@ class Api {
     return store.lock.synchronized(() async {
       final token = await _createSession(user, deviceLabel: deviceLabel);
       user.lastLoginAtMs = DateTime.now().millisecondsSinceEpoch;
+      // The only place an account gets linked to an address, which is what
+      // the dashboard's "IP ban" action then acts on.
+      user.noteIp(_clientKey(request));
       await store.saveUsers();
       await store.logActivity('login', '${user.email} logged in');
       return jsonResponse(200, {
@@ -3949,6 +4007,196 @@ class Api {
           '$email\'s pending password reset was cancelled by an admin');
       return _adminFormResponse(request, '/admin');
     });
+  }
+
+  // ---- Handlers: account access --------------------------------------------
+
+  /// Locks one account out — the "Revoke access" action on the Users tab.
+  ///
+  /// Distinct from [_adminRevokeUser], which only puts the account back to
+  /// *pending* approval: this one cannot be undone by the user or by the
+  /// normal approval flow, and stays until an operator restores it. Every
+  /// session is dropped, so the account's devices lose the server on their
+  /// very next request.
+  ///
+  /// Their data is left untouched — this is a lockout, not a deletion.
+  Future<Response> _adminRevokeAccess(Request request) async {
+    Map<String, String> form = const {};
+    try {
+      form = Uri.splitQueryString(await request.readAsString());
+    } catch (_) {}
+    final email = form['email']?.trim().toLowerCase();
+    final reason = (form['reason'] ?? '').trim();
+    if (email == null || email.isEmpty) {
+      return errorResponse(400, 'bad_request', 'email is required.');
+    }
+    return store.lock.synchronized(() async {
+      final userId = store.userIdByEmail[email];
+      final user = userId == null ? null : store.usersById[userId];
+      if (user == null) {
+        return errorResponse(404, 'not_found', 'No account with that email.');
+      }
+      user.accessRevokedAtMs = DateTime.now().millisecondsSinceEpoch;
+      user.accessRevokedReason =
+          reason.isEmpty ? null : (reason.length > 500 ? reason.substring(0, 500) : reason);
+      store.sessionsByTokenHash.removeWhere((_, s) => s.userId == user.id);
+      await store.saveUsers();
+      await store.saveSessions();
+      await store.logActivity('access_revoked',
+          '$email had their access revoked by an admin');
+      return _adminFormResponse(request, '/admin');
+    });
+  }
+
+  /// Lifts [_adminRevokeAccess]. The account signs in again with the password
+  /// it already had; its devices need a fresh sign-in because the revocation
+  /// dropped their sessions.
+  Future<Response> _adminRestoreAccess(Request request) async {
+    final email = await _adminFormEmail(request);
+    if (email == null) {
+      return errorResponse(400, 'bad_request', 'email is required.');
+    }
+    return store.lock.synchronized(() async {
+      final userId = store.userIdByEmail[email];
+      final user = userId == null ? null : store.usersById[userId];
+      if (user == null) {
+        return errorResponse(404, 'not_found', 'No account with that email.');
+      }
+      user
+        ..accessRevokedAtMs = null
+        ..accessRevokedReason = null;
+      await store.saveUsers();
+      await store.logActivity(
+          'access_restored', '$email had their access restored by an admin');
+      return _adminFormResponse(request, '/admin');
+    });
+  }
+
+  // ---- Handlers: IP bans ---------------------------------------------------
+
+  /// Blocks an account's known addresses, or one address given directly.
+  ///
+  /// The Users tab posts `email`, which bans every address that account has
+  /// signed in from ([StoredUser.recentIps]) — there is no other link from an
+  /// email to an address, so an account that has never reached the server has
+  /// nothing to ban and says so rather than silently doing nothing. A script
+  /// can post `ip` instead to ban one address on its own.
+  ///
+  /// A ban does not touch the account itself: sessions, data and approval are
+  /// left exactly as they were. Use Revoke for that.
+  Future<Response> _adminBanIp(Request request) async {
+    Map<String, String> form = const {};
+    try {
+      form = Uri.splitQueryString(await request.readAsString());
+    } catch (_) {}
+    final email = form['email']?.trim().toLowerCase();
+    final ip = form['ip']?.trim();
+    final reason = (form['reason'] ?? '').trim();
+    if ((email == null || email.isEmpty) && (ip == null || ip.isEmpty)) {
+      return errorResponse(400, 'bad_request', 'email or ip is required.');
+    }
+
+    return store.lock.synchronized(() async {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final banned = <String>[];
+
+      void ban(String address, String? forEmail) {
+        if (address.isEmpty || address == 'unknown') return;
+        if (store.bansByIp.containsKey(address)) return;
+        store.bansByIp[address] = BannedIp(
+          ip: address,
+          createdAtMs: now,
+          email: forEmail,
+          reason: reason.isEmpty ? null : reason,
+        );
+        banned.add(address);
+      }
+
+      if (ip != null && ip.isNotEmpty) {
+        ban(ip, email);
+      } else {
+        final userId = store.userIdByEmail[email];
+        final user = userId == null ? null : store.usersById[userId];
+        if (user == null) {
+          return errorResponse(404, 'not_found', 'No account with that email.');
+        }
+        if (user.recentIps.isEmpty) {
+          return errorResponse(
+              409,
+              'no_known_ips',
+              'This server has never seen $email connect, so there is no '
+                  'address to ban yet.');
+        }
+        for (final address in user.recentIps) {
+          ban(address, user.email);
+        }
+      }
+
+      if (banned.isEmpty) {
+        return _adminFormResponse(request, '/admin',
+            json: {'ok': true, 'banned': const <String>[]});
+      }
+      await store.saveIpBans();
+      await store.logActivity(
+          'ip_banned',
+          '${banned.length} address${banned.length == 1 ? '' : 'es'} blocked'
+              '${email == null ? '' : ' for $email'}');
+      return _adminFormResponse(request, '/admin',
+          json: {'ok': true, 'banned': banned});
+    });
+  }
+
+  /// Lifts a ban: `ip` for one address, or `email` for every address banned
+  /// on that account's behalf.
+  Future<Response> _adminUnbanIp(Request request) async {
+    Map<String, String> form = const {};
+    try {
+      form = Uri.splitQueryString(await request.readAsString());
+    } catch (_) {}
+    final email = form['email']?.trim().toLowerCase();
+    final ip = form['ip']?.trim();
+    if ((email == null || email.isEmpty) && (ip == null || ip.isEmpty)) {
+      return errorResponse(400, 'bad_request', 'email or ip is required.');
+    }
+
+    return store.lock.synchronized(() async {
+      final lifted = <String>[];
+      if (ip != null && ip.isNotEmpty) {
+        if (store.bansByIp.remove(ip) != null) lifted.add(ip);
+      } else {
+        final userId = store.userIdByEmail[email];
+        final user = userId == null ? null : store.usersById[userId];
+        // Fall back to the ban records' own email so addresses stay liftable
+        // even once the account they were banned for is gone.
+        final addresses = user != null
+            ? store.bannedIpsFor(user)
+            : store.bansByIp.values
+                .where((b) => b.email?.toLowerCase() == email)
+                .map((b) => b.ip)
+                .toList();
+        for (final address in addresses) {
+          if (store.bansByIp.remove(address) != null) lifted.add(address);
+        }
+      }
+      if (lifted.isEmpty) {
+        return errorResponse(404, 'not_found', 'No matching ban to lift.');
+      }
+      await store.saveIpBans();
+      await store.logActivity(
+          'ip_unbanned',
+          '${lifted.length} address${lifted.length == 1 ? '' : 'es'} unblocked'
+              '${email == null ? '' : ' for $email'}');
+      return _adminFormResponse(request, '/admin',
+          json: {'ok': true, 'lifted': lifted});
+    });
+  }
+
+  /// Every active ban, newest first — the JSON behind the Users tab's banned
+  /// addresses card.
+  Response _adminIpBans(Request request) {
+    final bans = store.bansByIp.values.toList()
+      ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
+    return jsonResponse(200, {'bans': bans.map((b) => b.toJson()).toList()});
   }
 
   /// Every deletion request, newest first — the JSON behind the Inbox tab for
@@ -6889,55 +7137,103 @@ syncToolbar();
           ? (used / u.quotaBytes * 100).clamp(0, 100)
           : 0.0;
       final statusClass = u.status == 'active' ? 'ok' : 'warn';
-      final approvalAction = u.isPending
-          ? '<form method="post" action="/admin/verify" '
-              'style="margin:0" onsubmit="return confirm(\'Approve '
-              '${_htmlEscape(u.email)}? They can sign in straight after.\')">'
-              '<input type="hidden" name="email" value="${_htmlEscape(u.email)}">'
-              '<button type="submit" class="btn btn-primary btn-sm">Approve</button>'
-              '</form>'
-          : '<form method="post" action="/admin/revoke" '
-              'style="margin:0" onsubmit="return confirm(\'Revoke '
-              '${_htmlEscape(u.email)}? All their devices are signed out '
-              'immediately and blocked until you approve them again.\')">'
-              '<input type="hidden" name="email" value="${_htmlEscape(u.email)}">'
-              '<button type="submit" class="btn btn-danger btn-sm">Revoke</button>'
-              '</form>';
-      // A reset in flight is the account's more urgent state, so it replaces
-      // the status pill and swaps the button for the way out of it.
-      final resetAction = u.passwordResetRequired
-          ? '<form method="post" action="/admin/password-reset/cancel" '
-              'style="margin:0" onsubmit="return confirm(\'Cancel the pending '
-              'password reset for ${_htmlEscape(u.email)}? Their old password '
-              'starts working again.\')">'
-              '<input type="hidden" name="email" value="${_htmlEscape(u.email)}">'
-              '<button type="submit" class="btn btn-ghost btn-sm">Cancel reset</button>'
-              '</form>'
-          : '<form method="post" action="/admin/password-reset" '
-              'style="margin:0" onsubmit="return confirm(\'Reset the password '
-              'for ${_htmlEscape(u.email)}?\\n\\nTheir current password stops '
-              'working right away. luma will ask them to choose a new one the '
-              'next time they open it on a device that is still signed in — '
-              'that device is also the only thing that can re-encrypt their '
-              'synced data, so do not sign them out first.\')">'
-              '<input type="hidden" name="email" value="${_htmlEscape(u.email)}">'
-              '<button type="submit" class="btn btn-ghost btn-sm">Reset password</button>'
-              '</form>';
-      final action = '<div class="row-actions">$approvalAction$resetAction</div>';
-      final statusBadge = u.passwordResetRequired
-          ? '<span class="badge warn">reset pending</span>'
-          : '<span class="badge $statusClass">${_htmlEscape(u.status)}</span>';
+      final safeEmail = _htmlEscape(u.email);
+      final bannedIps = store.bannedIpsFor(u);
+
+      /// One row of the Actions menu: a single-button form, so every action
+      /// stays an ordinary POST that works without JavaScript.
+      ///
+      /// With [askReason] the confirm is followed by a prompt whose answer
+      /// rides along as `reason` — used for the actions whose reason the user
+      /// is shown, so a lockout is never silent.
+      String item(String action, String label,
+              {String? confirm, bool danger = false, bool askReason = false}) =>
+          '<form method="post" action="$action" class="menu-form"'
+          '${confirm == null ? '' : askReason ? ' onsubmit="return lumaAskReason(this, \'$confirm\')"' : ' onsubmit="return confirm(\'$confirm\')"'}>'
+          '<input type="hidden" name="email" value="$safeEmail">'
+          '${askReason ? '<input type="hidden" name="reason" value="">' : ''}'
+          '<button type="submit" role="menuitem" '
+          'class="menu-item${danger ? ' menu-item--danger' : ''}">$label</button>'
+          '</form>';
+
+      final items = <String>[
+        if (u.isPending)
+          item('/admin/verify', 'Approve account',
+              confirm: 'Approve $safeEmail? They can sign in straight after.')
+        else
+          item('/admin/revoke', 'Revoke approval',
+              confirm: 'Revoke $safeEmail? All their devices are signed out '
+                  'immediately and blocked until you approve them again.',
+              danger: true),
+        if (u.passwordResetRequired)
+          item('/admin/password-reset/cancel', 'Cancel password reset',
+              confirm: 'Cancel the pending password reset for $safeEmail? '
+                  'Their old password starts working again.')
+        else
+          item('/admin/password-reset', 'Reset password',
+              confirm: 'Reset the password for $safeEmail?\\n\\nTheir current '
+                  'password stops working right away. luma will ask them to '
+                  'choose a new one the next time they open it on a device '
+                  'that is still signed in — that device is also the only '
+                  'thing that can re-encrypt their synced data, so do not '
+                  'sign them out first.'),
+        '<div class="menu-sep"></div>',
+        if (u.accessRevoked)
+          item('/admin/access/restore', 'Restore access',
+              confirm: 'Give $safeEmail their access back? They can sign in '
+                  'again with the password they already had.')
+        else
+          item('/admin/access/revoke', 'Revoke access',
+              confirm: 'Revoke access for $safeEmail?\\n\\nThey are signed '
+                  'out everywhere and cannot sign in again until you restore '
+                  'it here — approving them will not lift it. Their data is '
+                  'left untouched.',
+              danger: true,
+              askReason: true),
+        if (bannedIps.isEmpty)
+          item('/admin/ip-ban', 'Ban their IP address',
+              confirm: 'Block every address $safeEmail has connected from '
+                  '(${u.recentIps.length})?\\n\\nNothing from those addresses '
+                  'reaches luma — including anyone else behind them. The '
+                  'account itself is left alone; use Revoke for that.',
+              danger: true)
+        else
+          item('/admin/ip-unban',
+              'Lift IP ban (${bannedIps.length})',
+              confirm: 'Unblock the ${bannedIps.length} address'
+                  '${bannedIps.length == 1 ? '' : 'es'} banned for $safeEmail?'),
+      ];
+
+      final action = '<div class="menu">'
+          '<button type="button" class="btn btn-ghost btn-sm menu-btn" '
+          'aria-haspopup="true" aria-expanded="false" '
+          'aria-label="Actions for ${u.email.replaceAll('"', '')}">'
+          'Actions<span class="menu-caret" aria-hidden="true">&#9662;</span>'
+          '</button>'
+          '<div class="menu-pop" role="menu" hidden>${items.join()}</div>'
+          '</div>';
+
+      // Anything the operator has done to this account outranks the plain
+      // approval status in the pill, most severe first — a revoked account is
+      // locked out whatever its `status` says.
+      final statusBadge = u.accessRevoked
+          ? '<span class="badge err">access revoked</span>'
+          : u.passwordResetRequired
+              ? '<span class="badge warn">reset pending</span>'
+              : bannedIps.isNotEmpty
+                  ? '<span class="badge err">ip banned</span>'
+                  : '<span class="badge $statusClass">${_htmlEscape(u.status)}</span>';
       return '<tr>'
-          '<td>${_htmlEscape(u.email)}</td>'
+          '<td>$safeEmail</td>'
           '<td>$statusBadge</td>'
-          '<td>${_htmlEscape(planLabels[u.planId] ?? u.planId)}</td>'
-          '<td>'
+          '<td class="nowrap">${_htmlEscape(planLabels[u.planId] ?? u.planId)}</td>'
+          '<td class="nowrap">'
           '<div class="meter"><div style="width:${pct.toStringAsFixed(0)}%"></div></div>'
           '<span class="muted" style="font-size:12px">${fmtBytes(used)} / ${fmtBytes(u.quotaBytes)} (${pct.toStringAsFixed(0)}%)</span>'
           '</td>'
-          '<td>${fmtDate(u.createdAtMs)}</td>'
-          '<td>${fmtDate(u.lastLoginAtMs)}</td>'
-          '<td>$action</td>'
+          '<td class="nowrap">${fmtDate(u.createdAtMs)}</td>'
+          '<td class="nowrap">${fmtDate(u.lastLoginAtMs)}</td>'
+          '<td class="actions-cell">$action</td>'
           '</tr>';
     }).join();
 
@@ -6983,6 +7279,10 @@ syncToolbar();
       'deletion_cancelled': 'Deletion withdrawn',
       'deletion_accepted': 'Deletion accepted',
       'deletion_declined': 'Deletion declined',
+      'ip_banned': 'IP banned',
+      'ip_unbanned': 'IP unbanned',
+      'access_revoked': 'Access revoked',
+      'access_restored': 'Access restored',
     };
 
     final activityRows = recentActivity.map((a) {
@@ -6992,6 +7292,38 @@ syncToolbar();
           '<td>${_htmlEscape(a.message)}</td>'
           '</tr>';
     }).join();
+
+    // ---- Blocked addresses -------------------------------------------------
+    // Only rendered when there is something to show: an empty ban list is not
+    // a fact the operator needs a card for.
+    final bans = store.bansByIp.values.toList()
+      ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
+    final banRows = bans.map((b) {
+      final safeIp = _htmlEscape(b.ip);
+      return '<tr>'
+          '<td class="nowrap"><code>$safeIp</code></td>'
+          '<td>${b.email == null ? '<span class="muted">—</span>' : _htmlEscape(b.email!)}</td>'
+          '<td class="nowrap">${fmtDate(b.createdAtMs)}</td>'
+          '<td class="actions-cell">'
+          '<form method="post" action="/admin/ip-unban" style="margin:0" '
+          'onsubmit="return confirm(\'Unblock $safeIp?\')">'
+          '<input type="hidden" name="ip" value="$safeIp">'
+          '<button type="submit" class="btn btn-ghost btn-sm">Unban</button>'
+          '</form></td>'
+          '</tr>';
+    }).join();
+
+    final bansCard = bans.isEmpty
+        ? ''
+        : '<div class="card table-card">'
+            '<h2>Blocked addresses</h2>'
+            '<table><thead><tr><th>Address</th><th>Banned for</th>'
+            '<th>Since</th><th></th></tr></thead>'
+            '<tbody>$banRows</tbody></table>'
+            '<div class="muted" style="padding:10px 12px 4px;font-size:11px;'
+            'color:#6f688a">Blocked everywhere except this dashboard, so a '
+            'ban on your own address can always be lifted here.</div>'
+            '</div>';
 
     // ---- Inbox: data-deletion requests ------------------------------------
     final deletionRequests = store.deletionRequestsById.values.toList()
@@ -7060,7 +7392,7 @@ syncToolbar();
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
         '<title>luma admin</title>'
         '<style>$_adminCss</style>'
-        '</head><body><div class="wrap">'
+        '</head><body class="no-js"><div class="wrap">'
         '<header class="top"><h1>luma<span class="dot">.</span> admin</h1>'
         '<span class="sub">server console</span>'
         '<div style="margin-left:auto;display:flex;gap:8px;align-items:center">'
@@ -7094,6 +7426,7 @@ syncToolbar();
         '<th>Storage</th><th>Created</th><th>Last login</th><th></th></tr></thead>'
         '<tbody>$rows</tbody></table>'
         '</div>'
+        '$bansCard'
         '</div>'
         '<div class="tab-panel" id="panel-inbox">'
         '<div class="card">'
@@ -7268,6 +7601,7 @@ syncToolbar();
         '</div>'
         '</div>'
         '</div>'
+        '<script>$_adminMenuScript</script>'
         '<script>$_adminTabScript</script>'
         '<script>$_adminMetricsScript</script>'
         '<script>$_adminGroceriesScript</script>'
@@ -7307,9 +7641,38 @@ h2{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
 .tab-btn{display:inline-flex;align-items:center;gap:7px}
 .tab-count{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#e0c87e;color:#1b1608;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums}
 .tab-btn.active .tab-count{background:#14111f;color:#e0c87e}
-/* Two little stacked forms per user row (approve/revoke + reset). Wraps
-   rather than stretching the column on a narrow window. */
-.row-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+/* Every per-row action lives in one "Actions" dropdown so rows stay exactly
+   one line tall however many actions an account has. Each item is its own
+   single-button form, so the menu still works with JS off — it just renders
+   as a stack of buttons. */
+.nowrap{white-space:nowrap}
+.actions-cell{text-align:right;white-space:nowrap}
+.menu{position:relative;display:inline-block;text-align:left}
+.menu-btn{gap:6px}
+.menu-caret{font-size:10px;line-height:1;opacity:.7;transition:transform .15s}
+.menu-btn[aria-expanded=true]{border-color:#463d6b;color:#ece8f7}
+.menu-btn[aria-expanded=true] .menu-caret{transform:rotate(180deg)}
+.menu-pop{position:absolute;right:0;top:calc(100% + 6px);z-index:60;min-width:220px;
+  background:#191428;border:1px solid #322a4d;border-radius:11px;padding:5px;
+  box-shadow:0 12px 32px rgba(0,0,0,.55);display:flex;flex-direction:column;gap:1px}
+/* Beats the UA's [hidden] rule on specificity, so this has to restate it —
+   without it every menu on the page renders open. */
+.menu-pop[hidden]{display:none}
+.menu-pop.menu-pop--up{top:auto;bottom:calc(100% + 6px)}
+.menu-form{margin:0;display:block}
+.menu-item{display:block;width:100%;text-align:left;background:transparent;border:0;
+  border-radius:7px;padding:9px 12px;font:inherit;font-size:13px;color:#cdc7e2;
+  cursor:pointer;white-space:nowrap;transition:background .12s,color .12s}
+.menu-item:hover{background:#241d3d;color:#ece8f7}
+.menu-item:focus-visible{outline:2px solid #8a7ee0;outline-offset:-2px}
+.menu-item--danger{color:#e07e7e}
+.menu-item--danger:hover{background:rgba(224,126,126,.10);color:#f0a0a0}
+.menu-sep{height:1px;background:#2b2444;margin:5px 8px}
+/* No JS: show the items inline rather than hiding them behind a dead button. */
+.no-js .menu-pop{position:static;display:flex;flex-direction:row;flex-wrap:wrap;
+  box-shadow:none;background:transparent;border:0;padding:0;min-width:0}
+.no-js .menu-btn,.no-js .menu-sep{display:none}
+.no-js .menu-pop[hidden]{display:flex!important}
 /* Inbox: one card per request. The reason is the point of the card, so it
    gets the readable measure and the buttons sit under it, destructive one
    first but coloured as the danger it is. */
@@ -7397,6 +7760,82 @@ canvas{display:block;width:100%;height:170px;cursor:crosshair}
 @media (max-width:640px){.storage-wrap{flex-direction:column;align-items:flex-start}.storage-legend{width:100%}}
 pre.log{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:16px;font-size:12px;line-height:1.55;max-height:400px;overflow:auto;white-space:pre-wrap;word-break:break-all;color:#b9b2d4;margin:0}
 @media (max-width:640px){.wrap{padding:24px 16px 48px}.card{padding:16px}}
+''';
+
+  /// Drives the per-row "Actions" dropdowns on the Users tab: one open at a
+  /// time, closed by Escape or a click outside, flipped above the button when
+  /// there isn't room below (the last rows of a long table).
+  ///
+  /// Removing `no-js` from the body is the first thing it does — without it
+  /// the stylesheet renders each menu's items inline instead, so the actions
+  /// are never stranded behind a button that cannot open.
+  static const _adminMenuScript = r'''
+// Confirm, then collect the note the user will be shown, into the form's
+// hidden `reason` field. Cancelling either step abandons the action.
+window.lumaAskReason = function (form, message) {
+  if (!confirm(message)) return false;
+  var reason = prompt('Reason to show them (optional):', '');
+  if (reason === null) return false;
+  var input = form.querySelector('input[name=reason]');
+  if (input) input.value = reason;
+  return true;
+};
+
+(function () {
+  document.body.classList.remove('no-js');
+  var open = null;
+
+  function close() {
+    if (!open) return;
+    open.pop.hidden = true;
+    open.pop.classList.remove('menu-pop--up');
+    open.btn.setAttribute('aria-expanded', 'false');
+    open = null;
+  }
+
+  function openMenu(btn, pop) {
+    close();
+    pop.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
+    open = { btn: btn, pop: pop };
+    // Flip upward when the menu would run off the bottom of the window.
+    var room = window.innerHeight - btn.getBoundingClientRect().bottom;
+    if (room < pop.offsetHeight + 16) pop.classList.add('menu-pop--up');
+  }
+
+  document.querySelectorAll('.menu').forEach(function (menu) {
+    var btn = menu.querySelector('.menu-btn');
+    var pop = menu.querySelector('.menu-pop');
+    if (!btn || !pop) return;
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (open && open.btn === btn) close(); else openMenu(btn, pop);
+    });
+    pop.addEventListener('keydown', function (e) {
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+      e.preventDefault();
+      var items = Array.prototype.slice.call(pop.querySelectorAll('.menu-item'));
+      var at = items.indexOf(document.activeElement);
+      var next = e.key === 'ArrowDown' ? at + 1 : at - 1;
+      if (next < 0) next = items.length - 1;
+      if (next >= items.length) next = 0;
+      if (items[next]) items[next].focus();
+    });
+  });
+
+  document.addEventListener('click', close);
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape' || !open) return;
+    var btn = open.btn;
+    close();
+    btn.focus();
+  });
+  // A menu left hanging over a panel the user just switched away from would
+  // float on top of the new one.
+  document.querySelectorAll('.tab-btn').forEach(function (b) {
+    b.addEventListener('click', close);
+  });
+})();
 ''';
 
   /// Tiny vanilla-JS tab switcher for the Users / Products / Metrics panels,

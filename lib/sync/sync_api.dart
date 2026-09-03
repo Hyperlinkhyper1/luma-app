@@ -311,6 +311,16 @@ class SyncApiException implements Exception {
   /// is approved.
   bool get isNotApproved => code == 'account_not_approved';
 
+  /// The operator revoked this account's access from the admin dashboard.
+  /// Unlike [isNotApproved] there is nothing the user can do about it; only
+  /// the operator restoring it lifts the block. [message] carries whatever
+  /// reason they left, so it is worth showing as-is.
+  bool get isAccessRevoked => code == 'access_revoked';
+
+  /// Either way the server is refusing this account outright, and the app
+  /// must shut its own server-access gate rather than keep retrying.
+  bool get isAccountBlocked => isNotApproved || isAccessRevoked;
+
   @override
   String toString() => message;
 }
