@@ -5,9 +5,27 @@ import 'package:intl/intl.dart';
 
 import '../../../../app/widgets.dart';
 import '../../../../theme/luma_theme.dart';
+import 'network_details.dart';
 import 'speed_test_engine.dart';
 import 'wifi_speed_test_repository.dart';
 import 'wifi_speed_test_scope.dart';
+
+IconData networkIconFor(NetworkKind kind) {
+  switch (kind) {
+    case NetworkKind.wifi:
+      return Icons.wifi_rounded;
+    case NetworkKind.cellular:
+      return Icons.network_cell_rounded;
+    case NetworkKind.ethernet:
+      return Icons.settings_ethernet_rounded;
+    case NetworkKind.vpn:
+      return Icons.vpn_lock_rounded;
+    case NetworkKind.offline:
+      return Icons.wifi_off_rounded;
+    case NetworkKind.unknown:
+      return Icons.public_rounded;
+  }
+}
 
 class WifiSpeedTestPage extends StatefulWidget {
   const WifiSpeedTestPage({super.key});
@@ -19,13 +37,31 @@ class WifiSpeedTestPage extends StatefulWidget {
 class _WifiSpeedTestPageState extends State<WifiSpeedTestPage> {
   SpeedTestEngine? _engine;
   SpeedTestProgress? _progress;
+  NetworkDetails? _network;
   bool _testing = false;
   bool _error = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshNetwork();
+  }
 
   @override
   void dispose() {
     _engine?.dispose();
     super.dispose();
+  }
+
+  Future<NetworkDetails> _refreshNetwork() async {
+    final details = await NetworkProbe.describe();
+    if (mounted) setState(() => _network = details);
+    return details;
+  }
+
+  Future<void> _allowNetworkDetails() async {
+    await NetworkProbe.requestDetailsPermission();
+    await _refreshNetwork();
   }
 
   Future<void> _startTest(WifiSpeedTestRepository repo) async {
@@ -38,6 +74,7 @@ class _WifiSpeedTestPageState extends State<WifiSpeedTestPage> {
     });
 
     try {
+      final network = await _refreshNetwork();
       double? downloadMbps;
       double? uploadMbps;
       var latencyMs = 0;
@@ -57,6 +94,10 @@ class _WifiSpeedTestPageState extends State<WifiSpeedTestPage> {
           downloadMbps: downloadMbps,
           uploadMbps: uploadMbps,
           latencyMs: latencyMs,
+          networkKind:
+              network.kind == NetworkKind.unknown ? null : network.kind.name,
+          networkName: network.name,
+          networkGeneration: network.generation,
         ));
       }
     } catch (_) {
@@ -80,9 +121,11 @@ class _WifiSpeedTestPageState extends State<WifiSpeedTestPage> {
             children: [
               _GaugeSection(
                 progress: _progress,
+                network: _network,
                 testing: _testing,
                 error: _error,
                 onStart: () => _startTest(repo),
+                onAllowNetworkDetails: _allowNetworkDetails,
               ),
               const SizedBox(height: 32),
               _HistorySection(repo: repo),
@@ -97,15 +140,19 @@ class _WifiSpeedTestPageState extends State<WifiSpeedTestPage> {
 class _GaugeSection extends StatelessWidget {
   const _GaugeSection({
     required this.progress,
+    required this.network,
     required this.testing,
     required this.error,
     required this.onStart,
+    required this.onAllowNetworkDetails,
   });
 
   final SpeedTestProgress? progress;
+  final NetworkDetails? network;
   final bool testing;
   final bool error;
   final VoidCallback onStart;
+  final VoidCallback onAllowNetworkDetails;
 
   @override
   Widget build(BuildContext context) {
@@ -134,7 +181,12 @@ class _GaugeSection extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           _PhaseDots(progress: progress),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
+          _NetworkChip(
+            network: network,
+            onAllowDetails: onAllowNetworkDetails,
+          ),
+          const SizedBox(height: 16),
           if (!testing)
             LumaPrimaryButton(
               label: error ? 'Try Again' : 'Start Test',
@@ -280,6 +332,84 @@ class _GaugeSection extends StatelessWidget {
           ],
         );
     }
+  }
+}
+
+class _NetworkChip extends StatelessWidget {
+  const _NetworkChip({required this.network, required this.onAllowDetails});
+
+  final NetworkDetails? network;
+  final VoidCallback onAllowDetails;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final details = network;
+
+    final color = switch (details?.kind) {
+      NetworkKind.wifi => luma.accent,
+      NetworkKind.cellular => luma.success,
+      NetworkKind.offline => luma.danger,
+      _ => luma.textSecondary,
+    };
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Flexible(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+              color: luma.background,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: luma.border),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  networkIconFor(details?.kind ?? NetworkKind.unknown),
+                  size: 15,
+                  color: color,
+                ),
+                const SizedBox(width: 7),
+                Flexible(
+                  child: Text(
+                    details?.label ?? 'Checking network…',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: luma.textSecondary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (details != null && details.needsPermission) ...[
+          const SizedBox(width: 6),
+          TextButton(
+            onPressed: onAllowDetails,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              minimumSize: const Size(0, 34),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(
+              details.kind == NetworkKind.wifi ? 'Show name' : 'Show details',
+              style: TextStyle(
+                color: luma.accent,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
   }
 }
 
@@ -673,6 +803,31 @@ class _HistoryCard extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
+                if (result.hasNetwork) ...[
+                  const SizedBox(height: 5),
+                  Row(
+                    children: [
+                      Icon(
+                        networkIconFor(result.network),
+                        size: 13,
+                        color: luma.textMuted,
+                      ),
+                      const SizedBox(width: 5),
+                      Flexible(
+                        child: Text(
+                          result.networkLabelText,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: luma.textMuted,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 6),
                 Row(
                   children: [

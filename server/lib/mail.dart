@@ -125,7 +125,10 @@ class Mailer {
     final message = Message()
       ..from = Address(config.fromAddress, config.fromName)
       ..recipients.add(toEmail)
-      ..subject = 'You\'ve been invited to join "$familyName" on Luma'
+      // Defense in depth: never let CR/LF from a user-supplied name reach an
+      // SMTP header, even if upstream validation is bypassed.
+      ..subject =
+          'You\'ve been invited to join "${_headerSafe(familyName)}" on Luma'
       ..text = '$inviterEmail invited you to join their family, '
           '"$familyName", on Luma.\n\n'
           'Open the Luma app and check the inbox icon (top-right) to accept '
@@ -194,6 +197,10 @@ class Mailer {
     }
   }
 }
+
+/// Strips characters that could terminate or fold an SMTP header line.
+String _headerSafe(String s) =>
+    s.replaceAll(RegExp(r'[\r\n\x00-\x1f\x7f]'), ' ');
 
 String _htmlEscapeMail(String s) => s
     .replaceAll('&', '&amp;')

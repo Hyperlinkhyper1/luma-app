@@ -55,13 +55,23 @@ class Build {
   factory Build.fromJson(Map<String, dynamic> json) => Build(
     cpuId: json['cpuId'] as String,
     motherboardId: json['motherboardId'] as String,
-    ramIds: (json['ramIds'] as List).cast<String>(),
+    ramIds: (json['ramIds'] as List).cast<String>().map(_repairRamId).toList(),
     storageIds: (json['storageIds'] as List).cast<String>(),
     psuId: json['psuId'] as String,
     coolingId: json['coolingId'] as String,
     nicId: json['nicId'] as String,
   );
 }
+
+/// Server rigs used to be built with a RAM id that was never in the catalogue,
+/// which left them permanently invalid and earning nothing. The part isn't
+/// buyable, so a save carrying it can't be repaired in-game — swap it for the
+/// stick it was always meant to be.
+const Map<String, String> _renamedRamIds = {
+  'DDR4_32GB_RDIMM': 'DDR4_32GB_RDIMM2',
+};
+
+String _repairRamId(String id) => _renamedRamIds[id] ?? id;
 
 enum RigKind { pc, server }
 enum ComponentGrade { pc, server, any }
@@ -127,7 +137,8 @@ bool gradeFits(String slot, String itemId, RigKind rigKind) {
     void checkGrade(String slot, String itemId) {
       if (!gradeFits(slot, itemId, rigKind)) {
         final grade = getComponentGrade(slot, itemId);
-        errors.add('$itemId is ${grade.name} hardware and does not fit a ${rigKind.name} rig');
+        final rig = rigKind == RigKind.server ? 'server' : 'PC';
+        errors.add('${partName(slot, itemId)} is ${grade.name} hardware and does not fit a $rig rig');
       }
     }
     checkGrade('cpu', build.cpuId);
@@ -145,7 +156,8 @@ bool gradeFits(String slot, String itemId, RigKind rigKind) {
   if (cpu == null) errors.add('Unknown CPU: ${build.cpuId}');
   if (mobo == null) errors.add('Unknown motherboard: ${build.motherboardId}');
   if (cpu != null && mobo != null && cpu.socket != mobo.socket) {
-    errors.add('${cpu.name} (socket ${cpu.socket.name}) does not fit ${mobo.name} (socket ${mobo.socket.name})');
+    errors.add('${cpu.name} is socket ${cpu.socket.name.toUpperCase()}, '
+        '${mobo.name} needs ${mobo.socket.name.toUpperCase()}');
   }
 
   if (mobo != null) {
@@ -161,7 +173,8 @@ bool gradeFits(String slot, String itemId, RigKind rigKind) {
         continue;
       }
       if (stick.ramType != mobo.ramType) {
-        errors.add('${stick.name} is ${stick.ramType.name}, ${mobo.name} requires ${mobo.ramType.name}');
+        errors.add('${stick.name} is ${stick.ramType.name.toUpperCase()}, '
+            '${mobo.name} requires ${mobo.ramType.name.toUpperCase()}');
       }
       if (stick.registered && !mobo.supportsECC) {
         errors.add('${mobo.name} does not support registered/ECC memory (${stick.name})');
@@ -208,6 +221,69 @@ int getTotalRAMGB(Build build) {
   for (final ramId in build.ramIds) {
     final stick = ramById[ramId];
     if (stick != null) total += stick.capacityGB;
+  }
+  return total;
+}
+
+/// Display name of a catalogue part, falling back to its id.
+String partName(String slot, String itemId) {
+  final name = switch (slot) {
+    'cpu' => cpusById[itemId]?.name,
+    'motherboard' => motherboardsById[itemId]?.name,
+    'psu' => psusById[itemId]?.name,
+    'cooling' => coolingById[itemId]?.name,
+    'nic' => nicsById[itemId]?.name,
+    'ram' => ramById[itemId]?.name,
+    'storage' => storageById[itemId]?.name,
+    _ => null,
+  };
+  return name ?? itemId;
+}
+
+/// A copy of [build] with [itemId] fitted into [slot]. RAM and storage are
+/// additive; everything else is a swap. Mirrors what the buy actions do.
+Build buildWithPart(Build build, String slot, String itemId) {
+  switch (slot) {
+    case 'ram':
+      return build.copyWith(ramIds: [...build.ramIds, itemId]);
+    case 'storage':
+      return build.copyWith(storageIds: [...build.storageIds, itemId]);
+    case 'cpu':
+      return build.copyWith()..cpuId = itemId;
+    case 'motherboard':
+      return build.copyWith()..motherboardId = itemId;
+    case 'psu':
+      return build.copyWith()..psuId = itemId;
+    case 'cooling':
+      return build.copyWith()..coolingId = itemId;
+    case 'nic':
+      return build.copyWith()..nicId = itemId;
+    default:
+      return build.copyWith();
+  }
+}
+
+/// The problems fitting [itemId] into [slot] would *introduce*, ignoring any
+/// the build already has. Lets the shop say "this won't fit, because…" before
+/// the player spends the money rather than after.
+List<String> swapIssues(Build build, RigKind kind, String slot, String itemId) {
+  final (existing, _) = validateBuild(build, rigKind: kind);
+  final before = existing.toSet();
+  final (after, _) = validateBuild(buildWithPart(build, slot, itemId), rigKind: kind);
+  return after.where((issue) => !before.contains(issue)).toList();
+}
+
+/// Combined sustained throughput of every drive in the rig, in MB/s.
+///
+/// Serving is read-dominated, so reads are weighted more heavily than writes.
+/// Drives sum, which is what makes adding a second spindle a real upgrade
+/// rather than just more space.
+double getDiskThroughputMBs(Build build) {
+  var total = 0.0;
+  for (final driveId in build.storageIds) {
+    final drive = storageById[driveId];
+    if (drive == null) continue;
+    total += drive.readSpeedMBs * 0.7 + drive.writeSpeedMBs * 0.3;
   }
   return total;
 }
@@ -313,7 +389,7 @@ Build newRigBuild() => newStarterBuild();
 Build newServerBuild() => Build(
   cpuId: 'XEON_E5_2680_V4',
   motherboardId: 'SUPERMICRO_X10SRL',
-  ramIds: const ['DDR4_32GB_RDIMM'],
+  ramIds: const ['DDR4_32GB_RDIMM2'],
   storageIds: const ['HDD_500GB'],
   psuId: 'SERVER_PSU_2000_REDUNDANT',
   coolingId: 'DYNATRON_2U_SERVER',

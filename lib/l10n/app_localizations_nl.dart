@@ -70,6 +70,34 @@ class LNl extends L {
   String get settingsAccentColor => 'Accentkleur';
 
   @override
+  String get settingsThemeStyle => 'Themastijl';
+
+  @override
+  String get settingsThemeStyleDefault => 'Standaard';
+
+  @override
+  String get settingsThemeStyleDefaultSub =>
+      'luma zoals hij komt — strakke vlakken en je gekozen accent.';
+
+  @override
+  String get settingsThemeStyleCoffee => 'Koffie';
+
+  @override
+  String get settingsThemeStyleCoffeeSub =>
+      'Espresso en room, zachtere vormen en bonen die achter alles langs drijven.';
+
+  @override
+  String get settingsThemeStyleLocked => 'Orbit of Nova';
+
+  @override
+  String get settingsThemeStyleUpgrade =>
+      'Koffie hoort bij Orbit en Nova. Upgrade om in te schenken.';
+
+  @override
+  String get settingsAccentCoffeeNote =>
+      'Koffie brengt zijn eigen palet mee, dus de accentkiezer staat even stil.';
+
+  @override
   String get settingsGeneral => 'Algemeen';
 
   @override

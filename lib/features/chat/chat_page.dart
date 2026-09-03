@@ -4,7 +4,6 @@ import '../../app/widgets.dart';
 import '../../settings/settings_controller.dart';
 import '../../settings/settings_scope.dart';
 import '../../sync/sync_scope.dart';
-import '../../sync/sync_service.dart';
 import '../../theme/luma_theme.dart';
 import '../plugins/plugin_scope.dart';
 import '../plugins/installed/qr_code_generator/qr_code_scope.dart';
@@ -13,8 +12,6 @@ import 'ai_key_store.dart';
 import 'ai_tools.dart';
 import 'chat_controller.dart';
 import 'chat_scope.dart';
-import 'providers/ai_modes.dart';
-import 'providers/ai_providers.dart';
 import 'data/chat_repository.dart';
 import 'widgets/chat_input_bar.dart';
 import 'widgets/chat_message_list.dart';
@@ -86,7 +83,6 @@ class _ChatPageState extends State<ChatPage> {
         return _ChatBody(
           controller: controller,
           keyStore: keyStore,
-          syncService: SyncScope.of(context),
           settings: SettingsScope.of(context),
           activeConversationId: _activeConversationId,
           onSelectConversation: (id) =>
@@ -103,7 +99,6 @@ class _ChatBody extends StatefulWidget {
   const _ChatBody({
     required this.controller,
     required this.keyStore,
-    required this.syncService,
     required this.settings,
     required this.activeConversationId,
     required this.onSelectConversation,
@@ -113,7 +108,6 @@ class _ChatBody extends StatefulWidget {
 
   final ChatController controller;
   final AiKeyStore keyStore;
-  final SyncService syncService;
   final SettingsController settings;
   final int? activeConversationId;
   final ValueChanged<int?> onSelectConversation;
@@ -126,23 +120,8 @@ class _ChatBody extends StatefulWidget {
 
 class _ChatBodyState extends State<_ChatBody> {
   late String _providerId = widget.settings.aiProviderId;
-  late Future<bool> _keyAvailableFuture = _checkKeyAvailable();
-
-  /// Whether the assistant can be used with the current provider: either a
-  /// key is saved locally on this device, or (for Luma Support/Mistral and
-  /// Luma AI/Google) the sync server has an operator-configured key that
-  /// chats will be proxied through — see [ChatController].
-  Future<bool> _checkKeyAvailable() async {
-    if (await widget.keyStore.readKey(_providerId) != null) return true;
-    if (_providerId == AiProviderId.mistral.name) {
-      return widget.syncService.mistralKeyConfiguredOnServer();
-    }
-    if (_providerId == AiProviderId.google.name) {
-      final status = await widget.syncService.aiStatus();
-      return status?.googleConfigured ?? false;
-    }
-    return false;
-  }
+  late Future<String?> _apiKeyFuture =
+      widget.keyStore.readKey(_providerId);
 
   @override
   void initState() {
@@ -164,17 +143,17 @@ class _ChatBodyState extends State<_ChatBody> {
   }
 
   void _recheckKey() =>
-      setState(() => _keyAvailableFuture = _checkKeyAvailable());
+      setState(() => _apiKeyFuture = widget.keyStore.readKey(_providerId));
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<bool>(
-      future: _keyAvailableFuture,
+    return FutureBuilder<String?>(
+      future: _apiKeyFuture,
       builder: (context, snap) {
         if (snap.hasError) {
           return _LoadError(error: snap.error!);
         }
-        if (snap.connectionState != ConnectionState.done) {
+        if (!snap.hasData) {
           return const Center(
             child: SizedBox(
               width: 22,
@@ -183,7 +162,7 @@ class _ChatBodyState extends State<_ChatBody> {
             ),
           );
         }
-        if (snap.data != true) {
+        if (snap.data == null) {
           return _NoKeyState(
             onOpenSettings: widget.onOpenSettings,
             onRecheck: _recheckKey,
@@ -193,8 +172,6 @@ class _ChatBodyState extends State<_ChatBody> {
           animation: widget.controller,
           builder: (context, _) => _ChatLayout(
             controller: widget.controller,
-            keyStore: widget.keyStore,
-            syncService: widget.syncService,
             activeConversationId: widget.activeConversationId,
             onSelectConversation: widget.onSelectConversation,
             onOpenPlugin: widget.onOpenPlugin,
@@ -208,16 +185,12 @@ class _ChatBodyState extends State<_ChatBody> {
 class _ChatLayout extends StatelessWidget {
   const _ChatLayout({
     required this.controller,
-    required this.keyStore,
-    required this.syncService,
     required this.activeConversationId,
     required this.onSelectConversation,
     required this.onOpenPlugin,
   });
 
   final ChatController controller;
-  final AiKeyStore keyStore;
-  final SyncService syncService;
   final int? activeConversationId;
   final ValueChanged<int?> onSelectConversation;
   final ValueChanged<String> onOpenPlugin;
@@ -242,8 +215,6 @@ class _ChatLayout extends StatelessWidget {
             : _ConversationThread(
                 conversationId: activeConversationId!,
                 controller: controller,
-                keyStore: keyStore,
-                syncService: syncService,
                 settings: settings,
                 onOpenPlugin: onOpenPlugin,
               );
@@ -437,16 +408,12 @@ class _ConversationThread extends StatelessWidget {
   const _ConversationThread({
     required this.conversationId,
     required this.controller,
-    required this.keyStore,
-    required this.syncService,
     required this.settings,
     required this.onOpenPlugin,
   });
 
   final int conversationId;
   final ChatController controller;
-  final AiKeyStore keyStore;
-  final SyncService syncService;
   final SettingsController settings;
   final ValueChanged<String> onOpenPlugin;
 
@@ -463,175 +430,11 @@ class _ConversationThread extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        _ChatComposer(
-          conversationId: conversationId,
-          controller: controller,
-          keyStore: keyStore,
-          syncService: syncService,
-          settings: settings,
-        ),
-      ],
-    );
-  }
-}
-
-/// The input area of a conversation: the Luma AI mode picker (when that
-/// provider is active), the text field, and a usage caption. Usage comes
-/// from the sync server when chatting through a shared key — expressed as
-/// percentages of the token budget for Luma AI, and as "N of 15 messages"
-/// for Luma Support — or from the local daily counter otherwise.
-class _ChatComposer extends StatefulWidget {
-  const _ChatComposer({
-    required this.conversationId,
-    required this.controller,
-    required this.keyStore,
-    required this.syncService,
-    required this.settings,
-  });
-
-  final int conversationId;
-  final ChatController controller;
-  final AiKeyStore keyStore;
-  final SyncService syncService;
-  final SettingsController settings;
-
-  @override
-  State<_ChatComposer> createState() => _ChatComposerState();
-}
-
-class _ChatComposerState extends State<_ChatComposer> {
-  String? _caption;
-  bool _blocked = false;
-  bool _wasSending = false;
-
-  @override
-  void initState() {
-    super.initState();
-    widget.controller.addListener(_onControllerChanged);
-    widget.settings.addListener(_refreshUsage);
-    _refreshUsage();
-  }
-
-  @override
-  void dispose() {
-    widget.controller.removeListener(_onControllerChanged);
-    widget.settings.removeListener(_refreshUsage);
-    super.dispose();
-  }
-
-  void _onControllerChanged() {
-    // Refresh the usage caption when a send finishes (isSending true→false).
-    final sending = widget.controller.isSending;
-    if (_wasSending && !sending) _refreshUsage();
-    _wasSending = sending;
-  }
-
-  Future<void> _refreshUsage() async {
-    final settings = widget.settings;
-    final providerId = settings.aiProviderId;
-    final localKey = await widget.keyStore.readKey(providerId);
-
-    String caption;
-    bool blocked;
-    if (localKey == null && providerId == AiProviderId.google.name) {
-      final status = await widget.syncService.aiStatus();
-      if (status == null) {
-        caption = 'Usage unavailable — check your connection';
-        blocked = false;
-      } else {
-        caption =
-            'AI usage: ${status.fiveHourPct}% (5-hour) · ${status.weeklyPct}% (weekly)';
-        blocked = status.fiveHourPct >= 100 || status.weeklyPct >= 100;
-      }
-    } else if (localKey == null && providerId == AiProviderId.mistral.name) {
-      final status = await widget.syncService.aiStatus();
-      if (status == null) {
-        caption = 'Usage unavailable — check your connection';
-        blocked = false;
-      } else {
-        caption =
-            '${status.supportRemaining} of ${status.supportLimit} support messages left today';
-        blocked = status.supportRemaining <= 0;
-      }
-    } else {
-      final remaining = settings.aiCallsRemainingToday;
-      caption = '$remaining messages left today';
-      blocked = remaining <= 0;
-    }
-
-    if (!mounted) return;
-    setState(() {
-      _caption = caption;
-      _blocked = blocked;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final settings = widget.settings;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (settings.aiProviderId == AiProviderId.google.name) ...[
-          _ModePicker(settings: settings),
-          const SizedBox(height: 8),
-        ],
         ChatInputBar(
-          sending: widget.controller.isSending,
-          enabled: !_blocked,
-          caption: _caption ?? '',
-          onSend: (text) =>
-              widget.controller.sendMessage(widget.conversationId, text),
+          sending: controller.isSending,
+          remainingToday: settings.aiCallsRemainingToday,
+          onSend: (text) => controller.sendMessage(conversationId, text),
         ),
-      ],
-    );
-  }
-}
-
-/// Compact selector for the three Luma AI intelligence modes.
-class _ModePicker extends StatelessWidget {
-  const _ModePicker({required this.settings});
-  final SettingsController settings;
-
-  @override
-  Widget build(BuildContext context) {
-    final luma = context.luma;
-    final active = settings.aiMode;
-    return Row(
-      children: [
-        for (final mode in AiMode.values) ...[
-          if (mode != AiMode.values.first) const SizedBox(width: 8),
-          MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: () => settings.setAiMode(mode.name),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: mode.name == active
-                      ? luma.accentSubtle
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: mode.name == active ? luma.accent : luma.border,
-                  ),
-                ),
-                child: Text(
-                  mode.displayName,
-                  style: TextStyle(
-                    color: mode.name == active
-                        ? luma.accent
-                        : luma.textSecondary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
       ],
     );
   }

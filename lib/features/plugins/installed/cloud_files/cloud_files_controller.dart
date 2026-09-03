@@ -89,7 +89,7 @@ class CloudFilesController extends ChangeNotifier {
 
   // ---- Public state ----------------------------------------------------------
 
-  bool get signedIn => _sync.signedIn;
+  bool get serverReady => _sync.serverReady;
   RemoteAccount? get account => _sync.account;
   List<CloudFile> get files => List.unmodifiable(_files);
   bool get loading => _loading;
@@ -112,7 +112,7 @@ class CloudFilesController extends ChangeNotifier {
   }
 
   void _onSyncChanged() {
-    if (!_sync.signedIn && _loaded) {
+    if (!_sync.serverReady && _loaded) {
       _files = const [];
       _loaded = false;
       notifyListeners();
@@ -124,7 +124,7 @@ class CloudFilesController extends ChangeNotifier {
   /// Loads the file index from the server (and refreshes usage). Safe to call
   /// repeatedly; does nothing while a transfer is running.
   Future<void> refresh() async {
-    if (!_sync.signedIn) {
+    if (!_sync.serverReady) {
       _files = const [];
       _loaded = true;
       _error = null;
@@ -157,7 +157,7 @@ class CloudFilesController extends ChangeNotifier {
   /// uploaded one at a time; a failure part-way rolls back every uploaded
   /// chunk so no orphaned data lingers on the server.
   Future<void> upload(String path, String displayName) async {
-    if (!_sync.signedIn) {
+    if (!_sync.serverReady) {
       throw const CloudFilesException('Sign in under Settings → Sync first.');
     }
     if (busy) {
@@ -231,7 +231,7 @@ class CloudFilesController extends ChangeNotifier {
   /// Downloads [file] to [savePath], decrypting each chunk and streaming it to
   /// disk so memory stays bounded even for large files.
   Future<void> download(CloudFile file, String savePath) async {
-    if (!_sync.signedIn) {
+    if (!_sync.serverReady) {
       throw const CloudFilesException('Sign in under Settings → Sync first.');
     }
     if (busy) {
@@ -276,7 +276,7 @@ class CloudFilesController extends ChangeNotifier {
   /// Removes [file]: drops it from the index first (so it disappears even if a
   /// chunk delete fails), then deletes its chunk blobs.
   Future<void> delete(CloudFile file) async {
-    if (!_sync.signedIn) return;
+    if (!_sync.serverReady) return;
     try {
       await _commitIndex((list) => list.where((f) => f.id != file.id).toList());
       for (var i = 0; i < file.chunks; i++) {

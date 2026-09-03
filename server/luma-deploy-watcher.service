@@ -1,0 +1,14 @@
+[Unit]
+Description=luma-sync deploy watcher (runs docker compose rebuilds from the host, outside the container)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+ExecStart=/home/hyperlinkhyper/luma-app/server/deploy-watcher.sh
+Restart=always
+RestartSec=5
+User=hyperlinkhyper
+
+[Install]
+WantedBy=multi-user.target

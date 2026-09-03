@@ -80,6 +80,8 @@ class Product {
   static async search({
     query = null,
     marketSlugs = null,
+    category = null,
+    onlyDiscounted = false,
     sort = 'relevance',
     limit = 40,
     offset = 0,
@@ -88,8 +90,13 @@ class Product {
     const params = { limit, offset };
 
     if (query) {
-      conditions.push('(p.name LIKE :query OR p.brand LIKE :query)');
-      params.query = `%${query}%`;
+      // Match each word independently (in any order) rather than the whole
+      // phrase as one substring, so "kaas jonge" finds "jonge kaas".
+      const words = query.trim().split(/\s+/).filter(Boolean);
+      words.forEach((word, i) => {
+        conditions.push(`(p.name LIKE :queryWord${i} OR p.brand LIKE :queryWord${i})`);
+        params[`queryWord${i}`] = `%${word}%`;
+      });
     }
 
     if (marketSlugs && marketSlugs.length > 0) {
@@ -100,8 +107,22 @@ class Product {
       });
     }
 
+    if (category) {
+      conditions.push('p.category = :category');
+      params.category = category;
+    }
+
+    if (onlyDiscounted) {
+      conditions.push('latest_price.is_discounted = 1');
+    }
+
+    // "Relevance" has no text-match ranking to fall back on (name/brand LIKE
+    // gives every match equal weight), so it approximates usefulness with the
+    // one real signal this catalog has: put items on sale first (deepest
+    // discount first when known), then alphabetical.
     const orderBy =
       {
+        relevance: 'latest_price.is_discounted DESC, latest_price.discount_percentage DESC, p.name ASC',
         price_asc: 'latest_price.price ASC',
         price_desc: 'latest_price.price DESC',
         name_asc: 'p.name ASC',
@@ -128,6 +149,36 @@ class Product {
        WHERE ${conditions.join(' AND ')}
        ORDER BY ${orderBy}
        LIMIT :limit OFFSET :offset`,
+      params
+    );
+    return rows;
+  }
+
+  /**
+   * Distinct top-level categories for the sidebar filter, largest first —
+   * there's no curated department list for this catalog, so category size
+   * doubles as a stand-in for "how central this department is". Backs
+   * GET /api/products/categories.
+   */
+  static async categories({ marketSlugs = null } = {}) {
+    const conditions = ['p.is_available = 1', 'p.category IS NOT NULL'];
+    const params = {};
+
+    if (marketSlugs && marketSlugs.length > 0) {
+      const placeholders = marketSlugs.map((_, i) => `:market${i}`).join(', ');
+      conditions.push(`sm.slug IN (${placeholders})`);
+      marketSlugs.forEach((slug, i) => {
+        params[`market${i}`] = slug;
+      });
+    }
+
+    const [rows] = await getPool().query(
+      `SELECT p.category AS category, COUNT(*) AS count
+       FROM products p
+       INNER JOIN supermarkets sm ON sm.id = p.supermarket_id
+       WHERE ${conditions.join(' AND ')}
+       GROUP BY p.category
+       ORDER BY count DESC, p.category ASC`,
       params
     );
     return rows;

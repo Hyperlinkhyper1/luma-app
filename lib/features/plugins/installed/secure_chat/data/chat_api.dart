@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../../../../sync/server_access.dart';
+
 /// A conversation the current user is part of, as seen from the server.
 class RemoteConversation {
   const RemoteConversation({
@@ -106,7 +108,7 @@ class ChatApiException implements Exception {
 class ChatApi {
   ChatApi(String baseUrl, {this.token, http.Client? client})
       : baseUrl = _normalizeBaseUrl(baseUrl),
-        _client = client ?? http.Client();
+        _client = GatedServerClient(inner: client);
 
   final String baseUrl;
   String? token;

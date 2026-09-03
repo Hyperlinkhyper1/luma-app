@@ -42,6 +42,7 @@ dependencies:
   web: ^1.1.1
   drift: ^2.34.0
   drift_flutter: ^0.3.0
+  sqlite3: ^3.4.0
   crypto: ^3.0.7
   cryptography: ^2.7.0
   intl: ^0.20.2
@@ -55,13 +56,43 @@ dependencies:
   window_manager: ^0.5.1
   fl_chart: ^0.70.0
   open_file: ^4.0.0
+  url_launcher: ^6.3.2
   # Peer-to-peer (Wi-Fi/LAN) sync between same-account devices.
   nsd: ^5.0.1
   network_info_plus: ^6.1.4
   flutter_inappwebview: ^6.1.5
+  # Windows-only fallback for the plugins below: flutter_inappwebview's
+  # Windows implementation has an unfixed static-destruction-order crash
+  # (dcomp.dll, exception 0xE0464645) that fires on every app close once the
+  # plugin has been loaded — see pichillilorenzo/flutter_inappwebview#2512.
+  # webview_windows is a thinner WebView2 wrapper without that bug.
+  webview_windows: ^0.4.0
   win32: ^5.15.0
   hotkey_manager: ^0.2.3
   ffi: ^2.2.0
+  # Preview playback in the audio editor.
+  audioplayers: ^6.1.0
+  # Read physical NFC tags for the Card Wallet plugin (mobile only).
+  nfc_manager: ^3.5.0
+  # Scan a card's barcode / QR from the camera or a screenshot (Card Wallet).
+  mobile_scanner: ^7.4.0
+  # Reads the phone's photo and video library through MediaStore for the
+  # Gallery plugin — albums, thumbnails, EXIF coordinates and the Android 13+
+  # media permission flow. No desktop implementation; Windows and Linux walk
+  # the picture folders with dart:io instead (see gallery_source.dart).
+  photo_manager: ^3.11.0
+  # Gallery's smart categories on Nova: both models run on-device, offline.
+  # ML Kit covers Android and iOS, where Google ships the models inside the
+  # app. Windows and Linux have no ML Kit, so they run the equivalent models
+  # through ONNX Runtime instead — see gallery/onnx/. Neither path uploads a
+  # photo anywhere.
+  google_mlkit_face_detection: ^0.14.0
+  google_mlkit_image_labeling: ^0.15.0
+  flutter_onnxruntime: ^1.8.3
+  # Pure-Dart SSH/SFTP client for the SFTP plugin. No native dependency, so
+  # it works the same on Windows, Linux and Android, and every byte goes
+  # straight from this device to the user's own server.
+  dartssh2: ^2.13.0
 
 dev_dependencies:
   flutter_test:
@@ -76,6 +107,12 @@ dev_dependencies:
   drift_dev: ^2.34.1+1
   build_runner: ^2.15.0
   flutter_launcher_icons: ^0.14.3
+
+# Swaps out flutter_inappwebview's real Windows implementation for a local
+# stub — see third_party/flutter_inappwebview_windows_stub/pubspec.yaml.
+dependency_overrides:
+  flutter_inappwebview_windows:
+    path: third_party/flutter_inappwebview_windows_stub
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -95,6 +132,14 @@ flutter:
     - assets/images/
     - assets/space_colony/
     - assets/city_planner/
+    - assets/subway_builder/
+    - assets/subway_builder/vendor/
+    - assets/transport_tracker/
+    - assets/transport_tracker/vendor/
+    - assets/security/
+    - assets/world/
+    - assets/ai_models/
+    - assets/device_health/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

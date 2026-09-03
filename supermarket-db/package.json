@@ -1,7 +1,7 @@
 {
   "name": "luma-supermarket-db",
   "version": "0.1.0",
-  "description": "Backend database and sync architecture for supermarket product data (Jumbo, Albert Heijn, Lidl)",
+  "description": "Backend database and sync architecture for supermarket product data (Jumbo, Albert Heijn, Hoogvliet, Lidl)",
   "main": "src/index.js",
   "private": true,
   "engines": {

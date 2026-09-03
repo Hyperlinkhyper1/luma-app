@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../../../../app/widgets.dart';
+import '../_shared/windows_webview.dart';
 
 /// City Planner (MetroPlan) is a self-contained HTML5/canvas simulation
 /// (bundled as `assets/city_planner/index.html`) rather than a native Dart
@@ -35,19 +36,28 @@ class _CityPlannerPageState extends State<CityPlannerPage> {
     return Stack(
       children: [
         Positioned.fill(
-          child: InAppWebView(
-            initialFile: 'assets/city_planner/index.html',
-            initialSettings: InAppWebViewSettings(
-              transparentBackground: true,
-              supportZoom: false,
-              disableHorizontalScroll: false,
-              disableVerticalScroll: false,
-            ),
-            onWebViewCreated: (controller) => _controller = controller,
-            onLoadStop: (controller, url) {
-              if (mounted) setState(() => _loading = false);
-            },
-          ),
+          child: Platform.isWindows
+              ? WindowsWebview(
+                  fileUrl: Uri.file(
+                    windowsAssetPath('assets/city_planner/index.html'),
+                  ).toString(),
+                  onLoaded: () {
+                    if (mounted) setState(() => _loading = false);
+                  },
+                )
+              : InAppWebView(
+                  initialFile: 'assets/city_planner/index.html',
+                  initialSettings: InAppWebViewSettings(
+                    transparentBackground: true,
+                    supportZoom: false,
+                    disableHorizontalScroll: false,
+                    disableVerticalScroll: false,
+                  ),
+                  onWebViewCreated: (controller) => _controller = controller,
+                  onLoadStop: (controller, url) {
+                    if (mounted) setState(() => _loading = false);
+                  },
+                ),
         ),
         if (_loading) const Center(child: CircularProgressIndicator()),
       ],

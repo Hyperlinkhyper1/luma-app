@@ -21,10 +21,6 @@ class SyncService {
     return module;
   }
 
-  isRunning(slug) {
-    return this.getModule(slug).isRunning;
-  }
-
   async syncOne(slug) {
     const module = this.getModule(slug);
     return module.syncProducts();
@@ -33,10 +29,6 @@ class SyncService {
   async syncAll() {
     const results = {};
     for (const slug of Object.keys(MODULES)) {
-      if (this.isRunning(slug)) {
-        results[slug] = { skipped: 'already running' };
-        continue;
-      }
       try {
         results[slug] = await this.syncOne(slug);
       } catch (error) {

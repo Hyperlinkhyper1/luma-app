@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:shelf/shelf_io.dart' as shelf_io;
 
-import 'package:luma_sync_server/ai_usage_store.dart';
 import 'package:luma_sync_server/api.dart';
 import 'package:luma_sync_server/chat_store.dart';
 import 'package:luma_sync_server/family_store.dart';
@@ -28,9 +27,7 @@ Future<void> main() async {
   final store = await Store.open(config.dataDir);
   final familyStore = await FamilyStore.open(config.dataDir);
   final chatStore = await ChatStore.open(config.dataDir);
-  final aiUsage = await AiUsageStore.open(config.dataDir);
-  final api =
-      Api(store, config, Mailer(mailConfig), familyStore, chatStore, aiUsage);
+  final api = Api(store, config, Mailer(mailConfig), familyStore, chatStore);
 
   final server = await shelf_io.serve(
     api.handler,

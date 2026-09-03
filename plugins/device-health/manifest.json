@@ -1,0 +1,10 @@
+{
+  "id": "device-health",
+  "name": "Device Health",
+  "version": "1.0.0",
+  "description": "A Norton-style health dashboard for this PC: CPU, RAM and GPU usage, battery wear, background processes, outdated apps and drivers, and Windows Defender's protection status — check one thing or everything at once, and update outdated apps with one click. Windows only. luma never scans a file itself: the virus check reads and triggers Windows Defender's own scan, and driver updates always hand off to the vendor's official tool.",
+  "icon": "health_and_safety",
+  "category": "Utility",
+  "details": "One dashboard for the health of this PC, structured like the big consumer security suites but built entirely on what Windows already exposes:\n\nAn overall Device Health score anchors the page, weighted toward what actually matters — Defender being off or outdated software counts for far more than a busy CPU.\n\nCPU, RAM and GPU show live usage (GPU is identification-only — vendor, model and driver version — since Windows has no public API for live GPU telemetry). Battery reports charge plus a wear estimate from design vs. full-charge capacity, or reports plainly that no battery was found on a desktop.\n\nBackground processes list every running process sorted by memory, with a manual 'End process' action and a small bundled list of commonly-unnecessary bloatware/toolbar names flagged as a suggestion — never closed automatically.\n\nApp updates are checked and installed through winget, Windows' own package manager, including luma's own updates (reusing the app's existing updater). Driver updates are never auto-installed: luma detects the GPU vendor and Windows Update's pending-driver flag, then hands off to that vendor's or Windows' own official tool.\n\nThe virus check is a status window onto Windows Defender itself — protection state, signature age, last scan — with a button that triggers Defender's own scan. luma never scans a file's bytes itself.\n\nEverything runs on demand: open the plugin, run one check or all of them, no background scanning.",
+  "screenshots": []
+}

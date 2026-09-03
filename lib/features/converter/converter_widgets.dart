@@ -528,3 +528,152 @@ class ConverterBanner extends StatelessWidget {
     );
   }
 }
+
+/// A tool tile on a converter hub: icon, category badge, title and one line of
+/// what it does.
+class ConverterToolTile extends StatefulWidget {
+  const ConverterToolTile({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.badge,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String badge;
+  final VoidCallback onTap;
+
+  @override
+  State<ConverterToolTile> createState() => _ConverterToolTileState();
+}
+
+class _ConverterToolTileState extends State<ConverterToolTile> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Semantics(
+      button: true,
+      label: '${widget.title}. ${widget.subtitle}',
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hovering = true),
+        onExit: (_) => setState(() => _hovering = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: _hovering ? luma.surfaceHover : luma.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _hovering ? luma.accent : luma.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: luma.accentSubtle,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(widget.icon, color: luma.accent, size: 24),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: luma.surfaceHover,
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                      child: Text(
+                        widget.badge,
+                        style: TextStyle(
+                          color: luma.textSecondary,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  widget.title,
+                  style: TextStyle(
+                    color: luma.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  widget.subtitle,
+                  style: TextStyle(color: luma.textMuted, fontSize: 12.5),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Lays tool tiles out one per row on narrow windows and two per row once
+/// there is space, keeping paired tiles the same height.
+class ConverterToolGrid extends StatelessWidget {
+  const ConverterToolGrid({super.key, required this.tiles});
+
+  final List<Widget> tiles;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 520) {
+          return Column(
+            children: [
+              for (var i = 0; i < tiles.length; i++) ...[
+                if (i > 0) const SizedBox(height: 16),
+                tiles[i],
+              ],
+            ],
+          );
+        }
+        return Column(
+          children: [
+            for (var i = 0; i < tiles.length; i += 2) ...[
+              if (i > 0) const SizedBox(height: 16),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(child: tiles[i]),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: i + 1 < tiles.length
+                          ? tiles[i + 1]
+                          : const SizedBox.shrink(),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}

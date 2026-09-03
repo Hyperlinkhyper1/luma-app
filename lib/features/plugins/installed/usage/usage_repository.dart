@@ -14,6 +14,12 @@ import 'usage_tracker.dart';
 const int kUsageMinIntervalSeconds = 2;
 const int kUsageMaxIntervalSeconds = 10;
 
+// The live session is still finalized exactly when focus changes, but there
+// is no value in rewriting the same SQLite row on every sample while an app
+// remains focused. This keeps background tracking inexpensive and limits the
+// amount of disk churn without making the dashboard feel stale.
+const int _kMinimumWriteIntervalSeconds = 10;
+
 /// Owns Usage's foreground-app poll timer and the session currently being
 /// written to [UsageDatabase]. Lives for the app's lifetime (see main.dart)
 /// rather than the plugin page's, so tracking keeps running while luma is
@@ -42,6 +48,8 @@ class UsageRepository extends ChangeNotifier {
   String? _currentProcessName;
   DateTime? _currentStartedAt;
   UsageAppInfo? _currentInfo;
+  DateTime? _lastPersistedAt;
+  bool _pollInFlight = false;
 
   bool get loaded => _loaded;
   bool get supported => UsageTracker.supported;
@@ -124,15 +132,20 @@ class UsageRepository extends ChangeNotifier {
   void togglePaused() => setPaused(!_paused);
 
   Future<void> _tick() async {
-    if (_disposed || !supported) return;
-    UsageAppInfo? info;
     try {
-      info = UsageTracker.current();
-    } catch (_) {
-      info = null;
+      if (_disposed || !supported || _pollInFlight) return;
+      _pollInFlight = true;
+      UsageAppInfo? info;
+      try {
+        info = UsageTracker.current();
+      } catch (_) {
+        info = null;
+      }
+      if (_disposed) return;
+      await handlePoll(info);
+    } finally {
+      _pollInFlight = false;
     }
-    if (_disposed) return;
-    await handlePoll(info);
   }
 
   /// Applies one poll result to the current session: opens a new row when the
@@ -182,30 +195,40 @@ class UsageRepository extends ChangeNotifier {
     _currentProcessName = info.processName;
     _currentStartedAt = now;
     _currentInfo = info;
+    _lastPersistedAt = now;
     _notify();
     StorageGuard.instance.scheduleRefresh();
   }
 
-  Future<void> _touchCurrent() async {
+  Future<void> _touchCurrent({bool force = false}) async {
     final id = _currentSessionId;
     final startedAt = _currentStartedAt;
     if (id == null || startedAt == null) return;
     final now = DateTime.now().toUtc();
+    final lastPersistedAt = _lastPersistedAt;
+    if (!force &&
+        lastPersistedAt != null &&
+        now.difference(lastPersistedAt).inSeconds <
+            _kMinimumWriteIntervalSeconds) {
+      return;
+    }
     await (_db.update(_db.usageSessions)..where((t) => t.id.equals(id))).write(
       UsageSessionsCompanion(
         endedAt: Value(now),
         durationSeconds: Value(now.difference(startedAt).inSeconds),
       ),
     );
+    _lastPersistedAt = now;
   }
 
   Future<void> _finalizeCurrent() async {
     if (_currentSessionId == null) return;
-    await _touchCurrent();
+    await _touchCurrent(force: true);
     _currentSessionId = null;
     _currentProcessName = null;
     _currentStartedAt = null;
     _currentInfo = null;
+    _lastPersistedAt = null;
     _notify();
   }
 

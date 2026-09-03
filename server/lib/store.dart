@@ -38,7 +38,8 @@ class StoredUser {
     this.verificationExpiresAtMs,
     this.lastLoginAtMs,
     this.planId = kDefaultPlanId,
-  });
+    Map<String, String>? oauthSubjects,
+  }) : oauthSubjects = oauthSubjects ?? {};
 
   final String id;
   String email;
@@ -67,6 +68,16 @@ class StoredUser {
   String? verificationTokenHash;
   int? verificationExpiresAtMs;
 
+  /// Provider id ('google', 'github') -> that provider's immutable user id,
+  /// for every identity linked to this account. Written the first time
+  /// someone signs in with a provider whose *verified* address matches
+  /// [email]; an account can carry both at once, and a password set here
+  /// keeps working alongside them.
+  ///
+  /// The subject is kept rather than just a "linked" flag so a later email
+  /// change at the provider still resolves back to this account.
+  final Map<String, String> oauthSubjects;
+
   bool get isPending => status == 'pending';
 
   Map<String, dynamic> toJson() => {
@@ -83,6 +94,7 @@ class StoredUser {
         'verificationExpiresAtMs': verificationExpiresAtMs,
         'lastLoginAtMs': lastLoginAtMs,
         'planId': planId,
+        'oauthSubjects': oauthSubjects,
       };
 
   factory StoredUser.fromJson(Map<String, dynamic> j) => StoredUser(
@@ -99,6 +111,8 @@ class StoredUser {
         verificationExpiresAtMs: j['verificationExpiresAtMs'] as int?,
         lastLoginAtMs: j['lastLoginAtMs'] as int?,
         planId: j['planId'] as String? ?? kDefaultPlanId,
+        oauthSubjects: (j['oauthSubjects'] as Map?)
+            ?.map((k, v) => MapEntry('$k', '$v')),
       );
 }
 
@@ -110,6 +124,7 @@ class StoredSession {
     required this.userId,
     required this.createdAtMs,
     required this.expiresAtMs,
+    this.deviceLabel,
   });
 
   final String tokenHash;
@@ -117,11 +132,17 @@ class StoredSession {
   final int createdAtMs;
   int expiresAtMs;
 
+  /// Human-readable device/platform string the client sent at login (e.g.
+  /// "windows", "android") — display-only, never used for auth. Null for
+  /// sessions created before this field existed.
+  String? deviceLabel;
+
   Map<String, dynamic> toJson() => {
         'tokenHash': tokenHash,
         'userId': userId,
         'createdAtMs': createdAtMs,
         'expiresAtMs': expiresAtMs,
+        'deviceLabel': deviceLabel,
       };
 
   factory StoredSession.fromJson(Map<String, dynamic> j) => StoredSession(
@@ -129,6 +150,7 @@ class StoredSession {
         userId: j['userId'] as String,
         createdAtMs: j['createdAtMs'] as int,
         expiresAtMs: j['expiresAtMs'] as int,
+        deviceLabel: j['deviceLabel'] as String?,
       );
 }
 
@@ -165,6 +187,39 @@ class CollectionMeta {
       );
 }
 
+/// One plugin's aggregate download count for the admin dashboard's "Plugins"
+/// tab — see Api._reportPluginDownload. [name] is overwritten by whatever the
+/// client last reported, so a plugin rename in the registry updates it here
+/// too without any server-side catalog lookup.
+class PluginDownloadStat {
+  PluginDownloadStat({
+    required this.pluginId,
+    required this.name,
+    required this.count,
+    required this.lastDownloadedAtMs,
+  });
+
+  final String pluginId;
+  String name;
+  int count;
+  int lastDownloadedAtMs;
+
+  Map<String, dynamic> toJson() => {
+        'pluginId': pluginId,
+        'name': name,
+        'count': count,
+        'lastDownloadedAtMs': lastDownloadedAtMs,
+      };
+
+  factory PluginDownloadStat.fromJson(Map<String, dynamic> j) =>
+      PluginDownloadStat(
+        pluginId: j['pluginId'] as String,
+        name: j['name'] as String,
+        count: j['count'] as int,
+        lastDownloadedAtMs: j['lastDownloadedAtMs'] as int,
+      );
+}
+
 /// File-backed store. Everything is held in memory and written through to
 /// JSON files with atomic replace; blobs are stored as individual files.
 /// All mutations must go through [lock] (the API layer does this).
@@ -176,6 +231,12 @@ class Store {
 
   final Map<String, StoredUser> usersById = {};
   final Map<String, String> userIdByEmail = {}; // lowercased email -> id
+
+  /// "<provider>:<subject>" -> user id, for accounts with a linked Google or
+  /// GitHub identity. Rebuilt from [StoredUser.oauthSubjects] on open; see
+  /// [oauthKey] and [linkOAuthIdentity].
+  final Map<String, String> userIdByOAuth = {};
+
   final Map<String, StoredSession> sessionsByTokenHash = {};
   final Map<String, Map<String, CollectionMeta>> collectionsByUser = {};
 
@@ -185,6 +246,11 @@ class Store {
   /// Api._adminActivity).
   final List<ActivityEvent> activity = [];
   static const _maxActivityEvents = 2000;
+
+  /// Admin dashboard's "Plugins" tab — per-plugin download counts reported
+  /// by clients on install (see Api._reportPluginDownload). Keyed by
+  /// pluginId.
+  final Map<String, PluginDownloadStat> pluginDownloadsById = {};
 
   /// Admin dashboard's "Metrics" graphs history — see MetricsHistory for the
   /// downsampling/persistence scheme. Set during [open].
@@ -198,6 +264,7 @@ class Store {
   String get _sessionsFile => '$rootPath/sessions.json';
   String get _collectionsFile => '$rootPath/collections.json';
   String get _activityFile => '$rootPath/activity.json';
+  String get _pluginDownloadsFile => '$rootPath/plugin_downloads.json';
   String get _secretFile => '$rootPath/secret.key';
 
   static Future<Store> open(String path) async {
@@ -228,6 +295,9 @@ class Store {
       }
       store.usersById[user.id] = user;
       store.userIdByEmail[user.email.toLowerCase()] = user.id;
+      user.oauthSubjects.forEach((provider, subject) {
+        store.userIdByOAuth[oauthKey(provider, subject)] = user.id;
+      });
     }
     if (quotasMigrated) await store.saveUsers();
 
@@ -255,6 +325,12 @@ class Store {
       store.activity.add(ActivityEvent.fromJson(a as Map<String, dynamic>));
     }
 
+    final pluginDownloads = await _readJsonList(store._pluginDownloadsFile);
+    for (final p in pluginDownloads) {
+      final stat = PluginDownloadStat.fromJson(p as Map<String, dynamic>);
+      store.pluginDownloadsById[stat.pluginId] = stat;
+    }
+
     store.metricsHistory = await MetricsHistory.open(path);
 
     return store;
@@ -272,6 +348,30 @@ class Store {
     if (!await file.exists()) return const {};
     final decoded = jsonDecode(await file.readAsString());
     return decoded is Map<String, dynamic> ? decoded : const {};
+  }
+
+  // ---- OAuth identities --------------------------------------------------
+
+  /// Index key for [userIdByOAuth].
+  static String oauthKey(String provider, String subject) =>
+      '$provider:$subject';
+
+  /// Records that [user] owns [subject] at [provider], so a later sign-in
+  /// resolves to this account even if the address at the provider changes.
+  /// Caller holds [lock] and saves.
+  void linkOAuthIdentity(StoredUser user, String provider, String subject) {
+    final previous = user.oauthSubjects[provider];
+    if (previous == subject) return;
+    if (previous != null) userIdByOAuth.remove(oauthKey(provider, previous));
+    user.oauthSubjects[provider] = subject;
+    userIdByOAuth[oauthKey(provider, subject)] = user.id;
+  }
+
+  /// Drops every OAuth link held by [user] — part of deleting the account.
+  void unlinkAllOAuthIdentities(StoredUser user) {
+    user.oauthSubjects.forEach(
+        (provider, subject) => userIdByOAuth.remove(oauthKey(provider, subject)));
+    user.oauthSubjects.clear();
   }
 
   // ---- Persistence -------------------------------------------------------
@@ -302,6 +402,30 @@ class Store {
       activity.removeRange(0, activity.length - _maxActivityEvents);
     }
     await saveActivity();
+  }
+
+  Future<void> savePluginDownloads() => atomicWriteString(
+      _pluginDownloadsFile,
+      jsonEncode(pluginDownloadsById.values.map((p) => p.toJson()).toList()));
+
+  /// Records one plugin install/download and persists it. Caller holds
+  /// [lock] (mirrors every other mutation in this class).
+  Future<void> recordPluginDownload(String pluginId, String name) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final existing = pluginDownloadsById[pluginId];
+    if (existing == null) {
+      pluginDownloadsById[pluginId] = PluginDownloadStat(
+        pluginId: pluginId,
+        name: name,
+        count: 1,
+        lastDownloadedAtMs: now,
+      );
+    } else {
+      existing.name = name;
+      existing.count++;
+      existing.lastDownloadedAtMs = now;
+    }
+    await savePluginDownloads();
   }
 
   // ---- Blobs -------------------------------------------------------------

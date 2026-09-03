@@ -1,9 +1,13 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
+import '../../../app/widgets.dart';
 import '../../../theme/luma_theme.dart';
+import '../finance_scope.dart';
 import '../data/database.dart';
 import '../logic/finance_logic.dart';
+import '../logic/money.dart';
+import 'lookups.dart';
 
 class CategorySpendingChart extends StatelessWidget {
   const CategorySpendingChart({
@@ -139,9 +143,8 @@ class IncomeVsExpenseChart extends StatelessWidget {
                 showTitles: true,
                 getTitlesWidget: (value, meta) {
                   final index = value.toInt();
-                  if (index < 0 || index >= months.length) {
+                  if (index < 0 || index >= months.length)
                     return const SizedBox();
-                  }
                   final month = months[index];
                   const m = [
                     'J',

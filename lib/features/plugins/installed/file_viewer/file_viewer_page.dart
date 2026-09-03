@@ -13,6 +13,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../../../app/widgets.dart';
 import '../../../../theme/luma_theme.dart';
 import '../../../converter/converter_widgets.dart';
+import '../_shared/windows_webview.dart';
 import 'document_extractors.dart';
 
 /// What the viewer knows how to render, detected from the file extension.
@@ -410,22 +411,31 @@ class _PdfWebViewerState extends State<_PdfWebViewer> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            InAppWebView(
-              key: ValueKey(widget.path),
-              initialUrlRequest: URLRequest(
-                url: WebUri(Uri.file(widget.path).toString()),
+            if (Platform.isWindows)
+              WindowsWebview(
+                key: ValueKey(widget.path),
+                fileUrl: Uri.file(widget.path).toString(),
+                onLoaded: () {
+                  if (mounted) setState(() => _loading = false);
+                },
+              )
+            else
+              InAppWebView(
+                key: ValueKey(widget.path),
+                initialUrlRequest: URLRequest(
+                  url: WebUri(Uri.file(widget.path).toString()),
+                ),
+                initialSettings: InAppWebViewSettings(
+                  transparentBackground: true,
+                  allowFileAccess: true,
+                  allowFileAccessFromFileURLs: true,
+                  allowUniversalAccessFromFileURLs: true,
+                ),
+                onWebViewCreated: (controller) => _controller = controller,
+                onLoadStop: (controller, url) {
+                  if (mounted) setState(() => _loading = false);
+                },
               ),
-              initialSettings: InAppWebViewSettings(
-                transparentBackground: true,
-                allowFileAccess: true,
-                allowFileAccessFromFileURLs: true,
-                allowUniversalAccessFromFileURLs: true,
-              ),
-              onWebViewCreated: (controller) => _controller = controller,
-              onLoadStop: (controller, url) {
-                if (mounted) setState(() => _loading = false);
-              },
-            ),
             if (_loading)
               Container(
                 color: luma.surface,

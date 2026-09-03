@@ -69,6 +69,30 @@ class LZh extends L {
   String get settingsAccentColor => '强调色';
 
   @override
+  String get settingsThemeStyle => '主题风格';
+
+  @override
+  String get settingsThemeStyleDefault => '默认';
+
+  @override
+  String get settingsThemeStyleDefaultSub => 'luma 的原本样子——干净的表面和你选择的强调色。';
+
+  @override
+  String get settingsThemeStyleCoffee => '咖啡';
+
+  @override
+  String get settingsThemeStyleCoffeeSub => '浓缩与奶油、更柔和的形状，还有在背后缓缓飘过的咖啡豆。';
+
+  @override
+  String get settingsThemeStyleLocked => 'Orbit 或 Nova';
+
+  @override
+  String get settingsThemeStyleUpgrade => '咖啡主题属于 Orbit 和 Nova。升级即可享用。';
+
+  @override
+  String get settingsAccentCoffeeNote => '咖啡主题自带配色，启用时强调色选择器会暂停。';
+
+  @override
   String get settingsGeneral => '通用';
 
   @override

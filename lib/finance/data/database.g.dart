@@ -1642,6 +1642,19 @@ class $RecurringRulesTable extends RecurringRules
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _isBillMeta = const VerificationMeta('isBill');
+  @override
+  late final GeneratedColumn<bool> isBill = GeneratedColumn<bool>(
+    'is_bill',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_bill" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1655,6 +1668,7 @@ class $RecurringRulesTable extends RecurringRules
     merchantId,
     categoryId,
     active,
+    isBill,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1731,6 +1745,12 @@ class $RecurringRulesTable extends RecurringRules
         active.isAcceptableOrUnknown(data['active']!, _activeMeta),
       );
     }
+    if (data.containsKey('is_bill')) {
+      context.handle(
+        _isBillMeta,
+        isBill.isAcceptableOrUnknown(data['is_bill']!, _isBillMeta),
+      );
+    }
     return context;
   }
 
@@ -1788,6 +1808,10 @@ class $RecurringRulesTable extends RecurringRules
         DriftSqlType.bool,
         data['${effectivePrefix}active'],
       )!,
+      isBill: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_bill'],
+      )!,
     );
   }
 
@@ -1814,6 +1838,11 @@ class RecurringRule extends DataClass implements Insertable<RecurringRule> {
   final int? merchantId;
   final int? categoryId;
   final bool active;
+
+  /// Marks this as a bill/subscription (vs. an ordinary recurring expense or
+  /// income) so it can be surfaced in the "due soon" reminder list. Only
+  /// meaningful for expense-kind rules.
+  final bool isBill;
   const RecurringRule({
     required this.id,
     required this.name,
@@ -1826,6 +1855,7 @@ class RecurringRule extends DataClass implements Insertable<RecurringRule> {
     this.merchantId,
     this.categoryId,
     required this.active,
+    required this.isBill,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1857,6 +1887,7 @@ class RecurringRule extends DataClass implements Insertable<RecurringRule> {
       map['category_id'] = Variable<int>(categoryId);
     }
     map['active'] = Variable<bool>(active);
+    map['is_bill'] = Variable<bool>(isBill);
     return map;
   }
 
@@ -1881,6 +1912,7 @@ class RecurringRule extends DataClass implements Insertable<RecurringRule> {
           ? const Value.absent()
           : Value(categoryId),
       active: Value(active),
+      isBill: Value(isBill),
     );
   }
 
@@ -1905,6 +1937,7 @@ class RecurringRule extends DataClass implements Insertable<RecurringRule> {
       merchantId: serializer.fromJson<int?>(json['merchantId']),
       categoryId: serializer.fromJson<int?>(json['categoryId']),
       active: serializer.fromJson<bool>(json['active']),
+      isBill: serializer.fromJson<bool>(json['isBill']),
     );
   }
   @override
@@ -1926,6 +1959,7 @@ class RecurringRule extends DataClass implements Insertable<RecurringRule> {
       'merchantId': serializer.toJson<int?>(merchantId),
       'categoryId': serializer.toJson<int?>(categoryId),
       'active': serializer.toJson<bool>(active),
+      'isBill': serializer.toJson<bool>(isBill),
     };
   }
 
@@ -1941,6 +1975,7 @@ class RecurringRule extends DataClass implements Insertable<RecurringRule> {
     Value<int?> merchantId = const Value.absent(),
     Value<int?> categoryId = const Value.absent(),
     bool? active,
+    bool? isBill,
   }) => RecurringRule(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -1953,6 +1988,7 @@ class RecurringRule extends DataClass implements Insertable<RecurringRule> {
     merchantId: merchantId.present ? merchantId.value : this.merchantId,
     categoryId: categoryId.present ? categoryId.value : this.categoryId,
     active: active ?? this.active,
+    isBill: isBill ?? this.isBill,
   );
   RecurringRule copyWithCompanion(RecurringRulesCompanion data) {
     return RecurringRule(
@@ -1975,6 +2011,7 @@ class RecurringRule extends DataClass implements Insertable<RecurringRule> {
           ? data.categoryId.value
           : this.categoryId,
       active: data.active.present ? data.active.value : this.active,
+      isBill: data.isBill.present ? data.isBill.value : this.isBill,
     );
   }
 
@@ -1991,7 +2028,8 @@ class RecurringRule extends DataClass implements Insertable<RecurringRule> {
           ..write('potId: $potId, ')
           ..write('merchantId: $merchantId, ')
           ..write('categoryId: $categoryId, ')
-          ..write('active: $active')
+          ..write('active: $active, ')
+          ..write('isBill: $isBill')
           ..write(')'))
         .toString();
   }
@@ -2009,6 +2047,7 @@ class RecurringRule extends DataClass implements Insertable<RecurringRule> {
     merchantId,
     categoryId,
     active,
+    isBill,
   );
   @override
   bool operator ==(Object other) =>
@@ -2024,7 +2063,8 @@ class RecurringRule extends DataClass implements Insertable<RecurringRule> {
           other.potId == this.potId &&
           other.merchantId == this.merchantId &&
           other.categoryId == this.categoryId &&
-          other.active == this.active);
+          other.active == this.active &&
+          other.isBill == this.isBill);
 }
 
 class RecurringRulesCompanion extends UpdateCompanion<RecurringRule> {
@@ -2039,6 +2079,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRule> {
   final Value<int?> merchantId;
   final Value<int?> categoryId;
   final Value<bool> active;
+  final Value<bool> isBill;
   const RecurringRulesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -2051,6 +2092,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRule> {
     this.merchantId = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.active = const Value.absent(),
+    this.isBill = const Value.absent(),
   });
   RecurringRulesCompanion.insert({
     this.id = const Value.absent(),
@@ -2064,6 +2106,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRule> {
     this.merchantId = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.active = const Value.absent(),
+    this.isBill = const Value.absent(),
   }) : name = Value(name),
        kind = Value(kind),
        amountCents = Value(amountCents),
@@ -2081,6 +2124,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRule> {
     Expression<int>? merchantId,
     Expression<int>? categoryId,
     Expression<bool>? active,
+    Expression<bool>? isBill,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2094,6 +2138,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRule> {
       if (merchantId != null) 'merchant_id': merchantId,
       if (categoryId != null) 'category_id': categoryId,
       if (active != null) 'active': active,
+      if (isBill != null) 'is_bill': isBill,
     });
   }
 
@@ -2109,6 +2154,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRule> {
     Value<int?>? merchantId,
     Value<int?>? categoryId,
     Value<bool>? active,
+    Value<bool>? isBill,
   }) {
     return RecurringRulesCompanion(
       id: id ?? this.id,
@@ -2122,6 +2168,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRule> {
       merchantId: merchantId ?? this.merchantId,
       categoryId: categoryId ?? this.categoryId,
       active: active ?? this.active,
+      isBill: isBill ?? this.isBill,
     );
   }
 
@@ -2165,6 +2212,9 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRule> {
     if (active.present) {
       map['active'] = Variable<bool>(active.value);
     }
+    if (isBill.present) {
+      map['is_bill'] = Variable<bool>(isBill.value);
+    }
     return map;
   }
 
@@ -2181,7 +2231,8 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRule> {
           ..write('potId: $potId, ')
           ..write('merchantId: $merchantId, ')
           ..write('categoryId: $categoryId, ')
-          ..write('active: $active')
+          ..write('active: $active, ')
+          ..write('isBill: $isBill')
           ..write(')'))
         .toString();
   }
@@ -3732,6 +3783,261 @@ class OverviewGraphsCompanion extends UpdateCompanion<OverviewGraph> {
   }
 }
 
+class $BalanceSnapshotsTable extends BalanceSnapshots
+    with TableInfo<$BalanceSnapshotsTable, BalanceSnapshot> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BalanceSnapshotsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
+    'date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _totalCentsMeta = const VerificationMeta(
+    'totalCents',
+  );
+  @override
+  late final GeneratedColumn<int> totalCents = GeneratedColumn<int>(
+    'total_cents',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, date, totalCents];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'balance_snapshots';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<BalanceSnapshot> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+        _dateMeta,
+        date.isAcceptableOrUnknown(data['date']!, _dateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('total_cents')) {
+      context.handle(
+        _totalCentsMeta,
+        totalCents.isAcceptableOrUnknown(data['total_cents']!, _totalCentsMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_totalCentsMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {date},
+  ];
+  @override
+  BalanceSnapshot map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BalanceSnapshot(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      date: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}date'],
+      )!,
+      totalCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total_cents'],
+      )!,
+    );
+  }
+
+  @override
+  $BalanceSnapshotsTable createAlias(String alias) {
+    return $BalanceSnapshotsTable(attachedDatabase, alias);
+  }
+}
+
+class BalanceSnapshot extends DataClass implements Insertable<BalanceSnapshot> {
+  final int id;
+  final DateTime date;
+  final int totalCents;
+  const BalanceSnapshot({
+    required this.id,
+    required this.date,
+    required this.totalCents,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['date'] = Variable<DateTime>(date);
+    map['total_cents'] = Variable<int>(totalCents);
+    return map;
+  }
+
+  BalanceSnapshotsCompanion toCompanion(bool nullToAbsent) {
+    return BalanceSnapshotsCompanion(
+      id: Value(id),
+      date: Value(date),
+      totalCents: Value(totalCents),
+    );
+  }
+
+  factory BalanceSnapshot.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BalanceSnapshot(
+      id: serializer.fromJson<int>(json['id']),
+      date: serializer.fromJson<DateTime>(json['date']),
+      totalCents: serializer.fromJson<int>(json['totalCents']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'date': serializer.toJson<DateTime>(date),
+      'totalCents': serializer.toJson<int>(totalCents),
+    };
+  }
+
+  BalanceSnapshot copyWith({int? id, DateTime? date, int? totalCents}) =>
+      BalanceSnapshot(
+        id: id ?? this.id,
+        date: date ?? this.date,
+        totalCents: totalCents ?? this.totalCents,
+      );
+  BalanceSnapshot copyWithCompanion(BalanceSnapshotsCompanion data) {
+    return BalanceSnapshot(
+      id: data.id.present ? data.id.value : this.id,
+      date: data.date.present ? data.date.value : this.date,
+      totalCents: data.totalCents.present
+          ? data.totalCents.value
+          : this.totalCents,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BalanceSnapshot(')
+          ..write('id: $id, ')
+          ..write('date: $date, ')
+          ..write('totalCents: $totalCents')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, date, totalCents);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BalanceSnapshot &&
+          other.id == this.id &&
+          other.date == this.date &&
+          other.totalCents == this.totalCents);
+}
+
+class BalanceSnapshotsCompanion extends UpdateCompanion<BalanceSnapshot> {
+  final Value<int> id;
+  final Value<DateTime> date;
+  final Value<int> totalCents;
+  const BalanceSnapshotsCompanion({
+    this.id = const Value.absent(),
+    this.date = const Value.absent(),
+    this.totalCents = const Value.absent(),
+  });
+  BalanceSnapshotsCompanion.insert({
+    this.id = const Value.absent(),
+    required DateTime date,
+    required int totalCents,
+  }) : date = Value(date),
+       totalCents = Value(totalCents);
+  static Insertable<BalanceSnapshot> custom({
+    Expression<int>? id,
+    Expression<DateTime>? date,
+    Expression<int>? totalCents,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (date != null) 'date': date,
+      if (totalCents != null) 'total_cents': totalCents,
+    });
+  }
+
+  BalanceSnapshotsCompanion copyWith({
+    Value<int>? id,
+    Value<DateTime>? date,
+    Value<int>? totalCents,
+  }) {
+    return BalanceSnapshotsCompanion(
+      id: id ?? this.id,
+      date: date ?? this.date,
+      totalCents: totalCents ?? this.totalCents,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<DateTime>(date.value);
+    }
+    if (totalCents.present) {
+      map['total_cents'] = Variable<int>(totalCents.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BalanceSnapshotsCompanion(')
+          ..write('id: $id, ')
+          ..write('date: $date, ')
+          ..write('totalCents: $totalCents')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3747,6 +4053,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $HoldingsTable holdings = $HoldingsTable(this);
   late final $MetaItemsTable metaItems = $MetaItemsTable(this);
   late final $OverviewGraphsTable overviewGraphs = $OverviewGraphsTable(this);
+  late final $BalanceSnapshotsTable balanceSnapshots = $BalanceSnapshotsTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3761,6 +4070,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     holdings,
     metaItems,
     overviewGraphs,
+    balanceSnapshots,
   ];
 }
 
@@ -5821,6 +6131,7 @@ typedef $$RecurringRulesTableCreateCompanionBuilder =
       Value<int?> merchantId,
       Value<int?> categoryId,
       Value<bool> active,
+      Value<bool> isBill,
     });
 typedef $$RecurringRulesTableUpdateCompanionBuilder =
     RecurringRulesCompanion Function({
@@ -5835,6 +6146,7 @@ typedef $$RecurringRulesTableUpdateCompanionBuilder =
       Value<int?> merchantId,
       Value<int?> categoryId,
       Value<bool> active,
+      Value<bool> isBill,
     });
 
 final class $$RecurringRulesTableReferences
@@ -5945,6 +6257,11 @@ class $$RecurringRulesTableFilterComposer
 
   ColumnFilters<bool> get active => $composableBuilder(
     column: $table.active,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isBill => $composableBuilder(
+    column: $table.isBill,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6067,6 +6384,11 @@ class $$RecurringRulesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isBill => $composableBuilder(
+    column: $table.isBill,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$PotsTableOrderingComposer get potId {
     final $$PotsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -6173,6 +6495,9 @@ class $$RecurringRulesTableAnnotationComposer
 
   GeneratedColumn<bool> get active =>
       $composableBuilder(column: $table.active, builder: (column) => column);
+
+  GeneratedColumn<bool> get isBill =>
+      $composableBuilder(column: $table.isBill, builder: (column) => column);
 
   $$PotsTableAnnotationComposer get potId {
     final $$PotsTableAnnotationComposer composer = $composerBuilder(
@@ -6285,6 +6610,7 @@ class $$RecurringRulesTableTableManager
                 Value<int?> merchantId = const Value.absent(),
                 Value<int?> categoryId = const Value.absent(),
                 Value<bool> active = const Value.absent(),
+                Value<bool> isBill = const Value.absent(),
               }) => RecurringRulesCompanion(
                 id: id,
                 name: name,
@@ -6297,6 +6623,7 @@ class $$RecurringRulesTableTableManager
                 merchantId: merchantId,
                 categoryId: categoryId,
                 active: active,
+                isBill: isBill,
               ),
           createCompanionCallback:
               ({
@@ -6311,6 +6638,7 @@ class $$RecurringRulesTableTableManager
                 Value<int?> merchantId = const Value.absent(),
                 Value<int?> categoryId = const Value.absent(),
                 Value<bool> active = const Value.absent(),
+                Value<bool> isBill = const Value.absent(),
               }) => RecurringRulesCompanion.insert(
                 id: id,
                 name: name,
@@ -6323,6 +6651,7 @@ class $$RecurringRulesTableTableManager
                 merchantId: merchantId,
                 categoryId: categoryId,
                 active: active,
+                isBill: isBill,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -7372,6 +7701,170 @@ typedef $$OverviewGraphsTableProcessedTableManager =
       OverviewGraph,
       PrefetchHooks Function()
     >;
+typedef $$BalanceSnapshotsTableCreateCompanionBuilder =
+    BalanceSnapshotsCompanion Function({
+      Value<int> id,
+      required DateTime date,
+      required int totalCents,
+    });
+typedef $$BalanceSnapshotsTableUpdateCompanionBuilder =
+    BalanceSnapshotsCompanion Function({
+      Value<int> id,
+      Value<DateTime> date,
+      Value<int> totalCents,
+    });
+
+class $$BalanceSnapshotsTableFilterComposer
+    extends Composer<_$AppDatabase, $BalanceSnapshotsTable> {
+  $$BalanceSnapshotsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get totalCents => $composableBuilder(
+    column: $table.totalCents,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$BalanceSnapshotsTableOrderingComposer
+    extends Composer<_$AppDatabase, $BalanceSnapshotsTable> {
+  $$BalanceSnapshotsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get totalCents => $composableBuilder(
+    column: $table.totalCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$BalanceSnapshotsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BalanceSnapshotsTable> {
+  $$BalanceSnapshotsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<int> get totalCents => $composableBuilder(
+    column: $table.totalCents,
+    builder: (column) => column,
+  );
+}
+
+class $$BalanceSnapshotsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $BalanceSnapshotsTable,
+          BalanceSnapshot,
+          $$BalanceSnapshotsTableFilterComposer,
+          $$BalanceSnapshotsTableOrderingComposer,
+          $$BalanceSnapshotsTableAnnotationComposer,
+          $$BalanceSnapshotsTableCreateCompanionBuilder,
+          $$BalanceSnapshotsTableUpdateCompanionBuilder,
+          (
+            BalanceSnapshot,
+            BaseReferences<
+              _$AppDatabase,
+              $BalanceSnapshotsTable,
+              BalanceSnapshot
+            >,
+          ),
+          BalanceSnapshot,
+          PrefetchHooks Function()
+        > {
+  $$BalanceSnapshotsTableTableManager(
+    _$AppDatabase db,
+    $BalanceSnapshotsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$BalanceSnapshotsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$BalanceSnapshotsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$BalanceSnapshotsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<DateTime> date = const Value.absent(),
+                Value<int> totalCents = const Value.absent(),
+              }) => BalanceSnapshotsCompanion(
+                id: id,
+                date: date,
+                totalCents: totalCents,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required DateTime date,
+                required int totalCents,
+              }) => BalanceSnapshotsCompanion.insert(
+                id: id,
+                date: date,
+                totalCents: totalCents,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$BalanceSnapshotsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $BalanceSnapshotsTable,
+      BalanceSnapshot,
+      $$BalanceSnapshotsTableFilterComposer,
+      $$BalanceSnapshotsTableOrderingComposer,
+      $$BalanceSnapshotsTableAnnotationComposer,
+      $$BalanceSnapshotsTableCreateCompanionBuilder,
+      $$BalanceSnapshotsTableUpdateCompanionBuilder,
+      (
+        BalanceSnapshot,
+        BaseReferences<_$AppDatabase, $BalanceSnapshotsTable, BalanceSnapshot>,
+      ),
+      BalanceSnapshot,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -7393,4 +7886,6 @@ class $AppDatabaseManager {
       $$MetaItemsTableTableManager(_db, _db.metaItems);
   $$OverviewGraphsTableTableManager get overviewGraphs =>
       $$OverviewGraphsTableTableManager(_db, _db.overviewGraphs);
+  $$BalanceSnapshotsTableTableManager get balanceSnapshots =>
+      $$BalanceSnapshotsTableTableManager(_db, _db.balanceSnapshots);
 }

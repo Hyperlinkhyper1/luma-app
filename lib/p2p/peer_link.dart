@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart' show debugPrint;
 
 import 'peer_debug_log.dart';
 import 'peer_protocol.dart';
+import 'peer_share.dart';
 
 /// The lifecycle of one TCP connection to a peer.
 enum PeerLinkState { connecting, handshaking, ready, closed }
@@ -22,6 +23,26 @@ typedef PeerSnapshotHandler = Future<bool> Function(
 typedef PeerSnapshotProvider = Future<({Uint8List sealed, int savedAtMs})?>
     Function(String collectionId);
 
+/// Called when a peer advertises the contents of its shared folder.
+typedef PeerShareIndexHandler = void Function(List<SharedFileEntry> entries);
+
+/// Called when a peer asks for the bytes of one shared file.
+typedef PeerShareRequestHandler = void Function(String path, int from);
+
+/// Called for each chunk of a shared file arriving from a peer.
+typedef PeerShareChunkHandler = Future<void> Function(
+    SharedChunkHeader header, Uint8List bytes);
+
+/// Called when a peer can't serve a file it advertised (deleted since,
+/// unreadable) so the requester stops waiting for it.
+typedef PeerShareErrorHandler = void Function(String path, String reason);
+
+/// Which kind of raw payload the read loop is currently absorbing. Both a
+/// sealed collection snapshot and a shared-file chunk arrive the same way —
+/// a control frame announcing a byte count, then that many raw bytes — so
+/// they share the state machine and differ only in where they're delivered.
+enum _BinaryKind { snapshot, shareChunk }
+
 /// One end of a connected peer link. Owns the socket, performs the same-
 /// account handshake, then exchanges control messages + sealed blobs.
 ///
@@ -30,7 +51,7 @@ typedef PeerSnapshotProvider = Future<({Uint8List sealed, int savedAtMs})?>
 /// them as messages arrive. Likewise the controller learns about the peer's
 /// advertised state via [onReady] and may then drive exchanges by calling
 /// [requestCollection] / [sendCollection].
-class PeerLink {
+class PeerLink implements PeerShareChannel {
   PeerLink({
     required this.socket,
     required this.localHello,
@@ -39,6 +60,10 @@ class PeerLink {
     required this.onSnapshot,
     required this.provideSnapshot,
     required this.onClose,
+    this.onShareIndex,
+    this.onShareRequest,
+    this.onShareChunk,
+    this.onShareError,
   }) {
     logP2pDebug('PeerLink: connecting to ${socket.remoteAddress.address}:'
         '${socket.remotePort} (local device ${localHello.deviceId})');
@@ -77,6 +102,15 @@ class PeerLink {
   /// mismatch). Always fires exactly once.
   final void Function(String? error) onClose;
 
+  /// Shared-folder callbacks. Null until the share repository registers
+  /// itself, which is why every handler below is checked before use — a
+  /// device with the SFTP plugin uninstalled still syncs collections
+  /// normally, it just ignores share traffic.
+  final PeerShareIndexHandler? onShareIndex;
+  final PeerShareRequestHandler? onShareRequest;
+  final PeerShareChunkHandler? onShareChunk;
+  final PeerShareErrorHandler? onShareError;
+
   PeerLinkState _state = PeerLinkState.connecting;
   PeerLinkState get state => _state;
 
@@ -88,11 +122,13 @@ class PeerLink {
   // Bytes received but not yet consumed by a complete frame.
   final BytesBuilder _pending = BytesBuilder(copy: false);
 
-  // While reading a blob: how many bytes we still expect, and which
-  // collection / savedAtMs they belong to.
+  // While reading a raw payload: how many bytes we still expect, what kind
+  // of payload it is, and the metadata from the frame that announced it.
   int _blobBytesRemaining = 0;
+  _BinaryKind _binaryKind = _BinaryKind.snapshot;
   String? _blobCollection;
   int _blobSavedAtMs = 0;
+  SharedChunkHeader? _chunkHeader;
   final BytesBuilder _blobBuffer = BytesBuilder(copy: false);
 
   // ---- Outgoing ------------------------------------------------------------
@@ -123,6 +159,49 @@ class PeerLink {
         'length': snap.sealed.length,
       }));
       socket.add(snap.sealed);
+      await socket.flush();
+    });
+  }
+
+  /// Advertise the whole contents of our shared folder, tombstones included.
+  /// Both sides send one on connect and again whenever their folder changes;
+  /// each side then pulls whatever it is behind on, so a file only ever
+  /// crosses the wire once and in one direction.
+  @override
+  void sendShareIndex(List<SharedFileEntry> entries) {
+    if (_state != PeerLinkState.ready) return;
+    _writeJson({
+      'type': 'share-index',
+      'entries': [for (final e in entries) e.toJson()],
+    });
+  }
+
+  /// Ask the peer for the bytes of one shared file, starting at [from] —
+  /// non-zero when picking up a transfer that was interrupted, so a large
+  /// file doesn't start over every time the network drops.
+  @override
+  void requestShareFile(String path, {int from = 0}) {
+    if (_state != PeerLinkState.ready) return;
+    _writeJson({'type': 'share-request', 'path': path, 'from': from});
+  }
+
+  /// Tell the requester we can't serve a file after all.
+  @override
+  void sendShareUnavailable(String path, String reason) {
+    if (_state != PeerLinkState.ready) return;
+    _writeJson({'type': 'share-error', 'path': path, 'reason': reason});
+  }
+
+  /// Push one chunk of a shared file: its header, then the raw bytes.
+  ///
+  /// Awaits the socket flush, so a fast disk can't outrun a slow network —
+  /// the returned future is the sender's backpressure.
+  @override
+  Future<void> sendShareChunk(SharedChunkHeader header, Uint8List bytes) async {
+    if (_state != PeerLinkState.ready) return;
+    await _enqueueWrite(() async {
+      socket.add(encodeFrame(header.toJson()));
+      socket.add(bytes);
       await socket.flush();
     });
   }
@@ -219,16 +298,25 @@ class PeerLink {
       return;
     }
 
-    // Blob complete.
-    final sealed = _blobBuffer.takeBytes();
-    final collection = _blobCollection!;
-    final savedAtMs = _blobSavedAtMs;
-    _blobCollection = null;
-    _blobSavedAtMs = 0;
+    // Payload complete.
+    final payload = _blobBuffer.takeBytes();
+    if (_binaryKind == _BinaryKind.shareChunk) {
+      final header = _chunkHeader;
+      _chunkHeader = null;
+      _binaryKind = _BinaryKind.snapshot;
+      // Written to disk asynchronously, off the read loop, exactly like a
+      // snapshot apply below.
+      if (header != null) unawaited(_deliverShareChunk(header, payload));
+    } else {
+      final collection = _blobCollection!;
+      final savedAtMs = _blobSavedAtMs;
+      _blobCollection = null;
+      _blobSavedAtMs = 0;
 
-    // Apply + ack asynchronously (this may await real DB I/O) without
-    // blocking the read loop.
-    unawaited(_deliverBlob(collection, sealed, savedAtMs));
+      // Apply + ack asynchronously (this may await real DB I/O) without
+      // blocking the read loop.
+      unawaited(_deliverBlob(collection, payload, savedAtMs));
+    }
 
     // Any trailing bytes from the same chunk start the next control frame.
     // This MUST happen synchronously, right now — not deferred behind the
@@ -239,6 +327,17 @@ class PeerLink {
     // message").
     if (take < chunk.length) {
       _absorbControl(Uint8List.sublistView(chunk, take));
+    }
+  }
+
+  Future<void> _deliverShareChunk(
+      SharedChunkHeader header, Uint8List bytes) async {
+    final handler = onShareChunk;
+    if (handler == null) return;
+    try {
+      await handler(header, bytes);
+    } catch (e) {
+      logP2pDebug('PeerLink: share chunk for ${header.path} failed: $e');
     }
   }
 
@@ -293,7 +392,45 @@ class PeerLink {
         }
         _blobCollection = c;
         _blobSavedAtMs = savedAt;
+        _binaryKind = _BinaryKind.snapshot;
         _blobBytesRemaining = len;
+      case 'share-index':
+        final handler = onShareIndex;
+        if (handler == null) break;
+        final raw = j['entries'];
+        final entries = <SharedFileEntry>[];
+        if (raw is List) {
+          for (final item in raw) {
+            final entry = SharedFileEntry.fromJson(item);
+            if (entry != null) entries.add(entry);
+          }
+        }
+        handler(entries);
+      case 'share-request':
+        final path = j['path'] as String?;
+        if (path != null && path.isNotEmpty) {
+          onShareRequest?.call(path, (j['from'] as num?)?.toInt() ?? 0);
+        }
+      case 'share-error':
+        final path = j['path'] as String?;
+        if (path != null && path.isNotEmpty) {
+          onShareError?.call(path, j['reason'] as String? ?? 'unavailable');
+        }
+      case 'share-chunk':
+        final header = SharedChunkHeader.fromJson(j);
+        if (header == null) {
+          _fail('Malformed share chunk header.');
+          return;
+        }
+        if (header.length == 0) {
+          // An empty file: nothing follows the header, so deliver it here
+          // and stay in control mode rather than waiting for zero bytes.
+          unawaited(_deliverShareChunk(header, Uint8List(0)));
+          break;
+        }
+        _chunkHeader = header;
+        _binaryKind = _BinaryKind.shareChunk;
+        _blobBytesRemaining = header.length;
       case 'ack':
       case 'nack':
         // Outcome of a push; nothing to do at the link layer. The controller

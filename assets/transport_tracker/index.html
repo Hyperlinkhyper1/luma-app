@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Transport Tracker</title>
+<link rel="stylesheet" href="vendor/maplibre-gl.css">
+<style>
+  :root {
+    --background: #17141F;
+    --border: #2C2839;
+    --accent: #B49DF5;
+    --text-muted: #6F6981;
+  }
+  body.light {
+    --background: #F7F5FC;
+    --border: #E5DFF2;
+    --accent: #7C5AD9;
+    --text-muted: #918BA1;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: var(--background); }
+  #map { position: absolute; inset: 0; }
+  #map .maplibregl-ctrl-attrib { font-size: 10px; opacity: .75; }
+  /* Flutter draws its own controls over the top of the map and docks a panel
+     on the right, so the map's own controls are moved out from under them
+     into the bottom-left corner (see map.js). On narrow viewports the panel
+     covers that corner too, so they are dropped entirely — pinch-zoom still
+     works there. */
+  #map .maplibregl-ctrl-top-left,
+  #map .maplibregl-ctrl-top-right,
+  #map .maplibregl-ctrl-bottom-right { display: none; }
+  @media (max-width: 760px) {
+    #map .maplibregl-ctrl-bottom-left { display: none; }
+  }
+
+  #loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: var(--background); z-index: 5; transition: opacity .2s; }
+  #loading.hide { opacity: 0; pointer-events: none; }
+  #loading .spin { width: 30px; height: 30px; border-radius: 50%; border: 3px solid var(--border);
+    border-top-color: var(--accent); animation: spin 0.9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="loading"><div class="spin"></div></div>
+
+<script>
+/* Some embedded webviews (WebView2 composition mode, background panes)
+   report the page as hidden, which freezes requestAnimationFrame — and with
+   it MapLibre's whole tile-loading/render loop, leaving a blank map.
+   Hybrid scheduler: use real rAF when it ticks, fall back to timers when it
+   doesn't, so the map always makes progress. Mirrors Subway Builder's fix. */
+(function () {
+  const nativeRAF = window.requestAnimationFrame.bind(window);
+  const cbs = new Map();
+  let nextId = 1;
+  let scheduled = false;
+  function flush(t) {
+    scheduled = false;
+    const list = [...cbs.entries()];
+    cbs.clear();
+    for (const [, cb] of list) {
+      try { cb(t); } catch (e) { setTimeout(() => { throw e; }); }
+    }
+  }
+  function schedule() {
+    if (scheduled) return;
+    scheduled = true;
+    let done = false;
+    nativeRAF((t) => { if (!done) { done = true; flush(t); } });
+    setTimeout(() => { if (!done) { done = true; flush(performance.now()); } }, 90);
+  }
+  window.requestAnimationFrame = function (cb) {
+    const id = nextId++;
+    cbs.set(id, cb);
+    schedule();
+    return id;
+  };
+  window.cancelAnimationFrame = function (id) { cbs.delete(id); };
+})();
+</script>
+<script src="vendor/maplibre-gl.js"></script>
+<script src="map.js?v=1"></script>
+</body>
+</html>

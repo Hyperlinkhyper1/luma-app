@@ -117,6 +117,18 @@ class NotesRepository extends ChangeNotifier {
     await _persist();
   }
 
+  /// Removes every note whose title and content are both blank (or only
+  /// whitespace). Called on app close so abandoned empty notes don't linger.
+  Future<void> purgeEmpty() async {
+    final before = _notes.length;
+    _notes.removeWhere(
+      (n) => n.title.trim().isEmpty && n.content.trim().isEmpty,
+    );
+    if (_notes.length == before) return;
+    notifyListeners();
+    await _persist();
+  }
+
   // ---- Sync support ---------------------------------------------------------
 
   /// Snapshots all notes as a JSON-encodable list.

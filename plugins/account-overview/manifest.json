@@ -1,0 +1,8 @@
+{
+  "id": "account-overview",
+  "name": "Account Overview",
+  "version": "1.0.0",
+  "description": "Your developer and creator accounts in one dashboard, one service per sidebar entry. GitHub: every commit, star, fork and release download across your repositories, the issues and pull requests you are involved in, recent Actions runs and their success rate, plus usage meters for Copilot, your storage allowance and your workflow compute minutes. MC Content: CurseForge and Modrinth combined into one library with download trends and graphs, and Planet Minecraft under its own header with views, downloads and diamonds. Every key is encrypted on this device and goes only to the platform it belongs to, never to a luma server.",
+  "icon": "account_circle",
+  "category": "Productivity"
+}

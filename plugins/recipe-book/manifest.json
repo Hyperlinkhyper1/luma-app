@@ -1,0 +1,9 @@
+{
+  "id": "recipe-book",
+  "name": "Recipe Book",
+  "version": "1.1.0",
+  "description": "A photo-forward recipe collection with three tabs — Favourites, Public and Private. Add ingredients, step-by-step instructions, prep and cook times, and scale servings on the fly. Keep recipes private, or publish them to a shared catalogue where every luma user can browse, upload photos, rate with stars and leave reviews. Public recipes sync through your account.",
+  "icon": "restaurant_menu",
+  "category": "Productivity",
+  "tags": ["Productivity", "Food", "Social", "Sync"]
+}

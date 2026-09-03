@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../sync/server_access.dart';
+
 /// A member of a family, as seen from the server.
 class RemoteFamilyMember {
   const RemoteFamilyMember({
@@ -263,7 +265,7 @@ class FamilyApiException implements Exception {
 class FamilyApi {
   FamilyApi(String baseUrl, {this.token, http.Client? client})
       : baseUrl = _normalizeBaseUrl(baseUrl),
-        _client = client ?? http.Client();
+        _client = GatedServerClient(inner: client);
 
   final String baseUrl;
   String? token;

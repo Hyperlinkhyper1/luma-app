@@ -214,13 +214,17 @@ Uint8List _render(_RenderRequest req) {
 
   // 4. Bit-depth crush.
   if (p.reduceBitDepth && p.bitsPerChannel < 8) {
-    final shift = 8 - p.bitsPerChannel;
+    final levels = (1 << p.bitsPerChannel) - 1;
+    final lut = List<int>.generate(
+      256,
+      (v) => ((v * levels / 255).round() * 255 / levels).round(),
+    );
     for (final frame in image.frames) {
       for (final px in frame) {
         px
-          ..r = (px.r.toInt() >> shift) << shift
-          ..g = (px.g.toInt() >> shift) << shift
-          ..b = (px.b.toInt() >> shift) << shift;
+          ..r = lut[px.r.toInt().clamp(0, 255)]
+          ..g = lut[px.g.toInt().clamp(0, 255)]
+          ..b = lut[px.b.toInt().clamp(0, 255)];
       }
     }
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../account/login_page.dart';
 import '../account/plan_selection_page.dart';
 import '../app/widgets.dart';
 import '../sync/sync_api.dart';
@@ -8,19 +9,15 @@ import '../sync/sync_scope.dart';
 import '../sync/sync_service.dart';
 import '../theme/luma_theme.dart';
 
-/// Shows the account setup/sign-in dialog. Used both from the Settings page
-/// and as the app-wide first-run / re-authentication prompt (see
-/// `maybePromptAccountSetup` in main.dart).
-Future<void> showAccountSetupDialog(
+/// Shows the sign-in screen. Kept here as the name every call site already
+/// uses; the screen itself lives in [showLoginScreen], and its result
+/// contract (true only when setup actually completed) is unchanged.
+Future<bool> showAccountSetupDialog(
   BuildContext context,
   SyncService sync, {
   int initialMode = 1,
-}) {
-  return showDialog<void>(
-    context: context,
-    builder: (_) => _AccountDialog(sync: sync, initialMode: initialMode),
-  );
-}
+}) =>
+    showLoginScreen(context, sync, initialMode: initialMode);
 
 /// The "Sync & account" block on the Settings page: account sign-in, storage
 /// usage against the quota, and per-feature toggles (all off by default).
@@ -62,10 +59,11 @@ class _SignedOutBody extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'Set up an account to sync features between devices. Just an '
-          'email and password — no server needed. Everything is encrypted '
-          'on this device before it leaves; nothing is synced until you turn '
-          'it on per feature.',
+          'Set up an account to sync features between devices — with Google, '
+          'GitHub, or an email and password. Everything is encrypted on this '
+          'device before it leaves; nothing is synced until you turn it on '
+          'per feature. You can also skip the server entirely and pair '
+          'devices over your own network.',
           style: TextStyle(color: luma.textMuted, fontSize: 12, height: 1.5),
         ),
         if (sync.requiresReauth) ...[
@@ -75,14 +73,103 @@ class _SignedOutBody extends StatelessWidget {
             style: TextStyle(color: Colors.orange.shade400, fontSize: 12),
           ),
         ],
+        if (sync.pendingApprovalEmail != null) ...[
+          const SizedBox(height: 10),
+          _PendingApprovalNotice(sync: sync),
+        ],
         const SizedBox(height: 16),
         Align(
           alignment: Alignment.centerLeft,
           child: LumaPrimaryButton(
-            label: 'Set up account',
+            label: sync.pendingApprovalEmail != null
+                ? 'Sign in'
+                : 'Set up account',
             icon: Icons.person_add_rounded,
-            onTap: () => showAccountSetupDialog(context, sync),
+            onTap: () => showAccountSetupDialog(context, sync,
+                initialMode: sync.pendingApprovalEmail != null ? 0 : 1),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Shown while an account created on this device is still waiting to be
+/// approved: nothing server-backed works yet, and this is where the user can
+/// start over with a different address (or, when the server approves by
+/// email rather than by hand, ask for another link).
+class _PendingApprovalNotice extends StatefulWidget {
+  const _PendingApprovalNotice({required this.sync});
+  final SyncService sync;
+
+  @override
+  State<_PendingApprovalNotice> createState() => _PendingApprovalNoticeState();
+}
+
+class _PendingApprovalNoticeState extends State<_PendingApprovalNotice> {
+  bool _busy = false;
+  String? _message;
+
+  Future<void> _resend() async {
+    setState(() {
+      _busy = true;
+      _message = null;
+    });
+    try {
+      final message = await widget.sync.resendApprovalEmail();
+      if (mounted) setState(() => _message = message);
+    } catch (e) {
+      if (mounted) setState(() => _message = '$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final email = widget.sync.pendingApprovalEmail ?? '';
+    final byEmail =
+        widget.sync.pendingApprovalMode == ServerApprovalMode.email;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          byEmail
+              ? '$email is waiting to be approved. Open the link in the email '
+                  'we sent, then sign in. Until then this device does not '
+                  'contact the server at all, and the plugins that need it '
+                  'stay switched off.'
+              : '$email is waiting for the server operator to approve it. '
+                  'There is nothing to do in the meantime — just sign in once '
+                  'they have. Until then this device does not contact the '
+                  'server at all, and the plugins that need it stay switched '
+                  'off.',
+          style: TextStyle(
+              color: Colors.orange.shade400, fontSize: 12, height: 1.5),
+        ),
+        if (_message != null) ...[
+          const SizedBox(height: 6),
+          Text(_message!,
+              style: TextStyle(color: luma.textMuted, fontSize: 12)),
+        ],
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            if (byEmail)
+              LumaGhostButton(
+                label: _busy ? 'Sending…' : 'Resend approval email',
+                icon: Icons.mail_outline_rounded,
+                onTap: _busy ? null : _resend,
+              ),
+            LumaGhostButton(
+              label: 'Use a different email',
+              icon: Icons.close_rounded,
+              onTap: () => widget.sync.cancelPendingApproval(),
+            ),
+          ],
         ),
       ],
     );
@@ -94,6 +181,19 @@ class _SignedOutBody extends StatelessWidget {
 class _SignedInBody extends StatelessWidget {
   const _SignedInBody({required this.sync});
   final SyncService sync;
+
+  /// Names the sign-in methods that reach this account, so someone who once
+  /// pressed "Continue with Google" can see it is still wired up — and so
+  /// someone who has only ever used a password knows the buttons would work
+  /// for them too once the addresses match.
+  static String _cloudSubtitle(List<String>? linkedProviders) {
+    const names = {'google': 'Google', 'github': 'GitHub'};
+    final linked = (linkedProviders ?? const [])
+        .map((id) => names[id] ?? id)
+        .toList();
+    if (linked.isEmpty) return 'Synced to the cloud';
+    return 'Synced to the cloud — sign in with ${linked.join(' or ')}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -120,7 +220,7 @@ class _SignedInBody extends StatelessWidget {
                           fontWeight: FontWeight.w600)),
                   Text(
                     cloud
-                        ? 'Synced to the cloud'
+                        ? _cloudSubtitle(account?.linkedProviders)
                         : 'Local only — syncs directly between your devices, '
                             'no server',
                     style: TextStyle(color: luma.textMuted, fontSize: 12),
@@ -237,6 +337,14 @@ class _SignedInBody extends StatelessWidget {
                   builder: (_) => _ChangePasswordDialog(sync: sync),
                 ),
                 child: Text('Change password',
+                    style: TextStyle(color: luma.textSecondary, fontSize: 13)),
+              ),
+              TextButton(
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  builder: (_) => _SessionsDialog(sync: sync),
+                ),
+                child: Text('Devices signed in…',
                     style: TextStyle(color: luma.textSecondary, fontSize: 13)),
               ),
               const Spacer(),
@@ -449,282 +557,6 @@ InputDecoration _fieldDecoration(BuildContext context, String label,
   );
 }
 
-class _AccountDialog extends StatefulWidget {
-  const _AccountDialog({required this.sync, this.initialMode = 1});
-  final SyncService sync;
-
-  /// 0 = sign in (cloud), 1 = create account (cloud).
-  final int initialMode;
-
-  @override
-  State<_AccountDialog> createState() => _AccountDialogState();
-}
-
-class _AccountDialogState extends State<_AccountDialog> {
-  // Server address is always prefilled — from a previously-used one if this
-  // device has it, otherwise the built-in default — so it's rare anyone has
-  // to type it in.
-  // There is only one luma sync server; its address is a fixed constant, not
-  // something read from (possibly stale, device-specific) saved state.
-  final _server = TextEditingController(text: kDefaultSyncServerUrl);
-  late final _email = TextEditingController(text: widget.sync.email ?? '');
-  final _password = TextEditingController();
-  final _confirm = TextEditingController();
-
-  // true = cloud mode (server field visible, sign in / register tabs).
-  // false = local mode (no server, just setLocalAccount).
-  bool _cloudMode = true;
-
-  late int _mode = widget.initialMode;
-  bool _busy = false;
-  String? _error;
-  String? _info;
-
-  @override
-  void dispose() {
-    _server.dispose();
-    _email.dispose();
-    _password.dispose();
-    _confirm.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    // ---- Common validation ------------------------------------------------
-    if (_email.text.trim().isEmpty || !_email.text.contains('@')) {
-      setState(() => _error = 'Enter a valid email address.');
-      return;
-    }
-    if (_password.text.length < 10) {
-      setState(() => _error =
-          'Use at least 10 characters — this password protects your '
-          'encrypted data.');
-      return;
-    }
-    if (!_cloudMode && _password.text != _confirm.text) {
-      setState(() => _error = 'Passwords do not match.');
-      return;
-    }
-    if (_cloudMode && _mode == 1 && _password.text != _confirm.text) {
-      setState(() => _error = 'Passwords do not match.');
-      return;
-    }
-    if (_cloudMode && _mode == 0 && _password.text.isEmpty) {
-      setState(() => _error = 'Enter your password.');
-      return;
-    }
-
-    setState(() {
-      _busy = true;
-      _error = null;
-      _info = null;
-    });
-    try {
-      if (_cloudMode) {
-        // ---- Cloud path -------------------------------------------------
-        final urlError = SyncApi.validateServerUrl(_server.text);
-        if (urlError != null) {
-          setState(() {
-            _busy = false;
-            _error = urlError;
-          });
-          return;
-        }
-        if (_mode == 0) {
-          await widget.sync.signIn(
-            serverUrl: _server.text,
-            email: _email.text,
-            password: _password.text,
-          );
-        } else {
-          final pendingMessage = await widget.sync.register(
-            serverUrl: _server.text,
-            email: _email.text,
-            password: _password.text,
-          );
-          if (pendingMessage != null) {
-            // Account created but not signed in yet — needs email
-            // verification first. Stay on the dialog and switch to Sign in
-            // so the user can come back once they've verified.
-            if (mounted) {
-              setState(() {
-                _busy = false;
-                _mode = 0;
-                _info = pendingMessage;
-              });
-            }
-            return;
-          }
-        }
-      } else {
-        // ---- Local (serverless) path ------------------------------------
-        await widget.sync.setLocalAccount(
-          email: _email.text,
-          password: _password.text,
-        );
-      }
-      if (mounted) Navigator.of(context).pop();
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _busy = false;
-          _error = e.toString();
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final luma = context.luma;
-    return AlertDialog(
-      backgroundColor: luma.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: luma.border),
-      ),
-      title: Text(_cloudMode
-          ? (_mode == 0 ? 'Sign in' : 'Create account')
-          : 'Set up account',
-          style: TextStyle(color: luma.textPrimary)),
-      content: SizedBox(
-        width: 400,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (_cloudMode) ...[
-                LumaSegmentedTabs(
-                  tabs: const ['Sign in', 'Create account'],
-                  selectedIndex: _mode,
-                  onSelect: (i) => setState(() {
-                    _mode = i;
-                    _error = null;
-                    _info = null;
-                  }),
-                ),
-                const SizedBox(height: 16),
-              ] else
-                Text(
-                  'Enter an email and password. Use the exact same ones on '
-                  'every device you want to pair — they never leave this '
-                  'device or touch a server.',
-                  style: TextStyle(color: luma.textMuted, fontSize: 12),
-                ),
-
-              if (_cloudMode)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
-                      onPressed: () => setState(() {
-                        _cloudMode = false;
-                        _error = null;
-                        _info = null;
-                      }),
-                      icon: Icon(Icons.wifi_rounded,
-                          size: 16, color: luma.textMuted),
-                      label: Text('No server? Use local-only sync instead',
-                          style:
-                              TextStyle(color: luma.textMuted, fontSize: 12)),
-                      style: TextButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          minimumSize: const Size(0, 0),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                    ),
-                  ),
-                )
-              else
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: LumaGhostButton(
-                      label: 'Use a cloud server instead',
-                      icon: Icons.cloud_rounded,
-                      onTap: () => setState(() => _cloudMode = true),
-                    ),
-                  ),
-                ),
-
-              TextField(
-                controller: _email,
-                enabled: !_busy,
-                keyboardType: TextInputType.emailAddress,
-                style: TextStyle(color: luma.textPrimary, fontSize: 14),
-                decoration: _fieldDecoration(context, 'Email'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _password,
-                enabled: !_busy,
-                obscureText: true,
-                style: TextStyle(color: luma.textPrimary, fontSize: 14),
-                decoration: _fieldDecoration(context, 'Password'),
-                onSubmitted: (_) =>
-                    _cloudMode && _mode == 0 ? _submit() : null,
-              ),
-              // Confirm field: always shown for local mode and cloud register.
-              if (!_cloudMode || _mode == 1) ...[
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _confirm,
-                  enabled: !_busy,
-                  obscureText: true,
-                  style:
-                      TextStyle(color: luma.textPrimary, fontSize: 14),
-                  decoration: _fieldDecoration(context, 'Confirm password'),
-                  onSubmitted: (_) => _submit(),
-                ),
-                const SizedBox(height: 12),
-              ],
-              Text(
-                'Your password encrypts everything before it leaves this '
-                'device. If you forget it, your synced data cannot be '
-                'recovered — there is no reset.',
-                style: TextStyle(
-                    color: Colors.orange.shade400, fontSize: 12, height: 1.4),
-              ),
-              if (_info != null) ...[
-                const SizedBox(height: 12),
-                Text(_info!,
-                    style: TextStyle(color: luma.accent, fontSize: 12)),
-              ],
-              if (_error != null) ...[
-                const SizedBox(height: 12),
-                Text(_error!,
-                    style:
-                        TextStyle(color: Colors.red.shade400, fontSize: 12)),
-              ],
-              if (_busy) ...[
-                const SizedBox(height: 12),
-                Text('Securing your account… this can take a few seconds.',
-                    style: TextStyle(color: luma.textMuted, fontSize: 12)),
-              ],
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: _busy ? null : () => Navigator.of(context).pop(),
-          child:
-              Text('Cancel', style: TextStyle(color: luma.textSecondary)),
-        ),
-        LumaPrimaryButton(
-          label: _cloudMode
-              ? (_mode == 0 ? 'Sign in' : 'Create account')
-              : 'Set up',
-          loading: _busy,
-          onTap: _busy ? null : _submit,
-        ),
-      ],
-    );
-  }
-}
-
 class _ChangePasswordDialog extends StatefulWidget {
   const _ChangePasswordDialog({required this.sync});
   final SyncService sync;
@@ -842,6 +674,162 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
             onTap: _busy ? null : _submit),
       ],
     );
+  }
+}
+
+/// Lists every active cloud session on this account and lets the user
+/// revoke ones that aren't the device they're currently using.
+class _SessionsDialog extends StatefulWidget {
+  const _SessionsDialog({required this.sync});
+  final SyncService sync;
+
+  @override
+  State<_SessionsDialog> createState() => _SessionsDialogState();
+}
+
+class _SessionsDialogState extends State<_SessionsDialog> {
+  List<RemoteSession>? _sessions;
+  String? _error;
+  final _revoking = <String>{};
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _error = null);
+    try {
+      final sessions = await widget.sync.listSessions();
+      if (mounted) setState(() => _sessions = sessions);
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString());
+    }
+  }
+
+  Future<void> _revoke(RemoteSession session) async {
+    setState(() => _revoking.add(session.id));
+    try {
+      await widget.sync.revokeSession(session.id);
+      if (mounted) {
+        setState(() => _sessions?.removeWhere((s) => s.id == session.id));
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _revoking.remove(session.id));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return AlertDialog(
+      backgroundColor: luma.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: luma.border),
+      ),
+      title:
+          Text('Devices signed in', style: TextStyle(color: luma.textPrimary)),
+      content: SizedBox(
+        width: 420,
+        child: _buildBody(luma),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text('Close', style: TextStyle(color: luma.textSecondary)),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBody(LumaPalette luma) {
+    if (_error != null) {
+      return Text(_error!,
+          style: TextStyle(color: Colors.red.shade400, fontSize: 13));
+    }
+    final sessions = _sessions;
+    if (sessions == null) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(
+            child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2))),
+      );
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final session in sessions)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(
+              children: [
+                Icon(_iconFor(session.deviceLabel),
+                    size: 20, color: luma.textSecondary),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(session.deviceLabel ?? 'Unknown device',
+                          style: TextStyle(
+                              color: luma.textPrimary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500)),
+                      Text(
+                        session.isCurrent
+                            ? 'This device'
+                            : 'Signed in ${DateFormat('d MMM yyyy').format(session.createdAt)}',
+                        style:
+                            TextStyle(color: luma.textMuted, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                if (session.isCurrent)
+                  Text('Current',
+                      style: TextStyle(color: luma.accent, fontSize: 12))
+                else if (_revoking.contains(session.id))
+                  const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                else
+                  TextButton(
+                    onPressed: () => _revoke(session),
+                    child: Text('Revoke',
+                        style: TextStyle(
+                            color: Colors.red.shade400, fontSize: 13)),
+                  ),
+              ],
+            ),
+          ),
+        if (sessions.isEmpty)
+          Text('No other active sessions.',
+              style: TextStyle(color: luma.textMuted, fontSize: 13)),
+      ],
+    );
+  }
+
+  IconData _iconFor(String? deviceLabel) {
+    switch (deviceLabel) {
+      case 'Android':
+      case 'iPhone/iPad':
+        return Icons.smartphone_rounded;
+      case 'Windows':
+      case 'Mac':
+      case 'Linux':
+        return Icons.computer_rounded;
+      default:
+        return Icons.devices_other_rounded;
+    }
   }
 }
 

@@ -9,12 +9,14 @@ class ChatConversationRecord {
     required this.title,
     required this.createdAt,
     required this.updatedAt,
+    required this.pinned,
   });
 
   final int id;
   final String title;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final bool pinned;
 }
 
 /// A single message within a conversation.
@@ -44,7 +46,10 @@ class ChatRepository {
 
   Stream<List<ChatConversationRecord>> watchConversations() {
     final query = _db.select(_db.chatConversations)
-      ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]);
+      ..orderBy([
+        (t) => OrderingTerm.desc(t.pinned),
+        (t) => OrderingTerm.desc(t.updatedAt),
+      ]);
     return query.watch().map(
           (rows) => rows.map(_toConversation).toList(growable: false),
         );
@@ -64,12 +69,34 @@ class ChatRepository {
     ));
   }
 
+  Future<void> setPinned(int id, bool pinned) {
+    return (_db.update(_db.chatConversations)..where((t) => t.id.equals(id)))
+        .write(ChatConversationsCompanion(pinned: Value(pinned)));
+  }
+
   Future<void> deleteConversation(int id) async {
     await (_db.delete(_db.chatMessages)
           ..where((t) => t.conversationId.equals(id)))
         .go();
     await (_db.delete(_db.chatConversations)..where((t) => t.id.equals(id)))
         .go();
+  }
+
+  /// Deletes every conversation that has no messages — i.e. ones that were
+  /// created but never used. Called on app close so the list stays clean.
+  Future<void> purgeEmptyConversations() async {
+    final conversations = await (_db.select(_db.chatConversations)).get();
+    for (final c in conversations) {
+      final messages = await (_db.select(_db.chatMessages)
+            ..where((t) => t.conversationId.equals(c.id))
+            ..limit(1))
+          .get();
+      if (messages.isEmpty) {
+        await (_db.delete(_db.chatConversations)
+              ..where((t) => t.id.equals(c.id)))
+            .go();
+      }
+    }
   }
 
   Stream<List<ChatMessageRecord>> watchMessages(int conversationId) {
@@ -114,6 +141,7 @@ class ChatRepository {
         title: row.title,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
+        pinned: row.pinned,
       );
 
   ChatMessageRecord _toMessage(ChatMessage row) => ChatMessageRecord(

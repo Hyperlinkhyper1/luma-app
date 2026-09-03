@@ -6,21 +6,39 @@ services:
     environment:
       # Caddy sits in front of us, so the forwarded client IP is trustworthy.
       LUMA_TRUST_PROXY: "true"
+      # Enables the /admin/website editor over the mounted wiki checkout.
+      LUMA_WIKI_DIR: /wiki
     volumes:
-      - luma_data:/data
+      - /opt/luma-sync-data:/data
+      - ../wiki:/wiki
+      # No Docker socket and no repo bind mount here on purpose. The admin
+      # dashboard's "Update & restart server" button used to run
+      # `git pull && docker compose up -d --build` directly inside this
+      # container over a mounted host socket — but that command recreating
+      # *this very container* killed the process orchestrating the recreate
+      # partway through, before it ever started the new one. DeployConsole
+      # now only drops a request file on the shared /data volume;
+      # deploy-watcher.sh, a systemd service running directly on the host
+      # (see luma-deploy-watcher.service), does the actual git pull and
+      # rebuild from outside this container's blast radius. That also means
+      # this container no longer needs host-Docker-socket access, which was
+      # effectively root on the host.
     # No "ports:" on purpose — only Caddy may reach the app, over the
     # internal network. Never expose 8080 to the internet (plain HTTP).
     networks:
       - internal
 
   caddy:
-    image: caddy:2
+    build:
+      context: .
+      dockerfile: Caddy.Dockerfile
     restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
     environment:
       LUMA_DOMAIN: ${LUMA_DOMAIN}
+      CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -31,7 +49,6 @@ services:
       - luma-sync
 
 volumes:
-  luma_data:
   caddy_data:
   caddy_config:
 

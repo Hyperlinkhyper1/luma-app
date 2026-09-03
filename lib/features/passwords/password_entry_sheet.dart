@@ -8,7 +8,9 @@ import 'package:image/image.dart' as img;
 import '../../app/widgets.dart';
 import '../../storage/storage_guard.dart';
 import '../../theme/luma_theme.dart';
+import 'breach_check.dart';
 import 'password_repository.dart';
+import 'totp.dart';
 
 /// Opens the add/edit dialog. Pass [existing] to edit; omit it to add.
 Future<void> showPasswordEntrySheet(
@@ -46,12 +48,24 @@ class _PasswordEntryFormState extends State<_PasswordEntryForm> {
   late final _phone = TextEditingController(text: widget.existing?.phone);
   late final _info = TextEditingController(text: widget.existing?.info);
   late final _icon = TextEditingController(text: widget.existing?.icon);
+  late final _totpSecret =
+      TextEditingController(text: widget.existing?.totpSecret);
 
   bool _obscure = true;
   bool _saving = false;
   String? _error;
+  bool _breachAcknowledged = false;
+  BreachChecker? _breachChecker;
 
   bool get _isEditing => widget.existing != null;
+
+  @override
+  void initState() {
+    super.initState();
+    BreachChecker.load().then((checker) {
+      if (mounted) setState(() => _breachChecker = checker);
+    });
+  }
 
   @override
   void dispose() {
@@ -62,6 +76,7 @@ class _PasswordEntryFormState extends State<_PasswordEntryForm> {
     _phone.dispose();
     _info.dispose();
     _icon.dispose();
+    _totpSecret.dispose();
     super.dispose();
   }
 
@@ -82,6 +97,19 @@ class _PasswordEntryFormState extends State<_PasswordEntryForm> {
       setState(() => _error = 'Enter the password.');
       return;
     }
+    if (!_breachAcknowledged && (_breachChecker?.isCommon(password) ?? false)) {
+      final proceed = await _confirmBreachedPassword();
+      if (!mounted) return;
+      if (!proceed) return;
+      setState(() => _breachAcknowledged = true);
+    }
+    final totpSecret = _totpSecret.text.trim();
+    if (totpSecret.isNotEmpty && Totp.currentCode(totpSecret) == null) {
+      setState(() => _error =
+          'That doesn\'t look like a valid 2FA secret (should be base32, '
+          'e.g. JBSWY3DPEHPK3PXP).');
+      return;
+    }
 
     setState(() {
       _saving = true;
@@ -96,6 +124,7 @@ class _PasswordEntryFormState extends State<_PasswordEntryForm> {
       phone: _phone.text,
       info: _info.text,
       icon: _icon.text,
+      totpSecret: _totpSecret.text,
     );
 
     try {
@@ -112,6 +141,39 @@ class _PasswordEntryFormState extends State<_PasswordEntryForm> {
       return;
     }
     if (mounted) Navigator.of(context).pop();
+  }
+
+  Future<bool> _confirmBreachedPassword() async {
+    final luma = context.luma;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: luma.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: luma.border),
+        ),
+        title: Text('Weak password', style: TextStyle(color: luma.textPrimary)),
+        content: Text(
+          'This password is on a list of extremely common or previously '
+          'breached passwords. Anyone with that list could guess it. Use '
+          'the generate button for a strong one, or save it anyway.',
+          style: TextStyle(color: luma.textSecondary, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child:
+                Text('Save anyway', style: TextStyle(color: luma.danger)),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
   }
 
   void _generatePassword() {
@@ -257,6 +319,11 @@ class _PasswordEntryFormState extends State<_PasswordEntryForm> {
                   ],
                 ),
               ),
+              onChanged: (_) {
+                if (_breachAcknowledged) {
+                  setState(() => _breachAcknowledged = false);
+                }
+              },
               onSubmitted: (_) => _save(),
             ),
             const SizedBox(height: 14),
@@ -284,6 +351,17 @@ class _PasswordEntryFormState extends State<_PasswordEntryForm> {
               decoration: pwInputDecoration(
                 luma,
                 hint: 'Security question, recovery codes, notes…',
+              ),
+            ),
+            const SizedBox(height: 14),
+            _FieldLabel('2FA secret (optional)'),
+            TextField(
+              controller: _totpSecret,
+              style: TextStyle(
+                  color: luma.textPrimary, fontFamily: 'monospace'),
+              decoration: pwInputDecoration(
+                luma,
+                hint: 'Base32 key from the "manual setup" QR fallback',
               ),
             ),
             if (_error != null) ...[

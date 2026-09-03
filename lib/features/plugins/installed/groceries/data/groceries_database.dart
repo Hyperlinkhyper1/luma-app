@@ -24,7 +24,7 @@ class GroceryListItems extends Table {
   /// manually-added items down the line).
   TextColumn get productId => text().nullable()();
 
-  /// Supermarket slug: 'jumbo', 'ah', or 'lidl'.
+  /// Supermarket slug: 'jumbo', 'ah', 'hoogvliet', or 'lidl'.
   TextColumn get market => text()();
   TextColumn get marketName => text()();
   TextColumn get name => text()();

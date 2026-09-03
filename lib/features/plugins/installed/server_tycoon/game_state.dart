@@ -1,7 +1,9 @@
 // Auto-ported from Roblox Server Hosting Tycoon
 // The full serializable state for one player's hosting business.
 
+import 'data/boosts.dart';
 import 'data/incidents.dart';
+import 'data/missions.dart';
 import 'sim/computer_sim.dart';
 import 'sim/service_sim.dart';
 
@@ -47,8 +49,10 @@ class Rig {
   String name;
   RigKind kind;
   Build build;
-  List<ServiceInstance> services;
-  String routerId;
+
+  /// The router this rig is wired to, or null when it isn't plugged into
+  /// anything. An unwired rig serves no traffic.
+  String? routerId;
   NodePos pos;
 
   Rig({
@@ -56,7 +60,6 @@ class Rig {
     required this.name,
     required this.kind,
     required this.build,
-    required this.services,
     required this.routerId,
     required this.pos,
   });
@@ -66,7 +69,6 @@ class Rig {
     'name': name,
     'kind': kind.name,
     'build': build.toJson(),
-    'services': services.map((s) => s.toJson()).toList(),
     'routerId': routerId,
     'pos': pos.toJson(),
   };
@@ -76,10 +78,50 @@ class Rig {
     name: json['name'] as String,
     kind: RigKind.values.byName(json['kind'] as String),
     build: Build.fromJson(json['build'] as Map<String, dynamic>),
-    services: (json['services'] as List).map((e) => ServiceInstance.fromJson(e as Map<String, dynamic>)).toList(),
-    routerId: json['routerId'] as String,
+    routerId: json['routerId'] as String?,
     pos: NodePos.fromJson(json['pos'] as Map<String, dynamic>),
   );
+}
+
+/// A service sitting on the canvas in its own right. It only earns once it is
+/// wired to a rig — before that it's an unplugged box.
+class ServiceNode {
+  final String instanceId;
+  final String serviceTypeId;
+  int capacity;
+  String? rigId;
+  NodePos pos;
+
+  ServiceNode({
+    required this.instanceId,
+    required this.serviceTypeId,
+    required this.capacity,
+    required this.rigId,
+    required this.pos,
+  });
+
+  /// The shape the load simulation consumes.
+  ServiceInstance toInstance() => ServiceInstance(
+        instanceId: instanceId,
+        serviceTypeId: serviceTypeId,
+        capacity: capacity,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'instanceId': instanceId,
+        'serviceTypeId': serviceTypeId,
+        'capacity': capacity,
+        'rigId': rigId,
+        'pos': pos.toJson(),
+      };
+
+  factory ServiceNode.fromJson(Map<String, dynamic> json) => ServiceNode(
+        instanceId: json['instanceId'] as String,
+        serviceTypeId: json['serviceTypeId'] as String,
+        capacity: json['capacity'] as int,
+        rigId: json['rigId'] as String?,
+        pos: NodePos.fromJson(json['pos'] as Map<String, dynamic>),
+      );
 }
 
 class Router {
@@ -186,6 +228,41 @@ class ContractOffer {
   });
 }
 
+/// A research project part-way through. Progress is paid in research points
+/// accrued at day rollover, so this survives app restarts.
+class ResearchProgress {
+  final String projectId;
+
+  /// For repeatable projects, the level this run will unlock. 0 otherwise.
+  final int level;
+  final double rpNeeded;
+  double rpAccrued;
+
+  ResearchProgress({
+    required this.projectId,
+    required this.rpNeeded,
+    this.level = 0,
+    this.rpAccrued = 0,
+  });
+
+  double get fraction => rpNeeded <= 0 ? 1 : (rpAccrued / rpNeeded).clamp(0, 1).toDouble();
+  bool get complete => rpAccrued >= rpNeeded;
+
+  Map<String, dynamic> toJson() => {
+        'projectId': projectId,
+        'level': level,
+        'rpNeeded': rpNeeded,
+        'rpAccrued': rpAccrued,
+      };
+
+  factory ResearchProgress.fromJson(Map<String, dynamic> json) => ResearchProgress(
+        projectId: json['projectId'] as String,
+        level: json['level'] as int? ?? 0,
+        rpNeeded: (json['rpNeeded'] as num).toDouble(),
+        rpAccrued: (json['rpAccrued'] as num?)?.toDouble() ?? 0,
+      );
+}
+
 class DayReport {
   final int day;
   final double income;
@@ -199,6 +276,11 @@ class DayReport {
   final double reputation;
   final double money;
   final bool overloaded;
+  final List<String> researchEvents;
+  final List<String> missionEvents;
+  final List<String> boostEvents;
+  final double researchPointsEarned;
+  final double missionRewardCash;
 
   const DayReport({
     required this.day,
@@ -213,7 +295,44 @@ class DayReport {
     required this.reputation,
     required this.money,
     required this.overloaded,
+    this.researchEvents = const [],
+    this.missionEvents = const [],
+    this.boostEvents = const [],
+    this.researchPointsEarned = 0,
+    this.missionRewardCash = 0,
   });
+}
+
+/// Summary of the days simulated on the player's behalf while the app was
+/// closed. Session-only — shown once on the next open, then dropped.
+class AwayReport {
+  final int daysSimulated;
+
+  /// How many days actually elapsed, before the catch-up cap was applied.
+  final int daysElapsed;
+  final Duration awayFor;
+  final double income;
+  final double expenses;
+  final double netProfit;
+
+  /// The fraction of normal earnings offline days paid out at.
+  final double rate;
+  final double researchPointsEarned;
+  final List<String> events;
+
+  const AwayReport({
+    required this.daysSimulated,
+    required this.daysElapsed,
+    required this.awayFor,
+    required this.income,
+    required this.expenses,
+    required this.netProfit,
+    required this.rate,
+    required this.researchPointsEarned,
+    this.events = const [],
+  });
+
+  bool get capped => daysElapsed > daysSimulated;
 }
 
 class GameState {
@@ -222,6 +341,7 @@ class GameState {
   int dayCount;
   Map<String, Rig> rigs;
   Map<String, Router> routers;
+  Map<String, ServiceNode> services;
   int nextRigId;
   int nextRouterId;
   int nextInstanceId;
@@ -248,7 +368,30 @@ class GameState {
   // Hired staff.
   Set<String> hiredStaffIds;
 
+  // Research pipeline. `research` above stays the owned-set; these drive the
+  // accrue-over-time queue on top of it.
+  double researchPoints;
+  ResearchProgress? activeResearch;
+  List<String> researchQueue;
+  Map<String, int> researchLevels;
+  int researchCompletedCount;
+
+  // Timed boosts and the daily objective board.
+  List<ActiveBoost> activeBoosts;
+  List<Mission> missions;
+  int missionsRolledForDay;
+
+  // Session preferences that belong to the save, not the app settings.
+  bool autoConfirmDay;
+  int gameSpeed;
+
+  /// Wall-clock of the last day processed, for away earnings. 0 = never seen.
+  int lastSeenEpochMs;
+
   static const int historyLength = 30;
+  static const int maxOfflineDays = 12;
+  static const double baseOfflineRate = 0.6;
+  static const List<int> gameSpeeds = [1, 2, 4];
   static const int newRigCost = 300;
   static const int newServerRigCost = 2000;
   static const int newRouterCost = 500;
@@ -263,6 +406,7 @@ class GameState {
     required this.dayCount,
     required this.rigs,
     required this.routers,
+    Map<String, ServiceNode>? services,
     required this.nextRigId,
     required this.nextRouterId,
     required this.nextInstanceId,
@@ -282,7 +426,19 @@ class GameState {
     int? prestigeLevel,
     double? incomeMultiplier,
     Set<String>? hiredStaffIds,
-  }) : inventory = inventory ?? {},
+    double? researchPoints,
+    this.activeResearch,
+    List<String>? researchQueue,
+    Map<String, int>? researchLevels,
+    int? researchCompletedCount,
+    List<ActiveBoost>? activeBoosts,
+    List<Mission>? missions,
+    int? missionsRolledForDay,
+    bool? autoConfirmDay,
+    int? gameSpeed,
+    int? lastSeenEpochMs,
+  }) : services = services ?? {},
+       inventory = inventory ?? {},
        totalMoneyEverEarned = totalMoneyEverEarned ?? 0,
        contractsCompletedCount = contractsCompletedCount ?? 0,
        uptimeStreakDays = uptimeStreakDays ?? 0,
@@ -290,7 +446,19 @@ class GameState {
        unlockedAchievements = unlockedAchievements ?? {},
        prestigeLevel = prestigeLevel ?? 0,
        incomeMultiplier = incomeMultiplier ?? 1.0,
-       hiredStaffIds = hiredStaffIds ?? {};
+       hiredStaffIds = hiredStaffIds ?? {},
+       researchPoints = researchPoints ?? 0,
+       researchQueue = researchQueue ?? [],
+       researchLevels = researchLevels ?? {},
+       researchCompletedCount = researchCompletedCount ?? 0,
+       activeBoosts = activeBoosts ?? [],
+       missions = missions ?? [],
+       missionsRolledForDay = missionsRolledForDay ?? -1,
+       autoConfirmDay = autoConfirmDay ?? false,
+       // Anything not on the speed dial (an older or hand-edited save) falls
+       // back to 1×; a zero here would stall the day timer entirely.
+       gameSpeed = (gameSpeed != null && gameSpeeds.contains(gameSpeed)) ? gameSpeed : 1,
+       lastSeenEpochMs = lastSeenEpochMs ?? 0;
 
   factory GameState.newDefault({
     double totalMoneyEverEarned = 0,
@@ -310,7 +478,6 @@ class GameState {
           name: 'Rig 1',
           kind: RigKind.pc,
           build: newStarterBuild(),
-          services: [],
           routerId: firstRouterId,
           pos: NodePos(x: 380, y: 60),
         ),
@@ -346,6 +513,7 @@ class GameState {
     'dayCount': dayCount,
     'rigs': rigs.map((k, v) => MapEntry(k, v.toJson())),
     'routers': routers.map((k, v) => MapEntry(k, v.toJson())),
+    'services': services.map((k, v) => MapEntry(k, v.toJson())),
     'nextRigId': nextRigId,
     'nextRouterId': nextRouterId,
     'nextInstanceId': nextInstanceId,
@@ -365,7 +533,54 @@ class GameState {
     'prestigeLevel': prestigeLevel,
     'incomeMultiplier': incomeMultiplier,
     'hiredStaffIds': hiredStaffIds.toList(),
+    'researchPoints': researchPoints,
+    'activeResearch': activeResearch?.toJson(),
+    'researchQueue': researchQueue,
+    'researchLevels': researchLevels,
+    'researchCompletedCount': researchCompletedCount,
+    'activeBoosts': activeBoosts.map((b) => b.toJson()).toList(),
+    'missions': missions.map((m) => m.toJson()).toList(),
+    'missionsRolledForDay': missionsRolledForDay,
+    'autoConfirmDay': autoConfirmDay,
+    'gameSpeed': gameSpeed,
+    'lastSeenEpochMs': lastSeenEpochMs,
   };
+
+  /// Services used to live inside each rig. A save written before they became
+  /// canvas nodes has no top-level `services` map, so hoist the nested lists
+  /// out and park each one just left of the rig it was running on.
+  static Map<String, ServiceNode> _servicesFromJson(Map<String, dynamic> json) {
+    final top = json['services'] as Map<String, dynamic>?;
+    if (top != null) {
+      return top.map((k, v) => MapEntry(k, ServiceNode.fromJson(v as Map<String, dynamic>)));
+    }
+
+    final migrated = <String, ServiceNode>{};
+    final rigs = json['rigs'] as Map<String, dynamic>? ?? const {};
+    for (final entry in rigs.entries) {
+      final rig = entry.value as Map<String, dynamic>;
+      final legacy = rig['services'] as List? ?? const [];
+      final rigPos = rig['pos'] as Map<String, dynamic>?;
+      final baseX = (rigPos?['x'] as num?)?.toDouble() ?? 0;
+      final baseY = (rigPos?['y'] as num?)?.toDouble() ?? 0;
+
+      for (var i = 0; i < legacy.length; i++) {
+        final svc = legacy[i] as Map<String, dynamic>;
+        final id = svc['instanceId'] as String;
+        migrated[id] = ServiceNode(
+          instanceId: id,
+          serviceTypeId: svc['serviceTypeId'] as String,
+          capacity: svc['capacity'] as int,
+          rigId: entry.key,
+          pos: NodePos(
+            x: (baseX + 320).clamp(0, canvasMaxX),
+            y: (baseY + i * 84).clamp(0, canvasMaxY),
+          ),
+        );
+      }
+    }
+    return migrated;
+  }
 
   factory GameState.fromJson(Map<String, dynamic> json) => GameState(
     money: (json['money'] as num).toDouble(),
@@ -373,6 +588,7 @@ class GameState {
     dayCount: json['dayCount'] as int,
     rigs: (json['rigs'] as Map<String, dynamic>).map((k, v) => MapEntry(k, Rig.fromJson(v as Map<String, dynamic>))),
     routers: (json['routers'] as Map<String, dynamic>).map((k, v) => MapEntry(k, Router.fromJson(v as Map<String, dynamic>))),
+    services: _servicesFromJson(json),
     nextRigId: json['nextRigId'] as int,
     nextRouterId: json['nextRouterId'] as int,
     nextInstanceId: json['nextInstanceId'] as int,
@@ -392,5 +608,21 @@ class GameState {
     prestigeLevel: json['prestigeLevel'] as int? ?? 0,
     incomeMultiplier: (json['incomeMultiplier'] as num?)?.toDouble() ?? 1.0,
     hiredStaffIds: (json['hiredStaffIds'] as List?)?.cast<String>().toSet() ?? {},
+    researchPoints: (json['researchPoints'] as num?)?.toDouble() ?? 0,
+    activeResearch: json['activeResearch'] == null
+        ? null
+        : ResearchProgress.fromJson(json['activeResearch'] as Map<String, dynamic>),
+    researchQueue: (json['researchQueue'] as List?)?.cast<String>().toList() ?? [],
+    researchLevels: (json['researchLevels'] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as int)) ?? {},
+    researchCompletedCount: json['researchCompletedCount'] as int? ?? 0,
+    activeBoosts: (json['activeBoosts'] as List?)
+            ?.map((e) => ActiveBoost.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        [],
+    missions: (json['missions'] as List?)?.map((e) => Mission.fromJson(e as Map<String, dynamic>)).toList() ?? [],
+    missionsRolledForDay: json['missionsRolledForDay'] as int? ?? -1,
+    autoConfirmDay: json['autoConfirmDay'] as bool? ?? false,
+    gameSpeed: json['gameSpeed'] as int? ?? 1,
+    lastSeenEpochMs: json['lastSeenEpochMs'] as int? ?? 0,
   );
 }

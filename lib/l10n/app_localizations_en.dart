@@ -70,6 +70,34 @@ class LEn extends L {
   String get settingsAccentColor => 'Accent color';
 
   @override
+  String get settingsThemeStyle => 'Theme style';
+
+  @override
+  String get settingsThemeStyleDefault => 'Default';
+
+  @override
+  String get settingsThemeStyleDefaultSub =>
+      'luma as it comes — clean surfaces and your chosen accent.';
+
+  @override
+  String get settingsThemeStyleCoffee => 'Coffee';
+
+  @override
+  String get settingsThemeStyleCoffeeSub =>
+      'Espresso and cream, softer shapes, and beans drifting behind everything.';
+
+  @override
+  String get settingsThemeStyleLocked => 'Orbit or Nova';
+
+  @override
+  String get settingsThemeStyleUpgrade =>
+      'Coffee is part of Orbit and Nova. Upgrade to pour it.';
+
+  @override
+  String get settingsAccentCoffeeNote =>
+      'Coffee brings its own palette, so the accent picker is paused while it\'s on.';
+
+  @override
   String get settingsGeneral => 'General';
 
   @override

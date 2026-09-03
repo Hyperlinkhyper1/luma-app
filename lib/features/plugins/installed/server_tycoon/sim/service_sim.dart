@@ -24,6 +24,40 @@ class ServiceInstance {
   );
 }
 
+/// Account-wide multipliers folded in from research and active boosts. The sim
+/// itself stays ignorant of where they came from — the repository composes
+/// [ResearchEffects] and [BoostEffects] into one of these before calling in.
+class SimModifiers {
+  /// Scales usable CPU score (research cpuBoost × boost capacity).
+  final double cpuCapacityMultiplier;
+
+  /// Scales cooling headroom (research coolingEfficiency × boost cooling).
+  final double coolingMultiplier;
+
+  /// Fraction shaved off every service's storage requirement, 0–1.
+  final double storageCompression;
+
+  /// Fraction shaved off every service's bandwidth requirement, 0–1.
+  final double bandwidthOverhead;
+
+  /// Added to each instance's satisfaction before it is capped at 1.
+  final double satisfactionBonus;
+
+  /// Scales service income.
+  final double incomeMultiplier;
+
+  const SimModifiers({
+    this.cpuCapacityMultiplier = 1.0,
+    this.coolingMultiplier = 1.0,
+    this.storageCompression = 0,
+    this.bandwidthOverhead = 0,
+    this.satisfactionBonus = 0,
+    this.incomeMultiplier = 1.0,
+  });
+
+  static const none = SimModifiers();
+}
+
 class RigInput {
   final Build build;
   final List<ServiceInstance> services;
@@ -45,24 +79,57 @@ class RequiredResources {
   final double storageGB;
   final double bandwidthMbps;
 
-  const RequiredResources({required this.cpu, required this.ramGB, required this.storageGB, required this.bandwidthMbps});
+  /// Sustained disk throughput the workload needs, in MB/s. Derived from how
+  /// much data is parked on the rig and how hard it is being served — see
+  /// [diskThroughputDemandMBs].
+  final double diskMBs;
+
+  const RequiredResources({
+    required this.cpu,
+    required this.ramGB,
+    required this.storageGB,
+    required this.bandwidthMbps,
+    this.diskMBs = 0,
+  });
 }
+
+/// How much disk throughput a workload of this size demands.
+///
+/// A large dataset costs IOPS even when idle (worse cache hit rates, more
+/// seeking), and served traffic has to be read off the platter in the first
+/// place. This is what makes a 4TB HDD and a 4TB NVMe behave differently
+/// instead of being interchangeable buckets of gigabytes.
+double diskThroughputDemandMBs({required double storageGB, required double bandwidthMbps}) =>
+    storageGB * 0.12 + bandwidthMbps * 0.5;
 
 class RigCapacity {
   final double cpu;
   final int ramGB;
   final int storageGB;
   final int nicMbps;
+  final double diskMBs;
 
-  const RigCapacity({required this.cpu, required this.ramGB, required this.storageGB, required this.nicMbps});
+  const RigCapacity({
+    required this.cpu,
+    required this.ramGB,
+    required this.storageGB,
+    required this.nicMbps,
+    this.diskMBs = 0,
+  });
 }
 
 class Utilization {
   final double cpu;
   final double ramGB;
   final double storageGB;
+  final double disk;
 
-  const Utilization({required this.cpu, required this.ramGB, required this.storageGB});
+  const Utilization({
+    required this.cpu,
+    required this.ramGB,
+    required this.storageGB,
+    this.disk = 0,
+  });
 }
 
 class RigLoadResult {
@@ -159,7 +226,7 @@ class AccountLoadResult {
   });
 }
 
-RequiredResources _sumRequired(List<ServiceInstance> services) {
+RequiredResources _sumRequired(List<ServiceInstance> services, SimModifiers modifiers) {
   var cpu = 0.0, ramGB = 0.0, storageGB = 0.0, bandwidthMbps = 0.0;
   for (final inst in services) {
     final serviceType = servicesById[inst.serviceTypeId];
@@ -169,7 +236,21 @@ RequiredResources _sumRequired(List<ServiceInstance> services) {
     storageGB += serviceType.base.storageGB + serviceType.perUnit.storageGB * inst.capacity;
     bandwidthMbps += serviceType.base.bandwidthMbps + serviceType.perUnit.bandwidthMbps * inst.capacity;
   }
-  return RequiredResources(cpu: cpu, ramGB: ramGB, storageGB: storageGB, bandwidthMbps: bandwidthMbps);
+  // Disk demand follows the *effective* footprint, so compression and packet
+  // shaping research relieve the drives too.
+  final effectiveStorage = storageGB * (1 - modifiers.storageCompression);
+  final effectiveBandwidth = bandwidthMbps * (1 - modifiers.bandwidthOverhead);
+
+  return RequiredResources(
+    cpu: cpu,
+    ramGB: ramGB,
+    storageGB: effectiveStorage,
+    bandwidthMbps: effectiveBandwidth,
+    diskMBs: diskThroughputDemandMBs(
+      storageGB: effectiveStorage,
+      bandwidthMbps: effectiveBandwidth,
+    ),
+  );
 }
 
 RigLoadResult calculateRigLoad(
@@ -179,26 +260,41 @@ RigLoadResult calculateRigLoad(
   RigKind kind, {
   double overheatThrottlePenalty = 0.0,
   double coolingCapacityReduction = 0.0,
+  SimModifiers modifiers = SimModifiers.none,
 }) {
-  final req = _sumRequired(services);
-  final capacity = getCapacity(build);
+  final req = _sumRequired(services, modifiers);
+  final rawCapacity = getCapacity(build);
+  final capacity = Capacity(
+    cpuScore: rawCapacity.cpuScore * modifiers.cpuCapacityMultiplier,
+    ramGB: rawCapacity.ramGB,
+    storageGB: rawCapacity.storageGB,
+    nicMbps: rawCapacity.nicMbps,
+  );
   final (incompatibilityReasons, compatible) = validateBuild(build, rigKind: kind);
   final incompatible = !compatible;
 
   final double nominalCPULoadFactor = capacity.cpuScore > 0 ? (req.cpu / capacity.cpuScore).clamp(0, 1).toDouble() : 1.0;
-  final (thermalThrottleFactor, tempRatio) = getThermals(build, nominalCPULoadFactor, coolingCapacityMultiplier: 1 - coolingCapacityReduction);
+  final (thermalThrottleFactor, tempRatio) = getThermals(
+    build,
+    nominalCPULoadFactor,
+    coolingCapacityMultiplier: (1 - coolingCapacityReduction) * modifiers.coolingMultiplier,
+  );
   final throttleFactor = thermalThrottleFactor * (1 - overheatThrottlePenalty);
   final effectiveCPUCapacity = capacity.cpuScore * throttleFactor;
+
+  final diskCapacityMBs = getDiskThroughputMBs(build);
 
   final util = Utilization(
     cpu: effectiveCPUCapacity > 0 ? req.cpu / effectiveCPUCapacity : (req.cpu > 0 ? double.infinity : 0),
     ramGB: capacity.ramGB > 0 ? req.ramGB / capacity.ramGB : (req.ramGB > 0 ? double.infinity : 0),
     storageGB: capacity.storageGB > 0 ? req.storageGB / capacity.storageGB : (req.storageGB > 0 ? double.infinity : 0),
+    disk: diskCapacityMBs > 0 ? req.diskMBs / diskCapacityMBs : (req.diskMBs > 0 ? double.infinity : 0),
   );
 
   final degradationCpu = util.cpu > 1 ? 1 / util.cpu : 1.0;
   final degradationRam = util.ramGB > 1 ? 1 / util.ramGB : 1.0;
   final degradationStorage = util.storageGB > 1 ? 1 / util.storageGB : 1.0;
+  final degradationDisk = util.disk > 1 ? 1 / util.disk : 1.0;
 
   var nicCapFactor = 1.0;
   if (capacity.nicMbps > 0 && req.bandwidthMbps > capacity.nicMbps) {
@@ -207,7 +303,8 @@ RigLoadResult calculateRigLoad(
     nicCapFactor = 0;
   }
 
-  final localFactorRaw = [degradationCpu, degradationRam, degradationStorage, nicCapFactor].reduce((a, b) => a < b ? a : b);
+  final localFactorRaw = [degradationCpu, degradationRam, degradationStorage, degradationDisk, nicCapFactor]
+      .reduce((a, b) => a < b ? a : b);
   final localFactor = incompatible ? 0.0 : localFactorRaw;
   String? bottleneck;
   if (incompatible) {
@@ -216,13 +313,20 @@ RigLoadResult calculateRigLoad(
     if (degradationCpu == localFactor) bottleneck = 'cpu';
     else if (degradationRam == localFactor) bottleneck = 'ram';
     else if (degradationStorage == localFactor) bottleneck = 'storage';
+    else if (degradationDisk == localFactor) bottleneck = 'disk';
     else bottleneck = 'nic';
   }
 
   return RigLoadResult(
     rigId: rigId,
     required: req,
-    capacity: RigCapacity(cpu: effectiveCPUCapacity, ramGB: capacity.ramGB, storageGB: capacity.storageGB, nicMbps: capacity.nicMbps),
+    capacity: RigCapacity(
+      cpu: effectiveCPUCapacity,
+      ramGB: capacity.ramGB,
+      storageGB: capacity.storageGB,
+      nicMbps: capacity.nicMbps,
+      diskMBs: diskCapacityMBs,
+    ),
     utilization: util,
     throttleFactor: throttleFactor,
     tempRatio: tempRatio,
@@ -242,6 +346,7 @@ AccountLoadResult calculateAccountLoad(
   Map<String, double> rigCoolingReductions = const {},
   Map<String, double> routerBandwidthMultipliers = const {},
   Map<String, double> instanceIncomeMultipliers = const {},
+  SimModifiers modifiers = SimModifiers.none,
 }) {
   final rigResults = <String, RigLoadResult>{};
   final routerResults = <String, RouterLoadResult>{};
@@ -271,6 +376,7 @@ AccountLoadResult calculateAccountLoad(
       entry.value.kind,
       overheatThrottlePenalty: rigOverheatPenalties[entry.key] ?? 0.0,
       coolingCapacityReduction: rigCoolingReductions[entry.key] ?? 0.0,
+      modifiers: modifiers,
     );
     rigResults[entry.key] = result;
     totalRequiredBandwidth += result.required.bandwidthMbps;
@@ -317,7 +423,12 @@ AccountLoadResult calculateAccountLoad(
         latencyFactor = (serviceType.maxLatencyMs! / routerLatency).clamp(0.2, 1.0);
       }
 
-      final satisfaction = rigResult.localFactor * routerFactor * latencyFactor;
+      final rawSatisfaction = rigResult.localFactor * routerFactor * latencyFactor;
+      // The research bonus lifts a degraded service but can never take one
+      // past fully satisfied, and never rescues incompatible hardware (0).
+      final satisfaction = rawSatisfaction <= 0
+          ? 0.0
+          : (rawSatisfaction + modifiers.satisfactionBonus).clamp(0.0, 1.0).toDouble();
       if (routerFactor < rigResult.localFactor && routerFactor < latencyFactor) {
         bottleneck = 'bandwidth';
       } else if (latencyFactor < rigResult.localFactor && latencyFactor < routerFactor) {
@@ -325,7 +436,8 @@ AccountLoadResult calculateAccountLoad(
       }
 
       final incomeMultiplier = instanceIncomeMultipliers[inst.instanceId] ?? 1.0;
-      final incomePerDay = serviceType.incomePerUnitPerDay * inst.capacity * satisfaction * incomeMultiplier;
+      final incomePerDay =
+          serviceType.incomePerUnitPerDay * inst.capacity * satisfaction * incomeMultiplier * modifiers.incomeMultiplier;
 
       instances.add(InstanceResult(
         instanceId: inst.instanceId,

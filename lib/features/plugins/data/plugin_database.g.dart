@@ -84,6 +84,18 @@ class $InstalledPluginsTable extends InstalledPlugins
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _downloadCountMeta = const VerificationMeta(
+    'downloadCount',
+  );
+  @override
+  late final GeneratedColumn<int> downloadCount = GeneratedColumn<int>(
+    'download_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -92,6 +104,7 @@ class $InstalledPluginsTable extends InstalledPlugins
     icon,
     version,
     installedAt,
+    downloadCount,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -145,6 +158,15 @@ class $InstalledPluginsTable extends InstalledPlugins
         ),
       );
     }
+    if (data.containsKey('download_count')) {
+      context.handle(
+        _downloadCountMeta,
+        downloadCount.isAcceptableOrUnknown(
+          data['download_count']!,
+          _downloadCountMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -178,6 +200,10 @@ class $InstalledPluginsTable extends InstalledPlugins
         DriftSqlType.dateTime,
         data['${effectivePrefix}installed_at'],
       )!,
+      downloadCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}download_count'],
+      )!,
     );
   }
 
@@ -194,6 +220,7 @@ class InstalledPlugin extends DataClass implements Insertable<InstalledPlugin> {
   final String icon;
   final String version;
   final DateTime installedAt;
+  final int downloadCount;
   const InstalledPlugin({
     required this.id,
     required this.pluginId,
@@ -201,6 +228,7 @@ class InstalledPlugin extends DataClass implements Insertable<InstalledPlugin> {
     required this.icon,
     required this.version,
     required this.installedAt,
+    required this.downloadCount,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -211,6 +239,7 @@ class InstalledPlugin extends DataClass implements Insertable<InstalledPlugin> {
     map['icon'] = Variable<String>(icon);
     map['version'] = Variable<String>(version);
     map['installed_at'] = Variable<DateTime>(installedAt);
+    map['download_count'] = Variable<int>(downloadCount);
     return map;
   }
 
@@ -222,6 +251,7 @@ class InstalledPlugin extends DataClass implements Insertable<InstalledPlugin> {
       icon: Value(icon),
       version: Value(version),
       installedAt: Value(installedAt),
+      downloadCount: Value(downloadCount),
     );
   }
 
@@ -237,6 +267,7 @@ class InstalledPlugin extends DataClass implements Insertable<InstalledPlugin> {
       icon: serializer.fromJson<String>(json['icon']),
       version: serializer.fromJson<String>(json['version']),
       installedAt: serializer.fromJson<DateTime>(json['installedAt']),
+      downloadCount: serializer.fromJson<int>(json['downloadCount']),
     );
   }
   @override
@@ -249,6 +280,7 @@ class InstalledPlugin extends DataClass implements Insertable<InstalledPlugin> {
       'icon': serializer.toJson<String>(icon),
       'version': serializer.toJson<String>(version),
       'installedAt': serializer.toJson<DateTime>(installedAt),
+      'downloadCount': serializer.toJson<int>(downloadCount),
     };
   }
 
@@ -259,6 +291,7 @@ class InstalledPlugin extends DataClass implements Insertable<InstalledPlugin> {
     String? icon,
     String? version,
     DateTime? installedAt,
+    int? downloadCount,
   }) => InstalledPlugin(
     id: id ?? this.id,
     pluginId: pluginId ?? this.pluginId,
@@ -266,6 +299,7 @@ class InstalledPlugin extends DataClass implements Insertable<InstalledPlugin> {
     icon: icon ?? this.icon,
     version: version ?? this.version,
     installedAt: installedAt ?? this.installedAt,
+    downloadCount: downloadCount ?? this.downloadCount,
   );
   InstalledPlugin copyWithCompanion(InstalledPluginsCompanion data) {
     return InstalledPlugin(
@@ -277,6 +311,9 @@ class InstalledPlugin extends DataClass implements Insertable<InstalledPlugin> {
       installedAt: data.installedAt.present
           ? data.installedAt.value
           : this.installedAt,
+      downloadCount: data.downloadCount.present
+          ? data.downloadCount.value
+          : this.downloadCount,
     );
   }
 
@@ -288,14 +325,22 @@ class InstalledPlugin extends DataClass implements Insertable<InstalledPlugin> {
           ..write('name: $name, ')
           ..write('icon: $icon, ')
           ..write('version: $version, ')
-          ..write('installedAt: $installedAt')
+          ..write('installedAt: $installedAt, ')
+          ..write('downloadCount: $downloadCount')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, pluginId, name, icon, version, installedAt);
+  int get hashCode => Object.hash(
+    id,
+    pluginId,
+    name,
+    icon,
+    version,
+    installedAt,
+    downloadCount,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -305,7 +350,8 @@ class InstalledPlugin extends DataClass implements Insertable<InstalledPlugin> {
           other.name == this.name &&
           other.icon == this.icon &&
           other.version == this.version &&
-          other.installedAt == this.installedAt);
+          other.installedAt == this.installedAt &&
+          other.downloadCount == this.downloadCount);
 }
 
 class InstalledPluginsCompanion extends UpdateCompanion<InstalledPlugin> {
@@ -315,6 +361,7 @@ class InstalledPluginsCompanion extends UpdateCompanion<InstalledPlugin> {
   final Value<String> icon;
   final Value<String> version;
   final Value<DateTime> installedAt;
+  final Value<int> downloadCount;
   const InstalledPluginsCompanion({
     this.id = const Value.absent(),
     this.pluginId = const Value.absent(),
@@ -322,6 +369,7 @@ class InstalledPluginsCompanion extends UpdateCompanion<InstalledPlugin> {
     this.icon = const Value.absent(),
     this.version = const Value.absent(),
     this.installedAt = const Value.absent(),
+    this.downloadCount = const Value.absent(),
   });
   InstalledPluginsCompanion.insert({
     this.id = const Value.absent(),
@@ -330,6 +378,7 @@ class InstalledPluginsCompanion extends UpdateCompanion<InstalledPlugin> {
     this.icon = const Value.absent(),
     this.version = const Value.absent(),
     this.installedAt = const Value.absent(),
+    this.downloadCount = const Value.absent(),
   }) : pluginId = Value(pluginId),
        name = Value(name);
   static Insertable<InstalledPlugin> custom({
@@ -339,6 +388,7 @@ class InstalledPluginsCompanion extends UpdateCompanion<InstalledPlugin> {
     Expression<String>? icon,
     Expression<String>? version,
     Expression<DateTime>? installedAt,
+    Expression<int>? downloadCount,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -347,6 +397,7 @@ class InstalledPluginsCompanion extends UpdateCompanion<InstalledPlugin> {
       if (icon != null) 'icon': icon,
       if (version != null) 'version': version,
       if (installedAt != null) 'installed_at': installedAt,
+      if (downloadCount != null) 'download_count': downloadCount,
     });
   }
 
@@ -357,6 +408,7 @@ class InstalledPluginsCompanion extends UpdateCompanion<InstalledPlugin> {
     Value<String>? icon,
     Value<String>? version,
     Value<DateTime>? installedAt,
+    Value<int>? downloadCount,
   }) {
     return InstalledPluginsCompanion(
       id: id ?? this.id,
@@ -365,6 +417,7 @@ class InstalledPluginsCompanion extends UpdateCompanion<InstalledPlugin> {
       icon: icon ?? this.icon,
       version: version ?? this.version,
       installedAt: installedAt ?? this.installedAt,
+      downloadCount: downloadCount ?? this.downloadCount,
     );
   }
 
@@ -389,6 +442,9 @@ class InstalledPluginsCompanion extends UpdateCompanion<InstalledPlugin> {
     if (installedAt.present) {
       map['installed_at'] = Variable<DateTime>(installedAt.value);
     }
+    if (downloadCount.present) {
+      map['download_count'] = Variable<int>(downloadCount.value);
+    }
     return map;
   }
 
@@ -400,7 +456,8 @@ class InstalledPluginsCompanion extends UpdateCompanion<InstalledPlugin> {
           ..write('name: $name, ')
           ..write('icon: $icon, ')
           ..write('version: $version, ')
-          ..write('installedAt: $installedAt')
+          ..write('installedAt: $installedAt, ')
+          ..write('downloadCount: $downloadCount')
           ..write(')'))
         .toString();
   }
@@ -427,6 +484,7 @@ typedef $$InstalledPluginsTableCreateCompanionBuilder =
       Value<String> icon,
       Value<String> version,
       Value<DateTime> installedAt,
+      Value<int> downloadCount,
     });
 typedef $$InstalledPluginsTableUpdateCompanionBuilder =
     InstalledPluginsCompanion Function({
@@ -436,6 +494,7 @@ typedef $$InstalledPluginsTableUpdateCompanionBuilder =
       Value<String> icon,
       Value<String> version,
       Value<DateTime> installedAt,
+      Value<int> downloadCount,
     });
 
 class $$InstalledPluginsTableFilterComposer
@@ -474,6 +533,11 @@ class $$InstalledPluginsTableFilterComposer
 
   ColumnFilters<DateTime> get installedAt => $composableBuilder(
     column: $table.installedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get downloadCount => $composableBuilder(
+    column: $table.downloadCount,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -516,6 +580,11 @@ class $$InstalledPluginsTableOrderingComposer
     column: $table.installedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get downloadCount => $composableBuilder(
+    column: $table.downloadCount,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$InstalledPluginsTableAnnotationComposer
@@ -544,6 +613,11 @@ class $$InstalledPluginsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get installedAt => $composableBuilder(
     column: $table.installedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get downloadCount => $composableBuilder(
+    column: $table.downloadCount,
     builder: (column) => column,
   );
 }
@@ -591,6 +665,7 @@ class $$InstalledPluginsTableTableManager
                 Value<String> icon = const Value.absent(),
                 Value<String> version = const Value.absent(),
                 Value<DateTime> installedAt = const Value.absent(),
+                Value<int> downloadCount = const Value.absent(),
               }) => InstalledPluginsCompanion(
                 id: id,
                 pluginId: pluginId,
@@ -598,6 +673,7 @@ class $$InstalledPluginsTableTableManager
                 icon: icon,
                 version: version,
                 installedAt: installedAt,
+                downloadCount: downloadCount,
               ),
           createCompanionCallback:
               ({
@@ -607,6 +683,7 @@ class $$InstalledPluginsTableTableManager
                 Value<String> icon = const Value.absent(),
                 Value<String> version = const Value.absent(),
                 Value<DateTime> installedAt = const Value.absent(),
+                Value<int> downloadCount = const Value.absent(),
               }) => InstalledPluginsCompanion.insert(
                 id: id,
                 pluginId: pluginId,
@@ -614,6 +691,7 @@ class $$InstalledPluginsTableTableManager
                 icon: icon,
                 version: version,
                 installedAt: installedAt,
+                downloadCount: downloadCount,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

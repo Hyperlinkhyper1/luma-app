@@ -148,7 +148,10 @@ class AutoClickerRepository extends ChangeNotifier {
 
   Future<void> _registerHotKey() async {
     try {
-      await hotKeyManager.register(_hotKey, keyDownHandler: (_) => toggle());
+      await hotKeyManager.register(
+        _hotKey,
+        keyDownHandler: (_) => toggle(clickImmediately: true),
+      );
       _hotKeyRegistered = true;
       _hotKeyError = null;
     } catch (_) {
@@ -236,13 +239,23 @@ class AutoClickerRepository extends ChangeNotifier {
     notifyListeners();
   }
 
-  void start() {
+  /// [clickImmediately] fires the first click right away instead of waiting a
+  /// full interval — used by the hotkey so a long interval doesn't make F6
+  /// feel dead. The UI Start button keeps the delay, because an instant click
+  /// there would land on luma's own Stop button under the cursor.
+  void start({bool clickImmediately = false}) {
     if (_isRunning || !supported) return;
     if (_repeatMode == ClickRepeatMode.count && _repeatCount <= 0) return;
     if (!_clickAtCursor && _fixedPoint == null) return;
 
     _isRunning = true;
     _clicksDone = 0;
+    if (clickImmediately) {
+      _performClick();
+      // The first click can already finish the run (repeat count of 1) or
+      // fail and stop; don't re-arm the timer in that case.
+      if (!_isRunning) return;
+    }
     _startTimer();
     notifyListeners();
   }
@@ -255,7 +268,8 @@ class AutoClickerRepository extends ChangeNotifier {
     notifyListeners();
   }
 
-  void toggle() => _isRunning ? stop() : start();
+  void toggle({bool clickImmediately = false}) =>
+      _isRunning ? stop() : start(clickImmediately: clickImmediately);
 
   void _startTimer() {
     _timer?.cancel();

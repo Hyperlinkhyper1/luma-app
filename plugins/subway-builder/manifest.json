@@ -1,0 +1,11 @@
+{
+  "id": "subway-builder",
+  "name": "Subway Builder",
+  "version": "1.0.0",
+  "description": "A transit simulator on the real world: pick any city on Earth and build metro, tram, bus and train networks on a live 3D OpenStreetMap map. Trains only call at real stations and run on tracks that really exist; buses and trams pathfind along real streets. A commuter simulation fed by real land use decides, trip by trip, whether your network beats the car.",
+  "icon": "directions_subway",
+  "category": "Games",
+  "tags": ["Games", "Simulation"],
+  "details": "A hyperrealistic-leaning transit simulator, not just a game: your job is to design a route network that moves the most people faster than driving.\n\nSearch for any real place on Earth — or pick a featured city like New York, London, Amsterdam or Tokyo — and the simulator streams the actual city from OpenStreetMap, with true 3D building extrusions as you zoom in. Residents and jobs are estimated from real land-use data, and you can inspect both as heat-map overlays before you dig.\n\nFour modes, each with real constraints. Metro bores tunnels anywhere — but crossing real rivers costs 2.6× for underwater work. Bus and tram stops snap to actual streets, and their routes pathfind along the real road network, so they cross water only on bridges that exist and never cut through buildings. Trains are the strictest: they call only at real railway stations and run on real tracks, both pulled live from OpenStreetMap.\n\nEvery simulated commuter weighs walking, waiting, riding, transfers and your fare against the car, door to door — including walking transfers between nearby stops of different modes. Overcrowded lines develop delays that push riders away again.\n\nFund it with fares, a daily operating subsidy, a 30-day capital budget, transit-share milestone grants, and loans if you dare. Your score is the share of all commutes riding your network. One autosave per place, so you can run several cities side by side.\n\nNeeds an internet connection for map tiles, rail data and location search.",
+  "screenshots": []
+}

@@ -1,10 +1,10 @@
 {
   "id": "youtube-downloader",
-  "name": "YouTube Downloader",
-  "version": "1.0.0",
-  "description": "Paste a YouTube link and download the video or just the audio, with full control over resolution, bitrate, and output format. Keeps a history of everything you've downloaded.",
-  "icon": "smart_display",
+  "name": "Media Downloader",
+  "version": "1.1.1",
+  "description": "Paste a YouTube link and download the video or just the audio, with full control over resolution, bitrate, and output format. Paste a Spotify track link and luma finds and downloads the matching audio from YouTube, tagged with the real title, artist, and cover art. Keeps a history of everything you've downloaded.",
+  "icon": "video_library",
   "category": "Utility",
-  "details": "Paste a YouTube URL, luma fetches the video's title, thumbnail, and duration, then lets you choose exactly what to download:\n\n- Video (MP4) at any available resolution, up to the source's best quality\n- Audio only, as MP3, M4A, or Opus, at a bitrate you choose (96–320 kbps)\n\nDownloads run through a locally managed copy of yt-dlp and ffmpeg (fetched automatically on first use, kept in luma's app data folder — nothing is bundled into the app itself). Progress, speed, and ETA are shown live, and every completed download is kept in a history list so you can jump straight to the file.",
+  "details": "Paste a YouTube URL, luma fetches the video's title, thumbnail, and duration, then lets you choose exactly what to download:\n\n- Video (MP4) at any available resolution, up to the source's best quality\n- Audio only, as MP3, M4A, or Opus, at a bitrate you choose (96–320 kbps)\n\nPaste a Spotify track link instead and luma reads its title, artist, and cover art from Spotify's public track page — no account or API key needed — then searches YouTube for the matching audio and downloads it, tagged with the real metadata and cover art. Spotify's own streams are DRM-protected, so this never touches them directly; playlists and albums aren't supported yet, only single tracks.\n\nDownloads run through a locally managed copy of yt-dlp and ffmpeg (fetched automatically on first use, kept in luma's app data folder — nothing is bundled into the app itself). Progress, speed, and ETA are shown live, and every completed download is kept in a history list so you can jump straight to the file.",
   "screenshots": []
 }

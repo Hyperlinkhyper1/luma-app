@@ -72,6 +72,10 @@ function createApp() {
       const marketSlugs = marketParam
         ? marketParam.split(',').map((s) => s.trim()).filter(Boolean)
         : null;
+      const category = typeof req.query.category === 'string' && req.query.category.trim()
+        ? req.query.category.trim()
+        : null;
+      const onlyDiscounted = req.query.onlyDeals === 'true';
 
       const sort = VALID_SORTS.has(req.query.sort) ? req.query.sort : 'relevance';
       const limit = Math.min(MAX_LIMIT, Math.max(1, Number.parseInt(req.query.limit, 10) || 40));
@@ -80,6 +84,8 @@ function createApp() {
       const rows = await Product.search({
         query: query || null,
         marketSlugs,
+        category,
+        onlyDiscounted,
         sort,
         limit,
         offset,
@@ -89,6 +95,22 @@ function createApp() {
         products: rows.map(serializeProduct),
         limit,
         offset,
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get('/api/products/categories', async (req, res, next) => {
+    try {
+      const marketParam = typeof req.query.market === 'string' ? req.query.market.trim() : '';
+      const marketSlugs = marketParam
+        ? marketParam.split(',').map((s) => s.trim()).filter(Boolean)
+        : null;
+
+      const rows = await Product.categories({ marketSlugs });
+      res.json({
+        categories: rows.map((row) => ({ name: row.category, count: Number(row.count) })),
       });
     } catch (error) {
       next(error);

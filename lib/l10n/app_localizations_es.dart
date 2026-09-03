@@ -70,6 +70,34 @@ class LEs extends L {
   String get settingsAccentColor => 'Color de acento';
 
   @override
+  String get settingsThemeStyle => 'Estilo del tema';
+
+  @override
+  String get settingsThemeStyleDefault => 'Predeterminado';
+
+  @override
+  String get settingsThemeStyleDefaultSub =>
+      'luma tal cual — superficies limpias y el acento que elijas.';
+
+  @override
+  String get settingsThemeStyleCoffee => 'Café';
+
+  @override
+  String get settingsThemeStyleCoffeeSub =>
+      'Espresso y crema, formas más suaves y granos flotando de fondo.';
+
+  @override
+  String get settingsThemeStyleLocked => 'Orbit o Nova';
+
+  @override
+  String get settingsThemeStyleUpgrade =>
+      'Café forma parte de Orbit y Nova. Mejora tu plan para servirlo.';
+
+  @override
+  String get settingsAccentCoffeeNote =>
+      'Café trae su propia paleta, así que el selector de acento queda en pausa mientras esté activo.';
+
+  @override
   String get settingsGeneral => 'General';
 
   @override

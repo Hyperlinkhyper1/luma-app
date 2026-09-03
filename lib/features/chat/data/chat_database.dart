@@ -9,6 +9,7 @@ class ChatConversations extends Table {
   TextColumn get title => text().withLength(min: 0, max: 200)();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  BoolColumn get pinned => boolean().withDefault(const Constant(false))();
 }
 
 class ChatMessages extends Table {
@@ -39,5 +40,15 @@ class ChatDatabase extends _$ChatDatabase {
             ));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.addColumn(chatConversations, chatConversations.pinned);
+          }
+        },
+      );
 }

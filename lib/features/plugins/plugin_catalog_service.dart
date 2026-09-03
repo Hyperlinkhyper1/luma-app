@@ -22,6 +22,7 @@ class PluginCatalogEntry {
     required this.version,
     this.tags = const [],
     this.free = true,
+    this.requiresAccount = false,
   });
 
   final String id;
@@ -39,6 +40,13 @@ class PluginCatalogEntry {
   /// plugin tier; every plugin in the official registry is free today.
   final bool free;
 
+  /// Whether the plugin does nothing without an approved luma account,
+  /// because everything it does runs through the server. Drives the
+  /// marketplace's "Account required" badge; the gate that actually stops it
+  /// running is compiled in (`AppShell.serverOnlyPluginIds`), not read from
+  /// this fetched file.
+  final bool requiresAccount;
+
   factory PluginCatalogEntry.fromJson(Map<String, dynamic> json) {
     final category = json['category'] as String? ?? 'Utility';
     final tags = (json['tags'] as List?)?.cast<String>();
@@ -51,6 +59,7 @@ class PluginCatalogEntry {
       version: json['version'] as String? ?? '1.0.0',
       tags: tags == null || tags.isEmpty ? [category] : tags,
       free: json['free'] as bool? ?? true,
+      requiresAccount: json['requiresAccount'] as bool? ?? false,
     );
   }
 }
