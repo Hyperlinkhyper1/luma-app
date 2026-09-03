@@ -107,21 +107,6 @@ class OpenAiCompatibleClient implements AiClient {
     }
   }
 
-  /// Extracts a human-readable error message from an error response body —
-  /// either the OpenAI shape `{"error": {"message": ...}}` or the sync
-  /// server's `{"error": code, "message": ...}`.
-  static String? _messageFromBody(String body) {
-    try {
-      final decoded = jsonDecode(body) as Map<String, dynamic>;
-      final err = decoded['error'];
-      if (err is Map && err['message'] is String) {
-        return err['message'] as String;
-      }
-      if (decoded['message'] is String) return decoded['message'] as String;
-    } catch (_) {}
-    return null;
-  }
-
   Map<String, dynamic> _decodeArgs(Object? raw) {
     if (raw is String) {
       try {
@@ -169,14 +154,20 @@ class OpenAiCompatibleClient implements AiClient {
       throw AiAuthError('$providerLabel rejected the API key. Check it in Settings.');
     }
     if (res.statusCode == 429) {
-      // Surface the server's own wording when it explains the limit (e.g.
-      // the sync server's usage budgets) instead of a generic message.
-      throw AiRateLimitError(_messageFromBody(res.body) ??
-          'Too many requests — try again shortly.');
+      throw AiRateLimitError('Too many requests — try again shortly.');
     }
     if (res.statusCode != 200) {
-      throw AiApiError(_messageFromBody(res.body) ??
-          '$providerLabel returned an error (${res.statusCode}).');
+      String message = '$providerLabel returned an error (${res.statusCode}).';
+      try {
+        final decoded = jsonDecode(res.body) as Map<String, dynamic>;
+        final err = decoded['error'];
+        if (err is Map && err['message'] is String) {
+          message = err['message'] as String;
+        }
+      } catch (_) {
+        // Keep the generic message above.
+      }
+      throw AiApiError(message);
     }
 
     final decoded = jsonDecode(res.body) as Map<String, dynamic>;

@@ -33,19 +33,26 @@ enum ChartRange {
 
 /// Fetches stock prices without an API key.
 ///
-/// Tries Stooq's CSV endpoint first (simple, keyless), then falls back to
-/// Yahoo Finance's chart endpoint. Both require network access; on the web
-/// build they may be blocked by CORS, but on the native desktop build they
-/// work directly. Prices are returned in the instrument's native currency.
+/// Yahoo Finance's chart endpoint is asked first because it is the same
+/// source [fetchHistory] uses: quoting from anywhere else would let the
+/// portfolio total and the chart disagree about what a share is worth.
+/// Stooq's keyless CSV is the fallback for symbols Yahoo doesn't resolve.
+/// Both require network access; on the web build they may be blocked by
+/// CORS, but on the native desktop build they work directly. Prices are
+/// returned in the instrument's native currency.
 class StockService {
   const StockService._();
 
   static Future<StockQuote?> fetchQuote(String ticker) async {
     final t = ticker.trim();
     if (t.isEmpty) return null;
-    return await _stooq(t) ??
-        await _stooq('$t.us') ??
-        await _yahoo(t);
+    final quote = await _yahoo(t) ?? await _stooq(t);
+    if (quote != null) return quote;
+    // A bare symbol may just be missing its market; an already-suffixed one
+    // (AD.AS, ASML.NL) must never be retried as a US listing — that resolves
+    // to a different instrument, priced in a different currency.
+    if (t.contains('.')) return null;
+    return _stooq('$t.us');
   }
 
   /// Fetches an intraday/historical close-price series for [ticker] over
@@ -96,6 +103,11 @@ class StockService {
       if (lines.length < 2) return null;
       final cols = lines[1].split(',');
       if (cols.length < 7) return null;
+      // Stooq echoes back the symbol it actually resolved; anything other than
+      // what we asked for is a different instrument, not this holding.
+      if (cols[0].trim().toUpperCase() != symbol.trim().toUpperCase()) {
+        return null;
+      }
       final close = cols[6];
       if (close == 'N/D' || close.isEmpty) return null;
       final price = double.tryParse(close);
@@ -124,9 +136,11 @@ class StockService {
       final meta = result?['meta'] as Map<String, dynamic>?;
       final price = (meta?['regularMarketPrice'] as num?)?.toDouble();
       if (price == null || price <= 0) return null;
+      final name = (meta?['shortName'] ?? meta?['longName']) as String?;
       return StockQuote(
         priceCents: (price * 100).round(),
         currency: meta?['currency'] as String?,
+        name: (name != null && name.isNotEmpty) ? name : null,
       );
     } catch (_) {
       return null;

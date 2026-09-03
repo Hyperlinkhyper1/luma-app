@@ -16,6 +16,7 @@ class MistralProxyClient extends OpenAiCompatibleClient {
           agentsBaseUrl: _proxyUrl(serverUrl),
           defaultModel: 'mistral-small-latest',
           providerLabel: 'Luma',
+          viaLumaServer: true,
         );
 
   static String _proxyUrl(String serverUrl) {

@@ -6,6 +6,8 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../sync/server_access.dart';
+
 /// A supermarket the search API knows about.
 class RemoteMarket {
   const RemoteMarket({
@@ -41,6 +43,9 @@ class RemoteProduct {
     required this.price,
     required this.oldPrice,
     required this.isDiscounted,
+    required this.quantity,
+    required this.discountPercentage,
+    required this.discountText,
   });
 
   final String id;
@@ -53,6 +58,12 @@ class RemoteProduct {
   final double? oldPrice;
   final bool isDiscounted;
 
+  /// Pack size, e.g. "1 l" or "500 g" — already unit-formatted by the source
+  /// market, so there's no separate numeric/unit pair to combine.
+  final String? quantity;
+  final double? discountPercentage;
+  final String? discountText;
+
   factory RemoteProduct.fromJson(Map<String, dynamic> json) => RemoteProduct(
         id: '${json['id']}',
         name: json['name'] as String,
@@ -63,6 +74,24 @@ class RemoteProduct {
         price: (json['price'] as num?)?.toDouble(),
         oldPrice: (json['oldPrice'] as num?)?.toDouble(),
         isDiscounted: json['isDiscounted'] as bool? ?? false,
+        quantity: json['quantity'] as String?,
+        discountPercentage: (json['discountPercentage'] as num?)?.toDouble(),
+        discountText: json['discountText'] as String?,
+      );
+}
+
+/// A top-level department (e.g. "Groente, aardappelen"), for the category
+/// sidebar. [count] is how many available products fall under it — also
+/// used to rank the sidebar, biggest department first.
+class ProductCategory {
+  const ProductCategory({required this.name, required this.count});
+
+  final String name;
+  final int count;
+
+  factory ProductCategory.fromJson(Map<String, dynamic> json) => ProductCategory(
+        name: json['name'] as String,
+        count: (json['count'] as num).toInt(),
       );
 }
 
@@ -85,12 +114,13 @@ class GroceriesApiException implements Exception {
 }
 
 /// Talks to the supermarket-db HTTP API (search/filter/sort across Jumbo,
-/// Albert Heijn and Lidl). Defaults to the hosted server so it works out of
+/// Albert Heijn, Hoogvliet and Lidl). Defaults to the hosted server so it works out of
 /// the box; the address is still user-configurable (gear icon on the search
 /// page) and persisted locally in case someone points it at their own
 /// deployment instead (see supermarket-db/ at the repo root).
 class GroceriesApi extends ChangeNotifier {
-  GroceriesApi({http.Client? client}) : _client = client ?? http.Client() {
+  GroceriesApi({http.Client? client})
+      : _client = GatedServerClient(inner: client) {
     _load();
   }
 
@@ -188,6 +218,11 @@ class GroceriesApi extends ChangeNotifier {
       return parse(body);
     } on GroceriesApiException {
       rethrow;
+    } on ServerAccessDeniedException {
+      throw GroceriesApiException(
+          'Product search needs an approved luma account. Create one under '
+          'Settings → Sync & account — your shopping list itself keeps '
+          'working offline.');
     } on TimeoutException {
       throw GroceriesApiException('The groceries server took too long to respond.');
     } on SocketException {
@@ -212,6 +247,8 @@ class GroceriesApi extends ChangeNotifier {
   Future<List<RemoteProduct>> search({
     String? query,
     List<String>? marketSlugs,
+    String? category,
+    bool onlyDeals = false,
     ProductSort sort = ProductSort.relevance,
     int limit = 40,
     int offset = 0,
@@ -219,6 +256,8 @@ class GroceriesApi extends ChangeNotifier {
     final params = <String, String>{
       if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
       if (marketSlugs != null && marketSlugs.isNotEmpty) 'market': marketSlugs.join(','),
+      if (category != null && category.isNotEmpty) 'category': category,
+      if (onlyDeals) 'onlyDeals': 'true',
       'sort': sort.queryValue,
       'limit': '$limit',
       'offset': '$offset',
@@ -227,6 +266,21 @@ class GroceriesApi extends ChangeNotifier {
       final list = body['products'] as List<dynamic>? ?? const [];
       return list
           .map((e) => RemoteProduct.fromJson(e as Map<String, dynamic>))
+          .toList(growable: false);
+    });
+  }
+
+  /// Top-level departments for the sidebar filter, biggest first. Scoped to
+  /// [marketSlugs] so switching stores shows only categories that store
+  /// actually has.
+  Future<List<ProductCategory>> fetchCategories({List<String>? marketSlugs}) {
+    final params = <String, String>{
+      if (marketSlugs != null && marketSlugs.isNotEmpty) 'market': marketSlugs.join(','),
+    };
+    return _get(_uri('/api/products/categories', params), (body) {
+      final list = body['categories'] as List<dynamic>? ?? const [];
+      return list
+          .map((e) => ProductCategory.fromJson(e as Map<String, dynamic>))
           .toList(growable: false);
     });
   }

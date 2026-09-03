@@ -70,6 +70,34 @@ class LFr extends L {
   String get settingsAccentColor => 'Couleur d\'accent';
 
   @override
+  String get settingsThemeStyle => 'Style de thème';
+
+  @override
+  String get settingsThemeStyleDefault => 'Par défaut';
+
+  @override
+  String get settingsThemeStyleDefaultSub =>
+      'luma tel quel — des surfaces nettes et votre accent choisi.';
+
+  @override
+  String get settingsThemeStyleCoffee => 'Café';
+
+  @override
+  String get settingsThemeStyleCoffeeSub =>
+      'Expresso et crème, des formes plus douces et des grains qui dérivent en fond.';
+
+  @override
+  String get settingsThemeStyleLocked => 'Orbit ou Nova';
+
+  @override
+  String get settingsThemeStyleUpgrade =>
+      'Café fait partie d\'Orbit et Nova. Passez à l\'offre supérieure pour le servir.';
+
+  @override
+  String get settingsAccentCoffeeNote =>
+      'Café apporte sa propre palette : le sélecteur d\'accent est en pause tant qu\'il est actif.';
+
+  @override
   String get settingsGeneral => 'Général';
 
   @override

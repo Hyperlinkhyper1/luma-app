@@ -48,7 +48,7 @@ class _GroceriesPageState extends State<GroceriesPage> {
           icon: Icons.auto_awesome_rounded,
           title: 'Groceries List is a Nova exclusive',
           subtitle:
-              'Search Jumbo, Albert Heijn and Lidl prices side by side, '
+              'Search Jumbo, Albert Heijn, Hoogvliet and Lidl prices side by side, '
               'and build shopping lists that split themselves by store '
               'and aisle with running totals — included free with Nova.',
           action: LumaPrimaryButton(
@@ -120,7 +120,7 @@ class _GroceriesOverview extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Search products across Jumbo, Albert Heijn and Lidl, and '
+                'Search products across Jumbo, Albert Heijn, Hoogvliet and Lidl, and '
                 'build shopping lists split by store.',
                 style: TextStyle(color: luma.textMuted, fontSize: 13),
               ),

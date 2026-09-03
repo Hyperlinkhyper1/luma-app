@@ -45,4 +45,13 @@ Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: 
 [Run]
 ; No "skipifsilent" — this must also fire during a silent updater-driven
 ; install so the app relaunches itself automatically after updating.
-Filename: "{app}\{#MyAppExeName}"; Description: "Launch luma"; Flags: nowait postinstall
+;
+; Routed through a short `ping`-based delay rather than launching luma.exe
+; directly: CloseApplications kills the outgoing process right before the
+; file copy, and launching the new luma.exe within the same instant
+; intermittently crashed on startup (Event Viewer: dcomp.dll, exception
+; 0xE0464645) because the old window's DirectComposition/GPU compositor
+; state hadn't been torn down yet. A couple of seconds gives Windows time to
+; release it first. (`ping` is used instead of `timeout` because `timeout`
+; needs a real console and silently no-ops without one.)
+Filename: "{cmd}"; Parameters: "/C ping -n 3 127.0.0.1 >NUL & start """" ""{app}\{#MyAppExeName}"""; Description: "Launch luma"; Flags: nowait postinstall runhidden

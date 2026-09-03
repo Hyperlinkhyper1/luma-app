@@ -40,7 +40,7 @@ class _SecureChatPageState extends State<SecureChatPage> {
     return ListenableBuilder(
       listenable: Listenable.merge([sync, chat]),
       builder: (context, _) {
-        if (!sync.signedIn) return const _SignedOut();
+        if (!sync.serverReady) return const _SignedOut();
         final conversations = chat.conversations;
         if (_selectedConversationId != null &&
             conversations.every((c) => c.id != _selectedConversationId)) {

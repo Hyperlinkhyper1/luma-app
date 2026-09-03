@@ -4,7 +4,10 @@ luma can sync your data (notes, finance, passwords, calendar, …) between
 devices through a small server that you run yourself. This guide takes you
 from "I have nothing" to a working, secure sync server.
 
-The server code lives in the [`server/`](server/) folder of this repo.
+The server code lives in the [`server/`](server/) folder of this repo. This
+guide covers *deploying* it; for the server's internals (architecture, API
+reference, how auth/admin/rate-limiting work), see
+[`server/README.md`](server/README.md) instead.
 
 ---
 
@@ -41,6 +44,19 @@ The server code lives in the [`server/`](server/) folder of this repo.
 - Each account gets **3 GB** of storage by default (configurable).
 - Nothing syncs by default: each user turns individual features on in
   *Settings → Sync & account*.
+- **The app does not contact the server at all until an account exists and
+  has been approved.** A fresh install makes zero requests to it; the only
+  calls allowed before approval are the four that create the account
+  (`/auth/params`, `/auth/register`, `/auth/login`,
+  `/auth/resend-verification`). Everything else — sync, the AI proxy, the
+  plugin install counter — stays switched off, and the plugins that need
+  the server (Cloud Files, Chat, cloud backups, product search, co-op
+  rooms) show a "needs an approved account" screen instead of running.
+  By default **you approve each account by hand** from the admin
+  dashboard's Users tab (`LUMA_APPROVAL_MODE=manual`) — no email is sent
+  and nobody waits on one. The server enforces the same rule as the app: a
+  `pending` account gets `403 account_not_approved` on every authenticated
+  route.
 
 ---
 
@@ -120,10 +136,14 @@ nano .env
 Fill in `.env`:
 
 - `LUMA_DOMAIN` — your domain, e.g. `sync.yourdomain.com`
+- `LUMA_ADMIN_KEY` — generate one with `openssl rand -hex 32`. You need it
+  to reach `/admin`, which is where you approve accounts.
 - Leave the rest at the defaults unless you know why you're changing them.
   Registration is **open** by default (anyone who knows the address can
-  create an account). Once your accounts exist you can set
-  `LUMA_ALLOW_REGISTRATION=false` and restart to close it — see section 7.
+  create an account) but every new account waits for **your approval**
+  before it can do anything — see section 6.1. Once your accounts exist you
+  can set `LUMA_ALLOW_REGISTRATION=false` and restart to close sign-ups
+  entirely — see section 7.
 
 Start it:
 
@@ -147,11 +167,41 @@ curl https://sync.yourdomain.com/health
 On each device, in luma:
 
 1. **Settings → Sync & account → Sign in or create account**
-2. Server address: `https://sync.yourdomain.com`
-3. First device: *Create account* tab → email + password. Other devices:
-   *Sign in* with the same account.
+2. Server address: `https://sync.yourdomain.com` (under *Self-hosted
+   server*; the app fills in the default one otherwise)
+3. First device: *Create account* tab → email + password. The app says the
+   account is waiting for you to approve it (see 6.1). Other devices:
+   *Sign in* with the same account — already-approved accounts sign in
+   straight away.
 4. Toggle on the features you want synced (they are all **off** by
    default). The storage bar shows usage against the 3 GB quota.
+
+### 6.2 Optional: Continue with Google / GitHub
+
+Fill in `LUMA_GOOGLE_OAUTH_CLIENT_ID`/`_SECRET` or the GitHub pair in `.env`
+(each provider needs the callback URL registered on its side — the exact URLs
+are in `.env.example`) and the sign-in screen grows a **Continue with Google**
+/ **Continue with GitHub** button. Leave them blank and the buttons simply
+don't appear.
+
+The button replaces typing your address, not your passphrase. Because the
+server can never see your encryption key, the app still asks for one
+afterwards: a new passphrase the first time, and the existing one on every
+device after that. Someone who already has an email + password account can
+use the button as soon as the addresses match — the first such sign-in links
+the two, and both ways in keep working.
+
+### 6.1 Approving an account
+
+Open `https://sync.yourdomain.com/admin` and sign in with your
+`LUMA_ADMIN_KEY`. The **Users** tab lists accounts waiting for approval
+first, each with an **Approve** button. Press it and the person can sign in
+immediately — nothing is emailed, in either direction.
+
+Prefer users to approve themselves by email instead? Set
+`LUMA_APPROVAL_MODE=email` and fill in the `LUMA_SMTP_*` settings. Running a
+server only you can reach and want no approval step at all? Set
+`LUMA_APPROVAL_MODE=open`.
 
 The **Cloud Files** plugin (install it from the plugin marketplace) uses the
 same account to upload arbitrary files. They are end-to-end encrypted on the
@@ -172,20 +222,59 @@ being able to read anything.
 
 ### Backups
 
-All state lives in one Docker volume. Back it up on a schedule:
+All state lives in a host directory bind-mounted into the container
+(`/opt/luma-sync-data:/data` in docker-compose.yml) — back that directory
+up directly, no container needed:
 
 ```bash
 # Manual backup
-docker run --rm -v luma-sync_luma_data:/data -v /root/backups:/backup \
-  debian tar czf /backup/luma-$(date +%F).tar.gz -C /data .
+tar czf /root/backups/luma-$(date +%F).tar.gz -C /opt/luma-sync-data .
 
 # Automatic: crontab -e, then add (daily at 04:00, keep it simple):
-0 4 * * * docker run --rm -v luma-sync_luma_data:/data -v /root/backups:/backup debian tar czf /backup/luma-$(date +\%F).tar.gz -C /data . && find /root/backups -name 'luma-*.tar.gz' -mtime +14 -delete
+0 4 * * * tar czf /root/backups/luma-$(date +\%F).tar.gz -C /opt/luma-sync-data . && find /root/backups -name 'luma-*.tar.gz' -mtime +14 -delete
 ```
 
 The backups only contain ciphertext — safe to copy anywhere.
 
 ### Updating the server
+
+The admin dashboard's "Update & restart server" button does this for you
+(git pull + rebuild + recreate). It needs `LUMA_REPO_PATH` set in `.env`
+(the absolute path to this repo's checkout on the host) and a small systemd
+service installed once per host — the button can't safely run `docker
+compose up -d --build` on its own container from inside that container, so
+it hands the work to a watcher running directly on the host instead:
+
+```bash
+sudo cp server/luma-deploy-watcher.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now luma-deploy-watcher
+```
+
+The watcher heartbeats onto the shared data dir, so the dashboard says
+plainly when it isn't running instead of the button appearing to do
+nothing. If it reports that, check it:
+
+```bash
+systemctl status luma-deploy-watcher
+```
+
+The checkout at `LUMA_REPO_PATH` is a deploy target, not a workspace: the
+watcher updates it with `git fetch` + `git reset --hard origin/<branch>`.
+Local edits to tracked files (a hand-tweaked `server/docker-compose.yml`,
+typically) used to abort the pull and wedge the button permanently — they
+are now moved aside into a stash first, and the deploy carries on. Nothing
+is lost; recover them on the host with:
+
+```bash
+git -C <LUMA_REPO_PATH> stash list
+git -C <LUMA_REPO_PATH> stash show -p 'stash@{0}'
+```
+
+Anything you want to keep across deploys belongs in a commit (or in `.env`,
+which is untracked and never touched).
+
+To update manually instead:
 
 ```bash
 cd /opt/luma-sync
@@ -207,11 +296,16 @@ account). To force-remove one yourself:
 
 ```bash
 docker compose stop luma-sync
-docker run --rm -it -v luma-sync_luma_data:/data debian bash
-# inside: edit /data/users.json (remove the user's entry),
-#         delete /data/blobs/<their-user-id>/
+# edit /opt/luma-sync-data/users.json directly (remove the user's entry),
+# delete /opt/luma-sync-data/blobs/<their-user-id>/
 docker compose start luma-sync
 ```
+
+### Approving accounts
+
+`/admin` → **Users**. Pending accounts sort to the top with an **Approve**
+button; the header's *Pending* counter tells you at a glance whether anyone
+is waiting. Approving is instant and needs nothing from the user's side.
 
 ### Closing registration
 
@@ -305,6 +399,8 @@ variables in a small `.bat` wrapper).
 |---|---|
 | `curl https://…/health` fails | DNS not propagated yet, or ports 80/443 blocked. `docker compose logs caddy` shows certificate errors. |
 | App says "This server does not accept new accounts" | Registration is closed (`LUMA_ALLOW_REGISTRATION=false`). Set it to `true` (or remove it) and restart to allow sign-ups. |
+| App says an account is "waiting to be approved" | Working as intended: approve it from the admin dashboard's Users tab (section 6.1). Under `LUMA_APPROVAL_MODE=email` it instead means the verification mail hasn't been opened — the user can resend it from *Settings → Sync & account*, and you can still approve them by hand. |
+| A plugin shows "needs an approved account" | By design: it only works through the server, and this device has no approved account yet. Sign in once the account is approved and it switches on. |
 | App says "Session expired" | Tokens expire after 90 days of inactivity — just sign in again. Data is untouched. |
 | "Could not decrypt this snapshot" | The account's data was encrypted under a different password (e.g. password was changed on another device before it finished re-encrypting). Sign in again on the device that has the data and let it re-upload. |
 | "Storage quota exceeded" | The account hit its 3 GB. Turn off + "delete from server" for features you don't need synced, or raise the quota (section 7). |
@@ -314,21 +410,9 @@ variables in a small `.bat` wrapper).
 
 ### API quick reference (for the curious)
 
-All endpoints under `https://<server>/api/v1`:
-
-```
-POST /auth/params    {email}                        → KDF salt + iterations
-POST /auth/register  {email, authKey, kdfSalt, …}   → token
-POST /auth/login     {email, authKey}               → token
-POST /auth/logout                                    (auth)
-POST /auth/change    {currentAuthKey, newAuthKey,…}  (auth)
-GET  /account                                        (auth) → usage, quota, collections
-POST /account/delete {authKey}                       (auth) → wipes everything
-GET  /sync/<name>                                    (auth) → encrypted snapshot
-PUT  /sync/<name>    (X-Base-Version header)         (auth) → optimistic-locked upload
-DELETE /sync/<name>                                  (auth)
-GET  /health                                          public
-```
+See [`server/README.md`](server/README.md) for the full endpoint table, the
+server's internal architecture, and how the admin dashboard's login works —
+that's the developer-facing companion to this deployment guide.
 
 ---
 

@@ -39,6 +39,19 @@ class FinanceRepository {
       (db.select(db.recurringRules)..orderBy([(r) => OrderingTerm(expression: r.nextDue)]))
           .watch();
 
+  /// Active bills/subscriptions due within [withinDays] of [now], soonest
+  /// first — the "due soon" reminder list.
+  Stream<List<RecurringRule>> watchDueBills(
+      {DateTime? now, int withinDays = 7}) {
+    final horizon = (now ?? DateTime.now()).add(Duration(days: withinDays));
+    return (db.select(db.recurringRules)
+          ..where((r) => r.active.equals(true) & r.isBill.equals(true))
+          ..orderBy([(r) => OrderingTerm(expression: r.nextDue)]))
+        .watch()
+        .map((rules) =>
+            rules.where((r) => !r.nextDue.isAfter(horizon)).toList());
+  }
+
   Stream<List<AllocationRule>> watchAllocationRules() =>
       db.select(db.allocationRules).watch();
 
@@ -234,6 +247,41 @@ class FinanceRepository {
     final txns = await db.select(db.financeTransactions).get();
     return computeBalances(txns).mainCents;
   }
+
+  /// Cash net worth (main + pots) plus the market value of every holding
+  /// (falling back to cost basis for holdings with no live price yet) —
+  /// the same total the net-worth chart tracks over time.
+  Future<int> currentNetWorthCents() async {
+    final txns = await db.select(db.financeTransactions).get();
+    final cash = computeBalances(txns).totalCents;
+    final holdings = await db.select(db.holdings).get();
+    final invested = holdings.fold<int>(
+        0,
+        (sum, h) =>
+            sum + ((h.lastPriceCents ?? h.avgCostCents) * h.shares).round());
+    return cash + invested;
+  }
+
+  /// Records today's net worth in [BalanceSnapshots] if it hasn't been
+  /// recorded yet today — safe to call on every app start (see
+  /// FinanceRepository.applyDue's callers). Overwrites today's snapshot if
+  /// one already exists, so calling it more than once a day just keeps the
+  /// total current rather than creating duplicates.
+  Future<void> recordDailyNetWorthSnapshot({DateTime? now}) async {
+    final today = _dateOnly(now ?? DateTime.now());
+    final total = await currentNetWorthCents();
+    await db.into(db.balanceSnapshots).insertOnConflictUpdate(
+          BalanceSnapshotsCompanion.insert(date: today, totalCents: total),
+        );
+  }
+
+  /// Net worth history, oldest first, for the overview chart.
+  Stream<List<BalanceSnapshot>> watchNetWorthHistory() =>
+      (db.select(db.balanceSnapshots)
+            ..orderBy([(s) => OrderingTerm(expression: s.date)]))
+          .watch();
+
+  static DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
   /// Applies every recurring rule and allocation rule that is due on or before
   /// [now], catching up one entry per missed period. Returns how many ledger

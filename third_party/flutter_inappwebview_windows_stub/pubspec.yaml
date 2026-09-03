@@ -1,0 +1,29 @@
+name: flutter_inappwebview_windows
+description: >
+  Local stand-in for the real flutter_inappwebview_windows package, wired in
+  via dependency_overrides in the root pubspec.yaml.
+
+  flutter_inappwebview's Windows implementation registers a static WinRT
+  compositor object that gets torn down after dcomp.dll/CoreMessaging.dll
+  already unloaded, crashing the whole app (dcomp.dll, exception
+  0xE0464645) on every process exit — merely having the plugin registered is
+  enough to trigger it, whether or not any InAppWebView widget is ever built
+  (see https://github.com/pichillilorenzo/flutter_inappwebview/issues/2512,
+  unfixed as of this writing; fix pending in upstream PR #2838).
+
+  This stub has no `flutter: plugin:` section, so Flutter's tool doesn't
+  discover a Windows implementation for flutter_inappwebview and never links
+  flutter_inappwebview_windows_plugin.dll into the app at all. The umbrella
+  flutter_inappwebview package never imports this package's Dart code
+  directly (only Flutter's plugin-registrant mechanism wires it in), so an
+  empty stub is sufficient — the 3 plugins that used InAppWebView on Windows
+  (city_planner, file_viewer, space_colony) use `webview_windows` instead;
+  see lib/features/plugins/installed/_shared/windows_webview.dart.
+version: 0.6.0
+environment:
+  sdk: ^3.5.0
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter

@@ -1,0 +1,10 @@
+{
+  "id": "minecraft-launcher",
+  "name": "Minecraft Launcher",
+  "version": "1.0.0",
+  "description": "Install and manage Minecraft instances — Vanilla, Fabric, Forge, NeoForge and Quilt — with mod, resource pack and shader pack downloads, Java management, and live launch logs. Inspired by modern launchers, built with luma's own design.",
+  "icon": "sports_esports",
+  "category": "Games",
+  "details": "A clean, fast Minecraft launcher inside luma. Create instances for any release or snapshot, pick a mod loader, and let luma handle downloading the game files, libraries, assets and the right Java runtime automatically.\n\nSign in with an offline (cracked-style) profile with zero setup, or link a Microsoft account for online-mode play. Every instance gets its own mods, resource packs, shader packs, saves and screenshots folder, plus a live log view while the game is running and full control over memory, JVM arguments, resolution and Java path.\n\nMod loader installers and in-app mod/resource pack browsing are on the roadmap — this first release focuses on getting a rock-solid Vanilla launch experience right.",
+  "screenshots": []
+}

@@ -64,6 +64,10 @@ class ImageConvert {
       return PictureFormat.tiff;
     }
     if (lower.endsWith('.svg')) return PictureFormat.svg;
+    // .oip is a Windows/Bing image-cache extension, not a real format — the
+    // bytes underneath are almost always JPEG, so guess that if sniffing the
+    // magic bytes above didn't already resolve it to something else.
+    if (lower.endsWith('.oip')) return PictureFormat.jpg;
     return null;
   }
 

@@ -1,0 +1,446 @@
+import 'package:drift/native.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:luma/features/plugins/installed/steam_tools/data/steam_database.dart';
+import 'package:luma/features/plugins/installed/steam_tools/steam_models.dart';
+import 'package:luma/features/plugins/installed/steam_tools/steam_price_history.dart';
+import 'package:luma/features/plugins/installed/steam_tools/steam_repository.dart';
+import 'package:luma/features/plugins/installed/steam_tools/steam_requirements.dart';
+import 'package:luma/storage/storage_guard.dart';
+import 'package:luma/sync/sync_service.dart';
+
+/// The shape Steam actually serves — a heading, a bare note, then labelled
+/// `<li>` rows. Taken from the live `appdetails` response for Cyberpunk 2077.
+const _cyberpunkMinimum =
+    '<strong>Minimum:</strong><br><ul class="bb_ul">'
+    '<li>Requires a 64-bit processor and operating system<br></li>'
+    '<li><strong>OS:</strong> 64-bit Windows 10<br></li>'
+    '<li><strong>Processor:</strong> Core i7-6700 or Ryzen 5 1600<br></li>'
+    '<li><strong>Memory:</strong> 12 GB RAM<br></li>'
+    '<li><strong>Storage:</strong> 70 GB available space<br></li>'
+    '</ul>';
+
+SteamPricePoint _point(DateTime at, int cents, {int discount = 0}) =>
+    SteamPricePoint(
+      id: at.microsecondsSinceEpoch,
+      appId: 1,
+      observedAt: at,
+      finalCents: cents,
+      initialCents: discount > 0 ? 5999 : cents,
+      discountPercent: discount,
+      currency: 'USD',
+    );
+
+void main() {
+  // SteamRepository consults the app-wide storage cap before every write;
+  // outside of main.dart's real startup this static is never set.
+  setUpAll(() => StorageGuardService.instance = StorageGuardService());
+
+  group('requirements parsing', () {
+    test('reads labelled specs out of Steam store HTML', () {
+      final lines = parseSteamRequirementBlock(_cyberpunkMinimum);
+
+      expect(lines, hasLength(5));
+      // The "Minimum:" heading is the block's own name, not a spec.
+      expect(lines.first.label, isNull);
+      expect(lines.first.value,
+          'Requires a 64-bit processor and operating system');
+      expect(lines[1], const SteamRequirementLine(label: 'OS', value: '64-bit Windows 10'));
+      expect(lines[3].label, 'Memory');
+      expect(lines[3].value, '12 GB RAM');
+    });
+
+    test('falls back to <br> separated text when there is no list', () {
+      final lines = parseSteamRequirementBlock(
+        '<strong>Minimum:</strong><br><strong>OS:</strong> Windows 7<br>'
+        '<strong>Memory:</strong> 4 GB RAM<br>',
+      );
+
+      expect(lines.map((l) => l.label).toList(), ['OS', 'Memory']);
+      expect(lines.last.value, '4 GB RAM');
+    });
+
+    test('unescapes entities and collapses whitespace', () {
+      final lines = parseSteamRequirementBlock(
+        '<ul><li><strong>Graphics:</strong> GTX 1060 &amp;   RX 580</li></ul>',
+      );
+
+      expect(lines.single.value, 'GTX 1060 & RX 580');
+    });
+
+    test('handles the empty list Steam sends for apps with no specs', () {
+      // Steam sends `[]` rather than an object when nothing was filled in.
+      expect(SteamRequirements.fromJson(const []).isEmpty, isTrue);
+      expect(SteamRequirements.fromJson(null).isEmpty, isTrue);
+      expect(parseSteamRequirementBlock(''), isEmpty);
+    });
+
+    test('survives a round trip through the database column', () {
+      final original = SteamRequirements(
+        minimum: parseSteamRequirementBlock(_cyberpunkMinimum),
+        recommended: const [
+          SteamRequirementLine(label: 'Memory', value: '16 GB RAM'),
+        ],
+      );
+
+      final restored =
+          decodeSteamRequirements(encodeSteamRequirements(original));
+
+      expect(restored.minimum, original.minimum);
+      expect(restored.recommended, original.recommended);
+    });
+  });
+
+  group('price parsing', () {
+    test('keeps Steam prices as integer minor units', () {
+      final price = SteamPrice.fromJson(const {
+        'currency': 'EUR',
+        'initial': 5999,
+        'final': 2999,
+        'discount_percent': 50,
+      });
+
+      expect(price!.finalCents, 2999);
+      expect(price.initialCents, 5999);
+      expect(price.onSale, isTrue);
+      expect(formatSteamPrice(price.finalCents, price.currency), '€29.99');
+    });
+
+    test('a free game has no price block at all', () {
+      expect(SteamPrice.fromJson(null), isNull);
+      expect(SteamPrice.fromJson(const {}), isNull);
+    });
+
+    test('formats an unknown currency by code rather than guessing', () {
+      expect(formatSteamPrice(1250, 'ARS'), '12.50 ARS');
+    });
+  });
+
+  group('library rows', () {
+    test('skips entries missing an id or name', () {
+      expect(SteamLibraryGame.fromJson(const {'appid': 570}), isNull);
+      expect(
+        SteamLibraryGame.fromJson(const {'name': 'Dota 2'}),
+        isNull,
+      );
+      final game = SteamLibraryGame.fromJson(
+        const {'appid': 570, 'name': 'Dota 2', 'playtime_forever': 90},
+      );
+      expect(game!.appId, 570);
+      expect(game.playtimeLabel, '1.5 h');
+    });
+  });
+
+  group('price series', () {
+    final now = DateTime(2026, 8, 25, 12);
+
+    test('is empty when there is no history at all', () {
+      final series = buildSteamPriceSeries([], SteamPriceRange.year, now);
+
+      expect(series.isEmpty, isTrue);
+      expect(series.historyFrom, isNull);
+      expect(series.coversFullRange, isFalse);
+    });
+
+    test('carries the last price before the window across the whole range',
+        () {
+      // The price last changed two years ago, so a one-month window contains
+      // no recorded point at all — the line still has to span it.
+      final points = [_point(now.subtract(const Duration(days: 730)), 5999)];
+
+      final series = buildSteamPriceSeries(points, SteamPriceRange.month, now);
+
+      expect(series.samples, hasLength(2));
+      expect(series.samples.first.at,
+          SteamPriceRange.month.startFrom(now));
+      expect(series.samples.first.finalCents, 5999);
+      // ...and run all the way to now rather than stopping at the last change.
+      expect(series.samples.last.at, now);
+      expect(series.samples.last.finalCents, 5999);
+      expect(series.isFlat, isTrue);
+    });
+
+    test('keeps every change inside the window and extends to now', () {
+      final points = [
+        _point(now.subtract(const Duration(days: 20)), 5999),
+        _point(now.subtract(const Duration(days: 10)), 2999, discount: 50),
+        _point(now.subtract(const Duration(days: 3)), 5999),
+      ];
+
+      final series = buildSteamPriceSeries(points, SteamPriceRange.month, now);
+
+      expect(series.samples, hasLength(4));
+      expect(series.lowestCents, 2999);
+      expect(series.highestCents, 5999);
+      expect(series.isFlat, isFalse);
+      expect(series.samples.last.at, now);
+    });
+
+    test('reports whether the line really covers the range asked for', () {
+      final points = [_point(now.subtract(const Duration(days: 10)), 5999)];
+
+      final week = buildSteamPriceSeries(points, SteamPriceRange.week, now);
+      final fiveYears =
+          buildSteamPriceSeries(points, SteamPriceRange.fiveYears, now);
+
+      // Ten days of history spans a one-week window but nowhere near a
+      // five-year one, and the chart says so rather than drawing a
+      // confident flat line across years it never watched.
+      expect(week.coversFullRange, isTrue);
+      expect(fiveYears.coversFullRange, isFalse);
+      expect(fiveYears.historyFrom, points.first.observedAt);
+    });
+
+    test('history shorter than the window is never claimed as full', () {
+      final points = [_point(now.subtract(const Duration(days: 5)), 5999)];
+
+      expect(
+        buildSteamPriceSeries(points, SteamPriceRange.week, now)
+            .coversFullRange,
+        isFalse,
+      );
+    });
+
+    test('a window containing no stored point is still drawn', () {
+      // The only observation predates the 1D window, so the line is built
+      // purely from the carried price plus the "as of now" point.
+      final points = [_point(now.subtract(const Duration(days: 2)), 5999)];
+      final series = buildSteamPriceSeries(points, SteamPriceRange.day, now);
+
+      expect(series.samples, hasLength(2));
+      expect(series.samples.first.at, SteamPriceRange.day.startFrom(now));
+      expect(series.samples.first.finalCents, 5999);
+      expect(series.samples.last.at, now);
+      expect(series.coversFullRange, isTrue);
+    });
+
+    test('takes its currency from the newest observation', () {
+      final points = [
+        _point(now.subtract(const Duration(days: 2)), 5999),
+      ];
+      final series = buildSteamPriceSeries(
+        points,
+        SteamPriceRange.year,
+        now,
+        fallbackCurrency: 'EUR',
+      );
+
+      expect(series.currency, 'USD');
+      expect(
+        buildSteamPriceSeries([], SteamPriceRange.year, now,
+                fallbackCurrency: 'EUR')
+            .currency,
+        'EUR',
+      );
+    });
+
+    test('ranges are ordered longest first, as the selector shows them', () {
+      expect(
+        SteamPriceRange.values.map((r) => r.label).toList(),
+        ['5Y', '1Y', '6M', '1M', '1W', '1D'],
+      );
+      expect(
+        SteamPriceRange.values.first.span >
+            SteamPriceRange.values.last.span,
+        isTrue,
+      );
+    });
+  });
+
+  group('app details', () {
+    test('flattens genres and categories into one tag list', () {
+      final details = SteamAppDetails.fromJson(1091500, const {
+        'name': 'Cyberpunk 2077',
+        'short_description': 'An open-world RPG.',
+        'is_free': false,
+        'genres': [
+          {'id': '3', 'description': 'RPG'},
+        ],
+        'categories': [
+          {'id': 2, 'description': 'Single-player'},
+          // Duplicated across both lists — should appear once.
+          {'id': 3, 'description': 'RPG'},
+        ],
+        'platforms': {'windows': true, 'mac': true, 'linux': false},
+        'price_overview': {
+          'currency': 'USD',
+          'initial': 5999,
+          'final': 5999,
+          'discount_percent': 0,
+        },
+        'pc_requirements': {'minimum': _cyberpunkMinimum},
+        'release_date': {'coming_soon': false, 'date': 'Dec 9, 2020'},
+        'metacritic': {'score': 86},
+      });
+
+      expect(details!.tags, ['RPG', 'Single-player']);
+      expect(details.price!.finalCents, 5999);
+      expect(details.requirements.minimum, hasLength(5));
+      expect(details.linux, isFalse);
+      expect(details.mac, isTrue);
+      expect(details.metacritic, 86);
+      expect(details.releaseDate, 'Dec 9, 2020');
+    });
+
+    test('header art is addressable from the app id alone', () {
+      expect(
+        steamHeaderImage(1091500),
+        'https://cdn.cloudflare.steamstatic.com/steam/apps/1091500/header.jpg',
+      );
+    });
+  });
+
+  group('price history requires a signed-in luma account', () {
+    late SteamDatabase db;
+
+    setUp(() async {
+      db = SteamDatabase(NativeDatabase.memory());
+      await db.syncOwnedLibrary(const [
+        (appId: 1091500, name: 'Cyberpunk 2077', playtimeMinutes: 0),
+      ]);
+    });
+
+    tearDown(() async {
+      await db.close();
+    });
+
+    test('canFetchHistory is false with no sync service at all', () {
+      final repository = SteamRepository(db);
+      expect(repository.canFetchHistory, isFalse);
+    });
+
+    test('ensureHistory is a no-op with no sync service — never reaches the '
+        'network, never touches the price table', () async {
+      final repository = SteamRepository(db);
+
+      // No itadApiFactory is supplied, so if the gate failed to hold and this
+      // tried to build a real ItadApi and call it, it would hang or throw on
+      // a real network request rather than completing quietly.
+      await repository.ensureHistory(1091500);
+
+      expect(repository.isFetchingHistory(1091500), isFalse);
+      expect(await db.watchPriceHistory(1091500).first, isEmpty);
+    });
+
+    test('canFetchHistory and ensureHistory both respect an unapproved sync '
+        'account the same way as having none', () async {
+      final sync = SyncService(collections: const []);
+      final repository = SteamRepository(db, sync: sync);
+
+      expect(repository.canFetchHistory, isFalse);
+
+      await repository.ensureHistory(1091500);
+
+      expect(repository.isFetchingHistory(1091500), isFalse);
+      expect(await db.watchPriceHistory(1091500).first, isEmpty);
+    });
+  });
+
+  group('tracking a game needs no Steam account', () {
+    late SteamDatabase db;
+
+    setUp(() {
+      db = SteamDatabase(NativeDatabase.memory());
+    });
+
+    tearDown(() async {
+      await db.close();
+    });
+
+    test('adding a searched game does not require ownership', () async {
+      await db.addTrackedGame(appId: 367520, name: 'Hollow Knight');
+
+      final tracked = await db.watchTrackedGames().first;
+      expect(tracked, hasLength(1));
+      expect(tracked.single.owned, isFalse);
+    });
+
+    test('adding an already-tracked game a second time changes nothing',
+        () async {
+      await db.addTrackedGame(appId: 367520, name: 'Hollow Knight');
+      // A library sync could easily race a manual add of the same game —
+      // the second write must not clobber whatever the first one set.
+      await db.addTrackedGame(appId: 367520, name: 'Hollow Knight (dupe)');
+
+      final tracked = await db.watchTrackedGames().first;
+      expect(tracked, hasLength(1));
+      expect(tracked.single.name, 'Hollow Knight');
+    });
+
+    test('untracking removes the game and its price history', () async {
+      await db.addTrackedGame(appId: 367520, name: 'Hollow Knight');
+      await db.replacePriceHistory(367520, [
+        SteamPricePointsCompanion.insert(
+          appId: 367520,
+          observedAt: DateTime(2026, 1, 1),
+          finalCents: 1499,
+          initialCents: 1499,
+          currency: 'USD',
+        ),
+      ]);
+
+      await db.removeTrackedGame(367520);
+
+      expect(await db.watchTrackedGames().first, isEmpty);
+      expect(await db.watchPriceHistory(367520).first, isEmpty);
+    });
+
+    test('a library sync merges in rather than replacing the tracked list',
+        () async {
+      // Manually tracked, unowned.
+      await db.addTrackedGame(appId: 367520, name: 'Hollow Knight');
+
+      await db.syncOwnedLibrary(const [
+        (appId: 570, name: 'Dota 2', playtimeMinutes: 120),
+      ]);
+
+      final tracked = await db.watchTrackedGames().first;
+      final byId = {for (final g in tracked) g.appId: g};
+      // The manually tracked game survives a sync it was never part of.
+      expect(byId.containsKey(367520), isTrue);
+      expect(byId[367520]!.owned, isFalse);
+      expect(byId[570]!.owned, isTrue);
+      expect(byId[570]!.playtimeMinutes, 120);
+    });
+
+    test('a game dropping out of the owned set is marked unowned, not '
+        'deleted', () async {
+      await db.syncOwnedLibrary(const [
+        (appId: 570, name: 'Dota 2', playtimeMinutes: 120),
+      ]);
+      // The account no longer owns it (refund, different account, etc.).
+      await db.syncOwnedLibrary(const []);
+
+      final tracked = await db.watchTrackedGames().first;
+      expect(tracked, hasLength(1));
+      expect(tracked.single.appId, 570);
+      expect(tracked.single.owned, isFalse);
+    });
+
+    test('a re-sync brings a previously untracked-but-still-owned game '
+        'back', () async {
+      await db.syncOwnedLibrary(const [
+        (appId: 570, name: 'Dota 2', playtimeMinutes: 120),
+      ]);
+      await db.removeTrackedGame(570);
+      expect(await db.watchTrackedGames().first, isEmpty);
+
+      await db.syncOwnedLibrary(const [
+        (appId: 570, name: 'Dota 2', playtimeMinutes: 130),
+      ]);
+
+      final tracked = await db.watchTrackedGames().first;
+      expect(tracked, hasLength(1));
+      expect(tracked.single.playtimeMinutes, 130);
+    });
+
+    test('SteamRepository.untrackGame reaches the database without needing '
+        'a Steam account or the network', () async {
+      await db.addTrackedGame(appId: 367520, name: 'Hollow Knight');
+      final repository = SteamRepository(db);
+
+      await repository.untrackGame(367520);
+
+      expect(await db.watchTrackedGames().first, isEmpty);
+    });
+  });
+}

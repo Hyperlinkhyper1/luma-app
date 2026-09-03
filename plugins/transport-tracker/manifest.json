@@ -1,0 +1,10 @@
+{
+  "id": "transport-tracker",
+  "name": "Transport Tracker",
+  "version": "1.0.0",
+  "description": "Live ship tracking on a real-world map, like MarineTraffic or VesselFinder. Pans and zooms freely; track the current view to see nearby vessels update live with speed, course, type and destination, fed by your own free AISStream.io API key.",
+  "icon": "directions_boat",
+  "category": "Utility",
+  "details": "Transport Tracker opens a real-world map you can pan and zoom anywhere on Earth. Press \"Track this view\" and it opens a live feed of AIS (Automatic Identification System) position reports for every vessel broadcasting inside the current view — the same underlying data MarineTraffic and VesselFinder are built on. Ships appear as heading-pointed markers, colour-coded by type (cargo, tanker, passenger, fishing, pleasure craft, and more), and update live as new reports arrive.\n\nThe side list shows every tracked vessel with its name, speed and course; tap one to fly the map to it and open a detail card with MMSI, IMO number, call sign, destination, draught and last-report time, as filled in from the ship's own static broadcasts. Vessels that go quiet drop off after a few minutes, same as the real thing.\n\nThe feed comes straight from aisstream.io using a free API key you get yourself at aisstream.io and paste into the plugin's settings — it's sent directly from this device to aisstream.io and nowhere else. For now this only covers marine vessels; other transport types may follow.",
+  "screenshots": []
+}
