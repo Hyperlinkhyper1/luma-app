@@ -624,6 +624,9 @@ class _PluginTileState extends State<_PluginTile> {
                               _CategoryChip(label: tag, luma: luma),
                             if (!entry.free)
                               _CategoryChip(label: 'Paid', luma: luma),
+                            if (entry.requiresAccount)
+                              _CategoryChip(
+                                  label: 'Account required', luma: luma),
                             if (hasUpdate)
                               _CategoryChip(
                                 label: 'Update available',
@@ -1095,6 +1098,9 @@ class _PluginDetailViewState extends State<_PluginDetailView> {
                                   _CategoryChip(label: tag, luma: luma),
                                 if (!entry.free)
                                   _CategoryChip(label: 'Paid', luma: luma),
+                                if (entry.requiresAccount)
+                                  _CategoryChip(
+                                      label: 'Account required', luma: luma),
                                 _CategoryChip(
                                   label: hasUpdate
                                       ? 'v${record.version} → v${entry.version}'

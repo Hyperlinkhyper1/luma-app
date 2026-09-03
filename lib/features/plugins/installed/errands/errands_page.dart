@@ -264,14 +264,6 @@ class _HeaderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final progress = total == 0 ? 0.0 : done / total;
-    return LumaCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
@@ -288,16 +280,9 @@ class _HeaderCard extends StatelessWidget {
                       style: TextStyle(color: luma.textMuted, fontSize: 13),
                     ),
                   ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              LumaGhostButton(
                 label: 'Categories',
                 icon: Icons.category_rounded,
                 onTap: onManageCategories,
-              ),
-              const SizedBox(width: 10),
-              LumaPrimaryButton(
                 label: 'Add errand',
                 icon: Icons.add_rounded,
                 onTap: onAdd,

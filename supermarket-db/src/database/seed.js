@@ -4,6 +4,7 @@ const SUPERMARKETS = [
   { name: 'Jumbo', slug: 'jumbo', website_url: 'https://www.jumbo.com' },
   { name: 'Albert Heijn', slug: 'ah', website_url: 'https://www.ah.nl' },
   { name: 'Lidl', slug: 'lidl', website_url: 'https://www.lidl.nl' },
+  { name: 'Hoogvliet', slug: 'hoogvliet', website_url: 'https://www.hoogvliet.com' },
 ];
 
 async function seedSupermarkets() {

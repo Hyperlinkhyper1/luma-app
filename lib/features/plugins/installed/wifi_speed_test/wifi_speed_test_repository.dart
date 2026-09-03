@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../../../storage/storage_guard.dart';
+import 'network_details.dart';
 
 class SpeedTestResult {
   SpeedTestResult({
@@ -13,6 +14,9 @@ class SpeedTestResult {
     required this.downloadMbps,
     required this.uploadMbps,
     required this.latencyMs,
+    this.networkKind,
+    this.networkName,
+    this.networkGeneration,
   });
 
   final String id;
@@ -20,6 +24,19 @@ class SpeedTestResult {
   final double downloadMbps;
   final double uploadMbps;
   final int latencyMs;
+  final String? networkKind;
+  final String? networkName;
+  final String? networkGeneration;
+
+  bool get hasNetwork => networkKind != null;
+
+  NetworkKind get network => networkKindFromId(networkKind);
+
+  String get networkLabelText => networkLabel(
+        kind: network,
+        name: networkName,
+        generation: networkGeneration,
+      );
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -27,6 +44,9 @@ class SpeedTestResult {
         'downloadMbps': downloadMbps,
         'uploadMbps': uploadMbps,
         'latencyMs': latencyMs,
+        if (networkKind != null) 'networkKind': networkKind,
+        if (networkName != null) 'networkName': networkName,
+        if (networkGeneration != null) 'networkGeneration': networkGeneration,
       };
 
   factory SpeedTestResult.fromJson(Map<String, dynamic> j) => SpeedTestResult(
@@ -35,6 +55,9 @@ class SpeedTestResult {
         downloadMbps: (j['downloadMbps'] as num).toDouble(),
         uploadMbps: (j['uploadMbps'] as num).toDouble(),
         latencyMs: j['latencyMs'] as int,
+        networkKind: j['networkKind'] as String?,
+        networkName: j['networkName'] as String?,
+        networkGeneration: j['networkGeneration'] as String?,
       );
 }
 

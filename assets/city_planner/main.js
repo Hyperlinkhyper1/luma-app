@@ -57,7 +57,7 @@ canvas.addEventListener("mousedown", e => {
   } else if (i >= 0) {
     Input.dragging = true;
     // vrije plaatsing: onthoud sub-tegel offset van het eerste punt
-    Input.freeAnchor = snapActive() ? { ox: 0, oy: 0 }
+    Input.freeAnchor = snapActive() ? snapAnchorToRoad(w.x, w.y)
       : { ox: Math.max(-0.45, Math.min(0.45, w.x - Math.floor(w.x) - 0.5)),
           oy: Math.max(-0.45, Math.min(0.45, w.y - Math.floor(w.y) - 0.5)) };
     paintTile(i);
@@ -495,7 +495,10 @@ function loop(now) {
   if (uiAcc > 0.35) {
     uiAcc = 0;
     UI.refreshTop(); UI.refreshChips();
-    if (UI.tab === "inspect" && UI.selected && !Input.dragging) UI.refreshRight();
+    if (UI.tab === "inspect" && UI.selected && !Input.dragging) {
+      const ae = document.activeElement;
+      if (!ae || !$("#rightbody").contains(ae)) UI.refreshRight();
+    }
   }
   autosaveAcc += dt;
   if (autosaveAcc > 120) {

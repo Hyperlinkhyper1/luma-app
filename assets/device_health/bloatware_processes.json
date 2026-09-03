@@ -1,0 +1,80 @@
+{
+  "note": "Starter list of Windows process names sometimes bundled by old installers as toolbars, ad-injection helpers or upsell nagware. Device Health only ever shows these as a suggestion next to the process in the background-processes list — nothing here is ever closed automatically. This list deliberately excludes anything resembling antivirus or security software; it's a small, low-risk starting point meant to be extended over time, not an exhaustive database.",
+  "entries": [
+    {
+      "processName": "aupdate",
+      "label": "Ask Toolbar updater",
+      "reason": "Leftover updater from the old Ask.com browser toolbar, often bundled with unrelated installers."
+    },
+    {
+      "processName": "askservice",
+      "label": "Ask Toolbar service",
+      "reason": "Background service for the Ask.com browser toolbar."
+    },
+    {
+      "processName": "babtray",
+      "label": "Babylon Toolbar",
+      "reason": "Tray helper for the Babylon browser toolbar, a bundled adware toolbar."
+    },
+    {
+      "processName": "babylonhtmlpopup",
+      "label": "Babylon Toolbar popups",
+      "reason": "Popup helper for the Babylon browser toolbar."
+    },
+    {
+      "processName": "spupdsvc",
+      "label": "Conduit Search Protect updater",
+      "reason": "Updater for Conduit Search Protect, a browser-hijacking toolbar."
+    },
+    {
+      "processName": "spshelper",
+      "label": "Conduit Search Protect helper",
+      "reason": "Background helper for Conduit Search Protect."
+    },
+    {
+      "processName": "smartbar",
+      "label": "Smartbar / Snap.Do",
+      "reason": "Ad-injecting browser toolbar commonly bundled with free software installers."
+    },
+    {
+      "processName": "dealply",
+      "label": "DealPly",
+      "reason": "Ad-injection adware that shows coupon and deal popups."
+    },
+    {
+      "processName": "wajam",
+      "label": "Wajam",
+      "reason": "Ad-injection adware that alters search results and web pages."
+    },
+    {
+      "processName": "mypcbackup",
+      "label": "MyPC Backup",
+      "reason": "Subscription upsell nagware for an online backup service."
+    },
+    {
+      "processName": "regcleanpro",
+      "label": "RegCleanPro",
+      "reason": "Registry-cleaner upsell nagware with limited real benefit."
+    },
+    {
+      "processName": "pcoptimizerpro",
+      "label": "PC Optimizer Pro",
+      "reason": "\"PC speed-up\" upsell nagware."
+    },
+    {
+      "processName": "ilivid",
+      "label": "iLivid",
+      "reason": "Bundled download manager known for adware and toolbar installs."
+    },
+    {
+      "processName": "hpwuschd2",
+      "label": "HP Software Update Scheduler",
+      "reason": "Optional HP update checker — disabling it doesn't stop your printer or PC working."
+    },
+    {
+      "processName": "hpwutrmm",
+      "label": "HP Software Update Trigger",
+      "reason": "Optional HP update-check helper, not required for normal use."
+    }
+  ]
+}

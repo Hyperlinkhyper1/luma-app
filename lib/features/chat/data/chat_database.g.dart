@@ -59,8 +59,27 @@ class $ChatConversationsTable extends ChatConversations
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _pinnedMeta = const VerificationMeta('pinned');
   @override
-  List<GeneratedColumn> get $columns => [id, title, createdAt, updatedAt];
+  late final GeneratedColumn<bool> pinned = GeneratedColumn<bool>(
+    'pinned',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("pinned" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    title,
+    createdAt,
+    updatedAt,
+    pinned,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -96,6 +115,12 @@ class $ChatConversationsTable extends ChatConversations
         updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
       );
     }
+    if (data.containsKey('pinned')) {
+      context.handle(
+        _pinnedMeta,
+        pinned.isAcceptableOrUnknown(data['pinned']!, _pinnedMeta),
+      );
+    }
     return context;
   }
 
@@ -121,6 +146,10 @@ class $ChatConversationsTable extends ChatConversations
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
       )!,
+      pinned: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}pinned'],
+      )!,
     );
   }
 
@@ -136,11 +165,13 @@ class ChatConversation extends DataClass
   final String title;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final bool pinned;
   const ChatConversation({
     required this.id,
     required this.title,
     required this.createdAt,
     required this.updatedAt,
+    required this.pinned,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -149,6 +180,7 @@ class ChatConversation extends DataClass
     map['title'] = Variable<String>(title);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['pinned'] = Variable<bool>(pinned);
     return map;
   }
 
@@ -158,6 +190,7 @@ class ChatConversation extends DataClass
       title: Value(title),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
+      pinned: Value(pinned),
     );
   }
 
@@ -171,6 +204,7 @@ class ChatConversation extends DataClass
       title: serializer.fromJson<String>(json['title']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      pinned: serializer.fromJson<bool>(json['pinned']),
     );
   }
   @override
@@ -181,6 +215,7 @@ class ChatConversation extends DataClass
       'title': serializer.toJson<String>(title),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'pinned': serializer.toJson<bool>(pinned),
     };
   }
 
@@ -189,11 +224,13 @@ class ChatConversation extends DataClass
     String? title,
     DateTime? createdAt,
     DateTime? updatedAt,
+    bool? pinned,
   }) => ChatConversation(
     id: id ?? this.id,
     title: title ?? this.title,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
+    pinned: pinned ?? this.pinned,
   );
   ChatConversation copyWithCompanion(ChatConversationsCompanion data) {
     return ChatConversation(
@@ -201,6 +238,7 @@ class ChatConversation extends DataClass
       title: data.title.present ? data.title.value : this.title,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      pinned: data.pinned.present ? data.pinned.value : this.pinned,
     );
   }
 
@@ -210,13 +248,14 @@ class ChatConversation extends DataClass
           ..write('id: $id, ')
           ..write('title: $title, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('pinned: $pinned')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, title, createdAt, updatedAt);
+  int get hashCode => Object.hash(id, title, createdAt, updatedAt, pinned);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -224,7 +263,8 @@ class ChatConversation extends DataClass
           other.id == this.id &&
           other.title == this.title &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.pinned == this.pinned);
 }
 
 class ChatConversationsCompanion extends UpdateCompanion<ChatConversation> {
@@ -232,29 +272,34 @@ class ChatConversationsCompanion extends UpdateCompanion<ChatConversation> {
   final Value<String> title;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<bool> pinned;
   const ChatConversationsCompanion({
     this.id = const Value.absent(),
     this.title = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.pinned = const Value.absent(),
   });
   ChatConversationsCompanion.insert({
     this.id = const Value.absent(),
     required String title,
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.pinned = const Value.absent(),
   }) : title = Value(title);
   static Insertable<ChatConversation> custom({
     Expression<int>? id,
     Expression<String>? title,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<bool>? pinned,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (title != null) 'title': title,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (pinned != null) 'pinned': pinned,
     });
   }
 
@@ -263,12 +308,14 @@ class ChatConversationsCompanion extends UpdateCompanion<ChatConversation> {
     Value<String>? title,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
+    Value<bool>? pinned,
   }) {
     return ChatConversationsCompanion(
       id: id ?? this.id,
       title: title ?? this.title,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      pinned: pinned ?? this.pinned,
     );
   }
 
@@ -287,6 +334,9 @@ class ChatConversationsCompanion extends UpdateCompanion<ChatConversation> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (pinned.present) {
+      map['pinned'] = Variable<bool>(pinned.value);
+    }
     return map;
   }
 
@@ -296,7 +346,8 @@ class ChatConversationsCompanion extends UpdateCompanion<ChatConversation> {
           ..write('id: $id, ')
           ..write('title: $title, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('pinned: $pinned')
           ..write(')'))
         .toString();
   }
@@ -739,6 +790,7 @@ typedef $$ChatConversationsTableCreateCompanionBuilder =
       required String title,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<bool> pinned,
     });
 typedef $$ChatConversationsTableUpdateCompanionBuilder =
     ChatConversationsCompanion Function({
@@ -746,6 +798,7 @@ typedef $$ChatConversationsTableUpdateCompanionBuilder =
       Value<String> title,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<bool> pinned,
     });
 
 final class $$ChatConversationsTableReferences
@@ -809,6 +862,11 @@ class $$ChatConversationsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get pinned => $composableBuilder(
+    column: $table.pinned,
+    builder: (column) => ColumnFilters(column),
+  );
+
   Expression<bool> chatMessagesRefs(
     Expression<bool> Function($$ChatMessagesTableFilterComposer f) f,
   ) {
@@ -863,6 +921,11 @@ class $$ChatConversationsTableOrderingComposer
     column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get pinned => $composableBuilder(
+    column: $table.pinned,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ChatConversationsTableAnnotationComposer
@@ -885,6 +948,9 @@ class $$ChatConversationsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get pinned =>
+      $composableBuilder(column: $table.pinned, builder: (column) => column);
 
   Expression<T> chatMessagesRefs<T extends Object>(
     Expression<T> Function($$ChatMessagesTableAnnotationComposer a) f,
@@ -949,11 +1015,13 @@ class $$ChatConversationsTableTableManager
                 Value<String> title = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> pinned = const Value.absent(),
               }) => ChatConversationsCompanion(
                 id: id,
                 title: title,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                pinned: pinned,
               ),
           createCompanionCallback:
               ({
@@ -961,11 +1029,13 @@ class $$ChatConversationsTableTableManager
                 required String title,
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> pinned = const Value.absent(),
               }) => ChatConversationsCompanion.insert(
                 id: id,
                 title: title,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                pinned: pinned,
               ),
           withReferenceMapper: (p0) => p0
               .map(

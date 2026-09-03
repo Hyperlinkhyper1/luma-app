@@ -99,6 +99,17 @@ class $PasswordEntriesTable extends PasswordEntries
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _totpSecretCipherMeta = const VerificationMeta(
+    'totpSecretCipher',
+  );
+  @override
+  late final GeneratedColumn<String> totpSecretCipher = GeneratedColumn<String>(
+    'totp_secret_cipher',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -133,6 +144,7 @@ class $PasswordEntriesTable extends PasswordEntries
     phone,
     info,
     icon,
+    totpSecretCipher,
     createdAt,
     updatedAt,
   ];
@@ -202,6 +214,15 @@ class $PasswordEntriesTable extends PasswordEntries
         icon.isAcceptableOrUnknown(data['icon']!, _iconMeta),
       );
     }
+    if (data.containsKey('totp_secret_cipher')) {
+      context.handle(
+        _totpSecretCipherMeta,
+        totpSecretCipher.isAcceptableOrUnknown(
+          data['totp_secret_cipher']!,
+          _totpSecretCipherMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -255,6 +276,10 @@ class $PasswordEntriesTable extends PasswordEntries
         DriftSqlType.string,
         data['${effectivePrefix}icon'],
       ),
+      totpSecretCipher: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}totp_secret_cipher'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -285,6 +310,10 @@ class PasswordEntry extends DataClass implements Insertable<PasswordEntry> {
   final String? phone;
   final String? info;
   final String? icon;
+
+  /// Base32 TOTP/2FA secret, encrypted (same scheme as [passwordCipher]).
+  /// Null when this entry has no 2FA code configured.
+  final String? totpSecretCipher;
   final DateTime createdAt;
   final DateTime updatedAt;
   const PasswordEntry({
@@ -296,6 +325,7 @@ class PasswordEntry extends DataClass implements Insertable<PasswordEntry> {
     this.phone,
     this.info,
     this.icon,
+    this.totpSecretCipher,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -318,6 +348,9 @@ class PasswordEntry extends DataClass implements Insertable<PasswordEntry> {
     if (!nullToAbsent || icon != null) {
       map['icon'] = Variable<String>(icon);
     }
+    if (!nullToAbsent || totpSecretCipher != null) {
+      map['totp_secret_cipher'] = Variable<String>(totpSecretCipher);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -337,6 +370,9 @@ class PasswordEntry extends DataClass implements Insertable<PasswordEntry> {
           : Value(phone),
       info: info == null && nullToAbsent ? const Value.absent() : Value(info),
       icon: icon == null && nullToAbsent ? const Value.absent() : Value(icon),
+      totpSecretCipher: totpSecretCipher == null && nullToAbsent
+          ? const Value.absent()
+          : Value(totpSecretCipher),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -356,6 +392,7 @@ class PasswordEntry extends DataClass implements Insertable<PasswordEntry> {
       phone: serializer.fromJson<String?>(json['phone']),
       info: serializer.fromJson<String?>(json['info']),
       icon: serializer.fromJson<String?>(json['icon']),
+      totpSecretCipher: serializer.fromJson<String?>(json['totpSecretCipher']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -372,6 +409,7 @@ class PasswordEntry extends DataClass implements Insertable<PasswordEntry> {
       'phone': serializer.toJson<String?>(phone),
       'info': serializer.toJson<String?>(info),
       'icon': serializer.toJson<String?>(icon),
+      'totpSecretCipher': serializer.toJson<String?>(totpSecretCipher),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -386,6 +424,7 @@ class PasswordEntry extends DataClass implements Insertable<PasswordEntry> {
     Value<String?> phone = const Value.absent(),
     Value<String?> info = const Value.absent(),
     Value<String?> icon = const Value.absent(),
+    Value<String?> totpSecretCipher = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => PasswordEntry(
@@ -397,6 +436,9 @@ class PasswordEntry extends DataClass implements Insertable<PasswordEntry> {
     phone: phone.present ? phone.value : this.phone,
     info: info.present ? info.value : this.info,
     icon: icon.present ? icon.value : this.icon,
+    totpSecretCipher: totpSecretCipher.present
+        ? totpSecretCipher.value
+        : this.totpSecretCipher,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -412,6 +454,9 @@ class PasswordEntry extends DataClass implements Insertable<PasswordEntry> {
       phone: data.phone.present ? data.phone.value : this.phone,
       info: data.info.present ? data.info.value : this.info,
       icon: data.icon.present ? data.icon.value : this.icon,
+      totpSecretCipher: data.totpSecretCipher.present
+          ? data.totpSecretCipher.value
+          : this.totpSecretCipher,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -428,6 +473,7 @@ class PasswordEntry extends DataClass implements Insertable<PasswordEntry> {
           ..write('phone: $phone, ')
           ..write('info: $info, ')
           ..write('icon: $icon, ')
+          ..write('totpSecretCipher: $totpSecretCipher, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -444,6 +490,7 @@ class PasswordEntry extends DataClass implements Insertable<PasswordEntry> {
     phone,
     info,
     icon,
+    totpSecretCipher,
     createdAt,
     updatedAt,
   );
@@ -459,6 +506,7 @@ class PasswordEntry extends DataClass implements Insertable<PasswordEntry> {
           other.phone == this.phone &&
           other.info == this.info &&
           other.icon == this.icon &&
+          other.totpSecretCipher == this.totpSecretCipher &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -472,6 +520,7 @@ class PasswordEntriesCompanion extends UpdateCompanion<PasswordEntry> {
   final Value<String?> phone;
   final Value<String?> info;
   final Value<String?> icon;
+  final Value<String?> totpSecretCipher;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const PasswordEntriesCompanion({
@@ -483,6 +532,7 @@ class PasswordEntriesCompanion extends UpdateCompanion<PasswordEntry> {
     this.phone = const Value.absent(),
     this.info = const Value.absent(),
     this.icon = const Value.absent(),
+    this.totpSecretCipher = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -495,6 +545,7 @@ class PasswordEntriesCompanion extends UpdateCompanion<PasswordEntry> {
     this.phone = const Value.absent(),
     this.info = const Value.absent(),
     this.icon = const Value.absent(),
+    this.totpSecretCipher = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : service = Value(service),
@@ -509,6 +560,7 @@ class PasswordEntriesCompanion extends UpdateCompanion<PasswordEntry> {
     Expression<String>? phone,
     Expression<String>? info,
     Expression<String>? icon,
+    Expression<String>? totpSecretCipher,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -521,6 +573,7 @@ class PasswordEntriesCompanion extends UpdateCompanion<PasswordEntry> {
       if (phone != null) 'phone': phone,
       if (info != null) 'info': info,
       if (icon != null) 'icon': icon,
+      if (totpSecretCipher != null) 'totp_secret_cipher': totpSecretCipher,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -535,6 +588,7 @@ class PasswordEntriesCompanion extends UpdateCompanion<PasswordEntry> {
     Value<String?>? phone,
     Value<String?>? info,
     Value<String?>? icon,
+    Value<String?>? totpSecretCipher,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -547,6 +601,7 @@ class PasswordEntriesCompanion extends UpdateCompanion<PasswordEntry> {
       phone: phone ?? this.phone,
       info: info ?? this.info,
       icon: icon ?? this.icon,
+      totpSecretCipher: totpSecretCipher ?? this.totpSecretCipher,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -579,6 +634,9 @@ class PasswordEntriesCompanion extends UpdateCompanion<PasswordEntry> {
     if (icon.present) {
       map['icon'] = Variable<String>(icon.value);
     }
+    if (totpSecretCipher.present) {
+      map['totp_secret_cipher'] = Variable<String>(totpSecretCipher.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -599,6 +657,7 @@ class PasswordEntriesCompanion extends UpdateCompanion<PasswordEntry> {
           ..write('phone: $phone, ')
           ..write('info: $info, ')
           ..write('icon: $icon, ')
+          ..write('totpSecretCipher: $totpSecretCipher, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -629,6 +688,7 @@ typedef $$PasswordEntriesTableCreateCompanionBuilder =
       Value<String?> phone,
       Value<String?> info,
       Value<String?> icon,
+      Value<String?> totpSecretCipher,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -642,6 +702,7 @@ typedef $$PasswordEntriesTableUpdateCompanionBuilder =
       Value<String?> phone,
       Value<String?> info,
       Value<String?> icon,
+      Value<String?> totpSecretCipher,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -692,6 +753,11 @@ class $$PasswordEntriesTableFilterComposer
 
   ColumnFilters<String> get icon => $composableBuilder(
     column: $table.icon,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get totpSecretCipher => $composableBuilder(
+    column: $table.totpSecretCipher,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -755,6 +821,11 @@ class $$PasswordEntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get totpSecretCipher => $composableBuilder(
+    column: $table.totpSecretCipher,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -800,6 +871,11 @@ class $$PasswordEntriesTableAnnotationComposer
 
   GeneratedColumn<String> get icon =>
       $composableBuilder(column: $table.icon, builder: (column) => column);
+
+  GeneratedColumn<String> get totpSecretCipher => $composableBuilder(
+    column: $table.totpSecretCipher,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -853,6 +929,7 @@ class $$PasswordEntriesTableTableManager
                 Value<String?> phone = const Value.absent(),
                 Value<String?> info = const Value.absent(),
                 Value<String?> icon = const Value.absent(),
+                Value<String?> totpSecretCipher = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => PasswordEntriesCompanion(
@@ -864,6 +941,7 @@ class $$PasswordEntriesTableTableManager
                 phone: phone,
                 info: info,
                 icon: icon,
+                totpSecretCipher: totpSecretCipher,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -877,6 +955,7 @@ class $$PasswordEntriesTableTableManager
                 Value<String?> phone = const Value.absent(),
                 Value<String?> info = const Value.absent(),
                 Value<String?> icon = const Value.absent(),
+                Value<String?> totpSecretCipher = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => PasswordEntriesCompanion.insert(
@@ -888,6 +967,7 @@ class $$PasswordEntriesTableTableManager
                 phone: phone,
                 info: info,
                 icon: icon,
+                totpSecretCipher: totpSecretCipher,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),

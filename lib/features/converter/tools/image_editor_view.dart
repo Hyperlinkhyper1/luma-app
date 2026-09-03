@@ -81,16 +81,135 @@ class _EditOps {
   }
 }
 
+/// Metadata edits, applied only on the final save (never during preview).
+class _MetadataEdits {
+  const _MetadataEdits({
+    required this.description,
+    required this.author,
+    required this.copyright,
+    required this.stripAll,
+  });
+
+  final String description;
+  final String author;
+  final String copyright;
+
+  /// When true, all embedded metadata is dropped and the three fields above
+  /// are ignored.
+  final bool stripAll;
+}
+
 /// Arguments handed to the processing isolate. Kept as a plain class of
 /// sendable fields so [compute] can ship it across.
 class _ProcessArgs {
-  const _ProcessArgs(this.bytes, this.ops, this.maxDimension);
+  const _ProcessArgs(this.bytes, this.ops, this.maxDimension, [this.metadata]);
   final Uint8List bytes;
   final _EditOps ops;
 
   /// When set, the image is downscaled to fit before processing (fast
   /// previews); null means full resolution (final save).
   final int? maxDimension;
+
+  /// Null during preview generation, since metadata doesn't affect the
+  /// rendered pixels and isn't worth re-applying on every debounced tick.
+  final _MetadataEdits? metadata;
+}
+
+const _pngSignature = <int>[0x89, 0x50, 0x4E, 0x47];
+const _pngExifChunkType = <int>[0x65, 0x58, 0x49, 0x66]; // 'eXIf'
+const _pngIendChunkType = <int>[0x49, 0x45, 0x4E, 0x44]; // 'IEND'
+
+/// Reads whatever EXIF metadata a freshly-picked file already carries, if
+/// any. `package:image` only parses EXIF out of JPEGs on decode; PNGs need
+/// their `eXIf` chunk read by hand since the decoder doesn't do it.
+img.ExifData? _readSourceExif(Uint8List bytes) {
+  if (bytes.length >= 4 && _bytesStartWith(bytes, 0, _pngSignature)) {
+    return _readPngExif(bytes);
+  }
+  if (bytes.length >= 2 && bytes[0] == 0xFF && bytes[1] == 0xD8) {
+    return img.decodeJpgExif(bytes);
+  }
+  return null;
+}
+
+img.ExifData? _readPngExif(Uint8List bytes) {
+  var offset = 8;
+  while (offset + 8 <= bytes.length) {
+    final len =
+        (bytes[offset] << 24) |
+        (bytes[offset + 1] << 16) |
+        (bytes[offset + 2] << 8) |
+        bytes[offset + 3];
+    final dataStart = offset + 8;
+    if (dataStart + len + 4 > bytes.length) break;
+    if (_bytesStartWith(bytes, offset + 4, _pngExifChunkType)) {
+      return img.ExifData.fromInputBuffer(
+        img.InputBuffer(bytes.sublist(dataStart, dataStart + len)),
+      );
+    }
+    if (_bytesStartWith(bytes, offset + 4, _pngIendChunkType)) break;
+    offset = dataStart + len + 4;
+  }
+  return null;
+}
+
+bool _bytesStartWith(Uint8List bytes, int offset, List<int> pattern) {
+  for (var i = 0; i < pattern.length; i++) {
+    if (bytes[offset + i] != pattern[i]) return false;
+  }
+  return true;
+}
+
+/// Splices a standard `eXIf` ancillary chunk into an already-encoded PNG,
+/// since `package:image`'s PNG encoder never writes one. The IEND chunk has
+/// no data, so per spec it's always exactly the trailing 12 bytes of a
+/// well-formed PNG — the new chunk goes in right before it.
+Uint8List _injectPngExif(Uint8List png, img.ExifData exif) {
+  final exifOut = img.OutputBuffer();
+  exif.write(exifOut);
+  final exifBytes = exifOut.getBytes();
+
+  final crc = _crc32([..._pngExifChunkType, ...exifBytes]);
+  final chunk = <int>[
+    ..._beUint32(exifBytes.length),
+    ..._pngExifChunkType,
+    ...exifBytes,
+    ..._beUint32(crc),
+  ];
+
+  final iend = png.length - 12;
+  if (iend < 8 || !_bytesStartWith(png, iend + 4, _pngIendChunkType)) {
+    return png;
+  }
+
+  return Uint8List.fromList([
+    ...png.sublist(0, iend),
+    ...chunk,
+    ...png.sublist(iend),
+  ]);
+}
+
+List<int> _beUint32(int value) => [
+  (value >> 24) & 0xFF,
+  (value >> 16) & 0xFF,
+  (value >> 8) & 0xFF,
+  value & 0xFF,
+];
+
+final _crc32Table = List<int>.generate(256, (n) {
+  var c = n;
+  for (var k = 0; k < 8; k++) {
+    c = (c & 1) != 0 ? (0xEDB88320 ^ (c >> 1)) : (c >> 1);
+  }
+  return c;
+});
+
+int _crc32(List<int> bytes) {
+  var c = 0xFFFFFFFF;
+  for (final b in bytes) {
+    c = _crc32Table[(c ^ b) & 0xFF] ^ (c >> 8);
+  }
+  return c ^ 0xFFFFFFFF;
 }
 
 /// Image editor: rotate/flip, brightness/contrast/saturation, color filters,
@@ -121,9 +240,27 @@ class _ImageEditorViewState extends State<ImageEditorView> {
   Timer? _debounce;
   int _previewRequest = 0;
 
+  final _descriptionController = TextEditingController();
+  final _authorController = TextEditingController();
+  final _copyrightController = TextEditingController();
+  bool _stripMetadata = false;
+  bool _hasSourceMetadata = false;
+  String _initialDescription = '';
+  String _initialAuthor = '';
+  String _initialCopyright = '';
+
+  bool get _metadataDirty =>
+      _stripMetadata ||
+      _descriptionController.text != _initialDescription ||
+      _authorController.text != _initialAuthor ||
+      _copyrightController.text != _initialCopyright;
+
   @override
   void dispose() {
     _debounce?.cancel();
+    _descriptionController.dispose();
+    _authorController.dispose();
+    _copyrightController.dispose();
     super.dispose();
   }
 
@@ -142,6 +279,10 @@ class _ImageEditorViewState extends State<ImageEditorView> {
       return;
     }
     _debounce?.cancel();
+    final exif = _readSourceExif(bytes);
+    _initialDescription = exif?.imageIfd.imageDescription ?? '';
+    _initialAuthor = exif?.imageIfd['Artist']?.toString() ?? '';
+    _initialCopyright = exif?.imageIfd.copyright ?? '';
     setState(() {
       _bytes = bytes;
       _name = file.name;
@@ -150,6 +291,11 @@ class _ImageEditorViewState extends State<ImageEditorView> {
       _previewBytes = null;
       _error = null;
       _result = null;
+      _hasSourceMetadata = exif != null && !exif.isEmpty;
+      _stripMetadata = false;
+      _descriptionController.text = _initialDescription;
+      _authorController.text = _initialAuthor;
+      _copyrightController.text = _initialCopyright;
     });
     _schedulePreview(immediate: true);
   }
@@ -184,8 +330,10 @@ class _ImageEditorViewState extends State<ImageEditorView> {
     });
 
     try {
-      final processed =
-          await compute(_processImage, _ProcessArgs(bytes, _ops, 1400));
+      final processed = await compute(
+        _processImage,
+        _ProcessArgs(bytes, _ops, 1400),
+      );
       if (!mounted || request != _previewRequest) return;
       setState(() {
         _previewing = false;
@@ -226,9 +374,7 @@ class _ImageEditorViewState extends State<ImageEditorView> {
     if (ops.flipH) image = img.flipHorizontal(image);
     if (ops.flipV) image = img.flipVertical(image);
 
-    if (ops.brightness != 1.0 ||
-        ops.contrast != 1.0 ||
-        ops.saturation != 1.0) {
+    if (ops.brightness != 1.0 || ops.contrast != 1.0 || ops.saturation != 1.0) {
       image = img.adjustColor(
         image,
         brightness: ops.brightness,
@@ -265,7 +411,27 @@ class _ImageEditorViewState extends State<ImageEditorView> {
       }
     }
 
-    return img.encodePng(image);
+    final metadata = args.metadata;
+    if (metadata != null) {
+      if (metadata.stripAll) {
+        image.exif = img.ExifData();
+      } else {
+        image.exif.imageIfd.imageDescription = metadata.description.isEmpty
+            ? null
+            : metadata.description;
+        image.exif.imageIfd['Artist'] = metadata.author.isEmpty
+            ? null
+            : metadata.author;
+        image.exif.imageIfd.copyright = metadata.copyright.isEmpty
+            ? null
+            : metadata.copyright;
+      }
+    }
+
+    final png = img.encodePng(image);
+    // The PNG encoder in package:image doesn't write EXIF at all, so splice
+    // in a standard eXIf chunk by hand when there's metadata to keep.
+    return image.exif.isEmpty ? png : _injectPngExif(png, image.exif);
   }
 
   Future<void> _save() async {
@@ -280,8 +446,16 @@ class _ImageEditorViewState extends State<ImageEditorView> {
     });
 
     try {
-      final processed =
-          await compute(_processImage, _ProcessArgs(bytes, _ops, null));
+      final metadata = _MetadataEdits(
+        description: _descriptionController.text.trim(),
+        author: _authorController.text.trim(),
+        copyright: _copyrightController.text.trim(),
+        stripAll: _stripMetadata,
+      );
+      final processed = await compute(
+        _processImage,
+        _ProcessArgs(bytes, _ops, null, metadata),
+      );
       final save = await saveConvertedFile(
         bytes: processed,
         suggestedName: '${ImageConvert.stripExtension(name)}_edited.png',
@@ -319,6 +493,14 @@ class _ImageEditorViewState extends State<ImageEditorView> {
       _error = null;
       _result = null;
       _previewing = false;
+      _descriptionController.clear();
+      _authorController.clear();
+      _copyrightController.clear();
+      _initialDescription = '';
+      _initialAuthor = '';
+      _initialCopyright = '';
+      _hasSourceMetadata = false;
+      _stripMetadata = false;
     });
   }
 
@@ -347,10 +529,7 @@ class _ImageEditorViewState extends State<ImageEditorView> {
             onChange: _pickFile,
           ),
           const SizedBox(height: 16),
-          _PreviewCard(
-            bytes: _previewBytes ?? _bytes!,
-            busy: _previewing,
-          ),
+          _PreviewCard(bytes: _previewBytes ?? _bytes!, busy: _previewing),
           const SizedBox(height: 16),
           _TransformSection(ops: _ops, onChanged: _updateOps),
           const SizedBox(height: 16),
@@ -359,6 +538,16 @@ class _ImageEditorViewState extends State<ImageEditorView> {
           _FilterSection(ops: _ops, onChanged: _updateOps),
           const SizedBox(height: 16),
           _BackgroundSection(ops: _ops, onChanged: _updateOps),
+          const SizedBox(height: 16),
+          _MetadataSection(
+            descriptionController: _descriptionController,
+            authorController: _authorController,
+            copyrightController: _copyrightController,
+            stripAll: _stripMetadata,
+            hasSourceMetadata: _hasSourceMetadata,
+            onStripAllChanged: (v) => setState(() => _stripMetadata = v),
+            onFieldChanged: () => setState(() {}),
+          ),
           const SizedBox(height: 20),
           Row(
             children: [
@@ -368,7 +557,7 @@ class _ImageEditorViewState extends State<ImageEditorView> {
                   label: kIsWeb ? 'Download PNG' : 'Save PNG',
                   icon: Icons.download_rounded,
                   loading: _saving,
-                  onTap: _ops.isIdentity ? null : _save,
+                  onTap: _ops.isIdentity && !_metadataDirty ? null : _save,
                 ),
               ),
               const SizedBox(width: 12),
@@ -377,10 +566,17 @@ class _ImageEditorViewState extends State<ImageEditorView> {
                   label: 'Reset edits',
                   icon: Icons.restart_alt_rounded,
                   loading: false,
-                  onTap: _ops.isIdentity
+                  onTap: _ops.isIdentity && !_metadataDirty
                       ? null
-                      : () =>
-                          _updateOps(const _EditOps(), immediate: true),
+                      : () {
+                          _updateOps(const _EditOps(), immediate: true);
+                          setState(() {
+                            _descriptionController.text = _initialDescription;
+                            _authorController.text = _initialAuthor;
+                            _copyrightController.text = _initialCopyright;
+                            _stripMetadata = false;
+                          });
+                        },
                 ),
               ),
             ],
@@ -658,7 +854,8 @@ class _BackgroundSection extends StatelessWidget {
     final luma = context.luma;
     return _EditorSection(
       title: 'Background removal',
-      subtitle: 'Make white pixels transparent. Raise the tolerance to also '
+      subtitle:
+          'Make white pixels transparent. Raise the tolerance to also '
           'catch off-white pixels.',
       trailing: Switch(
         value: ops.removeWhiteBg,
@@ -675,6 +872,152 @@ class _BackgroundSection extends StatelessWidget {
         display: (v) => '${(v * 100).round()}%',
         onChanged: (v) => onChanged(ops.copyWith(tolerance: v)),
       ),
+    );
+  }
+}
+
+/// Title/author/copyright fields embedded in the saved file, plus a switch
+/// to strip whatever metadata the source image already carries.
+class _MetadataSection extends StatelessWidget {
+  const _MetadataSection({
+    required this.descriptionController,
+    required this.authorController,
+    required this.copyrightController,
+    required this.stripAll,
+    required this.hasSourceMetadata,
+    required this.onStripAllChanged,
+    required this.onFieldChanged,
+  });
+
+  final TextEditingController descriptionController;
+  final TextEditingController authorController;
+  final TextEditingController copyrightController;
+  final bool stripAll;
+  final bool hasSourceMetadata;
+  final ValueChanged<bool> onStripAllChanged;
+  final VoidCallback onFieldChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return _EditorSection(
+      title: 'Metadata',
+      subtitle: hasSourceMetadata
+          ? 'This image already has embedded metadata. Edit it below, or '
+                'remove it all.'
+          : 'Add a title, author, or copyright notice to the saved file.',
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Remove all',
+            style: TextStyle(
+              color: luma.textMuted,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Switch(
+            value: stripAll,
+            activeThumbColor: luma.danger,
+            onChanged: onStripAllChanged,
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          _MetadataField(
+            label: 'Title',
+            controller: descriptionController,
+            enabled: !stripAll,
+            onChanged: onFieldChanged,
+          ),
+          const SizedBox(height: 10),
+          _MetadataField(
+            label: 'Author',
+            controller: authorController,
+            enabled: !stripAll,
+            onChanged: onFieldChanged,
+          ),
+          const SizedBox(height: 10),
+          _MetadataField(
+            label: 'Copyright',
+            controller: copyrightController,
+            enabled: !stripAll,
+            onChanged: onFieldChanged,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetadataField extends StatelessWidget {
+  const _MetadataField({
+    required this.label,
+    required this.controller,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final String label;
+  final TextEditingController controller;
+  final bool enabled;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: 92,
+          child: Text(
+            label,
+            style: TextStyle(
+              color: enabled ? luma.textSecondary : luma.textMuted,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Expanded(
+          child: TextField(
+            controller: controller,
+            enabled: enabled,
+            onChanged: (_) => onChanged(),
+            style: TextStyle(color: luma.textPrimary, fontSize: 13.5),
+            decoration: InputDecoration(
+              isDense: true,
+              filled: true,
+              fillColor: luma.surfaceHover,
+              hintText: 'Not set',
+              hintStyle: TextStyle(color: luma.textMuted, fontSize: 13),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: luma.border),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: luma.border),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: luma.accent),
+              ),
+              disabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: luma.border),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -831,10 +1174,7 @@ class _CheckerboardPainter extends CustomPainter {
         paint.color = (row + col).isEven
             ? const Color(0xFFFFFFFF)
             : const Color(0xFFE0E0E0);
-        canvas.drawRect(
-          Rect.fromLTWH(x, y, cellSize, cellSize),
-          paint,
-        );
+        canvas.drawRect(Rect.fromLTWH(x, y, cellSize, cellSize), paint);
       }
     }
   }

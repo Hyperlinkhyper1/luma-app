@@ -15,6 +15,7 @@ class InstalledPlugins extends Table {
   TextColumn get version => text().withDefault(const Constant('1.0.0'))();
   DateTimeColumn get installedAt =>
       dateTime().withDefault(currentDateAndTime)();
+  IntColumn get downloadCount => integer().withDefault(const Constant(1))();
 }
 
 @DriftDatabase(tables: [InstalledPlugins])
@@ -29,5 +30,16 @@ class PluginDatabase extends _$PluginDatabase {
             ));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: super.migration.onCreate,
+        onUpgrade: (migrator, from, to) async {
+          if (from < 2) {
+            await migrator.addColumn(
+                installedPlugins, installedPlugins.downloadCount);
+          }
+        },
+      );
 }

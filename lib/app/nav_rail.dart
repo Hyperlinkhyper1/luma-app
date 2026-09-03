@@ -94,6 +94,7 @@ class _NavRailState extends State<NavRail> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final decor = context.lumaDecor;
     final t = L.of(context);
     final settings = SettingsScope.of(context);
     final plan = planById(settings.selectedPlanId);
@@ -110,7 +111,7 @@ class _NavRailState extends State<NavRail> {
         defaultTargetPlatform == TargetPlatform.iOS;
 
     return Container(
-      width: 72,
+      width: decor.style == LumaDecor.coffee.style ? 80 : 72,
       decoration: BoxDecoration(
         color: luma.rail,
         border: Border(right: BorderSide(color: luma.border)),
@@ -332,7 +333,9 @@ class _RailButtonState extends State<_RailButton>
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final decor = context.lumaDecor;
     final selected = widget.selected;
+    final coffee = decor.style == LumaDecor.coffee.style;
 
     final Color bg = selected
         ? luma.accentSubtle
@@ -347,7 +350,7 @@ class _RailButtonState extends State<_RailButton>
         child: Stack(
           alignment: Alignment.center,
           children: [
-            if (selected)
+            if (selected && !coffee)
               Positioned(
                 left: 0,
                 child: Container(
@@ -379,7 +382,14 @@ class _RailButtonState extends State<_RailButton>
                   height: 44,
                   decoration: BoxDecoration(
                     color: bg,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: coffee
+                        ? BorderRadius.circular(16)
+                        : decor.buttonBorderRadius,
+                    border: selected && coffee
+                        ? Border.all(
+                            color: luma.accent.withValues(alpha: 0.35),
+                          )
+                        : null,
                   ),
                   child: ScaleTransition(
                     scale: _scale,

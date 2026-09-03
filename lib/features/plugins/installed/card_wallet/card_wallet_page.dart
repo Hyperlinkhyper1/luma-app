@@ -34,82 +34,29 @@ class CardWalletPage extends StatelessWidget {
     final luma = context.luma;
     final repo = CardWalletScope.of(context);
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 860),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              LumaCard(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Your cards',
-                            style: TextStyle(
-                              color: luma.textPrimary,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Add a loyalty or membership pass, then present its '
-                            'barcode at the till — or keep an NFC tag handy.',
-                            style: TextStyle(color: luma.textMuted, fontSize: 13),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    LumaPrimaryButton(
-                      label: 'Add card',
-                      icon: Icons.add_rounded,
-                      onTap: () => _showCardEditor(context, repo),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              StreamData<List<WalletCardRecord>>(
                 stream: repo.watchAll(),
                 builder: (context, cards) {
                   if (cards.isEmpty) {
                     return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 32),
                       child: LumaEmptyState(
                         icon: Icons.wallet_rounded,
                         title: 'No cards yet',
-                        subtitle:
-                            'Add your first loyalty or membership card and it '
-                            'shows up here, ready to scan.',
-                        action: LumaPrimaryButton(
                           label: 'Add card',
                           icon: Icons.add_rounded,
                           onTap: () => _showCardEditor(context, repo),
-                        ),
                       ),
                     );
                   }
-                  return Wrap(
-                    spacing: 16,
-                    runSpacing: 16,
                     children: [
-                      for (final card in cards)
                         _CardTile(
-                          card: card,
-                          onTap: () => _showCardDetail(context, repo, card),
                         ),
                     ],
                   );
                 },
               ),
-            ],
           ),
         ),
       ),
@@ -133,7 +80,6 @@ class _CardTile extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          width: 250,
           height: 158,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -597,7 +543,6 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
     _notes = TextEditingController(text: e?.notes ?? '');
     _format = e?.format ?? CardFormat.code128;
     _color = e?.color ?? _cardColors.first;
-    _code.addListener(() => setState(() {}));
   }
 
   @override
@@ -701,18 +646,6 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
                 decoration: _dec(luma, hint: 'Loyalty, Membership, Transit…'),
               ),
               const SizedBox(height: 14),
-              _label(luma, 'Format'),
-              const SizedBox(height: 6),
-              _FormatDropdown(
-                value: _format,
-                onChanged: (f) => setState(() {
-                  _format = f;
-                  _error = null;
-                }),
-              ),
-              const SizedBox(height: 14),
-              _label(luma,
-                  _format.isNfc ? 'NFC tag data' : 'Card number / barcode value'),
               const SizedBox(height: 6),
               TextField(
                 controller: _code,
@@ -720,8 +653,6 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
                 maxLines: _format.isNfc ? 3 : 1,
                 decoration: _dec(luma,
                     hint: _format.isNfc
-                        ? 'Paste the tag payload (text or hex)'
-                        : 'e.g. 2601234567890'),
               ),
               const SizedBox(height: 14),
               _CodePreview(format: _format, code: _code.text.trim()),
@@ -802,18 +733,6 @@ class _CodePreview extends StatelessWidget {
     }
     final barcode = format.barcode!;
     final is2d = format.is2d;
-    final preview = BarcodeWidget(
-      barcode: barcode,
-      data: code,
-      drawText: !is2d,
-      color: Colors.black,
-      backgroundColor: Colors.white,
-      style: const TextStyle(color: Colors.black, fontSize: 12),
-      errorBuilder: (context, _) => Text(
-        "Not valid for ${format.label} yet",
-        style: const TextStyle(color: Colors.black38, fontSize: 12),
-      ),
-    );
     return Container(
       height: is2d ? 150 : 84,
       padding: const EdgeInsets.all(12),
@@ -825,9 +744,6 @@ class _CodePreview extends StatelessWidget {
         child: code.isEmpty
             ? const Text('Preview appears here',
                 style: TextStyle(color: Colors.black38, fontSize: 12))
-            : (is2d
-                ? SizedBox(width: 126, height: 126, child: preview)
-                : preview),
       ),
     );
   }

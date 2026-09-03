@@ -5,6 +5,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
+import 'package:shelf/shelf.dart';
 
 /// Cryptographically secure random bytes.
 Uint8List randomBytes(int length) {
@@ -65,6 +66,10 @@ final RegExp emailPattern =
 /// Collection names are chosen by the client but must stay filesystem-safe.
 final RegExp collectionPattern = RegExp(r'^[a-z0-9_]{1,32}$');
 
+/// Plugin ids, as listed in the `plugins/registry.json` catalog (e.g.
+/// `auto-clicker`) — lowercase, hyphenated, no spaces.
+final RegExp pluginIdPattern = RegExp(r'^[a-z0-9-]{1,64}$');
+
 /// Serializes async mutations so two requests never interleave writes.
 class AsyncLock {
   Future<void> _tail = Future.value();
@@ -76,3 +81,14 @@ class AsyncLock {
     return previous.then((_) => action()).whenComplete(completer.complete);
   }
 }
+
+/// The two response shapes every handler in this server returns. Kept here
+/// rather than as private statics on `Api` so modules split out of it
+/// (deploy_console.dart and any that follow) answer in the same shape
+/// instead of growing their own near-duplicates.
+Response jsonResponse(int status, Map<String, dynamic> body) => Response(status,
+    body: jsonEncode(body), headers: {'Content-Type': 'application/json'});
+
+Response errorResponse(int status, String code, String message,
+        {Map<String, dynamic>? extra}) =>
+    jsonResponse(status, {'error': code, 'message': message, ...?extra});

@@ -1,0 +1,8 @@
+{
+  "id": "nfc-tag-editor",
+  "name": "NFC Tag Editor",
+  "version": "1.0.0",
+  "description": "Scan any NFC tag and rewrite what's on it: plain text, links, phone numbers, email, Wi-Fi details, contact cards and app shortcuts. Reorder, duplicate or delete records, save a set as a reusable template for writing a whole batch of stickers, lock a tag permanently read-only, and keep a full history of everything you've scanned or written. Android only.",
+  "icon": "nfc",
+  "category": "Utility"
+}

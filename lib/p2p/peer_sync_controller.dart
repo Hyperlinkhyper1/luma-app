@@ -10,6 +10,7 @@ import 'peer_discovery.dart';
 import 'peer_link.dart';
 import 'peer_listener.dart';
 import 'peer_protocol.dart';
+import 'peer_share.dart';
 import 'peer_state.dart';
 
 /// A peer we have an active, handshaked link to. Plain DTO so the UI can
@@ -86,6 +87,32 @@ class PeerSyncController extends ChangeNotifier {
     } catch (_) {
       return const [];
     }
+  }
+
+  /// The shared-folder mirror, when the SFTP plugin has registered one. The
+  /// controller stays ignorant of files: it only forwards share traffic and
+  /// tells the delegate which devices are reachable.
+  PeerShareDelegate? _shareDelegate;
+
+  /// Registers [delegate] and immediately hands it every peer that is
+  /// already connected — the plugin page usually opens long after the links
+  /// came up, and would otherwise see nothing until a reconnect.
+  void attachShareDelegate(PeerShareDelegate delegate) {
+    _shareDelegate = delegate;
+    for (final entry in _linksByDeviceId.entries) {
+      delegate.onPeerAvailable(
+        entry.key,
+        _connected[entry.key]?.deviceName ?? entry.key,
+        entry.value,
+      );
+    }
+  }
+
+  /// Detaches [delegate] if it is still the current one. Passing the
+  /// instance guards against a page that was disposed after a newer one
+  /// registered.
+  void detachShareDelegate(PeerShareDelegate delegate) {
+    if (identical(_shareDelegate, delegate)) _shareDelegate = null;
   }
 
   String? _lastError;
@@ -296,9 +323,36 @@ class PeerSyncController extends ChangeNotifier {
           _onPeerSnapshot(socket, collectionId, sealed, savedAtMs),
       provideSnapshot: _sync.buildPeerSnapshot,
       onClose: (error) => _onLinkClosed(socket, error),
+      // Share traffic is tagged with the peer's device id, which only exists
+      // after the handshake — hence reading it off the link at call time
+      // rather than capturing it here.
+      onShareIndex: (entries) {
+        final id = _deviceIdOf(socket);
+        if (id != null) _shareDelegate?.onPeerIndex(id, entries);
+      },
+      onShareRequest: (path, from) {
+        final id = _deviceIdOf(socket);
+        if (id != null) _shareDelegate?.onPeerRequest(id, path, from);
+      },
+      onShareChunk: (header, bytes) async {
+        final id = _deviceIdOf(socket);
+        if (id == null) return;
+        await _shareDelegate?.onPeerChunk(id, header, bytes);
+      },
+      onShareError: (path, reason) {
+        final id = _deviceIdOf(socket);
+        if (id != null) _shareDelegate?.onPeerShareError(id, path, reason);
+      },
     );
     _linksBySocket[socket] = link;
     return link;
+  }
+
+  String? _deviceIdOf(Socket socket) {
+    for (final entry in _linksByDeviceId.entries) {
+      if (identical(entry.value.socket, socket)) return entry.key;
+    }
+    return null;
   }
 
   void _onLinkReady(
@@ -353,6 +407,11 @@ class PeerSyncController extends ChangeNotifier {
     // Newly connected → kick off a full exchange immediately so data
     // converges as soon as the user connects.
     unawaited(syncNow(peerHello.deviceId));
+    _shareDelegate?.onPeerAvailable(
+      peerHello.deviceId,
+      peerHello.deviceName,
+      link,
+    );
   }
 
   void _onLinkClosed(Socket socket, String? error) {
@@ -373,6 +432,7 @@ class PeerSyncController extends ChangeNotifier {
     if (removedId != null) {
       _connected.remove(removedId);
       _state.lastSeenMs.remove(removedId);
+      _shareDelegate?.onPeerGone(removedId);
     }
     if (error != null) _lastError = error;
     notifyListeners();

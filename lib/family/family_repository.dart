@@ -92,7 +92,7 @@ class FamilyRepository extends ChangeNotifier {
     _sync.addListener(_onSyncChanged);
     _onSyncChanged();
     _periodic = Timer.periodic(_periodicInterval, (_) {
-      if (_sync.signedIn) unawaited(refresh());
+      if (_sync.serverReady) unawaited(refresh());
     });
   }
 
@@ -105,7 +105,7 @@ class FamilyRepository extends ChangeNotifier {
   }
 
   void _onSyncChanged() {
-    if (!_sync.signedIn) {
+    if (!_sync.serverReady) {
       _api?.close();
       _api = null;
       _apiServerUrl = null;

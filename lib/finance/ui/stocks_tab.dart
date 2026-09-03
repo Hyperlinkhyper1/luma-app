@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../app/widgets.dart';
 import '../../theme/luma_theme.dart';
@@ -18,8 +19,22 @@ class StocksTab extends StatefulWidget {
   State<StocksTab> createState() => _StocksTabState();
 }
 
+/// How long a stored price stays trustworthy before the tab quietly refetches
+/// it. Without this the portfolio total keeps showing whatever the price was
+/// the last time "Refresh prices" was pressed, while the chart — which always
+/// fetches fresh — shows today's, so the two disagree.
+const _maxPriceAge = Duration(minutes: 15);
+
+class _CachedSeries {
+  const _CachedSeries(this.points, this.fetchedAt);
+  final List<PricePoint> points;
+  final DateTime fetchedAt;
+}
+
 class _StocksTabState extends State<StocksTab> {
   bool _refreshing = false;
+  bool _autoRefreshing = false;
+  DateTime? _lastAutoRefresh;
 
   // Chart state.
   int? _selectedHoldingId; // null => aggregate of all holdings
@@ -28,8 +43,9 @@ class _StocksTabState extends State<StocksTab> {
   bool _loadingChart = false;
   String? _chartError;
 
-  // Cache fetched series for the session, keyed by "ticker|range".
-  final Map<String, List<PricePoint>> _historyCache = {};
+  // Cache fetched series, keyed by "ticker|range". Entries expire after
+  // [_maxPriceAge] so flipping between ranges can't resurrect an old price.
+  final Map<String, _CachedSeries> _historyCache = {};
   // Identifies the (selection, range, holdings) combination currently loaded.
   String? _activeKey;
 
@@ -50,13 +66,17 @@ class _StocksTabState extends State<StocksTab> {
   Future<List<PricePoint>> _history(String ticker) async {
     final cacheKey = '$ticker|${_range.name}';
     final cached = _historyCache[cacheKey];
-    if (cached != null) return cached;
+    if (cached != null &&
+        DateTime.now().difference(cached.fetchedAt) < _maxPriceAge) {
+      return cached.points;
+    }
     final series = await StockService.fetchHistory(ticker, _range);
-    _historyCache[cacheKey] = series;
+    _historyCache[cacheKey] = _CachedSeries(series, DateTime.now());
     return series;
   }
 
   Future<void> _loadChart(List<Holding> holdings, String key) async {
+    final repo = FinanceScope.of(context);
     setState(() {
       _loadingChart = true;
       _chartError = null;
@@ -74,12 +94,61 @@ class _StocksTabState extends State<StocksTab> {
     // Ignore if a newer request superseded this one.
     if (!mounted || key != _activeKey) return;
 
+    // The freshly fetched series is the most recent price we have; store it so
+    // the portfolio total is quoting exactly what the chart is drawing.
+    await _syncPricesFromHistory(repo, included, seriesByHolding);
+    if (!mounted || key != _activeKey) return;
+
     final values = _buildValueSeries(included, seriesByHolding);
     setState(() {
       _loadingChart = false;
       _chartValues = values;
       _chartError = values.length < 2 ? 'No chart data available.' : null;
     });
+  }
+
+  /// Writes the last point of each fetched series back onto its holding, so
+  /// the rows, the portfolio total and the chart all quote one price.
+  Future<void> _syncPricesFromHistory(FinanceRepository repo,
+      List<Holding> holdings, Map<int, List<PricePoint>> seriesByHolding) async {
+    for (final h in holdings) {
+      final series = seriesByHolding[h.id];
+      if (series == null || series.isEmpty) continue;
+      final latest = series.last.priceCents;
+      if (latest == h.lastPriceCents) continue;
+      await repo.updateHoldingPrice(h.id, latest);
+    }
+  }
+
+  bool _isStale(Holding h) {
+    final at = h.lastPriceAt;
+    if (h.lastPriceCents == null || at == null) return true;
+    return DateTime.now().difference(at) > _maxPriceAge;
+  }
+
+  /// Quietly brings stale prices up to date when the tab is opened, so the
+  /// total reflects the market instead of the last manual refresh. Failures
+  /// are silent — the rows keep their previous price and the "as of" stamp
+  /// shows how old it is.
+  Future<void> _maybeRefreshStalePrices(
+      FinanceRepository repo, List<Holding> holdings) async {
+    if (_refreshing || _autoRefreshing) return;
+    final last = _lastAutoRefresh;
+    if (last != null && DateTime.now().difference(last) < _maxPriceAge) return;
+    final stale = holdings.where(_isStale).toList();
+    if (stale.isEmpty) return;
+
+    _autoRefreshing = true;
+    _lastAutoRefresh = DateTime.now();
+    try {
+      for (final h in stale) {
+        final quote = await StockService.fetchQuote(h.ticker);
+        if (quote == null) continue;
+        await repo.updateHoldingPrice(h.id, quote.priceCents);
+      }
+    } finally {
+      _autoRefreshing = false;
+    }
   }
 
   /// Portfolio value (shares × price, summed) sampled across the union of all
@@ -132,6 +201,7 @@ class _StocksTabState extends State<StocksTab> {
     // Force the chart to refetch fresh history too.
     _historyCache.clear();
     _activeKey = null;
+    _lastAutoRefresh = DateTime.now();
     if (mounted) {
       setState(() => _refreshing = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -155,16 +225,26 @@ class _StocksTabState extends State<StocksTab> {
             !holdings.any((h) => h.id == _selectedHoldingId)) {
           _selectedHoldingId = null;
         }
-        WidgetsBinding.instance
-            .addPostFrameCallback((_) => _maybeLoadChart(holdings));
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _maybeRefreshStalePrices(repo, holdings);
+          _maybeLoadChart(holdings);
+        });
 
         final luma = context.luma;
         var value = 0;
         var cost = 0;
+        DateTime? asOf;
         for (final h in holdings) {
           final price = h.lastPriceCents ?? h.avgCostCents;
           value += (price * h.shares).round();
           cost += (h.avgCostCents * h.shares).round();
+          final at = h.lastPriceAt;
+          // The total is only as current as its oldest price.
+          if (h.lastPriceCents != null &&
+              at != null &&
+              (asOf == null || at.isBefore(asOf))) {
+            asOf = at;
+          }
         }
         final gain = value - cost;
         final selected = _selectedHoldingId == null
@@ -176,34 +256,61 @@ class _StocksTabState extends State<StocksTab> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
+              // A Wrap, not a Row: on phone widths the buttons would otherwise
+              // be pushed off the edge of the screen.
+              Wrap(
+                spacing: 10,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                alignment: WrapAlignment.spaceBetween,
                 children: [
-                  if (holdings.isNotEmpty) ...[
-                    Text('Portfolio ${formatCents(value)}',
-                        style: TextStyle(
-                            color: luma.textPrimary,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700)),
-                    const SizedBox(width: 10),
-                    Text(formatSignedCents(gain),
-                        style: TextStyle(
-                            color: gain >= 0 ? luma.success : luma.danger,
-                            fontWeight: FontWeight.w600)),
-                  ],
-                  const Spacer(),
                   if (holdings.isNotEmpty)
-                    LumaGhostButton(
-                      label: _refreshing ? 'Refreshing…' : 'Refresh prices',
-                      icon: Icons.refresh_rounded,
-                      onTap: _refreshing
-                          ? null
-                          : () => _refreshAll(repo, holdings),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('Portfolio ${formatCents(value)}',
+                                style: TextStyle(
+                                    color: luma.textPrimary,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700)),
+                            const SizedBox(width: 10),
+                            Text(formatSignedCents(gain),
+                                style: TextStyle(
+                                    color:
+                                        gain >= 0 ? luma.success : luma.danger,
+                                    fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                        Text(
+                          _asOfLabel(asOf, refreshing: _refreshing),
+                          style:
+                              TextStyle(color: luma.textMuted, fontSize: 11),
+                        ),
+                      ],
                     ),
-                  const SizedBox(width: 10),
-                  LumaPrimaryButton(
-                    label: 'Add holding',
-                    icon: Icons.add_rounded,
-                    onTap: () => _openHoldingEditor(context, repo),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      if (holdings.isNotEmpty)
+                        LumaGhostButton(
+                          label: _refreshing ? 'Refreshing…' : 'Refresh prices',
+                          icon: Icons.refresh_rounded,
+                          onTap: _refreshing
+                              ? null
+                              : () => _refreshAll(repo, holdings),
+                        ),
+                      LumaPrimaryButton(
+                        label: 'Add holding',
+                        icon: Icons.add_rounded,
+                        onTap: () => _openHoldingEditor(context, repo),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -704,6 +811,20 @@ Widget _field(
       ),
     ],
   );
+}
+
+/// Says how current the portfolio total is, so a price that could not be
+/// refreshed reads as old rather than as today's value.
+String _asOfLabel(DateTime? asOf, {required bool refreshing}) {
+  if (refreshing) return 'Updating prices…';
+  if (asOf == null) return 'At cost price — no live quote yet';
+  final now = DateTime.now();
+  final sameDay =
+      asOf.year == now.year && asOf.month == now.month && asOf.day == now.day;
+  final stamp = sameDay
+      ? DateFormat('HH:mm').format(asOf)
+      : DateFormat('d MMM, HH:mm').format(asOf);
+  return 'Prices as of $stamp';
 }
 
 String _trimShares(double shares) {
