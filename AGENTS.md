@@ -141,7 +141,7 @@ Adding a new plugin requires four steps (see `PLUGIN_GUIDE.md` for full detail):
 GitHub Actions (`.github/workflows/release.yml`) builds on every push to `master`:
 - Windows: produces `dist/luma-setup.exe` (Inno Setup installer).
 - Linux: produces `luma-<version>-linux-x64.tar.gz`.
-- Android: produces a release-signed `luma-<version>.apk`. The job fails on purpose if the APK came out debug-signed — a debug-signed release can never be installed over a properly signed one.
+- Android: produces one release-signed APK per ABI (`--split-per-abi`) — `luma-<version>-arm64-v8a.apk`, `-armeabi-v7a`, `-x86_64`. A universal APK would carry all three copies of every native library (engine, `libapp.so`, ONNX Runtime, ML Kit), stored uncompressed, which is why it weighed ~240 MB against a 20 MB Windows installer. The in-app updater picks the asset matching its own ABI (`UpdateService.pickAssetName`), so the trailing `-<abi>.apk` in those names is load-bearing. The job fails on purpose if an APK came out debug-signed — a debug-signed release can never be installed over a properly signed one.
 - iOS: produces an unsigned `luma-<version>-unsigned.ipa` (no Apple Developer account is configured), for resigning and sideloading. This job is the one that catches CocoaPods problems — a pod whose minimum deployment target is above `ios/Podfile`'s `platform :ios` line fails `pod install` outright, and nothing on Windows or Linux will tell you first.
 - All four are attached to an automatically created GitHub Release tagged `v1.0.<run_number>`.
 
