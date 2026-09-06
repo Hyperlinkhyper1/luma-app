@@ -49,6 +49,10 @@ class _CreatureLabTabState extends State<CreatureLabTab>
   bool _showSkin = true;
   double _speed = 4;
 
+  /// True while the viewport is showing the unbred placeholder rather than a
+  /// champion from some generation.
+  bool _standingStill = true;
+
   @override
   void initState() {
     super.initState();
@@ -112,6 +116,18 @@ class _CreatureLabTabState extends State<CreatureLabTab>
 
   // ─── The run ──────────────────────────────────────────────────────────────
 
+  /// The stops on the "stop after" slider. Null is the last notch: keep going
+  /// until the user says otherwise.
+  static const _generationCaps = <int?>[100, 250, 500, 1000, 2500, 5000, null];
+
+  static int _capIndexOf(int? limit) {
+    final index = _generationCaps.indexOf(limit);
+    return index < 0 ? _generationCaps.length - 1 : index;
+  }
+
+  static String _generationCapLabel(int? limit) =>
+      limit == null ? 'never' : '$limit';
+
   /// Any change to the drawing is a different animal, so the search starts
   /// over from noise rather than carrying a gait bred for another body.
   void _rebuild() {
@@ -131,7 +147,7 @@ class _CreatureLabTabState extends State<CreatureLabTab>
     _session = EvolutionSession(shape: shape)
       ..addListener(_onGeneration)
       ..start();
-    _replay(_restingGenes(shape));
+    _replay(_restingGenes(shape), placeholder: true);
   }
 
   /// A body that has not been bred yet just stands there, so the viewport is
@@ -151,13 +167,21 @@ class _CreatureLabTabState extends State<CreatureLabTab>
   void _onGeneration() {
     final session = _session;
     if (session == null || !mounted) return;
-    if (_follow) _watching = session.generation - 1;
+    // The placeholder is a creature standing still for a full trial. Waiting
+    // for that to run out before showing the first champion looks exactly like
+    // a viewport that has frozen, so the moment there is anything bred, show
+    // it. After that, replays are swapped only when one finishes.
+    if (_standingStill && session.history.isNotEmpty) {
+      _watching = session.history.length - 1;
+      _replay(session.history[_watching].championGenes);
+    }
     setState(() {});
   }
 
-  void _replay(Float64List genes) {
+  void _replay(Float64List genes, {bool placeholder = false}) {
     final shape = _shape;
     if (shape == null) return;
+    _standingStill = placeholder;
     _sim = CreatureSim(shape, genes, config: const TrialConfig());
     _frame.value++;
   }
@@ -182,9 +206,14 @@ class _CreatureLabTabState extends State<CreatureLabTab>
     if (sim.done) {
       final session = _session;
       if (session != null && session.history.isNotEmpty) {
-        if (_follow) _watching = session.history.length - 1;
-        _replay(session.history[_watching.clamp(0, session.history.length - 1)]
-            .championGenes);
+        // Following swaps to whatever is newest now; pinned to one generation
+        // it loops that same walk instead.
+        final next = _follow
+            ? session.history.length - 1
+            : _watching.clamp(0, session.history.length - 1);
+        _watching = next;
+        _replay(session.history[next].championGenes);
+        if (mounted) setState(() {});
       }
       return;
     }
@@ -331,9 +360,10 @@ class _CreatureLabTabState extends State<CreatureLabTab>
           ),
           const SizedBox(height: 12),
           Text(
-            'Each stroke is closed and merged into one body. The medial axis '
-            'of that body becomes the bones — lavender capsules, green joints, '
-            'amber head. Redrawing starts the search again from scratch.',
+            'Strokes are given a thickness and joined where they touch, then '
+            'thinned to a centre line: lavender capsules are the bones, green '
+            'dots the joints, amber the head. Redrawing starts the search '
+            'again from scratch.',
             style: TextStyle(
               color: luma.textMuted,
               fontSize: 11.5,
@@ -425,7 +455,9 @@ class _CreatureLabTabState extends State<CreatureLabTab>
                 icon: session.running
                     ? Icons.pause_rounded
                     : Icons.play_arrow_rounded,
-                onTap: () => setState(session.toggle),
+                onTap: session.atLimit && !session.running
+                    ? null
+                    : () => setState(session.toggle),
               ),
             ),
             SizedBox(
@@ -436,17 +468,51 @@ class _CreatureLabTabState extends State<CreatureLabTab>
                 onTap: _rebuild,
               ),
             ),
-            _SpeedControl(
-              value: _speed,
-              onChanged: (v) => setState(() => _speed = v),
-            ),
             _SkinToggle(
               value: _showSkin,
               onChanged: (v) => setState(() => _showSkin = v),
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 10,
+          runSpacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            _SliderControl(
+              label: 'Replay speed',
+              readout: '${_speed.round()}x',
+              value: _speed,
+              min: 1,
+              max: 16,
+              divisions: 15,
+              onChanged: (v) => setState(() => _speed = v),
+            ),
+            _SliderControl(
+              label: 'Workers',
+              readout: '${session.workerCount}',
+              value: session.workerCount.toDouble(),
+              min: 1,
+              max: maxWorkerCount.toDouble(),
+              divisions: maxWorkerCount > 1 ? maxWorkerCount - 1 : null,
+              onChanged: (v) =>
+                  setState(() => session.workerCount = v.round()),
+            ),
+            _SliderControl(
+              label: 'Stop after',
+              readout: _generationCapLabel(session.generationLimit),
+              value: _capIndexOf(session.generationLimit).toDouble(),
+              min: 0,
+              max: (_generationCaps.length - 1).toDouble(),
+              divisions: _generationCaps.length - 1,
+              onChanged: (v) => setState(
+                () => session.generationLimit = _generationCaps[v.round()],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
         _WatchGenerationRow(
           label: Text(
             'Watch generation',
@@ -480,6 +546,16 @@ class _CreatureLabTabState extends State<CreatureLabTab>
             runSpacing: 4,
             children: [
               Text('Generation ${session.generation}'),
+              if (session.stoppedAtLimit)
+                Text(
+                  'stopped at ${session.generationLimit} — '
+                  'move "stop after" up to carry on',
+                  style: TextStyle(
+                    color: luma.warning,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               if (best != null)
                 Text(
                   'best ${best.champion.distance.toStringAsFixed(1)} m '
@@ -852,36 +928,58 @@ class _WalkHud extends StatelessWidget {
   }
 }
 
-class _SpeedControl extends StatelessWidget {
-  const _SpeedControl({required this.value, required this.onChanged});
+/// A labelled slider with its current value spelled out beside it, so the
+/// three run settings read as one row of dials rather than three bare tracks.
+class _SliderControl extends StatelessWidget {
+  const _SliderControl({
+    required this.label,
+    required this.readout,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.onChanged,
+    this.divisions,
+  });
+
+  final String label;
+  final String readout;
   final double value;
+  final double min;
+  final double max;
+  final int? divisions;
   final ValueChanged<double> onChanged;
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
     return SizedBox(
-      width: 210,
+      width: 236,
       child: Row(
         children: [
-          Text(
-            'Speed',
-            style: TextStyle(color: luma.textSecondary, fontSize: 12),
+          SizedBox(
+            width: 78,
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: luma.textSecondary, fontSize: 12),
+            ),
           ),
           Expanded(
             child: Slider(
-              value: value,
-              min: 1,
-              max: 16,
-              divisions: 15,
-              label: '${value.round()}x',
-              onChanged: onChanged,
+              value: value.clamp(min, max),
+              min: min,
+              max: max,
+              divisions: divisions,
+              label: readout,
+              onChanged: max > min ? onChanged : null,
             ),
           ),
           SizedBox(
-            width: 28,
+            width: 42,
             child: Text(
-              '${value.round()}x',
+              readout,
+              textAlign: TextAlign.right,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: luma.textPrimary,
                 fontSize: 12,

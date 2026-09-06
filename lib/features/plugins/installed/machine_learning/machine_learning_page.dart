@@ -102,12 +102,13 @@ class _HowItWorksTab extends StatelessWidget {
     (
       icon: Icons.gesture_rounded,
       title: 'Your drawing becomes a body',
-      body: 'Every stroke is closed and merged into one filled shape. That '
-          'shape is thinned down to its medial axis — the line running through '
-          'the middle of it — which becomes a graph of bones. Short spikes '
-          'thrown off by bumps in the outline are pruned, long limbs are split '
-          'so they can bend, and the result is capped at eighteen bones so the '
-          'search stays small enough to finish.',
+      body: 'Every stroke is stamped down with a thickness and merged with the '
+          'others wherever they touch. That is thinned to its centre line, '
+          'which becomes a graph of bones sitting exactly on what was drawn — '
+          'a ring stays a ring, a stick figure stays a stick figure. Short '
+          'spikes thrown off by wobbles are pruned, bends keep a joint and '
+          'straight runs do not, and the result is capped at eighteen bones so '
+          'the search stays small enough to finish.',
     ),
     (
       icon: Icons.settings_rounded,

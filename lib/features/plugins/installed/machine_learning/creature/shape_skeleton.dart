@@ -6,10 +6,11 @@ import 'creature_model.dart';
 
 /// Turns what the user drew into a body that physics can move.
 ///
-/// The pipeline is the classic one for this: rasterise the strokes into a
-/// filled mask, thin the mask down to a one-pixel medial axis, read that
-/// skeleton back as a graph, then simplify the graph until it is a handful of
-/// bones a genetic algorithm can still search in reasonable time.
+/// The pipeline: stamp the strokes onto a grid with a brush, thin that down
+/// to a one-pixel centre line, read the line back as a graph, then simplify
+/// the graph until it is a handful of bones a genetic algorithm can still
+/// search in reasonable time. The bones land on the strokes the hand drew, so
+/// the skeleton always looks like the drawing it came from.
 ///
 /// Nothing here knows about widgets — it takes stroke points in any
 /// coordinate space with y pointing down (a canvas) and returns metres with y
@@ -51,6 +52,7 @@ abstract final class ShapeSkeleton {
 
     return graph.toCreature(distance: distance, grid: grid, strokes: strokes);
   }
+
 }
 
 // ─── Raster mask ────────────────────────────────────────────────────────────
@@ -90,9 +92,12 @@ class _Grid {
 
   int at(int x, int y) => y * width + x;
 
-  /// Both a closed fill and a stroke stamp: a fat blob gets its inside filled,
-  /// while a stick figure, whose strokes enclose almost no area, still ends up
-  /// with enough body to thin.
+  /// Strokes are stamped with a brush and merged where they overlap. They are
+  /// deliberately *not* filled in: flooding a closed outline turns it into a
+  /// slab, and the medial axis of a slab is a stub in the middle that looks
+  /// nothing like what was drawn. Stamping keeps the skeleton on the line the
+  /// hand actually drew, so a ring stays a ring and a stick figure stays a
+  /// stick figure.
   static _Grid? rasterise(List<List<Offset>> strokes, int resolution) {
     var minX = double.infinity;
     var minY = double.infinity;
@@ -137,36 +142,9 @@ class _Grid {
             (p.dy - grid.originY) / cellSize,
           ),
       ];
-      if (cellPoints.length >= 3) grid._fillPolygon(cellPoints);
       grid._stampStroke(cellPoints, brush);
     }
     return grid;
-  }
-
-  /// Even-odd scanline fill of the auto-closed stroke.
-  void _fillPolygon(List<Offset> polygon) {
-    final crossings = <double>[];
-    for (var y = 0; y < height; y++) {
-      final scan = y + 0.5;
-      crossings.clear();
-      for (var i = 0; i < polygon.length; i++) {
-        final a = polygon[i];
-        final b = polygon[(i + 1) % polygon.length];
-        if ((a.dy <= scan && b.dy > scan) || (b.dy <= scan && a.dy > scan)) {
-          final t = (scan - a.dy) / (b.dy - a.dy);
-          crossings.add(a.dx + t * (b.dx - a.dx));
-        }
-      }
-      if (crossings.length < 2) continue;
-      crossings.sort();
-      for (var i = 0; i + 1 < crossings.length; i += 2) {
-        final from = math.max(0, crossings[i].ceil());
-        final to = math.min(width - 1, crossings[i + 1].floor());
-        for (var x = from; x <= to; x++) {
-          cells[at(x, y)] = 1;
-        }
-      }
-    }
   }
 
   void _stampStroke(List<Offset> stroke, double radius) {
@@ -286,8 +264,9 @@ class _Grid {
     return out;
   }
 
-  /// Zhang-Suen thinning: shave the mask from both sides, one layer at a time
-  /// and never breaking it apart, until only the medial axis is left.
+  /// Zhang-Suen thinning: shave the stamped strokes from both sides, one
+  /// layer at a time and never breaking them apart, until only the one-pixel
+  /// centre line is left.
   Uint8List thinned() {
     final img = Uint8List.fromList(cells);
     final doomed = <int>[];
@@ -561,19 +540,26 @@ class _SkeletonGraph {
     }
   }
 
-  /// Straight bones from curvy chains. A long chain becomes several bones so
-  /// a tail or a leg can still bend; a short one stays a single bone.
+  /// Straight bones from curvy chains.
+  ///
+  /// Where the chain bends, a node goes; where it runs straight, it does not.
+  /// Splitting a chain into a fixed number of equal pieces instead — which is
+  /// what this used to do — cuts every corner, and a drawn wave came out as a
+  /// nearly straight line that did not look like the drawing at all.
   void resample(double span) {
+    final tolerance = span * 0.022;
     final maxBoneLength = span * 0.3;
     for (final e in List<_Edge>.from(edges)) {
       if (!e.alive) continue;
-      final pieces = math.min(4, math.max(1, (e.length / maxBoneLength).ceil()));
-      if (pieces == 1) {
+      final points = _splitLongSegments(
+        _simplify(e.path, tolerance),
+        maxBoneLength,
+      );
+      if (points.length <= 2) {
         e.path = [e.path.first, e.path.last];
         continue;
       }
       e.alive = false;
-      final points = _samplePath(e.path, pieces);
       var previous = e.a;
       for (var i = 1; i < points.length; i++) {
         final isLast = i == points.length - 1;
@@ -590,6 +576,64 @@ class _SkeletonGraph {
         Offset(nodes[e.b].x, nodes[e.b].y),
       ];
     }
+  }
+
+  /// Ramer-Douglas-Peucker: keep the points the chain would visibly lose
+  /// without, drop the rest.
+  static List<Offset> _simplify(List<Offset> path, double tolerance) {
+    if (path.length < 3) return List<Offset>.from(path);
+    final keep = List<bool>.filled(path.length, false);
+    keep[0] = true;
+    keep[path.length - 1] = true;
+    final pending = <List<int>>[
+      [0, path.length - 1],
+    ];
+    while (pending.isNotEmpty) {
+      final range = pending.removeLast();
+      final from = range[0];
+      final to = range[1];
+      if (to <= from + 1) continue;
+      final a = path[from];
+      final b = path[to];
+      final dx = b.dx - a.dx;
+      final dy = b.dy - a.dy;
+      final length = math.sqrt(dx * dx + dy * dy);
+      var worst = from;
+      var worstDistance = -1.0;
+      for (var i = from + 1; i < to; i++) {
+        final p = path[i];
+        final distance = length < 1e-9
+            ? (p - a).distance
+            : ((p.dx - a.dx) * dy - (p.dy - a.dy) * dx).abs() / length;
+        if (distance <= worstDistance) continue;
+        worstDistance = distance;
+        worst = i;
+      }
+      if (worstDistance < tolerance) continue;
+      keep[worst] = true;
+      pending
+        ..add([from, worst])
+        ..add([worst, to]);
+    }
+    return [
+      for (var i = 0; i < path.length; i++)
+        if (keep[i]) path[i],
+    ];
+  }
+
+  /// No bone longer than [maxLength], so a long straight run still has a
+  /// joint or two to bend at.
+  static List<Offset> _splitLongSegments(List<Offset> path, double maxLength) {
+    final out = <Offset>[path.first];
+    for (var i = 1; i < path.length; i++) {
+      final from = path[i - 1];
+      final to = path[i];
+      final pieces = math.max(1, ((to - from).distance / maxLength).ceil());
+      for (var p = 1; p <= pieces; p++) {
+        out.add(Offset.lerp(from, to, p / pieces)!);
+      }
+    }
+    return out;
   }
 
   /// [pieces] + 1 points spread evenly along the chain by arc length.

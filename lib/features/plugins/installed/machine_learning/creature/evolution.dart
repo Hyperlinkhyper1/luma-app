@@ -165,6 +165,10 @@ Future<List<TrialOutcome>> evaluatePopulation(
 
 int get defaultWorkerCount => Platform.numberOfProcessors.clamp(1, 6);
 
+/// Never more workers than the machine has cores — past that they only take
+/// turns on the same cores while costing an isolate each.
+int get maxWorkerCount => Platform.numberOfProcessors.clamp(1, 12);
+
 // ─── The run itself ─────────────────────────────────────────────────────────
 
 /// Owns one creature's whole training run: the live population, the history
@@ -183,7 +187,7 @@ class EvolutionSession extends ChangeNotifier {
   final CreatureShape shape;
   final EvolutionConfig config;
   final math.Random _rng;
-  final int _workers;
+  int _workers;
 
   late List<Float64List> _population;
   final List<GenerationResult> history = [];
@@ -191,6 +195,8 @@ class EvolutionSession extends ChangeNotifier {
   bool _running = false;
   bool _busy = false;
   bool _disposed = false;
+  bool _stoppedAtLimit = false;
+  int? _generationLimit;
   DateTime? _lastGenerationAt;
   double _generationsPerSecond = 0;
 
@@ -199,6 +205,37 @@ class EvolutionSession extends ChangeNotifier {
   GenerationResult? get latest => history.isEmpty ? null : history.last;
   double get generationsPerSecond => _generationsPerSecond;
   int get workerCount => _workers;
+
+  /// How many background isolates score a generation. Takes effect on the next
+  /// one, so the run does not have to be restarted to turn the heat down.
+  set workerCount(int value) {
+    final clamped = value.clamp(1, maxWorkerCount);
+    if (clamped == _workers) return;
+    _workers = clamped;
+    notifyListeners();
+  }
+
+  /// Stop after this many generations, or null to keep going. A long run costs
+  /// real battery, and past a few hundred generations most creatures are only
+  /// polishing what they already found.
+  int? get generationLimit => _generationLimit;
+
+  set generationLimit(int? value) {
+    _generationLimit = value;
+    if (_stoppedAtLimit && !atLimit) {
+      _stoppedAtLimit = false;
+      start();
+      return;
+    }
+    notifyListeners();
+  }
+
+  bool get atLimit =>
+      _generationLimit != null && history.length >= _generationLimit!;
+
+  /// True when the run stopped itself because it hit [generationLimit], as
+  /// opposed to the user pausing it.
+  bool get stoppedAtLimit => _stoppedAtLimit;
 
   GenerationResult? get bestEver {
     GenerationResult? best;
@@ -209,8 +246,9 @@ class EvolutionSession extends ChangeNotifier {
   }
 
   void start() {
-    if (_running || _disposed) return;
+    if (_running || _disposed || atLimit) return;
     _running = true;
+    _stoppedAtLimit = false;
     _lastGenerationAt = null;
     notifyListeners();
     unawaited(_loop());
@@ -219,6 +257,7 @@ class EvolutionSession extends ChangeNotifier {
   void pause() {
     if (!_running) return;
     _running = false;
+    _stoppedAtLimit = false;
     notifyListeners();
   }
 
@@ -226,6 +265,12 @@ class EvolutionSession extends ChangeNotifier {
 
   Future<void> _loop() async {
     while (_running && !_disposed) {
+      if (atLimit) {
+        _running = false;
+        _stoppedAtLimit = true;
+        notifyListeners();
+        return;
+      }
       if (_busy) return;
       _busy = true;
       List<TrialOutcome> outcomes;

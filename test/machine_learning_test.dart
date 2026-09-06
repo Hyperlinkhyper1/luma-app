@@ -65,7 +65,7 @@ void main() {
       expect(shape.nodeCount, greaterThanOrEqualTo(4));
     });
 
-    test('a filled blob still yields at least one joint to drive', () {
+    test('a drawn outline becomes a ring of bones, not a stub', () {
       final shape = ShapeSkeleton.build(_blob());
       expect(shape, isNotNull);
       expect(shape!.boneCount, greaterThanOrEqualTo(2));
@@ -109,6 +109,58 @@ void main() {
         expect(swing.length + anchor.length + 1, shape.nodeCount);
       }
       expect(shape.geneCount, 1 + 3 * shape.jointCount);
+    });
+
+    test('the bones sit on the line that was actually drawn', () {
+      // The whole promise of the drawing board is that the skeleton looks like
+      // the sketch. Filling closed strokes used to break that: a drawn box
+      // became a stub in the middle of nowhere.
+      final box = <Offset>[
+        for (var i = 0; i <= 40; i++)
+          switch (i / 40) {
+            final t when t < 0.25 => Offset(0.1 + t * 4 * 0.8, 0.12),
+            final t when t < 0.5 => Offset(0.9, 0.12 + (t - 0.25) * 4 * 0.76),
+            final t when t < 0.75 => Offset(0.9 - (t - 0.5) * 4 * 0.8, 0.88),
+            final t => Offset(0.1, 0.88 - (t - 0.75) * 4 * 0.76),
+          },
+      ];
+      final shape = ShapeSkeleton.build([box])!;
+      for (var n = 0; n < shape.nodeCount; n++) {
+        final where = shape.toDrawing(shape.nodeX[n], shape.nodeY[n]);
+        var nearest = double.infinity;
+        for (final p in box) {
+          nearest = math.min(nearest, (p - where).distance);
+        }
+        expect(
+          nearest,
+          lessThan(0.06),
+          reason: 'node $n landed at $where, away from every drawn point',
+        );
+      }
+      // A box is a loop, so it needs bones all the way round it, not a stub.
+      expect(shape.boneCount, greaterThanOrEqualTo(8));
+    });
+
+    test('a drawn curve keeps its shape instead of being straightened', () {
+      final wave = <Offset>[
+        for (var i = 0; i <= 40; i++)
+          Offset(
+            0.1 + i / 40 * 0.8,
+            0.5 + math.sin(i / 40 * math.pi * 2) * 0.25,
+          ),
+      ];
+      final shape = ShapeSkeleton.build([wave])!;
+      var top = double.infinity;
+      var bottom = -double.infinity;
+      for (var n = 0; n < shape.nodeCount; n++) {
+        final y = shape.toDrawing(shape.nodeX[n], shape.nodeY[n]).dy;
+        top = math.min(top, y);
+        bottom = math.max(bottom, y);
+      }
+      // The drawn wave spans 0.25..0.75; a straightened one collapses towards
+      // the middle, which is what a fixed-piece resample used to do.
+      expect(top, lessThan(0.32));
+      expect(bottom, greaterThan(0.68));
     });
 
     test('bone count stays inside the search budget', () {
