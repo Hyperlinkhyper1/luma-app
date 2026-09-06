@@ -77,6 +77,8 @@ IconData pluginIconFor(String? name) {
       return Icons.health_and_safety_rounded;
     case 'account_circle':
       return Icons.account_circle_rounded;
+    case 'psychology':
+      return Icons.psychology_rounded;
     default:
       return Icons.extension_rounded;
   }

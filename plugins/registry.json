@@ -370,6 +370,15 @@
       "category": "Productivity",
       "tags": ["Productivity", "Notes"],
       "free": true,
+      "version": "1.0.0",
+    {
+      "id": "machine-learning",
+      "name": "Machine Learning",
+      "description": "Draw a shape and watch it teach itself to walk 50 metres. Sixty try at once, the best ones have children, and a few hundred generations later something is walking.",
+      "icon": "psychology",
+      "category": "Utility",
+      "tags": ["Utility", "Data"],
+      "free": true,
       "version": "1.0.0"
     }
   ]
