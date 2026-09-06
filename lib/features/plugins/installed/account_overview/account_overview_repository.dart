@@ -289,7 +289,7 @@ class AccountOverviewRepository extends ChangeNotifier {
 
       _setStage(GithubLoadStage.billing);
       try {
-        final billing = await _api.fetchBilling(token, login);
+        final billing = await _api.fetchBilling(token, login, repos: repos);
         _publish(_snapshot.copyWith(billing: billing));
       } catch (e) {
         _warn('Usage and allowances unavailable: ${_describe(e)}');

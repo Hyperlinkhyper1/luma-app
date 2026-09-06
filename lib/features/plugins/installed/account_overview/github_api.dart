@@ -399,6 +399,83 @@ query($login: String!) {
 
   // ---- billing --------------------------------------------------------------
 
+  /// Sums live Actions-artifact storage across an account's private
+  /// repositories, in GB.
+  ///
+  /// GitHub's REST API has no endpoint that reports total Packages storage,
+  /// and the legacy `/settings/billing/shared-storage` endpoint used by
+  /// [fetchBilling] returns a zeroed monthly *estimate* for many personal
+  /// accounts — so this walks each private repository's artifacts directly
+  /// and sums `size_in_bytes` for the ones that have not expired, which is
+  /// the one figure GitHub's API can state with certainty.
+  ///
+  /// Public repositories are skipped entirely: GitHub does not meter their
+  /// Actions storage at all, so folding them in would count against a quota
+  /// they never draw from.
+  Future<({double gb, int reposCounted, int reposTotal})>
+      fetchPrivateStorageUsage(
+    String token,
+    List<GithubRepo> repos, {
+    int maxRepos = 60,
+    int concurrency = 6,
+    int maxPagesPerRepo = 3,
+  }) async {
+    final private = repos.where((r) => r.isPrivate).toList()
+      ..sort((a, b) {
+        final at = a.pushedAt, bt = b.pushedAt;
+        if (at == null && bt == null) return 0;
+        if (at == null) return 1;
+        if (bt == null) return -1;
+        return bt.compareTo(at);
+      });
+    final targets = private.take(maxRepos).toList();
+
+    var totalBytes = 0;
+    var counted = 0;
+
+    for (var i = 0; i < targets.length; i += concurrency) {
+      final batch = targets.skip(i).take(concurrency);
+      await Future.wait(batch.map((repo) async {
+        try {
+          var bytes = 0;
+          for (var page = 1; page <= maxPagesPerRepo; page++) {
+            final body = await _get(
+              token,
+              '/repos/${repo.fullName}/actions/artifacts'
+              '?per_page=100&page=$page',
+              allowNotFound: true,
+            );
+            if (body is! Map<String, dynamic>) break;
+            final artifacts = body['artifacts'] as List<dynamic>? ?? const [];
+            if (artifacts.isEmpty) break;
+            for (final artifact in artifacts.cast<Map<String, dynamic>>()) {
+              // An expired artifact's storage has already been reclaimed by
+              // GitHub even if its record briefly lingers, so it must not
+              // count toward current usage.
+              if (artifact['expired'] == true) continue;
+              bytes += ((artifact['size_in_bytes'] as num?) ?? 0).toInt();
+            }
+            if (artifacts.length < 100) break;
+          }
+          totalBytes += bytes;
+          counted++;
+        } catch (_) {
+          // A repository this call cannot read for a real reason (a rate
+          // limit, a transient 5xx) is left out of both the sum and the
+          // count. A 404 is not this path at all — `allowNotFound` above
+          // turns "Actions is disabled for this repo" into a clean zero
+          // instead of an exception, so it still gets counted.
+        }
+      }));
+    }
+
+    return (
+      gb: totalBytes / 1e9,
+      reposCounted: counted,
+      reposTotal: private.length,
+    );
+  }
+
   /// Reads whatever the billing endpoints will give up.
   ///
   /// Two generations of API are queried because neither alone is enough:
@@ -406,8 +483,13 @@ query($login: String!) {
   /// *included allowance*, while the enhanced usage endpoint is the only one
   /// that still reports Copilot. Both are optional — a token without the
   /// billing scope leaves the section explaining itself rather than failing
-  /// the whole page.
-  Future<GithubBilling> fetchBilling(String token, String login) async {
+  /// the whole page. [repos] is used only for [fetchPrivateStorageUsage],
+  /// which needs no billing scope at all and so runs unconditionally.
+  Future<GithubBilling> fetchBilling(
+    String token,
+    String login, {
+    List<GithubRepo> repos = const [],
+  }) async {
     var billing = GithubBilling.empty;
     final failures = <String>[];
 
@@ -492,19 +574,29 @@ query($login: String!) {
       failures.add('Copilot usage');
     }
 
+    // Computed independently of the legacy/enhanced billing endpoints above
+    // — it only needs the `repo` scope already used to list repositories —
+    // so it is worth keeping even when every billing source below fails.
+    final storageUsage = await fetchPrivateStorageUsage(token, repos);
+    GithubBilling withStorage(GithubBilling b) => b.copyWith(
+          privateStorageGbUsed: storageUsage.gb,
+          privateStorageReposCounted: storageUsage.reposCounted,
+          privateStorageReposTotal: storageUsage.reposTotal,
+        );
+
     if (!billing.available) {
-      return GithubBilling.empty.copyWith(
+      return withStorage(GithubBilling.empty.copyWith(
         unavailableReason: 'This token cannot read billing. A classic token '
             'needs the "user" scope; a fine-grained token needs the '
             '"Plan" permission (read-only).',
-      );
+      ));
     }
     if (failures.isNotEmpty) {
-      return billing.copyWith(
+      return withStorage(billing.copyWith(
         unavailableReason: 'GitHub did not return ${failures.join(', ')} for '
             'this account.',
-      );
+      ));
     }
-    return billing;
+    return withStorage(billing);
   }
 }
