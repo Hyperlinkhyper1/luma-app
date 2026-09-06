@@ -54,7 +54,7 @@ class _OtherHub extends StatelessWidget {
     return ToolScaffold(
       icon: Icons.category_outlined,
       title: 'Other',
-      subtitle: 'Format tools beyond audio, images and video',
+      subtitle: 'Odd jobs that fit nowhere else',
       onBack: onBack,
       children: [
         ConverterToolGrid(
@@ -69,14 +69,14 @@ class _OtherHub extends StatelessWidget {
             ConverterToolTile(
               icon: Icons.broken_image_outlined,
               title: 'File corruptor',
-              subtitle: 'Break a file on purpose, recoverably or for good',
+              subtitle: 'Break a file on purpose — fix it later, or not',
               badge: 'DAMAGE',
               onTap: () => onOpen(OtherTool.fileCorruptor),
             ),
             ConverterToolTile(
               icon: Icons.healing_outlined,
               title: 'File fixer',
-              subtitle: 'Undo a corruption, or rebuild a broken file',
+              subtitle: 'Unbreak a file, or patch up a broken one',
               badge: 'REPAIR',
               onTap: () => onOpen(OtherTool.fileFixer),
             ),

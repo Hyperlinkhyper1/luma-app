@@ -178,14 +178,14 @@ class _FileFixerViewState extends State<FileFixerView> {
     return ToolScaffold(
       icon: Icons.healing_outlined,
       title: 'File fixer',
-      subtitle: 'Undo a luma corruption exactly, or rebuild a broken file',
+      subtitle: 'Undo what the corruptor did, or patch up a broken file',
       onBack: widget.onBack,
       children: [
         if (bytes == null)
           ConverterDropZone(
             onTap: _pickFile,
             icon: Icons.healing_outlined,
-            title: 'Click to choose the damaged file',
+            title: 'Tap to pick the damaged file',
             subtitle: 'Images · archives · documents · audio · video',
           )
         else

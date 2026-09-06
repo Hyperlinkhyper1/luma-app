@@ -3,7 +3,7 @@
     {
       "id": "qr-code-generator",
       "name": "QR Code Generator",
-      "description": "Turn any URL into a scannable QR code. Every code you generate is saved locally so you can reopen it later.",
+      "description": "Got a link? Make a QR for it in a sec. We keep the ones you make, so you can find them back.",
       "icon": "qr_code_2",
       "category": "Utility",
       "tags": ["Utility"],
@@ -13,7 +13,7 @@
     {
       "id": "card-wallet",
       "name": "Card Wallet",
-      "description": "Keep your loyalty and membership passes in one place. Scan a card's barcode or QR with your camera or a screenshot and luma regenerates it on screen to scan at the till, or tap an NFC card to capture its tag. Like Stocard, inside luma.",
+      "description": "All your stamp cards and member passes in one spot. Scan them with your camera and show them at the till, right from your screen.",
       "icon": "wallet",
       "category": "Utility",
       "tags": ["Utility", "Shopping"],
@@ -23,7 +23,7 @@
     {
       "id": "file-tree",
       "name": "File Tree",
-      "description": "Scan a drive or folder and see exactly what's using your space — every directory and file rolled up and sorted largest-first, with size bars. Like WizTree, inside luma.",
+      "description": "Wondering where all your space went? This shows you, biggest folders first, with handy little bars.",
       "icon": "account_tree",
       "category": "Utility",
       "tags": ["Utility", "System"],
@@ -33,7 +33,7 @@
     {
       "id": "file-viewer",
       "name": "File Viewer",
-      "description": "Open documents right inside luma: read PDFs page by page, view Word documents and Excel workbooks, zoom into images and SVGs, and browse any text or code file — no external apps needed.",
+      "description": "Just open the file. PDFs, Word, Excel, pictures, code - it shows it, no other apps needed.",
       "icon": "description",
       "category": "Utility",
       "tags": ["Utility", "Documents"],
@@ -43,7 +43,7 @@
     {
       "id": "errand-manager",
       "name": "Errand Manager",
-      "description": "Turn recurring chores into one simple daily checklist. Set errands to repeat daily, weekly, monthly or every few days, group them into your own categories, and snooze anything you can't get to today.",
+      "description": "Those little jobs that keep coming back, in one tidy list for today. Say how often they return, snooze the ones you skip.",
       "icon": "checklist",
       "category": "Productivity",
       "tags": ["Productivity"],
@@ -53,7 +53,7 @@
     {
       "id": "bulletin-board",
       "name": "Bulletin Board",
-      "description": "A freeform corkboard where you can pin notes, quick ideas, images, and checklists.",
+      "description": "A pinboard for your head. Stick notes, pictures and little to-dos on it, however you like.",
       "icon": "dashboard",
       "category": "Productivity",
       "tags": ["Productivity"],
@@ -63,7 +63,7 @@
     {
       "id": "price-tracker",
       "name": "Price Tracker",
-      "description": "Paste a product URL and luma checks the price for you. Every check is saved so you get a full price-history graph — great for watching deals on Amazon, bol.com, and more.",
+      "description": "Paste a link and we will keep an eye on the price for you. Handy when you are waiting for a deal on Amazon or bol.",
       "icon": "show_chart",
       "category": "Utility",
       "tags": ["Utility", "Shopping"],
@@ -73,7 +73,7 @@
     {
       "id": "calendar",
       "name": "Calendar",
-      "description": "Plan your days with a full month view and an upcoming-agenda list. Add color-coded events with times, all-day toggles, locations, notes, reminders and repeat rules — daily, weekly, monthly or yearly. Everything is searchable and stored locally.",
+      "description": "Your days, at a glance. Pop in what is happening, give it a colour, set it to repeat if it comes back.",
       "icon": "calendar_month",
       "category": "Productivity",
       "tags": ["Productivity"],
@@ -83,7 +83,7 @@
     {
       "id": "cloud-files",
       "name": "Cloud Files",
-      "description": "Upload files to your own sync server and get them back on every device. Everything is end-to-end encrypted on your device before upload — the server only ever stores unreadable data. Files count against your account's 3 GB storage quota, shown as a usage bar. Requires signing in under Settings → Sync & account.",
+      "description": "Your files, on all your devices. Locked on your device before they leave, so only you can read them. Sign in under Settings, Sync and account, to use it.",
       "icon": "cloud",
       "category": "Utility",
       "tags": ["Utility", "Sync"],
@@ -94,7 +94,7 @@
     {
       "id": "data-management",
       "name": "Data Management",
-      "description": "Create custom datasets, edit tables with typed columns, and build interactive charts — bar, line, area, and pie. Import and export CSV too.",
+      "description": "Make your own little tables and turn them into charts. Bring a CSV if you have got one.",
       "icon": "table_chart",
       "category": "Productivity",
       "tags": ["Productivity", "Data"],
@@ -104,7 +104,7 @@
     {
       "id": "server-tycoon",
       "name": "Server Hosting Tycoon",
-      "description": "Build a server-hosting empire right inside luma. Buy rigs and routers, spec them with real CPUs, motherboards, RAM and cooling, host services, accept contracts, and manage power and bandwidth as you grow day by day. Now with a phone-friendly layout, offline earnings, a six-branch research tree, daily goals and timed boosts.",
+      "description": "Run your own little server company for fun. Buy computers, keep them cool, take on jobs and grow day by day.",
       "icon": "dns",
       "category": "Games",
       "tags": ["Games", "Simulation"],
@@ -114,7 +114,7 @@
     {
       "id": "mood-journal",
       "name": "Mood Journal",
-      "description": "Track your daily mood and write a short journal entry. See your emotional patterns on a monthly calendar heat-map and spot trends over time.",
+      "description": "How was today, really? Jot it down and spot patterns over time.",
       "icon": "mood",
       "category": "Productivity",
       "tags": ["Productivity", "Wellness"],
@@ -124,7 +124,7 @@
     {
       "id": "steam-tools",
       "name": "Steam Tools",
-      "description": "A hub for your Steam library. Price Tracker lists every game you own and charts its real Steam price history over 1D, 1W, 1M, 6M, 1Y and 5Y — years of it, sourced from IsThereAnyDeal, plus the all-time low. Open a game for its banner, current price and discount, description, tags and full PC system requirements. Your Steam key stays encrypted on this device and goes only to Steam; price history is read through the luma server with your account, so there is no second key to find or paste in.",
+      "description": "Your Steam games with real price history. See what a game cost, what it costs now, and if it is actually a good deal. Your key never leaves your device.",
       "icon": "sports_esports",
       "category": "Utility",
       "tags": ["Utility", "Gaming", "Shopping"],
@@ -134,7 +134,7 @@
     {
       "id": "ai-usage",
       "name": "AI Usage",
-      "description": "Three tools in one. Usage: a private dashboard for your Claude Code, Codex CLI, Antigravity and OpenCode spend — token counts and cost estimates by day and model, read entirely from your local session logs, and never sent anywhere. Leaderboard: every major model ranked on reasoning, coding and agent ratings, with context windows, prices and licences side by side. Open Source: work out which downloadable models your own hardware can actually run.",
+      "description": "See what your AI tools cost you, which models are good, and which ones your own PC could run. All read from your laptop, nothing sent away.",
       "icon": "query_stats",
       "category": "Productivity",
       "tags": ["Productivity", "Analytics", "AI"],
@@ -144,7 +144,7 @@
     {
       "id": "ai-detector",
       "name": "AI Detector",
-      "description": "Paste any text and get a verdict on whether it reads as human-written or AI-generated — using pure statistics, no AI involved. It scores sentence-length variety, buzzword density, transition-word habits and contraction use, scans for the invisible characters a Claude watermark is carried in, and paints every flagged stretch straight onto your text so you can see exactly what was caught. Find a watermark and the verdict names its author outright: generated by Claude. Nothing you paste leaves your device.",
+      "description": "Paste some text, see if it reads like a person wrote it or not. Just maths, no AI, and nothing leaves your device.",
       "icon": "fact_check",
       "category": "Utility",
       "tags": ["Utility", "Writing"],
@@ -154,7 +154,7 @@
     {
       "id": "youtube-downloader",
       "name": "Media Downloader",
-      "description": "Paste a YouTube link and download the video or just the audio, with full control over resolution, bitrate, and output format. Paste a Spotify track link and luma finds and downloads the matching audio from YouTube, tagged with the real title, artist, and cover art. Keeps a history of everything you've downloaded.",
+      "description": "Save a YouTube video or just the sound for later. Paste a Spotify song and we will find the sound for you, title and cover kept tidy.",
       "icon": "video_library",
       "category": "Utility",
       "tags": ["Utility", "Media"],
@@ -164,7 +164,7 @@
     {
       "id": "subway-builder",
       "name": "Subway Builder",
-      "description": "A transit simulator on the real world: pick any city on Earth and build metro, tram, bus and train networks on a live 3D OpenStreetMap map. Trains only call at real stations and run on tracks that really exist; buses and trams pathfind along real streets. A commuter simulation fed by real land use decides, trip by trip, whether your network beats the car.",
+      "description": "Build trams, metros and buses in any city on Earth, on a real map. Real streets, real stations - will people ditch the car for you?",
       "icon": "directions_subway",
       "category": "Games",
       "tags": ["Games", "Simulation"],
@@ -174,7 +174,7 @@
     {
       "id": "space-colony",
       "name": "Space Colony",
-      "description": "Build and manage a human settlement on an unexplored planet. Balance power, oxygen, water and food, research new tech, automate production, and survive random events like meteor showers and dust storms.",
+      "description": "Start a little town on a far-away planet. Keep the lights on, grow food, look after air and water, and hold on when meteors show up.",
       "icon": "rocket_launch",
       "category": "Games",
       "tags": ["Games", "Simulation"],
@@ -184,7 +184,7 @@
     {
       "id": "city-planner",
       "name": "City Planner",
-      "description": "Een diepgaande 2D stadsplanning-simulator: begin als planner van een klein dorp en groei naar een metropool. Teken je eigen gebouwen vorm-voor-vorm, beheer verkeer, OV, energie, water, voedsel, onderwijs, zorg en belastingen — met heatmaps, een technologieboom en beleid.",
+      "description": "Start with a tiny village and grow it into a big city. Draw your own buildings, sort out traffic, power, water, schools and taxes.",
       "icon": "location_city",
       "category": "Games",
       "tags": ["Games", "Simulation"],
@@ -194,7 +194,7 @@
     {
       "id": "auto-clicker",
       "name": "Auto Clicker",
-      "description": "Automate mouse clicks at a set interval, with a global hotkey to start and stop from anywhere. Click at your cursor or a fixed spot, single or double, left/middle/right button, repeat forever or a set number of times.",
+      "description": "Tired of clicking? Let this click for you. Pick where, how fast, and which mouse button.",
       "icon": "ads_click",
       "category": "Utility",
       "tags": ["Utility", "Automation"],
@@ -204,7 +204,7 @@
     {
       "id": "school",
       "name": "School",
-      "description": "Everything for school in one place: homework planner, flashcards with spaced repetition, a formula library, a study timer, an assignment tracker, GPA and grade calculators, citation generator and a weekly timetable.",
+      "description": "All your school stuff in one place. Homework, flashcards, timers, grades, timetables - the lot.",
       "icon": "school",
       "category": "Productivity",
       "tags": ["Productivity", "Education"],
@@ -214,7 +214,7 @@
     {
       "id": "usage",
       "name": "Usage",
-      "description": "See exactly how you spend your time on your PC. Tracks the app in the foreground throughout the day so you can look back and realize '55 minutes in Chrome, 12 in Spotify'. Filter by day, week, or month and view it as pie and bar charts.",
+      "description": "Where does your day go? See which apps you actually used and for how long, in simple charts.",
       "icon": "insights",
       "category": "Productivity",
       "tags": ["Productivity", "Analytics"],
@@ -224,7 +224,7 @@
     {
       "id": "wifi-speed-test",
       "name": "Wi-Fi Speed Test",
-      "description": "Test your internet connection speed right inside luma. Measures download speed, upload speed, and latency with a live speedometer gauge. Every test is saved so you can track your connection quality over time.",
+      "description": "How fast is your internet right now? One tap and you will see. We keep old tests so you can compare.",
       "icon": "speed",
       "category": "Utility",
       "tags": ["Utility", "Network"],
@@ -234,7 +234,7 @@
     {
       "id": "secure-chat",
       "name": "Chat",
-      "description": "Invite another Luma user by email and chat once they accept. Every message is end-to-end encrypted on your device before it's sent — the sync server only ever relays ciphertext it cannot read. Requires signing in under Settings → Sync & account.",
+      "description": "Chat with another luma person. Locked on your device before it is sent, so only you two can read it. Sign in under Settings, Sync and account, to start.",
       "icon": "chat",
       "category": "Social",
       "tags": ["Social", "Sync"],
@@ -245,7 +245,7 @@
     {
       "id": "groceries-list",
       "name": "Groceries List",
-      "description": "Search Jumbo, Albert Heijn, Hoogvliet, Lidl and Picnic products side by side, filter by store, sort by price, and build shopping lists that split themselves by market and aisle with running totals. A Nova-exclusive plugin.",
+      "description": "Look up groceries at Jumbo, AH, Lidl and the rest side by side. Lists that sort themselves by shop and aisle. Nova only.",
       "icon": "local_grocery_store",
       "category": "Shopping",
       "tags": ["Shopping", "Nova"],
@@ -255,7 +255,7 @@
     {
       "id": "sftp",
       "name": "SFTP",
-      "description": "A two-pane SFTP client for your own servers, like FileZilla. Connect with a host, username, password and port — or an SSH key — then browse this device and the server side by side, drag files across, and watch the transfer queue. It also gives your own devices a shared folder, and a Host tab that turns this device into one any other luma device can connect to with an address, a port and a pairing password — everything between them encrypted, and only the folder you pick reachable. Nothing — no credential, no byte of a file — passes through a luma server. A Nova-exclusive plugin.",
+      "description": "Move files to your own servers, the easy way. Your PC and your server next to each other - just drag stuff over. Nothing goes through us. Nova only.",
       "icon": "swap_horiz",
       "category": "Utility",
       "tags": ["Utility", "System", "Nova"],
@@ -265,7 +265,7 @@
     {
       "id": "minecraft-launcher",
       "name": "Minecraft Launcher",
-      "description": "Install and manage Minecraft instances — Vanilla, Fabric, Forge, NeoForge and Quilt — with mod, resource pack and shader pack downloads, Java management, and live launch logs. Inspired by modern launchers, built with luma's own design.",
+      "description": "Play Minecraft your way. Set up Vanilla, Fabric, Forge and friends, add mods and packs, and hit play.",
       "icon": "sports_esports",
       "category": "Games",
       "tags": ["Games", "Utility"],
@@ -275,7 +275,7 @@
     {
       "id": "recipe-book",
       "name": "Recipe Book",
-      "description": "A photo-forward recipe collection with three tabs — Favourites, Public and Private. Add ingredients, step-by-step instructions, prep and cook times, and scale servings on the fly. Keep recipes private, or publish them to a shared catalogue where every luma user can browse, upload photos, rate with stars and leave reviews. Public recipes sync through your account.",
+      "description": "Keep your favourite recipes with photos. Keep them to yourself, or share them so other luma cooks can try and rate them.",
       "icon": "restaurant_menu",
       "category": "Productivity",
       "tags": ["Productivity", "Food", "Social", "Sync"],
@@ -285,7 +285,7 @@
     {
       "id": "calculator",
       "name": "Calculator",
-      "description": "An everyday calculator that turns into a graphing one. Basic mode handles the daily sums; Advanced adds a scientific keypad and plots any number of functions of x on a pannable, zoomable graph you can tap to trace. The ☰ button in its header converts measurements — km to miles, °C to °F, kg to pounds, and more.",
+      "description": "A calculator for quick sums that can also draw graphs. Plus a handy converter for km to miles, C to F and more.",
       "icon": "functions",
       "category": "Utility",
       "tags": ["Utility", "Education"],
@@ -295,7 +295,7 @@
     {
       "id": "gallery",
       "name": "Gallery",
-      "description": "Every photo and video on this device, sorted into tabs: pictures and videos from the camera, screenshots, GIFs, and one tab per folder — WhatsApp, Downloads, whatever else is there. See where shots were taken on a world map, and on Nova let on-device models sort them by what's in them.",
+      "description": "All your photos and videos, tidied up. Camera stuff, screenshots, GIFs, WhatsApp - each in its own spot, with a map of where you took them.",
       "icon": "photo_library",
       "category": "Utility",
       "tags": ["Utility", "Photos"],
@@ -305,7 +305,7 @@
     {
       "id": "transport-tracker",
       "name": "Transport Tracker",
-      "description": "Live ship tracking on a real-world map, like MarineTraffic or VesselFinder. Pans and zooms freely; track the current view to see nearby vessels update live with speed, course, type and destination, fed by your own free AISStream.io API key.",
+      "description": "Watch ships move around the world, live. Wander around the map and see what is sailing nearby. Just add a free AISStream key.",
       "icon": "directions_boat",
       "category": "Utility",
       "tags": ["Utility", "Travel"],
@@ -315,7 +315,7 @@
     {
       "id": "nfc-tag-editor",
       "name": "NFC Tag Editor",
-      "description": "Scan any NFC tag and rewrite what's on it: plain text, links, phone numbers, email, Wi-Fi details, contact cards and app shortcuts. Reorder, duplicate or delete records, save a set as a reusable template for writing a whole batch of stickers, lock a tag permanently read-only, and keep a full history of everything you've scanned or written. Android only.",
+      "description": "Read those little NFC stickers and write your own. Links, Wi-Fi, contact cards - save a set and write a whole batch. Android only.",
       "icon": "nfc",
       "category": "Utility",
       "tags": ["Utility"],
@@ -325,7 +325,7 @@
     {
       "id": "roblox-tools",
       "name": "Roblox Tools",
-      "description": "A hub of calculators and helpers for Roblox games, organized by game in a sidebar. Mafia is first: Role Counting takes your lobby size (2-20 players) and shows exactly which roles are in play, sourced from the official wiki's role chart. Check off each role as it's claimed during the round and optionally note who claimed it, searched against the wiki's full disguise-name list. Reset clears every claim for the next round.",
+      "description": "Little helpers for your Roblox games. First up: Mafia - see which roles are in play and tick them off as you go.",
       "icon": "sports_esports",
       "category": "Games",
       "tags": ["Games", "Utility"],
@@ -335,7 +335,7 @@
     {
       "id": "worth-counter",
       "name": "Worth Counter",
-      "description": "A tally counter that knows what things are worth. Add a product with its price, hit + and - as you count, and the bottom bar keeps a live total of everything counted.",
+      "description": "Counting stock? Add what it is worth, tap + and - as you count, and see the total grow at the bottom.",
       "icon": "calculate",
       "category": "Utility",
       "tags": ["Utility", "Finance"],
@@ -345,7 +345,7 @@
     {
       "id": "device-health",
       "name": "Device Health",
-      "description": "A Norton-style health dashboard for this PC: CPU, RAM and GPU usage, battery wear, background processes, outdated apps and drivers, and Windows Defender's protection status — check one thing or everything at once, and update outdated apps with one click. Windows only. luma never scans a file itself: the virus check reads and triggers Windows Defender's own scan, and driver updates always hand off to the vendor's official tool.",
+      "description": "How is your PC doing? CPU, memory, battery, updates - check one thing or everything at once. Windows only. We just ask Windows itself.",
       "icon": "health_and_safety",
       "category": "Utility",
       "tags": ["Utility", "System"],
@@ -355,7 +355,7 @@
     {
       "id": "account-overview",
       "name": "Account Overview",
-      "description": "Your developer and creator accounts in one dashboard, one service per sidebar entry. GitHub: every commit, star, fork and release download across your repositories, the issues and pull requests you are involved in, recent Actions runs and their success rate, plus usage meters for Copilot, your storage allowance and your workflow compute minutes. MC Content: CurseForge and Modrinth combined into one library with download trends and graphs, and Planet Minecraft under its own header with views, downloads and diamonds. Every key is encrypted on this device and goes only to the platform it belongs to, never to a luma server.",
+      "description": "Your GitHub and Minecraft stuff in one dashboard. Commits, stars, downloads, views - no digging through five websites. Keys stay on your device.",
       "icon": "account_circle",
       "category": "Productivity",
       "tags": ["Productivity", "Developer", "Minecraft"],
@@ -365,7 +365,7 @@
     {
       "id": "mind-map",
       "name": "Mind Map",
-      "description": "Think out loud on a canvas that arranges itself. Type into the centre idea, press Tab for a branch and Enter for the next thought — nothing is ever dragged into place. Fold branches away, drag a node onto another to re-parent it, paste an indented outline to build a whole map at once, and export to PNG, Markdown or OPML.",
+      "description": "Get the mess out of your head. Start in the middle, hit Tab for a new branch, Enter for the next thought. No dragging boxes around.",
       "icon": "hub",
       "category": "Productivity",
       "tags": ["Productivity", "Notes"],

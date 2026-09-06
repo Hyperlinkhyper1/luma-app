@@ -2,7 +2,7 @@
   "id": "bulletin-board",
   "name": "Bulletin Board",
   "version": "1.0.0",
-  "description": "A freeform corkboard where you can pin notes, quick ideas, images, and checklists.",
+  "description": "A pinboard for your head. Stick notes, pictures and little to-dos on it, however you like.",
   "icon": "dashboard",
   "category": "Productivity",
   "details": "A blank corkboard for anything that doesn't need its own dedicated app: quick notes, half-formed ideas, reference images, or a running checklist.\n\nDrag pins wherever you like — there's no forced grid or list order, so the board can match how you actually think.",

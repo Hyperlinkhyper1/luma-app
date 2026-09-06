@@ -12,13 +12,13 @@ class LNl extends L {
   String get navHome => 'Start';
 
   @override
-  String get navFileConverter => 'Bestandsconverteerder';
+  String get navFileConverter => 'Bestanden omzetten';
 
   @override
-  String get navFinance => 'Financiën';
+  String get navFinance => 'Geld';
 
   @override
-  String get navPasswordManager => 'Wachtwoordbeheer';
+  String get navPasswordManager => 'Wachtwoorden';
 
   @override
   String get navNotes => 'Notities';
@@ -36,7 +36,7 @@ class LNl extends L {
   String get navAccount => 'Account';
 
   @override
-  String get navConvert => 'Converteer';
+  String get navConvert => 'Omzetten';
 
   @override
   String get navVault => 'Kluis';
@@ -45,29 +45,29 @@ class LNl extends L {
   String get navMore => 'Meer';
 
   @override
-  String get shellPluginUnavailable => 'Plugin niet beschikbaar';
+  String get shellPluginUnavailable => 'Deze plugin is er even niet';
 
   @override
   String get shellStorageLimitMsg =>
-      'Je hebt je opslaglimiet bereikt. Nieuwe gegevens worden niet opgeslagen of gesynchroniseerd tot je ruimte vrijmaakt.';
+      'Je ruimte is op. Ruim wat op en we gaan weer opslaan en syncen.';
 
   @override
-  String get shellStorageManage => 'Beheren';
+  String get shellStorageManage => 'Opruimen';
 
   @override
-  String get shellStorageDismiss => 'Sluiten';
+  String get shellStorageDismiss => 'Later';
 
   @override
-  String get settingsAppearance => 'Weergave';
+  String get settingsAppearance => 'Uiterlijk';
 
   @override
-  String get settingsAppearanceSub => 'Maak luma van jou.';
+  String get settingsAppearanceSub => 'Maak luma lekker van jou.';
 
   @override
   String get settingsTheme => 'Thema';
 
   @override
-  String get settingsAccentColor => 'Accentkleur';
+  String get settingsAccentColor => 'Kleur';
 
   @override
   String get settingsThemeStyle => 'Themastijl';
@@ -77,31 +77,32 @@ class LNl extends L {
 
   @override
   String get settingsThemeStyleDefaultSub =>
-      'luma zoals hij komt — strakke vlakken en je gekozen accent.';
+      'Gewoon luma zoals je hem kent — simpel, in jouw kleur.';
 
   @override
   String get settingsThemeStyleCoffee => 'Koffie';
 
   @override
   String get settingsThemeStyleCoffeeSub =>
-      'Espresso en room, zachtere vormen en bonen die achter alles langs drijven.';
+      'Warme bruintinten, zachte hoekjes, koffieboontjes die rondzweven.';
 
   @override
   String get settingsThemeStyleLocked => 'Orbit of Nova';
 
   @override
   String get settingsThemeStyleUpgrade =>
-      'Koffie hoort bij Orbit en Nova. Upgrade om in te schenken.';
+      'Koffie zit bij Orbit en Nova. Neem een van die en je kunt hem aanzetten.';
 
   @override
   String get settingsAccentCoffeeNote =>
-      'Koffie brengt zijn eigen palet mee, dus de accentkiezer staat even stil.';
+      'Koffie heeft z\'n eigen kleuren, dus je kunt even geen kleur kiezen.';
 
   @override
   String get settingsGeneral => 'Algemeen';
 
   @override
-  String get settingsGeneralSub => 'Hoe de app zich gedraagt.';
+  String get settingsGeneralSub =>
+      'Kleine dingetjes die bepalen hoe de app doet.';
 
   @override
   String get settingsLanguage => 'Taal';
@@ -110,54 +111,54 @@ class LNl extends L {
   String get settingsOpenOnLaunch => 'Openen bij opstarten';
 
   @override
-  String get settingsHideAmounts => 'Bedragen verbergen op Start';
+  String get settingsHideAmounts => 'Geld verbergen op Start';
 
   @override
   String get settingsHideAmountsSub =>
-      'Verberg saldo\'s op het dashboard voor meekijkers.';
+      'Verberg je geld op Start, voor als iemand meekijkt.';
 
   @override
-  String get settingsLockPasswords => 'Wachtwoorden vergrendelen';
+  String get settingsLockPasswords => 'Wachtwoorden op slot';
 
   @override
   String get settingsLockPasswordsSub =>
-      'Vereis een 8-cijferige PIN om opgeslagen inloggegevens te bekijken of bewerken.';
+      'Vraag om een PIN van 8 cijfers voordat je je opgeslagen logins ziet.';
 
   @override
-  String get settingsAmericanGpa => 'Amerikaanse GPA-schaal';
+  String get settingsAmericanGpa => 'Amerikaanse cijfers';
 
   @override
   String get settingsAmericanGpaSub =>
-      'Gebruik het Amerikaanse 4.0 GPA-systeem in de School-plugin in plaats van de Nederlandse cijferschaal van 1-10.';
+      'Gebruik Amerikaanse 4.0-cijfers in School, in plaats van Nederlandse 1-tot-10\'tjes.';
 
   @override
   String get settingsAiAssistant => 'AI-assistent';
 
   @override
   String get settingsAiAssistantSub =>
-      'Verbind je eigen Anthropic API-sleutel.';
+      'Stop je eigen Anthropic-sleutel erin en kletsen maar.';
 
   @override
   String get settingsAbout => 'Over';
 
   @override
-  String get settingsResetDefaults => 'Terugzetten naar standaard';
+  String get settingsResetDefaults => 'Alles terugzetten';
 
   @override
-  String get settingsResetTitle => 'Instellingen terugzetten?';
+  String get settingsResetTitle => 'Opnieuw beginnen?';
 
   @override
   String get settingsResetContent =>
-      'Dit herstelt het thema, de accentkleur en andere voorkeuren naar hun standaardwaarden.';
+      'Dit zet je thema, kleur en andere kleine keuzes weer terug naar het begin.';
 
   @override
-  String get settingsResetCancel => 'Annuleren';
+  String get settingsResetCancel => 'Laat maar';
 
   @override
-  String get settingsResetConfirm => 'Terugzetten';
+  String get settingsResetConfirm => 'Ja, resetten';
 
   @override
-  String get settingsCheckUpdates => 'Controleren op updates';
+  String get settingsCheckUpdates => 'Zoeken naar updates';
 
   @override
   String get settingsSystem => 'Systeem';
@@ -190,95 +191,95 @@ class LNl extends L {
   String get homeGreetingMorning => 'Goedemorgen';
 
   @override
-  String get homeGreetingAfternoon => 'Goedemiddag';
+  String get homeGreetingAfternoon => 'Hé, hallo';
 
   @override
   String get homeGreetingEvening => 'Goedenavond';
 
   @override
-  String get homeNetWorth => 'Netto vermogen';
+  String get homeNetWorth => 'Alles bij elkaar';
 
   @override
-  String get homeAtAGlance => 'In één oogopslag';
+  String get homeAtAGlance => 'Hoe het ervoor staat';
 
   @override
-  String get homeJumpBackIn => 'Verdergaan';
+  String get homeJumpBackIn => 'Ga verder waar je was';
 
   @override
-  String get homeRecentActivity => 'Recente activiteit';
+  String get homeRecentActivity => 'Waar je mee bezig was';
 
   @override
-  String get homeIncomeMonth => 'Inkomsten deze maand';
+  String get homeIncomeMonth => 'Binnen deze maand';
 
   @override
-  String get homeSpentMonth => 'Uitgegeven deze maand';
+  String get homeSpentMonth => 'Uit deze maand';
 
   @override
-  String get homeInPots => 'In spaarpotten';
+  String get homeInPots => 'Apart gezet in potjes';
 
   @override
-  String get homeInvestments => 'Investeringen';
+  String get homeInvestments => 'Beleggingen';
 
   @override
-  String get homeAskAssistant => 'Vraag assistent';
+  String get homeAskAssistant => 'Vraag de assistent';
 
   @override
-  String get homeAskAssistantSub => 'Chat met de AI-assistent';
+  String get homeAskAssistantSub => 'Klets even, vraag wat je wilt';
 
   @override
-  String get homeFinance => 'Financiën';
+  String get homeFinance => 'Geld';
 
   @override
-  String get homeFinanceSub => 'Budgetten, potten & aandelen';
+  String get homeFinanceSub => 'Je geld, potjes & aandelen';
 
   @override
-  String get homeFileConverter => 'Bestandsconverteerder';
+  String get homeFileConverter => 'Bestanden omzetten';
 
   @override
-  String get homeFileConverterSub => 'Converteer afbeeldingen & bestanden';
+  String get homeFileConverterSub => 'Klus met plaatjes & bestanden';
 
   @override
   String get homeSettings => 'Instellingen';
 
   @override
-  String get homeSettingsSub => 'Thema, kleuren & meer';
+  String get homeSettingsSub => 'Kleuren, thema & spul';
 
   @override
   String get homeNoTransactions =>
-      'Hier is nog niets — voeg een transactie toe in het Financiën-tabblad en hij verschijnt hier.';
+      'Nog rustig hier — zet wat in Geld en het verschijnt vanzelf hier.';
 
   @override
-  String get homeIncome => 'Inkomsten';
+  String get homeIncome => 'Erbij';
 
   @override
-  String get homeExpense => 'Uitgaven';
+  String get homeExpense => 'Eraf';
 
   @override
-  String get homeAllocation => 'Toewijzing';
+  String get homeAllocation => 'Verdeeld';
 
   @override
-  String get pinEnterNew => 'Voer nieuwe 8-cijferige PIN in';
+  String get pinEnterNew => 'Bedenk een nieuwe PIN van 8 cijfers';
 
   @override
-  String get pinVerify => 'Bevestig nieuwe PIN';
+  String get pinVerify => 'Typ hem nog een keertje';
 
   @override
-  String get pinEnterDisable => 'Voer PIN in om uit te schakelen';
+  String get pinEnterDisable => 'Typ je PIN om hem uit te zetten';
 
   @override
-  String get pinNotMatch => 'PIN-codes komen niet overeen.';
+  String get pinNotMatch => 'Die PINs zijn niet hetzelfde.';
 
   @override
-  String get pinIncorrect => 'Onjuiste PIN.';
+  String get pinIncorrect => 'Nee, verkeerde PIN.';
 
   @override
   String aboutVersionRelease(String version) {
-    return 'Versie $version · een overzichtelijke lokale tool';
+    return 'Versie $version · een kleine app die je spullen bij je houdt';
   }
 
   @override
   String get aboutVersionDev =>
-      'Ontwikkelversie · een overzichtelijke lokale tool';
+      'Testversie · met liefde gemaakt op iemands laptop';
 
   @override
   String get monthJan => 'jan';

@@ -161,7 +161,7 @@ class _OverviewBodyState extends State<_OverviewBody> {
           const SizedBox(height: 12),
           if (widget.pots.isEmpty)
             _MutedHint(
-              'No pots yet — create one in the Pots tab to start dividing your money.',
+              'No pots yet — make one in the Pots tab and split your money up.',
             )
           else
             Wrap(

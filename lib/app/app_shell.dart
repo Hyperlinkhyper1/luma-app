@@ -323,13 +323,13 @@ class _AppShellState extends State<AppShell> {
       <String, ({String title, String description, IconData icon})>{
     'cloud-files': (
       title: 'Cloud Files needs an approved account',
-      description: 'Cloud Files stores your files on the luma server, '
-          'encrypted on this device first.',
+      description: 'Cloud Files keeps your files on the luma server, '
+          'locked on this device first.',
       icon: Icons.cloud_off_rounded,
     ),
     'secure-chat': (
       title: 'Chat needs an approved account',
-      description: 'Chat relays end-to-end encrypted messages between '
+      description: 'Chat passes locked messages between '
           'accounts through the luma server.',
       icon: Icons.lock_outline_rounded,
     ),

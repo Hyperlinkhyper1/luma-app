@@ -276,8 +276,8 @@ class _ChatLayout extends StatelessWidget {
         final thread = activeConversationId == null
             ? const LumaEmptyState(
                 icon: Icons.smart_toy_rounded,
-                title: 'No conversation selected',
-                subtitle: 'Start a new one to talk with the assistant.',
+                title: 'No chat picked',
+                subtitle: 'Start a fresh one and say hi.',
               )
             : _ConversationThread(
                 conversationId: activeConversationId!,
@@ -933,7 +933,7 @@ class _LoadError extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         child: LumaEmptyState(
           icon: Icons.error_outline_rounded,
-          title: "Couldn't load the assistant",
+          title: "The assistant wouldn't wake up",
           subtitle: '$error',
         ),
       ),

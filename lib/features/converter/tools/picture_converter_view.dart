@@ -181,7 +181,7 @@ class _PictureConverterViewState extends State<PictureConverterView> {
           ConverterDropZone(
             onTap: _pickFile,
             icon: Icons.add_photo_alternate_outlined,
-            title: 'Click to choose an image',
+            title: 'Tap to pick a picture',
             subtitle: 'PNG · JPG · BMP · TIFF · SVG · OIP',
           )
         else

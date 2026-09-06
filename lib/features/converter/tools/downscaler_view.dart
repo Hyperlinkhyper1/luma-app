@@ -349,7 +349,7 @@ class _DownscalerViewState extends State<DownscalerView> {
           ConverterDropZone(
             onTap: _pickFile,
             icon: Icons.tune_rounded,
-            title: 'Click to choose an image',
+            title: 'Tap to pick a picture',
             subtitle: 'PNG or JPEG',
           )
         else

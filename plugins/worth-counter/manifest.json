@@ -2,7 +2,7 @@
   "id": "worth-counter",
   "name": "Worth Counter",
   "version": "1.0.0",
-  "description": "A tally counter that knows what things are worth. Add a product with its price, hit + and - as you count, and the bottom bar keeps a live total of everything counted.",
+  "description": "Counting stock? Add what it is worth, tap + and - as you count, and see the total grow at the bottom.",
   "icon": "calculate",
   "category": "Utility",
   "tags": ["Utility", "Finance"],

@@ -494,12 +494,12 @@ class _LoginPageState extends State<LoginPage> {
         ],
         _Heading(
           title: _cloudMode
-              ? (_mode == 0 ? 'Welcome back' : 'Create your account')
+              ? (_mode == 0 ? 'Welcome back' : 'Make your account')
               : 'Set up local-only sync',
           subtitle: _cloudMode
               ? (_mode == 0
-                  ? 'Sign in to pick up where your other devices left off.'
-                  : 'One account, every device — encrypted before it leaves '
+                  ? 'Sign in and grab your stuff from your other devices.'
+                  : 'One account, every device — locked before it leaves '
                       'this one.')
               : 'No server, no account. Devices pair directly over your '
                   'own network.',
@@ -647,8 +647,8 @@ class _LoginPageState extends State<LoginPage> {
         const SizedBox(height: 22),
         _Heading(
           title: 'Continue in your browser',
-          subtitle: 'We opened $name in your browser. Finish signing in '
-              'there, then come back — this page updates on its own.',
+          subtitle: 'We opened $name in your browser. Finish up '
+              'there, then come back — this page sorts itself out.',
           centered: true,
         ),
         const SizedBox(height: 24),

@@ -72,16 +72,16 @@ class _PasswordsPageState extends State<PasswordsPage> {
               if (all.isEmpty) {
                 return LumaEmptyState(
                   icon: Icons.lock_rounded,
-                  title: 'No saved passwords yet',
+                  title: 'No passwords saved yet',
                   subtitle:
-                      'Add your first credential and it will be stored encrypted on this device.',
+                      'Add your first login — it stays locked on this device.',
                 );
               }
               if (records.isEmpty) {
                 return LumaEmptyState(
                   icon: Icons.search_off_rounded,
                   title: 'No matches',
-                  subtitle: 'No credential matches "$_query".',
+                  subtitle: 'No login looks like "$_query".',
                 );
               }
               return ListView.separated(

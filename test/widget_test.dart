@@ -40,7 +40,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // The picture tool screen is now showing its upload prompt.
-    expect(find.text('Click to choose an image'), findsOneWidget);
+    expect(find.text('Tap to pick a picture'), findsOneWidget);
 
     // Back returns to the hub.
     await tester.tap(find.byIcon(Icons.arrow_back_rounded));

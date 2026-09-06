@@ -173,7 +173,7 @@ class _FileCorruptorViewState extends State<FileCorruptorView> {
           ConverterDropZone(
             onTap: _pickFile,
             icon: Icons.bolt_rounded,
-            title: 'Click to choose a file',
+            title: 'Tap to pick a file',
             subtitle: 'Any file at all — the original is never touched',
           )
         else

@@ -31,7 +31,7 @@ void main() {
       find.text('Break a file on purpose, and keep the key to unbreak it'),
       findsOneWidget,
     );
-    expect(find.text('Click to choose a file'), findsOneWidget);
+    expect(find.text('Tap to pick a file'), findsOneWidget);
   });
 
   testWidgets('tapping the fixer tile opens its screen', (tester) async {
@@ -41,7 +41,7 @@ void main() {
     await tester.tap(find.text('File fixer'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Click to choose the damaged file'), findsOneWidget);
+    expect(find.text('Tap to pick the damaged file'), findsOneWidget);
   });
 
   testWidgets('the corruptor starts with no file chosen', (tester) async {
@@ -50,7 +50,7 @@ void main() {
 
     // The damage options only appear once there is something to damage.
     expect(find.text('Corrupt file'), findsNothing);
-    expect(find.text('Click to choose a file'), findsOneWidget);
+    expect(find.text('Tap to pick a file'), findsOneWidget);
   });
 
   testWidgets('the fixer starts with no file chosen', (tester) async {
@@ -58,7 +58,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Analyse & repair'), findsNothing);
-    expect(find.text('Click to choose the damaged file'), findsOneWidget);
+    expect(find.text('Tap to pick the damaged file'), findsOneWidget);
   });
 
   testWidgets('both screens fit a phone without overflowing', (tester) async {
