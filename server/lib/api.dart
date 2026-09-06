@@ -4940,6 +4940,20 @@ border-radius:999px;padding:2px 8px}
             '<path d="M4 4l8 8M12 4l-8 8"/></svg></button>'
             '</header>'
             '<div class="ed-panel-body">'
+            '<label class="ed-lab" for="ficon">Info box icon</label>'
+            '<p class="ed-help">Shown in the top-right corner of the info box '
+            'in the sidebar. Leave it empty and the info box looks as it does '
+            'today.</p>'
+            '<div class="ed-iconrow">'
+            '<img id="ficonpv" class="ed-iconpv" alt="" hidden>'
+            '<input id="ficon" type="text" spellcheck="false" '
+            'placeholder="/images/uploads/logo.png">'
+            '</div>'
+            '<div class="ed-iconbtns">'
+            '<button id="ficonup" class="ed-btn" type="button">Upload…</button>'
+            '<button id="ficonclr" class="ed-btn" type="button">Clear</button>'
+            '<input id="ficonfile" type="file" accept="image/*" hidden>'
+            '</div>'
             '<label class="ed-lab" for="fm">Frontmatter</label>'
             '<p class="ed-help">YAML at the top of the file. The page title is '
             'edited on the page itself and kept in sync here.</p>'
@@ -6161,6 +6175,16 @@ background:var(--bg);padding:1px 4px;border-radius:4px}
 background:var(--bg);color:var(--tx);resize:vertical;min-height:150px;
 font:13px/1.7 ui-monospace,SFMono-Regular,Consolas,monospace}
 #fm:focus{outline:2px solid var(--focus);outline-offset:1px}
+.ed-iconrow{display:flex;align-items:center;gap:10px}
+.ed-iconrow input{flex:1;min-width:0;min-height:38px;padding:0 11px;
+border-radius:9px;border:1px solid var(--line);background:var(--bg);
+color:var(--tx);font:13px ui-monospace,SFMono-Regular,Consolas,monospace}
+.ed-iconrow input:focus{outline:2px solid var(--focus);outline-offset:1px}
+.ed-iconpv{width:38px;height:38px;flex:0 0 auto;object-fit:contain;
+border-radius:8px;border:1px solid var(--line);background:var(--bg)}
+.ed-iconpv[hidden]{display:none}
+.ed-iconbtns{display:flex;gap:8px;margin:8px 0 18px}
+.ed-iconbtns .ed-btn{min-height:34px;padding:0 14px}
 .ed-det{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
 .ed-det summary{font-size:13px;color:var(--tx2);cursor:pointer;
 user-select:none;border-radius:6px}
@@ -6304,6 +6328,24 @@ function fmSetTitle(v) {
   var t = fm.value;
   fm.value = /^title:/m.test(t) ? t.replace(/^title:.*$/m, line)
     : (t.trim() ? line + '\n' + t.replace(/^\n+/, '') : line);
+}
+
+function fmGet(key) {
+  var m = fm.value.match(new RegExp('^' + key + ':\\s*(.*)$', 'm'));
+  return m ? m[1].trim().replace(/^["']|["']$/g, '') : '';
+}
+function fmSet(key, v) {
+  var re = new RegExp('^' + key + ':.*$', 'm');
+  var t = fm.value;
+  if (!v) {
+    // Drop the key entirely rather than leaving an empty value behind, so an
+    // unset icon is indistinguishable from a page that never had one.
+    fm.value = t.replace(re, '').replace(/\n{2,}/g, '\n').replace(/^\n+/, '');
+    return;
+  }
+  var line = key + ': ' + yamlScalar(v);
+  fm.value = re.test(t) ? t.replace(re, line)
+    : (t.trim() ? t.replace(/\s+$/, '') + '\n' + line : line);
 }
 
 /* ---------- markdown -> html (block level, for the page view) ---------- */
@@ -6993,6 +7035,7 @@ function openPanel() {
   exitEdit();
   closeLinkPop(false);
   srcView.textContent = fullContent();
+  syncIconField();
   panel.hidden = false;
   scrim.hidden = false;
   // Flush layout so the panel starts at translateX(100%) and the transition
@@ -7026,6 +7069,61 @@ panel.addEventListener('keydown', function (e) {
 fm.addEventListener('input', function () {
   markDirty();
   if (ttl && doc && doc.activeElement !== ttl) ttl.textContent = titleOf();
+  syncIconField();
+});
+
+/* ---------- info box icon ---------- */
+var ficon = document.getElementById('ficon');
+var ficonpv = document.getElementById('ficonpv');
+function syncIconField() {
+  // Don't fight the user while they are typing a path into the field.
+  if (ficon === document.activeElement) return;
+  ficon.value = fmGet('infoboxIcon');
+  showIconPreview();
+}
+function showIconPreview() {
+  var v = ficon.value.trim();
+  if (!v) { ficonpv.hidden = true; ficonpv.removeAttribute('src'); return; }
+  ficonpv.src = mapSrc(v);
+  ficonpv.hidden = false;
+}
+ficon.addEventListener('input', function () {
+  fmSet('infoboxIcon', ficon.value.trim());
+  srcView.textContent = fullContent();
+  showIconPreview();
+  markDirty();
+});
+document.getElementById('ficonclr').addEventListener('click', function () {
+  ficon.value = '';
+  fmSet('infoboxIcon', '');
+  srcView.textContent = fullContent();
+  showIconPreview();
+  markDirty();
+});
+var ficonfile = document.getElementById('ficonfile');
+document.getElementById('ficonup').addEventListener('click', function () {
+  ficonfile.click();
+});
+ficonfile.addEventListener('change', function () {
+  var file = this.files[0];
+  this.value = '';
+  if (!file || !/^image\//.test(file.type)) return;
+  setStatus('Uploading ' + file.name + '…');
+  fetch('/admin/website/upload?name=' + encodeURIComponent(file.name), {
+    method: 'POST', body: file, credentials: 'same-origin'
+  }).then(function (r) {
+    return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+  }).then(function (res) {
+    if (!res.ok) throw new Error(res.j.message || 'upload failed');
+    ficon.value = res.j.url;
+    fmSet('infoboxIcon', res.j.url);
+    srcView.textContent = fullContent();
+    showIconPreview();
+    markDirty();
+    setStatus('Icon set — save to publish it', 'ok');
+  }).catch(function (e) {
+    setStatus('Upload failed: ' + e.message, 'err');
+  });
 });
 
 /* ---------- save & publish ---------- */
@@ -7092,6 +7190,7 @@ var parts = splitFM(window.__initial.content);
 fm.value = parts.fm;
 blocks = blocksOf(parts.body);
 if (!parts.fm && window.__initial.isNew) fm.value = 'title: New page\ndescription: ';
+syncIconField();
 syncToolbar();
 })();
 ''';
