@@ -370,7 +370,8 @@
       "category": "Productivity",
       "tags": ["Productivity", "Notes"],
       "free": true,
-      "version": "1.0.0",
+      "version": "1.0.0"
+    },
     {
       "id": "machine-learning",
       "name": "Machine Learning",
