@@ -1,0 +1,9 @@
+{
+  "id": "mind-map",
+  "name": "Mind Map",
+  "version": "1.0.0",
+  "description": "Think out loud on a canvas that arranges itself. Type into the centre idea, press Tab for a branch and Enter for the next thought — nothing is ever dragged into place. Fold branches away, drag a node onto another to re-parent it, paste an indented outline to build a whole map at once, and export to PNG, Markdown or OPML.",
+  "icon": "hub",
+  "category": "Productivity",
+  "details": "A mind map you can keep up with while you are still thinking. The layout arranges itself after every change, so branches never overlap and you never stop to position anything: select the centre idea, press Tab for a child, Enter for the next sibling, and type straight into the node. Arrow keys walk the map by what is actually on screen, Alt with them reorders, and Space folds a branch away behind a badge that counts what it hid.\n\nDrag a node onto another to re-parent the whole branch under it. Every node can carry a longer note, a link and a colour that the rest of its branch inherits, so recolouring a whole limb is one edit.\n\nAlready have the ideas written down? Paste an indented outline — tabs, spaces, bullets or Markdown headings all work — and the whole map appears at once. Point the assistant at a node and it will suggest children for you to accept or reject, using your own API key. Finished maps export as a PNG image or as a Markdown or OPML outline.\n\nMaps sync across your devices, and any mind maps you made in the School plugin were moved here automatically."
+}

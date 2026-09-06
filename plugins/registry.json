@@ -204,7 +204,7 @@
     {
       "id": "school",
       "name": "School",
-      "description": "Everything for school in one place: homework planner, flashcards with spaced repetition, a formula library, a study timer, an assignment tracker, GPA and grade calculators, citation generator, weekly timetable, and mind maps.",
+      "description": "Everything for school in one place: homework planner, flashcards with spaced repetition, a formula library, a study timer, an assignment tracker, GPA and grade calculators, citation generator and a weekly timetable.",
       "icon": "school",
       "category": "Productivity",
       "tags": ["Productivity", "Education"],
@@ -359,6 +359,16 @@
       "icon": "account_circle",
       "category": "Productivity",
       "tags": ["Productivity", "Developer", "Minecraft"],
+      "free": true,
+      "version": "1.0.0"
+    },
+    {
+      "id": "mind-map",
+      "name": "Mind Map",
+      "description": "Think out loud on a canvas that arranges itself. Type into the centre idea, press Tab for a branch and Enter for the next thought — nothing is ever dragged into place. Fold branches away, drag a node onto another to re-parent it, paste an indented outline to build a whole map at once, and export to PNG, Markdown or OPML.",
+      "icon": "hub",
+      "category": "Productivity",
+      "tags": ["Productivity", "Notes"],
       "free": true,
       "version": "1.0.0"
     }
