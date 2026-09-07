@@ -18,6 +18,22 @@ class PagodaTestPage extends StatefulWidget {
   State<PagodaTestPage> createState() => _PagodaTestPageState();
 }
 
+/// Maps each benchmarked model to its own independent scene asset.
+///
+/// Each model has a completely separate implementation of the Pagoda
+/// benchmark — do not point two models at the same file.
+const Map<String, String> _pagodaModelAssets = {
+  'Haiku 4.5': 'assets/tests/pagoda.html',
+  'Sonnet 5 (Low)': 'assets/tests/pagoda_sonnet5_low.html',
+  'Sonnet 5 (Ultracode)': 'assets/tests/pagoda_sonnet5_ultracode.html',
+  'Opus 5 (low)': 'assets/tests/pagoda_opus5_low.html',
+  'Muse Spark 1.3 (Low)': 'assets/tests/pagoda_musespark13_low.html',
+  'Muse Spark 1.3 (Xhigh)': 'assets/tests/pagoda_musespark13_xhigh.html',
+  'Gemini 3.1 Pro (Low)': 'assets/tests/pagoda_gemini31pro_low.html',
+  'Opus 4.6': 'assets/tests/pagoda_opus46.html',
+  'Nemotron 3 Ultra': 'assets/tests/pagoda_nemotron3_ultra.html',
+};
+
 class _PagodaTestPageState extends State<PagodaTestPage> {
   bool _loading = true;
   String? _selectedModel;
@@ -74,6 +90,68 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
                 onTap: () => setState(() => _selectedModel = 'Haiku 4.5'),
                 isSelected: false,
               ),
+              const SizedBox(height: 12),
+              ModelButton(
+                model: 'Sonnet 5 (Low)',
+                description: 'Balanced reasoning model for the benchmark',
+                onTap: () => setState(() => _selectedModel = 'Sonnet 5 (Low)'),
+                isSelected: false,
+              ),
+              const SizedBox(height: 12),
+              ModelButton(
+                model: 'Sonnet 5 (Ultracode)',
+                description: 'Frontier reasoning model for the benchmark',
+                onTap: () =>
+                    setState(() => _selectedModel = 'Sonnet 5 (Ultracode)'),
+                isSelected: false,
+              ),
+              const SizedBox(height: 12),
+              ModelButton(
+                model: 'Opus 5 (low)',
+                description: 'Frontier model at low reasoning effort',
+                onTap: () => setState(() => _selectedModel = 'Opus 5 (low)'),
+                isSelected: false,
+              ),
+              const SizedBox(height: 12),
+              ModelButton(
+                model: 'Muse Spark 1.3 (Low)',
+                description: 'Meta Muse Spark at low reasoning effort',
+                onTap: () =>
+                    setState(() => _selectedModel = 'Muse Spark 1.3 (Low)'),
+                isSelected: false,
+              ),
+              const SizedBox(height: 12),
+              ModelButton(
+                model: 'Muse Spark 1.3 (Xhigh)',
+                description: 'Meta Muse Spark at extra-high reasoning effort',
+                onTap: () =>
+                    setState(() => _selectedModel = 'Muse Spark 1.3 (Xhigh)'),
+                isSelected: false,
+              ),
+              const SizedBox(height: 12),
+              ModelButton(
+                model: 'Gemini 3.1 Pro (Low)',
+                description: 'Google Gemini 3.1 Pro at low reasoning effort',
+                onTap: () =>
+                    setState(() => _selectedModel = 'Gemini 3.1 Pro (Low)'),
+                isSelected: false,
+              ),
+              const SizedBox(height: 12),
+              ModelButton(
+                model: 'Opus 4.6',
+                description: 'Anthropic Opus 4.6 thinking model',
+                onTap: () =>
+                    setState(() => _selectedModel = 'Opus 4.6'),
+                isSelected: false,
+              ),
+              const SizedBox(height: 12),
+              ModelButton(
+                model: 'Nemotron 3 Ultra',
+                description: 'NVIDIA Nemotron 3 Ultra benchmark',
+                onTap: () =>
+                    setState(() => _selectedModel = 'Nemotron 3 Ultra'),
+                isSelected: false,
+              ),
             ],
           ),
         ),
@@ -98,7 +176,10 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
             Positioned.fill(
               child: WindowsWebview(
                 fileUrl: Uri.file(
-                  windowsAssetPath('assets/tests/pagoda.html'),
+                  windowsAssetPath(
+                    _pagodaModelAssets[_selectedModel] ??
+                        'assets/tests/pagoda.html',
+                  ),
                 ).toString(),
                 onLoaded: () {
                   if (mounted) setState(() => _loading = false);
