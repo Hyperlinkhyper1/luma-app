@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
@@ -15,6 +17,24 @@ import 'features/plugins/installed/auto_clicker/auto_clicker_scope.dart';
 import 'features/plugins/installed/mood_journal/data/mood_journal_database.dart';
 import 'features/plugins/installed/mood_journal/mood_journal_repository.dart';
 import 'features/plugins/installed/mood_journal/mood_journal_scope.dart';
+import 'features/plugins/installed/ai_usage/data/ai_usage_database.dart';
+import 'features/plugins/installed/ai_usage/ai_usage_repository.dart';
+import 'features/plugins/installed/ai_usage/ai_usage_scope.dart';
+import 'features/plugins/installed/ai_usage/leaderboard/ai_catalog_repository.dart';
+import 'features/plugins/installed/ai_usage/leaderboard/ai_catalog_scope.dart';
+import 'features/plugins/installed/steam_tools/data/steam_database.dart';
+import 'features/plugins/installed/steam_tools/steam_repository.dart';
+import 'features/plugins/installed/steam_tools/steam_scope.dart';
+import 'features/plugins/installed/steam_tools/cs2_market_repository.dart';
+import 'features/plugins/installed/steam_tools/cs2_market_scope.dart';
+import 'features/plugins/installed/device_health/device_health_repository.dart';
+import 'features/plugins/installed/device_health/device_health_scope.dart';
+import 'features/plugins/installed/account_overview/account_overview_repository.dart';
+import 'features/plugins/installed/account_overview/account_overview_scope.dart';
+import 'features/plugins/installed/account_overview/mc_content_repository.dart';
+import 'features/plugins/installed/account_overview/mc_content_scope.dart';
+import 'features/plugins/installed/account_overview/youtube_repository.dart';
+import 'features/plugins/installed/account_overview/youtube_scope.dart';
 import 'features/plugins/installed/data_management/data/data_management_database.dart';
 import 'features/plugins/installed/data_management/data_management_repository.dart';
 import 'features/plugins/installed/server_tycoon/server_tycoon_repository.dart';
@@ -37,6 +57,12 @@ import 'features/plugins/installed/price_tracker/price_tracker_scope.dart';
 import 'features/plugins/installed/qr_code_generator/data/qr_code_database.dart';
 import 'features/plugins/installed/qr_code_generator/qr_code_repository.dart';
 import 'features/plugins/installed/qr_code_generator/qr_code_scope.dart';
+import 'features/plugins/installed/card_wallet/data/card_wallet_database.dart';
+import 'features/plugins/installed/card_wallet/card_wallet_repository.dart';
+import 'features/plugins/installed/card_wallet/card_wallet_scope.dart';
+import 'features/plugins/installed/errands/data/errands_database.dart';
+import 'features/plugins/installed/errands/errands_repository.dart';
+import 'features/plugins/installed/errands/errands_scope.dart';
 import 'features/plugins/installed/school/data/school_database.dart';
 import 'features/plugins/installed/school/school_repository.dart';
 import 'features/plugins/installed/school/school_scope.dart';
@@ -49,6 +75,17 @@ import 'features/plugins/installed/groceries/data/groceries_database.dart';
 import 'features/plugins/installed/groceries/groceries_api.dart';
 import 'features/plugins/installed/groceries/groceries_repository.dart';
 import 'features/plugins/installed/groceries/groceries_scope.dart';
+import 'features/plugins/installed/recipe_book/data/recipe_book_database.dart';
+import 'features/plugins/installed/recipe_book/recipe_book_controller.dart';
+import 'features/plugins/installed/recipe_book/recipe_book_scope.dart';
+import 'features/plugins/installed/minecraft_launcher/data/minecraft_launcher_database.dart';
+import 'features/plugins/installed/minecraft_launcher/minecraft_launcher_repository.dart';
+import 'features/plugins/installed/minecraft_launcher/minecraft_launcher_scope.dart';
+import 'features/plugins/installed/gallery/gallery_repository.dart';
+import 'features/plugins/installed/gallery/gallery_scope.dart';
+import 'features/plugins/installed/sftp/share/device_share_repository.dart';
+import 'features/plugins/installed/sftp/share/device_share_scope.dart';
+import 'features/plugins/installed/sftp/share/shared_folder.dart';
 import 'features/plugins/plugin_catalog_service.dart';
 import 'features/plugins/plugin_repository.dart';
 import 'features/plugins/plugin_scope.dart';
@@ -103,10 +140,17 @@ class _LumaAppState extends State<LumaApp> {
   late final PasswordRepository _passwordRepository =
       PasswordRepository(_passwordDb, widget.passwordCrypto);
   late final PluginDatabase _pluginDb = PluginDatabase();
-  late final PluginRepository _pluginRepository =
-      PluginRepository(_pluginDb, PluginCatalogService());
+  late final PluginRepository _pluginRepository = PluginRepository(
+      _pluginDb, PluginCatalogService(),
+      authToken: () => _sync.authToken);
   late final QrCodeDatabase _qrCodeDb = QrCodeDatabase();
   late final QrCodeRepository _qrCodeRepository = QrCodeRepository(_qrCodeDb);
+  late final CardWalletDatabase _cardWalletDb = CardWalletDatabase();
+  late final CardWalletRepository _cardWalletRepository =
+      CardWalletRepository(_cardWalletDb);
+  late final ErrandsDatabase _errandsDb = ErrandsDatabase();
+  late final ErrandsRepository _errandsRepository =
+      ErrandsRepository(_errandsDb);
   late final ChatDatabase _chatDb = ChatDatabase();
   late final ChatRepository _chatRepository = ChatRepository(_chatDb);
   late final BulletinBoardDatabase _bulletinBoardDb = BulletinBoardDatabase();
@@ -119,6 +163,15 @@ class _LumaAppState extends State<LumaApp> {
   late final ServerTycoonRepository _serverTycoonRepository = ServerTycoonRepository();
   late final MoodJournalDatabase _moodJournalDb = MoodJournalDatabase();
   late final MoodJournalRepository _moodJournalRepository = MoodJournalRepository(_moodJournalDb);
+  late final AiUsageDatabase _aiUsageDb = AiUsageDatabase();
+  late final AiUsageRepository _aiUsageRepository = AiUsageRepository(_aiUsageDb);
+  late final SteamDatabase _steamDb = SteamDatabase();
+  late final SteamRepository _steamRepository =
+      SteamRepository(_steamDb, sync: _sync);
+  late final Cs2MarketRepository _cs2MarketRepository =
+      Cs2MarketRepository(_steamDb);
+  late final AiCatalogRepository _aiCatalogRepository =
+      AiCatalogRepository(_sync);
   late final SchoolDatabase _schoolDb = SchoolDatabase();
   late final SchoolRepository _schoolRepository = SchoolRepository(_schoolDb);
   late final AutoClickerRepository _autoClickerRepository =
@@ -131,6 +184,41 @@ class _LumaAppState extends State<LumaApp> {
   late final GroceriesRepository _groceriesRepository =
       GroceriesRepository(_groceriesDb);
   late final GroceriesApi _groceriesApi = GroceriesApi();
+  late final RecipeBookDatabase _recipeBookDb = RecipeBookDatabase();
+  // The Recipe Book plugin: local-first private recipes, a shared server-backed
+  // public catalogue with photos/ratings/reviews, and favourites. The drift DB
+  // above is retained only so the controller can migrate any pre-existing
+  // recipes into its new local store on first run.
+  late final RecipeBookController _recipeBookController =
+      RecipeBookController(_sync, _recipeBookDb);
+  late final MinecraftLauncherDatabase _minecraftDb =
+      MinecraftLauncherDatabase();
+  late final MinecraftLauncherRepository _minecraftRepository =
+      MinecraftLauncherRepository(_minecraftDb);
+  // The Gallery plugin reads the device's own photos; it has no database of
+  // its own, only a rebuildable cache next to the thumbnails. The scan starts
+  // when the page is first opened, not here.
+  late final GalleryRepository _galleryRepository = GalleryRepository();
+
+  // Device Health reads live hardware/process/update state on demand — every
+  // reading is stale the moment it's taken, so there's nothing to persist and
+  // nothing to sync, unlike AI Usage's rebuildable-but-still-stored cache.
+  late final DeviceHealthRepository _deviceHealthRepository =
+      DeviceHealthRepository();
+
+  // Account Overview keeps no local database either: it is a cached snapshot
+  // of a remote account, written to one JSON file by the repository itself.
+  late final AccountOverviewRepository _accountOverviewRepository =
+      AccountOverviewRepository();
+
+  // MC Content is its own repository: CurseForge, Modrinth and Planet
+  // Minecraft refresh and fail independently of the GitHub side.
+  late final McContentRepository _mcContentRepository = McContentRepository();
+
+  // YouTube is its own repository too: an OAuth credential and token refresh
+  // that have nothing to do with GitHub's pasted PAT or Minecraft's
+  // per-platform keys, so a revoked Google grant can't take either down.
+  late final YoutubeRepository _youtubeRepository = YoutubeRepository();
 
   // Global local-storage cap, enforced regardless of which plugins are
   // installed — see StorageGuardService.
@@ -141,6 +229,7 @@ class _LumaAppState extends State<LumaApp> {
   late final SyncService _sync = SyncService(
     syncCollectionLimit: () =>
         planById(widget.settings.selectedPlanId).maxSyncCollections,
+    onServerPlan: (id) => widget.settings.setAdminPlan(id),
     collections: [
     // Always synced (see SyncStateStore.collection / SyncService — the
     // 'settings' id defaults to enabled and can't be toggled off), so a
@@ -190,6 +279,18 @@ class _LumaAppState extends State<LumaApp> {
       db: _qrCodeDb,
     ),
     DriftSyncCollection(
+      id: 'card_wallet',
+      label: 'Card wallet',
+      icon: Icons.wallet_rounded,
+      db: _cardWalletDb,
+    ),
+    DriftSyncCollection(
+      id: 'errands',
+      label: 'Errands',
+      icon: Icons.checklist_rounded,
+      db: _errandsDb,
+    ),
+    DriftSyncCollection(
       id: 'data_management',
       label: 'Data management',
       icon: Icons.table_chart_rounded,
@@ -201,6 +302,9 @@ class _LumaAppState extends State<LumaApp> {
       icon: Icons.mood_rounded,
       db: _moodJournalDb,
     ),
+    // AI Usage's database is a derived, re-scannable cache of the user's own
+    // local Claude Code logs — deliberately excluded from sync; it can be
+    // rebuilt any time by rescanning and may grow large.
     DriftSyncCollection(
       id: 'school',
       label: 'School',
@@ -248,11 +352,53 @@ class _LumaAppState extends State<LumaApp> {
   // Optional peer-to-peer (Wi-Fi/LAN) sync between same-account devices.
   late final PeerSyncController _peerSync = PeerSyncController(sync: _sync);
 
+  // The SFTP plugin's shared folder, mirrored device-to-device over the same
+  // LAN links. Lives here rather than in the plugin page so files keep
+  // arriving while the user is elsewhere in the app. Nova-only, and null
+  // until it has been built.
+  DeviceShareRepository? _deviceShare;
+  bool _startingDeviceShare = false;
+
+  Future<void> _syncDeviceShareWithPlan() async {
+    final isNova = planById(widget.settings.selectedPlanId).id == 'nova';
+    if (!isNova) {
+      final existing = _deviceShare;
+      if (existing == null) return;
+      _peerSync.detachShareDelegate(existing);
+      setState(() => _deviceShare = null);
+      existing.dispose();
+      return;
+    }
+    if (_deviceShare != null || _startingDeviceShare) return;
+    _startingDeviceShare = true;
+    try {
+      final folder = await SharedFolder.open();
+      final repository = DeviceShareRepository(folder);
+      await repository.start();
+      if (!mounted) {
+        repository.dispose();
+        return;
+      }
+      _peerSync.attachShareDelegate(repository);
+      setState(() => _deviceShare = repository);
+    } catch (_) {
+      // No shared folder on this device (sandboxed storage, read-only
+      // support dir). The plugin shows its "not available" state.
+    } finally {
+      _startingDeviceShare = false;
+    }
+  }
+
   // The real startup work the splash covers: catch up any recurring entries /
   // allocations that came due while closed. Errors are swallowed so a storage
   // hiccup never blocks (or hangs) startup.
-  late final Future<void> _bootstrap =
-      _repository.applyDue(DateTime.now()).catchError((_) => 0).then((_) {});
+  late final Future<void> _bootstrap = _repository
+      .applyDue(DateTime.now())
+      .catchError((_) => 0)
+      .then((_) => _repository.recordDailyNetWorthSnapshot())
+      .catchError((_) {});
+
+  AppLifecycleListener? _lifecycleListener;
 
   @override
   void initState() {
@@ -263,37 +409,70 @@ class _LumaAppState extends State<LumaApp> {
     _storageGuard.refresh();
     _sync.init();
     _peerSync.init();
+    unawaited(_syncDeviceShareWithPlan());
     _familyRepository.init();
+    unawaited(_passwordRepository.migrateLegacyCiphertexts());
     _secureChatRepository.init();
+    _recipeBookController.init();
     _autoClickerRepository.init();
     _usageRepository.init();
+    _lifecycleListener = AppLifecycleListener(
+      onDetach: _onAppDetach,
+    );
   }
 
   @override
   void dispose() {
+    _lifecycleListener?.dispose();
     widget.settings.removeListener(_onSettingsChanged);
+    _deviceShare?.dispose();
     _peerSync.dispose();
     _cloudFiles.dispose();
     _familyRepository.dispose();
     _secureChatRepository.dispose();
+    _recipeBookController.dispose();
     _sync.dispose();
     _db.close();
     _passwordDb.close();
     _pluginDb.close();
     _qrCodeDb.close();
+    _cardWalletDb.close();
+    _errandsDb.close();
     _chatDb.close();
     _bulletinBoardDb.close();
     _calendarDb.close();
     _dataManagementDb.close();
     _moodJournalDb.close();
+    _aiUsageDb.close();
+    _steamRepository.dispose();
+    _steamDb.close();
     _schoolDb.close();
+    _minecraftDb.close();
     _serverTycoonRepository.dispose();
     _autoClickerRepository.dispose();
     _usageRepository.dispose();
     _usageDb.close();
     _groceriesDb.close();
     _groceriesApi.dispose();
+    _recipeBookDb.close();
+    _galleryRepository.dispose();
+    _deviceHealthRepository.dispose();
+    _accountOverviewRepository.dispose();
+    _mcContentRepository.dispose();
+    _youtubeRepository.dispose();
     super.dispose();
+  }
+
+  /// Runs once when the engine detaches (app closing): purges abandoned empty
+  /// chats and notes, then persists sync state. Fire-and-forget like the
+  /// previous [SyncService.saveState] hook — the work is kicked off in
+  /// parallel so the cheap local deletes have the best chance to finish.
+  Future<void> _onAppDetach() async {
+    await Future.wait([
+      _chatRepository.purgeEmptyConversations(),
+      NotesRepository().purgeEmpty(),
+      _sync.saveState(),
+    ]);
   }
 
   /// Applies the selected plan's storage cap to the guard. Cheap — no-ops when
@@ -309,6 +488,9 @@ class _LumaAppState extends State<LumaApp> {
   void _onSettingsChanged() {
     final before = _storageGuard.limitBytes;
     _applyPlanLimit();
+    // The shared folder is Nova-only, so an upgrade has to start the mirror
+    // and a downgrade has to stop it.
+    unawaited(_syncDeviceShareWithPlan());
     if (_storageGuard.limitBytes != before) {
       // A downgrade may have pushed existing usage over the new (smaller) cap;
       // re-scan so the banner / write-blocking reflects it right away.
@@ -324,6 +506,8 @@ class _LumaAppState extends State<LumaApp> {
       service: _sync,
       child: PeerSyncScope(
       controller: _peerSync,
+      child: DeviceShareScope(
+      repository: _deviceShare,
       child: CloudFilesScope(
       controller: _cloudFiles,
       child: FamilyScope(
@@ -340,6 +524,10 @@ class _LumaAppState extends State<LumaApp> {
             repository: _pluginRepository,
             child: QrCodeScope(
               repository: _qrCodeRepository,
+              child: CardWalletScope(
+              repository: _cardWalletRepository,
+              child: ErrandsScope(
+              repository: _errandsRepository,
               child: ChatScope(
               repository: _chatRepository,
               child: BulletinBoardScope(
@@ -354,6 +542,14 @@ class _LumaAppState extends State<LumaApp> {
                       repository: _serverTycoonRepository,
                       child: MoodJournalScope(
                       repository: _moodJournalRepository,
+                      child: AiCatalogScope(
+                      repository: _aiCatalogRepository,
+                      child: SteamScope(
+                      repository: _steamRepository,
+                      child: Cs2MarketScope(
+                      repository: _cs2MarketRepository,
+                      child: AiUsageScope(
+                      repository: _aiUsageRepository,
                       child: SchoolScope(
                       repository: _schoolRepository,
                       child: AutoClickerScope(
@@ -366,6 +562,20 @@ class _LumaAppState extends State<LumaApp> {
                       repository: _groceriesRepository,
                       child: GroceriesApiScope(
                       api: _groceriesApi,
+                      child: RecipeBookScope(
+                      controller: _recipeBookController,
+                      child: MinecraftLauncherScope(
+                      repository: _minecraftRepository,
+                      child: GalleryScope(
+                      repository: _galleryRepository,
+                      child: DeviceHealthScope(
+                      repository: _deviceHealthRepository,
+                      child: AccountOverviewScope(
+                      repository: _accountOverviewRepository,
+                      child: McContentScope(
+                      repository: _mcContentRepository,
+                      child: YoutubeScope(
+                      repository: _youtubeRepository,
                       child: ListenableBuilder(
                       listenable: widget.settings,
                       builder: (context, _) {
@@ -373,9 +583,10 @@ class _LumaAppState extends State<LumaApp> {
                         return MaterialApp(
                           title: 'luma',
                           debugShowCheckedModeBanner: false,
-                          theme: LumaTheme.from(Brightness.light, s.accentSeed),
-                          darkTheme:
-                              LumaTheme.from(Brightness.dark, s.accentSeed),
+                          theme: LumaTheme.from(
+                              Brightness.light, s.accentSeed, s.themeStyle),
+                          darkTheme: LumaTheme.from(
+                              Brightness.dark, s.accentSeed, s.themeStyle),
                           themeMode: s.themeMode,
                           locale: localeForLanguage(s.appLanguage),
                           supportedLocales: L.supportedLocales,
@@ -386,9 +597,24 @@ class _LumaAppState extends State<LumaApp> {
                             GlobalCupertinoLocalizations.delegate,
                           ],
                           home: _BootGate(
-                              bootstrap: _bootstrap, accentSeed: s.accentSeed),
+                            bootstrap: _bootstrap,
+                            accent: LumaTheme.accentFor(
+                              Brightness.dark,
+                              s.accentSeed,
+                              s.themeStyle,
+                            ),
+                          ),
                         );
                       },
+                    ),
+                    ),
+                    ),
+                    ),
+                    ),
+                    ),
+                    ),
+                    ),
+                    ),
                     ),
                     ),
                     ),
@@ -403,9 +629,14 @@ class _LumaAppState extends State<LumaApp> {
                 ),
               ),
               ),
+              ),
             ),
           ),
         ),
+      ),
+      ),
+      ),
+      ),
       ),
       ),
       ),
@@ -421,10 +652,13 @@ class _LumaAppState extends State<LumaApp> {
 /// the splash animation and the startup [bootstrap] work have finished, then
 /// crossfades the splash away to reveal the warm app.
 class _BootGate extends StatefulWidget {
-  const _BootGate({required this.bootstrap, this.accentSeed});
+  const _BootGate({required this.bootstrap, required this.accent});
 
   final Future<void> bootstrap;
-  final Color? accentSeed;
+
+  /// Already resolved for the active style — the splash paints its moon and
+  /// progress fill with it (see [LumaTheme.accentFor]).
+  final Color accent;
 
   @override
   State<_BootGate> createState() => _BootGateState();
@@ -441,7 +675,7 @@ class _BootGateState extends State<_BootGate> {
         if (_showSplash)
           SplashScreen(
             bootstrap: widget.bootstrap,
-            accent: widget.accentSeed ?? const Color(0xFFB49DF5),
+            accent: widget.accent,
             version: AppVersion.isReleaseBuild
                 ? 'v${AppVersion.current}'
                 : 'Dev build',
@@ -456,15 +690,27 @@ class _BootGateState extends State<_BootGate> {
               // migrated away (see SyncService.init), have no account at
               // all — prompt them to create one.
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (!mounted) return;
-                final sync = SyncScope.of(context);
-                if (!sync.p2pReady) {
-                  showAccountSetupDialog(context, sync, initialMode: 1);
-                }
+                if (mounted) maybePromptAccountSetup(context);
               });
             },
           ),
       ],
     );
   }
+}
+
+/// Shows the account setup dialog the first time the app is opened on a
+/// device with no account at all (new installs, and devices whose
+/// local-only identity was just migrated away — see [SyncService.init]).
+///
+/// If the user closes it without completing sign-in/registration/local
+/// setup, this is not called again automatically on later launches — see
+/// [SyncService.accountSetupPromptDismissed]. It can still always be opened
+/// by hand from Settings → Sync & account.
+Future<void> maybePromptAccountSetup(BuildContext context) async {
+  final sync = SyncScope.of(context);
+  if (sync.p2pReady || sync.accountSetupPromptDismissed) return;
+  final completed =
+      await showAccountSetupDialog(context, sync, initialMode: 1);
+  if (!completed) await sync.dismissAccountSetupPrompt();
 }

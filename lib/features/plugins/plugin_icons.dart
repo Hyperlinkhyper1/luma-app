@@ -25,8 +25,16 @@ IconData pluginIconFor(String? name) {
       return Icons.mood_rounded;
     case 'smart_display':
       return Icons.smart_display_rounded;
+    case 'download':
+      return Icons.download_rounded;
+    case 'photo_library':
+      return Icons.photo_library_rounded;
+    case 'video_library':
+      return Icons.video_library_rounded;
     case 'rocket_launch':
       return Icons.rocket_launch_rounded;
+    case 'directions_subway':
+      return Icons.directions_subway_rounded;
     case 'location_city':
       return Icons.location_city_rounded;
     case 'ads_click':
@@ -41,6 +49,34 @@ IconData pluginIconFor(String? name) {
       return Icons.local_grocery_store_rounded;
     case 'speed':
       return Icons.speed_rounded;
+    case 'wallet':
+      return Icons.wallet_rounded;
+    case 'checklist':
+      return Icons.checklist_rounded;
+    case 'chat':
+      return Icons.chat_rounded;
+    case 'sports_esports':
+      return Icons.sports_esports_rounded;
+    case 'restaurant_menu':
+      return Icons.restaurant_menu_rounded;
+    case 'calculate':
+      return Icons.calculate_rounded;
+    case 'functions':
+      return Icons.functions_rounded;
+    case 'directions_boat':
+      return Icons.directions_boat_rounded;
+    case 'nfc':
+      return Icons.nfc_rounded;
+    case 'query_stats':
+      return Icons.query_stats_rounded;
+    case 'swap_horiz':
+      return Icons.swap_horiz_rounded;
+    case 'fact_check':
+      return Icons.fact_check_rounded;
+    case 'health_and_safety':
+      return Icons.health_and_safety_rounded;
+    case 'account_circle':
+      return Icons.account_circle_rounded;
     default:
       return Icons.extension_rounded;
   }

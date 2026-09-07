@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:ffi';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
@@ -85,12 +87,15 @@ class UpdateService {
       final version = tag.replaceFirst(RegExp(r'^[vV]'), '');
       final notes = (json['body'] as String?)?.trim() ?? '';
 
-      final suffix = Platform.isAndroid ? '.apk' : 'setup.exe';
       final assets = (json['assets'] as List?) ?? const [];
+      final wanted = pickAssetName(<String>[
+        for (final a in assets)
+          if (a is Map<String, dynamic> && a['name'] is String)
+            a['name'] as String,
+      ]);
       Map<String, dynamic>? installerAsset;
       for (final a in assets) {
-        if (a is Map<String, dynamic> &&
-            (a['name'] as String?)?.toLowerCase().endsWith(suffix) == true) {
+        if (a is Map<String, dynamic> && a['name'] == wanted) {
           installerAsset = a;
           break;
         }
@@ -121,6 +126,68 @@ class UpdateService {
       await _logError('checkForUpdate', e, st);
       return null;
     }
+  }
+
+  /// The ABI-specific APK suffixes an [abi] can run, best first.
+  ///
+  /// CI publishes one APK per ABI (`--split-per-abi`) rather than a single
+  /// universal one, because a universal APK carries every ABI's copy of every
+  /// native library — the engine, `libapp.so`, ONNX Runtime, ML Kit — stored
+  /// uncompressed so the installer can mmap them. That is what made the
+  /// universal APK ~240 MB against a 20 MB Windows installer, with the phone
+  /// downloading three ABIs to use one. A 64-bit ARM phone can also run the
+  /// 32-bit build, so that stays as a fallback; the reverse isn't true.
+  static List<String> _abiSuffixes(Abi abi) {
+    if (abi == Abi.androidArm64) {
+      return const ['-arm64-v8a.apk', '-armeabi-v7a.apk'];
+    }
+    if (abi == Abi.androidArm) return const ['-armeabi-v7a.apk'];
+    if (abi == Abi.androidX64) return const ['-x86_64.apk'];
+    if (abi == Abi.androidIA32) return const ['-x86.apk', '-x86_64.apk'];
+    return const [];
+  }
+
+  /// Every ABI suffix CI can produce — used to tell an ABI-specific APK apart
+  /// from a universal one when falling back.
+  static const _allAbiSuffixes = [
+    '-arm64-v8a.apk',
+    '-armeabi-v7a.apk',
+    '-x86_64.apk',
+    '-x86.apk',
+  ];
+
+  /// Chooses which release asset to download for [abi] (the running device by
+  /// default), or null when the release has nothing installable attached.
+  ///
+  /// On Android this prefers the APK built for this device's ABI and falls
+  /// back to a universal APK — what releases before the split contained, and
+  /// what a hand-built release might still be — so an older release still
+  /// updates rather than reporting itself as unavailable.
+  @visibleForTesting
+  static String? pickAssetName(List<String> assetNames, {Abi? abi}) {
+    final target = abi ?? Abi.current();
+    final abiSuffixes = _abiSuffixes(target);
+    if (abiSuffixes.isEmpty) {
+      for (final name in assetNames) {
+        if (name.toLowerCase().endsWith('setup.exe')) return name;
+      }
+      return null;
+    }
+
+    final apks = [
+      for (final name in assetNames)
+        if (name.toLowerCase().endsWith('.apk')) name,
+    ];
+    for (final suffix in abiSuffixes) {
+      for (final name in apks) {
+        if (name.toLowerCase().endsWith(suffix)) return name;
+      }
+    }
+    for (final name in apks) {
+      final lower = name.toLowerCase();
+      if (!_allAbiSuffixes.any(lower.endsWith)) return name;
+    }
+    return null;
   }
 
   /// Downloads the installer/APK and hands it to the platform installer.
@@ -228,6 +295,12 @@ class UpdateService {
     }
     final total = res.contentLength ?? 0;
     var received = 0;
+    // Reported progress is throttled to whole percent. Unthrottled, a
+    // multi-hundred-megabyte download fires this tens of thousands of times,
+    // and every one of them rebuilds and repaints the full-screen
+    // UpdatingScreen (an animated shader ring and a blurred progress bar) on
+    // the very isolate that is reading the socket and writing the file.
+    var reported = -1;
     final file = File(destPath);
     final sink = file.openWrite();
     try {
@@ -239,7 +312,13 @@ class UpdateService {
           in res.stream.timeout(const Duration(seconds: 30))) {
         sink.add(chunk);
         received += chunk.length;
-        if (total > 0) onProgress?.call(received / total);
+        if (total > 0) {
+          final percent = received * 100 ~/ total;
+          if (percent != reported) {
+            reported = percent;
+            onProgress?.call(received / total);
+          }
+        }
       }
       await sink.flush();
       await sink.close();

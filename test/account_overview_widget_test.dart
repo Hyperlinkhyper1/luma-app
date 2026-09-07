@@ -205,7 +205,9 @@ void main() {
 
       expect(find.text('GitHub Copilot'), findsOneWidget);
       expect(find.text('Workflow compute'), findsOneWidget);
-      expect(find.textContaining('of 3,000 included'), findsOneWidget);
+      // The unit sits next to both figures, not just the total, so the
+      // total on its own can't be read as a bare, unitless number.
+      expect(find.textContaining('of 3,000 minutes included'), findsOneWidget);
       expect(
         find.text('GitHub did not report an included allowance.'),
         findsWidgets,
@@ -228,7 +230,7 @@ void main() {
       await tester.tap(find.text(AccountSection.usage.label));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('of 300 included'), findsOneWidget);
+      expect(find.textContaining('of 300 ai-credits included'), findsOneWidget);
       // 240 of 300.
       expect(find.text('80%'), findsOneWidget);
       expect(tester.takeException(), isNull);
@@ -394,6 +396,9 @@ GithubSnapshot _populated() => GithubSnapshot(
         bandwidthGbUsed: 2,
         bandwidthGbIncluded: 10,
         daysLeftInCycle: 11,
+        privateStorageGbUsed: 1.75,
+        privateStorageReposCounted: 2,
+        privateStorageReposTotal: 2,
         usageItems: [
           GithubUsageItem(
             product: 'Copilot AI Credits',

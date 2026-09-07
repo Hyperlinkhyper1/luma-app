@@ -70,7 +70,7 @@ class _ProfileTab extends StatelessWidget {
         _SectionHeader(
           icon: Icons.person_rounded,
           title: 'Profile',
-          subtitle: 'How you show up on this device.',
+          subtitle: 'How you look on this device.',
         ),
         const SizedBox(height: 12),
         const _ProfileSection(),
@@ -82,7 +82,7 @@ class _ProfileTab extends StatelessWidget {
           icon: Icons.cloud_sync_rounded,
           title: 'Sync & account',
           subtitle:
-              'Your data on every device, and devices paired to this one.',
+              'Your stuff on every device, plus devices linked to this one.',
           child: const Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -99,7 +99,7 @@ class _ProfileTab extends StatelessWidget {
         _SectionHeader(
           icon: Icons.storage_rounded,
           title: 'Storage',
-          subtitle: 'How much room luma is using on this device.',
+          subtitle: 'How much room luma takes up here.',
         ),
         const SizedBox(height: 12),
         const LocalStorageCard(),
@@ -110,7 +110,7 @@ class _ProfileTab extends StatelessWidget {
         _SectionHeader(
           icon: Icons.workspace_premium_rounded,
           title: 'Plan',
-          subtitle: 'Your active plan and what it includes.',
+          subtitle: 'What you picked and what is in it.',
         ),
         const SizedBox(height: 12),
         const _PlanSummary(),
@@ -121,7 +121,7 @@ class _ProfileTab extends StatelessWidget {
         _SectionHeader(
           icon: Icons.diversity_3_rounded,
           title: 'Family',
-          subtitle: 'Share your calendar with people who matter.',
+          subtitle: 'Share your calendar with your people.',
         ),
         const SizedBox(height: 12),
         const _FamilySummary(),
@@ -177,7 +177,7 @@ class _ProfileSection extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Shown on this device only.',
+                  'Only on this device — nobody else sees it.',
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
               ],
@@ -282,8 +282,8 @@ class _LocalStorageCardState extends State<LocalStorageCard> {
                           if (guard.isOverLimit) ...[
                             const SizedBox(height: 10),
                             Text(
-                              "You've reached your storage limit — new data won't be "
-                              'saved, and sync is paused, until you free up space.',
+                              "You're out of room — we stop saving and syncing "
+                              'until you clear a little out.',
                               style: TextStyle(
                                 color: Colors.red.shade400,
                                 fontSize: 12,
@@ -400,7 +400,7 @@ class _StorageBreakdown extends StatelessWidget {
         const SizedBox(height: 10),
         if (categories.isEmpty)
           Text(
-            'No counted data yet.',
+            'Nothing counted yet.',
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           )
         else
@@ -610,7 +610,7 @@ class _FamilySummary extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'You\'re not in a family yet',
+                    'No family yet',
                     style: TextStyle(
                       color: luma.textPrimary,
                       fontSize: 14,
@@ -619,7 +619,7 @@ class _FamilySummary extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Create one to share your calendar.',
+                    'Start one to share your calendar.',
                     style: TextStyle(color: luma.textMuted, fontSize: 12),
                   ),
                 ],

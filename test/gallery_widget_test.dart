@@ -16,6 +16,7 @@ import 'package:luma/features/plugins/installed/gallery/gallery_scope.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_smart.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_source.dart';
 import 'package:luma/features/plugins/installed/gallery/gallery_tile.dart';
+import 'package:luma/features/plugins/installed/gallery/gallery_viewer_page.dart';
 import 'package:luma/settings/settings_controller.dart';
 import 'package:luma/settings/settings_scope.dart';
 import 'package:luma/theme/luma_theme.dart';
@@ -594,6 +595,38 @@ void main() {
     final width = tester.getSize(find.byType(GalleryAlbumCard).first).width;
     final screen = tester.view.physicalSize.width / tester.view.devicePixelRatio;
     expect(width * 3, lessThan(screen));
+  });
+
+  testWidgets('long-pressing a photo starts a selection instead of opening it',
+      (tester) async {
+    await _pump(tester);
+    await _openAlbum(tester, 'Downloads');
+
+    await tester.longPress(find.byType(GalleryTile).first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 selected'), findsOneWidget);
+    expect(find.byType(GalleryViewerPage), findsNothing);
+
+    // A plain tap adds to the selection rather than opening the viewer.
+    await tester.tap(find.byType(GalleryTile).at(1));
+    await tester.pumpAndSettle();
+    expect(find.text('2 selected'), findsOneWidget);
+    expect(find.byType(GalleryViewerPage), findsNothing);
+  });
+
+  testWidgets('a selection does not follow you into the next album',
+      (tester) async {
+    await _pump(tester);
+    await _openAlbum(tester, 'Downloads');
+
+    await tester.longPress(find.byType(GalleryTile).first);
+    await tester.pumpAndSettle();
+    expect(find.text('1 selected'), findsOneWidget);
+
+    await _back(tester);
+    await _openAlbum(tester, 'Pictures');
+    expect(find.textContaining('selected'), findsNothing);
   });
 
   testWidgets('the map is reachable before any coordinates have been read',

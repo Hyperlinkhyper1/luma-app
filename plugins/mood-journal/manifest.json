@@ -2,7 +2,7 @@
   "id": "mood-journal",
   "name": "Mood Journal",
   "version": "1.0.0",
-  "description": "Track your daily mood and write a short journal entry. See your emotional patterns on a monthly calendar heat-map and spot trends over time.",
+  "description": "How was today, really? Jot it down and spot patterns over time.",
   "icon": "mood",
   "category": "Productivity"
 }

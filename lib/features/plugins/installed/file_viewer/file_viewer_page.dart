@@ -199,7 +199,7 @@ class _FileViewerPageState extends State<FileViewerPage> {
                 ConverterDropZone(
                   onTap: _pickFile,
                   icon: Icons.file_open_outlined,
-                  title: 'Click to choose a file',
+                  title: 'Tap to pick a file',
                   subtitle: 'PDF · DOCX · XLSX · images · SVG · text & code',
                 )
               else ...[

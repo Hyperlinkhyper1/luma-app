@@ -91,22 +91,22 @@ class _ServerAccountRequiredState extends State<ServerAccountRequired> {
                 Text(
                   pending != null
                       ? byEmail
-                          ? 'Your account ($pending) is waiting to be '
-                              'approved. Open the link in the email we sent, '
-                              'then sign in here — until it is approved this '
-                              'device does not contact the server at all.'
-                          : 'Your account ($pending) is waiting for the '
-                              'server operator to approve it. Nothing to do '
+                          ? 'Your account ($pending) still needs a thumbs-up. '
+                              'Tap the link in the email we sent, '
+                              'then sign in here — until then we leave the '
+                              'server completely alone.'
+                          : 'Your account ($pending) is waiting on the '
+                              'server owner to say yes. Nothing for you to do '
                               'in the meantime — just sign in once they '
-                              'have; until then this device does not contact '
-                              'the server at all.'
+                              'have; until then we leave the server '
+                              'completely alone.'
                       : expired
-                          ? 'This account is not approved (any more). Once it '
-                              'is approved, sign in again to switch this back '
-                              'on.'
-                          : '${widget.description} Create an account under '
-                              'Settings → Sync & account, approve it from the '
-                              'email you get, then sign in.',
+                          ? 'This account lost its thumbs-up. Once it '
+                              'is approved again, sign in and this turns '
+                              'back on.'
+                          : '${widget.description} Make an account under '
+                              'Settings → Sync & account, tap the link in '
+                              'the email you get, then sign in.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                       color: luma.textMuted, fontSize: 13, height: 1.5),

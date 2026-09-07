@@ -232,7 +232,7 @@ class _Body extends StatelessWidget {
             child: LumaEmptyState(
               icon: Icons.folder_open_rounded,
               title: 'No files yet',
-              subtitle: 'Upload a file to keep it safe and synced.',
+              subtitle: 'Drop one in to keep it safe everywhere.',
             ),
           )
         else

@@ -2,7 +2,7 @@
   "id": "qr-code-generator",
   "name": "QR Code Generator",
   "version": "1.0.0",
-  "description": "Turn any URL into a scannable QR code. Every code you generate is saved locally so you can reopen it later.",
+  "description": "Got a link? Make a QR for it in a sec. We keep the ones you make, so you can find them back.",
   "icon": "qr_code_2",
   "category": "Utility",
   "details": "Paste any link and get an instant, scannable QR code — no account, no internet round-trip beyond generating the image itself.\n\nEvery code you make is kept in a local history so you can come back and re-download or re-share it later without retyping the URL.",

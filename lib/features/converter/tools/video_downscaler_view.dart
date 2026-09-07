@@ -290,7 +290,7 @@ class _VideoDownscalerViewState extends State<VideoDownscalerView> {
           ConverterDropZone(
             onTap: _pickFile,
             icon: Icons.video_settings_rounded,
-            title: 'Click to choose a video',
+            title: 'Tap to pick a video',
             subtitle: 'MP4 · MOV · MKV · WEBM · AVI',
           )
         else
