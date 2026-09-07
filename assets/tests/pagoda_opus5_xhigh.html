@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pagoda Test — Opus 5 (Xhigh)</title>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #0B0E18; }
+  canvas { display: block; }
+  #hud {
+    position: absolute; left: 22px; bottom: 20px;
+    font-family: 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
+    color: rgba(255, 246, 236, 0.93); font-size: 12px; line-height: 1.75;
+    pointer-events: none; user-select: none;
+    text-shadow: 0 1px 10px rgba(0,0,0,0.92), 0 0 3px rgba(0,0,0,0.85);
+  }
+  #hud .title { font-size: 14.5px; font-weight: 700; letter-spacing: 3.4px; color: #E8B86D; }
+  #hud .hint { opacity: 0.6; }
+  #hud .badge {
+    display: inline-block; margin-top: 7px; padding: 2px 9px;
+    border: 1px solid rgba(232,184,109,0.5); border-radius: 999px;
+    color: #E8B86D; font-size: 10.5px; letter-spacing: 1px; opacity: 0.92;
+  }
+  #tod {
+    position: absolute; right: 22px; top: 18px;
+    font-family: 'Cascadia Code', Consolas, monospace; font-size: 11px;
+    letter-spacing: 2.2px; text-transform: uppercase;
+    color: rgba(255,246,236,0.72); pointer-events: none; user-select: none;
+    text-shadow: 0 1px 10px rgba(0,0,0,0.9);
+  }
+  #loader {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 14px;
+    background: #0B0E18; color: #E8B86D;
+    font-family: Consolas, monospace; font-size: 12px; letter-spacing: 3px;
+    transition: opacity 0.7s ease; pointer-events: none;
+  }
+  #loader .bar { width: 150px; height: 2px; background: rgba(232,184,109,0.2); overflow: hidden; }
+  #loader .bar i { display: block; width: 40%; height: 100%; background: #E8B86D; animation: sl 1.1s ease-in-out infinite; }
+  @keyframes sl { 0% { transform: translateX(-100%); } 100% { transform: translateX(280%); } }
+  #err {
+    position: absolute; left: 20px; top: 20px; right: 20px;
+    font-family: Consolas, monospace; font-size: 12px; color: #FF8FAB;
+    white-space: pre-wrap; display: none;
+  }
+</style>
+</head>
+<body>
+<div id="loader"><div>CARVING THE GARDEN</div><div class="bar"><i></i></div></div>
+<div id="tod">Daybreak</div>
+<div id="hud">
+  <div class="title">VOXEL GARDEN</div>
+  <div><span id="hv">&mdash;</span> voxels | <span id="hf">&mdash;</span> FPS</div>
+  <div class="hint">Click lanterns &middot; Click a pagoda floor</div>
+  <div><span class="badge">Opus 5 (Xhigh)</span></div>
+</div>
+<pre id="err"></pre>
+
+<script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ===========================================================================
+ * Spring Festival at the Five-Story Pagoda
+ * Opus 5 (Xhigh) — an independent implementation of the Luma Pagoda benchmark.
+ *
+ * Everything is procedural: no external assets, no code shared with the other
+ * benchmark contestants. One voxel reads as ~0.42 m, so the 66-voxel tower
+ * stands about 28 m over a 64x64 garden.
+ *
+ * Static voxels are accumulated into a handful of InstancedMesh banks keyed by
+ * material family, with per-instance colour carrying both the palette tint and
+ * a baked neighbour-occlusion term. Animated subsets (koi, petals, the pond
+ * surface, the pagoda doors) get their own dynamic banks.
+ * ======================================================================== */
+
+window.__VOXEL__ = { voxelCount: 0, fps: 0, pagodaFloors: 5, timeOfDay: 0, phase: 'Daybreak' };
+
+const errEl = document.getElementById('err');
+window.addEventListener('error', (e) => {
+  errEl.style.display = 'block';
+  errEl.textContent += (e.message || String(e.error)) + '\n';
+});
+
+/* ---------------------------------------------------------------------------
+ * Deterministic noise — the garden lays out identically on every load, so the
+ * reported voxel count is reproducible.
+ * ------------------------------------------------------------------------ */
+function makeRng(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const rnd = makeRng(940517);
+const randRange = (a, b) => a + rnd() * (b - a);
+const randInt = (a, b) => Math.floor(a + rnd() * (b - a + 1));
+
+function hash2(x, y) {
+  const h = Math.sin(x * 127.1 + y * 311.7) * 43758.5453123;
+  return h - Math.floor(h);
+}
+function hash3(x, y, z) {
+  const h = Math.sin(x * 127.1 + y * 269.5 + z * 311.7) * 43758.5453123;
+  return h - Math.floor(h);
+}
+function noise2(x, y) {
+  const xi = Math.floor(x), yi = Math.floor(y);
+  const xf = x - xi, yf = y - yi;
+  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+  const a = hash2(xi, yi), b = hash2(xi + 1, yi);
+  const c = hash2(xi, yi + 1), d = hash2(xi + 1, yi + 1);
+  return a * (1 - u) * (1 - v) + b * u * (1 - v) + c * (1 - u) * v + d * u * v;
+}
+function fbm2(x, y) {
+  return noise2(x, y) * 0.60
+       + noise2(x * 2.13 + 5.2, y * 2.13 - 3.7) * 0.27
+       + noise2(x * 4.70 - 9.1, y * 4.70 + 2.4) * 0.13;
+}
+const clamp = (v, a, b) => (v < a ? a : (v > b ? b : v));
+const smoothstep = (e0, e1, x) => {
+  const t = clamp((x - e0) / (e1 - e0), 0, 1);
+  return t * t * (3 - 2 * t);
+};
+const lerp = (a, b, t) => a + (b - a) * t;
+
+/* ---------------------------------------------------------------------------
+ * Palette — the brief's anchors plus the working tints derived from them.
+ * ------------------------------------------------------------------------ */
+const P = {
+  vermillion: 0xC73E1D, vermillionL: 0xDD5A38, vermillionD: 0x9B2D14,
+  gold: 0xE8B86D, goldD: 0xC2914A, goldL: 0xFAD79B,
+  teak: 0x4A2C1A, teakL: 0x6B432A, teakD: 0x33200F,
+  jade: 0x2D6A4F, jadeL: 0x40916C, jadeH: 0x55A981,
+  sakura: 0xFFB7C5, sakuraD: 0xFF8FAB, sakuraL: 0xFFE5EC,
+  stone: 0x9AA0A6, stoneL: 0xB4B9BE, stoneD: 0x7C8288,
+  pond: 0x7ED6DF, pondD: 0x4FA9B6,
+  moss: 0x606C38, mossL: 0x74833F, mossD: 0x4B5730,
+  grass: 0x6B7A3C, earth: 0x6A5334, earthD: 0x5C4B30, sand: 0xC7B692, sandD: 0xB8A582,
+  pine: 0x2F5D42, pineL: 0x3E7A55, pineH: 0x4F8C63,
+  maple: 0xC2452A, mapleL: 0xE0703C, mapleY: 0xE8A14B, mapleD: 0xA83420,
+  willow: 0x8FB05A, willowL: 0xA6C46C, willowD: 0x7B9C4C,
+  bamboo: 0x9AA85C, bambooL: 0xB2BE74,
+  paper: 0xFFE7B8, paperW: 0xFFD79A, plaster: 0xE2D8C6, plasterD: 0xD3C8B4,
+  bibRed: 0xC7343E,
+  koiO: 0xE8743B, koiW: 0xF6EFE3, koiK: 0x2A2622,
+  bed: 0x4C5A50, bedL: 0x5D6B5A, bedD: 0x3C4A44,
+};
+
+/* ---------------------------------------------------------------------------
+ * Voxel banks.
+ *
+ * `occ` is the global occupancy set. Everything registers there — including
+ * geometry that is never drawn, such as blob interiors — so ambient occlusion
+ * darkens crevices correctly, and so no two voxels can ever be placed in the
+ * same cell (which would z-fight).
+ * ------------------------------------------------------------------------ */
+const OFF = 160;
+const occ = new Set();
+const okey = (x, y, z) => (x + OFF) + ((y + OFF) << 9) + ((z + OFF) << 18);
+const occupy = (x, y, z) => { occ.add(okey(x | 0, y | 0, z | 0)); };
+const isOcc = (x, y, z) => occ.has(okey(x | 0, y | 0, z | 0));
+
+const AO_DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+function bakeAO(x, y, z) {
+  let s = 1.0;
+  if (isOcc(x, y + 1, z)) s -= 0.40;
+  let lat = 0;
+  if (isOcc(x + 1, y, z)) lat++;
+  if (isOcc(x - 1, y, z)) lat++;
+  if (isOcc(x, y, z + 1)) lat++;
+  if (isOcc(x, y, z - 1)) lat++;
+  s -= lat * 0.034;
+  let up = 0;
+  for (let i = 0; i < 8; i++) if (isOcc(x + AO_DIRS[i][0], y + 1, z + AO_DIRS[i][1])) up++;
+  s -= up * 0.030;
+  s *= 0.955 + 0.045 * clamp(y / 50, 0, 1);
+  s *= 0.966 + hash3(x * 1.7, y * 2.3, z * 1.1) * 0.068;
+  return clamp(s, 0.38, 1.06);
+}
+
+/** A bucket of voxels that becomes one InstancedMesh. */
+class Bank {
+  constructor(name) { this.name = name; this.v = []; }
+  /** World-space add. Refuses to stack two voxels in the same cell. */
+  add(x, y, z, hex) {
+    x |= 0; y |= 0; z |= 0;
+    if (isOcc(x, y, z)) return false;
+    this.v.push({ x, y, z, hex });
+    occupy(x, y, z);
+    return true;
+  }
+  /** Local-space add for banks that live inside a moving Group. */
+  addLocal(lx, ly, lz, wx, wy, wz, hex) {
+    if (isOcc(wx, wy, wz)) return false;
+    this.v.push({ x: lx, y: ly, z: lz });
+    this.v[this.v.length - 1].hex = hex;
+    occupy(wx, wy, wz);
+    return true;
+  }
+  get count() { return this.v.length; }
+}
+
+const banks = {
+  matte: new Bank('matte'),   // terrain, timber, stone, foliage — the bulk
+  gold:  new Bank('gold'),    // metallic trim, finial, door furniture
+  glow:  new Bank('glow'),    // pagoda interiors + festival chochin
+};
+const treeGroups = [];
+const waterVox = [];
+const pagodaHitBoxes = [];
+let pagodaVoxels = 0;
+function padd(bank, x, y, z, hex) { if (bank.add(x, y, z, hex)) pagodaVoxels++; }
+
+/* ===========================================================================
+ * GARDEN LAYOUT
+ * ======================================================================== */
+const HALF = 32;                                   // terrain spans [-32, 31]
+const PAGODA = { x: 0, z: -4 };
+const TERRACE = { hw: 11, z0: -15, z1: 7 };        // absolute z bounds
+const T_LOW = 11, T_MID = 9;                       // terrace step radii
+const GROUND_T = 5;                                // terrain height under the terrace
+const PAGODA_BASE = 9;                             // y of the ground-floor sill
+const POND = { x: -19, z: 7, rx: 7, rz: 6.5 };
+const WATER_Y = 3;
+const BRIDGE = { x: -19, z0: -1, z1: 15, rise: 4 };
+const TORII = { x: 0, z: 27 };
+const FENCE_R = 27;
+
+const PATH_MAIN = [[0, 30], [0, 22], [9, 22], [9, 15], [-5, 15], [-5, 10], [0, 10], [0, 9]];
+const PATH_WEST = [[-5, 15], [-19, 15]];
+const PATH_SOUTH = [[-19, -5], [-19, -1]];
+
+const LANTERNS = [[12, 22], [-14, 12], [16, 12], [-14, -6]];
+const JIZO = [[-4, 21], [11, 17]];
+const TREES = [
+  { kind: 'sakura', x: 16, z: 15 },
+  { kind: 'sakura', x: -17, z: 21 },
+  { kind: 'sakura', x: 18, z: -8 },
+  { kind: 'pine',   x: -22, z: -13 },
+  { kind: 'pine',   x: 21, z: -20 },
+  { kind: 'maple',  x: 24, z: 5 },
+  { kind: 'maple',  x: -24, z: -8 },
+  { kind: 'willow', x: -12, z: 17 },
+];
+
+function pondField(x, z) {
+  const dx = (x - POND.x) / POND.rx, dz = (z - POND.z) / POND.rz;
+  return Math.sqrt(dx * dx + dz * dz) - 1 + (fbm2(x * 0.13 + 4.1, z * 0.13 + 8.6) - 0.5) * 0.20;
+}
+function inTerrace(x, z) {
+  return Math.abs(x - PAGODA.x) <= TERRACE.hw && z >= TERRACE.z0 && z <= TERRACE.z1;
+}
+function isPond(x, z) {
+  if (Math.abs(x) > 26 || Math.abs(z) > 26) return false;
+  if (inTerrace(x, z)) return false;
+  return pondField(x, z) < 0;
+}
+function pondBedH(x, z) {
+  const d = -pondField(x, z);
+  return Math.max(0, Math.round(2 - d * 3.0 - fbm2(x * 0.3, z * 0.3) * 0.8));
+}
+
+function polyDist(nodes, x, z) {
+  let best = 1e9;
+  for (let i = 0; i < nodes.length - 1; i++) {
+    const ax = nodes[i][0], az = nodes[i][1];
+    const vx = nodes[i + 1][0] - ax, vz = nodes[i + 1][1] - az;
+    const len2 = vx * vx + vz * vz;
+    let t = len2 === 0 ? 0 : ((x - ax) * vx + (z - az) * vz) / len2;
+    t = clamp(t, 0, 1);
+    const d = Math.hypot(x - (ax + vx * t), z - (az + vz * t));
+    if (d < best) best = d;
+  }
+  return best;
+}
+function pathDist(x, z) {
+  return Math.min(
+    polyDist(PATH_MAIN, x, z),
+    polyDist(PATH_WEST, x, z),
+    polyDist(PATH_SOUTH, x, z),
+  );
+}
+
+const hCache = new Map();
+function groundH(x, z) {
+  const k = (x + OFF) * 512 + (z + OFF);
+  const hit = hCache.get(k);
+  if (hit !== undefined) return hit;
+  let h;
+  if (inTerrace(x, z)) {
+    h = GROUND_T;
+  } else if (Math.abs(x - TORII.x) <= 8 && Math.abs(z - TORII.z) <= 2) {
+    h = GROUND_T;                                   // flat pad under the gate
+  } else {
+    h = Math.round(3 + fbm2(x * 0.055 + 12.3, z * 0.055 + 6.7) * 3.4
+                     + fbm2(x * 0.160 - 4.4, z * 0.160 + 21.1) * 1.0);
+    const near = Math.max(
+      Math.abs(x - PAGODA.x) - TERRACE.hw,
+      Math.max(TERRACE.z0 - z, z - TERRACE.z1),
+    );
+    if (near <= 3) h = Math.round(lerp(GROUND_T, h, clamp(near / 3, 0, 1)));
+    const pd = pathDist(x, z);
+    if (pd < 3.4) h = Math.round(lerp(GROUND_T, h, smoothstep(1.6, 3.4, pd)));
+    const pf = pondField(x, z);
+    if (pf > 0 && pf < 0.30) h = Math.min(h, 4);    // shoreline shelf
+    h = clamp(h, 2, 7);
+  }
+  hCache.set(k, h);
+  return h;
+}
+/** Height of the topmost solid voxel of a terrain column, pond bed included. */
+function topAt(x, z) { return isPond(x, z) ? pondBedH(x, z) : groundH(x, z); }
+function surfaceY(x, z) { return topAt(x, z) + 1; }
