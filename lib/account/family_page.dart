@@ -155,7 +155,7 @@ class _EmptyFamilyState extends State<_EmptyFamily> {
                             fontSize: 16,
                             fontWeight: FontWeight.w700)),
                     const SizedBox(height: 2),
-                    Text('Invite people and share calendar plans together.',
+                    Text('Invite your people and plan things together.',
                         style: TextStyle(color: luma.textMuted, fontSize: 12)),
                   ],
                 ),
@@ -320,7 +320,7 @@ class _FamilyDetail extends StatelessWidget {
           const SizedBox(height: 10),
           if (family.pendingInvites.isEmpty)
             LumaCard(
-              child: Text('No pending invites.',
+              child: Text('No invites waiting.',
                   style: TextStyle(color: luma.textMuted, fontSize: 13)),
             )
           else

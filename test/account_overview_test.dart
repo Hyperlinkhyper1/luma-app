@@ -6,6 +6,7 @@ import 'package:http/testing.dart';
 import 'package:luma/features/plugins/installed/account_overview/github_api.dart';
 import 'package:luma/features/plugins/installed/account_overview/github_models.dart';
 import 'package:luma/features/plugins/installed/account_overview/ui/account_shared.dart';
+import 'package:luma/features/plugins/installed/account_overview/ui/github_connect_dialog.dart';
 
 /// A day's worth of contribution calendar, `counts` read left to right from
 /// [start].
@@ -24,12 +25,14 @@ GithubRepo _repo(
   int downloads = 0,
   int sizeKb = 0,
   String? language,
+  bool isPrivate = false,
+  DateTime? pushedAt,
 }) =>
     GithubRepo(
       name: name,
       fullName: 'octo/$name',
       description: null,
-      isPrivate: false,
+      isPrivate: isPrivate,
       isFork: false,
       isArchived: false,
       language: language,
@@ -38,7 +41,7 @@ GithubRepo _repo(
       watchers: 0,
       openIssues: 0,
       sizeKb: sizeKb,
-      pushedAt: DateTime(2026, 8, 1),
+      pushedAt: pushedAt ?? DateTime(2026, 8, 1),
       htmlUrl: 'https://github.com/octo/$name',
       downloads: downloads,
     );
@@ -438,6 +441,131 @@ void main() {
       expect(billing.copilotQuantity, 240);
     });
 
+    test('sums live Actions-artifact storage from private repos only',
+        () async {
+      final api = GithubApi(
+        client: MockClient((request) async {
+          final path = request.url.path;
+          if (path.contains('/repos/octo/priv-a/actions/artifacts')) {
+            return http.Response(
+              jsonEncode({
+                'artifacts': [
+                  {'size_in_bytes': 500000000, 'expired': false}, // 0.5 GB
+                  {'size_in_bytes': 999999999, 'expired': true}, // ignored
+                ],
+              }),
+              200,
+            );
+          }
+          if (path.contains('/repos/octo/priv-b/actions/artifacts')) {
+            return http.Response(
+              jsonEncode({
+                'artifacts': [
+                  {'size_in_bytes': 250000000, 'expired': false}, // 0.25 GB
+                ],
+              }),
+              200,
+            );
+          }
+          // A public repo's artifacts must never be requested at all —
+          // GitHub does not meter them, so there is nothing to count.
+          if (path.contains('/repos/octo/pub/actions/artifacts')) {
+            fail('public repository artifacts should not be fetched');
+          }
+          return http.Response('{}', 404);
+        }),
+      );
+
+      final usage = await api.fetchPrivateStorageUsage('tok', [
+        _repo('priv-a', isPrivate: true),
+        _repo('priv-b', isPrivate: true),
+        _repo('pub'),
+      ]);
+
+      expect(usage.gb, closeTo(0.75, 0.0001));
+      expect(usage.reposCounted, 2);
+      expect(usage.reposTotal, 2);
+    });
+
+    test('Actions disabled on a repo reads as a real zero, not an exclusion',
+        () async {
+      final api = GithubApi(
+        client: MockClient((_) async => http.Response('{}', 404)),
+      );
+
+      final usage = await api.fetchPrivateStorageUsage(
+        'tok',
+        [_repo('disabled', isPrivate: true)],
+      );
+
+      expect(usage.gb, 0);
+      // A 404 here means "no artifacts to have", which was successfully
+      // determined — it must not read the same as a repository luma
+      // actually failed to check.
+      expect(usage.reposCounted, 1);
+      expect(usage.reposTotal, 1);
+    });
+
+    test('a repository that genuinely fails to read does not lose the sum',
+        () async {
+      final api = GithubApi(
+        client: MockClient((request) async {
+          if (request.url.path.contains('/repos/octo/broken/')) {
+            return http.Response('{}', 500);
+          }
+          return http.Response(
+            jsonEncode({
+              'artifacts': [
+                {'size_in_bytes': 1000000000, 'expired': false},
+              ],
+            }),
+            200,
+          );
+        }),
+      );
+
+      final usage = await api.fetchPrivateStorageUsage('tok', [
+        _repo('good', isPrivate: true),
+        _repo('broken', isPrivate: true),
+      ]);
+
+      expect(usage.gb, closeTo(1.0, 0.0001));
+      expect(usage.reposCounted, 1);
+      expect(usage.reposTotal, 2);
+    });
+
+    test('billing carries the computed storage even when every billing '
+        'endpoint is unreadable', () async {
+      final api = GithubApi(
+        client: MockClient((request) async {
+          if (request.url.path.contains('/actions/artifacts')) {
+            return http.Response(
+              jsonEncode({
+                'artifacts': [
+                  {'size_in_bytes': 100000000, 'expired': false},
+                ],
+              }),
+              200,
+            );
+          }
+          return http.Response('{}', 403);
+        }),
+      );
+
+      final billing = await api.fetchBilling(
+        'tok',
+        'octo',
+        repos: [_repo('priv', isPrivate: true)],
+      );
+
+      // The legacy/enhanced sources all failed, so the page explains why —
+      // but the storage figure came from a real repository sweep, not from
+      // any of those sources, so it survives regardless.
+      expect(billing.available, isFalse);
+      expect(billing.privateStorageGbUsed, closeTo(0.1, 0.0001));
+      expect(billing.privateStorageReposCounted, 1);
+    });
+
     test('one unreadable repository does not lose the others downloads',
         () async {
       final api = GithubApi(
@@ -494,6 +622,26 @@ void main() {
       expect(formatBytesFromKb(512), '512 KB');
       expect(formatBytesFromKb(2048), '2.0 MB');
       expect(formatBytesFromKb(1024 * 1024 * 3), '3.00 GB');
+    });
+  });
+
+  group('plan storage defaults', () {
+    test('matches GitHub\'s published free-plan storage, not Git LFS\'s',
+        () {
+      // 500 MB, per docs.github.com's Actions billing page and
+      // github.com/pricing — not the 10 GiB some people expect, which is
+      // Git LFS's separate, unrelated allowance.
+      expect(githubStorageGbForPlan('free'), 0.5);
+    });
+
+    test('looks plan names up case-insensitively', () {
+      expect(githubStorageGbForPlan('Free'), githubStorageGbForPlan('free'));
+      expect(githubStorageGbForPlan('PRO'), isNotNull);
+    });
+
+    test('an unknown plan has no default rather than a guessed one', () {
+      expect(githubStorageGbForPlan('nonexistent'), isNull);
+      expect(githubStorageGbForPlan(null), isNull);
     });
   });
 }

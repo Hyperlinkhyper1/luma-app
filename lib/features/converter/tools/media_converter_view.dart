@@ -372,7 +372,7 @@ class _MediaConverterViewState extends State<MediaConverterView> {
           ConverterDropZone(
             onTap: _pickFile,
             icon: Icons.upload_file_rounded,
-            title: 'Click to choose a file',
+            title: 'Tap to pick a file',
             subtitle: config.inputExtensions
                 .take(6)
                 .map((e) => e.toUpperCase())

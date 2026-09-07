@@ -591,6 +591,9 @@ class GithubBilling {
     required this.bandwidthGbIncluded,
     required this.daysLeftInCycle,
     required this.usageItems,
+    required this.privateStorageGbUsed,
+    required this.privateStorageReposCounted,
+    required this.privateStorageReposTotal,
   });
 
   final bool available;
@@ -615,6 +618,25 @@ class GithubBilling {
 
   final List<GithubUsageItem> usageItems;
 
+  /// Live Actions-artifact storage summed directly from each private
+  /// repository, in GB — see [GithubApi.fetchPrivateStorageUsage].
+  ///
+  /// Kept apart from [storageGbUsed]: that field comes from GitHub's legacy
+  /// billing endpoint, which returns zero for many personal accounts and, at
+  /// best, only ever reported a monthly *estimate*. This one is a direct sum
+  /// of real artifact sizes, so it is trustworthy even when the legacy
+  /// figure and [available] are both stuck at zero/false.
+  final double privateStorageGbUsed;
+
+  /// How many private repositories were actually walked to build
+  /// [privateStorageGbUsed].
+  final int privateStorageReposCounted;
+
+  /// How many private repositories the account has. Differs from
+  /// [privateStorageReposCounted] only when the sweep hit its cap, so the UI
+  /// can say the figure is a partial sum rather than imply completeness.
+  final int privateStorageReposTotal;
+
   static const empty = GithubBilling(
     available: false,
     unavailableReason: null,
@@ -627,6 +649,9 @@ class GithubBilling {
     bandwidthGbIncluded: 0,
     daysLeftInCycle: 0,
     usageItems: [],
+    privateStorageGbUsed: 0,
+    privateStorageReposCounted: 0,
+    privateStorageReposTotal: 0,
   );
 
   /// Usage lines that belong to Copilot, whatever GitHub is calling the
@@ -691,6 +716,9 @@ class GithubBilling {
     double? bandwidthGbIncluded,
     int? daysLeftInCycle,
     List<GithubUsageItem>? usageItems,
+    double? privateStorageGbUsed,
+    int? privateStorageReposCounted,
+    int? privateStorageReposTotal,
   }) =>
       GithubBilling(
         available: available ?? this.available,
@@ -704,6 +732,12 @@ class GithubBilling {
         bandwidthGbIncluded: bandwidthGbIncluded ?? this.bandwidthGbIncluded,
         daysLeftInCycle: daysLeftInCycle ?? this.daysLeftInCycle,
         usageItems: usageItems ?? this.usageItems,
+        privateStorageGbUsed:
+            privateStorageGbUsed ?? this.privateStorageGbUsed,
+        privateStorageReposCounted:
+            privateStorageReposCounted ?? this.privateStorageReposCounted,
+        privateStorageReposTotal:
+            privateStorageReposTotal ?? this.privateStorageReposTotal,
       );
 
   Map<String, dynamic> toJson() => {
@@ -718,6 +752,9 @@ class GithubBilling {
         'bandwidthGbIncluded': bandwidthGbIncluded,
         'daysLeftInCycle': daysLeftInCycle,
         'usageItems': usageItems.map((i) => i.toJson()).toList(),
+        'privateStorageGbUsed': privateStorageGbUsed,
+        'privateStorageReposCounted': privateStorageReposCounted,
+        'privateStorageReposTotal': privateStorageReposTotal,
       };
 
   factory GithubBilling.fromJson(Map<String, dynamic> j) => GithubBilling(
@@ -738,6 +775,12 @@ class GithubBilling {
         usageItems: (j['usageItems'] as List<dynamic>? ?? [])
             .map((e) => GithubUsageItem.fromJson(e as Map<String, dynamic>))
             .toList(),
+        privateStorageGbUsed:
+            (j['privateStorageGbUsed'] as num?)?.toDouble() ?? 0,
+        privateStorageReposCounted:
+            (j['privateStorageReposCounted'] as num?)?.toInt() ?? 0,
+        privateStorageReposTotal:
+            (j['privateStorageReposTotal'] as num?)?.toInt() ?? 0,
       );
 }
 

@@ -38,8 +38,13 @@ class StoredUser {
     this.verificationExpiresAtMs,
     this.lastLoginAtMs,
     this.planId = kDefaultPlanId,
+    this.passwordResetRequiredAtMs,
+    this.accessRevokedAtMs,
+    this.accessRevokedReason,
     Map<String, String>? oauthSubjects,
-  }) : oauthSubjects = oauthSubjects ?? {};
+    List<String>? recentIps,
+  })  : oauthSubjects = oauthSubjects ?? {},
+        recentIps = recentIps ?? [];
 
   final String id;
   String email;
@@ -63,6 +68,33 @@ class StoredUser {
   /// before this field existed default to 'active' so they keep working.
   String status;
 
+  /// When an admin forced a password reset from the dashboard, or null when
+  /// there is no reset outstanding.
+  ///
+  /// While this is set the old password no longer signs in — [_login]
+  /// refuses with `password_reset_required`. Existing sessions are
+  /// deliberately *kept*: sync is zero-knowledge, so only a device that
+  /// still holds the current encryption key can re-seal the stored snapshots
+  /// under the new password (see Api._resetPassword, which mirrors
+  /// SyncService.changePassword's re-encryption pass). Cleared by finishing
+  /// the reset, by an ordinary password change, or by the admin cancelling.
+  int? passwordResetRequiredAtMs;
+
+  bool get passwordResetRequired => passwordResetRequiredAtMs != null;
+
+  /// When an admin revoked this account's access, or null when it has full
+  /// access. While set, the account cannot sign in and no session on it is
+  /// honoured — and unlike a revoked *approval* (`status == 'pending'`),
+  /// nothing the user does lifts it. Only an operator restoring access from
+  /// the dashboard does.
+  int? accessRevokedAtMs;
+
+  /// Optional note the operator left, shown to the user on the sign-in
+  /// screen so a lockout is not silent.
+  String? accessRevokedReason;
+
+  bool get accessRevoked => accessRevokedAtMs != null;
+
   /// SHA-256 of the current email-verification token, or null if there is
   /// none outstanding (never verified yet, or already verified/used).
   String? verificationTokenHash;
@@ -77,6 +109,31 @@ class StoredUser {
   /// The subject is kept rather than just a "linked" flag so a later email
   /// change at the provider still resolves back to this account.
   final Map<String, String> oauthSubjects;
+
+  /// The client addresses this account has signed in from, oldest first and
+  /// capped at [maxRecentIps]. Recorded at register and login only — not on
+  /// every authenticated request, which would mean a disk write per call.
+  ///
+  /// This is what "IP ban this account" acts on (see Api._adminBanIp): there
+  /// is no other link from an email to an address. Behind a proxy it is only
+  /// as trustworthy as `LUMA_TRUST_PROXY`.
+  final List<String> recentIps;
+
+  static const maxRecentIps = 8;
+
+  /// Records [ip] as the newest address for this account, moving it to the
+  /// end if already known and dropping the oldest past [maxRecentIps].
+  /// Returns whether anything changed, so callers can skip a needless save.
+  bool noteIp(String ip) {
+    if (ip.isEmpty || ip == 'unknown') return false;
+    if (recentIps.isNotEmpty && recentIps.last == ip) return false;
+    recentIps.remove(ip);
+    recentIps.add(ip);
+    if (recentIps.length > maxRecentIps) {
+      recentIps.removeRange(0, recentIps.length - maxRecentIps);
+    }
+    return true;
+  }
 
   bool get isPending => status == 'pending';
 
@@ -94,7 +151,11 @@ class StoredUser {
         'verificationExpiresAtMs': verificationExpiresAtMs,
         'lastLoginAtMs': lastLoginAtMs,
         'planId': planId,
+        'passwordResetRequiredAtMs': passwordResetRequiredAtMs,
+        'accessRevokedAtMs': accessRevokedAtMs,
+        'accessRevokedReason': accessRevokedReason,
         'oauthSubjects': oauthSubjects,
+        'recentIps': recentIps,
       };
 
   factory StoredUser.fromJson(Map<String, dynamic> j) => StoredUser(
@@ -111,8 +172,12 @@ class StoredUser {
         verificationExpiresAtMs: j['verificationExpiresAtMs'] as int?,
         lastLoginAtMs: j['lastLoginAtMs'] as int?,
         planId: j['planId'] as String? ?? kDefaultPlanId,
+        passwordResetRequiredAtMs: j['passwordResetRequiredAtMs'] as int?,
+        accessRevokedAtMs: j['accessRevokedAtMs'] as int?,
+        accessRevokedReason: j['accessRevokedReason'] as String?,
         oauthSubjects: (j['oauthSubjects'] as Map?)
             ?.map((k, v) => MapEntry('$k', '$v')),
+        recentIps: (j['recentIps'] as List?)?.whereType<String>().toList(),
       );
 }
 
@@ -220,6 +285,115 @@ class PluginDownloadStat {
       );
 }
 
+/// One account-data deletion the user asked for from inside the app, waiting
+/// on the operator in the admin dashboard's Inbox tab.
+///
+/// The app never deletes anything server-side through this path: it only
+/// files the request (with the user's own reason), and the operator accepts
+/// or declines it. Accepting runs the same teardown as the self-service
+/// delete (Api._deleteAccount); declining leaves the account untouched and
+/// hands the user back the operator's note.
+class DeletionRequest {
+  DeletionRequest({
+    required this.id,
+    required this.userId,
+    required this.email,
+    required this.reason,
+    required this.createdAtMs,
+    this.status = statusPending,
+    this.decidedAtMs,
+    this.adminNote,
+  });
+
+  static const statusPending = 'pending';
+  static const statusAccepted = 'accepted';
+  static const statusDeclined = 'declined';
+
+  final String id;
+
+  /// The account the request was filed for. Stays on the record after an
+  /// accepted request wiped the account, so the Inbox keeps its history.
+  final String userId;
+  final String email;
+
+  /// Why the user wants their data gone, in their own words. Free text —
+  /// always escape it before rendering.
+  final String reason;
+
+  final int createdAtMs;
+
+  /// [statusPending], [statusAccepted] or [statusDeclined].
+  String status;
+  int? decidedAtMs;
+
+  /// Optional note the operator left when deciding — shown to the user in
+  /// the app so a decline can say why.
+  String? adminNote;
+
+  bool get isPending => status == statusPending;
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'userId': userId,
+        'email': email,
+        'reason': reason,
+        'createdAtMs': createdAtMs,
+        'status': status,
+        'decidedAtMs': decidedAtMs,
+        'adminNote': adminNote,
+      };
+
+  factory DeletionRequest.fromJson(Map<String, dynamic> j) => DeletionRequest(
+        id: j['id'] as String,
+        userId: j['userId'] as String,
+        email: j['email'] as String,
+        reason: j['reason'] as String? ?? '',
+        createdAtMs: j['createdAtMs'] as int,
+        status: j['status'] as String? ?? statusPending,
+        decidedAtMs: j['decidedAtMs'] as int?,
+        adminNote: j['adminNote'] as String?,
+      );
+}
+
+/// One blocked client address. Every request from it is refused before it
+/// reaches a route — except the admin dashboard, which stays reachable on
+/// purpose so an operator who bans their own address can undo it.
+///
+/// Banning is per-address, not per-account: the dashboard's "IP ban" action
+/// bans every address it has seen an account sign in from
+/// ([StoredUser.recentIps]), and [email] records which account that was so
+/// the ban can be shown and lifted from that row.
+class BannedIp {
+  BannedIp({
+    required this.ip,
+    required this.createdAtMs,
+    this.email,
+    this.reason,
+  });
+
+  final String ip;
+  final int createdAtMs;
+
+  /// The account this address was banned on behalf of, if it was banned from
+  /// a user row rather than on its own.
+  final String? email;
+  final String? reason;
+
+  Map<String, dynamic> toJson() => {
+        'ip': ip,
+        'createdAtMs': createdAtMs,
+        'email': email,
+        'reason': reason,
+      };
+
+  factory BannedIp.fromJson(Map<String, dynamic> j) => BannedIp(
+        ip: j['ip'] as String,
+        createdAtMs: j['createdAtMs'] as int? ?? 0,
+        email: j['email'] as String?,
+        reason: j['reason'] as String?,
+      );
+}
+
 /// File-backed store. Everything is held in memory and written through to
 /// JSON files with atomic replace; blobs are stored as individual files.
 /// All mutations must go through [lock] (the API layer does this).
@@ -252,6 +426,15 @@ class Store {
   /// pluginId.
   final Map<String, PluginDownloadStat> pluginDownloadsById = {};
 
+  /// Admin dashboard's "Inbox" tab — account-data deletion requests filed
+  /// from the app, newest last. Keyed by request id; at most one pending
+  /// request per account (see Api._requestAccountDeletion).
+  final Map<String, DeletionRequest> deletionRequestsById = {};
+
+  /// Blocked client addresses, keyed by address. Checked on every request by
+  /// Api's ban middleware, so this is a plain map lookup on the hot path.
+  final Map<String, BannedIp> bansByIp = {};
+
   /// Admin dashboard's "Metrics" graphs history — see MetricsHistory for the
   /// downsampling/persistence scheme. Set during [open].
   late final MetricsHistory metricsHistory;
@@ -265,6 +448,8 @@ class Store {
   String get _collectionsFile => '$rootPath/collections.json';
   String get _activityFile => '$rootPath/activity.json';
   String get _pluginDownloadsFile => '$rootPath/plugin_downloads.json';
+  String get _deletionRequestsFile => '$rootPath/deletion_requests.json';
+  String get _ipBansFile => '$rootPath/ip_bans.json';
   String get _secretFile => '$rootPath/secret.key';
 
   static Future<Store> open(String path) async {
@@ -329,6 +514,18 @@ class Store {
     for (final p in pluginDownloads) {
       final stat = PluginDownloadStat.fromJson(p as Map<String, dynamic>);
       store.pluginDownloadsById[stat.pluginId] = stat;
+    }
+
+    final deletionRequests = await _readJsonList(store._deletionRequestsFile);
+    for (final r in deletionRequests) {
+      final req = DeletionRequest.fromJson(r as Map<String, dynamic>);
+      store.deletionRequestsById[req.id] = req;
+    }
+
+    final ipBans = await _readJsonList(store._ipBansFile);
+    for (final b in ipBans) {
+      final ban = BannedIp.fromJson(b as Map<String, dynamic>);
+      store.bansByIp[ban.ip] = ban;
     }
 
     store.metricsHistory = await MetricsHistory.open(path);
@@ -426,6 +623,36 @@ class Store {
       existing.lastDownloadedAtMs = now;
     }
     await savePluginDownloads();
+  }
+
+  Future<void> saveDeletionRequests() => atomicWriteString(
+      _deletionRequestsFile,
+      jsonEncode(deletionRequestsById.values.map((r) => r.toJson()).toList()));
+
+  Future<void> saveIpBans() => atomicWriteString(
+      _ipBansFile, jsonEncode(bansByIp.values.map((b) => b.toJson()).toList()));
+
+  /// Which of [user]'s known addresses are currently banned.
+  List<String> bannedIpsFor(StoredUser user) =>
+      user.recentIps.where(bansByIp.containsKey).toList();
+
+  /// The account's open deletion request, or null when it has none.
+  DeletionRequest? pendingDeletionRequestFor(String userId) {
+    for (final r in deletionRequestsById.values) {
+      if (r.userId == userId && r.isPending) return r;
+    }
+    return null;
+  }
+
+  /// The account's most recent deletion request whatever its state — what the
+  /// app shows so a decline (and the operator's note) is visible once.
+  DeletionRequest? latestDeletionRequestFor(String userId) {
+    DeletionRequest? newest;
+    for (final r in deletionRequestsById.values) {
+      if (r.userId != userId) continue;
+      if (newest == null || r.createdAtMs > newest.createdAtMs) newest = r;
+    }
+    return newest;
   }
 
   // ---- Blobs -------------------------------------------------------------

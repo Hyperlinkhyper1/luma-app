@@ -2,7 +2,7 @@
   "id": "ai-detector",
   "name": "AI Detector",
   "version": "1.0.0",
-  "description": "Paste any text and get a verdict on whether it reads as human-written or AI-generated — using pure statistics, no AI involved. It scores sentence-length variety, buzzword density, transition-word habits, contraction use and more, then lists every signal that fired and the exact phrases that triggered it. Nothing you paste leaves your device.",
+  "description": "Paste some text, see if it reads like a person wrote it or not. Just maths, no AI, and nothing leaves your device.",
   "icon": "fact_check",
   "category": "Utility"
 }

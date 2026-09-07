@@ -52,7 +52,7 @@ class _ChatMessageListState extends State<ChatMessageList> {
           return const LumaEmptyState(
             icon: Icons.chat_bubble_outline_rounded,
             title: 'Say hello',
-            subtitle: 'Ask the assistant anything about luma.',
+            subtitle: 'Ask me anything about luma.',
           );
         }
         return ListView.builder(

@@ -103,7 +103,7 @@ class _PluginsPageState extends State<PluginsPage> {
             if (snap.hasError) {
               return LumaEmptyState(
                 icon: Icons.cloud_off_rounded,
-                title: 'Could not load the plugin catalog',
+                title: "The plugin list wouldn't load",
                 subtitle: '${snap.error}',
                 action: LumaGhostButton(
                   label: 'Retry',
@@ -248,7 +248,7 @@ class _PluginsPageState extends State<PluginsPage> {
             hasScrollBody: false,
             child: LumaEmptyState(
               icon: Icons.search_off_rounded,
-              title: 'No plugins match your filters',
+              title: 'Nothing matches those filters',
             ),
           )
         else
@@ -303,7 +303,7 @@ class _SearchField extends StatelessWidget {
               decoration: InputDecoration(
                 isDense: true,
                 border: InputBorder.none,
-                hintText: 'Search plugins...',
+                hintText: 'Look for a plugin...',
                 hintStyle: TextStyle(color: luma.textMuted, fontSize: 14),
               ),
             ),

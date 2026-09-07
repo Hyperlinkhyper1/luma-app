@@ -12,6 +12,7 @@ Future<SaveResult> saveConvertedFile({
   required String suggestedName,
   required String mimeType,
   required List<String> extensions,
+  String? dialogTitle,
 }) async {
   final blob = web.Blob(
     [bytes.toJS].toJS,

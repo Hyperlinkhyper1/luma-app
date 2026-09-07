@@ -185,9 +185,9 @@ class _TransactionsBodyState extends State<_TransactionsBody> {
                 ? (widget.txns.isEmpty
                     ? LumaEmptyState(
                         icon: Icons.receipt_long_rounded,
-                        title: 'No entries yet',
+                        title: 'Nothing here yet',
                         subtitle:
-                            'Add your first expense or income to get started.',
+                            'Add what you spent or earned and it shows up here.',
                       )
                     : LumaEmptyState(
                         icon: Icons.search_off_rounded,

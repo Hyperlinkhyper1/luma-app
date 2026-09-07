@@ -31,6 +31,8 @@ import '../features/plugins/installed/nfc_tag_editor/nfc_tag_editor_page.dart';
 import '../features/plugins/installed/bulletin_board/bulletin_board_page.dart';
 import '../features/plugins/installed/price_tracker/price_tracker_page.dart';
 import '../features/plugins/installed/qr_code_generator/qr_code_generator_page.dart';
+import '../features/plugins/installed/machine_learning/machine_learning_page.dart';
+import '../features/plugins/installed/mind_map/mind_map_page.dart';
 import '../features/plugins/installed/school/school_page.dart';
 import '../features/plugins/installed/secure_chat/secure_chat_page.dart';
 import '../features/plugins/installed/sftp/sftp_page.dart';
@@ -322,13 +324,13 @@ class _AppShellState extends State<AppShell> {
       <String, ({String title, String description, IconData icon})>{
     'cloud-files': (
       title: 'Cloud Files needs an approved account',
-      description: 'Cloud Files stores your files on the luma server, '
-          'encrypted on this device first.',
+      description: 'Cloud Files keeps your files on the luma server, '
+          'locked on this device first.',
       icon: Icons.cloud_off_rounded,
     ),
     'secure-chat': (
       title: 'Chat needs an approved account',
-      description: 'Chat relays end-to-end encrypted messages between '
+      description: 'Chat passes locked messages between '
           'accounts through the luma server.',
       icon: Icons.lock_outline_rounded,
     ),
@@ -371,6 +373,8 @@ class _AppShellState extends State<AppShell> {
         'ai-detector' => const AiDetectorPage(),
         'youtube-downloader' => const MediaDownloaderPage(),
         'school' => const SchoolPage(),
+        'mind-map' => const MindMapPage(),
+        'machine-learning' => const MachineLearningPage(),
         'auto-clicker' => const AutoClickerPage(),
         'usage' => const UsagePage(),
         'wifi-speed-test' => const WifiSpeedTestPage(),
