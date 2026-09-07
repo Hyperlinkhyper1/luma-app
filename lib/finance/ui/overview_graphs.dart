@@ -1,13 +1,8 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
-import '../../../app/widgets.dart';
 import '../../../theme/luma_theme.dart';
-import '../finance_scope.dart';
 import '../data/database.dart';
-import '../logic/finance_logic.dart';
-import '../logic/money.dart';
-import 'lookups.dart';
 
 class CategorySpendingChart extends StatelessWidget {
   const CategorySpendingChart({
@@ -143,8 +138,9 @@ class IncomeVsExpenseChart extends StatelessWidget {
                 showTitles: true,
                 getTitlesWidget: (value, meta) {
                   final index = value.toInt();
-                  if (index < 0 || index >= months.length)
+                  if (index < 0 || index >= months.length) {
                     return const SizedBox();
+                  }
                   final month = months[index];
                   const m = [
                     'J',
@@ -219,49 +215,27 @@ class _IncExp {
 }
 
 class NetWorthChart extends StatelessWidget {
-  const NetWorthChart({super.key, required this.txns, required this.holdings});
+  const NetWorthChart({super.key, required this.snapshots});
 
-  final List<FinanceTransaction> txns;
-  final List<Holding> holdings;
+  /// Real daily net-worth history (see
+  /// FinanceRepository.recordDailyNetWorthSnapshot), oldest first — not a
+  /// reconstruction from the ledger, so it only has as much history as the
+  /// app has actually been opened on since this feature shipped.
+  final List<BalanceSnapshot> snapshots;
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final now = DateTime.now();
-
-    // Very simplified net worth history:
-    // Just show points for the last 6 months based on current balance
-    // minus transactions that happened since then.
-    final currentBalances = computeBalances(txns);
-    final portfolioValue = holdings.fold<int>(0, (sum, h) {
-      final price = h.lastPriceCents ?? h.avgCostCents;
-      return sum + (price * h.shares).round();
-    });
-
-    int currentNetWorth = currentBalances.totalCents + portfolioValue;
-
-    final points = <FlSpot>[];
-    int runningNw = currentNetWorth;
-
-    // Start with today
-    points.add(FlSpot(5, runningNw.toDouble()));
-
-    for (var i = 4; i >= 0; i--) {
-      final dStart = DateTime(now.year, now.month - (4 - i), 1);
-      final dEnd = DateTime(now.year, now.month - (4 - i) + 1, 1);
-
-      int delta = 0;
-      for (final t in txns) {
-        if (t.date.isAfter(dStart) && t.date.isBefore(dEnd)) {
-          if (t.kind == TxnKind.income) delta += t.amountCents;
-          if (t.kind == TxnKind.expense) delta -= t.amountCents;
-        }
-      }
-      runningNw -= delta;
-      points.add(FlSpot(i.toDouble(), runningNw.toDouble()));
+    if (snapshots.length < 2) {
+      return const _EmptyGraph(
+        message: 'Come back tomorrow to start seeing your net worth trend.',
+      );
     }
 
-    points.sort((a, b) => a.x.compareTo(b.x));
+    final points = [
+      for (var i = 0; i < snapshots.length; i++)
+        FlSpot(i.toDouble(), snapshots[i].totalCents.toDouble()),
+    ];
 
     var minY = points.map((p) => p.y).reduce((a, b) => a < b ? a : b);
     var maxY = points.map((p) => p.y).reduce((a, b) => a > b ? a : b);
@@ -294,7 +268,7 @@ class NetWorthChart extends StatelessWidget {
           ),
           borderData: FlBorderData(show: false),
           minX: 0,
-          maxX: 5,
+          maxX: (points.length - 1).toDouble(),
           minY: minY,
           maxY: maxY,
           lineBarsData: [

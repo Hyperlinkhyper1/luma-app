@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'account/password_reset_page.dart';
 import 'account/plan.dart';
 import 'app/app_shell.dart';
 import 'app/splash_screen.dart';
@@ -66,6 +67,14 @@ import 'features/plugins/installed/errands/errands_scope.dart';
 import 'features/plugins/installed/school/data/school_database.dart';
 import 'features/plugins/installed/school/school_repository.dart';
 import 'features/plugins/installed/school/school_scope.dart';
+// Shown explicitly: the mind map database declares a `MindMaps` table of its
+// own, and School's legacy one is still in the schema until its rows have
+// been carried across.
+import 'features/plugins/installed/mind_map/data/mind_map_database.dart'
+    show MindMapDatabase;
+import 'features/plugins/installed/mind_map/migration/school_mind_map_import.dart';
+import 'features/plugins/installed/mind_map/mind_map_repository.dart';
+import 'features/plugins/installed/mind_map/mind_map_scope.dart';
 import 'features/plugins/installed/usage/data/usage_database.dart';
 import 'features/plugins/installed/usage/usage_repository.dart';
 import 'features/plugins/installed/usage/usage_scope.dart';
@@ -174,6 +183,8 @@ class _LumaAppState extends State<LumaApp> {
       AiCatalogRepository(_sync);
   late final SchoolDatabase _schoolDb = SchoolDatabase();
   late final SchoolRepository _schoolRepository = SchoolRepository(_schoolDb);
+  late final MindMapDatabase _mindMapDb = MindMapDatabase();
+  late final MindMapRepository _mindMapRepository = MindMapRepository(_mindMapDb);
   late final AutoClickerRepository _autoClickerRepository =
       AutoClickerRepository();
   late final UsageDatabase _usageDb = UsageDatabase();
@@ -311,6 +322,12 @@ class _LumaAppState extends State<LumaApp> {
       icon: Icons.school_rounded,
       db: _schoolDb,
     ),
+    DriftSyncCollection(
+      id: 'mind_map',
+      label: 'Mind maps',
+      icon: Icons.hub_rounded,
+      db: _mindMapDb,
+    ),
     JsonStoreSyncCollection(
       id: 'price_tracker',
       label: 'Price tracker',
@@ -416,9 +433,26 @@ class _LumaAppState extends State<LumaApp> {
     _recipeBookController.init();
     _autoClickerRepository.init();
     _usageRepository.init();
+    unawaited(_importSchoolMindMaps());
     _lifecycleListener = AppLifecycleListener(
       onDetach: _onAppDetach,
     );
+  }
+
+  /// Carries maps made in School's retired mind map tab over to the Mind Map
+  /// plugin. Runs at most once — the flag it sets lives in the plugin's own
+  /// database, so it syncs along with the maps and a second device will not
+  /// import them again. Failure here must never block startup: the original
+  /// rows are only copied, never removed, so a bad run can be retried.
+  Future<void> _importSchoolMindMaps() async {
+    try {
+      await SchoolMindMapImport.run(
+        school: _schoolDb,
+        target: _mindMapRepository,
+      );
+    } catch (error, stack) {
+      debugPrint('Mind map import from School failed: $error\n$stack');
+    }
   }
 
   @override
@@ -447,6 +481,7 @@ class _LumaAppState extends State<LumaApp> {
     _steamRepository.dispose();
     _steamDb.close();
     _schoolDb.close();
+    _mindMapDb.close();
     _minecraftDb.close();
     _serverTycoonRepository.dispose();
     _autoClickerRepository.dispose();
@@ -552,6 +587,8 @@ class _LumaAppState extends State<LumaApp> {
                       repository: _aiUsageRepository,
                       child: SchoolScope(
                       repository: _schoolRepository,
+                      child: MindMapScope(
+                      repository: _mindMapRepository,
                       child: AutoClickerScope(
                       repository: _autoClickerRepository,
                       child: UsageScope(
@@ -623,6 +660,7 @@ class _LumaAppState extends State<LumaApp> {
                     ),
                     ),
                     ),
+                    ),
                   ),
                   ),
                   ),
@@ -669,9 +707,20 @@ class _BootGateState extends State<_BootGate> {
 
   @override
   Widget build(BuildContext context) {
+    final sync = SyncScope.of(context);
     return Stack(
       children: [
         const AppShell(),
+        // An admin-forced password reset layers over the (already built) app
+        // rather than replacing it: the shell keeps its state, and the moment
+        // the new password is set this comes down again. See
+        // PasswordResetPage for why this device stays signed in meanwhile.
+        ListenableBuilder(
+          listenable: sync,
+          builder: (context, _) => sync.passwordResetRequired
+              ? PasswordResetPage(sync: sync)
+              : const SizedBox.shrink(),
+        ),
         if (_showSplash)
           SplashScreen(
             bootstrap: widget.bootstrap,

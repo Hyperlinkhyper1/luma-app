@@ -5,6 +5,8 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../theme/theme_style.dart';
+
 /// Access codes that unlock paid plans without billing. Only the SHA-256
 /// hash is kept in source so the codes aren't sitting in plain text — see
 /// [SettingsController.redeemPlanCode]. Each redemption grants the mapped
@@ -58,6 +60,7 @@ const List<AccentPreset> kAccentPresets = [
 class SettingsController extends ChangeNotifier {
   SettingsController._({
     required ThemeMode themeMode,
+    required LumaThemeStyle themeStyle,
     required int accentIndex,
     required StartScreen startScreen,
     required AppLanguage appLanguage,
@@ -66,13 +69,18 @@ class SettingsController extends ChangeNotifier {
     required String? avatarPath,
     required String selectedPlanId,
     required String? planExpiresAt,
+    required String adminPlanId,
     required int aiCallsToday,
     required String? aiCallsResetDate,
     required String aiProviderId,
+    required String aiMode,
+    required Map<String, int> modelUsage,
     required List<String> navOrder,
+    required List<String> visitedCountries,
     required bool useAmericanGpaScale,
     required File? file,
   })  : _themeMode = themeMode,
+        _themeStyle = themeStyle,
         _accentIndex = accentIndex,
         _startScreen = startScreen,
         _appLanguage = appLanguage,
@@ -81,10 +89,14 @@ class SettingsController extends ChangeNotifier {
         _avatarPath = avatarPath,
         _selectedPlanId = selectedPlanId,
         _planExpiresAt = planExpiresAt,
+        _adminPlanId = adminPlanId,
         _aiCallsToday = aiCallsToday,
         _aiCallsResetDate = aiCallsResetDate,
         _aiProviderId = aiProviderId,
+        _aiMode = aiMode,
+        _modelUsage = modelUsage,
         _navOrder = navOrder,
+        _visitedCountries = visitedCountries,
         _useAmericanGpaScale = useAmericanGpaScale,
         _file = file;
 
@@ -93,6 +105,11 @@ class SettingsController extends ChangeNotifier {
   // ignore_for_file: prefer_initializing_formals
 
   ThemeMode _themeMode;
+
+  /// The style the user picked. Read [themeStyle] rather than this field —
+  /// a paid style stays stored here while the plan lapses, so it comes back
+  /// on its own when they resubscribe.
+  LumaThemeStyle _themeStyle;
   int _accentIndex;
   StartScreen _startScreen;
   AppLanguage _appLanguage;
@@ -104,16 +121,51 @@ class SettingsController extends ChangeNotifier {
   /// ISO-8601 timestamp of when a code-redeemed plan reverts to Core, or
   /// null if the current plan doesn't expire (Core, or never redeemed).
   String? _planExpiresAt;
+
+  /// Plan tier granted to this account by an admin on the dashboard (see
+  /// Api._adminSetPlan server-side), refreshed from /account on every sync.
+  /// Defaults to 'core'. Unlike a code-redeemed plan it never expires, and
+  /// the effective plan is the higher of this and [_selectedPlanId] — so an
+  /// admin-granted subscription can't be lost by picking the free plan.
+  /// Local-only (persisted, not synced): each device learns it from the
+  /// server directly.
+  String _adminPlanId;
   int _aiCallsToday;
   String? _aiCallsResetDate;
   String _aiProviderId;
+  String _aiMode;
+
+  /// Lifetime successful-message count per model, keyed by
+  /// `modelUsageKeyFor(...)` (see providers/ai_usage.dart) — e.g.
+  /// `"google:smartest"` or `"mistral"`. Local-device-only, like the rest of
+  /// the AI provider/key state.
+  Map<String, int> _modelUsage;
   List<String> _navOrder;
+  List<String> _visitedCountries;
   bool _useAmericanGpaScale;
   final File? _file;
 
   static const _aiDailyCallLimit = 10;
 
   ThemeMode get themeMode => _themeMode;
+
+  /// The style actually in effect. A paid style the current plan no longer
+  /// covers falls back to [LumaThemeStyle.standard] rather than being erased,
+  /// so downgrading to Core doesn't cost the user their choice — it's simply
+  /// not applied until they're back on Orbit or Nova.
+  LumaThemeStyle get themeStyle =>
+      themeStyleUnlocked(_themeStyle, selectedPlanId)
+          ? _themeStyle
+          : LumaThemeStyle.standard;
+
+  /// What the user last picked, unlocked or not. Used by the Settings picker
+  /// to keep the locked entry visibly selected.
+  LumaThemeStyle get preferredThemeStyle => _themeStyle;
+
+  /// Whether [style] is available on the current plan.
+  bool canUseThemeStyle(LumaThemeStyle style) =>
+      themeStyleUnlocked(style, selectedPlanId);
+
   int get accentIndex => _accentIndex;
   StartScreen get startScreen => _startScreen;
   AppLanguage get appLanguage => _appLanguage;
@@ -136,16 +188,45 @@ class SettingsController extends ChangeNotifier {
 
   /// No billing exists yet — Orbit/Nova are unlocked only via
   /// [redeemPlanCode] and expire automatically after
-  /// [planCodeDurationDays]. Defaults to 'core' (free).
+  /// [planCodeDurationDays]. Defaults to 'core' (free). An admin-granted
+  /// plan ([_adminPlanId]) takes precedence when it's the higher tier, so a
+  /// subscription assigned on the dashboard can't be dropped by picking the
+  /// free plan locally.
   String get selectedPlanId {
     _rolloverPlanExpiryIfNeeded();
-    return _selectedPlanId;
+    return _effectivePlanId;
   }
 
   /// When the current plan reverts to Core, or null if it doesn't expire.
   DateTime? get planExpiresAt {
     _rolloverPlanExpiryIfNeeded();
+    // The admin-granted plan never expires; only surface a reversion date
+    // when the effective plan is the locally-redeemed one.
+    if (_effectivePlanId != _selectedPlanId) return null;
     return _planExpiresAt == null ? null : DateTime.tryParse(_planExpiresAt!);
+  }
+
+  /// The higher of the admin-granted and locally-selected tiers. Tiers:
+  /// core < orbit < nova. Unknown ids fall back to core.
+  String get _effectivePlanId =>
+      _tierIndex(_adminPlanId) > _tierIndex(_selectedPlanId)
+          ? _adminPlanId
+          : _selectedPlanId;
+
+  static int _tierIndex(String id) => switch (id) {
+        'nova' => 2,
+        'orbit' => 1,
+        _ => 0,
+      };
+
+  /// Records the plan tier the server has on file for this account, learned
+  /// from /account on every sync. Idempotent. Passing null/empty clears it
+  /// back to 'core' (covers admin revocation and older servers).
+  void setAdminPlan(String? planId) {
+    final next = (planId == null || planId.isEmpty) ? 'core' : planId;
+    if (next == _adminPlanId) return;
+    _adminPlanId = next;
+    _changed();
   }
 
   void _rolloverPlanExpiryIfNeeded() {
@@ -187,6 +268,30 @@ class SettingsController extends ChangeNotifier {
     _changed();
   }
 
+  /// Which "Luma AI" intelligence mode is selected (`AiMode.name`:
+  /// normal/smarter/smartest — shown as Aurora/Nebula/Pulsar). Only
+  /// meaningful for the Google provider; like the provider id, this is a
+  /// local per-device choice, not synced.
+  String get aiMode => _aiMode;
+
+  void setAiMode(String mode) {
+    if (mode == _aiMode) return;
+    _aiMode = mode;
+    _changed();
+  }
+
+  /// Lifetime successful-message count per model (see [_modelUsage]).
+  Map<String, int> get modelUsage => Map.unmodifiable(_modelUsage);
+
+  /// Records one successful assistant reply from [modelKey] (a
+  /// `modelUsageKeyFor(...)` result). Call only after a successful send —
+  /// this is a usage stat, not a budget guard.
+  void recordModelUsage(String modelKey) {
+    _modelUsage = Map.of(_modelUsage)
+      ..update(modelKey, (n) => n + 1, ifAbsent: () => 1);
+    _changed();
+  }
+
   /// Custom display order of nav-rail items. Each entry is either
   /// `"fixed:<index>"` (one of the six built-in destinations) or
   /// `"plugin:<pluginId>"`. An empty list means the default order.
@@ -198,6 +303,28 @@ class SettingsController extends ChangeNotifier {
       return;
     }
     _navOrder = List.of(order);
+    _changed();
+  }
+
+  /// Country codes marked as visited on the travel map (Account -> Stats),
+  /// matching the codes in `assets/world/world_countries.json`. Kept sorted
+  /// so the persisted file and the sync payload don't churn on reordering.
+  List<String> get visitedCountries => List.unmodifiable(_visitedCountries);
+
+  /// Marks [code] visited, or unmarks it if it already was.
+  void toggleVisitedCountry(String code) {
+    final next = List.of(_visitedCountries);
+    if (!next.remove(code)) next.add(code);
+    setVisitedCountries(next);
+  }
+
+  void setVisitedCountries(Iterable<String> codes) {
+    final next = codes.toSet().toList()..sort();
+    if (next.length == _visitedCountries.length &&
+        _listEquals(next, _visitedCountries)) {
+      return;
+    }
+    _visitedCountries = next;
     _changed();
   }
 
@@ -259,6 +386,17 @@ class SettingsController extends ChangeNotifier {
     _changed();
   }
 
+  /// Switches to [style]. Refuses (returning false) when the current plan
+  /// doesn't cover it — the picker checks first and shows an upgrade prompt
+  /// instead, so this is the backstop rather than the message to the user.
+  bool setThemeStyle(LumaThemeStyle style) {
+    if (!canUseThemeStyle(style)) return false;
+    if (style == _themeStyle) return true;
+    _themeStyle = style;
+    _changed();
+    return true;
+  }
+
   void setAccentIndex(int index) {
     if (index < 0 || index >= kAccentPresets.length || index == _accentIndex) {
       return;
@@ -314,6 +452,7 @@ class SettingsController extends ChangeNotifier {
 
   void resetToDefaults() {
     _themeMode = ThemeMode.dark;
+    _themeStyle = LumaThemeStyle.standard;
     _accentIndex = 0;
     _startScreen = StartScreen.home;
     _appLanguage = AppLanguage.system;
@@ -325,7 +464,10 @@ class SettingsController extends ChangeNotifier {
     _aiCallsToday = 0;
     _aiCallsResetDate = null;
     _aiProviderId = 'anthropic';
+    _aiMode = 'normal';
+    _modelUsage = const {};
     _navOrder = const [];
+    _visitedCountries = const [];
     _useAmericanGpaScale = false;
     _changed();
   }
@@ -342,6 +484,7 @@ class SettingsController extends ChangeNotifier {
   /// local file so nothing is lost translating between the two.
   Map<String, Object?> exportData() => {
         'themeMode': _themeMode.name,
+        'themeStyle': _themeStyle.name,
         'accentIndex': _accentIndex,
         'startScreen': _startScreen.name,
         'appLanguage': _appLanguage.name,
@@ -351,6 +494,7 @@ class SettingsController extends ChangeNotifier {
         'selectedPlanId': _selectedPlanId,
         'planExpiresAt': _planExpiresAt,
         'navOrder': _navOrder,
+        'visitedCountries': _visitedCountries,
         'useAmericanGpaScale': _useAmericanGpaScale,
       };
 
@@ -358,6 +502,7 @@ class SettingsController extends ChangeNotifier {
   Future<void> importData(Object? data) async {
     if (data is! Map<String, dynamic>) return;
     _themeMode = _parseEnum(ThemeMode.values, data['themeMode'], _themeMode);
+    _themeStyle = themeStyleFromId(data['themeStyle']);
     _accentIndex = _parseAccentIndex(data['accentIndex']);
     _startScreen =
         _parseEnum(StartScreen.values, data['startScreen'], _startScreen);
@@ -369,6 +514,7 @@ class SettingsController extends ChangeNotifier {
     _selectedPlanId = data['selectedPlanId'] as String? ?? 'core';
     _planExpiresAt = data['planExpiresAt'] as String?;
     _navOrder = _parseNavOrder(data['navOrder']);
+    _visitedCountries = _parseStringList(data['visitedCountries']);
     _useAmericanGpaScale = data['useAmericanGpaScale'] == true;
     notifyListeners();
     await _persist();
@@ -382,6 +528,7 @@ class SettingsController extends ChangeNotifier {
     try {
       await file.writeAsString(jsonEncode({
         'themeMode': _themeMode.name,
+        'themeStyle': _themeStyle.name,
         'accentIndex': _accentIndex,
         'startScreen': _startScreen.name,
         'appLanguage': _appLanguage.name,
@@ -391,11 +538,15 @@ class SettingsController extends ChangeNotifier {
         'selectedPlanId': _selectedPlanId,
         'planExpiresAt': _planExpiresAt,
         // Local-device-only — deliberately not part of exportData/importData
-        // (sync), since this is a per-device spend guard, not a preference.
+        // (sync): each device learns its admin-granted plan from /account.
+        'adminPlanId': _adminPlanId,
         'aiCallsToday': _aiCallsToday,
         'aiCallsResetDate': _aiCallsResetDate,
         'aiProviderId': _aiProviderId,
+        'aiMode': _aiMode,
+        'modelUsage': _modelUsage,
         'navOrder': _navOrder,
+        'visitedCountries': _visitedCountries,
         'useAmericanGpaScale': _useAmericanGpaScale,
       }));
     } catch (_) {
@@ -421,6 +572,7 @@ class SettingsController extends ChangeNotifier {
 
     return SettingsController._(
       themeMode: _parseEnum(ThemeMode.values, data['themeMode'], ThemeMode.dark),
+      themeStyle: themeStyleFromId(data['themeStyle']),
       accentIndex: _parseAccentIndex(data['accentIndex']),
       startScreen:
           _parseEnum(StartScreen.values, data['startScreen'], StartScreen.home),
@@ -431,10 +583,14 @@ class SettingsController extends ChangeNotifier {
       avatarPath: data['avatarPath'] as String?,
       selectedPlanId: data['selectedPlanId'] as String? ?? 'core',
       planExpiresAt: data['planExpiresAt'] as String?,
+      adminPlanId: data['adminPlanId'] as String? ?? 'core',
       aiCallsToday: data['aiCallsToday'] as int? ?? 0,
       aiCallsResetDate: data['aiCallsResetDate'] as String?,
       aiProviderId: data['aiProviderId'] as String? ?? 'anthropic',
+      aiMode: data['aiMode'] as String? ?? 'normal',
+      modelUsage: _parseModelUsage(data['modelUsage']),
       navOrder: _parseNavOrder(data['navOrder']),
+      visitedCountries: _parseStringList(data['visitedCountries']),
       useAmericanGpaScale: data['useAmericanGpaScale'] == true,
       file: file,
     );
@@ -454,7 +610,22 @@ class SettingsController extends ChangeNotifier {
     return 0;
   }
 
-  static List<String> _parseNavOrder(Object? raw) {
+  static Map<String, int> _parseModelUsage(Object? raw) {
+    if (raw is Map) {
+      final result = <String, int>{};
+      for (final entry in raw.entries) {
+        if (entry.key is String && entry.value is int) {
+          result[entry.key as String] = entry.value as int;
+        }
+      }
+      return result;
+    }
+    return const {};
+  }
+
+  static List<String> _parseNavOrder(Object? raw) => _parseStringList(raw);
+
+  static List<String> _parseStringList(Object? raw) {
     if (raw is List) {
       return raw.whereType<String>().toList(growable: true);
     }
