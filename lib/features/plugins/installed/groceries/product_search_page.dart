@@ -8,15 +8,8 @@ import 'groceries_api.dart';
 import 'groceries_scope.dart';
 import 'market_style.dart';
 
-const _marketFilters = <String?>[null, 'jumbo', 'ah', 'lidl', 'hoogvliet', 'picnic'];
-const _marketFilterLabels = [
-  'All stores',
-  'Jumbo',
-  'Albert Heijn',
-  'Lidl',
-  'Hoogvliet',
-  'Picnic',
-];
+const _marketSlugs = <String>['jumbo', 'ah', 'lidl', 'hoogvliet', 'picnic'];
+const _marketLabels = <String>['Jumbo', 'Albert Heijn', 'Lidl', 'Hoogvliet', 'Picnic'];
 const _sortOptions = [ProductSort.relevance, ProductSort.priceAsc, ProductSort.priceDesc];
 const _sortLabels = ['Relevance', 'Price ↑', 'Price ↓'];
 
@@ -40,7 +33,8 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
   final _scrollController = ScrollController();
   Timer? _debounce;
 
-  int _marketIndex = 0;
+  // Empty means "all stores" — no market filter is applied.
+  final Set<String> _selectedMarkets = {};
   int _sortIndex = 0;
   bool _loading = false;
   bool _loadingMore = false;
@@ -93,9 +87,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
     try {
       final results = await api.search(
         query: _queryController.text,
-        marketSlugs: _marketFilters[_marketIndex] == null
-            ? null
-            : [_marketFilters[_marketIndex]!],
+        marketSlugs: _selectedMarkets.isEmpty ? null : _selectedMarkets.toList(),
         category: _categoryFilter,
         onlyDeals: _onlyDeals,
         sort: _sortOptions[_sortIndex],
@@ -123,9 +115,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
     try {
       final more = await api.search(
         query: _queryController.text,
-        marketSlugs: _marketFilters[_marketIndex] == null
-            ? null
-            : [_marketFilters[_marketIndex]!],
+        marketSlugs: _selectedMarkets.isEmpty ? null : _selectedMarkets.toList(),
         category: _categoryFilter,
         onlyDeals: _onlyDeals,
         sort: _sortOptions[_sortIndex],
@@ -152,9 +142,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
     final api = GroceriesApiScope.of(context);
     try {
       final categories = await api.fetchCategories(
-        marketSlugs: _marketFilters[_marketIndex] == null
-            ? null
-            : [_marketFilters[_marketIndex]!],
+        marketSlugs: _selectedMarkets.isEmpty ? null : _selectedMarkets.toList(),
       );
       if (!mounted) return;
       setState(() {
@@ -267,11 +255,16 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: LumaSegmentedTabs(
-                  tabs: _marketFilterLabels,
-                  selectedIndex: _marketIndex,
-                  onSelect: (i) {
-                    setState(() => _marketIndex = i);
+                child: _MarketFilterBar(
+                  selected: _selectedMarkets,
+                  onToggle: (slug) {
+                    setState(() {
+                      if (slug == null) {
+                        _selectedMarkets.clear();
+                      } else if (!_selectedMarkets.remove(slug)) {
+                        _selectedMarkets.add(slug);
+                      }
+                    });
                     _runSearch();
                     _fetchCategories();
                   },
@@ -516,6 +509,108 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
     if (url == null) return;
     await api.setBaseUrl(url);
     _runSearch();
+  }
+}
+
+/// Store filter as toggleable pills — any number of stores can be selected
+/// at once, unlike [LumaSegmentedTabs] which only allows one. An empty
+/// [selected] set means "all stores" and is shown as its own pill.
+class _MarketFilterBar extends StatelessWidget {
+  const _MarketFilterBar({required this.selected, required this.onToggle});
+
+  final Set<String> selected;
+
+  /// Called with a market slug to toggle it, or `null` to select "all
+  /// stores" (clearing any specific selection).
+  final ValueChanged<String?> onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        _FilterPill(
+          label: 'All stores',
+          selected: selected.isEmpty,
+          onTap: () => onToggle(null),
+          luma: luma,
+        ),
+        for (var i = 0; i < _marketSlugs.length; i++)
+          _FilterPill(
+            label: _marketLabels[i],
+            selected: selected.contains(_marketSlugs[i]),
+            onTap: () => onToggle(_marketSlugs[i]),
+            luma: luma,
+          ),
+      ],
+    );
+  }
+}
+
+class _FilterPill extends StatefulWidget {
+  const _FilterPill({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    required this.luma,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final LumaPalette luma;
+
+  @override
+  State<_FilterPill> createState() => _FilterPillState();
+}
+
+class _FilterPillState extends State<_FilterPill> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = widget.luma;
+    final selected = widget.selected;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected
+                ? luma.accentSubtle
+                : (_hovering ? luma.surfaceHover : Colors.transparent),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: selected ? luma.accent : luma.border,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (selected) ...[
+                Icon(Icons.check_rounded, size: 14, color: luma.accent),
+                const SizedBox(width: 4),
+              ],
+              Text(
+                widget.label,
+                style: TextStyle(
+                  color: selected ? luma.accent : luma.textSecondary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
