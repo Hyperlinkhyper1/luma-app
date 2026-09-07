@@ -178,37 +178,37 @@ abstract class L {
   /// No description provided for @shellPluginUnavailable.
   ///
   /// In en, this message translates to:
-  /// **'Plugin unavailable'**
+  /// **'This plugin isn\'t here'**
   String get shellPluginUnavailable;
 
   /// No description provided for @shellStorageLimitMsg.
   ///
   /// In en, this message translates to:
-  /// **'You\'ve reached your storage limit. New data won\'t be saved or synced until you free up space.'**
+  /// **'You\'re out of space. Clear a little out and we\'ll start saving and syncing again.'**
   String get shellStorageLimitMsg;
 
   /// No description provided for @shellStorageManage.
   ///
   /// In en, this message translates to:
-  /// **'Manage'**
+  /// **'Clean up'**
   String get shellStorageManage;
 
   /// No description provided for @shellStorageDismiss.
   ///
   /// In en, this message translates to:
-  /// **'Dismiss'**
+  /// **'Not now'**
   String get shellStorageDismiss;
 
   /// No description provided for @settingsAppearance.
   ///
   /// In en, this message translates to:
-  /// **'Appearance'**
+  /// **'Look & feel'**
   String get settingsAppearance;
 
   /// No description provided for @settingsAppearanceSub.
   ///
   /// In en, this message translates to:
-  /// **'Make luma feel like yours.'**
+  /// **'Make luma yours.'**
   String get settingsAppearanceSub;
 
   /// No description provided for @settingsTheme.
@@ -220,7 +220,7 @@ abstract class L {
   /// No description provided for @settingsAccentColor.
   ///
   /// In en, this message translates to:
-  /// **'Accent color'**
+  /// **'Colour'**
   String get settingsAccentColor;
 
   /// No description provided for @settingsThemeStyle.
@@ -238,7 +238,7 @@ abstract class L {
   /// No description provided for @settingsThemeStyleDefaultSub.
   ///
   /// In en, this message translates to:
-  /// **'luma as it comes — clean surfaces and your chosen accent.'**
+  /// **'Good old luma — plain and simple, in your colour.'**
   String get settingsThemeStyleDefaultSub;
 
   /// No description provided for @settingsThemeStyleCoffee.
@@ -250,7 +250,7 @@ abstract class L {
   /// No description provided for @settingsThemeStyleCoffeeSub.
   ///
   /// In en, this message translates to:
-  /// **'Espresso and cream, softer shapes, and beans drifting behind everything.'**
+  /// **'Warm browns, soft corners, little coffee beans floating around.'**
   String get settingsThemeStyleCoffeeSub;
 
   /// No description provided for @settingsThemeStyleLocked.
@@ -262,13 +262,13 @@ abstract class L {
   /// No description provided for @settingsThemeStyleUpgrade.
   ///
   /// In en, this message translates to:
-  /// **'Coffee is part of Orbit and Nova. Upgrade to pour it.'**
+  /// **'Coffee comes with Orbit and Nova. Grab one of those to turn it on.'**
   String get settingsThemeStyleUpgrade;
 
   /// No description provided for @settingsAccentCoffeeNote.
   ///
   /// In en, this message translates to:
-  /// **'Coffee brings its own palette, so the accent picker is paused while it\'s on.'**
+  /// **'Coffee has its own colours, so you can\'t pick a colour while it\'s on.'**
   String get settingsAccentCoffeeNote;
 
   /// No description provided for @settingsGeneral.
@@ -280,7 +280,7 @@ abstract class L {
   /// No description provided for @settingsGeneralSub.
   ///
   /// In en, this message translates to:
-  /// **'How the app behaves.'**
+  /// **'Small things that change how the app acts.'**
   String get settingsGeneralSub;
 
   /// No description provided for @settingsLanguage.
@@ -298,37 +298,37 @@ abstract class L {
   /// No description provided for @settingsHideAmounts.
   ///
   /// In en, this message translates to:
-  /// **'Hide amounts on Home'**
+  /// **'Hide money on Home'**
   String get settingsHideAmounts;
 
   /// No description provided for @settingsHideAmountsSub.
   ///
   /// In en, this message translates to:
-  /// **'Mask balances on the dashboard for shoulder-surfers.'**
+  /// **'Hide your money on Home, in case someone\'s peeking over your shoulder.'**
   String get settingsHideAmountsSub;
 
   /// No description provided for @settingsLockPasswords.
   ///
   /// In en, this message translates to:
-  /// **'Lock Passwords'**
+  /// **'Lock passwords'**
   String get settingsLockPasswords;
 
   /// No description provided for @settingsLockPasswordsSub.
   ///
   /// In en, this message translates to:
-  /// **'Require an 8-digit PIN to view or edit saved credentials.'**
+  /// **'Ask for an 8-digit PIN before showing your saved logins.'**
   String get settingsLockPasswordsSub;
 
   /// No description provided for @settingsAmericanGpa.
   ///
   /// In en, this message translates to:
-  /// **'American GPA scale'**
+  /// **'American grades'**
   String get settingsAmericanGpa;
 
   /// No description provided for @settingsAmericanGpaSub.
   ///
   /// In en, this message translates to:
-  /// **'Use the US 4.0 GPA system in the School plugin instead of the Dutch 1-10 grading scale.'**
+  /// **'Use American 4.0 grades in School instead of Dutch 1-to-10s.'**
   String get settingsAmericanGpaSub;
 
   /// No description provided for @settingsAiAssistant.
@@ -340,7 +340,7 @@ abstract class L {
   /// No description provided for @settingsAiAssistantSub.
   ///
   /// In en, this message translates to:
-  /// **'Connect your own Anthropic API key.'**
+  /// **'Pop in your own Anthropic key to start chatting.'**
   String get settingsAiAssistantSub;
 
   /// No description provided for @settingsAbout.
@@ -352,37 +352,37 @@ abstract class L {
   /// No description provided for @settingsResetDefaults.
   ///
   /// In en, this message translates to:
-  /// **'Reset to defaults'**
+  /// **'Put everything back'**
   String get settingsResetDefaults;
 
   /// No description provided for @settingsResetTitle.
   ///
   /// In en, this message translates to:
-  /// **'Reset settings?'**
+  /// **'Start fresh?'**
   String get settingsResetTitle;
 
   /// No description provided for @settingsResetContent.
   ///
   /// In en, this message translates to:
-  /// **'This restores the theme, accent color and other preferences to their defaults.'**
+  /// **'This puts your theme, colour and other little picks back to how they were at the start.'**
   String get settingsResetContent;
 
   /// No description provided for @settingsResetCancel.
   ///
   /// In en, this message translates to:
-  /// **'Cancel'**
+  /// **'Keep mine'**
   String get settingsResetCancel;
 
   /// No description provided for @settingsResetConfirm.
   ///
   /// In en, this message translates to:
-  /// **'Reset'**
+  /// **'Yep, reset'**
   String get settingsResetConfirm;
 
   /// No description provided for @settingsCheckUpdates.
   ///
   /// In en, this message translates to:
-  /// **'Check for updates'**
+  /// **'Look for updates'**
   String get settingsCheckUpdates;
 
   /// No description provided for @settingsSystem.
@@ -448,7 +448,7 @@ abstract class L {
   /// No description provided for @homeGreetingAfternoon.
   ///
   /// In en, this message translates to:
-  /// **'Good afternoon'**
+  /// **'Hey there'**
   String get homeGreetingAfternoon;
 
   /// No description provided for @homeGreetingEvening.
@@ -460,43 +460,43 @@ abstract class L {
   /// No description provided for @homeNetWorth.
   ///
   /// In en, this message translates to:
-  /// **'Net worth'**
+  /// **'All together'**
   String get homeNetWorth;
 
   /// No description provided for @homeAtAGlance.
   ///
   /// In en, this message translates to:
-  /// **'At a glance'**
+  /// **'How things look'**
   String get homeAtAGlance;
 
   /// No description provided for @homeJumpBackIn.
   ///
   /// In en, this message translates to:
-  /// **'Jump back in'**
+  /// **'Pick up where you left off'**
   String get homeJumpBackIn;
 
   /// No description provided for @homeRecentActivity.
   ///
   /// In en, this message translates to:
-  /// **'Recent activity'**
+  /// **'What you\'ve been up to'**
   String get homeRecentActivity;
 
   /// No description provided for @homeIncomeMonth.
   ///
   /// In en, this message translates to:
-  /// **'Income this month'**
+  /// **'Came in this month'**
   String get homeIncomeMonth;
 
   /// No description provided for @homeSpentMonth.
   ///
   /// In en, this message translates to:
-  /// **'Spent this month'**
+  /// **'Went out this month'**
   String get homeSpentMonth;
 
   /// No description provided for @homeInPots.
   ///
   /// In en, this message translates to:
-  /// **'In pots'**
+  /// **'Set aside in pots'**
   String get homeInPots;
 
   /// No description provided for @homeInvestments.
@@ -514,7 +514,7 @@ abstract class L {
   /// No description provided for @homeAskAssistantSub.
   ///
   /// In en, this message translates to:
-  /// **'Chat with the AI assistant'**
+  /// **'Have a chat, ask anything'**
   String get homeAskAssistantSub;
 
   /// No description provided for @homeFinance.
@@ -526,7 +526,7 @@ abstract class L {
   /// No description provided for @homeFinanceSub.
   ///
   /// In en, this message translates to:
-  /// **'Budgets, pots & stocks'**
+  /// **'Your money, pots & stocks'**
   String get homeFinanceSub;
 
   /// No description provided for @homeFileConverter.
@@ -538,7 +538,7 @@ abstract class L {
   /// No description provided for @homeFileConverterSub.
   ///
   /// In en, this message translates to:
-  /// **'Convert images & files'**
+  /// **'Change up images & files'**
   String get homeFileConverterSub;
 
   /// No description provided for @homeSettings.
@@ -550,73 +550,73 @@ abstract class L {
   /// No description provided for @homeSettingsSub.
   ///
   /// In en, this message translates to:
-  /// **'Theme, colors & more'**
+  /// **'Colours, theme & stuff'**
   String get homeSettingsSub;
 
   /// No description provided for @homeNoTransactions.
   ///
   /// In en, this message translates to:
-  /// **'Nothing here yet — add a transaction in the Finance tab and it will show up here.'**
+  /// **'Quiet here for now — add something in Finance and it\'ll pop up here.'**
   String get homeNoTransactions;
 
   /// No description provided for @homeIncome.
   ///
   /// In en, this message translates to:
-  /// **'Income'**
+  /// **'In'**
   String get homeIncome;
 
   /// No description provided for @homeExpense.
   ///
   /// In en, this message translates to:
-  /// **'Expense'**
+  /// **'Out'**
   String get homeExpense;
 
   /// No description provided for @homeAllocation.
   ///
   /// In en, this message translates to:
-  /// **'Allocation'**
+  /// **'Split'**
   String get homeAllocation;
 
   /// No description provided for @pinEnterNew.
   ///
   /// In en, this message translates to:
-  /// **'Enter new 8-digit PIN'**
+  /// **'Pick a new 8-digit PIN'**
   String get pinEnterNew;
 
   /// No description provided for @pinVerify.
   ///
   /// In en, this message translates to:
-  /// **'Verify new PIN'**
+  /// **'Type it once more'**
   String get pinVerify;
 
   /// No description provided for @pinEnterDisable.
   ///
   /// In en, this message translates to:
-  /// **'Enter PIN to disable'**
+  /// **'Type your PIN to turn it off'**
   String get pinEnterDisable;
 
   /// No description provided for @pinNotMatch.
   ///
   /// In en, this message translates to:
-  /// **'PINs do not match.'**
+  /// **'Those PINs don\'t match.'**
   String get pinNotMatch;
 
   /// No description provided for @pinIncorrect.
   ///
   /// In en, this message translates to:
-  /// **'Incorrect PIN.'**
+  /// **'Nope, wrong PIN.'**
   String get pinIncorrect;
 
   /// No description provided for @aboutVersionRelease.
   ///
   /// In en, this message translates to:
-  /// **'Version {version} · a clean local utility'**
+  /// **'Version {version} · a small app that keeps your stuff with you'**
   String aboutVersionRelease(String version);
 
   /// No description provided for @aboutVersionDev.
   ///
   /// In en, this message translates to:
-  /// **'Dev build · a clean local utility'**
+  /// **'Dev build · made with care on someone\'s laptop'**
   String get aboutVersionDev;
 
   /// No description provided for @monthJan.

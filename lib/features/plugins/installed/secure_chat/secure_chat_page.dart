@@ -193,7 +193,7 @@ class _ConversationList extends StatelessWidget {
                   child: LumaEmptyState(
                     icon: Icons.chat_bubble_outline_rounded,
                     title: 'No chats yet',
-                    subtitle: 'Invite someone by email to get started.',
+                    subtitle: 'Invite someone with their email and say hi.',
                   ),
                 )
               : ListView.builder(

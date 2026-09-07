@@ -2,7 +2,7 @@
   "id": "server-tycoon",
   "name": "Server Hosting Tycoon",
   "version": "1.1.0",
-  "description": "Build a server-hosting empire right inside luma. Buy rigs and routers, spec them with real CPUs, motherboards, RAM and cooling, host services, accept contracts, and manage power and bandwidth as you grow day by day. Now with a phone-friendly layout, offline earnings, a six-branch research tree, daily goals and timed boosts.",
+  "description": "Run your own little server company for fun. Buy computers, keep them cool, take on jobs and grow day by day.",
   "icon": "dns",
   "category": "Games",
   "tags": ["Games", "Simulation"],

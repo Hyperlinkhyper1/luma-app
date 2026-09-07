@@ -326,9 +326,12 @@ class AccountMeter extends StatelessWidget {
             const SizedBox(width: 5),
             Expanded(
               child: Text(
+                // The unit sits next to both figures — "GB of 0.50 GB
+                // included" — since leaving it off the total read as if the
+                // unit belonged only to the number in front of it.
                 total == null
                     ? unit
-                    : '$unit of ${format(total!)} included',
+                    : '$unit of ${format(total!)} $unit included',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(color: luma.textSecondary, fontSize: 12),

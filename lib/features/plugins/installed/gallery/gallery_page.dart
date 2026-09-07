@@ -5,6 +5,7 @@ import '../../../../account/plan.dart';
 import '../../../../account/plan_selection_page.dart';
 import '../../../../app/widgets.dart';
 import '../../../../settings/settings_scope.dart';
+import '../sftp/share/send_to_devices.dart';
 import '../../../../theme/luma_theme.dart';
 import 'gallery_album_card.dart';
 import 'gallery_categories.dart';
@@ -64,6 +65,98 @@ class _GalleryPageState extends State<GalleryPage> {
     _albumItemsFor = albumId;
     _albumItemsVersion = repo.libraryVersion;
     return items;
+  }
+
+  /// The picked items, keyed by id and kept in the order they were picked.
+  /// Holding the items themselves — not just ids — is what lets the send
+  /// sheet resolve their files without asking the repository to find them
+  /// again.
+  final Map<String, GalleryItem> _selected = {};
+
+  /// Which grid the selection belongs to, so walking into another album
+  /// doesn't carry a stale pick along with it.
+  String? _selectionScreen;
+
+  bool _selecting = false;
+
+  void _toggleSelect(GalleryItem item) {
+    setState(() {
+      _selecting = true;
+      if (_selected.remove(item.id) == null) _selected[item.id] = item;
+    });
+  }
+
+  void _endSelecting() {
+    setState(() {
+      _selecting = false;
+      _selected.clear();
+    });
+  }
+
+  /// A grid plus, while anything is picked, the bar that acts on it.
+  Widget _gridFor(
+    GalleryRepository repo,
+    String screenId,
+    List<GalleryItem> items,
+  ) {
+    if (_selectionScreen != screenId) {
+      _selectionScreen = screenId;
+      _selected.clear();
+      _selecting = false;
+    }
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: _Grid(
+            repository: repo,
+            items: items,
+            onOpen: _openViewer,
+            selection: _selected.keys.toSet(),
+            onToggleSelect: _toggleSelect,
+            selecting: _selecting,
+          ),
+        ),
+        if (_selecting)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _SelectionBar(
+              count: _selected.length,
+              onSelectAll: () => setState(() {
+                for (final item in items) {
+                  _selected[item.id] = item;
+                }
+              }),
+              onSend: _selected.isEmpty ? null : () => _sendSelection(repo),
+              onCancel: _endSelecting,
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// Hands the picked photos to the user's other devices. The gallery knows
+  /// nothing about how they get there — the shared folder's mirror carries
+  /// them over the LAN.
+  Future<void> _sendSelection(GalleryRepository repo) async {
+    final picked = _selected.values.toList();
+    if (picked.isEmpty) return;
+    final folder = picked.first.folderName;
+    await showSendToDevices(
+      context,
+      items: [
+        for (final item in picked)
+          SendCandidate(
+            name: item.name,
+            resolvePath: () => repo.resolvePath(item),
+          ),
+      ],
+      suggestedFolder: picked.every((i) => i.folderName == folder) && folder.isNotEmpty
+          ? folder
+          : 'Photos',
+    );
+    if (mounted) _endSelecting();
   }
 
   static const _peopleId = 'people';
@@ -608,14 +701,11 @@ class _GalleryPageState extends State<GalleryPage> {
         subtitle: '${person.count} items',
         onBack: () => setState(() => _open = _peopleId),
         repo: repo,
-        child: _Grid(
-          repository: repo,
-          items: _itemsFor(
-            repo,
-            id,
-            () => repo.itemsForPerson(person.id),
-          ),
-          onOpen: _openViewer,
+        selectable: true,
+        child: _gridFor(
+          repo,
+          id,
+          _itemsFor(repo, id, () => repo.itemsForPerson(person.id)),
         ),
       );
     }
@@ -635,7 +725,8 @@ class _GalleryPageState extends State<GalleryPage> {
         repo: repo,
         // Already oldest-first — a trip is relived from its start, unlike
         // every other album in the gallery.
-        child: _Grid(repository: repo, items: memory.items, onOpen: _openViewer),
+        selectable: true,
+        child: _gridFor(repo, id, memory.items),
       );
     }
 
@@ -647,11 +738,8 @@ class _GalleryPageState extends State<GalleryPage> {
         subtitle: group == null ? null : '${group.count} items',
         onBack: () => setState(() => _open = _categoriesId),
         repo: repo,
-        child: _Grid(
-          repository: repo,
-          items: group?.items ?? const [],
-          onOpen: _openViewer,
-        ),
+        selectable: true,
+        child: _gridFor(repo, id, group?.items ?? const []),
       );
     }
 
@@ -670,7 +758,8 @@ class _GalleryPageState extends State<GalleryPage> {
       subtitle: items.length == 1 ? '1 item' : '${items.length} items',
       onBack: () => setState(() => _open = null),
       repo: repo,
-      child: _Grid(repository: repo, items: items, onOpen: _openViewer),
+      selectable: true,
+      child: _gridFor(repo, id, items),
     );
   }
 
@@ -686,6 +775,7 @@ class _GalleryPageState extends State<GalleryPage> {
     required VoidCallback onBack,
     required GalleryRepository repo,
     required Widget child,
+    bool selectable = false,
   }) =>
       Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -695,6 +785,9 @@ class _GalleryPageState extends State<GalleryPage> {
             subtitle: subtitle,
             repository: repo,
             onBack: onBack,
+            onSelect: !selectable || _selecting
+                ? null
+                : () => setState(() => _selecting = true),
           ),
           Expanded(child: child),
         ],
@@ -872,6 +965,7 @@ class _Header extends StatelessWidget {
     this.onBack,
     this.onAddFolder,
     this.onChooseScanRoot,
+    this.onSelect,
   });
 
   final String title;
@@ -880,6 +974,10 @@ class _Header extends StatelessWidget {
   final VoidCallback? onBack;
   final VoidCallback? onAddFolder;
   final VoidCallback? onChooseScanRoot;
+
+  /// Starts selection mode. Null on screens that have no grid to pick from,
+  /// and while a selection is already running.
+  final VoidCallback? onSelect;
 
   @override
   Widget build(BuildContext context) {
@@ -923,6 +1021,12 @@ class _Header extends StatelessWidget {
               ],
             ),
           ),
+          if (onSelect != null)
+            IconButton(
+              tooltip: 'Select photos to send',
+              onPressed: onSelect,
+              icon: Icon(Icons.checklist_rounded, color: luma.textSecondary),
+            ),
           if (onAddFolder != null)
             IconButton(
               tooltip: 'Add a folder',
@@ -1092,11 +1196,19 @@ class _Grid extends StatefulWidget {
     required this.repository,
     required this.items,
     required this.onOpen,
+    required this.selection,
+    required this.onToggleSelect,
+    required this.selecting,
   });
 
   final GalleryRepository repository;
   final List<GalleryItem> items;
   final void Function(List<GalleryItem> items, int index) onOpen;
+
+  /// Ids of the picked items, and the tap that adds or removes one.
+  final Set<String> selection;
+  final ValueChanged<GalleryItem> onToggleSelect;
+  final bool selecting;
 
   @override
   State<_Grid> createState() => _GridState();
@@ -1212,11 +1324,22 @@ class _GridState extends State<_Grid> {
                               child: SizedBox(
                                 width: tile,
                                 height: tile,
-                                child: GalleryTile(
-                                  item: row.items[row.from + column],
-                                  repository: repository,
-                                  onTap: () =>
-                                      onOpen(items, row.offset + column),
+                                child: Builder(
+                                  builder: (context) {
+                                    final item = row.items[row.from + column];
+                                    return GalleryTile(
+                                      item: item,
+                                      repository: repository,
+                                      selecting: widget.selecting,
+                                      selected:
+                                          widget.selection.contains(item.id),
+                                      onLongPress: () =>
+                                          widget.onToggleSelect(item),
+                                      onTap: () => widget.selecting
+                                          ? widget.onToggleSelect(item)
+                                          : onOpen(items, row.offset + column),
+                                    );
+                                  },
                                 ),
                               ),
                             ),
@@ -1232,6 +1355,79 @@ class _GridState extends State<_Grid> {
           ],
         );
       },
+    );
+  }
+}
+
+/// What the picked photos can have done to them, floating over the bottom of
+/// the grid.
+class _SelectionBar extends StatelessWidget {
+  const _SelectionBar({
+    required this.count,
+    required this.onSelectAll,
+    required this.onSend,
+    required this.onCancel,
+  });
+
+  final int count;
+  final VoidCallback onSelectAll;
+  final VoidCallback? onSend;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+          decoration: BoxDecoration(
+            color: luma.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: luma.border),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.18),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  count == 0
+                      ? 'Tap photos to pick them'
+                      : '$count selected',
+                  style: TextStyle(
+                    color: luma.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: onSelectAll,
+                child: const Text('All'),
+              ),
+              const SizedBox(width: 4),
+              LumaPrimaryButton(
+                label: 'Send',
+                icon: Icons.devices_rounded,
+                onTap: onSend,
+              ),
+              IconButton(
+                tooltip: 'Cancel',
+                onPressed: onCancel,
+                icon: Icon(Icons.close_rounded, color: luma.textSecondary),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

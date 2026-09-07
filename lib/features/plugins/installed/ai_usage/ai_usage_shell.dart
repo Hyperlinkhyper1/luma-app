@@ -4,6 +4,7 @@ import '../../../../theme/luma_theme.dart';
 import 'ai_usage_page.dart';
 import 'leaderboard/ai_leaderboard_tab.dart';
 import 'open_source/open_source_tab.dart';
+import 'tests/tests_tab.dart';
 
 /// The plugin's sections, in sidebar order.
 enum AiUsageSection {
@@ -21,6 +22,11 @@ enum AiUsageSection {
     icon: Icons.memory_rounded,
     label: 'Open Source',
     blurb: 'What your hardware can run',
+  ),
+  tests(
+    icon: Icons.science_rounded,
+    label: 'Tests',
+    blurb: 'Experiments in progress',
   );
 
   const AiUsageSection({
@@ -75,6 +81,7 @@ class _AiUsagePageState extends State<AiUsagePage> {
               AiUsageDashboardTab(),
               AiLeaderboardTab(),
               OpenSourceTab(),
+              TestsTab(),
             ],
           ),
         ),

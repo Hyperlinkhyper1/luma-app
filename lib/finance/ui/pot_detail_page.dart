@@ -120,7 +120,7 @@ class _PotDetailView extends StatelessWidget {
             child: potTxns.isEmpty
                 ? Center(
                     child: Text(
-                      'No transactions in this pot yet.',
+                      'Nothing in this pot yet.',
                       style: TextStyle(color: luma.textMuted),
                     ),
                   )

@@ -102,7 +102,7 @@ class _RecurringBody extends StatelessWidget {
           if (rules.isEmpty)
             LumaCard(
               child: Text(
-                'Add fixed costs like Spotify, rent, or your salary as income.',
+                'Add things like rent, Spotify, or your paycheck.',
                 style: TextStyle(color: luma.textMuted, fontSize: 13),
               ),
             )

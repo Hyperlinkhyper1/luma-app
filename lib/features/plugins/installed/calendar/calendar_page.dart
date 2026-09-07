@@ -1118,8 +1118,8 @@ class _DayPanel extends StatelessWidget {
               height: embedded ? 220 : null,
               child: LumaEmptyState(
                 icon: Icons.event_available_rounded,
-                title: 'Nothing planned',
-                subtitle: 'Add an event to fill this day.',
+                title: 'Empty day',
+                subtitle: 'Put something fun here.',
                 action: LumaGhostButton(
                   label: 'Add event',
                   icon: Icons.add_rounded,
@@ -1945,8 +1945,8 @@ class _AgendaView extends StatelessWidget {
     if (occurrences.isEmpty) {
       return LumaEmptyState(
         icon: Icons.event_note_rounded,
-        title: 'No upcoming events',
-        subtitle: 'Events you add will show up here, soonest first.',
+        title: 'Nothing coming up',
+        subtitle: 'Whatever you plan shows up here.',
         action: LumaPrimaryButton(
           label: 'New event',
           icon: Icons.add_rounded,

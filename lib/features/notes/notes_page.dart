@@ -471,7 +471,7 @@ class _NoteEditor extends StatelessWidget {
                       height: 1.6,
                     ),
                     decoration: InputDecoration(
-                      hintText: 'Write something…',
+                      hintText: 'Jot something down…',
                       hintStyle: TextStyle(color: luma.textMuted),
                       border: InputBorder.none,
                     ),

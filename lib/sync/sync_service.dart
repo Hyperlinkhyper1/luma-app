@@ -5,6 +5,7 @@ import 'package:crypto/crypto.dart' show sha256, Hmac;
 import 'package:flutter/foundation.dart';
 
 import '../storage/storage_guard.dart';
+import 'server_access.dart';
 import 'sync_api.dart';
 import 'sync_collections.dart';
 import 'sync_crypto.dart';
@@ -31,7 +32,7 @@ class SyncLimitExceededException implements Exception {
 /// newest edit win. Snapshots are end-to-end encrypted before upload; the
 /// server only ever sees ciphertext.
 class SyncService extends ChangeNotifier {
-  SyncService({required this.collections, this.syncCollectionLimit});
+  SyncService({required this.collections, this.syncCollectionLimit, this.onServerPlan});
 
   final List<SyncCollection> collections;
 
@@ -39,6 +40,12 @@ class SyncService extends ChangeNotifier {
   /// always-on 'settings' one) may be enabled at once, or null for
   /// unlimited. Read fresh on every check so plan changes apply immediately.
   final int? Function()? syncCollectionLimit;
+
+  /// Invoked with the plan tier the server reports for this account on every
+  /// /account fetch, so an admin-granted subscription is applied locally
+  /// (see SettingsController.setAdminPlan). Null/empty means the server has
+  /// no grant on file (or is older than the planId field).
+  final void Function(String? planId)? onServerPlan;
 
   SyncStateStore? _state;
   SyncApi? _api;
@@ -97,6 +104,55 @@ class SyncService extends ChangeNotifier {
   String? get email => _state?.email;
   String? get serverUrl => _state?.serverUrl;
 
+  /// Whether the server has approved this account (email verified, or
+  /// approved by the operator). Signing in already proves it — the server
+  /// refuses to issue a token otherwise — but it is tracked explicitly so
+  /// the gate below has one unambiguous source of truth.
+  bool get accountApproved => _state?.accountApproved ?? false;
+
+  /// **The gate every server-backed feature must check.** True only when
+  /// this device is signed in to an approved account; until then the app
+  /// makes no requests to the server at all (see [ServerAccessGate]).
+  bool get serverReady => _state?.serverReady ?? false;
+
+  /// The address of an account created on this device that is still waiting
+  /// for approval, or null. Display-only — it grants no access.
+  String? get pendingApprovalEmail => _state?.pendingApprovalEmail;
+
+  /// How that account gets approved. [ServerApprovalMode.manual] (the
+  /// default) means the server's operator approves it from the admin
+  /// dashboard — there is no email to wait for and nothing to resend.
+  ServerApprovalMode get pendingApprovalMode =>
+      ServerApprovalMode.parse(_state?.pendingApprovalMode);
+
+  /// True when an account exists on this device but the server has put it
+  /// back to "waiting for approval", so the UI can explain why everything
+  /// server-backed stopped working.
+  bool get awaitingApproval =>
+      pendingApprovalEmail != null || (signedIn && !accountApproved);
+
+  /// True once the user has closed the automatic first-run account setup
+  /// prompt without completing it. See [dismissAccountSetupPrompt] and
+  /// `maybePromptAccountSetup` in main.dart.
+  bool get accountSetupPromptDismissed =>
+      _state?.accountSetupPromptDismissed ?? false;
+
+  /// Records that the first-run account setup prompt was closed without
+  /// creating or signing into an account, so it does not automatically pop
+  /// up again on future launches. Opening it manually (e.g. from Settings)
+  /// is unaffected.
+  Future<void> dismissAccountSetupPrompt() async {
+    final s = _state;
+    if (s == null || s.accountSetupPromptDismissed) return;
+    s.accountSetupPromptDismissed = true;
+    await s.save();
+  }
+
+  /// Persists the current sync state (toggles, credentials, bookkeeping) to
+  /// disk. Called automatically on toggle changes and on [dispose], but also
+  /// exposed so the app can flush state on lifecycle events.
+  Future<void> saveState() async => await _state?.save();
+
   /// The current bearer token, if signed in. Used by features (e.g. Families)
   /// that talk to their own, non-encrypted server endpoints rather than the
   /// zero-knowledge sync/blob ones — see [FamilyApi] in lib/family/family_api.dart.
@@ -120,6 +176,13 @@ class SyncService extends ChangeNotifier {
   bool isEnabled(String collectionId) =>
       _state?.collection(collectionId).enabled ?? false;
 
+  /// Pushes the current account state into the app-wide [ServerAccessGate].
+  /// Called after every change to sign-in/approval so a single check
+  /// ([serverReady]) and the transport-level gate can never disagree.
+  void _applyServerAccess() {
+    ServerAccessGate.instance.setApproved(serverReady);
+  }
+
   // ---- Lifecycle -------------------------------------------------------------
 
   /// Loads persisted state and starts background syncing when signed in.
@@ -142,7 +205,8 @@ class SyncService extends ChangeNotifier {
       s.localAccountMigrated = true;
       await s.save();
     }
-    if (s.signedIn) {
+    _applyServerAccess();
+    if (s.serverReady) {
       _api = SyncApi(s.serverUrl!, token: s.token);
     }
     for (final collection in collections) {
@@ -150,12 +214,15 @@ class SyncService extends ChangeNotifier {
           collection.changes.listen((_) => _onLocalChange(collection.id)));
     }
     _periodic = Timer.periodic(_periodicInterval, (_) {
-      if (signedIn) syncNow(silent: true);
+      if (serverReady) syncNow(silent: true);
     });
     notifyListeners();
-    if (signedIn) {
-      // Initial sync shortly after startup, off the critical path.
-      Timer(const Duration(seconds: 3), () => syncNow(silent: true));
+    if (serverReady) {
+      // Kick off the initial sync right away (still off the critical path —
+      // syncNow is async/non-blocking) so admin-granted plan info and other
+      // account state reach the UI as soon as possible instead of showing
+      // stale/default values for the first few seconds after launch.
+      syncNow(silent: true);
     }
   }
 
@@ -167,6 +234,7 @@ class SyncService extends ChangeNotifier {
       sub.cancel();
     }
     _api?.close();
+    _state?.save();
     super.dispose();
   }
 
@@ -177,7 +245,7 @@ class SyncService extends ChangeNotifier {
     final st = s.collection(collectionId);
     st.localChangedAt = DateTime.now();
     // Persist lazily along with the debounced sync.
-    if (!signedIn || !st.enabled) return;
+    if (!serverReady || !st.enabled) return;
     _debounce?.cancel();
     _debounce = Timer(_debounceDelay, () => syncNow(silent: true));
   }
@@ -200,8 +268,10 @@ class SyncService extends ChangeNotifier {
         kdfSalt: params.kdfSalt,
         iterations: params.kdfIterations,
       );
-      final token =
-          await api.login(email: normalizedEmail, authKey: keys.authKey);
+      final token = await api.login(
+          email: normalizedEmail,
+          authKey: keys.authKey,
+          deviceLabel: _deviceLabel());
       api.token = token;
 
       _api?.close();
@@ -212,7 +282,13 @@ class SyncService extends ChangeNotifier {
         ..token = token
         ..encryptionKey = keys.encryptionKey
         ..kdfSalt = params.kdfSalt
-        ..kdfIterations = params.kdfIterations;
+        ..kdfIterations = params.kdfIterations
+        // The server refuses to issue a token to an account that hasn't been
+        // approved yet, so holding one is the proof — this is what opens the
+        // server-access gate for the rest of the app.
+        ..accountApproved = true
+        ..pendingApprovalEmail = null
+        ..pendingApprovalMode = null;
       // Fresh account on this device: forget previous sync bookkeeping.
       for (final st in s.collections.values) {
         st.lastSyncedVersion = null;
@@ -221,6 +297,7 @@ class SyncService extends ChangeNotifier {
       _requiresReauth = false;
       _lastError = null;
       await s.save();
+      _applyServerAccess();
       notifyListeners();
       unawaited(syncNow(silent: true));
     } catch (_) {
@@ -260,9 +337,19 @@ class SyncService extends ChangeNotifier {
         authKey: keys.authKey,
         kdfSalt: kdfSalt,
         kdfIterations: iterations,
+        deviceLabel: _deviceLabel(),
       );
-      if (result.pendingVerification) {
+      if (result.pendingApproval) {
         api.close();
+        // The account exists but is NOT approved: remember who we're waiting
+        // for (and who does the approving) so the UI can explain it, and
+        // leave the gate shut — no further request reaches the server until
+        // the approval lands and the user signs in.
+        s
+          ..pendingApprovalEmail = normalizedEmail
+          ..pendingApprovalMode = result.approvalMode.name;
+        await s.save();
+        notifyListeners();
         return result.message;
       }
       final token = result.token!;
@@ -276,7 +363,10 @@ class SyncService extends ChangeNotifier {
         ..token = token
         ..encryptionKey = keys.encryptionKey
         ..kdfSalt = kdfSalt
-        ..kdfIterations = iterations;
+        ..kdfIterations = iterations
+        ..accountApproved = true
+        ..pendingApprovalEmail = null
+        ..pendingApprovalMode = null;
       for (final st in s.collections.values) {
         st.lastSyncedVersion = null;
         st.lastSyncedHash = null;
@@ -284,6 +374,7 @@ class SyncService extends ChangeNotifier {
       _requiresReauth = false;
       _lastError = null;
       await s.save();
+      _applyServerAccess();
       notifyListeners();
       unawaited(syncNow(silent: true));
       return null;
@@ -291,6 +382,159 @@ class SyncService extends ChangeNotifier {
       if (api != _api) api.close();
       rethrow;
     }
+  }
+
+  // ---- Sign in with Google / GitHub -------------------------------------------
+
+  /// Which providers [serverUrl] offers a button for. Never throws: a server
+  /// that is old, unreachable, or simply has none configured all mean the
+  /// same thing to the sign-in screen — show email and password only.
+  Future<List<OAuthProviderInfo>> availableOAuthProviders(
+      String serverUrl) async {
+    if (SyncApi.validateServerUrl(serverUrl) != null) return const [];
+    final api = SyncApi(serverUrl);
+    try {
+      return await api.oauthProviders();
+    } catch (_) {
+      return const [];
+    } finally {
+      api.close();
+    }
+  }
+
+  /// Opens a browser sign-in and hands back the URL to launch. The caller
+  /// then [waitForOAuthIdentity], collects the passphrase, and finishes with
+  /// [completeOAuthSignIn] — nothing here touches this device's account
+  /// state until that last step succeeds.
+  Future<OAuthSignInHandle> startOAuthSignIn({
+    required String serverUrl,
+    required String providerId,
+  }) async {
+    final urlError = SyncApi.validateServerUrl(serverUrl);
+    if (urlError != null) throw SyncApiException(0, 'bad_server_url', urlError);
+    final api = SyncApi(serverUrl);
+    try {
+      final started = await api.oauthStart(providerId);
+      return OAuthSignInHandle._(
+        api: api,
+        providerId: providerId,
+        ticket: started.ticket,
+        authUrl: started.authUrl,
+      );
+    } catch (_) {
+      api.close();
+      rethrow;
+    }
+  }
+
+  /// Polls until the provider has vouched for an address, the attempt fails,
+  /// or [timeout] runs out. The user is in their browser for all of it, so
+  /// the poll is deliberately slow and cheap.
+  Future<OAuthPollResult> waitForOAuthIdentity(
+    OAuthSignInHandle handle, {
+    Duration timeout = const Duration(minutes: 5),
+    Duration interval = const Duration(seconds: 2),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      if (handle._cancelled) {
+        return const OAuthPollResult(
+            status: 'error', message: 'Sign-in cancelled.');
+      }
+      final result = await handle.api.oauthPoll(handle.ticket);
+      if (!result.isPending) return result;
+      await Future<void>.delayed(interval);
+    }
+    return const OAuthPollResult(
+      status: 'error',
+      message: 'Timed out waiting for the browser. Please try again.',
+    );
+  }
+
+  /// Finishes a browser sign-in.
+  ///
+  /// The provider settled which account this is; [passphrase] is what
+  /// actually decrypts its data, and it never leaves this device — only the
+  /// key derived from it does, exactly as in [signIn]. For an account that
+  /// already exists the server checks that key, so a wrong passphrase throws
+  /// rather than quietly producing an account whose data won't open.
+  ///
+  /// Returns null once signed in, or a human-readable message when the
+  /// account still has to be approved (same contract as [register]).
+  Future<String?> completeOAuthSignIn({
+    required OAuthSignInHandle handle,
+    required OAuthPollResult identity,
+    required String passphrase,
+  }) async {
+    if (!identity.isReady || identity.email == null) {
+      throw SyncApiException(
+          0, 'oauth_not_ready', 'That sign-in did not complete.');
+    }
+    final s = _state ?? (_state = await SyncStateStore.load());
+    final api = handle.api;
+    final email = identity.email!;
+
+    // An existing account dictates its own KDF parameters. For a new one,
+    // reuse this device's local-only salt when the address matches, so a
+    // device already paired over P2P is not orphaned by gaining a cloud
+    // account — same reasoning as [register].
+    final reuseLocalSalt =
+        isLocalOnly && s.email == email && s.kdfSalt != null;
+    final kdfSalt = identity.kdfSalt ??
+        (reuseLocalSalt ? s.kdfSalt! : SyncCrypto.randomBytes(16));
+    final iterations =
+        identity.kdfIterations ?? SyncCrypto.defaultKdfIterations;
+
+    final keys = await SyncCrypto.deriveKeys(
+      password: passphrase,
+      kdfSalt: kdfSalt,
+      iterations: iterations,
+    );
+    final result = await api.oauthComplete(
+      ticket: handle.ticket,
+      authKey: keys.authKey,
+      kdfSalt: kdfSalt,
+      kdfIterations: iterations,
+      deviceLabel: _deviceLabel(),
+    );
+
+    if (result.pendingApproval) {
+      handle.close();
+      s
+        ..pendingApprovalEmail = email
+        ..pendingApprovalMode = ServerApprovalMode.manual.name;
+      await s.save();
+      notifyListeners();
+      return result.message ??
+          'Your account has to be approved before you can sign in.';
+    }
+
+    final token = result.token!;
+    api.token = token;
+    handle._adopted = true;
+    _api?.close();
+    _api = api;
+    s
+      ..serverUrl = api.baseUrl
+      ..email = email
+      ..token = token
+      ..encryptionKey = keys.encryptionKey
+      ..kdfSalt = kdfSalt
+      ..kdfIterations = iterations
+      ..accountApproved = true
+      ..pendingApprovalEmail = null
+      ..pendingApprovalMode = null;
+    for (final st in s.collections.values) {
+      st.lastSyncedVersion = null;
+      st.lastSyncedHash = null;
+    }
+    _requiresReauth = false;
+    _lastError = null;
+    await s.save();
+    _applyServerAccess();
+    notifyListeners();
+    unawaited(syncNow(silent: true));
+    return null;
   }
 
   /// Signs out of this device. Data already on the server stays there.
@@ -307,6 +551,43 @@ class SyncService extends ChangeNotifier {
     _account = null;
     _requiresReauth = false;
     s.clearAccount();
+    s
+      ..pendingApprovalEmail = null
+      ..pendingApprovalMode = null;
+    await s.save();
+    _applyServerAccess();
+    notifyListeners();
+  }
+
+  /// Asks the server to send the approval mail again for an account created
+  /// on this device that is still waiting. Only meaningful under
+  /// [ServerApprovalMode.email] — with manual approval there is no mail, and
+  /// the server says so. Returns the server's (deliberately generic)
+  /// message. Throws [StateError] when nothing is pending — this is part of
+  /// the account handshake, so it is one of the few calls allowed through
+  /// the closed gate.
+  Future<String> resendApprovalEmail() async {
+    final s = _state;
+    final pending = s?.pendingApprovalEmail;
+    if (s == null || pending == null) {
+      throw StateError('No account is waiting for approval on this device.');
+    }
+    final api = SyncApi(s.serverUrl ?? kDefaultSyncServerUrl);
+    try {
+      return await api.resendVerification(pending);
+    } finally {
+      api.close();
+    }
+  }
+
+  /// Forgets an account that was created here but never approved, so the
+  /// user can start over with a different address.
+  Future<void> cancelPendingApproval() async {
+    final s = _state;
+    if (s == null || s.pendingApprovalEmail == null) return;
+    s
+      ..pendingApprovalEmail = null
+      ..pendingApprovalMode = null;
     await s.save();
     notifyListeners();
   }
@@ -378,8 +659,8 @@ class SyncService extends ChangeNotifier {
   }) async {
     final s = _state;
     final api = _api;
-    if (s == null || api == null || !s.signedIn) {
-      throw StateError('Not signed in.');
+    if (s == null || api == null || !s.serverReady) {
+      throw StateError('Not signed in with an approved account.');
     }
 
     final currentKeys = await SyncCrypto.deriveKeys(
@@ -439,12 +720,55 @@ class SyncService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Lists every active cloud session on this account (across all
+  /// signed-in devices), newest first. Requires a cloud (not local-only)
+  /// sign-in.
+  Future<List<RemoteSession>> listSessions() async {
+    final api = _api;
+    if (api == null || !serverReady) {
+      throw StateError('Not signed in with an approved account.');
+    }
+    return api.listSessions();
+  }
+
+  /// Revokes another device's session, signing it out remotely. The
+  /// server rejects revoking the session this device is currently using —
+  /// call [signOut] for that instead.
+  Future<void> revokeSession(String id) async {
+    final api = _api;
+    if (api == null || !serverReady) {
+      throw StateError('Not signed in with an approved account.');
+    }
+    await api.revokeSession(id);
+  }
+
+  /// A short, human-readable platform label sent to the server at
+  /// sign-in/registration so [listSessions] can show something more useful
+  /// than an opaque session id (e.g. "Windows", "Android"). Display-only —
+  /// never used for authentication.
+  static String? _deviceLabel() {
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return 'Android';
+      case TargetPlatform.iOS:
+        return 'iPhone/iPad';
+      case TargetPlatform.macOS:
+        return 'Mac';
+      case TargetPlatform.windows:
+        return 'Windows';
+      case TargetPlatform.linux:
+        return 'Linux';
+      default:
+        return null;
+    }
+  }
+
   /// Permanently deletes the account and everything stored on the server.
   Future<void> deleteAccount({required String password}) async {
     final s = _state;
     final api = _api;
-    if (s == null || api == null || !s.signedIn) {
-      throw StateError('Not signed in.');
+    if (s == null || api == null || !s.serverReady) {
+      throw StateError('Not signed in with an approved account.');
     }
     final keys = await SyncCrypto.deriveKeys(
       password: password,
@@ -456,7 +780,11 @@ class SyncService extends ChangeNotifier {
     _api = null;
     _account = null;
     s.clearAccount();
+    s
+      ..pendingApprovalEmail = null
+      ..pendingApprovalMode = null;
     await s.save();
+    _applyServerAccess();
     notifyListeners();
   }
 
@@ -486,7 +814,7 @@ class SyncService extends ChangeNotifier {
     st.enabled = true;
     await s.save();
     notifyListeners();
-    if (signedIn) unawaited(syncNow(silent: true));
+    if (serverReady) unawaited(syncNow(silent: true));
   }
 
   /// Turns syncing off. With [removeRemote], the server's copy is deleted
@@ -499,7 +827,7 @@ class SyncService extends ChangeNotifier {
       ..enabled = false
       ..lastSyncedVersion = null
       ..lastSyncedHash = null;
-    if (removeRemote && signedIn) {
+    if (removeRemote && serverReady) {
       try {
         await _api!.deleteBlob(id);
         await _refreshAccount();
@@ -530,8 +858,8 @@ class SyncService extends ChangeNotifier {
   Future<int> putObject(String collection, Uint8List bytes,
       {int baseVersion = 0}) async {
     final api = _api, s = _state;
-    if (api == null || s == null || !s.signedIn) {
-      throw StateError('Not signed in.');
+    if (api == null || s == null || !s.serverReady) {
+      throw StateError('Not signed in with an approved account.');
     }
     StorageGuard.instance.ensureWithinLimit();
     final sealed = await SyncCrypto.sealBytes(bytes, s.encryptionKey!);
@@ -542,8 +870,8 @@ class SyncService extends ChangeNotifier {
   /// Fetches and decrypts a raw object, or null if it does not exist.
   Future<Uint8List?> getObject(String collection) async {
     final api = _api, s = _state;
-    if (api == null || s == null || !s.signedIn) {
-      throw StateError('Not signed in.');
+    if (api == null || s == null || !s.serverReady) {
+      throw StateError('Not signed in with an approved account.');
     }
     final blob = await api.getBlob(collection);
     if (blob == null) return null;
@@ -554,8 +882,8 @@ class SyncService extends ChangeNotifier {
   Future<({Object? data, int version})?> getJsonObject(
       String collection) async {
     final api = _api, s = _state;
-    if (api == null || s == null || !s.signedIn) {
-      throw StateError('Not signed in.');
+    if (api == null || s == null || !s.serverReady) {
+      throw StateError('Not signed in with an approved account.');
     }
     final blob = await api.getBlob(collection);
     if (blob == null) return null;
@@ -567,8 +895,8 @@ class SyncService extends ChangeNotifier {
   Future<int> putJsonObject(String collection, Object payload,
       {int baseVersion = 0}) async {
     final api = _api, s = _state;
-    if (api == null || s == null || !s.signedIn) {
-      throw StateError('Not signed in.');
+    if (api == null || s == null || !s.serverReady) {
+      throw StateError('Not signed in with an approved account.');
     }
     StorageGuard.instance.ensureWithinLimit();
     final sealed = await SyncCrypto.sealPayload(payload, s.encryptionKey!);
@@ -579,8 +907,8 @@ class SyncService extends ChangeNotifier {
   /// Deletes a server object (no-op if it doesn't exist).
   Future<void> deleteObject(String collection) async {
     final api = _api, s = _state;
-    if (api == null || s == null || !s.signedIn) {
-      throw StateError('Not signed in.');
+    if (api == null || s == null || !s.serverReady) {
+      throw StateError('Not signed in with an approved account.');
     }
     await api.deleteBlob(collection);
   }
@@ -594,11 +922,24 @@ class SyncService extends ChangeNotifier {
   /// device; only this yes/no travels here.
   Future<bool> mistralKeyConfiguredOnServer() async {
     final api = _api;
-    if (api == null || !signedIn) return false;
+    if (api == null || !serverReady) return false;
     try {
       return await api.mistralKeyConfigured();
     } catch (_) {
       return false;
+    }
+  }
+
+  /// Shared-AI status for this account: which operator keys exist and how
+  /// much of this user's budget is used — percentages only, the raw token
+  /// numbers never leave the server. Null when signed out or unreachable.
+  Future<AiServerStatus?> aiStatus() async {
+    final api = _api;
+    if (api == null || !serverReady) return null;
+    try {
+      return AiServerStatus.fromJson(await api.aiStatus());
+    } catch (_) {
+      return null;
     }
   }
 
@@ -617,7 +958,7 @@ class SyncService extends ChangeNotifier {
   Future<void> _syncOnce({required bool silent}) async {
     final s = _state;
     final api = _api;
-    if (s == null || api == null || !s.signedIn) return;
+    if (s == null || api == null || !s.serverReady) return;
 
     if (StorageGuard.instance.isOverLimit) {
       _status = SyncStatus.error;
@@ -635,6 +976,20 @@ class SyncService extends ChangeNotifier {
     try {
       final remote = await api.account();
       _account = remote;
+      onServerPlan?.call(remote.planId);
+      if (!remote.approved) {
+        // The server put this account back to "waiting for approval" (an
+        // operator un-approved it). Shut the gate immediately rather than
+        // finishing the run.
+        s.accountApproved = false;
+        await s.save();
+        _applyServerAccess();
+        _status = SyncStatus.error;
+        _lastError = 'This account is waiting for approval — sync is paused '
+            'until it is approved.';
+        notifyListeners();
+        return;
+      }
       for (final collection in collections) {
         final st = s.collection(collection.id);
         if (!st.enabled) continue;
@@ -651,10 +1006,17 @@ class SyncService extends ChangeNotifier {
       await _refreshAccount();
     } on SyncApiException catch (e) {
       if (e.isUnauthorized) {
-        // Token expired or revoked: require a fresh sign-in.
+        // Token expired or revoked: require a fresh sign-in, and shut the
+        // gate until that sign-in succeeds.
         _requiresReauth = true;
         s.token = null;
+        _applyServerAccess();
         errors.add('Session expired — please sign in again.');
+      } else if (e.isNotApproved) {
+        // The server put this account back to "waiting for approval".
+        s.accountApproved = false;
+        _applyServerAccess();
+        errors.add(e.message);
       } else {
         errors.add(e.message);
       }
@@ -799,7 +1161,9 @@ class SyncService extends ChangeNotifier {
 
   Future<void> _refreshAccount() async {
     try {
-      _account = await _api!.account();
+      final remote = await _api!.account();
+      _account = remote;
+      onServerPlan?.call(remote.planId);
     } catch (_) {
       // Usage display just stays stale.
     }
@@ -934,3 +1298,87 @@ class SyncService extends ChangeNotifier {
 String _hexEncode(List<int> bytes) => bytes
     .map((b) => b.toRadixString(16).padLeft(2, '0'))
     .join();
+
+/// Parsed GET /api/v1/ai/status response — see [SyncService.aiStatus].
+class AiServerStatus {
+  const AiServerStatus({
+    required this.mistralConfigured,
+    required this.googleConfigured,
+    required this.fiveHourPct,
+    required this.weeklyPct,
+    required this.supportUsed,
+    required this.supportLimit,
+  });
+
+  /// Whether the operator configured a shared Luma Support (Mistral) key.
+  final bool mistralConfigured;
+
+  /// Whether the operator configured a shared Luma AI (Google) key.
+  final bool googleConfigured;
+
+  /// Percent (0-100) of this user's rolling 5-hour Luma AI budget used.
+  final int fiveHourPct;
+
+  /// Percent (0-100) of this user's rolling weekly Luma AI budget used.
+  final int weeklyPct;
+
+  /// Luma Support messages used today, out of [supportLimit].
+  final int supportUsed;
+  final int supportLimit;
+
+  int get supportRemaining => (supportLimit - supportUsed).clamp(0, supportLimit);
+
+  factory AiServerStatus.fromJson(Map<String, dynamic> json) {
+    final usage = json['usage'] as Map<String, dynamic>? ?? const {};
+    int intOf(Object? v, [int fallback = 0]) =>
+        v is num ? v.toInt() : fallback;
+    return AiServerStatus(
+      mistralConfigured: json['mistralConfigured'] == true,
+      googleConfigured: json['googleConfigured'] == true,
+      fiveHourPct: intOf(usage['fiveHourPct']),
+      weeklyPct: intOf(usage['weeklyPct']),
+      supportUsed: intOf(usage['supportUsed']),
+      supportLimit: intOf(usage['supportLimit'], 15),
+    );
+  }
+}
+
+/// One browser sign-in in progress, from [SyncService.startOAuthSignIn] to
+/// [SyncService.completeOAuthSignIn].
+///
+/// It owns the [SyncApi] the flow runs over. That client is adopted by
+/// [SyncService] when the sign-in succeeds; on any other ending — cancelled,
+/// timed out, the user backed out of the passphrase step — the caller must
+/// [close] it so the socket does not outlive the attempt.
+class OAuthSignInHandle {
+  OAuthSignInHandle._({
+    required this.api,
+    required this.providerId,
+    required this.ticket,
+    required this.authUrl,
+  });
+
+  final SyncApi api;
+
+  /// 'google' or 'github'.
+  final String providerId;
+
+  /// This attempt's private handle. Never travels through the browser, so
+  /// seeing the provider URL is not enough to hijack the sign-in.
+  final String ticket;
+
+  /// The provider URL to open in the system browser.
+  final String authUrl;
+
+  bool _cancelled = false;
+  bool _adopted = false;
+
+  /// Stops [SyncService.waitForOAuthIdentity] at its next tick.
+  void cancel() => _cancelled = true;
+
+  /// Releases the client unless the service took it over on success.
+  void close() {
+    _cancelled = true;
+    if (!_adopted) api.close();
+  }
+}

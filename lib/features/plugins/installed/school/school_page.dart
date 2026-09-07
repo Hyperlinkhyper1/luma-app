@@ -7,7 +7,6 @@ import 'ui/dashboard_tab.dart';
 import 'ui/flashcards_tab.dart';
 import 'ui/formulas_tab.dart';
 import 'ui/gpa_tab.dart';
-import 'ui/mindmap_tab.dart';
 import 'ui/study_timer_tab.dart';
 import 'ui/timetable_tab.dart';
 
@@ -33,7 +32,6 @@ class _SchoolPageState extends State<SchoolPage> {
     'Study timer',
     'GPA',
     'Citations',
-    'Mind maps',
   ];
 
   @override
@@ -62,7 +60,6 @@ class _SchoolPageState extends State<SchoolPage> {
               StudyTimerTab(),
               GpaTab(),
               CitationsTab(),
-              MindmapTab(),
             ],
           ),
         ),

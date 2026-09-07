@@ -97,7 +97,7 @@ void main() {
 
       expect(find.text('Minecraft schematics'), findsOneWidget);
       expect(
-        find.text('Format tools beyond audio, images and video'),
+        find.text('Odd jobs that fit nowhere else'),
         findsOneWidget,
       );
     });
@@ -110,7 +110,7 @@ void main() {
       await tester.tap(find.text('Minecraft schematics'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Click to choose a build'), findsOneWidget);
+      expect(find.text('Tap to pick a build'), findsOneWidget);
       expect(
         find.text('SCHEM · LITEMATIC · SCHEMATIC · NBT · MCSTRUCTURE'),
         findsWidgets,
@@ -130,7 +130,7 @@ void main() {
       await tester.pumpWidget(
         _app(SchematicConverterView(onBack: () {})),
       );
-      expect(find.text('Click to choose a build'), findsOneWidget);
+      expect(find.text('Tap to pick a build'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   });

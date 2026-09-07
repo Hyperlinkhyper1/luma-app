@@ -140,7 +140,7 @@ void main() {
 
     expect(find.text('Everything you keep here,\non every device you use.'),
         findsNothing);
-    expect(find.text('Create your account'), findsOneWidget);
+    expect(find.text('Make your account'), findsOneWidget);
     expect(find.text('Continue with Google'), findsOneWidget);
     expect(find.widgetWithText(TextField, 'Email'), findsOneWidget);
   });

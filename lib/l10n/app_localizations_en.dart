@@ -45,29 +45,29 @@ class LEn extends L {
   String get navMore => 'More';
 
   @override
-  String get shellPluginUnavailable => 'Plugin unavailable';
+  String get shellPluginUnavailable => 'This plugin isn\'t here';
 
   @override
   String get shellStorageLimitMsg =>
-      'You\'ve reached your storage limit. New data won\'t be saved or synced until you free up space.';
+      'You\'re out of space. Clear a little out and we\'ll start saving and syncing again.';
 
   @override
-  String get shellStorageManage => 'Manage';
+  String get shellStorageManage => 'Clean up';
 
   @override
-  String get shellStorageDismiss => 'Dismiss';
+  String get shellStorageDismiss => 'Not now';
 
   @override
-  String get settingsAppearance => 'Appearance';
+  String get settingsAppearance => 'Look & feel';
 
   @override
-  String get settingsAppearanceSub => 'Make luma feel like yours.';
+  String get settingsAppearanceSub => 'Make luma yours.';
 
   @override
   String get settingsTheme => 'Theme';
 
   @override
-  String get settingsAccentColor => 'Accent color';
+  String get settingsAccentColor => 'Colour';
 
   @override
   String get settingsThemeStyle => 'Theme style';
@@ -77,31 +77,31 @@ class LEn extends L {
 
   @override
   String get settingsThemeStyleDefaultSub =>
-      'luma as it comes — clean surfaces and your chosen accent.';
+      'Good old luma — plain and simple, in your colour.';
 
   @override
   String get settingsThemeStyleCoffee => 'Coffee';
 
   @override
   String get settingsThemeStyleCoffeeSub =>
-      'Espresso and cream, softer shapes, and beans drifting behind everything.';
+      'Warm browns, soft corners, little coffee beans floating around.';
 
   @override
   String get settingsThemeStyleLocked => 'Orbit or Nova';
 
   @override
   String get settingsThemeStyleUpgrade =>
-      'Coffee is part of Orbit and Nova. Upgrade to pour it.';
+      'Coffee comes with Orbit and Nova. Grab one of those to turn it on.';
 
   @override
   String get settingsAccentCoffeeNote =>
-      'Coffee brings its own palette, so the accent picker is paused while it\'s on.';
+      'Coffee has its own colours, so you can\'t pick a colour while it\'s on.';
 
   @override
   String get settingsGeneral => 'General';
 
   @override
-  String get settingsGeneralSub => 'How the app behaves.';
+  String get settingsGeneralSub => 'Small things that change how the app acts.';
 
   @override
   String get settingsLanguage => 'Language';
@@ -110,53 +110,54 @@ class LEn extends L {
   String get settingsOpenOnLaunch => 'Open on launch';
 
   @override
-  String get settingsHideAmounts => 'Hide amounts on Home';
+  String get settingsHideAmounts => 'Hide money on Home';
 
   @override
   String get settingsHideAmountsSub =>
-      'Mask balances on the dashboard for shoulder-surfers.';
+      'Hide your money on Home, in case someone\'s peeking over your shoulder.';
 
   @override
-  String get settingsLockPasswords => 'Lock Passwords';
+  String get settingsLockPasswords => 'Lock passwords';
 
   @override
   String get settingsLockPasswordsSub =>
-      'Require an 8-digit PIN to view or edit saved credentials.';
+      'Ask for an 8-digit PIN before showing your saved logins.';
 
   @override
-  String get settingsAmericanGpa => 'American GPA scale';
+  String get settingsAmericanGpa => 'American grades';
 
   @override
   String get settingsAmericanGpaSub =>
-      'Use the US 4.0 GPA system in the School plugin instead of the Dutch 1-10 grading scale.';
+      'Use American 4.0 grades in School instead of Dutch 1-to-10s.';
 
   @override
   String get settingsAiAssistant => 'AI Assistant';
 
   @override
-  String get settingsAiAssistantSub => 'Connect your own Anthropic API key.';
+  String get settingsAiAssistantSub =>
+      'Pop in your own Anthropic key to start chatting.';
 
   @override
   String get settingsAbout => 'About';
 
   @override
-  String get settingsResetDefaults => 'Reset to defaults';
+  String get settingsResetDefaults => 'Put everything back';
 
   @override
-  String get settingsResetTitle => 'Reset settings?';
+  String get settingsResetTitle => 'Start fresh?';
 
   @override
   String get settingsResetContent =>
-      'This restores the theme, accent color and other preferences to their defaults.';
+      'This puts your theme, colour and other little picks back to how they were at the start.';
 
   @override
-  String get settingsResetCancel => 'Cancel';
+  String get settingsResetCancel => 'Keep mine';
 
   @override
-  String get settingsResetConfirm => 'Reset';
+  String get settingsResetConfirm => 'Yep, reset';
 
   @override
-  String get settingsCheckUpdates => 'Check for updates';
+  String get settingsCheckUpdates => 'Look for updates';
 
   @override
   String get settingsSystem => 'System';
@@ -189,31 +190,31 @@ class LEn extends L {
   String get homeGreetingMorning => 'Good morning';
 
   @override
-  String get homeGreetingAfternoon => 'Good afternoon';
+  String get homeGreetingAfternoon => 'Hey there';
 
   @override
   String get homeGreetingEvening => 'Good evening';
 
   @override
-  String get homeNetWorth => 'Net worth';
+  String get homeNetWorth => 'All together';
 
   @override
-  String get homeAtAGlance => 'At a glance';
+  String get homeAtAGlance => 'How things look';
 
   @override
-  String get homeJumpBackIn => 'Jump back in';
+  String get homeJumpBackIn => 'Pick up where you left off';
 
   @override
-  String get homeRecentActivity => 'Recent activity';
+  String get homeRecentActivity => 'What you\'ve been up to';
 
   @override
-  String get homeIncomeMonth => 'Income this month';
+  String get homeIncomeMonth => 'Came in this month';
 
   @override
-  String get homeSpentMonth => 'Spent this month';
+  String get homeSpentMonth => 'Went out this month';
 
   @override
-  String get homeInPots => 'In pots';
+  String get homeInPots => 'Set aside in pots';
 
   @override
   String get homeInvestments => 'Investments';
@@ -222,61 +223,62 @@ class LEn extends L {
   String get homeAskAssistant => 'Ask Assistant';
 
   @override
-  String get homeAskAssistantSub => 'Chat with the AI assistant';
+  String get homeAskAssistantSub => 'Have a chat, ask anything';
 
   @override
   String get homeFinance => 'Finance';
 
   @override
-  String get homeFinanceSub => 'Budgets, pots & stocks';
+  String get homeFinanceSub => 'Your money, pots & stocks';
 
   @override
   String get homeFileConverter => 'File Converter';
 
   @override
-  String get homeFileConverterSub => 'Convert images & files';
+  String get homeFileConverterSub => 'Change up images & files';
 
   @override
   String get homeSettings => 'Settings';
 
   @override
-  String get homeSettingsSub => 'Theme, colors & more';
+  String get homeSettingsSub => 'Colours, theme & stuff';
 
   @override
   String get homeNoTransactions =>
-      'Nothing here yet — add a transaction in the Finance tab and it will show up here.';
+      'Quiet here for now — add something in Finance and it\'ll pop up here.';
 
   @override
-  String get homeIncome => 'Income';
+  String get homeIncome => 'In';
 
   @override
-  String get homeExpense => 'Expense';
+  String get homeExpense => 'Out';
 
   @override
-  String get homeAllocation => 'Allocation';
+  String get homeAllocation => 'Split';
 
   @override
-  String get pinEnterNew => 'Enter new 8-digit PIN';
+  String get pinEnterNew => 'Pick a new 8-digit PIN';
 
   @override
-  String get pinVerify => 'Verify new PIN';
+  String get pinVerify => 'Type it once more';
 
   @override
-  String get pinEnterDisable => 'Enter PIN to disable';
+  String get pinEnterDisable => 'Type your PIN to turn it off';
 
   @override
-  String get pinNotMatch => 'PINs do not match.';
+  String get pinNotMatch => 'Those PINs don\'t match.';
 
   @override
-  String get pinIncorrect => 'Incorrect PIN.';
+  String get pinIncorrect => 'Nope, wrong PIN.';
 
   @override
   String aboutVersionRelease(String version) {
-    return 'Version $version · a clean local utility';
+    return 'Version $version · a small app that keeps your stuff with you';
   }
 
   @override
-  String get aboutVersionDev => 'Dev build · a clean local utility';
+  String get aboutVersionDev =>
+      'Dev build · made with care on someone\'s laptop';
 
   @override
   String get monthJan => 'Jan';

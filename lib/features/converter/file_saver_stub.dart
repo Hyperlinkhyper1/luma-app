@@ -8,6 +8,7 @@ Future<SaveResult> saveConvertedFile({
   required String suggestedName,
   required String mimeType,
   required List<String> extensions,
+  String? dialogTitle,
 }) {
   throw UnsupportedError('Saving files is not supported on this platform.');
 }

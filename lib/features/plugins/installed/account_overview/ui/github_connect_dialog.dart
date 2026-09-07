@@ -375,12 +375,31 @@ class _AllowanceDialog extends StatefulWidget {
 /// Storage and Actions minutes come from the repo-hosting plan
 /// (Free/Pro/Team/Enterprise Cloud); Copilot is a separate subscription with
 /// its own tiers, so it gets its own set of chips.
-const _kStorageGbByPlan = {
+///
+/// Verified against GitHub's own billing docs (docs.github.com/en/billing/
+/// concepts/product-billing/github-actions) and github.com/pricing: the
+/// Free plan's combined Actions-artifact + Packages storage is 500 MB, not
+/// the 10 GiB some people expect — that larger figure is Git LFS's separate
+/// allowance, which this app does not track. Public — not private —
+/// repositories draw on neither quota: GitHub does not meter their storage
+/// at all.
+const kGithubStorageGbByPlan = {
   'Free': 0.5,
   'Pro': 2.0,
   'Team': 2.0,
   'Enterprise': 50.0,
 };
+
+/// Looks up [kGithubStorageGbByPlan] case-insensitively, since GitHub's API
+/// reports plan names lowercased (`"free"`, `"pro"`) while the quick-fill
+/// chips above show them capitalised.
+double? githubStorageGbForPlan(String? planName) {
+  if (planName == null) return null;
+  for (final entry in kGithubStorageGbByPlan.entries) {
+    if (entry.key.toLowerCase() == planName.toLowerCase()) return entry.value;
+  }
+  return null;
+}
 
 const _kActionsMinutesByPlan = {
   'Free': 2000.0,
@@ -497,7 +516,7 @@ class _AllowanceDialogState extends State<_AllowanceDialog> {
                 controller: _storage,
                 label: 'Storage allowance',
                 helper: 'Included Packages and Actions storage, in GB',
-                quickFills: _kStorageGbByPlan,
+                quickFills: kGithubStorageGbByPlan,
               ),
               _field(
                 controller: _minutes,

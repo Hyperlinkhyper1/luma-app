@@ -13,6 +13,19 @@ const USER_AGENT = 'Appie/8.22.3 Model/phone Android/12-API31';
 let cachedToken = null;
 let cachedTokenExpiresAt = 0;
 
+// AH advertises a week-long expiry for anonymous tokens but invalidates them
+// server-side long before that, so cap how long we trust one.
+const MAX_TOKEN_AGE_MS = 30 * 60 * 1000;
+
+// A token AH has dropped comes back as an OAuth error body on the data
+// endpoint — as a 400 `invalid_grant` ("member not active") just as often as
+// a 401, so both have to be treated as "get a new token".
+function isAuthFailure(status, body) {
+  if (status === 401) return true;
+  if (status !== 400 && status !== 403) return false;
+  return /invalid_grant|invalid_token|member not active/i.test(body);
+}
+
 async function getAccessToken({ forceRefresh = false } = {}) {
   if (!forceRefresh && cachedToken && Date.now() < cachedTokenExpiresAt) {
     return cachedToken;
@@ -29,7 +42,8 @@ async function getAccessToken({ forceRefresh = false } = {}) {
   const data = await response.json();
   cachedToken = data.access_token;
   // Refresh a little early so we never call the API with an expired token.
-  cachedTokenExpiresAt = Date.now() + (data.expires_in - 60) * 1000;
+  cachedTokenExpiresAt =
+    Date.now() + Math.min((data.expires_in - 60) * 1000, MAX_TOKEN_AGE_MS);
   return cachedToken;
 }
 
@@ -48,16 +62,16 @@ async function authedGet(path, params = {}, { _retried = false } = {}) {
       'User-Agent': USER_AGENT,
     },
   });
-  if (response.status === 401 && !_retried) {
-    // The anonymous token can get invalidated server-side before its
-    // advertised expiry (e.g. after a very large burst of requests, like a
-    // full-catalog sync) — get a fresh one and try exactly once more rather
-    // than failing the whole sync.
-    await getAccessToken({ forceRefresh: true });
-    return authedGet(path, params, { _retried: true });
-  }
   if (!response.ok) {
     const body = await response.text().catch(() => '');
+    if (!_retried && isAuthFailure(response.status, body)) {
+      // The anonymous token can get invalidated server-side before its
+      // advertised expiry (e.g. after a very large burst of requests, like a
+      // full-catalog sync) — get a fresh one and try exactly once more rather
+      // than failing the whole sync.
+      await getAccessToken({ forceRefresh: true });
+      return authedGet(path, params, { _retried: true });
+    }
     throw new Error(`AH request failed: HTTP ${response.status} for ${path} ${body.slice(0, 300)}`);
   }
   return response.json();

@@ -158,7 +158,7 @@ class _SchematicConverterViewState extends State<SchematicConverterView> {
           ConverterDropZone(
             onTap: _pickFile,
             icon: Icons.view_in_ar_outlined,
-            title: 'Click to choose a build',
+            title: 'Tap to pick a build',
             subtitle: 'SCHEM · LITEMATIC · SCHEMATIC · NBT · MCSTRUCTURE',
           )
         else

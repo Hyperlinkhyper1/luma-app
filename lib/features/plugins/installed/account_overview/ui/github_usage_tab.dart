@@ -28,18 +28,29 @@ class GithubUsageTab extends StatelessWidget {
     // when that leaves these at zero, fall back to the enhanced usage
     // endpoint's per-product totals rather than showing "0" next to a
     // breakdown table that clearly has activity.
-    final storageUsed = billing.storageGbUsed > 0
-        ? billing.storageGbUsed
-        : billing.sharedStorageQuantity;
     final minutesUsed =
         billing.minutesUsed > 0 ? billing.minutesUsed : billing.actionsQuantity;
 
+    // Storage is never taken from GitHub's own reporting — the legacy
+    // endpoint's monthly estimate is broken for many personal accounts, and
+    // the enhanced endpoint only reports what was billed beyond the
+    // allowance, not what is actually stored. This is instead summed
+    // directly from live Actions artifacts across private repositories (see
+    // GithubApi.fetchPrivateStorageUsage), so it stays accurate — including
+    // reading "0" correctly rather than "unknown".
+    final storageUsed = billing.privateStorageGbUsed;
+    final storagePartial = billing.privateStorageReposTotal >
+        billing.privateStorageReposCounted;
+
     // GitHub's own included figure wins; the user's recorded allowance is
-    // the fallback, never an override.
+    // the fallback, then GitHub's own published per-plan number for
+    // storage — the two other meters have no such public table to fall
+    // back on, so they stay "unknown" until the user fills them in.
     final minutesTotal = billing.minutesIncluded > 0
         ? billing.minutesIncluded
         : credentials?.minutesAllowance;
-    final storageTotal = credentials?.storageAllowanceGb;
+    final storageTotal = credentials?.storageAllowanceGb ??
+        githubStorageGbForPlan(repository.snapshot.profile?.planName);
     final copilotTotal = credentials?.copilotAllowance;
 
     return ListView(
@@ -84,7 +95,7 @@ class GithubUsageTab extends StatelessWidget {
               AccountPanel(
                 title: 'Storage',
                 icon: Icons.sd_storage_outlined,
-                subtitle: 'Packages and Actions artifacts',
+                subtitle: 'Live Actions artifacts, private repos only',
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -96,6 +107,15 @@ class GithubUsageTab extends StatelessWidget {
                       unit: 'GB',
                       onSetAllowance: () => showGithubAllowanceDialog(context),
                       formatter: (v) => formatDecimal(v, decimals: 2),
+                      caption: storagePartial
+                          ? 'Counted the ${billing.privateStorageReposCounted} '
+                              'most recently active of your '
+                              '${billing.privateStorageReposTotal} private '
+                              'repositories. Public repositories are never '
+                              'metered, so they are left out entirely.'
+                          : 'Summed directly from every private repository\'s '
+                              'Actions artifacts — GitHub has no API for '
+                              'Packages storage, so that is not included.',
                     ),
                     if (billing.bandwidthGbIncluded > 0 ||
                         billing.bandwidthGbUsed > 0) ...[

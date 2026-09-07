@@ -321,7 +321,7 @@ class _StocksTabState extends State<StocksTab> {
                         icon: Icons.show_chart_rounded,
                         title: 'No holdings yet',
                         subtitle:
-                            'Add a stock (e.g. AAPL, MSFT, ASML) to track its live value.',
+                            'Add a stock like AAPL or ASML to watch its price.',
                       )
                     : ListView.separated(
                         itemCount: holdings.length,

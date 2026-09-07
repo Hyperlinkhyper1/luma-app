@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:open_file/open_file.dart';
 
+import '../sftp/share/send_to_devices.dart';
 import 'gallery_details_panel.dart';
 import 'gallery_media.dart';
 import 'gallery_repository.dart';
@@ -98,6 +99,17 @@ class _GalleryViewerPageState extends State<GalleryViewerPage> {
                   title: item.name,
                   subtitle: '${_index + 1} of ${widget.items.length}',
                   onClose: () => Navigator.of(context).pop(),
+                  onSend: () => showSendToDevices(
+                    context,
+                    items: [
+                      SendCandidate(
+                        name: item.name,
+                        resolvePath: () => _pathFor(repo, item),
+                      ),
+                    ],
+                    suggestedFolder:
+                        item.folderName.isEmpty ? 'Photos' : item.folderName,
+                  ),
                   detailsOpen: _detailsOpen,
                   onDetails: () {
                     if (wide) {
@@ -359,6 +371,7 @@ class _TopBar extends StatelessWidget {
     required this.subtitle,
     required this.onClose,
     required this.onDetails,
+    required this.onSend,
     required this.detailsOpen,
   });
 
@@ -366,6 +379,7 @@ class _TopBar extends StatelessWidget {
   final String subtitle;
   final VoidCallback onClose;
   final VoidCallback onDetails;
+  final VoidCallback onSend;
   final bool detailsOpen;
 
   @override
@@ -417,6 +431,11 @@ class _TopBar extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+            IconButton(
+              tooltip: 'Send to my devices',
+              onPressed: onSend,
+              icon: const Icon(Icons.devices_rounded, color: Colors.white70),
             ),
             IconButton(
               // §1 aria-labels / §4 state-clarity: named, and the label says

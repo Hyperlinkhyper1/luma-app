@@ -2,7 +2,7 @@
   "id": "calculator",
   "name": "Calculator",
   "version": "1.0.0",
-  "description": "An everyday calculator that turns into a graphing one. Basic mode handles the daily sums; Advanced adds a scientific keypad and plots any number of functions of x on a pannable, zoomable graph you can tap to trace. The ☰ button in its header converts measurements — km to miles, °C to °F, kg to pounds, and more.",
+  "description": "A calculator for quick sums that can also draw graphs. Plus a handy converter for km to miles, C to F and more.",
   "icon": "functions",
   "category": "Utility",
   "tags": ["Utility", "Education"],

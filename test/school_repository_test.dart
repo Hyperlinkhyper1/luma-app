@@ -113,20 +113,9 @@ void main() {
     expect(citations.first.formattedText, contains('On Testing'));
   });
 
-  test('mind maps: nodes track parent/child links', () async {
-    final mapId = await repo.createMindMap('Photosynthesis');
-    final rootId = await repo.createNode(mapId, 'Root');
-    await repo.createNode(mapId, 'Child', parentId: rootId);
-
-    final nodes = await repo.watchNodes(mapId).first;
-    expect(nodes, hasLength(2));
-    expect(nodes.firstWhere((n) => n.label == 'Child').parentId, rootId);
-
-    await repo.deleteNode(rootId);
-    final afterDelete = await repo.watchNodes(mapId).first;
-    expect(afterDelete, hasLength(1));
-    expect(afterDelete.first.parentId, isNull); // orphaned, not cascade-deleted
-  });
+  // Mind maps moved out of School into the standalone Mind Map plugin; the
+  // tables stay in this schema only so the one-time import can read them.
+  // Their behaviour is covered by test/mind_map_repository_test.dart.
 
   test('study sessions: stopSession records duration', () async {
     final id = await repo.startSession();

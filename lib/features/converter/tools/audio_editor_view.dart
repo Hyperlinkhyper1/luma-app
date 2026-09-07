@@ -516,7 +516,7 @@ class _AudioEditorViewState extends State<AudioEditorView> {
           ConverterDropZone(
             onTap: _pickFile,
             icon: Icons.library_music_outlined,
-            title: 'Click to choose an audio file',
+            title: 'Tap to pick some audio',
             subtitle: 'MP3 · OGG · FLAC · M4A · WAV · AAC',
           )
         else ...[

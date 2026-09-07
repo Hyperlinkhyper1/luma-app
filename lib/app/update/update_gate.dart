@@ -24,7 +24,7 @@ Future<void> checkAndPromptForUpdate(
   if (!AppVersion.isReleaseBuild) {
     if (announceIfUpToDate && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Updates aren\'t available on dev builds.')),
+        const SnackBar(content: Text('No updates on test builds — this one is handmade.')),
       );
     }
     return;
@@ -36,7 +36,7 @@ Future<void> checkAndPromptForUpdate(
   if (info == null) {
     if (announceIfUpToDate) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('luma is up to date (${AppVersion.current}).')),
+        SnackBar(content: Text('You are all caught up (${AppVersion.current}). Nice.')),
       );
     }
     return;
@@ -50,8 +50,8 @@ Future<void> checkAndPromptForUpdate(
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'luma ${info.version} is available, but its download is still '
-            'being prepared. Try again in a few minutes.',
+            'luma ${info.version} is out, but the download is still '
+            'getting ready. Give it a few minutes and try again.',
           ),
         ),
       );
@@ -63,21 +63,21 @@ Future<void> checkAndPromptForUpdate(
     context: context,
     barrierDismissible: true,
     builder: (ctx) => AlertDialog(
-      title: Text('Update available — ${info.version}'),
+      title: Text('There is a new luma — ${info.version}'),
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 460, maxHeight: 380),
         child: SingleChildScrollView(
           child: info.notes.isEmpty
               ? Text(
-                  'A newer version of luma is ready to install.\n\n'
-                  'You are on ${AppVersion.current}.',
+                  'A fresh luma is ready to install.\n\n'
+                  'You have ${AppVersion.current}.',
                 )
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      "You're on ${AppVersion.current}. What's new in ${info.version}:",
+                      "You have ${AppVersion.current}. Here is what is new in ${info.version}:",
                       style: TextStyle(
                         fontSize: 12.5,
                         color: Theme.of(ctx).textTheme.bodySmall?.color,
@@ -96,7 +96,7 @@ Future<void> checkAndPromptForUpdate(
         ),
         FilledButton(
           onPressed: () => Navigator.of(ctx).pop(true),
-          child: const Text('Install & restart'),
+          child: const Text('Install it'),
         ),
       ],
     ),

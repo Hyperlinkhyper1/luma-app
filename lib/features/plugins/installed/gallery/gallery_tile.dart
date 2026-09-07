@@ -98,12 +98,23 @@ class GalleryTile extends StatelessWidget {
     required this.item,
     required this.repository,
     required this.onTap,
+    this.onLongPress,
+    this.selected = false,
+    this.selecting = false,
     this.pixels = 256,
   });
 
   final GalleryItem item;
   final GalleryRepository repository;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+
+  /// Part of the current selection. Only meaningful while [selecting].
+  final bool selected;
+
+  /// The grid is in selection mode, so every tile shows its tick.
+  final bool selecting;
+
   final int pixels;
 
   @override
@@ -112,17 +123,42 @@ class GalleryTile extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: Stack(
           fit: StackFit.expand,
           children: [
             Container(color: luma.surface),
-            GalleryThumbnail(
-              item: item,
-              repository: repository,
-              pixels: pixels,
+            Padding(
+              // The picture shrinks inside its square while selected, so a
+              // wall of thumbnails still reads as picked at a glance — a tick
+              // alone disappears against a busy photo.
+              padding: EdgeInsets.all(selected ? 6 : 0),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(selected ? 6 : 0),
+                child: GalleryThumbnail(
+                  item: item,
+                  repository: repository,
+                  pixels: pixels,
+                ),
+              ),
             ),
+            if (selecting)
+              Positioned(
+                left: 4,
+                top: 4,
+                child: Icon(
+                  selected
+                      ? Icons.check_circle_rounded
+                      : Icons.radio_button_unchecked_rounded,
+                  size: 20,
+                  color: selected ? luma.accent : Colors.white,
+                  shadows: const [
+                    Shadow(color: Colors.black54, blurRadius: 4),
+                  ],
+                ),
+              ),
             if (item.isVideo)
               Positioned(
                 right: 4,

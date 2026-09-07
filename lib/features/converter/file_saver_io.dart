@@ -12,9 +12,10 @@ Future<SaveResult> saveConvertedFile({
   required String suggestedName,
   required String mimeType,
   required List<String> extensions,
+  String? dialogTitle,
 }) async {
   final path = await FilePicker.saveFile(
-    dialogTitle: 'Save converted image',
+    dialogTitle: dialogTitle ?? 'Save converted image',
     fileName: suggestedName,
     type: FileType.custom,
     allowedExtensions: extensions,

@@ -74,7 +74,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("What's using space?"), findsOneWidget);
-    expect(find.text('No counted data yet.'), findsOneWidget);
+    expect(find.text('Nothing counted yet.'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

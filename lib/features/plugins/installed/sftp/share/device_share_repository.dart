@@ -176,7 +176,12 @@ class DeviceShareRepository extends ChangeNotifier implements PeerShareDelegate 
   /// Copies files into the shared folder. They reach the other devices on
   /// their own — immediately if a device is connected, on its next sighting
   /// otherwise.
-  Future<void> addFiles(List<File> sources, {String? subdirectory}) async {
+  Future<void> addFiles(
+    List<File> sources, {
+    String? subdirectory,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    var done = 0;
     for (final source in sources) {
       try {
         await folder.importFile(source, subdirectory: subdirectory);
@@ -184,6 +189,7 @@ class DeviceShareRepository extends ChangeNotifier implements PeerShareDelegate 
         final name = source.path.split(Platform.pathSeparator).last;
         _lastError = 'Could not add $name: $e';
       }
+      onProgress?.call(++done, sources.length);
     }
     broadcastIndex();
     _notify();

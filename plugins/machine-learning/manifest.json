@@ -1,0 +1,9 @@
+{
+  "id": "machine-learning",
+  "name": "Machine Learning",
+  "version": "1.0.0",
+  "description": "Draw a shape and watch it teach itself to walk 50 metres. Nothing to set up, nothing leaves your device.",
+  "icon": "psychology",
+  "category": "Utility",
+  "details": "Learning you can actually watch happen. The first lab is the Creature Lab: draw any body on the pad - a stick figure, a blob, a dog - and luma finds the line running through the middle of it and turns that into bones, joints and a set of little motors. Then it starts breeding a way of walking.\n\nSixty creatures try at once, each one gets twenty-five seconds to get as far down the course as it can, and the ones that got furthest have children. Generation one falls over. A few hundred generations later something is hopping, shuffling or properly striding towards the 50 metre line. The graph shows the best and the average of every generation, and you can tap anywhere on it to watch that generation walk again.\n\nThe physics plays fair: a joint only has so much strength, the ground has normal friction, and nothing can shift its own centre of mass without pushing off something. So a creature that gets somewhere really did learn to walk. All of it runs on your own machine, spread over background workers so the animation stays smooth."
+}

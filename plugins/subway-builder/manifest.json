@@ -2,7 +2,7 @@
   "id": "subway-builder",
   "name": "Subway Builder",
   "version": "1.0.0",
-  "description": "A transit simulator on the real world: pick any city on Earth and build metro, tram, bus and train networks on a live 3D OpenStreetMap map. Trains only call at real stations and run on tracks that really exist; buses and trams pathfind along real streets. A commuter simulation fed by real land use decides, trip by trip, whether your network beats the car.",
+  "description": "Build trams, metros and buses in any city on Earth, on a real map. Real streets, real stations - will people ditch the car for you?",
   "icon": "directions_subway",
   "category": "Games",
   "tags": ["Games", "Simulation"],

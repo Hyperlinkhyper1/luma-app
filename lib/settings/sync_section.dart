@@ -348,6 +348,16 @@ class _SignedInBody extends StatelessWidget {
                     style: TextStyle(color: luma.textSecondary, fontSize: 13)),
               ),
               const Spacer(),
+              // Both routes out of the account sit together, but the
+              // irreversible one is last and the only one coloured as danger.
+              TextButton(
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  builder: (_) => _DataDeletionRequestDialog(sync: sync),
+                ),
+                child: Text('Ask to delete my data…',
+                    style: TextStyle(color: luma.textSecondary, fontSize: 13)),
+              ),
               TextButton(
                 onPressed: () => showDialog<void>(
                   context: context,
@@ -359,6 +369,7 @@ class _SignedInBody extends StatelessWidget {
               ),
             ],
           ),
+          _DeletionRequestStatus(sync: sync),
         ] else ...[
           const SizedBox(height: 4),
           Text(
@@ -830,6 +841,233 @@ class _SessionsDialogState extends State<_SessionsDialog> {
       default:
         return Icons.devices_other_rounded;
     }
+  }
+}
+
+/// The strip under the account actions that says where a filed data-deletion
+/// request stands. Nothing at all while there is no request — this is not a
+/// permanent piece of chrome.
+///
+/// Read straight off [SyncService.dataDeletionRequest], which rides along with
+/// the /account snapshot, so the operator's decision appears on the next sync
+/// without this widget polling anything.
+class _DeletionRequestStatus extends StatelessWidget {
+  const _DeletionRequestStatus({required this.sync});
+
+  final SyncService sync;
+
+  @override
+  Widget build(BuildContext context) {
+    final request = sync.dataDeletionRequest;
+    if (request == null || request.status == DataDeletionRequest.statusAccepted) {
+      return const SizedBox.shrink();
+    }
+    final luma = context.luma;
+    final pending = request.isPending;
+    final tint = pending ? luma.warning : luma.textMuted;
+    final when = DateFormat.yMMMd().add_jm();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: tint.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: tint.withValues(alpha: 0.28)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              pending
+                  ? Icons.hourglass_top_rounded
+                  : Icons.do_not_disturb_on_outlined,
+              size: 16,
+              color: tint,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    pending
+                        ? 'Data deletion requested — waiting for the server '
+                            'operator to decide.'
+                        : 'The server operator declined your data-deletion '
+                            'request.',
+                    style: TextStyle(
+                        color: luma.textPrimary, fontSize: 13, height: 1.4),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    pending
+                        ? 'Sent ${when.format(request.createdAt)}. Nothing has '
+                            'been deleted yet.'
+                        : [
+                            'Decided '
+                                '${when.format(request.decidedAt ?? request.createdAt)}.',
+                            if (request.adminNote != null)
+                              'They wrote: “${request.adminNote}”',
+                          ].join(' '),
+                    style: TextStyle(
+                        color: luma.textMuted, fontSize: 12, height: 1.45),
+                  ),
+                ],
+              ),
+            ),
+            if (pending)
+              TextButton(
+                onPressed: () => _withdraw(context),
+                child: Text('Withdraw',
+                    style:
+                        TextStyle(color: luma.textSecondary, fontSize: 13)),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _withdraw(BuildContext context) async {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    try {
+      await sync.cancelDataDeletionRequest();
+      messenger?.showSnackBar(
+          const SnackBar(content: Text('Deletion request withdrawn.')));
+    } catch (e) {
+      messenger?.showSnackBar(SnackBar(content: Text('$e')));
+    }
+  }
+}
+
+/// Asks the server's operator to delete everything this account has on the
+/// server — the route for someone who wants their data gone but wants (or is
+/// owed) a human decision rather than the instant, password-confirmed
+/// [_DeleteAccountDialog].
+///
+/// Files a request with the user's reason; it lands in the admin dashboard's
+/// Inbox, and nothing is deleted until the operator accepts it.
+class _DataDeletionRequestDialog extends StatefulWidget {
+  const _DataDeletionRequestDialog({required this.sync});
+  final SyncService sync;
+
+  @override
+  State<_DataDeletionRequestDialog> createState() =>
+      _DataDeletionRequestDialogState();
+}
+
+class _DataDeletionRequestDialogState
+    extends State<_DataDeletionRequestDialog> {
+  final _reason = TextEditingController();
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _reason.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_reason.text.trim().isEmpty) {
+      setState(() => _error = 'Tell the operator why, so they can decide.');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await widget.sync.requestDataDeletion(_reason.text.trim());
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(const SnackBar(
+            content: Text('Request sent to the server operator.')));
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = '$e';
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final pending = widget.sync.dataDeletionRequest?.isPending ?? false;
+
+    return AlertDialog(
+      backgroundColor: luma.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: luma.border),
+      ),
+      title: Text('Ask to delete my data',
+          style: TextStyle(color: luma.textPrimary)),
+      content: SizedBox(
+        width: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              pending
+                  ? 'You already have a request waiting for a decision. '
+                      'Withdraw it from the Sync & account panel if you want '
+                      'to send a different one.'
+                  : 'This sends a request to the server operator to delete '
+                      'your account and every synced snapshot the server '
+                      'holds. Nothing is deleted until they accept it, and '
+                      'the data on your devices is never touched.',
+              style: TextStyle(
+                  color: luma.textSecondary, fontSize: 14, height: 1.5),
+            ),
+            if (!pending) ...[
+              const SizedBox(height: 16),
+              TextField(
+                controller: _reason,
+                enabled: !_busy,
+                autofocus: true,
+                minLines: 3,
+                maxLines: 6,
+                maxLength: 2000,
+                textCapitalization: TextCapitalization.sentences,
+                style: TextStyle(color: luma.textPrimary, fontSize: 14),
+                decoration: _fieldDecoration(context, 'Why?',
+                    hint: 'They read this before deciding.'),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 4),
+                Semantics(
+                  liveRegion: true,
+                  child: Text(_error!,
+                      style: TextStyle(
+                          color: Colors.red.shade400, fontSize: 12.5)),
+                ),
+              ],
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.of(context).pop(),
+          child: Text(pending ? 'Close' : 'Cancel',
+              style: TextStyle(color: luma.textSecondary)),
+        ),
+        if (!pending)
+          LumaPrimaryButton(
+            label: 'Send request',
+            loading: _busy,
+            onTap: _busy ? null : _submit,
+          ),
+      ],
+    );
   }
 }
 
