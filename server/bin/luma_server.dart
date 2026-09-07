@@ -2,11 +2,15 @@ import 'dart:io';
 
 import 'package:shelf/shelf_io.dart' as shelf_io;
 
+import 'package:luma_sync_server/ai_model_catalog.dart';
+import 'package:luma_sync_server/ai_usage_store.dart';
 import 'package:luma_sync_server/api.dart';
 import 'package:luma_sync_server/chat_store.dart';
 import 'package:luma_sync_server/family_store.dart';
 import 'package:luma_sync_server/mail.dart';
+import 'package:luma_sync_server/recipe_store.dart';
 import 'package:luma_sync_server/store.dart';
+import 'package:luma_sync_server/subway_store.dart';
 
 Future<void> main() async {
   final config = ServerConfig.fromEnvironment(Platform.environment);
@@ -27,7 +31,12 @@ Future<void> main() async {
   final store = await Store.open(config.dataDir);
   final familyStore = await FamilyStore.open(config.dataDir);
   final chatStore = await ChatStore.open(config.dataDir);
-  final api = Api(store, config, Mailer(mailConfig), familyStore, chatStore);
+  final aiUsage = await AiUsageStore.open(config.dataDir);
+  final subwayStore = await SubwayStore.open(config.dataDir);
+  final recipeStore = await RecipeStore.open(config.dataDir);
+  final aiCatalog = await AiModelCatalogStore.open(config.dataDir);
+  final api = Api(store, config, Mailer(mailConfig), familyStore, chatStore,
+      aiUsage, subwayStore, recipeStore, aiCatalog);
 
   final server = await shelf_io.serve(
     api.handler,
@@ -43,6 +52,11 @@ Future<void> main() async {
       '[luma] registration: ${config.allowRegistration ? 'open' : 'closed'}');
   stdout.writeln('[luma] plan quotas: core 5 MB · orbit 15 MB · nova 30 MB');
   stdout.writeln('[luma] accounts: ${store.usersById.length}');
+  stdout.writeln('[luma] ai leaderboard: ${aiCatalog.modelCount} models'
+      '${config.artificialAnalysisConfigured ? "" : " (no LUMA_AA_API_KEY: "
+          "reasoning/speed/effort columns stay empty)"}');
+  stdout.writeln('[luma] admin deploy button: '
+      '${config.repoPathConfigured ? "configured" : "disabled (no LUMA_REPO_PATH)"}');
 
   // Graceful shutdown so in-flight writes complete.
   ProcessSignal.sigint.watch().listen((_) async {
