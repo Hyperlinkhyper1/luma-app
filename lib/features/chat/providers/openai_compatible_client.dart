@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../../sync/server_access.dart';
 import 'ai_client.dart';
 
 /// Shared implementation for providers that speak the OpenAI-style
@@ -15,6 +16,8 @@ class OpenAiCompatibleClient implements AiClient {
     required this.providerLabel,
     this.agentsBaseUrl,
     this.maxOutputTokens = 1024,
+    this.reasoningEffort,
+    this.viaLumaServer = false,
   });
 
   final String baseUrl;
@@ -28,6 +31,19 @@ class OpenAiCompatibleClient implements AiClient {
   /// `/v1/agents/completions`), if this provider supports them. When null,
   /// an [agentId] passed to [chat] is ignored.
   final String? agentsBaseUrl;
+
+  /// Sent as `reasoning_effort` ("low"/"medium"/"high") on every request,
+  /// for providers/models that support a thinking-effort knob (currently
+  /// only Gemini, via [GoogleClient]'s Pulsar mode). Omitted from the
+  /// request body entirely when null, so providers that don't recognize
+  /// the field never see it.
+  final String? reasoningEffort;
+
+  /// True for the subclasses that route through the luma server's shared-key
+  /// proxy ([MistralProxyClient], [GoogleProxyClient]) rather than straight
+  /// to the provider. Those requests only leave the device once the account
+  /// is approved — see [GatedServerClient].
+  final bool viaLumaServer;
 
   static const _maxToolHops = 5;
 
@@ -107,6 +123,28 @@ class OpenAiCompatibleClient implements AiClient {
     }
   }
 
+  /// Extracts a human-readable error message from an error response body —
+  /// either the OpenAI shape `{"error": {"message": ...}}`, the sync
+  /// server's `{"error": code, "message": ...}`, or Google's OpenAI-compat
+  /// endpoint, which wraps that same object shape in a top-level JSON
+  /// array (`[{"error": {...}}]`) — easy to miss since every other
+  /// provider here returns a bare object.
+  static String? _messageFromBody(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      final obj =
+          decoded is List && decoded.isNotEmpty ? decoded.first : decoded;
+      if (obj is Map) {
+        final err = obj['error'];
+        if (err is Map && err['message'] is String) {
+          return err['message'] as String;
+        }
+        if (obj['message'] is String) return obj['message'] as String;
+      }
+    } catch (_) {}
+    return null;
+  }
+
   Map<String, dynamic> _decodeArgs(Object? raw) {
     if (raw is String) {
       try {
@@ -130,12 +168,15 @@ class OpenAiCompatibleClient implements AiClient {
       'messages': messages,
       'max_tokens': maxOutputTokens,
       if (tools.isNotEmpty) 'tools': tools,
+      if (reasoningEffort != null) 'reasoning_effort': reasoningEffort,
     };
     final url = agentId != null ? agentsBaseUrl! : baseUrl;
 
+    final client =
+        viaLumaServer ? GatedServerClient() : http.Client();
     final http.Response res;
     try {
-      res = await http
+      res = await client
           .post(
             Uri.parse(url),
             headers: {
@@ -145,29 +186,27 @@ class OpenAiCompatibleClient implements AiClient {
             body: jsonEncode(body),
           )
           .timeout(const Duration(seconds: 30));
+    } on ServerAccessDeniedException catch (e) {
+      throw AiAuthError(e.message);
     } catch (e) {
       throw AiNetworkError(
           "Couldn't reach $providerLabel — check your connection.\n($e)");
+    } finally {
+      client.close();
     }
 
     if (res.statusCode == 401) {
       throw AiAuthError('$providerLabel rejected the API key. Check it in Settings.');
     }
     if (res.statusCode == 429) {
-      throw AiRateLimitError('Too many requests — try again shortly.');
+      // Surface the server's own wording when it explains the limit (e.g.
+      // the sync server's usage budgets) instead of a generic message.
+      throw AiRateLimitError(_messageFromBody(res.body) ??
+          'Too many requests — try again shortly.');
     }
     if (res.statusCode != 200) {
-      String message = '$providerLabel returned an error (${res.statusCode}).';
-      try {
-        final decoded = jsonDecode(res.body) as Map<String, dynamic>;
-        final err = decoded['error'];
-        if (err is Map && err['message'] is String) {
-          message = err['message'] as String;
-        }
-      } catch (_) {
-        // Keep the generic message above.
-      }
-      throw AiApiError(message);
+      throw AiApiError(_messageFromBody(res.body) ??
+          '$providerLabel returned an error (${res.statusCode}).');
     }
 
     final decoded = jsonDecode(res.body) as Map<String, dynamic>;
