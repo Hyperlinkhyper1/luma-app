@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spring Festival at the Five-Story Pagoda — Haiku 4.5</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #000;
+            font-family: 'Monaco', 'Courier New', monospace;
+        }
+        canvas {
+            display: block;
+        }
+        #hud {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: rgba(255, 255, 255, 0.85);
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            pointer-events: none;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.9);
+            background: rgba(0, 0, 0, 0.3);
+            padding: 12px 16px;
+            border-radius: 6px;
+        }
+        .hud-line {
+            margin: 2px 0;
+        }
+        .hud-title {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 8px;
+            color: #E8B86D;
+        }
+        #controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: rgba(255, 255, 255, 0.7);
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 11px;
+            line-height: 1.5;
+            pointer-events: auto;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px 14px;
+            border-radius: 6px;
+        }
+        .control-line {
+            margin: 2px 0;
+        }
+    </style>
+</head>
+<body>
+<div id="hud">
+    <div class="hud-title">VOXEL GARDEN</div>
+    <div class="hud-line"><span id="voxel-count">24k voxels</span> | <span id="fps">60 FPS</span></div>
+    <div class="hud-line" style="margin-top: 8px; opacity: 0.6;">Click lanterns • Q/E day/night</div>
+</div>
+
+<div id="controls">
+    <div class="control-line">HAIKU 4.5 BENCHMARK</div>
+    <div class="control-line" style="opacity: 0.7; margin-top: 6px;">Orbit: click + drag</div>
+    <div class="control-line" style="opacity: 0.7;">Q/E: cycle time</div>
+</div>
+
+<script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+<script type="importmap">
+{
+    "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ============================================================================
+// SETUP
+// ============================================================================
+
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 15000);
+const scene = new THREE.Scene();
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowShadowMap;
+renderer.shadowMap.mapSize = new THREE.Vector2(2048, 2048);
+document.body.appendChild(renderer.domElement);
+
+// ============================================================================
+// COLOR PALETTE
+// ============================================================================
+
+const palette = {
+    vermillion: 0xC73E1D,
+    gold: 0xE8B86D,
+    deepTeak: 0x4A2C1A,
+    jade1: 0x2D6A4F,
+    jade2: 0x40916C,
+    sakura1: 0xFFB7C5,
+    sakura2: 0xFF8FAB,
+    sakura3: 0xFFE5EC,
+    stone: 0x9AA0A6,
+    pond: 0x7ED6DF,
+    moss: 0x606C38,
+    skyDayLight: 0x87CEEB,
+    skyDayDark: 0xE0F6FF,
+    skyNight: 0x0a0e27,
+};
+
+// ============================================================================
+// GLOBAL STATE
+// ============================================================================
+
+let time = 0;
+let voxelCount = 0;
+let frameCount = 0;
+let fps = 60;
+let lastTime = Date.now();
+let dayNightTime = 0; // 0 = dawn, 0.25 = day, 0.5 = dusk, 0.75 = night, 1 = dawn
+const lanternStates = new Map();
+const pagodaDoorStates = new Map();
+
+// ============================================================================
+// SKY GRADIENT
+// ============================================================================
+
+function createSkyGradient(timeOfDay) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+
+    let topColor, bottomColor;
+
+    if (timeOfDay < 0.25) {
+        // Dawn
+        const t = timeOfDay / 0.25;
+        topColor = lerpColor(palette.skyNight, 0x1a3a52, t);
+        bottomColor = lerpColor(0x0f1419, palette.skyDayDark, t);
+    } else if (timeOfDay < 0.5) {
+        // Day
+        topColor = palette.skyDayLight;
+        bottomColor = palette.skyDayDark;
+    } else if (timeOfDay < 0.75) {
+        // Dusk
+        const t = (timeOfDay - 0.5) / 0.25;
+        topColor = lerpColor(palette.skyDayLight, 0xFF6B35, t);
+        bottomColor = lerpColor(palette.skyDayDark, 0xFF8C42, t);
+    } else {
+        // Night
+        const t = (timeOfDay - 0.75) / 0.25;
+        topColor = lerpColor(0xFF8C42, palette.skyNight, t);
+        bottomColor = lerpColor(0xFF6B35, 0x0f1419, t);
+    }
+
+    const gradient = ctx.createLinearGradient(0, 0, 0, 256);
+    gradient.addColorStop(0, colorToString(topColor));
+    gradient.addColorStop(1, colorToString(bottomColor));
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 256, 256);
+
+    return new THREE.CanvasTexture(canvas);
+}
+
+function colorToString(c) {
+    return '#' + c.toString(16).padStart(6, '0');
+}
+
+function lerpColor(c1, c2, t) {
+    const r1 = (c1 >> 16) & 255;
+    const g1 = (c1 >> 8) & 255;
+    const b1 = c1 & 255;
+
+    const r2 = (c2 >> 16) & 255;
+    const g2 = (c2 >> 8) & 255;
+    const b2 = c2 & 255;
+
+    const r = Math.round(r1 + (r2 - r1) * t);
+    const g = Math.round(g1 + (g2 - g1) * t);
+    const b = Math.round(b1 + (b2 - b1) * t);
+
+    return (r << 16) | (g << 8) | b;
+}
+
+// ============================================================================
+// LIGHTING
+// ============================================================================
+
+const ambientLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+scene.add(ambientLight);
+
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+directionalLight.position.set(100, 150, 100);
+directionalLight.castShadow = true;
+directionalLight.shadow.camera.left = -300;
+directionalLight.shadow.camera.right = 300;
+directionalLight.shadow.camera.top = 300;
+directionalLight.shadow.camera.bottom = -300;
+directionalLight.shadow.camera.near = 0.5;
+directionalLight.shadow.camera.far = 500;
+scene.add(directionalLight);
+
+// Lantern lights
+const lanternPositions = [
+    { x: -50, y: 20, z: -50 },
+    { x: 50, y: 20, z: -50 },
+    { x: -50, y: 20, z: 50 },
+    { x: 50, y: 20, z: 50 },
+];
+
+const lanternLights = lanternPositions.map((pos, idx) => {
+    const light = new THREE.PointLight(0xFFA500, 1.5, 120);
+    light.position.set(pos.x, pos.y, pos.z);
+    light.castShadow = true;
+    scene.add(light);
+    lanternStates.set(idx, true);
+    return light;
+});
+
+// ============================================================================
+// VOXEL UTILITIES
+// ============================================================================
+
+function createVoxelMesh(voxels, material) {
+    if (voxels.length === 0) return null;
+
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const mesh = new THREE.InstancedMesh(geometry, material, voxels.length);
+
+    voxels.forEach((v, i) => {
+        const m = new THREE.Matrix4();
+        m.setPosition(v.x, v.y, v.z);
+        mesh.setMatrixAt(i, m);
+    });
+
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    voxelCount += voxels.length;
+
+    return mesh;
+}
+
+// ============================================================================
+// TERRAIN & GARDEN
+// ============================================================================
+
+function createTerrain() {
+    const voxels = [];
+    const size = 64;
+    const height = 2;
+
+    for (let x = -size; x < size; x++) {
+        for (let z = -size; z < size; z++) {
+            const dx = Math.abs(x);
+            const dz = Math.abs(z);
+            const dist = Math.sqrt(dx * dx + dz * dz);
+            let h = height;
+
+            if (dist > size - 5) {
+                h += Math.max(0, (dist - size + 5) * 0.3);
+            }
+
+            for (let y = 0; y < h; y++) {
+                if (Math.random() < 0.85) {
+                    voxels.push({ x, y, z });
+                }
+            }
+        }
+    }
+
+    const material = new THREE.MeshStandardMaterial({
+        color: palette.jade2,
+        roughness: 0.8,
+        metalness: 0.1,
+    });
+
+    return createVoxelMesh(voxels, material);
+}
+
+// ============================================================================
+// PAGODA CONSTRUCTION
+// ============================================================================
+
+function createPagoda() {
+    const pagodaGroup = new THREE.Group();
+
+    // Base platform
+    const baseMaterial = new THREE.MeshStandardMaterial({
+        color: palette.stone,
+        roughness: 0.7,
+    });
+    const baseVoxels = [];
+    for (let x = -25; x < 25; x++) {
+        for (let z = -25; z < 25; z++) {
+            baseVoxels.push({ x, y: 0, z });
+        }
+    }
+    const baseMesh = createVoxelMesh(baseVoxels, baseMaterial);
+    if (baseMesh) pagodaGroup.add(baseMesh);
+
+    // Pagoda floors
+    const pillarsColor = palette.vermillion;
+    const pillarMaterial = new THREE.MeshStandardMaterial({
+        color: pillarsColor,
+        roughness: 0.5,
+        metalness: 0.3,
+    });
+
+    const roofMaterial = new THREE.MeshStandardMaterial({
+        color: palette.jade1,
+        roughness: 0.6,
+        metalness: 0.4,
+    });
+
+    const goldMaterial = new THREE.MeshStandardMaterial({
+        color: palette.gold,
+        roughness: 0.4,
+        metalness: 0.8,
+    });
+
+    let floorHeight = 2;
+    const floorSizes = [20, 16, 12, 8, 4];
+
+    for (let floor = 0; floor < 5; floor++) {
+        const size = floorSizes[floor];
+        const nextSize = floor < 4 ? floorSizes[floor + 1] : 2;
+
+        // Floor platform
+        const floorVoxels = [];
+        for (let x = -size; x < size; x++) {
+            for (let z = -size; z < size; z++) {
+                if (Math.abs(x) < size - 1 || Math.abs(z) < size - 1) {
+                    floorVoxels.push({ x, y: floorHeight, z });
+                }
+            }
+        }
+
+        // Pillars at corners
+        const pillarVoxels = [];
+        const corners = [
+            [-size + 2, -size + 2],
+            [size - 3, -size + 2],
+            [-size + 2, size - 3],
+            [size - 3, size - 3],
+        ];
+
+        const pillarHeight = Math.floor(8 - floor * 1.2);
+        corners.forEach(([px, pz]) => {
+            for (let py = floorHeight + 1; py < floorHeight + pillarHeight; py++) {
+                pillarVoxels.push({ x: px, y: py, z: pz });
+            }
+        });
+
+        // Add floor
+        if (floorVoxels.length > 0) {
+            const floorMesh = createVoxelMesh(floorVoxels, roofMaterial);
+            if (floorMesh) pagodaGroup.add(floorMesh);
+        }
+
+        // Add pillars
+        if (pillarVoxels.length > 0) {
+            const pillarMesh = createVoxelMesh(pillarVoxels, pillarMaterial);
+            if (pillarMesh) pagodaGroup.add(pillarMesh);
+        }
+
+        // Roof structure
+        const roofVoxels = [];
+        for (let x = -size; x < size; x++) {
+            for (let z = -size; z < size; z++) {
+                const dx = Math.abs(x);
+                const dz = Math.abs(z);
+                const edgeDist = Math.max(dx, dz);
+
+                if (edgeDist >= size - 2 && edgeDist < size + 1) {
+                    const roofHeight = Math.max(0, 3 - Math.abs(edgeDist - size));
+                    for (let ry = 0; ry < roofHeight; ry++) {
+                        roofVoxels.push({
+                            x,
+                            y: floorHeight + pillarHeight - 1 + ry,
+                            z,
+                        });
+                    }
+                }
+            }
+        }
+
+        if (roofVoxels.length > 0) {
+            const roofMesh = createVoxelMesh(roofVoxels, roofMaterial);
+            if (roofMesh) pagodaGroup.add(roofMesh);
+        }
+
+        floorHeight += pillarHeight + 2;
+    }
+
+    // Finial at top
+    const finialVoxels = [];
+    const finialStart = floorHeight;
+    for (let i = 0; i < 5; i++) {
+        finialVoxels.push({ x: 0, y: finialStart + i, z: 0 });
+    }
+    if (finialVoxels.length > 0) {
+        const finialMesh = createVoxelMesh(finialVoxels, goldMaterial);
+        if (finialMesh) pagodaGroup.add(finialMesh);
+    }
+
+    return pagodaGroup;
+}
+
+// ============================================================================
+// BRIDGE & WATER FEATURES
+// ============================================================================
+
+function createBridge() {
+    const bridgeGroup = new THREE.Group();
+
+    const bridgeMaterial = new THREE.MeshStandardMaterial({
+        color: palette.deepTeak,
+        roughness: 0.7,
+    });
+
+    // Bridge deck
+    const bridgeVoxels = [];
+    for (let x = -20; x < 20; x++) {
+        for (let z = -3; z < 3; z++) {
+            bridgeVoxels.push({ x, y: 3, z });
+        }
+    }
+
+    const bridgeMesh = createVoxelMesh(bridgeVoxels, bridgeMaterial);
+    if (bridgeMesh) bridgeGroup.add(bridgeMesh);
+
+    // Bridge railings
+    const railingVoxels = [];
+    for (let x = -20; x < 20; x++) {
+        railingVoxels.push({ x, y: 4, z: -3 });
+        railingVoxels.push({ x, y: 4, z: 3 });
+    }
+    if (railingVoxels.length > 0) {
+        const railingMesh = createVoxelMesh(railingVoxels, bridgeMaterial);
+        if (railingMesh) bridgeGroup.add(railingMesh);
+    }
+
+    bridgeGroup.position.z = 40;
+    return bridgeGroup;
+}
+
+function createPond() {
+    const pondGeometry = new THREE.BoxGeometry(80, 2, 60);
+    const pondMaterial = new THREE.MeshStandardMaterial({
+        color: palette.pond,
+        roughness: 0.3,
+        metalness: 0.2,
+    });
+    const pond = new THREE.Mesh(pondGeometry, pondMaterial);
+    pond.position.y = 0.5;
+    pond.position.z = 30;
+    pond.receiveShadow = true;
+    return pond;
+}
+
+// ============================================================================
+// TREES
+// ============================================================================
+
+function createTree(x, z, type) {
+    const treeGroup = new THREE.Group();
+
+    const trunkMaterial = new THREE.MeshStandardMaterial({
+        color: 0x8B4513,
+        roughness: 0.8,
+    });
+
+    // Trunk
+    const trunkVoxels = [];
+    const trunkHeight = Math.floor(8 + Math.random() * 4);
+    for (let y = 0; y < trunkHeight; y++) {
+        if (Math.random() < 0.9) {
+            trunkVoxels.push({ x: 0, y, z: 0 });
+        }
+    }
+
+    const trunkMesh = createVoxelMesh(trunkVoxels, trunkMaterial);
+    if (trunkMesh) treeGroup.add(trunkMesh);
+
+    // Foliage
+    let foliageColor;
+    if (type === 'sakura') {
+        foliageColor = palette.sakura2;
+    } else if (type === 'pine') {
+        foliageColor = palette.jade1;
+    } else {
+        foliageColor = 0xFF6B35; // Maple autumn
+    }
+
+    const foliageMaterial = new THREE.MeshStandardMaterial({
+        color: foliageColor,
+        roughness: 0.6,
+    });
+
+    const foliageVoxels = [];
+    const foliageRadius = 6 + Math.random() * 3;
+    for (let fx = -foliageRadius; fx < foliageRadius; fx++) {
+        for (let fz = -foliageRadius; fz < foliageRadius; fz++) {
+            for (let fy = trunkHeight - 2; fy < trunkHeight + 6; fy++) {
+                const dist = Math.sqrt(fx * fx + fz * fz);
+                if (dist < foliageRadius && Math.random() < 0.6) {
+                    foliageVoxels.push({ x: fx, y: fy, z: fz });
+                }
+            }
+        }
+    }
+
+    if (foliageVoxels.length > 0) {
+        const foliageMesh = createVoxelMesh(foliageVoxels, foliageMaterial);
+        if (foliageMesh) treeGroup.add(foliageMesh);
+    }
+
+    treeGroup.position.set(x, 0, z);
+    return treeGroup;
+}
+
+// ============================================================================
+// LANTERNS
+// ============================================================================
+
+function createLantern(x, z) {
+    const lanternGroup = new THREE.Group();
+
+    const lanternMaterial = new THREE.MeshStandardMaterial({
+        color: 0xFFD700,
+        roughness: 0.3,
+        emissive: 0xFFA500,
+        emissiveIntensity: 0.5,
+    });
+
+    const postMaterial = new THREE.MeshStandardMaterial({
+        color: palette.deepTeak,
+        roughness: 0.7,
+    });
+
+    // Post
+    const postGeometry = new THREE.BoxGeometry(0.5, 6, 0.5);
+    const post = new THREE.Mesh(postGeometry, postMaterial);
+    post.position.y = 3;
+    post.castShadow = true;
+    lanternGroup.add(post);
+
+    // Lantern box
+    const lanternGeometry = new THREE.BoxGeometry(2, 2.5, 2);
+    const lantern = new THREE.Mesh(lanternGeometry, lanternMaterial);
+    lantern.position.y = 7;
+    lantern.castShadow = true;
+    lanternGroup.add(lantern);
+
+    lanternGroup.position.set(x, 0, z);
+    lanternGroup.userData.lanternIndex = lanternPositions.findIndex(p => p.x === x && p.z === z);
+
+    return lanternGroup;
+}
+
+// ============================================================================
+// TORII GATE
+// ============================================================================
+
+function createToriiGate() {
+    const toriiGroup = new THREE.Group();
+
+    const toriiMaterial = new THREE.MeshStandardMaterial({
+        color: palette.vermillion,
+        roughness: 0.5,
+    });
+
+    // Vertical posts
+    const postGeometry = new THREE.BoxGeometry(1, 8, 1);
+    const post1 = new THREE.Mesh(postGeometry, toriiMaterial);
+    post1.position.set(-8, 4, 0);
+    post1.castShadow = true;
+    toriiGroup.add(post1);
+
+    const post2 = new THREE.Mesh(postGeometry, toriiMaterial);
+    post2.position.set(8, 4, 0);
+    post2.castShadow = true;
+    toriiGroup.add(post2);
+
+    // Horizontal beam
+    const beamGeometry = new THREE.BoxGeometry(16, 1.5, 1);
+    const beam = new THREE.Mesh(beamGeometry, toriiMaterial);
+    beam.position.set(0, 8, 0);
+    beam.castShadow = true;
+    toriiGroup.add(beam);
+
+    toriiGroup.position.set(-70, 0, -80);
+    return toriiGroup;
+}
+
+// ============================================================================
+// FALLING PETALS
+// ============================================================================
+
+function createFallingPetals() {
+    const petals = [];
+    const petalCount = 80;
+
+    for (let i = 0; i < petalCount; i++) {
+        const x = (Math.random() - 0.5) * 200;
+        const y = Math.random() * 80 + 10;
+        const z = (Math.random() - 0.5) * 200;
+
+        petals.push({
+            position: new THREE.Vector3(x, y, z),
+            velocity: new THREE.Vector3(
+                (Math.random() - 0.5) * 0.01,
+                -0.02 - Math.random() * 0.01,
+                (Math.random() - 0.5) * 0.01
+            ),
+            rotation: Math.random() * Math.PI * 2,
+            rotationSpeed: (Math.random() - 0.5) * 0.02,
+        });
+    }
+
+    const petalGeometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(petals.length * 3);
+    petals.forEach((p, i) => {
+        positions[i * 3] = p.position.x;
+        positions[i * 3 + 1] = p.position.y;
+        positions[i * 3 + 2] = p.position.z;
+    });
+    petalGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+    const petalMaterial = new THREE.PointsMaterial({
+        size: 0.3,
+        color: palette.sakura1,
+        sizeAttenuation: true,
+    });
+
+    const petalSystem = new THREE.Points(petalGeometry, petalMaterial);
+    scene.add(petalSystem);
+
+    return { petals, system: petalSystem, geometry: petalGeometry };
+}
+
+// ============================================================================
+// FLOATING ISLANDS
+// ============================================================================
+
+function createFloatingIsland(x, z, radius, height) {
+    const islandGroup = new THREE.Group();
+
+    const islandMaterial = new THREE.MeshStandardMaterial({
+        color: palette.jade2,
+        roughness: 0.8,
+    });
+
+    const voxels = [];
+    for (let ix = -radius; ix < radius; ix++) {
+        for (let iz = -radius; iz < radius; iz++) {
+            const dist = Math.sqrt(ix * ix + iz * iz);
+            if (dist < radius) {
+                for (let iy = 0; iy < height; iy++) {
+                    if (Math.random() < 0.8) {
+                        voxels.push({ x: ix, y: iy, z: iz });
+                    }
+                }
+            }
+        }
+    }
+
+    const mesh = createVoxelMesh(voxels, islandMaterial);
+    if (mesh) islandGroup.add(mesh);
+
+    // Add a tree on the island
+    const tree = createTree(0, 0, Math.random() > 0.5 ? 'pine' : 'sakura');
+    islandGroup.add(tree);
+
+    islandGroup.position.set(x, 60, z);
+    return islandGroup;
+}
+
+// ============================================================================
+// WATERFALLS
+// ============================================================================
+
+function createWaterfall() {
+    const waterfallGroup = new THREE.Group();
+
+    const waterMaterial = new THREE.MeshStandardMaterial({
+        color: palette.pond,
+        roughness: 0.2,
+        metalness: 0.3,
+        transparent: true,
+        opacity: 0.6,
+    });
+
+    // Create falling water geometry
+    const waterVoxels = [];
+    for (let y = 0; y < 25; y++) {
+        for (let x = -2; x < 2; x++) {
+            for (let z = -2; z < 2; z++) {
+                if (Math.random() < 0.4) {
+                    waterVoxels.push({ x, y: -y, z });
+                }
+            }
+        }
+    }
+
+    if (waterVoxels.length > 0) {
+        const mesh = createVoxelMesh(waterVoxels, waterMaterial);
+        if (mesh) waterfallGroup.add(mesh);
+    }
+
+    // Base of waterfall
+    const baseGeometry = new THREE.BoxGeometry(5, 2, 5);
+    const baseMesh = new THREE.Mesh(baseGeometry, waterMaterial);
+    baseMesh.position.y = -26;
+    waterfallGroup.add(baseMesh);
+
+    waterfallGroup.position.set(-90, 40, 0);
+    return waterfallGroup;
+}
+
+// ============================================================================
+// FLYING BIRDS
+// ============================================================================
+
+function createFlyingBirds() {
+    const birds = [];
+    const birdCount = 12;
+
+    for (let i = 0; i < birdCount; i++) {
+        const x = (Math.random() - 0.5) * 300;
+        const y = Math.random() * 80 + 40;
+        const z = (Math.random() - 0.5) * 300;
+
+        birds.push({
+            position: new THREE.Vector3(x, y, z),
+            angle: Math.random() * Math.PI * 2,
+            speed: 0.02 + Math.random() * 0.01,
+            amplitude: 5 + Math.random() * 3,
+            baseY: y,
+            wingFlap: Math.random() * Math.PI * 2,
+        });
+    }
+
+    const birdGeometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(birds.length * 3);
+    birds.forEach((b, i) => {
+        positions[i * 3] = b.position.x;
+        positions[i * 3 + 1] = b.position.y;
+        positions[i * 3 + 2] = b.position.z;
+    });
+    birdGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+    const birdMaterial = new THREE.PointsMaterial({
+        size: 0.4,
+        color: 0x4A4A4A,
+        sizeAttenuation: true,
+    });
+
+    const birdSystem = new THREE.Points(birdGeometry, birdMaterial);
+    scene.add(birdSystem);
+
+    return { birds, system: birdSystem, geometry: birdGeometry };
+}
+
+// ============================================================================
+// SCENE CONSTRUCTION
+// ============================================================================
+
+const terrain = createTerrain();
+if (terrain) scene.add(terrain);
+
+const pagoda = createPagoda();
+scene.add(pagoda);
+
+const bridge = createBridge();
+scene.add(bridge);
+
+const pond = createPond();
+scene.add(pond);
+
+// Floating islands
+const island1 = createFloatingIsland(-100, -80, 12, 8);
+scene.add(island1);
+
+const island2 = createFloatingIsland(100, -100, 10, 6);
+scene.add(island2);
+
+const island3 = createFloatingIsland(-80, 100, 8, 5);
+scene.add(island3);
+
+// Waterfall
+const waterfall = createWaterfall();
+scene.add(waterfall);
+
+// Trees
+const trees = [
+    createTree(-40, 20, 'sakura'),
+    createTree(40, 20, 'sakura'),
+    createTree(-50, -40, 'sakura'),
+    createTree(-30, -50, 'pine'),
+    createTree(30, -50, 'pine'),
+    createTree(50, 40, 'maple'),
+    createTree(60, -30, 'maple'),
+    createTree(0, 60, 'willow'),
+];
+trees.forEach(t => scene.add(t));
+
+// Lanterns
+lanternPositions.forEach((pos, idx) => {
+    const lantern = createLantern(pos.x, pos.z);
+    scene.add(lantern);
+});
+
+// Torii gate
+const torii = createToriiGate();
+scene.add(torii);
+
+// Falling petals
+const petalSystem = createFallingPetals();
+
+// Flying birds
+const birdSystem = createFlyingBirds();
+
+// Initial camera setup
+camera.position.set(80, 60, 80);
+camera.lookAt(0, 30, 0);
+
+// ============================================================================
+// INTERACTION
+// ============================================================================
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 30, 0);
+controls.autoRotate = true;
+controls.autoRotateSpeed = 1.5;
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.maxDistance = 300;
+controls.minDistance = 20;
+controls.update();
+
+let intro = true;
+let introTime = 0;
+const introLength = 2.5;
+
+// Click handling
+window.addEventListener('click', (e) => {
+    if (intro) return;
+
+    const rect = renderer.domElement.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width * 2 - 1;
+    const y = -(e.clientY - rect.top) / rect.height * 2 + 1;
+
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(new THREE.Vector2(x, y), camera);
+
+    // Check lantern clicks
+    scene.traverse((obj) => {
+        if (obj.userData.lanternIndex !== undefined) {
+            const intersects = raycaster.intersectObjects([obj], true);
+            if (intersects.length > 0) {
+                const idx = obj.userData.lanternIndex;
+                lanternStates.set(idx, !lanternStates.get(idx));
+                lanternLights[idx].intensity = lanternStates.get(idx) ? 1.5 : 0.2;
+            }
+        }
+    });
+});
+
+// Keyboard controls
+window.addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() === 'q') {
+        dayNightTime = (dayNightTime - 0.1) % 1;
+    } else if (e.key.toLowerCase() === 'e') {
+        dayNightTime = (dayNightTime + 0.1) % 1;
+    }
+});
+
+// ============================================================================
+// ANIMATION LOOP
+// ============================================================================
+
+function updatePetals(dt) {
+    petalSystem.petals.forEach((p) => {
+        p.position.add(p.velocity);
+        p.rotation += p.rotationSpeed;
+
+        if (p.position.y < 0) {
+            p.position.y = 80;
+            p.position.x = (Math.random() - 0.5) * 200;
+            p.position.z = (Math.random() - 0.5) * 200;
+        }
+    });
+
+    const positions = petalSystem.geometry.attributes.position.array;
+    petalSystem.petals.forEach((p, i) => {
+        positions[i * 3] = p.position.x;
+        positions[i * 3 + 1] = p.position.y;
+        positions[i * 3 + 2] = p.position.z;
+    });
+    petalSystem.geometry.attributes.position.needsUpdate = true;
+}
+
+function updateBirds(dt) {
+    birdSystem.birds.forEach((b) => {
+        b.angle += b.speed;
+        const radius = 60;
+        b.position.x = Math.cos(b.angle) * radius;
+        b.position.z = Math.sin(b.angle) * radius;
+        b.position.y = b.baseY + Math.sin(time * 0.002) * 5;
+
+        // Wrap around
+        if (b.position.x > 200 || b.position.x < -200 ||
+            b.position.z > 200 || b.position.z < -200) {
+            b.position.x = (Math.random() - 0.5) * 300;
+            b.position.z = (Math.random() - 0.5) * 300;
+            b.position.y = 40 + Math.random() * 80;
+        }
+    });
+
+    const positions = birdSystem.geometry.attributes.position.array;
+    birdSystem.birds.forEach((b, i) => {
+        positions[i * 3] = b.position.x;
+        positions[i * 3 + 1] = b.position.y;
+        positions[i * 3 + 2] = b.position.z;
+    });
+    birdSystem.geometry.attributes.position.needsUpdate = true;
+}
+
+function updateDayNightCycle() {
+    // Auto-cycle if not manually controlled
+    dayNightTime = (time / 90000) % 1; // 90-second cycle
+
+    scene.background = createSkyGradient(dayNightTime);
+
+    // Update light intensity
+    if (dayNightTime < 0.25) {
+        const t = dayNightTime / 0.25;
+        ambientLight.intensity = 0.3 + t * 0.5;
+        directionalLight.intensity = 0.5 + t * 0.7;
+    } else if (dayNightTime < 0.5) {
+        const t = (dayNightTime - 0.25) / 0.25;
+        ambientLight.intensity = 0.8 - t * 0.3;
+        directionalLight.intensity = 1.2 - t * 0.5;
+    } else if (dayNightTime < 0.75) {
+        const t = (dayNightTime - 0.5) / 0.25;
+        ambientLight.intensity = 0.5 - t * 0.4;
+        directionalLight.intensity = 0.7 - t * 0.5;
+    } else {
+        const t = (dayNightTime - 0.75) / 0.25;
+        ambientLight.intensity = 0.1 + t * 0.2;
+        directionalLight.intensity = 0.2 + t * 0.3;
+    }
+
+    // Lantern flickering
+    lanternLights.forEach((light, idx) => {
+        if (lanternStates.get(idx)) {
+            const flicker = 0.8 + Math.sin(time * 0.005 + idx) * 0.2;
+            light.intensity = 1.5 * flicker;
+        }
+    });
+}
+
+function animate() {
+    requestAnimationFrame(animate);
+
+    const now = Date.now();
+    const dt = Math.min(16, now - lastTime);
+    lastTime = now;
+    time += dt;
+
+    // Update intro camera
+    if (intro) {
+        introTime += dt;
+        const t = Math.min(1, introTime / (introLength * 1000));
+
+        const startPos = new THREE.Vector3(-80, 50, -80);
+        const endPos = new THREE.Vector3(80, 60, 80);
+        camera.position.lerpVectors(startPos, endPos, t);
+        camera.lookAt(0, 30, 0);
+
+        if (t >= 1) {
+            intro = false;
+            controls.autoRotate = true;
+        }
+    } else {
+        controls.update();
+    }
+
+    updatePetals(dt / 1000);
+    updateBirds(dt / 1000);
+    updateDayNightCycle();
+
+    // Update FPS
+    frameCount++;
+    if (frameCount % 30 === 0) {
+        fps = Math.round(1000 / (dt || 1));
+        document.getElementById('fps').textContent = fps + ' FPS';
+        document.getElementById('voxel-count').textContent = (Math.round(voxelCount / 1000)) + 'k voxels';
+    }
+
+    renderer.render(scene, camera);
+}
+
+// ============================================================================
+// WINDOW RESIZE
+// ============================================================================
+
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ============================================================================
+// EXPORT DATA
+// ============================================================================
+
+window.__VOXEL__ = {
+    voxelCount: () => voxelCount,
+    fps: () => fps,
+    pagodaFloors: 5,
+    timeOfDay: () => dayNightTime,
+};
+
+animate();
+</script>
+</body>
+</html>
