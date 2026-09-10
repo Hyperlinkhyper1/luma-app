@@ -201,15 +201,10 @@ class _SetupViewState extends State<_SetupView> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: OutlinedButton.icon(
-              icon: const Icon(Icons.picture_as_pdf),
-              label: const Text('Oefentoets als PDF'),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => const QuizPdfOptions()),
-              ),
+          const SizedBox(height: 12),
+          _PdfExportBanner(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const QuizPdfOptions()),
             ),
           ),
           const SizedBox(height: 20),
@@ -242,6 +237,11 @@ class _SetupViewState extends State<_SetupView> {
                         group.first.isDoorstroom
                             ? 'Oefenen voor IEP'
                             : 'Andere vakken · extra oefening',
+                        style: TextStyle(
+                          color: luma.textPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     GridView.builder(
@@ -346,6 +346,85 @@ class _SetupViewState extends State<_SetupView> {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Tappable entry point into [QuizPdfOptions], styled as a primary CTA card
+/// rather than a generic outlined button so it reads as a feature of its own.
+class _PdfExportBanner extends StatefulWidget {
+  const _PdfExportBanner({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  State<_PdfExportBanner> createState() => _PdfExportBannerState();
+}
+
+class _PdfExportBannerState extends State<_PdfExportBanner> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final decor = context.lumaDecor;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: _hovering ? luma.accentSubtle : luma.surface,
+            borderRadius: BorderRadius.circular(decor.cardRadius),
+            border: Border.all(
+              color: luma.accent.withValues(alpha: _hovering ? 0.8 : 0.4),
+              width: decor.borderWidth,
+            ),
+          ),
+          child: Row(
+            children: [
+              LumaIconBadge(
+                icon: Icons.picture_as_pdf_rounded,
+                color: luma.accent,
+                size: 40,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Oefentoets als PDF',
+                      style: TextStyle(
+                        color: luma.textPrimary,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Stel een afdrukbare toets samen met eigen vakken en '
+                      'aantallen.',
+                      style: TextStyle(
+                        color: luma.textSecondary,
+                        fontSize: 11.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: luma.textMuted,
+                size: 22,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
