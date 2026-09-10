@@ -1,10 +1,19 @@
-# Build stage: compile the server to a single native executable.
+# Build stage: compile the server to a self-contained bundle.
 FROM dart:stable AS build
+# sqlite3 ships its native library via Dart build hooks, which compile C
+# sources on the build machine — so the build stage needs a C toolchain.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY pubspec.yaml pubspec.lock* ./
 RUN dart pub get
 COPY . .
-RUN dart pub get --offline && dart compile exe bin/luma_server.dart -o /app/luma_server
+# NB: `dart compile exe` refuses to run when any dependency has a build hook
+# (sqlite3 does), so build with `dart build cli` instead. It runs the hooks
+# and emits bundle/bin/luma_server next to bundle/lib/*.so — the two must
+# stay together, the exe loads its native libraries via ../lib.
+RUN dart pub get --offline && dart build cli --target bin/luma_server.dart -o /tmp/build-output
 
 # Runtime stage: minimal image.
 #
@@ -29,11 +38,11 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /data
 
-COPY --from=build /app/luma_server /usr/local/bin/luma_server
+COPY --from=build /tmp/build-output/bundle/ /app/bundle/
 
 ENV LUMA_DATA_DIR=/data
 ENV LUMA_PORT=8080
 EXPOSE 8080
 VOLUME /data
 
-CMD ["luma_server"]
+CMD ["/app/bundle/bin/luma_server"]

@@ -18,6 +18,8 @@ import 'pagoda_test_page.dart' show ModelButton;
 const Map<String, String> _engineModelAssets = {
   'Muse Spark 1.3 (Xhigh)': 'assets/tests/engine_musespark13_xhigh.html',
   'Sonnet 5 (XHigh)': 'assets/tests/engine_sonnet5_xhigh.html',
+  'GPT 6 Astra (Max)': 'assets/tests/engine_gpt6_astra_max.html',
+  'DeepSeek V4 Pro': 'assets/tests/engine_deepseekv4_pro.html',
 };
 
 /// Model name + button description, in display order. Drives both the list
@@ -32,6 +34,14 @@ const List<({String model, String description})> _engineModelDescriptions = [
   (
     model: 'Sonnet 5 (XHigh)',
     description: 'Anthropic Sonnet 5 at extra-high reasoning effort',
+  ),
+  (
+    model: 'GPT 6 Astra (Max)',
+    description: 'GPT 6 Astra Max independent cutaway V8 benchmark',
+  ),
+  (
+    model: 'DeepSeek V4 Pro',
+    description: 'DeepSeek V4 Pro independent cutaway V8 benchmark',
   ),
 ];
 

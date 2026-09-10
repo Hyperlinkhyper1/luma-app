@@ -366,18 +366,22 @@ Or do it by hand:
 
 ```powershell
 cd server
-dart compile exe bin/luma_server.dart -o luma_server.exe
+dart build cli --target bin/luma_server.dart -o build/local-bundle
 
 $env:LUMA_DATA_DIR = "C:\luma-sync-data"
-.\luma_server.exe
+.\build\local-bundle\bundle\bin\luma_server.exe
 ```
 
-> **Always run the compiled `luma_server.exe`, not `dart run`.** The exe reads
+> **Always run the compiled exe, not `dart run`.** The bundle reads
 > nothing from the Dart pub cache at runtime, so it avoids the intermittent
 > Windows "Het systeem kan het opgegeven pad niet vinden" (cannot find path)
 > compile errors that antivirus scanning + a running IDE can cause. If the
-> one-time `dart compile exe` step itself hits that error, just run it again.
+> one-time `dart build cli` step itself hits that error, just run it again.
 > See section 11.
+>
+> (`dart compile exe` no longer works: sqlite3 ships its native library via
+> build hooks, which only `dart build` runs. Keep `bundle\bin\` and
+> `bundle\lib\` together — the exe loads `sqlite3.dll` via `..\lib`.)
 
 Allow it through the Windows firewall for private networks when prompted
 (or: Settings → Windows Security → Firewall → Allow an app). Then in the
@@ -435,7 +439,7 @@ exist and read fine a moment later.
 **Fixes, in order of preference:**
 
 1. **Run the server as a compiled exe** (`.\run_local.ps1`, or
-   `dart compile exe`). A compiled exe reads nothing from the pub cache at
+   `dart build cli`). A compiled bundle reads nothing from the pub cache at
    runtime, so it never hits this. This is the recommended way to run the
    server locally.
 
