@@ -591,6 +591,185 @@ List<AiHourlyUsageBucket> aggregateByHour(Iterable<AiUsageTurn> turns) {
   ];
 }
 
+/// Which metric a Usage table/graph orders its rows by. Tokens is the
+/// default everywhere — it matches the historical ordering — while turns
+/// and cost are the two other totals every breakdown already computes.
+enum AiUsageSortMetric {
+  tokens('Tokens'),
+  turns('Turns'),
+  cost('Cost');
+
+  const AiUsageSortMetric(this.label);
+  final String label;
+}
+
+/// Company a (source, model) pair belongs to, for the "combine models by
+/// company" view. Single-vendor tools map straight from their source;
+/// mixed-vendor ones (Antigravity's prose model names, opencode's
+/// `<providerID>/<modelID>` strings) are resolved from the model itself.
+String companyForModel(AiUsageSource source, String model) {
+  switch (source) {
+    case AiUsageSource.claudeCode:
+      return 'Anthropic';
+    case AiUsageSource.codexCli:
+      return 'OpenAI';
+    case AiUsageSource.antigravity:
+      final m = model.toLowerCase();
+      if (m.contains('claude') || m.contains('anthropic')) return 'Anthropic';
+      if (m.contains('gemini') || m.contains('google')) return 'Google';
+      if (m.contains('gpt') || m.contains('openai') || m.contains('codex')) {
+        return 'OpenAI';
+      }
+      return 'Other';
+    case AiUsageSource.opencode:
+      final split = splitOpencodeModel(model);
+      if (split == null) return 'Other';
+      final provider = split.$1.toLowerCase();
+      return switch (provider) {
+        'anthropic' => 'Anthropic',
+        'openai' => 'OpenAI',
+        'google' || 'gemini' || 'vertex' || 'google-vertex' => 'Google',
+        'minimax' => 'MiniMax',
+        'deepseek' => 'DeepSeek',
+        'openrouter' => 'OpenRouter',
+        'opencode' => 'OpenCode',
+        'ollama' ||
+        'llama.cpp' ||
+        'llamacpp' ||
+        'lmstudio' ||
+        'lm-studio' ||
+        'local' =>
+          'Local',
+        'mistral' => 'Mistral',
+        'xai' => 'xAI',
+        'groq' => 'Groq',
+        'together' => 'Together',
+        'fireworks' => 'Fireworks',
+        'github-copilot' || 'copilot' => 'GitHub',
+        'azure' => 'Microsoft',
+        'amazon-bedrock' || 'bedrock' => 'Amazon',
+        _ => provider.isEmpty
+            ? 'Other'
+            : '${provider[0].toUpperCase()}${provider.substring(1)}',
+      };
+  }
+}
+
+/// Total usage for one company across [turns], for the combined view.
+/// Same token/cost definitions as [ModelUsageTotal] so the two are
+/// interchangeable for sorting and display.
+class CompanyUsageTotal {
+  const CompanyUsageTotal({
+    required this.company,
+    required this.turnCount,
+    required this.modelCount,
+    required this.inputTokens,
+    required this.outputTokens,
+    required this.cacheReadTokens,
+    required this.cacheCreationTokens,
+    required this.cost,
+    required this.billable,
+    required this.estimated,
+  });
+
+  final String company;
+  final int turnCount;
+  final int modelCount;
+  final int inputTokens;
+  final int outputTokens;
+  final int cacheReadTokens;
+  final int cacheCreationTokens;
+  final double cost;
+  final bool billable;
+
+  /// True when every turn in this company came from Antigravity, whose
+  /// token counts are length-based estimates rather than metered counts.
+  final bool estimated;
+
+  int get totalTokens => inputTokens + outputTokens + cacheCreationTokens;
+}
+
+/// Totals per company across [turns], sorted by [sort].
+List<CompanyUsageTotal> aggregateByCompany(
+  Iterable<AiUsageTurn> turns, {
+  AiUsageSortMetric sort = AiUsageSortMetric.tokens,
+}) {
+  final buckets = _bucketBy(turns, (t) => companyForModel(t.source, t.model));
+  final modelsByCompany = <String, Set<String>>{};
+  final nonAntigravity = <String>{};
+  for (final t in turns) {
+    final company = companyForModel(t.source, t.model);
+    (modelsByCompany[company] ??= <String>{}).add('${t.source}:${t.model}');
+    if (t.source != AiUsageSource.antigravity) nonAntigravity.add(company);
+  }
+  final totals = [
+    for (final e in buckets.entries)
+      CompanyUsageTotal(
+        company: e.key,
+        turnCount: e.value.turnCount,
+        modelCount: modelsByCompany[e.key]?.length ?? 0,
+        inputTokens: e.value.inputTokens,
+        outputTokens: e.value.outputTokens,
+        cacheReadTokens: e.value.cacheReadTokens,
+        cacheCreationTokens: e.value.cacheCreationTokens,
+        cost: e.value.cost,
+        billable: e.value.knownCost,
+        estimated: !nonAntigravity.contains(e.key),
+      ),
+  ];
+  sortCompanyTotals(totals, sort);
+  return totals;
+}
+
+/// Sorts model rows in place by [sort], tokens descending by default.
+void sortModelTotals(List<ModelUsageTotal> totals, AiUsageSortMetric sort) {
+  switch (sort) {
+    case AiUsageSortMetric.tokens:
+      totals.sort((a, b) => b.totalTokens.compareTo(a.totalTokens));
+    case AiUsageSortMetric.turns:
+      totals.sort((a, b) => b.turnCount.compareTo(a.turnCount));
+    case AiUsageSortMetric.cost:
+      totals.sort((a, b) => b.cost.compareTo(a.cost));
+  }
+}
+
+/// Sorts company rows in place by [sort].
+void sortCompanyTotals(List<CompanyUsageTotal> totals, AiUsageSortMetric sort) {
+  switch (sort) {
+    case AiUsageSortMetric.tokens:
+      totals.sort((a, b) => b.totalTokens.compareTo(a.totalTokens));
+    case AiUsageSortMetric.turns:
+      totals.sort((a, b) => b.turnCount.compareTo(a.turnCount));
+    case AiUsageSortMetric.cost:
+      totals.sort((a, b) => b.cost.compareTo(a.cost));
+  }
+}
+
+/// Sorts project rows in place by [sort].
+void sortProjectTotals(List<ProjectUsageTotal> totals, AiUsageSortMetric sort) {
+  switch (sort) {
+    case AiUsageSortMetric.tokens:
+      totals.sort((a, b) => b.totalTokens.compareTo(a.totalTokens));
+    case AiUsageSortMetric.turns:
+      totals.sort((a, b) => b.turnCount.compareTo(a.turnCount));
+    case AiUsageSortMetric.cost:
+      totals.sort((a, b) => b.cost.compareTo(a.cost));
+  }
+}
+
+/// Sorts provider rows in place by [sort].
+void sortProviderTotals(
+    List<ProviderUsageTotal> totals, AiUsageSortMetric sort) {
+  switch (sort) {
+    case AiUsageSortMetric.tokens:
+      totals.sort((a, b) => b.totalTokens.compareTo(a.totalTokens));
+    case AiUsageSortMetric.turns:
+      totals.sort((a, b) => b.turnCount.compareTo(a.turnCount));
+    case AiUsageSortMetric.cost:
+      totals.sort((a, b) => b.cost.compareTo(a.cost));
+  }
+}
+
 /// Range-wide summary across [turns].
 AiUsageTotals totals(Iterable<AiUsageTurn> turns) {
   var turnCount = 0;

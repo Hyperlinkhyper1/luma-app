@@ -17,6 +17,7 @@ class SplashScreen extends StatefulWidget {
     required this.onDone,
     this.accent = const Color(0xFFB49DF5),
     this.version = 'Dev build',
+    this.edition = 'Free edition',
   });
 
   /// Real startup work the splash is covering. The splash will not dismiss
@@ -31,6 +32,10 @@ class SplashScreen extends StatefulWidget {
 
   /// Shown small in the bottom corner, IntelliJ-style.
   final String version;
+
+  /// Edition label shown in the bottom-left corner (e.g. "Free edition",
+  /// "Orbit edition"). Driven by the active plan — see [_BootGate].
+  final String edition;
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -258,7 +263,7 @@ class _SplashScreenState extends State<SplashScreen>
                   left: 20,
                   bottom: 16,
                   child: Text(
-                    'Free edition',
+                    widget.edition,
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.3),
                       fontSize: 11,

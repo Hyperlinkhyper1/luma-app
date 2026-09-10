@@ -708,6 +708,9 @@ class _BootGateState extends State<_BootGate> {
   @override
   Widget build(BuildContext context) {
     final sync = SyncScope.of(context);
+    final plan = planById(SettingsScope.of(context).selectedPlanId);
+    final edition =
+        plan.id == 'core' ? 'Free edition' : '${plan.name} edition';
     return Stack(
       children: [
         const AppShell(),
@@ -728,6 +731,7 @@ class _BootGateState extends State<_BootGate> {
             version: AppVersion.isReleaseBuild
                 ? 'v${AppVersion.current}'
                 : 'Dev build',
+            edition: edition,
             onDone: () {
               setState(() => _showSplash = false);
               // Check for updates once the app is visible; the prompt (if any)

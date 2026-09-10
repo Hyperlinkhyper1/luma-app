@@ -1,12 +1,9 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../app/widgets.dart';
 import '../../../../theme/luma_theme.dart';
-import '../../../chat/ai_key_store.dart';
-import '../../../chat/providers/ai_providers.dart';
 import 'ai_usage_format.dart';
 import 'ai_usage_repository.dart';
 import 'ai_usage_scope.dart';
@@ -63,6 +60,10 @@ class _AiUsageDashboardTabState extends State<AiUsageDashboardTab> {
   AiUsageRangePreset _preset = AiUsageRangePreset.today;
   AiUsageSource? _sourceFilter; // null = All
   bool _started = false;
+  AiUsageSortMetric _modelSort = AiUsageSortMetric.tokens;
+  AiUsageSortMetric _projectSort = AiUsageSortMetric.tokens;
+  AiUsageSortMetric _providerSort = AiUsageSortMetric.tokens;
+  bool _combineByCompany = false;
 
   @override
   void didChangeDependencies() {
@@ -73,6 +74,26 @@ class _AiUsageDashboardTabState extends State<AiUsageDashboardTab> {
     if (_started) return;
     _started = true;
     AiUsageScope.of(context).rescan();
+  }
+
+  Future<void> _openSettings() async {
+    final result = await showAiUsageSettingsDialog(
+      context,
+      AiUsageViewSettings(
+        modelSort: _modelSort,
+        projectSort: _projectSort,
+        providerSort: _providerSort,
+        combineByCompany: _combineByCompany,
+      ),
+    );
+    if (result != null && mounted) {
+      setState(() {
+        _modelSort = result.modelSort;
+        _projectSort = result.projectSort;
+        _providerSort = result.providerSort;
+        _combineByCompany = result.combineByCompany;
+      });
+    }
   }
 
   @override
@@ -121,6 +142,7 @@ class _AiUsageDashboardTabState extends State<AiUsageDashboardTab> {
                 repo: repo,
                 preset: _preset,
                 onSelectPreset: (p) => setState(() => _preset = p),
+                onOpenSettings: _openSettings,
               ),
               const SizedBox(height: 10),
               _SourceFilterBar(
@@ -137,6 +159,10 @@ class _AiUsageDashboardTabState extends State<AiUsageDashboardTab> {
                         : turns.where((t) => t.source == _sourceFilter).toList(),
                     preset: _preset,
                     selectedSource: _sourceFilter,
+                    modelSort: _modelSort,
+                    projectSort: _projectSort,
+                    providerSort: _providerSort,
+                    combineByCompany: _combineByCompany,
                   ),
                 ),
               ),
@@ -165,18 +191,185 @@ const String _kNoLogsSubtitle =
     'and OpenCode (~/.local/share/opencode) on this device — nothing is '
     'ever sent anywhere. Use one of these tools here, then rescan.';
 
-// ─── Top bar: range presets, rescan, status ─────────────────────────────────
+// ─── View settings: sorting + company grouping ─────────────────────────────
+
+/// In-memory view settings for the Usage dashboard, edited through the
+/// cogwheel in the top bar. Sorting defaults to tokens everywhere to match
+/// the historical ordering.
+class AiUsageViewSettings {
+  const AiUsageViewSettings({
+    required this.modelSort,
+    required this.projectSort,
+    required this.providerSort,
+    required this.combineByCompany,
+  });
+
+  final AiUsageSortMetric modelSort;
+  final AiUsageSortMetric projectSort;
+  final AiUsageSortMetric providerSort;
+  final bool combineByCompany;
+}
+
+Future<AiUsageViewSettings?> showAiUsageSettingsDialog(
+  BuildContext context,
+  AiUsageViewSettings initial,
+) {
+  return showDialog<AiUsageViewSettings>(
+    context: context,
+    builder: (dialogContext) => _AiUsageSettingsDialog(initial: initial),
+  );
+}
+
+class _AiUsageSettingsDialog extends StatefulWidget {
+  const _AiUsageSettingsDialog({required this.initial});
+
+  final AiUsageViewSettings initial;
+
+  @override
+  State<_AiUsageSettingsDialog> createState() => _AiUsageSettingsDialogState();
+}
+
+class _AiUsageSettingsDialogState extends State<_AiUsageSettingsDialog> {
+  late AiUsageSortMetric _modelSort = widget.initial.modelSort;
+  late AiUsageSortMetric _projectSort = widget.initial.projectSort;
+  late AiUsageSortMetric _providerSort = widget.initial.providerSort;
+  late bool _combineByCompany = widget.initial.combineByCompany;
+
+  void _reset() {
+    setState(() {
+      _modelSort = AiUsageSortMetric.tokens;
+      _projectSort = AiUsageSortMetric.tokens;
+      _providerSort = AiUsageSortMetric.tokens;
+      _combineByCompany = false;
+    });
+  }
+
+  AiUsageViewSettings _current() => AiUsageViewSettings(
+        modelSort: _modelSort,
+        projectSort: _projectSort,
+        providerSort: _providerSort,
+        combineByCompany: _combineByCompany,
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return AlertDialog(
+      title: Row(
+        children: [
+          Icon(Icons.settings_rounded, color: luma.accent, size: 20),
+          const SizedBox(width: 10),
+          const Text('Usage settings'),
+        ],
+      ),
+      content: SizedBox(
+        width: 380,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Combine models by company'),
+                subtitle: Text(
+                  'Group every model from one company into a single row',
+                  style: TextStyle(color: luma.textMuted, fontSize: 12),
+                ),
+                value: _combineByCompany,
+                onChanged: (v) => setState(() => _combineByCompany = v),
+              ),
+              const SizedBox(height: 8),
+              ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                initiallyExpanded: true,
+                leading: Icon(Icons.sort_rounded, color: luma.accent, size: 20),
+                title: const Text('Sorting'),
+                subtitle: Text(
+                  'What each table and chart orders by',
+                  style: TextStyle(color: luma.textMuted, fontSize: 12),
+                ),
+                children: [
+                  _SortDropdown(
+                    label: 'Models (pie + table)',
+                    value: _modelSort,
+                    onChanged: (v) => setState(() => _modelSort = v),
+                  ),
+                  const SizedBox(height: 8),
+                  _SortDropdown(
+                    label: 'Top projects',
+                    value: _projectSort,
+                    onChanged: (v) => setState(() => _projectSort = v),
+                  ),
+                  const SizedBox(height: 8),
+                  _SortDropdown(
+                    label: 'Providers (OpenCode)',
+                    value: _providerSort,
+                    onChanged: (v) => setState(() => _providerSort = v),
+                  ),
+                  const SizedBox(height: 4),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: _reset, child: const Text('Reset')),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(_current()),
+          child: const Text('Done'),
+        ),
+      ],
+    );
+  }
+}
+
+class _SortDropdown extends StatelessWidget {
+  const _SortDropdown({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String label;
+  final AiUsageSortMetric value;
+  final ValueChanged<AiUsageSortMetric> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<AiUsageSortMetric>(
+      initialValue: value,
+      decoration: InputDecoration(labelText: label),
+      items: [
+        for (final metric in AiUsageSortMetric.values)
+          DropdownMenuItem(value: metric, child: Text(metric.label)),
+      ],
+      onChanged: (v) {
+        if (v != null) onChanged(v);
+      },
+    );
+  }
+}
+
+// ─── Top bar: range presets, rescan, settings, status ───────────────────────
 
 class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.repo,
     required this.preset,
     required this.onSelectPreset,
+    required this.onOpenSettings,
   });
 
   final AiUsageRepository repo;
   final AiUsageRangePreset preset;
   final ValueChanged<AiUsageRangePreset> onSelectPreset;
+  final VoidCallback onOpenSettings;
 
   String _statusLabel() {
     if (repo.scanning) return 'Scanning…';
@@ -220,6 +413,11 @@ class _TopBar extends StatelessWidget {
               : Icon(Icons.refresh_rounded, color: luma.textSecondary),
           onPressed: repo.scanning ? null : repo.rescan,
         ),
+        IconButton(
+          tooltip: 'Usage display settings',
+          icon: Icon(Icons.settings_rounded, color: luma.textSecondary),
+          onPressed: onOpenSettings,
+        ),
       ],
     );
   }
@@ -258,6 +456,10 @@ class _AiUsageBody extends StatelessWidget {
     required this.turns,
     required this.preset,
     this.selectedSource,
+    this.modelSort = AiUsageSortMetric.tokens,
+    this.projectSort = AiUsageSortMetric.tokens,
+    this.providerSort = AiUsageSortMetric.tokens,
+    this.combineByCompany = false,
   });
 
   final List<AiUsageTurn> turns;
@@ -268,15 +470,25 @@ class _AiUsageBody extends StatelessWidget {
   /// OpenCode's provider breakdown.
   final AiUsageSource? selectedSource;
 
+  final AiUsageSortMetric modelSort;
+  final AiUsageSortMetric projectSort;
+  final AiUsageSortMetric providerSort;
+  final bool combineByCompany;
+
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
     // Antigravity turns whose model couldn't be detected are real usage
     // (still counted in the stat tiles and daily/project charts below) but
     // aren't worth a dedicated, uninformative "Unknown model" row here.
-    final modelTotals = aggregateByModel(turns)
-        .where((m) => !(m.source == AiUsageSource.antigravity && m.model == 'Unknown model'))
+    final displayTurns = turns
+        .where((t) => !(t.source == AiUsageSource.antigravity && t.model == 'Unknown model'))
         .toList();
+    final modelTotals = aggregateByModel(displayTurns);
+    sortModelTotals(modelTotals, modelSort);
+    final companyTotals = combineByCompany
+        ? aggregateByCompany(displayTurns, sort: modelSort)
+        : const <CompanyUsageTotal>[];
 
     if (modelTotals.isEmpty) {
       return LumaEmptyState(
@@ -293,9 +505,17 @@ class _AiUsageBody extends StatelessWidget {
     // One pass over every turn in range, kept here rather than repeated as
     // both an emptiness check and the section's own input.
     final effortTiers = aggregateByModelAndEffort(turns);
+    final projectTotals = aggregateByProject(turns);
+    sortProjectTotals(projectTotals, projectSort);
+    final providerTotals = aggregateOpencodeByProvider(turns);
+    sortProviderTotals(providerTotals, providerSort);
     final colorByModel = <(AiUsageSource, String), Color>{
       for (var i = 0; i < modelTotals.length && i < _kTopModelLimit; i++)
         (modelTotals[i].source, modelTotals[i].model): _kPalette[i % _kPalette.length],
+    };
+    final colorByCompany = <String, Color>{
+      for (var i = 0; i < companyTotals.length && i < _kTopModelLimit; i++)
+        companyTotals[i].company: _kPalette[i % _kPalette.length],
     };
 
     return SingleChildScrollView(
@@ -335,8 +555,10 @@ class _AiUsageBody extends StatelessWidget {
               _SummaryChip(label: 'Turns', value: '${summary.turnCount}'),
               _SummaryChip(label: 'Sessions', value: '${summary.sessionCount}'),
               _SummaryChip(
-                label: 'Top model',
-                value: displayName(modelTotals.first.source, modelTotals.first.model),
+                label: combineByCompany ? 'Top company' : 'Top model',
+                value: combineByCompany
+                    ? companyTotals.first.company
+                    : displayName(modelTotals.first.source, modelTotals.first.model),
               ),
             ],
           ),
@@ -379,7 +601,8 @@ class _AiUsageBody extends StatelessWidget {
             const SizedBox(height: 16),
             LumaCard(
               child: _OpencodeProviderSection(
-                providers: aggregateOpencodeByProvider(turns),
+                providers: providerTotals,
+                sort: providerSort,
               ),
             ),
           ],
@@ -389,10 +612,15 @@ class _AiUsageBody extends StatelessWidget {
               final pie = LumaCard(
                 child: SizedBox(
                   height: 260,
-                  child: _ModelPieChart(
-                    modelTotals: modelTotals,
-                    colorByModel: colorByModel,
-                  ),
+                  child: combineByCompany
+                      ? _CompanyPieChart(
+                          companyTotals: companyTotals,
+                          colorByCompany: colorByCompany,
+                        )
+                      : _ModelPieChart(
+                          modelTotals: modelTotals,
+                          colorByModel: colorByModel,
+                        ),
                 ),
               );
               final bars = LumaCard(
@@ -427,16 +655,30 @@ class _AiUsageBody extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _ModelTableHeader(),
+                _ModelTableTitle(
+                  grouped: combineByCompany,
+                  sort: modelSort,
+                ),
                 const SizedBox(height: 8),
-                for (var i = 0; i < modelTotals.length; i++) ...[
-                  if (i > 0) const SizedBox(height: 10),
-                  _ModelListRow(
-                    total: modelTotals[i],
-                    color: colorByModel[(modelTotals[i].source, modelTotals[i].model)] ??
-                        _kOtherColor,
-                  ),
-                ],
+                _ModelTableHeader(grouped: combineByCompany),
+                const SizedBox(height: 8),
+                if (combineByCompany)
+                  for (var i = 0; i < companyTotals.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 10),
+                    _CompanyListRow(
+                      total: companyTotals[i],
+                      color: colorByCompany[companyTotals[i].company] ?? _kOtherColor,
+                    ),
+                  ]
+                else
+                  for (var i = 0; i < modelTotals.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 10),
+                    _ModelListRow(
+                      total: modelTotals[i],
+                      color: colorByModel[(modelTotals[i].source, modelTotals[i].model)] ??
+                          _kOtherColor,
+                    ),
+                  ],
               ],
             ),
           ),
@@ -448,7 +690,11 @@ class _AiUsageBody extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          LumaCard(child: _ProjectBreakdownSection(projects: aggregateByProject(turns))),
+          LumaCard(
+              child: _ProjectBreakdownSection(
+            projects: projectTotals,
+            sort: projectSort,
+          )),
           const SizedBox(height: 16),
           LumaCard(
             child: preset == AiUsageRangePreset.all
@@ -465,12 +711,40 @@ class _AiUsageBody extends StatelessWidget {
           ),
           if (effortTiers.isNotEmpty) ...[
             const SizedBox(height: 16),
-            LumaCard(child: EffortBreakdownSection(tiers: effortTiers)),
+            LumaCard(
+                child: EffortBreakdownSection(
+              tiers: effortTiers,
+              sort: modelSort,
+            )),
           ],
-          const SizedBox(height: 16),
-          const _OtherAiToolsSection(),
         ],
       ),
+    );
+  }
+}
+
+class _ModelTableTitle extends StatelessWidget {
+  const _ModelTableTitle({required this.grouped, required this.sort});
+
+  final bool grouped;
+  final AiUsageSortMetric sort;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Row(
+      children: [
+        Text(
+          grouped ? 'Companies' : 'Models',
+          style: TextStyle(
+              color: luma.textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
+        ),
+        const Spacer(),
+        Text(
+          'Sorted by ${sort.label.toLowerCase()}',
+          style: TextStyle(color: luma.textMuted, fontSize: 11),
+        ),
+      ],
     );
   }
 }
@@ -667,6 +941,130 @@ class _ModelPieChartState extends State<_ModelPieChart> {
           displayName(t.source, t.model),
           t.totalTokens,
           widget.colorByModel[(t.source, t.model)]!,
+        ),
+      if (otherTokens > 0) ('Other', otherTokens, _kOtherColor),
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final slices = _slices();
+    final total = slices.fold<int>(0, (a, s) => a + s.$2);
+
+    return Row(
+      children: [
+        Expanded(
+          flex: 3,
+          child: PieChart(
+            PieChartData(
+              pieTouchData: PieTouchData(
+                touchCallback: (event, response) {
+                  setState(() {
+                    _touchedIndex = response?.touchedSection?.touchedSectionIndex;
+                  });
+                },
+              ),
+              sectionsSpace: 2,
+              centerSpaceRadius: 40,
+              sections: [
+                for (var i = 0; i < slices.length; i++)
+                  PieChartSectionData(
+                    color: slices[i].$3,
+                    value: slices[i].$2.toDouble(),
+                    title: '',
+                    radius: _touchedIndex == i ? 54 : 46,
+                    badgeWidget: _touchedIndex == i
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: luma.surfaceHover,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: luma.border),
+                            ),
+                            child: Text(
+                              formatTokens(slices[i].$2),
+                              style: TextStyle(
+                                  color: luma.textPrimary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700),
+                            ),
+                          )
+                        : null,
+                    badgePositionPercentageOffset: 1.2,
+                  ),
+              ],
+            ),
+          ),
+        ),
+        Expanded(
+          flex: 2,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final s in slices) ...[
+                  Row(
+                    children: [
+                      Container(
+                        width: 12,
+                        height: 12,
+                        decoration:
+                            BoxDecoration(color: s.$3, borderRadius: BorderRadius.circular(3)),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          s.$1,
+                          style: TextStyle(color: luma.textSecondary, fontSize: 12),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        total == 0 ? '0%' : '${(s.$2 / total * 100).toStringAsFixed(0)}%',
+                        style: TextStyle(
+                            color: luma.textPrimary, fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CompanyPieChart extends StatefulWidget {
+  const _CompanyPieChart({
+    required this.companyTotals,
+    required this.colorByCompany,
+  });
+
+  final List<CompanyUsageTotal> companyTotals;
+  final Map<String, Color> colorByCompany;
+
+  @override
+  State<_CompanyPieChart> createState() => _CompanyPieChartState();
+}
+
+class _CompanyPieChartState extends State<_CompanyPieChart> {
+  int? _touchedIndex;
+
+  List<(String label, int tokens, Color color)> _slices() {
+    final top = widget.companyTotals.take(_kTopModelLimit).toList();
+    final rest = widget.companyTotals.skip(_kTopModelLimit);
+    final otherTokens = rest.fold<int>(0, (a, t) => a + t.totalTokens);
+    return [
+      for (final t in top)
+        (
+          t.company,
+          t.totalTokens,
+          widget.colorByCompany[t.company]!,
         ),
       if (otherTokens > 0) ('Other', otherTokens, _kOtherColor),
     ];
@@ -1100,9 +1498,13 @@ class _HourlyDistributionChart extends StatelessWidget {
 const int _kTopProjectLimit = 8;
 
 class _ProjectBreakdownSection extends StatelessWidget {
-  const _ProjectBreakdownSection({required this.projects});
+  const _ProjectBreakdownSection({
+    required this.projects,
+    this.sort = AiUsageSortMetric.tokens,
+  });
 
   final List<ProjectUsageTotal> projects;
+  final AiUsageSortMetric sort;
 
   @override
   Widget build(BuildContext context) {
@@ -1123,7 +1525,7 @@ class _ProjectBreakdownSection extends StatelessWidget {
         Row(
           children: [
             Text(
-              'Top Projects by Tokens',
+              'Top Projects by ${sort.label}',
               style: TextStyle(
                   color: luma.textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
             ),
@@ -1250,9 +1652,13 @@ class _ProjectBarRow extends StatelessWidget {
 /// route through Anthropic, MiniMax, OpenRouter or OpenCode's own gateway,
 /// and the model table alone doesn't add that up.
 class _OpencodeProviderSection extends StatelessWidget {
-  const _OpencodeProviderSection({required this.providers});
+  const _OpencodeProviderSection({
+    required this.providers,
+    this.sort = AiUsageSortMetric.tokens,
+  });
 
   final List<ProviderUsageTotal> providers;
+  final AiUsageSortMetric sort;
 
   @override
   Widget build(BuildContext context) {
@@ -1271,7 +1677,7 @@ class _OpencodeProviderSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Providers',
+          'Providers by ${sort.label}',
           style: TextStyle(
               color: luma.textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
         ),
@@ -1386,7 +1792,9 @@ class _ProviderBarRow extends StatelessWidget {
 // ─── Model table header ──────────────────────────────────────────────────────
 
 class _ModelTableHeader extends StatelessWidget {
-  const _ModelTableHeader();
+  const _ModelTableHeader({this.grouped = false});
+
+  final bool grouped;
 
   @override
   Widget build(BuildContext context) {
@@ -1407,7 +1815,13 @@ class _ModelTableHeader extends StatelessWidget {
     return Row(
       children: [
         const SizedBox(width: 20), // lines up with the color-dot + gap in each row below
-        header('Model', 'Which model was used, and which local tool it came from', flex: 2),
+        header(
+          grouped ? 'Company' : 'Model',
+          grouped
+              ? 'Which company built the models used'
+              : 'Which model was used, and which local tool it came from',
+          flex: 2,
+        ),
         const SizedBox(width: 12),
         header(
           'Turns',
@@ -1491,6 +1905,88 @@ class _ModelListRow extends StatelessWidget {
           child: Text(
             total.billable
                 ? (total.source == AiUsageSource.antigravity
+                    ? '~${formatCost(total.cost)}'
+                    : formatCost(total.cost))
+                : 'n/a',
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              color: total.billable ? luma.success : luma.textMuted,
+              fontSize: 12,
+              fontWeight: total.billable ? FontWeight.w700 : FontWeight.w400,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CompanyListRow extends StatelessWidget {
+  const _CompanyListRow({required this.total, required this.color});
+
+  final CompanyUsageTotal total;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final modelsLabel =
+        total.modelCount == 1 ? '1 model' : '${total.modelCount} models';
+    return Row(
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          flex: 2,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                total.company,
+                style: TextStyle(color: luma.textPrimary, fontSize: 13),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                modelsLabel,
+                style: TextStyle(color: luma.textMuted, fontSize: 11),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        SizedBox(
+          width: 48,
+          child: Text(
+            '${total.turnCount}',
+            textAlign: TextAlign.right,
+            style: TextStyle(color: luma.textMuted, fontSize: 12),
+          ),
+        ),
+        const SizedBox(width: 12),
+        SizedBox(
+          width: 72,
+          child: Text(
+            total.estimated
+                ? '~${formatTokens(total.totalTokens)}'
+                : formatTokens(total.totalTokens),
+            textAlign: TextAlign.right,
+            style: TextStyle(color: luma.textSecondary, fontSize: 12),
+          ),
+        ),
+        const SizedBox(width: 12),
+        SizedBox(
+          width: 72,
+          child: Text(
+            total.billable
+                ? (total.estimated
                     ? '~${formatCost(total.cost)}'
                     : formatCost(total.cost))
                 : 'n/a',
@@ -1675,111 +2171,6 @@ class _ContributionHeatmap extends StatelessWidget {
             Text('More', style: TextStyle(color: luma.textMuted, fontSize: 11)),
           ],
         ),
-      ],
-    );
-  }
-}
-
-// ─── Other AI tools: informational only, no live fetch ─────────────────────
-
-class _OtherAiToolsSection extends StatefulWidget {
-  const _OtherAiToolsSection();
-
-  @override
-  State<_OtherAiToolsSection> createState() => _OtherAiToolsSectionState();
-}
-
-class _OtherAiToolsSectionState extends State<_OtherAiToolsSection> {
-  late final Future<Set<String>> _connectedIds = _loadConnected();
-
-  static Future<Set<String>> _loadConnected() async {
-    final store = await AiKeyStore.load();
-    final ids = <String>{};
-    for (final provider in kAiProviders) {
-      final key = await store.readKey(provider.id.name);
-      if (key != null && key.isNotEmpty) ids.add(provider.id.name);
-    }
-    return ids;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<Set<String>>(
-      future: _connectedIds,
-      builder: (context, snapshot) {
-        final connected = snapshot.data;
-        if (connected == null || connected.isEmpty) return const SizedBox();
-
-        final providers = [
-          for (final p in kAiProviders)
-            if (connected.contains(p.id.name)) p,
-        ];
-
-        return LumaCollapsibleSection(
-          icon: Icons.hub_outlined,
-          title: 'Other AI tools',
-          subtitle: "Informational only — luma can't fetch these automatically",
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (var i = 0; i < providers.length; i++) ...[
-                if (i > 0) const SizedBox(height: 12),
-                _ProviderRow(provider: providers[i]),
-              ],
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-const Map<AiProviderId, String> _kProviderUsageUrls = {
-  AiProviderId.anthropic: 'https://console.anthropic.com/',
-  AiProviderId.openai: 'https://platform.openai.com/usage',
-  AiProviderId.mistral: 'https://console.mistral.ai/',
-  AiProviderId.google: 'https://aistudio.google.com/',
-};
-
-class _ProviderRow extends StatelessWidget {
-  const _ProviderRow({required this.provider});
-
-  final AiProviderInfo provider;
-
-  @override
-  Widget build(BuildContext context) {
-    final luma = context.luma;
-    final url = _kProviderUsageUrls[provider.id];
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        LumaIconBadge(icon: provider.icon, color: luma.accent, size: 32),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                provider.displayName,
-                style: TextStyle(
-                    color: luma.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                "luma can't fetch usage or cost for this provider automatically — "
-                'personal API keys don\'t have access to billing endpoints, only '
-                "admin-tier keys do. Check the provider's own usage dashboard.",
-                style: TextStyle(color: luma.textMuted, fontSize: 11.5),
-              ),
-            ],
-          ),
-        ),
-        if (url != null)
-          IconButton(
-            tooltip: 'Open ${provider.displayName} usage dashboard',
-            icon: Icon(Icons.open_in_new_rounded, color: luma.textSecondary, size: 18),
-            onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
-          ),
       ],
     );
   }
