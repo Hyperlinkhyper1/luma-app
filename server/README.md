@@ -80,8 +80,8 @@ copy it to `.env` for local runs, or set the variables directly.
 > **Windows tip:** if a local `dart run` intermittently fails with pub-cache
 > "cannot find path" errors, that's Windows Defender scanning the pub cache
 > mid-build, not a code problem — see section 11 of `../SERVER_SETUP.md`.
-> Compiling to an exe (`dart compile exe bin/luma_server.dart`) sidesteps it
-> entirely, since the exe reads nothing from the pub cache at runtime.
+> Compiling (`dart build cli`, as `.\run_local.ps1` does) sidesteps it
+> entirely, since the bundle reads nothing from the pub cache at runtime.
 
 For a containerized run matching production, see `docker-compose.yml` /
 `Dockerfile` / `Caddyfile` — covered in `../SERVER_SETUP.md`.
