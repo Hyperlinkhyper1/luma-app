@@ -93,6 +93,7 @@ dependencies:
   # it works the same on Windows, Linux and Android, and every byte goes
   # straight from this device to the user's own server.
   dartssh2: ^2.13.0
+  flutter_secure_storage: ^10.3.2
 
 dev_dependencies:
   flutter_test:
@@ -130,6 +131,7 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/images/
+    - assets/images/vendors/
     - assets/space_colony/
     - assets/city_planner/
     - assets/subway_builder/
@@ -141,6 +143,7 @@ flutter:
     - assets/ai_models/
     - assets/device_health/
     - assets/tests/
+    - assets/tests/previews/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

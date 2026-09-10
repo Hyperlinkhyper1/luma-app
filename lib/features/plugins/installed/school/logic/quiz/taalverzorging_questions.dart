@@ -148,7 +148,7 @@ final List<QuizQuestion> taalverzorgingQuestions = [
       'Het voltooid deelwoord van verdienen is verdiend, met een d.'),
   _q('tv-039', _werkwoorden, 'Vul in: Het … geld is terecht. (beloven)',
       ['beloofd', 'beloofde', 'belooft', 'beloven'], 1,
-      'Een deelwoord vóór een zelfstandig naamwoord krijgt een -e.'),
+      'Hier staat het deelwoord bijvoeglijk voor geld: het beloofde geld.'),
   _q('tv-040', _werkwoorden,
       'Vul in: Ik … je morgen. (bellen, tegenwoordige tijd)',
       ['bel', 'belt', 'beld', 'belde'], 0,
@@ -201,7 +201,7 @@ final List<QuizQuestion> taalverzorgingQuestions = [
       ['maakte', 'maakde', 'maaktte', 'makte'], 0),
 
   // --- Leestekens -----------------------------------------------------------
-  _q('tv-057', _leestekens, 'Welke zin is goed geschreven?',
+  _q('tv-057', _leestekens, 'Welke opsomming gebruikt één komma en het woord en?',
       [
         'Ik kocht brood kaas, en melk.',
         'Ik kocht brood, kaas en melk.',
@@ -209,13 +209,13 @@ final List<QuizQuestion> taalverzorgingQuestions = [
         'Ik kocht brood, kaas, en melk.'
       ],
       1,
-      'In een opsomming staat geen komma voor het laatste "en".'),
+      'In deze korte opsomming is een komma voor "en" niet nodig.'),
   _q('tv-058', _leestekens, 'Welke zin is goed geschreven?',
       [
         'Kom je nog? vroeg Sam.',
         '"Kom je nog?" vroeg Sam.',
         '"Kom je nog"? vroeg Sam.',
-        '"Kom je nog?", vroeg Sam.'
+        '"Kom je nog?" vroeg, Sam.'
       ],
       1,
       'Het vraagteken hoort binnen de aanhalingstekens.'),
@@ -228,7 +228,7 @@ final List<QuizQuestion> taalverzorgingQuestions = [
       ],
       1,
       'Voor een aanspreking komt een komma.'),
-  _q('tv-060', _leestekens, 'Welke zin is goed geschreven?',
+  _q('tv-060', _leestekens, 'Welke zin zet een komma tussen de bijzin en de hoofdzin?',
       [
         'Toen het ging regenen gingen we naar binnen.',
         'Toen het ging regenen, gingen we naar binnen.',
@@ -250,7 +250,7 @@ final List<QuizQuestion> taalverzorgingQuestions = [
       ],
       0,
       'Bij een naam op een klinker komt een apostrof voor de bezits-s.'),
-  _q('tv-063', _leestekens, 'Welke zin is goed geschreven?',
+  _q('tv-063', _leestekens, 'Welke zin eindigt met een uitroepteken om enthousiasme te benadrukken?',
       [
         'Wat een geweldige wedstrijd.',
         'Wat een geweldige wedstrijd!',
@@ -261,10 +261,10 @@ final List<QuizQuestion> taalverzorgingQuestions = [
       'Een uitroep krijgt een uitroepteken.'),
   _q('tv-064', _leestekens, 'Welke zin is goed geschreven?',
       [
-        'Hij vroeg of ik mee ging?',
-        'Hij vroeg of ik mee ging.',
-        'Hij vroeg: of ik mee ging?',
-        'Hij vroeg, of ik mee ging?'
+        'Hij vroeg of ik meeging?',
+        'Hij vroeg of ik meeging.',
+        'Hij vroeg: of ik meeging?',
+        'Hij vroeg, of ik meeging?'
       ],
       1,
       'Dit is een mededeling over een vraag, geen vraag zelf.'),
@@ -287,7 +287,7 @@ final List<QuizQuestion> taalverzorgingQuestions = [
       ],
       0,
       'De komma vervangt de punt en staat binnen de aanhalingstekens.'),
-  _q('tv-067', _leestekens, 'Welke zin is goed geschreven?',
+  _q('tv-067', _leestekens, 'Ik heb één broer. Welke zin zet de extra informatie over zijn woonplaats tussen twee kommas?',
       [
         'Mijn broer die in Utrecht woont, komt vanavond.',
         'Mijn broer, die in Utrecht woont, komt vanavond.',
@@ -322,7 +322,7 @@ final List<QuizQuestion> taalverzorgingQuestions = [
         'Je zet er haakjes omheen'
       ],
       0),
-  _q('tv-072', _leestekens, 'Welke zin is goed geschreven?',
+  _q('tv-072', _leestekens, 'Welke zin schrijft deze mededeling zonder onnodige onderbrekingen?',
       [
         'Hij zei dat hij ziek was en niet kwam.',
         'Hij zei, dat hij ziek was en niet kwam.',
@@ -330,8 +330,8 @@ final List<QuizQuestion> taalverzorgingQuestions = [
         'Hij zei: dat hij ziek was en niet kwam.'
       ],
       0,
-      'Voor "dat" komt in het Nederlands geen komma.'),
-  _q('tv-073', _leestekens, 'Welke zin is goed geschreven?',
+      'In deze korte zin is een komma voor "dat" niet nodig.'),
+  _q('tv-073', _leestekens, 'Welke opsomming gebruikt één komma en het woord en?',
       [
         'Sara, Bram en Iris gingen mee.',
         'Sara Bram en Iris gingen mee.',
@@ -340,7 +340,7 @@ final List<QuizQuestion> taalverzorgingQuestions = [
       ],
       0),
   _q('tv-074', _leestekens,
-      'Welk leesteken zet je tussen twee zinnen die sterk bij elkaar horen, in plaats van een punt?',
+      'Welk leesteken bestaat uit een punt met een komma eronder en kan twee samenhangende zinnen verbinden?',
       ['een komma', 'een puntkomma', 'een dubbele punt', 'een streepje'], 1),
   _q('tv-075', _leestekens, 'Welke zin is goed geschreven?',
       [
@@ -358,7 +358,7 @@ final List<QuizQuestion> taalverzorgingQuestions = [
         'Ik wil: appels peren en bananen.'
       ],
       1),
-  _q('tv-077', _leestekens, 'Welke zin is goed geschreven?',
+  _q('tv-077', _leestekens, 'Welke zin zet de komma direct na de bijzin Als je klaar bent?',
       [
         'Als je klaar bent mag je gaan.',
         'Als je klaar bent, mag je gaan.',
@@ -366,7 +366,7 @@ final List<QuizQuestion> taalverzorgingQuestions = [
         'Als je klaar bent mag, je gaan.'
       ],
       1),
-  _q('tv-078', _leestekens, 'Welke zin is goed geschreven?',
+  _q('tv-078', _leestekens, 'Welke zin benadrukt de waarschuwing Pas op met een uitroepteken?',
       [
         'Pas op! Er komt een fietser aan.',
         'Pas op. Er komt een fietser aan!',

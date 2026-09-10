@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:crypto/crypto.dart';
+
+import '../../security/password_hash.dart';
+import '../../security/secret_clipboard.dart';
 
 import '../../app/widgets.dart';
 import '../../app/pin_dialog.dart';
@@ -74,7 +75,7 @@ class _PasswordsPageState extends State<PasswordsPage> {
                   icon: Icons.lock_rounded,
                   title: 'No passwords saved yet',
                   subtitle:
-                      'Add your first login — it stays locked on this device.',
+                      'Passwords and 2FA seeds are encrypted on this device.',
                 );
               }
               if (records.isEmpty) {
@@ -149,8 +150,13 @@ class _CredentialCardState extends State<_CredentialCard> {
     final pin = await showPinDialog(context, title: 'Enter PIN to unlock');
     if (pin == null) return false;
 
-    final hash = sha256.convert(utf8.encode(pin)).toString();
-    if (hash == settings.lockPasswordHash) return true;
+    final stored = settings.lockPasswordHash!;
+    if (await PasswordHash.verify(pin, stored)) {
+      if (PasswordHash.needsUpgrade(stored)) {
+        settings.setLockPasswordHash(await PasswordHash.create(pin));
+      }
+      return true;
+    }
 
     if (mounted) {
       ScaffoldMessenger.of(context)
@@ -163,7 +169,8 @@ class _CredentialCardState extends State<_CredentialCard> {
   Future<void> _copy(String label, String value) async {
     if (!await _requirePin()) return;
     if (!mounted) return;
-    Clipboard.setData(ClipboardData(text: value));
+    await SecretClipboard.copy(value);
+    if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text('$label copied')));
@@ -266,7 +273,7 @@ class _CredentialCardState extends State<_CredentialCard> {
                 tooltip: 'Edit',
                 onTap: () async {
                   if (!await _requirePin()) return;
-                  if (!mounted) return;
+                  if (!context.mounted) return;
                   showPasswordEntrySheet(
                     context,
                     repo: widget.repo,
@@ -282,18 +289,15 @@ class _CredentialCardState extends State<_CredentialCard> {
               ),
             ],
           ),
-          if (_breached) ...[
-            const SizedBox(height: 10),
-            const _BreachBadge(),
-          ],
+          if (_breached) ...[const SizedBox(height: 10), const _BreachBadge()],
           const SizedBox(height: 10),
           _Field(
             label: 'Password',
             value: r.decryptFailed
                 ? '⚠ Could not decrypt — data corrupt or key file changed'
                 : _revealed
-                    ? r.password
-                    : '•' * (r.password.isEmpty ? 8 : 10),
+                ? r.password
+                : '•' * (r.password.isEmpty ? 8 : 10),
             mono: true,
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
@@ -405,8 +409,10 @@ class _TotpFieldState extends State<_TotpField> {
                   backgroundColor: luma.surfaceHover,
                   valueColor: AlwaysStoppedAnimation(luma.accent),
                 ),
-                Text('$remaining',
-                    style: TextStyle(color: luma.textMuted, fontSize: 9)),
+                Text(
+                  '$remaining',
+                  style: TextStyle(color: luma.textMuted, fontSize: 9),
+                ),
               ],
             ),
           ),

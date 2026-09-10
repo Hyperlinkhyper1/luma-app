@@ -4,14 +4,13 @@ import 'package:luma/features/plugins/installed/school/logic/quiz_bank.dart';
 
 void main() {
   group('quiz bank integrity', () {
-    // Most of the pool comes out of the generators in `logic/quiz/*_extra.dart`,
-    // which silently drop a question they cannot give four distinct options.
-    // This guards the floor: if a template starts dropping most of its output,
-    // the count falls through 500 and this fails.
-    test('every subject has at least 500 questions', () {
+    test('every subject has enough questions for the longest test', () {
       for (final s in QuizBank.subjects) {
-        expect(s.questions.length, greaterThanOrEqualTo(500),
-            reason: '${s.name} has too few questions to draw varied tests');
+        expect(
+          s.questions.length,
+          greaterThanOrEqualTo(s.isDoorstroom ? 50 : 500),
+          reason: '${s.name} has too few questions to draw varied tests',
+        );
       }
     });
 
@@ -24,9 +23,13 @@ void main() {
         }
         final share = (longest / perTopic.length).ceil();
         for (final entry in perTopic.entries) {
-          expect(entry.value, greaterThanOrEqualTo(share),
-              reason: '${s.name} / ${entry.key} cannot fill a $longest-vragen '
-                  'toets without repeating');
+          expect(
+            entry.value,
+            greaterThanOrEqualTo(share),
+            reason:
+                '${s.name} / ${entry.key} cannot fill a $longest-vragen '
+                'toets without repeating',
+          );
         }
       }
     });
@@ -40,11 +43,20 @@ void main() {
       }
     });
 
-    test('every question has four options and a valid answer index', () {
+    test('every question has a valid answer format', () {
       for (final s in QuizBank.subjects) {
         for (final q in s.questions) {
-          expect(q.options, hasLength(4), reason: q.id);
-          expect(q.answerIndex, inInclusiveRange(0, 3), reason: q.id);
+          if (q.isOpen) {
+            expect(q.expected, isNotEmpty);
+            expect(q.accepts(q.expected!), isTrue);
+            continue;
+          }
+          expect(q.options.length, inInclusiveRange(3, 6), reason: q.id);
+          expect(
+            q.answerIndex,
+            inInclusiveRange(0, q.options.length - 1),
+            reason: q.id,
+          );
           expect(q.prompt.trim(), isNotEmpty, reason: q.id);
         }
       }
@@ -53,8 +65,11 @@ void main() {
     test('options within a question are distinct and non-empty', () {
       for (final s in QuizBank.subjects) {
         for (final q in s.questions) {
-          expect(q.options.toSet(), hasLength(4),
-              reason: '${q.id} repeats an option');
+          expect(
+            q.options.toSet(),
+            hasLength(q.options.length),
+            reason: '${q.id} repeats an option',
+          );
           for (final o in q.options) {
             expect(o.trim(), isNotEmpty, reason: q.id);
           }
@@ -112,10 +127,14 @@ void main() {
           counts[q.topic] = (counts[q.topic] ?? 0) + 1;
         }
         expect(counts.keys.toSet(), s.topics.toSet(), reason: s.name);
-        final spread = counts.values.reduce((a, b) => a > b ? a : b) -
+        final spread =
+            counts.values.reduce((a, b) => a > b ? a : b) -
             counts.values.reduce((a, b) => a < b ? a : b);
-        expect(spread, lessThanOrEqualTo(1),
-            reason: '${s.name} is lopsided: $counts');
+        expect(
+          spread,
+          lessThanOrEqualTo(1),
+          reason: '${s.name} is lopsided: $counts',
+        );
       }
     });
 
@@ -131,7 +150,7 @@ void main() {
 
   group('QuizResult', () {
     QuizResult resultWith(List<int?> answers) {
-      final subject = QuizBank.subjects.first;
+      final subject = QuizBank.byId('engels')!;
       final questions = buildTest(subject, count: answers.length, seed: 4);
       return QuizResult(
         subject: subject,
@@ -142,7 +161,7 @@ void main() {
     }
 
     test('scores only exact matches', () {
-      final subject = QuizBank.subjects.first;
+      final subject = QuizBank.byId('engels')!;
       final questions = buildTest(subject, count: 4, seed: 5);
       final answers = <int?>[
         questions[0].answerIndex,
@@ -164,7 +183,7 @@ void main() {
     });
 
     test('all wrong is a 1,0 and all right is a 10,0', () {
-      final subject = QuizBank.subjects.first;
+      final subject = QuizBank.byId('engels')!;
       final questions = buildTest(subject, count: 10, seed: 6);
       final allRight = QuizResult(
         subject: subject,

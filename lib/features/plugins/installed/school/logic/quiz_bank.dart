@@ -1,4 +1,7 @@
 import 'dart:math';
+import 'quiz/iep_rekenen.dart';
+import 'quiz/iep_taal.dart';
+import 'quiz/iep_lezen.dart';
 
 import 'package:flutter/material.dart';
 
@@ -10,18 +13,33 @@ import 'quiz/engels_extra.dart';
 import 'quiz/engels_questions.dart';
 import 'quiz/geschiedenis_extra.dart';
 import 'quiz/geschiedenis_questions.dart';
-import 'quiz/lezen_extra.dart';
-import 'quiz/lezen_questions.dart';
-import 'quiz/rekenen_extra.dart';
-import 'quiz/rekenen_questions.dart';
-import 'quiz/taalverzorging_extra.dart';
-import 'quiz/taalverzorging_questions.dart';
 
-/// One multiple-choice question in the practice-test bank.
+enum QuizInput { choice, number, word, multiple }
+
+@immutable
+class QuizTable {
+  const QuizTable({required this.headers, required this.rows});
+  final List<String> headers;
+  final List<List<String>> rows;
+}
+
+@immutable
+class QuizBars {
+  const QuizBars({
+    required this.title,
+    required this.labels,
+    required this.values,
+    required this.unit,
+  });
+  final String title;
+  final List<String> labels;
+  final List<int> values;
+  final String unit;
+}
+
+/// One practice question in the practice-test bank.
 ///
-/// Every question in the bank is authored at the same level — see
-/// [QuizBank.level] — so a test drawn from one subject is comparable to a test
-/// drawn from any other.
+/// Practice questions vary in difficulty; scores are not standardised.
 @immutable
 class QuizQuestion {
   const QuizQuestion({
@@ -32,6 +50,12 @@ class QuizQuestion {
     required this.answerIndex,
     this.explanation,
     this.passage,
+    this.input = QuizInput.choice,
+    this.expected,
+    this.unit,
+    this.correctIndices = const [],
+    this.table,
+    this.bars,
   });
 
   /// Stable identifier, unique across the whole bank.
@@ -43,7 +67,7 @@ class QuizQuestion {
 
   final String prompt;
 
-  /// Always four answer options.
+  /// Answer options for closed questions; empty for open questions.
   final List<String> options;
 
   /// Index into [options] of the correct answer.
@@ -55,7 +79,49 @@ class QuizQuestion {
   /// A reading fragment the question belongs to, shown above the prompt.
   final String? passage;
 
-  String get answer => options[answerIndex];
+  final QuizInput input;
+  final String? expected;
+  final String? unit;
+  final List<int> correctIndices;
+  final QuizTable? table;
+  final QuizBars? bars;
+
+  bool get isOpen => input == QuizInput.number || input == QuizInput.word;
+
+  bool accepts(String raw) {
+    if (!isOpen || raw.trim().isEmpty) return false;
+    if (input == QuizInput.word) {
+      String normalise(String text) =>
+          text.trim().toLowerCase().replaceAll('’', "'").replaceAll('‘', "'");
+      return normalise(raw) == normalise(expected!);
+    }
+    return parseQuizNumber(raw) != null &&
+        parseQuizNumber(raw) == parseQuizNumber(expected!);
+  }
+
+  String get answer => isOpen
+      ? expected!
+      : input == QuizInput.multiple
+      ? correctIndices.map((i) => options[i]).join(' · ')
+      : options[answerIndex];
+}
+
+/// Dutch numeric input: comma decimals, optional grouped thousands or a
+/// decimal point. Units and expressions are deliberately not accepted.
+double? parseQuizNumber(String raw) {
+  var text = raw.trim().replaceAll('−', '-');
+  if (!RegExp(r'^-?[0-9][0-9., ]*$').hasMatch(text)) return null;
+  if (text.contains(' ')) {
+    if (!RegExp(r'^-?\d{1,3}( \d{3})+([,.]\d+)?$').hasMatch(text)) return null;
+    text = text.replaceAll(' ', '');
+  }
+  if (text.contains(',')) {
+    if (!RegExp(r'^-?(\d+|\d{1,3}(\.\d{3})+),\d+$').hasMatch(text)) return null;
+    text = text.replaceAll('.', '').replaceAll(',', '.');
+  } else if (RegExp(r'^-?\d{1,3}(\.\d{3})+$').hasMatch(text)) {
+    text = text.replaceAll('.', '');
+  }
+  return double.tryParse(text);
 }
 
 /// A subject the student can be tested on.
@@ -79,6 +145,9 @@ class QuizSubject {
 
   /// Assembles the pool. Called once, lazily, by [questions].
   final List<QuizQuestion> Function() build;
+
+  bool get isDoorstroom =>
+      const {'rekenen', 'lezen', 'taalverzorging'}.contains(id);
 
   /// The subject's whole question pool.
   ///
@@ -106,13 +175,8 @@ class QuizSubject {
 /// tables into the bulk of the pool. Adding questions means adding rows to a
 /// table or a hand-written entry — nothing else has to change.
 abstract final class QuizBank {
-  /// The single difficulty every question is written to.
-  ///
-  /// This is the invariant that makes "the same test for every subject" mean
-  /// something: a question only belongs in the bank if it sits at the end of
-  /// groep 8 / start of the brugklas — the doorstroomtoets level. Anything
-  /// easier or harder does not go in.
-  static const level = 'Groep 8 · doorstroomtoets-niveau';
+  /// Intended audience, not a calibrated reference-level assessment.
+  static const level = 'Groep 8 · oefenen voor IEP';
 
   static final List<QuizSubject> subjects = [
     QuizSubject(
@@ -121,7 +185,7 @@ abstract final class QuizBank {
       icon: Icons.calculate_rounded,
       color: const Color(0xFF7C5AD9),
       blurb: 'Getallen, verhoudingen, meten & meetkunde, verbanden',
-      build: () => [...rekenenQuestions, ...buildRekenenExtra()],
+      build: buildIepRekenen,
     ),
     QuizSubject(
       id: 'taalverzorging',
@@ -129,7 +193,7 @@ abstract final class QuizBank {
       icon: Icons.spellcheck_rounded,
       color: const Color(0xFF2E9E7B),
       blurb: 'Spelling, werkwoordspelling en leestekens',
-      build: () => [...taalverzorgingQuestions, ...buildTaalverzorgingExtra()],
+      build: buildIepTaal,
     ),
     QuizSubject(
       id: 'lezen',
@@ -137,14 +201,14 @@ abstract final class QuizBank {
       icon: Icons.menu_book_rounded,
       color: const Color(0xFFD9843B),
       blurb: 'Teksten begrijpen, samenvatten, woordbetekenis en opzoeken',
-      build: () => [...lezenQuestions, ...buildLezenExtra()],
+      build: buildIepLezen,
     ),
     QuizSubject(
       id: 'engels',
       name: 'Engels',
       icon: Icons.translate_rounded,
       color: const Color(0xFF3B7FD9),
-      blurb: 'Woordenschat, grammatica en werkwoordstijden',
+      blurb: 'Extra oefening · Engels voor bovenbouw en brugklas',
       build: () => [...engelsQuestions, ...buildEngelsExtra()],
     ),
     QuizSubject(
@@ -152,7 +216,7 @@ abstract final class QuizBank {
       name: 'Aardrijkskunde',
       icon: Icons.public_rounded,
       color: const Color(0xFF1FA5A5),
-      blurb: 'Nederland, Europa, de wereld en het weer',
+      blurb: 'Extra oefening · Nederland, Europa, de wereld en het weer',
       build: () => [...aardrijkskundeQuestions, ...buildAardrijkskundeExtra()],
     ),
     QuizSubject(
@@ -160,7 +224,7 @@ abstract final class QuizBank {
       name: 'Geschiedenis',
       icon: Icons.history_edu_rounded,
       color: const Color(0xFFB4574B),
-      blurb: 'De tien tijdvakken, van jagers tot nu',
+      blurb: 'Extra oefening · De tien tijdvakken, van jagers tot nu',
       build: () => [...geschiedenisQuestions, ...buildGeschiedenisExtra()],
     ),
     QuizSubject(
@@ -168,7 +232,7 @@ abstract final class QuizBank {
       name: 'Natuur & techniek',
       icon: Icons.science_rounded,
       color: const Color(0xFF5FA83C),
-      blurb: 'Het lichaam, planten, dieren, energie en techniek',
+      blurb: 'Extra oefening · Lichaam, natuur, energie en techniek',
       build: () => [...biologieQuestions, ...buildBiologieExtra()],
     ),
   ];
@@ -183,6 +247,11 @@ abstract final class QuizBank {
   static int get totalQuestions =>
       subjects.fold(0, (sum, s) => sum + s.questions.length);
 
+  static List<QuizSubject> get doorstroomSubjects =>
+      subjects.where((s) => s.isDoorstroom).toList();
+  static List<QuizSubject> get extraSubjects =>
+      subjects.where((s) => !s.isDoorstroom).toList();
+
   /// The test lengths offered in the UI.
   static const lengths = [10, 20, 30, 50];
 }
@@ -192,8 +261,7 @@ abstract final class QuizBank {
 /// Questions are taken round-robin across the subject's topics, so a
 /// twenty-question rekentoets always covers all four rekendomeinen in roughly
 /// equal measure rather than landing on twenty breukensommen by chance. That
-/// even spread — plus the single authoring level — is what keeps two tests of
-/// the same length comparable, whichever subject they come from.
+/// spread covers the topics; it does not guarantee equal difficulty.
 ///
 /// Pass a [seed] to get a reproducible draw (used by the tests).
 List<QuizQuestion> buildTest(
@@ -203,7 +271,14 @@ List<QuizQuestion> buildTest(
 }) {
   final random = Random(seed);
   final pools = <String, List<QuizQuestion>>{};
-  for (final q in subject.questions) {
+  var source = subject.questions;
+  if (subject.id == 'lezen') {
+    final passages = source.map((q) => q.passage).toSet().toList()
+      ..shuffle(random);
+    final selected = passages.take((count / 8).ceil()).toSet();
+    source = source.where((q) => selected.contains(q.passage)).toList();
+  }
+  for (final q in source) {
     pools.putIfAbsent(q.topic, () => []).add(q);
   }
   for (final pool in pools.values) {
@@ -229,6 +304,20 @@ List<QuizQuestion> buildTest(
   }
 
   drawn.shuffle(random);
+  if (subject.id == 'lezen') {
+    final grouped = <String, List<QuizQuestion>>{};
+    for (final q in drawn) {
+      grouped.putIfAbsent(q.passage ?? q.id, () => []).add(q);
+    }
+    final order = {
+      for (var i = 0; i < subject.questions.length; i++)
+        subject.questions[i].id: i,
+    };
+    return [
+      for (final group in grouped.values)
+        ...group..sort((a, b) => order[a.id]!.compareTo(order[b.id]!)),
+    ];
+  }
   return drawn;
 }
 
@@ -240,6 +329,8 @@ class QuizResult {
     required this.questions,
     required this.answers,
     required this.duration,
+    this.typedAnswers = const {},
+    this.multipleAnswers = const {},
   });
 
   final QuizSubject subject;
@@ -250,7 +341,37 @@ class QuizResult {
 
   final Duration duration;
 
-  bool isCorrect(int i) => answers[i] == questions[i].answerIndex;
+  final Map<int, String> typedAnswers;
+  final Map<int, Set<int>> multipleAnswers;
+
+  bool isAnswered(int i) => questions[i].isOpen
+      ? (typedAnswers[i]?.trim().isNotEmpty ?? false)
+      : questions[i].input == QuizInput.multiple
+      ? (multipleAnswers[i]?.isNotEmpty ?? false)
+      : answers[i] != null;
+
+  bool isCorrect(int i) {
+    final q = questions[i];
+    if (q.isOpen) return q.accepts(typedAnswers[i] ?? '');
+    if (q.input == QuizInput.multiple) {
+      final selected = multipleAnswers[i] ?? const <int>{};
+      return selected.length == q.correctIndices.length &&
+          selected.containsAll(q.correctIndices);
+    }
+    return answers[i] == q.answerIndex;
+  }
+
+  String givenAnswer(int i) {
+    final q = questions[i];
+    if (!isAnswered(i)) return '';
+    if (q.isOpen) return typedAnswers[i]!;
+    if (q.input == QuizInput.multiple) {
+      return (multipleAnswers[i]!.toList()..sort())
+          .map((n) => q.options[n])
+          .join(' · ');
+    }
+    return q.options[answers[i]!];
+  }
 
   int get correct {
     var n = 0;
@@ -260,7 +381,10 @@ class QuizResult {
     return n;
   }
 
-  int get skipped => answers.where((a) => a == null).length;
+  int get skipped => [
+    for (var i = 0; i < questions.length; i++)
+      if (!isAnswered(i)) i,
+  ].length;
 
   double get fraction => questions.isEmpty ? 0 : correct / questions.length;
 

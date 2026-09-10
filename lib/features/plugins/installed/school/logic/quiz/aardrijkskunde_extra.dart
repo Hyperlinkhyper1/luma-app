@@ -141,7 +141,7 @@ const _wereldLanden = [
   'Nepal|Kathmandu|Azie',
   'Mongolie|Ulaanbaatar|Azie',
   'Kazachstan|Astana|Azie',
-  'Sri Lanka|Colombo|Azie',
+  'Sri Lanka|Sri Jayewardenepura Kotte|Azie',
   'Bangladesh|Dhaka|Azie',
   'Afghanistan|Kaboel|Azie',
   'Syrie|Damascus|Azie',
@@ -203,7 +203,7 @@ const _werelddelen = [
 
 /// `vraag|antwoord|fout|fout|fout`
 const _nederlandFeiten = [
-  'Welke rivier stroomt bij Rotterdam de zee in?|de Nieuwe Waterweg|de IJssel|de Vecht|de Dommel',
+  'Welke waterweg verbindt Rotterdam met de Noordzee?|de Nieuwe Waterweg|de IJssel|de Vecht|de Dommel',
   'Hoe heet de grootste rivier die Duitsland en Nederland verbindt?|de Rijn|de Schelde|de Eems|de Linge',
   'Welke rivier is een aftakking van de Rijn en stroomt langs Nijmegen?|de Waal|de Maas|de IJssel|de Vecht',
   'Welke rivier komt uit Frankrijk en stroomt door Limburg?|de Maas|de Rijn|de Schelde|de Amstel',
@@ -212,7 +212,7 @@ const _nederlandFeiten = [
   'Welk meer ontstond achter de Afsluitdijk?|het IJsselmeer|het Veluwemeer|de Waddenzee|het Grevelingenmeer',
   'Waarom zijn de Deltawerken gebouwd?|om Zeeland tegen overstromingen te beschermen|om meer land te winnen|om schepen sneller te laten varen|om zoet water op te slaan',
   'In welk jaar vond de grote watersnoodramp plaats?|1953|1916|1932|1975',
-  'Wat is het hoogste punt van Nederland?|de Vaalserberg|de Utrechtse Heuvelrug|de Sint-Pietersberg|de Hondsrug',
+  'Wat is het hoogste punt van Europees Nederland?|de Vaalserberg|de Utrechtse Heuvelrug|de Sint-Pietersberg|de Hondsrug',
   'Hoe heet land dat is drooggelegd en omdijkt?|een polder|een kwelder|een wad|een duin',
   'Welke provincie bestaat helemaal uit ingepolderd land?|Flevoland|Zeeland|Drenthe|Utrecht',
   'Hoe heten de eilanden in het noorden van Nederland?|de Waddeneilanden|de Zeeuwse eilanden|de Zuiderzee-eilanden|de Deltaeilanden',
@@ -222,7 +222,7 @@ const _nederlandFeiten = [
   'Welke bodemsoort vind je vooral in het westen van Nederland?|klei en veen|zand en grind|loss|krijt',
   'Waar in Nederland vind je loss in de bodem?|in Zuid-Limburg|op de Veluwe|in Zeeland|in Groningen',
   'Wat beschermt de kust tegen de zee, naast dijken?|duinen|heuvels|bossen|polders',
-  'Hoe heet het laaggelegen gebied onder de zeespiegel?|de Randstad-polders|de Veluwe|de Hondsrug|het Drents Plateau',
+  'Welk van deze gebieden ligt grotendeels onder zeeniveau?|de polders in de Randstad|de Veluwe|de Hondsrug|het Drents Plateau',
   'Welke vier grote steden vormen samen de Randstad?|Amsterdam, Rotterdam, Den Haag en Utrecht|Amsterdam, Groningen, Arnhem en Breda|Rotterdam, Eindhoven, Zwolle en Assen|Utrecht, Maastricht, Leeuwarden en Almere',
   'Welk natuurgebied op de Veluwe is een groot nationaal park?|De Hoge Veluwe|de Biesbosch|de Oostvaardersplassen|het Naardermeer',
   'Waar wordt in Nederland aardgas gewonnen?|in Groningen|in Zeeland|op de Veluwe|in Limburg',
@@ -244,7 +244,7 @@ const _weerFeiten = [
   'Wat laat een windvaan zien?|uit welke richting de wind komt|hoe hard het waait|hoe warm het is|hoeveel regen er valt',
   'Wat betekent een lagedrukgebied meestal?|wolken en regen|zon en droogte|vorst|mist zonder wind',
   'Wat betekent een hogedrukgebied meestal?|droog en rustig weer|storm|veel regen|sneeuw',
-  'Hoe heet neerslag die bevriest voordat hij de grond raakt?|hagel|mist|dauw|rijp',
+  'Hoe heet neerslag die uit ijsbolletjes bestaat?|hagel|mist|dauw|rijp',
   'Wat is mist eigenlijk?|een wolk vlak boven de grond|fijne regen|damp uit de bodem|rook',
   'Welk klimaat heeft Nederland?|een zeeklimaat|een landklimaat|een woestijnklimaat|een tropisch klimaat',
   'Wat is typisch voor een zeeklimaat?|zachte winters en koele zomers|hele koude winters en hete zomers|nooit neerslag|altijd storm',
@@ -255,7 +255,7 @@ const _weerFeiten = [
   'Welke windrichting ligt tussen noord en oost in?|noordoost|noordwest|zuidoost|zuidwest',
   'Waar komt de zon op?|in het oosten|in het westen|in het noorden|in het zuiden',
   'Waar gaat de zon onder?|in het westen|in het oosten|in het zuiden|in het noorden',
-  'Wat wijst de naald van een kompas aan?|het noorden|het zuiden|de zon|de wind',
+  'Welke richting wijst het gemarkeerde uiteinde van een kompasnaald aan?|het noorden|het zuiden|de zon|de wind',
   'Hoe heet de kaart waarop het weer van morgen staat?|een weerkaart|een hoogtekaart|een stroomkaart|een bevolkingskaart',
   'Wat betekent de schaal 1 : 100.000 op een kaart?|1 cm op de kaart is 1 km in het echt|1 cm is 100 m|1 cm is 10 km|1 cm is 100 km',
   'Wat laat een hoogtekaart zien?|hoe hoog het land ligt|waar mensen wonen|welke wegen er zijn|hoe warm het is',
@@ -269,7 +269,13 @@ const _weerFeiten = [
   'Waarom is het in de winter kouder?|de zon staat lager en schijnt korter|de aarde staat verder van de zon|er is minder lucht|de wind draait om',
 ];
 
-const _steden = ['Groningen', 'Utrecht', 'Maastricht', 'Vlissingen', 'Enschede'];
+const _steden = [
+  'Groningen',
+  'Utrecht',
+  'Maastricht',
+  'Vlissingen',
+  'Enschede',
+];
 
 /// The generated part of the aardrijkskunde bank.
 List<QuizQuestion> buildAardrijkskundeExtra() {
@@ -304,12 +310,7 @@ List<QuizQuestion> buildAardrijkskundeExtra() {
   }
 
   for (final f in rows(_nederlandFeiten)) {
-    g.add(
-      topic: _nederland,
-      prompt: f[0],
-      answer: f[1],
-      wrong: f.sublist(2),
-    );
+    g.add(topic: _nederland, prompt: f[0], answer: f[1], wrong: f.sublist(2));
   }
 
   // --- Europa ----------------------------------------------------------------
@@ -364,12 +365,7 @@ List<QuizQuestion> buildAardrijkskundeExtra() {
   }
 
   for (final f in rows(_weerFeiten)) {
-    g.add(
-      topic: _wereld,
-      prompt: f[0],
-      answer: f[1],
-      wrong: f.sublist(2),
-    );
+    g.add(topic: _wereld, prompt: f[0], answer: f[1], wrong: f.sublist(2));
   }
 
   // --- Weertabellen ----------------------------------------------------------
@@ -384,6 +380,7 @@ List<QuizQuestion> buildAardrijkskundeExtra() {
     final laag = temps.reduce((a, b) => a < b ? a : b);
     if (hoog == laag) continue;
     if (soort == 0) {
+      if (temps.where((t) => t == hoog).length != 1) continue;
       g.add(
         topic: _wereld,
         passage: 'De temperatuur om 14:00 uur:\n$tabel',
@@ -393,6 +390,7 @@ List<QuizQuestion> buildAardrijkskundeExtra() {
         why: 'Daar was het $hoog °C.',
       );
     } else if (soort == 1) {
+      if (temps.where((t) => t == laag).length != 1) continue;
       g.add(
         topic: _wereld,
         passage: 'De temperatuur om 14:00 uur:\n$tabel',
@@ -405,7 +403,8 @@ List<QuizQuestion> buildAardrijkskundeExtra() {
       g.add(
         topic: _wereld,
         passage: 'De temperatuur om 14:00 uur:\n$tabel',
-        prompt: 'Hoeveel graden verschil zit er tussen de warmste en de '
+        prompt:
+            'Hoeveel graden verschil zit er tussen de warmste en de '
             'koudste stad?',
         answer: '${hoog - laag} graden',
         wrong: [
@@ -435,7 +434,8 @@ List<QuizQuestion> buildAardrijkskundeExtra() {
       final daar = (uur + z.$2 + 24) % 24;
       g.add(
         topic: _wereld,
-        prompt: 'In Nederland is het $uur:00 uur. In ${z.$1} is het '
+        prompt:
+            'In Nederland is het $uur:00 uur. In ${z.$1} is het '
             '${z.$2 > 0 ? '${z.$2} uur later' : '${-z.$2} uur vroeger'}. '
             'Hoe laat is het daar?',
         answer: '$daar:00 uur',
@@ -445,7 +445,7 @@ List<QuizQuestion> buildAardrijkskundeExtra() {
           '${(uur - z.$2 + 24) % 24}:00 uur',
           '$uur:00 uur',
         ],
-        why: 'De aarde is verdeeld in tijdzones van een uur.',
+        why: 'Reken met het tijdverschil dat in deze opgave is gegeven.',
       );
     }
   }

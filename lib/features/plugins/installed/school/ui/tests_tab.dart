@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../../../app/widgets.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../logic/quiz_bank.dart';
+import 'quiz_pdf_options.dart';
 
 /// Practice tests: pick a subject, draw a test from the built-in question
 /// bank, answer it, and walk back through every question with the right
@@ -27,6 +28,8 @@ class _TestsTabState extends State<TestsTab> {
   List<QuizQuestion> _questions = const [];
   List<int?> _answers = const [];
   int _index = 0;
+  Map<int, String> _typed = {};
+  Map<int, Set<int>> _multiple = {};
   DateTime? _startedAt;
   QuizResult? _result;
 
@@ -38,6 +41,8 @@ class _TestsTabState extends State<TestsTab> {
       _questions = questions;
       _answers = List<int?>.filled(questions.length, null);
       _index = 0;
+      _typed = {};
+      _multiple = {};
       _startedAt = DateTime.now();
       _result = null;
       _phase = _Phase.running;
@@ -45,10 +50,12 @@ class _TestsTabState extends State<TestsTab> {
   }
 
   void _answer(int option) {
-    setState(() => _answers = [
-          for (var i = 0; i < _answers.length; i++)
-            i == _index ? option : _answers[i],
-        ]);
+    setState(
+      () => _answers = [
+        for (var i = 0; i < _answers.length; i++)
+          i == _index ? option : _answers[i],
+      ],
+    );
   }
 
   void _finish() {
@@ -57,6 +64,10 @@ class _TestsTabState extends State<TestsTab> {
         subject: _subject!,
         questions: _questions,
         answers: _answers,
+        typedAnswers: Map.of(_typed),
+        multipleAnswers: {
+          for (final e in _multiple.entries) e.key: Set.of(e.value),
+        },
         duration: DateTime.now().difference(_startedAt ?? DateTime.now()),
       );
       _phase = _Phase.review;
@@ -69,29 +80,41 @@ class _TestsTabState extends State<TestsTab> {
       duration: const Duration(milliseconds: 200),
       child: switch (_phase) {
         _Phase.setup => _SetupView(
-            key: const ValueKey('setup'),
-            initialSubject: _subject,
-            initialLength: _length,
-            onStart: _start,
-          ),
+          key: const ValueKey('setup'),
+          initialSubject: _subject,
+          initialLength: _length,
+          onStart: _start,
+        ),
         _Phase.running => _RunnerView(
-            key: ValueKey('run-${_subject!.id}-${_questions.length}'),
-            subject: _subject!,
-            questions: _questions,
-            answers: _answers,
-            index: _index,
-            startedAt: _startedAt!,
-            onSelectOption: _answer,
-            onGoTo: (i) => setState(() => _index = i),
-            onFinish: _finish,
-            onAbort: () => setState(() => _phase = _Phase.setup),
-          ),
+          key: ValueKey('run-${_subject!.id}-${_questions.length}'),
+          subject: _subject!,
+          questions: _questions,
+          answers: _answers,
+          index: _index,
+          startedAt: _startedAt!,
+          typed: _typed,
+          multiple: _multiple,
+          onType: (value) => setState(() => _typed[_index] = value),
+          onSelectOption: (option) {
+            if (_questions[_index].input != QuizInput.multiple) {
+              _answer(option);
+              return;
+            }
+            setState(() {
+              final selected = _multiple.putIfAbsent(_index, () => <int>{});
+              if (!selected.remove(option)) selected.add(option);
+            });
+          },
+          onGoTo: (i) => setState(() => _index = i),
+          onFinish: _finish,
+          onAbort: () => setState(() => _phase = _Phase.setup),
+        ),
         _Phase.review => _ReviewView(
-            key: const ValueKey('review'),
-            result: _result!,
-            onRetry: () => _start(_result!.subject, _result!.questions.length),
-            onPickOther: () => setState(() => _phase = _Phase.setup),
-          ),
+          key: const ValueKey('review'),
+          result: _result!,
+          onRetry: () => _start(_result!.subject, _result!.questions.length),
+          onPickOther: () => setState(() => _phase = _Phase.setup),
+        ),
       },
     );
   }
@@ -161,15 +184,32 @@ class _SetupViewState extends State<_SetupView> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Elk vak, dezelfde moeilijkheidsgraad: '
                         '${QuizBank.level}. '
+                        'Eigen oefenvragen in de vraagvormen van IEP, geen officiële IEP-toets. '
+                        'Voor de doorstroomtoets oefen je rekenen, lezen en '
+                        'taalverzorging. De andere vakken zijn extra oefening. '
+                        'Je oefenscore is geen toetsadvies of niveaubepaling. '
                         '${QuizBank.totalQuestions} vragen in de bank.',
-                        style: TextStyle(color: luma.textSecondary, fontSize: 12),
+                        style: TextStyle(
+                          color: luma.textSecondary,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              icon: const Icon(Icons.picture_as_pdf),
+              label: const Text('Oefentoets als PDF'),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const QuizPdfOptions()),
+              ),
             ),
           ),
           const SizedBox(height: 20),
@@ -187,26 +227,44 @@ class _SetupViewState extends State<_SetupView> {
               final columns = constraints.maxWidth >= 940
                   ? 3
                   : constraints.maxWidth >= 620
-                      ? 2
-                      : 1;
-              return GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: columns,
-                  mainAxisExtent: 118,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                ),
-                itemCount: QuizBank.subjects.length,
-                itemBuilder: (context, i) {
-                  final s = QuizBank.subjects[i];
-                  return _SubjectCard(
-                    subject: s,
-                    selected: s.id == _selected?.id,
-                    onTap: () => setState(() => _selected = s),
-                  );
-                },
+                  ? 2
+                  : 1;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final group in [
+                    QuizBank.doorstroomSubjects,
+                    QuizBank.extraSubjects,
+                  ]) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: Text(
+                        group.first.isDoorstroom
+                            ? 'Oefenen voor IEP'
+                            : 'Andere vakken · extra oefening',
+                      ),
+                    ),
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: columns,
+                        mainAxisExtent: 138,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                      ),
+                      itemCount: group.length,
+                      itemBuilder: (context, i) {
+                        final s = group[i];
+                        return _SubjectCard(
+                          subject: s,
+                          selected: s.id == _selected?.id,
+                          onTap: () => setState(() => _selected = s),
+                        );
+                      },
+                    ),
+                  ],
+                ],
               );
             },
           ),
@@ -250,7 +308,9 @@ class _SetupViewState extends State<_SetupView> {
                   const SizedBox(height: 8),
                   Text(
                     'De vragen worden gelijkmatig over de onderdelen verdeeld, '
-                    'dus elke toets van dezelfde lengte weegt even zwaar.',
+                    'zodat je verschillende vaardigheden oefent. Lees de opdracht goed: '
+                    'soms kies je een antwoord, soms vul je iets in. '
+                    'Je ziet de uitleg pas na het nakijken.',
                     style: TextStyle(color: luma.textSecondary, fontSize: 12),
                   ),
                   const SizedBox(height: 12),
@@ -269,17 +329,19 @@ class _SetupViewState extends State<_SetupView> {
           const SizedBox(height: 20),
           Row(
             children: [
-              LumaPrimaryButton(
-                label: selected == null
-                    ? 'Kies eerst een vak'
-                    : 'Start toets ${selected.name.toLowerCase()}',
-                icon: Icons.play_arrow_rounded,
-                onTap: selected == null
-                    ? null
-                    : () => widget.onStart(
+              Flexible(
+                child: LumaPrimaryButton(
+                  label: selected == null
+                      ? 'Kies eerst een vak'
+                      : 'Start toets ${selected.name.toLowerCase()}',
+                  icon: Icons.play_arrow_rounded,
+                  onTap: selected == null
+                      ? null
+                      : () => widget.onStart(
                           selected,
                           _length > maxForSubject ? maxForSubject : _length,
                         ),
+                ),
               ),
             ],
           ),
@@ -326,8 +388,8 @@ class _SubjectCardState extends State<_SubjectCard> {
             color: active
                 ? s.color.withValues(alpha: 0.10)
                 : _hovering
-                    ? luma.surfaceHover
-                    : luma.surface,
+                ? luma.surfaceHover
+                : luma.surface,
             borderRadius: BorderRadius.circular(decor.cardRadius),
             border: Border.all(
               color: active ? s.color : luma.border,
@@ -356,8 +418,11 @@ class _SubjectCardState extends State<_SubjectCard> {
                           ),
                         ),
                         if (active)
-                          Icon(Icons.check_circle_rounded,
-                              color: s.color, size: 18),
+                          Icon(
+                            Icons.check_circle_rounded,
+                            color: s.color,
+                            size: 18,
+                          ),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -365,7 +430,10 @@ class _SubjectCardState extends State<_SubjectCard> {
                       s.blurb,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: luma.textSecondary, fontSize: 11.5),
+                      style: TextStyle(
+                        color: luma.textSecondary,
+                        fontSize: 11.5,
+                      ),
                     ),
                     const Spacer(),
                     Text(
@@ -467,6 +535,9 @@ class _RunnerView extends StatelessWidget {
     required this.index,
     required this.startedAt,
     required this.onSelectOption,
+    required this.typed,
+    required this.multiple,
+    required this.onType,
     required this.onGoTo,
     required this.onFinish,
     required this.onAbort,
@@ -480,6 +551,9 @@ class _RunnerView extends StatelessWidget {
   /// When this attempt started, so the header can count up from it.
   final DateTime startedAt;
   final ValueChanged<int> onSelectOption;
+  final Map<int, String> typed;
+  final Map<int, Set<int>> multiple;
+  final ValueChanged<String> onType;
   final ValueChanged<int> onGoTo;
   final VoidCallback onFinish;
   final VoidCallback onAbort;
@@ -488,7 +562,15 @@ class _RunnerView extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final q = questions[index];
-    final answered = answers.where((a) => a != null).length;
+    final completed = [
+      for (var i = 0; i < questions.length; i++)
+        questions[i].isOpen
+            ? (typed[i]?.trim().isNotEmpty ?? false)
+            : questions[i].input == QuizInput.multiple
+            ? (multiple[i]?.isNotEmpty ?? false)
+            : answers[i] != null,
+    ];
+    final answered = completed.where((a) => a).length;
     final isLast = index == questions.length - 1;
 
     return Padding(
@@ -581,12 +663,39 @@ class _RunnerView extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 14),
+                        _QuestionData(question: q),
+                        if (q.isOpen)
+                          TextFormField(
+                            key: ValueKey(q.id),
+                            initialValue: typed[index] ?? '',
+                            onChanged: onType,
+                            autocorrect: false,
+                            enableSuggestions: false,
+                            keyboardType: q.input == QuizInput.number
+                                ? const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                    signed: true,
+                                  )
+                                : TextInputType.text,
+                            decoration: InputDecoration(
+                              helperMaxLines: 3,
+                              labelText: 'Jouw antwoord',
+                              suffixText: q.unit,
+                              helperText: q.input == QuizInput.number
+                                  ? 'Vul alleen het getal in. Gebruik een komma voor decimalen.'
+                                  : 'Vul alleen het gevraagde woord of de ontbrekende letters in.',
+                            ),
+                          ),
                         for (var i = 0; i < q.options.length; i++) ...[
                           if (i > 0) const SizedBox(height: 8),
                           _OptionTile(
                             letter: String.fromCharCode(65 + i),
-                            text: q.options[i],
-                            state: answers[index] == i
+                            text:
+                                '${q.options[i]}${q.unit == null ? '' : ' ${q.unit}'}',
+                            state:
+                                (q.input == QuizInput.multiple
+                                    ? (multiple[index]?.contains(i) ?? false)
+                                    : answers[index] == i)
                                 ? _OptionState.selected
                                 : _OptionState.plain,
                             accent: subject.color,
@@ -600,7 +709,7 @@ class _RunnerView extends StatelessWidget {
                   _QuestionStrip(
                     total: questions.length,
                     current: index,
-                    answers: answers,
+                    answers: [for (final done in completed) done ? 0 : null],
                     accent: subject.color,
                     onGoTo: onGoTo,
                   ),
@@ -650,6 +759,73 @@ class _RunnerView extends StatelessWidget {
   }
 }
 
+class _QuestionData extends StatelessWidget {
+  const _QuestionData({required this.question});
+  final QuizQuestion question;
+
+  @override
+  Widget build(BuildContext context) {
+    final table = question.table;
+    final bars = question.bars;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (table != null)
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              columns: [
+                for (final header in table.headers)
+                  DataColumn(label: Text(header)),
+              ],
+              rows: [
+                for (final row in table.rows)
+                  DataRow(
+                    cells: [for (final cell in row) DataCell(Text(cell))],
+                  ),
+              ],
+            ),
+          ),
+        if (bars != null) ...[
+          Text('${bars.title} (${bars.unit})'),
+          const SizedBox(height: 8),
+          for (var i = 0; i < bars.values.length; i++)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 5),
+              child: Row(
+                children: [
+                  SizedBox(width: 85, child: Text(bars.labels[i])),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: FractionallySizedBox(
+                        widthFactor:
+                            bars.values[i] /
+                            bars.values.reduce((a, b) => a > b ? a : b),
+                        child: Container(
+                          height: 22,
+                          color: context.luma.accent,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 40,
+                    child: Text(
+                      '${bars.values[i]}',
+                      textAlign: TextAlign.right,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+        if (table != null || bars != null) const SizedBox(height: 16),
+      ],
+    );
+  }
+}
+
 class _QuestionStrip extends StatelessWidget {
   const _QuestionStrip({
     required this.total,
@@ -683,12 +859,10 @@ class _QuestionStrip extends StatelessWidget {
                 color: i == current
                     ? accent
                     : answers[i] != null
-                        ? accent.withValues(alpha: 0.16)
-                        : luma.surface,
+                    ? accent.withValues(alpha: 0.16)
+                    : luma.surface,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: i == current ? accent : luma.border,
-                ),
+                border: Border.all(color: i == current ? accent : luma.border),
               ),
               child: Text(
                 '${i + 1}',
@@ -696,8 +870,8 @@ class _QuestionStrip extends StatelessWidget {
                   color: i == current
                       ? luma.onAccent
                       : answers[i] != null
-                          ? accent
-                          : luma.textMuted,
+                      ? accent
+                      : luma.textMuted,
                   fontSize: 11.5,
                   fontWeight: FontWeight.w600,
                 ),
@@ -740,30 +914,38 @@ class _OptionTileState extends State<_OptionTile> {
 
     final (Color border, Color fill, Color fg) = switch (widget.state) {
       _OptionState.plain => (
-          luma.border,
-          _hovering && widget.onTap != null ? luma.surfaceHover : luma.surface,
-          luma.textPrimary,
-        ),
+        luma.border,
+        _hovering && widget.onTap != null ? luma.surfaceHover : luma.surface,
+        luma.textPrimary,
+      ),
       _OptionState.selected => (
-          widget.accent,
-          widget.accent.withValues(alpha: 0.12),
-          luma.textPrimary,
-        ),
+        widget.accent,
+        widget.accent.withValues(alpha: 0.12),
+        luma.textPrimary,
+      ),
       _OptionState.correct => (
-          luma.success,
-          luma.success.withValues(alpha: 0.14),
-          luma.textPrimary,
-        ),
+        luma.success,
+        luma.success.withValues(alpha: 0.14),
+        luma.textPrimary,
+      ),
       _OptionState.wrong => (
-          luma.danger,
-          luma.danger.withValues(alpha: 0.14),
-          luma.textPrimary,
-        ),
+        luma.danger,
+        luma.danger.withValues(alpha: 0.14),
+        luma.textPrimary,
+      ),
     };
 
     final trailing = switch (widget.state) {
-      _OptionState.correct => Icon(Icons.check_rounded, color: luma.success, size: 18),
-      _OptionState.wrong => Icon(Icons.close_rounded, color: luma.danger, size: 18),
+      _OptionState.correct => Icon(
+        Icons.check_rounded,
+        color: luma.success,
+        size: 18,
+      ),
+      _OptionState.wrong => Icon(
+        Icons.close_rounded,
+        color: luma.danger,
+        size: 18,
+      ),
       _ => null,
     };
 
@@ -845,7 +1027,7 @@ class _ReviewViewState extends State<_ReviewView> {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final r = widget.result;
-    final tone = r.passed ? luma.success : luma.danger;
+    final tone = r.subject.color;
 
     final indices = [
       for (var i = 0; i < r.questions.length; i++)
@@ -873,7 +1055,7 @@ class _ReviewViewState extends State<_ReviewView> {
                         border: Border.all(color: tone, width: 2),
                       ),
                       child: Text(
-                        r.mark.toStringAsFixed(1).replaceAll('.', ','),
+                        '${(r.fraction * 100).round()}%',
                         style: TextStyle(
                           color: tone,
                           fontSize: 22,
@@ -900,7 +1082,9 @@ class _ReviewViewState extends State<_ReviewView> {
                             ' · ${_perQuestion(r)} per vraag'
                             '${r.skipped > 0 ? ' · ${r.skipped} overgeslagen' : ''}',
                             style: TextStyle(
-                                color: luma.textSecondary, fontSize: 12.5),
+                              color: luma.textSecondary,
+                              fontSize: 12.5,
+                            ),
                           ),
                         ],
                       ),
@@ -978,7 +1162,10 @@ class _ReviewViewState extends State<_ReviewView> {
               _ReviewCard(
                 number: i + 1,
                 question: r.questions[i],
-                given: r.answers[i],
+                given: r.isAnswered(i) ? r.givenAnswer(i) : null,
+                selected: r.questions[i].input == QuizInput.multiple
+                    ? (r.multipleAnswers[i] ?? {})
+                    : {if (r.answers[i] != null) r.answers[i]!},
                 correct: r.isCorrect(i),
                 accent: r.subject.color,
               ),
@@ -1052,13 +1239,15 @@ class _ReviewCard extends StatelessWidget {
     required this.number,
     required this.question,
     required this.given,
+    required this.selected,
     required this.correct,
     required this.accent,
   });
 
   final int number;
   final QuizQuestion question;
-  final int? given;
+  final String? given;
+  final Set<int> selected;
   final bool correct;
   final Color accent;
 
@@ -1131,16 +1320,20 @@ class _ReviewCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
+          _QuestionData(question: question),
           for (var i = 0; i < question.options.length; i++) ...[
             if (i > 0) const SizedBox(height: 7),
             _OptionTile(
               letter: String.fromCharCode(65 + i),
               text: question.options[i],
-              state: i == question.answerIndex
+              state:
+                  (question.input == QuizInput.multiple
+                      ? question.correctIndices.contains(i)
+                      : i == question.answerIndex)
                   ? _OptionState.correct
-                  : i == given
-                      ? _OptionState.wrong
-                      : _OptionState.plain,
+                  : selected.contains(i)
+                  ? _OptionState.wrong
+                  : _OptionState.plain,
               accent: accent,
             ),
           ],
@@ -1159,8 +1352,8 @@ class _ReviewCard extends StatelessWidget {
                   given == null
                       ? 'Je hebt deze vraag overgeslagen.'
                       : correct
-                          ? 'Goed beantwoord.'
-                          : 'Jouw antwoord: ${question.options[given!]}',
+                      ? 'Goed beantwoord.'
+                      : 'Jouw antwoord: ${given!}',
                   style: TextStyle(
                     color: luma.textSecondary,
                     fontSize: 12,
@@ -1169,7 +1362,7 @@ class _ReviewCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Goede antwoord: ${question.answer}',
+                  'Goede antwoord: ${question.answer}${question.unit == null ? '' : ' ${question.unit}'}',
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 12.5,

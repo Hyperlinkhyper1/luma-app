@@ -21,7 +21,7 @@ const _nederland = 'Nederland';
 const _europa = 'Europa';
 const _wereld = 'De wereld en het weer';
 
-/// Aardrijkskunde, groep 8 / doorstroomtoets-niveau.
+/// Aardrijkskunde, extra oefening voor bovenbouw en brugklas; geen doorstroomtoetsvak.
 final List<QuizQuestion> aardrijkskundeQuestions = [
   // --- Nederland ------------------------------------------------------------
   _q('ak-001', _nederland, 'Hoeveel provincies heeft Nederland?',
@@ -44,7 +44,7 @@ final List<QuizQuestion> aardrijkskundeQuestions = [
   _q('ak-009', _nederland, 'Welke provincie is het jongst?',
       ['Flevoland', 'Drenthe', 'Utrecht', 'Zeeland'], 0,
       'Flevoland werd in 1986 een provincie, drooggelegd uit de Zuiderzee.'),
-  _q('ak-010', _nederland, 'Wat is het hoogste punt van Nederland?',
+  _q('ak-010', _nederland, 'Wat is het hoogste punt van Europees Nederland?',
       [
         'de Utrechtse Heuvelrug',
         'de Vaalserberg',
@@ -129,9 +129,9 @@ final List<QuizQuestion> aardrijkskundeQuestions = [
       ['Krakau', 'Warschau', 'Gdansk', 'Praag'], 1),
   _q('ak-027', _europa, 'Wat is de hoofdstad van Noorwegen?',
       ['Oslo', 'Bergen', 'Stockholm', 'Helsinki'], 0),
-  _q('ak-028', _europa, 'Wat is de hoofdstad van Zwitserland?',
+  _q('ak-028', _europa, 'In welke Zwitserse stad zitten regering en parlement?',
       ['Zürich', 'Genève', 'Bern', 'Basel'], 2,
-      'Zürich is groter, maar Bern is de hoofdstad.'),
+      'Bern is de bondsstad en de zetel van regering en parlement.'),
   _q('ak-029', _europa, 'Wat is de hoofdstad van Oostenrijk?',
       ['Salzburg', 'Wenen', 'Innsbruck', 'Graz'], 1),
   _q('ak-030', _europa, 'Wat is de hoofdstad van Griekenland?',

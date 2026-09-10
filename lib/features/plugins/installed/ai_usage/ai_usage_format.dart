@@ -60,10 +60,20 @@ String _shortModelName(String model) {
   return single != null ? '$family ${single.group(1)}' : family;
 }
 
-/// "gpt-5.4-mini" -> "GPT 5.4 mini", "gpt-5.5" -> "GPT 5.5". Names outside
-/// the "gpt-" naming convention fall back to the raw string.
+/// "gpt-5.4-mini" -> "GPT 5.4 mini", "gpt-5.5" -> "GPT 5.5". A Codex-internal
+/// alias such as "codex-auto-review" (the sandbox approval reviewer, not a
+/// public model) is title-cased instead — "Auto Review". Names outside both
+/// conventions fall back to the raw string.
 String _shortOpenAiModelName(String model) {
   final m = model.toLowerCase();
+  if (m.startsWith('codex-')) {
+    return model
+        .substring('codex-'.length)
+        .split('-')
+        .where((w) => w.isNotEmpty)
+        .map((w) => '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}')
+        .join(' ');
+  }
   if (!m.startsWith('gpt-')) return model;
   final rest = model.substring('gpt-'.length); // e.g. "5.4-mini"
   return 'GPT ${rest.replaceAll('-', ' ')}';

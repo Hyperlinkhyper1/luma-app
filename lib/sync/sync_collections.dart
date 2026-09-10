@@ -7,6 +7,7 @@ import 'package:flutter/material.dart' show IconData, Icons;
 
 import '../features/passwords/data/password_database.dart';
 import '../features/passwords/password_crypto.dart';
+import '../features/passwords/password_metadata.dart';
 
 /// One syncable unit of app data (a feature's storage). Adapters know how to
 /// snapshot their feature to a JSON-encodable object and how to restore it.
@@ -56,14 +57,16 @@ class DriftSyncCollection extends SyncCollection {
   /// Hook for subclasses to rewrite a row on export (returns a new map).
   @protected
   Future<Map<String, Object?>> transformExportRow(
-          String table, Map<String, Object?> row) async =>
-      row;
+    String table,
+    Map<String, Object?> row,
+  ) async => row;
 
   /// Hook for subclasses to rewrite a row on import.
   @protected
   Future<Map<String, Object?>> transformImportRow(
-          String table, Map<String, Object?> row) async =>
-      row;
+    String table,
+    Map<String, Object?> row,
+  ) async => row;
 
   @override
   Future<Object?> export() async {
@@ -74,15 +77,12 @@ class DriftSyncCollection extends SyncCollection {
       final exported = <Map<String, Object?>>[];
       for (final row in rows) {
         exported.add(
-            _encodeRow(await transformExportRow(name, Map.of(row.data))));
+          _encodeRow(await transformExportRow(name, Map.of(row.data))),
+        );
       }
       tables[name] = exported;
     }
-    return {
-      'format': 1,
-      'schemaVersion': db.schemaVersion,
-      'tables': tables,
-    };
+    return {'format': 1, 'schemaVersion': db.schemaVersion, 'tables': tables};
   }
 
   @override
@@ -93,8 +93,9 @@ class DriftSyncCollection extends SyncCollection {
     final snapshotSchema = data['schemaVersion'] as int? ?? 0;
     if (snapshotSchema > db.schemaVersion) {
       throw StateError(
-          'This snapshot came from a newer app version. Update the app on '
-          'this device first.');
+        'This snapshot came from a newer app version. Update the app on '
+        'this device first.',
+      );
     }
     final tables = data['tables'];
     if (tables is! Map<String, dynamic>) {
@@ -116,8 +117,7 @@ class DriftSyncCollection extends SyncCollection {
         if (rows is! List) continue;
         for (final raw in rows) {
           if (raw is! Map<String, dynamic>) continue;
-          final row =
-              await transformImportRow(name, _decodeRow(Map.of(raw)));
+          final row = await transformImportRow(name, _decodeRow(Map.of(raw)));
           final columns = [
             for (final key in row.keys)
               if (_isColumn(table, key)) key,
@@ -140,19 +140,21 @@ class DriftSyncCollection extends SyncCollection {
 
   /// SQLite values are int/double/String/blob/null; only blobs need special
   /// treatment to survive the JSON round trip.
-  static Map<String, Object?> _encodeRow(Map<String, Object?> row) =>
-      row.map((key, value) => MapEntry(
-          key,
-          value is Uint8List
-              ? {'__bytes__': base64Encode(value)}
-              : value));
+  static Map<String, Object?> _encodeRow(Map<String, Object?> row) => row.map(
+    (key, value) => MapEntry(
+      key,
+      value is Uint8List ? {'__bytes__': base64Encode(value)} : value,
+    ),
+  );
 
-  static Map<String, Object?> _decodeRow(Map<String, Object?> row) =>
-      row.map((key, value) => MapEntry(
-          key,
-          value is Map<String, dynamic> && value['__bytes__'] is String
-              ? Uint8List.fromList(base64Decode(value['__bytes__'] as String))
-              : value));
+  static Map<String, Object?> _decodeRow(Map<String, Object?> row) => row.map(
+    (key, value) => MapEntry(
+      key,
+      value is Map<String, dynamic> && value['__bytes__'] is String
+          ? Uint8List.fromList(base64Decode(value['__bytes__'] as String))
+          : value,
+    ),
+  );
 }
 
 /// The password vault. Password ciphers are bound to this device's local key
@@ -163,59 +165,80 @@ class PasswordVaultSyncCollection extends DriftSyncCollection {
     required PasswordDatabase db,
     required this.crypto,
   }) : super(
-          id: 'passwords',
-          label: 'Passwords',
-          icon: Icons.password_rounded,
-          db: db,
-        );
+         id: 'passwords',
+         label: 'Passwords',
+         icon: Icons.password_rounded,
+         db: db,
+       );
 
   final PasswordCrypto crypto;
 
   @override
   Future<Map<String, Object?>> transformExportRow(
-      String table, Map<String, Object?> row) async {
+    String table,
+    Map<String, Object?> row,
+  ) async {
     if (table == 'password_entries') {
       final entryId = row['id'] as int;
+      row = PasswordMetadata.open(row, crypto, entryId);
       final cipher = row.remove('password_cipher');
       final plain = cipher is String
           ? crypto.decrypt(cipher, entryId: entryId, field: 'password')
-          : '';
+          : null;
       if (plain == null) {
         // Never export an entry we can't decrypt: syncing '' in its place
         // would overwrite the real password on every other device.
         throw StateError(
-            'Could not decrypt password entry $entryId for sync '
-            '(corrupt data or changed key file).');
+          'Could not decrypt password entry $entryId for sync '
+          '(corrupt data or changed key file).',
+        );
       }
       row['password_plain'] = plain;
       // The TOTP secret is encrypted with this device's local key too — it
       // must cross the wire as plaintext (inside the E2E-encrypted sync
       // envelope) or the other device can never decrypt it.
       final totpCipher = row.remove('totp_secret_cipher');
-      row['totp_secret_plain'] = totpCipher is String
+      final totpPlain = totpCipher is String
           ? crypto.decrypt(totpCipher, entryId: entryId, field: 'totp')
           : null;
+      if (totpCipher != null && totpPlain == null) {
+        throw StateError('Could not decrypt TOTP entry for sync.');
+      }
+      row['totp_secret_plain'] = totpPlain;
     }
     return row;
   }
 
   @override
   Future<Map<String, Object?>> transformImportRow(
-      String table, Map<String, Object?> row) async {
+    String table,
+    Map<String, Object?> row,
+  ) async {
     if (table == 'password_entries') {
       final entryId = row['id'] as int;
       final plain = row.remove('password_plain');
-      row['password_cipher'] = crypto.encrypt(plain is String ? plain : '',
-          entryId: entryId, field: 'password');
+      if (plain is! String) {
+        throw const FormatException('Missing password in vault snapshot.');
+      }
+      row['password_cipher'] = crypto.encrypt(
+        plain,
+        entryId: entryId,
+        field: 'password',
+      );
       // Older snapshots carried totp_secret_cipher (this device can't decrypt
       // a peer's local ciphertext, so drop it); newer ones carry the plain
       // secret to re-encrypt under this device's key.
       final totpPlain = row.remove('totp_secret_plain');
+      if ((totpPlain != null && totpPlain is! String) ||
+          (row['totp_secret_cipher'] != null && totpPlain == null)) {
+        throw const FormatException('Unreadable TOTP in vault snapshot.');
+      }
       if (row.containsKey('totp_secret_cipher') || totpPlain != null) {
         row['totp_secret_cipher'] = totpPlain is String && totpPlain.isNotEmpty
             ? crypto.encrypt(totpPlain, entryId: entryId, field: 'totp')
             : null;
       }
+      row = PasswordMetadata.seal(row, crypto, entryId);
     }
     return row;
   }

@@ -25,7 +25,9 @@ void main() {
     await tester.pumpWidget(_app());
 
     expect(find.text('Pagoda Test'), findsOneWidget);
-    expect(find.text('Open the test screen'), findsOneWidget);
+    expect(find.text('Engine Test'), findsOneWidget);
+    // Both tiles currently share the same subtitle.
+    expect(find.text('Open the test screen'), findsNWidgets(2));
   });
 
   testWidgets('the whole tile is one button that opens the test screen',
@@ -33,22 +35,23 @@ void main() {
     await tester.pumpWidget(_app());
 
     expect(find.byType(PagodaTestPage), findsNothing);
-    await tester.tap(find.byType(LumaHeroTile));
+    await tester.tap(find.widgetWithText(LumaHeroTile, 'Pagoda Test'));
     await tester.pumpAndSettle();
 
     expect(find.byType(PagodaTestPage), findsOneWidget);
   });
 
-  // The artwork is dropped into assets/tests/ by hand and is not in the test
-  // bundle, so this exercises the missing-image path: the tile must still draw
-  // its wash and its label rather than throwing.
+  // Engine Test's artwork hasn't been dropped into assets/tests/ yet, so this
+  // exercises the missing-image path: the tile must still draw its wash and
+  // its label rather than throwing.
   testWidgets('a tile with no artwork yet still renders', (tester) async {
     await tester.pumpWidget(_app());
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.byIcon(Icons.temple_buddhist_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.precision_manufacturing_rounded), findsOneWidget);
     expect(find.text('Pagoda Test'), findsOneWidget);
+    expect(find.text('Engine Test'), findsOneWidget);
   });
 
   test('the wash goes opaque exactly at the bottom third', () {

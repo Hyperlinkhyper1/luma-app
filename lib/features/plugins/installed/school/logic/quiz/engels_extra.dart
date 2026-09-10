@@ -192,7 +192,7 @@ const _vocab = [
   'tooth|tand',
   'towel|handdoek',
   'tower|toren',
-  'town|dorp',
+  'town|stadje',
   'toy|speelgoed',
   'train|trein',
   'tree|boom',
@@ -254,7 +254,6 @@ const _irregular = [
   'hold|held|held|vasthouden',
   'keep|kept|kept|houden',
   'know|knew|known|weten',
-  'learn|learnt|learnt|leren',
   'leave|left|left|vertrekken',
   'lend|lent|lent|uitlenen',
   'lose|lost|lost|verliezen',
@@ -325,7 +324,6 @@ const _plurals = [
   'goose|geese',
   'person|people',
   'sheep|sheep',
-  'fish|fish',
   'knife|knives',
   'leaf|leaves',
   'life|lives',
@@ -405,7 +403,6 @@ const _ingSafe = [
   'build',
   'find',
   'grow',
-  'know',
   'speak',
   'think',
   'bring',
@@ -518,20 +515,14 @@ List<QuizQuestion> buildEngelsExtra() {
       topic: _tijden,
       prompt: 'Wat is de verleden tijd van "to $inf"?',
       answer: v[1],
-      wrong: [
-        '${inf}ed',
-        ...g.others(pasts, v[1]),
-      ],
+      wrong: ['${inf}ed', ...g.others(pasts, v[1])],
       why: '"$inf" is onregelmatig: $inf – ${v[1]} – ${v[2]}.',
     );
     g.add(
       topic: _tijden,
       prompt: 'Wat is het voltooid deelwoord van "to $inf"?',
       answer: v[2],
-      wrong: [
-        '${inf}ed',
-        ...g.others(participles, v[2]),
-      ],
+      wrong: ['${inf}ed', ...g.others(participles, v[2])],
       why: 'I have ${v[2]}.',
     );
     g.add(
@@ -548,8 +539,8 @@ List<QuizQuestion> buildEngelsExtra() {
     final third = v.endsWith('o') || v.endsWith('ch') || v.endsWith('sh')
         ? '${v}es'
         : v.endsWith('y') && !'aeiou'.contains(v[v.length - 2])
-            ? '${v.substring(0, v.length - 1)}ies'
-            : '${v}s';
+        ? '${v.substring(0, v.length - 1)}ies'
+        : '${v}s';
     g.add(
       topic: _tijden,
       prompt: 'Vul in: $subject … every day. (to $v)',
@@ -569,7 +560,8 @@ List<QuizQuestion> buildEngelsExtra() {
       prompt: 'Vul in: Look! She is … right now. (to $v)',
       answer: ing,
       wrong: ['${v}s', v, '${v}ed', 'to $v'],
-      why: 'Bij "right now" gebruik je de present continuous: am/is/are + -ing.',
+      why:
+          'Bij "right now" gebruik je de present continuous: am/is/are + -ing.',
     );
   }
 
@@ -600,13 +592,8 @@ List<QuizQuestion> buildEngelsExtra() {
       topic: _grammatica,
       prompt: 'Wat is het meervoud van "${p[0]}"?',
       answer: p[1],
-      wrong: [
-        '${p[0]}s',
-        '${p[0]}es',
-        '${p[1]}s',
-        '${p[0]}en',
-      ],
-      why: '"${p[0]}" heeft een onregelmatig meervoud: ${p[1]}.',
+      wrong: ['${p[0]}s', '${p[0]}es', '${p[1]}s', '${p[0]}en'],
+      why: 'Het meervoud van "${p[0]}" is "${p[1]}.',
     );
   }
 
@@ -679,7 +666,7 @@ List<QuizQuestion> buildEngelsExtra() {
   for (final p in rows(_prepositions)) {
     g.add(
       topic: _grammatica,
-      prompt: 'Vul in: We meet … ${p[0]}.',
+      prompt: 'Vul in volgens Brits-Engels: We meet … ${p[0]}.',
       answer: p[1],
       wrong: const ['in', 'on', 'at', 'to'],
       why: switch (p[1]) {
@@ -694,7 +681,7 @@ List<QuizQuestion> buildEngelsExtra() {
   for (final noun in _countable) {
     g.add(
       topic: _grammatica,
-      prompt: 'Vul in: There … three $noun on the table.',
+      prompt: 'Vul in: There … three $noun.',
       answer: 'are',
       wrong: const ['is', 'be', 'am', 'was'],
       why: '"$noun" is meervoud, dus "are".',

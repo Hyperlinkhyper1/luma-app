@@ -27,7 +27,6 @@ const _verbs = [
   'tekenen|teken|tekent|tekenden|getekend',
   'rekenen|reken|rekent|rekenden|gerekend',
   'verhuizen|verhuis|verhuist|verhuisden|verhuisd',
-  'gebeuren|gebeur|gebeurt|gebeurden|gebeurd',
   'bestellen|bestel|bestelt|bestelden|besteld',
   'betalen|betaal|betaalt|betaalden|betaald',
   'vertellen|vertel|vertelt|vertelden|verteld',
@@ -168,9 +167,8 @@ const _meervoud = [
   'stad|steden',
   'schip|schepen',
   'koe|koeien',
-  'zee|zeeen',
+  'zee|zeeën',
   'lied|liederen',
-  'blad|bladeren',
   'been|benen',
   'oog|ogen',
   'dief|dieven',
@@ -188,7 +186,7 @@ const _meervoud = [
 const _verkleinwoorden = [
   'boom|boompje',
   'raam|raampje',
-  'bloem|bloemetje',
+  'bloem|bloempje',
   'bal|balletje',
   'man|mannetje',
   'ring|ringetje',
@@ -211,7 +209,7 @@ const _verkleinwoorden = [
   'kussen|kussentje',
   'wagen|wagentje',
   'jongen|jongetje',
-  'meisje|meisje',
+  'brug|bruggetje',
   'kat|katje',
   'hond|hondje',
   'muis|muisje',
@@ -323,7 +321,7 @@ const _zinnen = [
   'De bibliotheek gaat om vijf uur dicht|.',
   'Zullen we samen werken aan het werkstuk|?',
   'Wat schrik ik daarvan|!',
-  'Onze juf heet meester Bas|.',
+  'Onze meester heet Bas|.',
   'Hoeveel kost een kaartje|?',
 ];
 
@@ -335,7 +333,7 @@ const _opsommingen = [
   'rode|gele|groene|blauwe',
   'melk|eieren|bloem|suiker',
   'een handdoek|zwemkleding|slippers|zonnebrand',
-  'Frankrijk|Spanje|Italie|Portugal',
+  'Frankrijk|Spanje|Italië|Portugal',
 ];
 
 String _swapEnd(String word) {
@@ -362,9 +360,12 @@ List<QuizQuestion> buildTaalverzorgingExtra() {
 
     g.add(
       topic: _werkwoorden,
-      prompt: 'Hoe schrijf je "$inf" bij "hij"?',
+      prompt: 'Hoe schrijf je "$inf" in de tegenwoordige tijd bij "hij"?',
       answer: hij,
-      wrong: [for (final f in vormen) if (f != hij) f],
+      wrong: [
+        for (final f in vormen)
+          if (f != hij) f,
+      ],
       why: hij == stam
           ? 'De stam eindigt al op een t, er komt er geen tweede bij.'
           : 'Bij hij, zij of het komt er een t achter de stam ($stam + t).',
@@ -372,17 +373,24 @@ List<QuizQuestion> buildTaalverzorgingExtra() {
 
     g.add(
       topic: _werkwoorden,
-      prompt: 'Hoe schrijf je "$inf" bij "ik"?',
+      prompt: 'Hoe schrijf je "$inf" in de tegenwoordige tijd bij "ik"?',
       answer: stam,
-      wrong: [for (final f in vormen) if (f != stam) f],
+      wrong: [
+        for (final f in vormen)
+          if (f != stam) f,
+      ],
       why: 'Bij "ik" schrijf je alleen de stam: $stam.',
     );
 
     g.add(
       topic: _werkwoorden,
-      prompt: 'Vul in: … jij morgen mee? (van "$inf", werkwoord vóór jij)',
+      prompt:
+          'Welke vorm van "$inf" gebruik je in de tegenwoordige tijd als het onderwerp "jij" direct achter het werkwoord staat?',
       answer: stam,
-      wrong: [for (final f in vormen) if (f != stam) f],
+      wrong: [
+        for (final f in vormen)
+          if (f != stam) f,
+      ],
       why: 'Staat "jij" achter het werkwoord, dan valt de t weg.',
     );
 
@@ -410,7 +418,8 @@ List<QuizQuestion> buildTaalverzorgingExtra() {
         'ge$stam',
         '${vd}d',
       ],
-      why: 'Ik heb … "$vd".',
+      why:
+          'Het voltooid deelwoord is "$vd". Het hulpwerkwoord is hebben of zijn.',
     );
   }
 
@@ -428,10 +437,7 @@ List<QuizQuestion> buildTaalverzorgingExtra() {
       topic: _spelling,
       prompt: 'Welk woord is fóút geschreven? (drie zijn goed, één niet)',
       answer: w[1],
-      wrong: [
-        w[0],
-        ...g.others(goedeWoorden, w[0], 2),
-      ],
+      wrong: [w[0], ...g.others(goedeWoorden, w[0], 2)],
       why: '"${w[1]}" bestaat niet; het is "${w[0]}".',
     );
   }
@@ -444,12 +450,7 @@ List<QuizQuestion> buildTaalverzorgingExtra() {
       topic: _spelling,
       prompt: 'Wat is het meervoud van "$enkel"?',
       answer: meer,
-      wrong: [
-        '${enkel}s',
-        '${enkel}en',
-        "$enkel's",
-        '${enkel}n',
-      ],
+      wrong: ['${enkel}s', '${enkel}en', "$enkel's", '${enkel}n'],
       why: 'Het meervoud is "$meer".',
     );
   }
@@ -462,12 +463,7 @@ List<QuizQuestion> buildTaalverzorgingExtra() {
       topic: _spelling,
       prompt: 'Wat is het verkleinwoord van "$woord"?',
       answer: klein,
-      wrong: [
-        '${woord}je',
-        '${woord}tje',
-        '${woord}pje',
-        '${woord}kje',
-      ],
+      wrong: ['${woord}je', '${woord}tje', '${woord}pje', '${woord}kje'],
       why: 'Het verkleinwoord is "$klein".',
     );
   }
@@ -479,7 +475,8 @@ List<QuizQuestion> buildTaalverzorgingExtra() {
       prompt: 'Welk woord schrijf je met een hoofdletter?',
       answer: woord,
       wrong: g.others(_hoofdletterNiet, woord),
-      why: 'Talen, landen, plaatsen en namen krijgen een hoofdletter; '
+      why:
+          'Talen, landen, plaatsen en namen krijgen een hoofdletter; '
           'dagen, maanden en seizoenen niet.',
     );
   }
@@ -496,7 +493,7 @@ List<QuizQuestion> buildTaalverzorgingExtra() {
   // --- Leestekens: directe rede ----------------------------------------------
   for (var i = 0; i < 28; i++) {
     final naam = g.oneOf(_sprekers);
-    final ww = g.oneOf(_zegwerkwoorden);
+    final ww = g.oneOf(_zegwerkwoorden.where((w) => w != 'vroeg').toList());
     final vraag = g.rnd.nextBool();
     if (vraag) {
       final zin = g.oneOf(_vragen);
@@ -505,13 +502,14 @@ List<QuizQuestion> buildTaalverzorgingExtra() {
         prompt: 'Welke zin heeft de leestekens goed?',
         answer: '"$zin?" $ww $naam.',
         wrong: [
-          '"$zin?", $ww $naam.',
+          '"$zin?" $ww, $naam.',
           '"$zin?" ${ww[0].toUpperCase()}${ww.substring(1)} $naam.',
           '"$zin." $ww $naam.',
           '"$zin" $ww $naam?',
         ],
-        why: 'Na het vraagteken komt géén komma, en het zinnetje erna begint '
-            'met een kleine letter.',
+        why:
+            'Het vraagteken staat binnen de aanhalingstekens. De woorden erna beginnen '
+            'met een kleine letter; een komma na het aanhalingsteken mag ook.',
       );
     } else {
       final zin = g.oneOf(_uitspraken);
@@ -525,7 +523,8 @@ List<QuizQuestion> buildTaalverzorgingExtra() {
           '"$zin," ${ww[0].toUpperCase()}${ww.substring(1)} $naam.',
           '"$zin"; $ww $naam.',
         ],
-        why: 'Bij een mededeling komt er een komma vóór het aanhalingsteken '
+        why:
+            'Bij een mededeling komt er een komma vóór het aanhalingsteken '
             'aan het eind.',
       );
     }
@@ -540,10 +539,21 @@ List<QuizQuestion> buildTaalverzorgingExtra() {
     };
     g.add(
       topic: _leestekens,
-      prompt: 'Welk leesteken hoort aan het eind van deze zin?\n'
+      prompt:
+          '${z[1] == '!'
+              ? 'Je wilt nadrukkelijk iets uitroepen.'
+              : z[1] == '?'
+              ? 'Je stelt een directe vraag.'
+              : 'Je schrijft een rustige mededeling.'} '
+          'Welk leesteken past dan aan het eind?\n'
           '"${z[0]} …"',
       answer: teken,
-      wrong: const ['een punt', 'een vraagteken', 'een uitroepteken', 'een komma'],
+      wrong: const [
+        'een punt',
+        'een vraagteken',
+        'een uitroepteken',
+        'een komma',
+      ],
       why: switch (z[1]) {
         '?' => 'Het is een vraag, dus een vraagteken.',
         '!' => 'De zin roept iets uit, dus een uitroepteken.',
@@ -558,7 +568,8 @@ List<QuizQuestion> buildTaalverzorgingExtra() {
     final goed = '$zonderLaatste en ${o.last}';
     g.add(
       topic: _leestekens,
-      prompt: 'Welke opsomming staat goed?',
+      prompt:
+          'Welke opsomming gebruikt kommas tussen de eerste drie delen en alleen "en" voor het laatste deel?',
       answer: goed,
       wrong: [
         o.join(' '),
@@ -566,25 +577,23 @@ List<QuizQuestion> buildTaalverzorgingExtra() {
         '$zonderLaatste, en ${o.last}',
         '${o.first} ${o[1]}, ${o[2]} en ${o.last}',
       ],
-      why: 'Tussen de delen komt een komma, en vóór "en" juist niet.',
+      why: 'Hier verbinden twee kommas en het woord "en" de vier delen.',
     );
     g.add(
       topic: _leestekens,
-      prompt: 'Hoeveel kommas horen er in deze opsomming?\n'
+      prompt:
+          'Hoeveel kommas gebruik je tussen de eerste drie delen als je het laatste deel met "en" aansluit?\n'
           '"Ik neem ${o.join(' … ')} mee."',
       answer: '${o.length - 2}',
-      wrong: [
-        '${o.length}',
-        '${o.length - 1}',
-        '${o.length - 3}',
-        '0',
-      ],
-      why: 'Er zijn ${o.length} delen; het laatste deel krijgt "en" in plaats '
+      wrong: ['${o.length}', '${o.length - 1}', '${o.length - 3}', '0'],
+      why:
+          'Er zijn ${o.length} delen; het laatste deel krijgt "en" in plaats '
           'van een komma.',
     );
     g.add(
       topic: _leestekens,
-      prompt: 'Welk leesteken hoort er in deze zin?\n'
+      prompt:
+          'Welk leesteken hoort er in deze zin?\n'
           '"Ik heb drie dingen nodig … $zonderLaatste."',
       answer: 'een dubbele punt',
       wrong: const [
@@ -607,7 +616,7 @@ List<QuizQuestion> buildTaalverzorgingExtra() {
       prompt: 'Welke zinnen staan goed achter elkaar?',
       answer: '$a. ${b[0]}${b.substring(1).toLowerCase()}.',
       wrong: [
-        '$a, ${b[0].toLowerCase()}${b.substring(1)}.',
+        '$a? ${b[0].toLowerCase()}${b.substring(1)}.',
         '$a. ${b[0].toLowerCase()}${b.substring(1)}.',
         '$a ${b[0]}${b.substring(1)}.',
         '$a; ${b[0].toLowerCase()}${b.substring(1)}',

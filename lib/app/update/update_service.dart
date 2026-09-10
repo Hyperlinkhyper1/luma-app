@@ -71,10 +71,15 @@ class UpdateService {
       final uri = Uri.parse(
         '$_apiBase/repos/${AppVersion.repoOwner}/${AppVersion.repoName}/releases/latest',
       );
-      final res = await _client.get(uri, headers: const {
-        'Accept': 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-      }).timeout(const Duration(seconds: 10));
+      final res = await _client
+          .get(
+            uri,
+            headers: const {
+              'Accept': 'application/vnd.github+json',
+              'X-GitHub-Api-Version': '2022-11-28',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
       if (res.statusCode != 200) return null;
 
       final json = jsonDecode(res.body) as Map<String, dynamic>;
@@ -218,19 +223,33 @@ class UpdateService {
     void Function(double progress)? onProgress,
   }) async {
     try {
+      final uri = Uri.parse(info.downloadUrl);
+      if (uri.scheme != 'https' ||
+          uri.host != 'github.com' ||
+          uri.userInfo.isNotEmpty ||
+          uri.hasQuery ||
+          uri.hasFragment ||
+          uri.path !=
+              '/${AppVersion.repoOwner}/${AppVersion.repoName}/releases/download/${info.tagName}/${info.assetName}' ||
+          !RegExp(r'^[a-zA-Z0-9][a-zA-Z0-9._-]*$').hasMatch(info.assetName) ||
+          AppVersion.compare(info.tagName, AppVersion.current) <= 0) {
+        throw const FormatException('Invalid update source or version.');
+      }
       // Use the app's own temp directory rather than [Directory.systemTemp]:
       // on Android the system installer is handed the file through
       // open_file's FileProvider, which only exposes app-owned paths (cache /
       // files dirs). A raw systemTemp path there can't be shared and the
       // hand-off fails with a permission error.
-      final dir = await getTemporaryDirectory();
+      final dir = await (await getTemporaryDirectory()).createTemp(
+        'luma-update-',
+      );
       final installerPath = '${dir.path}/${info.assetName}';
       if (!await _download(info.downloadUrl, installerPath, onProgress)) {
         return null;
       }
       return installerPath;
     } catch (e, st) {
-      lastError = 'Download failed: $e';
+      lastError = 'Download failed. Check the network and update source.';
       await _logError('downloadInstaller', e, st);
       return null;
     }
@@ -253,7 +272,7 @@ class UpdateService {
         if (result.type != ResultType.done) {
           lastError = result.type == ResultType.permissionDenied
               ? 'Android blocked the install — allow "Install unknown apps" '
-                  'for luma in system settings, then try again.'
+                    'for luma in system settings, then try again.'
               : 'Could not open the installer: ${result.message}';
           await _logError('launchInstaller', lastError!);
         }
@@ -263,11 +282,11 @@ class UpdateService {
       // /VERYSILENT: no UI. /SUPPRESSMSGBOXES: no prompts. /NORESTART: never
       // reboot. CloseApplications=yes (set in the .iss) handles closing the
       // running luma.exe, and the [Run] entry relaunches it afterward.
-      await Process.start(
-        installerPath,
-        ['/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART'],
-        mode: ProcessStartMode.detached,
-      );
+      await Process.start(installerPath, [
+        '/VERYSILENT',
+        '/SUPPRESSMSGBOXES',
+        '/NORESTART',
+      ], mode: ProcessStartMode.detached);
       return true;
     } catch (e, st) {
       lastError = 'Could not start the installer: $e';
@@ -286,14 +305,17 @@ class UpdateService {
     String destPath,
     void Function(double)? onProgress,
   ) async {
-    final req = http.Request('GET', Uri.parse(url));
-    final res = await _client.send(req).timeout(const Duration(seconds: 15));
+    final res = await _installerResponse(Uri.parse(url));
     if (res.statusCode != 200) {
       lastError = 'Server returned HTTP ${res.statusCode} for the installer.';
       await _logError('download', 'HTTP ${res.statusCode} for $url');
       return false;
     }
     final total = res.contentLength ?? 0;
+    const maxInstallerBytes = 512 * 1024 * 1024;
+    if (total > maxInstallerBytes) {
+      throw const FormatException('Installer exceeds the download size limit.');
+    }
     var received = 0;
     // Reported progress is throttled to whole percent. Unthrottled, a
     // multi-hundred-megabyte download fires this tens of thousands of times,
@@ -308,10 +330,16 @@ class UpdateService {
       // stalls — a slow-but-steady download is unaffected. Without this, a
       // stalled connection leaves the non-dismissible UpdatingScreen stuck
       // forever with no way to back out.
-      await for (final chunk
-          in res.stream.timeout(const Duration(seconds: 30))) {
-        sink.add(chunk);
+      await for (final chunk in res.stream.timeout(
+        const Duration(seconds: 30),
+      )) {
         received += chunk.length;
+        if (received > maxInstallerBytes) {
+          throw const FormatException(
+            'Installer exceeds the download size limit.',
+          );
+        }
+        sink.add(chunk);
         if (total > 0) {
           final percent = received * 100 ~/ total;
           if (percent != reported) {
@@ -319,6 +347,9 @@ class UpdateService {
             onProgress?.call(received / total);
           }
         }
+      }
+      if (total > 0 && received != total) {
+        throw const FormatException('Incomplete installer download.');
       }
       await sink.flush();
       await sink.close();
@@ -330,19 +361,54 @@ class UpdateService {
     return true;
   }
 
+  Future<http.StreamedResponse> _installerResponse(Uri uri) async {
+    for (var redirects = 0; redirects <= 5; redirects++) {
+      if (uri.scheme != 'https' ||
+          uri.userInfo.isNotEmpty ||
+          !const {
+            'github.com',
+            'release-assets.githubusercontent.com',
+            'objects.githubusercontent.com',
+          }.contains(uri.host)) {
+        throw const FormatException('Untrusted installer redirect.');
+      }
+      final request = http.Request('GET', uri)..followRedirects = false;
+      final response = await _client
+          .send(request)
+          .timeout(const Duration(seconds: 15));
+      if (!const {301, 302, 303, 307, 308}.contains(response.statusCode)) {
+        return response;
+      }
+      final location = response.headers['location'];
+      await response.stream.listen((_) {}).cancel();
+      if (location == null) {
+        throw const FormatException('Invalid installer redirect.');
+      }
+      uri = uri.resolve(location);
+    }
+    throw const FormatException('Too many installer redirects.');
+  }
+
   /// Appends a timestamped line to `update.log` in the app's support
   /// directory so update failures — normally swallowed so a bad network
   /// doesn't crash the app — are still diagnosable after the fact.
-  static Future<void> _logError(String context, Object error,
-      [StackTrace? stackTrace]) async {
+  static Future<void> _logError(
+    String context,
+    Object error, [
+    StackTrace? stackTrace,
+  ]) async {
     try {
       final dir = await getApplicationSupportDirectory();
       final file = File('${dir.path}/update.log');
       final line = StringBuffer()
-        ..writeln('${DateTime.now().toIso8601String()} [$context] $error');
-      if (stackTrace != null) line.writeln(stackTrace);
-      await file.writeAsString(line.toString(),
-          mode: FileMode.append, flush: true);
+        ..writeln(
+          '${DateTime.now().toIso8601String()} [$context] ${error.runtimeType}',
+        );
+      await file.writeAsString(
+        line.toString(),
+        mode: FileMode.append,
+        flush: true,
+      );
     } catch (_) {
       // Logging must never throw back into the update flow.
     }

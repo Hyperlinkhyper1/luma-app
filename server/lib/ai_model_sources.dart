@@ -212,12 +212,8 @@ class AiCatalogFetcher {
   /// Overlays Artificial Analysis' indices, speed figures and per-effort
   /// measurements onto models already in [known].
   ///
-  /// AA has no id in common with OpenRouter, so models are matched on a
-  /// normalised display name (see [_normalizeName]). AA also publishes each
-  /// reasoning-effort tier as its own row — "GPT-5.6 (high)" — which is
-  /// exactly the data the effort graph needs: those rows are folded into
-  /// their base model's [AiModel.effortProfiles] instead of becoming
-  /// leaderboard rows of their own.
+  /// The matching and tier-folding live in [aaOverlays]; this only does the
+  /// request.
   Future<({List<AiModel> overlays, AiRefreshSourceResult result})>
       fetchArtificialAnalysis(String apiKey, List<AiModel> known) async {
     try {
@@ -237,98 +233,7 @@ class AiCatalogFetcher {
         );
       }
 
-      final byName = <String, AiModel>{};
-      for (final m in known) {
-        byName.putIfAbsent(_normalizeName(m.name), () => m);
-        byName.putIfAbsent(_normalizeName(m.slug), () => m);
-      }
-
-      final overlays = <String, AiModel>{};
-      final efforts = <String, List<AiEffortProfile>>{};
-      final now = DateTime.now().millisecondsSinceEpoch;
-
-      for (final entry in raw) {
-        if (entry is! Map<String, dynamic>) continue;
-        final name = entry['name'] as String?;
-        if (name == null) continue;
-        // "Claude Sonnet 5 (Non-reasoning, High Effort)" is a completely
-        // different mode (thinking disabled), not a rung on the reasoning-
-        // effort ladder — but its parenthetical contains "High" as a whole
-        // word, so splitEffortSuffix would otherwise fold its score in as
-        // if it were the `high` tier. Drop it rather than mislabelling it;
-        // it isn't the model's default config either, so it can't stand in
-        // for the base overlay when there's no effort suffix to strip.
-        if (name.toLowerCase().contains('non-reasoning')) continue;
-        final (base, effort) = splitEffortSuffix(name);
-        final match = byName[_normalizeName(base)];
-        if (match == null) continue;
-
-        final evals = _map(entry['evaluations']);
-        final intelligence =
-            _num(evals['artificial_analysis_intelligence_index']);
-
-        if (effort != null) {
-          // An effort-tier row: it measures a variant, not the model, so it
-          // only contributes a point to the effort graph.
-          (efforts[match.id] ??= []).add(AiEffortProfile(
-            effort: effort,
-            intelligenceIndex: intelligence,
-            medianOutputTokens: _num(entry['median_output_tokens'])?.round(),
-          ));
-          continue;
-        }
-
-        overlays[match.id] = AiModel(
-          id: match.id,
-          slug: match.slug,
-          name: match.name,
-          vendor: match.vendor,
-          vendorName: match.vendorName,
-          updatedAtMs: now,
-          llmStatsIndex: intelligence,
-          // AA publishes no single "reasoning index"; GPQA Diamond is the
-          // reasoning benchmark it scores every model on, rescaled here from
-          // a 0–1 fraction to the 0–100 the other columns use so the four
-          // sort against each other sensibly.
-          reasoningIndex: _num(evals['artificial_analysis_reasoning_index']) ??
-              _asIndex(_num(evals['gpqa'])),
-          codingIndex: _num(evals['artificial_analysis_coding_index']),
-          agentIndex: _num(evals['artificial_analysis_agentic_index']),
-          mathIndex: _num(evals['artificial_analysis_math_index']),
-          speedTokensPerSec: _num(entry['median_output_tokens_per_second']),
-          latencyMs: _secondsToMs(
-              _num(entry['median_time_to_first_token_seconds'])),
-          sources: const ['artificial-analysis'],
-        );
-      }
-
-      // Fold the effort rows into whichever overlay (or bare model) they
-      // belong to, cheapest tier first so the graph reads left to right.
-      final merged = <AiModel>[];
-      for (final id in {...overlays.keys, ...efforts.keys}) {
-        final profiles = efforts[id] ?? const <AiEffortProfile>[];
-        final sorted = [...profiles]
-          ..sort((a, b) =>
-              _effortRank(a.effort).compareTo(_effortRank(b.effort)));
-        final base = overlays[id];
-        if (base != null) {
-          merged.add(_withEfforts(base, sorted));
-        } else {
-          final model = known.firstWhere((m) => m.id == id);
-          merged.add(_withEfforts(
-            AiModel(
-              id: model.id,
-              slug: model.slug,
-              name: model.name,
-              vendor: model.vendor,
-              vendorName: model.vendorName,
-              updatedAtMs: now,
-              sources: const ['artificial-analysis'],
-            ),
-            sorted,
-          ));
-        }
-      }
+      final merged = aaOverlays(raw, known);
 
       return (
         overlays: merged,
@@ -903,6 +808,137 @@ const List<String> kEffortTiers = [
 int _effortRank(String effort) {
   final index = kEffortTiers.indexOf(effort.toLowerCase());
   return index < 0 ? kEffortTiers.length : index;
+}
+
+/// Turns Artificial Analysis' `data` array into overlays for the models in
+/// [known], matched on normalised display name (AA shares no id with
+/// OpenRouter).
+///
+/// Split out of [AiCatalogFetcher.fetchArtificialAnalysis] so the matching and
+/// tier-folding can be tested without an HTTP round trip.
+List<AiModel> aaOverlays(List<Object?> raw, List<AiModel> known) {
+  final byName = <String, AiModel>{};
+  for (final m in known) {
+    byName.putIfAbsent(_normalizeName(m.name), () => m);
+    byName.putIfAbsent(_normalizeName(m.slug), () => m);
+  }
+
+  final overlays = <String, AiModel>{};
+  final efforts = <String, List<AiEffortProfile>>{};
+  // The best-scoring effort-tier row seen for each model. AA lists most
+  // reasoning models *only* per tier — "Claude Opus 5 (max)", "GPT-6 Astra
+  // (high)" — and never as a bare row, so without this every frontier model
+  // would fall through to whatever stale snapshot OpenRouter carries. See
+  // [_headlineRow].
+  final bestTier = <String, AiModel>{};
+  final now = DateTime.now().millisecondsSinceEpoch;
+
+  for (final entry in raw) {
+    if (entry is! Map<String, dynamic>) continue;
+    final name = entry['name'] as String?;
+    if (name == null) continue;
+    // "Claude Sonnet 5 (Non-reasoning, High Effort)" is a completely
+    // different mode (thinking disabled), not a rung on the reasoning-effort
+    // ladder — but its parenthetical contains "High" as a whole word, so
+    // splitEffortSuffix would otherwise fold its score in as if it were the
+    // `high` tier. Drop it rather than mislabelling it; it isn't the model's
+    // default config either, so it can't stand in for the base overlay when
+    // there's no effort suffix to strip.
+    if (name.toLowerCase().contains('non-reasoning')) continue;
+    final (base, effort) = splitEffortSuffix(name);
+    final match = byName[_normalizeName(base)];
+    if (match == null) continue;
+
+    final evals = _map(entry['evaluations']);
+    final intelligence = _num(evals['artificial_analysis_intelligence_index']);
+
+    final row = AiModel(
+      id: match.id,
+      slug: match.slug,
+      name: match.name,
+      vendor: match.vendor,
+      vendorName: match.vendorName,
+      updatedAtMs: now,
+      llmStatsIndex: intelligence,
+      // AA publishes no single "reasoning index"; GPQA Diamond is the
+      // reasoning benchmark it scores every model on, rescaled here from a
+      // 0–1 fraction to the 0–100 the other columns use so the four sort
+      // against each other sensibly.
+      reasoningIndex: _num(evals['artificial_analysis_reasoning_index']) ??
+          _asIndex(_num(evals['gpqa'])),
+      codingIndex: _num(evals['artificial_analysis_coding_index']),
+      agentIndex: _num(evals['artificial_analysis_agentic_index']),
+      mathIndex: _num(evals['artificial_analysis_math_index']),
+      speedTokensPerSec: _num(entry['median_output_tokens_per_second']),
+      latencyMs:
+          _secondsToMs(_num(entry['median_time_to_first_token_seconds'])),
+      sources: const ['artificial-analysis'],
+    );
+
+    if (effort != null) {
+      // An effort-tier row contributes a point to the effort graph, and
+      // stands by as a headline candidate in case AA never publishes a bare
+      // row for this model.
+      (efforts[match.id] ??= []).add(AiEffortProfile(
+        effort: effort,
+        intelligenceIndex: intelligence,
+        medianOutputTokens: _num(entry['median_output_tokens'])?.round(),
+      ));
+      final incumbent = bestTier[match.id];
+      if (incumbent == null ||
+          (intelligence ?? -1) > (incumbent.llmStatsIndex ?? -1)) {
+        bestTier[match.id] = row;
+      }
+      continue;
+    }
+
+    overlays[match.id] = row;
+  }
+
+  // Fold the effort rows into whichever overlay (or bare model) they belong
+  // to, cheapest tier first so the graph reads left to right.
+  final merged = <AiModel>[];
+  for (final id in {...overlays.keys, ...efforts.keys}) {
+    final profiles = efforts[id] ?? const <AiEffortProfile>[];
+    final sorted = [...profiles]
+      ..sort((a, b) => _effortRank(a.effort).compareTo(_effortRank(b.effort)));
+    final headline = _headlineRow(overlays[id], bestTier[id]);
+    if (headline != null) {
+      merged.add(_withEfforts(headline, sorted));
+    } else {
+      final model = known.firstWhere((m) => m.id == id);
+      merged.add(_withEfforts(
+        AiModel(
+          id: model.id,
+          slug: model.slug,
+          name: model.name,
+          vendor: model.vendor,
+          vendorName: model.vendorName,
+          updatedAtMs: now,
+          sources: const ['artificial-analysis'],
+        ),
+        sorted,
+      ));
+    }
+  }
+  return merged;
+}
+
+/// Picks the row that becomes a model's leaderboard rating out of AA's bare
+/// row (if it published one) and its best-scoring reasoning-effort row.
+///
+/// AA's leaderboard is read per tier — "Claude Opus 5 (max)" is its own line —
+/// and the number people quote for a model is its best one, so the higher
+/// intelligence index wins. The loser isn't discarded: it fills whatever the
+/// winner left null, which is how a model whose top tier carries no speed
+/// figure still gets one from the bare row.
+AiModel? _headlineRow(AiModel? bare, AiModel? tier) {
+  if (bare == null) return tier;
+  if (tier == null) return bare;
+  final winner =
+      (tier.llmStatsIndex ?? -1) > (bare.llmStatsIndex ?? -1) ? tier : bare;
+  final loser = identical(winner, tier) ? bare : tier;
+  return loser.mergedWith(winner);
 }
 
 AiModel _withEfforts(AiModel model, List<AiEffortProfile> profiles) => AiModel(
