@@ -29,7 +29,7 @@ const _organen = [
   'de milt|ruimt oude bloedcellen op',
   'het skelet|geeft je lichaam stevigheid',
   'de spieren|zorgen dat je kunt bewegen',
-  'de gewrichten|zorgen dat botten kunnen buigen',
+  'de gewrichten|laten botten ten opzichte van elkaar bewegen',
   'de pezen|verbinden spieren met botten',
   'het bloed|vervoert zuurstof en voedingsstoffen',
   'de slagaders|vervoeren bloed van het hart af',
@@ -153,7 +153,7 @@ const _technieklijst = [
   'een hefboom|een stang waarmee je met minder kracht iets tilt',
   'een katrol|een wiel met een touw om iets omhoog te hijsen',
   'een tandwiel|een wiel met tanden dat kracht overbrengt',
-  'een veer|slaat kracht op door in te drukken of uit te rekken',
+  'een veer|slaat energie op door in te drukken of uit te rekken',
   'wrijving|de kracht die een beweging tegenwerkt',
   'de zwaartekracht|de kracht waarmee de aarde alles aantrekt',
   'een magneet|iets dat ijzer aantrekt',
@@ -163,7 +163,7 @@ const _technieklijst = [
   'condenseren|van gas naar vloeibaar',
   'een molecuul|het kleinste deeltje van een stof',
   'een mengsel|twee of meer stoffen door elkaar',
-  'oplossen|een stof laten verdwijnen in een vloeistof',
+  'oplossen|een stof mengen met een vloeistof zodat je de losse deeltjes niet meer ziet',
   'filteren|vaste deeltjes uit een vloeistof halen',
   'een prototype|een eerste proefmodel van iets nieuws',
   'een ontwerp|een plan of tekening van wat je gaat maken',
@@ -223,7 +223,7 @@ const _lichaamFeiten = [
   'Hoeveel botten heeft een volwassen mens ongeveer?|ongeveer 206|ongeveer 100|ongeveer 350|ongeveer 500',
   'Wat gebeurt er als je inademt?|je longen zetten uit en er stroomt lucht naar binnen|je longen krimpen|je hart stopt even|je maag zet uit',
   'Welk gas haal je uit de lucht als je ademt?|zuurstof|koolstofdioxide|stikstof|waterstof',
-  'Welk gas adem je vooral uit?|koolstofdioxide|zuurstof|helium|waterstof',
+  'Van welk gas zit er meer in uitgeademde lucht dan in ingeademde lucht?|koolstofdioxide|zuurstof|helium|waterstof',
   'Waar begint de vertering van je eten?|in je mond|in je maag|in je dunne darm|in je lever',
   'Hoe vaak klopt een hart van een kind ongeveer per minuut in rust?|ongeveer 80 keer|ongeveer 20 keer|ongeveer 200 keer|ongeveer 400 keer',
   'Waarom ga je zweten als je sport?|om je lichaam af te koelen|om vet kwijt te raken|om spieren te maken|om zuurstof op te nemen',
@@ -259,14 +259,14 @@ const _natuurFeiten = [
   'Welk gas geven planten af bij fotosynthese?|zuurstof|koolstofdioxide|stikstof|methaan',
   'Wat is bestuiving?|stuifmeel dat op de stamper terechtkomt|water dat de wortel opneemt|een zaadje dat ontkiemt|een blad dat afvalt',
   'Wie helpen planten het meest bij de bestuiving?|insecten zoals bijen|regenwormen|vogels alleen|slakken',
-  'Wat is een zaadverspreiding door dieren?|dieren eten vruchten en poepen de zaden ergens anders uit|dieren graven zaden in|de wind blaast zaden weg|zaden drijven op water',
-  'Wat staat er aan het begin van elke voedselketen?|een plant|een roofdier|een aaseter|een schimmel',
+  'Wat is een zaadverspreiding door dieren?|dieren eten vruchten en poepen de zaden ergens anders uit|dieren drinken water|de wind blaast zaden weg|zaden drijven op water',
+  'Wat staat er aan het begin van de voedselketen gras – konijn – vos?|een plant|een roofdier|een aaseter|een schimmel',
   'Hoe heet een dier dat alleen planten eet?|een planteneter|een vleeseter|een alleseter|een aaseter',
   'Hoe heet een dier dat zowel planten als vlees eet?|een alleseter|een planteneter|een vleeseter|een roofdier',
   'Wat doen schimmels en bacteriën in de natuur?|ze breken dode resten af|ze maken zuurstof|ze eten planten|ze maken zaden',
   'Wat is een ecosysteem?|alle planten en dieren in een gebied samen met hun omgeving|een groep dieren van één soort|een stuk bos|een voedselketen',
   'Wat gebeurt er als er te veel roofdieren zijn?|de prooidieren nemen af|de planten nemen af|er verandert niets|de roofdieren groeien harder',
-  'Hoe overwinteren veel zoogdieren?|door een winterslaap te houden|door te vervellen|door naar het zuiden te zwemmen|door bladeren te verliezen',
+  'Hoe overwintert een egel?|door een winterslaap te houden|door te vervellen|door naar het zuiden te zwemmen|door bladeren te verliezen',
   'Waarom trekken veel vogels in de herfst weg?|omdat er hier in de winter te weinig voedsel is|omdat het te licht wordt|omdat ze verharen|omdat ze gaan broeden',
   'Wat is camouflage?|een kleur of vorm waarmee een dier opgaat in zijn omgeving|het maken van een nest|een winterslaap|het wisselen van veren',
   'Hoe planten vissen zich meestal voort?|ze leggen eitjes in het water|ze krijgen levende jongen|ze maken een nest op het land|ze delen zich',
@@ -278,7 +278,7 @@ const _natuurFeiten = [
   'Wat is een gewervelde?|een dier met een ruggengraat|een dier met een schild|een dier zonder poten|een dier met vleugels',
   'Welke van deze dieren is ongewerveld?|de slak|de kikker|de haring|de mus',
   'Hoe heet de verandering van rups naar vlinder?|de gedaanteverwisseling|de winterslaap|de bestuiving|de vervelling',
-  'Wat is een loofboom?|een boom die in de herfst zijn bladeren verliest|een boom met naalden|een boom die altijd groen blijft|een boom zonder vruchten',
+  'Wat is een loofboom?|een boom met bladeren in plaats van naalden|een boom met naalden|een boom die altijd groen blijft|een boom zonder vruchten',
   'Welke boom is een naaldboom?|de den|de eik|de beuk|de berk',
   'Waaraan herken je de leeftijd van een boom?|aan de jaarringen|aan de hoogte|aan de bast|aan het aantal takken',
   'Wat is humus?|verteerde resten van planten en dieren in de grond|zand met klei|een soort mos|water in de bodem',
@@ -308,7 +308,7 @@ const _techniekFeiten = [
   'Wat trekt een magneet aan?|ijzer|hout|glas|aluminium',
   'Wat gebeurt er als je twee noordpolen van magneten bij elkaar houdt?|ze stoten elkaar af|ze trekken elkaar aan|er gebeurt niets|ze worden warm',
   'Bij welke temperatuur bevriest water?|bij 0 °C|bij 10 °C|bij -10 °C|bij 100 °C',
-  'Bij welke temperatuur kookt water?|bij 100 °C|bij 50 °C|bij 80 °C|bij 120 °C',
+  'Bij welke temperatuur kookt water op zeeniveau?|bij 100 °C|bij 50 °C|bij 80 °C|bij 120 °C',
   'Wat gebeurt er met de meeste stoffen als ze warmer worden?|ze zetten uit|ze krimpen|ze verdwijnen|ze worden zwaarder',
   'Hoe gaat warmte door metaal?|door geleiding|door straling alleen|door stroming alleen|helemaal niet',
   'Hoe komt de warmte van de zon naar de aarde?|door straling|door geleiding|door stroming|via de wind',
@@ -395,8 +395,14 @@ List<QuizQuestion> buildBiologieExtra() {
   }
 
   for (final groep in _diergroepen) {
-    final leden = [for (final d in dieren) if (d[1] == groep) d[0]];
-    final anderen = [for (final d in dieren) if (d[1] != groep) d[0]];
+    final leden = [
+      for (final d in dieren)
+        if (d[1] == groep) d[0],
+    ];
+    final anderen = [
+      for (final d in dieren)
+        if (d[1] != groep) d[0],
+    ];
     // One question per animal, each naming a different clue-mate, so no two
     // prompts come out the same.
     for (var i = 0; i < leden.length; i++) {

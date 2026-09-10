@@ -25,24 +25,23 @@ reference, how auth/admin/rate-limiting work), see
                                                └──────────────────┘
 ```
 
-**Security model (zero-knowledge):**
+**Security model (client-encrypted snapshots):**
 
-- Every feature's data is encrypted **on the device** with an authenticated
-  encrypt-then-MAC cipher (HMAC-SHA256 keystream + HMAC-SHA256 tag, with
-  independent sub-keys), using a key derived from the user's account
-  password (PBKDF2-HMAC-SHA256, 200,000 iterations). The server only ever
-  stores unreadable ciphertext.
+- New sync snapshots are encrypted **on the device** with AES-256-GCM.
+  Account derivation remains PBKDF2-HMAC-SHA256, normally 200,000 iterations,
+  with HKDF subkeys. Legacy custom-cipher blobs remain readable. Metadata,
+  account APIs, shared features and AI proxies are separate from encrypted
+  snapshot contents. See [architecture and limitations](docs/security/SECURITY_ARCHITECTURE.md).
 - The server never sees the account password either — the app sends a
   separate *auth key* derived from it, which the server hashes again
   before storing.
-- Consequence: **a forgotten password means the synced data cannot be
-  recovered.** Not by you, not by anyone. Users keep the local copies on
-  their devices, but the server-side snapshots are gone for good. Tell
-  your users this.
-- Login tokens are stored hashed; even someone who steals the server's
-  data directory cannot impersonate users or read their data.
+- Recovery depends on retained keys and trusted devices. There is no
+  universal server recovery key or tested portable backup system. Losing
+  all usable keys/devices can permanently lose data.
+- Login tokens are stored hashed. Server compromise still exposes metadata,
+  account verifiers and shared-feature content, and enables password guessing.
 - Each account gets **3 GB** of storage by default (configurable).
-- Nothing syncs by default: each user turns individual features on in
+- Settings sync is enabled for signed-in accounts; users select other collections in
   *Settings → Sync & account*.
 - **The app does not contact the server at all until an account exists and
   has been approved.** A fresh install makes zero requests to it; the only
@@ -322,8 +321,8 @@ Things the setup above already gives you:
 
 - [x] HTTPS everywhere (Caddy + Let's Encrypt, HSTS enabled)
 - [x] The app refuses plain-HTTP servers on the public internet
-- [x] Zero-knowledge encryption — server stores only authenticated
-      (encrypt-then-MAC) ciphertext
+- [x] Snapshot content encrypted client-side with authenticated envelopes;
+      metadata/shared-feature APIs remain outside this protection
 - [x] Passwords never reach the server; login secrets are PBKDF2-hashed
       again server-side with per-user salts
 - [x] Login tokens stored hashed, 90-day sliding expiry

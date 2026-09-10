@@ -1,29 +1,23 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:path_provider/path_provider.dart';
 
-/// Encrypts password secrets at rest so they are not readable in the raw
-/// database file.
-///
-/// We deliberately avoid a heavyweight cipher dependency: this is an
-/// encrypt-then-MAC stream cipher built on HMAC-SHA256 (used as a PRF in
-/// counter mode), which the `crypto` package already provides. A random 32-byte
-/// key is generated once and stored next to the database in the app's local
-/// support directory. This protects secrets against anyone reading the SQLite
-/// file directly without also holding the key file; it is not a substitute for
-/// a master-password vault.
-///
-/// Each ciphertext's MAC is bound to the entry's row id and field name (see
-/// [encrypt]/[decrypt]), so someone with write access to the raw database file
-/// cannot swap one entry's ciphertext into another entry (or into a different
-/// field) undetected — without that binding, a byte-for-byte copy would still
-/// pass the integrity check.
+import '../../security/authenticated_cipher.dart';
+import '../../security/secure_secret_store.dart';
+import '../../sync/sync_crypto.dart' show hkdfExpand;
+
+/// AES-256-GCM for new vault ciphertext, with row/field authenticated context
+/// and separate HKDF subkeys for passwords and TOTP. The root key is stored
+/// using OS secure storage. Historical ciphers are read only for migration.
+/// This is device-bound encryption, not a master-password-unlocked vault.
 class PasswordCrypto {
   PasswordCrypto._(this._key);
+
+  factory PasswordCrypto.forTesting(Uint8List key) =>
+      PasswordCrypto._(Uint8List.fromList(key));
 
   final Uint8List _key;
 
@@ -45,31 +39,32 @@ class PasswordCrypto {
     final dir = await getApplicationSupportDirectory();
     final file = File('${dir.path}${Platform.pathSeparator}$_keyFileName');
 
-    Uint8List key;
-    if (await file.exists()) {
-      key = base64Decode((await file.readAsString()).trim());
-    } else {
-      key = _randomBytes(32);
-      await file.writeAsString(base64Encode(key), flush: true);
-    }
+    final key = await SecureSecretStore.instance.loadKey(
+      'passwords.key',
+      file,
+      encryptedDataExists: await File(
+        '${dir.path}/luma_passwords.sqlite',
+      ).exists(),
+    );
     return _instance = PasswordCrypto._(key);
   }
 
   /// Returns a base64 token of `version || nonce || ciphertext || mac`, with
   /// the MAC bound to [entryId]/[field] so this ciphertext cannot be silently
   /// swapped into a different row or column.
-  String encrypt(String plaintext, {required int entryId, required String field}) {
-    final nonce = _randomBytes(_nonceLength);
-    final data = utf8.encode(plaintext);
-    final cipher = _xorKeystream(data, nonce);
-    final mac = _mac(_context(entryId, field), nonce, cipher);
-    final out = Uint8List(1 + nonce.length + cipher.length + mac.length)
-      ..[0] = _versionByte
-      ..setAll(1, nonce)
-      ..setAll(1 + nonce.length, cipher)
-      ..setAll(1 + nonce.length + cipher.length, mac);
-    return base64Encode(out);
+  String encrypt(
+    String plaintext, {
+    required int entryId,
+    required String field,
+  }) {
+    return 'pw3:${base64Encode(AuthenticatedCipher.seal(utf8.encode(plaintext), _fieldKey(field), 'luma-passwords-v3|$entryId|$field'))}';
   }
+
+  Uint8List _fieldKey(String field) => hkdfExpand(
+    _key,
+    utf8.encode(field == 'totp' ? 'luma-totp-v3' : 'luma-passwords-v3'),
+    32,
+  );
 
   /// Reverses [encrypt]. Returns null if the token is malformed or fails
   /// integrity verification (e.g. produced under a different key, or for a
@@ -83,6 +78,15 @@ class PasswordCrypto {
   /// upgrade them (see [isLegacyFormat]).
   String? decrypt(String token, {required int entryId, required String field}) {
     try {
+      if (token.startsWith('pw3:')) {
+        return utf8.decode(
+          AuthenticatedCipher.open(
+            base64Decode(token.substring(4)),
+            _fieldKey(field),
+            'luma-passwords-v3|$entryId|$field',
+          ),
+        );
+      }
       final raw = base64Decode(token);
       if (raw.isNotEmpty && raw[0] == _versionByte) {
         final body = raw.sublist(1);
@@ -116,12 +120,7 @@ class PasswordCrypto {
   /// [PasswordRepository.migrateLegacyCiphertexts] to find entries that still
   /// need to be rewritten under the entry/field-bound scheme.
   bool isLegacyFormat(String token) {
-    try {
-      final raw = base64Decode(token);
-      return raw.isEmpty || raw[0] != _versionByte;
-    } catch (_) {
-      return false;
-    }
+    return !token.startsWith('pw3:');
   }
 
   static Uint8List _context(int entryId, String field) =>
@@ -144,8 +143,10 @@ class PasswordCrypto {
   }
 
   Uint8List _mac(Uint8List context, List<int> nonce, List<int> cipher) {
-    final tag =
-        Hmac(sha256, _key).convert([...context, ...nonce, ...cipher]).bytes;
+    final tag = Hmac(
+      sha256,
+      _key,
+    ).convert([...context, ...nonce, ...cipher]).bytes;
     return Uint8List.fromList(tag.sublist(0, _macLength));
   }
 
@@ -157,12 +158,6 @@ class PasswordCrypto {
   static Uint8List _counterBytes(int counter) {
     final b = ByteData(4)..setUint32(0, counter, Endian.big);
     return b.buffer.asUint8List();
-  }
-
-  static Uint8List _randomBytes(int length) {
-    final rng = Random.secure();
-    return Uint8List.fromList(
-        List<int>.generate(length, (_) => rng.nextInt(256)));
   }
 
   static bool _constantTimeEquals(List<int> a, List<int> b) {

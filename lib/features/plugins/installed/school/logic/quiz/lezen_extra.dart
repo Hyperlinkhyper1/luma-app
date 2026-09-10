@@ -352,7 +352,10 @@ List<QuizQuestion> buildLezenExtra() {
       topic: _begrijpen,
       prompt: 'Welk signaalwoord wijst op ${s[1]}?',
       answer: s[0],
-      wrong: g.others([for (final x in sig) x[0]], s[0]),
+      wrong: g.others([
+        for (final x in sig)
+          if (x[1] != s[1]) x[0],
+      ], s[0]),
     );
   }
 
@@ -373,7 +376,8 @@ List<QuizQuestion> buildLezenExtra() {
       for (var i = 0; i < hoofdstukken.length; i++)
         '${i + 1}  ${hoofdstukken[i].padRight(26, '.')} ${starts[i]}',
     ].join('\n');
-    final passage = 'Inhoudsopgave van het boek "$titel"\n\n$tabel\n'
+    final passage =
+        'Inhoudsopgave van het boek "$titel"\n\n$tabel\n'
         'Register $pagina';
 
     for (var i = 0; i < hoofdstukken.length; i++) {
@@ -400,7 +404,8 @@ List<QuizQuestion> buildLezenExtra() {
           '${starts[i]} bladzijden',
           '${lengtes[i] + 5} bladzijden',
         ],
-        why: 'Hoofdstuk ${i + 2} begint op bladzijde ${starts[i + 1]}, dus '
+        why:
+            'Hoofdstuk ${i + 2} begint op bladzijde ${starts[i + 1]}, dus '
             '${starts[i + 1]} - ${starts[i]} = ${lengtes[i]}.',
       );
     }
@@ -409,9 +414,8 @@ List<QuizQuestion> buildLezenExtra() {
       passage: passage,
       prompt: 'In welk hoofdstuk zoek je iets over ${hoofdstukken.last}?',
       answer: 'hoofdstuk ${hoofdstukken.length}',
-      wrong: [
-        for (var k = 1; k < hoofdstukken.length; k++) 'hoofdstuk $k',
-      ]..shuffle(g.rnd),
+      wrong: [for (var k = 1; k < hoofdstukken.length; k++) 'hoofdstuk $k']
+        ..shuffle(g.rnd),
     );
     g.add(
       topic: _opzoeken,
@@ -443,7 +447,8 @@ List<QuizQuestion> buildLezenExtra() {
       prompt: 'Welk van deze woorden staat in het woordenboek vooraan?',
       answer: gesorteerd.first,
       wrong: gesorteerd.sublist(1),
-      why: 'Bij dezelfde beginletter kijk je naar de tweede letter, dan de '
+      why:
+          'Bij dezelfde beginletter kijk je naar de tweede letter, dan de '
           'derde, enzovoort.',
     );
     g.add(
@@ -482,7 +487,8 @@ List<QuizQuestion> buildLezenExtra() {
     g.add(
       topic: _opzoeken,
       passage: passage,
-      prompt: 'Hoeveel minuten doet de bus over de rit van ${_haltes.first} '
+      prompt:
+          'Hoeveel minuten doet de bus over de rit van ${_haltes.first} '
           'naar ${_haltes.last}?',
       answer: '${vertrek.last - vertrek.first} minuten',
       wrong: [
@@ -491,13 +497,15 @@ List<QuizQuestion> buildLezenExtra() {
         '${vertrek[1] - vertrek[0]} minuten',
         '${vertrek.last - vertrek.first + 15} minuten',
       ],
-      why: '${_hhmm(vertrek.last)} min ${_hhmm(vertrek.first)} is '
+      why:
+          '${_hhmm(vertrek.last)} min ${_hhmm(vertrek.first)} is '
           '${vertrek.last - vertrek.first} minuten.',
     );
     g.add(
       topic: _opzoeken,
       passage: passage,
-      prompt: 'Je wilt om ${_hhmm(vertrek[1] - 2)} bij ${_haltes[1]} zijn. '
+      prompt:
+          'Je wilt om ${_hhmm(vertrek[1] - 2)} bij ${_haltes[1]} zijn. '
           'Haal je die bus?',
       answer: 'Ja, de bus vertrekt daar pas om ${_hhmm(vertrek[1])}',
       wrong: [
@@ -538,7 +546,8 @@ List<QuizQuestion> buildLezenExtra() {
       'dat ze in tweetallen op pad gaan',
       'dat de gemeente prullenbakken plaatste',
     ],
-    why: 'In de tekst staat "de leerlingen denken dat" — dat is een mening of '
+    why:
+        'In de tekst staat "de leerlingen denken dat" — dat is een mening of '
         'vermoeden, geen feit.',
   );
   g.add(
@@ -752,11 +761,7 @@ List<QuizQuestion> buildLezenExtra() {
     passage: _tekstBrief,
     prompt: 'Wat voor soort tekst is dit?',
     answer: 'een informatieve brief',
-    wrong: const [
-      'een verhaal',
-      'een advertentie',
-      'een verslag achteraf',
-    ],
+    wrong: const ['een verhaal', 'een advertentie', 'een verslag achteraf'],
   );
 
   return g.questions;

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../theme/luma_theme.dart';
+import 'engine_test_page.dart';
 import 'hero_tile.dart';
 import 'pagoda_test_page.dart';
 
@@ -43,11 +44,22 @@ class TestsTab extends StatelessWidget {
               LumaHeroTile(
                 title: 'Pagoda Test',
                 subtitle: 'Open the test screen',
-                imageAsset: 'assets/tests/pagoda.png',
+                imageAsset: 'assets/tests/pagoda-preview.png',
                 fallbackIcon: Icons.temple_buddhist_rounded,
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) => const PagodaTestPage(),
+                  ),
+                ),
+              ),
+              LumaHeroTile(
+                title: 'Engine Test',
+                subtitle: 'Open the test screen',
+                imageAsset: 'assets/tests/engine-preview.png',
+                fallbackIcon: Icons.precision_manufacturing_rounded,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const EngineTestPage(),
                   ),
                 ),
               ),

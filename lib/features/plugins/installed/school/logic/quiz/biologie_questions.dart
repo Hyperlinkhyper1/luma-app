@@ -21,7 +21,7 @@ const _lichaam = 'Het menselijk lichaam';
 const _natuur = 'Planten en dieren';
 const _techniek = 'Energie en techniek';
 
-/// Natuur & techniek, groep 8 / doorstroomtoets-niveau.
+/// Natuur & techniek, extra oefening voor bovenbouw en brugklas; geen doorstroomtoetsvak.
 final List<QuizQuestion> biologieQuestions = [
   // --- Het menselijk lichaam ------------------------------------------------
   _q('nt-001', _lichaam, 'Wat is de belangrijkste taak van het hart?',
@@ -48,7 +48,7 @@ final List<QuizQuestion> biologieQuestions = [
         'mond – maag – lever – longen'
       ],
       0),
-  _q('nt-004', _lichaam, 'Waar wordt het meeste voedsel opgenomen in het bloed?',
+  _q('nt-004', _lichaam, 'Waar worden de meeste verteerde voedingsstoffen opgenomen in het bloed?',
       ['in de maag', 'in de dunne darm', 'in de dikke darm', 'in de slokdarm'], 1),
   _q('nt-005', _lichaam, 'Wat doen de nieren?',
       [
@@ -133,7 +133,7 @@ final List<QuizQuestion> biologieQuestions = [
       0),
   _q('nt-022', _natuur, 'Wat is bestuiving?',
       [
-        'stuifmeel dat van de ene bloem op de andere terechtkomt',
+        'stuifmeel dat op de stempel van een bloem terechtkomt',
         'water dat de wortels opnemen',
         'de bloem die zich sluit bij regen',
         'het afvallen van bladeren in de herfst'
@@ -194,7 +194,7 @@ final List<QuizQuestion> biologieQuestions = [
       0),
   _q('nt-031', _natuur, 'Wat is een herbivoor?',
       ['een planteneter', 'een vleeseter', 'een alleseter', 'een aaseter'], 0),
-  _q('nt-032', _natuur, 'Wat staat aan het begin van elke voedselketen?',
+  _q('nt-032', _natuur, 'Wat staat aan het begin van de voedselketen gras – konijn – vos?',
       ['een plant', 'een roofdier', 'een schimmel', 'een insect'], 0,
       'Planten leggen zonne-energie vast; alle andere schakels leven daarvan.'),
   _q('nt-033', _natuur, 'Wat doen afbrekers, zoals schimmels en bacteriën?',

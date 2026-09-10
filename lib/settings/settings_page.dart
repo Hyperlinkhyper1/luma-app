@@ -1,5 +1,4 @@
-import 'dart:convert';
-import 'package:crypto/crypto.dart';
+import '../security/password_hash.dart';
 import 'package:flutter/material.dart';
 
 import '../app/pin_dialog.dart';
@@ -50,14 +49,9 @@ class SettingsPage extends StatelessWidget {
                     _RowLabel(t.settingsTheme),
                     const SizedBox(height: 10),
                     LumaSegmentedTabs(
-                      tabs: [
-                        t.settingsSystem,
-                        t.settingsLight,
-                        t.settingsDark,
-                      ],
+                      tabs: [t.settingsSystem, t.settingsLight, t.settingsDark],
                       selectedIndex: _themeIndex(settings.themeMode),
-                      onSelect: (i) =>
-                          settings.setThemeMode(_themeModeFor(i)),
+                      onSelect: (i) => settings.setThemeMode(_themeModeFor(i)),
                     ),
                     Divider(color: luma.border, height: 32),
                     _RowLabel(t.settingsThemeStyle),
@@ -91,14 +85,10 @@ class SettingsPage extends StatelessWidget {
                     _RowLabel(t.settingsOpenOnLaunch),
                     const SizedBox(height: 10),
                     LumaSegmentedTabs(
-                      tabs: [
-                        t.navHome,
-                        t.navFileConverter,
-                        t.navFinance,
-                      ],
+                      tabs: [t.navHome, t.navFileConverter, t.navFinance],
                       selectedIndex: settings.startScreen.index,
-                      onSelect: (i) => settings
-                          .setStartScreen(StartScreen.values[i]),
+                      onSelect: (i) =>
+                          settings.setStartScreen(StartScreen.values[i]),
                     ),
                     Divider(color: luma.border, height: 32),
                     _ToggleRow(
@@ -164,7 +154,10 @@ class SettingsPage extends StatelessWidget {
   }
 
   static Future<void> _toggleLockPassword(
-      BuildContext context, SettingsController settings, bool enable) async {
+    BuildContext context,
+    SettingsController settings,
+    bool enable,
+  ) async {
     final t = L.of(context);
     if (enable) {
       final pin1 = await showPinDialog(context, title: t.pinEnterNew);
@@ -174,25 +167,24 @@ class SettingsPage extends StatelessWidget {
       if (pin2 == null) return;
       if (pin1 != pin2) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(t.pinNotMatch)),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(t.pinNotMatch)));
         }
         return;
       }
-      final hash = sha256.convert(utf8.encode(pin1)).toString();
+      final hash = await PasswordHash.create(pin1);
       settings.setLockPasswordHash(hash);
     } else {
       final pin = await showPinDialog(context, title: t.pinEnterDisable);
       if (pin == null) return;
-      final hash = sha256.convert(utf8.encode(pin)).toString();
-      if (hash == settings.lockPasswordHash) {
+      if (await PasswordHash.verify(pin, settings.lockPasswordHash!)) {
         settings.setLockPasswordHash(null);
       } else {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(t.pinIncorrect)),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(t.pinIncorrect)));
         }
       }
     }
@@ -209,8 +201,10 @@ class SettingsPage extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(color: luma.border),
         ),
-        title: Text(t.settingsResetTitle,
-            style: TextStyle(color: luma.textPrimary)),
+        title: Text(
+          t.settingsResetTitle,
+          style: TextStyle(color: luma.textPrimary),
+        ),
         content: Text(
           t.settingsResetContent,
           style: TextStyle(color: luma.textSecondary),
@@ -218,16 +212,20 @@ class SettingsPage extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text(t.settingsResetCancel,
-                style: TextStyle(color: luma.textSecondary)),
+            child: Text(
+              t.settingsResetCancel,
+              style: TextStyle(color: luma.textSecondary),
+            ),
           ),
           TextButton(
             onPressed: () {
               settings.resetToDefaults();
               Navigator.of(context).pop();
             },
-            child: Text(t.settingsResetConfirm,
-                style: TextStyle(color: luma.accent)),
+            child: Text(
+              t.settingsResetConfirm,
+              style: TextStyle(color: luma.accent),
+            ),
           ),
         ],
       ),
@@ -245,14 +243,14 @@ class _ThemeStylePicker extends StatelessWidget {
   final L t;
 
   String _name(LumaThemeStyle style) => switch (style) {
-        LumaThemeStyle.standard => t.settingsThemeStyleDefault,
-        LumaThemeStyle.coffee => t.settingsThemeStyleCoffee,
-      };
+    LumaThemeStyle.standard => t.settingsThemeStyleDefault,
+    LumaThemeStyle.coffee => t.settingsThemeStyleCoffee,
+  };
 
   String _blurb(LumaThemeStyle style) => switch (style) {
-        LumaThemeStyle.standard => t.settingsThemeStyleDefaultSub,
-        LumaThemeStyle.coffee => t.settingsThemeStyleCoffeeSub,
-      };
+    LumaThemeStyle.standard => t.settingsThemeStyleDefaultSub,
+    LumaThemeStyle.coffee => t.settingsThemeStyleCoffeeSub,
+  };
 
   void _onTap(BuildContext context, LumaThemeStyle style) {
     if (settings.canUseThemeStyle(style)) {
@@ -264,9 +262,9 @@ class _ThemeStylePicker extends StatelessWidget {
         content: Text(t.settingsThemeStyleUpgrade),
         action: SnackBarAction(
           label: planById('orbit').name,
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const PlanSelectionPage()),
-          ),
+          onPressed: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const PlanSelectionPage())),
         ),
       ),
     );
@@ -404,11 +402,13 @@ class _ThemeStyleCardState extends State<_ThemeStyleCard> {
                       ),
                     ),
                     if (widget.locked)
-                      Icon(Icons.lock_rounded,
-                          size: 15, color: luma.textMuted)
+                      Icon(Icons.lock_rounded, size: 15, color: luma.textMuted)
                     else if (selected)
-                      Icon(Icons.check_circle_rounded,
-                          size: 17, color: luma.accent),
+                      Icon(
+                        Icons.check_circle_rounded,
+                        size: 17,
+                        color: luma.accent,
+                      ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -424,7 +424,9 @@ class _ThemeStyleCardState extends State<_ThemeStyleCard> {
                   const SizedBox(height: 10),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 9, vertical: 4),
+                      horizontal: 9,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: luma.accentSubtle,
                       borderRadius: BorderRadius.circular(999),
@@ -471,9 +473,7 @@ class _StylePreviewChip extends StatelessWidget {
         border: Border.all(color: palette.border, width: 1.5),
       ),
       child: showBean
-          ? Center(
-              child: CoffeeBeanIcon(color: palette.textPrimary, size: 20),
-            )
+          ? Center(child: CoffeeBeanIcon(color: palette.textPrimary, size: 20))
           : null,
     );
   }
@@ -562,10 +562,7 @@ class _LanguageDropdown extends StatelessWidget {
           dropdownColor: luma.surface,
           items: [
             for (final e in entries)
-              DropdownMenuItem(
-                value: e.$1,
-                child: Text(e.$2),
-              ),
+              DropdownMenuItem(value: e.$1, child: Text(e.$2)),
           ],
           onChanged: (v) {
             if (v != null) settings.setAppLanguage(v);
@@ -616,11 +613,13 @@ class _Swatch extends StatelessWidget {
               ],
             ),
             child: selected
-                ? Icon(Icons.check_rounded,
+                ? Icon(
+                    Icons.check_rounded,
                     size: 20,
                     color: color.computeLuminance() > 0.55
                         ? const Color(0xFF1A1526)
-                        : Colors.white)
+                        : Colors.white,
+                  )
                 : null,
           ),
         ),
@@ -650,14 +649,19 @@ class _ToggleRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title,
-                  style: TextStyle(
-                      color: luma.textPrimary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600)),
+              Text(
+                title,
+                style: TextStyle(
+                  color: luma.textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const SizedBox(height: 2),
-              Text(subtitle,
-                  style: TextStyle(color: luma.textMuted, fontSize: 12)),
+              Text(
+                subtitle,
+                style: TextStyle(color: luma.textMuted, fontSize: 12),
+              ),
             ],
           ),
         ),
@@ -699,23 +703,30 @@ class _AboutCard extends StatelessWidget {
                 colors: [luma.accentHover, luma.accent],
               ),
             ),
-            child: Icon(Icons.auto_awesome_rounded,
-                color: luma.onAccent, size: 24),
+            child: Icon(
+              Icons.auto_awesome_rounded,
+              color: luma.onAccent,
+              size: 24,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('luma',
-                    style: TextStyle(
-                        color: luma.textPrimary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700)),
+                Text(
+                  'luma',
+                  style: TextStyle(
+                    color: luma.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text(versionLabel,
-                    style:
-                        TextStyle(color: luma.textMuted, fontSize: 12)),
+                Text(
+                  versionLabel,
+                  style: TextStyle(color: luma.textMuted, fontSize: 12),
+                ),
               ],
             ),
           ),
@@ -751,14 +762,19 @@ class _SectionHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title,
-                  style: TextStyle(
-                      color: luma.textPrimary,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700)),
+              Text(
+                title,
+                style: TextStyle(
+                  color: luma.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
               if (subtitle != null)
-                Text(subtitle!,
-                    style: TextStyle(color: luma.textMuted, fontSize: 12)),
+                Text(
+                  subtitle!,
+                  style: TextStyle(color: luma.textMuted, fontSize: 12),
+                ),
             ],
           ),
         ),
@@ -772,23 +788,23 @@ class _RowLabel extends StatelessWidget {
   final String text;
   @override
   Widget build(BuildContext context) => Text(
-        text,
-        style: TextStyle(
-          color: context.luma.textSecondary,
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-        ),
-      );
+    text,
+    style: TextStyle(
+      color: context.luma.textSecondary,
+      fontSize: 13,
+      fontWeight: FontWeight.w600,
+    ),
+  );
 }
 
 int _themeIndex(ThemeMode mode) => switch (mode) {
-      ThemeMode.system => 0,
-      ThemeMode.light => 1,
-      ThemeMode.dark => 2,
-    };
+  ThemeMode.system => 0,
+  ThemeMode.light => 1,
+  ThemeMode.dark => 2,
+};
 
 ThemeMode _themeModeFor(int index) => switch (index) {
-      1 => ThemeMode.light,
-      2 => ThemeMode.dark,
-      _ => ThemeMode.system,
-    };
+  1 => ThemeMode.light,
+  2 => ThemeMode.dark,
+  _ => ThemeMode.system,
+};

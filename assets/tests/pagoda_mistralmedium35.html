@@ -75,8 +75,8 @@
 
         function addVoxel(group, x, y, z) {
             state.voxelCount++;
-            state.dummy.position.set(x, y, z); state.dummy.updateMatrix();
-            group.mesh.setMatrixAt(group.count, state.dummy.matrix); group.count++;
+            group.dummy.position.set(x, y, z); group.dummy.updateMatrix();
+            group.mesh.setMatrixAt(group.count, group.dummy.matrix); group.count++;
         }
 
         function finalizeVoxelGroup(group) {
@@ -102,7 +102,6 @@
             state.renderer.toneMapping = THREE.ACESFilmicToneMapping;
             state.renderer.toneMappingExposure = 1.0; state.renderer.shadowMap.enabled = true;
             state.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-            state.renderer.shadowMap.size.set(2048, 2048);
             document.body.appendChild(state.renderer.domElement);
             state.controls = new OrbitControls(state.camera, state.renderer.domElement);
             state.controls.enableDamping = true; state.controls.dampingFactor = 0.05;

@@ -4,6 +4,8 @@ import 'dart:typed_data';
 
 import 'package:path_provider/path_provider.dart';
 
+import '../security/secure_secret_store.dart';
+
 /// Local sync bookkeeping for one collection.
 class CollectionSyncState {
   CollectionSyncState({
@@ -27,11 +29,11 @@ class CollectionSyncState {
   DateTime? localChangedAt;
 
   Map<String, dynamic> toJson() => {
-        'enabled': enabled,
-        'lastSyncedVersion': lastSyncedVersion,
-        'lastSyncedHash': lastSyncedHash,
-        'localChangedAt': localChangedAt?.millisecondsSinceEpoch,
-      };
+    'enabled': enabled,
+    'lastSyncedVersion': lastSyncedVersion,
+    'lastSyncedHash': lastSyncedHash,
+    'localChangedAt': localChangedAt?.millisecondsSinceEpoch,
+  };
 
   factory CollectionSyncState.fromJson(Map<String, dynamic> j) =>
       CollectionSyncState(
@@ -46,17 +48,16 @@ class CollectionSyncState {
 
 /// Persisted sync configuration and credentials.
 ///
-/// Stored in the app's local support directory, next to the other luma data
-/// files. The encryption key saved here is what makes "stay signed in"
-/// possible; it protects data *on the server*, while local data is already
-/// on this disk unencrypted — so persisting it does not weaken the local
-/// security model (same as the existing luma_pw.key).
+/// Non-secret bookkeeping stays in the app support directory. Tokens, keys,
+/// and their account/origin binding are kept together in OS secure storage.
+/// Legacy credentials are migrated before being removed from the JSON file.
 class SyncStateStore {
   SyncStateStore._(this._file);
 
   static const _fileName = 'luma_sync.json';
 
   final File? _file;
+  Future<void> _saving = Future.value();
 
   String? serverUrl;
   String? email;
@@ -120,23 +121,47 @@ class SyncStateStore {
   /// syncs and can't be turned off, so it defaults to enabled the first time
   /// it's touched rather than the usual opt-in default.
   CollectionSyncState collection(String id) => collections.putIfAbsent(
-      id, () => CollectionSyncState(enabled: id == 'settings'));
+    id,
+    () => CollectionSyncState(enabled: id == 'settings'),
+  );
 
-  static Future<SyncStateStore> load() async {
+  static Future<SyncStateStore> load({File? stateFile}) async {
     File? file;
     Map<String, dynamic> data = const {};
     try {
-      final dir = await getApplicationSupportDirectory();
-      file = File('${dir.path}${Platform.pathSeparator}$_fileName');
+      if (stateFile != null) {
+        file = stateFile;
+      } else {
+        final dir = await getApplicationSupportDirectory();
+        file = File('${dir.path}${Platform.pathSeparator}$_fileName');
+      }
       if (await file.exists()) {
         final decoded = jsonDecode(await file.readAsString());
-        if (decoded is Map<String, dynamic>) data = decoded;
+        if (decoded is! Map<String, dynamic>) {
+          throw const FormatException('Invalid sync state.');
+        }
+        data = decoded;
       }
     } catch (_) {
+      if (file != null) {
+        throw StateError(
+          'Sync state could not be read. Preserve it for recovery.',
+        );
+      }
       file = null;
     }
 
     final store = SyncStateStore._(file);
+    final protected = data['credentialsProtected'] == true;
+    if (protected) {
+      final credentials = await SecureSecretStore.instance.read(
+        'sync.credentials',
+      );
+      if (credentials == null) {
+        throw StateError('Sync credentials are unavailable in secure storage.');
+      }
+      data = {...data, ...jsonDecode(credentials) as Map<String, dynamic>};
+    }
     try {
       store.serverUrl = data['serverUrl'] as String?;
       store.email = data['email'] as String?;
@@ -144,6 +169,9 @@ class SyncStateStore {
       final enc = data['encryptionKey'];
       if (enc is String) {
         store.encryptionKey = Uint8List.fromList(base64Decode(enc));
+        if (store.encryptionKey!.length != 32) {
+          throw const FormatException('Invalid sync encryption key.');
+        }
       }
       final salt = data['kdfSalt'];
       if (salt is String) {
@@ -162,8 +190,9 @@ class SyncStateStore {
       store.accountSetupPromptDismissed =
           data['accountSetupPromptDismissed'] == true;
       if (data['lastSyncAt'] is int) {
-        store.lastSyncAt =
-            DateTime.fromMillisecondsSinceEpoch(data['lastSyncAt'] as int);
+        store.lastSyncAt = DateTime.fromMillisecondsSinceEpoch(
+          data['lastSyncAt'] as int,
+        );
       }
       final collections = data['collections'];
       if (collections is Map<String, dynamic>) {
@@ -174,39 +203,55 @@ class SyncStateStore {
         });
       }
     } catch (_) {
-      // A corrupt state file just means signing in again.
+      throw StateError('Invalid sync state. Restore the original credentials.');
+    }
+    if (file != null &&
+        !protected &&
+        (store.token != null || store.encryptionKey != null)) {
+      await store.save();
     }
     return store;
   }
 
-  Future<void> save() async {
+  Future<void> save() {
+    final next = _saving.then((_) => _saveNow());
+    _saving = next.catchError((Object _) {});
+    return next;
+  }
+
+  Future<void> _saveNow() async {
     final file = _file;
     if (file == null) return;
-    try {
-      final payload = jsonEncode({
-        'serverUrl': serverUrl,
-        'email': email,
-        'token': token,
-        'encryptionKey':
-            encryptionKey == null ? null : base64Encode(encryptionKey!),
-        'kdfSalt': kdfSalt == null ? null : base64Encode(kdfSalt!),
-        'kdfIterations': kdfIterations,
-        'accountApproved': accountApproved,
-        'pendingApprovalEmail': pendingApprovalEmail,
-        'pendingApprovalMode': pendingApprovalMode,
-        'localVerifier': localVerifier,
-        'localAccountMigrated': localAccountMigrated,
-        'accountSetupPromptDismissed': accountSetupPromptDismissed,
-        'lastSyncAt': lastSyncAt?.millisecondsSinceEpoch,
-        'collections':
-            collections.map((id, s) => MapEntry(id, s.toJson())),
-      });
-      final tmp = File('${file.path}.tmp');
-      await tmp.writeAsString(payload, flush: true);
-      await tmp.rename(file.path);
-    } catch (_) {
-      // Best effort — sync state just won't survive a restart.
-    }
+    final credentials = jsonEncode({
+      'serverUrl': serverUrl,
+      'email': email,
+      'kdfSalt': kdfSalt == null ? null : base64Encode(kdfSalt!),
+      'kdfIterations': kdfIterations,
+      'accountApproved': accountApproved,
+      'token': token,
+      'encryptionKey': encryptionKey == null
+          ? null
+          : base64Encode(encryptionKey!),
+    });
+    final payload = jsonEncode({
+      'serverUrl': serverUrl,
+      'email': email,
+      'credentialsProtected': true,
+      'kdfSalt': kdfSalt == null ? null : base64Encode(kdfSalt!),
+      'kdfIterations': kdfIterations,
+      'accountApproved': accountApproved,
+      'pendingApprovalEmail': pendingApprovalEmail,
+      'pendingApprovalMode': pendingApprovalMode,
+      'localVerifier': localVerifier,
+      'localAccountMigrated': localAccountMigrated,
+      'accountSetupPromptDismissed': accountSetupPromptDismissed,
+      'lastSyncAt': lastSyncAt?.millisecondsSinceEpoch,
+      'collections': collections.map((id, s) => MapEntry(id, s.toJson())),
+    });
+    await SecureSecretStore.instance.write('sync.credentials', credentials);
+    final tmp = File('${file.path}.tmp');
+    await tmp.writeAsString(payload, flush: true);
+    await tmp.rename(file.path);
   }
 
   /// Clears the account (sign-out). Collection toggles are kept, but their

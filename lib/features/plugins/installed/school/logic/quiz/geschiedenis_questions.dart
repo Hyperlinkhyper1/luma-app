@@ -21,7 +21,7 @@ const _oudheid = 'Oudheid en middeleeuwen';
 const _gouden = 'Ontdekkers, Gouden Eeuw en revoluties';
 const _modern = 'Moderne tijd';
 
-/// Geschiedenis, groep 8 / doorstroomtoets-niveau. Volgt de tien tijdvakken.
+/// Geschiedenis, extra oefening voor bovenbouw en brugklas; geen doorstroomtoetsvak. Volgt de tien tijdvakken.
 final List<QuizQuestion> geschiedenisQuestions = [
   // --- Oudheid en middeleeuwen ---------------------------------------------
   _q('gs-001', _oudheid, 'Hoe leefden de mensen in de prehistorie eerst?',
@@ -120,7 +120,7 @@ final List<QuizQuestion> geschiedenisQuestions = [
       'Kampen, Deventer en Zwolle waren Nederlandse hanzesteden.'),
   _q('gs-016', _oudheid, 'Welke ziekte trof Europa hard in de veertiende eeuw?',
       ['de pest', 'de pokken', 'cholera', 'malaria'], 0),
-  _q('gs-017', _oudheid, 'Wie vond rond 1450 de boekdrukkunst met losse letters uit?',
+  _q('gs-017', _oudheid, 'Wie ontwikkelde rond 1450 in Europa een drukpers met losse metalen letters?',
       ['Johannes Gutenberg', 'Leonardo da Vinci', 'Erasmus', 'Willem Barentsz'], 0),
   _q('gs-018', _oudheid, 'Waarom was de boekdrukkunst zo belangrijk?',
       [
@@ -217,7 +217,7 @@ final List<QuizQuestion> geschiedenisQuestions = [
       0),
   _q('gs-035', _gouden, 'Wanneer ontstond het Koninkrijk der Nederlanden?',
       ['1795', '1806', '1815', '1848'], 2,
-      'Na de nederlaag van Napoleon werd Willem I koning.'),
+      'Willem I werd in maart 1815 koning, vóór de Slag bij Waterloo.'),
   _q('gs-036', _gouden, 'Wie schreef in 1848 de nieuwe Nederlandse grondwet?',
       ['Thorbecke', 'Willem I', 'Troelstra', 'Kuyper'], 0,
       'Daardoor werd Nederland een parlementaire democratie.'),
@@ -239,7 +239,7 @@ final List<QuizQuestion> geschiedenisQuestions = [
         'Groningen en Leeuwarden'
       ],
       0),
-  _q('gs-039', _modern, 'In welk jaar werd de slavernij in de Nederlandse koloniën afgeschaft?',
+  _q('gs-039', _modern, 'In welk jaar werd de slavernij in Suriname en op de Nederlandse Antillen wettelijk afgeschaft?',
       ['1848', '1863', '1873', '1900'], 1,
       'De afschaffing gold vanaf 1 juli 1863, met een overgangsperiode van tien jaar.'),
   _q('gs-040', _modern, 'Wat was kinderarbeid, en wat gebeurde ermee?',

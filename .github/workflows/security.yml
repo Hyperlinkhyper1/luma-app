@@ -1,0 +1,24 @@
+name: Security regression checks
+
+on:
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  security-tests:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.4'
+          channel: stable
+      - run: flutter pub get --enforce-lockfile
+      - run: dart analyze lib/security test/security_hardening_test.dart
+      - run: flutter test --no-pub test/security_hardening_test.dart test/sync_test.dart test/server_access_test.dart test/local_account_test.dart test/p2p_test.dart test/sftp_test.dart test/youtube_credentials_test.dart test/settings_page_widget_test.dart test/update_asset_test.dart

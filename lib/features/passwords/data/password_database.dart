@@ -4,9 +4,10 @@ import 'package:path_provider/path_provider.dart';
 
 part 'password_database.g.dart';
 
-/// A stored credential. The [passwordCipher] column holds the password
-/// encrypted at rest (see [PasswordCrypto]); every other field is stored as
-/// entered.
+/// A stored credential. Password/TOTP have dedicated ciphertext columns.
+/// Modern rows pack private metadata into an authenticated envelope in info;
+/// bounded service/email columns hold placeholders. Legacy rows remain
+/// readable during the repository's verified migration.
 class PasswordEntries extends Table {
   IntColumn get id => integer().autoIncrement()();
 

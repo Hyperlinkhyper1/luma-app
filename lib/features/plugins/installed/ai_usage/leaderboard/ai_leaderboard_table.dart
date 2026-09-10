@@ -378,14 +378,14 @@ class _OpenWeightsToggle extends StatelessWidget {
 /// Column widths, in the order the table renders them. Fixed rather than
 /// flexible so the header and every row line up while the whole table scrolls
 /// sideways on a narrow window. Each is sized to its own header *label*, not
-/// just its data — "CODE ARENA" and "LLM STATS" are the longest words in the
-/// row and set the floor other columns don't need.
+/// just its data — "INTELLIGENCE" and "CODE ARENA" are the longest words in
+/// the row and set the floor other columns don't need.
 ///
 /// These are the *minimums*; on a wide pane [_ColumnWidths.forWidth] grows
 /// them — see there for how the extra space is split.
 const double _wRank = 58;
 const double _wModel = 220;
-const double _wScore = 100;
+const double _wScore = 116;
 const double _wArena = 104;
 const double _wParams = 80;
 const double _wContext = 90;

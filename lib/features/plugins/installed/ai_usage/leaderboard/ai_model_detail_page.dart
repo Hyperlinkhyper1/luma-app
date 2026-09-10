@@ -176,7 +176,8 @@ class _RatingsGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ratings = <(String, double?, String)>[
-      ('LLM Stats', model.llmStatsIndex, 'Overall composite rating'),
+      ('Intelligence', model.llmStatsIndex,
+          'Artificial Analysis Intelligence Index, at best effort'),
       ('Reasoning', model.reasoningIndex, 'Graduate-level reasoning & knowledge'),
       ('Coding', model.codingIndex, 'Code generation and repair'),
       ('Agent', model.agentIndex, 'Long-horizon tool use'),

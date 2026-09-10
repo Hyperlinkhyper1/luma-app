@@ -21,7 +21,7 @@ const _woorden = 'Woordenschat';
 const _grammatica = 'Grammatica';
 const _tijden = 'Werkwoordstijden';
 
-/// Engels, groep 8 / doorstroomtoets-niveau.
+/// Engels, extra oefening voor bovenbouw en brugklas; geen doorstroomtoetsvak.
 final List<QuizQuestion> engelsQuestions = [
   // --- Woordenschat ---------------------------------------------------------
   _q('en-001', _woorden, 'Wat betekent "borrow"?',
@@ -70,7 +70,7 @@ final List<QuizQuestion> engelsQuestions = [
   // --- Grammatica -----------------------------------------------------------
   _q('en-021', _grammatica, 'Vul in: There … a lot of people in the shop.',
       ['is', 'are', 'be', 'am'], 1, '"People" is meervoud, dus "are".'),
-  _q('en-022', _grammatica, 'Vul in: This is … book.',
+  _q('en-022', _grammatica, 'Het boek is van één broer. Vul in: This is … book.',
       ['my brothers', "my brother's", 'my brothers is', "my brothers'"], 1,
       'Bezit bij één broer: apostrof + s.'),
   _q('en-023', _grammatica, 'Wat is het meervoud van "child"?',
@@ -87,7 +87,7 @@ final List<QuizQuestion> engelsQuestions = [
       ['many', 'much', 'a few', 'lots'], 1),
   _q('en-028', _grammatica, 'Vul in: … you help me, please?',
       ['Can', 'Are', 'Do be', 'Is'], 0),
-  _q('en-029', _grammatica, 'Vul in: The book is … the table.',
+  _q('en-029', _grammatica, 'Het boek ligt op de tafel. Vul in: The book is … the table.',
       ['in', 'on', 'at', 'by'], 1),
   _q('en-030', _grammatica, 'Vul in: We arrive … Monday.',
       ['in', 'at', 'on', 'to'], 2, 'Bij dagen gebruik je "on".'),
@@ -141,7 +141,7 @@ final List<QuizQuestion> engelsQuestions = [
       '"Look!" wijst op iets dat nu gebeurt: present continuous.'),
   _q('en-047', _tijden, 'Vul in: I … my homework right now. (to do)',
       ['do', 'did', 'am doing', 'does'], 2),
-  _q('en-048', _tijden, 'Vul in: We … to Spain next summer. (to go)',
+  _q('en-048', _tijden, 'Vul de present continuous in: We … to Spain next summer. (to go)',
       ['go', 'went', 'are going', 'goes'], 2),
   _q('en-049', _tijden, 'Wat is het voltooid deelwoord van "to eat"?',
       ['ate', 'eaten', 'eated', 'eating'], 1),
@@ -160,7 +160,7 @@ final List<QuizQuestion> engelsQuestions = [
       'Bij "since" gebruik je de present perfect.'),
   _q('en-056', _tijden, 'Wat is de verleden tijd van "to think"?',
       ['thinked', 'thought', 'taught', 'thinks'], 1),
-  _q('en-057', _tijden, 'Vul in: They … TV when I came in. (to watch)',
+  _q('en-057', _tijden, 'Vul de past continuous in: They … TV when I came in. (to watch)',
       ['watch', 'watched', 'were watching', 'are watching'], 2),
   _q('en-058', _tijden, 'Wat is het voltooid deelwoord van "to drink"?',
       ['drank', 'drunk', 'drinked', 'drinking'], 1),

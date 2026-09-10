@@ -114,8 +114,8 @@ const _plasticsoep =
 const _fiets =
     'De fiets zoals wij die kennen bestaat pas ruim honderd jaar. Het eerste '
     'model, de loopfiets uit 1817, had geen trappers: je zette je af met je '
-    'voeten. Pas toen er een ketting werd toegevoegd, kon je harder dan een '
-    'wandelaar. Vanaf 1900 werd de fiets betaalbaar voor gewone gezinnen, en '
+    'voeten. Later kregen fietsen trappers en vervolgens een ketting. Zo kon je '
+    'met je voeten de wielen aandrijven. Vanaf 1900 werd de fiets betaalbaar voor gewone gezinnen, en '
     'in Nederland raakte hij daarna nooit meer uit de mode.';
 
 const _woordenboek =
@@ -147,15 +147,15 @@ final List<QuizQuestion> lezenQuestions = [
         'Bermen moeten vaker gemaaid worden'
       ],
       1),
-  _p('lz-003', _begrijpen, _schooltijd, 'Welke zin uit de tekst is een mening?',
+  _p('lz-003', _begrijpen, _schooltijd, 'Welke uitspraak geeft een mening uit de tekst weer?',
       [
-        'Tieners komen nu eenmaal moeilijk uit bed',
+        'De schooldag zou later moeten beginnen',
         'Een latere start betekent dat je later thuis bent',
         'Er blijft dan minder tijd over voor sport',
         'Een schooldag heeft een begintijd'
       ],
       0,
-      'Dat is wat "sommige mensen" vinden, niet iets wat vaststaat.'),
+      'Dit is een wens over de begintijd, geen vaststaand feit.'),
   _p('lz-004', _begrijpen, _verhuizing,
       'Hoe voelt de ik-persoon zich waarschijnlijk?',
       [
@@ -243,10 +243,10 @@ final List<QuizQuestion> lezenQuestions = [
       ],
       0),
   _p('lz-015', _begrijpen, _fiets,
-      'Waarom kon je met de loopfiets niet harder dan een wandelaar?',
+      'Waarom moest je je bij de loopfiets met je voeten afzetten?',
       [
         'De wielen waren te klein',
-        'Er zat nog geen ketting op',
+        'Er zaten geen trappers op',
         'De weg was te slecht',
         'Hij was te zwaar'
       ],

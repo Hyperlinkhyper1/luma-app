@@ -64,7 +64,8 @@ List<QuizQuestion> buildRekenenExtra() {
       prompt: 'Hoeveel is ${nlNum(a)} - ${nlNum(b)}?',
       answer: nlNum(diff),
       wrong: g.nums(diff, [diff + 100, diff - 10, diff + 1, a + b]),
-      why: 'Lenen bij het aftrekken: kijk goed of je een tiental moet omwisselen.',
+      why:
+          'Lenen bij het aftrekken: kijk goed of je een tiental moet omwisselen.',
     );
   }
 
@@ -147,6 +148,9 @@ List<QuizQuestion> buildRekenenExtra() {
     final factor = g.oneOf([10, 100, 1000]);
     final base = g.between(105, 9850) / 100;
     final maal = g.rnd.nextBool();
+    if (!maal && (base * 100).round() * 10 % factor != 0) {
+      continue;
+    }
     final answer = maal ? base * factor : base / factor;
     g.add(
       topic: _getallen,
@@ -173,7 +177,12 @@ List<QuizQuestion> buildRekenenExtra() {
     final answer = (n / naar).round() * naar;
     g.add(
       topic: _getallen,
-      prompt: 'Rond ${nlNum(n)} af op ${naar == 10 ? 'tientallen' : naar == 100 ? 'honderdtallen' : 'duizendtallen'}.',
+      prompt:
+          'Rond ${nlNum(n)} af op ${naar == 10
+              ? 'tientallen'
+              : naar == 100
+              ? 'honderdtallen'
+              : 'duizendtallen'}.',
       answer: nlNum(answer),
       wrong: g.nums(answer, [
         answer + naar,
@@ -247,7 +256,8 @@ List<QuizQuestion> buildRekenenExtra() {
     final naam = g.oneOf(_namen);
     g.add(
       topic: _getallen,
-      prompt: 'De thermometer stond bij $naam op $laag °C. '
+      prompt:
+          'De thermometer stond bij $naam op $laag °C. '
           "'s Middags was het $hoog °C. Hoeveel graden is het gestegen?",
       answer: '${hoog - laag} graden',
       wrong: [
@@ -256,7 +266,8 @@ List<QuizQuestion> buildRekenenExtra() {
         '$hoog graden',
         '${(hoog - laag) + 3} graden',
       ],
-      why: 'Van $laag naar 0 is ${-laag} graden, en van 0 naar $hoog nog eens '
+      why:
+          'Van $laag naar 0 is ${-laag} graden, en van 0 naar $hoog nog eens '
           '$hoog graden.',
     );
   }
@@ -277,7 +288,8 @@ List<QuizQuestion> buildRekenenExtra() {
         answer + 10,
         base * (p + 10) ~/ 100,
       ]),
-      why: '1% van ${nlNum(base)} is ${nlNum(base / 100)}, dus $p% is '
+      why:
+          '1% van ${nlNum(base)} is ${nlNum(base / 100)}, dus $p% is '
           '$p × ${nlNum(base / 100)}.',
     );
   }
@@ -289,7 +301,8 @@ List<QuizQuestion> buildRekenenExtra() {
     final nieuw = (prijsCent - kortingCent) / 100;
     g.add(
       topic: _verhoudingen,
-      prompt: 'Een jas kost ${nlEuro(prijsCent / 100)}. In de uitverkoop krijg '
+      prompt:
+          'Een jas kost ${nlEuro(prijsCent / 100)}. In de uitverkoop krijg '
           'je $p% korting. Wat betaal je nu?',
       answer: nlEuro(nieuw),
       wrong: g.euros(nieuw, [
@@ -298,7 +311,8 @@ List<QuizQuestion> buildRekenenExtra() {
         nieuw - 1,
         nieuw + 5,
       ]),
-      why: 'De korting is ${nlEuro(kortingCent / 100)}; die haal je van de '
+      why:
+          'De korting is ${nlEuro(kortingCent / 100)}; die haal je van de '
           'prijs af.',
     );
   }
@@ -311,7 +325,8 @@ List<QuizQuestion> buildRekenenExtra() {
     final item = g.oneOf(['rijst', 'bloem', 'suiker', 'pasta', 'havermout']);
     g.add(
       topic: _verhoudingen,
-      prompt: 'Voor $personen personen heb je ${nlNum(gram)} gram $item nodig. '
+      prompt:
+          'Voor $personen personen heb je ${nlNum(gram)} gram $item nodig. '
           'Hoeveel gram heb je nodig voor $nieuwe personen?',
       answer: '${nlNum(answer)} gram',
       wrong: [
@@ -331,7 +346,8 @@ List<QuizQuestion> buildRekenenExtra() {
     final meters = echteCm / 100;
     g.add(
       topic: _verhoudingen,
-      prompt: 'Op een kaart met schaal 1 : ${nlNum(schaal)} is een weg $cm cm '
+      prompt:
+          'Op een kaart met schaal 1 : ${nlNum(schaal)} is een weg $cm cm '
           'lang. Hoe lang is die weg in het echt?',
       answer: meters >= 1000
           ? '${nlNum(meters / 1000)} km'
@@ -341,7 +357,7 @@ List<QuizQuestion> buildRekenenExtra() {
         meters >= 1000
             ? '${nlNum(meters / 10000)} km'
             : '${nlNum(meters / 10)} m',
-        '${nlNum(echteCm)} cm',
+        '${nlNum(echteCm * 10)} cm',
         meters >= 1000
             ? '${nlNum(meters / 1000 + 5)} km'
             : '${nlNum(meters + 50)} m',
@@ -387,10 +403,17 @@ List<QuizQuestion> buildRekenenExtra() {
     final stuks = g.oneOf([3, 4, 5, 6, 8, 10, 12]);
     final perStuk = g.between(45, 480);
     final totaal = stuks * perStuk;
-    final ding = g.oneOf(['schriften', 'stiften', 'flesjes', 'broodjes', 'ballen']);
+    final ding = g.oneOf([
+      'schriften',
+      'stiften',
+      'flesjes',
+      'broodjes',
+      'ballen',
+    ]);
     g.add(
       topic: _verhoudingen,
-      prompt: 'Een pak van $stuks $ding kost ${nlEuro(totaal / 100)}. '
+      prompt:
+          'Een pak van $stuks $ding kost ${nlEuro(totaal / 100)}. '
           'Wat kost één stuk?',
       answer: nlEuro(perStuk / 100),
       wrong: g.euros(perStuk / 100, [
@@ -409,7 +432,8 @@ List<QuizQuestion> buildRekenenExtra() {
     final answer = base + base * p ~/ 100;
     g.add(
       topic: _verhoudingen,
-      prompt: 'Een school had ${nlNum(base)} leerlingen. Het aantal groeide met '
+      prompt:
+          'Een school had ${nlNum(base)} leerlingen. Het aantal groeide met '
           '$p%. Hoeveel leerlingen zijn het er nu?',
       answer: nlNum(answer),
       wrong: g.nums(answer, [
@@ -540,7 +564,8 @@ List<QuizQuestion> buildRekenenExtra() {
     final opp = l * b;
     g.add(
       topic: _meten,
-      prompt: 'Een tuin is $l m lang en $b m breed. Wat is de oppervlakte?',
+      prompt:
+          'Een rechthoekige tuin is $l m lang en $b m breed. Wat is de oppervlakte?',
       answer: '$opp m²',
       wrong: [
         '${2 * (l + b)} m²',
@@ -558,7 +583,8 @@ List<QuizQuestion> buildRekenenExtra() {
     final opp = basis * hoogte ~/ 2;
     g.add(
       topic: _meten,
-      prompt: 'Een driehoek heeft een basis van $basis cm en een hoogte van '
+      prompt:
+          'Een driehoek heeft een basis van $basis cm en een hoogte van '
           '$hoogte cm. Wat is de oppervlakte?',
       answer: '$opp cm²',
       wrong: [
@@ -578,7 +604,8 @@ List<QuizQuestion> buildRekenenExtra() {
     final inhoud = l * b * h;
     g.add(
       topic: _meten,
-      prompt: 'Een doos is $l cm lang, $b cm breed en $h cm hoog. '
+      prompt:
+          'Een doos is $l cm lang, $b cm breed en $h cm hoog. '
           'Wat is de inhoud?',
       answer: '$inhoud cm³',
       wrong: [
@@ -598,8 +625,9 @@ List<QuizQuestion> buildRekenenExtra() {
     final c = 180 - a - b;
     g.add(
       topic: _meten,
-      prompt: 'Twee hoeken van een driehoek zijn $a° en $b°. '
-          'Hoe groot is de derde hoek?',
+      prompt:
+          'Twee hoeken van een driehoek zijn $a° en $b°. '
+          'De drie hoeken zijn samen 180°. Hoe groot is de derde hoek?',
       answer: '$c°',
       wrong: ['${c + 10}°', '${180 - a}°', '${a + b}°', '${c - 5}°'],
       why: 'De hoeken van een driehoek zijn samen 180°.',
@@ -613,7 +641,8 @@ List<QuizQuestion> buildRekenenExtra() {
     final eind = start + duur;
     g.add(
       topic: _meten,
-      prompt: 'Een film begint om ${_hhmm(start)} en duurt $duur minuten. '
+      prompt:
+          'Een film begint om ${_hhmm(start)} en duurt $duur minuten. '
           'Hoe laat is de film afgelopen?',
       answer: _hhmm(eind),
       wrong: [
@@ -632,7 +661,8 @@ List<QuizQuestion> buildRekenenExtra() {
     final duur = eind - start;
     g.add(
       topic: _meten,
-      prompt: 'Een treinreis duurt van ${_hhmm(start)} tot ${_hhmm(eind)}. '
+      prompt:
+          'Een treinreis duurt van ${_hhmm(start)} tot ${_hhmm(eind)}. '
           'Hoe lang duurt de reis?',
       answer: duur >= 60
           ? '${duur ~/ 60} uur en ${duur % 60} minuten'
@@ -666,10 +696,16 @@ List<QuizQuestion> buildRekenenExtra() {
     final naam = g.oneOf(_namen);
     g.add(
       topic: _verbanden,
-      prompt: '$naam haalde deze cijfers: ${waarden.join(', ')}. '
+      prompt:
+          '$naam haalde deze cijfers: ${waarden.join(', ')}. '
           'Wat is het gemiddelde?',
       answer: nlNum(gem),
-      wrong: g.nums(gem, [gem + 1, gem - 1, waarden.reduce((a, b) => a + b), gem + 2]),
+      wrong: g.nums(gem, [
+        gem + 1,
+        gem - 1,
+        waarden.reduce((a, b) => a + b),
+        gem + 2,
+      ]),
       why: 'Tel op (${waarden.reduce((a, b) => a + b)}) en deel door $aantal.',
     );
   }
@@ -683,7 +719,8 @@ List<QuizQuestion> buildRekenenExtra() {
     if (vraagAfstand) {
       g.add(
         topic: _verbanden,
-        prompt: 'Een auto rijdt $snelheid km per uur. Hoeveel kilometer legt '
+        prompt:
+            'Een auto rijdt $snelheid km per uur. Hoeveel kilometer legt '
             'de auto af in $uren uur?',
         answer: '${nlNum(afstand)} km',
         wrong: [
@@ -697,7 +734,8 @@ List<QuizQuestion> buildRekenenExtra() {
     } else {
       g.add(
         topic: _verbanden,
-        prompt: 'Een fietser legt ${nlNum(afstand)} km af in $uren uur. '
+        prompt:
+            'Een voertuig legt ${nlNum(afstand)} km af in $uren uur. '
             'Wat is de gemiddelde snelheid?',
         answer: '$snelheid km per uur',
         wrong: [
@@ -728,11 +766,17 @@ List<QuizQuestion> buildRekenenExtra() {
         passage: 'Verkochte $ding deze week:\n$tabel',
         prompt: 'Hoeveel $ding zijn er deze week in totaal verkocht?',
         answer: nlNum(totaal),
-        wrong: g.nums(totaal, [totaal + 10, totaal - 10, totaal ~/ 5, totaal + 1]),
+        wrong: g.nums(totaal, [
+          totaal + 10,
+          totaal - 10,
+          totaal ~/ 5,
+          totaal + 1,
+        ]),
         why: 'Tel de vijf getallen bij elkaar op.',
       );
     } else if (soort == 1) {
       final maxIndex = waarden.indexOf(waarden.reduce((a, b) => a > b ? a : b));
+      if (waarden.where((v) => v == waarden[maxIndex]).length != 1) continue;
       g.add(
         topic: _verbanden,
         passage: 'Verkochte $ding deze week:\n$tabel',
@@ -806,7 +850,8 @@ List<QuizQuestion> buildRekenenExtra() {
     ]);
     g.add(
       topic: _verbanden,
-      prompt: 'Een ${soort.$1} rekent ${nlEuro(startCent / 100)} vast plus '
+      prompt:
+          'Een ${soort.$1} rekent ${nlEuro(startCent / 100)} vast plus '
           '${nlEuro(perCent / 100)} per ${soort.$2}. Wat betaal je bij '
           '$aantal ${soort.$3}?',
       answer: nlEuro(totaal),
@@ -816,7 +861,8 @@ List<QuizQuestion> buildRekenenExtra() {
         (startCent + perCent * (aantal + 1)) / 100,
         totaal - 1,
       ]),
-      why: '${nlEuro(startCent / 100)} + $aantal × ${nlEuro(perCent / 100)} = '
+      why:
+          '${nlEuro(startCent / 100)} + $aantal × ${nlEuro(perCent / 100)} = '
           '${nlEuro(totaal)}.',
     );
   }
@@ -828,7 +874,8 @@ List<QuizQuestion> buildRekenenExtra() {
     final naam = g.oneOf(_namen);
     g.add(
       topic: _verbanden,
-      prompt: '$naam spaart elke dag $perDag stickers. Hoeveel stickers heeft '
+      prompt:
+          '$naam spaart elke dag $perDag stickers. Hoeveel stickers heeft '
           '$naam na $dagenAantal dagen?',
       answer: nlNum(totaal),
       wrong: g.nums(totaal, [

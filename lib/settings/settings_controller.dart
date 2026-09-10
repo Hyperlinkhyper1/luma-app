@@ -489,7 +489,6 @@ class SettingsController extends ChangeNotifier {
         'startScreen': _startScreen.name,
         'appLanguage': _appLanguage.name,
         'hideAmounts': _hideAmounts,
-        'lockPasswordHash': _lockPasswordHash,
         'avatarPath': _avatarPath,
         'selectedPlanId': _selectedPlanId,
         'planExpiresAt': _planExpiresAt,
@@ -509,7 +508,6 @@ class SettingsController extends ChangeNotifier {
     _appLanguage =
         _parseEnum(AppLanguage.values, data['appLanguage'], _appLanguage);
     _hideAmounts = data['hideAmounts'] == true;
-    _lockPasswordHash = data['lockPasswordHash'] as String?;
     _avatarPath = data['avatarPath'] as String?;
     _selectedPlanId = data['selectedPlanId'] as String? ?? 'core';
     _planExpiresAt = data['planExpiresAt'] as String?;

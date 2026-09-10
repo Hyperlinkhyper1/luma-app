@@ -21,16 +21,16 @@ const _tijdvakken = [
 
 /// Which of the subject's three topics a tijdvak belongs to.
 String _topicFor(int tijdvak) => switch (tijdvak) {
-      <= 4 => _oudheid,
-      <= 7 => _gouden,
-      _ => _modern,
-    };
+  <= 4 => _oudheid,
+  <= 7 => _gouden,
+  _ => _modern,
+};
 
 /// `gebeurtenis|jaartal|tijdvaknummer`
 const _gebeurtenissen = [
   'De eerste boeren legden akkers aan|rond 10.000 v.Chr.|1',
   'De hunebedden in Drenthe werden gebouwd|rond 3000 v.Chr.|1',
-  'De eerste piramides in Egypte werden gebouwd|rond 2600 v.Chr.|2',
+  'De eerste piramides in Egypte werden gebouwd|rond 2600 v.Chr.|1',
   'De eerste Olympische Spelen werden gehouden|776 v.Chr.|2',
   'In Athene ontstond de democratie|rond 500 v.Chr.|2',
   'Alexander de Grote veroverde een groot rijk|rond 330 v.Chr.|2',
@@ -48,9 +48,9 @@ const _gebeurtenissen = [
   'Veel Nederlandse plaatsen kregen stadsrechten|rond 1250|4',
   'De Hanzesteden kwamen op|rond 1300|4',
   'De pest trof Europa|1348|4',
-  'Gutenberg vond de boekdrukkunst uit|rond 1450|4',
-  'Columbus bereikte Amerika|1492|5',
-  'Vasco da Gama voer om Afrika naar India|1498|5',
+  'Gutenberg ontwikkelde in Europa een drukpers met losse metalen letters|rond 1450|4',
+  'Columbus bereikte Amerika|1492|4',
+  'Vasco da Gama voer om Afrika naar India|1498|4',
   'Magellaan begon de eerste reis om de wereld|1519|5',
   'Maarten Luther publiceerde zijn stellingen|1517|5',
   'De Beeldenstorm brak uit|1566|5',
@@ -68,15 +68,15 @@ const _gebeurtenissen = [
   'Het Rampjaar brak aan|1672|6',
   'De Franse Revolutie begon|1789|7',
   'De Bataafse Republiek werd uitgeroepen|1795|7',
-  'Napoleon werd keizer van Frankrijk|1804|7',
-  'Napoleon verloor de Slag bij Waterloo|1815|7',
-  'Het Koninkrijk der Nederlanden ontstond|1815|7',
+  'Napoleon werd keizer van Frankrijk|1804|8',
+  'Napoleon verloor de Slag bij Waterloo|1815|8',
+  'Het Koninkrijk der Nederlanden ontstond|1815|8',
   'Belgie scheidde zich af van Nederland|1830|8',
   'De eerste trein reed van Amsterdam naar Haarlem|1839|8',
   'Thorbecke schreef een nieuwe Grondwet|1848|8',
   'De slavernij werd afgeschaft in Suriname en op de Antillen|1863|8',
   'Het Kinderwetje van Van Houten kwam er|1874|8',
-  'De leerplicht werd ingevoerd in Nederland|1900|8',
+  'De Leerplichtwet trad in werking in Nederland|1901|9',
   'De Eerste Wereldoorlog begon|1914|9',
   'De Eerste Wereldoorlog eindigde|1918|9',
   'Vrouwen kregen kiesrecht in Nederland|1919|9',
@@ -111,7 +111,7 @@ const _personen = [
   'Bonifatius|missionaris die bij Dokkum werd vermoord|3',
   'Floris V|Hollandse graaf uit de middeleeuwen|4',
   'Marco Polo|reiziger die over land naar China trok|4',
-  'Gutenberg|uitvinder van de boekdrukkunst met losse letters|4',
+  'Gutenberg|ontwikkelde in Europa een drukpers met losse metalen letters|4',
   'Erasmus|humanist en schrijver uit Rotterdam|5',
   'Karel V|keizer die de Nederlanden onder zich verenigde|5',
   'Filips II|Spaanse koning tegen wie de opstand ging|5',
@@ -132,9 +132,9 @@ const _personen = [
   'Hugo de Groot|rechtsgeleerde die ontsnapte in een boekenkist|6',
   'Galileo Galilei|onderzocht de sterren met een telescoop|6',
   'Isaac Newton|natuurkundige die de zwaartekracht beschreef|6',
-  'Napoleon Bonaparte|Franse keizer die half Europa veroverde|7',
+  'Napoleon Bonaparte|Franse keizer die grote delen van Europa veroverde|8',
   'James Watt|verbeterde de stoommachine|7',
-  'Koning Willem I|de eerste koning van het Koninkrijk der Nederlanden|7',
+  'Koning Willem I|de eerste koning van het Koninkrijk der Nederlanden|8',
   'Thorbecke|schreef de Grondwet van 1848|8',
   'Multatuli|schrijver van de Max Havelaar|8',
   'Karl Marx|denker over arbeiders en kapitalisme|8',
@@ -278,7 +278,7 @@ List<QuizQuestion> buildGeschiedenisExtra() {
     );
     g.add(
       topic: topic,
-      prompt: 'In welk tijdvak leefde ${p[0]}?',
+      prompt: 'Bij welk tijdvak wordt deze rol van ${p[0]} behandeld: ${p[1]}?',
       answer: _tijdvakken[tijdvak - 1],
       wrong: g.others(_tijdvakken, _tijdvakken[tijdvak - 1]),
     );
@@ -347,7 +347,8 @@ List<QuizQuestion> buildGeschiedenisExtra() {
         '${jaar ~/ 100}e eeuw',
         _eeuw(jaar + 200),
       ],
-      why: 'Het jaar $jaar hoort bij de ${((jaar - 1) ~/ 100) + 1}e eeuw: de '
+      why:
+          'Het jaar $jaar hoort bij de ${((jaar - 1) ~/ 100) + 1}e eeuw: de '
           'eeuw loopt van ${((jaar - 1) ~/ 100) * 100 + 1} tot en met '
           '${((jaar - 1) ~/ 100) * 100 + 100}.',
     );
