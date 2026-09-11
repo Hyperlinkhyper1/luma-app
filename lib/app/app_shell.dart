@@ -64,7 +64,9 @@ import 'window_title_bar.dart';
 
 /// Below this width the vertical icon rail is replaced with a bottom nav bar,
 /// since a fixed 72px-wide rail leaves too little room for phone content.
-const _phoneBreakpoint = 700.0;
+/// The number itself lives in `widgets.dart` as [kPhoneBreakpoint], so pages
+/// can ask the same question the shell does.
+const _phoneBreakpoint = kPhoneBreakpoint;
 
 /// The top-level layout: a fixed left icon rail (Modrinth-style) next to the
 /// active content area, which has its own top bar.

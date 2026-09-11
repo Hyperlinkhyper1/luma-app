@@ -632,7 +632,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
       title:
           Text('Change password', style: TextStyle(color: luma.textPrimary)),
       content: SizedBox(
-        width: 400,
+        width: lumaDialogWidth(context, 400),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -745,7 +745,7 @@ class _SessionsDialogState extends State<_SessionsDialog> {
       title:
           Text('Devices signed in', style: TextStyle(color: luma.textPrimary)),
       content: SizedBox(
-        width: 420,
+        width: lumaDialogWidth(context, 420),
         child: _buildBody(luma),
       ),
       actions: [
@@ -1010,7 +1010,7 @@ class _DataDeletionRequestDialogState
       title: Text('Ask to delete my data',
           style: TextStyle(color: luma.textPrimary)),
       content: SizedBox(
-        width: 420,
+        width: lumaDialogWidth(context, 420),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1120,7 +1120,7 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
       title: Text('Delete account?',
           style: TextStyle(color: Colors.red.shade400)),
       content: SizedBox(
-        width: 400,
+        width: lumaDialogWidth(context, 400),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,

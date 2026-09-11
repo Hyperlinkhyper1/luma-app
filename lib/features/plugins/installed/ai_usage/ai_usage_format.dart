@@ -1,3 +1,4 @@
+import 'ai_usage_pricing_freebuff.dart';
 import 'ai_usage_source.dart';
 
 /// Display formatting shared by the Usage tab and the widgets split out of
@@ -18,6 +19,7 @@ String displayName(AiUsageSource source, String model) => switch (source) {
       // needed the way the other two sources' raw API model IDs require.
       AiUsageSource.antigravity => 'Antigravity · $model',
       AiUsageSource.opencode => 'OpenCode · ${_shortOpencodeModelName(model)}',
+      AiUsageSource.freebuff => 'Freebuff · ${_shortFreebuffModelName(model)}',
     };
 
 /// "anthropic/claude-opus-4-6" -> "Opus 4.6", "openai/gpt-5.4" -> "GPT 5.4",
@@ -29,6 +31,27 @@ String displayName(AiUsageSource source, String model) => switch (source) {
 String _shortOpencodeModelName(String model) {
   final split = splitOpencodeModel(model);
   if (split == null) return model;
+  final (provider, modelId) = split;
+  return switch (provider) {
+    'anthropic' => _shortModelName(modelId),
+    'openai' => _shortOpenAiModelName(modelId),
+    _ => modelId,
+  };
+}
+
+/// "z-ai/glm-5.3-flash" -> "glm-5.3-flash", "anthropic/claude-opus-4-8" ->
+/// "Opus 4.8", "gpt-5.6-luna" (no provider prefix at all — an embedded
+/// Claude Code/Codex CLI thread, see `splitFreebuffModel`'s doc) -> "GPT 5.6
+/// luna". Undoes the same `"<providerID>/<modelID>"` prefix opencode's own
+/// short name does, applying that provider's short-name style where
+/// recognized and falling back to the raw model id otherwise.
+String _shortFreebuffModelName(String model) {
+  final split = splitFreebuffModel(model);
+  if (split == null) {
+    final m = model.toLowerCase();
+    if (m.contains('gpt-') || m.contains('codex-')) return _shortOpenAiModelName(model);
+    return _shortModelName(model);
+  }
   final (provider, modelId) = split;
   return switch (provider) {
     'anthropic' => _shortModelName(modelId),

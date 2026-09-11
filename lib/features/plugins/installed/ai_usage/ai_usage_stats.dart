@@ -652,6 +652,30 @@ String companyForModel(AiUsageSource source, String model) {
             ? 'Other'
             : '${provider[0].toUpperCase()}${provider.substring(1)}',
       };
+    case AiUsageSource.freebuff:
+      final split = splitFreebuffModel(model);
+      if (split == null) {
+        final m = model.toLowerCase();
+        if (m.contains('claude')) return 'Anthropic';
+        if (m.contains('gpt') || m.contains('codex')) return 'OpenAI';
+        return 'Other';
+      }
+      final provider = split.$1.toLowerCase();
+      return switch (provider) {
+        'anthropic' => 'Anthropic',
+        'openai' => 'OpenAI',
+        'google' => 'Google',
+        'z-ai' => 'Zhipu AI',
+        'deepseek' => 'DeepSeek',
+        'crof' => 'Moonshot AI',
+        'meta' => 'Meta',
+        'mistral' => 'Mistral',
+        'xai' => 'xAI',
+        'openrouter' => 'OpenRouter',
+        _ => provider.isEmpty
+            ? 'Other'
+            : '${provider[0].toUpperCase()}${provider.substring(1)}',
+      };
   }
 }
 

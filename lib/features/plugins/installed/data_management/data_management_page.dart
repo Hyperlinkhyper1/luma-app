@@ -596,7 +596,7 @@ Future<void> showTagManager(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('Manage Tags', style: TextStyle(color: luma.textPrimary)),
         content: SizedBox(
-          width: 380,
+          width: lumaDialogWidth(dialogContext, 380),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1277,7 +1277,7 @@ class _TableEditorState extends State<_TableEditor> {
             style: TextStyle(color: luma.textPrimary),
           ),
           content: SizedBox(
-            width: 320,
+            width: lumaDialogWidth(context, 320),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,

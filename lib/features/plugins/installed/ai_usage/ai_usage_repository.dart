@@ -6,10 +6,11 @@ import 'antigravity_scanner.dart';
 import 'claude_code_scanner.dart';
 import 'codex_cli_scanner.dart';
 import 'data/ai_usage_database.dart';
+import 'freebuff_scanner.dart';
 import 'opencode_scanner.dart';
 
 /// Owns the local AI-usage scans (Claude Code, Codex CLI, Antigravity,
-/// opencode) and the database they fill.
+/// opencode, Freebuff) and the database they fill.
 class AiUsageRepository extends ChangeNotifier {
   AiUsageRepository(
     this._db, {
@@ -17,27 +18,32 @@ class AiUsageRepository extends ChangeNotifier {
     CodexCliScanner? codexScanner,
     AntigravityScanner? antigravityScanner,
     OpencodeScanner? opencodeScanner,
+    FreebuffScanner? freebuffScanner,
   })  : _claudeScanner = claudeScanner ?? const ClaudeCodeScanner(),
         _codexScanner = codexScanner ?? const CodexCliScanner(),
         _antigravityScanner = antigravityScanner ?? const AntigravityScanner(),
-        _opencodeScanner = opencodeScanner ?? const OpencodeScanner();
+        _opencodeScanner = opencodeScanner ?? const OpencodeScanner(),
+        _freebuffScanner = freebuffScanner ?? const FreebuffScanner();
 
   final AiUsageDatabase _db;
   final ClaudeCodeScanner _claudeScanner;
   final CodexCliScanner _codexScanner;
   final AntigravityScanner _antigravityScanner;
   final OpencodeScanner _opencodeScanner;
+  final FreebuffScanner _freebuffScanner;
 
   bool _scanning = false;
   bool? _claudeCodeDirFound; // null = not yet checked
   bool? _codexCliDirFound;
   bool? _antigravityDirFound;
   bool? _opencodeDbFound;
+  bool? _freebuffDirFound;
   DateTime? _lastScanAt;
   ClaudeCodeScanResult? _lastClaudeResult;
   CodexCliScanResult? _lastCodexResult;
   AntigravityScanResult? _lastAntigravityResult;
   OpencodeScanResult? _lastOpencodeResult;
+  FreebuffScanResult? _lastFreebuffResult;
 
   bool get scanning => _scanning;
 
@@ -57,19 +63,25 @@ class AiUsageRepository extends ChangeNotifier {
   /// the first [rescan] completes.
   bool? get opencodeDbFound => _opencodeDbFound;
 
+  /// Whether `~/.config/freebuff-desktop/projects` was found on this device
+  /// — null until the first [rescan] completes.
+  bool? get freebuffDirFound => _freebuffDirFound;
+
   /// Whether *any* source was found — drives the page's empty-state gate.
   /// Null until the first [rescan] completes.
   bool? get anyDirFound {
     if (_claudeCodeDirFound == null &&
         _codexCliDirFound == null &&
         _antigravityDirFound == null &&
-        _opencodeDbFound == null) {
+        _opencodeDbFound == null &&
+        _freebuffDirFound == null) {
       return null;
     }
     return (_claudeCodeDirFound ?? false) ||
         (_codexCliDirFound ?? false) ||
         (_antigravityDirFound ?? false) ||
-        (_opencodeDbFound ?? false);
+        (_opencodeDbFound ?? false) ||
+        (_freebuffDirFound ?? false);
   }
 
   DateTime? get lastScanAt => _lastScanAt;
@@ -77,6 +89,7 @@ class AiUsageRepository extends ChangeNotifier {
   CodexCliScanResult? get lastCodexResult => _lastCodexResult;
   AntigravityScanResult? get lastAntigravityResult => _lastAntigravityResult;
   OpencodeScanResult? get lastOpencodeResult => _lastOpencodeResult;
+  FreebuffScanResult? get lastFreebuffResult => _lastFreebuffResult;
 
   /// Combined new-turn count from the most recent [rescan], across every
   /// source — for the single-line status UI.
@@ -84,7 +97,8 @@ class AiUsageRepository extends ChangeNotifier {
       (_lastClaudeResult?.turnsAdded ?? 0) +
       (_lastCodexResult?.turnsAdded ?? 0) +
       (_lastAntigravityResult?.turnsAdded ?? 0) +
-      (_lastOpencodeResult?.turnsAdded ?? 0);
+      (_lastOpencodeResult?.turnsAdded ?? 0) +
+      (_lastFreebuffResult?.turnsAdded ?? 0);
 
   /// Scans every known local source for new/changed session logs and stores
   /// any new usage. Safe to call repeatedly — unchanged files are skipped
@@ -98,20 +112,24 @@ class AiUsageRepository extends ChangeNotifier {
 
     try {
       StorageGuard.instance.ensureWithinLimit();
-      final (claudeResult, codexResult, antigravityResult, opencodeResult) = await (
+      final (claudeResult, codexResult, antigravityResult, opencodeResult, freebuffResult) =
+          await (
         _claudeScanner.scan(_db),
         _codexScanner.scan(_db),
         _antigravityScanner.scan(_db),
         _opencodeScanner.scan(_db),
+        _freebuffScanner.scan(_db),
       ).wait;
       _lastClaudeResult = claudeResult;
       _lastCodexResult = codexResult;
       _lastAntigravityResult = antigravityResult;
       _lastOpencodeResult = opencodeResult;
+      _lastFreebuffResult = freebuffResult;
       _claudeCodeDirFound = claudeResult.projectsDirFound;
       _codexCliDirFound = codexResult.sessionsDirFound;
       _antigravityDirFound = antigravityResult.brainDirFound;
       _opencodeDbFound = opencodeResult.dbFound;
+      _freebuffDirFound = freebuffResult.projectsDirFound;
       _lastScanAt = DateTime.now();
       if (lastTurnsAdded > 0) {
         StorageGuard.instance.scheduleRefresh();

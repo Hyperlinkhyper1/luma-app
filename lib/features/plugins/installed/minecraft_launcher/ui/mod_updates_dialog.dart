@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../app/widgets.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/minecraft_launcher_database.dart';
 import '../logic/mod_installer.dart';
@@ -88,7 +89,7 @@ class _ModUpdatesDialogState extends State<_ModUpdatesDialog> {
     return AlertDialog(
       title: const Text('Updates & conflicts'),
       content: SizedBox(
-        width: 420,
+        width: lumaDialogWidth(context, 420),
         child: _loading
             ? const Padding(
                 padding: EdgeInsets.symmetric(vertical: 24),

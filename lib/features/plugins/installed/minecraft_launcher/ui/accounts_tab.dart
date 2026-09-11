@@ -173,7 +173,7 @@ class _AccountsTabState extends State<AccountsTab> {
       builder: (context) => AlertDialog(
         title: const Text('Microsoft sign-in needs an Azure app'),
         content: SizedBox(
-          width: 420,
+          width: lumaDialogWidth(context, 420),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -221,7 +221,7 @@ class _DeviceCodeDialog extends StatelessWidget {
     return AlertDialog(
       title: const Text('Sign in with Microsoft'),
       content: SizedBox(
-        width: 380,
+        width: lumaDialogWidth(context, 380),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,

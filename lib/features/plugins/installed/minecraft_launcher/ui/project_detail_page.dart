@@ -80,7 +80,7 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
           builder: (context) => AlertDialog(
             title: const Text('Install required dependencies?'),
             content: SizedBox(
-              width: 360,
+              width: lumaDialogWidth(context, 360),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,

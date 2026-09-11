@@ -157,7 +157,7 @@ class _LocalAccountDialogState extends State<_LocalAccountDialog> {
       title:
           Text('Enable device sync', style: TextStyle(color: luma.textPrimary)),
       content: SizedBox(
-        width: 400,
+        width: lumaDialogWidth(context, 400),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -580,7 +580,7 @@ void _showHotspotHelp(BuildContext context) {
       title: Text('No shared Wi-Fi? Use a hotspot',
           style: TextStyle(color: luma.textPrimary)),
       content: SizedBox(
-        width: 400,
+        width: lumaDialogWidth(dialogContext, 400),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -676,7 +676,7 @@ void _showDebugLog(BuildContext context) {
       ),
       title: Text('P2P debug log', style: TextStyle(color: luma.textPrimary)),
       content: SizedBox(
-        width: 520,
+        width: lumaDialogWidth(dialogContext, 520),
         height: 400,
         child: FutureBuilder<String>(
           future: readP2pDebugLog(),
@@ -837,7 +837,7 @@ class _ManualConnectDialogState extends State<_ManualConnectDialog> {
       title: Text('Connect manually',
           style: TextStyle(color: luma.textPrimary)),
       content: SizedBox(
-        width: 400,
+        width: lumaDialogWidth(context, 400),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,

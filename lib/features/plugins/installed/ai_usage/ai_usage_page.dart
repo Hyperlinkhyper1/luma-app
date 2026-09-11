@@ -182,13 +182,15 @@ String _sourceLabel(AiUsageSource source) => switch (source) {
       AiUsageSource.codexCli => 'Codex CLI',
       AiUsageSource.antigravity => 'Antigravity',
       AiUsageSource.opencode => 'OpenCode',
+      AiUsageSource.freebuff => 'Freebuff',
     };
 
-/// Shown when not one of the four tools has left anything on this device.
+/// Shown when not one of the five tools has left anything on this device.
 const String _kNoLogsSubtitle =
     'AI Usage reads session logs from Claude Code (~/.claude/projects), '
     'Codex CLI (~/.codex/sessions), Antigravity (~/.gemini/antigravity), '
-    'and OpenCode (~/.local/share/opencode) on this device — nothing is '
+    'OpenCode (~/.local/share/opencode), and Freebuff '
+    '(~/.config/freebuff-desktop/projects) on this device — nothing is '
     'ever sent anywhere. Use one of these tools here, then rescan.';
 
 // ─── View settings: sorting + company grouping ─────────────────────────────
@@ -263,7 +265,7 @@ class _AiUsageSettingsDialogState extends State<_AiUsageSettingsDialog> {
         ],
       ),
       content: SizedBox(
-        width: 380,
+        width: lumaDialogWidth(context, 380),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -423,7 +425,7 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-// ─── Source filter: All / Claude Code / Codex CLI / Antigravity / OpenCode ──
+// ─ Source filter: All / Claude Code / Codex CLI / Antigravity / OpenCode / Freebuff ─
 
 class _SourceFilterBar extends StatelessWidget {
   const _SourceFilterBar({required this.selected, required this.onSelect});
@@ -437,12 +439,20 @@ class _SourceFilterBar extends StatelessWidget {
     AiUsageSource.codexCli,
     AiUsageSource.antigravity,
     AiUsageSource.opencode,
+    AiUsageSource.freebuff,
   ];
 
   @override
   Widget build(BuildContext context) {
     return LumaSegmentedTabs(
-      tabs: const ['All', 'Claude Code', 'Codex CLI', 'Antigravity (est.)', 'OpenCode'],
+      tabs: const [
+        'All',
+        'Claude Code',
+        'Codex CLI',
+        'Antigravity (est.)',
+        'OpenCode',
+        'Freebuff',
+      ],
       selectedIndex: _options.indexOf(selected),
       onSelect: (i) => onSelect(_options[i]),
     );

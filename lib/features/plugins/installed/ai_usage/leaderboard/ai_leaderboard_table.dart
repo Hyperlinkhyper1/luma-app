@@ -114,43 +114,63 @@ class _AiLeaderboardTableViewState extends State<AiLeaderboardTableView> {
           descending: _descending,
         );
 
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _FilterBar(
-                search: _search,
-                onSearchChanged: (_) => setState(() {}),
-                vendors: vendorsOf(repo.catalog.models),
-                vendor: _vendor,
-                onVendor: (v) => setState(() => _vendor = v),
-                openOnly: _openOnly,
-                onOpenOnly: (v) => setState(() => _openOnly = v),
-                shown: rows.length,
-                total: repo.catalog.models.length,
-                repo: repo,
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            // Below this the table would be mostly off-screen: ten columns
+            // don't fit a phone, and a sideways-scrolling grid costs you the
+            // model name the moment you look at a number. Cards instead.
+            final narrow = constraints.maxWidth < _cardListBreakpoint;
+            return Padding(
+              padding: narrow
+                  ? const EdgeInsets.fromLTRB(12, 12, 12, 12)
+                  : const EdgeInsets.fromLTRB(20, 16, 20, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _FilterBar(
+                    search: _search,
+                    onSearchChanged: (_) => setState(() {}),
+                    vendors: vendorsOf(repo.catalog.models),
+                    vendor: _vendor,
+                    onVendor: (v) => setState(() => _vendor = v),
+                    openOnly: _openOnly,
+                    onOpenOnly: (v) => setState(() => _openOnly = v),
+                    shown: rows.length,
+                    total: repo.catalog.models.length,
+                    repo: repo,
+                    // The header row is the only way to sort a table; the
+                    // card list has no header, so it gets its own control.
+                    sortBy: narrow ? _sortBy : null,
+                    descending: _descending,
+                    onSort: _sort,
+                  ),
+                  const SizedBox(height: 14),
+                  Expanded(
+                    child: rows.isEmpty
+                        ? Center(
+                            child: Text(
+                              'No model matches those filters.',
+                              style: TextStyle(color: context.luma.textMuted),
+                            ),
+                          )
+                        : narrow
+                            ? _LeaderboardCards(
+                                rows: rows,
+                                vertical: _vertical,
+                              )
+                            : _LeaderboardTable(
+                                rows: rows,
+                                sortBy: _sortBy,
+                                descending: _descending,
+                                onSort: _sort,
+                                vertical: _vertical,
+                                horizontal: _horizontal,
+                              ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 14),
-              Expanded(
-                child: rows.isEmpty
-                    ? Center(
-                        child: Text(
-                          'No model matches those filters.',
-                          style: TextStyle(color: context.luma.textMuted),
-                        ),
-                      )
-                    : _LeaderboardTable(
-                        rows: rows,
-                        sortBy: _sortBy,
-                        descending: _descending,
-                        onSort: _sort,
-                        vertical: _vertical,
-                        horizontal: _horizontal,
-                      ),
-              ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -171,6 +191,9 @@ class _FilterBar extends StatelessWidget {
     required this.shown,
     required this.total,
     required this.repo,
+    required this.sortBy,
+    required this.descending,
+    required this.onSort,
   });
 
   final TextEditingController search;
@@ -184,6 +207,11 @@ class _FilterBar extends StatelessWidget {
   final int total;
   final AiCatalogRepository repo;
 
+  /// Non-null only in the card layout, where there is no header row to click.
+  final AiLeaderboardColumn? sortBy;
+  final bool descending;
+  final ValueChanged<AiLeaderboardColumn> onSort;
+
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
@@ -196,7 +224,8 @@ class _FilterBar extends StatelessWidget {
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           SizedBox(
-            // Never wider than the pane it sits in.
+            // Never wider than the pane it sits in. On a phone it takes the
+            // whole line rather than leaving a stub of dead space beside it.
             width: constraints.maxWidth.isFinite && constraints.maxWidth < 240
                 ? constraints.maxWidth
                 : 240,
@@ -230,6 +259,12 @@ class _FilterBar extends StatelessWidget {
           ),
           ),
           _VendorMenu(vendors: vendors, selected: vendor, onSelect: onVendor),
+          if (sortBy != null)
+            _SortMenu(
+              selected: sortBy!,
+              descending: descending,
+              onSort: onSort,
+            ),
           _OpenWeightsToggle(value: openOnly, onChanged: onOpenOnly),
           Text(
             shown == total ? '$total models' : '$shown of $total models',
@@ -373,7 +408,100 @@ class _OpenWeightsToggle extends StatelessWidget {
   }
 }
 
+/// Sort picker for the card layout. The table sorts by clicking a header;
+/// cards have no headers, so the same set of columns is offered as a menu,
+/// with a second tap on the current one flipping the direction.
+class _SortMenu extends StatelessWidget {
+  const _SortMenu({
+    required this.selected,
+    required this.descending,
+    required this.onSort,
+  });
+
+  final AiLeaderboardColumn selected;
+  final bool descending;
+  final ValueChanged<AiLeaderboardColumn> onSort;
+
+  static const _sortable = [
+    AiLeaderboardColumn.llmStats,
+    AiLeaderboardColumn.coding,
+    AiLeaderboardColumn.agent,
+    AiLeaderboardColumn.codeArena,
+    AiLeaderboardColumn.params,
+    AiLeaderboardColumn.context,
+    AiLeaderboardColumn.price,
+    AiLeaderboardColumn.name,
+  ];
+
+  static String _title(AiLeaderboardColumn c) {
+    final label = c.label.toLowerCase();
+    return label[0].toUpperCase() + label.substring(1);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return PopupMenuButton<AiLeaderboardColumn>(
+      tooltip: 'Sort by',
+      onSelected: onSort,
+      color: luma.surface,
+      itemBuilder: (context) => [
+        for (final c in _sortable)
+          PopupMenuItem(
+            value: c,
+            child: Row(
+              children: [
+                Expanded(child: Text(_title(c))),
+                if (c == selected)
+                  Icon(
+                    descending
+                        ? Icons.arrow_downward_rounded
+                        : Icons.arrow_upward_rounded,
+                    size: 15,
+                    color: luma.accent,
+                  ),
+              ],
+            ),
+          ),
+      ],
+      child: Container(
+        height: 38,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: luma.surface,
+          border: Border.all(color: luma.border),
+          borderRadius: BorderRadius.circular(9),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.swap_vert_rounded, size: 16, color: luma.textMuted),
+            const SizedBox(width: 6),
+            Text(
+              _title(selected),
+              style: TextStyle(color: luma.textPrimary, fontSize: 13),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              descending
+                  ? Icons.arrow_drop_down_rounded
+                  : Icons.arrow_drop_up_rounded,
+              size: 18,
+              color: luma.accent,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ─── Table ──────────────────────────────────────────────────────────────────
+
+/// Under this width the table becomes a list of cards. Ten columns need about
+/// 1074px; anything on a phone would be reading them a column at a time
+/// through a sideways scroll, with the model name scrolled out of sight.
+const double _cardListBreakpoint = 640;
 
 /// Column widths, in the order the table renders them. Fixed rather than
 /// flexible so the header and every row line up while the whole table scrolls
@@ -541,6 +669,220 @@ class _LeaderboardTable extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// The phone layout: one card per model, everything the table's ten columns
+/// carry laid out down the card instead of across the screen. No horizontal
+/// scroll, so a flick never takes the model's name off the edge, and the
+/// whole card is the tap target for the detail page.
+class _LeaderboardCards extends StatelessWidget {
+  const _LeaderboardCards({required this.rows, required this.vertical});
+
+  final List<AiModel> rows;
+  final ScrollController vertical;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scrollbar(
+      controller: vertical,
+      child: ListView.separated(
+        controller: vertical,
+        padding: EdgeInsets.zero,
+        itemCount: rows.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 8),
+        itemBuilder: (context, i) => _ModelCard(model: rows[i], rank: i + 1),
+      ),
+    );
+  }
+}
+
+class _ModelCard extends StatelessWidget {
+  const _ModelCard({required this.model, required this.rank});
+
+  final AiModel model;
+  final int rank;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final open = model.openWeights;
+    final licence = open
+        ? 'Open weights${model.licenseName == null ? "" : " · ${model.licenseName}"}'
+        : 'Proprietary — API access only';
+
+    return Material(
+      color: luma.surface,
+      borderRadius: BorderRadius.circular(12),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => AiModelDetailPage(modelId: model.id),
+        )),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+          decoration: BoxDecoration(
+            border: Border.all(color: luma.border),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 30,
+                    child: Text(
+                      '$rank',
+                      style: TextStyle(
+                        color: luma.textMuted,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          model.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: luma.textPrimary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            height: 1.25,
+                          ),
+                        ),
+                        Text(
+                          model.vendorName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: luma.textMuted, fontSize: 11.5),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Tooltip(
+                    message: licence,
+                    child: Semantics(
+                      label: licence,
+                      child: Icon(
+                        open ? Icons.lock_open_rounded : Icons.lock_rounded,
+                        size: 17,
+                        color: open ? luma.success : luma.textMuted,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              // Ratings first, tinted the same way the table tints them, then
+              // the plain facts. Wrap so a narrow phone reflows instead of
+              // clipping the last one.
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  _CardScore(
+                      label: 'Intelligence', value: model.llmStatsIndex),
+                  _CardScore(label: 'Coding', value: model.codingIndex),
+                  _CardScore(label: 'Agent', value: model.agentIndex),
+                  _CardScore(
+                    label: 'Arena',
+                    value: model.codeArena,
+                    tinted: false,
+                    format: (v) => v.round().toString(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                [
+                  if (formatPrice(model.avgPricePerM) case final p?)
+                    '$p /M',
+                  if (formatTokens(model.contextTokens) case final c?)
+                    '$c context',
+                  if (formatParams(model.parametersB) case final p?)
+                    '$p params',
+                ].join('  ·  '),
+                style: TextStyle(
+                  color: luma.textSecondary,
+                  fontSize: 12,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One rating on a card: the label spelled out, since there is no column
+/// header above it to say what the number means.
+class _CardScore extends StatelessWidget {
+  const _CardScore({
+    required this.label,
+    required this.value,
+    this.tinted = true,
+    this.format,
+  });
+
+  final String label;
+  final double? value;
+  final bool tinted;
+  final String Function(double)? format;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final v = value;
+    // Same 30–80 stretch as the table's cells, so a model reads the same on
+    // both layouts.
+    final t = v == null ? 0.0 : ((v - 30) / 50).clamp(0.0, 1.0);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: v == null || !tinted
+            ? luma.background
+            : luma.accent.withValues(alpha: 0.10 + 0.22 * t),
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: luma.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: luma.textMuted,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.2,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            v == null
+                ? '–'
+                : (format ?? (double x) => x.toStringAsFixed(1))(v),
+            style: TextStyle(
+              color: v == null ? luma.textMuted : luma.textPrimary,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

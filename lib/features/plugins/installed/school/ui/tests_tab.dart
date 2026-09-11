@@ -157,7 +157,9 @@ class _SetupViewState extends State<_SetupView> {
     final maxForSubject = selected?.questions.length ?? 0;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+      padding: context.isPhoneWidth
+          ? const EdgeInsets.fromLTRB(14, 4, 14, 24)
+          : const EdgeInsets.fromLTRB(24, 8, 24, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -605,7 +607,7 @@ class _TopicPill extends StatelessWidget {
 // Running the test
 // ---------------------------------------------------------------------------
 
-class _RunnerView extends StatelessWidget {
+class _RunnerView extends StatefulWidget {
   const _RunnerView({
     super.key,
     required this.subject,
@@ -638,8 +640,48 @@ class _RunnerView extends StatelessWidget {
   final VoidCallback onAbort;
 
   @override
+  State<_RunnerView> createState() => _RunnerViewState();
+}
+
+class _RunnerViewState extends State<_RunnerView> {
+  /// Focus for the open-answer field, watched so the phone layout knows the
+  /// soft keyboard is up.
+  ///
+  /// The keyboard itself can't be asked: `Scaffold` subtracts the bottom view
+  /// inset from its body before handing it over, so `MediaQuery.viewInsetsOf`
+  /// reads zero all the way down. Focus on the field is the same event seen
+  /// from the other end, and it is the thing this layout actually cares about.
+  final FocusNode _answerFocus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _answerFocus.addListener(_onFocusChanged);
+  }
+
+  @override
+  void dispose() {
+    _answerFocus.removeListener(_onFocusChanged);
+    _answerFocus.dispose();
+    super.dispose();
+  }
+
+  void _onFocusChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final subject = widget.subject;
+    final questions = widget.questions;
+    final answers = widget.answers;
+    final index = widget.index;
+    final typed = widget.typed;
+    final multiple = widget.multiple;
+    final onGoTo = widget.onGoTo;
+    final onFinish = widget.onFinish;
+
     final q = questions[index];
     final completed = [
       for (var i = 0; i < questions.length; i++)
@@ -651,58 +693,129 @@ class _RunnerView extends StatelessWidget {
     ];
     final answered = completed.where((a) => a).length;
     final isLast = index == questions.length - 1;
+    final narrow = context.isPhoneWidth;
+    // The keyboard takes roughly a third of a phone screen, and the shell's
+    // bottom nav sits above it too. With the subject header, the progress bar
+    // and the "nakijken" link all pinned as well, the question is left a
+    // sliver to scroll in. So on a phone, while an answer is being typed, the
+    // header shrinks to the one line that still matters — which question you
+    // are on — and the rest steps aside until the keyboard does.
+    final typing = narrow && _answerFocus.hasFocus;
+    final counter =
+        'Vraag ${index + 1} van ${questions.length} · $answered beantwoord';
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+      padding: narrow
+          ? const EdgeInsets.fromLTRB(14, 4, 14, 10)
+          : const EdgeInsets.fromLTRB(24, 8, 24, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              LumaIconBadge(icon: subject.icon, color: subject.color, size: 34),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      subject.name,
-                      style: TextStyle(
-                        color: luma.textPrimary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    Text(
-                      'Vraag ${index + 1} van ${questions.length} · '
-                      '$answered beantwoord',
+          if (typing)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      counter,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: luma.textMuted, fontSize: 11.5),
                     ),
-                  ],
+                  ),
+                  GestureDetector(
+                    onTap: widget.onAbort,
+                    child: Text(
+                      'Stoppen',
+                      style: TextStyle(color: luma.textMuted, fontSize: 11.5),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else ...[
+            Row(
+              children: [
+                LumaIconBadge(
+                  icon: subject.icon,
+                  color: subject.color,
+                  size: narrow ? 28 : 34,
                 ),
-              ),
-              _ElapsedTimer(startedAt: startedAt, color: subject.color),
-              const SizedBox(width: 8),
-              LumaGhostButton(
-                label: 'Stoppen',
-                icon: Icons.close_rounded,
-                onTap: onAbort,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: LinearProgressIndicator(
-              value: questions.isEmpty ? 0 : (index + 1) / questions.length,
-              minHeight: 6,
-              backgroundColor: luma.border,
-              valueColor: AlwaysStoppedAnimation(subject.color),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        subject.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: luma.textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        counter,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: luma.textMuted, fontSize: 11.5),
+                      ),
+                    ],
+                  ),
+                ),
+                _ElapsedTimer(
+                    startedAt: widget.startedAt, color: subject.color),
+                const SizedBox(width: 8),
+                // A labelled button costs about 90px the phone header hasn't
+                // got; the icon alone still says "stop", with a tooltip.
+                if (narrow)
+                  IconButton(
+                    onPressed: widget.onAbort,
+                    tooltip: 'Stoppen',
+                    visualDensity: VisualDensity.compact,
+                    icon: Icon(Icons.close_rounded,
+                        size: 20, color: luma.textMuted),
+                  )
+                else
+                  LumaGhostButton(
+                    label: 'Stoppen',
+                    icon: Icons.close_rounded,
+                    onTap: widget.onAbort,
+                  ),
+              ],
             ),
-          ),
-          const SizedBox(height: 16),
+            SizedBox(height: narrow ? 8 : 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: questions.isEmpty ? 0 : (index + 1) / questions.length,
+                minHeight: 6,
+                backgroundColor: luma.border,
+                valueColor: AlwaysStoppedAnimation(subject.color),
+              ),
+            ),
+            SizedBox(height: narrow ? 12 : 16),
+          ],
           Expanded(
+            // Keyed, and so is the button row below: folding the header away
+            // when the keyboard appears shifts every child of this Column up
+            // by three slots, and Flutter matches unkeyed children by
+            // position. Without the keys the question subtree would be
+            // rebuilt from scratch on the first keystroke — losing the focus
+            // and the half-typed answer with it.
+            key: const ValueKey('runner-body'),
             child: SingleChildScrollView(
+              // Dragging the question away puts the keyboard down, which is
+              // how you get back to the whole screen without hunting for a
+              // dismiss key.
+              keyboardDismissBehavior:
+                  ScrollViewKeyboardDismissBehavior.onDrag,
+              // Breathing room so the answer field never ends up flush
+              // against the pinned Vorige/Volgende row.
+              padding: const EdgeInsets.only(bottom: 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -746,8 +859,9 @@ class _RunnerView extends StatelessWidget {
                         if (q.isOpen)
                           TextFormField(
                             key: ValueKey(q.id),
+                            focusNode: _answerFocus,
                             initialValue: typed[index] ?? '',
-                            onChanged: onType,
+                            onChanged: widget.onType,
                             autocorrect: false,
                             enableSuggestions: false,
                             keyboardType: q.input == QuizInput.number
@@ -778,7 +892,7 @@ class _RunnerView extends StatelessWidget {
                                 ? _OptionState.selected
                                 : _OptionState.plain,
                             accent: subject.color,
-                            onTap: () => onSelectOption(i),
+                            onTap: () => widget.onSelectOption(i),
                           ),
                         ],
                       ],
@@ -796,8 +910,11 @@ class _RunnerView extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: narrow ? 8 : 12),
+          // Stays pinned even while typing: it is what you reach for once the
+          // answer is in, and it is small enough to afford above the keyboard.
           Row(
+            key: const ValueKey('runner-nav'),
             children: [
               LumaGhostButton(
                 label: 'Vorige',
@@ -819,7 +936,7 @@ class _RunnerView extends StatelessWidget {
                 ),
             ],
           ),
-          if (!isLast) ...[
+          if (!isLast && !typing) ...[
             const SizedBox(height: 8),
             Align(
               alignment: Alignment.centerRight,
@@ -1113,8 +1230,12 @@ class _ReviewViewState extends State<_ReviewView> {
         if (!_onlyMistakes || !r.isCorrect(i)) i,
     ];
 
+    final narrow = context.isPhoneWidth;
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+      padding: narrow
+          ? const EdgeInsets.fromLTRB(14, 4, 14, 24)
+          : const EdgeInsets.fromLTRB(24, 8, 24, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -1193,14 +1314,17 @@ class _ReviewViewState extends State<_ReviewView> {
             ),
           ),
           const SizedBox(height: 16),
-          Row(
+          // Wrap, not Row: the two labels are Dutch and long, and on a narrow
+          // phone they would run off the right edge side by side.
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
             children: [
               LumaPrimaryButton(
                 label: 'Nieuwe toets',
                 icon: Icons.refresh_rounded,
                 onTap: widget.onRetry,
               ),
-              const SizedBox(width: 10),
               LumaGhostButton(
                 label: 'Ander vak',
                 icon: Icons.grid_view_rounded,

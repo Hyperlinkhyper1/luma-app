@@ -1044,7 +1044,7 @@ class _HistoryTab extends StatelessWidget {
           style: TextStyle(color: luma.textPrimary, fontSize: 16),
         ),
         content: SizedBox(
-          width: 360,
+          width: lumaDialogWidth(ctx, 360),
           child: entry.records.isEmpty
               ? Text('No records.', style: TextStyle(color: luma.textMuted))
               : SingleChildScrollView(

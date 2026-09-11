@@ -617,7 +617,7 @@ class _ProductEditorDialogState extends State<_ProductEditorDialog> {
         style: TextStyle(color: luma.textPrimary, fontSize: 16),
       ),
       content: SizedBox(
-        width: 340,
+        width: lumaDialogWidth(context, 340),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
