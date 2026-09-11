@@ -181,13 +181,45 @@ class StorageGuardService extends ChangeNotifier {
 
   static String _categoryName(String rootPath, String filePath) {
     final segments = _relativeSegments(rootPath, filePath);
-    if (segments.length < 2) return 'App data';
+    if (segments.length < 2) {
+      return _rootFileCategory(segments.isEmpty ? '' : segments.first);
+    }
 
-    final words = segments.first.split(RegExp(r'[_-]+'));
-    return words
+    return _prettify(segments.first);
+  }
+
+  static String _rootFileCategory(String filename) {
+    var base = filename;
+    // Drift sidecars share the main db's category (foo.sqlite-wal → foo).
+    base = base.split('.').first;
+    for (var stripped = true; stripped;) {
+      stripped = false;
+      for (final suffix in ['-wal', '-shm', '-journal']) {
+        if (base.toLowerCase().endsWith(suffix)) {
+          base = base.substring(0, base.length - suffix.length);
+          stripped = true;
+        }
+      }
+    }
+    final words = base
+        .split(RegExp(r'[_-]+'))
+        .where((word) => word.isNotEmpty)
+        .toList();
+    // Drop the generic app prefix: luma_finance → Finance.
+    if (words.length > 1 && words.first.toLowerCase() == 'luma') {
+      words.removeAt(0);
+    }
+    if (words.isEmpty) return 'App data';
+    return _prettify(words.join('_'));
+  }
+
+  static String _prettify(String raw) {
+    final words = raw.split(RegExp(r'[_-]+'));
+    final titled = words
         .where((word) => word.isNotEmpty)
         .map((word) => '${word[0].toUpperCase()}${word.substring(1)}')
         .join(' ');
+    return titled.isEmpty ? 'App data' : titled;
   }
 
   /// Schedules a debounced [refresh] shortly after a guarded write succeeds —
@@ -221,6 +253,8 @@ class _StorageAccumulator {
   final _bytesByCategory = <String, int>{};
   int totalBytes = 0;
 
+  static const maxCategories = 8;
+
   void add(String path, int bytes) {
     if (StorageGuardService._isExcluded(rootPath, path)) return;
     final category = StorageGuardService._categoryName(rootPath, path);
@@ -236,7 +270,16 @@ class _StorageAccumulator {
         final sizeOrder = b.bytes.compareTo(a.bytes);
         return sizeOrder == 0 ? a.name.compareTo(b.name) : sizeOrder;
       });
-    return List.unmodifiable(categories);
+    if (categories.length <= maxCategories) {
+      return List.unmodifiable(categories);
+    }
+    final top = categories.sublist(0, maxCategories - 1);
+    final rest = categories.sublist(maxCategories - 1);
+    final otherBytes = rest.fold<int>(0, (sum, c) => sum + c.bytes);
+    return List.unmodifiable([
+      ...top,
+      StorageCategory(name: 'Other', bytes: otherBytes),
+    ]);
   }
 }
 

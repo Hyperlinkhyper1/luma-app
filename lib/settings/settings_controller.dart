@@ -72,6 +72,8 @@ class SettingsController extends ChangeNotifier {
     required String adminPlanId,
     required int aiCallsToday,
     required String? aiCallsResetDate,
+    required int aiCheckerChecksToday,
+    required String? aiCheckerChecksResetDate,
     required String aiProviderId,
     required String aiMode,
     required Map<String, int> modelUsage,
@@ -92,6 +94,8 @@ class SettingsController extends ChangeNotifier {
         _adminPlanId = adminPlanId,
         _aiCallsToday = aiCallsToday,
         _aiCallsResetDate = aiCallsResetDate,
+        _aiCheckerChecksToday = aiCheckerChecksToday,
+        _aiCheckerChecksResetDate = aiCheckerChecksResetDate,
         _aiProviderId = aiProviderId,
         _aiMode = aiMode,
         _modelUsage = modelUsage,
@@ -132,6 +136,8 @@ class SettingsController extends ChangeNotifier {
   String _adminPlanId;
   int _aiCallsToday;
   String? _aiCallsResetDate;
+  int _aiCheckerChecksToday;
+  String? _aiCheckerChecksResetDate;
   String _aiProviderId;
   String _aiMode;
 
@@ -146,6 +152,11 @@ class SettingsController extends ChangeNotifier {
   final File? _file;
 
   static const _aiDailyCallLimit = 10;
+
+  /// Free-tier daily cap on the AI Detector's "Review" checks. There is no
+  /// billing yet — see [AiDetectorPage]'s "Go unlimited" button, which is a
+  /// placeholder that doesn't actually grant [aiCheckerUnlimited].
+  static const aiCheckerDailyCheckLimit = 3;
 
   ThemeMode get themeMode => _themeMode;
 
@@ -372,6 +383,37 @@ class SettingsController extends ChangeNotifier {
     }
   }
 
+  /// How many AI Detector checks remain today, out of
+  /// [aiCheckerDailyCheckLimit]. Resets the counter as a side effect if the
+  /// stored date has rolled over.
+  int get aiCheckerChecksRemainingToday {
+    _rolloverAiCheckerChecksIfNeeded();
+    return (aiCheckerDailyCheckLimit - _aiCheckerChecksToday)
+        .clamp(0, aiCheckerDailyCheckLimit);
+  }
+
+  /// Whether another AI Detector check can be run today.
+  bool get canRunAiCheckerCheck {
+    _rolloverAiCheckerChecksIfNeeded();
+    return _aiCheckerChecksToday < aiCheckerDailyCheckLimit;
+  }
+
+  /// Records that an AI Detector check was run. Call only once per actual
+  /// "Review" run.
+  void recordAiCheckerCheck() {
+    _rolloverAiCheckerChecksIfNeeded();
+    _aiCheckerChecksToday++;
+    _changed();
+  }
+
+  void _rolloverAiCheckerChecksIfNeeded() {
+    final today = _todayIso();
+    if (_aiCheckerChecksResetDate != today) {
+      _aiCheckerChecksResetDate = today;
+      _aiCheckerChecksToday = 0;
+    }
+  }
+
   static String _todayIso() {
     final now = DateTime.now();
     String two(int n) => n.toString().padLeft(2, '0');
@@ -463,6 +505,8 @@ class SettingsController extends ChangeNotifier {
     _planExpiresAt = null;
     _aiCallsToday = 0;
     _aiCallsResetDate = null;
+    _aiCheckerChecksToday = 0;
+    _aiCheckerChecksResetDate = null;
     _aiProviderId = 'anthropic';
     _aiMode = 'normal';
     _modelUsage = const {};
@@ -540,6 +584,8 @@ class SettingsController extends ChangeNotifier {
         'adminPlanId': _adminPlanId,
         'aiCallsToday': _aiCallsToday,
         'aiCallsResetDate': _aiCallsResetDate,
+        'aiCheckerChecksToday': _aiCheckerChecksToday,
+        'aiCheckerChecksResetDate': _aiCheckerChecksResetDate,
         'aiProviderId': _aiProviderId,
         'aiMode': _aiMode,
         'modelUsage': _modelUsage,
@@ -584,6 +630,8 @@ class SettingsController extends ChangeNotifier {
       adminPlanId: data['adminPlanId'] as String? ?? 'core',
       aiCallsToday: data['aiCallsToday'] as int? ?? 0,
       aiCallsResetDate: data['aiCallsResetDate'] as String?,
+      aiCheckerChecksToday: data['aiCheckerChecksToday'] as int? ?? 0,
+      aiCheckerChecksResetDate: data['aiCheckerChecksResetDate'] as String?,
       aiProviderId: data['aiProviderId'] as String? ?? 'anthropic',
       aiMode: data['aiMode'] as String? ?? 'normal',
       modelUsage: _parseModelUsage(data['modelUsage']),

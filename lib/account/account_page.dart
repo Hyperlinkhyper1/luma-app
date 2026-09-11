@@ -333,6 +333,8 @@ class _StorageHeader extends StatelessWidget {
       '${StorageGuardService.formatBytes(limit)} used',
       style: TextStyle(color: luma.textMuted, fontSize: 12),
       textAlign: TextAlign.end,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
     );
     final title = Text(
       'Local storage',
@@ -341,6 +343,8 @@ class _StorageHeader extends StatelessWidget {
         fontSize: 13,
         fontWeight: FontWeight.w600,
       ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
     );
     final chevron = AnimatedRotation(
       turns: expanded ? 0.5 : 0,
@@ -358,7 +362,7 @@ class _StorageHeader extends StatelessWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(children: [title, const Spacer(), chevron]),
+              Row(children: [Expanded(child: title), chevron]),
               const SizedBox(height: 4),
               Align(alignment: Alignment.centerRight, child: summary),
             ],
@@ -367,7 +371,7 @@ class _StorageHeader extends StatelessWidget {
         return Row(
           children: [
             Expanded(child: title),
-            Flexible(child: summary),
+            summary,
             const SizedBox(width: 6),
             chevron,
           ],
@@ -437,15 +441,13 @@ class _StorageCategoryRow extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                StorageGuardService.formatBytes(category.bytes),
-                style: TextStyle(color: luma.textMuted, fontSize: 12),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.end,
-              ),
+            const SizedBox(width: 12),
+            Text(
+              StorageGuardService.formatBytes(category.bytes),
+              style: TextStyle(color: luma.textMuted, fontSize: 12),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.end,
             ),
           ],
         ),

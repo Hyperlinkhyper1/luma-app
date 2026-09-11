@@ -13,7 +13,7 @@ void main() {
     final root = separator == r'\' ? r'C:\luma-support' : '/luma-support';
     String path(String relative) => '$root$separator$relative';
 
-    test('sorts categories largest first and groups root files as app data', () {
+    test('sorts categories largest first and names root files individually', () {
       final categories = StorageGuardService.aggregateCategories(
         rootPath: root,
         entries: [
@@ -27,8 +27,44 @@ void main() {
       expect(categories, [
         const StorageCategory(name: 'Finance', bytes: 700),
         const StorageCategory(name: 'Plugins', bytes: 300),
-        const StorageCategory(name: 'App data', bytes: 20),
+        const StorageCategory(name: 'Notes', bytes: 20),
       ]);
+    });
+
+    test('strips the luma prefix and groups sqlite sidecars together', () {
+      final categories = StorageGuardService.aggregateCategories(
+        rootPath: root,
+        entries: [
+          StorageFileEntry(path: path('luma_finance.sqlite'), bytes: 500),
+          StorageFileEntry(path: path('luma_finance.sqlite-wal'), bytes: 200),
+          StorageFileEntry(path: path('luma_finance.sqlite-shm'), bytes: 100),
+          StorageFileEntry(path: path('luma_chat.sqlite'), bytes: 300),
+        ],
+      );
+
+      expect(categories, [
+        const StorageCategory(name: 'Finance', bytes: 800),
+        const StorageCategory(name: 'Chat', bytes: 300),
+      ]);
+    });
+
+    test('caps the breakdown at 8 lines with the rest grouped as other', () {
+      final entries = [
+        for (var i = 0; i < 10; i++)
+          StorageFileEntry(path: path('luma_db$i.sqlite'), bytes: 100 - i * 10),
+      ];
+      final categories = StorageGuardService.aggregateCategories(
+        rootPath: root,
+        entries: entries,
+      );
+
+      expect(categories.length, 8);
+      expect(categories.first.name, 'Db0');
+      expect(categories.last.name, 'Other');
+      expect(
+        categories.last.bytes,
+        entries.sublist(7).fold<int>(0, (sum, e) => sum + e.bytes),
+      );
     });
 
     test('excludes ignored directories and log files from the breakdown', () {
@@ -44,7 +80,7 @@ void main() {
       );
 
       expect(categories, [
-        const StorageCategory(name: 'App data', bytes: 20),
+        const StorageCategory(name: 'Notes', bytes: 20),
       ]);
     });
   });
