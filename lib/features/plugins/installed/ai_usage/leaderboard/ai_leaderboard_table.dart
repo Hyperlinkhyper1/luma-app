@@ -13,9 +13,9 @@ import 'ai_model_detail_page.dart';
 /// The Leaderboard's **Table** view: every model the luma server knows
 /// about, ranked, with the ratings and the running costs side by side.
 ///
-/// Works with no account: a snapshot ships in the app bundle, and devices with
-/// an approved account quietly swap in a fresher copy from the server (see
-/// [AiCatalogRepository]).
+/// The catalogue lives on the server: devices with an approved account
+/// download it and cache it (see [AiCatalogRepository]), and devices without
+/// one get an empty state pointing at sign-in instead of numbers.
 class AiLeaderboardTableView extends StatefulWidget {
   const AiLeaderboardTableView({super.key});
 
@@ -91,9 +91,9 @@ class _AiLeaderboardTableViewState extends State<AiLeaderboardTableView> {
               subtitle: repo.canRefresh
                   ? 'The leaderboard could not be loaded. Try again, or ask '
                       'the server operator to refresh the model catalogue.'
-                  : 'The bundled model list could not be read. Signing in to '
-                      'an approved luma account lets the app download a fresh '
-                      'copy instead.',
+                  : 'The leaderboard downloads from the luma server. Sign in '
+                      'to an approved account to fetch it — it stays cached '
+                      'for offline viewing afterwards.',
               action: LumaGhostButton(
                 label: repo.refreshing ? 'Refreshing…' : 'Retry',
                 icon: Icons.refresh_rounded,
@@ -291,7 +291,7 @@ class _FreshnessLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final origin = switch (repo.source) {
-      AiCatalogSource.bundled => 'shipped with this version',
+      AiCatalogSource.none => 'not loaded yet',
       AiCatalogSource.cached => 'from your last sync',
       AiCatalogSource.server => 'from the luma server',
     };

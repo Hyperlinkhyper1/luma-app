@@ -140,10 +140,7 @@ flutter:
     - assets/transport_tracker/vendor/
     - assets/security/
     - assets/world/
-    - assets/ai_models/
     - assets/device_health/
-    - assets/tests/
-    - assets/tests/previews/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

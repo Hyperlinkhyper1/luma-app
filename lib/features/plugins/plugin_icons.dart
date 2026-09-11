@@ -75,6 +75,10 @@ IconData pluginIconFor(String? name) {
       return Icons.fact_check_rounded;
     case 'health_and_safety':
       return Icons.health_and_safety_rounded;
+    case 'psychology':
+      return Icons.psychology_rounded;
+    case 'hub':
+      return Icons.hub_rounded;
     case 'account_circle':
       return Icons.account_circle_rounded;
     default:

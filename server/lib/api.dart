@@ -7,6 +7,7 @@ import 'package:crypto/crypto.dart' as c;
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 
+import 'ai_benchmark_store.dart';
 import 'ai_model_catalog.dart';
 import 'ai_model_refresh.dart';
 import 'ai_usage_store.dart';
@@ -282,6 +283,7 @@ class Api {
   /// resolves an identity without a round trip to Google or GitHub.
   Api(this.store, this.config, this.mailer, this.familyStore, this.chatStore,
       this.aiUsage, this.subwayStore, this.recipeStore, this.aiCatalog,
+      this.aiBenchmarks,
       {OAuthClient? oauthClient})
       : _oauthClient = oauthClient ?? OAuthClient(),
         _authLimiter = RateLimiter(
@@ -320,6 +322,7 @@ class Api {
   final SubwayStore subwayStore;
   final RecipeStore recipeStore;
   final AiModelCatalogStore aiCatalog;
+  final AiBenchmarkStore aiBenchmarks;
   final SubwayRelay _subwayRelay = SubwayRelay();
   final SubwayTicketStore _subwayTickets = SubwayTicketStore();
 
@@ -442,6 +445,10 @@ class Api {
       ..post('/api/v1/chat/conversations/<id>/messages',
           _requireAuth(_sendChatMessage))
       ..get('/api/v1/ai-models', _requireAuth(_listAiModels))
+      ..get('/api/v1/ai-benchmarks', _requireAuth(_listAiBenchmarks))
+      ..get('/api/v1/ai-benchmarks/scene/<id>', _requireAuth(_getAiBenchmarkScene))
+      ..get('/api/v1/ai-benchmarks/preview/<id>', _requireAuth(_getAiBenchmarkPreview))
+      ..get('/api/v1/ai-benchmarks/fallback/<file>', _requireAuth(_getAiBenchmarkFallback))
       ..get('/api/v1/recipes', _requireAuth(_listPublicRecipes))
       ..post('/api/v1/recipes', _requireAuth(_publishRecipe))
       ..get('/api/v1/recipes/media/<photoId>', _requireAuth(_getRecipeMedia))
@@ -2335,6 +2342,88 @@ class Api {
     );
   }
 
+  /// The benchmark roster: which scenes exist, how big they are and what hash
+  /// the client should expect. Public data like the model catalogue, served in
+  /// the clear but still behind [_requireAuth] — the app may not talk to a
+  /// luma server at all before its account is approved.
+  ///
+  /// Scenes used to ship inside the app bundle, where megabytes of HTML made
+  /// every install bigger. They live here now; the app downloads each scene
+  /// on demand and caches it on disk.
+  Future<Response> _listAiBenchmarks(Request request, StoredUser user) async {
+    final manifest = await aiBenchmarks.manifest();
+    if (request.headers['if-none-match'] == manifest.etag) {
+      return Response.notModified(headers: {'ETag': manifest.etag});
+    }
+    return Response(
+      200,
+      body: jsonEncode(manifest.json),
+      headers: {
+        'Content-Type': 'application/json',
+        'ETag': manifest.etag,
+        'Cache-Control': 'no-cache',
+      },
+    );
+  }
+
+  /// One benchmark scene as self-contained HTML. The client verifies the
+  /// SHA-256 from the manifest before pointing a WebView at it.
+  Future<Response> _getAiBenchmarkScene(
+      Request request, StoredUser user) async {
+    final id = request.params['id']!;
+    if (!AiBenchmarkStore.idPattern.hasMatch(id)) {
+      return errorResponse(400, 'bad_benchmark_id', 'Invalid benchmark id.');
+    }
+    final scene = await aiBenchmarks.readScene(id);
+    if (scene == null) {
+      return errorResponse(404, 'not_found', 'No such benchmark scene.');
+    }
+    if (request.headers['if-none-match'] == scene.etag) {
+      return Response.notModified(headers: {'ETag': scene.etag});
+    }
+    return Response(200, body: scene.bytes, headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'ETag': scene.etag,
+      'Cache-Control': 'private, max-age=3600',
+    });
+  }
+
+  /// A scene's PNG preview for the model cards. Scenes without their own
+  /// preview 404 here and the client falls back to the kind's generic artwork.
+  Future<Response> _getAiBenchmarkPreview(
+      Request request, StoredUser user) async {
+    final id = request.params['id']!;
+    if (!AiBenchmarkStore.idPattern.hasMatch(id)) {
+      return errorResponse(400, 'bad_benchmark_id', 'Invalid benchmark id.');
+    }
+    final preview = await aiBenchmarks.readPreview(id);
+    if (preview == null) {
+      return errorResponse(404, 'not_found', 'No preview for this benchmark.');
+    }
+    return Response(200, body: preview.bytes, headers: {
+      'Content-Type': 'image/png',
+      'ETag': preview.etag,
+      'Cache-Control': 'private, max-age=86400',
+    });
+  }
+
+  /// Generic tile artwork (see `AiBenchmarkStore.fallbackPreviews`), e.g. the
+  /// Pagoda tile image. Only files actually present in the previews directory
+  /// are served.
+  Future<Response> _getAiBenchmarkFallback(
+      Request request, StoredUser user) async {
+    final file = request.params['file']!;
+    final fallback = await aiBenchmarks.readFallback(file);
+    if (fallback == null) {
+      return errorResponse(404, 'not_found', 'No such artwork file.');
+    }
+    return Response(200, body: fallback.bytes, headers: {
+      'Content-Type': 'image/png',
+      'ETag': fallback.etag,
+      'Cache-Control': 'private, max-age=86400',
+    });
+  }
+
   /// Rebuilds the catalogue from OpenRouter, Artificial Analysis and Hugging
   /// Face, and re-polls the news feeds.
   ///
@@ -3860,6 +3949,11 @@ class Api {
         'bytes': await dirBytes('subway_state')
       },
       {'id': 'ai_models', 'label': 'AI models', 'bytes': await fileBytes('ai_models.json')},
+      {
+        'id': 'ai_benchmarks',
+        'label': 'AI benchmark scenes',
+        'bytes': await dirBytes('ai_benchmarks')
+      },
       {'id': 'ai_usage', 'label': 'AI usage', 'bytes': await fileBytes('ai_usage.json')},
       {
         'id': 'admin_sessions',

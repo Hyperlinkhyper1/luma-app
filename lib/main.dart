@@ -23,6 +23,8 @@ import 'features/plugins/installed/ai_usage/ai_usage_repository.dart';
 import 'features/plugins/installed/ai_usage/ai_usage_scope.dart';
 import 'features/plugins/installed/ai_usage/leaderboard/ai_catalog_repository.dart';
 import 'features/plugins/installed/ai_usage/leaderboard/ai_catalog_scope.dart';
+import 'features/plugins/installed/ai_usage/tests/ai_benchmark_repository.dart';
+import 'features/plugins/installed/ai_usage/tests/ai_benchmark_scope.dart';
 import 'features/plugins/installed/steam_tools/data/steam_database.dart';
 import 'features/plugins/installed/steam_tools/steam_repository.dart';
 import 'features/plugins/installed/steam_tools/steam_scope.dart';
@@ -181,6 +183,8 @@ class _LumaAppState extends State<LumaApp> {
       Cs2MarketRepository(_steamDb);
   late final AiCatalogRepository _aiCatalogRepository =
       AiCatalogRepository(_sync);
+  late final AiBenchmarkRepository _aiBenchmarkRepository =
+      AiBenchmarkRepository(_sync);
   late final SchoolDatabase _schoolDb = SchoolDatabase();
   late final SchoolRepository _schoolRepository = SchoolRepository(_schoolDb);
   late final MindMapDatabase _mindMapDb = MindMapDatabase();
@@ -579,6 +583,8 @@ class _LumaAppState extends State<LumaApp> {
                       repository: _moodJournalRepository,
                       child: AiCatalogScope(
                       repository: _aiCatalogRepository,
+                      child: AiBenchmarkScope(
+                      repository: _aiBenchmarkRepository,
                       child: SteamScope(
                       repository: _steamRepository,
                       child: Cs2MarketScope(
@@ -643,6 +649,7 @@ class _LumaAppState extends State<LumaApp> {
                           ),
                         );
                       },
+                    ),
                     ),
                     ),
                     ),

@@ -2,14 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:luma/features/plugins/installed/ai_usage/ai_usage_shell.dart';
+import 'package:luma/features/plugins/installed/ai_usage/tests/ai_benchmark.dart';
+import 'package:luma/features/plugins/installed/ai_usage/tests/ai_benchmark_repository.dart';
+import 'package:luma/features/plugins/installed/ai_usage/tests/ai_benchmark_scope.dart';
 import 'package:luma/features/plugins/installed/ai_usage/tests/hero_tile.dart';
 import 'package:luma/features/plugins/installed/ai_usage/tests/pagoda_test_page.dart';
 import 'package:luma/features/plugins/installed/ai_usage/tests/tests_tab.dart';
 import 'package:luma/theme/luma_theme.dart';
 
-Widget _app() => MaterialApp(
-      theme: LumaTheme.dark,
-      home: const Scaffold(body: TestsTab()),
+/// Benchmark tile art downloads from the luma server now — nothing ships in
+/// the bundle — so the tab starts with no roster and both tiles render their
+/// gradient stand-in.
+///
+/// The scope sits above [MaterialApp] (as in `main.dart`) so pages pushed by
+/// the tiles still see the repository.
+Widget _app({AiBenchmarkManifest manifest = AiBenchmarkManifest.empty}) =>
+    AiBenchmarkScope(
+      repository: AiBenchmarkRepository.withManifest(manifest),
+      child: MaterialApp(
+        theme: LumaTheme.dark,
+        home: const Scaffold(body: TestsTab()),
+      ),
     );
 
 void main() {
@@ -26,8 +39,9 @@ void main() {
 
     expect(find.text('Pagoda Test'), findsOneWidget);
     expect(find.text('Engine Test'), findsOneWidget);
-    // Both tiles currently share the same subtitle.
-    expect(find.text('Open the test screen'), findsNWidgets(2));
+    expect(find.text('PC Test'), findsOneWidget);
+    // All three tiles currently share the same subtitle.
+    expect(find.text('Open the test screen'), findsNWidgets(3));
   });
 
   testWidgets('the whole tile is one button that opens the test screen',
@@ -41,17 +55,29 @@ void main() {
     expect(find.byType(PagodaTestPage), findsOneWidget);
   });
 
-  // Engine Test's artwork hasn't been dropped into assets/tests/ yet, so this
-  // exercises the missing-image path: the tile must still draw its wash and
-  // its label rather than throwing.
-  testWidgets('a tile with no artwork yet still renders', (tester) async {
+  // With no roster the tiles show their gradient stand-in rather than
+  // throwing: the tab must look deliberate with no account at all.
+  testWidgets('tiles with no downloaded artwork yet still render',
+      (tester) async {
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
     expect(find.byIcon(Icons.precision_manufacturing_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.temple_buddhist_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.computer_rounded), findsOneWidget);
     expect(find.text('Pagoda Test'), findsOneWidget);
     expect(find.text('Engine Test'), findsOneWidget);
+    expect(find.text('PC Test'), findsOneWidget);
+  });
+
+  testWidgets('a test page with no roster explains itself', (tester) async {
+    await tester.pumpWidget(_app());
+    await tester.tap(find.widgetWithText(LumaHeroTile, 'Pagoda Test'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No benchmarks yet'), findsOneWidget);
+    expect(find.textContaining('approved account'), findsOneWidget);
   });
 
   test('the wash goes opaque exactly at the bottom third', () {

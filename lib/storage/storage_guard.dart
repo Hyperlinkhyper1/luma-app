@@ -66,10 +66,13 @@ class StorageGuardService extends ChangeNotifier {
   /// over its cap with one file. It has its own size readout in the plugin
   /// instead.
   /// `ai_catalog_cache` is the AI Usage plugin's downloaded copy of the model
-  /// leaderboard: a few hundred KB that is byte-identical for every user,
-  /// re-fetchable from the server, and already shipped in the app bundle —
-  /// counting it would spend a twentieth of a Core plan's 5 MB cap on data
-  /// the user never created.
+  /// leaderboard: a few hundred KB that is byte-identical for every user and
+  /// re-fetchable from the server — counting it would spend a twentieth of a
+  /// Core plan's 5 MB cap on data the user never created.
+  /// `ai_benchmarks_cache` is the same plugin's downloaded benchmark scenes
+  /// and previews: megabytes of HTML the app fetches on demand from the
+  /// server, identical for every user. Without the exclusion, opening one
+  /// benchmark would put a Core device over its cap on its own.
   static const _excludedDirNames = {
     'tools',
     'ffmpeg',
@@ -77,6 +80,7 @@ class StorageGuardService extends ChangeNotifier {
     'gallery_cache',
     'luma_shared',
     'ai_catalog_cache',
+    'ai_benchmarks_cache',
   };
 
   int _limitBytes = _defaultLimitBytes;

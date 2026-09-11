@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEBULA FORGE — 3D PC Benchmark</title>
+<style>
+:root{ --accent:#00e5ff; --bg:#05070c; }
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;color:#e8eef6;}
+#bg{position:fixed;inset:0;background:radial-gradient(1200px 800px at 70% 20%,#122033 0%,#080b12 45%,#030407 100%);}
+#bg::after{content:"";position:absolute;inset:0;background:radial-gradient(600px 300px at 50% 90%,color-mix(in srgb,var(--accent) 14%,transparent),transparent 70%);transition:background .3s;}
+#scene{position:fixed;inset:0;display:block;touch-action:none;cursor:grab;}
+#scene:active{cursor:grabbing;}
+.pill{position:fixed;z-index:10;background:rgba(10,15,24,.72);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.5);}
+#brand{top:16px;left:16px;padding:12px 16px;max-width:340px;border-left:3px solid var(--accent);}
+#brand h1{margin:0;font-size:15px;letter-spacing:.22em;font-weight:800;}
+#brand h1 span{color:var(--accent);}
+#brand p{margin:6px 0 0;font-size:12px;opacity:.72;line-height:1.5;}
+#brand .specs{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;}
+#brand .specs b{font-size:10px;font-weight:700;letter-spacing:.08em;padding:4px 8px;border-radius:99px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);}
+#stats{top:16px;right:16px;padding:10px 14px;font-size:11px;display:flex;gap:14px;align-items:center;letter-spacing:.06em;}
+#stats b{font-size:14px;display:block;}
+#stats small{opacity:.6;font-size:10px;letter-spacing:.14em;}
+.dot{width:9px;height:9px;border-radius:99px;background:#ff3b5c;box-shadow:0 0 12px #ff3b5c;}
+.dot.on{background:#3bff9e;box-shadow:0 0 12px #3bff9e;}
+#hint{left:16px;bottom:16px;padding:9px 14px;font-size:11.5px;opacity:.9;}
+#hint kbd{background:rgba(255,255,255,.1);padding:1px 6px;border-radius:6px;font-size:11px;border:1px solid rgba(255,255,255,.15);}
+#info{left:50%;transform:translateX(-50%) translateY(20px);bottom:18px;padding:12px 18px;min-width:280px;max-width:min(520px,90vw);text-align:center;opacity:0;pointer-events:none;transition:.3s;}
+#info.show{opacity:1;transform:translateX(-50%) translateY(0);}
+#info h3{margin:0;font-size:13px;letter-spacing:.18em;color:var(--accent);}
+#info p{margin:6px 0 0;font-size:12.5px;opacity:.8;line-height:1.5;}
+#hud{position:fixed;z-index:20;right:16px;bottom:16px;width:296px;background:rgba(9,13,21,.82);border:1px solid rgba(255,255,255,.13);border-radius:18px;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 20px 60px rgba(0,0,0,.6),0 0 0 1px rgba(0,0,0,.4),0 0 32px color-mix(in srgb,var(--accent) 18%,transparent);overflow:hidden;}
+#hud header{display:flex;align-items:center;gap:10px;padding:13px 15px 11px;border-bottom:1px solid rgba(255,255,255,.08);}
+#hud header .pw-mini{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:color-mix(in srgb,var(--accent) 18%,#111);border:1px solid color-mix(in srgb,var(--accent) 50%,transparent);color:var(--accent);font-size:16px;font-weight:800;}
+#hud header div{flex:1;} #hud header strong{font-size:12px;letter-spacing:.18em;display:block;}
+#hud header span{font-size:11px;opacity:.65;}
+#hud .body{padding:12px 14px 14px;display:flex;flex-direction:column;gap:12px;max-height:min(62vh,560px);overflow:auto;}
+.row{display:flex;gap:10px;align-items:center;}
+#powerBtn{width:62px;height:62px;border-radius:99px;border:2px solid rgba(255,255,255,.18);background:radial-gradient(circle at 35% 30%,#2a3446,#0d1119 70%);color:#8a94a8;font-size:24px;cursor:pointer;transition:.2s;flex-shrink:0;position:relative;}
+#powerBtn:hover{transform:scale(1.05);}
+#powerBtn.on{color:#fff;border-color:var(--accent);box-shadow:0 0 18px var(--accent),0 0 46px color-mix(in srgb,var(--accent) 50%,transparent),inset 0 0 14px color-mix(in srgb,var(--accent) 40%,transparent);}
+#powerBtn::after{content:"";position:absolute;inset:-7px;border-radius:99px;border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);opacity:0;transition:.3s;}
+#powerBtn.on::after{opacity:1;animation:ping 1.8s infinite;}
+@keyframes ping{0%{transform:scale(.9);opacity:.8}100%{transform:scale(1.15);opacity:0}}
+.pw-text{flex:1;} .pw-text strong{font-size:13px;letter-spacing:.1em;} .pw-text small{display:block;font-size:11px;opacity:.6;margin-top:2px;}
+#bootlog{font-family:Consolas,monospace;font-size:10.5px;background:#060a11;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:8px 10px;min-height:34px;line-height:1.6;color:#9fefff;}
+.ctl label{font-size:10px;letter-spacing:.16em;opacity:.65;display:flex;justify-content:space-between;margin-bottom:6px;font-weight:700;}
+.ctl label output{color:var(--accent);opacity:1;}
+input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
+.rgbrow{display:flex;gap:10px;align-items:center;}
+#rgbPick{width:52px;height:38px;border:none;border-radius:10px;background:none;cursor:pointer;padding:0;}
+#rgbPick::-webkit-color-swatch-wrapper{padding:0;} #rgbPick::-webkit-color-swatch{border:2px solid rgba(255,255,255,.25);border-radius:10px;}
+#hex{font-family:monospace;font-size:12px;background:rgba(255,255,255,.06);padding:7px 10px;border-radius:9px;border:1px solid rgba(255,255,255,.1);flex:1;text-align:center;letter-spacing:.1em;}
+.modes{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;}
+.modes button,.vbtns button,.tbtn{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#d6deea;font-size:10.5px;font-weight:700;letter-spacing:.06em;padding:8px 4px;border-radius:9px;cursor:pointer;transition:.15s;}
+.modes button:hover,.vbtns button:hover,.tbtn:hover{background:rgba(255,255,255,.11);}
+.modes button.act{background:color-mix(in srgb,var(--accent) 25%,#111);border-color:var(--accent);color:#fff;box-shadow:0 0 12px color-mix(in srgb,var(--accent) 40%,transparent);}
+.vbtns{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;}
+.toggles{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.tbtn.on{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent);}
+#stressBtn.on{border-color:#ff3b5c;color:#ff8ba0;background:rgba(255,59,92,.12);box-shadow:0 0 14px rgba(255,59,92,.35);}
+.temps{display:flex;gap:8px;} .temps div{flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:7px 10px;text-align:center;}
+.temps b{font-size:15px;} .temps small{display:block;font-size:9px;letter-spacing:.16em;opacity:.6;}
+#loader{position:fixed;inset:0;z-index:50;background:#04060b;display:grid;place-items:center;transition:opacity .6s;}
+#loader.hide{opacity:0;pointer-events:none;}
+#loader div{text-align:center;} #loader h2{letter-spacing:.4em;font-size:14px;} #loader h2 span{color:var(--accent);}
+.bar{width:220px;height:3px;background:rgba(255,255,255,.1);border-radius:99px;margin:14px auto 0;overflow:hidden;}
+.bar i{display:block;height:100%;width:40%;background:var(--accent);border-radius:99px;animation:slide 1s infinite alternate;}
+@keyframes slide{to{margin-left:60%}}
+@media(max-width:760px){#brand{max-width:230px}#brand p,#hint{display:none}#hud{width:min(296px,calc(100vw - 32px))}#stats{display:none}}
+</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
+</head>
+<body>
+<div id="bg"></div>
+<canvas id="scene"></canvas>
+<div id="brand" class="pill"><h1>NEBULA <span>FORGE</span> // MK-IV</h1><p>Custom loop-glass mid tower. RTX Nova 24GB · 8-core · 64GB DDR5 · 2×2TB NVMe · 1000W Platinum.</p><div class="specs"><b>◆ TEMPERED GLASS</b><b>◉ 7× ARGB FANS</b><b>⬢ 360 AIO LCD</b></div></div>
+<div id="stats" class="pill"><span class="dot" id="statusDot"></span><span><small>STATUS</small><b id="statusTxt">OFFLINE</b></span><span><small>FPS</small><b id="fps">—</b></span><span><small>GPU</small><b id="statGpu">24°</b></span></div>
+<div id="hint" class="pill">Drag to orbit · Scroll to zoom · Right-drag to pan · <kbd>Space</kbd> power · Click parts for specs · Click top case button</div>
+<div id="info" class="pill"><h3 id="infoT">—</h3><p id="infoD">—</p></div>
+<div id="hud">
+<header><div class="pw-mini">⬢</div><div><strong>LUMA CONTROL DECK</strong><span id="subStatus">system offline · press power</span></div></header>
+<div class="body">
+<div class="row"><button id="powerBtn" title="Power">⏻</button><div class="pw-text"><strong id="pwLabel">POWER OFF</strong><small>Cold boot · staged spin-up · LCD POST</small><div id="bootlog">> standby… 5VSB ok</div></div></div>
+<div class="ctl"><label>RGB COLOR · ANY COLOR <output id="hexOut">#00E5FF</output></label><div class="rgbrow"><input type="color" id="rgbPick" value="#00e5ff"><div id="hex">#00E5FF</div></div></div>
+<div class="modes"><button data-m="static">STATIC</button><button data-m="breath">BREATH</button><button data-m="wave" class="act">WAVE</button><button data-m="rainbow">RAINBOW</button></div>
+<div class="ctl"><label>FAN CURVE <output id="fanOut">55%</output></label><input type="range" id="fan" min="5" max="100" value="55"></div>
+<div class="ctl"><label>NEON INTENSITY <output id="glowOut">100%</output></label><input type="range" id="glow" min="10" max="200" value="100"></div>
+<div class="temps"><div><small>CPU</small><b id="cpuT">24.0°</b></div><div><small>GPU</small><b id="gpuT">24.0°</b></div><div><small>COOLANT</small><b id="liqT">23.5°</b></div></div>
+<div class="vbtns"><button data-v="side">GLASS</button><button data-v="front">FRONT</button><button data-v="top">TOP</button><button data-v="cine">CINE</button></div>
+<div class="toggles"><button class="tbtn on" id="glassBtn">◈ GLASS ON</button><button class="tbtn on" id="orbitBtn">⟳ ORBIT OFF</button><button class="tbtn on" id="screenBtn">▣ SCREENS</button><button class="tbtn" id="stressBtn">▲ STRESS</button></div>
+</div>
+</div>
+<div id="loader"><div><h2>NEBULA <span>FORGE</span></h2><div style="font-size:11px;opacity:.6;letter-spacing:.2em">INITIALIZING RENDERER…</div><div class="bar"><i></i></div></div></div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+const canvas=document.getElementById('scene');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.12;
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+const scene=new THREE.Scene(); scene.fog=new THREE.Fog(0x05070c,16,34);
+const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,.1,100);
+camera.position.set(7.2,4.2,8.2);
+const controls=new OrbitControls(camera,canvas);
+controls.target.set(0,2.6,0); controls.enableDamping=true; controls.dampingFactor=.06;
+controls.minDistance=3.2; controls.maxDistance=18; controls.maxPolarAngle=1.52; controls.autoRotateSpeed=1.1;
+const pmrem=new THREE.PMREMGenerator(renderer);
+scene.environment=pmrem.fromScene(new RoomEnvironment(),.05).texture;
+scene.add(new THREE.HemisphereLight(0x8fb4ff,0x0a0c12,.5));
+const key=new THREE.SpotLight(0xffffff,180,30,Math.PI/5,.45,1.6); key.position.set(6,11,6); key.castShadow=true;
+key.shadow.mapSize.set(2048,2048); key.shadow.bias=-.0004; scene.add(key);
+const rim=new THREE.DirectionalLight(0x6fb7ff,1.4); rim.position.set(-7,5,-6); scene.add(rim);
+const fill=new THREE.DirectionalLight(0xffe0c0,.35); fill.position.set(-4,3,7); scene.add(fill);
+const rgbLightA=new THREE.PointLight(0x00e5ff,0,7,1.8); rgbLightA.position.set(.6,3,0); scene.add(rgbLightA);
+const rgbLightB=new THREE.PointLight(0x00e5ff,0,6,1.8); rgbLightB.position.set(-.4,1.6,1.2); scene.add(rgbLightB);
+const heatLight=new THREE.PointLight(0xff2a3c,0,5,2); heatLight.position.set(0,2.4,0); scene.add(heatLight);
+const underLight=new THREE.PointLight(0x00e5ff,0,4,2); underLight.position.set(0,.18,0); scene.add(underLight);
+// state
+const S={on:false,booting:false,rgb:new THREE.Color('#00e5ff'),mode:'wave',fan:55,glow:1,glass:true,screens:true,stress:false,orbit:false,fanCur:0,cpu:24,gpu:24,liq:23.5,time:0,bootTimers:[]};
+const rgbMats=[],rgbLights=[rgbLightA,rgbLightB,underLight];
+function regRGB(m,k=2.2){m.emissive=S.rgb.clone();m.emissiveIntensity=0;rgbMats.push({m,k});return m;}
+function setAccent(hex){S.rgb.set(hex);document.documentElement.style.setProperty('--accent',hex);document.getElementById('hex').textContent=hex.toUpperCase();document.getElementById('hexOut').textContent=hex.toUpperCase();rgbMats.forEach(o=>o.m.emissive.copy(S.rgb));rgbLights.forEach(l=>l.color.copy(S.rgb));}
+// floor
+{
+const g=new THREE.CanvasTexture(Object.assign(document.createElement('canvas'),{width:512,height:512}).getContext('2d').createPattern?(()=>{const c=document.createElement('canvas');c.width=c.height=512;const x=c.getContext('2d');const gr=x.createRadialGradient(256,256,20,256,256,256);gr.addColorStop(0,'#1a2333');gr.addColorStop(.5,'#0c111b');gr.addColorStop(1,'#04060a');x.fillStyle=gr;x.fillRect(0,0,512,512);return c;})():null); g.colorSpace=THREE.SRGBColorSpace;
+const floor=new THREE.Mesh(new THREE.CircleGeometry(16,64),new THREE.MeshStandardMaterial({map:g,roughness:.35,metalness:.6})); floor.rotation.x=-Math.PI/2; floor.receiveShadow=true; scene.add(floor);
+const grid=new THREE.GridHelper(30,60,0x1e3a55,0x111a28); grid.position.y=.01; grid.material.transparent=true; grid.material.opacity=.35; scene.add(grid);
+const mat=new THREE.MeshStandardMaterial({color:0x0d1420,roughness:.7,metalness:.3}); const desk=new THREE.Mesh(new THREE.BoxGeometry(9,.18,7),mat); desk.position.set(0,-.12,0); desk.receiveShadow=true; scene.add(desk);
+const padTex=(()=>{const c=document.createElement('canvas');c.width=512;c.height=256;const x=c.getContext('2d');x.fillStyle='#0a0f18';x.fillRect(0,0,512,256);x.strokeStyle='rgba(0,229,255,.5)';x.lineWidth=3;x.strokeRect(14,14,484,228);x.strokeStyle='rgba(255,255,255,.06)';for(let i=0;i<8;i++){x.beginPath();x.moveTo(40,60+i*20);x.lineTo(472,60+i*20);x.stroke();}const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;})();
+const pad=new THREE.Mesh(new THREE.PlaneGeometry(7.6,3.4),new THREE.MeshStandardMaterial({map:padTex,roughness:.9})); pad.rotation.x=-Math.PI/2; pad.position.y=.005; scene.add(pad);
+}
+// materials
+const M={case:new THREE.MeshStandardMaterial({color:0x141922,roughness:.42,metalness:.85}),caseIn:new THREE.MeshStandardMaterial({color:0x0b0e14,roughness:.7,metalness:.5}),trim:new THREE.MeshStandardMaterial({color:0x1f2634,roughness:.3,metalness:1}),chrome:new THREE.MeshStandardMaterial({color:0xc8d2e0,roughness:.18,metalness:1}),pcb:new THREE.MeshStandardMaterial({color:0x0e1420,roughness:.55,metalness:.4}),slot:new THREE.MeshStandardMaterial({color:0x222a3a,roughness:.5,metalness:.7}),copper:new THREE.MeshStandardMaterial({color:0xd98a4a,roughness:.3,metalness:1}),tube:new THREE.MeshStandardMaterial({color:0x11151d,roughness:.35,metalness:.6}),glass:new THREE.MeshPhysicalMaterial({color:0xbfe9ff,roughness:.06,metalness:0,transparent:true,opacity:.1,side:THREE.DoubleSide}),white:new THREE.MeshStandardMaterial({color:0xdfe7f2,roughness:.4,metalness:.2})};
+function box(w,h,d,mat,x=0,y=0,z=0,shadow=true){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,y,z);m.castShadow=shadow;m.receiveShadow=true;return m;}
+function cyl(rt,rb,h,mat,x=0,y=0,z=0,seg=28){const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg),mat);m.position.set(x,y,z);m.castShadow=true;return m;}
+const pc=new THREE.Group(); scene.add(pc);
+const W=2.4,H=5,D=4.8,T=.09,bot=.28,top=bot+H;
+const clickable=[];
+function tag(m,id,title,desc){m.userData.info={id,title,desc};clickable.push(m);}
+// shell
+pc.add(box(.12,H,D,M.case,-W/2,bot+H/2,0));
+pc.add(box(W,H,.12,M.case,0,bot+H/2,-D/2));
+pc.add(box(W,.12,D,M.case,0,top,0));
+pc.add(box(W,.12,D,M.case,0,bot,0));
+pc.add(box(W-0.2,.5,.1,M.caseIn,0,top-.35,-D/2+.2));
+const glassMesh=box(.03,H-.25,D-.25,M.glass,W/2,bot+H/2,0,false); glassMesh.castShadow=false; pc.add(glassMesh);
+[[W/2,bot+.15,D/2],[W/2,bot+.15,-D/2],[-W/2,bot+.15,D/2],[-W/2,bot+.15,-D/2]].forEach(p=>{const f=cyl(.09,.11,.3,M.trim,p[0],p[1]-.12,p[2]);pc.add(f);});
+const gfH=box(.06,H,D,M.trim,W/2,bot+H/2,D/2-.05),gf2=box(.06,H,D,M.trim,W/2,bot+H/2,-D/2+.05),gf3=box(.06,.1,D,M.trim,W/2,top-.05,0),gf4=box(.06,.1,D,M.trim,W/2,bot+.05,0);
+[gfH,gf2,gf3,gf4].forEach(m=>pc.add(m));
+// front mesh + frame
+{
+const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');x.fillStyle='#0c1018';x.fillRect(0,0,128,128);x.fillStyle='#1c2534';for(let i=0;i<8;i++)for(let j=0;j<8;j++){x.beginPath();x.arc(8+i*16,8+j*16,4.5,0,7);x.fill();}
+const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(6,10);
+const mesh=new THREE.Mesh(new THREE.BoxGeometry(W-.3,H-.4,.06),new THREE.MeshStandardMaterial({map:t,roughness:.6,metalness:.7,transparent:true,opacity:.92}));mesh.position.set(0,bot+H/2,D/2);pc.add(mesh);
+pc.add(box(W,.16,.14,M.trim,0,top-.02,D/2));pc.add(box(W,.16,.14,M.trim,0,bot+.02,D/2));
+pc.add(box(.16,H,.14,M.trim,-W/2+.02,bot+H/2,D/2));pc.add(box(.16,H,.14,M.trim,W/2-.02,bot+H/2,D/2));
+}
+// 3D power button (clickable)
+const pwrRingMat=regRGB(new THREE.MeshStandardMaterial({color:0x111111,roughness:.3,metalness:.6}),2.5);
+const pwrBtn3D=new THREE.Group(); pwrBtn3D.position.set(.65,top+.07,1.7);
+const pb=cyl(.13,.13,.06,M.trim,0,0,0); const pr=new THREE.Mesh(new THREE.TorusGeometry(.13,.022,10,40),pwrRingMat); pr.rotation.x=Math.PI/2; pr.position.y=.035;
+const pi=cyl(.045,.045,.075,new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xffffff,emissiveIntensity:0}),0,.005,0); pwrBtn3D.add(pb,pr,pi); pwrBtn3D.userData.power=true; pc.add(pwrBtn3D); clickable.push(pwrBtn3D);
+tag(pb,'power','TOP PANEL POWER','Machined aluminium button. Click it — or the HUD — to cold boot.');
+// motherboard
+const moboTex=(()=>{const c=document.createElement('canvas');c.width=512;c.height=512;const x=c.getContext('2d');x.fillStyle='#0d1320';x.fillRect(0,0,512,512);x.strokeStyle='rgba(0,229,255,.28)';x.lineWidth=2;for(let i=0;i<40;i++){x.beginPath();let px=Math.random()*512,py=Math.random()*512;x.moveTo(px,py);x.lineTo(px+(Math.random()*120-60),py);x.lineTo(px+(Math.random()*120-60),py+(Math.random()*120-60));x.stroke();}x.fillStyle='rgba(255,255,255,.75)';x.font='bold 26px monospace';x.fillText('NEBULA X670E',24,40);x.font='16px monospace';x.fillStyle='rgba(0,229,255,.8)';x.fillText('FORGE // MK-IV',24,66);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;})();
+const moboMat=new THREE.MeshStandardMaterial({map:moboTex,roughness:.5,metalness:.45});
+const mobo=box(.09,3.3,3.5,moboMat,-.98,2.95,-.2); pc.add(mobo); tag(mobo,'mobo','NEBULA X670E MOTHERBOARD','14+2 phase VRM, steel PCIe armor, 4× M.2 with graphene pads, diagnostic LED cluster.');
+for(let i=0;i<5;i++) pc.add(box(.06,.1,.5,M.slot,-.9,1.75-i*.0-.6,-.2));
+const ioShield=box(.06,.7,.9,M.chrome,-1.0,4.15,-1.2); pc.add(ioShield);
+for(let i=0;i<4;i++) pc.add(box(.04,.08,.12,M.caseIn,-.96,4.25-i*.15,-1.2));
+const vrm=box(.22,.5,1.1,M.trim,-.85,4.05,-.2); pc.add(vrm);
+for(let i=0;i<6;i++) pc.add(box(.06,.44,.1,M.slot,-.72,4.05,-.6+i*.17));
+const m2=box(.16,.16,1.1,M.trim,-.85,2.55,-.3); pc.add(m2); tag(m2,'ssd','2TB NVME GEN5 + HEATSINK','14 GB/s sequential. Anodized fin array with hidden heatpipe.');
+const m2led=regRGB(new THREE.MeshStandardMaterial({color:0x000000,roughness:.4}),1.6); const m2s=box(.02,.04,1.0,m2led,-.76,2.6,-.3,false); pc.add(m2s);
+const moboGlowMat=regRGB(new THREE.MeshStandardMaterial({color:0x050505}),2.4);
+pc.add(Object.assign(box(.02,.08,3.3,moboGlowMat,-.93,1.42,-.2,false),{}));
+const diagMat=new THREE.MeshStandardMaterial({color:0x220000,emissive:0xff2020,emissiveIntensity:0}); pc.add(Object.assign(box(.05,.06,.3,diagMat,-.9,3.0,1.35,false),{}));
+// CPU + AIO block
+const cpuB=cyl(.3,.3,.1,M.chrome,-.88,3.35,-.35,32); cpuB.rotation.z=Math.PI/2; pc.add(cpuB); tag(cpuB,'cpu','8-CORE “PULSAR” + LCD WATERBLOCK','5.8 GHz boost. 360mm radiator, ceramic pump, live temp LCD.');
+const blockBase=cyl(.36,.36,.22,M.case,-.78,3.35,-.35,40); blockBase.rotation.z=Math.PI/2; pc.add(blockBase);
+const aioRingMat=regRGB(new THREE.MeshStandardMaterial({color:0x0a0a0a,roughness:.3,metalness:.5}),3);
+const aioRing=new THREE.Mesh(new THREE.TorusGeometry(.36,.045,12,60),aioRingMat); aioRing.rotation.y=Math.PI/2; aioRing.position.set(-.66,3.35,-.35); pc.add(aioRing);
+const aioCanvas=document.createElement('canvas'); aioCanvas.width=aioCanvas.height=256; const ax=aioCanvas.getContext('2d');
+const aioTex=new THREE.CanvasTexture(aioCanvas); aioTex.colorSpace=THREE.SRGBColorSpace;
+const aioScr=new THREE.Mesh(new THREE.CircleGeometry(.3,40),new THREE.MeshBasicMaterial({map:aioTex,transparent:true})); aioScr.rotation.y=Math.PI/2; aioScr.position.set(-.665,3.35,-.35); pc.add(aioScr);
+function drawAIO(){ax.fillStyle='#000';ax.fillRect(0,0,256,256);if(!S.on){ax.fillStyle='#0a0e14';ax.fillRect(0,0,256,256);aioTex.needsUpdate=true;return;}
+const g=ax.createRadialGradient(128,128,10,128,128,128);const h='#'+S.rgb.getHexString();g.addColorStop(0,'#0b1220');g.addColorStop(.75,'#05080e');g.addColorStop(1,h);ax.fillStyle=g;ax.fillRect(0,0,256,256);
+ax.strokeStyle=h;ax.lineWidth=6;ax.beginPath();ax.arc(128,128,100,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.min(1,(S.cpu-20)/70));ax.stroke();
+ax.fillStyle='#fff';ax.font='bold 64px monospace';ax.textAlign='center';ax.fillText(S.cpu.toFixed(0)+'°',128,140);ax.font='18px monospace';ax.fillStyle=h;ax.fillText('PULSAR · LIQUID',128,172);ax.fillStyle='rgba(255,255,255,.5)';ax.font='14px monospace';ax.fillText(S.booting?'BOOT…':'PUMP '+Math.round(1800+S.fanCur*40)+' RPM',128,196);aioTex.needsUpdate=true;}
+// RAM
+const ramGroup=new THREE.Group(); pc.add(ramGroup);
+const ramBars=[];
+for(let i=0;i<4;i++){const z=.55+i*.3;const stick=box(.13,.85,.2,new THREE.MeshStandardMaterial({color:0x151a26,roughness:.35,metalness:.8}),-.78,3.55,z);ramGroup.add(stick);
+const barMat=regRGB(new THREE.MeshStandardMaterial({color:0x111111,roughness:.2,metalness:.3}),3.2);const bar=box(.14,.09,.21,barMat,-.78,4.02,z,false);ramGroup.add(bar);ramBars.push(barMat);
+const chip=box(.02,.5,.16,new THREE.MeshStandardMaterial({color:0x0a0c12,roughness:.6}),-.71,3.5,z);ramGroup.add(chip);tag(stick,'ram','64GB DDR5-6400 ARGB','4×16GB, CL30, frosted lightbar with per-stick wave addressing.');}
+// GPU
+const gpuG=new THREE.Group(); pc.add(gpuG);
+const gpuBody=box(.5,.78,2.9,new THREE.MeshStandardMaterial({color:0x161b27,roughness:.38,metalness:.85}),-.6,1.98,-.15); gpuG.add(gpuBody); tag(gpuBody,'gpu','RTX NOVA 24GB','Triple axial fans, vapor chamber, 12VHPWR, milled backplate with edge-lit rune.');
+const gpuPlate=box(.06,.7,2.7,new THREE.MeshStandardMaterial({color:0x0c0f16,roughness:.25,metalness:1}),-.88,1.98,-.15); gpuG.add(gpuPlate);
+const gpuStripMat=regRGB(new THREE.MeshStandardMaterial({color:0x080808}),3.4); gpuG.add(Object.assign(box(.52,.07,2.7,gpuStripMat,-.6,2.4,-.15,false),{}));
+const gpuSideMat=regRGB(new THREE.MeshStandardMaterial({color:0x050505}),2.2); gpuG.add(Object.assign(box(.04,.5,2.5,gpuSideMat,-.34,1.95,-.15,false),{}));
+const gpuFans=[];
+for(let i=0;i<3;i++){const f=makeFan(.3);f.group.position.set(-.32,1.98,-1.05+i*.9);f.group.rotation.y=Math.PI/2;gpuG.add(f.group);gpuFans.push(f);}
+const eqC=document.createElement('canvas');eqC.width=512;eqC.height=96;const eqx=eqC.getContext('2d');const eqT=new THREE.CanvasTexture(eqC);eqT.colorSpace=THREE.SRGBColorSpace;
+const eqScr=new THREE.Mesh(new THREE.PlaneGeometry(2.2,.32),new THREE.MeshBasicMaterial({map:eqT}));eqScr.rotation.y=Math.PI/2;eqScr.position.set(-.335,2.02,-.15);gpuG.add(eqScr);
+function drawEQ(t){eqx.fillStyle='#000';eqx.fillRect(0,0,512,96);if(!S.on||!S.screens){eqT.needsUpdate=true;return;}const h='#'+S.rgb.getHexString();for(let i=0;i<48;i++){const v=(Math.sin(t*3+i*.7)*.5+.5)*(Math.sin(t*1.3+i)*.5+.5);const bh=8+v*72*(S.stress?1:.45+.3*Math.sin(t+i));eqx.fillStyle=i%6==0?'#fff':h;eqx.fillRect(6+i*10.4,88-bh,6,bh);}eqx.fillStyle='rgba(255,255,255,.85)';eqx.font='bold 15px monospace';eqx.fillText(S.stress?'NOVA · 100% LOAD · 432W':'NOVA · '+S.gpu.toFixed(0)+'°C · QUIET',10,16);eqT.needsUpdate=true;}
+// PSU shroud
+const shroud=box(W-.35,.95,D-.35,M.case,0,.78,0); pc.add(shroud); tag(shroud,'psu','1000W PLATINUM + SHROUD','Fanless to 40%. Live wattage LCD on the glass side.');
+const psuC=document.createElement('canvas');psuC.width=512;psuC.height=128;const psx=psuC.getContext('2d');const psuT=new THREE.CanvasTexture(psuC);psuT.colorSpace=THREE.SRGBColorSpace;
+const psuScr=new THREE.Mesh(new THREE.PlaneGeometry(1.7,.42),new THREE.MeshBasicMaterial({map:psuT}));psuScr.rotation.y=Math.PI/2;psuScr.position.set((W-.35)/2+.005,.82,.3);pc.add(psuScr);
+function drawPSU(){psx.fillStyle='#05070c';psx.fillRect(0,0,512,128);if(!S.on){psx.fillStyle='#111';psx.font='24px monospace';psx.fillText('— STANDBY —',150,72);psuT.needsUpdate=true;return;}const h='#'+S.rgb.getHexString();psx.fillStyle=h;psx.font='bold 22px monospace';psx.fillText('NEBULA 1000W ◈',18,34);psx.fillStyle='#fff';psx.font='bold 44px monospace';psx.fillText(Math.round(S.stress?610+Math.random()*40:180+S.fanCur*1.2)+'W',18,92);psx.fillStyle=h;psx.font='20px monospace';psx.fillText(S.stress?'STRESS':'ECO · Pt',360,92);psuT.needsUpdate=true;}
+// fans
+const fans=[];
+function makeFan(r=.55){const g=new THREE.Group(),rotor=new THREE.Group();
+const fr=new THREE.MeshStandardMaterial({color:0x141922,roughness:.5,metalness:.7});
+const t=.1;[[0,r+.02],[0,-r-.02]].forEach(p=>{const b=new THREE.Mesh(new THREE.BoxGeometry(r*2.3,t,t+.06),fr);b.position.set(p[0],p[1],0);g.add(b);});
+[[-r-.02,0],[r+.02,0]].forEach(p=>{const b=new THREE.Mesh(new THREE.BoxGeometry(t+.02,r*2.3,t+.06),fr);b.position.set(p[0],p[1],0);g.add(b);});
+const ringMat=regRGB(new THREE.MeshStandardMaterial({color:0x0a0a0a,roughness:.3}),2.6);
+const ring=new THREE.Mesh(new THREE.TorusGeometry(r*.92,.05,12,48),ringMat);g.add(ring);
+const bladeM=new THREE.MeshStandardMaterial({color:0x232c3f,roughness:.35,metalness:.6,transparent:true,opacity:.96});
+for(let i=0;i<7;i++){const bl=new THREE.Mesh(new THREE.BoxGeometry(r*.85,r*.3,.02),bladeM);const a=i/7*Math.PI*2;bl.position.set(Math.cos(a)*r*.45,Math.sin(a)*r*.45,0);bl.rotation.z=a+.7;rotor.add(bl);}
+const hub=cyl(r*.24,r*.24,.16,new THREE.MeshStandardMaterial({color:0x0c0f16,roughness:.3,metalness:.8}),0,0,.02);hub.rotation.x=Math.PI/2;rotor.add(hub);
+const capMat=regRGB(new THREE.MeshStandardMaterial({color:0x111111}),2.4);const cap=cyl(r*.1,r*.1,.18,capMat,0,0,.03);cap.rotation.x=Math.PI/2;rotor.add(cap);
+g.add(rotor);g.traverse(o=>{if(o.isMesh)o.castShadow=true;});
+const F={group:g,rotor,ringMat,phase:Math.random()*7};fans.push(F);return F;}
+// front / top / rear
+const frontFans=[],topFans=[];
+for(let i=0;i<3;i++){const f=makeFan(.58);f.group.position.set(0,1.6+i*1.25,2.28);pc.add(f.group);frontFans.push(f);tag(f.group.children[0],'fan','INTAKE · PRISM 120','Reverse-blade intake behind honeycomb mesh. Positive pressure, dust filtered.');}
+for(let i=0;i<3;i++){const f=makeFan(.5);f.group.position.set(-.35+i*.0,4.95,-1.2+i*1.2);f.group.rotation.x=-Math.PI/2;f.group.position.x=-.2;pc.add(f.group);topFans.push(f);}
+{const rad=box(1.5,.22,3.6,M.trim,-.2,5.12,-.0);pc.add(rad);for(let i=0;i<12;i++)pc.add(box(1.3,.04,.08,M.caseIn,-.2,5.24,-1.6+i*.3));}
+const rearF=makeFan(.5);rearF.group.position.set(0,3.9,-2.32);rearF.group.rotation.y=Math.PI;pc.add(rearF);
+// AIO tubes
+function tube(pts,r=.055,mat=M.tube){const cu=new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(...p)));const m=new THREE.Mesh(new THREE.TubeGeometry(cu,40,r,12),mat);m.castShadow=true;pc.add(m);return m;}
+tube([[-.78,3.6,-.6],[-.2,4.1,-.9],[-.2,4.9,-1.0]]);
+tube([[-.78,3.6,-.1],[-.05,4.15,-.5],[-.2,4.9,-.4]]);
+const sleeveMat=regRGB(new THREE.MeshStandardMaterial({color:0x0a0a0a,roughness:.5}),1.2);
+tube([[-.85,2.5,1.55],[-.1,2.4,1.9],[-.15,1.3,1.5],[-.3,1.28,1.0]],.075);
+tube([[-.6,2.42,.75],[-.25,2.9,1.15],[-.2,1.6,1.3],[-.25,1.28,.7]],.06);
+// sata + accents
+tube([[-.9,2.0,-1.4],[-.5,1.5,-1.8],[-.2,1.28,-1.4]],.035,M.slot);
+const stripMatA=regRGB(new THREE.MeshStandardMaterial({color:0x000000}),3.2),stripMatB=regRGB(new THREE.MeshStandardMaterial({color:0x000000}),3.2);
+pc.add(Object.assign(box(.05,4.2,.05,stripMatA,.95,2.8,2.15,false),{}));
+pc.add(Object.assign(box(.05,.05,4.0,stripMatB,.2,4.85,0,false),{}));
+const underMat=regRGB(new THREE.MeshStandardMaterial({color:0x000000}),3);pc.add(Object.assign(box(1.8,.04,4.0,underMat,0,.06,0,false),{}));
+// crystal deco
+const cry=new THREE.Mesh(new THREE.OctahedronGeometry(.22),regRGB(new THREE.MeshStandardMaterial({color:0x111122,roughness:.1,metalness:.2,transparent:true,opacity:.9}),2.5));
+cry.position.set(.55,1.45,-1.5);pc.add(cry);tag(cry,'soul','FORGE CRYSTAL','Founders-edition desk soul. Brightness follows coolant temp.');
+const cryBase=cyl(.16,.2,.08,M.chrome,.55,1.28,-1.5);pc.add(cryBase);
+// dust
+const dustN=260,dustPos=new Float32Array(dustN*3);
+for(let i=0;i<dustN;i++){dustPos[i*3]=(Math.random()-.5)*14;dustPos[i*3+1]=Math.random()*7;dustPos[i*3+2]=(Math.random()-.5)*14;}
+const dustG=new THREE.BufferGeometry();dustG.setAttribute('position',new THREE.BufferAttribute(dustPos,3));
+const dust=new THREE.Points(dustG,new THREE.PointsMaterial({color:0x88ccff,size:.025,transparent:true,opacity:.5}));scene.add(dust);
+// HUD wiring
+const $=id=>document.getElementById(id);
+const bootlog=$('bootlog');function log(t){bootlog.innerHTML='> '+t;}
+function clearBoot(){S.bootTimers.forEach(clearTimeout);S.bootTimers=[];}
+function later(ms,fn){S.bootTimers.push(setTimeout(fn,ms));}
+let audio=null;function beep(f=880,d=.08){try{audio=audio||new (window.AudioContext||window.webkitAudioContext)();const o=audio.createOscillator(),g=audio.createGain();o.frequency.value=f;o.type='sine';g.gain.setValueAtTime(.08,audio.currentTime);g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+d);o.connect(g).connect(audio.destination);o.start();o.stop(audio.currentTime+d);}catch(e){}}
+function setPower(on){if(on===S.on&&!S.booting)return;clearBoot();
+if(on){S.on=true;S.booting=true;$('powerBtn').classList.add('on');$('statusDot').classList.add('on');$('statusTxt').textContent='BOOTING';$('subStatus').textContent='staged spin-up in progress…';$('pwLabel').textContent='POWER ON';beep(440,.12);log('PSU click… 12V rails stable');
+later(350,()=>{diagMat.emissiveIntensity=2;log('X670E POST · CPU detected');beep(660,.07);});
+later(750,()=>{log('spin-up · intake 0→'+S.fan+'%');});
+later(1150,()=>{log('RAM training · 6400MT/s OK');beep(880,.06);});
+later(1550,()=>{log('NOVA 24GB · fans twitch-test');});
+later(1950,()=>{log('pump 2400rpm · LCD online');beep(990,.08);drawAIO();});
+later(2400,()=>{S.booting=false;$('statusTxt').textContent='ONLINE';$('subStatus').textContent='system online · '+S.mode+' rgb';log('nebula forge ready ◈ enjoy');});
+}else{S.on=false;S.booting=false;$('powerBtn').classList.remove('on');$('statusDot').classList.remove('on');$('statusTxt').textContent='OFFLINE';$('subStatus').textContent='system offline · press power';$('pwLabel').textContent='POWER OFF';log('standby… 5VSB ok');diagMat.emissiveIntensity=0;beep(220,.15);}}
+$('powerBtn').onclick=()=>setPower(!S.on);
+addEventListener('keydown',e=>{if(e.code==='Space'&&e.target===document.body){e.preventDefault();setPower(!S.on);}});
+$('rgbPick').oninput=e=>setAccent(e.target.value);
+document.querySelectorAll('.modes button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.modes button').forEach(x=>x.classList.remove('act'));b.classList.add('act');S.mode=b.dataset.m;$('subStatus').textContent=S.on?('system online · '+S.mode+' rgb'):$('subStatus').textContent;});
+$('fan').oninput=e=>{S.fan=+e.target.value;$('fanOut').textContent=S.fan+'%';};
+$('glow').oninput=e=>{S.glow=+e.target.value/100;$('glowOut').textContent=e.target.value+'%';};
+$('glassBtn').onclick=e=>{S.glass=!S.glass;glassMesh.visible=S.glass;e.target.classList.toggle('on',S.glass);e.target.textContent=S.glass?'◈ GLASS ON':'◈ GLASS OFF';};
+$('orbitBtn').onclick=e=>{S.orbit=!S.orbit;controls.autoRotate=S.orbit;e.target.classList.toggle('on',S.orbit);e.target.textContent=S.orbit?'⟳ ORBIT ON':'⟳ ORBIT OFF';};
+$('screenBtn').onclick=e=>{S.screens=!S.screens;e.target.classList.toggle('on',S.screens);};
+$('stressBtn').onclick=e=>{S.stress=!S.stress;e.target.classList.toggle('on',S.stress);log(S.stress?'stress ▲ all-core + furmark':'stress off · back to idle');};
+let camTween=null;function flyTo(p,t){camTween={p:new THREE.Vector3(...p),t:new THREE.Vector3(...t),k:0};}
+document.querySelectorAll('.vbtns button').forEach(b=>b.onclick=()=>{const v=b.dataset.v;if(v==='side')flyTo([6.4,3.1,.6],[0,2.6,0]);if(v==='front')flyTo([.6,2.9,8.6],[0,2.6,0]);if(v==='top')flyTo([.8,9.4,1.8],[0,2,0]);if(v==='cine'){S.orbit=true;controls.autoRotate=true;$('orbitBtn').classList.add('on');flyTo([5.2,1.6,5.4],[0,2.4,0]);}});
+// picking
+const ray=new THREE.Raycaster(),ptr=new THREE.Vector2();let hovered=null;
+const info=$('info'),infoT=$('infoT'),infoD=$('infoD');let infoTO=null;
+function showInfo(t,d){infoT.textContent=t;infoD.textContent=d;info.classList.add('show');clearTimeout(infoTO);infoTO=setTimeout(()=>info.classList.remove('show'),4200);}
+canvas.addEventListener('pointermove',e=>{ptr.x=(e.clientX/innerWidth)*2-1;ptr.y=-(e.clientY/innerHeight)*2+1;});
+canvas.addEventListener('click',e=>{ptr.x=(e.clientX/innerWidth)*2-1;ptr.y=-(e.clientY/innerHeight)*2+1;ray.setFromCamera(ptr,camera);const hits=ray.intersectObjects(clickable,true);if(!hits.length)return;let o=hits[0].object;while(o&&!o.userData.info&&!o.userData.power)o=o.parent;if(!o)return;if(o.userData.power||o.parent?.userData.power){setPower(!S.on);return;}const i=o.userData.info||o.parent?.userData.info;if(i)showInfo(i.title,i.desc);});
+// loop
+const clock=new THREE.Clock();let frames=0,fpsT=0,scrT=0;
+setAccent('#00e5ff');drawAIO();drawEQ(0);drawPSU();
+function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05);S.time+=dt;const t=S.time;
+const target=S.on?(S.stress?100:Math.max(18,S.fan)):0;S.fanCur+=(target-S.fanCur)*Math.min(1,dt*(S.on?1.2:1.6));
+const spin=S.fanCur/100*22+.001;fans.forEach((f,i)=>{f.rotor.rotation.z+=spin*dt*(1+i*.02);});
+const heat=S.on?((S.stress?1:0)*.9+S.fanCur/100*.15):0;heatLight.intensity+=((S.on?heat*14:0)-heatLight.intensity)*dt*2;
+cry.rotation.y+=dt*(S.on?1.2:.1);cry.position.y=1.45+Math.sin(t*1.5)*.05;
+dust.rotation.y+=dt*.01;
+// temps
+const amb=23.5,tCpu=S.on?(34+(100-S.fanCur)*.12+(S.stress?34:0)):amb,tGpu=S.on?(32+(100-S.fanCur)*.14+(S.stress?38:0)):amb;
+S.cpu+=(tCpu+Math.sin(t*2)*.3-S.cpu)*dt*.5;S.gpu+=(tGpu+Math.cos(t*1.7)*.3-S.gpu)*dt*.5;S.liq+=( ((S.cpu+S.gpu)/2-4)-S.liq)*dt*.25;
+// rgb
+let base=S.on?1:0;if(!S.on){rgbMats.forEach(o=>o.m.emissiveIntensity*= .9);rgbLights.forEach(l=>l.intensity*=.9);underLight.intensity*=.9;pi.material.emissiveIntensity*=.9;}
+else{rgbMats.forEach((o,idx)=>{let k=1;if(S.mode==='breath')k=.45+.55*Math.sin(t*2.2);if(S.mode==='wave')k=.55+.45*Math.sin(t*3-idx*.55);if(S.mode==='rainbow'){const c=new THREE.Color().setHSL((t*.08+idx*.04)%1,.9,.6);o.m.emissive.copy(c);}else o.m.emissive.copy(S.rgb);o.m.emissiveIntensity=o.k*S.glow*k;});
+if(S.mode==='rainbow'){const c=new THREE.Color().setHSL((t*.08)%1,.9,.6);rgbLights.forEach(l=>l.color.copy(c));}else rgbLights.forEach(l=>l.color.copy(S.rgb));
+const pulse=S.mode==='breath'?.5+.5*Math.sin(t*2.2):S.mode==='wave'?.7+.3*Math.sin(t*3):1;
+rgbLightA.intensity=26*S.glow*pulse;rgbLightB.intensity=16*S.glow*pulse;underLight.intensity=(S.glass?10:4)*S.glow*pulse;
+pi.material.emissive.set(S.rgb);pi.material.emissiveIntensity=3*S.glow;}
+// camera tween
+if(camTween){camTween.k+=dt*1.4;const k=camTween.k>=1?1:1-Math.pow(1-camTween.k,3);camera.position.lerpVectors(camera.position,camTween.p,k*.12+.02);controls.target.lerp(camTween.t,.12);if(camTween.k>=1)camTween=null;}
+controls.update();
+// throttled canvas + HUD
+scrT+=dt;if(scrT>.12){scrT=0;if(S.screens){drawAIO();drawEQ(t);drawPSU();}else{ax.fillStyle='#000';ax.fillRect(0,0,256,256);aioTex.needsUpdate=true;eqx.fillStyle='#000';eqx.fillRect(0,0,512,96);eqT.needsUpdate=true;psx.fillStyle='#000';psx.fillRect(0,0,512,128);psuT.needsUpdate=true;}
+$('cpuT').textContent=S.cpu.toFixed(1)+'°';$('gpuT').textContent=S.gpu.toFixed(1)+'°';$('liqT').textContent=S.liq.toFixed(1)+'°';$('statGpu').textContent=S.gpu.toFixed(0)+'°';}
+frames++;fpsT+=dt;if(fpsT>=.5){$('fps').textContent=Math.round(frames/fpsT);frames=0;fpsT=0;}
+renderer.render(scene,camera);}
+animate();
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+setTimeout(()=>document.getElementById('loader').classList.add('hide'),700);
+setTimeout(()=>{showInfo('NEBULA FORGE MK-IV','Drag to orbit. Press the glowing ⏻ — in the HUD or on top of the case — to boot. Pick any RGB color; try WAVE + STRESS.');},1200);
+</script>
+</body>
+</html>

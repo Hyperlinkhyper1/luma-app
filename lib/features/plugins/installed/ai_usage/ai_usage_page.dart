@@ -73,7 +73,13 @@ class _AiUsageDashboardTabState extends State<AiUsageDashboardTab> {
     // button covers every case after that.
     if (_started) return;
     _started = true;
-    AiUsageScope.of(context).rescan();
+    // Deferred a frame: `of(context)` registers this element as a dependent
+    // of the InheritedNotifier, and `rescan()` notifies synchronously —
+    // notifying *during* this build pass would dirty an element that is
+    // still building (a '!_dirty' assert in debug).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) AiUsageScope.of(context).rescan();
+    });
   }
 
   Future<void> _openSettings() async {
@@ -388,17 +394,19 @@ class _TopBar extends StatelessWidget {
     final luma = context.luma;
     return Row(
       children: [
-        Flexible(
-          child: LumaSegmentedTabs(
-            tabs: [for (final p in AiUsageRangePreset.values) p.label],
-            selectedIndex: preset.index,
-            onSelect: (i) => onSelectPreset(AiUsageRangePreset.values[i]),
-          ),
+        LumaSegmentedTabs(
+          tabs: [for (final p in AiUsageRangePreset.values) p.label],
+          selectedIndex: preset.index,
+          onSelect: (i) => onSelectPreset(AiUsageRangePreset.values[i]),
         ),
         const SizedBox(width: 12),
-        Text(
-          _statusLabel(),
-          style: TextStyle(color: luma.textMuted, fontSize: 12),
+        Flexible(
+          child: Text(
+            _statusLabel(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: luma.textMuted, fontSize: 12),
+          ),
         ),
         const Spacer(),
         IconButton(

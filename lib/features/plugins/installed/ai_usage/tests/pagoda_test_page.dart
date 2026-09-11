@@ -7,6 +7,8 @@ import '../../../../../theme/luma_theme.dart';
 import '../../_shared/windows_webview.dart';
 import '../leaderboard/ai_vendor_style.dart';
 import '../leaderboard/vendor_logos.dart';
+import 'ai_benchmark.dart';
+import 'ai_benchmark_scope.dart';
 import 'model_search_field.dart';
 import 'pagoda_view_prefs.dart';
 
@@ -14,85 +16,16 @@ import 'pagoda_view_prefs.dart';
 /// benchmark — a procedurally generated Japanese garden with a 5-story pagoda.
 ///
 /// The scene demonstrates voxel rendering, animation, interaction, and dynamic
-/// day/night cycles. It runs in an embedded WebView on Windows and Android.
+/// day/night cycles. It runs in an embedded WebView on Windows.
+///
+/// Scenes used to ship inside the app bundle; they live on the luma server
+/// now. The roster comes from [AiBenchmarkScope], each scene downloads on
+/// first open and is cached on disk after that.
 class PagodaTestPage extends StatefulWidget {
   const PagodaTestPage({super.key});
 
   @override
   State<PagodaTestPage> createState() => _PagodaTestPageState();
-}
-
-/// Maps each benchmarked model to its own independent scene asset.
-///
-/// Each model has a completely separate implementation of the Pagoda
-/// benchmark — do not point two models at the same file.
-const Map<String, String> _pagodaModelAssets = {
-  'Haiku 4.5': 'assets/tests/pagoda_haiku45.html',
-  'Sonnet 5 (Low)': 'assets/tests/pagoda_sonnet5_low.html',
-  'Sonnet 5 (Ultracode)': 'assets/tests/pagoda_sonnet5_ultracode.html',
-  'Opus 5 (low)': 'assets/tests/pagoda_opus5_low.html',
-  'Opus 5 (Xhigh)': 'assets/tests/pagoda_opus5_xhigh.html',
-  'Opus 5 (Max)': 'assets/tests/pagoda_opus5_max.html',
-  'Muse Spark 1.3 (Low)': 'assets/tests/pagoda_musespark13_low.html',
-  'Muse Spark 1.3 (Xhigh)': 'assets/tests/pagoda_musespark13_xhigh.html',
-  'Opus 4.6': 'assets/tests/pagoda_opus46.html',
-  'Nemotron 3 Ultra': 'assets/tests/pagoda_nemotron3_ultra.html',
-  'Nemotron 3.5 Lightning': 'assets/tests/pagoda_nemotron35_lightning.html',
-  'GPT 5.4 mini': 'assets/tests/pagoda_gpt54_mini.html',
-  'GPT 5 Mini': 'assets/tests/pagoda_gpt5_mini.html',
-  'GPT 5': 'assets/tests/pagoda_gpt5.html',
-  'hy4': 'assets/tests/pagoda_hy4.html',
-  'Big Pickle': 'assets/tests/pagoda_bigpickle.html',
-  'Mistral Medium 3.5': 'assets/tests/pagoda_mistralmedium35.html',
-  'Sonnet 4.6 (Max)': 'assets/tests/pagoda_sonnet46_max.html',
-  'Sonnet 4.6 (Low)': 'assets/tests/pagoda_sonnet46_low.html',
-  'GPT 4.1': 'assets/tests/pagoda_gpt41.html',
-  'GPT 4.1 Nano': 'assets/tests/pagoda_gpt41_nano.html',
-  'GPT 6 Astra (Low)': 'assets/tests/pagoda_gpt6_astra_low.html',
-  'GPT 6 Astra (Max)': 'assets/tests/pagoda_gpt6_astra_max.html',
-  'MiMo V2.5': 'assets/tests/pagoda_mimo_v25.html',
-  'Mai Code 1.1 Flash (Github Copilot)':
-      'assets/tests/pagoda_maicode11flash.html',
-  'GPT 5.6 Luna (Low)': 'assets/tests/pagoda_gpt56_luna_low.html',
-  'GPT 5.6 Luna (High)': 'assets/tests/pagoda_gpt56_luna_high.html',
-  'GPT 5.6 Terra (XHigh)': 'assets/tests/pagoda_gpt56_terra_xhigh.html',
-  'GPT 5.6 Sol (Xhigh)': 'assets/tests/pagoda_gpt56_sol_xhigh.html',
-  'GPT 5.6 Sol (Medium)': 'assets/tests/pagoda_gpt56_sol_medium.html',
-  'Seed 2.1 Pro': 'assets/tests/pagoda_seed21_pro.html',
-  'Grok 4.6 (Medium)': 'assets/tests/pagoda_grok46_medium.html',
-  'Grok 4.5': 'assets/tests/pagoda_grok45.html',
-  'Gemma 4 (31B)': 'assets/tests/pagoda_gemma_4_31b.html',
-    'GPT OSS 120B': 'assets/tests/pagoda_gpt_oss_120b.html',
-  'Laguna XS 2.1': 'assets/tests/pagoda_laguna_xs21.html',
-  'Fable 5.1 (High)': 'assets/tests/pagoda_fable51_high.html',
-  'Fable 5.1 (Max)': 'assets/tests/pagoda_fable51_max.html',
-  'Qwen 3.8 (27B)': 'assets/tests/pagoda_qwen_3_8_27b.html',
-  'DeepSeek v4.1 Flash (Max)': 'assets/tests/pagoda_deepseek41_flash_max.html',
-};
-
-/// Scenes whose WebGL output can't be captured for a thumbnail in this
-/// environment (software-renderer black screens / endless loaders) share
-/// the generic preview instead of a black card.
-const _pagodaPreviewFallbacks = {
-  'pagoda_bigpickle.png',
-  'pagoda_gemma_4_31b.png',
-  'pagoda_gpt41_nano.png',
-  'pagoda_gpt5.png',
-  'pagoda_gpt_oss_120b.png',
-};
-
-/// Preview thumbnail for [model]'s own benchmark scene, captured from the
-/// scene itself. Falls back to the shared pagoda render when the model has
-/// no scene or its scene has no usable capture (see
-/// [_pagodaPreviewFallbacks]).
-String pagodaPreviewAsset(String model) {
-  final scene = _pagodaModelAssets[model];
-  if (scene == null) return 'assets/tests/pagoda-preview.png';
-  final base = scene.split('/').last.replaceAll('.html', '.png');
-  if (_pagodaPreviewFallbacks.contains(base)) {
-    return 'assets/tests/pagoda-preview.png';
-  }
-  return 'assets/tests/previews/$base';
 }
 
 /// Vendor key for a pagoda benchmark [model], covering the shared vendors
@@ -222,165 +155,19 @@ List<Color> pagodaBrandStops(String model) {
   return const [kVendorColorFallback];
 }
 
-/// Model name + button description, in display order. Drives both the List
-/// view's [ModelButton]s and the search filter — kept as one list of pairs
-/// (rather than a loop over [_pagodaModelAssets]) because the description
-/// text isn't derivable from the model name.
-const List<({String model, String description})> _pagodaModelDescriptions = [
-  (model: 'Haiku 4.5', description: 'Fast vision model for the benchmark'),
-  (
-    model: 'Sonnet 5 (Low)',
-    description: 'Balanced reasoning model for the benchmark',
-  ),
-  (
-    model: 'Sonnet 5 (Ultracode)',
-    description: 'Frontier reasoning model for the benchmark',
-  ),
-  (
-    model: 'Opus 5 (low)',
-    description: 'Frontier model at low reasoning effort',
-  ),
-  (
-    model: 'Opus 5 (Xhigh)',
-    description: 'Frontier model at extra-high reasoning effort',
-  ),
-  (
-    model: 'Opus 5 (Max)',
-    description: 'Frontier model at max reasoning effort',
-  ),
-  (
-    model: 'Muse Spark 1.3 (Low)',
-    description: 'Meta Muse Spark at low reasoning effort',
-  ),
-  (
-    model: 'Muse Spark 1.3 (Xhigh)',
-    description: 'Meta Muse Spark at extra-high reasoning effort',
-  ),
-  (model: 'Opus 4.6', description: 'Anthropic Opus 4.6 thinking model'),
-  (
-    model: 'Nemotron 3 Ultra',
-    description: 'NVIDIA Nemotron 3 Ultra benchmark',
-  ),
-  (
-    model: 'Nemotron 3.5 Lightning',
-    description: 'NVIDIA Nemotron 3.5 Lightning voxel garden benchmark',
-  ),
-  (
-    model: 'GPT 5.4 mini',
-    description: 'OpenAI GPT 5.4 mini spring-festival scene',
-  ),
-  (model: 'GPT 5 Mini', description: 'GPT 5 Mini — native pagoda benchmark'),
-  (model: 'GPT 5', description: 'GPT 5 independent voxel garden benchmark'),
-  (model: 'hy4', description: 'hy4 independent voxel garden benchmark'),
-  (
-    model: 'Big Pickle',
-    description: 'Big Pickle independent voxel garden benchmark',
-  ),
-  (
-    model: 'Mistral Medium 3.5',
-    description: 'Mistral Medium 3.5 voxel garden benchmark',
-  ),
-  (
-    model: 'Sonnet 4.6 (Max)',
-    description: 'Anthropic Sonnet 4.6 at max reasoning effort',
-  ),
-  (
-    model: 'Sonnet 4.6 (Low)',
-    description: 'Anthropic Sonnet 4.6 at low reasoning effort',
-  ),
-  (
-    model: 'GPT 4.1',
-    description: 'OpenAI GPT 4.1 independent voxel garden benchmark',
-  ),
-  (
-    model: 'GPT 4.1 Nano',
-    description: 'OpenAI GPT 4.1 Nano voxel garden benchmark',
-  ),
-  (
-    model: 'GPT 6 Astra (Low)',
-    description: 'GPT 6 Astra Low voxel garden benchmark',
-  ),
-  (
-    model: 'GPT 6 Astra (Max)',
-    description: 'GPT 6 Astra Max voxel garden benchmark',
-  ),
-  (
-    model: 'MiMo V2.5',
-    description: 'Xiaomi MiMo V2.5 voxel garden benchmark',
-  ),
-  (
-    model: 'Mai Code 1.1 Flash (Github Copilot)',
-    description: 'Independent GitHub Copilot benchmark scene',
-  ),
-  (
-    model: 'GPT 5.6 Luna (Low)',
-    description: 'OpenAI GPT 5.6 Luna at low reasoning effort',
-  ),
-  (
-    model: 'GPT 5.6 Luna (High)',
-    description: 'OpenAI GPT 5.6 Luna at high reasoning effort',
-  ),
-  (
-    model: 'GPT 5.6 Terra (XHigh)',
-    description: 'OpenAI GPT 5.6 Terra at extra-high reasoning effort',
-  ),
-  (
-    model: 'GPT 5.6 Sol (Xhigh)',
-    description: 'OpenAI GPT 5.6 Sol at extra-high reasoning effort',
-  ),
-  (
-    model: 'GPT 5.6 Sol (Medium)',
-    description: 'OpenAI GPT 5.6 Sol at medium reasoning effort',
-  ),
-  (model: 'Seed 2.1 Pro', description: 'Seed 2.1 Pro voxel garden benchmark'),
-  (
-    model: 'Grok 4.6 (Medium)',
-    description: 'xAI Grok 4.6 at medium reasoning effort',
-  ),
-  (
-    model: 'Grok 4.5',
-    description: 'xAI Grok 4.5 independent voxel garden benchmark',
-  ),
-  (
-    model: 'Gemma 4 (31B)',
-    description: 'Google Gemma 4 31B voxel garden benchmark',
-  ),
-  (
-    model: 'GPT OSS 120B',
-    description: 'GPT OSS 120B voxel garden benchmark',
-  ),
-  (
-    model: 'Laguna XS 2.1',
-    description: 'Laguna XS 2.1 floating-island voxel garden benchmark',
-  ),
-  (
-    model: 'Fable 5.1 (High)',
-    description: 'Fable 5.1 High voxel garden benchmark',
-  ),
-  (
-    model: 'Fable 5.1 (Max)',
-    description: 'Fable 5.1 Max voxel garden benchmark',
-  ),
-  (
-    model: 'Qwen 3.8 (27B)',
-    description: 'Qwen 3.8 27B voxel garden benchmark',
-  ),
-  (
-    model: 'DeepSeek v4.1 Flash (Max)',
-    description: 'DeepSeek v4.1 Flash at max reasoning effort',
-  ),
-];
-
 class _PagodaTestPageState extends State<PagodaTestPage> {
-  bool _loading = true;
-  String? _selectedModel;
+  String? _selectedId;
   bool _bannerView = false;
   final _searchController = TextEditingController();
   String _query = '';
+  bool _started = false;
 
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) return;
+    _started = true;
+    AiBenchmarkScope.of(context).load();
     PagodaViewPrefs.loadBannerView().then((banners) {
       if (mounted && banners != _bannerView) {
         setState(() => _bannerView = banners);
@@ -396,142 +183,158 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
 
   @override
   Widget build(BuildContext context) {
+    final repo = AiBenchmarkScope.of(context);
+    return ListenableBuilder(
+      listenable: repo,
+      builder: (context, _) {
+        final benchmarks = repo.benchmarksOfKind('pagoda');
+        final query = _query.trim().toLowerCase();
+        final filtered = query.isEmpty
+            ? benchmarks
+            : [
+                for (final b in benchmarks)
+                  if (b.model.toLowerCase().contains(query)) b,
+              ];
+
+        if (_selectedId != null) {
+          final selected = repo.byId(_selectedId!);
+          if (selected == null) {
+            // The roster moved under us (rare) — back to the list.
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) setState(() => _selectedId = null);
+            });
+          } else {
+            return _sceneView(context, selected);
+          }
+        }
+
+        return _listView(context, filtered);
+      },
+    );
+  }
+
+  Widget _listView(BuildContext context, List<AiBenchmark> filtered) {
     final luma = context.luma;
-    final query = _query.trim().toLowerCase();
-    final filteredModels = query.isEmpty
-        ? _pagodaModelDescriptions
-        : [
-            for (final entry in _pagodaModelDescriptions)
-              if (entry.model.toLowerCase().contains(query)) entry,
-          ];
-
-    // Show model selection UI if no model is selected
-    if (_selectedModel == null) {
-      return Scaffold(
+    final repo = AiBenchmarkScope.of(context);
+    return Scaffold(
+      backgroundColor: luma.background,
+      appBar: AppBar(
         backgroundColor: luma.background,
-        appBar: AppBar(
-          backgroundColor: luma.background,
-          elevation: 0,
-          title: const Text('Pagoda Test'),
-        ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Benchmark Scene',
-                style: TextStyle(
-                  color: luma.textPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
+        elevation: 0,
+        title: const Text('Pagoda Test'),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Benchmark Scene',
+              style: TextStyle(
+                color: luma.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
               ),
-              const SizedBox(height: 12),
-              Text(
-                'Spring Festival at the Five-Story Pagoda — an interactive voxel '
-                'garden benchmark with procedural terrain, animated elements, and '
-                'dynamic lighting.',
-                style: TextStyle(
-                  color: luma.textSecondary,
-                  fontSize: 13,
-                ),
-              ),
-              const SizedBox(height: 20),
-              ModelSearchField(
-                controller: _searchController,
-                onChanged: (v) => setState(() => _query = v),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Text(
-                    'Select a Model',
-                    style: TextStyle(
-                      color: luma.textPrimary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const Spacer(),
-                  LumaSegmentedTabs(
-                    tabs: const ['List', 'Banners'],
-                    selectedIndex: _bannerView ? 1 : 0,
-                    onSelect: (i) {
-                      final banners = i == 1;
-                      setState(() => _bannerView = banners);
-                      PagodaViewPrefs.saveBannerView(banners);
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              if (_bannerView)
-                filteredModels.isEmpty
-                    ? LumaEmptyState(
-                        icon: Icons.search_off_rounded,
-                        title: 'No models match "${_query.trim()}"',
-                        subtitle: 'Try a shorter search.',
-                      )
-                    : _ModelBannerGrid(
-                        models: [for (final e in filteredModels) e.model],
-                        onPick: (m) => setState(() => _selectedModel = m),
-                      )
-              else if (filteredModels.isEmpty)
-                LumaEmptyState(
-                  icon: Icons.search_off_rounded,
-                  title: 'No models match "${_query.trim()}"',
-                  subtitle: 'Try a shorter search.',
-                )
-              else
-                for (final entry in filteredModels) ...[
-                  ModelButton(
-                    model: entry.model,
-                    description: entry.description,
-                    onTap: () => setState(() => _selectedModel = entry.model),
-                    isSelected: false,
-                  ),
-                  const SizedBox(height: 12),
-                ],
-            ],
-          ),
-        ),
-      );
-    }
-
-    // Show benchmark scene
-    if (Platform.isWindows) {
-      // Each model must open its own scene. A model whose scene has not been
-      // built yet says so — falling back to another model's file would show
-      // one contestant's result under a different contestant's name.
-      final assetPath = _pagodaModelAssets[_selectedModel];
-      final scenePath =
-          assetPath == null ? null : windowsAssetPath(assetPath);
-      if (scenePath == null || !File(scenePath).existsSync()) {
-        return Scaffold(
-          backgroundColor: luma.background,
-          appBar: AppBar(
-            backgroundColor: luma.background,
-            elevation: 0,
-            title: const Text('Pagoda Test'),
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_rounded),
-              onPressed: () => setState(() => _selectedModel = null),
             ),
-          ),
-          body: Padding(
-            padding: const EdgeInsets.all(24),
-            child: LumaEmptyState(
-              icon: Icons.hourglass_empty_rounded,
-              title: 'No scene for $_selectedModel yet',
-              subtitle: 'This benchmark run has not produced a scene file. '
-                  'Pick another model, or add '
-                  '${assetPath ?? 'its entry to the model list'}.',
+            const SizedBox(height: 12),
+            Text(
+              'Spring Festival at the Five-Story Pagoda — an interactive voxel '
+              'garden benchmark with procedural terrain, animated elements, and '
+              'dynamic lighting.',
+              style: TextStyle(
+                color: luma.textSecondary,
+                fontSize: 13,
+              ),
             ),
-          ),
-        );
-      }
+            const SizedBox(height: 20),
+            ModelSearchField(
+              controller: _searchController,
+              onChanged: (v) => setState(() => _query = v),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Text(
+                  'Select a Model',
+                  style: TextStyle(
+                    color: luma.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Spacer(),
+                LumaSegmentedTabs(
+                  tabs: const ['List', 'Banners'],
+                  selectedIndex: _bannerView ? 1 : 0,
+                  onSelect: (i) {
+                    final banners = i == 1;
+                    setState(() => _bannerView = banners);
+                    PagodaViewPrefs.saveBannerView(banners);
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (repo.loading)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32),
+                  child: SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2.4),
+                  ),
+                ),
+              )
+            else if (filtered.isEmpty && _query.trim().isNotEmpty)
+              LumaEmptyState(
+                icon: Icons.search_off_rounded,
+                title: 'No models match "${_query.trim()}"',
+                subtitle: 'Try a shorter search.',
+              )
+            else if (filtered.isEmpty)
+              LumaEmptyState(
+                icon: Icons.cloud_download_outlined,
+                title: 'No benchmarks yet',
+                subtitle: repo.canRefresh
+                    ? 'The benchmark list could not be loaded. Try again, or '
+                        'ask the server operator to add scenes.'
+                    : 'Benchmarks download from the luma server. Sign in to '
+                        'an approved account to fetch them.',
+                action: LumaGhostButton(
+                  label: repo.refreshing ? 'Refreshing…' : 'Retry',
+                  icon: Icons.refresh_rounded,
+                  onTap: repo.refreshing || !repo.canRefresh
+                      ? null
+                      : () => repo.refreshFromServer(force: true),
+                ),
+              )
+            else if (_bannerView)
+              _ModelBannerGrid(
+                models: filtered,
+                onPick: (b) => setState(() => _selectedId = b.id),
+              )
+            else
+              for (final entry in filtered) ...[
+                ModelButton(
+                  model: entry.model,
+                  description: entry.description,
+                  onTap: () => setState(() => _selectedId = entry.id),
+                  isSelected: false,
+                ),
+                const SizedBox(height: 12),
+              ],
+          ],
+        ),
+      ),
+    );
+  }
 
+  Widget _sceneView(BuildContext context, AiBenchmark benchmark) {
+    final luma = context.luma;
+    final repo = AiBenchmarkScope.of(context);
+
+    if (!Platform.isWindows) {
       return Scaffold(
         backgroundColor: luma.background,
         appBar: AppBar(
@@ -540,48 +343,112 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
           title: const Text('Pagoda Test'),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_rounded),
-            onPressed: () => setState(() => _selectedModel = null),
+            onPressed: () => setState(() => _selectedId = null),
           ),
         ),
-        body: Stack(
-          children: [
-            Positioned.fill(
-              child: WindowsWebview(
-                fileUrl: Uri.file(scenePath).toString(),
-                onLoaded: () {
-                  if (mounted) setState(() => _loading = false);
-                },
-              ),
-            ),
-            if (_loading)
-              Center(
-                child: CircularProgressIndicator(
-                  valueColor:
-                      AlwaysStoppedAnimation<Color>(luma.accent),
-                ),
-              ),
-          ],
+        body: const Padding(
+          padding: EdgeInsets.all(24),
+          child: LumaEmptyState(
+            icon: Icons.computer_rounded,
+            title: 'Not available on this platform',
+            subtitle: 'The Pagoda Test requires a Windows desktop. '
+                'Mobile and Linux support are coming soon.',
+          ),
         ),
       );
     }
 
-    // Fallback for non-Windows platforms
     return Scaffold(
       backgroundColor: luma.background,
       appBar: AppBar(
         backgroundColor: luma.background,
         elevation: 0,
         title: const Text('Pagoda Test'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: LumaEmptyState(
-          icon: Icons.computer_rounded,
-          title: 'Not available on this platform',
-          subtitle: 'The Pagoda Test requires a Windows desktop. '
-              'Mobile and Linux support are coming soon.',
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => setState(() => _selectedId = null),
         ),
       ),
+      body: FutureBuilder<File>(
+        future: repo.sceneFile(benchmark.id),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(luma.accent),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Downloading ${benchmark.model}…',
+                    style: TextStyle(color: luma.textMuted, fontSize: 13),
+                  ),
+                ],
+              ),
+            );
+          }
+          if (snapshot.hasError || !snapshot.hasData) {
+            return Padding(
+              padding: const EdgeInsets.all(24),
+              child: LumaEmptyState(
+                icon: Icons.cloud_off_rounded,
+                title: 'Could not load ${benchmark.model}',
+                subtitle: '${snapshot.error ?? 'The download failed.'} '
+                    'Scenes are cached after the first download, so a retry '
+                    'is usually all it takes.',
+                action: LumaGhostButton(
+                  label: 'Retry',
+                  icon: Icons.refresh_rounded,
+                  onTap: () => setState(() {}),
+                ),
+              ),
+            );
+          }
+          return _SceneWebview(path: snapshot.data!.path);
+        },
+      ),
+    );
+  }
+}
+
+/// The embedded scene, remounted per file so going back and opening another
+/// model never shows the previous scene.
+class _SceneWebview extends StatefulWidget {
+  const _SceneWebview({required this.path});
+
+  final String path;
+
+  @override
+  State<_SceneWebview> createState() => _SceneWebviewState();
+}
+
+class _SceneWebviewState extends State<_SceneWebview> {
+  bool _loading = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: WindowsWebview(
+            key: ValueKey(widget.path),
+            fileUrl: Uri.file(widget.path).toString(),
+            onLoaded: () {
+              if (mounted) setState(() => _loading = false);
+            },
+          ),
+        ),
+        if (_loading)
+          Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(luma.accent),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -788,12 +655,17 @@ class _MistralCubesPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Banner-style model card: the pagoda preview image on top with the model
+/// Banner-style model card: the scene's preview image on top with the model
 /// name and vendor below, Modrinth-tile style. Alternative to [ModelButton].
+///
+/// The preview is the server-cached PNG when it has downloaded, otherwise the
+/// test's generic artwork, otherwise the temple icon — a card whose artwork is
+/// still downloading looks intentional rather than broken.
 class ModelBanner extends StatefulWidget {
-  const ModelBanner({super.key, required this.model, required this.onTap});
+  const ModelBanner(
+      {super.key, required this.benchmark, required this.onTap});
 
-  final String model;
+  final AiBenchmark benchmark;
   final VoidCallback onTap;
 
   @override
@@ -806,10 +678,13 @@ class _ModelBannerState extends State<ModelBanner> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final vendor = pagodaVendorName(widget.model);
-    final brand = widget.model.contains('Mistral')
+    final repo = AiBenchmarkScope.of(context);
+    final vendor = pagodaVendorName(widget.benchmark.model);
+    final brand = widget.benchmark.model.contains('Mistral')
         ? const Color(0xFFFF8205)
-        : pagodaBrandStops(widget.model).first;
+        : pagodaBrandStops(widget.benchmark.model).first;
+    final preview = repo.previewFile(widget.benchmark.id) ??
+        repo.fallbackFile(widget.benchmark.kind);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -836,19 +711,30 @@ class _ModelBannerState extends State<ModelBanner> {
                 ),
                 child: AspectRatio(
                   aspectRatio: 16 / 10,
-                  child: Image.asset(
-                    pagodaPreviewAsset(widget.model),
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      color: luma.surfaceHover,
-                      alignment: Alignment.center,
-                      child: Icon(
-                        Icons.temple_buddhist_rounded,
-                        size: 48,
-                        color: luma.textMuted,
-                      ),
-                    ),
-                  ),
+                  child: preview == null
+                      ? Container(
+                          color: luma.surfaceHover,
+                          alignment: Alignment.center,
+                          child: Icon(
+                            Icons.temple_buddhist_rounded,
+                            size: 48,
+                            color: luma.textMuted,
+                          ),
+                        )
+                      : Image.file(
+                          preview,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                            color: luma.surfaceHover,
+                            alignment: Alignment.center,
+                            child: Icon(
+                              Icons.temple_buddhist_rounded,
+                              size: 48,
+                              color: luma.textMuted,
+                            ),
+                          ),
+                        ),
                 ),
               ),
               Padding(
@@ -856,7 +742,7 @@ class _ModelBannerState extends State<ModelBanner> {
                 child: Row(
                   children: [
                     VendorLogo(
-                      vendor: pagodaVendorKey(widget.model) ?? '',
+                      vendor: pagodaVendorKey(widget.benchmark.model) ?? '',
                       vendorName: vendor,
                       size: 30,
                     ),
@@ -867,7 +753,7 @@ class _ModelBannerState extends State<ModelBanner> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            widget.model,
+                            widget.benchmark.model,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -906,8 +792,8 @@ class _ModelBannerState extends State<ModelBanner> {
 class _ModelBannerGrid extends StatelessWidget {
   const _ModelBannerGrid({required this.models, required this.onPick});
 
-  final List<String> models;
-  final ValueChanged<String> onPick;
+  final List<AiBenchmark> models;
+  final ValueChanged<AiBenchmark> onPick;
 
   @override
   Widget build(BuildContext context) {
@@ -925,7 +811,7 @@ class _ModelBannerGrid extends StatelessWidget {
               SizedBox(
                 width: width,
                 child: ModelBanner(
-                  model: model,
+                  benchmark: model,
                   onTap: () => onPick(model),
                 ),
               ),

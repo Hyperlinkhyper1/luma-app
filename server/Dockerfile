@@ -40,6 +40,11 @@ RUN apt-get update \
 
 COPY --from=build /tmp/build-output/bundle/ /app/bundle/
 
+# The AI benchmark scenes the app downloads on demand (see
+# server/benchmarks/README.md). Baked in read-only; the /data volume holds
+# per-file operator overrides.
+COPY --from=build /app/benchmarks/ /seed/benchmarks/
+
 ENV LUMA_DATA_DIR=/data
 ENV LUMA_PORT=8080
 EXPOSE 8080
