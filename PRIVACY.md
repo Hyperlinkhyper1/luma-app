@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Last updated: August 10, 2026**
+**Last updated: September 12, 2026**
 
 luma is a local-first app. This policy explains, plainly, what that means in
 practice: what stays on your device, what an optional account sends to the
@@ -134,6 +134,12 @@ messages with other luma users. Only your public key is ever uploaded; each
 message is sealed on your device such that the server relays it without
 being able to read it.
 
+If you're on the receiving end of harassment or illegal content through
+Secure Chat, Cloud Files, or Family sharing, report it to
+**customerservice@luma-app.cc** — see
+[Reporting abuse or illegal content](TERMS.md#reporting-abuse-or-illegal-content)
+in the Terms for what happens next.
+
 ## What the server does not do
 
 No crash reporting, no analytics or telemetry SDK, no advertising network,
@@ -230,3 +236,6 @@ handled, I'll note it here with an updated date, and — for account holders
 ## Contact
 
 Questions, requests, or reports about privacy: **hyperlinkhyper@outlook.com**
+
+To report abuse or illegal content on the service, email
+**customerservice@luma-app.cc**.

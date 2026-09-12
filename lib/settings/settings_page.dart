@@ -140,10 +140,27 @@ class SettingsPage extends StatelessWidget {
               const SizedBox(height: 20),
               Align(
                 alignment: Alignment.centerLeft,
-                child: LumaGhostButton(
-                  label: t.settingsResetDefaults,
-                  icon: Icons.restart_alt_rounded,
-                  onTap: () => _confirmReset(context, settings),
+                child: Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    LumaGhostButton(
+                      label: t.settingsOpenSourceLicenses,
+                      icon: Icons.description_outlined,
+                      onTap: () => showLicensePage(
+                        context: context,
+                        applicationName: 'luma',
+                        applicationVersion: AppVersion.isReleaseBuild
+                            ? AppVersion.current
+                            : null,
+                      ),
+                    ),
+                    LumaGhostButton(
+                      label: t.settingsResetDefaults,
+                      icon: Icons.restart_alt_rounded,
+                      onTap: () => _confirmReset(context, settings),
+                    ),
+                  ],
                 ),
               ),
             ],

@@ -32,9 +32,31 @@ class MinecraftLauncherRepository {
     return query.watchSingleOrNull();
   }
 
-  /// Adds a local offline profile. No network call, no ownership check —
-  /// works everywhere but can't join online-mode servers.
+  /// Whether any Microsoft account has ever been added on this device. A
+  /// successful Microsoft sign-in already fails with
+  /// [MicrosoftAuthException] when the account doesn't own Minecraft (see
+  /// `microsoft_auth_client.dart`'s profile-lookup 404 check), so its
+  /// presence here is the ownership proof offline accounts piggyback on.
+  Future<bool> hasVerifiedOwnership() async {
+    final row = await (_db.select(_db.mcAccounts)
+          ..where((t) => t.type.equals('microsoft'))
+          ..limit(1))
+        .getSingleOrNull();
+    return row != null;
+  }
+
+  /// Adds a local offline profile. luma never bundles or authorises the
+  /// game itself, so this only works once at least one Microsoft account
+  /// that owns Minecraft has been added on this device — offline mode is
+  /// then just a convenience for playing without a network connection, not
+  /// a way to skip proving ownership. Throws [StateError] otherwise.
   Future<int> addOfflineAccount(String username) async {
+    if (!await hasVerifiedOwnership()) {
+      throw StateError(
+          'Sign in with a Microsoft account that owns Minecraft first — '
+          'offline profiles are for playing without a connection '
+          'afterwards, not instead of that.');
+    }
     StorageGuard.instance.ensureWithinLimit();
     final id = await _db.into(_db.mcAccounts).insert(
           McAccountsCompanion.insert(

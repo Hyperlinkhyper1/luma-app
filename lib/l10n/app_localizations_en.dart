@@ -160,6 +160,9 @@ class LEn extends L {
   String get settingsCheckUpdates => 'Look for updates';
 
   @override
+  String get settingsOpenSourceLicenses => 'Open source licences';
+
+  @override
   String get settingsSystem => 'System';
 
   @override

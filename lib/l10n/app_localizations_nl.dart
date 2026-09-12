@@ -161,6 +161,9 @@ class LNl extends L {
   String get settingsCheckUpdates => 'Zoeken naar updates';
 
   @override
+  String get settingsOpenSourceLicenses => 'Open source licenties';
+
+  @override
   String get settingsSystem => 'Systeem';
 
   @override

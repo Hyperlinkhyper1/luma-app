@@ -160,6 +160,9 @@ class LFr extends L {
   String get settingsCheckUpdates => 'Rechercher des mises à jour';
 
   @override
+  String get settingsOpenSourceLicenses => 'Licences open source';
+
+  @override
   String get settingsSystem => 'Système';
 
   @override

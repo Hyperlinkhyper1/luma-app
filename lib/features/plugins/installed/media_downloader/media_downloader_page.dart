@@ -7,7 +7,6 @@ import 'package:path_provider/path_provider.dart';
 import '../../../../app/widgets.dart';
 import '../../../../theme/luma_theme.dart';
 import 'download_history_store.dart';
-import 'spotify_client.dart';
 import 'yt_dlp_manager.dart';
 
 class MediaDownloaderPage extends StatefulWidget {
@@ -31,9 +30,6 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
   bool _fetching = false;
   String? _fetchError;
   YtVideoInfo? _video;
-  SpotifyTrackInfo? _spotifyTrack;
-
-  bool get _isSpotify => _spotifyTrack != null;
 
   DownloadMode _mode = DownloadMode.video;
   int? _videoHeight;
@@ -110,15 +106,7 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
   Future<void> _fetch() async {
     final url = _urlController.text.trim();
     if (url.isEmpty) {
-      setState(() => _fetchError = 'Paste a YouTube or Spotify link first.');
-      return;
-    }
-    final spotifyType = SpotifyClient.linkType(url);
-    if (spotifyType != null && spotifyType != SpotifyLinkType.track) {
-      setState(() {
-        _fetchError = "Playlists and albums aren't supported yet — paste a "
-            'link to a single track.';
-      });
+      setState(() => _fetchError = 'Paste a YouTube link first.');
       return;
     }
 
@@ -126,33 +114,17 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
       _fetching = true;
       _fetchError = null;
       _video = null;
-      _spotifyTrack = null;
     });
     try {
-      if (spotifyType == SpotifyLinkType.track) {
-        final track = await SpotifyClient.fetchTrack(url);
-        final info =
-            await _manager.fetchInfo('ytsearch1:${track.searchQuery} audio');
-        setState(() {
-          _spotifyTrack = track;
-          _video = info;
-          _mode = DownloadMode.audio;
-        });
-      } else {
-        final info = await _manager.fetchInfo(url);
-        setState(() {
-          _video = info;
-          _videoHeight = info.availableHeights.isNotEmpty
-              ? info.availableHeights.last
-              : null;
-        });
-      }
-    } on SpotifyLinkException catch (e) {
-      setState(() => _fetchError = e.message);
+      final info = await _manager.fetchInfo(url);
+      setState(() {
+        _video = info;
+        _videoHeight = info.availableHeights.isNotEmpty
+            ? info.availableHeights.last
+            : null;
+      });
     } on YtDlpException catch (e) {
-      setState(() => _fetchError = spotifyType == SpotifyLinkType.track
-          ? 'Could not find a matching track on YouTube.'
-          : e.message);
+      setState(() => _fetchError = e.message);
     } catch (_) {
       setState(() => _fetchError = 'Could not read that link.');
     } finally {
@@ -171,12 +143,7 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
     final video = _video;
     final outputDir = _outputDir;
     if (video == null) return;
-    // Spotify itself is never the download source (its streams are
-    // DRM-protected) — the actual audio comes from the YouTube video that
-    // was resolved for this track when it was fetched.
-    final url = _isSpotify
-        ? 'https://www.youtube.com/watch?v=${video.id}'
-        : _urlController.text.trim();
+    final url = _urlController.text.trim();
     if (url.isEmpty) return;
     if (outputDir == null) {
       setState(() => _downloadError = 'Choose a download folder first.');
@@ -208,26 +175,16 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
         setState(() => _progress = p);
         if (p.done) finalPath = p.rawLine;
       }
-      final track = _spotifyTrack;
-      if (track != null && finalPath != null) {
-        final cover = await SpotifyClient.fetchThumbnailBytes(track.thumbnailUrl);
-        await _manager.tagAudioFile(
-          filePath: finalPath,
-          title: track.title,
-          artist: track.artist,
-          coverImageBytes: cover,
-        );
-      }
       final detail = _mode == DownloadMode.video
           ? '${_videoHeight ?? "best"}p · $_videoAudioBitrate kbps audio'
           : '${_audioFormat.toUpperCase()} · $_audioBitrate kbps';
       final entry = DownloadHistoryEntry(
-        title: track?.displayTitle ?? video.title,
+        title: video.title,
         filePath: finalPath ?? outputDir,
         mode: _mode == DownloadMode.video ? 'Video' : 'Audio',
         detail: detail,
         completedAt: DateTime.now(),
-        source: track != null ? 'Spotify' : 'YouTube',
+        source: 'YouTube',
       );
       await _historyStore.add(entry);
       await _loadHistory();
@@ -341,8 +298,7 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Paste a YouTube video link or a Spotify track link '
-                      'to get started.',
+                      'Paste a YouTube video link to get started.',
                       style: TextStyle(color: luma.textMuted, fontSize: 13),
                     ),
                     const SizedBox(height: 16),
@@ -354,7 +310,7 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
                             controller: _urlController,
                             style: TextStyle(color: luma.textPrimary),
                             decoration: _inputDecoration(luma,
-                                hint: 'YouTube video or Spotify track link…'),
+                                hint: 'YouTube video link…'),
                             onSubmitted: (_) => _fetch(),
                           ),
                         ),
@@ -374,9 +330,7 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
                     ],
                     if (_video != null) ...[
                       const SizedBox(height: 16),
-                      _isSpotify
-                          ? _buildSpotifyCard(luma, _spotifyTrack!)
-                          : _buildVideoCard(luma, _video!),
+                      _buildVideoCard(luma, _video!),
                       const SizedBox(height: 16),
                       _buildOptions(luma),
                       const SizedBox(height: 16),
@@ -494,75 +448,18 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
     );
   }
 
-  Widget _buildSpotifyCard(LumaPalette luma, SpotifyTrackInfo track) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: track.thumbnailUrl != null
-                  ? Image.network(
-                      track.thumbnailUrl!,
-                      width: 68,
-                      height: 68,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) =>
-                          Container(width: 68, height: 68, color: luma.background),
-                    )
-                  : Container(width: 68, height: 68, color: luma.background),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    track.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: luma.textPrimary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  if (track.artist.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(track.artist,
-                        style: TextStyle(color: luma.textMuted, fontSize: 12)),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Text(
-          'Spotify streams are DRM-protected, so luma finds and downloads '
-          'the matching audio from YouTube instead.',
-          style: TextStyle(color: luma.textMuted, fontSize: 12),
-        ),
-      ],
-    );
-  }
-
   Widget _buildOptions(LumaPalette luma) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (!_isSpotify) ...[
-          LumaSegmentedTabs(
-            tabs: const ['Video', 'Audio only'],
-            selectedIndex: _mode == DownloadMode.video ? 0 : 1,
-            onSelect: (i) => setState(
-                () => _mode = i == 0 ? DownloadMode.video : DownloadMode.audio),
-          ),
-          const SizedBox(height: 14),
-        ],
-        if (_mode == DownloadMode.video && !_isSpotify) ...[
+        LumaSegmentedTabs(
+          tabs: const ['Video', 'Audio only'],
+          selectedIndex: _mode == DownloadMode.video ? 0 : 1,
+          onSelect: (i) => setState(
+              () => _mode = i == 0 ? DownloadMode.video : DownloadMode.audio),
+        ),
+        const SizedBox(height: 14),
+        if (_mode == DownloadMode.video) ...[
           _dropdownRow(
             luma,
             label: 'Resolution',
@@ -749,11 +646,9 @@ class _HistoryCard extends StatelessWidget {
       child: Row(
         children: [
           LumaIconBadge(
-            icon: entry.source == 'Spotify'
-                ? Icons.library_music_outlined
-                : entry.mode == 'Video'
-                    ? Icons.movie_outlined
-                    : Icons.music_note_outlined,
+            icon: entry.mode == 'Video'
+                ? Icons.movie_outlined
+                : Icons.music_note_outlined,
             color: luma.accent,
             size: 36,
           ),

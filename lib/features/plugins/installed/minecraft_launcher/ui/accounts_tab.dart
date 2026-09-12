@@ -61,8 +61,9 @@ class _AccountsTabState extends State<AccountsTab> {
                 child: LumaEmptyState(
                   icon: Icons.person_outline_rounded,
                   title: 'No accounts yet',
-                  subtitle: 'Add an offline profile to start playing right away, '
-                      'or sign in with Microsoft for online-mode servers.',
+                  subtitle: 'Sign in with a Microsoft account that owns '
+                      'Minecraft to get started. Once you have, you can add '
+                      'an offline profile for playing without a connection.',
                 ),
               );
             }
@@ -105,7 +106,12 @@ class _AccountsTabState extends State<AccountsTab> {
       ),
     );
     if (name == null || name.trim().isEmpty) return;
-    await repository.addOfflineAccount(name.trim());
+    try {
+      await repository.addOfflineAccount(name.trim());
+    } on StateError catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
   }
 
   Future<void> _signInMicrosoft(

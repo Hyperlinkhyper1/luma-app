@@ -7,6 +7,7 @@ import 'account/password_reset_page.dart';
 import 'account/plan.dart';
 import 'app/app_shell.dart';
 import 'app/splash_screen.dart';
+import 'app/third_party_licenses.dart';
 import 'app/update/app_version.dart';
 import 'app/update/update_gate.dart';
 import 'app/window_controls.dart';
@@ -124,6 +125,7 @@ import 'theme/luma_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  registerThirdPartyLicenses();
   await initWindowChrome();
   final settings = await SettingsController.load();
   final passwordCrypto = await PasswordCrypto.load();
