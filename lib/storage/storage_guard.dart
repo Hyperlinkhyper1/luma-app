@@ -4,21 +4,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
-/// Thrown when a write is rejected because the app is at (or over) its local
-/// storage cap. Callers can show `toString()` directly — it's already a
-/// friendly, user-facing message.
-class StorageLimitExceededException implements Exception {
-  const StorageLimitExceededException(this.usedBytes, this.limitBytes);
-
-  final int usedBytes;
-  final int limitBytes;
-
-  @override
-  String toString() =>
-      "You've reached the local storage limit (${StorageGuardService.formatBytes(limitBytes)}). "
-      'Free up space or delete old data to save new items.';
-}
-
 /// A counted section of luma's local application data.
 @immutable
 class StorageCategory {
@@ -44,35 +29,33 @@ class StorageFileEntry {
   final int bytes;
 }
 
-/// A single, app-wide cap on how much luma stores on this device — separate
-/// from (and independent of) any per-account cloud quota, and enforced no
-/// matter which plugins are installed. Once [isOverLimit], every feature's
-/// "create new record" method refuses to write (see [ensureWithinLimit]), and
-/// [SyncService] refuses to push to — or pull from — other devices.
+/// Reports how much local disk space luma's own data occupies on this
+/// device — every local Drift database, JSON store, etc. under the app
+/// support directory — broken down by feature. This is purely informational:
+/// it does not enforce any cap. The plan's storage figure (see
+/// `lib/account/plan.dart`) is a server-side sync quota, tracked and enforced
+/// by the sync server, and is unrelated to this local usage number.
 class StorageGuardService extends ChangeNotifier {
   /// Set once from `main.dart` so repositories without a `BuildContext` can
-  /// call `StorageGuard.instance.ensureWithinLimit()` directly.
+  /// read local usage without a `BuildContext`.
   static late StorageGuardService instance;
 
   /// Subdirectories (relative to the app support directory) excluded from the
   /// sum: one-time tool/binary downloads (yt-dlp, ffmpeg, …) and derived
   /// caches — not user data. `gallery_cache` holds thumbnails and read-back
   /// EXIF for photos that live in the user's own picture folders; every byte
-  /// of it can be rebuilt by rescanning, and counting it would put a 30 MB
-  /// Nova device over its cap after a few hundred photos.
+  /// of it can be rebuilt by rescanning, so it would just inflate the
+  /// reported usage for no reason.
   /// `luma_shared` is the SFTP plugin's device-to-device folder. It holds
   /// whatever the user chose to move between their own machines — videos,
-  /// archives, disk images — and counting it would put a 30 MB Nova device
-  /// over its cap with one file. It has its own size readout in the plugin
+  /// archives, disk images. It has its own size readout in the plugin
   /// instead.
   /// `ai_catalog_cache` is the AI Usage plugin's downloaded copy of the model
   /// leaderboard: a few hundred KB that is byte-identical for every user and
-  /// re-fetchable from the server — counting it would spend a twentieth of a
-  /// Core plan's 5 MB cap on data the user never created.
+  /// re-fetchable from the server — data the user never created.
   /// `ai_benchmarks_cache` is the same plugin's downloaded benchmark scenes
   /// and previews: megabytes of HTML the app fetches on demand from the
-  /// server, identical for every user. Without the exclusion, opening one
-  /// benchmark would put a Core device over its cap on its own.
+  /// server, identical for every user.
   static const _excludedDirNames = {
     'tools',
     'ffmpeg',
@@ -83,37 +66,13 @@ class StorageGuardService extends ChangeNotifier {
     'ai_benchmarks_cache',
   };
 
-  int _limitBytes = _defaultLimitBytes;
   int _usedBytes = 0;
   List<StorageCategory> _breakdown = const [];
   bool _refreshing = false;
   Timer? _debounce;
 
-  /// Fallback cap before `main.dart` has applied the selected plan's limit.
-  static const int _defaultLimitBytes = 5 * 1024 * 1024; // 5 MB
-
-  /// The current local storage cap, in bytes — set by [setLimitBytes] from
-  /// the active plan (see `planById`).
-  int get limitBytes => _limitBytes;
   int get usedBytes => _usedBytes;
   List<StorageCategory> get breakdown => _breakdown;
-  bool get isOverLimit => _usedBytes >= _limitBytes;
-
-  /// Updates the storage cap. Passing a different value notifies listeners so
-  /// the UI (storage bar, over-limit banner) re-evaluates immediately.
-  void setLimitBytes(int bytes) {
-    if (bytes == _limitBytes) return;
-    _limitBytes = bytes;
-    notifyListeners();
-  }
-
-  /// Throws [StorageLimitExceededException] if already over the cap. Cheap —
-  /// checks the cached usage, no disk I/O.
-  void ensureWithinLimit() {
-    if (isOverLimit) {
-      throw StorageLimitExceededException(_usedBytes, _limitBytes);
-    }
-  }
 
   /// Recomputes [usedBytes] by summing every file under the app support
   /// directory (every local Drift database, JSON store, etc. already lives
@@ -148,7 +107,7 @@ class StorageGuardService extends ChangeNotifier {
 
   /// Aggregates file sizes using the same exclusions as [refresh].
   ///
-  /// Keeping this small, synchronous seam makes the cap accounting rules
+  /// Keeping this small, synchronous seam makes the usage accounting rules
   /// straightforward to test without depending on a host platform's support
   /// directory.
   static List<StorageCategory> aggregateCategories({
@@ -283,6 +242,6 @@ class _StorageAccumulator {
   }
 }
 
-/// Short alias used at call sites (`StorageGuard.instance.ensureWithinLimit()`)
+/// Short alias used at call sites (`StorageGuard.instance.scheduleRefresh()`)
 /// so repositories read naturally without importing the full service name.
 typedef StorageGuard = StorageGuardService;

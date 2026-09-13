@@ -6,6 +6,10 @@ import 'package:path_provider/path_provider.dart';
 
 import '../security/secure_secret_store.dart';
 
+/// Preferences and the current device's dashboard are automatic collections.
+bool isAutomaticSyncCollection(String id) =>
+    id == 'settings' || id == 'home_desktop' || id == 'home_phone';
+
 /// Local sync bookkeeping for one collection.
 class CollectionSyncState {
   CollectionSyncState({
@@ -117,12 +121,11 @@ class SyncStateStore {
   /// requires before it does anything.
   bool get serverReady => signedIn && accountApproved;
 
-  /// The 'settings' collection (theme, preferences — see main.dart) always
-  /// syncs and can't be turned off, so it defaults to enabled the first time
-  /// it's touched rather than the usual opt-in default.
+  /// Preferences and device-format home layouts sync automatically after
+  /// account approval; other collections retain their opt-in default.
   CollectionSyncState collection(String id) => collections.putIfAbsent(
     id,
-    () => CollectionSyncState(enabled: id == 'settings'),
+    () => CollectionSyncState(enabled: isAutomaticSyncCollection(id)),
   );
 
   static Future<SyncStateStore> load({File? stateFile}) async {

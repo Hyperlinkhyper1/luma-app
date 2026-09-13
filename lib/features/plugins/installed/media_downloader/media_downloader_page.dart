@@ -43,6 +43,8 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
   String? _downloadError;
   YtDownloadHandle? _activeDownload;
 
+  bool _updatingYtDlp = false;
+
   List<DownloadHistoryEntry> _history = [];
 
   static const _videoQualities = [2160, 1440, 1080, 720, 480, 360, 240, 144];
@@ -103,7 +105,14 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
     super.dispose();
   }
 
-  Future<void> _fetch() async {
+  /// YouTube changes its player/cipher logic often enough that a yt-dlp
+  /// binary that was fine last week starts failing with exactly this error;
+  /// updating yt-dlp is the standard fix, so we try it once automatically
+  /// before giving up.
+  bool _looksLikeStaleBinary(String message) =>
+      message.contains('403') || message.toLowerCase().contains('forbidden');
+
+  Future<void> _fetch({bool retriedAfterUpdate = false}) async {
     final url = _urlController.text.trim();
     if (url.isEmpty) {
       setState(() => _fetchError = 'Paste a YouTube link first.');
@@ -124,11 +133,33 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
             : null;
       });
     } on YtDlpException catch (e) {
+      if (!retriedAfterUpdate && _looksLikeStaleBinary(e.message)) {
+        if (mounted) setState(() => _fetchError = 'Updating yt-dlp…');
+        try {
+          await _manager.updateYtDlp((_) {});
+          if (mounted) return _fetch(retriedAfterUpdate: true);
+        } catch (_) {
+          // fall through to reporting the original error
+        }
+      }
       setState(() => _fetchError = e.message);
     } catch (_) {
       setState(() => _fetchError = 'Could not read that link.');
     } finally {
       if (mounted) setState(() => _fetching = false);
+    }
+  }
+
+  Future<void> _updateYtDlpManually() async {
+    setState(() => _updatingYtDlp = true);
+    try {
+      await _manager.updateYtDlp((_) {});
+    } on YtDlpException catch (e) {
+      if (mounted) setState(() => _fetchError = e.message);
+    } catch (_) {
+      if (mounted) setState(() => _fetchError = 'Could not update yt-dlp.');
+    } finally {
+      if (mounted) setState(() => _updatingYtDlp = false);
     }
   }
 
@@ -139,7 +170,7 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
     if (path != null) setState(() => _outputDir = path);
   }
 
-  Future<void> _download() async {
+  Future<void> _download({bool retriedAfterUpdate = false}) async {
     final video = _video;
     final outputDir = _outputDir;
     if (video == null) return;
@@ -191,6 +222,16 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
     } on YtDownloadCancelled {
       // user cancelled; nothing to report
     } on YtDlpException catch (e) {
+      if (!retriedAfterUpdate && _looksLikeStaleBinary(e.message)) {
+        _activeDownload = null;
+        if (mounted) setState(() => _progress = DownloadProgress(rawLine: 'Updating yt-dlp…'));
+        try {
+          await _manager.updateYtDlp((_) {});
+          if (mounted) return _download(retriedAfterUpdate: true);
+        } catch (_) {
+          // fall through to reporting the original error
+        }
+      }
       if (mounted) setState(() => _downloadError = e.message);
     } catch (_) {
       if (mounted) setState(() => _downloadError = 'Download failed.');
@@ -288,17 +329,31 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      'Download a video or song',
-                      style: TextStyle(
-                        color: luma.textPrimary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Download a video or song',
+                            style: TextStyle(
+                              color: luma.textPrimary,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        LumaGhostButton(
+                          label: _updatingYtDlp ? 'Updating…' : 'Update yt-dlp',
+                          icon: Icons.system_update_alt_rounded,
+                          onTap: _updatingYtDlp ? null : _updateYtDlpManually,
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Paste a YouTube video link to get started.',
+                      'Paste a YouTube video link to get started. If '
+                      'downloads start failing with a 403 error, YouTube '
+                      'has likely changed something — try "Update yt-dlp" '
+                      'above.',
                       style: TextStyle(color: luma.textMuted, fontSize: 13),
                     ),
                     const SizedBox(height: 16),

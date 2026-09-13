@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -120,7 +120,6 @@ class WorthCounterStore extends ChangeNotifier {
     required int color,
     int count = 0,
   }) async {
-    StorageGuard.instance.ensureWithinLimit();
     _products.add(
       WorthProduct(
         id: DateTime.now().microsecondsSinceEpoch.toString(),
@@ -165,7 +164,7 @@ class WorthCounterStore extends ChangeNotifier {
     _schedulePersist();
   }
 
-  /// Zeroes every tally — a fresh count without re-adding the products.
+  /// Zeroes every tally â€” a fresh count without re-adding the products.
   void resetAllCounts() {
     if (_products.every((p) => p.count == 0)) return;
     for (final product in _products) {
@@ -181,7 +180,7 @@ class WorthCounterStore extends ChangeNotifier {
     await _persist();
   }
 
-  /// Writes any pending debounced change out now — called when the plugin
+  /// Writes any pending debounced change out now â€” called when the plugin
   /// page goes away so a burst of taps is never left unsaved.
   Future<void> flush() async {
     if (_persistTimer == null) return;

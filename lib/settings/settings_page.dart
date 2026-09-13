@@ -19,7 +19,9 @@ import 'settings_scope.dart';
 /// The Settings destination: appearance (theme + accent), behavior and an
 /// about section. Reads and mutates the app-wide [SettingsController].
 class SettingsPage extends StatelessWidget {
-  const SettingsPage({super.key});
+  const SettingsPage({super.key, this.onEditHome});
+
+  final VoidCallback? onEditHome;
 
   @override
   Widget build(BuildContext context) {
@@ -35,6 +37,23 @@ class SettingsPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              LumaCard(
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.dashboard_customize_rounded,
+                      color: luma.accent),
+                  title: const Text('Your home screen'),
+                  subtitle: const Text('Arrange and resize tiles, pin your favorites, '
+                      'and choose what you see. Layouts sync within the same device format.'),
+                  trailing: IconButton(
+                    tooltip: 'Edit home screen',
+                    onPressed: onEditHome,
+                    icon: const Icon(Icons.edit_rounded),
+                  ),
+                  onTap: onEditHome,
+                ),
+              ),
+              const SizedBox(height: 24),
               // ---- Appearance --------------------------------------------
               _SectionHeader(
                 icon: Icons.palette_rounded,

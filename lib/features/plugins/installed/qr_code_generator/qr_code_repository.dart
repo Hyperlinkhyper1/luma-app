@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart';
+﻿import 'package:drift/drift.dart';
 
 import '../../../../storage/storage_guard.dart';
 import 'data/qr_code_database.dart';
@@ -32,7 +32,6 @@ class QrCodeRepository {
   }
 
   Future<void> add(String url) async {
-    StorageGuard.instance.ensureWithinLimit();
     await _db.into(_db.qrCodeEntries).insert(
           QrCodeEntriesCompanion.insert(url: url),
         );

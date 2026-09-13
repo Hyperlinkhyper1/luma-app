@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart';
+﻿import 'package:drift/drift.dart';
 
 import '../../../../storage/storage_guard.dart';
 import 'card_formats.dart';
@@ -50,7 +50,6 @@ class CardWalletRepository {
     String? category,
     String? notes,
   }) async {
-    StorageGuard.instance.ensureWithinLimit();
     await _db.into(_db.walletCards).insert(
           WalletCardsCompanion.insert(
             name: name,
@@ -73,7 +72,6 @@ class CardWalletRepository {
     String? category,
     String? notes,
   }) async {
-    StorageGuard.instance.ensureWithinLimit();
     await (_db.update(_db.walletCards)..where((t) => t.id.equals(id))).write(
       WalletCardsCompanion(
         name: Value(name),

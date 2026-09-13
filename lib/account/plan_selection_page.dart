@@ -112,7 +112,14 @@ class PlanSelectionPage extends StatelessWidget {
                     child: Center(
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 960),
-                        child: const _PlanGrid(),
+                        child: const Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _PlanGrid(),
+                            SizedBox(height: 32),
+                            _AddOnsSection(),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -196,6 +203,99 @@ class _PlanGrid extends StatelessWidget {
       return;
     }
     Navigator.of(context).pop();
+  }
+}
+
+// ---------------------------------------------------------------------------
+
+/// One-time purchases that stand apart from the recurring plans above — no
+/// billing exists yet, so the buy button is a placeholder (see
+/// AiDetectorPage's matching upsell card).
+class _AddOnsSection extends StatelessWidget {
+  const _AddOnsSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 14),
+          child: Text(
+            'ONE-TIME ADD-ONS',
+            style: TextStyle(
+              color: luma.textMuted,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.2,
+            ),
+          ),
+        ),
+        LumaCard(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final icon = LumaIconBadge(
+                icon: Icons.all_inclusive_rounded,
+                color: luma.accent,
+                size: 44,
+              );
+              final copy = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'AI Detector — unlimited checks',
+                    style: TextStyle(
+                      color: luma.textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    'One-time unlock — no more daily check limit, on any plan.',
+                    style: TextStyle(color: luma.textMuted, fontSize: 12.5),
+                  ),
+                ],
+              );
+              final button = LumaPrimaryButton(
+                label: '\$1 · Buy',
+                icon: Icons.lock_open_rounded,
+                onTap: () {},
+              );
+              // Below ~460px the row can't fit icon + copy + button without
+              // squeezing the price into a two-word column.
+              if (constraints.maxWidth < 460) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        icon,
+                        const SizedBox(width: 16),
+                        Expanded(child: copy),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    button,
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  icon,
+                  const SizedBox(width: 16),
+                  Expanded(child: copy),
+                  const SizedBox(width: 12),
+                  button,
+                ],
+              );
+            },
+          ),
+        ),
+      ],
+    );
   }
 }
 

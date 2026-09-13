@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:nfc_manager/nfc_manager.dart' show NdefMessage;
 
 import '../../../../app/widgets.dart';
-import '../../../../storage/storage_guard.dart';
 import '../../../../theme/luma_theme.dart';
 import 'nfc_record.dart';
 import 'nfc_record_editor_sheet.dart';
@@ -488,12 +487,8 @@ class _NfcTagEditorPageState extends State<NfcTagEditorPage> {
     controller.dispose();
     final trimmed = name?.trim();
     if (trimmed == null || trimmed.isEmpty || !mounted) return;
-    try {
-      await NfcTagStore.instance.saveTemplate(trimmed, _records);
-      _snack('Saved "$trimmed".');
-    } on StorageLimitExceededException catch (e) {
-      _snack('$e');
-    }
+    await NfcTagStore.instance.saveTemplate(trimmed, _records);
+    _snack('Saved "$trimmed".');
   }
 
   Future<void> _confirmLockAndWrite() async {

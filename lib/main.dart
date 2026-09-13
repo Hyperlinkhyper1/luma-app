@@ -102,6 +102,8 @@ import 'features/plugins/plugin_catalog_service.dart';
 import 'features/plugins/plugin_repository.dart';
 import 'features/plugins/plugin_scope.dart';
 import 'features/notes/notes_repository.dart';
+import 'features/home/home_repository.dart';
+import 'features/home/home_scope.dart';
 import 'features/plugins/installed/cloud_files/cloud_files_controller.dart';
 import 'features/plugins/installed/cloud_files/cloud_files_scope.dart';
 import 'features/plugins/installed/secure_chat/chat_repository.dart' as secure_chat;
@@ -147,6 +149,7 @@ class LumaApp extends StatefulWidget {
 }
 
 class _LumaAppState extends State<LumaApp> {
+  late final HomeRepository _homeRepository = HomeRepository();
   late final AppDatabase _db = AppDatabase();
   late final FinanceRepository _repository = FinanceRepository(_db);
   late final PasswordDatabase _passwordDb = PasswordDatabase();
@@ -237,8 +240,8 @@ class _LumaAppState extends State<LumaApp> {
   // per-platform keys, so a revoked Google grant can't take either down.
   late final YoutubeRepository _youtubeRepository = YoutubeRepository();
 
-  // Global local-storage cap, enforced regardless of which plugins are
-  // installed — see StorageGuardService.
+  // Informational local-storage usage reporter (no cap) — see
+  // StorageGuardService.
   late final StorageGuardService _storageGuard = StorageGuardService();
 
   // Optional server sync: every feature registers an adapter; nothing is
@@ -248,6 +251,14 @@ class _LumaAppState extends State<LumaApp> {
         planById(widget.settings.selectedPlanId).maxSyncCollections,
     onServerPlan: (id) => widget.settings.setAdminPlan(id),
     collections: [
+    JsonStoreSyncCollection(
+      id: _homeRepository.collectionId,
+      label: 'Home layout (${_homeRepository.family})',
+      icon: Icons.dashboard_customize_rounded,
+      listenable: _homeRepository,
+      exporter: _homeRepository.exportData,
+      importer: _homeRepository.importData,
+    ),
     // Always synced (see SyncStateStore.collection / SyncService — the
     // 'settings' id defaults to enabled and can't be toggled off), so a
     // paired device always picks up the same theme/preferences.
@@ -427,7 +438,6 @@ class _LumaAppState extends State<LumaApp> {
   void initState() {
     super.initState();
     StorageGuardService.instance = _storageGuard;
-    _applyPlanLimit();
     widget.settings.addListener(_onSettingsChanged);
     _storageGuard.refresh();
     _sync.init();
@@ -463,6 +473,7 @@ class _LumaAppState extends State<LumaApp> {
 
   @override
   void dispose() {
+    _homeRepository.dispose();
     _lifecycleListener?.dispose();
     widget.settings.removeListener(_onSettingsChanged);
     _deviceShare?.dispose();
@@ -516,27 +527,13 @@ class _LumaAppState extends State<LumaApp> {
     ]);
   }
 
-  /// Applies the selected plan's storage cap to the guard. Cheap — no-ops when
-  /// the limit is unchanged (so it's safe to call on every settings change).
-  void _applyPlanLimit() {
-    final plan = planById(widget.settings.selectedPlanId);
-    _storageGuard.setLimitBytes(plan.storageMb * 1024 * 1024);
-  }
-
-  /// Reacts to settings changes — only the plan affects the guard, but this
-  /// fires for any preference mutation; [setLimitBytes] bails out when the
-  /// value is the same, so the cost is a single comparison otherwise.
+  /// Reacts to settings changes — the plan no longer drives a local storage
+  /// cap, but a plan change still needs to start or stop the device-share
+  /// mirror.
   void _onSettingsChanged() {
-    final before = _storageGuard.limitBytes;
-    _applyPlanLimit();
     // The shared folder is Nova-only, so an upgrade has to start the mirror
     // and a downgrade has to stop it.
     unawaited(_syncDeviceShareWithPlan());
-    if (_storageGuard.limitBytes != before) {
-      // A downgrade may have pushed existing usage over the new (smaller) cap;
-      // re-scan so the banner / write-blocking reflects it right away.
-      _storageGuard.refresh();
-    }
   }
 
   @override
@@ -557,6 +554,8 @@ class _LumaAppState extends State<LumaApp> {
       repository: _secureChatRepository,
       child: SettingsScope(
       controller: widget.settings,
+      child: HomeScope(
+      repository: _homeRepository,
       child: FinanceScope(
         repository: _repository,
         child: PasswordScope(
@@ -680,6 +679,7 @@ class _LumaAppState extends State<LumaApp> {
             ),
           ),
         ),
+      ),
       ),
       ),
       ),

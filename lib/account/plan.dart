@@ -1,6 +1,9 @@
-/// A displayable plan tier. The selected plan's [storageMb] is what the
-/// app enforces as the local storage cap (see [StorageGuardService]) — the
-/// only thing selecting a plan changes today, since there's no billing yet.
+/// A displayable plan tier. The selected plan's [storageMb] is the server-side
+/// sync storage quota this plan grants — how much of the user's synced data
+/// the luma server will hold for this account, enforced server-side (see
+/// `kPlanQuotaBytes` in `server/lib/store.dart`). It has nothing to do with
+/// how much purely local data sits on this device; selecting a plan is the
+/// only thing that changes today, since there's no billing yet.
 class Plan {
   const Plan({
     required this.id,
@@ -22,9 +25,10 @@ class Plan {
   final String priceLabel;
   final String blurb;
 
-  /// Local storage cap, in megabytes, this plan grants. User-generated data
-  /// only (databases + JSON stores); the app's own binaries and logs don't
-  /// count toward it.
+  /// Server-side sync storage quota, in megabytes, this plan grants — how
+  /// much of what's actually synced to the luma server counts against the
+  /// account, enforced server-side. Unrelated to how much purely local data
+  /// (never synced) sits on this device.
   final int storageMb;
 
   /// How many features (besides the always-on Settings sync) this plan may
@@ -55,7 +59,7 @@ const kPlans = <Plan>[
     maxSyncCollections: 3,
     maxFamilyMembers: 4,
     features: [
-      '5 MB local storage',
+      '5 MB of synced storage',
       'Take up to 3 things with you to the server',
       'Starter plugins included',
       'Room for 4 in your family',
@@ -71,7 +75,7 @@ const kPlans = <Plan>[
     maxSyncCollections: 5,
     maxFamilyMembers: 6,
     features: [
-      '15 MB local storage',
+      '15 MB of synced storage',
       'Sync up to 5 things to the server',
       'Your sync jumps the queue',
       'Fancy plugins included',
@@ -90,7 +94,7 @@ const kPlans = <Plan>[
     maxSyncCollections: null,
     maxFamilyMembers: 12,
     features: [
-      '30 MB local storage',
+      '30 MB of synced storage',
       'Sync everything to the server',
       'The very fastest sync',
       'Every plugin included',

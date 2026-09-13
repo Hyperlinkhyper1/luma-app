@@ -122,7 +122,6 @@ void main() {
 
     final guard = _TestStorageGuard(
       used: 3 * 1024 * 1024,
-      limit: 30 * 1024 * 1024,
       categories: const [
         StorageCategory(
           name: 'A very long plugin category name that should ellipsize',
@@ -161,19 +160,14 @@ void main() {
 class _TestStorageGuard extends StorageGuardService {
   _TestStorageGuard({
     required this.used,
-    required this.limit,
     required this.categories,
   });
 
   final int used;
-  final int limit;
   final List<StorageCategory> categories;
 
   @override
   int get usedBytes => used;
-
-  @override
-  int get limitBytes => limit;
 
   @override
   List<StorageCategory> get breakdown => categories;

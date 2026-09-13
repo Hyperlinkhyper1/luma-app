@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -30,7 +30,7 @@ const int _kMinimumWriteIntervalSeconds = 10;
 /// `endedAt == startedAt`; every following poll of the same process updates
 /// that row's `endedAt`/`durationSeconds` in place. This means a crash or
 /// force-quit only loses at most one sample interval of the in-progress
-/// session, and range queries can just read the table directly — there's no
+/// session, and range queries can just read the table directly â€” there's no
 /// separate "current session" the UI needs to merge in.
 class UsageRepository extends ChangeNotifier {
   UsageRepository(this._db);
@@ -155,13 +155,13 @@ class UsageRepository extends ChangeNotifier {
   @visibleForTesting
   Future<void> handlePoll(UsageAppInfo? info) async {
     if (info == null) {
-      // Nothing usefully focused (lock screen, no window, ...) — close
+      // Nothing usefully focused (lock screen, no window, ...) â€” close
       // whatever was open and wait for a real app to come back.
       await _finalizeCurrent();
       return;
     }
 
-    // Only the process identity is a session boundary — switching tabs or
+    // Only the process identity is a session boundary â€” switching tabs or
     // windows within the same app (different windowTitle) doesn't split it.
     if (_currentSessionId == null || _currentProcessName != info.processName) {
       await _finalizeCurrent();
@@ -174,12 +174,6 @@ class UsageRepository extends ChangeNotifier {
 
   Future<void> _openSession(UsageAppInfo info) async {
     final now = DateTime.now().toUtc();
-    try {
-      StorageGuard.instance.ensureWithinLimit();
-    } on StorageLimitExceededException {
-      // Over the storage cap: skip tracking rather than crash the timer.
-      return;
-    }
     final id = await _db.into(_db.usageSessions).insert(
           UsageSessionsCompanion.insert(
             appName: info.appName,
@@ -232,7 +226,7 @@ class UsageRepository extends ChangeNotifier {
     _notify();
   }
 
-  /// Sessions overlapping `[start, end)` (given in local time — [UsageSessions]
+  /// Sessions overlapping `[start, end)` (given in local time â€” [UsageSessions]
   /// stores UTC, so bounds are converted before querying), soonest-starting
   /// first. Live-updates as new sessions are written, including the
   /// currently-open one.

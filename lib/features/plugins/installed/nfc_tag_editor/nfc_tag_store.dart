@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -12,7 +12,7 @@ import 'nfc_record.dart';
 enum NfcHistoryDirection { scanned, written }
 
 /// One past scan or write: what the records were, which physical tag they
-/// came from (best-effort — a UID isn't always readable), and when.
+/// came from (best-effort â€” a UID isn't always readable), and when.
 class NfcHistoryEntry {
   NfcHistoryEntry({
     required this.id,
@@ -59,7 +59,7 @@ class NfcHistoryEntry {
       );
 }
 
-/// A named, reusable set of records — save one from the editor once, then
+/// A named, reusable set of records â€” save one from the editor once, then
 /// write it to as many tags as you like without rebuilding it each time.
 class NfcTagTemplate {
   NfcTagTemplate({
@@ -178,7 +178,6 @@ class NfcTagStore extends ChangeNotifier {
   }
 
   Future<void> saveTemplate(String name, List<EditableNdefRecord> records) async {
-    StorageGuard.instance.ensureWithinLimit();
     _templates.insert(
       0,
       NfcTagTemplate(

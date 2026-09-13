@@ -42,7 +42,7 @@ lib/
   l10n/                      ARB files + generated localizations (en, nl, fr, es, zh); config in l10n.yaml
   p2p/                       Wi-Fi/LAN peer sync (nsd + WebSocket protocol)
   settings/                  SettingsController (shared_preferences-like, ChangeNotifier)
-  storage/                   StorageGuard: enforces the plan's local storage cap
+  storage/                   StorageGuard: local-disk-usage display only, no cap
   sync/                      Server sync (SyncService coordinates multiple SyncCollection adapters)
     server_access.dart       The app-wide gate: no luma-server traffic without an approved account
 server/                      Standalone Dart HTTP server; deploy via docker-compose
@@ -52,7 +52,8 @@ plugins/
 ```
 
 Plan limits live in `lib/account/plan.dart` and are enforced in three
-different places: storage by `StorageGuard`, sync-collection count by
+different places: storage quota **server-side** via `kPlanQuotaBytes` in
+`server/lib/store.dart`, sync-collection count by
 `SyncService.enableCollection`, and family size **server-side** by
 `kFamilyMemberLimit` in `server/lib/family_store.dart` — change one and the
 other must follow.

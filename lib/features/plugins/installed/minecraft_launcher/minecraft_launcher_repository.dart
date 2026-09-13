@@ -1,4 +1,4 @@
-import 'dart:math';
+﻿import 'dart:math';
 
 import 'package:drift/drift.dart';
 
@@ -18,7 +18,7 @@ class MinecraftLauncherRepository {
     return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
   }
 
-  // ── Accounts ────────────────────────────────────────────────────────────
+  // â”€â”€ Accounts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Stream<List<McAccount>> watchAccounts() {
     final query = _db.select(_db.mcAccounts)
@@ -47,17 +47,16 @@ class MinecraftLauncherRepository {
 
   /// Adds a local offline profile. luma never bundles or authorises the
   /// game itself, so this only works once at least one Microsoft account
-  /// that owns Minecraft has been added on this device — offline mode is
+  /// that owns Minecraft has been added on this device â€” offline mode is
   /// then just a convenience for playing without a network connection, not
   /// a way to skip proving ownership. Throws [StateError] otherwise.
   Future<int> addOfflineAccount(String username) async {
     if (!await hasVerifiedOwnership()) {
       throw StateError(
-          'Sign in with a Microsoft account that owns Minecraft first — '
+          'Sign in with a Microsoft account that owns Minecraft first â€” '
           'offline profiles are for playing without a connection '
           'afterwards, not instead of that.');
     }
-    StorageGuard.instance.ensureWithinLimit();
     final id = await _db.into(_db.mcAccounts).insert(
           McAccountsCompanion.insert(
             type: 'offline',
@@ -81,7 +80,6 @@ class MinecraftLauncherRepository {
     required DateTime accessTokenExpiresAt,
     String? avatarUrl,
   }) async {
-    StorageGuard.instance.ensureWithinLimit();
     final existing = await (_db.select(_db.mcAccounts)
           ..where((t) => t.type.equals('microsoft') & t.uuid.equals(uuid)))
         .getSingleOrNull();
@@ -125,7 +123,7 @@ class MinecraftLauncherRepository {
   Future<void> deleteAccount(int id) =>
       (_db.delete(_db.mcAccounts)..where((t) => t.id.equals(id))).go();
 
-  // ── Instances ───────────────────────────────────────────────────────────
+  // â”€â”€ Instances â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Stream<List<McInstance>> watchInstances() {
     final query = _db.select(_db.mcInstances)
@@ -144,7 +142,6 @@ class MinecraftLauncherRepository {
     String loader = 'vanilla',
     String? loaderVersion,
   }) async {
-    StorageGuard.instance.ensureWithinLimit();
     final id = _newInstanceId();
     await _db.into(_db.mcInstances).insert(
           McInstancesCompanion.insert(
@@ -209,10 +206,9 @@ class MinecraftLauncherRepository {
     await (_db.delete(_db.mcInstances)..where((t) => t.id.equals(id))).go();
   }
 
-  // ── Launch history ──────────────────────────────────────────────────────
+  // â”€â”€ Launch history â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<int> recordLaunchStart(String instanceId) {
-    StorageGuard.instance.ensureWithinLimit();
     final future = _db.into(_db.mcLaunchHistory).insert(
           McLaunchHistoryCompanion.insert(
             instanceId: instanceId,
@@ -240,7 +236,7 @@ class MinecraftLauncherRepository {
     return query.watch();
   }
 
-  // ── Installed mods/resource packs/shader packs/datapacks ──────────────────
+  // â”€â”€ Installed mods/resource packs/shader packs/datapacks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Stream<List<McInstalledMod>> watchInstalledContent(String instanceId, {String? kind}) {
     final query = _db.select(_db.mcInstalledMods)
@@ -267,7 +263,6 @@ class MinecraftLauncherRepository {
     String? sha1,
     String kind = 'mod',
   }) {
-    StorageGuard.instance.ensureWithinLimit();
     final future = _db.into(_db.mcInstalledMods).insert(
           McInstalledModsCompanion.insert(
             instanceId: instanceId,

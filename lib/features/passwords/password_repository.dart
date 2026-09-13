@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart';
+﻿import 'package:drift/drift.dart';
 
 import '../../storage/storage_guard.dart';
 import 'data/password_database.dart';
@@ -27,7 +27,7 @@ class PasswordRecord {
   final String password;
 
   /// True when [password] could not be decrypted (corrupt data or a
-  /// missing/replaced key file) — the UI must show an error state instead of
+  /// missing/replaced key file) â€” the UI must show an error state instead of
   /// presenting the empty string as if it were the real password.
   final bool decryptFailed;
   final String? username;
@@ -81,11 +81,10 @@ class PasswordRepository {
   }
 
   /// Inserts the row first (so the ciphertext's MAC can be bound to the
-  /// generated row id — see [PasswordCrypto.encrypt]), then immediately fills
+  /// generated row id â€” see [PasswordCrypto.encrypt]), then immediately fills
   /// in the real ciphertexts. Both writes happen in one transaction so
   /// watchers never observe the empty placeholder row.
   Future<void> add(PasswordDraft draft) async {
-    StorageGuard.instance.ensureWithinLimit();
     await _db.transaction(() async {
       final id = await _db
           .into(_db.passwordEntries)
@@ -211,7 +210,7 @@ class PasswordRepository {
   /// One-time upgrade for vaults created before ciphertexts were bound to
   /// their row id/field (see [PasswordCrypto]): re-encrypts any entry still
   /// in the legacy format with the same plaintext, now MAC-bound to its row.
-  /// Idempotent — already-migrated entries are skipped — so it's safe to call
+  /// Idempotent â€” already-migrated entries are skipped â€” so it's safe to call
   /// on every app startup. Entries that fail to decrypt (corrupt data, wrong
   /// key) are left untouched; the UI already flags those via [decryptFailed].
   Future<void> migrateLegacyCiphertexts() async {

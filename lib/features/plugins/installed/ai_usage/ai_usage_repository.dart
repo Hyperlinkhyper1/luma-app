@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart';
+﻿import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../../storage/storage_guard.dart';
@@ -47,27 +47,27 @@ class AiUsageRepository extends ChangeNotifier {
 
   bool get scanning => _scanning;
 
-  /// Whether `~/.claude/projects` was found on this device — null until the
+  /// Whether `~/.claude/projects` was found on this device â€” null until the
   /// first [rescan] completes.
   bool? get claudeCodeDirFound => _claudeCodeDirFound;
 
-  /// Whether `~/.codex/sessions` was found on this device — null until the
+  /// Whether `~/.codex/sessions` was found on this device â€” null until the
   /// first [rescan] completes.
   bool? get codexCliDirFound => _codexCliDirFound;
 
-  /// Whether `~/.gemini/antigravity/brain` was found on this device — null
+  /// Whether `~/.gemini/antigravity/brain` was found on this device â€” null
   /// until the first [rescan] completes.
   bool? get antigravityDirFound => _antigravityDirFound;
 
-  /// Whether opencode's `opencode.db` was found on this device — null until
+  /// Whether opencode's `opencode.db` was found on this device â€” null until
   /// the first [rescan] completes.
   bool? get opencodeDbFound => _opencodeDbFound;
 
   /// Whether `~/.config/freebuff-desktop/projects` was found on this device
-  /// — null until the first [rescan] completes.
+  /// â€” null until the first [rescan] completes.
   bool? get freebuffDirFound => _freebuffDirFound;
 
-  /// Whether *any* source was found — drives the page's empty-state gate.
+  /// Whether *any* source was found â€” drives the page's empty-state gate.
   /// Null until the first [rescan] completes.
   bool? get anyDirFound {
     if (_claudeCodeDirFound == null &&
@@ -92,7 +92,7 @@ class AiUsageRepository extends ChangeNotifier {
   FreebuffScanResult? get lastFreebuffResult => _lastFreebuffResult;
 
   /// Combined new-turn count from the most recent [rescan], across every
-  /// source — for the single-line status UI.
+  /// source â€” for the single-line status UI.
   int get lastTurnsAdded =>
       (_lastClaudeResult?.turnsAdded ?? 0) +
       (_lastCodexResult?.turnsAdded ?? 0) +
@@ -101,7 +101,7 @@ class AiUsageRepository extends ChangeNotifier {
       (_lastFreebuffResult?.turnsAdded ?? 0);
 
   /// Scans every known local source for new/changed session logs and stores
-  /// any new usage. Safe to call repeatedly — unchanged files are skipped
+  /// any new usage. Safe to call repeatedly â€” unchanged files are skipped
   /// cheaply by the scanners, and a scan already in flight is not
   /// duplicated. The scanners touch disjoint file paths and only ever
   /// insert distinctly-sourced rows, so running them concurrently is safe.
@@ -111,7 +111,6 @@ class AiUsageRepository extends ChangeNotifier {
     notifyListeners();
 
     try {
-      StorageGuard.instance.ensureWithinLimit();
       final (claudeResult, codexResult, antigravityResult, opencodeResult, freebuffResult) =
           await (
         _claudeScanner.scan(_db),
@@ -134,8 +133,6 @@ class AiUsageRepository extends ChangeNotifier {
       if (lastTurnsAdded > 0) {
         StorageGuard.instance.scheduleRefresh();
       }
-    } on StorageLimitExceededException {
-      // Over the storage cap: skip this scan rather than crash it.
     } finally {
       _scanning = false;
       notifyListeners();

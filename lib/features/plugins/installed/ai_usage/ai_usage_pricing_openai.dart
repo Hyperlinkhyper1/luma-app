@@ -20,9 +20,15 @@ import 'ai_usage_pricing_rates.dart';
 const Map<String, AiPricingRates> kOpenAiPricing = {
   'gpt-6-astra': AiPricingRates(input: 10.00, output: 50.00, cacheWrite: 0, cacheRead: 1.00),
   'gpt-6': AiPricingRates(input: 10.00, output: 50.00, cacheWrite: 0, cacheRead: 1.00),
+  // Daybreak/Trusted-Access-for-Cyber SKU (Aug 2026). Not covered by the
+  // 5.6 version fallback below, which would otherwise price it at Sol's
+  // $4/$20 and understate it ~3x.
+  'gpt-5.6-cyber': AiPricingRates(input: 12.50, output: 75.00, cacheWrite: 0, cacheRead: 1.25),
   'gpt-5.6-sol': AiPricingRates(input: 4.00, output: 20.00, cacheWrite: 0, cacheRead: 0.40),
   'gpt-5.6-terra': AiPricingRates(input: 2.00, output: 12.00, cacheWrite: 0, cacheRead: 0.20),
   'gpt-5.6-luna': AiPricingRates(input: 0.20, output: 1.20, cacheWrite: 0, cacheRead: 0.02),
+  // Pro offers no cached-input discount per OpenAI's docs, so cacheRead is
+  // intentionally the full input rate — not a typo for 3.00.
   'gpt-5.5-pro': AiPricingRates(input: 30.00, output: 180.00, cacheWrite: 0, cacheRead: 30.00),
   'gpt-5.5': AiPricingRates(input: 5.00, output: 30.00, cacheWrite: 0, cacheRead: 0.50),
   'gpt-5.4-mini': AiPricingRates(input: 0.75, output: 4.50, cacheWrite: 0, cacheRead: 0.075),

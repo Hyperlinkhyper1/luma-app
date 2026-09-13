@@ -277,46 +277,56 @@ class _AiUsageSettingsDialogState extends State<_AiUsageSettingsDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Combine models by company'),
-                subtitle: Text(
-                  'Group every model from one company into a single row',
-                  style: TextStyle(color: luma.textMuted, fontSize: 12),
-                ),
+              _SettingsToggleRow(
+                title: 'Combine models by company',
+                subtitle: 'Group every model from one company into a single row',
                 value: _combineByCompany,
                 onChanged: (v) => setState(() => _combineByCompany = v),
               ),
-              const SizedBox(height: 8),
-              ExpansionTile(
-                tilePadding: EdgeInsets.zero,
-                initiallyExpanded: true,
-                leading: Icon(Icons.sort_rounded, color: luma.accent, size: 20),
-                title: const Text('Sorting'),
-                subtitle: Text(
-                  'What each table and chart orders by',
-                  style: TextStyle(color: luma.textMuted, fontSize: 12),
-                ),
+              const SizedBox(height: 20),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _SortDropdown(
-                    label: 'Models (pie + table)',
-                    value: _modelSort,
-                    onChanged: (v) => setState(() => _modelSort = v),
+                  Icon(Icons.sort_rounded, color: luma.accent, size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Sorting',
+                          style: TextStyle(
+                            color: luma.textPrimary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          'What each table and chart orders by',
+                          style: TextStyle(color: luma.textMuted, fontSize: 12),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  _SortDropdown(
-                    label: 'Top projects',
-                    value: _projectSort,
-                    onChanged: (v) => setState(() => _projectSort = v),
-                  ),
-                  const SizedBox(height: 8),
-                  _SortDropdown(
-                    label: 'Providers (OpenCode)',
-                    value: _providerSort,
-                    onChanged: (v) => setState(() => _providerSort = v),
-                  ),
-                  const SizedBox(height: 4),
                 ],
+              ),
+              const SizedBox(height: 12),
+              _SortDropdown(
+                label: 'Models (pie + table)',
+                value: _modelSort,
+                onChanged: (v) => setState(() => _modelSort = v),
+              ),
+              const SizedBox(height: 8),
+              _SortDropdown(
+                label: 'Top projects',
+                value: _projectSort,
+                onChanged: (v) => setState(() => _projectSort = v),
+              ),
+              const SizedBox(height: 8),
+              _SortDropdown(
+                label: 'Providers (OpenCode)',
+                value: _providerSort,
+                onChanged: (v) => setState(() => _providerSort = v),
               ),
             ],
           ),
@@ -331,6 +341,58 @@ class _AiUsageSettingsDialogState extends State<_AiUsageSettingsDialog> {
         TextButton(
           onPressed: () => Navigator.of(context).pop(_current()),
           child: const Text('Done'),
+        ),
+      ],
+    );
+  }
+}
+
+class _SettingsToggleRow extends StatelessWidget {
+  const _SettingsToggleRow({
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: luma.textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: TextStyle(color: luma.textMuted, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        Switch(
+          value: value,
+          onChanged: onChanged,
+          activeThumbColor: luma.onAccent,
+          activeTrackColor: luma.accent,
+          inactiveThumbColor: luma.textSecondary,
+          inactiveTrackColor: luma.surfaceHover,
         ),
       ],
     );

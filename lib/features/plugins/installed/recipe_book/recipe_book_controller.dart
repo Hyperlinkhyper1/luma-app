@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -31,13 +31,13 @@ Uint8List _processImage(Uint8List raw) {
 
 /// Orchestrates the Recipe Book plugin. Local ("Private") recipes and the set
 /// of favourited items live in a single local-first JSON file; the shared
-/// ("Public") catalogue, its reviews and photos are fetched from — and
-/// published to — the sync server through [RecipeApi], tracking the signed-in
+/// ("Public") catalogue, its reviews and photos are fetched from â€” and
+/// published to â€” the sync server through [RecipeApi], tracking the signed-in
 /// session the same way the chat plugin does. A [ChangeNotifier] so the page
 /// rebuilds on any change.
 ///
 /// [_legacyDb] is the plugin's original drift database, read once on first run
-/// to migrate any pre-existing recipes into the new local store — see
+/// to migrate any pre-existing recipes into the new local store â€” see
 /// [_migrateLegacy].
 class RecipeBookController extends ChangeNotifier {
   RecipeBookController(this._sync, this._legacyDb);
@@ -59,7 +59,7 @@ class RecipeBookController extends ChangeNotifier {
   int _weekStartsOn = DateTime.monday;
 
   /// Planned meals grouped by calendar day, keyed by an ISO 'yyyy-MM-dd'
-  /// string — so each specific day of each week keeps its own plan and the
+  /// string â€” so each specific day of each week keeps its own plan and the
   /// user can plan weeks ahead, not just a repeating template.
   final Map<String, List<PlannedMeal>> _plan = {};
 
@@ -173,7 +173,7 @@ class RecipeBookController extends ChangeNotifier {
   }
 
   /// The local ("Private") copy of a published recipe, if this user is the
-  /// author and still has it — lets the Public tab route "edit" back to the
+  /// author and still has it â€” lets the Public tab route "edit" back to the
   /// authoritative local recipe.
   LocalRecipe? localByPublicId(String publicId) {
     for (final r in _local) {
@@ -380,7 +380,7 @@ class RecipeBookController extends ChangeNotifier {
 
   /// Creates a new local recipe. If [makePublic] and the user is signed in,
   /// it is also published to the shared catalogue. Returns an error message on
-  /// a (publish) failure, or null on success — the local recipe is always
+  /// a (publish) failure, or null on success â€” the local recipe is always
   /// saved regardless.
   Future<String?> addLocal({
     required String title,
@@ -394,7 +394,6 @@ class RecipeBookController extends ChangeNotifier {
     Uint8List? photoBytes,
     bool makePublic = false,
   }) async {
-    StorageGuard.instance.ensureWithinLimit();
     final id = DateTime.now().microsecondsSinceEpoch.toString();
 
     Uint8List? processed;
@@ -542,7 +541,7 @@ class RecipeBookController extends ChangeNotifier {
   Future<String?> _publish(LocalRecipe recipe, Uint8List? photoBytes) async {
     final api = _api;
     if (api == null) {
-      return 'Saved privately. Sign in under Settings → Sync to publish it.';
+      return 'Saved privately. Sign in under Settings â†’ Sync to publish it.';
     }
     try {
       final published = await api.publish(

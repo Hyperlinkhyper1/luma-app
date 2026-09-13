@@ -54,7 +54,6 @@ import 'server_account_gate.dart';
 import '../settings/settings_controller.dart';
 import '../settings/settings_page.dart';
 import '../settings/settings_scope.dart';
-import '../storage/storage_guard_scope.dart';
 import '../theme/coffee_ornaments.dart';
 import '../theme/luma_theme.dart';
 import 'bottom_nav.dart';
@@ -81,6 +80,18 @@ class _AppShellState extends State<AppShell> {
   // Null until the user navigates: the active section then defaults to the
   // configured start screen.
   int? _selectedIndex;
+  int _homeEditRevision = 0;
+  bool _homeEditRequested = false;
+
+  void _editHome() {
+    setState(() {
+      _pushHistory();
+      _selectedIndex = 0;
+      _selectedPluginId = null;
+      _homeEditRevision++;
+      _homeEditRequested = true;
+    });
+  }
 
   // Non-null while an installed plugin's page is being shown, taking
   // priority over [_selectedIndex].
@@ -104,11 +115,6 @@ class _AppShellState extends State<AppShell> {
         t.navSettings,
         t.navAccount,
       ];
-
-  // Dismissible per-session; only re-shown if the app is restarted while
-  // still over the limit — the Account tab's Storage section always shows
-  // the live truth regardless of this dismissal.
-  bool _storageBannerDismissed = false;
 
   _NavEntry get _currentEntry => _NavEntry(_selectedIndex, _selectedPluginId);
 
@@ -168,7 +174,6 @@ class _AppShellState extends State<AppShell> {
     final t = L.of(context);
     final settings = SettingsScope.of(context);
     final pluginRepo = PluginScope.of(context);
-    final storageGuard = StorageGuardScope.of(context);
     final index = _selectedIndex ?? _startIndex(settings.startScreen);
     final titles = _titles(t);
 
@@ -205,7 +210,13 @@ class _AppShellState extends State<AppShell> {
                 : IndexedStack(
                     index: index,
                     children: [
-                      HomePage(onNavigate: _selectFixed),
+                      HomePage(
+                        key: ValueKey(_homeEditRevision),
+                        onNavigate: _selectFixed,
+                        onPlugin: _selectPlugin,
+                        startEditing: _homeEditRequested,
+                        onEditRequestConsumed: () => _homeEditRequested = false,
+                      ),
                       const ConverterPage(),
                       const FinancePage(),
                       const PasswordsPage(),
@@ -216,7 +227,7 @@ class _AppShellState extends State<AppShell> {
                         onOpenPlugin: _selectPlugin,
                       ),
                       PluginsPage(onOpenPlugin: _selectPlugin),
-                      const SettingsPage(),
+                      SettingsPage(onEditHome: _editHome),
                       const AccountPage(),
                     ],
                   ),
@@ -228,20 +239,6 @@ class _AppShellState extends State<AppShell> {
             children: [
               if (!immersive)
                 WindowTitleBar(title: title, trailing: const InboxButton()),
-              if (!immersive)
-                ListenableBuilder(
-                  listenable: storageGuard,
-                  builder: (context, _) {
-                    if (!storageGuard.isOverLimit || _storageBannerDismissed) {
-                      return const SizedBox.shrink();
-                    }
-                    return _StorageLimitBanner(
-                      onManage: () => _selectFixed(NavRail.accountIndex),
-                      onDismiss: () =>
-                          setState(() => _storageBannerDismissed = true),
-                    );
-                  },
-                ),
               Expanded(
                 child: immersive
                     // No title bar here, so inset the plugin ourselves: the
@@ -440,48 +437,6 @@ class _PhoneBackButton extends StatelessWidget {
                 color: luma.textPrimary, size: 22),
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// App-wide warning shown the moment the local storage cap is hit — covers
-/// every page (and every plugin) with a single reactive banner rather than a
-/// bespoke check on each one. See `StorageGuardService`.
-class _StorageLimitBanner extends StatelessWidget {
-  const _StorageLimitBanner({required this.onManage, required this.onDismiss});
-  final VoidCallback onManage;
-  final VoidCallback onDismiss;
-
-  @override
-  Widget build(BuildContext context) {
-    final luma = context.luma;
-    final t = L.of(context);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      color: Colors.red.shade400.withValues(alpha: 0.15),
-      child: Row(
-        children: [
-          Icon(Icons.error_outline_rounded, size: 18, color: Colors.red.shade400),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              t.shellStorageLimitMsg,
-              style: TextStyle(color: luma.textPrimary, fontSize: 12.5),
-            ),
-          ),
-          TextButton(
-            onPressed: onManage,
-            child: Text(t.shellStorageManage,
-                style: TextStyle(color: luma.accent, fontWeight: FontWeight.w700)),
-          ),
-          IconButton(
-            tooltip: t.shellStorageDismiss,
-            icon: Icon(Icons.close_rounded, size: 18, color: luma.textSecondary),
-            onPressed: onDismiss,
-          ),
-        ],
       ),
     );
   }

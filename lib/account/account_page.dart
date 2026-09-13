@@ -222,8 +222,6 @@ class _LocalStorageCardState extends State<LocalStorageCard> {
       listenable: guard,
       builder: (context, _) {
         final used = guard.usedBytes;
-        final limit = guard.limitBytes;
-        final fraction = limit == 0 ? 0.0 : (used / limit).clamp(0.0, 1.0);
         final decor = context.lumaDecor;
         return Semantics(
           button: true,
@@ -262,35 +260,8 @@ class _LocalStorageCardState extends State<LocalStorageCard> {
                         children: [
                           _StorageHeader(
                             used: used,
-                            limit: limit,
                             expanded: _expanded,
                           ),
-                          const SizedBox(height: 8),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(6),
-                            child: LinearProgressIndicator(
-                              value: fraction,
-                              minHeight: 8,
-                              backgroundColor: luma.surfaceHover,
-                              valueColor: AlwaysStoppedAnimation(
-                                fraction > 0.9
-                                    ? Colors.red.shade400
-                                    : luma.accent,
-                              ),
-                            ),
-                          ),
-                          if (guard.isOverLimit) ...[
-                            const SizedBox(height: 10),
-                            Text(
-                              "You're out of room — we stop saving and syncing "
-                              'until you clear a little out.',
-                              style: TextStyle(
-                                color: Colors.red.shade400,
-                                fontSize: 12,
-                                height: 1.4,
-                              ),
-                            ),
-                          ],
                           if (_expanded) ...[
                             const SizedBox(height: 16),
                             Divider(color: luma.border, height: 1),
@@ -317,20 +288,17 @@ class _LocalStorageCardState extends State<LocalStorageCard> {
 class _StorageHeader extends StatelessWidget {
   const _StorageHeader({
     required this.used,
-    required this.limit,
     required this.expanded,
   });
 
   final int used;
-  final int limit;
   final bool expanded;
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
     final summary = Text(
-      '${StorageGuardService.formatBytes(used)} of '
-      '${StorageGuardService.formatBytes(limit)} used',
+      '${StorageGuardService.formatBytes(used)} used locally',
       style: TextStyle(color: luma.textMuted, fontSize: 12),
       textAlign: TextAlign.end,
       maxLines: 1,

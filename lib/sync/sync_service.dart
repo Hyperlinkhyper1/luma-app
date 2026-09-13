@@ -1,10 +1,9 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart' show sha256, Hmac;
 import 'package:flutter/foundation.dart';
 
-import '../storage/storage_guard.dart';
 import '../security/secure_secret_store.dart';
 import 'server_access.dart';
 import 'sync_api.dart';
@@ -29,7 +28,7 @@ class SyncLimitExceededException implements Exception {
 /// Orchestrates account state and synchronization.
 ///
 /// Flow per enabled collection: snapshot the local data, compare against the
-/// last synced state, then push, pull, or — when both sides changed — let the
+/// last synced state, then push, pull, or â€” when both sides changed â€” let the
 /// newest edit win. Snapshots are end-to-end encrypted before upload; the
 /// server only ever sees ciphertext.
 class SyncService extends ChangeNotifier {
@@ -42,7 +41,7 @@ class SyncService extends ChangeNotifier {
   final List<SyncCollection> collections;
 
   /// Returns the current plan's cap on how many collections (besides the
-  /// always-on 'settings' one) may be enabled at once, or null for
+  /// automatic preferences and home layouts) may be enabled at once, or null for
   /// unlimited. Read fresh on every check so plan changes apply immediately.
   final int? Function()? syncCollectionLimit;
 
@@ -72,7 +71,7 @@ class SyncService extends ChangeNotifier {
 
   static const _debounceDelay = Duration(seconds: 8);
   // Without this, a device that hasn't edited anything itself only picks up
-  // another device's changes on its next restart or a 15-minute wait — this
+  // another device's changes on its next restart or a 15-minute wait â€” this
   // pulls much sooner so two signed-in devices converge close to live.
   static const _periodicInterval = Duration(seconds: 10);
 
@@ -83,13 +82,13 @@ class SyncService extends ChangeNotifier {
   /// Tags for the LOCAL (serverless) account: the salt is derived from the
   /// email alone (not random) so any device that types the same email
   /// reproduces the same salt with no server to hand one out. Only the
-  /// password's secrecy matters for security here — the email just keeps
+  /// password's secrecy matters for security here â€” the email just keeps
   /// two different people's derivations from colliding.
   static const _localAccountSaltTag = 'luma-local-account-salt-v1';
   static const _localVerifierTag = 'luma-local-account-verify-v1';
 
   /// A deterministic, account-scoped token a peer presents to prove it is on
-  /// the same account — derived (HMAC) from the encryption key. Revealing it
+  /// the same account â€” derived (HMAC) from the encryption key. Revealing it
   /// gains nothing: blobs still need the real key, and the cloud server uses
   /// a separately derived auth key.
   String? peerHandshakeToken() {
@@ -108,8 +107,8 @@ class SyncService extends ChangeNotifier {
   String? get serverUrl => _state?.serverUrl;
 
   /// Whether the server has approved this account (email verified, or
-  /// approved by the operator). Signing in already proves it — the server
-  /// refuses to issue a token otherwise — but it is tracked explicitly so
+  /// approved by the operator). Signing in already proves it â€” the server
+  /// refuses to issue a token otherwise â€” but it is tracked explicitly so
   /// the gate below has one unambiguous source of truth.
   bool get accountApproved => _state?.accountApproved ?? false;
 
@@ -119,12 +118,12 @@ class SyncService extends ChangeNotifier {
   bool get serverReady => _state?.serverReady ?? false;
 
   /// The address of an account created on this device that is still waiting
-  /// for approval, or null. Display-only — it grants no access.
+  /// for approval, or null. Display-only â€” it grants no access.
   String? get pendingApprovalEmail => _state?.pendingApprovalEmail;
 
   /// How that account gets approved. [ServerApprovalMode.manual] (the
   /// default) means the server's operator approves it from the admin
-  /// dashboard — there is no email to wait for and nothing to resend.
+  /// dashboard â€” there is no email to wait for and nothing to resend.
   ServerApprovalMode get pendingApprovalMode =>
       ServerApprovalMode.parse(_state?.pendingApprovalMode);
 
@@ -158,18 +157,18 @@ class SyncService extends ChangeNotifier {
 
   /// The current bearer token, if signed in. Used by features (e.g. Families)
   /// that talk to their own, non-encrypted server endpoints rather than the
-  /// zero-knowledge sync/blob ones — see [FamilyApi] in lib/family/family_api.dart.
+  /// zero-knowledge sync/blob ones â€” see [FamilyApi] in lib/family/family_api.dart.
   String? get authToken => _state?.token;
   SyncStatus get status => _status;
   String? get lastError => _lastError;
   DateTime? get lastSyncAt => _state?.lastSyncAt;
 
-  /// True once there's an encryption key at all — via a cloud account
+  /// True once there's an encryption key at all â€” via a cloud account
   /// ([signedIn]) or a local-only, serverless identity ([isLocalOnly]). This
   /// is the actual gate for P2P: peers only need a shared key, not a server.
   bool get p2pReady => _state?.encryptionKey != null;
 
-  /// True when [p2pReady] but the key did NOT come from a cloud account —
+  /// True when [p2pReady] but the key did NOT come from a cloud account â€”
   /// i.e. set up purely for device-to-device sync via [setLocalAccount].
   bool get isLocalOnly => p2pReady && !signedIn;
 
@@ -179,7 +178,7 @@ class SyncService extends ChangeNotifier {
   /// The operator reset this account's password from the admin dashboard and
   /// the user has not chosen a new one yet. While this is true the app puts
   /// a blocking "choose a new password" screen over everything (see
-  /// PasswordResetPage) — and this device deliberately keeps working until
+  /// PasswordResetPage) â€” and this device deliberately keeps working until
   /// then, because it holds the only copy of the encryption key that can
   /// re-seal the synced snapshots under the new password.
   bool get passwordResetRequired => _account?.passwordResetRequired ?? false;
@@ -230,7 +229,7 @@ class SyncService extends ChangeNotifier {
     });
     notifyListeners();
     if (serverReady) {
-      // Kick off the initial sync right away (still off the critical path —
+      // Kick off the initial sync right away (still off the critical path â€”
       // syncNow is async/non-blocking) so admin-granted plan info and other
       // account state reach the UI as soon as possible instead of showing
       // stale/default values for the first few seconds after launch.
@@ -297,7 +296,7 @@ class SyncService extends ChangeNotifier {
         ..kdfSalt = params.kdfSalt
         ..kdfIterations = params.kdfIterations
         // The server refuses to issue a token to an account that hasn't been
-        // approved yet, so holding one is the proof — this is what opens the
+        // approved yet, so holding one is the proof â€” this is what opens the
         // server-access gate for the rest of the app.
         ..accountApproved = true
         ..pendingApprovalEmail = null
@@ -322,7 +321,7 @@ class SyncService extends ChangeNotifier {
   /// Creates a new account on the server. Returns null when the account is
   /// signed in immediately; returns a human-readable message when the
   /// server requires email verification first (the account exists, but the
-  /// caller is NOT signed in yet — the user must verify, then [signIn]).
+  /// caller is NOT signed in yet â€” the user must verify, then [signIn]).
   Future<String?> register({
     required String serverUrl,
     required String email,
@@ -334,7 +333,7 @@ class SyncService extends ChangeNotifier {
       final normalizedEmail = email.trim().toLowerCase();
       // If this device already has a local-only (serverless) identity for
       // the SAME email, reuse its salt so the resulting key comes out
-      // identical (given the same password) — devices already paired over
+      // identical (given the same password) â€” devices already paired over
       // P2P aren't orphaned by this device also gaining a cloud account.
       final reuseLocalSalt =
           isLocalOnly && s.email == normalizedEmail && s.kdfSalt != null;
@@ -356,7 +355,7 @@ class SyncService extends ChangeNotifier {
         api.close();
         // The account exists but is NOT approved: remember who we're waiting
         // for (and who does the approving) so the UI can explain it, and
-        // leave the gate shut — no further request reaches the server until
+        // leave the gate shut â€” no further request reaches the server until
         // the approval lands and the user signs in.
         s
           ..pendingApprovalEmail = normalizedEmail
@@ -401,7 +400,7 @@ class SyncService extends ChangeNotifier {
 
   /// Which providers [serverUrl] offers a button for. Never throws: a server
   /// that is old, unreachable, or simply has none configured all mean the
-  /// same thing to the sign-in screen — show email and password only.
+  /// same thing to the sign-in screen â€” show email and password only.
   Future<List<OAuthProviderInfo>> availableOAuthProviders(
     String serverUrl,
   ) async {
@@ -418,7 +417,7 @@ class SyncService extends ChangeNotifier {
 
   /// Opens a browser sign-in and hands back the URL to launch. The caller
   /// then [waitForOAuthIdentity], collects the passphrase, and finishes with
-  /// [completeOAuthSignIn] — nothing here touches this device's account
+  /// [completeOAuthSignIn] â€” nothing here touches this device's account
   /// state until that last step succeeds.
   Future<OAuthSignInHandle> startOAuthSignIn({
     required String serverUrl,
@@ -470,7 +469,7 @@ class SyncService extends ChangeNotifier {
   /// Finishes a browser sign-in.
   ///
   /// The provider settled which account this is; [passphrase] is what
-  /// actually decrypts its data, and it never leaves this device — only the
+  /// actually decrypts its data, and it never leaves this device â€” only the
   /// key derived from it does, exactly as in [signIn]. For an account that
   /// already exists the server checks that key, so a wrong passphrase throws
   /// rather than quietly producing an account whose data won't open.
@@ -496,7 +495,7 @@ class SyncService extends ChangeNotifier {
     // An existing account dictates its own KDF parameters. For a new one,
     // reuse this device's local-only salt when the address matches, so a
     // device already paired over P2P is not orphaned by gaining a cloud
-    // account — same reasoning as [register].
+    // account â€” same reasoning as [register].
     final reuseLocalSalt = isLocalOnly && s.email == email && s.kdfSalt != null;
     final kdfSalt =
         identity.kdfSalt ??
@@ -580,9 +579,9 @@ class SyncService extends ChangeNotifier {
 
   /// Asks the server to send the approval mail again for an account created
   /// on this device that is still waiting. Only meaningful under
-  /// [ServerApprovalMode.email] — with manual approval there is no mail, and
+  /// [ServerApprovalMode.email] â€” with manual approval there is no mail, and
   /// the server says so. Returns the server's (deliberately generic)
-  /// message. Throws [StateError] when nothing is pending — this is part of
+  /// message. Throws [StateError] when nothing is pending â€” this is part of
   /// the account handshake, so it is one of the few calls allowed through
   /// the closed gate.
   Future<String> resendApprovalEmail() async {
@@ -612,13 +611,13 @@ class SyncService extends ChangeNotifier {
   }
 
   /// Sets up (or re-enters) a LOCAL, serverless identity for peer-to-peer
-  /// sync: the encryption key is derived from [email] + [password] alone —
+  /// sync: the encryption key is derived from [email] + [password] alone â€”
   /// no network call, no server. Entering the same email and password on
   /// another device derives the exact same key, which is how two devices
   /// recognize each other as "the same account" over Wi-Fi.
   ///
   /// Throws [StateError] if this device already has a local identity and
-  /// [password] doesn't reproduce it — the only mistyped-password check
+  /// [password] doesn't reproduce it â€” the only mistyped-password check
   /// possible without a server, and only effective on the SAME device.
   Future<void> setLocalAccount({
     required String email,
@@ -663,7 +662,7 @@ class SyncService extends ChangeNotifier {
 
   /// Removes the local-only identity set up by [setLocalAccount], stopping
   /// P2P. Refuses (no-op) if the current identity is actually a signed-in
-  /// cloud account — sign out of that from Sync & account instead.
+  /// cloud account â€” sign out of that from Sync & account instead.
   Future<void> clearLocalAccount() async {
     final s = _state;
     if (s == null || !isLocalOnly) return;
@@ -721,8 +720,8 @@ class SyncService extends ChangeNotifier {
   /// Finishes a password reset the server operator forced from the admin
   /// dashboard ([passwordResetRequired]).
   ///
-  /// There is no current password to prove anything with — that is the whole
-  /// point of a reset — so this device's session token stands in for it, and
+  /// There is no current password to prove anything with â€” that is the whole
+  /// point of a reset â€” so this device's session token stands in for it, and
   /// the server only accepts the call while a reset is outstanding. Because
   /// this device still holds the old encryption key in memory, the same
   /// re-seal pass as [changePassword] keeps every synced snapshot readable;
@@ -761,8 +760,8 @@ class SyncService extends ChangeNotifier {
   }
 
   /// Switches this device onto [newKeys] and re-encrypts every snapshot the
-  /// server holds so the account's *other* devices — which will derive the
-  /// same new key from the new password — can still read them.
+  /// server holds so the account's *other* devices â€” which will derive the
+  /// same new key from the new password â€” can still read them.
   ///
   /// Shared by [changePassword] and [completePasswordReset]: the server-side
   /// credential rotation differs between the two, everything after it does
@@ -868,7 +867,7 @@ class SyncService extends ChangeNotifier {
   }
 
   /// Revokes another device's session, signing it out remotely. The
-  /// server rejects revoking the session this device is currently using —
+  /// server rejects revoking the session this device is currently using â€”
   /// call [signOut] for that instead.
   Future<void> revokeSession(String id) async {
     final api = _api;
@@ -880,7 +879,7 @@ class SyncService extends ChangeNotifier {
 
   /// A short, human-readable platform label sent to the server at
   /// sign-in/registration so [listSessions] can show something more useful
-  /// than an opaque session id (e.g. "Windows", "Android"). Display-only —
+  /// than an opaque session id (e.g. "Windows", "Android"). Display-only â€”
   /// never used for authentication.
   static String? _deviceLabel() {
     switch (defaultTargetPlatform) {
@@ -933,7 +932,7 @@ class SyncService extends ChangeNotifier {
 
   /// This account's most recent deletion request, or null if it has never
   /// filed one. Read off the last /account snapshot, so it is as fresh as the
-  /// last sync — no extra request per rebuild.
+  /// last sync â€” no extra request per rebuild.
   DataDeletionRequest? get dataDeletionRequest => _account?.deletionRequest;
 
   /// Files a request to have every trace of this account deleted from the
@@ -961,12 +960,10 @@ class SyncService extends ChangeNotifier {
 
   // ---- Collection toggles --------------------------------------------------------
 
-  /// How many non-'settings' collections are currently enabled (the
-  /// always-on 'settings' collection isn't a user choice, so it doesn't
-  /// count against the plan limit).
+  /// Automatic preferences and home layouts do not consume a feature slot.
   int get enabledSyncCollectionCount =>
       _state?.collections.entries
-          .where((e) => e.key != 'settings' && e.value.enabled)
+          .where((e) => !isAutomaticSyncCollection(e.key) && e.value.enabled)
           .length ??
       0;
 
@@ -977,7 +974,7 @@ class SyncService extends ChangeNotifier {
     final s = _state;
     if (s == null) return;
     final st = s.collection(id);
-    if (id != 'settings' && !st.enabled) {
+    if (!isAutomaticSyncCollection(id) && !st.enabled) {
       final limit = syncCollectionLimit?.call();
       if (limit != null && enabledSyncCollectionCount >= limit) {
         throw SyncLimitExceededException(limit);
@@ -992,7 +989,7 @@ class SyncService extends ChangeNotifier {
   /// Turns syncing off. With [removeRemote], the server's copy is deleted
   /// too (other devices that still sync this collection may re-upload it).
   Future<void> disableCollection(String id, {bool removeRemote = false}) async {
-    if (id == 'settings') return; // always synced — can't be turned off
+    if (isAutomaticSyncCollection(id)) return;
     final s = _state;
     if (s == null) return;
     final st = s.collection(id)
@@ -1036,7 +1033,6 @@ class SyncService extends ChangeNotifier {
     if (api == null || s == null || !s.serverReady) {
       throw StateError('Not signed in with an approved account.');
     }
-    StorageGuard.instance.ensureWithinLimit();
     final sealed = await SyncCrypto.sealBytes(bytes, s.encryptionKey!);
     return api.putBlob(
       collection,
@@ -1083,7 +1079,6 @@ class SyncService extends ChangeNotifier {
     if (api == null || s == null || !s.serverReady) {
       throw StateError('Not signed in with an approved account.');
     }
-    StorageGuard.instance.ensureWithinLimit();
     final sealed = await SyncCrypto.sealPayload(payload, s.encryptionKey!);
     return api.putBlob(
       collection,
@@ -1105,7 +1100,7 @@ class SyncService extends ChangeNotifier {
   // ---- AI --------------------------------------------------------------------
 
   /// Whether the sync server has an operator-configured Mistral key
-  /// available — see AiSettingsSection (status display) and ChatController
+  /// available â€” see AiSettingsSection (status display) and ChatController
   /// (which then sends chat requests through the server's proxy instead of
   /// asking for a locally-stored key). The key itself never reaches this
   /// device; only this yes/no travels here.
@@ -1120,7 +1115,7 @@ class SyncService extends ChangeNotifier {
   }
 
   /// Shared-AI status for this account: which operator keys exist and how
-  /// much of this user's budget is used — percentages only, the raw token
+  /// much of this user's budget is used â€” percentages only, the raw token
   /// numbers never leave the server. Null when signed out or unreachable.
   Future<AiServerStatus?> aiStatus() async {
     final api = _api;
@@ -1134,7 +1129,7 @@ class SyncService extends ChangeNotifier {
 
   // ---- Sync ---------------------------------------------------------------------
 
-  /// Synchronizes all enabled collections. Safe to call at any time —
+  /// Synchronizes all enabled collections. Safe to call at any time â€”
   /// concurrent calls are serialized, and awaiting the future always means
   /// "my run has completed".
   Future<void> syncNow({bool silent = false}) {
@@ -1148,14 +1143,6 @@ class SyncService extends ChangeNotifier {
     final s = _state;
     final api = _api;
     if (s == null || api == null || !s.serverReady) return;
-
-    if (StorageGuard.instance.isOverLimit) {
-      _status = SyncStatus.error;
-      _lastError =
-          'Local storage limit reached — sync is paused until you free up space.';
-      notifyListeners();
-      return;
-    }
 
     _status = SyncStatus.syncing;
     if (!silent) _lastError = null;
@@ -1175,7 +1162,7 @@ class SyncService extends ChangeNotifier {
         _applyServerAccess();
         _status = SyncStatus.error;
         _lastError =
-            'This account is waiting for approval — sync is paused '
+            'This account is waiting for approval â€” sync is paused '
             'until it is approved.';
         notifyListeners();
         return;
@@ -1201,7 +1188,7 @@ class SyncService extends ChangeNotifier {
         _requiresReauth = true;
         s.token = null;
         _applyServerAccess();
-        errors.add('Session expired — please sign in again.');
+        errors.add('Session expired â€” please sign in again.');
       } else if (e.isAccountBlocked) {
         // The server put this account back to "waiting for approval", or an
         // operator revoked its access outright. Either way: shut the gate and
@@ -1465,8 +1452,6 @@ class SyncService extends ChangeNotifier {
     Uint8List sealed,
     int peerSavedAtMs,
   ) async {
-    // A peer can't push new data past the cap either.
-    if (StorageGuard.instance.isOverLimit) return false;
     final s = _state!;
     final payload = await _withRecoveryKeys(
       (key) => SyncCrypto.openPayload(sealed, key),
@@ -1482,7 +1467,7 @@ class SyncService extends ChangeNotifier {
     final localAt = st.localChangedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
     final peerAt = DateTime.fromMillisecondsSinceEpoch(peerSavedAtMs);
     if (!peerAt.isAfter(localAt) && st.lastSyncedHash != null) {
-      // We are at least as new as the peer — decline to avoid clobbering a
+      // We are at least as new as the peer â€” decline to avoid clobbering a
       // local edit that hasn't propagated yet.
       return false;
     }
@@ -1512,7 +1497,7 @@ class SyncService extends ChangeNotifier {
 String _hexEncode(List<int> bytes) =>
     bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
 
-/// Parsed GET /api/v1/ai/status response — see [SyncService.aiStatus].
+/// Parsed GET /api/v1/ai/status response â€” see [SyncService.aiStatus].
 class AiServerStatus {
   const AiServerStatus({
     required this.mistralConfigured,
@@ -1560,8 +1545,8 @@ class AiServerStatus {
 /// [SyncService.completeOAuthSignIn].
 ///
 /// It owns the [SyncApi] the flow runs over. That client is adopted by
-/// [SyncService] when the sign-in succeeds; on any other ending — cancelled,
-/// timed out, the user backed out of the passphrase step — the caller must
+/// [SyncService] when the sign-in succeeds; on any other ending â€” cancelled,
+/// timed out, the user backed out of the passphrase step â€” the caller must
 /// [close] it so the socket does not outlive the attempt.
 class OAuthSignInHandle {
   OAuthSignInHandle._({

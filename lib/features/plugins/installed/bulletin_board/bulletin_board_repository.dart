@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart';
+﻿import 'package:drift/drift.dart';
 
 import '../../../../storage/storage_guard.dart';
 import 'data/bulletin_board_database.dart';
@@ -78,7 +78,6 @@ class BulletinBoardRepository {
     double height = 200.0,
     bool pinned = false,
   }) async {
-    StorageGuard.instance.ensureWithinLimit();
     await _db.into(_db.boardItems).insert(
           BoardItemsCompanion.insert(
             type: type,

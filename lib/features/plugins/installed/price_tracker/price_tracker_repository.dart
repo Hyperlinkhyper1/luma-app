@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -99,7 +99,6 @@ class PriceTrackerRepository extends ChangeNotifier {
   }
 
   Future<TrackedItem> add({required String name, required String url}) async {
-    StorageGuard.instance.ensureWithinLimit();
     final item = TrackedItem(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       name: name,
@@ -114,7 +113,6 @@ class PriceTrackerRepository extends ChangeNotifier {
   }
 
   Future<void> addSnapshot(String itemId, double price) async {
-    StorageGuard.instance.ensureWithinLimit();
     final idx = _items.indexWhere((i) => i.id == itemId);
     if (idx == -1) return;
     _items[idx].snapshots.add(

@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart';
+﻿import 'package:drift/drift.dart';
 
 import '../../../../storage/storage_guard.dart';
 import 'data/groceries_database.dart';
@@ -63,7 +63,7 @@ class GroceriesRepository {
 
   final GroceriesDatabase _db;
 
-  // ── Lists ────────────────────────────────────────────────────────────
+  // â”€â”€ Lists â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Stream<List<GroceryListRecord>> watchLists() {
     final query = _db.customSelect(
@@ -98,7 +98,6 @@ class GroceriesRepository {
   }
 
   Future<int> createList(String name) async {
-    StorageGuard.instance.ensureWithinLimit();
     final id = await _db.into(_db.groceryLists).insert(
           GroceryListsCompanion.insert(name: name),
         );
@@ -116,12 +115,12 @@ class GroceriesRepository {
   }
 
   Future<void> deleteList(int id) async {
-    // No DB-level cascade — remove the list's items first.
+    // No DB-level cascade â€” remove the list's items first.
     await (_db.delete(_db.groceryListItems)..where((t) => t.listId.equals(id))).go();
     await (_db.delete(_db.groceryLists)..where((t) => t.id.equals(id))).go();
   }
 
-  // ── Items ────────────────────────────────────────────────────────────
+  // â”€â”€ Items â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Stream<List<GroceryListItemRecord>> watchItems(int listId) {
     final query = _db.select(_db.groceryListItems)
@@ -134,7 +133,6 @@ class GroceriesRepository {
 
   Future<void> addProduct(int listId, RemoteProduct product,
       {int quantity = 1}) async {
-    StorageGuard.instance.ensureWithinLimit();
     await _db.into(_db.groceryListItems).insert(
           GroceryListItemsCompanion.insert(
             listId: listId,
