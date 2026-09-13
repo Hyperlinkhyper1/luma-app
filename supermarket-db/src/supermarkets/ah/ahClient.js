@@ -22,8 +22,11 @@ const MAX_TOKEN_AGE_MS = 30 * 60 * 1000;
 
 // A rejected token is usually AH shedding load rather than a permanently dead
 // one, so a replacement minted in the same millisecond gets rejected just as
-// readily. Back off between attempts instead of giving up after one.
-const AUTH_RETRY_DELAYS_MS = [1000, 5000, 15000];
+// readily. Back off between attempts instead of giving up after one. The tail
+// of this ladder is deliberately long: after a full-catalog burst AH keeps
+// refusing freshly minted anonymous tokens for minutes, so a ladder topping out
+// in seconds spends every attempt inside the same cooldown.
+const AUTH_RETRY_DELAYS_MS = [1000, 5000, 15000, 60000, 180000];
 
 // A token AH has dropped comes back as an OAuth error body on the data
 // endpoint — as a 400 `invalid_grant` ("member not active") just as often as

@@ -8,6 +8,13 @@ const { sleep, stripHtml } = require('../util');
 const REQUEST_DELAY_MS = 200;
 const MAX_PAGES_PER_CATEGORY = 200;
 
+// A category that fails on its very first page contributed nothing. A handful
+// of those is noise, but once AH starts refusing tokens every remaining
+// category fails that way in turn — and a partial catalog is worse than no
+// sync at all, because markStaleAsUnavailable would flag everything we never
+// reached as unavailable. Above this share, fail the run instead.
+const MAX_EMPTY_CATEGORY_RATIO = 0.2;
+
 function bestImage(images) {
   if (!images || images.length === 0) return null;
   // Prefer a mid-size image; falls back to the first one available.
@@ -49,10 +56,12 @@ class AhSync extends BaseSync {
   async fetchProducts() {
     const categories = await fetchCategories();
     const byId = new Map();
+    const emptyCategories = [];
 
     for (const category of categories) {
       let page = 0;
       let totalPages = 1;
+      let seenInCategory = 0;
 
       while (page < totalPages && page < MAX_PAGES_PER_CATEGORY) {
         try {
@@ -64,6 +73,7 @@ class AhSync extends BaseSync {
           totalPages = result.page?.totalPages ?? 1;
           for (const raw of result.products || []) {
             byId.set(raw.webshopId, mapProduct(raw));
+            seenInCategory += 1;
           }
           await this.reportProgress(byId.size);
         } catch (error) {
@@ -76,6 +86,16 @@ class AhSync extends BaseSync {
         page += 1;
         await sleep(REQUEST_DELAY_MS);
       }
+
+      if (seenInCategory === 0) emptyCategories.push(category.name);
+    }
+
+    if (emptyCategories.length > categories.length * MAX_EMPTY_CATEGORY_RATIO) {
+      throw new Error(
+        `AH sync: ${emptyCategories.length} of ${categories.length} categories returned ` +
+          'no products (AH is most likely refusing tokens); aborting rather than ' +
+          `syncing a partial catalog. First few: ${emptyCategories.slice(0, 5).join(', ')}`
+      );
     }
 
     return Array.from(byId.values());
