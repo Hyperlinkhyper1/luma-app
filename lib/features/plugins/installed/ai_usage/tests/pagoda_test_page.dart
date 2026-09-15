@@ -9,8 +9,9 @@ import '../leaderboard/ai_vendor_style.dart';
 import '../leaderboard/vendor_logos.dart';
 import 'ai_benchmark.dart';
 import 'ai_benchmark_scope.dart';
+import 'model_banner.dart';
 import 'model_search_field.dart';
-import 'pagoda_view_prefs.dart';
+import 'test_view_prefs.dart';
 
 /// The **Pagoda Test** page loads an interactive Three.js voxel garden
 /// benchmark — a procedurally generated Japanese garden with a 5-story pagoda.
@@ -168,7 +169,7 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
     if (_started) return;
     _started = true;
     AiBenchmarkScope.of(context).load();
-    PagodaViewPrefs.loadBannerView().then((banners) {
+    TestViewPrefs.loadBannerView('pagoda').then((banners) {
       if (mounted && banners != _bannerView) {
         setState(() => _bannerView = banners);
       }
@@ -269,7 +270,7 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
                   onSelect: (i) {
                     final banners = i == 1;
                     setState(() => _bannerView = banners);
-                    PagodaViewPrefs.saveBannerView(banners);
+                    TestViewPrefs.saveBannerView('pagoda', banners);
                   },
                 ),
               ],
@@ -310,8 +311,9 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
                 ),
               )
             else if (_bannerView)
-              _ModelBannerGrid(
+              ModelBannerGrid(
                 models: filtered,
+                fallbackIcon: Icons.temple_buddhist_rounded,
                 onPick: (b) => setState(() => _selectedId = b.id),
               )
             else
@@ -653,171 +655,4 @@ class _MistralCubesPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-/// Banner-style model card: the scene's preview image on top with the model
-/// name and vendor below, Modrinth-tile style. Alternative to [ModelButton].
-///
-/// The preview is the server-cached PNG when it has downloaded, otherwise the
-/// test's generic artwork, otherwise the temple icon — a card whose artwork is
-/// still downloading looks intentional rather than broken.
-class ModelBanner extends StatefulWidget {
-  const ModelBanner(
-      {super.key, required this.benchmark, required this.onTap});
-
-  final AiBenchmark benchmark;
-  final VoidCallback onTap;
-
-  @override
-  State<ModelBanner> createState() => _ModelBannerState();
-}
-
-class _ModelBannerState extends State<ModelBanner> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final luma = context.luma;
-    final repo = AiBenchmarkScope.of(context);
-    final vendor = pagodaVendorName(widget.benchmark.model);
-    final brand = widget.benchmark.model.contains('Mistral')
-        ? const Color(0xFFFF8205)
-        : pagodaBrandStops(widget.benchmark.model).first;
-    final preview = repo.previewFile(widget.benchmark.id) ??
-        repo.fallbackFile(widget.benchmark.kind);
-
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          decoration: BoxDecoration(
-            color: _hovered ? luma.surfaceHover : luma.surface,
-            border: Border.all(
-              color: _hovered ? brand : luma.border,
-              width: 1,
-            ),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(12),
-                ),
-                child: AspectRatio(
-                  aspectRatio: 16 / 10,
-                  child: preview == null
-                      ? Container(
-                          color: luma.surfaceHover,
-                          alignment: Alignment.center,
-                          child: Icon(
-                            Icons.temple_buddhist_rounded,
-                            size: 48,
-                            color: luma.textMuted,
-                          ),
-                        )
-                      : Image.file(
-                          preview,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              Container(
-                            color: luma.surfaceHover,
-                            alignment: Alignment.center,
-                            child: Icon(
-                              Icons.temple_buddhist_rounded,
-                              size: 48,
-                              color: luma.textMuted,
-                            ),
-                          ),
-                        ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    VendorLogo(
-                      vendor: pagodaVendorKey(widget.benchmark.model) ?? '',
-                      vendorName: vendor,
-                      size: 30,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            widget.benchmark.model,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: luma.textPrimary,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'by $vendor',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: luma.textMuted,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Responsive grid of [ModelBanner] cards: two columns on wide screens, one
-/// below 560px. Renders whichever [models] the caller passes in — the full
-/// roster, or a search-filtered subset.
-class _ModelBannerGrid extends StatelessWidget {
-  const _ModelBannerGrid({required this.models, required this.onPick});
-
-  final List<AiBenchmark> models;
-  final ValueChanged<AiBenchmark> onPick;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const spacing = 12.0;
-        final columns = constraints.maxWidth > 560 ? 2 : 1;
-        final width =
-            (constraints.maxWidth - spacing * (columns - 1)) / columns;
-        return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children: [
-            for (final model in models)
-              SizedBox(
-                width: width,
-                child: ModelBanner(
-                  benchmark: model,
-                  onTap: () => onPick(model),
-                ),
-              ),
-          ],
-        );
-      },
-    );
-  }
 }

@@ -1,6 +1,10 @@
+import 'dart:io';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 import '../../../../../theme/luma_theme.dart';
+import 'ai_benchmark_repository.dart';
 import 'ai_benchmark_scope.dart';
 import 'engine_test_page.dart';
 import 'hero_tile.dart';
@@ -27,12 +31,34 @@ class TestsTab extends StatefulWidget {
 class _TestsTabState extends State<TestsTab> {
   bool _started = false;
 
+  /// Drawn once per visit to the tab, so the three tiles show a different
+  /// scene's artwork each time the section is opened rather than the same
+  /// frozen picture forever. Held in state — re-rolling it on every build
+  /// would reshuffle the board on hover.
+  final int _seed = Random().nextInt(1 << 32);
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_started) return;
     _started = true;
     AiBenchmarkScope.of(context).load();
+  }
+
+  /// Artwork for a test's tile: one of that test's own scene previews, picked
+  /// at random for this visit, falling back to the test's generic artwork
+  /// while the previews are still downloading (and to the gradient stand-in
+  /// when there is nothing cached at all).
+  ///
+  /// The pick is taken over the whole roster rather than only the previews
+  /// already on disk, so a preview arriving mid-visit never swaps the picture
+  /// out from under the user.
+  File? _tileArt(AiBenchmarkRepository repo, String kind) {
+    final fallback = repo.fallbackFile(kind);
+    final roster = repo.benchmarksOfKind(kind);
+    if (roster.isEmpty) return fallback;
+    final index = (_seed ^ kind.hashCode).abs() % roster.length;
+    return repo.previewFile(roster[index].id) ?? fallback;
   }
 
   @override
@@ -68,7 +94,7 @@ class _TestsTabState extends State<TestsTab> {
                 LumaHeroTile(
                   title: 'Pagoda Test',
                   subtitle: 'Open the test screen',
-                  imageFile: repo.fallbackFile('pagoda'),
+                  imageFile: _tileArt(repo, 'pagoda'),
                   fallbackIcon: Icons.temple_buddhist_rounded,
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
@@ -79,6 +105,7 @@ class _TestsTabState extends State<TestsTab> {
                 LumaHeroTile(
                   title: 'Engine Test',
                   subtitle: 'Open the test screen',
+                  imageFile: _tileArt(repo, 'engine'),
                   fallbackIcon: Icons.precision_manufacturing_rounded,
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
@@ -89,6 +116,7 @@ class _TestsTabState extends State<TestsTab> {
                 LumaHeroTile(
                   title: 'PC Test',
                   subtitle: 'Open the test screen',
+                  imageFile: _tileArt(repo, 'pc'),
                   fallbackIcon: Icons.computer_rounded,
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(

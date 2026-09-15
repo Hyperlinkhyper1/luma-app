@@ -109,3 +109,17 @@ Plan planById(String id) => kPlans.firstWhere(
       (p) => p.id == id,
       orElse: () => kPlans.first,
     );
+
+/// Plan tiers, lowest first. The single source of truth for "is this plan at
+/// least X" — [themeStyleUnlocked] and `SyncService` both defer to this
+/// rather than keeping their own copy of the ordering.
+int planTierIndex(String? id) => switch (id) {
+      'nova' => 2,
+      'orbit' => 1,
+      _ => 0,
+    };
+
+/// Whether [planId] is at or above [minPlanId]. A null [minPlanId] means the
+/// thing is free, so every plan clears it; Nova clears everything Orbit does.
+bool planAtLeast(String? planId, String? minPlanId) =>
+    minPlanId == null || planTierIndex(planId) >= planTierIndex(minPlanId);

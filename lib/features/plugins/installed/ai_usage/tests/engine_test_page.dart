@@ -7,8 +7,10 @@ import '../../../../../theme/luma_theme.dart';
 import '../../_shared/windows_webview.dart';
 import 'ai_benchmark.dart';
 import 'ai_benchmark_scope.dart';
+import 'model_banner.dart';
 import 'model_search_field.dart';
 import 'pagoda_test_page.dart' show ModelButton;
+import 'test_view_prefs.dart';
 
 /// The **Engine Test** page loads an interactive Three.js V8 cutaway
 /// benchmark — a mechanically driven cross-plane 90-degree V8 with a live
@@ -26,6 +28,7 @@ class EngineTestPage extends StatefulWidget {
 
 class _EngineTestPageState extends State<EngineTestPage> {
   String? _selectedId;
+  bool _bannerView = false;
   final _searchController = TextEditingController();
   String _query = '';
   bool _started = false;
@@ -36,6 +39,11 @@ class _EngineTestPageState extends State<EngineTestPage> {
     if (_started) return;
     _started = true;
     AiBenchmarkScope.of(context).load();
+    TestViewPrefs.loadBannerView('engine').then((banners) {
+      if (mounted && banners != _bannerView) {
+        setState(() => _bannerView = banners);
+      }
+    });
   }
 
   @override
@@ -114,13 +122,27 @@ class _EngineTestPageState extends State<EngineTestPage> {
               onChanged: (v) => setState(() => _query = v),
             ),
             const SizedBox(height: 20),
-            Text(
-              'Select a Model',
-              style: TextStyle(
-                color: luma.textPrimary,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
+            Row(
+              children: [
+                Text(
+                  'Select a Model',
+                  style: TextStyle(
+                    color: luma.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Spacer(),
+                LumaSegmentedTabs(
+                  tabs: const ['List', 'Banners'],
+                  selectedIndex: _bannerView ? 1 : 0,
+                  onSelect: (i) {
+                    final banners = i == 1;
+                    setState(() => _bannerView = banners);
+                    TestViewPrefs.saveBannerView('engine', banners);
+                  },
+                ),
+              ],
             ),
             const SizedBox(height: 12),
             if (repo.loading)
@@ -156,6 +178,12 @@ class _EngineTestPageState extends State<EngineTestPage> {
                       ? null
                       : () => repo.refreshFromServer(force: true),
                 ),
+              )
+            else if (_bannerView)
+              ModelBannerGrid(
+                models: filtered,
+                fallbackIcon: Icons.precision_manufacturing_rounded,
+                onPick: (b) => setState(() => _selectedId = b.id),
               )
             else
               for (final entry in filtered) ...[

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../account/plan.dart';
 import '../account/login_page.dart';
 import '../account/plan_selection_page.dart';
 import '../app/widgets.dart';
@@ -299,6 +300,25 @@ class _SignedInBody extends StatelessWidget {
                       ],
                     ),
                   )
+                else if (!sync.planAllowsCollection(collection.id))
+                  // Shown, but disabled with the reason stated: an option the
+                  // plan does not cover should explain itself rather than
+                  // silently vanish from the list.
+                  Tooltip(
+                    message: '${collection.label} syncs on the '
+                        '${planById(collection.minPlanId!).name} plan and above.',
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.workspace_premium_rounded,
+                            size: 14, color: luma.accent),
+                        const SizedBox(width: 6),
+                        Text('${planById(collection.minPlanId!).name} plan',
+                            style:
+                                TextStyle(color: luma.accent, fontSize: 12)),
+                      ],
+                    ),
+                  )
                 else
                   Switch(
                     value: sync.isEnabled(collection.id),
@@ -389,6 +409,10 @@ class _SignedInBody extends StatelessWidget {
     if (enabled) {
       try {
         await sync.enableCollection(id);
+      } on SyncPlanRequiredException catch (e) {
+        if (context.mounted) {
+          await _showPlanRequired(context, e.requiredPlanId, e.label);
+        }
       } on SyncLimitExceededException catch (e) {
         if (context.mounted) await _showLimitReached(context, e.limit);
       }
@@ -434,6 +458,50 @@ class _SignedInBody extends StatelessWidget {
     );
     if (removeRemote == null) return; // cancelled — leave the toggle on
     await sync.disableCollection(id, removeRemote: removeRemote);
+  }
+
+  Future<void> _showPlanRequired(
+    BuildContext context,
+    String requiredPlanId,
+    String label,
+  ) {
+    final luma = context.luma;
+    final plan = planById(requiredPlanId);
+    return showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: luma.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: luma.border),
+        ),
+        title: Text('${plan.name} plan needed',
+            style: TextStyle(color: luma.textPrimary)),
+        content: Text(
+          '$label syncs to the server on the ${plan.name} plan and above. '
+          'It keeps working on this device either way — only syncing it '
+          'between devices needs the plan.',
+          style: TextStyle(color: luma.textSecondary, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+          ),
+          LumaPrimaryButton(
+            label: 'See plans',
+            onTap: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const PlanSelectionPage(),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _showLimitReached(BuildContext context, int limit) {

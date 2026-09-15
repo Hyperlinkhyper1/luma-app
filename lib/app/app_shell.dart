@@ -33,9 +33,11 @@ import '../features/plugins/installed/price_tracker/price_tracker_page.dart';
 import '../features/plugins/installed/qr_code_generator/qr_code_generator_page.dart';
 import '../features/plugins/installed/machine_learning/machine_learning_page.dart';
 import '../features/plugins/installed/mind_map/mind_map_page.dart';
+import '../features/plugins/installed/whiteboard/whiteboard_page.dart';
 import '../features/plugins/installed/school/school_page.dart';
 import '../features/plugins/installed/secure_chat/secure_chat_page.dart';
 import '../features/plugins/installed/sftp/sftp_page.dart';
+import '../features/plugins/installed/airline_tycoon/airline_tycoon_page.dart';
 import '../features/plugins/installed/server_tycoon/server_tycoon_page.dart';
 import '../features/plugins/installed/space_colony/space_colony_page.dart';
 import '../features/plugins/installed/subway_builder/subway_builder_page.dart';
@@ -166,6 +168,7 @@ class _AppShellState extends State<AppShell> {
     'subway-builder',
     'server-tycoon',
     'transport-tracker',
+    'airline-tycoon',
   };
 
   @override
@@ -362,6 +365,7 @@ class _AppShellState extends State<AppShell> {
         'cloud-files' => const CloudFilesPage(),
         'data-management' => const DataManagementPage(),
         'server-tycoon' => const ServerTycoonPage(),
+        'airline-tycoon' => const AirlineTycoonPage(),
         'space-colony' => const SpaceColonyPage(),
         'subway-builder' => const SubwayBuilderPage(),
         'transport-tracker' => const TransportTrackerPage(),
@@ -373,6 +377,7 @@ class _AppShellState extends State<AppShell> {
         'youtube-downloader' => const MediaDownloaderPage(),
         'school' => const SchoolPage(),
         'mind-map' => const MindMapPage(),
+        'whiteboard' => const WhiteboardPage(),
         'machine-learning' => const MachineLearningPage(),
         'auto-clicker' => const AutoClickerPage(),
         'usage' => const UsagePage(),

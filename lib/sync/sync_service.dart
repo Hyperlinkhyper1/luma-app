@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart' show sha256, Hmac;
 import 'package:flutter/foundation.dart';
 
+import '../account/plan.dart';
 import '../security/secure_secret_store.dart';
 import 'server_access.dart';
 import 'sync_api.dart';
@@ -25,6 +26,20 @@ class SyncLimitExceededException implements Exception {
       'at once. Upgrade your plan to sync more.';
 }
 
+/// Thrown by [SyncService.enableCollection] when the collection itself is
+/// restricted to a higher plan than this device is on, regardless of how many
+/// other collections are enabled.
+class SyncPlanRequiredException implements Exception {
+  const SyncPlanRequiredException(this.requiredPlanId, this.label);
+
+  final String requiredPlanId;
+  final String label;
+
+  @override
+  String toString() =>
+      '$label syncs on the ${planById(requiredPlanId).name} plan and above.';
+}
+
 /// Orchestrates account state and synchronization.
 ///
 /// Flow per enabled collection: snapshot the local data, compare against the
@@ -35,6 +50,7 @@ class SyncService extends ChangeNotifier {
   SyncService({
     required this.collections,
     this.syncCollectionLimit,
+    this.currentPlanId,
     this.onServerPlan,
   });
 
@@ -44,6 +60,12 @@ class SyncService extends ChangeNotifier {
   /// automatic preferences and home layouts) may be enabled at once, or null for
   /// unlimited. Read fresh on every check so plan changes apply immediately.
   final int? Function()? syncCollectionLimit;
+
+  /// The plan tier this device is on right now, for collections that are
+  /// restricted to a tier (see [SyncCollection.minPlanId]). Read fresh on
+  /// every check — same contract as [syncCollectionLimit] — so a downgrade
+  /// takes effect immediately rather than at the next restart.
+  final String? Function()? currentPlanId;
 
   /// Invoked with the plan tier the server reports for this account on every
   /// /account fetch, so an admin-granted subscription is applied locally
@@ -970,11 +992,34 @@ class SyncService extends ChangeNotifier {
   /// Turns syncing on for a collection and uploads it right away. Throws
   /// [SyncLimitExceededException] if the current plan's limit on the number
   /// of synced collections is already reached.
+  SyncCollection? collectionById(String id) =>
+      collections.cast<SyncCollection?>().firstWhere(
+            (c) => c?.id == id,
+            orElse: () => null,
+          );
+
+  bool _planAllows(SyncCollection collection) =>
+      planAtLeast(currentPlanId?.call(), collection.minPlanId);
+
+  /// Whether this device's plan may sync [id] at all. Public so Settings can
+  /// show a lock instead of a switch without knowing anything about plans.
+  /// An unknown id is allowed, matching the permissive default elsewhere.
+  bool planAllowsCollection(String id) {
+    final collection = collectionById(id);
+    return collection == null || _planAllows(collection);
+  }
+
   Future<void> enableCollection(String id) async {
     final s = _state;
     if (s == null) return;
     final st = s.collection(id);
     if (!isAutomaticSyncCollection(id) && !st.enabled) {
+      // The plan gate is checked before the count gate so a free user is told
+      // "this needs Orbit" rather than the misleading "you are out of slots".
+      final collection = collectionById(id);
+      if (collection != null && !_planAllows(collection)) {
+        throw SyncPlanRequiredException(collection.minPlanId!, collection.label);
+      }
       final limit = syncCollectionLimit?.call();
       if (limit != null && enabledSyncCollectionCount >= limit) {
         throw SyncLimitExceededException(limit);
@@ -1170,6 +1215,10 @@ class SyncService extends ChangeNotifier {
       for (final collection in collections) {
         final st = s.collection(collection.id);
         if (!st.enabled) continue;
+        // Re-checked on every sync, not just on enable: someone who turned
+        // this on while subscribed and has since downgraded must stop
+        // syncing, not keep going forever on a stale toggle.
+        if (!_planAllows(collection)) continue;
         try {
           await _syncCollection(collection, remote.collections[collection.id]);
         } on SyncApiException catch (e) {
@@ -1376,6 +1425,8 @@ class SyncService extends ChangeNotifier {
     for (final c in collections) {
       final st = s.collection(c.id);
       if (!st.enabled) continue;
+      // Peer sync must not become a way around the plan gate.
+      if (!_planAllows(c)) continue;
       out[c.id] = (
         cloudVersion: st.lastSyncedVersion ?? 0,
         savedAtMs: (st.localChangedAt ?? DateTime.fromMillisecondsSinceEpoch(0))
@@ -1399,6 +1450,7 @@ class SyncService extends ChangeNotifier {
       orElse: () => null,
     );
     if (collection == null) return null;
+    if (!_planAllows(collection)) return null;
     final st = s.collection(collectionId);
     if (!st.enabled) return null;
 
@@ -1434,6 +1486,7 @@ class SyncService extends ChangeNotifier {
       orElse: () => null,
     );
     if (collection == null) return false;
+    if (!_planAllows(collection)) return false;
     final st = s.collection(collectionId);
     if (!st.enabled) return false;
 

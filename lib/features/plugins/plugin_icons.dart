@@ -81,6 +81,10 @@ IconData pluginIconFor(String? name) {
       return Icons.hub_rounded;
     case 'account_circle':
       return Icons.account_circle_rounded;
+    case 'flight':
+      return Icons.flight_rounded;
+    case 'draw':
+      return Icons.draw_rounded;
     default:
       return Icons.extension_rounded;
   }

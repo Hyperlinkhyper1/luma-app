@@ -1,3 +1,5 @@
+import '../account/plan.dart';
+
 /// A whole-app visual style.
 ///
 /// This is a bigger lever than the accent color: an accent only re-hues the
@@ -71,19 +73,9 @@ LumaThemeStyle themeStyleFromId(Object? id) {
   return LumaThemeStyle.standard;
 }
 
-/// Plan tiers, lowest first. Mirrors `SettingsController._tierIndex`.
-int _tierIndex(String? id) => switch (id) {
-      'nova' => 2,
-      'orbit' => 1,
-      _ => 0,
-    };
-
 /// Whether [planId] unlocks [style]. Free styles are always unlocked; paid
 /// ones need the plan to be at or above [ThemeStyleOption.minPlanId], so Nova
-/// gets everything Orbit does.
-bool themeStyleUnlocked(LumaThemeStyle style, String planId) {
-  final option = themeStyleOption(style);
-  final min = option.minPlanId;
-  if (min == null) return true;
-  return _tierIndex(planId) >= _tierIndex(min);
-}
+/// gets everything Orbit does. The tier ordering itself lives in
+/// `lib/account/plan.dart` so themes and sync share one definition.
+bool themeStyleUnlocked(LumaThemeStyle style, String planId) =>
+    planAtLeast(planId, themeStyleOption(style).minPlanId);

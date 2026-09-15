@@ -20,6 +20,12 @@ abstract class SyncCollection {
 
   IconData get icon;
 
+  /// Lowest plan tier allowed to sync this collection, or null when every
+  /// plan may. Enforced by [SyncService.enableCollection] and again on every
+  /// sync and peer exchange — the Settings toggle mirrors it, but the service
+  /// is the gate. Defaults to null so existing collections are unaffected.
+  String? get minPlanId => null;
+
   /// Fires whenever the underlying data changes (drives auto-sync).
   Stream<void> get changes;
 
@@ -39,6 +45,7 @@ class DriftSyncCollection extends SyncCollection {
     required this.label,
     required this.icon,
     required this.db,
+    this.minPlanId,
   });
 
   @override
@@ -47,6 +54,8 @@ class DriftSyncCollection extends SyncCollection {
   final String label;
   @override
   final IconData icon;
+  @override
+  final String? minPlanId;
 
   final GeneratedDatabase db;
 
@@ -253,6 +262,7 @@ class JsonStoreSyncCollection extends SyncCollection {
     required Listenable listenable,
     required this.exporter,
     required this.importer,
+    this.minPlanId,
   }) {
     listenable.addListener(_notify);
   }
@@ -263,6 +273,8 @@ class JsonStoreSyncCollection extends SyncCollection {
   final String label;
   @override
   final IconData icon;
+  @override
+  final String? minPlanId;
 
   final Future<Object?> Function() exporter;
   final Future<void> Function(Object? data) importer;

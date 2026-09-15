@@ -7,8 +7,10 @@ import '../../../../../theme/luma_theme.dart';
 import '../../_shared/windows_webview.dart';
 import 'ai_benchmark.dart';
 import 'ai_benchmark_scope.dart';
+import 'model_banner.dart';
 import 'model_search_field.dart';
 import 'pagoda_test_page.dart' show ModelButton;
+import 'test_view_prefs.dart';
 
 /// The **PC Test** page loads an interactive Three.js RGB rig benchmark — a
 /// custom loop-glass tower with a staged power-on boot sequence, live
@@ -25,6 +27,7 @@ class PcTestPage extends StatefulWidget {
 
 class _PcTestPageState extends State<PcTestPage> {
   String? _selectedId;
+  bool _bannerView = false;
   final _searchController = TextEditingController();
   String _query = '';
   bool _started = false;
@@ -35,6 +38,11 @@ class _PcTestPageState extends State<PcTestPage> {
     if (_started) return;
     _started = true;
     AiBenchmarkScope.of(context).load();
+    TestViewPrefs.loadBannerView('pc').then((banners) {
+      if (mounted && banners != _bannerView) {
+        setState(() => _bannerView = banners);
+      }
+    });
   }
 
   @override
@@ -113,13 +121,27 @@ class _PcTestPageState extends State<PcTestPage> {
               onChanged: (v) => setState(() => _query = v),
             ),
             const SizedBox(height: 20),
-            Text(
-              'Select a Model',
-              style: TextStyle(
-                color: luma.textPrimary,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
+            Row(
+              children: [
+                Text(
+                  'Select a Model',
+                  style: TextStyle(
+                    color: luma.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Spacer(),
+                LumaSegmentedTabs(
+                  tabs: const ['List', 'Banners'],
+                  selectedIndex: _bannerView ? 1 : 0,
+                  onSelect: (i) {
+                    final banners = i == 1;
+                    setState(() => _bannerView = banners);
+                    TestViewPrefs.saveBannerView('pc', banners);
+                  },
+                ),
+              ],
             ),
             const SizedBox(height: 12),
             if (repo.loading)
@@ -155,6 +177,12 @@ class _PcTestPageState extends State<PcTestPage> {
                       ? null
                       : () => repo.refreshFromServer(force: true),
                 ),
+              )
+            else if (_bannerView)
+              ModelBannerGrid(
+                models: filtered,
+                fallbackIcon: Icons.computer_rounded,
+                onPick: (b) => setState(() => _selectedId = b.id),
               )
             else
               for (final entry in filtered) ...[

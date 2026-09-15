@@ -41,6 +41,8 @@ import 'features/plugins/installed/account_overview/youtube_repository.dart';
 import 'features/plugins/installed/account_overview/youtube_scope.dart';
 import 'features/plugins/installed/data_management/data/data_management_database.dart';
 import 'features/plugins/installed/data_management/data_management_repository.dart';
+import 'features/plugins/installed/airline_tycoon/airline_tycoon_repository.dart';
+import 'features/plugins/installed/airline_tycoon/airline_tycoon_scope.dart';
 import 'features/plugins/installed/server_tycoon/server_tycoon_repository.dart';
 import 'features/plugins/installed/server_tycoon/server_tycoon_scope.dart';
 import 'features/plugins/installed/data_management/data_management_scope.dart';
@@ -78,6 +80,10 @@ import 'features/plugins/installed/mind_map/data/mind_map_database.dart'
 import 'features/plugins/installed/mind_map/migration/school_mind_map_import.dart';
 import 'features/plugins/installed/mind_map/mind_map_repository.dart';
 import 'features/plugins/installed/mind_map/mind_map_scope.dart';
+import 'features/plugins/installed/whiteboard/data/whiteboard_database.dart'
+    show WhiteboardDatabase;
+import 'features/plugins/installed/whiteboard/whiteboard_repository.dart';
+import 'features/plugins/installed/whiteboard/whiteboard_scope.dart';
 import 'features/plugins/installed/usage/data/usage_database.dart';
 import 'features/plugins/installed/usage/usage_repository.dart';
 import 'features/plugins/installed/usage/usage_scope.dart';
@@ -177,6 +183,8 @@ class _LumaAppState extends State<LumaApp> {
   late final DataManagementDatabase _dataManagementDb = DataManagementDatabase();
   late final DataManagementRepository _dataManagementRepository = DataManagementRepository(_dataManagementDb);
   late final ServerTycoonRepository _serverTycoonRepository = ServerTycoonRepository();
+  late final AirlineTycoonRepository _airlineTycoonRepository =
+      AirlineTycoonRepository();
   late final MoodJournalDatabase _moodJournalDb = MoodJournalDatabase();
   late final MoodJournalRepository _moodJournalRepository = MoodJournalRepository(_moodJournalDb);
   late final AiUsageDatabase _aiUsageDb = AiUsageDatabase();
@@ -194,6 +202,9 @@ class _LumaAppState extends State<LumaApp> {
   late final SchoolRepository _schoolRepository = SchoolRepository(_schoolDb);
   late final MindMapDatabase _mindMapDb = MindMapDatabase();
   late final MindMapRepository _mindMapRepository = MindMapRepository(_mindMapDb);
+  late final WhiteboardDatabase _whiteboardDb = WhiteboardDatabase();
+  late final WhiteboardRepository _whiteboardRepository =
+      WhiteboardRepository(_whiteboardDb);
   late final AutoClickerRepository _autoClickerRepository =
       AutoClickerRepository();
   late final UsageDatabase _usageDb = UsageDatabase();
@@ -249,6 +260,7 @@ class _LumaAppState extends State<LumaApp> {
   late final SyncService _sync = SyncService(
     syncCollectionLimit: () =>
         planById(widget.settings.selectedPlanId).maxSyncCollections,
+    currentPlanId: () => widget.settings.selectedPlanId,
     onServerPlan: (id) => widget.settings.setAdminPlan(id),
     collections: [
     JsonStoreSyncCollection(
@@ -345,6 +357,12 @@ class _LumaAppState extends State<LumaApp> {
       icon: Icons.hub_rounded,
       db: _mindMapDb,
     ),
+    DriftSyncCollection(
+      id: 'whiteboard',
+      label: 'Whiteboards',
+      icon: Icons.draw_rounded,
+      db: _whiteboardDb,
+    ),
     JsonStoreSyncCollection(
       id: 'price_tracker',
       label: 'Price tracker',
@@ -366,6 +384,17 @@ class _LumaAppState extends State<LumaApp> {
       label: 'Groceries',
       icon: Icons.local_grocery_store_rounded,
       db: _groceriesDb,
+    ),
+    // The game itself is free and fully playable offline on every plan;
+    // only carrying the airline between devices is a paid feature.
+    JsonStoreSyncCollection(
+      id: 'airline_tycoon',
+      label: 'Airline Tycoon',
+      icon: Icons.flight_takeoff_rounded,
+      minPlanId: 'orbit',
+      listenable: _airlineTycoonRepository,
+      exporter: () => _airlineTycoonRepository.exportData(),
+      importer: (data) => _airlineTycoonRepository.importData(data),
     ),
   ]);
 
@@ -499,8 +528,10 @@ class _LumaAppState extends State<LumaApp> {
     _steamDb.close();
     _schoolDb.close();
     _mindMapDb.close();
+    _whiteboardDb.close();
     _minecraftDb.close();
     _serverTycoonRepository.dispose();
+    _airlineTycoonRepository.dispose();
     _autoClickerRepository.dispose();
     _usageRepository.dispose();
     _usageDb.close();
@@ -580,6 +611,8 @@ class _LumaAppState extends State<LumaApp> {
                     repository: _dataManagementRepository,
                     child: ServerTycoonScope(
                       repository: _serverTycoonRepository,
+                      child: AirlineTycoonScope(
+                      repository: _airlineTycoonRepository,
                       child: MoodJournalScope(
                       repository: _moodJournalRepository,
                       child: AiCatalogScope(
@@ -620,6 +653,8 @@ class _LumaAppState extends State<LumaApp> {
                       repository: _mcContentRepository,
                       child: YoutubeScope(
                       repository: _youtubeRepository,
+                      child: WhiteboardScope(
+                      repository: _whiteboardRepository,
                       child: ListenableBuilder(
                       listenable: widget.settings,
                       builder: (context, _) {
@@ -669,6 +704,7 @@ class _LumaAppState extends State<LumaApp> {
                     ),
                     ),
                     ),
+                    ),
                   ),
                   ),
                   ),
@@ -679,6 +715,7 @@ class _LumaAppState extends State<LumaApp> {
             ),
           ),
         ),
+      ),
       ),
       ),
       ),

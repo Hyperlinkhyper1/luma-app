@@ -1,0 +1,1815 @@
+{
+"format": 1,
+"airports": [
+{
+"iata": "ABV",
+"name": "Nnamdi Azikiwe",
+"city": "Abuja",
+"country": "NG",
+"lat": 9.0068,
+"lon": 7.2632,
+"runwayM": 3610,
+"catchment": 22
+},
+{
+"iata": "ACC",
+"name": "Kotoka",
+"city": "Accra",
+"country": "GH",
+"lat": 5.6052,
+"lon": -0.1668,
+"runwayM": 3400,
+"catchment": 22
+},
+{
+"iata": "ADD",
+"name": "Bole",
+"city": "Addis Ababa",
+"country": "ET",
+"lat": 8.9779,
+"lon": 38.7993,
+"runwayM": 3800,
+"catchment": 40
+},
+{
+"iata": "ADL",
+"name": "Adelaide",
+"city": "Adelaide",
+"country": "AU",
+"lat": -34.945,
+"lon": 138.5306,
+"runwayM": 3100,
+"catchment": 20
+},
+{
+"iata": "AGP",
+"name": "Malaga",
+"city": "Malaga",
+"country": "ES",
+"lat": 36.6749,
+"lon": -4.4991,
+"runwayM": 3200,
+"catchment": 32
+},
+{
+"iata": "AKL",
+"name": "Auckland",
+"city": "Auckland",
+"country": "NZ",
+"lat": -37.0082,
+"lon": 174.785,
+"runwayM": 3635,
+"catchment": 34
+},
+{
+"iata": "ALA",
+"name": "Almaty",
+"city": "Almaty",
+"country": "KZ",
+"lat": 43.3521,
+"lon": 77.0405,
+"runwayM": 4400,
+"catchment": 20
+},
+{
+"iata": "ALG",
+"name": "Houari Boumediene",
+"city": "Algiers",
+"country": "DZ",
+"lat": 36.691,
+"lon": 3.2154,
+"runwayM": 3500,
+"catchment": 24
+},
+{
+"iata": "AMM",
+"name": "Queen Alia",
+"city": "Amman",
+"country": "JO",
+"lat": 31.7226,
+"lon": 35.9932,
+"runwayM": 3660,
+"catchment": 24
+},
+{
+"iata": "AMS",
+"name": "Amsterdam Schiphol",
+"city": "Amsterdam",
+"country": "NL",
+"lat": 52.3105,
+"lon": 4.7683,
+"runwayM": 3800,
+"catchment": 84
+},
+{
+"iata": "ARN",
+"name": "Arlanda",
+"city": "Stockholm",
+"country": "SE",
+"lat": 59.6519,
+"lon": 17.9186,
+"runwayM": 3301,
+"catchment": 44
+},
+{
+"iata": "ATH",
+"name": "Eleftherios Venizelos",
+"city": "Athens",
+"country": "GR",
+"lat": 37.9364,
+"lon": 23.9445,
+"runwayM": 4000,
+"catchment": 42
+},
+{
+"iata": "ATL",
+"name": "Hartsfield Jackson",
+"city": "Atlanta",
+"country": "US",
+"lat": 33.6407,
+"lon": -84.4277,
+"runwayM": 3776,
+"catchment": 88
+},
+{
+"iata": "AUH",
+"name": "Zayed",
+"city": "Abu Dhabi",
+"country": "AE",
+"lat": 24.433,
+"lon": 54.6511,
+"runwayM": 4100,
+"catchment": 46
+},
+{
+"iata": "AYT",
+"name": "Antalya",
+"city": "Antalya",
+"country": "TR",
+"lat": 36.8987,
+"lon": 30.8005,
+"runwayM": 3400,
+"catchment": 34
+},
+{
+"iata": "BAH",
+"name": "Bahrain",
+"city": "Manama",
+"country": "BH",
+"lat": 26.2708,
+"lon": 50.6336,
+"runwayM": 4000,
+"catchment": 22
+},
+{
+"iata": "BCN",
+"name": "El Prat",
+"city": "Barcelona",
+"country": "ES",
+"lat": 41.2974,
+"lon": 2.0833,
+"runwayM": 3352,
+"catchment": 62
+},
+{
+"iata": "BEG",
+"name": "Nikola Tesla",
+"city": "Belgrade",
+"country": "RS",
+"lat": 44.8184,
+"lon": 20.3091,
+"runwayM": 3400,
+"catchment": 22
+},
+{
+"iata": "BER",
+"name": "Brandenburg",
+"city": "Berlin",
+"country": "DE",
+"lat": 52.3667,
+"lon": 13.5033,
+"runwayM": 3600,
+"catchment": 52
+},
+{
+"iata": "BKK",
+"name": "Suvarnabhumi",
+"city": "Bangkok",
+"country": "TH",
+"lat": 13.69,
+"lon": 100.7501,
+"runwayM": 4000,
+"catchment": 72
+},
+{
+"iata": "BLR",
+"name": "Kempegowda",
+"city": "Bengaluru",
+"country": "IN",
+"lat": 13.1986,
+"lon": 77.7066,
+"runwayM": 4000,
+"catchment": 52
+},
+{
+"iata": "BNE",
+"name": "Brisbane",
+"city": "Brisbane",
+"country": "AU",
+"lat": -27.3842,
+"lon": 153.1175,
+"runwayM": 3560,
+"catchment": 38
+},
+{
+"iata": "BOG",
+"name": "El Dorado",
+"city": "Bogota",
+"country": "CO",
+"lat": 4.7016,
+"lon": -74.1469,
+"runwayM": 3800,
+"catchment": 44
+},
+{
+"iata": "BOM",
+"name": "Chhatrapati Shivaji",
+"city": "Mumbai",
+"country": "IN",
+"lat": 19.0896,
+"lon": 72.8656,
+"runwayM": 3448,
+"catchment": 72
+},
+{
+"iata": "BOS",
+"name": "Logan",
+"city": "Boston",
+"country": "US",
+"lat": 42.3656,
+"lon": -71.0096,
+"runwayM": 3073,
+"catchment": 54
+},
+{
+"iata": "BRU",
+"name": "Zaventem",
+"city": "Brussels",
+"country": "BE",
+"lat": 50.9014,
+"lon": 4.4844,
+"runwayM": 3638,
+"catchment": 48
+},
+{
+"iata": "BSB",
+"name": "Brasilia",
+"city": "Brasilia",
+"country": "BR",
+"lat": -15.8697,
+"lon": -47.9208,
+"runwayM": 3300,
+"catchment": 30
+},
+{
+"iata": "BUD",
+"name": "Ferenc Liszt",
+"city": "Budapest",
+"country": "HU",
+"lat": 47.4369,
+"lon": 19.2556,
+"runwayM": 3707,
+"catchment": 34
+},
+{
+"iata": "CAI",
+"name": "Cairo",
+"city": "Cairo",
+"country": "EG",
+"lat": 30.1219,
+"lon": 31.4056,
+"runwayM": 4000,
+"catchment": 48
+},
+{
+"iata": "CAN",
+"name": "Baiyun",
+"city": "Guangzhou",
+"country": "CN",
+"lat": 23.3924,
+"lon": 113.2988,
+"runwayM": 3800,
+"catchment": 70
+},
+{
+"iata": "CCS",
+"name": "Simon Bolivar",
+"city": "Caracas",
+"country": "VE",
+"lat": 10.6013,
+"lon": -66.9911,
+"runwayM": 3500,
+"catchment": 18
+},
+{
+"iata": "CCU",
+"name": "Netaji Subhas Chandra Bose",
+"city": "Kolkata",
+"country": "IN",
+"lat": 22.6547,
+"lon": 88.4467,
+"runwayM": 3627,
+"catchment": 36
+},
+{
+"iata": "CDG",
+"name": "Charles de Gaulle",
+"city": "Paris",
+"country": "FR",
+"lat": 49.0097,
+"lon": 2.5479,
+"runwayM": 4215,
+"catchment": 88
+},
+{
+"iata": "CEB",
+"name": "Mactan Cebu",
+"city": "Cebu",
+"country": "PH",
+"lat": 10.3075,
+"lon": 123.9794,
+"runwayM": 3300,
+"catchment": 22
+},
+{
+"iata": "CGK",
+"name": "Soekarno Hatta",
+"city": "Jakarta",
+"country": "ID",
+"lat": -6.1256,
+"lon": 106.6559,
+"runwayM": 3660,
+"catchment": 60
+},
+{
+"iata": "CHC",
+"name": "Christchurch",
+"city": "Christchurch",
+"country": "NZ",
+"lat": -43.4894,
+"lon": 172.532,
+"runwayM": 3288,
+"catchment": 18
+},
+{
+"iata": "CLT",
+"name": "Charlotte Douglas",
+"city": "Charlotte",
+"country": "US",
+"lat": 35.2144,
+"lon": -80.9473,
+"runwayM": 3048,
+"catchment": 48
+},
+{
+"iata": "CMB",
+"name": "Bandaranaike",
+"city": "Colombo",
+"country": "LK",
+"lat": 7.1808,
+"lon": 79.8841,
+"runwayM": 3350,
+"catchment": 24
+},
+{
+"iata": "CMN",
+"name": "Mohammed V",
+"city": "Casablanca",
+"country": "MA",
+"lat": 33.3675,
+"lon": -7.59,
+"runwayM": 3720,
+"catchment": 34
+},
+{
+"iata": "CPH",
+"name": "Kastrup",
+"city": "Copenhagen",
+"country": "DK",
+"lat": 55.618,
+"lon": 12.656,
+"runwayM": 3600,
+"catchment": 50
+},
+{
+"iata": "CPT",
+"name": "Cape Town",
+"city": "Cape Town",
+"country": "ZA",
+"lat": -33.9715,
+"lon": 18.6021,
+"runwayM": 3201,
+"catchment": 34
+},
+{
+"iata": "CTS",
+"name": "New Chitose",
+"city": "Sapporo",
+"country": "JP",
+"lat": 42.7752,
+"lon": 141.6923,
+"runwayM": 3000,
+"catchment": 30
+},
+{
+"iata": "CTU",
+"name": "Tianfu",
+"city": "Chengdu",
+"country": "CN",
+"lat": 30.5785,
+"lon": 103.9471,
+"runwayM": 3600,
+"catchment": 50
+},
+{
+"iata": "CUN",
+"name": "Cancun",
+"city": "Cancun",
+"country": "MX",
+"lat": 21.0365,
+"lon": -86.8771,
+"runwayM": 3500,
+"catchment": 42
+},
+{
+"iata": "DAC",
+"name": "Hazrat Shahjalal",
+"city": "Dhaka",
+"country": "BD",
+"lat": 23.8433,
+"lon": 90.3978,
+"runwayM": 3200,
+"catchment": 32
+},
+{
+"iata": "DAR",
+"name": "Julius Nyerere",
+"city": "Dar es Salaam",
+"country": "TZ",
+"lat": -6.8781,
+"lon": 39.2026,
+"runwayM": 3000,
+"catchment": 18
+},
+{
+"iata": "DCA",
+"name": "Reagan National",
+"city": "Washington",
+"country": "US",
+"lat": 38.8512,
+"lon": -77.0402,
+"runwayM": 2093,
+"catchment": 40
+},
+{
+"iata": "DEL",
+"name": "Indira Gandhi",
+"city": "Delhi",
+"country": "IN",
+"lat": 28.5562,
+"lon": 77.1,
+"runwayM": 4430,
+"catchment": 80
+},
+{
+"iata": "DEN",
+"name": "Denver",
+"city": "Denver",
+"country": "US",
+"lat": 39.8561,
+"lon": -104.6737,
+"runwayM": 4877,
+"catchment": 70
+},
+{
+"iata": "DFW",
+"name": "Dallas Fort Worth",
+"city": "Dallas",
+"country": "US",
+"lat": 32.8998,
+"lon": -97.0403,
+"runwayM": 4085,
+"catchment": 78
+},
+{
+"iata": "DME",
+"name": "Domodedovo",
+"city": "Moscow",
+"country": "RU",
+"lat": 55.4088,
+"lon": 37.9063,
+"runwayM": 3800,
+"catchment": 44
+},
+{
+"iata": "DMK",
+"name": "Don Mueang",
+"city": "Bangkok",
+"country": "TH",
+"lat": 13.9126,
+"lon": 100.6068,
+"runwayM": 3700,
+"catchment": 40
+},
+{
+"iata": "DOH",
+"name": "Hamad",
+"city": "Doha",
+"country": "QA",
+"lat": 25.2731,
+"lon": 51.6081,
+"runwayM": 4850,
+"catchment": 64
+},
+{
+"iata": "DPS",
+"name": "Ngurah Rai",
+"city": "Denpasar",
+"country": "ID",
+"lat": -8.7482,
+"lon": 115.1675,
+"runwayM": 3000,
+"catchment": 34
+},
+{
+"iata": "DTW",
+"name": "Detroit Metro",
+"city": "Detroit",
+"country": "US",
+"lat": 42.2162,
+"lon": -83.3554,
+"runwayM": 3658,
+"catchment": 42
+},
+{
+"iata": "DUB",
+"name": "Dublin",
+"city": "Dublin",
+"country": "IE",
+"lat": 53.4213,
+"lon": -6.2701,
+"runwayM": 2637,
+"catchment": 46
+},
+{
+"iata": "DUR",
+"name": "King Shaka",
+"city": "Durban",
+"country": "ZA",
+"lat": -29.6144,
+"lon": 31.1197,
+"runwayM": 3700,
+"catchment": 18
+},
+{
+"iata": "DUS",
+"name": "Dusseldorf",
+"city": "Dusseldorf",
+"country": "DE",
+"lat": 51.2895,
+"lon": 6.7668,
+"runwayM": 3000,
+"catchment": 42
+},
+{
+"iata": "DXB",
+"name": "Dubai",
+"city": "Dubai",
+"country": "AE",
+"lat": 25.2532,
+"lon": 55.3657,
+"runwayM": 4000,
+"catchment": 92
+},
+{
+"iata": "EDI",
+"name": "Edinburgh",
+"city": "Edinburgh",
+"country": "GB",
+"lat": 55.95,
+"lon": -3.3725,
+"runwayM": 2556,
+"catchment": 30
+},
+{
+"iata": "EWR",
+"name": "Newark Liberty",
+"city": "Newark",
+"country": "US",
+"lat": 40.6895,
+"lon": -74.1745,
+"runwayM": 3353,
+"catchment": 60
+},
+{
+"iata": "EZE",
+"name": "Ezeiza",
+"city": "Buenos Aires",
+"country": "AR",
+"lat": -34.8222,
+"lon": -58.5358,
+"runwayM": 3300,
+"catchment": 44
+},
+{
+"iata": "FCO",
+"name": "Fiumicino",
+"city": "Rome",
+"country": "IT",
+"lat": 41.8003,
+"lon": 12.2389,
+"runwayM": 3900,
+"catchment": 68
+},
+{
+"iata": "FLL",
+"name": "Fort Lauderdale",
+"city": "Fort Lauderdale",
+"country": "US",
+"lat": 26.0742,
+"lon": -80.1506,
+"runwayM": 2743,
+"catchment": 40
+},
+{
+"iata": "FRA",
+"name": "Frankfurt",
+"city": "Frankfurt",
+"country": "DE",
+"lat": 50.0379,
+"lon": 8.5622,
+"runwayM": 4000,
+"catchment": 86
+},
+{
+"iata": "FUK",
+"name": "Fukuoka",
+"city": "Fukuoka",
+"country": "JP",
+"lat": 33.5859,
+"lon": 130.4507,
+"runwayM": 2800,
+"catchment": 32
+},
+{
+"iata": "GDL",
+"name": "Guadalajara",
+"city": "Guadalajara",
+"country": "MX",
+"lat": 20.5218,
+"lon": -103.3111,
+"runwayM": 4000,
+"catchment": 28
+},
+{
+"iata": "GIG",
+"name": "Galeao",
+"city": "Rio de Janeiro",
+"country": "BR",
+"lat": -22.81,
+"lon": -43.2506,
+"runwayM": 4000,
+"catchment": 38
+},
+{
+"iata": "GMP",
+"name": "Gimpo",
+"city": "Seoul",
+"country": "KR",
+"lat": 37.5583,
+"lon": 126.7906,
+"runwayM": 3600,
+"catchment": 38
+},
+{
+"iata": "GRU",
+"name": "Guarulhos",
+"city": "Sao Paulo",
+"country": "BR",
+"lat": -23.4356,
+"lon": -46.4731,
+"runwayM": 3700,
+"catchment": 62
+},
+{
+"iata": "GUM",
+"name": "Antonio B Won Pat",
+"city": "Hagatna",
+"country": "GU",
+"lat": 13.4834,
+"lon": 144.796,
+"runwayM": 3658,
+"catchment": 12
+},
+{
+"iata": "GVA",
+"name": "Geneva",
+"city": "Geneva",
+"country": "CH",
+"lat": 46.2381,
+"lon": 6.109,
+"runwayM": 3900,
+"catchment": 36
+},
+{
+"iata": "HAM",
+"name": "Hamburg",
+"city": "Hamburg",
+"country": "DE",
+"lat": 53.6304,
+"lon": 9.9882,
+"runwayM": 3666,
+"catchment": 36
+},
+{
+"iata": "HAN",
+"name": "Noi Bai",
+"city": "Hanoi",
+"country": "VN",
+"lat": 21.2212,
+"lon": 105.8072,
+"runwayM": 3800,
+"catchment": 38
+},
+{
+"iata": "HEL",
+"name": "Vantaa",
+"city": "Helsinki",
+"country": "FI",
+"lat": 60.3172,
+"lon": 24.9633,
+"runwayM": 3500,
+"catchment": 36
+},
+{
+"iata": "HKG",
+"name": "Hong Kong",
+"city": "Hong Kong",
+"country": "HK",
+"lat": 22.308,
+"lon": 113.9185,
+"runwayM": 3800,
+"catchment": 78
+},
+{
+"iata": "HKT",
+"name": "Phuket",
+"city": "Phuket",
+"country": "TH",
+"lat": 8.1132,
+"lon": 98.3169,
+"runwayM": 3000,
+"catchment": 28
+},
+{
+"iata": "HND",
+"name": "Haneda",
+"city": "Tokyo",
+"country": "JP",
+"lat": 35.5494,
+"lon": 139.7798,
+"runwayM": 3360,
+"catchment": 84
+},
+{
+"iata": "HNL",
+"name": "Daniel K Inouye",
+"city": "Honolulu",
+"country": "US",
+"lat": 21.3187,
+"lon": -157.9225,
+"runwayM": 3752,
+"catchment": 34
+},
+{
+"iata": "HRG",
+"name": "Hurghada",
+"city": "Hurghada",
+"country": "EG",
+"lat": 27.1783,
+"lon": 33.7994,
+"runwayM": 4000,
+"catchment": 22
+},
+{
+"iata": "HYD",
+"name": "Rajiv Gandhi",
+"city": "Hyderabad",
+"country": "IN",
+"lat": 17.2403,
+"lon": 78.4294,
+"runwayM": 4260,
+"catchment": 40
+},
+{
+"iata": "IAD",
+"name": "Dulles",
+"city": "Washington",
+"country": "US",
+"lat": 38.9531,
+"lon": -77.4565,
+"runwayM": 3505,
+"catchment": 48
+},
+{
+"iata": "IAH",
+"name": "George Bush",
+"city": "Houston",
+"country": "US",
+"lat": 29.9902,
+"lon": -95.3368,
+"runwayM": 3658,
+"catchment": 60
+},
+{
+"iata": "ICN",
+"name": "Incheon",
+"city": "Seoul",
+"country": "KR",
+"lat": 37.4602,
+"lon": 126.4407,
+"runwayM": 4000,
+"catchment": 74
+},
+{
+"iata": "ISB",
+"name": "Islamabad",
+"city": "Islamabad",
+"country": "PK",
+"lat": 33.5607,
+"lon": 72.8516,
+"runwayM": 3660,
+"catchment": 24
+},
+{
+"iata": "IST",
+"name": "Istanbul",
+"city": "Istanbul",
+"country": "TR",
+"lat": 41.2753,
+"lon": 28.7519,
+"runwayM": 4100,
+"catchment": 82
+},
+{
+"iata": "ITM",
+"name": "Itami",
+"city": "Osaka",
+"country": "JP",
+"lat": 34.7855,
+"lon": 135.4382,
+"runwayM": 3000,
+"catchment": 30
+},
+{
+"iata": "JED",
+"name": "King Abdulaziz",
+"city": "Jeddah",
+"country": "SA",
+"lat": 21.6796,
+"lon": 39.1565,
+"runwayM": 3800,
+"catchment": 46
+},
+{
+"iata": "JFK",
+"name": "John F Kennedy",
+"city": "New York",
+"country": "US",
+"lat": 40.6413,
+"lon": -73.7781,
+"runwayM": 4423,
+"catchment": 90
+},
+{
+"iata": "JNB",
+"name": "OR Tambo",
+"city": "Johannesburg",
+"country": "ZA",
+"lat": -26.1392,
+"lon": 28.246,
+"runwayM": 4418,
+"catchment": 48
+},
+{
+"iata": "KEF",
+"name": "Keflavik",
+"city": "Reykjavik",
+"country": "IS",
+"lat": 63.985,
+"lon": -22.6056,
+"runwayM": 3065,
+"catchment": 22
+},
+{
+"iata": "KHI",
+"name": "Jinnah",
+"city": "Karachi",
+"country": "PK",
+"lat": 24.9065,
+"lon": 67.1608,
+"runwayM": 3400,
+"catchment": 30
+},
+{
+"iata": "KIX",
+"name": "Kansai",
+"city": "Osaka",
+"country": "JP",
+"lat": 34.4342,
+"lon": 135.244,
+"runwayM": 4000,
+"catchment": 48
+},
+{
+"iata": "KMG",
+"name": "Changshui",
+"city": "Kunming",
+"country": "CN",
+"lat": 25.1019,
+"lon": 102.9292,
+"runwayM": 4500,
+"catchment": 40
+},
+{
+"iata": "KRK",
+"name": "Balice",
+"city": "Krakow",
+"country": "PL",
+"lat": 50.0777,
+"lon": 19.7848,
+"runwayM": 2550,
+"catchment": 24
+},
+{
+"iata": "KTM",
+"name": "Tribhuvan",
+"city": "Kathmandu",
+"country": "NP",
+"lat": 27.6966,
+"lon": 85.3591,
+"runwayM": 3050,
+"catchment": 18
+},
+{
+"iata": "KUL",
+"name": "Kuala Lumpur",
+"city": "Kuala Lumpur",
+"country": "MY",
+"lat": 2.7456,
+"lon": 101.7099,
+"runwayM": 4056,
+"catchment": 54
+},
+{
+"iata": "KWI",
+"name": "Kuwait",
+"city": "Kuwait City",
+"country": "KW",
+"lat": 29.2266,
+"lon": 47.9689,
+"runwayM": 3500,
+"catchment": 28
+},
+{
+"iata": "LAS",
+"name": "Harry Reid",
+"city": "Las Vegas",
+"country": "US",
+"lat": 36.084,
+"lon": -115.1537,
+"runwayM": 4423,
+"catchment": 58
+},
+{
+"iata": "LAX",
+"name": "Los Angeles",
+"city": "Los Angeles",
+"country": "US",
+"lat": 33.9416,
+"lon": -118.4085,
+"runwayM": 3685,
+"catchment": 86
+},
+{
+"iata": "LED",
+"name": "Pulkovo",
+"city": "Saint Petersburg",
+"country": "RU",
+"lat": 59.8003,
+"lon": 30.2625,
+"runwayM": 3780,
+"catchment": 32
+},
+{
+"iata": "LGA",
+"name": "LaGuardia",
+"city": "New York",
+"country": "US",
+"lat": 40.7769,
+"lon": -73.874,
+"runwayM": 2134,
+"catchment": 46
+},
+{
+"iata": "LGW",
+"name": "Gatwick",
+"city": "London",
+"country": "GB",
+"lat": 51.1537,
+"lon": -0.1821,
+"runwayM": 3316,
+"catchment": 58
+},
+{
+"iata": "LHR",
+"name": "Heathrow",
+"city": "London",
+"country": "GB",
+"lat": 51.47,
+"lon": -0.4543,
+"runwayM": 3902,
+"catchment": 95
+},
+{
+"iata": "LIM",
+"name": "Jorge Chavez",
+"city": "Lima",
+"country": "PE",
+"lat": -12.0219,
+"lon": -77.1143,
+"runwayM": 3507,
+"catchment": 36
+},
+{
+"iata": "LIN",
+"name": "Linate",
+"city": "Milan",
+"country": "IT",
+"lat": 45.4451,
+"lon": 9.2767,
+"runwayM": 2440,
+"catchment": 28
+},
+{
+"iata": "LIS",
+"name": "Humberto Delgado",
+"city": "Lisbon",
+"country": "PT",
+"lat": 38.7742,
+"lon": -9.1342,
+"runwayM": 3805,
+"catchment": 48
+},
+{
+"iata": "LJU",
+"name": "Joze Pucnik",
+"city": "Ljubljana",
+"country": "SI",
+"lat": 46.2237,
+"lon": 14.4576,
+"runwayM": 3300,
+"catchment": 12
+},
+{
+"iata": "LOS",
+"name": "Murtala Muhammed",
+"city": "Lagos",
+"country": "NG",
+"lat": 6.5774,
+"lon": 3.3212,
+"runwayM": 3900,
+"catchment": 38
+},
+{
+"iata": "MAA",
+"name": "Chennai",
+"city": "Chennai",
+"country": "IN",
+"lat": 12.9941,
+"lon": 80.1709,
+"runwayM": 3658,
+"catchment": 42
+},
+{
+"iata": "MAD",
+"name": "Barajas",
+"city": "Madrid",
+"country": "ES",
+"lat": 40.4719,
+"lon": -3.5626,
+"runwayM": 4350,
+"catchment": 72
+},
+{
+"iata": "MAN",
+"name": "Manchester",
+"city": "Manchester",
+"country": "GB",
+"lat": 53.3537,
+"lon": -2.275,
+"runwayM": 3048,
+"catchment": 42
+},
+{
+"iata": "MCO",
+"name": "Orlando",
+"city": "Orlando",
+"country": "US",
+"lat": 28.4312,
+"lon": -81.3081,
+"runwayM": 3659,
+"catchment": 58
+},
+{
+"iata": "MCT",
+"name": "Muscat",
+"city": "Muscat",
+"country": "OM",
+"lat": 23.5933,
+"lon": 58.2844,
+"runwayM": 4000,
+"catchment": 24
+},
+{
+"iata": "MEL",
+"name": "Tullamarine",
+"city": "Melbourne",
+"country": "AU",
+"lat": -37.669,
+"lon": 144.841,
+"runwayM": 3657,
+"catchment": 50
+},
+{
+"iata": "MEX",
+"name": "Benito Juarez",
+"city": "Mexico City",
+"country": "MX",
+"lat": 19.4363,
+"lon": -99.0721,
+"runwayM": 3963,
+"catchment": 64
+},
+{
+"iata": "MIA",
+"name": "Miami",
+"city": "Miami",
+"country": "US",
+"lat": 25.7959,
+"lon": -80.287,
+"runwayM": 3962,
+"catchment": 66
+},
+{
+"iata": "MNL",
+"name": "Ninoy Aquino",
+"city": "Manila",
+"country": "PH",
+"lat": 14.5086,
+"lon": 121.0194,
+"runwayM": 3737,
+"catchment": 54
+},
+{
+"iata": "MRU",
+"name": "Sir Seewoosagur Ramgoolam",
+"city": "Port Louis",
+"country": "MU",
+"lat": -20.4302,
+"lon": 57.6836,
+"runwayM": 3040,
+"catchment": 16
+},
+{
+"iata": "MSP",
+"name": "Minneapolis St Paul",
+"city": "Minneapolis",
+"country": "US",
+"lat": 44.8848,
+"lon": -93.2223,
+"runwayM": 3355,
+"catchment": 44
+},
+{
+"iata": "MUC",
+"name": "Munich",
+"city": "Munich",
+"country": "DE",
+"lat": 48.3538,
+"lon": 11.7861,
+"runwayM": 4000,
+"catchment": 66
+},
+{
+"iata": "MVD",
+"name": "Carrasco",
+"city": "Montevideo",
+"country": "UY",
+"lat": -34.8384,
+"lon": -56.0308,
+"runwayM": 2500,
+"catchment": 14
+},
+{
+"iata": "MXP",
+"name": "Malpensa",
+"city": "Milan",
+"country": "IT",
+"lat": 45.6306,
+"lon": 8.7281,
+"runwayM": 3920,
+"catchment": 54
+},
+{
+"iata": "NAN",
+"name": "Nadi",
+"city": "Nadi",
+"country": "FJ",
+"lat": -17.7554,
+"lon": 177.4434,
+"runwayM": 3270,
+"catchment": 12
+},
+{
+"iata": "NAP",
+"name": "Capodichino",
+"city": "Naples",
+"country": "IT",
+"lat": 40.886,
+"lon": 14.2908,
+"runwayM": 2628,
+"catchment": 26
+},
+{
+"iata": "NBO",
+"name": "Jomo Kenyatta",
+"city": "Nairobi",
+"country": "KE",
+"lat": -1.3192,
+"lon": 36.9278,
+"runwayM": 4117,
+"catchment": 36
+},
+{
+"iata": "NRT",
+"name": "Narita",
+"city": "Tokyo",
+"country": "JP",
+"lat": 35.772,
+"lon": 140.3929,
+"runwayM": 4000,
+"catchment": 66
+},
+{
+"iata": "OKA",
+"name": "Naha",
+"city": "Okinawa",
+"country": "JP",
+"lat": 26.1958,
+"lon": 127.6459,
+"runwayM": 3000,
+"catchment": 24
+},
+{
+"iata": "OPO",
+"name": "Francisco Sa Carneiro",
+"city": "Porto",
+"country": "PT",
+"lat": 41.2481,
+"lon": -8.6814,
+"runwayM": 3480,
+"catchment": 30
+},
+{
+"iata": "ORD",
+"name": "O Hare",
+"city": "Chicago",
+"country": "US",
+"lat": 41.9742,
+"lon": -87.9073,
+"runwayM": 3962,
+"catchment": 84
+},
+{
+"iata": "ORY",
+"name": "Orly",
+"city": "Paris",
+"country": "FR",
+"lat": 48.7233,
+"lon": 2.3794,
+"runwayM": 3650,
+"catchment": 52
+},
+{
+"iata": "OSL",
+"name": "Gardermoen",
+"city": "Oslo",
+"country": "NO",
+"lat": 60.1939,
+"lon": 11.1004,
+"runwayM": 3600,
+"catchment": 42
+},
+{
+"iata": "OTP",
+"name": "Henri Coanda",
+"city": "Bucharest",
+"country": "RO",
+"lat": 44.5711,
+"lon": 26.085,
+"runwayM": 3500,
+"catchment": 32
+},
+{
+"iata": "PDX",
+"name": "Portland",
+"city": "Portland",
+"country": "US",
+"lat": 45.5898,
+"lon": -122.5951,
+"runwayM": 3353,
+"catchment": 34
+},
+{
+"iata": "PEK",
+"name": "Capital",
+"city": "Beijing",
+"country": "CN",
+"lat": 40.0799,
+"lon": 116.6031,
+"runwayM": 3800,
+"catchment": 82
+},
+{
+"iata": "PER",
+"name": "Perth",
+"city": "Perth",
+"country": "AU",
+"lat": -31.9403,
+"lon": 115.967,
+"runwayM": 3444,
+"catchment": 30
+},
+{
+"iata": "PHL",
+"name": "Philadelphia",
+"city": "Philadelphia",
+"country": "US",
+"lat": 39.8744,
+"lon": -75.2424,
+"runwayM": 3200,
+"catchment": 44
+},
+{
+"iata": "PHX",
+"name": "Sky Harbor",
+"city": "Phoenix",
+"country": "US",
+"lat": 33.4342,
+"lon": -112.0116,
+"runwayM": 3502,
+"catchment": 54
+},
+{
+"iata": "PKX",
+"name": "Daxing",
+"city": "Beijing",
+"country": "CN",
+"lat": 39.5098,
+"lon": 116.4109,
+"runwayM": 3800,
+"catchment": 56
+},
+{
+"iata": "PMI",
+"name": "Son Sant Joan",
+"city": "Palma",
+"country": "ES",
+"lat": 39.5517,
+"lon": 2.7388,
+"runwayM": 3270,
+"catchment": 34
+},
+{
+"iata": "PNH",
+"name": "Phnom Penh",
+"city": "Phnom Penh",
+"country": "KH",
+"lat": 11.5466,
+"lon": 104.8441,
+"runwayM": 3000,
+"catchment": 16
+},
+{
+"iata": "PRG",
+"name": "Vaclav Havel",
+"city": "Prague",
+"country": "CZ",
+"lat": 50.1008,
+"lon": 14.26,
+"runwayM": 3715,
+"catchment": 38
+},
+{
+"iata": "PUS",
+"name": "Gimhae",
+"city": "Busan",
+"country": "KR",
+"lat": 35.1795,
+"lon": 128.9382,
+"runwayM": 3200,
+"catchment": 26
+},
+{
+"iata": "PVG",
+"name": "Pudong",
+"city": "Shanghai",
+"country": "CN",
+"lat": 31.1443,
+"lon": 121.8083,
+"runwayM": 4000,
+"catchment": 84
+},
+{
+"iata": "RAK",
+"name": "Menara",
+"city": "Marrakesh",
+"country": "MA",
+"lat": 31.6069,
+"lon": -8.0363,
+"runwayM": 3100,
+"catchment": 22
+},
+{
+"iata": "RGN",
+"name": "Yangon",
+"city": "Yangon",
+"country": "MM",
+"lat": 16.9073,
+"lon": 96.1332,
+"runwayM": 3400,
+"catchment": 16
+},
+{
+"iata": "RIX",
+"name": "Riga",
+"city": "Riga",
+"country": "LV",
+"lat": 56.9236,
+"lon": 23.9711,
+"runwayM": 3200,
+"catchment": 22
+},
+{
+"iata": "RUH",
+"name": "King Khalid",
+"city": "Riyadh",
+"country": "SA",
+"lat": 24.9576,
+"lon": 46.6988,
+"runwayM": 4200,
+"catchment": 48
+},
+{
+"iata": "SAN",
+"name": "San Diego",
+"city": "San Diego",
+"country": "US",
+"lat": 32.7338,
+"lon": -117.1933,
+"runwayM": 2865,
+"catchment": 40
+},
+{
+"iata": "SAW",
+"name": "Sabiha Gokcen",
+"city": "Istanbul",
+"country": "TR",
+"lat": 40.8986,
+"lon": 29.3092,
+"runwayM": 3000,
+"catchment": 44
+},
+{
+"iata": "SCL",
+"name": "Arturo Merino Benitez",
+"city": "Santiago",
+"country": "CL",
+"lat": -33.393,
+"lon": -70.7858,
+"runwayM": 3800,
+"catchment": 38
+},
+{
+"iata": "SEA",
+"name": "Seattle Tacoma",
+"city": "Seattle",
+"country": "US",
+"lat": 47.4502,
+"lon": -122.3088,
+"runwayM": 3627,
+"catchment": 58
+},
+{
+"iata": "SFO",
+"name": "San Francisco",
+"city": "San Francisco",
+"country": "US",
+"lat": 37.6213,
+"lon": -122.379,
+"runwayM": 3618,
+"catchment": 66
+},
+{
+"iata": "SGN",
+"name": "Tan Son Nhat",
+"city": "Ho Chi Minh City",
+"country": "VN",
+"lat": 10.8188,
+"lon": 106.652,
+"runwayM": 3800,
+"catchment": 48
+},
+{
+"iata": "SHA",
+"name": "Hongqiao",
+"city": "Shanghai",
+"country": "CN",
+"lat": 31.1979,
+"lon": 121.3363,
+"runwayM": 3400,
+"catchment": 52
+},
+{
+"iata": "SIN",
+"name": "Changi",
+"city": "Singapore",
+"country": "SG",
+"lat": 1.3644,
+"lon": 103.9915,
+"runwayM": 4000,
+"catchment": 80
+},
+{
+"iata": "SLC",
+"name": "Salt Lake City",
+"city": "Salt Lake City",
+"country": "US",
+"lat": 40.7899,
+"lon": -111.9791,
+"runwayM": 3658,
+"catchment": 38
+},
+{
+"iata": "SOF",
+"name": "Sofia",
+"city": "Sofia",
+"country": "BG",
+"lat": 42.6967,
+"lon": 23.4114,
+"runwayM": 3600,
+"catchment": 24
+},
+{
+"iata": "STN",
+"name": "Stansted",
+"city": "London",
+"country": "GB",
+"lat": 51.8849,
+"lon": 0.235,
+"runwayM": 3049,
+"catchment": 44
+},
+{
+"iata": "SVO",
+"name": "Sheremetyevo",
+"city": "Moscow",
+"country": "RU",
+"lat": 55.9726,
+"lon": 37.4146,
+"runwayM": 3700,
+"catchment": 58
+},
+{
+"iata": "SYD",
+"name": "Kingsford Smith",
+"city": "Sydney",
+"country": "AU",
+"lat": -33.9399,
+"lon": 151.1753,
+"runwayM": 3962,
+"catchment": 58
+},
+{
+"iata": "SZX",
+"name": "Baoan",
+"city": "Shenzhen",
+"country": "CN",
+"lat": 22.6393,
+"lon": 113.8108,
+"runwayM": 3800,
+"catchment": 60
+},
+{
+"iata": "TAS",
+"name": "Tashkent",
+"city": "Tashkent",
+"country": "UZ",
+"lat": 41.2579,
+"lon": 69.2812,
+"runwayM": 4000,
+"catchment": 18
+},
+{
+"iata": "TLL",
+"name": "Lennart Meri",
+"city": "Tallinn",
+"country": "EE",
+"lat": 59.4133,
+"lon": 24.8328,
+"runwayM": 3480,
+"catchment": 18
+},
+{
+"iata": "TLV",
+"name": "Ben Gurion",
+"city": "Tel Aviv",
+"country": "IL",
+"lat": 32.0114,
+"lon": 34.8867,
+"runwayM": 4062,
+"catchment": 46
+},
+{
+"iata": "TPE",
+"name": "Taoyuan",
+"city": "Taipei",
+"country": "TW",
+"lat": 25.0777,
+"lon": 121.2328,
+"runwayM": 3800,
+"catchment": 56
+},
+{
+"iata": "TUN",
+"name": "Carthage",
+"city": "Tunis",
+"country": "TN",
+"lat": 36.851,
+"lon": 10.2272,
+"runwayM": 3200,
+"catchment": 20
+},
+{
+"iata": "UIO",
+"name": "Mariscal Sucre",
+"city": "Quito",
+"country": "EC",
+"lat": -0.1292,
+"lon": -78.3575,
+"runwayM": 4100,
+"catchment": 20
+},
+{
+"iata": "ULN",
+"name": "Chinggis Khaan",
+"city": "Ulaanbaatar",
+"country": "MN",
+"lat": 47.6469,
+"lon": 106.8196,
+"runwayM": 3600,
+"catchment": 10
+},
+{
+"iata": "VCE",
+"name": "Marco Polo",
+"city": "Venice",
+"country": "IT",
+"lat": 45.5053,
+"lon": 12.3519,
+"runwayM": 3300,
+"catchment": 28
+},
+{
+"iata": "VIE",
+"name": "Schwechat",
+"city": "Vienna",
+"country": "AT",
+"lat": 48.1103,
+"lon": 16.5697,
+"runwayM": 3600,
+"catchment": 52
+},
+{
+"iata": "VNO",
+"name": "Vilnius",
+"city": "Vilnius",
+"country": "LT",
+"lat": 54.6341,
+"lon": 25.2858,
+"runwayM": 2515,
+"catchment": 18
+},
+{
+"iata": "WAW",
+"name": "Chopin",
+"city": "Warsaw",
+"country": "PL",
+"lat": 52.1657,
+"lon": 20.9671,
+"runwayM": 3690,
+"catchment": 40
+},
+{
+"iata": "WLG",
+"name": "Wellington",
+"city": "Wellington",
+"country": "NZ",
+"lat": -41.3272,
+"lon": 174.8053,
+"runwayM": 2081,
+"catchment": 16
+},
+{
+"iata": "XIY",
+"name": "Xianyang",
+"city": "Xi an",
+"country": "CN",
+"lat": 34.4471,
+"lon": 108.7516,
+"runwayM": 3800,
+"catchment": 42
+},
+{
+"iata": "YUL",
+"name": "Trudeau",
+"city": "Montreal",
+"country": "CA",
+"lat": 45.4706,
+"lon": -73.7408,
+"runwayM": 3353,
+"catchment": 40
+},
+{
+"iata": "YVR",
+"name": "Vancouver",
+"city": "Vancouver",
+"country": "CA",
+"lat": 49.1967,
+"lon": -123.1815,
+"runwayM": 3505,
+"catchment": 46
+},
+{
+"iata": "YYC",
+"name": "Calgary",
+"city": "Calgary",
+"country": "CA",
+"lat": 51.1315,
+"lon": -114.0106,
+"runwayM": 4267,
+"catchment": 32
+},
+{
+"iata": "YYZ",
+"name": "Pearson",
+"city": "Toronto",
+"country": "CA",
+"lat": 43.6777,
+"lon": -79.6248,
+"runwayM": 3389,
+"catchment": 64
+},
+{
+"iata": "ZAG",
+"name": "Franjo Tudman",
+"city": "Zagreb",
+"country": "HR",
+"lat": 45.7429,
+"lon": 16.0688,
+"runwayM": 3252,
+"catchment": 18
+},
+{
+"iata": "ZRH",
+"name": "Zurich",
+"city": "Zurich",
+"country": "CH",
+"lat": 47.4647,
+"lon": 8.5492,
+"runwayM": 3700,
+"catchment": 56
+}
+]
+}
