@@ -1,17 +1,22 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 /// Licence notices for third-party code that isn't a pub dependency, so
 /// Flutter's own build-time license collection (what backs
-/// `showLicensePage()`) never sees it. Right now that's just MapLibre GL
-/// JS, vendored directly into `assets/subway_builder/vendor/` and
-/// `assets/transport_tracker/vendor/` rather than pulled in as a package.
+/// `showLicensePage()`) never sees it. Includes vendored MapLibre and
+/// Three.js code bundled with the map and airport plugins.
 ///
 /// Call [registerThirdPartyLicenses] once, before `runApp`.
 void registerThirdPartyLicenses() {
   LicenseRegistry.addLicense(() async* {
-    yield const LicenseEntryWithLineBreaks(
-      ['maplibre-gl-js'],
-      _mapLibreLicense,
+    yield const LicenseEntryWithLineBreaks([
+      'maplibre-gl-js',
+    ], _mapLibreLicense);
+    yield LicenseEntryWithLineBreaks(
+      ['three.js 0.160.1'],
+      await rootBundle.loadString(
+        'assets/airline_tycoon/scene/vendor/THREE-LICENSE.txt',
+      ),
     );
   });
 }

@@ -7,6 +7,7 @@ import 'airline_tycoon_repository.dart';
 import 'airline_tycoon_scope.dart';
 import 'data/airport_catalog.dart';
 import 'ui/away_report_sheet.dart';
+import 'ui/airport_game_view.dart';
 import 'ui/finances_tab.dart';
 import 'ui/fleet_tab.dart';
 import 'ui/hub_view.dart';
@@ -40,6 +41,10 @@ class _AirlineTycoonPageState extends State<AirlineTycoonPage> {
 
     if (!repo.hasGame) {
       return _SetupView(repository: repo);
+    }
+
+    if (repo.airportMode) {
+      return AirportGameView(repository: repo);
     }
 
     _maybeShowAwayReport(repo);

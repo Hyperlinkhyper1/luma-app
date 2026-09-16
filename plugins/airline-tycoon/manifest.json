@@ -1,11 +1,14 @@
 {
   "id": "airline-tycoon",
   "name": "Airline Tycoon",
-  "version": "1.0.0",
-  "description": "Run your own airline. Buy planes, open routes across the real world, and build the airport they fly from.",
+  "version": "2.0.0",
+  "description": "Build and operate a 3D airport on Windows and Android, sign visiting airlines, and fly your own fleet.",
   "icon": "flight",
   "category": "Games",
-  "tags": ["Games", "Simulation"],
-  "details": "An airline tycoon built around one home airport. Pick where you fly from, then grow a network across 181 real airports on six continents — great-circle distances, real runway lengths, and a demand model that knows a 200 km hop loses to the train and a 15,000 km one runs out of willing passengers.\n\nThe fleet is real aircraft with roughly real numbers: an ATR 72 for thin regional routes, an A320neo or 737 MAX for the bread and butter, a 787 or A350 when you can afford the runway. Lease early when cash is short and it is the cheapest way in the air; keep the lease for a decade and it costs more than buying outright. Every airframe wears, and every 3,000 block hours it disappears into a heavy check for three days.\n\nFares are the lever. Price under the market and you fill the cabin but leave money behind; price over it and you fly half-empty. The slider shows the load factor and the day's profit as you drag it, using exactly the arithmetic the simulation runs.\n\nThe airport is the real progression gate, built on an isometric grid where placement matters as much as purchase. A gate that does not touch a terminal is built, paid for, and completely useless. A hangar that opens onto an apron cuts maintenance further than one stranded in a field. Fuel depots, lounges and cargo terminals each pay off differently, and the longest runway you have laid decides what you are allowed to fly at all — so the widebody you want is behind concrete, not just cash.\n\nThe clock runs while you play at 1x, 2x or 4x, and keeps trading while the app is closed: come back and a summary tells you how many days were flown, what they earned, and which aircraft went in for a check. Offline days pay a fraction of a full day including costs, so being away can never bankrupt an airline faster than flying it would.\n\nEverything is stored on your device and the game works entirely offline. On the Orbit and Nova plans you can also sync your airline between devices.",
+  "tags": [
+    "Games",
+    "Simulation"
+  ],
+  "details": "Run an airport and an airline together. On Windows and Android, explore a fully rotatable 3D airport, build terminal interiors, connect stands and taxiways, and follow aircraft and ground vehicles through simulated operations.\n\nSign seven-day contracts with visiting airlines or schedule your own aircraft on routes to real destinations. Aircraft compete for runway and stand access. Finite service vehicles and passenger queues affect boarding, delays, handling income and penalties.\n\nBuild check-in desks, security, seating, toilets and cafes. Purchase aircraft or lease them, choose fares, and follow the transaction ledger as flights trade.\n\nThe airport starts paused with a furnished regional field and a turboprop. One game day takes 24 minutes at 1x; 4x and 12x speeds are available. Running airports catch up while away, capped at 12 game days. Paused airports stay paused.\n\nThe new airport uses a separate versioned save, preserving previous airline saves. Other platforms retain the original airline game. All 3D assets are bundled for offline play.",
   "screenshots": []
 }

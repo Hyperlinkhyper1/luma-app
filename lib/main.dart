@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -184,7 +185,7 @@ class _LumaAppState extends State<LumaApp> {
   late final DataManagementRepository _dataManagementRepository = DataManagementRepository(_dataManagementDb);
   late final ServerTycoonRepository _serverTycoonRepository = ServerTycoonRepository();
   late final AirlineTycoonRepository _airlineTycoonRepository =
-      AirlineTycoonRepository();
+      AirlineTycoonRepository(airportMode: Platform.isWindows || Platform.isAndroid);
   late final MoodJournalDatabase _moodJournalDb = MoodJournalDatabase();
   late final MoodJournalRepository _moodJournalRepository = MoodJournalRepository(_moodJournalDb);
   late final AiUsageDatabase _aiUsageDb = AiUsageDatabase();
@@ -388,7 +389,9 @@ class _LumaAppState extends State<LumaApp> {
     // The game itself is free and fully playable offline on every plan;
     // only carrying the airline between devices is a paid feature.
     JsonStoreSyncCollection(
-      id: 'airline_tycoon',
+      id: _airlineTycoonRepository.airportMode
+          ? 'airline_tycoon_airport_v2'
+          : 'airline_tycoon',
       label: 'Airline Tycoon',
       icon: Icons.flight_takeoff_rounded,
       minPlanId: 'orbit',

@@ -114,12 +114,12 @@
     {
       "id": "airline-tycoon",
       "name": "Airline Tycoon",
-      "description": "Run an airline from one home airport. Buy or lease real aircraft, open routes to real cities anywhere on Earth, set the fare and watch the cabin fill or empty. Build the airport itself on an isometric grid where the layout matters: a gate that does not touch a terminal is dead weight, a hangar beside the apron cuts maintenance, and the runway you laid decides what you are allowed to fly. Keeps trading while the app is closed, and tells you what happened when you get back.",
+      "description": "Build and operate a 3D airport on Windows and Android, sign visiting airlines, and fly your own fleet.",
       "icon": "flight",
       "category": "Games",
       "tags": ["Games", "Simulation"],
       "free": true,
-      "version": "1.0.0"
+      "version": "2.0.0"
     },
     {
       "id": "mood-journal",
