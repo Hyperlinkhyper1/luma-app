@@ -6,9 +6,9 @@ The new airport starts paused with two connected stands and an ATR 72.
 
 ## First flights
 
-1. Open Contracts and accept Coastal Connect. Its seven-day schedule fits
-   the starter facilities. Alternatively, open a route, then use Schedule
-   to book the owned ATR and let the airport assign a free stand.
+1. Open Contracts and sign Coastal Connect, then open Planning and drag its
+   card from the holding bar onto a stand. Alternatively, open a route, then
+   click an empty Planning slot (or use Schedule) to fly the owned ATR.
 2. Resume at 1×, 4×, or 12×. One game day takes 24 real minutes at 1×.
 3. Follow aircraft, passenger groups, and ground vehicles. Delays and missing
    services reduce contract income. Read the schedule's issue text when a
@@ -17,16 +17,191 @@ The new airport starts paused with two connected stands and an ATR 72.
    passenger facilities inside terminal sections. Use cutaway to see the
    interior. Security and amenity queues make additional facilities useful.
 
-Drag to orbit, right-drag or shift-drag to pan, and scroll to zoom. Touch
-supports one-finger orbit and two-finger pan/pinch. Construction snaps to
+Drag to move across the map, right-drag (or Shift/Ctrl-drag) to orbit,
+and scroll to zoom. Touch: one finger moves, two fingers pinch to zoom,
+drag to move and twist to turn. Construction snaps to
 5 m outside and 1 m inside. Rotate uses quarter turns. Reset, fit, cutaway,
-grid, and quality controls are available above the airport.
+grid, quality and performance-stats controls sit under the top bar.
+Keyboard: WASD/arrows pan, Q/E turn, +/- zoom, Space pauses, 1/2/3 set the
+speed, R rotates, Esc cancels or closes, C and G toggle cutaway and grid,
+B opens Build, P opens Planning, F3 shows performance stats.
+
+Build shows category tabs with a 3D preview card per item (rendered from the
+same model that gets placed). Selecting a terminal section offers **Edit
+interior**: the roof comes off, the camera moves in, and the tabs switch to
+passenger flow, shops & lounges and decor.
+
+Stands come in three kinds. Regional stands take aircraft up to 45 t.
+Remote stands take anything and need a bus. Contact stands must touch a
+terminal; their jet bridge removes the bus and boards 60% faster. Aircraft
+park nose-in towards the nearest terminal. Duty-free shops (€14 per
+passenger, after security) and lounges (€20, replaces seating) earn retail
+income; plants, fountains and information boards add a little satisfaction, and each
+staffed information desk (5 × 4 m) adds 0.02, up to 0.06 for three.
+Cleanliness runs from 60% with no bins to 100% with ten sets of recycling
+bins (2 × 1 m, `cleanliness`); the gap above 60% is worth up to +0.05
+satisfaction per passenger.
+Ticket machines (1 × 1 m) are self check-in: passengers use whichever
+check-in desk or machine frees up first, and a machine handles 4 per game
+minute. At least one check-in desk (or staffed counter) is still required.
+Staffed check-in counters (6 × 5 m) are a full check-in with two agents,
+a bag drop and a queue lane, 10 passengers per game minute. Vending machines
+(1 × 1 m) stand in for the café: one minute per group and €3 per passenger
+instead of three minutes and €8; a restaurant (14 × 10 m) is the other end
+of that stop: five minutes, €26 and a small mood boost. Fashion boutiques (8 × 6 m) share the duty-free
+stop: a passenger browses whichever shop frees up first, three minutes and
+€18 in a boutique. A newsstand kiosk (5 × 4 m) is the cheap end: ninety
+seconds and €9; a duty-free food & drink hall (10 × 8 m) takes two and a
+half minutes and earns €20. A perfume boutique (8 × 7 m) is low demand and
+high value: two minutes, and a quarter of each group spends €90. Luxury boutiques (8 × 6 m) take four minutes, earn €26
+and lift the passenger's mood a little. VIP lounges & bars (8 × 6 m) are
+the premium waiting area next to seating and lounges: €35 per passenger and
++0.08 satisfaction.
+
+Baggage carousels (10 × 5 m) are required by every medium and long-haul
+contract. When such a flight finishes unloading, its passengers walk from the
+gate to the least busy connected carousel (at most `carouselCapacity`, 100
+people, per carousel; the rest wait at the gate and lose satisfaction). They
+wait until the baggage tug has delivered, collect for a few minutes and leave
+through the entrance; their mood feeds the contract's satisfaction. In the
+scene the bags ride the belt (an instanced mesh in `scene.js`, path from
+`AirportModels.loopPoint`), vanish as the group collects them, and the
+waiting people stand around the carousel. The model's static luggage only
+appears in Build previews.
+
+## Contracts and planning
+
+Scheduling follows Airport Simulator: First Class. Airlines publish three
+offers a day (`sim/airport_contracts.dart`, a pure function of the day
+number so every device sees the same market); each stays open two days, and
+the first one of a day is always short haul. The three starter offers never
+expire. An offer is **regular** (one flight at the same time every day for N
+days) or **charter** (N flights placed one by one), with a start slot:
+EAM 00–06, AM 06–12, AN 12–18, PM 18–24 or any time. Short haul holds its
+stand for 3 h, medium 4 h, long 6 h; the aircraft pushes back 30 minutes
+before its slot ends.
+
+Contracts opens as a full-width table like the original: airline, total
+reward, slot, aircraft, flight type and service icons per row, with
+"Contract details" expanding the terms and the Sign button, a countdown to
+the next midnight offers, and a Signed contracts tab.
+
+Signing (`acceptContract`) only puts the contract in Planning's holding bar.
+`placeContract` drops it on a stand at a start time: a regular contract
+places all remaining days at once, a charter one flight. The whole series
+must fit (slot, stand size, runway, free stand on every day), start at least
+30 minutes ahead and within 14 days. Regular series must start within 3 days
+of signing, charters must all fly within 6; whatever is still unplanned
+after that lapses and costs the per-flight penalty. `moveFlight` changes a
+flight's stand and time, `unscheduleFlight` returns it to the holding bar,
+and cancelling a contract charges every planned and unplanned flight.
+
+The Planning board shows today plus the next 13 days as stands × hours with
+slot bands. Drag a holding-bar card or a planned flight: the ghost turns red
+and says why when the drop would be refused (the page mirrors the rules; the
+simulation still decides). Drop a flight on the holding bar to unplan it.
+Clicking an empty slot schedules one of your own aircraft there.
+Old saves load: contracts without a stored offer map to the starter offer
+and count as fully placed.
 
 Contract cancellation charges the displayed total for unserved flights;
 active turnarounds finish. Cancel future owned flights before selling their
 aircraft. Occupied or imminently needed infrastructure cannot be removed.
 
 ## State and rendering
+
+All airport controls live inside the scene page
+(`assets/airline_tycoon/scene/hud.js`). The page sends every change as a
+`command` message; `AirportGameView` checks it against an allowlist, runs it
+through `AirlineTycoonRepository.airportCommand` and replies with a `result`.
+Fleet and Routes stay Flutter widgets and open as full pages, which hides the
+scene.
+
+On Windows the page runs in a real WebView2 child window
+(`windows/runner/native_webview.cpp`, `_shared/native_webview.dart`), not
+`webview_windows`. That package screen-captures WebView2 into a Flutter texture
+and relays mouse moves over a platform channel, which held the scene near
+13 fps and froze it on every drag. Nothing Flutter draws can cover the native
+window, so the window hides whenever a route, dialog or menu is on top, and
+no Flutter overlay may be added over the airport. Android keeps
+`InAppWebView`, which is already a native view.
+
+Every procedural model is merged by `AirportModels.bake` into at most three
+vertex-coloured meshes, and repeated models share geometry through
+`instance`. New model code must go through them; unmerged, the starter
+airport alone was more than 550 draw calls.
+
+The landside (`assets/airline_tycoon/scene/landside.js`) is the public side of
+the terminal: the kerb and its canopy, a bus station, a tram line, an elevated
+railway with a station, the access road out to a roundabout, and the hotels,
+car parks and multi-storey garage along it. It is scenery only — nothing there
+is simulated in Dart, and clicks still fall through to facilities.
+
+`build(facilities)` finds the terminal wall facing away from the runways and
+stands and lays the whole district out in a local frame (`u` metres out from
+that wall, `v` along it), so the district follows the terminal to whichever
+side it belongs on. It is keyed on that frame and only rebuilt when the
+terminals move; `updateEnvironment` keeps the treeline out of `district.rect`.
+The static half goes through one `bake`, so the district costs about twenty
+draw calls plus its moving traffic.
+
+Traffic follows closed polyline routes with rounded corners. Cars are a single
+instanced mesh sharing the road route at two lane offsets; buses, trams and
+trains are jointed, each carriage riding the same route a fixed distance
+behind the one in front, and brake for stops at the bus station, the kerb, the
+tram platforms and the railway station. `update(dt, {activity, night, paused,
+speed})` comes from `scene.js`: waiting passenger groups and turnarounds in
+progress put more cars and buses on the road, night takes them off, and a
+paused airport stops them dead. Trams and trains keep their timetable either
+way.
+
+Service vehicles are bought from their depot: select a connected vehicle
+depot in Build and use its shop. New vehicles spawn at that depot and
+return there after each job. The simulation still rejects depot-less
+purchases, so old saves fall back to the first connected depot.
+
+## Adding a model
+
+There is no per-model HTML file. The single
+`assets/airline_tycoon/scene/index.html` loads one Three.js bundle plus
+`scene_logic.js`, `models.js`, `landside.js`, `preview.js`, `hud.js` and
+`scene.js`.
+Every visible thing is a procedural mesh built in code in
+`assets/airline_tycoon/scene/models.js` from boxes, cylinders, spheres,
+extrusions and canvas labels, in metres, aircraft nose towards `-Z`.
+
+The usual alternative is external art: model in Blender, export
+glTF/FBX, load at runtime with `THREE.GLTFLoader`. That gives richer
+shapes but costs bundle size, async loading states, per-model draw
+calls and materials, plus licensing/attribution per asset. This game
+stays procedural so the bundle is small, thumbnails reuse the same
+code, everything works offline, and all art is original.
+
+To add a new building kind `myHall`:
+
+1. Dart catalog in `sim/airport_world.dart` (`airportFacilities`): add an
+   `AirportFacilityDef('myHall', 'My hall', width, depth, height, cost,
+   blurb, category: 'services')`. Set `interior: true` only for items
+   that must sit completely inside a terminal. If it needs a road,
+   extend `resolveConnections` (copy the `vehicleDepot`/`fuelDepot`
+   pattern) and `effects` if it changes costs.
+2. JS mesh in `assets/airline_tycoon/scene/models.js`: write
+   `function myHall(g, w, d) { box(...); ... }` using the `box`,
+   `cylinder`, `sphere`, `line`, `decal`, `label`, `light`, `pool`
+   helpers, staying inside the `w × d` footprint. Tag removable roofs
+   with `mesh.userData.roof = true` so cutaway hides them. Wire it in
+   `facility()` next to `vehicleDepot`. End with `bake(g, ...)` — never
+   skip it — and reuse repeats via `instance('myHall', ...)`.
+3. Thumbnails and checks: Build cards render via `scene.js`
+   `renderThumbnail`, which calls the same `M.facility`, so no extra
+   art is needed. Add the kind to the footprint rotation loop in
+   `assets/airline_tycoon/scene/check_scene.cjs` and run
+   `node assets/airline_tycoon/scene/check_scene.cjs`.
+4. Vehicles and aircraft follow the same pattern: new ground vehicles
+   go in `vehicleBody(kind)` plus the `['fuel', ...]` lists in
+   `hud.js` (`depotShop`, `vehicleName`) and `airport_world.dart`
+   (`buyVehicle`); new aircraft go in `specs`/`aircraftBody` in
+   `models.js` plus `data/aircraft.dart`.
 
 `AirportWorld` owns simulation events in game minutes. The repository owns
 the clock, commands, finances, save queue and sync. Three.js is a bundled
@@ -53,7 +228,8 @@ The legacy file and collection are not modified by airport mode.
 Run the airport simulation, repository and UI tests together with the
 existing airline tests. The scene's isolated JavaScript regression suite
 is `node assets/airline_tycoon/scene/check_scene.cjs`. It verifies geometry,
-snapshot bridging, construction previews, rotations and rendering budgets;
+snapshot bridging, construction previews, rotations, rendering budgets and the
+landside's orientation, rebuild and traffic;
 its renderer is stubbed and it is not GPU verification.
 
 A Windows debug build was verified during implementation. Android SDK and

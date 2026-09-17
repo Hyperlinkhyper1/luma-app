@@ -968,12 +968,16 @@ class AirlineTycoonRepository extends ChangeNotifier
           {
             ...c.toJson(),
             'cancelCost':
-                world.flights
-                    .where(
-                      (f) => f.contractId == c.id && f.stage == 'scheduled',
-                    )
-                    .length *
+                (world.flights
+                        .where(
+                          (f) => f.contractId == c.id && f.stage == 'scheduled',
+                        )
+                        .length +
+                    c.remaining) *
                 c.offer.penalty,
+            'scheduled': world.flights
+                .where((f) => f.contractId == c.id && f.stage == 'scheduled')
+                .length,
           },
       ],
       'cash': _state.cashEur,
@@ -991,9 +995,17 @@ class AirlineTycoonRepository extends ChangeNotifier
               'passengers': _lastAwayReport!.passengers,
             },
       'offers': [
-        for (final o in airportOffers)
+        for (final o in world.offers)
           {...o.toJson(), 'blockedReason': world.contractBlocker(o.id)},
       ],
+      'rules': {
+        'slots': {
+          for (final e in airportSlots.entries) e.key: [e.value.$1, e.value.$2],
+        },
+        'haulMinutes': haulMinutes,
+        'exitMinutes': slotExitMinutes,
+        'horizonDays': planningHorizonDays,
+      },
       'catalog': airportFacilities.map((d) => d.toJson()).toList(),
       'vehicleCosts': {
         for (final k in ['fuel', 'baggage', 'bus', 'pushback']) k: 120000,
@@ -1064,13 +1076,38 @@ class AirlineTycoonRepository extends ChangeNotifier
         case 'demolish':
           error = world.demolish(_state, string('facilityId'));
         case 'buyVehicle':
-          error = world.buyVehicle(_state, string('kind'));
+          final depotArg = args['depotId'] is String
+              ? args['depotId'] as String
+              : args['facilityId'] is String
+              ? args['facilityId'] as String
+              : null;
+          error = world.buyVehicle(
+            _state,
+            string('kind'),
+            depotId: depotArg,
+          );
         case 'acceptContract':
           error = world.acceptContract(_state, string('offerId'));
         case 'cancelContract':
           error = world.cancelContract(_state, string('contractId'));
         case 'cancelFlight':
           error = world.cancelFlight(_state, string('flightId'));
+        case 'reassignFlight':
+          error = world.reassignFlight(string('flightId'), string('standId'));
+        case 'moveFlight':
+          error = world.moveFlight(
+            string('flightId'),
+            string('standId'),
+            number('arrival'),
+          );
+        case 'unscheduleFlight':
+          error = world.unscheduleFlight(string('flightId'));
+        case 'placeContract':
+          error = world.placeContract(
+            string('contractId'),
+            string('standId'),
+            number('arrival'),
+          );
         case 'schedule':
           if (_catalog == null) {
             return const ActionResult.failed('Airport catalog is unavailable.');

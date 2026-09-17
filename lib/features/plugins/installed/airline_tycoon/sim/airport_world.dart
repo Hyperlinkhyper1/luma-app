@@ -3,9 +3,12 @@ import 'dart:math' as math;
 import '../airline_game_state.dart';
 import '../data/aircraft.dart';
 import '../data/airport_catalog.dart';
+import 'airport_contracts.dart';
 import 'economy.dart';
 import 'geo.dart';
 import 'hub.dart';
+
+export 'airport_contracts.dart';
 
 typedef Json = Map<String, Object?>;
 
@@ -26,6 +29,8 @@ class AirportFacilityDef {
     this.cost,
     this.blurb, {
     this.interior = false,
+    required this.category,
+    this.maxMtowTonnes,
   });
   final String kind;
   final String name;
@@ -33,6 +38,14 @@ class AirportFacilityDef {
   final int cost;
   final String blurb;
   final bool interior;
+
+  /// Build-menu group: airfield, apron, services, terminal, interior, shops
+  /// or decor.
+  final String category;
+
+  /// Heaviest aircraft a stand accepts; null means any.
+  final int? maxMtowTonnes;
+
   Json toJson() => {
     'kind': kind,
     'name': name,
@@ -42,8 +55,19 @@ class AirportFacilityDef {
     'cost': cost,
     'interior': interior,
     'blurb': blurb,
+    'category': category,
+    'maxMtow': maxMtowTonnes,
   };
 }
+
+/// Every kind an aircraft can park on.
+const standKinds = {'stand', 'standRegional', 'standContact'};
+
+/// Interior pieces that only lift passenger mood.
+const decorKinds = {'plant', 'fountain', 'infoBoard'};
+
+/// Arriving passengers a single baggage carousel serves at once.
+const carouselCapacity = 100;
 
 const airportFacilities = <AirportFacilityDef>[
   AirportFacilityDef(
@@ -54,6 +78,7 @@ const airportFacilities = <AirportFacilityDef>[
     .15,
     6000000,
     'Regional runway. Connect it to stands with taxiways.',
+    category: 'airfield',
   ),
   AirportFacilityDef(
     'runwayMedium',
@@ -63,6 +88,7 @@ const airportFacilities = <AirportFacilityDef>[
     .15,
     13000000,
     'Supports narrowbody aircraft.',
+    category: 'airfield',
   ),
   AirportFacilityDef(
     'runwayLong',
@@ -72,6 +98,7 @@ const airportFacilities = <AirportFacilityDef>[
     .15,
     24000000,
     'Supports long-haul widebodies.',
+    category: 'airfield',
   ),
   AirportFacilityDef(
     'taxiway',
@@ -81,24 +108,38 @@ const airportFacilities = <AirportFacilityDef>[
     .1,
     60000,
     'Connect touching taxiways between a runway and a stand.',
+    category: 'airfield',
+  ),
+  AirportFacilityDef(
+    'standRegional',
+    'Regional stand',
+    40,
+    45,
+    .12,
+    550000,
+    'Turboprops and regional jets up to 45 t. Needs taxiway, service road and a nearby boarding gate.',
+    category: 'apron',
+    maxMtowTonnes: 45,
   ),
   AirportFacilityDef(
     'stand',
-    'Aircraft stand',
+    'Remote stand',
     60,
     65,
     .12,
     1200000,
-    'One aircraft at a time. Needs taxiway, service road and a nearby boarding gate.',
+    'Any aircraft. Passengers ride a bus. Needs taxiway, service road and a nearby boarding gate.',
+    category: 'apron',
   ),
   AirportFacilityDef(
-    'terminal',
-    'Terminal section',
-    120,
+    'standContact',
+    'Contact stand · jet bridge',
     60,
-    12,
-    4000000,
-    'Furnish its interior with passenger services.',
+    65,
+    .12,
+    2600000,
+    'Build against a terminal. Passengers walk on board: no bus, faster boarding, happier travellers.',
+    category: 'apron',
   ),
   AirportFacilityDef(
     'serviceRoad',
@@ -108,6 +149,17 @@ const airportFacilities = <AirportFacilityDef>[
     .08,
     20000,
     'Connect vehicle depots and services to aircraft stands.',
+    category: 'apron',
+  ),
+  AirportFacilityDef(
+    'terminal',
+    'Terminal section',
+    120,
+    60,
+    12,
+    4000000,
+    'Furnish its interior with passenger services.',
+    category: 'terminal',
   ),
   AirportFacilityDef(
     'hangar',
@@ -117,6 +169,7 @@ const airportFacilities = <AirportFacilityDef>[
     22,
     3000000,
     'Connected hangars reduce aircraft maintenance costs.',
+    category: 'services',
   ),
   AirportFacilityDef(
     'fuelDepot',
@@ -126,6 +179,7 @@ const airportFacilities = <AirportFacilityDef>[
     10,
     2000000,
     'Fuel supply for ground-service trucks.',
+    category: 'services',
   ),
   AirportFacilityDef(
     'baggage',
@@ -135,6 +189,7 @@ const airportFacilities = <AirportFacilityDef>[
     8,
     800000,
     'Baggage handling for every departure.',
+    category: 'services',
   ),
   AirportFacilityDef(
     'vehicleDepot',
@@ -143,7 +198,8 @@ const airportFacilities = <AirportFacilityDef>[
     30,
     9,
     500000,
-    'Purchase service vehicles; connect this to a service road.',
+    'Select this depot to buy service vehicles; connect it to a service road.',
+    category: 'services',
   ),
   AirportFacilityDef(
     'tower',
@@ -153,6 +209,7 @@ const airportFacilities = <AirportFacilityDef>[
     38,
     1500000,
     'Airport landmark and flight control centre.',
+    category: 'services',
   ),
   AirportFacilityDef(
     'entrance',
@@ -163,6 +220,7 @@ const airportFacilities = <AirportFacilityDef>[
     15000,
     'Passenger entry to connected terminal sections.',
     interior: true,
+    category: 'interior',
   ),
   AirportFacilityDef(
     'checkIn',
@@ -173,6 +231,42 @@ const airportFacilities = <AirportFacilityDef>[
     45000,
     'Process 8 passengers per game minute.',
     interior: true,
+    category: 'interior',
+  ),
+  AirportFacilityDef(
+    'infoDesk',
+    'Information desk',
+    5,
+    4,
+    3,
+    90000,
+    'Staff who answer questions and point the way: every connected desk '
+        'lifts passenger satisfaction across the terminal.',
+    interior: true,
+    category: 'interior',
+  ),
+  AirportFacilityDef(
+    'checkInCounter',
+    'Staffed check-in counter',
+    6,
+    5,
+    3,
+    70000,
+    'Two agents with a bag drop: 10 passengers per game minute. Counts as '
+        'check-in desks.',
+    interior: true,
+    category: 'interior',
+  ),
+  AirportFacilityDef(
+    'ticketMachine',
+    'Ticket machine',
+    1,
+    1,
+    2,
+    12000,
+    'Self check-in beside the desks: 4 passengers per game minute.',
+    interior: true,
+    category: 'interior',
   ),
   AirportFacilityDef(
     'security',
@@ -183,6 +277,7 @@ const airportFacilities = <AirportFacilityDef>[
     90000,
     'Screen 6 passengers per game minute.',
     interior: true,
+    category: 'interior',
   ),
   AirportFacilityDef(
     'seating',
@@ -193,6 +288,7 @@ const airportFacilities = <AirportFacilityDef>[
     12000,
     'Comfort for waiting passengers.',
     interior: true,
+    category: 'interior',
   ),
   AirportFacilityDef(
     'toilets',
@@ -203,16 +299,7 @@ const airportFacilities = <AirportFacilityDef>[
     50000,
     'Essential passenger amenity.',
     interior: true,
-  ),
-  AirportFacilityDef(
-    'cafe',
-    'Café',
-    12,
-    8,
-    3,
-    85000,
-    'Passenger satisfaction and retail income.',
-    interior: true,
+    category: 'interior',
   ),
   AirportFacilityDef(
     'boardingGate',
@@ -223,6 +310,189 @@ const airportFacilities = <AirportFacilityDef>[
     120000,
     'Place within 25 m of an aircraft stand.',
     interior: true,
+    category: 'interior',
+  ),
+  AirportFacilityDef(
+    'cafe',
+    'Café',
+    12,
+    8,
+    3,
+    85000,
+    'Passenger satisfaction and retail income.',
+    interior: true,
+    category: 'shops',
+  ),
+  AirportFacilityDef(
+    'vendingMachine',
+    'Vending machine',
+    1,
+    1,
+    2,
+    9000,
+    'Quick snacks instead of the café: €3 per passenger, one minute each.',
+    interior: true,
+    category: 'shops',
+  ),
+  AirportFacilityDef(
+    'perfumeShop',
+    'Perfume boutique',
+    8,
+    7,
+    3,
+    260000,
+    'Few buyers, large baskets: one passenger in four spends €90 here.',
+    interior: true,
+    category: 'shops',
+  ),
+  AirportFacilityDef(
+    'foodShop',
+    'Duty-free food & drink',
+    10,
+    8,
+    3,
+    230000,
+    'Snacks, sweets and a chilled drinks wall after security: €20 per '
+        'passenger, two and a half minutes each.',
+    interior: true,
+    category: 'shops',
+  ),
+  AirportFacilityDef(
+    'kiosk',
+    'Newsstand kiosk',
+    5,
+    4,
+    3,
+    55000,
+    'A staffed till for papers and snacks after security: €9 per passenger, '
+        'ninety seconds each.',
+    interior: true,
+    category: 'shops',
+  ),
+  AirportFacilityDef(
+    'restaurant',
+    'Restaurant',
+    14,
+    10,
+    3,
+    380000,
+    'Sit-down dining instead of the café: €26 per passenger, five minutes, '
+        'and a happier wait.',
+    interior: true,
+    category: 'shops',
+  ),
+  AirportFacilityDef(
+    'shop',
+    'Duty-free shop',
+    12,
+    8,
+    3,
+    160000,
+    'Passengers browse after security: €14 retail income each.',
+    interior: true,
+    category: 'shops',
+  ),
+  AirportFacilityDef(
+    'clothingShop',
+    'Fashion boutique',
+    8,
+    6,
+    3,
+    190000,
+    'Duty-free clothing after security: €18 per passenger, three minutes each.',
+    interior: true,
+    category: 'shops',
+  ),
+  AirportFacilityDef(
+    'luxuryBoutique',
+    'Luxury boutique',
+    8,
+    6,
+    3,
+    320000,
+    'Premium knitwear after security: €26 per passenger, four minutes each, '
+        'and a calmer wait.',
+    interior: true,
+    category: 'shops',
+  ),
+  AirportFacilityDef(
+    'lounge',
+    'Premium lounge',
+    14,
+    10,
+    3,
+    240000,
+    'Waiting area that earns €20 per passenger and lifts their mood.',
+    interior: true,
+    category: 'shops',
+  ),
+  AirportFacilityDef(
+    'baggageCarousel',
+    'Baggage carousel',
+    10,
+    5,
+    3,
+    65000,
+    'Arrivals of medium and long-haul contracts collect their bags here. '
+        'Up to $carouselCapacity people at once.',
+    interior: true,
+    category: 'interior',
+  ),
+  AirportFacilityDef(
+    'vipLounge',
+    'VIP lounge & bar',
+    8,
+    6,
+    3,
+    420000,
+    'First-class waiting area: €35 per passenger and a much happier wait.',
+    interior: true,
+    category: 'shops',
+  ),
+  AirportFacilityDef(
+    'bins',
+    'Recycling bins',
+    2,
+    1,
+    2,
+    2500,
+    'Waste, paper and bottles. A clean terminal keeps passengers happy: each '
+        'set adds 4% cleanliness, from 60% up to 100%.',
+    interior: true,
+    category: 'decor',
+  ),
+  AirportFacilityDef(
+    'plant',
+    'Palm planter',
+    2,
+    2,
+    3,
+    3000,
+    'Decor. Every piece in a terminal lifts passenger mood a little.',
+    interior: true,
+    category: 'decor',
+  ),
+  AirportFacilityDef(
+    'fountain',
+    'Fountain',
+    6,
+    6,
+    2,
+    40000,
+    'Decor centrepiece. Lifts passenger mood.',
+    interior: true,
+    category: 'decor',
+  ),
+  AirportFacilityDef(
+    'infoBoard',
+    'Flight information board',
+    4,
+    2,
+    3,
+    18000,
+    'Decor. Passengers find their gate with less stress.',
+    interior: true,
+    category: 'decor',
   ),
 ];
 
@@ -284,83 +554,6 @@ class AirportFacility {
     rotation: (j['rotation'] as num?)?.toInt() ?? 0,
     width: _number(j, 'width'),
     depth: _number(j, 'depth'),
-  );
-}
-
-class AirportOffer {
-  const AirportOffer(
-    this.id,
-    this.carrier,
-    this.modelId,
-    this.flightsPerDay,
-    this.fee,
-    this.penalty,
-    this.requiredServices,
-  );
-  final String id, carrier, modelId;
-  final int flightsPerDay, fee, penalty;
-  final List<String> requiredServices;
-  Json toJson() => {
-    'id': id,
-    'carrier': carrier,
-    'modelId': modelId,
-    'flightsPerDay': flightsPerDay,
-    'fee': fee,
-    'penalty': penalty,
-    'requiredServices': requiredServices,
-    'runwayM': aircraftModelById(modelId)!.minRunwayM,
-  };
-}
-
-const airportOffers = [
-  AirportOffer('coastal', 'Coastal Connect', 'atr72', 2, 42000, 12000, [
-    'fuelDepot',
-    'baggage',
-  ]),
-  AirportOffer('meridian', 'Meridian Airways', 'a320neo', 3, 95000, 30000, [
-    'fuelDepot',
-    'baggage',
-    'cafe',
-  ]),
-  AirportOffer('aurora', 'Aurora International', 'b787_9', 2, 160000, 55000, [
-    'fuelDepot',
-    'baggage',
-    'cafe',
-    'seating',
-    'toilets',
-  ]),
-];
-
-class AirportContract {
-  AirportContract(
-    this.id,
-    this.offerId,
-    this.startDay,
-    this.endDay, {
-    this.satisfaction = 1,
-    this.cancelled = false,
-  });
-  final String id, offerId;
-  final int startDay, endDay;
-  double satisfaction;
-  bool cancelled;
-  AirportOffer get offer => airportOffers.firstWhere((o) => o.id == offerId);
-  Json toJson() => {
-    'id': id,
-    'offerId': offerId,
-    'carrier': offer.carrier,
-    'startDay': startDay,
-    'endDay': endDay,
-    'satisfaction': satisfaction,
-    'cancelled': cancelled,
-  };
-  factory AirportContract.fromJson(Json j) => AirportContract(
-    j['id'] as String,
-    j['offerId'] as String,
-    (j['startDay'] as num).toInt(),
-    (j['endDay'] as num).toInt(),
-    satisfaction: _number(j, 'satisfaction', 1),
-    cancelled: j['cancelled'] == true,
   );
 }
 
@@ -496,6 +689,9 @@ class AirportPassengerGroup {
   AirportPassengerGroup(this.id, this.flightId, this.count, this.x, this.y);
   final String id, flightId;
   final int count;
+
+  /// Arriving passengers walk from the gate to a baggage carousel and out.
+  bool arriving = false;
   String stage = 'entrance';
   double x, y, satisfaction = 1, nextEvent = 0, started = 0;
   String? facilityId;
@@ -504,6 +700,7 @@ class AirportPassengerGroup {
     'id': id,
     'flightId': flightId,
     'count': count,
+    'arriving': arriving,
     'stage': stage,
     'x': x,
     'y': y,
@@ -521,6 +718,7 @@ class AirportPassengerGroup {
       _number(j, 'x'),
       _number(j, 'y'),
     );
+    p.arriving = j['arriving'] as bool? ?? false;
     p.stage = j['stage'] as String? ?? 'entrance';
     p.satisfaction = _number(j, 'satisfaction', 1);
     p.nextEvent = _number(j, 'nextEvent');
@@ -548,6 +746,9 @@ class AirportWorld {
   final List<Json> ledger = [];
   final Map<String, String> reservations = {};
   final Map<String, double> queues = {};
+
+  /// Generated offers already signed; they leave the market for good.
+  final Set<String> signedOffers = {};
   String? lastError;
   int get day => time ~/ 1440 + 1;
   String _id(String prefix) => '$prefix${nextId++}';
@@ -567,9 +768,28 @@ class AirportWorld {
 
   List<AirportFacility> ofKind(String kind) =>
       facilities.where((f) => f.kind == kind).toList();
-  List<AirportFacility> get stands => ofKind('stand');
-  bool hasService(String kind) =>
-      facilities.any((f) => f.kind == kind && f.connected);
+  List<AirportFacility> get stands =>
+      facilities.where((f) => standKinds.contains(f.kind)).toList();
+
+  /// How clean the terminal is, from .6 with no bins to 1 with ten sets.
+  double get cleanliness =>
+      .6 +
+      math.min(
+        .4,
+        facilities.where((f) => f.kind == 'bins' && f.connected).length * .04,
+      );
+
+  /// Satisfaction added by staffed information desks, up to three of them.
+  double get infoDeskBonus => math.min(
+    .06,
+    facilities.where((f) => f.kind == 'infoDesk' && f.connected).length * .02,
+  );
+
+  bool hasService(String kind) => facilities.any(
+    (f) =>
+        f.connected &&
+        (f.kind == kind || (kind == 'checkIn' && f.kind == 'checkInCounter')),
+  );
 
   factory AirportWorld.starter() {
     final w = AirportWorld();
@@ -798,6 +1018,10 @@ class AirportWorld {
     if (def.interior && _terminal(candidate) == null) {
       return 'Place this completely inside a terminal section.';
     }
+    if (kind == 'standContact' &&
+        !ofKind('terminal').any((t) => t.gap(candidate) <= 1)) {
+      return 'A jet bridge needs this stand to touch a terminal section.';
+    }
     for (final b in facilities) {
       if (b.id == old?.id) continue;
       if (candidate.overlaps(b) &&
@@ -863,18 +1087,28 @@ class AirportWorld {
     return null;
   }
 
-  String? buyVehicle(AirlineGameState airline, String kind) {
+  String? buyVehicle(AirlineGameState airline, String kind, {String? depotId}) {
     if (!['fuel', 'baggage', 'bus', 'pushback'].contains(kind)) {
       return 'Unknown vehicle.';
     }
     if (airline.cashEur < 120000) return 'A service vehicle costs €120,000.';
-    final depots = ofKind('vehicleDepot').where((d) => d.connected).toList();
-    if (depots.isEmpty) {
-      return 'Connect a vehicle depot to a service road first.';
+    AirportFacility? home;
+    if (depotId != null && depotId.isNotEmpty) {
+      home = facility(depotId);
+      if (home == null || home.kind != 'vehicleDepot') {
+        return 'Select a vehicle depot to buy service vehicles.';
+      }
+      if (!home.connected) {
+        return 'Connect that vehicle depot to a service road first.';
+      }
+    } else {
+      final depots = ofKind('vehicleDepot').where((d) => d.connected).toList();
+      if (depots.isEmpty) {
+        return 'Select a connected vehicle depot to buy service vehicles.';
+      }
+      home = depots.first;
     }
-    vehicles.add(
-      AirportVehicle(_id('v'), kind, depots.first.cx, depots.first.cy),
-    );
+    vehicles.add(AirportVehicle(_id('v'), kind, home.cx, home.cy));
     _book(airline, 'vehicles', -120000, 'Purchased $kind vehicle');
     return null;
   }
@@ -903,57 +1137,44 @@ class AirportWorld {
     }
     if (!stands.any(
       (s) =>
-          s.connected && _runway(s, aircraftModelById(offer.modelId)!) != null,
+          s.connected &&
+          standAccepts(s, offer.model) &&
+          _runway(s, offer.model) != null,
     )) {
-      return 'No connected stand with a long enough runway.';
+      return 'No connected ${offer.haul} stand with a long enough runway.';
     }
     return null;
   }
+
+  /// Offers open for signing today: the permanent starter offers plus what
+  /// airlines published in the last two days.
+  List<AirportOffer> get offers => [
+    ...airportOffers,
+    for (var d = math.max(1, day - 2); d <= day; d++)
+      ...offersPublishedOn(
+        d,
+      ).where((o) => o.expiresDay! >= day && !signedOffers.contains(o.id)),
+  ];
+
+  AirportOffer? offer(String id) {
+    for (final o in offers) {
+      if (o.id == id) return o;
+    }
+    return null;
+  }
+
+  bool _contractOpen(AirportContract c) =>
+      !c.cancelled &&
+      (c.remaining > 0 ||
+          flights.any((f) => f.contractId == c.id && !f.finished));
 
   String? contractBlocker(String offerId) {
-    final offer = airportOffers.firstWhere((o) => o.id == offerId);
-    if (contracts.any(
-      (c) => c.offerId == offerId && !c.cancelled && c.endDay >= day,
-    )) {
-      return 'Already contracted until day ${contracts.firstWhere((c) => c.offerId == offerId && !c.cancelled && c.endDay >= day).endDay}.';
+    final o = offer(offerId);
+    if (o == null) return 'This offer is no longer available.';
+    if (contracts.any((c) => c.offerId == offerId && _contractOpen(c))) {
+      return 'This airline is still flying its current contract.';
     }
-    final problem = _requirements(offer);
-    if (problem != null) return problem;
-    final planned = <AirportFlight>[];
-    final first = _contractStart(offer);
-    for (var d = 0; d < 7; d++) {
-      for (var i = 0; i < offer.flightsPerDay; i++) {
-        final arrival = first + d * 1440 + i * 210;
-        final stand = _availableStand(
-          arrival,
-          arrival + 80,
-          aircraftModelById(offer.modelId)!,
-          extra: planned,
-        );
-        if (stand == null) {
-          return 'The seven-day schedule needs more free stand slots.';
-        }
-        planned.add(
-          AirportFlight(
-            id: 'preview${planned.length}',
-            carrier: offer.carrier,
-            modelId: offer.modelId,
-            standId: stand.id,
-            arrival: arrival,
-            departure: arrival + 80,
-          ),
-        );
-      }
-    }
-    return null;
-  }
-
-  double _contractStart(AirportOffer offer) {
-    final start = math.max(420.0, time % 1440 + 30);
-    if (start + (offer.flightsPerDay - 1) * 210 + 80 > 1380) {
-      return (day) * 1440.0 + 420;
-    }
-    return (day - 1) * 1440.0 + start;
+    return _requirements(o);
   }
 
   AirportFacility? _availableStand(
@@ -963,18 +1184,18 @@ class AirportWorld {
     String? standId,
     double returnAt = 0,
     List<AirportFlight> extra = const [],
+    String? ignoreFlightId,
   }) {
     for (final stand in stands) {
       if (standId != null && standId.isNotEmpty && stand.id != standId) {
         continue;
       }
       if (!stand.connected || _runway(stand, model) == null) continue;
-      if (model.mtowTonnes > 150 && math.min(stand.width, stand.depth) < 60) {
-        continue;
-      }
+      if (!standAccepts(stand, model)) continue;
       if ([...flights, ...extra].any(
         (f) =>
             !f.finished &&
+            f.id != ignoreFlightId &&
             f.standId == stand.id &&
             ((arrival < f.departure + 30 && departure + 30 > f.arrival) ||
                 (f.returnAt > 0 &&
@@ -995,49 +1216,176 @@ class AirportWorld {
     return null;
   }
 
-  String? acceptContract(AirlineGameState airline, String offerId) {
-    final offers = airportOffers.where((o) => o.id == offerId);
-    if (offers.isEmpty) return 'Unknown airline offer.';
-    final offer = offers.first;
-    if (contracts.any(
-      (c) => c.offerId == offerId && !c.cancelled && c.endDay >= day,
-    )) {
-      return 'This airline already has an active contract.';
+  /// Whether [stand] can take [model] at all, ignoring the timetable.
+  bool standAccepts(AirportFacility stand, AircraftModel model) {
+    final limit = facilityDef(stand.kind).maxMtowTonnes;
+    if (limit != null && model.mtowTonnes > limit) return false;
+    return !(model.mtowTonnes > 150 && math.min(stand.width, stand.depth) < 60);
+  }
+
+  String _clock(double minutes) {
+    final m = minutes.round();
+    return 'day ${m ~/ 1440 + 1} ${(m ~/ 60 % 24).toString().padLeft(2, '0')}:${(m % 60).toString().padLeft(2, '0')}';
+  }
+
+  String? _placementProblem(
+    AirportFacility? stand,
+    AircraftModel model,
+    double arrival,
+  ) {
+    if (stand == null || !standKinds.contains(stand.kind)) {
+      return 'Choose an aircraft stand.';
     }
-    final problem = contractBlocker(offerId);
+    if (!standAccepts(stand, model)) {
+      return '${facilityDef(stand.kind).name} cannot take the ${model.name}.';
+    }
+    if (!stand.connected || _runway(stand, model) == null) {
+      return 'That stand is not connected to a long enough runway.';
+    }
+    if (!arrival.isFinite || arrival < time + 30) {
+      return 'Plan at least 30 minutes ahead.';
+    }
+    if (arrival > time + planningHorizonDays * 1440) {
+      return 'The timetable only reaches $planningHorizonDays days ahead.';
+    }
+    return null;
+  }
+
+  /// Moves a flight that has not arrived yet to another stand or time.
+  String? moveFlight(String flightId, String standId, double arrival) {
+    final found = flights.where((f) => f.id == flightId);
+    if (found.isEmpty) return 'Unknown flight.';
+    final f = found.first;
+    if (f.stage != 'scheduled') {
+      return 'Only flights that have not arrived yet can be moved.';
+    }
+    arrival = (arrival / 5).round() * 5.0;
+    final stand = facility(standId), model = aircraftModelById(f.modelId)!;
+    if (stand?.id == f.standId && arrival == f.arrival) return null;
+    final problem = _placementProblem(stand, model, arrival);
     if (problem != null) return problem;
-    final planned = <AirportFlight>[];
-    final contractId = 'c$nextId';
-    final first = _contractStart(offer);
-    final firstDay = first ~/ 1440 + 1;
-    for (var d = 0; d < 7; d++) {
-      for (var i = 0; i < offer.flightsPerDay; i++) {
-        final arrival = first + d * 1440 + i * 210;
-        final stand = _availableStand(
-          arrival,
-          arrival + 80,
-          aircraftModelById(offer.modelId)!,
-          extra: planned,
-        );
-        if (stand == null) {
-          return 'Not enough stand capacity for the seven-day schedule. Free slots or build another connected stand.';
-        }
-        planned.add(
-          AirportFlight(
-            id: 'pending${planned.length}',
-            carrier: offer.carrier,
-            modelId: offer.modelId,
-            standId: stand.id,
-            arrival: arrival,
-            departure: arrival + 80,
-            contractId: contractId,
-            passengers: (aircraftModelById(offer.modelId)!.seats * .8).round(),
-          ),
-        );
-      }
+    final c = contract(f.contractId);
+    if (c != null && !slotAllows(c.offer.slot, arrival)) {
+      return '${c.carrier} wants this flight to start in ${slotLabel(c.offer.slot)}.';
     }
-    final c = AirportContract(_id('c'), offerId, firstDay, firstDay + 6);
-    contracts.add(c);
+    final shift = arrival - f.arrival;
+    final departure = f.departure + shift;
+    final returnAt = f.returnAt > 0 ? f.returnAt + shift : 0.0;
+    if (f.aircraftId != null &&
+        flights.any(
+          (o) =>
+              o.id != f.id &&
+              !o.finished &&
+              o.aircraftId == f.aircraftId &&
+              arrival < math.max(o.returnAt + 40, o.departure + 60) &&
+              math.max(returnAt + 40, departure + 60) > o.arrival,
+        )) {
+      return 'The aircraft is busy with another flight at that time.';
+    }
+    if (_availableStand(
+          arrival,
+          departure,
+          model,
+          standId: stand!.id,
+          returnAt: returnAt,
+          ignoreFlightId: f.id,
+        ) ==
+        null) {
+      return 'That stand is busy at ${_clock(arrival)}.';
+    }
+    final moved = AirportFlight(
+      id: f.id,
+      carrier: f.carrier,
+      modelId: f.modelId,
+      standId: stand.id,
+      arrival: arrival,
+      departure: departure,
+      aircraftId: f.aircraftId,
+      routeId: f.routeId,
+      contractId: f.contractId,
+      passengers: f.passengers,
+    )..returnAt = returnAt;
+    flights[flights.indexOf(f)] = moved;
+    if (c != null) _contractSpan(c);
+    return null;
+  }
+
+  String? reassignFlight(String flightId, String standId) {
+    final found = flights.where((f) => f.id == flightId);
+    if (found.isEmpty) return 'Unknown flight.';
+    return moveFlight(flightId, standId, found.first.arrival);
+  }
+
+  /// Takes a flight off the timetable. A contract flight returns to the
+  /// holding bar to be placed again; the player's own flight is dropped.
+  String? unscheduleFlight(String flightId) {
+    final found = flights.where((f) => f.id == flightId);
+    if (found.isEmpty) return 'Unknown flight.';
+    final f = found.first;
+    if (f.stage != 'scheduled') {
+      return 'Only flights that have not arrived yet can be unscheduled.';
+    }
+    flights.remove(f);
+    final c = contract(f.contractId);
+    if (c != null) {
+      c.placed = math.max(0, c.placed - 1);
+      c.deadlineDay = math.max(c.deadlineDay, day + 2);
+      _contractSpan(c);
+    }
+    return null;
+  }
+
+  void _contractSpan(AirportContract c) {
+    final own = flights.where((f) => f.contractId == c.id);
+    if (own.isEmpty) return;
+    c.startDay = own.map((f) => f.arrival ~/ 1440 + 1).reduce(math.min);
+    c.endDay = own.map((f) => f.departure ~/ 1440 + 1).reduce(math.max);
+  }
+
+  /// Puts a signed contract on the timetable: a regular contract places all
+  /// its remaining daily flights at [arrival], a charter places one.
+  String? placeContract(String contractId, String standId, double arrival) {
+    final c = contract(contractId);
+    if (c == null || c.cancelled) return 'No active contract.';
+    if (c.remaining <= 0) return 'Every flight of this contract is planned.';
+    arrival = (arrival / 5).round() * 5.0;
+    final stand = facility(standId), model = c.offer.model;
+    final problem = _placementProblem(stand, model, arrival);
+    if (problem != null) return problem;
+    if (!slotAllows(c.offer.slot, arrival)) {
+      return '${c.carrier} wants its flights to start in ${slotLabel(c.offer.slot)}.';
+    }
+    final count = c.offer.isRegular ? c.remaining : 1;
+    final firstDay = arrival ~/ 1440 + 1;
+    if (c.offer.isRegular && firstDay > c.deadlineDay) {
+      return 'This series has to start by day ${c.deadlineDay}.';
+    }
+    if (!c.offer.isRegular && firstDay > c.signedDay + c.offer.placementDays) {
+      return 'Charter flights have to fly by day ${c.signedDay + c.offer.placementDays}.';
+    }
+    final requirement = _requirements(c.offer);
+    if (requirement != null) return requirement;
+    final planned = <AirportFlight>[];
+    for (var d = 0; d < count; d++) {
+      final a = arrival + d * 1440;
+      final dep = a + c.offer.standMinutes - slotExitMinutes;
+      if (_availableStand(a, dep, model, standId: stand!.id, extra: planned) ==
+          null) {
+        return 'That stand is busy at ${_clock(a)}.';
+      }
+      planned.add(
+        AirportFlight(
+          id: 'pending${planned.length}',
+          carrier: c.carrier,
+          modelId: model.id,
+          standId: stand.id,
+          arrival: a,
+          departure: dep,
+          contractId: c.id,
+          passengers: c.offer.passengers,
+        ),
+      );
+    }
     for (final p in planned) {
       flights.add(
         AirportFlight(
@@ -1052,6 +1400,19 @@ class AirportWorld {
         ),
       );
     }
+    c.placed += count;
+    _contractSpan(c);
+    return null;
+  }
+
+  /// Signs an offer. Its flights wait in the holding bar until placed.
+  String? acceptContract(AirlineGameState airline, String offerId) {
+    final o = offer(offerId);
+    if (o == null) return 'This offer is no longer available.';
+    final problem = contractBlocker(offerId);
+    if (problem != null) return problem;
+    if (o.expiresDay != null) signedOffers.add(o.id);
+    contracts.add(AirportContract(id: _id('c'), offer: o, signedDay: day));
     return null;
   }
 
@@ -1166,12 +1527,21 @@ class AirportWorld {
 
   String? cancelContract(AirlineGameState airline, String id) {
     final c = contract(id);
-    if (c == null || c.cancelled) return 'No active contract.';
+    if (c == null || !_contractOpen(c)) return 'No active contract.';
+    final unplaced = c.remaining;
     c.cancelled = true;
     for (final f in flights.where(
       (f) => f.contractId == id && f.stage == 'scheduled',
     )) {
       _cancel(f, airline, 'Contract cancelled');
+    }
+    if (unplaced > 0) {
+      _book(
+        airline,
+        'penalty',
+        -unplaced * c.offer.penalty,
+        '${c.carrier}: $unplaced unplanned flights',
+      );
     }
     return null;
   }
@@ -1238,6 +1608,18 @@ class AirportWorld {
   }
 
   void _daily(AirlineGameState airline, int previousDay) {
+    for (final c in contracts.where((c) => c.remaining > 0)) {
+      if (day <= c.deadlineDay) continue;
+      final missed = c.remaining;
+      c.lapsed += missed;
+      c.satisfaction = (c.satisfaction - .1 * missed).clamp(0, 1);
+      _book(
+        airline,
+        'penalty',
+        -missed * c.offer.penalty,
+        '${c.carrier}: $missed flights never planned',
+      );
+    }
     _book(
       airline,
       'upkeep',
@@ -1281,7 +1663,9 @@ class AirportWorld {
       ),
     );
     flights.removeWhere((f) => f.finished && f.departure < time - 2 * 1440);
-    contracts.removeWhere((c) => c.endDay < day - 14);
+    contracts.removeWhere(
+      (c) => !_contractOpen(c) && (c.endDay ?? c.deadlineDay) < day - 14,
+    );
     queues.removeWhere((key, value) => value < time);
   }
 
@@ -1463,6 +1847,7 @@ class AirportWorld {
         }
         _stage(f, 'unloading', 5);
       case 'unloading':
+        _spawnArrivals(f, stand);
         _stage(f, 'servicing', 1);
       case 'servicing':
         final terms = contract(f.contractId);
@@ -1471,7 +1856,8 @@ class AirportWorld {
           _wait(f, 'A required contract facility is unavailable', airline);
           return;
         }
-        final services = ['fuel', 'baggage', 'bus'];
+        final contact = stand.kind == 'standContact';
+        final services = ['fuel', 'baggage', if (!contact) 'bus'];
         for (final kind in services) {
           if (!f.serviced.contains(kind)) _dispatch(f, kind, stand);
         }
@@ -1487,7 +1873,12 @@ class AirportWorld {
           return;
         }
         f.boarded = ready;
-        _stage(f, 'boarding', math.max(3, ready / 20));
+        if (contact) {
+          for (final p in passengers.where((p) => p.flightId == f.id)) {
+            p.satisfaction = (p.satisfaction + .05).clamp(0, 1);
+          }
+        }
+        _stage(f, 'boarding', math.max(3, ready / (contact ? 32 : 20)));
       case 'boarding':
         if (time < f.departure) {
           f.nextEvent = f.departure;
@@ -1543,7 +1934,7 @@ class AirportWorld {
         } else {
           f.stage = 'completed';
         }
-        passengers.removeWhere((p) => p.flightId == f.id);
+        passengers.removeWhere((p) => p.flightId == f.id && !p.arriving);
       default:
         break;
     }
@@ -1617,7 +2008,117 @@ class AirportWorld {
     return [];
   }
 
+  /// Arrivals for contracts that need baggage reclaim, one group per ten.
+  void _spawnArrivals(AirportFlight f, AirportFacility stand) {
+    final terms = contract(f.contractId);
+    if (terms == null ||
+        !terms.offer.requiredServices.contains('baggageCarousel')) {
+      return;
+    }
+    if (passengers.any((p) => p.flightId == f.id && p.arriving)) return;
+    final gate = _gate(stand);
+    if (gate == null) return;
+    for (var n = 0; n < f.passengers; n += 10) {
+      final p = AirportPassengerGroup(
+        _id('p'),
+        f.id,
+        math.min(10, f.passengers - n),
+        gate.cx,
+        gate.cy,
+      )..arriving = true;
+      p.stage = 'arrived';
+      p.nextEvent = time + 1 + (n / 10) * .4;
+      p.started = time;
+      passengers.add(p);
+    }
+  }
+
+  /// People waiting at or collecting from [carousel].
+  int carouselLoad(String carouselId) => passengers
+      .where(
+        (p) =>
+            p.arriving &&
+            p.facilityId == carouselId &&
+            const {'toReclaim', 'reclaim', 'collecting'}.contains(p.stage),
+      )
+      .fold(0, (n, p) => n + p.count);
+
+  void _arrivalEvent(AirportPassengerGroup p) {
+    final flight = flights.where((f) => f.id == p.flightId).firstOrNull;
+    void walkTo(AirportFacility target, String stage) {
+      final path = _walk(p.x, p.y, target);
+      p.path = path;
+      p.started = time;
+      p.stage = stage;
+      p.nextEvent =
+          time + (path.isEmpty ? 1 : math.max(.5, _pathLength(path) / 65));
+      if (path.isNotEmpty) {
+        p.x = path.last[0];
+        p.y = path.last[1];
+      }
+    }
+
+    switch (p.stage) {
+      case 'arrived':
+        final carousels =
+            ofKind('baggageCarousel')
+                .where(
+                  (c) =>
+                      c.connected &&
+                      carouselLoad(c.id) + p.count <= carouselCapacity,
+                )
+                .toList()
+              ..sort(
+                (a, b) => carouselLoad(a.id).compareTo(carouselLoad(b.id)),
+              );
+        if (carousels.isEmpty) {
+          p.satisfaction = (p.satisfaction - .02).clamp(0, 1);
+          p.nextEvent = time + 1;
+          return;
+        }
+        p.facilityId = carousels.first.id;
+        walkTo(carousels.first, 'toReclaim');
+      case 'toReclaim':
+        p.stage = 'reclaim';
+        p.started = time;
+        p.path = [];
+        p.nextEvent = time + .5;
+      case 'reclaim':
+        final delivered =
+            flight == null ||
+            flight.finished ||
+            flight.serviced.contains('baggage');
+        if (!delivered) {
+          p.satisfaction = (p.satisfaction - .004).clamp(0, 1);
+          p.nextEvent = time + 1;
+          return;
+        }
+        p.stage = 'collecting';
+        p.started = time;
+        p.nextEvent = time + 1.5 + p.count * .15;
+      case 'collecting':
+        p.facilityId = null;
+        final exits = ofKind('entrance').where((e) => e.connected).toList();
+        if (exits.isEmpty) {
+          passengers.remove(p);
+          return;
+        }
+        walkTo(exits.first, 'leaving');
+      default:
+        final terms = contract(flight?.contractId);
+        if (terms != null) {
+          terms.satisfaction = (terms.satisfaction * .97 + p.satisfaction * .03)
+              .clamp(0, 1);
+        }
+        passengers.remove(p);
+    }
+  }
+
   void _passengerEvent(AirportPassengerGroup p, AirlineGameState airline) {
+    if (p.arriving) {
+      _arrivalEvent(p);
+      return;
+    }
     final fs = flights.where((f) => f.id == p.flightId && !f.finished);
     if (fs.isEmpty) {
       passengers.remove(p);
@@ -1627,7 +2128,8 @@ class AirportWorld {
     final nextKind = switch (p.stage) {
       'entrance' => 'checkIn',
       'checkIn' => 'security',
-      'security' => 'toilets',
+      'security' => 'shop',
+      'shop' => 'toilets',
       'toilets' => 'cafe',
       'cafe' => 'seating',
       _ => 'boardingGate',
@@ -1636,11 +2138,33 @@ class AirportWorld {
     if (nextKind == 'boardingGate') {
       target = _gate(stand);
     } else {
-      final candidates = ofKind(nextKind).where((b) => b.connected).toList()
-        ..sort(
-          (a, b) => (queues[a.id] ?? time).compareTo(queues[b.id] ?? time),
-        );
+      final kinds = switch (nextKind) {
+        'seating' => {'seating', 'lounge', 'vipLounge'},
+        'checkIn' => {'checkIn', 'checkInCounter', 'ticketMachine'},
+        'cafe' => {'cafe', 'restaurant', 'vendingMachine'},
+        'shop' => {
+          'shop',
+          'kiosk',
+          'foodShop',
+          'perfumeShop',
+          'clothingShop',
+          'luxuryBoutique',
+        },
+        _ => {nextKind},
+      };
+      final candidates =
+          facilities
+              .where((b) => kinds.contains(b.kind) && b.connected)
+              .toList()
+            ..sort(
+              (a, b) => (queues[a.id] ?? time).compareTo(queues[b.id] ?? time),
+            );
       if (candidates.isNotEmpty) target = candidates.first;
+    }
+    if (target == null && nextKind == 'shop') {
+      p.stage = nextKind;
+      p.nextEvent = time + .05;
+      return;
     }
     if (target == null && ['cafe', 'toilets', 'seating'].contains(nextKind)) {
       p.satisfaction = (p.satisfaction - .12).clamp(0, 1);
@@ -1663,21 +2187,75 @@ class AirportWorld {
     final start = math.max(time + travel, queues[target.id] ?? time);
     final wait = start - time - travel;
     p.satisfaction = (p.satisfaction - wait * .005).clamp(0, 1);
-    final duration = nextKind == 'checkIn'
+    final duration = target.kind == 'ticketMachine'
+        ? p.count / 4
+        : target.kind == 'checkInCounter'
+        ? p.count / 10
+        : nextKind == 'checkIn'
         ? p.count / 8
         : nextKind == 'security'
         ? p.count / 6
-        : nextKind == 'cafe'
+        : target.kind == 'restaurant'
+        ? 5.0
+        : target.kind == 'cafe'
         ? 3.0
+        : target.kind == 'kiosk'
+        ? 1.5
+        : target.kind == 'foodShop'
+        ? 2.5
+        : target.kind == 'perfumeShop'
+        ? 2.0
+        : target.kind == 'luxuryBoutique'
+        ? 4.0
+        : target.kind == 'clothingShop'
+        ? 3.0
+        : nextKind == 'shop'
+        ? 2.0
         : 1.0;
+    if (nextKind == 'seating' || nextKind == 'boardingGate') {
+      final decor = facilities
+          .where((d) => decorKinds.contains(d.kind) && d.connected)
+          .length;
+      p.satisfaction =
+          (p.satisfaction +
+                  math.min(.02, decor * .002) +
+                  infoDeskBonus +
+                  (cleanliness - .6) / 8)
+              .clamp(0, 1);
+    }
     p.started = time;
     p.path = path;
     p.facilityId = target.id;
     p.nextEvent = start + duration;
     queues[target.id] = p.nextEvent;
     p.stage = nextKind == 'boardingGate' ? 'walkingToGate' : nextKind;
-    if (nextKind == 'cafe') {
+    if (target.kind == 'restaurant') {
+      _book(airline, 'retail', p.count * 26, 'Restaurant covers');
+      p.satisfaction = (p.satisfaction + .04).clamp(0, 1);
+    } else if (target.kind == 'cafe') {
       _book(airline, 'retail', p.count * 8, 'Terminal café');
+    } else if (target.kind == 'vendingMachine') {
+      _book(airline, 'retail', p.count * 3, 'Vending machines');
+    } else if (target.kind == 'perfumeShop') {
+      // Low demand, high value: a quarter of the group buys, at 90 euro each.
+      _book(airline, 'retail', (p.count * .25).round() * 90, 'Perfume sales');
+    } else if (target.kind == 'foodShop') {
+      _book(airline, 'retail', p.count * 20, 'Duty-free food & drink sales');
+    } else if (target.kind == 'kiosk') {
+      _book(airline, 'retail', p.count * 9, 'Newsstand sales');
+    } else if (target.kind == 'luxuryBoutique') {
+      _book(airline, 'retail', p.count * 26, 'Luxury boutique sales');
+      p.satisfaction = (p.satisfaction + .02).clamp(0, 1);
+    } else if (target.kind == 'clothingShop') {
+      _book(airline, 'retail', p.count * 18, 'Fashion boutique sales');
+    } else if (nextKind == 'shop') {
+      _book(airline, 'retail', p.count * 14, 'Duty-free sales');
+    } else if (target.kind == 'vipLounge') {
+      _book(airline, 'retail', p.count * 35, 'VIP lounge access');
+      p.satisfaction = (p.satisfaction + .08).clamp(0, 1);
+    } else if (target.kind == 'lounge') {
+      _book(airline, 'retail', p.count * 20, 'Lounge access');
+      p.satisfaction = (p.satisfaction + .05).clamp(0, 1);
     }
     if (p.stage == 'walkingToGate') {
       // The next event finishes the walk; boarding cannot count these early.
@@ -1779,7 +2357,9 @@ class AirportWorld {
       f.settled = true;
     }
     var carried = f.boarded;
-    final groups = passengers.where((p) => p.flightId == f.id).toList();
+    final groups = passengers
+        .where((p) => p.flightId == f.id && !p.arriving)
+        .toList();
     final satisfaction = groups.isEmpty
         ? 0.0
         : groups.fold(0.0, (n, p) => n + p.satisfaction * p.count) /
@@ -1964,6 +2544,7 @@ class AirportWorld {
     'ledger': ledger,
     'reservations': reservations,
     'queues': queues,
+    'signedOffers': signedOffers.toList(),
   };
 
   factory AirportWorld.fromJson(Json j) {
@@ -1992,6 +2573,7 @@ class AirportWorld {
     for (final e in (j['queues'] as Map? ?? {}).entries) {
       w.queues[e.key as String] = (e.value as num).toDouble();
     }
+    w.signedOffers.addAll((j['signedOffers'] as List? ?? []).cast<String>());
     w.resolveConnections();
     return w;
   }

@@ -938,7 +938,7 @@ scene.add(stars);
 
 // ---- counts ----
 const terrainVox=terrainBatch.count;
-const foliageVox=canopyGroups.reduce((s,g)=> s+g.children.reduce((a,c)=>a+(c.count||c.geometry?1:0),0),0); // approximate; we tracked batch.count differently
+const foliageVox=canopyGroups.reduce((s,g)=> s+(g.g?g.g.children.reduce((a,c)=>a+(c.count||c.geometry?1:0),0):0),0); // approximate; we tracked batch.count differently
 // better: totalVoxels = occ.size (unique occupied cells) includes all static voxels + foliage world occ, but not instanced petals/koi/water
 const totalStaticVox = occ.size;
 let totalVoxels = totalStaticVox; // petals etc not counted as voxels per spec (visible voxels = BoxGeometry voxels)

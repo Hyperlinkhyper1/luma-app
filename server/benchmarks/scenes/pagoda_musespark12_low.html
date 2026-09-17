@@ -247,10 +247,8 @@ for(let i=-7;i<=7;i++){
   const arch=Math.round(2*Math.cos(i/7*Math.PI*0.5));
   for(let w=-1;w<=1;w++) addVoxel(pond.x+i,1+arch,pond.z+1+w,PAL.wood);
   // side rails
-  if(Math.abs(w=0)<2){
-    addVoxel(pond.x+i,2+arch,pond.z+3,PAL.trunk);
-    addVoxel(pond.x+i,2+arch,pond.z-1,PAL.trunk);
-  }
+  addVoxel(pond.x+i,2+arch,pond.z+3,PAL.trunk);
+  addVoxel(pond.x+i,2+arch,pond.z-1,PAL.trunk);
 }
 
 // ---------- THREE setup ----------

@@ -100,6 +100,7 @@
 
             setupLighting();
             createWorld();
+            finalizeVoxels();
             setupCameraIntro();
 
             window.addEventListener('resize', onWindowResize);
@@ -112,7 +113,11 @@
             sun.position.set(50, 100, 50);
             sun.castShadow = true;
             sun.shadow.mapSize.set(2048, 2048);
-            sun.shadow.camera.setFrustum(-50, 50, -50, 50);
+            sun.shadow.camera.left = -50;
+            sun.shadow.camera.right = 50;
+            sun.shadow.camera.top = 50;
+            sun.shadow.camera.bottom = -50;
+            sun.shadow.camera.updateProjectionMatrix();
             sun.name = 'sun';
             scene.add(sun);
         }
@@ -127,9 +132,16 @@
         function addVoxel(color, x, y, z) {
             if (!instancedMeshes[color]) instancedMeshes[color] = createVoxelMesh(color);
             const mesh = instancedMeshes[color];
-            mesh.setMatrixAt(mesh.count, new THREE.Matrix4().makeTranslation(x, y, z));
-            mesh.count++;
+            if (mesh.userData.next === undefined) mesh.userData.next = 0;
+            mesh.setMatrixAt(mesh.userData.next++, new THREE.Matrix4().makeTranslation(x, y, z));
             window.__VOXEL__.voxelCount++;
+        }
+
+        function finalizeVoxels() {
+            for (const mesh of Object.values(instancedMeshes)) {
+                mesh.count = mesh.userData.next || 0;
+                mesh.instanceMatrix.needsUpdate = true;
+            }
         }
 
         function createWorld() {

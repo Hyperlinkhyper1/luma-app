@@ -206,6 +206,7 @@ const gpuPlate=box(.06,.7,2.7,new THREE.MeshStandardMaterial({color:0x0c0f16,rou
 const gpuStripMat=regRGB(new THREE.MeshStandardMaterial({color:0x080808}),3.4); gpuG.add(Object.assign(box(.52,.07,2.7,gpuStripMat,-.6,2.4,-.15,false),{}));
 const gpuSideMat=regRGB(new THREE.MeshStandardMaterial({color:0x050505}),2.2); gpuG.add(Object.assign(box(.04,.5,2.5,gpuSideMat,-.34,1.95,-.15,false),{}));
 const gpuFans=[];
+const fans=[];
 for(let i=0;i<3;i++){const f=makeFan(.3);f.group.position.set(-.32,1.98,-1.05+i*.9);f.group.rotation.y=Math.PI/2;gpuG.add(f.group);gpuFans.push(f);}
 const eqC=document.createElement('canvas');eqC.width=512;eqC.height=96;const eqx=eqC.getContext('2d');const eqT=new THREE.CanvasTexture(eqC);eqT.colorSpace=THREE.SRGBColorSpace;
 const eqScr=new THREE.Mesh(new THREE.PlaneGeometry(2.2,.32),new THREE.MeshBasicMaterial({map:eqT}));eqScr.rotation.y=Math.PI/2;eqScr.position.set(-.335,2.02,-.15);gpuG.add(eqScr);
@@ -215,8 +216,6 @@ const shroud=box(W-.35,.95,D-.35,M.case,0,.78,0); pc.add(shroud); tag(shroud,'ps
 const psuC=document.createElement('canvas');psuC.width=512;psuC.height=128;const psx=psuC.getContext('2d');const psuT=new THREE.CanvasTexture(psuC);psuT.colorSpace=THREE.SRGBColorSpace;
 const psuScr=new THREE.Mesh(new THREE.PlaneGeometry(1.7,.42),new THREE.MeshBasicMaterial({map:psuT}));psuScr.rotation.y=Math.PI/2;psuScr.position.set((W-.35)/2+.005,.82,.3);pc.add(psuScr);
 function drawPSU(){psx.fillStyle='#05070c';psx.fillRect(0,0,512,128);if(!S.on){psx.fillStyle='#111';psx.font='24px monospace';psx.fillText('— STANDBY —',150,72);psuT.needsUpdate=true;return;}const h='#'+S.rgb.getHexString();psx.fillStyle=h;psx.font='bold 22px monospace';psx.fillText('NEBULA 1000W ◈',18,34);psx.fillStyle='#fff';psx.font='bold 44px monospace';psx.fillText(Math.round(S.stress?610+Math.random()*40:180+S.fanCur*1.2)+'W',18,92);psx.fillStyle=h;psx.font='20px monospace';psx.fillText(S.stress?'STRESS':'ECO · Pt',360,92);psuT.needsUpdate=true;}
-// fans
-const fans=[];
 function makeFan(r=.55){const g=new THREE.Group(),rotor=new THREE.Group();
 const fr=new THREE.MeshStandardMaterial({color:0x141922,roughness:.5,metalness:.7});
 const t=.1;[[0,r+.02],[0,-r-.02]].forEach(p=>{const b=new THREE.Mesh(new THREE.BoxGeometry(r*2.3,t,t+.06),fr);b.position.set(p[0],p[1],0);g.add(b);});

@@ -47,13 +47,38 @@ class _ModelBannerState extends State<ModelBanner> {
     final preview = repo.previewFile(widget.benchmark.id) ??
         repo.fallbackFile(widget.benchmark.kind);
 
-    Widget placeholder() => Container(
-          color: luma.surfaceHover,
+    /// Branded stand-in for artwork that has not downloaded (or was never
+    /// made): the vendor's colour wash with its logo, plus the test's own
+    /// mark underneath — so a missing thumbnail reads as intentional rather
+    /// than broken, and still tells the provider apart at a glance.
+    Widget placeholder(Color brand, String vendorKey, String vendorName) =>
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                brand.withValues(alpha: 0.30),
+                luma.surface,
+              ],
+            ),
+          ),
           alignment: Alignment.center,
-          child: Icon(
-            widget.fallbackIcon,
-            size: 48,
-            color: luma.textMuted,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              VendorLogo(
+                vendor: vendorKey,
+                vendorName: vendorName,
+                size: 44,
+              ),
+              const SizedBox(height: 8),
+              Icon(
+                widget.fallbackIcon,
+                size: 20,
+                color: luma.textMuted,
+              ),
+            ],
           ),
         );
 
@@ -83,12 +108,22 @@ class _ModelBannerState extends State<ModelBanner> {
                 child: AspectRatio(
                   aspectRatio: 16 / 10,
                   child: preview == null
-                      ? placeholder()
+                      ? placeholder(brand,
+                          pagodaVendorKey(widget.benchmark.model) ?? '', vendor)
                       : Image.file(
                           preview,
+                          // Previews are 1120px wide; the card shows about half
+                          // that. Decoding the full file for every card in a
+                          // 40+ model roster is what janked the Banners tab —
+                          // a thumbnail decode is a quarter of the pixels.
+                          cacheWidth: 640,
+                          gaplessPlayback: true,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) =>
-                              placeholder(),
+                              placeholder(
+                                  brand,
+                                  pagodaVendorKey(widget.benchmark.model) ?? '',
+                                  vendor),
                         ),
                 ),
               ),
@@ -144,6 +179,10 @@ class _ModelBannerState extends State<ModelBanner> {
 /// Responsive grid of [ModelBanner] cards: two columns on wide screens, one
 /// below 560px. Renders whichever [models] the caller passes in — the full
 /// roster, or a search-filtered subset.
+///
+/// A lazily-built grid rather than a [Wrap]: the pagoda roster is 40+ models
+/// and building (and image-decoding) every card on the first frame is what
+/// froze the Banners tab. Only visible rows plus [cacheExtent] exist at once.
 class ModelBannerGrid extends StatelessWidget {
   const ModelBannerGrid({
     super.key,
@@ -164,20 +203,28 @@ class ModelBannerGrid extends StatelessWidget {
         final columns = constraints.maxWidth > 560 ? 2 : 1;
         final width =
             (constraints.maxWidth - spacing * (columns - 1)) / columns;
-        return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children: [
-            for (final model in models)
-              SizedBox(
-                width: width,
-                child: ModelBanner(
-                  benchmark: model,
-                  fallbackIcon: fallbackIcon,
-                  onTap: () => onPick(model),
-                ),
-              ),
-          ],
+        // Image row (16:10) plus the label row below it, with a few pixels
+        // of slack: the label's text height varies by font, and a cell that
+        // is a pixel short overflows while a slightly tall one just pads.
+        final mainAxisExtent = width * 10 / 16 + 72;
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: models.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            crossAxisSpacing: spacing,
+            mainAxisSpacing: spacing,
+            mainAxisExtent: mainAxisExtent,
+          ),
+          itemBuilder: (context, index) {
+            final model = models[index];
+            return ModelBanner(
+              benchmark: model,
+              fallbackIcon: fallbackIcon,
+              onTap: () => onPick(model),
+            );
+          },
         );
       },
     );

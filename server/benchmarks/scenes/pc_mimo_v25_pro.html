@@ -343,7 +343,7 @@ b.rotation.z=a;b.rotation.y=.22;
 blades.add(b);
 }
 g.add(blades);
-const rr=new THREE.Mesh(tr(radius*.82,radius*.022,32),cloneRGB());
+const rr=tr(radius*.82,radius*.022,32,cloneRGB());
 g.add(rr);
 g.userData={blades,rgb:rr};
 fans.push(g);

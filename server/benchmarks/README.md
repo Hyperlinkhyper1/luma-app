@@ -12,8 +12,12 @@ demand and caches them on disk.
 server/benchmarks/
   manifest.json        the roster: id, test kind, model name, description
   scenes/              one self-contained HTML file per scene (<id>.html)
-  previews/            optional PNG thumbnail per scene (<id>.png), plus the
-                       generic tile artwork (pagoda-preview.png)
+  previews/            optional PNG thumbnail per scene (<id>.png), plus one
+                       generic tile artwork per test kind
+                       (<kind>-preview.png) shown while a scene has none —
+                       a failed render (solid colour, loading screen, consent
+                       wall) is worse than no thumbnail, so delete those
+                       instead of checking them in
 ```
 
 `scenes/pagoda.html` is the base template new Pagoda scenes are built from.

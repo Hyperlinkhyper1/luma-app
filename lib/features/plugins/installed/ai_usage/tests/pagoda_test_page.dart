@@ -30,33 +30,39 @@ class PagodaTestPage extends StatefulWidget {
 }
 
 /// Vendor key for a pagoda benchmark [model], covering the shared vendors
-/// plus the local brands (`xiaomi`, `github`, `pickle`, `laguna`).
+/// plus the local brands (`xiaomi`, `github`, `pickle`, `laguna`, `seed`).
 /// Null only for a name nothing matches — those get the fallback cube.
+///
+/// Matching is case-insensitive: the roster's capitalisation drifts over time
+/// (`MiMo V2.5` vs `Mimo v2.5 Pro`) and a missed match silently shows the
+/// model name as its own vendor.
 String? pagodaVendorKey(String model) {
-  final m = model;
-  if (m.contains('Mistral')) return 'mistralai';
-  if (m.contains('Nemotron')) return 'nvidia';
-  if (m.contains('Haiku') ||
-      m.contains('Sonnet') ||
-      m.contains('Opus') ||
-      m.contains('Claude')) {
+  final m = model.toLowerCase();
+  if (m.contains('mistral')) return 'mistralai';
+  if (m.contains('nemotron')) return 'nvidia';
+  if (m.contains('haiku') ||
+      m.contains('sonnet') ||
+      m.contains('opus') ||
+      m.contains('claude') ||
+      m.contains('fable')) {
     return 'anthropic';
   }
-  if (m.contains('Muse Spark') || m.contains('Llama')) return 'meta';
-  if (m.contains('Grok')) return 'x-ai';
-  if (m.contains('Gemini') || m.contains('Gemma')) return 'google';
-  if (m.contains('GPT') || m.contains('OpenAI')) return 'openai';
-  if (m.contains('GLM') || m.contains('Zhipu')) return 'z-ai';
-  if (m.contains('Qwen')) return 'qwen';
-  if (m.contains('DeepSeek') || m.contains('Deepseek')) return 'deepseek';
-  if (m.contains('Kimi') || m.contains('Moonshot')) return 'moonshotai';
-  if (m.contains('MiniMax') || m.contains('Minimax')) return 'minimax';
-  if (m.contains('MiMo') || m.contains('Xiaomi')) return 'xiaomi';
-  if (m.contains('Mai Code') || m.contains('Copilot') || m.contains('Github')) {
+  if (m.contains('muse spark') || m.contains('llama')) return 'meta';
+  if (m.contains('grok')) return 'x-ai';
+  if (m.contains('gemini') || m.contains('gemma')) return 'google';
+  if (m.contains('gpt') || m.contains('openai')) return 'openai';
+  if (m.contains('glm') || m.contains('zhipu')) return 'z-ai';
+  if (m.contains('qwen')) return 'qwen';
+  if (m.contains('deepseek')) return 'deepseek';
+  if (m.contains('kimi') || m.contains('moonshot')) return 'moonshotai';
+  if (m.contains('minimax')) return 'minimax';
+  if (m.contains('seed')) return 'seed';
+  if (m.contains('mimo') || m.contains('xiaomi')) return 'xiaomi';
+  if (m.contains('mai code') || m.contains('copilot') || m.contains('github')) {
     return 'github';
   }
-  if (m.contains('Pickle')) return 'pickle';
-  if (m.contains('Laguna')) return 'laguna';
+  if (m.contains('pickle')) return 'pickle';
+  if (m.contains('laguna')) return 'laguna';
   return null;
 }
 
@@ -89,6 +95,8 @@ String pagodaVendorName(String model) {
       return 'xAI';
     case 'google':
       return 'Google';
+    case 'seed':
+      return 'ByteDance';
     case 'xiaomi':
       return 'Xiaomi';
     case 'github':
@@ -107,52 +115,56 @@ String pagodaVendorName(String model) {
 /// its provider's color. Vendors with no shared entry fall back to a local
 /// constant. Mistral returns three colors (yellow/orange/red blocks).
 List<Color> pagodaBrandStops(String model) {
-  final m = model;
-  if (m.contains('Mistral')) {
+  final m = model.toLowerCase();
+  if (m.contains('mistral')) {
     return const [
       Color(0xFFFFD800),
       Color(0xFFFF8205),
       Color(0xFFE10500),
     ];
   }
-  if (m.contains('Nemotron')) return [vendorColor('nvidia')];
-  if (m.contains('Haiku') ||
-      m.contains('Sonnet') ||
-      m.contains('Opus') ||
-      m.contains('Claude')) {
+  if (m.contains('nemotron')) return [vendorColor('nvidia')];
+  if (m.contains('haiku') ||
+      m.contains('sonnet') ||
+      m.contains('opus') ||
+      m.contains('claude') ||
+      m.contains('fable')) {
     return [vendorColor('anthropic')];
   }
-  if (m.contains('Muse Spark') || m.contains('Llama')) {
+  if (m.contains('muse spark') || m.contains('llama')) {
     return [vendorColor('meta')];
   }
-  if (m.contains('Grok')) return [vendorColor('x-ai')];
-  if (m.contains('Gemini') || m.contains('Gemma')) {
+  if (m.contains('grok')) return [vendorColor('x-ai')];
+  if (m.contains('gemini') || m.contains('gemma')) {
     return [vendorColor('google')];
   }
-  if (m.contains('GPT') || m.contains('OpenAI')) {
+  if (m.contains('gpt') || m.contains('openai')) {
     return [vendorColor('openai')];
   }
-  if (m.contains('GLM') || m.contains('Zhipu')) return [vendorColor('z-ai')];
-  if (m.contains('Qwen')) return [vendorColor('qwen')];
-  if (m.contains('DeepSeek') || m.contains('Deepseek')) {
+  if (m.contains('glm') || m.contains('zhipu')) return [vendorColor('z-ai')];
+  if (m.contains('qwen')) return [vendorColor('qwen')];
+  if (m.contains('deepseek')) {
     return [vendorColor('deepseek')];
   }
-  if (m.contains('Kimi') || m.contains('Moonshot')) {
+  if (m.contains('kimi') || m.contains('moonshot')) {
     return [vendorColor('moonshotai')];
   }
-  if (m.contains('MiniMax') || m.contains('Minimax')) {
+  if (m.contains('minimax')) {
     return [vendorColor('minimax')];
   }
-  if (m.contains('MiMo') || m.contains('Xiaomi')) {
+  if (m.contains('seed')) {
+    return const [Color(0xFF38BDF8)];
+  }
+  if (m.contains('mimo') || m.contains('xiaomi')) {
     return const [Color(0xFFFF6900)];
   }
-  if (m.contains('Mai Code') ||
-      m.contains('Copilot') ||
-      m.contains('Github')) {
+  if (m.contains('mai code') ||
+      m.contains('copilot') ||
+      m.contains('github')) {
     return const [Color(0xFF6E40C9)];
   }
-  if (m.contains('Pickle')) return const [Color(0xFF6DBE45)];
-  if (m.contains('Laguna')) return const [Color(0xFF22D3EE)];
+  if (m.contains('pickle')) return const [Color(0xFF6DBE45)];
+  if (m.contains('laguna')) return const [Color(0xFF22D3EE)];
   return const [kVendorColorFallback];
 }
 

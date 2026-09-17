@@ -104,166 +104,142 @@ class _AirportUiRepository extends AirlineTycoonRepository {
 }
 
 void main() {
-  Future<_AirportUiRepository> mount(
+  Future<(_AirportUiRepository, AirportSceneBridge Function())> mount(
     WidgetTester tester,
-    Size size, {
-    ValueChanged<AirportSceneBridge>? onBridge,
-  }) async {
+    Size size,
+  ) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     final repo = _AirportUiRepository();
     addTearDown(repo.dispose);
+    late AirportSceneBridge bridge;
     await tester.pumpWidget(
       MaterialApp(
         theme: LumaTheme.dark,
         home: Scaffold(
           body: AirportGameView(
             repository: repo,
-            sceneBuilder: (_, bridge) {
-              onBridge?.call(bridge);
-              return const ColoredBox(
+            sceneBuilder: (_, value) {
+              bridge = value;
+              return ColoredBox(
                 color: Colors.teal,
-                child: Center(child: Text('Airport scene')),
+                child: Center(
+                  child: Text(
+                    value.visible ? 'Airport scene' : 'Airport hidden',
+                  ),
+                ),
               );
             },
           ),
         ),
       ),
     );
-    return repo;
+    return (repo, () => bridge);
   }
 
+  Map<String, Object?> command(
+    String action, [
+    Map<String, Object?> args = const {},
+  ]) => {'type': 'command', 'id': 'hud-$action', 'action': action, ...args};
+
   testWidgets(
-    'desktop opens on airport and renders repository refusal without accepting a contract',
+    'page commands reach the repository and its refusal goes back to the page',
     (tester) async {
-      final repo = await mount(tester, const Size(1200, 850));
+      final (repo, bridge) = await mount(tester, const Size(1200, 850));
       expect(find.text('Airport scene'), findsOneWidget);
-      expect(find.text('AIRLINE OFFERS · SEVEN DAYS'), findsNothing);
-      await tester.tap(find.text('Contracts'));
-      await tester.pump();
-      await tester.tap(find.text('Accept contract'));
-      await tester.pump();
+      bridge().receive(command('acceptContract', {'offerId': 'regional'}));
       expect(repo.commands, ['acceptContract']);
-      expect(
-        find.text('Connect the stand to a service road first.'),
-        findsOneWidget,
-      );
+      expect(repo.commandArgs.single['offerId'], 'regional');
+      expect(bridge().messages.value, {
+        'type': 'result',
+        'id': 'hud-acceptContract',
+        'ok': false,
+        'message': 'Connect the stand to a service road first.',
+      });
+      bridge().receive(command('resume'));
+      expect(repo.paused, isFalse);
+      expect(bridge().messages.value?['ok'], isTrue);
       expect(tester.takeException(), isNull);
     },
   );
 
-  testWidgets('phone keeps airport controls and scrollable panels usable', (
+  testWidgets('commands outside the allowlist never reach the repository', (
     tester,
   ) async {
-    final repo = await mount(tester, const Size(390, 844));
-    await tester.tap(find.byTooltip('Resume airport'));
-    await tester.pump();
-    expect(repo.paused, isFalse);
-    await tester.tap(find.text('Build'));
-    await tester.pump();
-    expect(find.text('AIRFIELD & TERMINAL'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-    await tester.tap(find.byTooltip('Close panel'));
-    await tester.pump();
-    expect(find.text('AIRFIELD & TERMINAL'), findsNothing);
+    final (repo, bridge) = await mount(tester, const Size(1200, 850));
+    for (final action in ['startGame', 'importData', 'select', '']) {
+      bridge().receive(command(action));
+      expect(bridge().messages.value?['ok'], isFalse, reason: action);
+    }
+    bridge().receive({'type': 'view', 'action': 'resume'});
+    bridge().receive({'action': 'resume'});
+    expect(repo.commands, isEmpty);
+    expect(repo.paused, isTrue);
   });
 
-  testWidgets(
-    'landscape phone keeps build panel and pause controls within bounds',
-    (tester) async {
-      await mount(tester, const Size(812, 375));
-      expect(tester.takeException(), isNull);
-      await tester.tap(find.text('Build'));
-      await tester.pump();
-      expect(tester.takeException(), isNull);
-      expect(find.byTooltip('Close panel'), findsOneWidget);
-      await tester.tap(find.byTooltip('Close panel'));
-      await tester.pump();
-      expect(find.byTooltip('Resume airport'), findsOneWidget);
-    },
-  );
+  testWidgets('timetable commands reach the repository', (tester) async {
+    final (repo, bridge) = await mount(tester, const Size(1200, 850));
+    for (final action in ['placeContract', 'moveFlight', 'unscheduleFlight']) {
+      bridge().receive(command(action, {'flightId': 'f1', 'arrival': 600}));
+    }
+    expect(repo.commands, ['placeContract', 'moveFlight', 'unscheduleFlight']);
+    expect(repo.commandArgs[1]['arrival'], 600);
+  });
 
-  testWidgets(
-    'selected facility moves at each quarter turn through the authoritative bridge',
-    (tester) async {
-      late AirportSceneBridge bridge;
-      final repo = await mount(
-        tester,
-        const Size(1200, 850),
-        onBridge: (value) => bridge = value,
-      );
-      bridge.receive({
-        'type': 'command',
-        'action': 'select',
-        'facilityId': 'check-in-1',
-      });
-      await tester.pump();
-      expect(find.text('Selected · Check-in desks'), findsOneWidget);
-      await tester.tap(find.text('Move'));
-      await tester.pump();
-      expect(bridge.messages.value?['rotation'], 0);
-      for (var turn = 1; turn <= 4; turn++) {
-        await tester.tap(find.byTooltip('Rotate 90°'));
-        await tester.pump();
-        expect(bridge.messages.value?['rotation'], turn % 4);
-      }
-      bridge.receive({
-        'id': 'move-1',
-        'type': 'command',
-        'action': 'move',
+  testWidgets('move keeps its rotation on the way to the repository', (
+    tester,
+  ) async {
+    final (repo, bridge) = await mount(tester, const Size(1200, 850));
+    bridge().receive(
+      command('move', {
         'facilityId': 'check-in-1',
         'kind': 'checkIn',
         'x': 5,
         'y': 10,
-        'rotation': 0,
-      });
-      await tester.pump();
-      expect(repo.commands, ['move']);
-      expect(repo.commandArgs.single['rotation'], 0);
-      expect(find.byTooltip('Rotate 90°'), findsNothing);
-      expect(tester.takeException(), isNull);
-    },
-  );
+        'rotation': 3,
+      }),
+    );
+    expect(repo.commands, ['move']);
+    expect(repo.commandArgs.single['rotation'], 3);
+    expect(repo.commandArgs.single['facilityId'], 'check-in-1');
+  });
 
-  for (final size in [const Size(375, 812), const Size(812, 375)]) {
+  testWidgets('snapshot carries aircraft names for the page', (tester) async {
+    final (_, bridge) = await mount(tester, const Size(1200, 850));
+    final world = bridge().snapshot();
+    expect(world['cash'], 100000);
+    final names = world['modelNames'] as Map;
+    expect(names, isNotEmpty);
+    expect(names.values, everyElement(isA<String>()));
+  });
+
+  for (final size in const [Size(1200, 850), Size(390, 844), Size(812, 375)]) {
     testWidgets(
-      'construction toolbar stays inside ${size.width} × ${size.height} and reveals the scene',
+      'Fleet opens as a full page over a hidden scene at ${size.width} × ${size.height}',
       (tester) async {
-        await mount(tester, size);
-        await tester.tap(find.text('Build'));
+        final (repo, bridge) = await mount(tester, size);
+        bridge().receive(command('openPage', {'page': 'Fleet'}));
         await tester.pump();
-        await tester.ensureVisible(find.text('Check-in desks'));
-        await tester.tap(find.text('Check-in desks'));
-        await tester.pump();
-        expect(find.byTooltip('Close panel'), findsNothing);
-        expect(find.textContaining('Place Check-in desks ·'), findsOneWidget);
-        final rotate = tester.getRect(find.byTooltip('Rotate 90°'));
-        final cancel = tester.getRect(find.byTooltip('Cancel construction'));
-        expect(rotate.left, greaterThanOrEqualTo(0));
-        expect(cancel.right, lessThanOrEqualTo(size.width));
-        await tester.tap(find.byTooltip('Rotate 90°'));
-        await tester.pump();
+        expect(bridge().messages.value?['ok'], isTrue);
+        expect(bridge().visible, isFalse);
+        expect(find.text('Airport hidden'), findsOneWidget);
+        expect(find.text('Back to airport'), findsOneWidget);
         expect(tester.takeException(), isNull);
+        await tester.tap(find.text('Back to airport'));
+        await tester.pump();
+        expect(bridge().visible, isTrue);
+        expect(find.text('Airport scene'), findsOneWidget);
+        expect(repo.commands, isEmpty);
       },
     );
   }
 
-  testWidgets('active contracts show percentage and total cancellation cost', (
-    tester,
-  ) async {
-    final repo = await mount(tester, const Size(1200, 850));
-    await tester.tap(find.text('Contracts'));
+  testWidgets('unknown pages are refused', (tester) async {
+    final (_, bridge) = await mount(tester, const Size(1200, 850));
+    bridge().receive(command('openPage', {'page': 'Settings'}));
     await tester.pump();
-    await tester.ensureVisible(find.text('Current Air'));
-    expect(find.text('Cancelled Air'), findsNothing);
-    expect(find.text('Expired Air'), findsNothing);
-    expect(find.textContaining('Satisfaction 87%'), findsOneWidget);
-    expect(find.textContaining('Cancel remaining flights:'), findsOneWidget);
-    final cancel = find.byTooltip(RegExp(r'Cancel contract · .*12'));
-    expect(cancel, findsOneWidget);
-    await tester.tap(cancel);
-    expect(repo.commands.last, 'cancelContract');
-    expect(repo.commandArgs.last['contractId'], 'active');
+    expect(bridge().messages.value?['ok'], isFalse);
+    expect(bridge().visible, isTrue);
   });
 }

@@ -325,8 +325,6 @@
       let prev=null;
       for (const [x,z] of way){
         if (prev){
-          const dx = Math.sign(x - prev[0]);
-          const dz = Math.sign(z - prev[1]);
           let cx=prev[0], cz=prev[1];
           while (cx!==x || cz!==z){
             const h = islandHeights[cx+cz*GRID.W];
@@ -334,7 +332,8 @@
               batches.stone.add(cx-GRID.W/2, h+1, cz-GRID.D/2, 1, 1.0);
               pathZigzag.add((cx<<8)|cz);
             }
-            cx += dx||0; cz += dz||0;
+            if (cx<x) cx++; else if (cx>x) cx--;
+            if (cz<z) cz++; else if (cz>z) cz--;
           }
         }
         prev=[x,z];
