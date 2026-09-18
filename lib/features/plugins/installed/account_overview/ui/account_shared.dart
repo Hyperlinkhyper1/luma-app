@@ -697,44 +697,58 @@ class GithubContributionGraph extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Wide content scrolls inside its own box rather than pushing the
-        // page sideways.
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.only(bottom: 4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _MonthLabels(weeks: weeks, cell: _cell, gap: _gap),
-              const SizedBox(height: 4),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _WeekdayLabels(cell: _cell, gap: _gap),
-                  const SizedBox(width: 6),
-                  for (final week in weeks)
-                    Padding(
-                      padding: const EdgeInsets.only(right: _gap),
-                      child: Column(
-                        children: [
-                          for (var weekday = 0; weekday < 7; weekday++)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: _gap),
-                              child: _DayCell(
-                                day: weekday < week.length
-                                    ? week[weekday]
-                                    : null,
-                                busiest: busiest,
-                                size: _cell,
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final calendar = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _MonthLabels(weeks: weeks, cell: _cell, gap: _gap),
+                const SizedBox(height: 4),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _WeekdayLabels(cell: _cell, gap: _gap),
+                    const SizedBox(width: 6),
+                    for (final week in weeks)
+                      Padding(
+                        padding: const EdgeInsets.only(right: _gap),
+                        child: Column(
+                          children: [
+                            for (var weekday = 0; weekday < 7; weekday++)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: _gap),
+                                child: _DayCell(
+                                  day: weekday < week.length
+                                      ? week[weekday]
+                                      : null,
+                                  busiest: busiest,
+                                  size: _cell,
+                                ),
                               ),
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                ],
-              ),
-            ],
-          ),
+                  ],
+                ),
+              ],
+            );
+            final calendarWidth = 24 + 6 + weeks.length * (_cell + _gap);
+            if (calendarWidth <= constraints.maxWidth) {
+              // Fits without scrolling: center it in the panel like GitHub
+              // does, rather than leaving it pinned to the left edge.
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Center(child: calendar),
+              );
+            }
+            // Too wide for the panel: scroll inside its own box rather than
+            // pushing the page sideways.
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.only(bottom: 4),
+              child: calendar,
+            );
+          },
         ),
         const SizedBox(height: 10),
         _Legend(busiest: busiest),

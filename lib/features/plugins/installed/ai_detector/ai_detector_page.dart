@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../settings/settings_controller.dart';
+import '../../../../settings/settings_scope.dart';
 import '../../../../theme/luma_theme.dart';
 import 'ai_detector_engine.dart';
 
@@ -66,6 +68,14 @@ class _AiDetectorPageState extends State<AiDetectorPage> {
   void _analyze() {
     final text = _controller.text.trim();
     if (_countWords(text) < _minWords) return;
+    final settings = SettingsScope.of(context);
+    if (!settings.canRunAiCheckerCheck) {
+      setState(() => _error =
+          'You\'ve used today\'s ${SettingsController.aiCheckerDailyCheckLimit} '
+          'free checks — come back tomorrow, or go unlimited below.');
+      return;
+    }
+    settings.recordAiCheckerCheck();
     setState(() {
       _analysed = text;
       _report = AiDetectorEngine.analyze(text);
@@ -90,6 +100,8 @@ class _AiDetectorPageState extends State<AiDetectorPage> {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final report = _report;
+    final settings = SettingsScope.of(context);
+    final remaining = settings.aiCheckerChecksRemainingToday;
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SingleChildScrollView(
@@ -105,10 +117,16 @@ class _AiDetectorPageState extends State<AiDetectorPage> {
                   words: _words,
                   minWords: _minWords,
                   error: _error,
+                  checksRemaining: remaining,
                   onPaste: _paste,
                   onClear: _clear,
-                  onAnalyze: _words >= _minWords ? _analyze : null,
+                  onAnalyze:
+                      _words >= _minWords && remaining > 0 ? _analyze : null,
                 ),
+                if (remaining <= 0) ...[
+                  const SizedBox(height: 16),
+                  const _UnlimitedUpsellCard(),
+                ],
                 if (report != null && _analysed != null) ...[
                   const SizedBox(height: 16),
                   _RevealOnce(
@@ -201,6 +219,7 @@ class _InputCard extends StatelessWidget {
     required this.words,
     required this.minWords,
     required this.error,
+    required this.checksRemaining,
     required this.onPaste,
     required this.onClear,
     required this.onAnalyze,
@@ -210,6 +229,7 @@ class _InputCard extends StatelessWidget {
   final int words;
   final int minWords;
   final String? error;
+  final int checksRemaining;
   final VoidCallback onPaste;
   final VoidCallback onClear;
   final VoidCallback? onAnalyze;
@@ -259,10 +279,26 @@ class _InputCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              _Chip(
-                icon: Icons.lock_outline_rounded,
-                label: 'On device',
-                color: luma.success,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _Chip(
+                    icon: Icons.lock_outline_rounded,
+                    label: 'On device',
+                    color: luma.success,
+                  ),
+                  const SizedBox(height: 6),
+                  _Chip(
+                    icon: Icons.bolt_rounded,
+                    label: checksRemaining > 0
+                        ? '$checksRemaining/'
+                            '${SettingsController.aiCheckerDailyCheckLimit} '
+                            'checks left'
+                        : 'No checks left today',
+                    color: checksRemaining > 0 ? luma.accent : luma.warning,
+                  ),
+                ],
               ),
             ],
           ),
@@ -342,6 +378,57 @@ class _InputCard extends StatelessWidget {
                 onTap: onAnalyze,
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shown once the day's free checks are used up. The button is a
+/// not-yet-wired placeholder — luma has no billing yet, so tapping it does
+/// nothing.
+class _UnlimitedUpsellCard extends StatelessWidget {
+  const _UnlimitedUpsellCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return LumaCard(
+      child: Row(
+        children: [
+          LumaIconBadge(
+            icon: Icons.all_inclusive_rounded,
+            color: luma.accent,
+            size: 38,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Go unlimited',
+                  style: TextStyle(
+                    color: luma.textPrimary,
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'One-time \$1 unlock — no more daily check limit.',
+                  style: TextStyle(color: luma.textMuted, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          LumaPrimaryButton(
+            label: '\$1 · Unlock',
+            icon: Icons.lock_open_rounded,
+            onTap: () {},
           ),
         ],
       ),

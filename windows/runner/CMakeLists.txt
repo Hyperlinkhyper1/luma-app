@@ -9,6 +9,7 @@ project(runner LANGUAGES CXX)
 add_executable(${BINARY_NAME} WIN32
   "flutter_window.cpp"
   "main.cpp"
+  "native_webview.cpp"
   "utils.cpp"
   "win32_window.cpp"
   "${FLUTTER_MANAGED_DIR}/generated_plugin_registrant.cc"
@@ -35,6 +36,15 @@ target_compile_definitions(${BINARY_NAME} PRIVATE "NOMINMAX")
 target_link_libraries(${BINARY_NAME} PRIVATE flutter flutter_wrapper_app)
 target_link_libraries(${BINARY_NAME} PRIVATE "dwmapi.lib")
 target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
+
+# WebView2 SDK for native_webview.cpp. The webview_windows plugin already
+# downloads the NuGet package into the build tree, so reuse its copy and make
+# sure that download has run before this target compiles.
+set(WEBVIEW2_PACKAGE "${CMAKE_BINARY_DIR}/packages/Microsoft.Web.WebView2/build/native")
+target_include_directories(${BINARY_NAME} PRIVATE "${WEBVIEW2_PACKAGE}/include")
+target_link_libraries(${BINARY_NAME} PRIVATE
+  "${WEBVIEW2_PACKAGE}/x64/WebView2LoaderStatic.lib" "version.lib")
+add_dependencies(${BINARY_NAME} webview_windows_DEPENDENCIES_DOWNLOAD)
 
 # Run the Flutter tool portions of the build. This must not be removed.
 add_dependencies(${BINARY_NAME} flutter_assemble)

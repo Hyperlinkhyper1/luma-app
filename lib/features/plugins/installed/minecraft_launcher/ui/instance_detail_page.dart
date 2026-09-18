@@ -415,7 +415,7 @@ class _AnalyzeWithAiButtonState extends State<_AnalyzeWithAiButton> {
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('AI analysis'),
-          content: SizedBox(width: 420, child: SingleChildScrollView(child: Text(answer))),
+          content: SizedBox(width: lumaDialogWidth(context, 420), child: SingleChildScrollView(child: Text(answer))),
           actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))],
         ),
       );

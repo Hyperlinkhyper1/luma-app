@@ -1,0 +1,721 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Gaming PC - Nexus X1</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            width: 100%; 
+            height: 100vh; 
+            overflow: hidden; 
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1a3a 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+        #canvas { display: block; width: 100%; height: 100%; }
+        
+        .hud {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 320px;
+            background: rgba(15, 25, 60, 0.95);
+            border: 2px solid #00ff88;
+            border-radius: 12px;
+            padding: 16px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.3), inset 0 0 20px rgba(0, 255, 136, 0.1);
+            z-index: 100;
+            font-size: 12px;
+            color: #00ff88;
+            font-weight: 500;
+        }
+        
+        .hud-title {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 14px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-bottom: 1px solid rgba(0, 255, 136, 0.3);
+            padding-bottom: 8px;
+        }
+        
+        .hud-section {
+            margin-bottom: 14px;
+        }
+        
+        .hud-label {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .power-button {
+            width: 100%;
+            height: 40px;
+            background: linear-gradient(135deg, #00ff88, #00cc6a);
+            border: none;
+            border-radius: 6px;
+            color: #0a0e27;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.4);
+        }
+        
+        .power-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 25px rgba(0, 255, 136, 0.6);
+        }
+        
+        .power-button:active {
+            transform: translateY(0);
+        }
+        
+        .power-button.off {
+            background: linear-gradient(135deg, #1a2a50, #0f1835);
+            color: #666;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.1);
+        }
+        
+        .color-picker-container {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .color-picker-input {
+            width: 50px;
+            height: 35px;
+            border: 2px solid #00ff88;
+            border-radius: 4px;
+            cursor: pointer;
+            background: #1a2a50;
+        }
+        
+        .rgb-display {
+            flex: 1;
+            background: #1a2a50;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            padding: 6px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-family: monospace;
+        }
+        
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .slider-row label {
+            width: 40px;
+            font-size: 10px;
+            text-transform: uppercase;
+        }
+        
+        .slider-row input[type="range"] {
+            flex: 1;
+            height: 4px;
+            background: rgba(0, 255, 136, 0.2);
+            border: none;
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+            cursor: pointer;
+        }
+        
+        .slider-row input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            background: #00ff88;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(0, 255, 136, 0.6);
+        }
+        
+        .slider-row input[type="range"]::-moz-range-thumb {
+            width: 12px;
+            height: 12px;
+            background: #00ff88;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 8px rgba(0, 255, 136, 0.6);
+        }
+        
+        .slider-value {
+            width: 30px;
+            text-align: right;
+            font-size: 10px;
+            font-family: monospace;
+        }
+        
+        .status-display {
+            background: #1a2a50;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            padding: 6px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-family: monospace;
+            line-height: 1.4;
+        }
+        
+        .status-line {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+        }
+        
+        .status-line:last-child {
+            margin-bottom: 0;
+        }
+        
+        .info-text {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: rgba(0, 255, 136, 0.6);
+            font-size: 12px;
+            z-index: 99;
+            max-width: 300px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div class="info-text">
+        <div><strong>NEXUS X1</strong></div>
+        <div style="font-size: 11px; margin-top: 6px; opacity: 0.7;">Drag to rotate • Scroll to zoom</div>
+    </div>
+    <div class="hud">
+        <div class="hud-title">⚡ System Control</div>
+        
+        <div class="hud-section">
+            <div class="hud-label">Power</div>
+            <button class="power-button" id="powerBtn">Power On</button>
+        </div>
+        
+        <div class="hud-section">
+            <div class="hud-label">RGB Lighting</div>
+            <div class="color-picker-container">
+                <input type="color" class="color-picker-input" id="colorPicker" value="#00ff88">
+                <div class="rgb-display" id="rgbDisplay">#00ff88</div>
+            </div>
+        </div>
+        
+        <div class="hud-section">
+            <div class="hud-label">Fan Speed</div>
+            <div class="slider-row">
+                <label>PWM</label>
+                <input type="range" id="fanSpeed" min="0" max="100" value="60">
+                <div class="slider-value"><span id="fanSpeedVal">60</span>%</div>
+            </div>
+        </div>
+        
+        <div class="hud-section">
+            <div class="hud-label">Ambient Light</div>
+            <div class="slider-row">
+                <label>INT</label>
+                <input type="range" id="ambientLight" min="0" max="100" value="30">
+                <div class="slider-value"><span id="ambientLightVal">30</span>%</div>
+            </div>
+        </div>
+        
+        <div class="hud-section" id="statusSection" style="display: none;">
+            <div class="hud-label">Status</div>
+            <div class="status-display">
+                <div class="status-line">
+                    <span>CPU:</span>
+                    <span id="cpuTemp">--</span>
+                </div>
+                <div class="status-line">
+                    <span>GPU:</span>
+                    <span id="gpuTemp">--</span>
+                </div>
+                <div class="status-line">
+                    <span>PWR:</span>
+                    <span id="pwrUsage">--</span>
+                </div>
+                <div class="status-line">
+                    <span>FPS:</span>
+                    <span id="fpsCounter">60</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0e27);
+        scene.fog = new THREE.Fog(0x0a0e27, 15, 30);
+        
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 1, 3);
+        camera.lookAt(0, 0.5, 0);
+        
+        const canvas = document.getElementById('canvas');
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFShadowShadowMap;
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.0;
+        
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+        scene.add(ambientLight);
+        
+        const mainLight = new THREE.DirectionalLight(0xffffff, 0.85);
+        mainLight.position.set(5, 8, 5);
+        mainLight.castShadow = true;
+        mainLight.shadow.mapSize.width = 2048;
+        mainLight.shadow.mapSize.height = 2048;
+        mainLight.shadow.camera.left = -10;
+        mainLight.shadow.camera.right = 10;
+        mainLight.shadow.camera.top = 10;
+        mainLight.shadow.camera.bottom = -10;
+        mainLight.shadow.bias = -0.0001;
+        scene.add(mainLight);
+        
+        const fillLight = new THREE.DirectionalLight(0x8899ff, 0.2);
+        fillLight.position.set(-5, 3, -5);
+        scene.add(fillLight);
+        
+        const rgbLight = new THREE.PointLight(0x00ff88, 0, 10);
+        rgbLight.position.set(0, 1, 0);
+        scene.add(rgbLight);
+        
+        let pcPoweredOn = false;
+        let rgbColor = 0x00ff88;
+        let fanSpeed = 60;
+        let ambientIntensity = 0.3;
+        
+        const blackMetal = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.7, roughness: 0.3, side: THREE.DoubleSide });
+        const aluminum = new THREE.MeshStandardMaterial({ color: 0xb8b8b8, metalness: 0.85, roughness: 0.15 });
+        const darkAluminum = new THREE.MeshStandardMaterial({ color: 0x606060, metalness: 0.8, roughness: 0.2 });
+        const glass = new THREE.MeshStandardMaterial({ color: 0xccddff, metalness: 0.05, roughness: 0.08, transparent: true, opacity: 0.25 });
+        const pcbGreen = new THREE.MeshStandardMaterial({ color: 0x0a3a1a, metalness: 0.1, roughness: 0.8 });
+        
+        function createRGBMaterial(color) {
+            return new THREE.MeshStandardMaterial({ 
+                color: color, 
+                emissive: color, 
+                emissiveIntensity: 0.8, 
+                metalness: 0.3, 
+                roughness: 0.6 
+            });
+        }
+        
+        let rgbMaterial = createRGBMaterial(rgbColor);
+        
+        const pcGroup = new THREE.Group();
+        scene.add(pcGroup);
+        
+        const caseMesh = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.2, 0.9), blackMetal);
+        caseMesh.castShadow = true;
+        caseMesh.receiveShadow = true;
+        pcGroup.add(caseMesh);
+        
+        const caseFrames = [
+            { size: [0.52, 0.02, 0.92], pos: [0, 0.62, 0] },
+            { size: [0.52, 0.02, 0.92], pos: [0, -0.62, 0] },
+            { size: [0.02, 1.2, 0.92], pos: [0.26, 0, 0] },
+            { size: [0.02, 1.2, 0.92], pos: [-0.26, 0, 0] },
+        ];
+        
+        caseFrames.forEach(frame => {
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(...frame.size), darkAluminum);
+            mesh.position.set(...frame.pos);
+            mesh.castShadow = true;
+            pcGroup.add(mesh);
+        });
+        
+        const rgbStrips = [];
+        for (let i = 0; i < 4; i++) {
+            const strip = new THREE.Mesh(
+                new THREE.BoxGeometry(0.48, 0.05, 0.015),
+                rgbMaterial.clone()
+            );
+            strip.position.y = 0.4 - i * 0.32;
+            strip.position.z = 0.465;
+            strip.castShadow = true;
+            strip.userData.isRGBStrip = true;
+            pcGroup.add(strip);
+            rgbStrips.push(strip);
+        }
+        
+        const fans = [];
+        for (let i = 0; i < 2; i++) {
+            const fanGrp = new THREE.Group();
+            fanGrp.position.set(-0.12 + i * 0.24, -0.28, 0.47);
+            
+            const fanRing = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.09, 0.09, 0.02, 32),
+                blackMetal
+            );
+            fanGrp.add(fanRing);
+            
+            const bladeGroup = new THREE.Group();
+            for (let j = 0; j < 3; j++) {
+                const blade = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.14, 0.015, 0.004),
+                    new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.5, roughness: 0.5 })
+                );
+                blade.rotation.z = (j / 3) * Math.PI * 2;
+                bladeGroup.add(blade);
+            }
+            bladeGroup.name = `fan_${i}`;
+            fanGrp.add(bladeGroup);
+            
+            pcGroup.add(fanGrp);
+            fans.push({ blades: bladeGroup, group: fanGrp });
+        }
+        
+        const sidePanel = new THREE.Mesh(
+            new THREE.BoxGeometry(0.015, 1.2, 0.9),
+            glass
+        );
+        sidePanel.position.x = 0.26;
+        sidePanel.castShadow = false;
+        sidePanel.receiveShadow = true;
+        pcGroup.add(sidePanel);
+        
+        const gpuBody = new THREE.Mesh(
+            new THREE.BoxGeometry(0.14, 0.09, 0.28),
+            new THREE.MeshStandardMaterial({ color: 0x1a1a3a, metalness: 0.6, roughness: 0.4 })
+        );
+        gpuBody.position.set(-0.16, -0.12, 0);
+        gpuBody.castShadow = true;
+        gpuBody.receiveShadow = true;
+        pcGroup.add(gpuBody);
+        
+        for (let i = 0; i < 2; i++) {
+            const fanRing = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.055, 0.055, 0.01, 24),
+                blackMetal
+            );
+            fanRing.position.set(-0.16 + (i - 0.5) * 0.08, -0.12, 0);
+            fanRing.rotation.z = Math.PI / 2;
+            fanRing.castShadow = true;
+            pcGroup.add(fanRing);
+            
+            const bladeGroup = new THREE.Group();
+            for (let j = 0; j < 2; j++) {
+                const blade = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.1, 0.01, 0.003),
+                    new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.4, roughness: 0.6 })
+                );
+                blade.rotation.y = (j / 2) * Math.PI;
+                bladeGroup.add(blade);
+            }
+            bladeGroup.name = `gpu_fan_${i}`;
+            bladeGroup.position.set(-0.16 + (i - 0.5) * 0.08, -0.12, 0);
+            pcGroup.add(bladeGroup);
+            fans.push({ blades: bladeGroup, group: bladeGroup });
+        }
+        
+        const gpuAccent = new THREE.Mesh(
+            new THREE.BoxGeometry(0.13, 0.025, 0.27),
+            rgbMaterial.clone()
+        );
+        gpuAccent.position.set(-0.16, 0.02, 0);
+        gpuAccent.castShadow = true;
+        gpuAccent.userData.isRGBComponent = true;
+        pcGroup.add(gpuAccent);
+        
+        const coolerBase = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.05, 0.05, 0.035, 16),
+            aluminum
+        );
+        coolerBase.position.set(0, 0.22, -0.2);
+        coolerBase.castShadow = true;
+        pcGroup.add(coolerBase);
+        
+        const coolerTower = new THREE.Mesh(
+            new THREE.BoxGeometry(0.06, 0.28, 0.09),
+            aluminum
+        );
+        coolerTower.position.set(0, 0.38, -0.2);
+        coolerTower.castShadow = true;
+        pcGroup.add(coolerTower);
+        
+        const coolerFanGrp = new THREE.Group();
+        coolerFanGrp.position.set(0, 0.53, -0.2);
+        
+        const coolerFanRing = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.065, 0.065, 0.015, 32),
+            blackMetal
+        );
+        coolerFanGrp.add(coolerFanRing);
+        
+        const coolerBladesGrp = new THREE.Group();
+        for (let j = 0; j < 2; j++) {
+            const blade = new THREE.Mesh(
+                new THREE.BoxGeometry(0.12, 0.01, 0.003),
+                new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.3, roughness: 0.7 })
+            );
+            blade.rotation.z = (j / 2) * Math.PI;
+            coolerBladesGrp.add(blade);
+        }
+        coolerBladesGrp.name = 'cooler_fan';
+        coolerFanGrp.add(coolerBladesGrp);
+        pcGroup.add(coolerFanGrp);
+        fans.push({ blades: coolerBladesGrp, group: coolerFanGrp });
+        
+        for (let i = 0; i < 2; i++) {
+            const ram = new THREE.Mesh(
+                new THREE.BoxGeometry(0.01, 0.06, 0.06),
+                new THREE.MeshStandardMaterial({ color: 0x1a1a3a, metalness: 0.8, roughness: 0.2 })
+            );
+            ram.position.set(-0.1 + i * 0.05, 0.18, 0.15);
+            ram.castShadow = true;
+            pcGroup.add(ram);
+            
+            const ramLed = new THREE.Mesh(
+                new THREE.BoxGeometry(0.009, 0.008, 0.055),
+                rgbMaterial.clone()
+            );
+            ramLed.position.set(-0.1 + i * 0.05, 0.26, 0.15);
+            ramLed.userData.isRGBComponent = true;
+            pcGroup.add(ramLed);
+        }
+        
+        const mobo = new THREE.Mesh(
+            new THREE.BoxGeometry(0.24, 0.3, 0.02),
+            pcbGreen
+        );
+        mobo.position.set(-0.1, 0, -0.46);
+        mobo.castShadow = true;
+        mobo.receiveShadow = true;
+        pcGroup.add(mobo);
+        
+        for (let i = 0; i < 3; i++) {
+            const vrm = new THREE.Mesh(
+                new THREE.BoxGeometry(0.02, 0.04, 0.01),
+                aluminum
+            );
+            vrm.position.set(-0.12 + i * 0.08, 0.15, -0.46);
+            vrm.castShadow = true;
+            pcGroup.add(vrm);
+        }
+        
+        const ssd = new THREE.Mesh(
+            new THREE.BoxGeometry(0.06, 0.015, 0.1),
+            new THREE.MeshStandardMaterial({ color: 0x2a2a5a, metalness: 0.7, roughness: 0.3 })
+        );
+        ssd.position.set(-0.15, 0.35, 0.2);
+        ssd.castShadow = true;
+        pcGroup.add(ssd);
+        
+        const psu = new THREE.Mesh(
+            new THREE.BoxGeometry(0.14, 0.08, 0.2),
+            blackMetal
+        );
+        psu.position.set(0.12, -0.5, -0.1);
+        psu.castShadow = true;
+        psu.receiveShadow = true;
+        pcGroup.add(psu);
+        
+        const psuFan = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.04, 0.04, 0.01, 24),
+            blackMetal
+        );
+        psuFan.position.set(0.12, -0.5, 0.11);
+        psuFan.rotation.z = Math.PI / 2;
+        psuFan.castShadow = true;
+        pcGroup.add(psuFan);
+        
+        for (let i = 0; i < 6; i++) {
+            const cable = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.008, 0.008, 0.35, 8),
+                new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.1, roughness: 0.9 })
+            );
+            cable.position.set(-0.22 + i * 0.09, -0.35, 0.35);
+            cable.rotation.z = Math.PI / 2;
+            pcGroup.add(cable);
+        }
+        
+        [0.62, -0.62].forEach(y => {
+            const plate = new THREE.Mesh(
+                new THREE.BoxGeometry(0.5, 0.01, 0.9),
+                blackMetal
+            );
+            plate.position.y = y;
+            plate.castShadow = true;
+            plate.receiveShadow = true;
+            pcGroup.add(plate);
+        });
+        
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let rotation = { x: 0.2, y: 0.5 };
+        let distance = 3.5;
+        
+        document.addEventListener('mousedown', (e) => {
+            if (e.button === 0) isDragging = true;
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const deltaX = e.clientX - previousMousePosition.x;
+                const deltaY = e.clientY - previousMousePosition.y;
+                rotation.y += deltaX * 0.005;
+                rotation.x += deltaY * 0.005;
+                rotation.x = Math.max(-Math.PI / 3, Math.min(Math.PI / 2.5, rotation.x));
+            }
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        });
+        
+        document.addEventListener('mouseup', () => { isDragging = false; });
+        document.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            distance += e.deltaY * 0.003;
+            distance = Math.max(1.8, Math.min(6.5, distance));
+        }, { passive: false });
+        
+        function updateCamera() {
+            const x = Math.sin(rotation.y) * Math.cos(rotation.x) * distance;
+            const y = Math.sin(rotation.x) * distance + 0.8;
+            const z = Math.cos(rotation.y) * Math.cos(rotation.x) * distance;
+            camera.position.set(x, y, z);
+            camera.lookAt(0, 0.5, 0);
+        }
+        
+        const powerBtn = document.getElementById('powerBtn');
+        const colorPicker = document.getElementById('colorPicker');
+        const rgbDisplay = document.getElementById('rgbDisplay');
+        const fanSpeedSlider = document.getElementById('fanSpeed');
+        const ambientLightSlider = document.getElementById('ambientLight');
+        const statusSection = document.getElementById('statusSection');
+        
+        powerBtn.addEventListener('click', () => {
+            pcPoweredOn = !pcPoweredOn;
+            powerBtn.classList.toggle('off');
+            powerBtn.textContent = pcPoweredOn ? 'Power Off' : 'Power On';
+            statusSection.style.display = pcPoweredOn ? 'block' : 'none';
+            
+            if (!pcPoweredOn) {
+                rgbLight.intensity = 0;
+                ambientLight.intensity = 0.3;
+                startupTime = 0;
+                startupProgress = 0;
+            }
+        });
+        
+        colorPicker.addEventListener('change', (e) => {
+            updateRGBColor(e.target.value);
+        });
+        
+        colorPicker.addEventListener('input', (e) => {
+            updateRGBColor(e.target.value);
+        });
+        
+        function updateRGBColor(hexColor) {
+            rgbColor = parseInt(hexColor.substring(1), 16);
+            rgbDisplay.textContent = hexColor;
+            rgbMaterial = createRGBMaterial(rgbColor);
+            
+            const color = new THREE.Color(rgbColor);
+            rgbLight.color = color;
+            
+            pcGroup.traverse((child) => {
+                if (child.userData.isRGBComponent || child.userData.isRGBStrip) {
+                    child.material = rgbMaterial.clone();
+                }
+            });
+        }
+        
+        fanSpeedSlider.addEventListener('input', (e) => {
+            fanSpeed = parseInt(e.target.value);
+            document.getElementById('fanSpeedVal').textContent = fanSpeed;
+        });
+        
+        ambientLightSlider.addEventListener('input', (e) => {
+            ambientIntensity = parseInt(e.target.value) / 100;
+        });
+        
+        let startupProgress = 0;
+        const startupDuration = 2500;
+        let startupTime = 0;
+        let frameCount = 0;
+        let lastFpsUpdate = 0;
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            frameCount++;
+            
+            updateCamera();
+            
+            if (pcPoweredOn) {
+                if (startupTime < startupDuration) {
+                    startupProgress = startupTime / startupDuration;
+                    startupTime += 16;
+                    startupProgress = Math.min(startupProgress, 1);
+                } else {
+                    startupProgress = 1;
+                }
+                
+                const intensity = 0.5 + startupProgress * 1.2;
+                rgbLight.intensity = intensity;
+                
+                const baseAmbient = 0.3;
+                const operationalAmbient = baseAmbient + ambientIntensity * 0.4;
+                ambientLight.intensity = baseAmbient + startupProgress * (operationalAmbient - baseAmbient);
+                
+                const baseRPM = 20 + (fanSpeed / 100) * 45;
+                const fanRPM = baseRPM * (0.3 + startupProgress * 0.7);
+                const fanAngularVelocity = (fanRPM * Math.PI / 60) / 60;
+                
+                fans.forEach(fan => {
+                    fan.blades.rotation.z += fanAngularVelocity;
+                });
+                
+                const tempOffset = Math.sin(Date.now() * 0.0005) * 3;
+                const cpuTemp = Math.floor(35 + startupProgress * 38 + tempOffset);
+                const gpuTemp = Math.floor(38 + startupProgress * 35 + tempOffset);
+                const pwrUsage = Math.floor(startupProgress * 330 + Math.random() * 15);
+                
+                document.getElementById('cpuTemp').textContent = cpuTemp + '°C';
+                document.getElementById('gpuTemp').textContent = gpuTemp + '°C';
+                document.getElementById('pwrUsage').textContent = pwrUsage + 'W';
+            } else {
+                rgbLight.intensity = 0;
+                ambientLight.intensity = 0.3;
+            }
+            
+            if (Date.now() - lastFpsUpdate > 500) {
+                const fps = Math.round((frameCount * 1000) / (Date.now() - lastFpsUpdate + 1));
+                document.getElementById('fpsCounter').textContent = Math.min(60, fps);
+                frameCount = 0;
+                lastFpsUpdate = Date.now();
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+        
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/widgets.dart';
-import '../../../../storage/storage_guard.dart';
 import '../../../../theme/luma_theme.dart';
 import 'chart_viewer.dart';
 import 'csv_import_export.dart';
@@ -79,17 +78,7 @@ class _DatasetListViewState extends State<_DatasetListView> {
     final name = _nameController.text.trim();
     if (name.isEmpty) return;
     setState(() => _creating = true);
-    final int id;
-    try {
-      id = await repo.createDataset(name);
-    } on StorageLimitExceededException catch (e) {
-      if (mounted) {
-        setState(() => _creating = false);
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('$e')));
-      }
-      return;
-    }
+    final id = await repo.createDataset(name);
     _nameController.clear();
     if (mounted) {
       setState(() => _creating = false);
@@ -596,7 +585,7 @@ Future<void> showTagManager(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('Manage Tags', style: TextStyle(color: luma.textPrimary)),
         content: SizedBox(
-          width: 380,
+          width: lumaDialogWidth(dialogContext, 380),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1277,7 +1266,7 @@ class _TableEditorState extends State<_TableEditor> {
             style: TextStyle(color: luma.textPrimary),
           ),
           content: SizedBox(
-            width: 320,
+            width: lumaDialogWidth(context, 320),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1376,14 +1365,7 @@ class _TableEditorState extends State<_TableEditor> {
 
   Future<void> _addRow(DataManagementRepository repo) async {
     // A new row inherits the active tag filter so it stays visible.
-    try {
-      await repo.addRow(widget.dataset.id, {}, tags: _tagFilter.toList());
-    } on StorageLimitExceededException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('$e')));
-      }
-    }
+    await repo.addRow(widget.dataset.id, {}, tags: _tagFilter.toList());
   }
 }
 

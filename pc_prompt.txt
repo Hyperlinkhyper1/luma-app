@@ -1,0 +1,243 @@
+# 3D PC BUILDING + CREATIVITY BENCHMARK
+
+Your task is to create an impressive, interactive **3D desktop gaming PC** entirely inside **one self-contained HTML file**.
+
+This is a benchmark of your ability to combine:
+
+* 3D scene construction
+* visual design
+* creativity
+* animation
+* lighting
+* interaction
+* UI design
+* technical problem-solving
+* attention to detail
+* performance optimization
+
+Do not treat this as a basic demonstration. Build something that feels polished, intentional, and visually interesting.
+
+## CORE REQUIREMENTS
+
+Create a complete desktop PC in 3D.
+
+The PC should contain recognizable internal hardware and components, but **you decide what those components are, how they look, how they are arranged, and what design language the PC follows**.
+
+You are encouraged to invent your own:
+
+* case design
+* cooling system
+* GPU design
+* motherboard appearance
+* RAM
+* fans
+* lighting arrangement
+* cables
+* decorations
+* materials
+* mechanical details
+* branding or fictional component designs
+
+Do not simply build the minimum required objects.
+
+Use your own judgment and creativity to make the PC visually convincing.
+
+## SINGLE-FILE RULE
+
+Everything must run from:
+
+`index.html`
+
+The final result must be contained inside **one HTML file**.
+
+HTML, CSS, JavaScript, shaders, geometry definitions, UI code, animation logic, and other required code should all be contained within that single file.
+
+External JavaScript libraries may be loaded from a CDN if necessary, but there must be no additional local project files.
+
+Opening the HTML file should launch the experience.
+
+## 3D EXPERIENCE
+
+The user should be able to inspect the PC as a 3D object.
+
+Provide intuitive camera controls so the PC can be viewed from different angles.
+
+The PC should have enough geometric depth and detail that it clearly feels like an actual 3D build rather than a collection of flat shapes.
+
+Good use of materials, reflections, transparency, lighting, shadows, emissive surfaces, and subtle animation is encouraged.
+
+How you achieve this is up to you.
+
+## POWER SYSTEM
+
+In the **bottom-right corner**, create a compact PC-control HUD.
+
+It must contain a clearly recognizable:
+
+**Power button**
+
+When the PC is OFF:
+
+* RGB lighting should be off.
+* illuminated components should shut down appropriately.
+* moving powered components should stop or transition into an off state.
+* the system should visibly feel powered down.
+
+When the user presses the power button, the PC should perform a convincing startup sequence.
+
+For example, hardware may come alive progressively rather than everything changing instantly.
+
+The exact startup behavior is up to you.
+
+## RGB CONTROL
+
+The bottom-right HUD must allow the user to change the PC's RGB lighting.
+
+The user must be able to select **any RGB color**, not just a small collection of presets.
+
+Changes should update the 3D lighting in real time.
+
+RGB should affect multiple appropriate elements of the PC.
+
+You decide how lighting is distributed throughout the build.
+
+## HUD
+
+The HUD should feel like a small PC control panel rather than a debug menu.
+
+Besides the required power and RGB controls, add several additional controls or features that make sense for the experience.
+
+Choose these yourself.
+
+They could affect the PC, environment, lighting, animation, hardware behavior, camera, or something more creative.
+
+You are specifically being evaluated on what useful or interesting ideas you add beyond the minimum requirements.
+
+Do not fill the HUD with meaningless controls simply to increase its size.
+
+## ANIMATION
+
+The PC should feel alive while powered on.
+
+Include appropriate animated or dynamic elements.
+
+These could involve fans, lighting, cooling hardware, displays, mechanical components, environmental effects, or something else you invent.
+
+Animations should be visually readable and should not move so quickly that the viewer cannot appreciate them.
+
+## CREATIVITY
+
+You have substantial creative freedom.
+
+Do not assume that the safest or simplest interpretation is the best one.
+
+You are encouraged to add original details, interactions, animations, visual effects, or hardware features that were not explicitly requested.
+
+However, additions should support the central idea of showcasing a high-quality 3D PC.
+
+The benchmark intentionally does **not** specify:
+
+* exact PC dimensions
+* exact hardware
+* exact number of fans
+* exact case layout
+* exact materials
+* exact lighting setup
+* exact camera composition
+* exact animation style
+* exact HUD design
+* exact RGB implementation
+* exact visual theme
+
+Those decisions are part of the test.
+
+## VISUAL QUALITY
+
+Aim for something that could serve as a visually impressive interactive demo.
+
+Pay attention to:
+
+* proportions
+* composition
+* material variation
+* lighting
+* depth
+* reflections
+* component placement
+* small details
+* clean geometry
+* animation quality
+* UI presentation
+
+Avoid making the PC look like a stack of simple colored boxes unless that simplicity is deliberately part of a sophisticated visual style.
+
+## PERFORMANCE
+
+The experience should remain reasonably smooth on a normal modern desktop browser.
+
+Use complexity intelligently.
+
+A visually strong scene is preferred over unnecessary geometry that provides little visible improvement.
+
+## INTERACTION
+
+The experience should immediately make sense when opened.
+
+Do not require instructions just to understand the basic controls.
+
+Buttons and interactive controls should provide visual feedback.
+
+The scene should remain usable while animations are running.
+
+## RESPONSIVENESS
+
+The page should adapt reasonably well to different desktop browser window sizes.
+
+The 3D viewport and bottom-right HUD should remain usable without overlapping or breaking.
+
+## TECHNICAL EXPECTATIONS
+
+Your implementation should be robust.
+
+Avoid:
+
+* obvious console errors
+* broken controls
+* missing resources
+* interactions that work only once
+* accidental page scrolling while controlling the camera
+* UI elements blocking important interactions
+* animations whose speed depends incorrectly on frame rate
+
+## BENCHMARK PRIORITY
+
+When trade-offs are necessary, prioritize in this order:
+
+1. **Creativity and originality**
+2. **Quality of the 3D PC**
+3. **Interactive functionality**
+4. **Visual polish**
+5. **Animation quality**
+6. **Technical robustness**
+7. **Performance**
+8. **Code cleanliness**
+
+A technically perfect but visually boring collection of primitives should not score as highly as an ambitious, polished, well-designed PC.
+
+At the same time, visual ambition should not come at the expense of completely broken functionality.
+
+## IMPORTANT
+
+Do not provide a long explanation of what you intend to build before building it.
+
+Do not replace difficult requirements with descriptions of what could theoretically be implemented.
+
+Actually implement the experience.
+
+Make your own design decisions.
+
+Use the available space and technology creatively.
+
+Surprise the evaluator.
+
+The final output should demonstrate what **you** believe a great interactive 3D PC experience should look and feel like.

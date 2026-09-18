@@ -6,7 +6,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:image/image.dart' as img;
 
 import '../../app/widgets.dart';
-import '../../storage/storage_guard.dart';
 import '../../theme/luma_theme.dart';
 import 'breach_check.dart';
 import 'password_repository.dart';
@@ -127,18 +126,10 @@ class _PasswordEntryFormState extends State<_PasswordEntryForm> {
       totpSecret: _totpSecret.text,
     );
 
-    try {
-      if (_isEditing) {
-        await widget.repo.update(widget.existing!.id, draft);
-      } else {
-        await widget.repo.add(draft);
-      }
-    } on StorageLimitExceededException catch (e) {
-      if (mounted) setState(() {
-        _saving = false;
-        _error = '$e';
-      });
-      return;
+    if (_isEditing) {
+      await widget.repo.update(widget.existing!.id, draft);
+    } else {
+      await widget.repo.add(draft);
     }
     if (mounted) Navigator.of(context).pop();
   }

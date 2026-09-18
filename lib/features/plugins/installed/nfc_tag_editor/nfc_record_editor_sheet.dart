@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/widgets.dart';
 import '../../../../theme/luma_theme.dart';
 import 'nfc_record.dart';
 
@@ -148,7 +149,7 @@ class _NfcRecordEditorDialogState extends State<_NfcRecordEditorDialog> {
         style: TextStyle(color: luma.textPrimary, fontSize: 16),
       ),
       content: SizedBox(
-        width: 380,
+        width: lumaDialogWidth(context, 380),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,

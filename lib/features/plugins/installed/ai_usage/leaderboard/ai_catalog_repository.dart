@@ -3,17 +3,12 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:path_provider/path_provider.dart';
 
 import '../../../../../sync/server_access.dart';
 import '../../../../../sync/sync_service.dart';
 import 'ai_catalog_api.dart';
 import 'ai_model.dart';
-
-/// Where the catalogue in the app bundle lives. Regenerate it with
-/// `tool/refresh_ai_catalog.dart` (see that script's header).
-const String kAiCatalogAssetPath = 'assets/ai_models/catalog.json';
 
 /// Directory under the app-support root the downloaded copy is cached in.
 ///
@@ -25,9 +20,11 @@ const String kAiCatalogCacheDir = 'ai_catalog_cache';
 
 /// Where the leaderboard the app is showing came from.
 enum AiCatalogSource {
-  /// The snapshot shipped inside the app — correct as of the release, and
-  /// what a fresh install with no account shows.
-  bundled,
+  /// Nothing loaded yet — no cache on disk and no approved account to fetch
+  /// from. The catalogue used to ship a snapshot in the app bundle; it lives
+  /// on the luma server only now, so a fresh install with no account starts
+  /// here.
+  none,
 
   /// A copy downloaded from the luma server on an earlier launch.
   cached,
@@ -38,12 +35,10 @@ enum AiCatalogSource {
 
 /// Owns the AI model leaderboard on the client.
 ///
-/// The plugin is still the offline usage dashboard it always was, so the
-/// leaderboard is built to work with no account at all: a snapshot ships in
-/// the app bundle and is shown immediately. When the device has an approved
-/// account the repository asks the luma server for a fresher copy in the
-/// background and swaps it in, caching it so the next launch starts from the
-/// newer data instead of the bundled one.
+/// The leaderboard lives on the luma server. When the device has an approved
+/// account the repository downloads it and caches it, so the next launch
+/// starts from the cached copy instead of an empty table; without an account
+/// there is nothing to show, and the tab says so.
 ///
 /// Nothing here sends anything: the only request made is a GET, and it is
 /// only attempted once [SyncService.serverReady] is true.
@@ -66,7 +61,7 @@ class AiCatalogRepository extends ChangeNotifier {
   final AiCatalogApi Function(String baseUrl, String? token) _apiFactory;
 
   AiCatalog _catalog = AiCatalog.empty;
-  AiCatalogSource _source = AiCatalogSource.bundled;
+  AiCatalogSource _source = AiCatalogSource.none;
   bool _loading = false;
   bool _refreshing = false;
   bool _loaded = false;
@@ -93,9 +88,9 @@ class AiCatalogRepository extends ChangeNotifier {
   /// Whether a server refresh is even possible on this device right now.
   bool get canRefresh => _sync?.serverReady ?? false;
 
-  /// Loads the best catalogue available without touching the network, then —
-  /// if this device has an approved account — refreshes from the server in
-  /// the background. Safe to call repeatedly; only the first call does the
+  /// Loads the cached catalogue without touching the network, then — if this
+  /// device has an approved account — refreshes from the server in the
+  /// background. Safe to call repeatedly; only the first call does the
   /// local load.
   Future<void> load() async {
     if (_loaded) {
@@ -112,13 +107,10 @@ class AiCatalogRepository extends ChangeNotifier {
         _catalog = cached.catalog;
         _etag = cached.etag;
         _source = AiCatalogSource.cached;
-      } else {
-        _catalog = await _readBundled();
-        _source = AiCatalogSource.bundled;
       }
     } catch (e) {
-      // A broken cache or a missing asset must not take the tab down; the
-      // server refresh below is still free to fill it in.
+      // A broken cache must not take the tab down; the server refresh below
+      // is still free to fill it in.
       _error = '$e';
     } finally {
       _loading = false;
@@ -172,11 +164,6 @@ class AiCatalogRepository extends ChangeNotifier {
   }
 
   // ---- Local storage ------------------------------------------------------
-
-  Future<AiCatalog> _readBundled() async {
-    final raw = await rootBundle.loadString(kAiCatalogAssetPath);
-    return AiCatalog.fromJson(jsonDecode(raw) as Map<String, dynamic>);
-  }
 
   Future<({AiCatalog catalog, String? etag})?> _readCache() async {
     try {

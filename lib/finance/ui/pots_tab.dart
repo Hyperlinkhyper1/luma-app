@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../app/widgets.dart';
-import '../../storage/storage_guard.dart';
 import '../../theme/luma_theme.dart';
 import '../data/database.dart';
 import '../finance_repository.dart';
@@ -337,24 +336,16 @@ class _PotEditorState extends State<_PotEditor> {
   Future<void> _save() async {
     final name = _name.text.trim();
     if (name.isEmpty) return;
-    try {
-      if (widget.pot == null) {
-        await widget.repo.createPot(
-          name: name,
-          colorValue: _color,
-          iconCodepoint: _icon,
-        );
-      } else {
-        await widget.repo.updatePot(
-          widget.pot!.copyWith(name: name, colorValue: _color, iconCodepoint: _icon),
-        );
-      }
-    } on StorageLimitExceededException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('$e')));
-      }
-      return;
+    if (widget.pot == null) {
+      await widget.repo.createPot(
+        name: name,
+        colorValue: _color,
+        iconCodepoint: _icon,
+      );
+    } else {
+      await widget.repo.updatePot(
+        widget.pot!.copyWith(name: name, colorValue: _color, iconCodepoint: _icon),
+      );
     }
     if (mounted) Navigator.pop(context);
   }

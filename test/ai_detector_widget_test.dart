@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/features/plugins/installed/ai_detector/ai_detector_page.dart';
+import 'package:luma/settings/settings_controller.dart';
+import 'package:luma/settings/settings_scope.dart';
 import 'package:luma/theme/luma_theme.dart';
 import 'package:luma/theme/theme_style.dart';
 
@@ -17,13 +19,24 @@ const _plain =
     'the margin held steady throughout. Nothing in the numbers moved far '
     'enough to change the outlook we published back in the spring.';
 
-Widget _wrap(Widget child) => MaterialApp(
+/// Loading settings does real async I/O, so it runs outside the widget
+/// tester's fake clock; with no path_provider on the host the controller
+/// stays in memory.
+Future<SettingsController> _settings(WidgetTester tester) async {
+  late SettingsController controller;
+  await tester.runAsync(() async {
+    controller = await SettingsController.load();
+  });
+  return controller;
+}
+
+Future<Widget> _wrap(WidgetTester tester, Widget child) async => MaterialApp(
       theme: LumaTheme.from(Brightness.dark, null, LumaThemeStyle.standard),
-      home: child,
+      home: SettingsScope(controller: await _settings(tester), child: child),
     );
 
 Future<void> _review(WidgetTester tester, String text) async {
-  await tester.pumpWidget(_wrap(const AiDetectorPage()));
+  await tester.pumpWidget(await _wrap(tester, const AiDetectorPage()));
   await tester.enterText(find.byType(TextField), text);
   await tester.pump();
   await tester.ensureVisible(find.text('Review'));
@@ -36,7 +49,7 @@ void main() {
   group('AiDetectorPage', () {
     testWidgets('Review stays inert until the minimum word count is met',
         (tester) async {
-      await tester.pumpWidget(_wrap(const AiDetectorPage()));
+      await tester.pumpWidget(await _wrap(tester, const AiDetectorPage()));
       expect(find.textContaining('of 25 words'), findsOneWidget);
 
       await tester.enterText(find.byType(TextField), 'too short');

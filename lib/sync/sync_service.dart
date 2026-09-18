@@ -1,10 +1,11 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart' show sha256, Hmac;
 import 'package:flutter/foundation.dart';
 
-import '../storage/storage_guard.dart';
+import '../account/plan.dart';
+import '../security/secure_secret_store.dart';
 import 'server_access.dart';
 import 'sync_api.dart';
 import 'sync_collections.dart';
@@ -25,21 +26,46 @@ class SyncLimitExceededException implements Exception {
       'at once. Upgrade your plan to sync more.';
 }
 
+/// Thrown by [SyncService.enableCollection] when the collection itself is
+/// restricted to a higher plan than this device is on, regardless of how many
+/// other collections are enabled.
+class SyncPlanRequiredException implements Exception {
+  const SyncPlanRequiredException(this.requiredPlanId, this.label);
+
+  final String requiredPlanId;
+  final String label;
+
+  @override
+  String toString() =>
+      '$label syncs on the ${planById(requiredPlanId).name} plan and above.';
+}
+
 /// Orchestrates account state and synchronization.
 ///
 /// Flow per enabled collection: snapshot the local data, compare against the
-/// last synced state, then push, pull, or — when both sides changed — let the
+/// last synced state, then push, pull, or â€” when both sides changed â€” let the
 /// newest edit win. Snapshots are end-to-end encrypted before upload; the
 /// server only ever sees ciphertext.
 class SyncService extends ChangeNotifier {
-  SyncService({required this.collections, this.syncCollectionLimit, this.onServerPlan});
+  SyncService({
+    required this.collections,
+    this.syncCollectionLimit,
+    this.currentPlanId,
+    this.onServerPlan,
+  });
 
   final List<SyncCollection> collections;
 
   /// Returns the current plan's cap on how many collections (besides the
-  /// always-on 'settings' one) may be enabled at once, or null for
+  /// automatic preferences and home layouts) may be enabled at once, or null for
   /// unlimited. Read fresh on every check so plan changes apply immediately.
   final int? Function()? syncCollectionLimit;
+
+  /// The plan tier this device is on right now, for collections that are
+  /// restricted to a tier (see [SyncCollection.minPlanId]). Read fresh on
+  /// every check — same contract as [syncCollectionLimit] — so a downgrade
+  /// takes effect immediately rather than at the next restart.
+  final String? Function()? currentPlanId;
 
   /// Invoked with the plan tier the server reports for this account on every
   /// /account fetch, so an admin-granted subscription is applied locally
@@ -67,7 +93,7 @@ class SyncService extends ChangeNotifier {
 
   static const _debounceDelay = Duration(seconds: 8);
   // Without this, a device that hasn't edited anything itself only picks up
-  // another device's changes on its next restart or a 15-minute wait — this
+  // another device's changes on its next restart or a 15-minute wait â€” this
   // pulls much sooner so two signed-in devices converge close to live.
   static const _periodicInterval = Duration(seconds: 10);
 
@@ -78,21 +104,19 @@ class SyncService extends ChangeNotifier {
   /// Tags for the LOCAL (serverless) account: the salt is derived from the
   /// email alone (not random) so any device that types the same email
   /// reproduces the same salt with no server to hand one out. Only the
-  /// password's secrecy matters for security here — the email just keeps
+  /// password's secrecy matters for security here â€” the email just keeps
   /// two different people's derivations from colliding.
   static const _localAccountSaltTag = 'luma-local-account-salt-v1';
   static const _localVerifierTag = 'luma-local-account-verify-v1';
 
   /// A deterministic, account-scoped token a peer presents to prove it is on
-  /// the same account — derived (HMAC) from the encryption key. Revealing it
+  /// the same account â€” derived (HMAC) from the encryption key. Revealing it
   /// gains nothing: blobs still need the real key, and the cloud server uses
   /// a separately derived auth key.
   String? peerHandshakeToken() {
     final key = _state?.encryptionKey;
     if (key == null) return null;
-    final mac = Hmac(sha256, key)
-        .convert(utf8.encode(_peerHandshakeTag))
-        .bytes;
+    final mac = Hmac(sha256, key).convert(utf8.encode(_peerHandshakeTag)).bytes;
     return _hexEncode(mac);
   }
 
@@ -105,8 +129,8 @@ class SyncService extends ChangeNotifier {
   String? get serverUrl => _state?.serverUrl;
 
   /// Whether the server has approved this account (email verified, or
-  /// approved by the operator). Signing in already proves it — the server
-  /// refuses to issue a token otherwise — but it is tracked explicitly so
+  /// approved by the operator). Signing in already proves it â€” the server
+  /// refuses to issue a token otherwise â€” but it is tracked explicitly so
   /// the gate below has one unambiguous source of truth.
   bool get accountApproved => _state?.accountApproved ?? false;
 
@@ -116,12 +140,12 @@ class SyncService extends ChangeNotifier {
   bool get serverReady => _state?.serverReady ?? false;
 
   /// The address of an account created on this device that is still waiting
-  /// for approval, or null. Display-only — it grants no access.
+  /// for approval, or null. Display-only â€” it grants no access.
   String? get pendingApprovalEmail => _state?.pendingApprovalEmail;
 
   /// How that account gets approved. [ServerApprovalMode.manual] (the
   /// default) means the server's operator approves it from the admin
-  /// dashboard — there is no email to wait for and nothing to resend.
+  /// dashboard â€” there is no email to wait for and nothing to resend.
   ServerApprovalMode get pendingApprovalMode =>
       ServerApprovalMode.parse(_state?.pendingApprovalMode);
 
@@ -155,18 +179,18 @@ class SyncService extends ChangeNotifier {
 
   /// The current bearer token, if signed in. Used by features (e.g. Families)
   /// that talk to their own, non-encrypted server endpoints rather than the
-  /// zero-knowledge sync/blob ones — see [FamilyApi] in lib/family/family_api.dart.
+  /// zero-knowledge sync/blob ones â€” see [FamilyApi] in lib/family/family_api.dart.
   String? get authToken => _state?.token;
   SyncStatus get status => _status;
   String? get lastError => _lastError;
   DateTime? get lastSyncAt => _state?.lastSyncAt;
 
-  /// True once there's an encryption key at all — via a cloud account
+  /// True once there's an encryption key at all â€” via a cloud account
   /// ([signedIn]) or a local-only, serverless identity ([isLocalOnly]). This
   /// is the actual gate for P2P: peers only need a shared key, not a server.
   bool get p2pReady => _state?.encryptionKey != null;
 
-  /// True when [p2pReady] but the key did NOT come from a cloud account —
+  /// True when [p2pReady] but the key did NOT come from a cloud account â€”
   /// i.e. set up purely for device-to-device sync via [setLocalAccount].
   bool get isLocalOnly => p2pReady && !signedIn;
 
@@ -176,7 +200,7 @@ class SyncService extends ChangeNotifier {
   /// The operator reset this account's password from the admin dashboard and
   /// the user has not chosen a new one yet. While this is true the app puts
   /// a blocking "choose a new password" screen over everything (see
-  /// PasswordResetPage) — and this device deliberately keeps working until
+  /// PasswordResetPage) â€” and this device deliberately keeps working until
   /// then, because it holds the only copy of the encryption key that can
   /// re-seal the synced snapshots under the new password.
   bool get passwordResetRequired => _account?.passwordResetRequired ?? false;
@@ -219,14 +243,15 @@ class SyncService extends ChangeNotifier {
     }
     for (final collection in collections) {
       _subscriptions.add(
-          collection.changes.listen((_) => _onLocalChange(collection.id)));
+        collection.changes.listen((_) => _onLocalChange(collection.id)),
+      );
     }
     _periodic = Timer.periodic(_periodicInterval, (_) {
       if (serverReady) syncNow(silent: true);
     });
     notifyListeners();
     if (serverReady) {
-      // Kick off the initial sync right away (still off the critical path —
+      // Kick off the initial sync right away (still off the critical path â€”
       // syncNow is async/non-blocking) so admin-granted plan info and other
       // account state reach the UI as soon as possible instead of showing
       // stale/default values for the first few seconds after launch.
@@ -277,9 +302,10 @@ class SyncService extends ChangeNotifier {
         iterations: params.kdfIterations,
       );
       final token = await api.login(
-          email: normalizedEmail,
-          authKey: keys.authKey,
-          deviceLabel: _deviceLabel());
+        email: normalizedEmail,
+        authKey: keys.authKey,
+        deviceLabel: _deviceLabel(),
+      );
       api.token = token;
 
       _api?.close();
@@ -292,7 +318,7 @@ class SyncService extends ChangeNotifier {
         ..kdfSalt = params.kdfSalt
         ..kdfIterations = params.kdfIterations
         // The server refuses to issue a token to an account that hasn't been
-        // approved yet, so holding one is the proof — this is what opens the
+        // approved yet, so holding one is the proof â€” this is what opens the
         // server-access gate for the rest of the app.
         ..accountApproved = true
         ..pendingApprovalEmail = null
@@ -317,7 +343,7 @@ class SyncService extends ChangeNotifier {
   /// Creates a new account on the server. Returns null when the account is
   /// signed in immediately; returns a human-readable message when the
   /// server requires email verification first (the account exists, but the
-  /// caller is NOT signed in yet — the user must verify, then [signIn]).
+  /// caller is NOT signed in yet â€” the user must verify, then [signIn]).
   Future<String?> register({
     required String serverUrl,
     required String email,
@@ -329,7 +355,7 @@ class SyncService extends ChangeNotifier {
       final normalizedEmail = email.trim().toLowerCase();
       // If this device already has a local-only (serverless) identity for
       // the SAME email, reuse its salt so the resulting key comes out
-      // identical (given the same password) — devices already paired over
+      // identical (given the same password) â€” devices already paired over
       // P2P aren't orphaned by this device also gaining a cloud account.
       final reuseLocalSalt =
           isLocalOnly && s.email == normalizedEmail && s.kdfSalt != null;
@@ -351,7 +377,7 @@ class SyncService extends ChangeNotifier {
         api.close();
         // The account exists but is NOT approved: remember who we're waiting
         // for (and who does the approving) so the UI can explain it, and
-        // leave the gate shut — no further request reaches the server until
+        // leave the gate shut â€” no further request reaches the server until
         // the approval lands and the user signs in.
         s
           ..pendingApprovalEmail = normalizedEmail
@@ -396,9 +422,10 @@ class SyncService extends ChangeNotifier {
 
   /// Which providers [serverUrl] offers a button for. Never throws: a server
   /// that is old, unreachable, or simply has none configured all mean the
-  /// same thing to the sign-in screen — show email and password only.
+  /// same thing to the sign-in screen â€” show email and password only.
   Future<List<OAuthProviderInfo>> availableOAuthProviders(
-      String serverUrl) async {
+    String serverUrl,
+  ) async {
     if (SyncApi.validateServerUrl(serverUrl) != null) return const [];
     final api = SyncApi(serverUrl);
     try {
@@ -412,7 +439,7 @@ class SyncService extends ChangeNotifier {
 
   /// Opens a browser sign-in and hands back the URL to launch. The caller
   /// then [waitForOAuthIdentity], collects the passphrase, and finishes with
-  /// [completeOAuthSignIn] — nothing here touches this device's account
+  /// [completeOAuthSignIn] â€” nothing here touches this device's account
   /// state until that last step succeeds.
   Future<OAuthSignInHandle> startOAuthSignIn({
     required String serverUrl,
@@ -447,7 +474,9 @@ class SyncService extends ChangeNotifier {
     while (DateTime.now().isBefore(deadline)) {
       if (handle._cancelled) {
         return const OAuthPollResult(
-            status: 'error', message: 'Sign-in cancelled.');
+          status: 'error',
+          message: 'Sign-in cancelled.',
+        );
       }
       final result = await handle.api.oauthPoll(handle.ticket);
       if (!result.isPending) return result;
@@ -462,7 +491,7 @@ class SyncService extends ChangeNotifier {
   /// Finishes a browser sign-in.
   ///
   /// The provider settled which account this is; [passphrase] is what
-  /// actually decrypts its data, and it never leaves this device — only the
+  /// actually decrypts its data, and it never leaves this device â€” only the
   /// key derived from it does, exactly as in [signIn]. For an account that
   /// already exists the server checks that key, so a wrong passphrase throws
   /// rather than quietly producing an account whose data won't open.
@@ -476,7 +505,10 @@ class SyncService extends ChangeNotifier {
   }) async {
     if (!identity.isReady || identity.email == null) {
       throw SyncApiException(
-          0, 'oauth_not_ready', 'That sign-in did not complete.');
+        0,
+        'oauth_not_ready',
+        'That sign-in did not complete.',
+      );
     }
     final s = _state ?? (_state = await SyncStateStore.load());
     final api = handle.api;
@@ -485,10 +517,10 @@ class SyncService extends ChangeNotifier {
     // An existing account dictates its own KDF parameters. For a new one,
     // reuse this device's local-only salt when the address matches, so a
     // device already paired over P2P is not orphaned by gaining a cloud
-    // account — same reasoning as [register].
-    final reuseLocalSalt =
-        isLocalOnly && s.email == email && s.kdfSalt != null;
-    final kdfSalt = identity.kdfSalt ??
+    // account â€” same reasoning as [register].
+    final reuseLocalSalt = isLocalOnly && s.email == email && s.kdfSalt != null;
+    final kdfSalt =
+        identity.kdfSalt ??
         (reuseLocalSalt ? s.kdfSalt! : SyncCrypto.randomBytes(16));
     final iterations =
         identity.kdfIterations ?? SyncCrypto.defaultKdfIterations;
@@ -569,9 +601,9 @@ class SyncService extends ChangeNotifier {
 
   /// Asks the server to send the approval mail again for an account created
   /// on this device that is still waiting. Only meaningful under
-  /// [ServerApprovalMode.email] — with manual approval there is no mail, and
+  /// [ServerApprovalMode.email] â€” with manual approval there is no mail, and
   /// the server says so. Returns the server's (deliberately generic)
-  /// message. Throws [StateError] when nothing is pending — this is part of
+  /// message. Throws [StateError] when nothing is pending â€” this is part of
   /// the account handshake, so it is one of the few calls allowed through
   /// the closed gate.
   Future<String> resendApprovalEmail() async {
@@ -601,13 +633,13 @@ class SyncService extends ChangeNotifier {
   }
 
   /// Sets up (or re-enters) a LOCAL, serverless identity for peer-to-peer
-  /// sync: the encryption key is derived from [email] + [password] alone —
+  /// sync: the encryption key is derived from [email] + [password] alone â€”
   /// no network call, no server. Entering the same email and password on
   /// another device derives the exact same key, which is how two devices
   /// recognize each other as "the same account" over Wi-Fi.
   ///
   /// Throws [StateError] if this device already has a local identity and
-  /// [password] doesn't reproduce it — the only mistyped-password check
+  /// [password] doesn't reproduce it â€” the only mistyped-password check
   /// possible without a server, and only effective on the SAME device.
   Future<void> setLocalAccount({
     required String email,
@@ -615,22 +647,29 @@ class SyncService extends ChangeNotifier {
   }) async {
     final s = _state ?? (_state = await SyncStateStore.load());
     final normalizedEmail = email.trim().toLowerCase();
-    final kdfSalt = Uint8List.fromList(sha256
-        .convert(utf8.encode('$_localAccountSaltTag:$normalizedEmail'))
-        .bytes);
+    final kdfSalt = Uint8List.fromList(
+      sha256
+          .convert(utf8.encode('$_localAccountSaltTag:$normalizedEmail'))
+          .bytes,
+    );
     const iterations = SyncCrypto.defaultKdfIterations;
     final keys = await SyncCrypto.deriveKeys(
       password: password,
       kdfSalt: kdfSalt,
       iterations: iterations,
     );
-    final verifier = _hexEncode(Hmac(sha256, keys.encryptionKey)
-        .convert(utf8.encode(_localVerifierTag))
-        .bytes);
+    final verifier = _hexEncode(
+      Hmac(
+        sha256,
+        keys.encryptionKey,
+      ).convert(utf8.encode(_localVerifierTag)).bytes,
+    );
 
     if (isLocalOnly && s.localVerifier != null && s.localVerifier != verifier) {
-      throw StateError('Wrong password for this device\'s existing '
-          'device-sync identity.');
+      throw StateError(
+        'Wrong password for this device\'s existing '
+        'device-sync identity.',
+      );
     }
 
     s
@@ -645,7 +684,7 @@ class SyncService extends ChangeNotifier {
 
   /// Removes the local-only identity set up by [setLocalAccount], stopping
   /// P2P. Refuses (no-op) if the current identity is actually a signed-in
-  /// cloud account — sign out of that from Sync & account instead.
+  /// cloud account â€” sign out of that from Sync & account instead.
   Future<void> clearLocalAccount() async {
     final s = _state;
     if (s == null || !isLocalOnly) return;
@@ -684,6 +723,7 @@ class SyncService extends ChangeNotifier {
       iterations: newIterations,
     );
 
+    await _retainRotationKey();
     await api.changePassword(
       currentAuthKey: currentKeys.authKey,
       newAuthKey: newKeys.authKey,
@@ -702,8 +742,8 @@ class SyncService extends ChangeNotifier {
   /// Finishes a password reset the server operator forced from the admin
   /// dashboard ([passwordResetRequired]).
   ///
-  /// There is no current password to prove anything with — that is the whole
-  /// point of a reset — so this device's session token stands in for it, and
+  /// There is no current password to prove anything with â€” that is the whole
+  /// point of a reset â€” so this device's session token stands in for it, and
   /// the server only accepts the call while a reset is outstanding. Because
   /// this device still holds the old encryption key in memory, the same
   /// re-seal pass as [changePassword] keeps every synced snapshot readable;
@@ -723,6 +763,7 @@ class SyncService extends ChangeNotifier {
       iterations: newIterations,
     );
 
+    await _retainRotationKey();
     await api.resetPassword(
       newAuthKey: newKeys.authKey,
       newKdfSalt: newSalt,
@@ -741,8 +782,8 @@ class SyncService extends ChangeNotifier {
   }
 
   /// Switches this device onto [newKeys] and re-encrypts every snapshot the
-  /// server holds so the account's *other* devices — which will derive the
-  /// same new key from the new password — can still read them.
+  /// server holds so the account's *other* devices â€” which will derive the
+  /// same new key from the new password â€” can still read them.
   ///
   /// Shared by [changePassword] and [completePasswordReset]: the server-side
   /// credential rotation differs between the two, everything after it does
@@ -764,14 +805,13 @@ class SyncService extends ChangeNotifier {
     // Re-encrypt every snapshot the server holds so other devices (which
     // will derive the new key) can still read them.
     final remote = await api.account();
+    var failed = false;
     for (final meta in remote.collections.values) {
       try {
         final blob = await api.getBlob(meta.name);
         if (blob == null) continue;
-        final payload =
-            await SyncCrypto.openPayload(blob.bytes, oldEncryptionKey);
-        final sealed =
-            await SyncCrypto.sealPayload(payload!, newKeys.encryptionKey);
+        final clear = await SyncCrypto.openBytes(blob.bytes, oldEncryptionKey);
+        final sealed = await SyncCrypto.sealBytes(clear, newKeys.encryptionKey);
         final newVersion = await api.putBlob(
           meta.name,
           sealed,
@@ -783,11 +823,58 @@ class SyncService extends ChangeNotifier {
           st.lastSyncedVersion = newVersion;
         }
       } catch (_) {
-        // Snapshot stays under the old key; the next push from this device
-        // replaces it.
+        failed = true;
       }
     }
     await s.save();
+    if (failed) {
+      throw StateError(
+        'Password changed, but some synced data could not be '
+        're-encrypted. The old key was retained in this device\'s secure '
+        'storage for recovery. Keep this device and its data.',
+      );
+    }
+  }
+
+  /// Preserve every pre-rotation key before changing server credentials.
+  /// This is recovery material, never sent to the server or diagnostics.
+  Future<void> _retainRotationKey() async {
+    final s = _state!;
+    final account = sha256.convert(utf8.encode('${s.serverUrl}|${s.email}'));
+    final name = 'sync.rotation.$account';
+    final saved = await SecureSecretStore.instance.read(name);
+    final history = saved == null
+        ? <String, dynamic>{}
+        : Map<String, dynamic>.from(jsonDecode(saved) as Map);
+    final key = base64Encode(s.encryptionKey!);
+    final id = sha256.convert(s.encryptionKey!).toString();
+    history[id] = key;
+    await SecureSecretStore.instance.write(name, jsonEncode(history));
+  }
+
+  Future<T> _withRecoveryKeys<T>(Future<T> Function(Uint8List) open) async {
+    final s = _state!;
+    try {
+      return await open(s.encryptionKey!);
+    } on SyncCryptoException {
+      final account = sha256.convert(utf8.encode('${s.serverUrl}|${s.email}'));
+      final saved = await SecureSecretStore.instance.read(
+        'sync.rotation.$account',
+      );
+      if (saved != null) {
+        final history = jsonDecode(saved) as Map<String, dynamic>;
+        for (final value in history.values) {
+          final key = base64Decode(value as String);
+          if (key.length != 32) continue;
+          try {
+            return await open(key);
+          } on SyncCryptoException {
+            continue;
+          }
+        }
+      }
+      rethrow;
+    }
   }
 
   /// Lists every active cloud session on this account (across all
@@ -802,7 +889,7 @@ class SyncService extends ChangeNotifier {
   }
 
   /// Revokes another device's session, signing it out remotely. The
-  /// server rejects revoking the session this device is currently using —
+  /// server rejects revoking the session this device is currently using â€”
   /// call [signOut] for that instead.
   Future<void> revokeSession(String id) async {
     final api = _api;
@@ -814,7 +901,7 @@ class SyncService extends ChangeNotifier {
 
   /// A short, human-readable platform label sent to the server at
   /// sign-in/registration so [listSessions] can show something more useful
-  /// than an opaque session id (e.g. "Windows", "Android"). Display-only —
+  /// than an opaque session id (e.g. "Windows", "Android"). Display-only â€”
   /// never used for authentication.
   static String? _deviceLabel() {
     switch (defaultTargetPlatform) {
@@ -867,7 +954,7 @@ class SyncService extends ChangeNotifier {
 
   /// This account's most recent deletion request, or null if it has never
   /// filed one. Read off the last /account snapshot, so it is as fresh as the
-  /// last sync — no extra request per rebuild.
+  /// last sync â€” no extra request per rebuild.
   DataDeletionRequest? get dataDeletionRequest => _account?.deletionRequest;
 
   /// Files a request to have every trace of this account deleted from the
@@ -895,22 +982,44 @@ class SyncService extends ChangeNotifier {
 
   // ---- Collection toggles --------------------------------------------------------
 
-  /// How many non-'settings' collections are currently enabled (the
-  /// always-on 'settings' collection isn't a user choice, so it doesn't
-  /// count against the plan limit).
-  int get enabledSyncCollectionCount => _state?.collections.entries
-          .where((e) => e.key != 'settings' && e.value.enabled)
+  /// Automatic preferences and home layouts do not consume a feature slot.
+  int get enabledSyncCollectionCount =>
+      _state?.collections.entries
+          .where((e) => !isAutomaticSyncCollection(e.key) && e.value.enabled)
           .length ??
       0;
 
   /// Turns syncing on for a collection and uploads it right away. Throws
   /// [SyncLimitExceededException] if the current plan's limit on the number
   /// of synced collections is already reached.
+  SyncCollection? collectionById(String id) =>
+      collections.cast<SyncCollection?>().firstWhere(
+            (c) => c?.id == id,
+            orElse: () => null,
+          );
+
+  bool _planAllows(SyncCollection collection) =>
+      planAtLeast(currentPlanId?.call(), collection.minPlanId);
+
+  /// Whether this device's plan may sync [id] at all. Public so Settings can
+  /// show a lock instead of a switch without knowing anything about plans.
+  /// An unknown id is allowed, matching the permissive default elsewhere.
+  bool planAllowsCollection(String id) {
+    final collection = collectionById(id);
+    return collection == null || _planAllows(collection);
+  }
+
   Future<void> enableCollection(String id) async {
     final s = _state;
     if (s == null) return;
     final st = s.collection(id);
-    if (id != 'settings' && !st.enabled) {
+    if (!isAutomaticSyncCollection(id) && !st.enabled) {
+      // The plan gate is checked before the count gate so a free user is told
+      // "this needs Orbit" rather than the misleading "you are out of slots".
+      final collection = collectionById(id);
+      if (collection != null && !_planAllows(collection)) {
+        throw SyncPlanRequiredException(collection.minPlanId!, collection.label);
+      }
       final limit = syncCollectionLimit?.call();
       if (limit != null && enabledSyncCollectionCount >= limit) {
         throw SyncLimitExceededException(limit);
@@ -925,7 +1034,7 @@ class SyncService extends ChangeNotifier {
   /// Turns syncing off. With [removeRemote], the server's copy is deleted
   /// too (other devices that still sync this collection may re-upload it).
   Future<void> disableCollection(String id, {bool removeRemote = false}) async {
-    if (id == 'settings') return; // always synced — can't be turned off
+    if (isAutomaticSyncCollection(id)) return;
     final s = _state;
     if (s == null) return;
     final st = s.collection(id)
@@ -960,16 +1069,22 @@ class SyncService extends ChangeNotifier {
 
   /// Uploads [bytes] as an encrypted object under [collection] (optimistic
   /// locking via [baseVersion]; 0 = create). Returns the new server version.
-  Future<int> putObject(String collection, Uint8List bytes,
-      {int baseVersion = 0}) async {
+  Future<int> putObject(
+    String collection,
+    Uint8List bytes, {
+    int baseVersion = 0,
+  }) async {
     final api = _api, s = _state;
     if (api == null || s == null || !s.serverReady) {
       throw StateError('Not signed in with an approved account.');
     }
-    StorageGuard.instance.ensureWithinLimit();
     final sealed = await SyncCrypto.sealBytes(bytes, s.encryptionKey!);
-    return api.putBlob(collection, sealed,
-        baseVersion: baseVersion, payloadSavedAt: DateTime.now());
+    return api.putBlob(
+      collection,
+      sealed,
+      baseVersion: baseVersion,
+      payloadSavedAt: DateTime.now(),
+    );
   }
 
   /// Fetches and decrypts a raw object, or null if it does not exist.
@@ -980,33 +1095,42 @@ class SyncService extends ChangeNotifier {
     }
     final blob = await api.getBlob(collection);
     if (blob == null) return null;
-    return SyncCrypto.openBytes(blob.bytes, s.encryptionKey!);
+    return _withRecoveryKeys((key) => SyncCrypto.openBytes(blob.bytes, key));
   }
 
   /// Fetches and decrypts a JSON object with its current version, or null.
   Future<({Object? data, int version})?> getJsonObject(
-      String collection) async {
+    String collection,
+  ) async {
     final api = _api, s = _state;
     if (api == null || s == null || !s.serverReady) {
       throw StateError('Not signed in with an approved account.');
     }
     final blob = await api.getBlob(collection);
     if (blob == null) return null;
-    final data = await SyncCrypto.openPayload(blob.bytes, s.encryptionKey!);
+    final data = await _withRecoveryKeys(
+      (key) => SyncCrypto.openPayload(blob.bytes, key),
+    );
     return (data: data, version: blob.version);
   }
 
   /// Uploads a JSON object with optimistic locking. Returns the new version.
-  Future<int> putJsonObject(String collection, Object payload,
-      {int baseVersion = 0}) async {
+  Future<int> putJsonObject(
+    String collection,
+    Object payload, {
+    int baseVersion = 0,
+  }) async {
     final api = _api, s = _state;
     if (api == null || s == null || !s.serverReady) {
       throw StateError('Not signed in with an approved account.');
     }
-    StorageGuard.instance.ensureWithinLimit();
     final sealed = await SyncCrypto.sealPayload(payload, s.encryptionKey!);
-    return api.putBlob(collection, sealed,
-        baseVersion: baseVersion, payloadSavedAt: DateTime.now());
+    return api.putBlob(
+      collection,
+      sealed,
+      baseVersion: baseVersion,
+      payloadSavedAt: DateTime.now(),
+    );
   }
 
   /// Deletes a server object (no-op if it doesn't exist).
@@ -1021,7 +1145,7 @@ class SyncService extends ChangeNotifier {
   // ---- AI --------------------------------------------------------------------
 
   /// Whether the sync server has an operator-configured Mistral key
-  /// available — see AiSettingsSection (status display) and ChatController
+  /// available â€” see AiSettingsSection (status display) and ChatController
   /// (which then sends chat requests through the server's proxy instead of
   /// asking for a locally-stored key). The key itself never reaches this
   /// device; only this yes/no travels here.
@@ -1036,7 +1160,7 @@ class SyncService extends ChangeNotifier {
   }
 
   /// Shared-AI status for this account: which operator keys exist and how
-  /// much of this user's budget is used — percentages only, the raw token
+  /// much of this user's budget is used â€” percentages only, the raw token
   /// numbers never leave the server. Null when signed out or unreachable.
   Future<AiServerStatus?> aiStatus() async {
     final api = _api;
@@ -1050,7 +1174,7 @@ class SyncService extends ChangeNotifier {
 
   // ---- Sync ---------------------------------------------------------------------
 
-  /// Synchronizes all enabled collections. Safe to call at any time —
+  /// Synchronizes all enabled collections. Safe to call at any time â€”
   /// concurrent calls are serialized, and awaiting the future always means
   /// "my run has completed".
   Future<void> syncNow({bool silent = false}) {
@@ -1064,14 +1188,6 @@ class SyncService extends ChangeNotifier {
     final s = _state;
     final api = _api;
     if (s == null || api == null || !s.serverReady) return;
-
-    if (StorageGuard.instance.isOverLimit) {
-      _status = SyncStatus.error;
-      _lastError =
-          'Local storage limit reached — sync is paused until you free up space.';
-      notifyListeners();
-      return;
-    }
 
     _status = SyncStatus.syncing;
     if (!silent) _lastError = null;
@@ -1090,7 +1206,8 @@ class SyncService extends ChangeNotifier {
         await s.save();
         _applyServerAccess();
         _status = SyncStatus.error;
-        _lastError = 'This account is waiting for approval — sync is paused '
+        _lastError =
+            'This account is waiting for approval â€” sync is paused '
             'until it is approved.';
         notifyListeners();
         return;
@@ -1098,6 +1215,10 @@ class SyncService extends ChangeNotifier {
       for (final collection in collections) {
         final st = s.collection(collection.id);
         if (!st.enabled) continue;
+        // Re-checked on every sync, not just on enable: someone who turned
+        // this on while subscribed and has since downgraded must stop
+        // syncing, not keep going forever on a stale toggle.
+        if (!_planAllows(collection)) continue;
         try {
           await _syncCollection(collection, remote.collections[collection.id]);
         } on SyncApiException catch (e) {
@@ -1116,7 +1237,7 @@ class SyncService extends ChangeNotifier {
         _requiresReauth = true;
         s.token = null;
         _applyServerAccess();
-        errors.add('Session expired — please sign in again.');
+        errors.add('Session expired â€” please sign in again.');
       } else if (e.isAccountBlocked) {
         // The server put this account back to "waiting for approval", or an
         // operator revoked its access outright. Either way: shut the gate and
@@ -1138,7 +1259,9 @@ class SyncService extends ChangeNotifier {
   }
 
   Future<void> _syncCollection(
-      SyncCollection collection, RemoteCollectionMeta? meta) async {
+    SyncCollection collection,
+    RemoteCollectionMeta? meta,
+  ) async {
     final s = _state!;
     final st = s.collection(collection.id);
 
@@ -1176,8 +1299,7 @@ class SyncService extends ChangeNotifier {
     }
 
     // Both sides changed since the last sync: the newest edit wins.
-    final localAt =
-        st.localChangedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+    final localAt = st.localChangedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
     if (meta == null || localAt.isAfter(meta.payloadSavedAt)) {
       await _push(collection, exported, hash, baseVersion: serverVersion);
     } else {
@@ -1215,12 +1337,18 @@ class SyncService extends ChangeNotifier {
       // Someone uploaded in between: re-resolve newest-wins once.
       final conflictVersion = e.extra?['version'] as int? ?? 0;
       final conflictSavedAt = DateTime.fromMillisecondsSinceEpoch(
-          e.extra?['payloadSavedAtMs'] as int? ?? 0);
+        e.extra?['payloadSavedAtMs'] as int? ?? 0,
+      );
       final localAt =
           st.localChangedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
       if (localAt.isAfter(conflictSavedAt)) {
-        await _push(collection, exported, hash,
-            baseVersion: conflictVersion, isRetry: true);
+        await _push(
+          collection,
+          exported,
+          hash,
+          baseVersion: conflictVersion,
+          isRetry: true,
+        );
       } else {
         final blob = await _api!.getBlob(collection.id);
         if (blob != null) {
@@ -1231,7 +1359,9 @@ class SyncService extends ChangeNotifier {
   }
 
   Future<void> _pull(
-      SyncCollection collection, RemoteCollectionMeta meta) async {
+    SyncCollection collection,
+    RemoteCollectionMeta meta,
+  ) async {
     final blob = await _api!.getBlob(collection.id);
     if (blob == null) return;
     await _importBlob(collection, blob);
@@ -1241,8 +1371,9 @@ class SyncService extends ChangeNotifier {
     final s = _state!;
     final st = s.collection(collection.id);
 
-    final payload =
-        await SyncCrypto.openPayload(blob.bytes, s.encryptionKey!);
+    final payload = await _withRecoveryKeys(
+      (key) => SyncCrypto.openPayload(blob.bytes, key),
+    );
     if (payload is! Map<String, dynamic> ||
         payload['collection'] != collection.id) {
       // Binding the collection name inside the ciphertext prevents a
@@ -1260,8 +1391,9 @@ class SyncService extends ChangeNotifier {
 
     // Hash the state as imported so it doesn't read as a fresh local edit.
     final reExported = await collection.export();
-    st.lastSyncedHash =
-        sha256.convert(utf8.encode(jsonEncode(reExported))).toString();
+    st.lastSyncedHash = sha256
+        .convert(utf8.encode(jsonEncode(reExported)))
+        .toString();
     st.lastSyncedVersion = blob.version;
     st.localChangedAt = null;
   }
@@ -1293,11 +1425,12 @@ class SyncService extends ChangeNotifier {
     for (final c in collections) {
       final st = s.collection(c.id);
       if (!st.enabled) continue;
+      // Peer sync must not become a way around the plan gate.
+      if (!_planAllows(c)) continue;
       out[c.id] = (
         cloudVersion: st.lastSyncedVersion ?? 0,
-        savedAtMs:
-            (st.localChangedAt ?? DateTime.fromMillisecondsSinceEpoch(0))
-                .millisecondsSinceEpoch,
+        savedAtMs: (st.localChangedAt ?? DateTime.fromMillisecondsSinceEpoch(0))
+            .millisecondsSinceEpoch,
       );
     }
     return out;
@@ -1308,13 +1441,16 @@ class SyncService extends ChangeNotifier {
   /// returned [savedAtMs] is the local edit time the peer should compare
   /// against.
   Future<({Uint8List sealed, int savedAtMs})?> buildPeerSnapshot(
-      String collectionId) async {
+    String collectionId,
+  ) async {
     final s = _state;
     if (s == null || s.encryptionKey == null) return null;
     final collection = collections.cast<SyncCollection?>().firstWhere(
-        (c) => c?.id == collectionId,
-        orElse: () => null);
+      (c) => c?.id == collectionId,
+      orElse: () => null,
+    );
     if (collection == null) return null;
+    if (!_planAllows(collection)) return null;
     final st = s.collection(collectionId);
     if (!st.enabled) return null;
 
@@ -1339,31 +1475,40 @@ class SyncService extends ChangeNotifier {
   /// recorded as a LOCAL EDIT so the change fans out to the cloud and to any
   /// other connected peers via the normal change triggers.
   Future<bool> applyPeerSnapshot(
-      String collectionId, Uint8List sealed, int peerSavedAtMs) async {
+    String collectionId,
+    Uint8List sealed,
+    int peerSavedAtMs,
+  ) async {
     final s = _state;
     if (s == null || s.encryptionKey == null) return false;
     final collection = collections.cast<SyncCollection?>().firstWhere(
-        (c) => c?.id == collectionId,
-        orElse: () => null);
+      (c) => c?.id == collectionId,
+      orElse: () => null,
+    );
     if (collection == null) return false;
+    if (!_planAllows(collection)) return false;
     final st = s.collection(collectionId);
     if (!st.enabled) return false;
 
     // Serialize against cloud sync and any other concurrent peer import so
     // two writers can't interleave on the same collection.
-    final run = _syncTail.then((_) =>
-        _applyPeerLocked(collection, st, sealed, peerSavedAtMs));
+    final run = _syncTail.then(
+      (_) => _applyPeerLocked(collection, st, sealed, peerSavedAtMs),
+    );
     _syncTail = run.catchError((_) => false);
     return run;
   }
 
-  Future<bool> _applyPeerLocked(SyncCollection collection,
-      CollectionSyncState st, Uint8List sealed, int peerSavedAtMs) async {
-    // A peer can't push new data past the cap either.
-    if (StorageGuard.instance.isOverLimit) return false;
+  Future<bool> _applyPeerLocked(
+    SyncCollection collection,
+    CollectionSyncState st,
+    Uint8List sealed,
+    int peerSavedAtMs,
+  ) async {
     final s = _state!;
-    final payload =
-        await SyncCrypto.openPayload(sealed, s.encryptionKey!);
+    final payload = await _withRecoveryKeys(
+      (key) => SyncCrypto.openPayload(sealed, key),
+    );
     if (payload is! Map<String, dynamic> ||
         payload['collection'] != collection.id) {
       // Same collection-binding check as cloud sync: a malicious peer can't
@@ -1372,11 +1517,10 @@ class SyncService extends ChangeNotifier {
     }
 
     // Newest-edit-wins, mirroring `_syncCollection`.
-    final localAt =
-        st.localChangedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+    final localAt = st.localChangedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
     final peerAt = DateTime.fromMillisecondsSinceEpoch(peerSavedAtMs);
     if (!peerAt.isAfter(localAt) && st.lastSyncedHash != null) {
-      // We are at least as new as the peer — decline to avoid clobbering a
+      // We are at least as new as the peer â€” decline to avoid clobbering a
       // local edit that hasn't propagated yet.
       return false;
     }
@@ -1393,8 +1537,9 @@ class SyncService extends ChangeNotifier {
     // Record as a local edit so it fans out to the cloud and other peers.
     st.localChangedAt = DateTime.now();
     final reExported = await collection.export();
-    st.lastSyncedHash =
-        sha256.convert(utf8.encode(jsonEncode(reExported))).toString();
+    st.lastSyncedHash = sha256
+        .convert(utf8.encode(jsonEncode(reExported)))
+        .toString();
     await s.save();
     notifyListeners();
     return true;
@@ -1402,11 +1547,10 @@ class SyncService extends ChangeNotifier {
 }
 
 /// Lowercase-hex encoder (avoids pulling in a hex package).
-String _hexEncode(List<int> bytes) => bytes
-    .map((b) => b.toRadixString(16).padLeft(2, '0'))
-    .join();
+String _hexEncode(List<int> bytes) =>
+    bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
 
-/// Parsed GET /api/v1/ai/status response — see [SyncService.aiStatus].
+/// Parsed GET /api/v1/ai/status response â€” see [SyncService.aiStatus].
 class AiServerStatus {
   const AiServerStatus({
     required this.mistralConfigured,
@@ -1433,12 +1577,12 @@ class AiServerStatus {
   final int supportUsed;
   final int supportLimit;
 
-  int get supportRemaining => (supportLimit - supportUsed).clamp(0, supportLimit);
+  int get supportRemaining =>
+      (supportLimit - supportUsed).clamp(0, supportLimit);
 
   factory AiServerStatus.fromJson(Map<String, dynamic> json) {
     final usage = json['usage'] as Map<String, dynamic>? ?? const {};
-    int intOf(Object? v, [int fallback = 0]) =>
-        v is num ? v.toInt() : fallback;
+    int intOf(Object? v, [int fallback = 0]) => v is num ? v.toInt() : fallback;
     return AiServerStatus(
       mistralConfigured: json['mistralConfigured'] == true,
       googleConfigured: json['googleConfigured'] == true,
@@ -1454,8 +1598,8 @@ class AiServerStatus {
 /// [SyncService.completeOAuthSignIn].
 ///
 /// It owns the [SyncApi] the flow runs over. That client is adopted by
-/// [SyncService] when the sign-in succeeds; on any other ending — cancelled,
-/// timed out, the user backed out of the passphrase step — the caller must
+/// [SyncService] when the sign-in succeeds; on any other ending â€” cancelled,
+/// timed out, the user backed out of the passphrase step â€” the caller must
 /// [close] it so the socket does not outlive the attempt.
 class OAuthSignInHandle {
   OAuthSignInHandle._({

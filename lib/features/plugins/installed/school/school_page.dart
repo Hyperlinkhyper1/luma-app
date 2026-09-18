@@ -8,11 +8,12 @@ import 'ui/flashcards_tab.dart';
 import 'ui/formulas_tab.dart';
 import 'ui/gpa_tab.dart';
 import 'ui/study_timer_tab.dart';
+import 'ui/tests_tab.dart';
 import 'ui/timetable_tab.dart';
 
 /// Root of the School plugin: a segmented sub-navigation over the dashboard,
-/// timetable, assignments, flashcards, formulas, study timer, GPA, citations
-/// and mind map sections.
+/// timetable, assignments, flashcards, practice tests, formulas, study timer,
+/// GPA and citations sections.
 class SchoolPage extends StatefulWidget {
   const SchoolPage({super.key});
 
@@ -28,6 +29,7 @@ class _SchoolPageState extends State<SchoolPage> {
     'Timetable',
     'Assignments',
     'Flashcards',
+    'Toetsen',
     'Formulas',
     'Study timer',
     'GPA',
@@ -56,6 +58,7 @@ class _SchoolPageState extends State<SchoolPage> {
               TimetableTab(),
               AssignmentsTab(),
               FlashcardsTab(),
+              TestsTab(),
               FormulasTab(),
               StudyTimerTab(),
               GpaTab(),

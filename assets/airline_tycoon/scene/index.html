@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><title>Luma Airport</title><link rel="stylesheet" href="hud.css"></head><body>
+<div id="loading">Preparing your airport…</div>
+<div id="preview">SCENE PREVIEW · NO SAVE</div>
+<div id="hud">
+  <header id="topstack">
+    <div id="topbar" class="card">
+      <div class="identity"><strong id="airline">Airport</strong><span id="money" class="money">€0</span><span id="clock" class="muted">DAY 1 · 00:00</span></div>
+      <div class="controls">
+        <button id="pause" class="icon primary" type="button" title="Resume airport (Space)" aria-label="Resume airport"></button>
+        <div class="segmented" role="group" aria-label="Simulation speed">
+          <button type="button" data-speed="1" title="Normal speed (1)">1×</button><button type="button" data-speed="4" title="Fast (2)">4×</button><button type="button" data-speed="12" title="Fastest (3)">12×</button>
+        </div>
+      </div>
+    </div>
+    <div id="viewbar" class="card toolbar" role="toolbar" aria-label="Camera">
+      <button type="button" class="icon" data-view="fit" title="Fit airport" aria-label="Fit airport"></button>
+      <button type="button" class="icon" data-view="reset" title="Reset camera" aria-label="Reset camera"></button>
+      <button type="button" class="icon" data-toggle="cutaway" title="Terminal cutaway (C)" aria-label="Terminal cutaway"></button>
+      <button type="button" class="icon" data-toggle="grid" title="Construction grid (G)" aria-label="Construction grid"></button>
+      <button type="button" class="icon" data-toggle="quality" title="Quality" aria-label="Quality"></button>
+      <button type="button" class="icon" data-toggle="stats" title="Performance stats (F3)" aria-label="Performance stats"></button>
+    </div>
+  </header>
+  <aside id="panel" class="card hidden" aria-live="polite">
+    <div class="panel-head"><h2 id="panel-title"></h2><button id="panel-close" type="button" class="icon" title="Close panel (Esc)" aria-label="Close panel"></button></div>
+    <div id="panel-body"></div>
+  </aside>
+  <div id="stack">
+    <div id="notices"></div>
+    <div id="onboard" class="card hidden">
+      <h3>Your first departure</h3>
+      <ol><li>Sign a regional airline or open your own route.</li><li>Check the flight schedule.</li><li>Resume your airport and follow the turnaround.</li></ol>
+      <button type="button" class="filled" data-open="Contracts">Meet the airlines</button>
+    </div>
+    <div id="placement" class="card hidden">
+      <div class="placement-text"><strong id="placement-title"></strong><span id="status" role="status"></span></div>
+      <button id="rotate" type="button" class="icon" title="Rotate 90° (R)" aria-label="Rotate 90°"></button>
+      <button id="cancel-tool" type="button" class="icon" title="Cancel construction (Esc)" aria-label="Cancel construction"></button>
+    </div>
+  </div>
+  <nav id="dock" class="card" aria-label="Airport panels"></nav>
+  <div id="stats" class="hidden"></div>
+  <div id="compass" title="North">N ↑</div>
+</div>
+<div id="error" role="alert"></div>
+<script src="vendor/three-0.160.1.min.js"></script><script src="scene_logic.js"></script><script src="models.js"></script><script src="landside.js"></script><script src="preview.js"></script><script src="hud.js"></script><script src="scene.js"></script>
+</body></html>

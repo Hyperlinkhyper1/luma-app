@@ -385,6 +385,12 @@ abstract class L {
   /// **'Look for updates'**
   String get settingsCheckUpdates;
 
+  /// No description provided for @settingsOpenSourceLicenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Open source licences'**
+  String get settingsOpenSourceLicenses;
+
   /// No description provided for @settingsSystem.
   ///
   /// In en, this message translates to:

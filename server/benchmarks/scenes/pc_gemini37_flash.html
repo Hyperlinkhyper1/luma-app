@@ -1,0 +1,2408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AERO CYBER-Z 3D Desktop PC Builder & Benchmark</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  
+  <!-- Three.js & Controls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  
+  <!-- GSAP for smooth animations -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  
+  <!-- Canvas Confetti for Benchmark Celebration -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Google Fonts: Orbitron & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Orbitron:wght@400;600;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #05070c;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: #e2e8f0;
+    }
+    .font-orbitron {
+      font-family: 'Orbitron', monospace;
+    }
+    .font-tech {
+      font-family: 'Chakra Petch', sans-serif;
+    }
+
+    /* Glassmorphism custom styling */
+    .cyber-glass {
+      background: rgba(11, 15, 25, 0.82);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 240, 255, 0.05);
+    }
+    .cyber-glass-dark {
+      background: rgba(7, 10, 18, 0.92);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.75);
+    }
+    .cyber-glass-glow {
+      box-shadow: 0 0 25px rgba(0, 240, 255, 0.25), inset 0 0 15px rgba(0, 240, 255, 0.1);
+    }
+
+    /* Range Sliders */
+    input[type=range] {
+      -webkit-appearance: none;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 4px;
+      height: 6px;
+      outline: none;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #00f0ff;
+      cursor: pointer;
+      box-shadow: 0 0 10px #00f0ff;
+      border: 2px solid #ffffff;
+      transition: transform 0.15s ease;
+    }
+    input[type=range]::-webkit-slider-thumb:hover {
+      transform: scale(1.25);
+    }
+
+    /* Holographic Pin Tooltip in 3D Space */
+    .component-tag {
+      position: absolute;
+      pointer-events: none;
+      transform: translate(-50%, -100%);
+      transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      opacity: 0;
+      z-index: 40;
+    }
+    .component-tag.active {
+      opacity: 1;
+      transform: translate(-50%, -115%);
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.3);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(0, 240, 255, 0.4);
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="relative w-full h-full select-none overflow-hidden bg-black text-slate-100">
+
+  <!-- 3D WebGL Canvas Container -->
+  <div id="webgl-container" class="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing z-0"></div>
+
+  <!-- Holographic Component Pin Anchor in 3D Space -->
+  <div id="component-3d-tag" class="component-tag flex flex-col items-center">
+    <div class="px-3.5 py-2 rounded-xl cyber-glass-dark border border-cyan-400/50 text-xs font-tech tracking-wider text-cyan-300 shadow-[0_0_20px_rgba(0,240,255,0.4)] flex items-center gap-2.5">
+      <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+      <div class="flex flex-col">
+        <span id="tag-name" class="font-bold text-white tracking-wide">COMPONENT NAME</span>
+        <span id="tag-spec" class="text-[10px] text-cyan-400/90 font-medium">SPECIFICATION DETAILS</span>
+      </div>
+    </div>
+    <div class="w-0.5 h-6 bg-gradient-to-b from-cyan-400 to-transparent"></div>
+    <div class="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_10px_#00f0ff] animate-pulse"></div>
+  </div>
+
+  <!-- TOP HEADER / BRANDING & STATUS BAR -->
+  <header class="absolute top-4 left-4 right-4 z-20 flex items-center justify-between pointer-events-none">
+    <!-- Left: Brand & Machine Spec -->
+    <div class="flex items-center gap-3.5 pointer-events-auto bg-slate-950/85 backdrop-blur-md border border-slate-800/80 px-4 py-2.5 rounded-2xl shadow-2xl">
+      <div class="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 shadow-[0_0_20px_rgba(0,240,255,0.4)]">
+        <i data-lucide="cpu" class="w-5 h-5 text-black"></i>
+        <span class="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-slate-950" id="header-power-dot"></span>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="font-orbitron font-extrabold text-sm tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-300 to-indigo-300">AERO CYBER-Z</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800/60 font-tech font-bold">RTX 5090 APEX</span>
+        </div>
+        <div class="text-[11px] text-slate-400 font-tech flex items-center gap-2">
+          <span>MONOLITH X-PRO</span>
+          <span class="text-slate-600">•</span>
+          <span id="header-status-text" class="text-emerald-400 font-semibold">ONLINE [NORMAL]</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center: Quick Camera View Presets -->
+    <div class="hidden lg:flex items-center gap-1.5 pointer-events-auto bg-slate-950/85 backdrop-blur-md border border-slate-800/80 p-1.5 rounded-2xl shadow-2xl font-tech text-xs">
+      <button onclick="setCameraView('iso')" class="cam-btn px-3 py-1.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-cyan-400 transition-all flex items-center gap-1.5 active:scale-95">
+        <i data-lucide="box" class="w-3.5 h-3.5"></i> Overview
+      </button>
+      <button onclick="setCameraView('gpu')" class="cam-btn px-3 py-1.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-cyan-400 transition-all flex items-center gap-1.5 active:scale-95">
+        <i data-lucide="layers" class="w-3.5 h-3.5"></i> GPU Apex
+      </button>
+      <button onclick="setCameraView('aio')" class="cam-btn px-3 py-1.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-cyan-400 transition-all flex items-center gap-1.5 active:scale-95">
+        <i data-lucide="gauge" class="w-3.5 h-3.5"></i> AIO Pump LCD
+      </button>
+      <button onclick="setCameraView('ram')" class="cam-btn px-3 py-1.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-cyan-400 transition-all flex items-center gap-1.5 active:scale-95">
+        <i data-lucide="microchip" class="w-3.5 h-3.5"></i> Motherboard & RAM
+      </button>
+      <button onclick="setCameraView('top')" class="cam-btn px-3 py-1.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-cyan-400 transition-all flex items-center gap-1.5 active:scale-95">
+        <i data-lucide="disc" class="w-3.5 h-3.5"></i> Top 360 Rad
+      </button>
+      <div class="w-px h-5 bg-slate-800 mx-1"></div>
+      <button id="cinematic-tour-btn" onclick="toggleCinematicTour()" class="px-3 py-1.5 rounded-xl bg-cyan-950/60 hover:bg-cyan-900/80 text-cyan-300 border border-cyan-700/50 transition-all flex items-center gap-1.5">
+        <i data-lucide="video" class="w-3.5 h-3.5"></i> <span id="cinematic-text">Cinematic Tour</span>
+      </button>
+    </div>
+
+    <!-- Right: Quick Tools (Glass Toggle, Exploded View, Sound FX, Fullscreen) -->
+    <div class="flex items-center gap-2 pointer-events-auto">
+      <!-- Glass Panels Toggle -->
+      <button id="glass-toggle-btn" onclick="toggleGlassPanels()" title="Remove/Open Tempered Glass Panels" class="bg-slate-950/85 hover:bg-slate-800 backdrop-blur-md border border-slate-800 px-3 py-2 rounded-2xl text-xs font-tech text-slate-300 hover:text-cyan-400 transition-all flex items-center gap-1.5 shadow-xl">
+        <i data-lucide="panel-left-close" id="glass-icon" class="w-4 h-4 text-cyan-400"></i>
+        <span class="hidden sm:inline" id="glass-text">Glass: Closed</span>
+      </button>
+
+      <!-- Exploded / Disassembly View -->
+      <button id="exploded-btn" onclick="toggleExplodedView()" title="Modular Exploded / Assembly View" class="bg-slate-950/85 hover:bg-slate-800 backdrop-blur-md border border-slate-800 px-3 py-2 rounded-2xl text-xs font-tech text-slate-300 hover:text-cyan-400 transition-all flex items-center gap-1.5 shadow-xl">
+        <i data-lucide="boxes" class="w-4 h-4 text-cyan-400"></i>
+        <span class="hidden sm:inline" id="exploded-text">Exploded View</span>
+      </button>
+
+      <!-- Sound Toggle -->
+      <button id="audio-toggle-btn" onclick="toggleAudio()" title="Sound Effects & Fan Noise (Web Audio Synthesizer)" class="w-9 h-9 flex items-center justify-center bg-slate-950/85 hover:bg-slate-800 backdrop-blur-md border border-slate-800 rounded-2xl text-slate-300 hover:text-cyan-400 transition-all shadow-xl">
+        <i data-lucide="volume-2" id="audio-icon" class="w-4 h-4 text-cyan-400"></i>
+      </button>
+
+      <!-- Reset Camera -->
+      <button onclick="resetCamera()" title="Reset Camera" class="w-9 h-9 flex items-center justify-center bg-slate-950/85 hover:bg-slate-800 backdrop-blur-md border border-slate-800 rounded-2xl text-slate-300 hover:text-cyan-400 transition-all shadow-xl">
+        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- LEFT FLOATING TOOLBAR: CREATIVE PC SIMULATION & TELEMETRY -->
+  <div class="absolute left-4 top-20 bottom-24 z-20 flex flex-col justify-between pointer-events-none w-72 max-w-[calc(100vw-32px)]">
+    <!-- Top Left: Live Real-Time Telemetry & Hardware Stats -->
+    <div class="pointer-events-auto cyber-glass rounded-2xl p-3.5 border border-slate-800/80 shadow-2xl">
+      <div class="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-800">
+        <div class="flex items-center gap-2">
+          <i data-lucide="activity" class="w-4 h-4 text-cyan-400"></i>
+          <span class="font-orbitron text-xs font-bold tracking-wider text-slate-200">LIVE TELEMETRY</span>
+        </div>
+        <span class="text-[10px] font-tech text-emerald-400 bg-emerald-950/60 border border-emerald-800/40 px-2 py-0.5 rounded-full flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> 1000Hz BUS
+        </span>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2 text-xs font-tech mb-2.5">
+        <!-- CPU Stats -->
+        <div class="bg-slate-900/90 rounded-xl p-2 border border-slate-800/80">
+          <div class="flex justify-between text-[11px] text-slate-400 mb-1">
+            <span>CPU CORE</span>
+            <span id="stat-cpu-temp" class="text-cyan-300 font-bold">38°C</span>
+          </div>
+          <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mb-1.5">
+            <div id="stat-cpu-bar" class="bg-gradient-to-r from-cyan-400 to-blue-500 h-full w-[38%] transition-all duration-300"></div>
+          </div>
+          <div class="flex justify-between text-[10px] text-slate-500">
+            <span id="stat-cpu-clock">5.70 GHz</span>
+            <span id="stat-cpu-load">14% Load</span>
+          </div>
+        </div>
+
+        <!-- GPU Stats -->
+        <div class="bg-slate-900/90 rounded-xl p-2 border border-slate-800/80">
+          <div class="flex justify-between text-[11px] text-slate-400 mb-1">
+            <span>GPU DIE</span>
+            <span id="stat-gpu-temp" class="text-cyan-300 font-bold">34°C</span>
+          </div>
+          <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mb-1.5">
+            <div id="stat-gpu-bar" class="bg-gradient-to-r from-cyan-400 to-indigo-500 h-full w-[34%] transition-all duration-300"></div>
+          </div>
+          <div class="flex justify-between text-[10px] text-slate-500">
+            <span id="stat-gpu-vram">32GB G7</span>
+            <span id="stat-gpu-load">8% Load</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fan RPM & Power Consumption -->
+      <div class="flex items-center justify-between text-[11px] font-tech bg-slate-900/60 px-2.5 py-1.5 rounded-xl border border-slate-800/50 mb-2.5">
+        <div class="flex items-center gap-1.5 text-slate-400">
+          <i data-lucide="fan" class="w-3.5 h-3.5 text-cyan-400"></i>
+          <span>Fans (<span id="stat-fan-rpm">1250</span> RPM)</span>
+        </div>
+        <div class="flex items-center gap-1.5 text-slate-400">
+          <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400"></i>
+          <span>Total: <span id="stat-power-watts" class="text-amber-300 font-bold">145W</span></span>
+        </div>
+      </div>
+
+      <!-- Stress Test / 3D Benchmark Action -->
+      <button id="benchmark-btn" onclick="toggleBenchmark()" class="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-orbitron font-bold text-xs tracking-wider shadow-[0_0_20px_rgba(0,240,255,0.3)] transition-all flex items-center justify-center gap-2 active:scale-98 cursor-pointer">
+        <i data-lucide="flame" class="w-4 h-4 text-amber-300 animate-bounce"></i>
+        <span id="benchmark-btn-text">RUN 3D BENCHMARK</span>
+      </button>
+    </div>
+
+    <!-- Middle-Bottom Left: Visual Effects & Hardware Toggles -->
+    <div class="pointer-events-auto cyber-glass rounded-2xl p-3 border border-slate-800/80 shadow-2xl space-y-2 font-tech text-xs">
+      <div class="text-[11px] font-orbitron font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-between">
+        <span>HARDWARE MODES</span>
+        <i data-lucide="sliders" class="w-3.5 h-3.5 text-cyan-400"></i>
+      </div>
+
+      <!-- Airflow Particle Simulation Toggle -->
+      <button onclick="toggleAirflow()" id="airflow-btn" class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 transition-all cursor-pointer">
+        <span class="flex items-center gap-2">
+          <i data-lucide="wind" class="w-3.5 h-3.5 text-cyan-400"></i>
+          <span>Airflow Streamlines</span>
+        </span>
+        <span id="airflow-status-badge" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">OFF</span>
+      </button>
+
+      <!-- Thermal Heatmap Mode -->
+      <button onclick="toggleThermalMode()" id="thermal-btn" class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 transition-all cursor-pointer">
+        <span class="flex items-center gap-2">
+          <i data-lucide="thermometer-snowflake" class="w-3.5 h-3.5 text-orange-400"></i>
+          <span>Thermal X-Ray Mode</span>
+        </span>
+        <span id="thermal-status-badge" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">OFF</span>
+      </button>
+
+      <!-- Vertical GPU Riser Toggle -->
+      <button onclick="toggleGpuOrientation()" id="gpu-orient-btn" class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 transition-all cursor-pointer">
+        <span class="flex items-center gap-2">
+          <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-purple-400"></i>
+          <span>GPU Riser Mount</span>
+        </span>
+        <span id="gpu-orient-badge" class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800/40">HORIZONTAL</span>
+      </button>
+
+      <!-- AIO LCD Screen Display Cycle -->
+      <button onclick="cycleAioDisplay()" class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 transition-all cursor-pointer">
+        <span class="flex items-center gap-2">
+          <i data-lucide="monitor" class="w-3.5 h-3.5 text-emerald-400"></i>
+          <span>AIO Screen Theme</span>
+        </span>
+        <span id="aio-theme-badge" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">TELEMETRY</span>
+      </button>
+
+      <!-- Fan Speed Profile Selector -->
+      <div class="pt-1">
+        <div class="flex justify-between text-[11px] text-slate-400 mb-1">
+          <span>Fan Curve Profile:</span>
+          <span id="fan-profile-name" class="text-cyan-400 font-bold">BALANCED</span>
+        </div>
+        <div class="grid grid-cols-3 gap-1">
+          <button onclick="setFanProfile('quiet')" class="fan-prof-btn px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-[10px] text-slate-400 hover:text-white cursor-pointer">Quiet</button>
+          <button onclick="setFanProfile('balanced')" class="fan-prof-btn px-2 py-1 rounded-lg bg-cyan-950 border border-cyan-600 text-[10px] text-cyan-300 font-bold cursor-pointer">Balanced</button>
+          <button onclick="setFanProfile('turbo')" class="fan-prof-btn px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-[10px] text-slate-400 hover:text-white cursor-pointer">Turbo</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM RIGHT: COMPACT MASTER PC-CONTROL HUD (PRIMARY REQUIREMENT) -->
+  <div class="absolute bottom-4 right-4 z-30 pointer-events-auto flex flex-col items-end gap-3 max-w-[350px] w-full">
+    
+    <!-- Expandable RGB & Hardware Studio Drawer -->
+    <div id="rgb-studio-drawer" class="w-full cyber-glass-dark rounded-3xl p-4 border border-slate-700/80 shadow-[0_25px_60px_rgba(0,0,0,0.85)] transition-all duration-300 transform scale-100 origin-bottom-right">
+      
+      <!-- Drawer Header -->
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-3 h-3 rounded-full bg-gradient-to-tr from-pink-500 via-cyan-400 to-amber-300 animate-spin" style="animation-duration: 4s;"></div>
+          <span class="font-orbitron font-bold text-xs tracking-wider text-slate-100">RGB LIGHTING STUDIO</span>
+        </div>
+        <span class="text-[10px] font-tech text-cyan-400 border border-cyan-800/60 bg-cyan-950/60 px-2 py-0.5 rounded-md" id="current-rgb-hex-display">#00F0FF</span>
+      </div>
+
+      <!-- Color Selection: Custom Color Picker + Quick Preset Swatches -->
+      <div class="space-y-2.5 mb-3">
+        <div class="flex items-center justify-between">
+          <label class="text-xs font-tech text-slate-300 flex items-center gap-1.5">
+            <i data-lucide="palette" class="w-3.5 h-3.5 text-cyan-400"></i>
+            <span>Master Color Palette</span>
+          </label>
+          <div class="flex items-center gap-2">
+            <!-- Native HTML5 Color Picker wrapped in custom ring -->
+            <div class="relative w-7 h-7 rounded-full overflow-hidden border-2 border-white/80 shadow-[0_0_10px_rgba(0,240,255,0.6)] cursor-pointer">
+              <input type="color" id="rgb-native-picker" value="#00f0ff" oninput="onCustomColorChange(this.value)" class="absolute -inset-4 w-16 h-16 cursor-pointer border-0 bg-transparent p-0">
+            </div>
+          </div>
+        </div>
+
+        <!-- Preset Palettes Swatches -->
+        <div class="grid grid-cols-7 gap-1.5 pt-1">
+          <button onclick="setRgbPreset('#00f0ff', 'Cyber Cyan')" title="Cyber Cyan" class="w-full h-6 rounded-lg bg-[#00f0ff] shadow-[0_0_8px_#00f0ff] border border-white/40 hover:scale-110 transition-transform cursor-pointer"></button>
+          <button onclick="setRgbPreset('#ff007f', 'Neon Magenta')" title="Neon Magenta" class="w-full h-6 rounded-lg bg-[#ff007f] shadow-[0_0_8px_#ff007f] border border-white/40 hover:scale-110 transition-transform cursor-pointer"></button>
+          <button onclick="setRgbPreset('#9d00ff', 'Deep Violet')" title="Deep Violet" class="w-full h-6 rounded-lg bg-[#9d00ff] shadow-[0_0_8px_#9d00ff] border border-white/40 hover:scale-110 transition-transform cursor-pointer"></button>
+          <button onclick="setRgbPreset('#00ff66', 'Matrix Green')" title="Matrix Green" class="w-full h-6 rounded-lg bg-[#00ff66] shadow-[0_0_8px_#00ff66] border border-white/40 hover:scale-110 transition-transform cursor-pointer"></button>
+          <button onclick="setRgbPreset('#ff4d00', 'Blood Orange')" title="Blood Orange" class="w-full h-6 rounded-lg bg-[#ff4d00] shadow-[0_0_8px_#ff4d00] border border-white/40 hover:scale-110 transition-transform cursor-pointer"></button>
+          <button onclick="setRgbPreset('#ffbf00', 'Solar Amber')" title="Solar Amber" class="w-full h-6 rounded-lg bg-[#ffbf00] shadow-[0_0_8px_#ffbf00] border border-white/40 hover:scale-110 transition-transform cursor-pointer"></button>
+          <button onclick="setRgbPreset('#ffffff', 'Pure White')" title="Pure White" class="w-full h-6 rounded-lg bg-[#ffffff] shadow-[0_0_8px_#ffffff] border border-white/40 hover:scale-110 transition-transform cursor-pointer"></button>
+        </div>
+      </div>
+
+      <!-- Lighting Animation Modes -->
+      <div class="space-y-1.5 mb-3">
+        <label class="text-xs font-tech text-slate-400 flex items-center justify-between">
+          <span>Animation Effect</span>
+          <span id="active-mode-label" class="text-cyan-400 font-bold">Rainbow Wave</span>
+        </label>
+        <div class="grid grid-cols-3 gap-1.5 font-tech text-[11px]">
+          <button onclick="setRgbMode('rainbow')" class="rgb-mode-btn px-2 py-1.5 rounded-xl bg-cyan-950 border border-cyan-500 text-cyan-300 font-semibold cursor-pointer" data-mode="rainbow">Rainbow</button>
+          <button onclick="setRgbMode('static')" class="rgb-mode-btn px-2 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 cursor-pointer" data-mode="static">Static</button>
+          <button onclick="setRgbMode('breathing')" class="rgb-mode-btn px-2 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 cursor-pointer" data-mode="breathing">Breathing</button>
+          <button onclick="setRgbMode('audiovisual')" class="rgb-mode-btn px-2 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 cursor-pointer" data-mode="audiovisual">Music EQ</button>
+          <button onclick="setRgbMode('thermal')" class="rgb-mode-btn px-2 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 cursor-pointer" data-mode="thermal">Thermal</button>
+          <button onclick="setRgbMode('glitch')" class="rgb-mode-btn px-2 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 cursor-pointer" data-mode="glitch">Glitch</button>
+        </div>
+      </div>
+
+      <!-- Brightness & Animation Speed Sliders -->
+      <div class="space-y-2 pt-1 border-t border-slate-800">
+        <div class="flex items-center justify-between text-xs font-tech text-slate-400">
+          <span class="flex items-center gap-1"><i data-lucide="sun" class="w-3 h-3 text-cyan-400"></i> Master Brightness</span>
+          <span id="val-brightness">100%</span>
+        </div>
+        <input type="range" id="slider-brightness" min="0" max="100" value="100" oninput="onBrightnessChange(this.value)" class="w-full cursor-pointer">
+
+        <div class="flex items-center justify-between text-xs font-tech text-slate-400 pt-1">
+          <span class="flex items-center gap-1"><i data-lucide="timer" class="w-3 h-3 text-cyan-400"></i> Cycle Speed</span>
+          <span id="val-speed">1.0x</span>
+        </div>
+        <input type="range" id="slider-speed" min="10" max="300" value="100" oninput="onSpeedChange(this.value)" class="w-full cursor-pointer">
+      </div>
+    </div>
+
+    <!-- MAIN CONTROL BAR & POWER BUTTON (Always visible in bottom-right) -->
+    <div class="w-full cyber-glass-dark rounded-3xl p-3 border border-slate-700/80 shadow-2xl flex items-center justify-between gap-3">
+      
+      <!-- System Power Status Summary -->
+      <div class="flex flex-col pl-2">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981]" id="hud-power-indicator"></span>
+          <span class="font-orbitron font-bold text-xs tracking-wider" id="hud-power-state">SYSTEM READY</span>
+        </div>
+        <span class="text-[10px] font-tech text-slate-400" id="hud-power-subtitle">AERO PRO PLATFORM • ON</span>
+      </div>
+
+      <!-- Toggle RGB Controls Button -->
+      <button onclick="toggleRgbDrawer()" id="toggle-drawer-btn" class="p-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-cyan-400 transition-all cursor-pointer" title="Toggle RGB Lighting Drawer">
+        <i data-lucide="sliders-horizontal" class="w-4 h-4 text-cyan-400"></i>
+      </button>
+
+      <!-- PRIMARY BIG POWER BUTTON (CORE REQUIREMENT) -->
+      <button id="master-power-btn" onclick="togglePower()" class="relative group flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 via-teal-600 to-cyan-600 hover:from-emerald-400 hover:to-cyan-400 shadow-[0_0_25px_rgba(16,185,129,0.5)] border-2 border-white/60 transition-all duration-300 active:scale-95 cursor-pointer">
+        <!-- Button inner glow ring -->
+        <div class="absolute inset-1 rounded-xl bg-slate-950/40 backdrop-blur-xs flex items-center justify-center">
+          <i data-lucide="power" id="power-button-icon" class="w-6 h-6 text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.9)] transition-transform group-hover:scale-110"></i>
+        </div>
+      </button>
+    </div>
+  </div>
+
+  <!-- BENCHMARK RESULTS MODAL / CELEBRATION POPUP -->
+  <div id="benchmark-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-300">
+    <div class="cyber-glass-dark border border-cyan-500/50 rounded-3xl p-6 max-w-md w-full shadow-[0_0_50px_rgba(0,240,255,0.3)] transform scale-95 transition-transform duration-300" id="benchmark-modal-card">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+        <div class="flex items-center gap-2">
+          <i data-lucide="award" class="w-6 h-6 text-amber-400"></i>
+          <span class="font-orbitron font-extrabold text-lg text-slate-100">CYBERSCORE 3D</span>
+        </div>
+        <span class="text-xs font-tech px-2 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-700/60 font-bold">LEGENDARY TIER</span>
+      </div>
+
+      <div class="text-center py-4 bg-gradient-to-b from-slate-900/80 to-slate-950/90 rounded-2xl border border-slate-800 mb-4 relative overflow-hidden">
+        <div class="text-xs font-tech text-slate-400 mb-1">FINAL GRAPHICS & COMPUTE SCORE</div>
+        <div class="font-orbitron font-black text-4xl text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-amber-300 to-pink-500 tracking-wider mb-1" id="benchmark-final-score">38,940</div>
+        <div class="text-xs font-tech text-emerald-400 flex items-center justify-center gap-1">
+          <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Faster than 99.8% of all tested systems
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3 text-xs font-tech mb-5">
+        <div class="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
+          <div class="text-slate-400">Peak GPU Temp</div>
+          <div class="text-base font-bold text-amber-400">71°C</div>
+        </div>
+        <div class="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
+          <div class="text-slate-400">Avg Render FPS</div>
+          <div class="text-base font-bold text-cyan-300">248.5 FPS</div>
+        </div>
+        <div class="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
+          <div class="text-slate-400">Max System Draw</div>
+          <div class="text-base font-bold text-pink-400">580 Watts</div>
+        </div>
+        <div class="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
+          <div class="text-slate-400">Turbine Fan RPM</div>
+          <div class="text-base font-bold text-indigo-300">2,850 RPM</div>
+        </div>
+      </div>
+
+      <button onclick="closeBenchmarkModal()" class="w-full py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 font-orbitron font-bold text-sm tracking-wider text-black shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all cursor-pointer">
+        CLAIM BENCHMARK REPORT
+      </button>
+    </div>
+  </div>
+
+  <!-- STARTUP BIOS / POST BOOT OVERLAY -->
+  <div id="bios-boot-banner" class="absolute top-20 left-1/2 -translate-x-1/2 z-40 pointer-events-none opacity-0 transition-all duration-300 flex items-center gap-3 px-5 py-2.5 rounded-2xl cyber-glass-dark border border-cyan-500/50 shadow-[0_0_30px_rgba(0,240,255,0.3)]">
+    <div class="w-3 h-3 rounded-full bg-cyan-400 animate-ping"></div>
+    <span class="font-orbitron text-xs font-bold tracking-wider text-cyan-300" id="bios-boot-text">POST SEQUENCE: CHECKING HARDWARE...</span>
+  </div>
+
+  <!-- JAVASCRIPT: 3D ENGINE, PROCEDURAL HARDWARE, AUDIO SYNTHESIS & HUD LOGIC -->
+  <script>
+    // ==========================================
+    // GLOBAL STATE & VARIABLES
+    // ==========================================
+    const State = {
+      isPoweredOn: true,
+      isBooting: false,
+      isExploded: false,
+      isGlassOpen: false,
+      isGpuVertical: false,
+      isAirflowActive: false,
+      isThermalMode: false,
+      isCinematicTour: false,
+      isBenchmarking: false,
+      audioEnabled: true,
+      
+      // Lighting
+      rgbColor: new THREE.Color('#00f0ff'),
+      rgbHex: '#00f0ff',
+      rgbMode: 'rainbow', // 'rainbow', 'static', 'breathing', 'audiovisual', 'thermal', 'glitch'
+      brightness: 1.0,
+      animationSpeed: 1.0,
+
+      // Fan state
+      fanSpeedRpm: 1250,
+      targetFanRpm: 1250,
+      fanProfile: 'balanced', // 'quiet' (750), 'balanced' (1250), 'turbo' (2800)
+      
+      // LCD Screen mode
+      aioScreenMode: 0, // 0: Telemetry, 1: Hologram Cube, 2: Cyber Eye, 3: Audio Spectrum
+
+      // Telemetry Simulation
+      cpuTemp: 38,
+      gpuTemp: 34,
+      powerWatts: 145,
+      cpuLoad: 14,
+      gpuLoad: 8,
+      cpuClock: 5.7,
+      postCode: '38C'
+    };
+
+    let scene, camera, renderer, controls;
+    let clock = new THREE.Clock();
+
+    // Component tracking arrays for animation & lighting
+    const animatedFans = [];
+    const rgbMaterials = [];
+    const internalLights = [];
+    const explodedParts = [];
+    const interactiveObjects = [];
+    let aioCanvas, aioContext, aioTexture;
+    let gpuCanvas, gpuContext, gpuTexture;
+    let postCodeCanvas, postCodeContext, postCodeTexture;
+    let gpuGroup, glassSideGroup, glassFrontGroup, mbGroup, coolerGroup, ramGroup, distroPlateGroup;
+    let postLeds = [];
+    let airflowParticleSystem = null;
+
+    // Web Audio Synthesizer variables
+    let audioCtx = null;
+    let fanGainNode = null;
+    let fanNoiseSource = null;
+    let fanFilter = null;
+
+    // ==========================================
+    // INITIALIZATION
+    // ==========================================
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      init3DScene();
+      initMaterialsAndTextures();
+      buildPcGeometry();
+      buildAirflowParticles();
+      setupEventListeners();
+      animate();
+    });
+
+    // ==========================================
+    // THREE.JS SCENE SETUP
+    // ==========================================
+    function init3DScene() {
+      const container = document.getElementById('webgl-container');
+      
+      // Scene
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x05070c);
+      scene.fog = new THREE.FogExp2(0x05070c, 0.038);
+
+      // Camera
+      camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 100);
+      camera.position.set(5.5, 3.2, 6.2);
+
+      // Renderer
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.15;
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      container.appendChild(renderer.domElement);
+
+      // OrbitControls
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.maxPolarAngle = Math.PI / 2 + 0.05; // don't go under desk
+      controls.minDistance = 2.0;
+      controls.maxDistance = 14.0;
+      controls.target.set(0, 1.3, 0);
+
+      // Base Lights
+      setupEnvironmentLights();
+
+      // Window resize handling
+      window.addEventListener('resize', onWindowResize);
+    }
+
+    function setupEnvironmentLights() {
+      // Ambient Light
+      const ambientLight = new THREE.AmbientLight(0x0e1726, 0.85);
+      scene.add(ambientLight);
+
+      // Studio Key Light
+      const keyLight = new THREE.DirectionalLight(0xd9f2ff, 1.25);
+      keyLight.position.set(6, 9, 7);
+      keyLight.castShadow = true;
+      keyLight.shadow.mapSize.width = 2048;
+      keyLight.shadow.mapSize.height = 2048;
+      keyLight.shadow.camera.near = 1;
+      keyLight.shadow.camera.far = 25;
+      keyLight.shadow.bias = -0.0005;
+      const d = 5;
+      keyLight.shadow.camera.left = -d;
+      keyLight.shadow.camera.right = d;
+      keyLight.shadow.camera.top = d;
+      keyLight.shadow.camera.bottom = -d;
+      scene.add(keyLight);
+
+      // Studio Rim / Silhouette Light
+      const rimLight = new THREE.DirectionalLight(0x38557a, 0.75);
+      rimLight.position.set(-6, 4, -6);
+      scene.add(rimLight);
+
+      // Under-desk / Ground bounce light
+      const bounceLight = new THREE.DirectionalLight(0x0f1a2e, 0.45);
+      bounceLight.position.set(0, -5, 2);
+      scene.add(bounceLight);
+
+      // Dynamic Internal RGB Point Lights inside PC
+      const rgbCenterLight = new THREE.PointLight(State.rgbColor, 2.5, 4.5);
+      rgbCenterLight.position.set(0.1, 1.8, 0.1);
+      scene.add(rgbCenterLight);
+      internalLights.push(rgbCenterLight);
+
+      const rgbGpuLight = new THREE.PointLight(State.rgbColor, 2.0, 3.5);
+      rgbGpuLight.position.set(0.0, 0.8, 0.4);
+      scene.add(rgbGpuLight);
+      internalLights.push(rgbGpuLight);
+
+      const rgbTopLight = new THREE.PointLight(State.rgbColor, 1.8, 3.0);
+      rgbTopLight.position.set(0.0, 2.6, 0.0);
+      scene.add(rgbTopLight);
+      internalLights.push(rgbTopLight);
+
+      // Desk Platform
+      buildDeskEnvironment();
+    }
+
+    function buildDeskEnvironment() {
+      // Carbon fiber / dark studio desk surface
+      const deskGeo = new THREE.BoxGeometry(16, 0.4, 12);
+      const deskMat = new THREE.MeshStandardMaterial({
+        color: 0x090b10,
+        roughness: 0.65,
+        metalness: 0.2
+      });
+      const desk = new THREE.Mesh(deskGeo, deskMat);
+      desk.position.set(0, -0.2, 0);
+      desk.receiveShadow = true;
+      scene.add(desk);
+
+      // Desk Ambient Underglow RGB Strip
+      const deskGlowGeo = new THREE.PlaneGeometry(10, 0.08);
+      const deskGlowMat = new THREE.MeshBasicMaterial({ color: State.rgbColor, transparent: true, opacity: 0.35 });
+      const deskGlow = new THREE.Mesh(deskGlowGeo, deskGlowMat);
+      deskGlow.rotation.x = -Math.PI / 2;
+      deskGlow.position.set(0, 0.01, -2.5);
+      scene.add(deskGlow);
+      rgbMaterials.push({ mat: deskGlowMat, baseEmissive: 0.35 });
+
+      // Circular Grid Pedestal
+      const gridHelper = new THREE.GridHelper(14, 28, 0x1e293b, 0x0f172a);
+      gridHelper.position.set(0, 0.005, 0);
+      scene.add(gridHelper);
+    }
+
+    // ==========================================
+    // PROCEDURAL TEXTURES & DYNAMIC LCD CANVASES
+    // ==========================================
+    function initMaterialsAndTextures() {
+      // 1. AIO Cooler LCD Display Dynamic Canvas
+      aioCanvas = document.createElement('canvas');
+      aioCanvas.width = 256;
+      aioCanvas.height = 256;
+      aioContext = aioCanvas.getContext('2d');
+      aioTexture = new THREE.CanvasTexture(aioCanvas);
+
+      // 2. GPU Side OLED Display Dynamic Canvas
+      gpuCanvas = document.createElement('canvas');
+      gpuCanvas.width = 512;
+      gpuCanvas.height = 128;
+      gpuContext = gpuCanvas.getContext('2d');
+      gpuTexture = new THREE.CanvasTexture(gpuCanvas);
+
+      // 3. Motherboard 7-Segment POST Code Canvas
+      postCodeCanvas = document.createElement('canvas');
+      postCodeCanvas.width = 128;
+      postCodeCanvas.height = 64;
+      postCodeContext = postCodeCanvas.getContext('2d');
+      postCodeTexture = new THREE.CanvasTexture(postCodeCanvas);
+    }
+
+    // Update dynamic LCD canvases each frame
+    function updateDynamicScreens(time) {
+      if (!aioContext || !gpuContext || !postCodeContext) return;
+
+      const hex = '#' + State.rgbColor.getHexString();
+
+      // --- AIO PUMP DISPLAY ---
+      aioContext.fillStyle = State.isPoweredOn ? '#04070d' : '#000000';
+      aioContext.fillRect(0, 0, 256, 256);
+
+      if (State.isPoweredOn) {
+        if (State.aioScreenMode === 0) {
+          // Mode 0: Cyber Telemetry Dial & CPU Temp
+          aioContext.strokeStyle = '#1e293b';
+          aioContext.lineWidth = 14;
+          aioContext.beginPath();
+          aioContext.arc(128, 128, 95, 0.75 * Math.PI, 2.25 * Math.PI);
+          aioContext.stroke();
+
+          // Active Gauge Arc
+          const tempRatio = Math.min(Math.max((State.cpuTemp - 20) / 70, 0.05), 1);
+          aioContext.strokeStyle = hex;
+          aioContext.shadowColor = hex;
+          aioContext.shadowBlur = 10;
+          aioContext.beginPath();
+          aioContext.arc(128, 128, 95, 0.75 * Math.PI, (0.75 + 1.5 * tempRatio) * Math.PI);
+          aioContext.stroke();
+          aioContext.shadowBlur = 0;
+
+          // Inner Temp Text
+          aioContext.fillStyle = '#ffffff';
+          aioContext.font = 'bold 52px Orbitron, sans-serif';
+          aioContext.textAlign = 'center';
+          aioContext.textBaseline = 'middle';
+          aioContext.fillText(`${Math.round(State.cpuTemp)}°C`, 128, 115);
+
+          aioContext.fillStyle = hex;
+          aioContext.font = 'bold 16px "Chakra Petch", sans-serif';
+          aioContext.fillText(`CPU • ${State.cpuClock.toFixed(2)} GHz`, 128, 158);
+
+          aioContext.fillStyle = '#64748b';
+          aioContext.font = '12px "Chakra Petch", sans-serif';
+          aioContext.fillText(`HYDRO-VORTEX 360`, 128, 182);
+
+        } else if (State.aioScreenMode === 1) {
+          // Mode 1: 3D Rotating Hologram Wireframe Cube inside LCD
+          aioContext.save();
+          aioContext.translate(128, 128);
+          aioContext.strokeStyle = hex;
+          aioContext.lineWidth = 3;
+          aioContext.shadowColor = hex;
+          aioContext.shadowBlur = 12;
+
+          const size = 50;
+          const rot = time * 1.5;
+          const points = [
+            [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
+            [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]
+          ];
+          const proj = points.map(p => {
+            const x = p[0] * Math.cos(rot) - p[2] * Math.sin(rot);
+            const z = p[0] * Math.sin(rot) + p[2] * Math.cos(rot);
+            const y = p[1] * Math.cos(rot * 0.7) - z * Math.sin(rot * 0.7);
+            return [x * size * 0.9, y * size * 0.9];
+          });
+
+          const edges = [
+            [0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],
+            [0,4],[1,5],[2,6],[3,7]
+          ];
+          edges.forEach(e => {
+            aioContext.beginPath();
+            aioContext.moveTo(proj[e[0]][0], proj[e[0]][1]);
+            aioContext.lineTo(proj[e[1]][0], proj[e[1]][1]);
+            aioContext.stroke();
+          });
+          aioContext.restore();
+
+          aioContext.fillStyle = '#ffffff';
+          aioContext.font = 'bold 13px Orbitron, sans-serif';
+          aioContext.textAlign = 'center';
+          aioContext.fillText(`CYBER-CORE ACTIVE`, 128, 220);
+
+        } else if (State.aioScreenMode === 2) {
+          // Mode 2: Audio Equalizer Waves
+          const bars = 14;
+          const barWidth = 10;
+          aioContext.fillStyle = hex;
+          aioContext.shadowColor = hex;
+          aioContext.shadowBlur = 8;
+          for (let i = 0; i < bars; i++) {
+            const h = 25 + Math.sin(time * 6 + i * 0.6) * 35 + Math.cos(time * 3 + i) * 15;
+            const x = 32 + i * 14;
+            const y = 140 - h / 2;
+            aioContext.fillRect(x, y, barWidth, h);
+          }
+          aioContext.shadowBlur = 0;
+          aioContext.fillStyle = '#ffffff';
+          aioContext.font = 'bold 16px Orbitron, sans-serif';
+          aioContext.textAlign = 'center';
+          aioContext.fillText(`AUDIO REACTIVE`, 128, 70);
+          aioContext.fillStyle = '#94a3b8';
+          aioContext.font = '12px "Chakra Petch", sans-serif';
+          aioContext.fillText(`${Math.round(State.powerWatts)}W SYSTEM LOAD`, 128, 200);
+        }
+      } else {
+        // Power off standby CRT dot
+        aioContext.fillStyle = '#1e293b';
+        aioContext.font = 'bold 16px Orbitron, sans-serif';
+        aioContext.textAlign = 'center';
+        aioContext.fillText(`STANDBY`, 128, 128);
+      }
+      aioTexture.needsUpdate = true;
+
+      // --- GPU SIDE OLED DISPLAY ---
+      gpuContext.fillStyle = State.isPoweredOn ? '#070913' : '#000000';
+      gpuContext.fillRect(0, 0, 512, 128);
+
+      if (State.isPoweredOn) {
+        // Frame
+        gpuContext.strokeStyle = '#1e293b';
+        gpuContext.lineWidth = 1;
+        gpuContext.strokeRect(10, 10, 492, 108);
+
+        // Logo
+        gpuContext.fillStyle = hex;
+        gpuContext.font = 'bold 26px Orbitron, sans-serif';
+        gpuContext.fillText('TITAN RTX 5090', 25, 48);
+
+        gpuContext.fillStyle = '#ffffff';
+        gpuContext.font = 'bold 36px Orbitron, sans-serif';
+        gpuContext.fillText(`${Math.round(State.gpuTemp)}°C`, 380, 56);
+
+        // Subtext Telemetry
+        gpuContext.fillStyle = '#94a3b8';
+        gpuContext.font = '18px "Chakra Petch", sans-serif';
+        gpuContext.fillText(`CORE: ${(2850 + Math.sin(time * 2) * 45).toFixed(0)} MHz`, 25, 90);
+        gpuContext.fillText(`VRAM: 32GB G7 • 1200 GB/s`, 200, 90);
+
+        // Animated Pulse Line
+        gpuContext.strokeStyle = hex;
+        gpuContext.lineWidth = 3;
+        gpuContext.beginPath();
+        for (let x = 380; x <= 485; x += 5) {
+          const y = 90 + Math.sin((x * 0.08) + time * 8) * 8;
+          if (x === 380) gpuContext.moveTo(x, y);
+          else gpuContext.lineTo(x, y);
+        }
+        gpuContext.stroke();
+      }
+      gpuTexture.needsUpdate = true;
+
+      // --- MOTHERBOARD 7-SEGMENT POST CODE DISPLAY ---
+      postCodeContext.fillStyle = State.isPoweredOn ? '#000000' : '#000000';
+      postCodeContext.fillRect(0, 0, 128, 64);
+      if (State.isPoweredOn) {
+        postCodeContext.fillStyle = '#ff0033';
+        postCodeContext.shadowColor = '#ff0033';
+        postCodeContext.shadowBlur = 8;
+        postCodeContext.font = 'bold 44px Orbitron, sans-serif';
+        postCodeContext.textAlign = 'center';
+        postCodeContext.textBaseline = 'middle';
+        postCodeContext.fillText(State.postCode, 64, 32);
+      }
+      postCodeTexture.needsUpdate = true;
+    }
+
+    // ==========================================
+    // 3D PC MODEL CONSTRUCTION
+    // ==========================================
+    function buildPcGeometry() {
+      const pcRoot = new THREE.Group();
+      pcRoot.position.set(0, 0, 0);
+      scene.add(pcRoot);
+
+      // Materials Library
+      const matChassisDark = new THREE.MeshStandardMaterial({
+        color: 0x12151e,
+        roughness: 0.4,
+        metalness: 0.8
+      });
+      const matChassisMatte = new THREE.MeshStandardMaterial({
+        color: 0x0a0d14,
+        roughness: 0.7,
+        metalness: 0.3
+      });
+      const matBrushedAluminum = new THREE.MeshStandardMaterial({
+        color: 0x222733,
+        roughness: 0.25,
+        metalness: 0.9
+      });
+      const matNickelChrome = new THREE.MeshStandardMaterial({
+        color: 0xd8e1e8,
+        roughness: 0.1,
+        metalness: 0.95
+      });
+      const matCopper = new THREE.MeshStandardMaterial({
+        color: 0xb8653b,
+        roughness: 0.3,
+        metalness: 0.85
+      });
+      const matPcbDark = new THREE.MeshStandardMaterial({
+        color: 0x080b10,
+        roughness: 0.6,
+        metalness: 0.2
+      });
+      const matTemperedGlass = new THREE.MeshPhysicalMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.28,
+        roughness: 0.05,
+        metalness: 0.1,
+        transmission: 0.85,
+        ior: 1.52,
+        reflectivity: 0.9
+      });
+
+      // ----------------------------------------------------
+      // 1. CASE CHASSIS (Dual-Chamber "Monolith X-Pro")
+      // ----------------------------------------------------
+      const caseGroup = new THREE.Group();
+      pcRoot.add(caseGroup);
+      explodedParts.push({ obj: caseGroup, origin: new THREE.Vector3(0,0,0), dir: new THREE.Vector3(0, 0, 0), dist: 0 });
+
+      // Feet (4 corner aluminum feet with rubber rings)
+      const footGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.08, 16);
+      const footPositions = [
+        [-0.95, 0.04, -1.45], [0.95, 0.04, -1.45],
+        [-0.95, 0.04, 1.45],  [0.95, 0.04, 1.45]
+      ];
+      footPositions.forEach(pos => {
+        const foot = new THREE.Mesh(footGeo, matNickelChrome);
+        foot.position.set(pos[0], pos[1], pos[2]);
+        foot.castShadow = true;
+        caseGroup.add(foot);
+      });
+
+      // Bottom Base Plate
+      const basePlateGeo = new THREE.BoxGeometry(2.1, 0.1, 3.1);
+      const basePlate = new THREE.Mesh(basePlateGeo, matChassisDark);
+      basePlate.position.set(0, 0.13, 0);
+      basePlate.castShadow = true;
+      basePlate.receiveShadow = true;
+      caseGroup.add(basePlate);
+
+      // Rear Metal Panel (with I/O cutout, fan grill, PCIe slots)
+      const rearPanelGeo = new THREE.BoxGeometry(2.1, 2.7, 0.08);
+      const rearPanel = new THREE.Mesh(rearPanelGeo, matChassisDark);
+      rearPanel.position.set(0, 1.48, -1.51);
+      caseGroup.add(rearPanel);
+
+      // Top Exhaust Frame
+      const topFrameGeo = new THREE.BoxGeometry(2.1, 0.1, 3.1);
+      const topFrame = new THREE.Mesh(topFrameGeo, matChassisDark);
+      topFrame.position.set(0, 2.83, 0);
+      caseGroup.add(topFrame);
+
+      // Right Side Metal Solid Panel
+      const rightPanelGeo = new THREE.BoxGeometry(0.06, 2.6, 3.0);
+      const rightPanel = new THREE.Mesh(rightPanelGeo, matChassisMatte);
+      rightPanel.position.set(-1.02, 1.48, 0);
+      caseGroup.add(rightPanel);
+
+      // Dual Chamber Internal Partition / Motherboard Tray
+      const trayGeo = new THREE.BoxGeometry(0.05, 2.5, 2.6);
+      const mbTray = new THREE.Mesh(trayGeo, matBrushedAluminum);
+      mbTray.position.set(-0.35, 1.48, -0.15);
+      caseGroup.add(mbTray);
+
+      // PSU Shroud / Lower Chamber Cover
+      const psuShroudGeo = new THREE.BoxGeometry(0.7, 0.55, 3.0);
+      const psuShroud = new THREE.Mesh(psuShroudGeo, matChassisDark);
+      psuShroud.position.set(-0.68, 0.45, 0);
+      psuShroud.userData = { name: 'CORSAIR AX1600i TITANIUM PSU', spec: '1600W 80-Plus Titanium Digital Power' };
+      interactiveObjects.push(psuShroud);
+      caseGroup.add(psuShroud);
+
+      // PSU Shroud RGB Logo Badge
+      const psuBadgeGeo = new THREE.PlaneGeometry(0.5, 0.15);
+      const psuBadgeMat = new THREE.MeshStandardMaterial({
+        color: 0x05070a,
+        emissive: State.rgbColor,
+        emissiveIntensity: 0.8,
+        roughness: 0.2
+      });
+      const psuBadge = new THREE.Mesh(psuBadgeGeo, psuBadgeMat);
+      psuBadge.position.set(-0.32, 0.45, 0.2);
+      psuBadge.rotation.y = Math.PI / 2;
+      caseGroup.add(psuBadge);
+      rgbMaterials.push({ mat: psuBadgeMat, baseEmissive: 0.8 });
+
+      // Front I/O Panel (Power Button, USB-C, USB-A)
+      const frontIoBar = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.6), matNickelChrome);
+      frontIoBar.position.set(0.95, 2.85, 1.1);
+      caseGroup.add(frontIoBar);
+
+      // Case Power Button (Interactive in 3D!)
+      const casePowerBtnGeo = new THREE.CylinderGeometry(0.025, 0.025, 0.02, 16);
+      const casePowerBtnMat = new THREE.MeshStandardMaterial({
+        color: 0x10b981,
+        emissive: 0x10b981,
+        emissiveIntensity: 0.9,
+        metalness: 0.8
+      });
+      const casePowerBtn = new THREE.Mesh(casePowerBtnGeo, casePowerBtnMat);
+      casePowerBtn.rotation.x = Math.PI / 2;
+      casePowerBtn.position.set(0.95, 2.87, 1.32);
+      casePowerBtn.userData = { name: 'CHASSIS POWER SWITCH', spec: 'CLICK TO TOGGLE POWER ON / OFF', isButton: true };
+      interactiveObjects.push(casePowerBtn);
+      caseGroup.add(casePowerBtn);
+
+      // ----------------------------------------------------
+      // 2. TEMPERED GLASS PANELS (Side & Front Panoramic)
+      // ----------------------------------------------------
+      // Side Glass (Left showcase panel)
+      glassSideGroup = new THREE.Group();
+      glassSideGroup.position.set(1.02, 1.48, 0);
+      const sideGlass = new THREE.Mesh(new THREE.BoxGeometry(0.04, 2.6, 2.95), matTemperedGlass);
+      sideGlass.castShadow = true;
+      sideGlass.userData = { name: 'TEMPERED GLASS SIDE PANEL', spec: '4mm Beveled Ultra-Clear Acoustic Glass' };
+      interactiveObjects.push(sideGlass);
+      glassSideGroup.add(sideGlass);
+
+      // Glass Corner Chrome Thumb-screws
+      const screwGeo = new THREE.CylinderGeometry(0.025, 0.025, 0.06, 12);
+      const screwPositions = [
+        [0.02, 1.2, -1.35], [0.02, 1.2, 1.35],
+        [0.02, -1.2, -1.35], [0.02, -1.2, 1.35]
+      ];
+      screwPositions.forEach(sp => {
+        const scr = new THREE.Mesh(screwGeo, matNickelChrome);
+        scr.rotation.z = Math.PI / 2;
+        scr.position.set(sp[0], sp[1], sp[2]);
+        glassSideGroup.add(scr);
+      });
+      pcRoot.add(glassSideGroup);
+      explodedParts.push({ obj: glassSideGroup, origin: new THREE.Vector3(1.02, 1.48, 0), dir: new THREE.Vector3(1, 0, 0), dist: 1.5 });
+
+      // Front Glass Panel
+      glassFrontGroup = new THREE.Group();
+      glassFrontGroup.position.set(0, 1.48, 1.52);
+      const frontGlass = new THREE.Mesh(new THREE.BoxGeometry(2.0, 2.6, 0.04), matTemperedGlass);
+      frontGlass.userData = { name: 'TEMPERED GLASS FRONT PANEL', spec: 'Seamless Panoramic Corner Joint' };
+      interactiveObjects.push(frontGlass);
+      glassFrontGroup.add(frontGlass);
+      pcRoot.add(glassFrontGroup);
+      explodedParts.push({ obj: glassFrontGroup, origin: new THREE.Vector3(0, 1.48, 1.52), dir: new THREE.Vector3(0, 0, 1), dist: 1.5 });
+
+      // ----------------------------------------------------
+      // 3. MOTHERBOARD ("AERO CYBER-Z890 EXTREME")
+      // ----------------------------------------------------
+      mbGroup = new THREE.Group();
+      mbGroup.position.set(-0.32, 1.55, -0.15);
+      pcRoot.add(mbGroup);
+      explodedParts.push({ obj: mbGroup, origin: new THREE.Vector3(-0.32, 1.55, -0.15), dir: new THREE.Vector3(0.5, 0, 0), dist: 0.6 });
+
+      // PCB Board (ATX Size: 1.9 High x 1.6 Wide)
+      const pcbGeo = new THREE.BoxGeometry(0.03, 1.9, 1.6);
+      const pcb = new THREE.Mesh(pcbGeo, matPcbDark);
+      pcb.userData = { name: 'AERO CYBER-Z890 EXTREME', spec: '24+1+2 Digital Power Stages • PCIe 5.0' };
+      interactiveObjects.push(pcb);
+      mbGroup.add(pcb);
+
+      // Gold Audio Isolation Trace Line
+      const traceGeo = new THREE.PlaneGeometry(0.02, 1.4);
+      const traceMat = new THREE.MeshStandardMaterial({
+        color: 0x00f0ff,
+        emissive: State.rgbColor,
+        emissiveIntensity: 0.6
+      });
+      const traceLine = new THREE.Mesh(traceGeo, traceMat);
+      traceLine.rotation.y = Math.PI / 2;
+      traceLine.position.set(0.02, -0.2, -0.65);
+      mbGroup.add(traceLine);
+      rgbMaterials.push({ mat: traceMat, baseEmissive: 0.6 });
+
+      // VRM Armor Heatsinks (Top & Left L-shaped massive heatsinks)
+      const vrmTopGeo = new THREE.BoxGeometry(0.12, 0.2, 0.8);
+      const vrmLeftGeo = new THREE.BoxGeometry(0.15, 0.7, 0.25);
+      const vrmTop = new THREE.Mesh(vrmTopGeo, matBrushedAluminum);
+      const vrmLeft = new THREE.Mesh(vrmLeftGeo, matBrushedAluminum);
+      vrmTop.position.set(0.08, 0.75, 0.0);
+      vrmLeft.position.set(0.09, 0.45, -0.55);
+      mbGroup.add(vrmTop);
+      mbGroup.add(vrmLeft);
+
+      // Rear I/O Shroud with RGB Inlay
+      const ioArmorGeo = new THREE.BoxGeometry(0.18, 0.85, 0.3);
+      const ioArmor = new THREE.Mesh(ioArmorGeo, matChassisDark);
+      ioArmor.position.set(0.1, 0.45, -0.62);
+      mbGroup.add(ioArmor);
+
+      const ioRgbStripeGeo = new THREE.BoxGeometry(0.02, 0.6, 0.04);
+      const ioRgbMat = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        emissive: State.rgbColor,
+        emissiveIntensity: 1.0
+      });
+      const ioRgbStripe = new THREE.Mesh(ioRgbStripeGeo, ioRgbMat);
+      ioRgbStripe.position.set(0.2, 0.45, -0.55);
+      mbGroup.add(ioRgbStripe);
+      rgbMaterials.push({ mat: ioRgbMat, baseEmissive: 1.0 });
+
+      // CPU Socket (LGA 1851 Bracket)
+      const socketGeo = new THREE.BoxGeometry(0.04, 0.32, 0.32);
+      const socket = new THREE.Mesh(socketGeo, matNickelChrome);
+      socket.position.set(0.03, 0.45, 0.0);
+      mbGroup.add(socket);
+
+      // M.2 NVMe Thermal Armor Plates (3 layers with subtle RGB bevels)
+      const m2ArmorGeo = new THREE.BoxGeometry(0.06, 0.15, 0.6);
+      const m2Armor1 = new THREE.Mesh(m2ArmorGeo, matBrushedAluminum);
+      m2Armor1.position.set(0.04, 0.15, 0.2);
+      m2Armor1.userData = { name: 'GEN5 NVME M.2 SSD 4TB', spec: '14,500 MB/s Sequential Read Armor Heatsink' };
+      interactiveObjects.push(m2Armor1);
+
+      const m2Armor2 = new THREE.Mesh(m2ArmorGeo, matBrushedAluminum);
+      m2Armor2.position.set(0.04, -0.35, 0.2);
+      m2Armor2.userData = { name: 'GEN5 NVME M.2 SSD 4TB', spec: '14,500 MB/s Sequential Read Armor Heatsink' };
+      interactiveObjects.push(m2Armor2);
+
+      mbGroup.add(m2Armor1);
+      mbGroup.add(m2Armor2);
+
+      // Diagnostic 7-Segment Digital POST Display
+      const postDisplayMat = new THREE.MeshBasicMaterial({ map: postCodeTexture });
+      const postDisplay = new THREE.Mesh(new THREE.PlaneGeometry(0.08, 0.04), postDisplayMat);
+      postDisplay.rotation.y = Math.PI / 2;
+      postDisplay.position.set(0.025, 0.82, 0.65);
+      mbGroup.add(postDisplay);
+
+      // Motherboard POST LEDs (CPU, DRAM, VGA, BOOT)
+      const postLedGeo = new THREE.BoxGeometry(0.015, 0.02, 0.02);
+      const postColors = [0xff0033, 0xffaa00, 0xffffff, 0x00ff66];
+      for (let i = 0; i < 4; i++) {
+        const pMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+        const postLed = new THREE.Mesh(postLedGeo, pMat);
+        postLed.position.set(0.025, 0.72 - i * 0.03, 0.65);
+        mbGroup.add(postLed);
+        postLeds.push({ mesh: postLed, mat: pMat, activeColor: postColors[i] });
+      }
+
+      // ----------------------------------------------------
+      // 4. DDR5 RAM MODULES (4x Dominator Titanium RGB)
+      // ----------------------------------------------------
+      ramGroup = new THREE.Group();
+      ramGroup.position.set(0.06, 0.45, 0.32);
+      mbGroup.add(ramGroup);
+
+      for (let i = 0; i < 4; i++) {
+        const ramStick = new THREE.Group();
+        ramStick.position.set(0, 0, (i - 1.5) * 0.065);
+
+        // Heatspreader
+        const ramBodyGeo = new THREE.BoxGeometry(0.04, 0.32, 0.035);
+        const ramBody = new THREE.Mesh(ramBodyGeo, matBrushedAluminum);
+        ramStick.add(ramBody);
+
+        // RGB Lightbar top
+        const ramLightGeo = new THREE.BoxGeometry(0.045, 0.06, 0.032);
+        const ramLightMat = new THREE.MeshStandardMaterial({
+          color: 0xffffff,
+          emissive: State.rgbColor,
+          emissiveIntensity: 1.2,
+          roughness: 0.1
+        });
+        const ramLight = new THREE.Mesh(ramLightGeo, ramLightMat);
+        ramLight.position.set(0.01, 0.16, 0);
+        ramStick.add(ramLight);
+        rgbMaterials.push({ mat: ramLightMat, baseEmissive: 1.2, phase: i * 0.25 });
+
+        ramBody.userData = { name: 'DOMINATOR TITANIUM DDR5', spec: '64GB (4x16GB) 8000MHz CL36 RGB' };
+        interactiveObjects.push(ramBody);
+
+        ramGroup.add(ramStick);
+      }
+
+      // ----------------------------------------------------
+      // 5. CUSTOM AIO LIQUID COOLING PUMP & HARDLINE TUBES
+      // ----------------------------------------------------
+      coolerGroup = new THREE.Group();
+      coolerGroup.position.set(0.02, 0.45, 0.0);
+      mbGroup.add(coolerGroup);
+
+      // CPU Pump Block (Cylindrical CNC block with mirror chamfer)
+      const pumpGeo = new THREE.CylinderGeometry(0.18, 0.18, 0.12, 32);
+      const pumpMesh = new THREE.Mesh(pumpGeo, matChassisDark);
+      pumpMesh.rotation.z = Math.PI / 2;
+      pumpMesh.position.set(0.06, 0, 0);
+      pumpMesh.userData = { name: 'HYDRO-VORTEX X360 LCD PUMP', spec: 'Dual-Chamber Ceramic Motor + 2.1" IPS Display' };
+      interactiveObjects.push(pumpMesh);
+      coolerGroup.add(pumpMesh);
+
+      // Dynamic LCD Display Screen on Pump face
+      const screenGeo = new THREE.CircleGeometry(0.16, 32);
+      const screenMat = new THREE.MeshBasicMaterial({ map: aioTexture });
+      const aioScreenMesh = new THREE.Mesh(screenGeo, screenMat);
+      aioScreenMesh.rotation.y = Math.PI / 2;
+      aioScreenMesh.position.set(0.125, 0, 0);
+      aioScreenMesh.userData = { name: 'PUMP IPS DISPLAY', spec: 'Real-time Dynamic Telemetry & Hologram Visuals' };
+      interactiveObjects.push(aioScreenMesh);
+      coolerGroup.add(aioScreenMesh);
+
+      // Pump Outer Halo Ring
+      const haloGeo = new THREE.TorusGeometry(0.175, 0.012, 16, 32);
+      const haloMat = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        emissive: State.rgbColor,
+        emissiveIntensity: 1.2
+      });
+      const haloMesh = new THREE.Mesh(haloGeo, haloMat);
+      haloMesh.rotation.y = Math.PI / 2;
+      haloMesh.position.set(0.122, 0, 0);
+      coolerGroup.add(haloMesh);
+      rgbMaterials.push({ mat: haloMat, baseEmissive: 1.2 });
+
+      // Hardline Acrylic Coolant Tubes linking Pump to Top Radiator
+      buildCoolingTubes(pcRoot, mbGroup);
+
+      // ----------------------------------------------------
+      // 6. GRAPHICS CARD ("TITAN RTX 5090 CYBERSTORM")
+      // ----------------------------------------------------
+      gpuGroup = new THREE.Group();
+      gpuGroup.position.set(0.15, 0.95, 0.1);
+      pcRoot.add(gpuGroup);
+      explodedParts.push({ obj: gpuGroup, origin: new THREE.Vector3(0.15, 0.95, 0.1), dir: new THREE.Vector3(0, -0.8, 0.8), dist: 0.9 });
+
+      buildGpu(gpuGroup, matChassisDark, matBrushedAluminum, matNickelChrome, matCopper);
+
+      // ----------------------------------------------------
+      // 7. INFINITY-MIRROR RGB FANS (9x Fans: 3 Top, 3 Side, 3 Bottom)
+      // ----------------------------------------------------
+      buildFanArray(pcRoot, matChassisDark, matNickelChrome);
+
+      // ----------------------------------------------------
+      // 8. BRAIDED SLEEVED POWER CABLES WITH CABLE COMBS
+      // ----------------------------------------------------
+      buildBraidedCables(pcRoot);
+    }
+
+    // Hardline Cooling Tubes connecting CPU -> Top Radiator -> Distro Reservoir
+    function buildCoolingTubes(pcRoot, mbGroup) {
+      const tubeMat = new THREE.MeshPhysicalMaterial({
+        color: 0x99f6ff,
+        transparent: true,
+        opacity: 0.7,
+        roughness: 0.08,
+        metalness: 0.1,
+        transmission: 0.8,
+        ior: 1.45
+      });
+
+      // Tube 1: Pump -> Top Radiator (Curve)
+      const curve1 = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-0.2, 2.05, -0.05),
+        new THREE.Vector3(0.2, 2.05, -0.05),
+        new THREE.Vector3(0.2, 2.45, -0.05),
+        new THREE.Vector3(-0.1, 2.65, -0.6)
+      ]);
+      const tube1Geo = new THREE.TubeGeometry(curve1, 40, 0.022, 16, false);
+      const tube1 = new THREE.Mesh(tube1Geo, tubeMat);
+      pcRoot.add(tube1);
+
+      // Tube 2: Pump -> Side Distribution Plate
+      const curve2 = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-0.2, 1.95, 0.05),
+        new THREE.Vector3(0.35, 1.95, 0.05),
+        new THREE.Vector3(0.35, 1.6, 0.9),
+        new THREE.Vector3(-0.2, 1.4, 0.9)
+      ]);
+      const tube2Geo = new THREE.TubeGeometry(curve2, 40, 0.022, 16, false);
+      const tube2 = new THREE.Mesh(tube2Geo, tubeMat);
+      pcRoot.add(tube2);
+
+      // Glowing liquid pulse material inside tubes
+      const liquidGlowMat = new THREE.MeshBasicMaterial({
+        color: State.rgbColor,
+        transparent: true,
+        opacity: 0.4
+      });
+      rgbMaterials.push({ mat: liquidGlowMat, baseEmissive: 0.4 });
+    }
+
+    // Build the high-end GPU with triple fans, heatsink fins, backplate and side OLED
+    function buildGpu(gpuGroup, matChassisDark, matBrushedAluminum, matNickelChrome, matCopper) {
+      // Dimensions: L: 2.1, H: 0.7, W: 0.65 (Monster 3.5 slot card)
+      const gpuBody = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.62, 2.0), matChassisDark);
+      gpuBody.userData = { name: 'TITAN RTX 5090 APEX OC', spec: '32GB GDDR7 • 600W TGP • Dual Vapor Chamber' };
+      interactiveObjects.push(gpuBody);
+      gpuGroup.add(gpuBody);
+
+      // Brushed Aluminum Backplate
+      const backplate = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.04, 1.98), matBrushedAluminum);
+      backplate.position.set(0, 0.31, 0);
+      backplate.userData = { name: 'CNC MACHINED BACKPLATE', spec: 'Direct Heatpipe Contact Cooling Pad' };
+      interactiveObjects.push(backplate);
+      gpuGroup.add(backplate);
+
+      // Backplate Geometric Cutout with RGB Underglow
+      const bpRgbGeo = new THREE.PlaneGeometry(0.3, 0.8);
+      const bpRgbMat = new THREE.MeshStandardMaterial({
+        color: 0x000000,
+        emissive: State.rgbColor,
+        emissiveIntensity: 1.0
+      });
+      const bpRgb = new THREE.Mesh(bpRgbGeo, bpRgbMat);
+      bpRgb.rotation.x = -Math.PI / 2;
+      bpRgb.position.set(0.08, 0.335, -0.3);
+      gpuGroup.add(bpRgb);
+      rgbMaterials.push({ mat: bpRgbMat, baseEmissive: 1.0 });
+
+      // Dense Fin Stack Heatsink (Visible through side & bottom)
+      const finGroup = new THREE.Group();
+      finGroup.position.set(0, -0.05, 0);
+      for (let f = -0.85; f <= 0.85; f += 0.05) {
+        const fin = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.42, 0.015), matNickelChrome);
+        fin.position.set(0, 0, f);
+        finGroup.add(fin);
+      }
+      gpuGroup.add(finGroup);
+
+      // Copper Heatpipes running through the heatsink
+      for (let hp = -0.15; hp <= 0.15; hp += 0.1) {
+        const heatpipe = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 1.8, 12), matCopper);
+        heatpipe.rotation.x = Math.PI / 2;
+        heatpipe.position.set(hp, 0, 0);
+        gpuGroup.add(heatpipe);
+      }
+
+      // Side OLED Display Screen (GPU Temperature & Clock graph)
+      const oledMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.22), new THREE.MeshBasicMaterial({ map: gpuTexture }));
+      oledMesh.rotation.y = Math.PI / 2;
+      oledMesh.position.set(0.28, 0.15, 0.15);
+      oledMesh.userData = { name: 'GPU OLED STATUS DISPLAY', spec: 'Live Clock Frequency, VRAM & Die Thermals' };
+      interactiveObjects.push(oledMesh);
+      gpuGroup.add(oledMesh);
+
+      // Side RGB Accent Lightbar
+      const gpuLightbarMat = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        emissive: State.rgbColor,
+        emissiveIntensity: 1.2
+      });
+      const gpuLightbar = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.04, 1.8), gpuLightbarMat);
+      gpuLightbar.position.set(0.28, 0.29, 0);
+      gpuGroup.add(gpuLightbar);
+      rgbMaterials.push({ mat: gpuLightbarMat, baseEmissive: 1.2 });
+
+      // 12V-2x6 Power Connector Housing
+      const pwrConn = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.06, 0.16), matChassisDark);
+      pwrConn.position.set(0.24, 0.32, 0.65);
+      gpuGroup.add(pwrConn);
+
+      // 3x Axial Translucent Fans on GPU bottom face
+      const fanZOffsets = [-0.6, 0.0, 0.6];
+      fanZOffsets.forEach((fz) => {
+        const gpuFan = buildFanModel(0.25, true);
+        gpuFan.group.position.set(0, -0.32, fz);
+        gpuFan.group.rotation.x = Math.PI / 2;
+        gpuGroup.add(gpuFan.group);
+        animatedFans.push(gpuFan);
+      });
+    }
+
+    // High Detail Infinity Mirror Fan Construction
+    function buildFanModel(radius = 0.36, isGpu = false) {
+      const fanGroup = new THREE.Group();
+      
+      // Outer Fan Frame
+      const frameMat = new THREE.MeshStandardMaterial({ color: 0x11151e, roughness: 0.5, metalness: 0.6 });
+      const frameGeo = new THREE.BoxGeometry(radius * 2.1, radius * 2.1, 0.08);
+      const frameMesh = new THREE.Mesh(frameGeo, frameMat);
+      frameMesh.userData = { name: isGpu ? 'GPU TURBO FAN' : 'INFINITY ARGB CASE FAN', spec: 'Fluid Dynamic Bearing • Addressable Dual Ring RGB' };
+      interactiveObjects.push(frameMesh);
+      fanGroup.add(frameMesh);
+
+      // Outer RGB Halo Ring
+      const haloMat = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        emissive: State.rgbColor,
+        emissiveIntensity: 1.3
+      });
+      const haloGeo = new THREE.TorusGeometry(radius * 0.92, 0.02, 16, 32);
+      const haloMesh = new THREE.Mesh(haloGeo, haloMat);
+      haloMesh.position.set(0, 0, 0.042);
+      fanGroup.add(haloMesh);
+      rgbMaterials.push({ mat: haloMat, baseEmissive: 1.3 });
+
+      // Rotating Rotor Subgroup (Blades + Hub)
+      const rotor = new THREE.Group();
+      fanGroup.add(rotor);
+
+      // Center Infinity Mirror Hub
+      const hubMat = new THREE.MeshStandardMaterial({
+        color: 0x05070a,
+        emissive: State.rgbColor,
+        emissiveIntensity: 0.9,
+        metalness: 0.9
+      });
+      const hubGeo = new THREE.CylinderGeometry(radius * 0.35, radius * 0.35, 0.06, 24);
+      const hubMesh = new THREE.Mesh(hubGeo, hubMat);
+      hubMesh.rotation.x = Math.PI / 2;
+      rotor.add(hubMesh);
+      rgbMaterials.push({ mat: hubMat, baseEmissive: 0.9 });
+
+      // 9x Aerodynamic Translucent Blades
+      const bladeMat = new THREE.MeshPhysicalMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.65,
+        roughness: 0.15,
+        transmission: 0.5,
+        reflectivity: 0.8
+      });
+
+      const bladeCount = 9;
+      for (let b = 0; b < bladeCount; b++) {
+        const angle = (b / bladeCount) * Math.PI * 2;
+        const bladeGeo = new THREE.BoxGeometry(radius * 0.55, 0.08, 0.015);
+        const blade = new THREE.Mesh(bladeGeo, bladeMat);
+        blade.position.set(Math.cos(angle) * radius * 0.55, Math.sin(angle) * radius * 0.55, 0);
+        blade.rotation.z = angle + 0.45;
+        blade.rotation.x = 0.5;
+        rotor.add(blade);
+      }
+
+      return {
+        group: fanGroup,
+        rotor: rotor,
+        speed: 0,
+        isGpu: isGpu
+      };
+    }
+
+    // Build 9x Case Fans (3 Top Radiator Exhaust, 3 Side Intake, 3 Bottom Intake)
+    function buildFanArray(pcRoot, matChassisDark, matNickelChrome) {
+      // 1. Top 360mm Radiator + 3 Exhaust Fans
+      const topRadGroup = new THREE.Group();
+      topRadGroup.position.set(0, 2.65, -0.1);
+      pcRoot.add(topRadGroup);
+
+      const radBody = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.12, 2.4), matChassisDark);
+      radBody.userData = { name: 'HYDRO 360MM TOP RADIATOR', spec: 'Triple 120mm High Static Pressure Exhaust' };
+      interactiveObjects.push(radBody);
+      topRadGroup.add(radBody);
+
+      const topZ = [-0.75, 0.0, 0.75];
+      topZ.forEach(z => {
+        const fan = buildFanModel(0.36);
+        fan.group.position.set(0, -0.1, z);
+        fan.group.rotation.x = Math.PI / 2;
+        topRadGroup.add(fan.group);
+        animatedFans.push(fan);
+      });
+      explodedParts.push({ obj: topRadGroup, origin: new THREE.Vector3(0, 2.65, -0.1), dir: new THREE.Vector3(0, 1, 0), dist: 0.8 });
+
+      // 2. Side Chamber Intake 3x Fans (Mounted vertically on the right distro plate)
+      const sideFansGroup = new THREE.Group();
+      sideFansGroup.position.set(-0.35, 1.48, 0.95);
+      pcRoot.add(sideFansGroup);
+
+      const sideY = [-0.7, 0.0, 0.7];
+      sideY.forEach(y => {
+        const fan = buildFanModel(0.34);
+        fan.group.position.set(0.05, y, 0);
+        fan.group.rotation.y = Math.PI / 2;
+        sideFansGroup.add(fan.group);
+        animatedFans.push(fan);
+      });
+
+      // 3. Bottom Intake 3x Fans (Mounted above base plate)
+      const bottomFansGroup = new THREE.Group();
+      bottomFansGroup.position.set(0.15, 0.35, -0.1);
+      pcRoot.add(bottomFansGroup);
+
+      topZ.forEach(z => {
+        const fan = buildFanModel(0.34);
+        fan.group.position.set(0, 0, z);
+        fan.group.rotation.x = -Math.PI / 2;
+        bottomFansGroup.add(fan.group);
+        animatedFans.push(fan);
+      });
+    }
+
+    // Braided Sleeved Power Cables with Acrylic Cable Combs
+    function buildBraidedCables(pcRoot) {
+      const cableMat = new THREE.MeshStandardMaterial({
+        color: 0x1f2937,
+        roughness: 0.8,
+        metalness: 0.1
+      });
+      const combMat = new THREE.MeshStandardMaterial({ color: 0xd8e1e8, roughness: 0.1, metalness: 0.9 });
+
+      // Motherboard 24-Pin Main ATX Cable Curve
+      const mbCableCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-0.32, 1.8, 0.4),
+        new THREE.Vector3(-0.1, 1.8, 0.45),
+        new THREE.Vector3(-0.05, 1.7, 0.7),
+        new THREE.Vector3(-0.35, 1.6, 0.8)
+      ]);
+      const mbCable = new THREE.Mesh(new THREE.TubeGeometry(mbCableCurve, 20, 0.045, 12, false), cableMat);
+      mbCable.userData = { name: '24-PIN ATX BRAIDED CABLES', spec: '16AWG High-Current Custom Sleeved Wiring' };
+      interactiveObjects.push(mbCable);
+      pcRoot.add(mbCable);
+
+      // GPU 16-Pin 12V-2x6 Power Cable Curve
+      const gpuCableCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0.38, 1.25, 0.75),
+        new THREE.Vector3(0.5, 1.0, 0.85),
+        new THREE.Vector3(0.45, 0.6, 0.95),
+        new THREE.Vector3(-0.2, 0.45, 0.95)
+      ]);
+      const gpuCable = new THREE.Mesh(new THREE.TubeGeometry(gpuCableCurve, 20, 0.035, 12, false), cableMat);
+      gpuCable.userData = { name: '12V-2x6 GPU POWER CABLE', spec: '600W PCIe 5.1 Direct Rail Harness' };
+      interactiveObjects.push(gpuCable);
+      pcRoot.add(gpuCable);
+
+      // Acrylic Cable Combs
+      const comb = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.03, 0.12), combMat);
+      comb.position.set(0.48, 1.05, 0.83);
+      comb.rotation.x = 0.4;
+      pcRoot.add(comb);
+    }
+
+    // ==========================================
+    // AIRFLOW STREAMLINE PARTICLE SIMULATION
+    // ==========================================
+    function buildAirflowParticles() {
+      const particleCount = 450;
+      const geometry = new THREE.BufferGeometry();
+      const positions = new Float32Array(particleCount * 3);
+      const colors = new Float32Array(particleCount * 3);
+
+      for (let i = 0; i < particleCount; i++) {
+        const isSide = Math.random() > 0.6;
+        let x, y, z;
+        if (isSide) {
+          x = -0.3;
+          y = 0.8 + Math.random() * 1.4;
+          z = 0.9;
+        } else {
+          x = -0.2 + Math.random() * 0.7;
+          y = 0.35;
+          z = -0.8 + Math.random() * 1.6;
+        }
+
+        positions[i * 3] = x;
+        positions[i * 3 + 1] = y;
+        positions[i * 3 + 2] = z;
+
+        colors[i * 3] = 0.0;
+        colors[i * 3 + 1] = 0.9;
+        colors[i * 3 + 2] = 1.0;
+      }
+
+      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+      const mat = new THREE.PointsMaterial({
+        size: 0.055,
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.0,
+        blending: THREE.AdditiveBlending
+      });
+
+      airflowParticleSystem = new THREE.Points(geometry, mat);
+      scene.add(airflowParticleSystem);
+    }
+
+    function updateAirflowParticles() {
+      if (!airflowParticleSystem) return;
+
+      const pos = airflowParticleSystem.geometry.attributes.position.array;
+      const col = airflowParticleSystem.geometry.attributes.color.array;
+      const count = pos.length / 3;
+
+      for (let i = 0; i < count; i++) {
+        pos[i * 3 + 1] += 0.018 * (State.fanSpeedRpm / 1250);
+        pos[i * 3 + 2] -= 0.004;
+
+        const height = pos[i * 3 + 1];
+        if (height > 1.8) {
+          // Hot exhaust
+          col[i * 3] = 1.0;
+          col[i * 3 + 1] = 0.35;
+          col[i * 3 + 2] = 0.1;
+        } else if (height > 1.0) {
+          // Warm mid
+          col[i * 3] = 0.3;
+          col[i * 3 + 1] = 0.8;
+          col[i * 3 + 2] = 0.8;
+        }
+
+        // Reset if reached top
+        if (pos[i * 3 + 1] > 2.7) {
+          pos[i * 3 + 1] = 0.35;
+          pos[i * 3] = -0.2 + Math.random() * 0.7;
+          pos[i * 3 + 2] = -0.8 + Math.random() * 1.6;
+          col[i * 3] = 0.0;
+          col[i * 3 + 1] = 0.9;
+          col[i * 3 + 2] = 1.0;
+        }
+      }
+
+      airflowParticleSystem.geometry.attributes.position.needsUpdate = true;
+      airflowParticleSystem.geometry.attributes.color.needsUpdate = true;
+    }
+
+    // ==========================================
+    // PROCEDURAL WEB AUDIO SYNTHESIZER
+    // ==========================================
+    function setupAudioContext() {
+      if (audioCtx) return;
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+
+        // Fan Noise Synthesizer (Filtered White Noise + Pitch Resonance)
+        const bufferSize = audioCtx.sampleRate * 2;
+        const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          output[i] = Math.random() * 2 - 1;
+        }
+
+        fanNoiseSource = audioCtx.createBufferSource();
+        fanNoiseSource.buffer = noiseBuffer;
+        fanNoiseSource.loop = true;
+
+        fanFilter = audioCtx.createBiquadFilter();
+        fanFilter.type = 'bandpass';
+        fanFilter.frequency.value = 320;
+        fanFilter.Q.value = 2.5;
+
+        fanGainNode = audioCtx.createGain();
+        fanGainNode.gain.value = State.audioEnabled && State.isPoweredOn ? 0.08 : 0.0;
+
+        fanNoiseSource.connect(fanFilter);
+        fanFilter.connect(fanGainNode);
+        fanGainNode.connect(audioCtx.destination);
+        fanNoiseSource.start();
+
+      } catch (e) {
+        console.warn('Web Audio could not be initialized:', e);
+      }
+    }
+
+    function playRelayClickSound() {
+      if (!State.audioEnabled) return;
+      setupAudioContext();
+      if (!audioCtx) return;
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(140, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(35, audioCtx.currentTime + 0.06);
+
+      gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.06);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.07);
+    }
+
+    function playBiosChime() {
+      if (!State.audioEnabled) return;
+      setupAudioContext();
+      if (!audioCtx) return;
+
+      const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
+      notes.forEach((freq, idx) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime + idx * 0.1);
+
+        gain.gain.setValueAtTime(0, audioCtx.currentTime + idx * 0.1);
+        gain.gain.linearRampToValueAtTime(0.12, audioCtx.currentTime + idx * 0.1 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + idx * 0.1 + 0.35);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(audioCtx.currentTime + idx * 0.1);
+        osc.stop(audioCtx.currentTime + idx * 0.1 + 0.4);
+      });
+    }
+
+    function updateAudioFanPitch() {
+      if (!audioCtx || !fanFilter || !fanGainNode) return;
+      if (!State.isPoweredOn || !State.audioEnabled) {
+        fanGainNode.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.2);
+      } else {
+        const rpmRatio = State.fanSpeedRpm / 2800;
+        fanFilter.frequency.setTargetAtTime(200 + rpmRatio * 600, audioCtx.currentTime, 0.2);
+        fanGainNode.gain.setTargetAtTime(0.04 + rpmRatio * 0.12, audioCtx.currentTime, 0.2);
+      }
+    }
+
+    // ==========================================
+    // POWER SYSTEM & STARTUP SEQUENCE
+    // ==========================================
+    function togglePower() {
+      setupAudioContext();
+
+      if (State.isPoweredOn) {
+        // --- POWER SHUTDOWN ---
+        State.isPoweredOn = false;
+        playRelayClickSound();
+
+        // UI Updates
+        document.getElementById('hud-power-indicator').className = 'w-2.5 h-2.5 rounded-full bg-slate-600';
+        document.getElementById('hud-power-state').innerText = 'SYSTEM SHUTDOWN';
+        document.getElementById('hud-power-subtitle').innerText = 'STANDBY • PRESS POWER';
+        document.getElementById('header-status-text').innerText = 'OFFLINE [STANDBY]';
+        document.getElementById('header-status-text').className = 'text-slate-500 font-semibold';
+        document.getElementById('header-power-dot').className = 'absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-slate-600 border-2 border-slate-950';
+        document.getElementById('master-power-btn').className = 'relative group flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-800 shadow-[0_0_15px_rgba(0,0,0,0.6)] border-2 border-slate-600 transition-all duration-300 active:scale-95 cursor-pointer';
+
+        // Animate Internal Lights to Black
+        internalLights.forEach(light => {
+          gsap.to(light, { intensity: 0.0, duration: 0.8 });
+        });
+
+        // Dim RGB Materials
+        rgbMaterials.forEach(item => {
+          gsap.to(item.mat.emissive, { r: 0.02, g: 0.02, b: 0.02, duration: 0.8 });
+          if (item.mat.emissiveIntensity !== undefined) {
+            gsap.to(item.mat, { emissiveIntensity: 0.05, duration: 0.8 });
+          }
+        });
+
+        // Turn off POST LEDs
+        postLeds.forEach(led => {
+          led.mat.color.setHex(0x111111);
+        });
+        State.postCode = '--';
+
+        // Telemetry drop
+        gsap.to(State, {
+          fanSpeedRpm: 0,
+          targetFanRpm: 0,
+          cpuTemp: 22,
+          gpuTemp: 21,
+          powerWatts: 4,
+          cpuLoad: 0,
+          gpuLoad: 0,
+          duration: 2.0,
+          onUpdate: updateTelemetryUi
+        });
+
+      } else {
+        // --- POWER STARTUP SEQUENCE ---
+        State.isPoweredOn = true;
+        State.isBooting = true;
+        playRelayClickSound();
+
+        const banner = document.getElementById('bios-boot-banner');
+        const bannerText = document.getElementById('bios-boot-text');
+        banner.style.opacity = '1';
+        bannerText.innerText = 'STAGE 1: POWER ON SELF TEST (POST)...';
+
+        // Stage 1: CPU Check (Red Diagnostic LED)
+        State.postCode = 'C1';
+        if (postLeds[0]) postLeds[0].mat.color.setHex(postLeds[0].activeColor);
+
+        setTimeout(() => {
+          bannerText.innerText = 'STAGE 2: DRAM MEMORY CALIBRATION...';
+          State.postCode = '54';
+          if (postLeds[0]) postLeds[0].mat.color.setHex(0x111111);
+          if (postLeds[1]) postLeds[1].mat.color.setHex(postLeds[1].activeColor);
+        }, 700);
+
+        // Stage 2: VGA Check & Initial Fan Spinup Burst
+        setTimeout(() => {
+          bannerText.innerText = 'STAGE 3: INITIALIZING RTX 5090 APEX GPU...';
+          State.postCode = '99';
+          if (postLeds[1]) postLeds[1].mat.color.setHex(0x111111);
+          if (postLeds[2]) postLeds[2].mat.color.setHex(postLeds[2].activeColor);
+          gsap.to(State, { fanSpeedRpm: 2400, duration: 0.8 });
+        }, 1400);
+
+        // Stage 3: BOOT Ready & Chime
+        setTimeout(() => {
+          bannerText.innerText = 'STAGE 4: AERO CYBER-Z BOOT COMPLETE!';
+          State.postCode = 'A0';
+          if (postLeds[2]) postLeds[2].mat.color.setHex(0x111111);
+          if (postLeds[3]) postLeds[3].mat.color.setHex(postLeds[3].activeColor);
+          playBiosChime();
+        }, 2100);
+
+        // Stage 4: Full System Online & RGB Sweep Ripple
+        setTimeout(() => {
+          State.isBooting = false;
+          banner.style.opacity = '0';
+          State.postCode = '38C';
+          if (postLeds[3]) postLeds[3].mat.color.setHex(0x111111);
+
+          // Restore UI
+          document.getElementById('hud-power-indicator').className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981]';
+          document.getElementById('hud-power-state').innerText = 'SYSTEM READY';
+          document.getElementById('hud-power-subtitle').innerText = 'AERO PRO PLATFORM • ON';
+          document.getElementById('header-status-text').innerText = 'ONLINE [NORMAL]';
+          document.getElementById('header-status-text').className = 'text-emerald-400 font-semibold';
+          document.getElementById('header-power-dot').className = 'absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-slate-950';
+          document.getElementById('master-power-btn').className = 'relative group flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 via-teal-600 to-cyan-600 hover:from-emerald-400 hover:to-cyan-400 shadow-[0_0_25px_rgba(16,185,129,0.5)] border-2 border-white/60 transition-all duration-300 active:scale-95 cursor-pointer';
+
+          // Restore Internal Lights
+          internalLights.forEach(light => {
+            gsap.to(light, { intensity: 2.2, duration: 1.0 });
+          });
+
+          // Settle Fans to Profile
+          const targetRpm = State.fanProfile === 'quiet' ? 750 : State.fanProfile === 'turbo' ? 2800 : 1250;
+          gsap.to(State, {
+            fanSpeedRpm: targetRpm,
+            targetFanRpm: targetRpm,
+            cpuTemp: 38,
+            gpuTemp: 34,
+            powerWatts: 145,
+            cpuLoad: 14,
+            gpuLoad: 8,
+            duration: 1.5,
+            onUpdate: updateTelemetryUi
+          });
+
+          // Trigger RGB ripple
+          updateRgbColors();
+
+        }, 2800);
+      }
+    }
+
+    // ==========================================
+    // RGB LIGHTING SYSTEM & CONTROLS
+    // ==========================================
+    function onCustomColorChange(hex) {
+      State.rgbHex = hex;
+      State.rgbColor.set(hex);
+      State.rgbMode = 'static';
+      updateActiveModeLabel('Custom Static');
+      updateRgbColors();
+      document.getElementById('current-rgb-hex-display').innerText = hex.toUpperCase();
+    }
+
+    function setRgbPreset(hex, name) {
+      document.getElementById('rgb-native-picker').value = hex;
+      onCustomColorChange(hex);
+      updateActiveModeLabel(name);
+    }
+
+    function setRgbMode(mode) {
+      State.rgbMode = mode;
+      document.querySelectorAll('.rgb-mode-btn').forEach(btn => {
+        if (btn.dataset.mode === mode) {
+          btn.className = 'rgb-mode-btn px-2 py-1.5 rounded-xl bg-cyan-950 border border-cyan-500 text-cyan-300 font-semibold cursor-pointer';
+        } else {
+          btn.className = 'rgb-mode-btn px-2 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 cursor-pointer';
+        }
+      });
+      const names = {
+        rainbow: 'Rainbow Wave',
+        static: 'Static Color',
+        breathing: 'Breathing Pulse',
+        audiovisual: 'Music Visualizer',
+        thermal: 'Thermal Reactive',
+        glitch: 'Cyber Glitch'
+      };
+      updateActiveModeLabel(names[mode] || mode);
+    }
+
+    function updateActiveModeLabel(text) {
+      document.getElementById('active-mode-label').innerText = text;
+    }
+
+    function onBrightnessChange(val) {
+      State.brightness = val / 100;
+      document.getElementById('val-brightness').innerText = `${val}%`;
+      updateRgbColors();
+    }
+
+    function onSpeedChange(val) {
+      State.animationSpeed = val / 100;
+      document.getElementById('val-speed').innerText = `${(val / 100).toFixed(1)}x`;
+    }
+
+    function updateRgbColors() {
+      if (!State.isPoweredOn) return;
+
+      // Update lights
+      internalLights.forEach(light => {
+        light.color.copy(State.rgbColor);
+        light.intensity = 2.2 * State.brightness;
+      });
+
+      // Update materials
+      rgbMaterials.forEach(item => {
+        item.mat.emissive.copy(State.rgbColor);
+        if (item.mat.emissiveIntensity !== undefined) {
+          item.mat.emissiveIntensity = (item.baseEmissive || 1.0) * State.brightness;
+        }
+      });
+    }
+
+    // Dynamic per-frame RGB lighting animation logic
+    function animateRgbEffects(time) {
+      if (!State.isPoweredOn) return;
+
+      const t = time * State.animationSpeed;
+
+      if (State.rgbMode === 'rainbow') {
+        const hue = (t * 0.2) % 1.0;
+        State.rgbColor.setHSL(hue, 1.0, 0.5);
+
+        rgbMaterials.forEach(item => {
+          const itemHue = ((t * 0.2) + (item.phase || 0)) % 1.0;
+          item.mat.emissive.setHSL(itemHue, 1.0, 0.5);
+          item.mat.emissiveIntensity = (item.baseEmissive || 1.0) * State.brightness;
+        });
+
+        internalLights.forEach((light, i) => {
+          light.color.setHSL((hue + i * 0.15) % 1.0, 1.0, 0.5);
+          light.intensity = 2.2 * State.brightness;
+        });
+
+        document.getElementById('current-rgb-hex-display').innerText = '#' + State.rgbColor.getHexString().toUpperCase();
+
+      } else if (State.rgbMode === 'breathing') {
+        const pulse = (Math.sin(t * 3.0) + 1.0) * 0.5;
+        const intensity = (0.15 + 0.85 * pulse) * State.brightness;
+
+        internalLights.forEach(light => {
+          light.intensity = 2.4 * intensity;
+        });
+        rgbMaterials.forEach(item => {
+          item.mat.emissiveIntensity = (item.baseEmissive || 1.0) * intensity;
+        });
+
+      } else if (State.rgbMode === 'audiovisual') {
+        const beat = Math.pow(Math.sin(t * 8.0), 4) * 0.6 + Math.sin(t * 16.0) * 0.4;
+        const reactiveHue = (0.5 + beat * 0.3) % 1.0;
+        State.rgbColor.setHSL(reactiveHue, 1.0, 0.5);
+
+        internalLights.forEach(light => {
+          light.color.copy(State.rgbColor);
+          light.intensity = (1.0 + beat * 2.5) * State.brightness;
+        });
+        rgbMaterials.forEach(item => {
+          item.mat.emissive.copy(State.rgbColor);
+          item.mat.emissiveIntensity = (0.5 + beat * 1.5) * State.brightness;
+        });
+
+      } else if (State.rgbMode === 'thermal') {
+        const maxTemp = Math.max(State.cpuTemp, State.gpuTemp);
+        const tempRatio = Math.min(Math.max((maxTemp - 30) / 50, 0), 1);
+        const thermalHue = (1.0 - tempRatio) * 0.45;
+        State.rgbColor.setHSL(thermalHue, 1.0, 0.5);
+
+        internalLights.forEach(light => {
+          light.color.copy(State.rgbColor);
+          light.intensity = (1.8 + tempRatio * 1.2) * State.brightness;
+        });
+        rgbMaterials.forEach(item => {
+          item.mat.emissive.copy(State.rgbColor);
+          item.mat.emissiveIntensity = (1.0 + tempRatio * 0.6) * State.brightness;
+        });
+        document.getElementById('current-rgb-hex-display').innerText = '#' + State.rgbColor.getHexString().toUpperCase();
+
+      } else if (State.rgbMode === 'glitch') {
+        if (Math.random() > 0.88) {
+          const randColor = Math.random() > 0.5 ? 0x00f0ff : 0xff007f;
+          internalLights.forEach(l => { l.color.setHex(randColor); l.intensity = 4.0 * State.brightness; });
+          rgbMaterials.forEach(m => { m.mat.emissive.setHex(randColor); m.mat.emissiveIntensity = 2.0; });
+        } else {
+          internalLights.forEach(l => { l.color.copy(State.rgbColor); l.intensity = 1.5 * State.brightness; });
+          rgbMaterials.forEach(m => { m.mat.emissive.copy(State.rgbColor); m.mat.emissiveIntensity = 0.8; });
+        }
+      }
+    }
+
+    // ==========================================
+    // 3D BENCHMARK & STRESS TEST SIMULATION
+    // ==========================================
+    function toggleBenchmark() {
+      if (!State.isPoweredOn) {
+        togglePower();
+      }
+
+      if (State.isBenchmarking) return;
+      State.isBenchmarking = true;
+
+      const btn = document.getElementById('benchmark-btn');
+      const btnText = document.getElementById('benchmark-btn-text');
+      btnText.innerText = 'STRESS TESTING (99% LOAD)...';
+      btn.className = 'w-full py-2 px-3 rounded-xl bg-gradient-to-r from-red-600 via-orange-600 to-amber-600 text-white font-orbitron font-bold text-xs tracking-wider animate-pulse shadow-[0_0_30px_rgba(255,50,0,0.6)] flex items-center justify-center gap-2 cursor-pointer';
+
+      // Spikes Load, Fan RPM, and Temps
+      gsap.to(State, {
+        fanSpeedRpm: 2850,
+        targetFanRpm: 2850,
+        cpuTemp: 82,
+        gpuTemp: 71,
+        powerWatts: 580,
+        cpuLoad: 98,
+        gpuLoad: 99,
+        duration: 2.0,
+        onUpdate: () => {
+          State.postCode = `${Math.round(State.cpuTemp)}C`;
+          updateTelemetryUi();
+        }
+      });
+
+      // Camera dramatic zoom on GPU
+      setCameraView('gpu');
+
+      // 8.5-second intense benchmark run
+      setTimeout(() => {
+        State.isBenchmarking = false;
+        btnText.innerText = 'RUN 3D BENCHMARK';
+        btn.className = 'w-full py-2 px-3 rounded-xl bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-orbitron font-bold text-xs tracking-wider shadow-[0_0_20px_rgba(0,240,255,0.3)] transition-all flex items-center justify-center gap-2 active:scale-98 cursor-pointer';
+
+        // Settle back to normal
+        const normalRpm = State.fanProfile === 'quiet' ? 750 : State.fanProfile === 'turbo' ? 2800 : 1250;
+        gsap.to(State, {
+          fanSpeedRpm: normalRpm,
+          targetFanRpm: normalRpm,
+          cpuTemp: 41,
+          gpuTemp: 36,
+          powerWatts: 148,
+          cpuLoad: 16,
+          gpuLoad: 9,
+          duration: 3.0,
+          onUpdate: () => {
+            State.postCode = `${Math.round(State.cpuTemp)}C`;
+            updateTelemetryUi();
+          }
+        });
+
+        // Show Celebration Modal & Confetti!
+        showBenchmarkResults();
+
+      }, 8500);
+    }
+
+    function showBenchmarkResults() {
+      const modal = document.getElementById('benchmark-modal');
+      const card = document.getElementById('benchmark-modal-card');
+      modal.classList.remove('opacity-0', 'pointer-events-none');
+      card.classList.remove('scale-95');
+      card.classList.add('scale-100');
+
+      if (typeof confetti === 'function') {
+        confetti({
+          particleCount: 120,
+          spread: 80,
+          origin: { y: 0.6 }
+        });
+      }
+    }
+
+    function closeBenchmarkModal() {
+      const modal = document.getElementById('benchmark-modal');
+      const card = document.getElementById('benchmark-modal-card');
+      modal.classList.add('opacity-0', 'pointer-events-none');
+      card.classList.remove('scale-100');
+      card.classList.add('scale-95');
+    }
+
+    // ==========================================
+    // INTERACTIVE MODULAR CASE FEATURES
+    // ==========================================
+    // 1. Open / Remove Tempered Glass
+    function toggleGlassPanels() {
+      State.isGlassOpen = !State.isGlassOpen;
+      const btnText = document.getElementById('glass-text');
+      const btnIcon = document.getElementById('glass-icon');
+
+      if (State.isGlassOpen) {
+        btnText.innerText = 'Glass: Open';
+        btnIcon.setAttribute('data-lucide', 'panel-left-open');
+        gsap.to(glassSideGroup.rotation, { y: 1.1, duration: 1.2, ease: "power3.out" });
+        gsap.to(glassSideGroup.position, { x: 1.6, z: 0.4, duration: 1.2, ease: "power3.out" });
+      } else {
+        btnText.innerText = 'Glass: Closed';
+        btnIcon.setAttribute('data-lucide', 'panel-left-close');
+        gsap.to(glassSideGroup.rotation, { y: 0, duration: 1.0, ease: "power3.inOut" });
+        gsap.to(glassSideGroup.position, { x: 1.02, z: 0, duration: 1.0, ease: "power3.inOut" });
+      }
+      lucide.createIcons();
+    }
+
+    // 2. Modular Exploded Disassembly View
+    function toggleExplodedView() {
+      State.isExploded = !State.isExploded;
+      const btn = document.getElementById('exploded-btn');
+      const text = document.getElementById('exploded-text');
+
+      if (State.isExploded) {
+        text.innerText = 'Assemble PC';
+        btn.classList.add('border-cyan-400', 'bg-cyan-950/60');
+
+        explodedParts.forEach(item => {
+          const target = item.origin.clone().add(item.dir.clone().multiplyScalar(item.dist));
+          gsap.to(item.obj.position, {
+            x: target.x,
+            y: target.y,
+            z: target.z,
+            duration: 1.5,
+            ease: "back.out(1.2)"
+          });
+        });
+      } else {
+        text.innerText = 'Exploded View';
+        btn.classList.remove('border-cyan-400', 'bg-cyan-950/60');
+
+        explodedParts.forEach(item => {
+          gsap.to(item.obj.position, {
+            x: item.origin.x,
+            y: item.origin.y,
+            z: item.origin.z,
+            duration: 1.2,
+            ease: "power3.inOut"
+          });
+        });
+      }
+    }
+
+    // 3. Vertical vs Horizontal GPU Orientation
+    function toggleGpuOrientation() {
+      State.isGpuVertical = !State.isGpuVertical;
+      const badge = document.getElementById('gpu-orient-badge');
+
+      if (State.isGpuVertical) {
+        badge.innerText = 'VERTICAL RISER';
+        badge.className = 'text-[10px] px-1.5 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-700/60 font-bold';
+        gsap.to(gpuGroup.rotation, { z: Math.PI / 2, duration: 1.0, ease: "power2.inOut" });
+        gsap.to(gpuGroup.position, { x: 0.5, y: 1.1, z: 0.1, duration: 1.0, ease: "power2.inOut" });
+      } else {
+        badge.innerText = 'HORIZONTAL';
+        badge.className = 'text-[10px] px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800/40';
+        gsap.to(gpuGroup.rotation, { z: 0, duration: 1.0, ease: "power2.inOut" });
+        gsap.to(gpuGroup.position, { x: 0.15, y: 0.95, z: 0.1, duration: 1.0, ease: "power2.inOut" });
+      }
+    }
+
+    // 4. Airflow Streamlines Simulation
+    function toggleAirflow() {
+      State.isAirflowActive = !State.isAirflowActive;
+      const badge = document.getElementById('airflow-status-badge');
+
+      if (State.isAirflowActive) {
+        badge.innerText = 'ACTIVE';
+        badge.className = 'text-[10px] px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-600 font-bold';
+        gsap.to(airflowParticleSystem.material, { opacity: 0.85, duration: 0.6 });
+      } else {
+        badge.innerText = 'OFF';
+        badge.className = 'text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400';
+        gsap.to(airflowParticleSystem.material, { opacity: 0.0, duration: 0.6 });
+      }
+    }
+
+    // 5. Thermal Heatmap X-Ray Vision Mode
+    function toggleThermalMode() {
+      State.isThermalMode = !State.isThermalMode;
+      const badge = document.getElementById('thermal-status-badge');
+
+      if (State.isThermalMode) {
+        badge.innerText = 'ACTIVE';
+        badge.className = 'text-[10px] px-1.5 py-0.5 rounded bg-orange-950 text-orange-300 border border-orange-600 font-bold';
+        setRgbMode('thermal');
+        renderer.toneMappingExposure = 1.6;
+      } else {
+        badge.innerText = 'OFF';
+        badge.className = 'text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400';
+        setRgbMode('rainbow');
+        renderer.toneMappingExposure = 1.15;
+      }
+    }
+
+    // 6. Cycle AIO Display LCD Mode
+    function cycleAioDisplay() {
+      State.aioScreenMode = (State.aioScreenMode + 1) % 3;
+      const badge = document.getElementById('aio-theme-badge');
+      const names = ['TELEMETRY', '3D CUBE', 'AUDIO EQ'];
+      badge.innerText = names[State.aioScreenMode];
+    }
+
+    // 7. Fan Speed Profiles
+    function setFanProfile(profile) {
+      State.fanProfile = profile;
+      document.querySelectorAll('.fan-prof-btn').forEach(btn => {
+        btn.className = 'fan-prof-btn px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-[10px] text-slate-400 hover:text-white cursor-pointer';
+      });
+
+      const rpms = { quiet: 750, balanced: 1250, turbo: 2800 };
+      const targetRpm = rpms[profile];
+      document.getElementById('fan-profile-name').innerText = profile.toUpperCase();
+
+      if (State.isPoweredOn) {
+        gsap.to(State, { fanSpeedRpm: targetRpm, targetFanRpm: targetRpm, duration: 1.2, onUpdate: updateTelemetryUi });
+      }
+    }
+
+    // 8. Sound Toggle
+    function toggleAudio() {
+      State.audioEnabled = !State.audioEnabled;
+      const icon = document.getElementById('audio-icon');
+      if (State.audioEnabled) {
+        icon.setAttribute('data-lucide', 'volume-2');
+        icon.className = 'w-4 h-4 text-cyan-400';
+        setupAudioContext();
+      } else {
+        icon.setAttribute('data-lucide', 'volume-x');
+        icon.className = 'w-4 h-4 text-slate-600';
+      }
+      lucide.createIcons();
+    }
+
+    // 9. RGB Drawer Toggle
+    function toggleRgbDrawer() {
+      const drawer = document.getElementById('rgb-studio-drawer');
+      drawer.classList.toggle('hidden');
+    }
+
+    // ==========================================
+    // CAMERA CONTROLS & CINEMATIC TOURS
+    // ==========================================
+    function setCameraView(preset) {
+      State.isCinematicTour = false;
+      document.getElementById('cinematic-tour-btn').classList.remove('bg-cyan-600', 'text-white');
+      document.getElementById('cinematic-text').innerText = 'Cinematic Tour';
+
+      const positions = {
+        iso: { pos: [5.5, 3.2, 6.2], target: [0, 1.3, 0] },
+        gpu: { pos: [2.6, 1.3, 2.0], target: [0.2, 1.0, 0.2] },
+        aio: { pos: [1.8, 1.9, 0.2], target: [-0.1, 1.9, 0.0] },
+        ram: { pos: [1.6, 2.2, 1.2], target: [-0.1, 1.9, 0.3] },
+        top: { pos: [0.1, 6.8, 0.2], target: [0, 2.0, 0] }
+      };
+
+      const cfg = positions[preset] || positions.iso;
+      gsap.to(camera.position, {
+        x: cfg.pos[0],
+        y: cfg.pos[1],
+        z: cfg.pos[2],
+        duration: 1.5,
+        ease: "power3.inOut"
+      });
+      gsap.to(controls.target, {
+        x: cfg.target[0],
+        y: cfg.target[1],
+        z: cfg.target[2],
+        duration: 1.5,
+        ease: "power3.inOut"
+      });
+    }
+
+    function resetCamera() {
+      setCameraView('iso');
+    }
+
+    function toggleCinematicTour() {
+      State.isCinematicTour = !State.isCinematicTour;
+      const btn = document.getElementById('cinematic-tour-btn');
+      const text = document.getElementById('cinematic-text');
+
+      if (State.isCinematicTour) {
+        text.innerText = 'Tour Active';
+        btn.classList.add('bg-cyan-600', 'text-white');
+      } else {
+        text.innerText = 'Cinematic Tour';
+        btn.classList.remove('bg-cyan-600', 'text-white');
+      }
+    }
+
+    // ==========================================
+    // UI TELEMETRY UPDATES
+    // ==========================================
+    function updateTelemetryUi() {
+      document.getElementById('stat-cpu-temp').innerText = `${Math.round(State.cpuTemp)}°C`;
+      document.getElementById('stat-gpu-temp').innerText = `${Math.round(State.gpuTemp)}°C`;
+      document.getElementById('stat-fan-rpm').innerText = Math.round(State.fanSpeedRpm);
+      document.getElementById('stat-power-watts').innerText = `${Math.round(State.powerWatts)}W`;
+      document.getElementById('stat-cpu-load').innerText = `${Math.round(State.cpuLoad)}% Load`;
+      document.getElementById('stat-gpu-load').innerText = `${Math.round(State.gpuLoad)}% Load`;
+
+      document.getElementById('stat-cpu-bar').style.width = `${Math.min(State.cpuTemp, 100)}%`;
+      document.getElementById('stat-gpu-bar').style.width = `${Math.min(State.gpuTemp, 100)}%`;
+
+      updateAudioFanPitch();
+    }
+
+    // ==========================================
+    // RAYCASTING & 3D INTERACTION
+    // ==========================================
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    let hoveredObject = null;
+
+    function setupEventListeners() {
+      const dom = renderer.domElement;
+
+      dom.addEventListener('mousemove', (e) => {
+        mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+        checkRaycast(e.clientX, e.clientY);
+      });
+
+      dom.addEventListener('click', (e) => {
+        if (hoveredObject && hoveredObject.userData && hoveredObject.userData.isButton) {
+          togglePower();
+        }
+      });
+    }
+
+    function checkRaycast(clientX, clientY) {
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(interactiveObjects, true);
+      const tag = document.getElementById('component-3d-tag');
+
+      if (intersects.length > 0) {
+        const hit = intersects[0];
+        let obj = hit.object;
+
+        if (obj.userData && obj.userData.name) {
+          document.getElementById('tag-name').innerText = obj.userData.name;
+          document.getElementById('tag-spec').innerText = obj.userData.spec;
+          
+          // Project 3D hit point to screen space
+          const worldPos = hit.point;
+          const screenPos = worldPos.clone().project(camera);
+          const screenX = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+          const screenY = (-(screenPos.y * 0.5) + 0.5) * window.innerHeight;
+
+          tag.style.left = `${screenX}px`;
+          tag.style.top = `${screenY}px`;
+          tag.classList.add('active');
+          hoveredObject = obj;
+          return;
+        }
+      }
+
+      tag.classList.remove('active');
+      hoveredObject = null;
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    // ==========================================
+    // MAIN ANIMATION RENDER LOOP
+    // ==========================================
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const delta = clock.getDelta();
+      const time = clock.getElapsedTime();
+
+      // Controls update
+      controls.update();
+
+      // Cinematic Auto-Tour smooth orbit
+      if (State.isCinematicTour) {
+        const rad = 7.2;
+        camera.position.x = Math.sin(time * 0.3) * rad;
+        camera.position.z = Math.cos(time * 0.3) * rad;
+        camera.position.y = 2.4 + Math.sin(time * 0.4) * 0.8;
+        controls.target.set(0, 1.3, 0);
+      }
+
+      // Rotate Fans according to active RPM
+      const fanAngularSpeed = (State.fanSpeedRpm / 60) * Math.PI * 2 * delta;
+      animatedFans.forEach(fan => {
+        if (fan.rotor) {
+          fan.rotor.rotation.z += fanAngularSpeed;
+        }
+      });
+
+      // Update Airflow Particles
+      if (State.isAirflowActive && State.isPoweredOn) {
+        updateAirflowParticles();
+      }
+
+      // Update Dynamic Screen textures
+      updateDynamicScreens(time);
+
+      // Dynamic RGB lighting animations
+      animateRgbEffects(time);
+
+      // Render Scene
+      renderer.render(scene, camera);
+    }
+  </script>
+</body>
+</html>

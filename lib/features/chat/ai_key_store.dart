@@ -1,23 +1,17 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
+
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:path_provider/path_provider.dart';
 
-/// Stores the user's own AI provider API keys locally, encrypted at rest —
-/// one file per provider (Anthropic, OpenAI, Mistral/"Luma", ...), keyed by
-/// `AiProviderInfo.id.name`.
-///
-/// This mirrors `PasswordCrypto` (same HMAC-SHA256 encrypt-then-MAC stream
-/// cipher) but uses its own key file so compromising one secret doesn't
-/// compromise the other. This is obfuscation-at-rest, not a hardware-backed
-/// secret store: anyone with filesystem access to the app's support
-/// directory could decrypt the key. That's an acceptable tradeoff because
-/// each key is the user's own revocable provider credential, not a master
-/// secret — it is never compiled into the app binary and never sent
-/// anywhere except directly to that provider's API from this device.
+import '../../security/secure_secret_store.dart';
+import '../../security/authenticated_cipher.dart';
+
+/// Provider-bound AES-256-GCM for new API key records. The independent key
+/// lives in OS secure storage; legacy ciphertext remains readable. Provider
+/// credentials are passed only to the chosen provider or configured proxy.
 class AiKeyStore {
   AiKeyStore._(this._key, this._dirPath);
 
@@ -35,18 +29,26 @@ class AiKeyStore {
     final dir = await getApplicationSupportDirectory();
     final keyFile = File('${dir.path}${Platform.pathSeparator}$_keyFileName');
 
-    Uint8List key;
-    if (await keyFile.exists()) {
-      key = base64Decode((await keyFile.readAsString()).trim());
-    } else {
-      key = _randomBytes(32);
-      await keyFile.writeAsString(base64Encode(key), flush: true);
-    }
+    final hasData = await dir.list().any(
+      (entry) =>
+          entry.path.contains('luma_ai_apikey_') && entry.path.endsWith('.dat'),
+    );
+    final key = await SecureSecretStore.instance.loadKey(
+      'ai.key',
+      keyFile,
+      encryptedDataExists: hasData,
+    );
     return _instance = AiKeyStore._(key, dir.path);
   }
 
-  File _fileFor(String providerId) => File(
-      '$_dirPath${Platform.pathSeparator}luma_ai_apikey_$providerId.dat');
+  File _fileFor(String providerId) {
+    if (!RegExp(r'^[a-zA-Z0-9_-]+$').hasMatch(providerId)) {
+      throw const FormatException('Invalid provider identifier.');
+    }
+    return File(
+      '$_dirPath${Platform.pathSeparator}luma_ai_apikey_$providerId.dat',
+    );
+  }
 
   /// Returns the saved API key for [providerId], or null if none has been
   /// saved.
@@ -55,29 +57,27 @@ class AiKeyStore {
     if (!await file.exists()) return null;
     final token = (await file.readAsString()).trim();
     if (token.isEmpty) return null;
-    final decrypted = _decrypt(token);
+    final decrypted = token.startsWith('ai2:')
+        ? utf8.decode(
+            AuthenticatedCipher.open(
+              base64Decode(token.substring(4)),
+              _key,
+              'luma-ai:$providerId',
+            ),
+          )
+        : _decrypt(token);
     return decrypted.isEmpty ? null : decrypted;
   }
 
   Future<void> saveKey(String providerId, String apiKey) async {
-    await _fileFor(providerId).writeAsString(_encrypt(apiKey), flush: true);
+    final token =
+        'ai2:${base64Encode(AuthenticatedCipher.seal(utf8.encode(apiKey), _key, 'luma-ai:$providerId'))}';
+    await _fileFor(providerId).writeAsString(token, flush: true);
   }
 
   Future<void> clearKey(String providerId) async {
     final file = _fileFor(providerId);
     if (await file.exists()) await file.delete();
-  }
-
-  String _encrypt(String plaintext) {
-    final nonce = _randomBytes(_nonceLength);
-    final data = utf8.encode(plaintext);
-    final cipher = _xorKeystream(data, nonce);
-    final mac = _mac(nonce, cipher);
-    final out = Uint8List(nonce.length + cipher.length + mac.length)
-      ..setAll(0, nonce)
-      ..setAll(nonce.length, cipher)
-      ..setAll(nonce.length + cipher.length, mac);
-    return base64Encode(out);
   }
 
   String _decrypt(String token) {
@@ -118,12 +118,6 @@ class AiKeyStore {
   static Uint8List _counterBytes(int counter) {
     final b = ByteData(4)..setUint32(0, counter, Endian.big);
     return b.buffer.asUint8List();
-  }
-
-  static Uint8List _randomBytes(int length) {
-    final rng = Random.secure();
-    return Uint8List.fromList(
-        List<int>.generate(length, (_) => rng.nextInt(256)));
   }
 
   static bool _constantTimeEquals(List<int> a, List<int> b) {

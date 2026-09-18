@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:cryptography/cryptography.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../../security/secure_secret_store.dart';
+
 /// Persists this device's long-term X25519 chat identity keypair. The
 /// private key is generated once on-device and NEVER leaves it — only the
 /// public key is ever sent to the server (see chat_repository.dart). If the
@@ -35,34 +37,44 @@ class ChatKeyStore {
   /// on this device yet.
   Future<SimpleKeyPair?> loadIdentity() async {
     final file = _file;
-    if (file == null || !await file.exists()) return null;
+    final protected = await SecureSecretStore.instance.read('chat.identity');
+    if (protected == null && (file == null || !await file.exists())) {
+      return null;
+    }
     try {
-      final decoded = jsonDecode(await file.readAsString());
-      if (decoded is! Map<String, dynamic>) return null;
+      final payload = protected ?? await file!.readAsString();
+      final decoded = jsonDecode(payload);
+      if (decoded is! Map<String, dynamic>) {
+        throw const FormatException('Invalid chat identity.');
+      }
       final privateBytes = base64Decode(decoded['privateKey'] as String);
       final publicBytes = base64Decode(decoded['publicKey'] as String);
+      if (privateBytes.length != 32 || publicBytes.length != 32) {
+        throw const FormatException('Invalid chat identity.');
+      }
+      if (protected == null) {
+        await SecureSecretStore.instance.write('chat.identity', payload);
+        await file!.delete();
+      }
       return SimpleKeyPairData(
         privateBytes,
         publicKey: SimplePublicKey(publicBytes, type: KeyPairType.x25519),
         type: KeyPairType.x25519,
       );
     } catch (_) {
-      return null;
+      throw StateError(
+        'Chat identity could not be loaded. Restore the original identity.',
+      );
     }
   }
 
   Future<void> saveIdentity(SimpleKeyPair keyPair) async {
-    final file = _file;
-    if (file == null) return;
     final data = await keyPair.extract();
     final public = await keyPair.extractPublicKey();
     final payload = jsonEncode({
       'privateKey': base64Encode(data.bytes),
       'publicKey': base64Encode(public.bytes),
     });
-    final tmp = File('${file.path}.tmp');
-    await tmp.writeAsString(payload, flush: true);
-    if (await file.exists()) await file.delete();
-    await tmp.rename(file.path);
+    await SecureSecretStore.instance.write('chat.identity', payload);
   }
 }

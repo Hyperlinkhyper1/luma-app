@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart';
+﻿import 'package:drift/drift.dart';
 
 import '../../../../storage/storage_guard.dart';
 import 'data/mind_map_database.dart';
@@ -41,7 +41,6 @@ class MindMapRepository {
   /// lands the user on something they can immediately type into instead of
   /// an empty canvas with a "add your first node" dialog.
   Future<int> createMap(String title, {MindMapDirection direction = MindMapDirection.right}) async {
-    StorageGuard.instance.ensureWithinLimit();
     final mapId = await _db.into(_db.mindMaps).insert(
           MindMapsCompanion.insert(
             title: title,
@@ -118,7 +117,6 @@ class MindMapRepository {
     required int? parentId,
     String label = '',
   }) async {
-    StorageGuard.instance.ensureWithinLimit();
     final siblings = await _siblingsOf(mapId, parentId);
     final id = await _db.into(_db.mindMapNodes).insert(
           MindMapNodesCompanion.insert(
@@ -143,7 +141,6 @@ class MindMapRepository {
     final after = await _node(afterId);
     if (after == null) return addChild(mapId: mapId, parentId: null, label: label);
 
-    StorageGuard.instance.ensureWithinLimit();
     final siblings = await _siblingsOf(mapId, after.parentId);
     for (final sibling in siblings) {
       if (sibling.sortIndex > after.sortIndex) {
@@ -194,7 +191,7 @@ class MindMapRepository {
 
   /// Moves [id] under [newParentId].
   ///
-  /// Refuses to move a node into its own subtree — otherwise the branch
+  /// Refuses to move a node into its own subtree â€” otherwise the branch
   /// would detach from the root and vanish from the layout.
   Future<bool> reparent(int id, int? newParentId) async {
     final node = await _node(id);
@@ -258,7 +255,6 @@ class MindMapRepository {
   /// Puts back rows removed by [deleteSubtree], ids intact.
   Future<void> restore(MindMapDeletion deletion) async {
     if (deletion.rows.isEmpty) return;
-    StorageGuard.instance.ensureWithinLimit();
     for (final row in deletion.rows) {
       await _db.into(_db.mindMapNodes).insert(row, mode: InsertMode.insertOrReplace);
     }
@@ -275,7 +271,6 @@ class MindMapRepository {
     required int? parentId,
     required List<OutlineNode> roots,
   }) async {
-    StorageGuard.instance.ensureWithinLimit();
     var inserted = 0;
     Future<void> walk(int? parent, List<OutlineNode> level) async {
       final siblings = await _siblingsOf(mapId, parent);

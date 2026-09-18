@@ -24,7 +24,8 @@ if (-not $env:LUMA_DATA_DIR) { $env:LUMA_DATA_DIR = Join-Path $here "data" }
 #   $env:LUMA_ALLOW_REGISTRATION = "false"
 # ---------------------------------------------------------------------------
 
-$exe = Join-Path $here "luma_server.exe"
+$bundleDir = Join-Path $here "build\local-bundle"
+$exe = Join-Path $bundleDir "bundle\bin\luma_server.exe"
 
 # Stop any luma_server.exe that is still running — otherwise it holds the port
 # AND locks the .exe file, so a rebuild silently keeps the old version (which
@@ -37,10 +38,14 @@ foreach ($proc in $running) {
 if ($running) { Start-Sleep -Milliseconds 500 }
 
 if ($Rebuild -or -not (Test-Path $exe)) {
-    Write-Host "Compiling luma_server.exe ..." -ForegroundColor Cyan
+    Write-Host "Building luma_server.exe ..." -ForegroundColor Cyan
     # If this step fails with a "cannot find path" pub-cache error, just run
-    # it again — compilation is a one-shot and the failure is transient.
-    dart compile exe bin/luma_server.dart -o $exe
+    # it again — the build is a one-shot and the failure is transient.
+    # NB: `dart compile exe` no longer works here — sqlite3 ships its native
+    # library via build hooks, so the build must go through `dart build cli`,
+    # which emits bundle/bin/luma_server.exe next to bundle/lib/sqlite3.dll.
+    # The two must stay together: the exe loads its native library via ../lib.
+    dart build cli --target bin/luma_server.dart -o $bundleDir
 }
 
 Write-Host "Starting luma sync server on port $($env:LUMA_PORT)" -ForegroundColor Green

@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart';
+﻿import 'package:drift/drift.dart';
 
 import '../../../../storage/storage_guard.dart';
 import 'data/errands_database.dart';
@@ -17,7 +17,7 @@ RepeatUnit repeatUnitFromKey(String key) => switch (key) {
 /// Truncates [d] to local midnight so due-date comparisons are date-only.
 DateTime dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
-/// The next occurrence [every] × [unit] after [from] (date-only). Months are
+/// The next occurrence [every] Ã— [unit] after [from] (date-only). Months are
 /// calendar months with the day clamped (Jan 31 + 1 month = Feb 28/29).
 DateTime advanceSchedule(DateTime from, RepeatUnit unit, int every) {
   final base = dateOnly(from);
@@ -122,7 +122,6 @@ class ErrandsRepository {
   }
 
   Future<void> addCategory({required String name, required int color}) async {
-    StorageGuard.instance.ensureWithinLimit();
     final existing = await _db.select(_db.errandCategories).get();
     final nextPos = existing.isEmpty
         ? 0
@@ -139,7 +138,6 @@ class ErrandsRepository {
 
   Future<void> updateCategory(int id,
       {required String name, required int color}) async {
-    StorageGuard.instance.ensureWithinLimit();
     await (_db.update(_db.errandCategories)..where((t) => t.id.equals(id)))
         .write(ErrandCategoriesCompanion(
       name: Value(name),
@@ -177,7 +175,6 @@ class ErrandsRepository {
     int? categoryId,
     String? notes,
   }) async {
-    StorageGuard.instance.ensureWithinLimit();
     await _db.into(_db.errands).insert(
           ErrandsCompanion.insert(
             name: name,
@@ -200,7 +197,6 @@ class ErrandsRepository {
     int? categoryId,
     String? notes,
   }) async {
-    StorageGuard.instance.ensureWithinLimit();
     await (_db.update(_db.errands)..where((t) => t.id.equals(id))).write(
       ErrandsCompanion(
         name: Value(name),
@@ -241,7 +237,7 @@ class ErrandsRepository {
     ));
   }
 
-  /// Pushes the errand [days] forward — from today when it's already due,
+  /// Pushes the errand [days] forward â€” from today when it's already due,
   /// or from its scheduled date when it's still upcoming.
   Future<void> snooze(ErrandRecord errand, int days, {DateTime? now}) async {
     final today = dateOnly(now ?? DateTime.now());

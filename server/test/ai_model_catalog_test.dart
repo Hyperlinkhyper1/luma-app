@@ -328,6 +328,58 @@ void main() {
       expect(store.byId('a/two'), isNotNull);
     });
 
+    test('retireRatingsExcept blanks scores from a retired index scale',
+        () async {
+      final store = await AiModelCatalogStore.open(dir.path);
+      // 63.1 is Opus 5 on AA's previous scale; 50.7 is the same model on the
+      // current one. Left alone, the old number outranks every live model.
+      await store.upsertModels([
+        model('a/current', index: 50.7),
+        model('a/retired', index: 63.1),
+        model('a/unrated'),
+      ]);
+
+      expect(await store.retireRatingsExcept({'a/current'}), ['a/retired']);
+      expect(store.byId('a/current')!.llmStatsIndex, 50.7);
+      expect(store.byId('a/retired')!.llmStatsIndex, isNull);
+      // Still on the board, just without a rating — not deleted.
+      expect(store.byId('a/retired'), isNotNull);
+      // Nothing to clear, so nothing is reported as cleared.
+      expect(await store.retireRatingsExcept({'a/current'}), isEmpty);
+    });
+
+    test('retireRatingsExcept keeps everything a rating is not derived from',
+        () async {
+      final store = await AiModelCatalogStore.open(dir.path);
+      await store.upsertModels([
+        AiModel(
+          id: 'a/one',
+          slug: 'one',
+          name: 'One',
+          vendor: 'a',
+          vendorName: 'Vendor',
+          updatedAtMs: 1,
+          llmStatsIndex: 63.1,
+          codingIndex: 73.6,
+          agentIndex: 39.5,
+          contextTokens: 200000,
+          inputPricePerM: 5,
+          openWeights: true,
+          licenseName: 'MIT',
+        ),
+      ]);
+
+      await store.retireRatingsExcept(const {});
+      final m = store.byId('a/one')!;
+      expect(m.llmStatsIndex, isNull);
+      expect(m.codingIndex, isNull);
+      expect(m.agentIndex, isNull);
+      expect(m.contextTokens, 200000);
+      expect(m.inputPricePerM, 5);
+      expect(m.openWeights, isTrue);
+      expect(m.licenseName, 'MIT');
+    });
+
     test('pruneVendorsNotIn removes only disallowed vendors, permanently',
         () async {
       final store = await AiModelCatalogStore.open(dir.path);
@@ -423,6 +475,75 @@ void main() {
     test('an unknown vendor or licence still reads as a name, not a slug', () {
       expect(vendorDisplayName('brand-new-lab'), 'Brand New Lab');
       expect(licenseDisplayName('some-new-license'), 'Some New License');
+    });
+  });
+
+  group('aaOverlays', () {
+    AiModel known(String id, String name) => AiModel(
+          id: id,
+          slug: id.split('/').last,
+          name: name,
+          vendor: id.split('/').first,
+          vendorName: vendorDisplayName(id.split('/').first),
+          updatedAtMs: 0,
+          llmStatsIndex: 12,
+        );
+
+    Map<String, dynamic> row(String name, double intelligence,
+            {double? coding}) =>
+        {
+          'name': name,
+          'evaluations': {
+            'artificial_analysis_intelligence_index': intelligence,
+            if (coding != null) 'artificial_analysis_coding_index': coding,
+          },
+        };
+
+    test('a model AA lists only per effort tier still gets a rating', () {
+      // Why the intelligence column used to read low: AA has no bare
+      // "Claude Opus 5" row, only "(medium)", "(high)" and "(max)".
+      final out = aaOverlays([
+        row('Claude Opus 5 (medium)', 45),
+        row('Claude Opus 5 (high)', 48),
+        row('Claude Opus 5 (max)', 50.7),
+      ], [
+        known('anthropic/claude-opus-5', 'Claude Opus 5')
+      ]);
+
+      expect(out, hasLength(1));
+      expect(out.single.llmStatsIndex, 50.7);
+      expect(
+        out.single.effortProfiles.map((e) => e.effort),
+        ['medium', 'high', 'max'],
+      );
+    });
+
+    test('the best tier outranks a lower bare row but inherits its gaps', () {
+      final out = aaOverlays([
+        row('GPT-6 Astra', 45, coding: 30),
+        row('GPT-6 Astra (max)', 52.8),
+      ], [
+        known('openai/gpt-6-astra', 'GPT-6 Astra')
+      ]);
+
+      expect(out.single.llmStatsIndex, 52.8);
+      expect(out.single.codingIndex, 30);
+    });
+
+    test('a non-reasoning row never stands in as the rating', () {
+      final out = aaOverlays([
+        row('GPT-6 Astra (Non-reasoning)', 45),
+        row('GPT-6 Astra (high)', 51),
+      ], [
+        known('openai/gpt-6-astra', 'GPT-6 Astra')
+      ]);
+
+      expect(out.single.llmStatsIndex, 51);
+      expect(out.single.effortProfiles, hasLength(1));
+    });
+
+    test('rows for models the catalogue does not carry are dropped', () {
+      expect(aaOverlays([row('Some Other Model (max)', 40)], []), isEmpty);
     });
   });
 }

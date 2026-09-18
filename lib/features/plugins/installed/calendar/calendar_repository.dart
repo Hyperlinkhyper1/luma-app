@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart';
+﻿import 'package:drift/drift.dart';
 
 import '../../../../family/family_api.dart';
 import '../../../../storage/storage_guard.dart';
@@ -24,7 +24,7 @@ extension RecurrenceLabel on Recurrence {
 
 /// Marks an [EventRecord] as a family-shared calendar entry rather than a
 /// personal, local-only one. Present only on events that came from
-/// [FamilyRepository.sharedEvents] — see calendar_page.dart's merge and
+/// [FamilyRepository.sharedEvents] â€” see calendar_page.dart's merge and
 /// event_editor.dart's share controls. Deliberately NOT a Drift column: this
 /// data lives server-side in the (server-readable) family channel, never in
 /// the local, zero-knowledge-synced `CalendarEvents` table.
@@ -164,7 +164,6 @@ class CalendarRepository {
     DateTime? recurrenceEnd,
     int? reminderMinutes,
   }) async {
-    StorageGuard.instance.ensureWithinLimit();
     final id = await _db.into(_db.calendarEvents).insert(
           CalendarEventsCompanion.insert(
             title: title,
@@ -231,7 +230,7 @@ class CalendarRepository {
         createdAt: row.createdAt,
       );
 
-  // ── Dinner plans ─────────────────────────────────────────────────────
+  // â”€â”€ Dinner plans â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   /// Streams every planned dinner, one row per day.
   Stream<List<DinnerPlanRecord>> watchDinners() {
@@ -252,7 +251,6 @@ class CalendarRepository {
     int? servings,
     int? minutes,
   }) async {
-    StorageGuard.instance.ensureWithinLimit();
     final date = DateTime(day.year, day.month, day.day);
     final ingredientsText = ingredients.join('\n');
     final existing = await (_db.select(_db.dinnerPlans)

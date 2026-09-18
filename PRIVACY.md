@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Last updated: August 10, 2026**
+**Last updated: September 12, 2026**
 
 luma is a local-first app. This policy explains, plainly, what that means in
 practice: what stays on your device, what an optional account sends to the
@@ -14,19 +14,18 @@ If anything here is unclear, email me — see [Contact](#contact).
 
 ## The short version
 
-- **Nothing leaves your device by default.** A fresh install of luma works
-  fully offline. No account, no server contact, no telemetry.
+- **Local features work offline.** Luma-server feature requests require an
+  approved account, with account-setup exceptions. Update/catalog requests
+  and external integrations have separate network behavior.
 - **An account is optional**, and needs only an email address and a
   password. Your password never reaches the server in readable form.
-- **Sync is end-to-end encrypted.** When you turn a feature's sync on, that
-  feature's data is encrypted on your device before upload. The server
-  stores unreadable ciphertext — I cannot read your notes, passwords,
-  finances, or anything else you sync, and I have no way to recover it if
-  you forget your password.
-- **Two features are the deliberate exception**: shared Family calendars
-  and Family membership are stored in plain text on the server, because the
-  point of that feature is for other family members to read it. This is
-  called out again in its own section below.
+- **Snapshot contents are encrypted before upload.** The ordinary storage
+  endpoint does not receive the decryption key. Metadata remains visible,
+  and password guessing or a compromised device can defeat confidentiality.
+- **Shared features and AI proxies are separate data flows.** Family
+  membership/calendars are readable by the server, and AI proxies handle
+  submitted prompts. Do not interpret snapshot encryption as a guarantee
+  covering every online feature.
 - **The AI Assistant** either talks straight from your device to the AI
   provider you choose using your own API key, or — for the built-in
   free-tier modes — is relayed through my server, which never stores what
@@ -76,16 +75,18 @@ When you switch a feature's sync on in Settings, your device:
 3. Adds an authentication tag so tampering is detectable.
 4. Uploads the result.
 
-The server stores that upload as opaque bytes. It has no copy of your
-encryption key and no way to decrypt it. **If you forget your password,
-your synced data cannot be recovered by me or anyone else.**
+The ordinary sync endpoint stores that upload as opaque bytes and does not
+receive the encryption key. This does not prevent password guessing or a
+compromised client from exposing content. Recovery may be possible on a
+device retaining the old key; losing all passwords, keys and usable devices
+can make data permanently unreadable. See [current limitations](docs/security/SECURITY_ARCHITECTURE.md).
 
 What the server *can* see, because it needs to for the sync protocol to
 work at all: your account email, which named feature a given upload
 belongs to (e.g. "finance", "passwords"), its size in bytes, a version
 number, and the time it was saved — never the content.
 
-Sync is off for every feature by default; you turn features on individually,
+Settings sync is enabled for signed-in accounts; other collections are opt-in,
 and can turn any of them back off (optionally deleting the server copy) at
 any time from Settings.
 
@@ -95,8 +96,8 @@ touches my server at all.
 
 ## Family sharing — the one deliberately plain-text feature
 
-Everything above describes zero-knowledge sync, where I cannot read your
-data. Family sharing is different on purpose: its whole point is letting
+The preceding section describes encrypted snapshots. Family sharing is
+different: its whole point is letting
 people in your family see what you share with them, so it is **not**
 end-to-end encrypted.
 
@@ -132,6 +133,12 @@ If you install the Chat plugin, it lets you exchange end-to-end encrypted
 messages with other luma users. Only your public key is ever uploaded; each
 message is sealed on your device such that the server relays it without
 being able to read it.
+
+If you're on the receiving end of harassment or illegal content through
+Secure Chat, Cloud Files, or Family sharing, report it to
+**customerservice@luma-app.cc** — see
+[Reporting abuse or illegal content](TERMS.md#reporting-abuse-or-illegal-content)
+in the Terms for what happens next.
 
 ## What the server does not do
 
@@ -229,3 +236,6 @@ handled, I'll note it here with an updated date, and — for account holders
 ## Contact
 
 Questions, requests, or reports about privacy: **hyperlinkhyper@outlook.com**
+
+To report abuse or illegal content on the service, email
+**customerservice@luma-app.cc**.

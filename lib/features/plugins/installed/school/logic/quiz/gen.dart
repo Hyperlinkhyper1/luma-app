@@ -1,0 +1,145 @@
+import 'dart:math';
+
+import '../quiz_bank.dart';
+
+/// Writes a number the Dutch way: a comma before the decimals, a dot between
+/// the thousands.
+String nlNum(num v) {
+  final negative = v < 0;
+  final abs = v.abs();
+  String body;
+  if (abs == abs.roundToDouble()) {
+    body = _groups(abs.round().toString());
+  } else {
+    var s = abs.toStringAsFixed(3);
+    while (s.endsWith('0')) {
+      s = s.substring(0, s.length - 1);
+    }
+    final parts = s.split('.');
+    body = '${_groups(parts[0])},${parts[1]}';
+  }
+  return negative ? '-$body' : body;
+}
+
+/// A money amount, always with two decimals.
+String nlEuro(num v) {
+  final parts = v.abs().toStringAsFixed(2).split('.');
+  final body = '${_groups(parts[0])},${parts[1]}';
+  return v < 0 ? '-€ $body' : '€ $body';
+}
+
+String _groups(String digits) {
+  if (digits.length < 5) return digits;
+  final buffer = StringBuffer();
+  for (var i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) buffer.write('.');
+    buffer.write(digits[i]);
+  }
+  return buffer.toString();
+}
+
+/// Collects generated questions for one subject.
+///
+/// The bank is far too large to type out by hand, so most of it is built from
+/// compact data tables and templates instead. Generation is deterministic —
+/// every [QuizGen] runs off a fixed seed — so the bank is byte-for-byte the
+/// same on every launch and the tests can rely on it.
+///
+/// Templates combine basic practice and more demanding applications.
+class QuizGen {
+  QuizGen(this.prefix, {required int seed}) : rnd = Random(seed);
+
+  /// Id prefix, e.g. `grek`. Kept distinct from the hand-written banks.
+  final String prefix;
+
+  final Random rnd;
+
+  final List<QuizQuestion> _out = [];
+  final Set<String> _seen = {};
+  int _serial = 0;
+
+  List<QuizQuestion> get questions => _out;
+  int get length => _out.length;
+
+  int between(int lo, int hi) => lo + rnd.nextInt(hi - lo + 1);
+
+  T oneOf<T>(List<T> from) => from[rnd.nextInt(from.length)];
+
+  /// Up to [n] distinct entries from [pool], never [answer] itself.
+  List<String> others(Iterable<String> pool, String answer, [int n = 3]) {
+    final copy = {...pool}..remove(answer);
+    final list = copy.toList()..shuffle(rnd);
+    return list.take(n).toList();
+  }
+
+  /// Wrong numbers around [answer], formatted and with any accidental match
+  /// on the answer dropped.
+  List<String> nums(num answer, List<num> wrongs) {
+    final out = <String>[];
+    for (final w in wrongs) {
+      if (w == answer) continue;
+      final s = nlNum(w);
+      if (s != nlNum(answer) && !out.contains(s)) out.add(s);
+    }
+    return out;
+  }
+
+  List<String> euros(num answer, List<num> wrongs) {
+    final out = <String>[];
+    for (final w in wrongs) {
+      if (w == answer) continue;
+      final s = nlEuro(w);
+      if (s != nlEuro(answer) && !out.contains(s)) out.add(s);
+    }
+    return out;
+  }
+
+  /// Adds one question.
+  ///
+  /// [wrong] may be longer than three and may contain duplicates or the answer
+  /// itself; the first three usable entries are kept. An item that cannot be
+  /// given four distinct options, or that repeats the same question and options,
+  /// is dropped rather than emitted — the count assertions in
+  /// `test/school_quiz_test.dart` catch it if a template drops too much.
+  void add({
+    required String topic,
+    required String prompt,
+    required String answer,
+    required List<String> wrong,
+    String? why,
+    String? passage,
+  }) {
+    final options = <String>[answer];
+    for (final w in wrong) {
+      if (options.length == 4) break;
+      if (w.trim().isEmpty || options.contains(w)) continue;
+      options.add(w);
+    }
+    if (options.length < 4) return;
+    final identity = [...options]..sort();
+    if (!_seen.add(
+      '${passage ?? ''}\u0000$prompt\u0000${identity.join('\u0000')}',
+    )) {
+      return;
+    }
+    options.shuffle(rnd);
+    _serial++;
+    _out.add(
+      QuizQuestion(
+        id: '$prefix-${_serial.toString().padLeft(4, '0')}',
+        topic: topic,
+        prompt: prompt,
+        options: options,
+        answerIndex: options.indexOf(answer),
+        explanation: why,
+        passage: passage,
+      ),
+    );
+  }
+}
+
+/// Splits a `'a|b|c'` data row. Tables are written as flat string lists so a
+/// hundred rows stay a hundred short lines.
+List<List<String>> rows(List<String> table) => [
+  for (final line in table) line.split('|'),
+];

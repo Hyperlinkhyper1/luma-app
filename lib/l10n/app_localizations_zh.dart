@@ -150,6 +150,9 @@ class LZh extends L {
   String get settingsCheckUpdates => '检查更新';
 
   @override
+  String get settingsOpenSourceLicenses => '开源许可';
+
+  @override
   String get settingsSystem => '跟随系统';
 
   @override
