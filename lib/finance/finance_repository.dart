@@ -39,17 +39,19 @@ class FinanceRepository {
       (db.select(db.recurringRules)..orderBy([(r) => OrderingTerm(expression: r.nextDue)]))
           .watch();
 
-  /// Active bills/subscriptions due within [withinDays] of [now], soonest
-  /// first â€” the "due soon" reminder list.
-  Stream<List<RecurringRule>> watchDueBills(
-      {DateTime? now, int withinDays = 7}) {
-    final horizon = (now ?? DateTime.now()).add(Duration(days: withinDays));
+  /// Active bills/subscriptions currently within their own
+  /// [RecurringRule.reminderDaysBefore] window of [now], soonest first â€”
+  /// the "due soon" reminder list.
+  Stream<List<RecurringRule>> watchDueBills({DateTime? now}) {
+    final today = now ?? DateTime.now();
     return (db.select(db.recurringRules)
           ..where((r) => r.active.equals(true) & r.isBill.equals(true))
           ..orderBy([(r) => OrderingTerm(expression: r.nextDue)]))
         .watch()
-        .map((rules) =>
-            rules.where((r) => !r.nextDue.isAfter(horizon)).toList());
+        .map((rules) => rules
+            .where((r) => !r.nextDue
+                .isAfter(today.add(Duration(days: r.reminderDaysBefore))))
+            .toList());
   }
 
   Stream<List<AllocationRule>> watchAllocationRules() =>

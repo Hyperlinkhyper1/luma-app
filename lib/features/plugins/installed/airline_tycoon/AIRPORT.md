@@ -36,7 +36,8 @@ Remote stands take anything and need a bus. Contact stands must touch a
 terminal; their jet bridge removes the bus and boards 60% faster. Aircraft
 park nose-in towards the nearest terminal. Duty-free shops (€14 per
 passenger, after security) and lounges (€20, replaces seating) earn retail
-income; plants, fountains and information boards add a little satisfaction, and each
+income; plants, fountains, information boards and the smaller flight info screen add
+a little satisfaction, and each
 staffed information desk (5 × 4 m) adds 0.02, up to 0.06 for three.
 Cleanliness runs from 60% with no bins to 100% with ten sets of recycling
 bins (2 × 1 m, `cleanliness`); the gap above 60% is worth up to +0.05
@@ -48,15 +49,19 @@ Staffed check-in counters (6 × 5 m) are a full check-in with two agents,
 a bag drop and a queue lane, 10 passengers per game minute. Vending machines
 (1 × 1 m) stand in for the café: one minute per group and €3 per passenger
 instead of three minutes and €8; a restaurant (14 × 10 m) is the other end
-of that stop: five minutes, €26 and a small mood boost. Fashion boutiques (8 × 6 m) share the duty-free
+of that stop: five minutes, €26 and a small mood boost. A coffee to-go stall (4 × 3 m) is quicker still:
+ninety seconds and €6, and a food cart (3 × 2 m) is cheaper still: one
+minute and €4, sized to fit tight corners. Fashion boutiques (8 × 6 m) share the duty-free
 stop: a passenger browses whichever shop frees up first, three minutes and
 €18 in a boutique. A newsstand kiosk (5 × 4 m) is the cheap end: ninety
-seconds and €9; a duty-free food & drink hall (10 × 8 m) takes two and a
+seconds and €9; a flower shop (6 × 5 m) takes two minutes and earns €16; a duty-free food & drink hall (10 × 8 m) takes two and a
 half minutes and earns €20. A perfume boutique (8 × 7 m) is low demand and
-high value: two minutes, and a quarter of each group spends €90. Luxury boutiques (8 × 6 m) take four minutes, earn €26
+high value: two minutes, and a quarter of each group spends €90. Both
+share the duty-free stop with the rest. Luxury boutiques (8 × 6 m) take four minutes, earn €26
 and lift the passenger's mood a little. VIP lounges & bars (8 × 6 m) are
 the premium waiting area next to seating and lounges: €35 per passenger and
-+0.08 satisfaction.
++0.08 satisfaction. An arcade (10 × 8 m) is another seating alternative:
+€12 per passenger and +0.07 satisfaction.
 
 Baggage carousels (10 × 5 m) are required by every medium and long-haul
 contract. When such a flight finishes unloading, its passengers walk from the
@@ -68,6 +73,75 @@ scene the bags ride the belt (an instanced mesh in `scene.js`, path from
 `AirportModels.loopPoint`), vanish as the group collects them, and the
 waiting people stand around the carousel. The model's static luggage only
 appears in Build previews.
+
+## Managing and upgrading buildings
+
+Clicking a building opens its management window, like the original game:
+a large preview, a **General** tab (status, footprint, what it is locked
+by, money invested, Focus / Move / Edit interior) and an **Upgrade** tab,
+plus **Flights** on a stand and **Vehicles** at a vehicle depot. The trash
+button on the preview asks once before it demolishes.
+
+Every building starts at level 1 and most go up to 5
+(`maxFacilityLevel`). `facilityUpgrade(kind)` names the upgraded
+attribute and its effect; `upgradeCostAt(def, level)` prices the next
+level at 40% of the build cost times the current level. The simulation
+applies the levels:
+
+- runways (Surface & lighting): landing and take-off 15% faster per level;
+- taxiways (Asphalt): taxi 10% faster, averaged over the taxi path;
+- stands (Asphalt): ground handling and boarding 15% faster;
+- fuel depot, baggage hall, vehicle depot (Equipment): services 20% faster;
+- control tower (Radar): approaches 10% shorter, best tower counts;
+- terminal sections (Comfort): +1% satisfaction per level, averaged;
+- staffed desks, security, gates, toilets (Staff): 25% faster service;
+  an information desk counts once per level;
+- shops and food (Stock & staff): 15% more sales, 25% quicker service;
+- seating, lounges and the arcade (Comfort): +1% satisfaction and 15% more
+  income per level;
+- decor and bins count once per level; carousels hand out bags 25% faster.
+
+Hangars, service roads and entrances have no upgrades. Levels survive a
+move and a reload, and demolishing refunds half of the build cost plus the
+upgrades. The page mirrors `upgradeCostAt` only to show the refund.
+
+## The passenger flow is required
+
+`terminalEssentials` lists what every airport needs: entrance, check-in
+(desks or a staffed counter; ticket machines alone do not count),
+security, a boarding gate, **customs** (8 × 6 m, 6 per game minute) and
+**arrivals check-out** (8 × 4 m, 10 per game minute). Without all of them
+no contract can be signed or placed and no own flight scheduled, and a
+planned flight waits at its stand with "The terminal needs …" until the
+missing piece is built. The starter airport includes customs and check-out
+in the second terminal section. Older saves without them have to build
+them before flights continue.
+
+Passengers and aircraft move the whole way:
+
+- departing groups get out at the kerb, walk in, queue through check-in and
+  security, wait at the gate, then file out to the aircraft during boarding
+  (`walkingOnBoard`) and are hidden once on board (`boarded`);
+- every arriving flight, not only those with checked bags, lets its
+  passengers off: they walk from the aircraft to the gate (`deplaning`),
+  collect bags when the contract needs a carousel, then queue at customs and
+  check-out and leave through the entrance to the kerb. Returning own flights
+  bring their passengers home the same way;
+- own aircraft are towed from the hangar apron to the stand
+  (`positioning`) instead of appearing on it, and taxi-out continues from
+  where the pushback stopped.
+
+## Entrances
+
+An entrance is a doorway, not just furniture. `AirportWorld.entranceDoor`
+puts its doors on the nearest outside wall of its terminal section (a wall
+shared with another section is inside the hall) and the kerb
+`kerbDistance` (9 m) outside. Departing passengers are dropped at the
+kerb, walk through the doors and on to the entrance; arrivals leave the
+same way. The snapshot sends that `door` with the entrance, the terminal
+model opens the wall there (sliding doors, header, sign) and, unless the
+door is on the landside wall where the forecourt already covers it, the
+scene adds a porch roof, a paved apron and a drop-off lane.
 
 ## Contracts and planning
 
@@ -109,6 +183,26 @@ active turnarounds finish. Cancel future owned flights before selling their
 aircraft. Occupied or imminently needed infrastructure cannot be removed.
 
 ## State and rendering
+
+The camera's near plane follows its height (15%, 0.5–400 m) and the far
+plane its distance. With the old fixed 1 m near plane, the few centimetres
+between grass, pavement and paint were unresolved from a few hundred metres
+up, which flickered. The ground plane is also pushed back with a polygon
+offset. Where taxiways, stands and runways touch, `pavementJoins` in
+`scene.js` cuts their edge lines and edge lights over the shared stretch
+(`cuts` in each model's own frame) and draws joined-up centrelines: a
+stand's lead-in runs on to the taxiway centreline, and a taxiway ending on
+an offset one curves across.
+
+Time of day comes from game time: sunrise at 06:00, sunset at 20:00. A
+shader dome (`sky`) draws the gradient, the sun, the moon and stars; the
+palette is keyed on sun elevation. By night the directional light becomes a
+dim moon, window glass and lamps light up, and sky reflections fade.
+Textured ground materials get a world-space macro-variation noise
+(`AirportModels.weather`) so their tiling stops showing, and `bake` shades
+vertex colours darker towards the ground as cheap ambient occlusion. The
+sky's image-based fill is kept low on purpose so the sun and its shadows
+shape the scene.
 
 All airport controls live inside the scene page
 (`assets/airline_tycoon/scene/hud.js`). The page sends every change as a

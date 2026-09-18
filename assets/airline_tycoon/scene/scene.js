@@ -37,9 +37,45 @@
 
   const scene = new T.Scene();
   try { scene.environment = M.init(renderer); } catch (_) { scene.environment = null; }
-  const daySky = new T.Color(0xaed3e6), duskSky = new T.Color(0xe7a47a), nightSky = new T.Color(0x0b1322);
-  scene.background = daySky.clone();
-  scene.fog = new T.Fog(daySky, 2200, 7000);
+  scene.background = new T.Color(0xaed3e6);
+  scene.fog = new T.Fog(0xaed3e6, 2200, 7000);
+  // A gradient dome with the sun, the moon and stars on it. It follows the
+  // camera and is drawn first, behind everything, so it never clips.
+  const skyUniforms = {
+    zenith: {value: new T.Color()}, horizon: {value: new T.Color()}, below: {value: new T.Color()},
+    sunColor: {value: new T.Color()}, sunDir: {value: new T.Vector3(0, 1, 0)}, moonDir: {value: new T.Vector3(0, -1, 0)},
+    stars: {value: 0},
+  };
+  const sky = new T.Mesh(new T.SphereGeometry(1, 48, 24), new T.ShaderMaterial({
+    uniforms: skyUniforms, side: T.BackSide, depthWrite: false, depthTest: false, fog: false,
+    vertexShader: 'varying vec3 vDir; void main() { vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: [
+      'uniform vec3 zenith, horizon, below, sunColor, sunDir, moonDir;',
+      'uniform float stars;',
+      'varying vec3 vDir;',
+      'float hash(vec3 p) { p = fract(p * .3183099 + .1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }',
+      'void main() {',
+      '  vec3 d = normalize(vDir);',
+      '  float h = d.y;',
+      '  vec3 col = h > 0.0 ? mix(horizon, zenith, pow(clamp(h, 0.0, 1.0), .42)) : mix(horizon, below, clamp(-h * 5.0, 0.0, 1.0));',
+      '  float s = max(dot(d, sunDir), 0.0), up = smoothstep(-.12, .05, sunDir.y);',
+      '  col += sunColor * (pow(s, 5.0) * .28 + pow(s, 48.0) * .55) * up;',
+      '  col += sunColor * smoothstep(.99945, .9997, s) * 6.0 * smoothstep(-.03, .0, sunDir.y);',
+      '  float m = max(dot(d, moonDir), 0.0);',
+      '  col += vec3(.9, .94, 1.0) * smoothstep(.9994, .99965, m) * 1.6 * stars;',
+      '  col += vec3(.25, .33, .5) * pow(m, 24.0) * .2 * stars;',
+      '  vec3 cell = floor(d * 520.0);',
+      '  float star = step(.9982, hash(cell)) * smoothstep(0.02, .3, h);',
+      '  col += vec3(.9, .93, 1.0) * star * stars * (.45 + .55 * hash(cell + 7.0));',
+      '  gl_FragColor = vec4(col, 1.0);',
+      '  #include <tonemapping_fragment>',
+      '  #include <colorspace_fragment>',
+      '}',
+    ].join('\n'),
+  }));
+  sky.frustumCulled = false;
+  sky.renderOrder = -1000;
+  scene.add(sky);
   // The native window can load the page before it has a size; a 0×0 viewport
   // would otherwise poison the camera with NaN for good.
   const aspect = () => innerWidth > 0 && innerHeight > 0 ? innerWidth / innerHeight : 16 / 9;
@@ -56,11 +92,11 @@
   const groundTexture = M.textures.grass[0].clone();
   groundTexture.needsUpdate = true;
   groundTexture.repeat.set(18000 / 24, 18000 / 24);
-  const ground = new T.Mesh(new T.PlaneGeometry(18000, 18000), new T.MeshStandardMaterial({map: groundTexture, roughness: 1, color: 0xd8e6cf}));
+  // Pushed back in depth as well as down, so pavements never fight it.
+  const ground = new T.Mesh(new T.PlaneGeometry(18000, 18000), M.weather(new T.MeshStandardMaterial({map: groundTexture, roughness: 1, envMapIntensity: .35, color: 0xc9d8bf, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 4}), .45, 90));
   ground.rotation.x = -Math.PI / 2;
-  ground.position.y = -.05;
+  ground.position.y = -.08;
   ground.receiveShadow = true;
-  const groundTint = ground.material.color.clone();
   scene.add(ground);
 
   const facilities = new Map(), entities = new Map(), environment = new T.Group();
@@ -87,7 +123,7 @@
   let distance = 500, azimuth = .8, polar = .78;
   let active = true, cutaway = false, world = null, tool = null, selected = null, quality = 'high', gridWanted = false, district = null;
   let receivedAt = performance.now();
-  const interiorKinds = () => new Set((world?.catalog || []).filter(d => d.interior).map(d => d.kind).concat(['entrance', 'checkIn', 'checkInCounter', 'infoDesk', 'bins', 'ticketMachine', 'security', 'seating', 'toilets', 'cafe', 'restaurant', 'vendingMachine', 'boardingGate', 'shop', 'kiosk', 'foodShop', 'perfumeShop', 'clothingShop', 'luxuryBoutique', 'lounge', 'vipLounge', 'plant', 'fountain', 'infoBoard', 'baggageCarousel']));
+  const interiorKinds = () => new Set((world?.catalog || []).filter(d => d.interior).map(d => d.kind).concat(['entrance', 'checkIn', 'checkInCounter', 'infoDesk', 'bins', 'infoPanel', 'ticketMachine', 'security', 'customs', 'checkOut', 'seating', 'toilets', 'cafe', 'restaurant', 'vendingMachine', 'coffeeToGo', 'foodCart', 'boardingGate', 'shop', 'kiosk', 'foodShop', 'perfumeShop', 'flowerShop', 'clothingShop', 'luxuryBoutique', 'lounge', 'vipLounge', 'arcade', 'plant', 'fountain', 'infoBoard', 'baggageCarousel']));
   const standKinds = new Set(['stand', 'standRegional', 'standContact']);
 
   function cameraUpdate() {
@@ -100,6 +136,16 @@
       target.y + Math.cos(polar) * distance,
       target.z + Math.cos(azimuth) * Math.sin(polar) * distance);
     camera.lookAt(target);
+    // Depth precision follows the near plane. A fixed near of 1 m left a few
+    // centimetres between the grass, the pavements and their paint unresolved
+    // from a few hundred metres up, so they flickered through each other.
+    const height = Math.max(1, camera.position.y);
+    camera.near = Math.min(400, Math.max(.5, height * .15));
+    camera.far = Math.max(camera.near * 60, Math.min(30000, distance * 8 + 9000));
+    camera.updateProjectionMatrix();
+    sky.scale.setScalar(camera.far * .8);
+    scene.fog.near = 1400 + distance * 1.4;
+    scene.fog.far = 7000 + distance * 3;
     $('compass').style.transform = `rotate(${-azimuth}rad)`;
     const reach = Math.min(1100, Math.max(160, distance * .9));
     Object.assign(sun.shadow.camera, {left: -reach, right: reach, top: reach, bottom: -reach, near: 1, far: 3200});
@@ -112,27 +158,63 @@
     const elapsed = world.paused ? 0 : Math.min(1.5, (performance.now() - receivedAt) / 1000);
     return (world.time || 0) + elapsed * (world.speed || 1);
   }
+  // Sky palettes by sun elevation (sine of the angle above the horizon):
+  // deep night, blue hour, sunrise/sunset, golden hour and full day.
+  // Columns: zenith, horizon, below the horizon, sunlight.
+  const skyKeys = [
+    [-.35, 0x03060d, 0x0b1222, 0x0a0f18, 0x8ea6e8],
+    [-.1, 0x0d1631, 0x2a2f4c, 0x121620, 0x9aa9e0],
+    [0, 0x27406e, 0xf08d55, 0x3a3834, 0xff8a45],
+    [.1, 0x3a67a6, 0xf2c08c, 0x6f7568, 0xffbf7e],
+    [.32, 0x3b78c0, 0xbad6e8, 0x7c8a82, 0xfff0da],
+    [1, 0x2c69b8, 0xa9cde4, 0x7c8a82, 0xfff7ec],
+  ].map(([at, ...colors]) => [at, ...colors.map(c => new T.Color(c))]);
+  const skyScratch = [new T.Color(), new T.Color(), new T.Color(), new T.Color()];
+  function palette(elevation) {
+    let i = 0;
+    while (i < skyKeys.length - 2 && elevation > skyKeys[i + 1][0]) i++;
+    const [a, b] = [skyKeys[i], skyKeys[i + 1]];
+    const t = Math.min(1, Math.max(0, (elevation - a[0]) / (b[0] - a[0])));
+    return skyScratch.map((c, k) => c.copy(a[k + 1]).lerp(b[k + 1], t));
+  }
+  const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  const sunDir = new T.Vector3(), moonDir = new T.Vector3(), lightDir = new T.Vector3();
+  const moonLight = new T.Color(0x8fa6e6), white = new T.Color(0xffffff);
   let lastNight = -1, darkness = 0;
   function daylight(time) {
     const hour = ((time % 1440) + 1440) % 1440 / 60;
-    const angle = (hour - 6) / 14 * Math.PI;
-    const elevation = Math.sin(Math.min(Math.PI, Math.max(0, angle)));
-    const day = hour > 5.5 && hour < 20.5 ? Math.min(1, Math.max(0, Math.min(hour - 5.5, 20.5 - hour) / 1.5)) : 0;
-    const night = 1 - day;
-    const dir = new T.Vector3(-Math.cos(angle) * 600, 150 + elevation * 800, -420);
-    sun.position.copy(target).add(dir);
+    // Sunrise at 06:00, sunset at 20:00; the sun keeps turning below the
+    // horizon overnight so dusk and dawn are continuous.
+    const angle = hour >= 6 && hour <= 20 ? (hour - 6) / 14 * Math.PI : Math.PI + ((hour + 4) % 24) / 10 * Math.PI;
+    sunDir.set(-Math.cos(angle), Math.sin(angle) * .92, .42).normalize();
+    moonDir.set(Math.cos(angle) * .8, -Math.sin(angle) * .75 + .12, -.5).normalize();
+    const elevation = sunDir.y;
+    const [zenith, horizon, below, sunColor] = palette(elevation);
+    skyUniforms.zenith.value.copy(zenith);
+    skyUniforms.horizon.value.copy(horizon);
+    skyUniforms.below.value.copy(below);
+    skyUniforms.sunColor.value.copy(sunColor);
+    skyUniforms.sunDir.value.copy(sunDir);
+    skyUniforms.moonDir.value.copy(moonDir);
+    const day = smooth(-.06, .16, elevation), night = 1 - smooth(-.12, .06, elevation);
+    skyUniforms.stars.value = smooth(-.02, -.22, elevation);
+    // By day the directional light is the sun; by night it is a dim, cool
+    // moon, so the airport stays readable and still has a light direction.
+    const useMoon = elevation < -.04;
+    lightDir.copy(useMoon ? moonDir : sunDir);
+    lightDir.y = Math.max(lightDir.y, .2);
+    lightDir.normalize();
+    sun.position.copy(target).addScaledVector(lightDir, 1400);
     sun.target.position.copy(target);
-    sun.intensity = 3.1 * day * (.35 + .65 * elevation);
-    sun.color.setHSL(.09, .6, .78 + .17 * elevation);
-    hemi.intensity = .16 + 1.49 * day;
-    hemi.color.setHSL(.6, .55 - .2 * day, .45 + .4 * day);
-    const sky = nightSky.clone().lerp(daySky, day);
-    if (day > 0 && day < 1) sky.lerp(duskSky, .45 * (1 - Math.abs(day - .5) * 2));
-    scene.background.copy(sky);
-    scene.fog.color.copy(sky);
-    renderer.toneMappingExposure = .78 + .37 * day;
-    ground.material.color.copy(groundTint).multiplyScalar(.35 + .65 * day);
-    sun.castShadow = day > 0;
+    if (useMoon) { sun.color.copy(moonLight); sun.intensity = .55 * smooth(-.04, -.2, elevation); }
+    else { sun.color.copy(sunColor); sun.intensity = 3.9 * day * (.45 + .55 * Math.min(1, elevation * 2.2)); }
+    sun.castShadow = !useMoon && day > .02;
+    hemi.intensity = .34 + .66 * day;
+    hemi.color.copy(zenith).lerp(horizon, .5).lerp(white, .35 * day);
+    hemi.groundColor.set(0x6d6f5e).multiplyScalar(.35 + .65 * day);
+    scene.background.copy(horizon);
+    scene.fog.color.copy(horizon).lerp(zenith, .25);
+    renderer.toneMappingExposure = .9 + .22 * day;
     darkness = night;
     if (Math.abs(night - lastNight) > .01) { M.setNight(night); lastNight = night; }
   }
@@ -153,25 +235,114 @@
     if (overlapX > 1 && Math.abs(b.y + b.depth - a.y) < 1.2) return '-z';
     return null;
   }
-  function contextFor(f, list) {
-    const turn = ((Math.round(f.rotation || 0) % 4) + 4) % 4;
-    if (f.kind === 'terminal') {
-      const open = {};
-      for (const t of list) if (t.kind === 'terminal' && t.id !== f.id) { const side = touchingSide(f, t); if (side) open[localSide(side, turn)] = true; }
-      return {open};
+  const turnOf = f => ((Math.round(f.rotation || 0) % 4) + 4) % 4;
+  /** A world point in [f]'s model frame (the inverse of M.facility's transform). */
+  function toLocal(f, wx, wz) {
+    const turn = turnOf(f), w = turn % 2 ? f.depth : f.width, d = turn % 2 ? f.width : f.depth;
+    const px = f.x + (turn === 2 ? w : turn === 3 ? d : 0), pz = f.y + (turn === 1 ? w : turn === 2 ? d : 0);
+    const th = turn * Math.PI / 2, dx = wx - px, dz = wz - pz;
+    return [dx * Math.cos(th) - dz * Math.sin(th), dx * Math.sin(th) + dz * Math.cos(th)];
+  }
+  const round = n => Math.round(n * 100) / 100;
+  /** A world rectangle [x0, z0, x1, z1] in [f]'s model frame. */
+  function rectToLocal(f, r) {
+    const [ax, az] = toLocal(f, r[0], r[1]), [bx, bz] = toLocal(f, r[2], r[3]);
+    return [round(Math.min(ax, bx)), round(Math.min(az, bz)), round(Math.max(ax, bx)), round(Math.max(az, bz))];
+  }
+  /** The world side a stand's aircraft noses towards: the terminal it serves. */
+  function noseWorldSide(f, list) {
+    let worldSide = null, best = Infinity;
+    for (const t of list) if (t.kind === 'terminal') {
+      const touching = touchingSide(f, t);
+      const dx = t.x + t.width / 2 - (f.x + f.width / 2), dz = t.y + t.depth / 2 - (f.y + f.depth / 2);
+      const gapX = Math.max(0, Math.abs(dx) - (t.width + f.width) / 2), gapZ = Math.max(0, Math.abs(dz) - (t.depth + f.depth) / 2);
+      const distance = touching ? -1 : Math.hypot(gapX, gapZ);
+      if (distance < best) { best = distance; worldSide = touching || (gapX >= gapZ ? (dx > 0 ? '+x' : '-x') : (dz > 0 ? '+z' : '-z')); }
     }
+    return worldSide || worldOf('+x', turnOf(f));
+  }
+  function worldOf(local, turn) { return Object.keys(sides).find(k => localSide(k, turn) === local); }
+
+  // ── Pavement junctions ────────────────────────────────────────────────
+  // Where taxiways, stands and runways touch, their edge lines give way over
+  // the shared stretch, and yellow centrelines are joined up: a stand's
+  // lead-in line runs on to the taxiway centreline, and a taxiway ending on
+  // another one meets its centreline, curving across when they are offset.
+  const paved = f => f.kind === 'taxiway' || f.kind.startsWith('runway') || standKinds.has(f.kind);
+  const opposite = {'+x': '-x', '-x': '+x', '+z': '-z', '-z': '+z'};
+  const vertical = f => f.depth >= f.width;
+  function pavementJoins(list) {
+    const cuts = new Map(), curves = [];
+    const cut = (f, rect) => { if (!cuts.has(f.id)) cuts.set(f.id, []); cuts.get(f.id).push(rect); };
+    const pads = list.filter(paved);
+    for (const a of pads) for (const b of pads) {
+      if (a === b) continue;
+      const side = touchingSide(a, b);
+      if (!side) continue;
+      const alongX = side.endsWith('z'), [nx, nz] = sides[side], sign = nx || nz;
+      const lo = alongX ? Math.max(a.x, b.x) : Math.max(a.y, b.y);
+      const hi = alongX ? Math.min(a.x + a.width, b.x + b.width) : Math.min(a.y + a.depth, b.y + b.depth);
+      const edge = alongX ? (nz > 0 ? a.y + a.depth : a.y) : (nx > 0 ? a.x + a.width : a.x);
+      const inner = edge - sign * 2.6;
+      cut(a, alongX ? [lo, Math.min(edge, inner), hi, Math.max(edge, inner)] : [Math.min(edge, inner), lo, Math.max(edge, inner), hi]);
+      // Centreline hand-over: only from a taxiway's end, or a stand's entry.
+      if (b.kind !== 'taxiway' && !b.kind.startsWith('runway')) continue;
+      if (a.kind === 'taxiway' ? vertical(a) !== alongX : !(standKinds.has(a.kind) && side === opposite[noseWorldSide(a, list)])) continue;
+      if (standKinds.has(a.kind) && b.kind !== 'taxiway') continue;
+      const lateral = alongX ? a.x + a.width / 2 : a.y + a.depth / 2;
+      const E = alongX ? [lateral, edge] : [edge, lateral];
+      const alongEdge = alongX !== vertical(b);
+      if (alongEdge) {
+        // B runs along the edge: straight on to its centreline.
+        if (lateral < lo - .5 || lateral > hi + .5) continue;
+        const centre = alongX ? b.y + b.depth / 2 : b.x + b.width / 2;
+        curves.push(alongX ? [E, [lateral, centre]] : [E, [centre, lateral]]);
+        continue;
+      }
+      // End to end: an S-bend on to B's centreline when the two are offset.
+      if (!b.kind.startsWith('taxiway') || (a.kind === 'taxiway' && a.id > b.id)) continue;
+      const bLateral = alongX ? b.x + b.width / 2 : b.y + b.depth / 2, shift = bLateral - lateral;
+      if (Math.abs(shift) < .4) continue;
+      const bLength = alongX ? b.depth : b.width;
+      const L = Math.min(Math.max(Math.abs(shift) * 2.2, 14), bLength * .6);
+      const at = (lat, along) => alongX ? [lat, along] : [along, lat];
+      const points = [];
+      for (let i = 0; i <= 14; i++) {
+        const t = i / 14, s = t * t * (3 - 2 * t);
+        points.push(at(lateral + shift * s, edge + sign * L * t));
+      }
+      curves.push(points);
+      // Hide B's own centreline where the bend replaces it.
+      const far = edge + sign * L;
+      cut(b, alongX ? [bLateral - .8, Math.min(edge, far), bLateral + .8, Math.max(edge, far)] : [Math.min(edge, far), bLateral - .8, Math.max(edge, far), bLateral + .8]);
+    }
+    return {cuts, curves};
+  }
+
+  function contextFor(f, list, joins) {
+    const turn = turnOf(f);
+    if (f.kind === 'terminal') {
+      const open = {}, doors = [];
+      for (const t of list) if (t.kind === 'terminal' && t.id !== f.id) { const side = touchingSide(f, t); if (side) open[localSide(side, turn)] = true; }
+      // Entrances cut a doorway into whichever outside wall the simulation
+      // sends their passengers through.
+      const w = turn % 2 ? f.depth : f.width, d = turn % 2 ? f.width : f.depth;
+      for (const e of list) {
+        const at = e.kind === 'entrance' && e.door?.door;
+        if (!at || at[0] < f.x - .5 || at[0] > f.x + f.width + .5 || at[1] < f.y - .5 || at[1] > f.y + f.depth + .5) continue;
+        const [lx, lz] = toLocal(f, at[0], at[1]);
+        const side = Math.abs(lz) < .6 ? '-z' : Math.abs(lz - d) < .6 ? '+z' : Math.abs(lx) < .6 ? '-x' : Math.abs(lx - w) < .6 ? '+x' : null;
+        if (side) doors.push({side, at: round(side.endsWith('z') ? lx : lz)});
+      }
+      return {open, doors};
+    }
+    const cuts = (joins?.cuts.get(f.id) || []).map(r => rectToLocal(f, r));
     if (standKinds.has(f.kind)) {
       // Aircraft park nose-in towards the terminal they serve.
-      let worldSide = null, best = Infinity;
-      for (const t of list) if (t.kind === 'terminal') {
-        const touching = touchingSide(f, t);
-        const dx = t.x + t.width / 2 - (f.x + f.width / 2), dz = t.y + t.depth / 2 - (f.y + f.depth / 2);
-        const gapX = Math.max(0, Math.abs(dx) - (t.width + f.width) / 2), gapZ = Math.max(0, Math.abs(dz) - (t.depth + f.depth) / 2);
-        const distance = touching ? -1 : Math.hypot(gapX, gapZ);
-        if (distance < best) { best = distance; worldSide = touching || (gapX >= gapZ ? (dx > 0 ? '+x' : '-x') : (dz > 0 ? '+z' : '-z')); }
-      }
-      return {noseSide: worldSide ? ['+x', '+z', '-x', '-z'].indexOf(localSide(worldSide, turn)) : 0};
+      const worldSide = noseWorldSide(f, list);
+      return {noseSide: ['+x', '+z', '-x', '-z'].indexOf(localSide(worldSide, turn)), cuts};
     }
+    if (paved(f)) return {cuts};
     return {};
   }
   function roofMode() {
@@ -195,15 +366,74 @@
     azimuth = .8; polar = .78;
     cameraUpdate();
   }
-  function updateEnvironment(list) {
+  /** Joined-up taxi lines, drawn over the pavements in world space. */
+  function drawMarkings(g, curves) {
+    const yellow = 0xf1c643;
+    for (const points of curves) {
+      for (let i = 1; i < points.length; i++) {
+        const [a, b] = [points[i - 1], points[i]];
+        if (Math.hypot(b[0] - a[0], b[1] - a[1]) > .01) M.line(g, a[0], a[1], b[0], b[1], .35, yellow, .168);
+        if (i < points.length - 1) M.cylinder(g, .175, .02, b[0], .168, b[1], yellow, 'paint', .175, 10).castShadow = false;
+      }
+    }
+  }
+  /** The kerbside outside an entrance door: a porch roof over the doors, a
+      paved apron out to the kerb and a drop-off lane. On the landside wall
+      the forecourt already provides all of it. */
+  function drawPorch(g, e, list, porches) {
+    const [dx, dz] = e.door.door, [kx, kz] = e.door.kerb;
+    const len = Math.hypot(kx - dx, kz - dz) || 1, nx = (kx - dx) / len, nz = (kz - dz) / len;
+    const L = district?.L;
+    if (L && Math.abs(nx - L.dir[0]) < .01 && Math.abs(nz - L.dir[1]) < .01 && Math.abs((dx - L.origin.x) * nx + (dz - L.origin.z) * nz) < 1) return;
+    // Local frame: u outward from the door, v along the wall.
+    const at = (u, v) => [dx + nx * u - nz * v, dz + nz * u + nx * v];
+    const rect = (u0, u1, v0, v1) => {
+      const [ax, az] = at(u0, v0), [bx, bz] = at(u1, v1);
+      return {minX: Math.min(ax, bx), maxX: Math.max(ax, bx), minZ: Math.min(az, bz), maxZ: Math.max(az, bz)};
+    };
+    const blocked = r => list.some(f => !interiorKinds().has(f.kind) && f.kind !== 'terminal' && f.x < r.maxX && f.x + f.width > r.minX && f.y < r.maxZ && f.y + f.depth > r.minZ);
+    const put = (u0, u1, v0, v1, h, y, color, kind) => {
+      const r = rect(u0, u1, v0, v1);
+      return M.box(g, r.maxX - r.minX, h, r.maxZ - r.minZ, (r.minX + r.maxX) / 2, y, (r.minZ + r.maxZ) / 2, color, kind);
+    };
+    const apron = rect(0, len + 1.5, -8, 8);
+    if (blocked(apron)) return;
+    porches.push(apron);
+    put(0, len + 1.5, -8, 8, .12, .06, 0xc8c4ba, 'concrete');
+    put(len + 1.2, len + 1.6, -8, 8, .3, .15, 0xb9b5aa, 'concrete');
+    // Porch roof on two columns, lit from underneath.
+    put(0, 7.5, -6, 6, .35, 5.6, 0xe9ebe7, 'metal');
+    put(7.2, 7.8, -6, 6, .9, 5.3, 0x2e6c78);
+    for (const v of [-5, 5]) {
+      const [cx, cz] = at(6.6, v);
+      M.cylinder(g, .22, 5.4, cx, 2.7, cz, 0xb5bdbf, 'metal');
+    }
+    for (const v of [-3, 0, 3]) { const [lx, lz] = at(4, v); M.light(g, lx, 5.35, lz, 0xfff0c8, .45); M.pool(g, lx, lz, 4.5, 0xffe8b8); }
+    for (let v = -7; v <= 7; v += 2) { const [bx, bz] = at(len + .9, v); M.box(g, .28, .9, .28, bx, .45, bz, 0xbcc3c4, 'metal'); }
+    const [sx, sz] = at(7.85, 0);
+    M.label(g, 'DEPARTURES', sx, 5.3, sz, .8, '#eef6f4', {rotY: Math.atan2(nx, nz), width: 5});
+    // Drop-off lane along the kerb, if there is room for one.
+    const lane = rect(len + 1.6, len + 9.6, -18, 18);
+    if (!blocked(lane)) {
+      porches.push(lane);
+      put(len + 1.6, len + 9.6, -18, 18, .1, .05, 0xd2d5d0, 'asphalt');
+      for (let v = -16; v < 16; v += 5) put(len + 5.5, len + 5.7, v, v + 2.5, .02, .11, 0xf2f0e6);
+      put(len + 1.9, len + 2.1, -17.5, 17.5, .02, .11, 0xe0b23a);
+    }
+  }
+  function updateEnvironment(list, joins) {
     M.dispose(environment);
     environment.clear();
     const previous = district;
     district = window.AirportLandside?.build(list) || null;
     if (district && district !== previous) scene.add(district.group);
+    drawMarkings(environment, joins?.curves || []);
+    const porches = [];
+    for (const e of list) if (e.kind === 'entrance' && e.door?.door) drawPorch(environment, e, list, porches);
     // The landside covers the ground behind the terminal; keep the treeline out of it.
     const taken = district?.rect;
-    const clear = (x, z) => !taken || x < taken.minX - 12 || x > taken.maxX + 12 || z < taken.minZ - 12 || z > taken.maxZ + 12;
+    const inside = (r, x, z) => x >= r.minX - 12 && x <= r.maxX + 12 && z >= r.minZ - 12 && z <= r.maxZ + 12;
+    const clear = (x, z) => !(taken && inside(taken, x, z)) && !porches.some(r => inside(r, x, z));
     const plant = (x, z, size, kind) => { if (clear(x, z)) M.tree(environment, x, z, size, kind); };
     const b = bounds(true);
     if (b.isEmpty()) return;
@@ -222,9 +452,10 @@
     let changed = false;
     const ids = new Set(list.map(f => f.id));
     for (const [id, old] of facilities) if (!ids.has(id)) { scene.remove(old.mesh); M.dispose(old.mesh); facilities.delete(id); changed = true; }
+    const joins = pavementJoins(list);
     for (const f of list) {
-      const context = contextFor(f, list);
-      const signature = JSON.stringify([{...f, protected: undefined, connected: undefined}, context]);
+      const context = contextFor(f, list, joins);
+      const signature = JSON.stringify([{...f, protected: undefined, connected: undefined, upgradeCost: undefined}, context]);
       const old = facilities.get(f.id);
       if (old?.signature === signature) { old.data = f; continue; }
       if (old) { scene.remove(old.mesh); M.dispose(old.mesh); }
@@ -233,7 +464,7 @@
       facilities.set(f.id, {mesh, data: f, signature, context});
       changed = true;
     }
-    if (changed) { roofMode(); updateEnvironment(list); if (selected) select(selected); }
+    if (changed) { roofMode(); updateEnvironment(list, joins); if (selected) select(selected); }
   }
 
   // ── Moving things ─────────────────────────────────────────────────────
@@ -420,6 +651,8 @@
     if (!crowd.body) return;
     let n = 0;
     for (const {group: g, visible} of crowd.groups) {
+      // Still inside the aircraft: they appear at the door when it is their turn.
+      if (g.stage === 'deplaning' && now < g.started) continue;
       let p = null, moving = false;
       if (g.path?.length && g.nextEvent > g.started && now < g.nextEvent) {
         const travel = Math.max(.001, g.nextEvent - g.started);
@@ -543,13 +776,14 @@
   thumbSun.position.set(-4, 8, 5);
   thumbScene.add(thumbSun);
   const thumbCamera = new T.PerspectiveCamera(30, 1.6, .1, 5000);
-  function thumbnail(def) {
-    const key = `${def.kind}`;
+  /** A picture of [def] for the Build cards, or larger for the management window. */
+  function thumbnail(def, size = {width: 240, height: 150}) {
+    const key = `${def.kind}|${def.width}x${def.depth}|${size.width}x${size.height}`;
     if (thumbCache.has(key)) return Promise.resolve(thumbCache.get(key));
-    return new Promise(resolve => thumbQueue.push({def, key, resolve}));
+    return new Promise(resolve => thumbQueue.push({def, key, resolve, size}));
   }
-  function renderThumbnail({def, key, resolve}) {
-    const width = 240, height = 150;
+  function renderThumbnail({def, key, resolve, size: shot}) {
+    const {width, height} = shot;
     let w = def.width, d = def.depth;
     const facility = {id: 'preview-01', kind: def.kind, x: 0, y: 0, width: w, depth: d, rotation: 0};
     if (def.kind.startsWith('runway')) { facility.depth = Math.min(d, 260); d = facility.depth; }
@@ -763,7 +997,7 @@
     if (thumbQueue.length) {
       const job = thumbQueue.shift();
       try {
-        if (renderer.domElement.width < 240 || renderer.domElement.height < 150) throw new Error('canvas too small');
+        if (renderer.domElement.width < job.size.width || renderer.domElement.height < job.size.height) throw new Error('canvas too small');
         renderThumbnail(job);
       } catch (_) {
         renderer.setScissorTest(false);
@@ -798,6 +1032,7 @@
       const activity = Math.min(1, (world?.passengers?.length || 0) / 14 + turnarounds / 8);
       district.update(dt, {activity, night: darkness, paused: !!world?.paused, speed: world?.speed || 1});
     }
+    sky.position.copy(camera.position);
     renderer.render(scene, camera);
     started = true;
     perf.cpu += performance.now() - began;

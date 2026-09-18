@@ -9,6 +9,7 @@ enum PictureFormat {
   jpg('JPG', 'jpg', 'image/jpeg'),
   bmp('BMP', 'bmp', 'image/bmp'),
   tiff('TIFF', 'tiff', 'image/tiff'),
+  ico('ICO', 'ico', 'image/x-icon'),
   svg('SVG', 'svg', 'image/svg+xml');
 
   const PictureFormat(this.label, this.extension, this.mimeType);
@@ -29,6 +30,7 @@ class ImageConvert {
     PictureFormat.jpg,
     PictureFormat.bmp,
     PictureFormat.tiff,
+    PictureFormat.ico,
   ];
 
   /// Detects the source format from magic bytes, falling back to the file
@@ -48,6 +50,13 @@ class ImageConvert {
       return PictureFormat.bmp;
     }
     if (b.length >= 4 &&
+        b[0] == 0x00 &&
+        b[1] == 0x00 &&
+        b[2] == 0x01 &&
+        b[3] == 0x00) {
+      return PictureFormat.ico;
+    }
+    if (b.length >= 4 &&
         ((b[0] == 0x49 && b[1] == 0x49 && b[2] == 0x2A && b[3] == 0x00) ||
             (b[0] == 0x4D && b[1] == 0x4D && b[2] == 0x00 && b[3] == 0x2A))) {
       return PictureFormat.tiff;
@@ -63,6 +72,7 @@ class ImageConvert {
     if (lower.endsWith('.tif') || lower.endsWith('.tiff')) {
       return PictureFormat.tiff;
     }
+    if (lower.endsWith('.ico')) return PictureFormat.ico;
     if (lower.endsWith('.svg')) return PictureFormat.svg;
     // .oip is a Windows/Bing image-cache extension, not a real format — the
     // bytes underneath are almost always JPEG, so guess that if sniffing the
@@ -123,6 +133,8 @@ class ImageConvert {
         return img.encodeBmp(image);
       case PictureFormat.tiff:
         return img.encodeTiff(image);
+      case PictureFormat.ico:
+        return img.encodeIco(image);
       case PictureFormat.svg:
         throw StateError('SVG is not an encodable target.');
     }

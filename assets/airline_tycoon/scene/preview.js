@@ -1,6 +1,6 @@
 /* Exact fresh-airport layout fixture. Preview never writes a game save. */
 (() => {
-  const definitions = {runway:[45,1800],taxiway:[20,100],stand:[60,65],terminal:[120,60],serviceRoad:[10,100],fuelDepot:[30,30],baggage:[30,20],vehicleDepot:[30,30],hangar:[60,60],tower:[15,15],entrance:[6,4],checkIn:[8,4],security:[8,6],seating:[8,4],toilets:[10,8],cafe:[12,8],boardingGate:[8,4]};
+  const definitions = {runway:[45,1800],taxiway:[20,100],stand:[60,65],terminal:[120,60],serviceRoad:[10,100],fuelDepot:[30,30],baggage:[30,20],vehicleDepot:[30,30],hangar:[60,60],tower:[15,15],entrance:[6,4],checkIn:[8,4],security:[8,6],seating:[8,4],toilets:[10,8],cafe:[12,8],boardingGate:[8,4],customs:[8,6],checkOut:[8,4]};
   const facilities=[];
   function add(kind,x,y,width,depth){const size=definitions[kind];facilities.push({id:`b${facilities.length+1}`,kind,x,y,width:width||size[0],depth:depth||size[1],rotation:0,connected:true});}
   add('runway',-500,-900);
@@ -14,9 +14,9 @@
   add('fuelDepot',-290,100);add('baggage',-250,100);
   add('vehicleDepot',-260,130);add('hangar',-330,140);
   add('tower',-210,140);
-  add('entrance',-142,-65);add('checkIn',-160,-62);
+  add('entrance',-142,-65);facilities[facilities.length-1].door={door:[-130,-63,0],kerb:[-121,-63,0]};add('checkIn',-160,-62);
   add('security',-180,-62);add('seating',-205,-68);
   add('toilets',-148,-40);add('cafe',-200,-40);
-  add('boardingGate',-247,-62);add('boardingGate',-247,8);
+  add('boardingGate',-247,-62);add('boardingGate',-247,8);add('customs',-140,18);add('checkOut',-140,10);
   window.airportPreview={world:{version:2,time:0,paused:true,speed:1,cash:0,day:1,facilities,flights:[],vehicles:['fuel','baggage','bus','pushback'].map((kind,i)=>({id:`v${i+24}`,kind,x:-255,y:145,heading:0})),passengers:[],contracts:[],ledger:[],stats:{}},command(message){if(message.type==='command'&&message.action==='select')document.getElementById('status').textContent=`Preview selection: ${message.facilityId}`;}};
 })();

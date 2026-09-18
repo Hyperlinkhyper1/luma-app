@@ -1,6 +1,6 @@
 /* Read-only previews mirror the authoritative Dart construction rules. */
 window.AirportSceneLogic = (() => {
-  const baseInterior = ['entrance','checkIn','checkInCounter','infoDesk','bins','ticketMachine','security','seating','toilets','cafe','restaurant','vendingMachine','boardingGate','shop','kiosk','foodShop','perfumeShop','clothingShop','luxuryBoutique','lounge','vipLounge','plant','fountain','infoBoard','baggageCarousel'];
+  const baseInterior = ['entrance','checkIn','checkInCounter','infoDesk','bins','infoPanel','ticketMachine','security','customs','checkOut','seating','toilets','cafe','restaurant','vendingMachine','coffeeToGo','foodCart','boardingGate','shop','kiosk','foodShop','perfumeShop','flowerShop','clothingShop','luxuryBoutique','lounge','vipLounge','arcade','plant','fountain','infoBoard','baggageCarousel'];
   const interiorOf = world => new Set([...baseInterior, ...(world?.catalog || []).filter(d => d.interior).map(d => d.kind)]);
   const standKinds = new Set(['stand','standRegional','standContact']);
   const gap = (a,b) => Math.hypot(Math.max(0, a.x - b.x - b.width, b.x - a.x - a.width), Math.max(0, a.y - b.y - b.depth, b.y - a.y - a.depth));

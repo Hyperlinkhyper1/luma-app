@@ -65,6 +65,17 @@ sandbox.airportReceive({ type: 'tool', kind: 'stand', rotation: 90 });
 assert.match(elements.get('status').textContent, /place/i);
 sandbox.airportReceive({ type: 'tool', kind: null });
 assert.equal(elements.get('status').textContent, '');
+{
+  // The entrance's door opens the wall it is on, and pavements that touch
+  // hand their edge lines over and join their centrelines.
+  const built = sandbox.airportDebug.state.facilities;
+  const doors = [...built.values()].flatMap(f => f.context?.doors || []);
+  assert.deepEqual(JSON.parse(JSON.stringify(doors)), [{side: '+x', at: 27}], 'one doorway, on the +x wall, 27 m along it');
+  const trunk = built.get('b2');
+  assert(trunk.context.cuts.length >= 2, 'the long taxiway gives way where the short ones join it');
+  const standCuts = built.get('b6').context.cuts;
+  assert(standCuts.length >= 1, 'the stand border opens onto its taxiway');
+}
 const before = hud.updates;
 sandbox.airportReceive({ type: 'snapshot', world: { ...sandbox.airportPreview.world, facilities: [], flights: [], vehicles: [], passengers: [] } });
 assert.equal(hud.updates, before + 1);
@@ -103,8 +114,8 @@ const contactWorld={catalog:[{kind:'standContact',width:60,depth:65,cost:1,name:
 assert(!logic.validate(contactWorld,{kind:'standContact'},{x:300,y:0,w:60,d:65}).valid);
 assert(logic.validate(contactWorld,{kind:'standContact'},{x:120,y:0,w:60,d:65}).valid);
 const standKinds=['standRegional','standContact'];
-for(const kind of ['standRegional','standContact','shop','lounge','plant','fountain','infoBoard','seating','ticketMachine','vendingMachine','baggageCarousel','clothingShop','luxuryBoutique','vipLounge','checkInCounter','kiosk','foodShop','perfumeShop','restaurant','infoDesk','bins']){
-  const size={standRegional:[40,45],standContact:[60,65],shop:[12,8],lounge:[14,10],plant:[2,2],fountain:[6,6],infoBoard:[4,2],seating:[8,4],ticketMachine:[1,1],vendingMachine:[1,1],baggageCarousel:[10,5],clothingShop:[8,6],luxuryBoutique:[8,6],vipLounge:[8,6],checkInCounter:[6,5],kiosk:[5,4],foodShop:[10,8],perfumeShop:[8,7],restaurant:[14,10],infoDesk:[5,4],bins:[2,1]}[kind];
+for(const kind of ['standRegional','standContact','shop','lounge','plant','fountain','infoBoard','seating','ticketMachine','vendingMachine','baggageCarousel','clothingShop','luxuryBoutique','vipLounge','checkInCounter','kiosk','foodShop','perfumeShop','restaurant','infoDesk','bins','coffeeToGo','arcade','flowerShop','foodCart','infoPanel','customs','checkOut']){
+  const size={standRegional:[40,45],standContact:[60,65],shop:[12,8],lounge:[14,10],plant:[2,2],fountain:[6,6],infoBoard:[4,2],seating:[8,4],ticketMachine:[1,1],vendingMachine:[1,1],baggageCarousel:[10,5],clothingShop:[8,6],luxuryBoutique:[8,6],vipLounge:[8,6],checkInCounter:[6,5],kiosk:[5,4],foodShop:[10,8],perfumeShop:[8,7],restaurant:[14,10],infoDesk:[5,4],bins:[2,1],coffeeToGo:[4,3],arcade:[10,8],flowerShop:[6,5],foodCart:[3,2],infoPanel:[1,1],customs:[8,6],checkOut:[8,4]}[kind];
   for(let rotation=0;rotation<4;rotation++){
     const width=rotation%2?size[1]:size[0],depth=rotation%2?size[0]:size[1];
     const mesh=sandbox.AirportModels.facility({id:'x7',kind,x:50,y:80,width,depth,rotation},standKinds.includes(kind)?{noseSide:rotation}:{});

@@ -960,7 +960,12 @@ class AirlineTycoonRepository extends ChangeNotifier
       ...world.toJson(),
       'facilities': [
         for (final f in world.facilities)
-          {...f.toJson(), 'protected': world.protected(f)},
+          {
+            ...f.toJson(),
+            'protected': world.protected(f),
+            'upgradeCost': world.upgradeCost(f),
+            if (f.kind == 'entrance') 'door': _door(world.entranceDoor(f)),
+          },
       ],
       'idleAircraft': idleAircraft,
       'contracts': [
@@ -1037,6 +1042,10 @@ class AirlineTycoonRepository extends ChangeNotifier
     };
   }
 
+  static Map<String, Object?>? _door(
+    ({List<double> door, List<double> kerb})? door,
+  ) => door == null ? null : {'door': door.door, 'kerb': door.kerb};
+
   ActionResult airportCommand(String action, Map<String, Object?> args) {
     final world = _airportWorld;
     if (!airportMode || world == null) {
@@ -1075,17 +1084,15 @@ class AirlineTycoonRepository extends ChangeNotifier
           );
         case 'demolish':
           error = world.demolish(_state, string('facilityId'));
+        case 'upgrade':
+          error = world.upgrade(_state, string('facilityId'));
         case 'buyVehicle':
           final depotArg = args['depotId'] is String
               ? args['depotId'] as String
               : args['facilityId'] is String
               ? args['facilityId'] as String
               : null;
-          error = world.buyVehicle(
-            _state,
-            string('kind'),
-            depotId: depotArg,
-          );
+          error = world.buyVehicle(_state, string('kind'), depotId: depotArg);
         case 'acceptContract':
           error = world.acceptContract(_state, string('offerId'));
         case 'cancelContract':

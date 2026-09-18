@@ -267,7 +267,8 @@ class _RecurringRow extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   '${rule.cadence == Cadence.weekly ? 'Weekly' : 'Monthly'}'
-                  '${rule.isBill ? ' · Bill' : ''} · next ${_shortDate(rule.nextDue)}',
+                  '${rule.isBill ? ' · Bill, remind ${rule.reminderDaysBefore}d before' : ''}'
+                  ' · next ${_shortDate(rule.nextDue)}',
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
               ],
@@ -403,12 +404,14 @@ class _RecurringEditorState extends State<_RecurringEditor> {
   int? _potId;
   int? _categoryId;
   bool _isBill = false;
+  final _reminderDays = TextEditingController(text: '7');
   String? _error;
 
   @override
   void dispose() {
     _name.dispose();
     _amount.dispose();
+    _reminderDays.dispose();
     super.dispose();
   }
 
@@ -419,6 +422,16 @@ class _RecurringEditorState extends State<_RecurringEditor> {
       setState(() => _error = 'Enter a name and a valid amount.');
       return;
     }
+    final isBill = _kind == TxnKind.expense && _isBill;
+    int reminderDays = 7;
+    if (isBill) {
+      final parsed = int.tryParse(_reminderDays.text.trim());
+      if (parsed == null || parsed < 0) {
+        setState(() => _error = 'Enter a valid number of reminder days.');
+        return;
+      }
+      reminderDays = parsed;
+    }
     await widget.repo.createRecurring(RecurringRulesCompanion.insert(
       name: name,
       kind: _kind,
@@ -427,7 +440,8 @@ class _RecurringEditorState extends State<_RecurringEditor> {
       nextDue: _firstDue,
       potId: Value(_potId),
       categoryId: Value(_kind == TxnKind.expense ? _categoryId : null),
-      isBill: Value(_kind == TxnKind.expense && _isBill),
+      isBill: Value(isBill),
+      reminderDaysBefore: Value(reminderDays),
     ));
     if (mounted) Navigator.pop(context);
   }
@@ -513,6 +527,12 @@ class _RecurringEditorState extends State<_RecurringEditor> {
                 ),
               ),
             ),
+            if (_isBill) ...[
+              const SizedBox(height: 8),
+              _editorField(luma, 'Remind me this many days before it\'s due',
+                  _reminderDays,
+                  hint: '7', number: true),
+            ],
           ],
           if (_error != null) ...[
             const SizedBox(height: 12),
