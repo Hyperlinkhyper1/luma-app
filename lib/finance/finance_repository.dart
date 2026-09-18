@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart';
+﻿import 'package:drift/drift.dart';
 
 import '../storage/storage_guard.dart';
 import 'data/database.dart';
@@ -40,7 +40,7 @@ class FinanceRepository {
           .watch();
 
   /// Active bills/subscriptions due within [withinDays] of [now], soonest
-  /// first — the "due soon" reminder list.
+  /// first â€” the "due soon" reminder list.
   Stream<List<RecurringRule>> watchDueBills(
       {DateTime? now, int withinDays = 7}) {
     final horizon = (now ?? DateTime.now()).add(Duration(days: withinDays));
@@ -82,7 +82,6 @@ class FinanceRepository {
     int? merchantId,
     int? categoryId,
   }) async {
-    StorageGuard.instance.ensureWithinLimit();
     final id = await db.into(db.financeTransactions).insert(
           FinanceTransactionsCompanion.insert(
             kind: kind,
@@ -130,7 +129,6 @@ class FinanceRepository {
     required int colorValue,
     required int iconCodepoint,
   }) async {
-    StorageGuard.instance.ensureWithinLimit();
     final pots = await allPots();
     final nextOrder = pots.isEmpty ? 0 : pots.last.sortOrder + 1;
     final id = await db.into(db.pots).insert(PotsCompanion.insert(
@@ -168,7 +166,6 @@ class FinanceRepository {
   // ---- Recurring & allocation rules ----------------------------------------
 
   Future<int> createRecurring(RecurringRulesCompanion rule) async {
-    StorageGuard.instance.ensureWithinLimit();
     final id = await db.into(db.recurringRules).insert(rule);
     StorageGuard.instance.scheduleRefresh();
     return id;
@@ -181,7 +178,6 @@ class FinanceRepository {
           .write(RecurringRulesCompanion(active: Value(active)));
 
   Future<int> createAllocationRule(AllocationRulesCompanion rule) async {
-    StorageGuard.instance.ensureWithinLimit();
     final id = await db.into(db.allocationRules).insert(rule);
     StorageGuard.instance.scheduleRefresh();
     return id;
@@ -193,7 +189,6 @@ class FinanceRepository {
   // ---- Holdings -------------------------------------------------------------
 
   Future<int> upsertHolding(HoldingsCompanion holding) async {
-    StorageGuard.instance.ensureWithinLimit();
     final id = await db.into(db.holdings)
         .insert(holding, mode: InsertMode.insertOrReplace);
     StorageGuard.instance.scheduleRefresh();
@@ -213,7 +208,6 @@ class FinanceRepository {
   // ---- Overview Graphs ------------------------------------------------------
 
   Future<int> addOverviewGraph({required String graphType, required String dataSource}) async {
-    StorageGuard.instance.ensureWithinLimit();
     final current = await (db.select(db.overviewGraphs)..orderBy([(g) => OrderingTerm(expression: g.sortOrder)])).get();
     final nextOrder = current.isEmpty ? 0 : current.last.sortOrder + 1;
     final id = await db.into(db.overviewGraphs).insert(OverviewGraphsCompanion.insert(
@@ -249,7 +243,7 @@ class FinanceRepository {
   }
 
   /// Cash net worth (main + pots) plus the market value of every holding
-  /// (falling back to cost basis for holdings with no live price yet) —
+  /// (falling back to cost basis for holdings with no live price yet) â€”
   /// the same total the net-worth chart tracks over time.
   Future<int> currentNetWorthCents() async {
     final txns = await db.select(db.financeTransactions).get();
@@ -263,7 +257,7 @@ class FinanceRepository {
   }
 
   /// Records today's net worth in [BalanceSnapshots] if it hasn't been
-  /// recorded yet today — safe to call on every app start (see
+  /// recorded yet today â€” safe to call on every app start (see
   /// FinanceRepository.applyDue's callers). Overwrites today's snapshot if
   /// one already exists, so calling it more than once a day just keeps the
   /// total current rather than creating duplicates.
@@ -288,35 +282,24 @@ class FinanceRepository {
   /// entries were created. Safe to call on every app start.
   Future<int> applyDue(DateTime now) async {
     var created = 0;
-    // Once the storage cap is hit mid-catch-up, stop creating further
-    // entries entirely rather than crashing startup — each rule only
-    // advances as far as it actually got applied, so the remainder is
-    // retried (idempotently) next time there's room.
-    var blocked = false;
 
     final rules = await (db.select(db.recurringRules)
           ..where((r) => r.active.equals(true)))
         .get();
     for (final r in rules) {
-      if (blocked) break;
       final occurrences = dueOccurrences(r.nextDue, r.cadence, now);
       if (occurrences.isEmpty) continue;
       DateTime? lastApplied;
       for (final date in occurrences) {
-        try {
-          await addTransaction(
-            kind: r.kind,
-            amountCents: r.amountCents,
-            date: date,
-            note: r.name,
-            potId: r.potId,
-            merchantId: r.merchantId,
-            categoryId: r.categoryId,
-          );
-        } on StorageLimitExceededException {
-          blocked = true;
-          break;
-        }
+        await addTransaction(
+          kind: r.kind,
+          amountCents: r.amountCents,
+          date: date,
+          note: r.name,
+          potId: r.potId,
+          merchantId: r.merchantId,
+          categoryId: r.categoryId,
+        );
         created++;
         lastApplied = date;
       }
@@ -330,13 +313,10 @@ class FinanceRepository {
       }
     }
 
-    if (blocked) return created;
-
     final allocRules = await (db.select(db.allocationRules)
           ..where((a) => a.active.equals(true)))
         .get();
     for (final a in allocRules) {
-      if (blocked) break;
       final occurrences = dueOccurrences(a.nextDue, a.cadence, now);
       if (occurrences.isEmpty) continue;
       DateTime? lastApplied;
@@ -352,22 +332,16 @@ class FinanceRepository {
           lastApplied = date;
           continue;
         }
-        try {
-          StorageGuard.instance.ensureWithinLimit();
-          await db.into(db.financeTransactions).insert(
-                FinanceTransactionsCompanion.insert(
-                  kind: TxnKind.allocation,
-                  amountCents: amount,
-                  date: date,
-                  potId: Value(a.potId),
-                  note: const Value('Auto-allocation'),
-                ),
-              );
-          StorageGuard.instance.scheduleRefresh();
-        } on StorageLimitExceededException {
-          blocked = true;
-          break;
-        }
+        await db.into(db.financeTransactions).insert(
+              FinanceTransactionsCompanion.insert(
+                kind: TxnKind.allocation,
+                amountCents: amount,
+                date: date,
+                potId: Value(a.potId),
+                note: const Value('Auto-allocation'),
+              ),
+            );
+        StorageGuard.instance.scheduleRefresh();
         created++;
         lastApplied = date;
       }

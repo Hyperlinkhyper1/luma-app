@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import '../../../../storage/storage_guard.dart';
@@ -17,7 +17,7 @@ class MoodEntryRecord {
 
   final int id;
   final String date; // YYYY-MM-DD
-  final int mood; // 1–5
+  final int mood; // 1â€“5
   final String? note;
   final List<String> tags;
   final List<String> images;
@@ -99,7 +99,6 @@ class MoodJournalRepository {
       await (_db.update(_db.moodEntries)..where((t) => t.id.equals(id)))
           .write(companion);
     } else {
-      StorageGuard.instance.ensureWithinLimit();
       await _db.into(_db.moodEntries).insert(companion);
       StorageGuard.instance.scheduleRefresh();
     }

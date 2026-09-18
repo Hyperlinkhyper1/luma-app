@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -68,7 +68,7 @@ class GraphFunction {
 
 /// Flat-file (JSON) store for the Calculator plugin: the answer history, the
 /// plotted functions, and the degrees/radians choice. Typing is rapid, so
-/// writes are debounced — memory updates and notifies at once, the file
+/// writes are debounced â€” memory updates and notifies at once, the file
 /// catches up shortly after.
 class CalculatorStore extends ChangeNotifier {
   factory CalculatorStore() => instance;
@@ -162,16 +162,9 @@ class CalculatorStore extends ChangeNotifier {
     } catch (_) {}
   }
 
-  /// Records a finished sum. Over the storage cap the answer still shows —
-  /// only remembering it is refused, which is what [StorageGuard] is for.
+  /// Records a finished sum.
   void remember(String expression, String result, double value) {
     _lastAnswer = value;
-    try {
-      StorageGuard.instance.ensureWithinLimit();
-    } on StorageLimitExceededException {
-      notifyListeners();
-      return;
-    }
     _history.insert(
       0,
       CalcHistoryEntry(
@@ -201,13 +194,8 @@ class CalculatorStore extends ChangeNotifier {
     _schedulePersist();
   }
 
-  /// Adds a curve and returns it, or returns null when the storage cap says no.
+  /// Adds a curve and returns it.
   GraphFunction? addFunction(String expression, int color) {
-    try {
-      StorageGuard.instance.ensureWithinLimit();
-    } on StorageLimitExceededException {
-      return null;
-    }
     final function = GraphFunction(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       expression: expression,
@@ -243,7 +231,7 @@ class CalculatorStore extends ChangeNotifier {
     _schedulePersist();
   }
 
-  /// Writes any pending debounced change out now — called when the plugin page
+  /// Writes any pending debounced change out now â€” called when the plugin page
   /// goes away so the last sum is never left unsaved.
   Future<void> flush() async {
     if (_persistTimer == null) return;

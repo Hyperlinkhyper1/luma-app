@@ -4,31 +4,63 @@
     {
       "name": "luma-web",
       "runtimeExecutable": "flutter",
-      "runtimeArgs": ["run", "-d", "web-server", "--web-port", "8090", "--web-hostname", "127.0.0.1"],
+      "runtimeArgs": [
+        "run",
+        "-d",
+        "web-server",
+        "--web-port",
+        "8090",
+        "--web-hostname",
+        "127.0.0.1"
+      ],
       "port": 8090
     },
     {
       "name": "space-colony",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8123", "--directory", "space_colony"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8123",
+        "--directory",
+        "space_colony"
+      ],
       "port": 8123
     },
     {
       "name": "city-planner",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8124", "--directory", "assets/city_planner"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8124",
+        "--directory",
+        "assets/city_planner"
+      ],
       "port": 8124
     },
     {
       "name": "subway-builder",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8125", "--directory", "assets/subway_builder"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8125",
+        "--directory",
+        "assets/subway_builder"
+      ],
       "port": 8125
     },
     {
       "name": "luma-web-built",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8091", "--directory", "build/web"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8091",
+        "--directory",
+        "build/web"
+      ],
       "port": 8091
     },
     {
@@ -39,6 +71,16 @@
         "const h=require('http'),f=require('fs'),p=require('path');const d=p.resolve('assets/transport_tracker');const T={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json'};h.createServer((q,s)=>{let u=decodeURIComponent(q.url.split('?')[0]);if(u==='/')u='/index.html';const fp=p.join(d,u);if(!fp.startsWith(d)){s.writeHead(403);return s.end()}f.readFile(fp,(e,b)=>{if(e){s.writeHead(404);return s.end('not found')}s.writeHead(200,{'Content-Type':T[p.extname(fp)]||'application/octet-stream'});s.end(b)})}).listen(8126,()=>console.log('transport-tracker map on 8126'))"
       ],
       "port": 8126
+    },
+    {
+      "name": "airport-scene",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "-e",
+        "const h=require('http'),f=require('fs'),p=require('path');const d=p.resolve('assets/airline_tycoon/scene');const T={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json'};h.createServer((q,s)=>{let u=decodeURIComponent(q.url.split('?')[0]);if(u==='/')u='/index.html';const fp=p.join(d,u);if(!fp.startsWith(d)){s.writeHead(403);return s.end()}f.readFile(fp,(e,b)=>{if(e){s.writeHead(404);return s.end('not found')}s.writeHead(200,{'Cache-Control':'no-store','Content-Type':T[p.extname(fp)]||'application/octet-stream'});s.end(b)})}).listen(Number(process.env.PORT)||8127,function(){console.log('airport scene on '+this.address().port)})"
+      ],
+      "port": 8127,
+      "autoPort": true
     }
   ]
 }

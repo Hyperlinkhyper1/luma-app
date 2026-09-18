@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../storage/storage_guard.dart';
 import '../../theme/luma_theme.dart';
 import 'notes_repository.dart';
 
@@ -61,17 +60,7 @@ class _NotesPageState extends State<NotesPage> {
   }
 
   Future<void> _newNote() async {
-    final Note note;
-    try {
-      note = await _repo.create();
-    } on StorageLimitExceededException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('$e')));
-      }
-      return;
-    }
+    final note = await _repo.create();
     _selectNote(note.id);
     setState(() => _editing = true);
     Future.delayed(const Duration(milliseconds: 100), () {

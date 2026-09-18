@@ -1,10 +1,10 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import '../../../../storage/storage_guard.dart';
 import 'data/data_management_database.dart';
 
-// ─── Domain models ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Domain models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /// A parsed column definition.
 class DataColumnDef {
@@ -79,13 +79,13 @@ class DataRowRecord {
   String valueAt(int colIndex) => values[colIndex.toString()] ?? '';
 }
 
-// ─── Repository ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ Repository â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class DataManagementRepository {
   DataManagementRepository(this._db);
   final DataManagementDatabase _db;
 
-  // ── Datasets ───────────────────────────────────────────────────────────────
+  // â”€â”€ Datasets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Stream<List<DatasetRecord>> watchDatasets() {
     final query = _db.select(_db.dataDatasets)
@@ -99,7 +99,6 @@ class DataManagementRepository {
   }
 
   Future<int> createDataset(String name) async {
-    StorageGuard.instance.ensureWithinLimit();
     final id = await _db.into(_db.dataDatasets).insert(
           DataDatasetsCompanion.insert(name: name),
         );
@@ -118,7 +117,7 @@ class DataManagementRepository {
         .write(DataDatasetsCompanion(columnsJson: Value(json), updatedAt: Value(DateTime.now())));
   }
 
-  // ── Tags ───────────────────────────────────────────────────────────────────
+  // â”€â”€ Tags â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<void> updateTags(int id, List<DataTagDef> tags) async {
     final json = jsonEncode(tags.map((t) => t.toJson()).toList());
@@ -168,7 +167,7 @@ class DataManagementRepository {
     await (_db.delete(_db.dataDatasets)..where((t) => t.id.equals(id))).go();
   }
 
-  // ── Rows ───────────────────────────────────────────────────────────────────
+  // â”€â”€ Rows â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Stream<List<DataRowRecord>> watchRows(int datasetId) {
     final query = _db.select(_db.dataRows)
@@ -187,7 +186,6 @@ class DataManagementRepository {
 
   Future<int> addRow(int datasetId, Map<String, String> values,
       {List<String> tags = const []}) async {
-    StorageGuard.instance.ensureWithinLimit();
     final maxOrder = await _db.customSelect(
       'SELECT MAX(order_index) as max_order FROM data_rows WHERE dataset_id = ?',
       variables: [Variable.withInt(datasetId)],
@@ -244,7 +242,7 @@ class DataManagementRepository {
     await (_db.delete(_db.dataRows)..where((t) => t.datasetId.equals(datasetId))).go();
   }
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
+  // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   DatasetRecord _toDataset(DataDataset row) {
     List<dynamic> cols = [];
@@ -283,7 +281,7 @@ class DataManagementRepository {
     );
   }
 
-  // ── Sync export / import (for backup) ────────────────────────────────────────
+  // â”€â”€ Sync export / import (for backup) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<Map<String, dynamic>> exportDataset(int datasetId) async {
     final dataset = await getDataset(datasetId);

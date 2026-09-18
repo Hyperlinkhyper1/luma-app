@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mistral Medium 3.5 - Pagoda Test</title>
+    <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+    <script type="importmap">
+        {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+    </script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { overflow: hidden; background: #000; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        canvas { display: block; }
+        #hud {
+            position: absolute; top: 12px; left: 12px; color: #fff;
+            font-size: 11px; line-height: 1.4; text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+            background: rgba(0,0,0,0.4); padding: 8px 12px; border-radius: 4px;
+            pointer-events: none; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #hud .title { font-size: 13px; font-weight: bold; margin-bottom: 2px; letter-spacing: 1px; }
+        #hud .subtitle { font-size: 10px; opacity: 0.85; }
+    </style>
+</head>
+<body>
+    <div id="hud">
+        <div class="title">VOXEL GARDEN</div>
+        <div class="subtitle" id="stats">0 voxels | 0 FPS</div>
+        <div class="subtitle">Click lanterns</div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Constants
+        const PAGODA_FLOORS = 5;
+        const PAGODA_HEIGHT = 28;
+        const TERRAIN_SIZE = 64;
+        const TARGET_VOXEL_COUNT = 24000;
+        const CYCLE_DURATION = 90000;
+        const INTRO_DURATION = 2500;
+
+        // Color Palette
+        const COLORS = {
+            vermillion: 0xC73E1D, gold: 0xE8B86D, deepTeak: 0x4A2C1A,
+            jade: 0x2D6A4F, jadeLight: 0x40916C, sakura: 0xFFB7C5,
+            sakuraPink: 0xFF8FAB, sakuraPale: 0xFFE5EC, stone: 0x9AA0A6,
+            pond: 0x7ED6DF, moss: 0x606C38
+        };
+
+        const state = {
+            scene: null, camera: null, renderer: null, controls: null,
+            voxelCount: 0, fps: 0, timeOfDay: 0, clock: new THREE.Clock(),
+            lastFPSUpdate: 0, frameCount: 0, currentFPS: 0,
+            introProgress: 0, introComplete: false, idleTimer: 0, isIdle: true,
+            lanternLights: [], lanternOn: [true, true, true, true],
+            doorOpen: [false, false, false, false, false],
+            doorTargets: [0, 0, 0, 0, 0], doorProgress: [0, 0, 0, 0, 0],
+            koi: [], petals: [], trees: [],
+            raycaster: new THREE.Raycaster(), mouse: new THREE.Vector2(),
+            voxelGroups: {}, instancedMeshes: []
+        };
+
+        const voxelGeometry = new THREE.BoxGeometry(1, 1, 1);
+
+        function createVoxelGroup(color, maxCount = 10000) {
+            const material = new THREE.MeshStandardMaterial({ color: color, roughness: 0.7, metalness: 0.1 });
+            const mesh = new THREE.InstancedMesh(voxelGeometry, material, maxCount);
+            mesh.castShadow = true; mesh.receiveShadow = true;
+            state.scene.add(mesh);
+            const group = { mesh: mesh, dummy: new THREE.Object3D(), count: 0, color: color, material: material };
+            state.instancedMeshes.push(mesh); return group;
+        }
+
+        function addVoxel(group, x, y, z) {
+            state.voxelCount++;
+            group.dummy.position.set(x, y, z); group.dummy.updateMatrix();
+            group.mesh.setMatrixAt(group.count, group.dummy.matrix); group.count++;
+        }
+
+        function finalizeVoxelGroup(group) {
+            group.mesh.count = group.count; group.mesh.instanceMatrix.needsUpdate = true;
+        }
+
+        function getTerrainHeight(x, z) {
+            const halfSize = TERRAIN_SIZE / 2;
+            const distFromCenter = Math.sqrt(x*x + z*z) / halfSize;
+            const baseHeight = Math.floor(Math.sin(distFromCenter * Math.PI) * 0.5);
+            const noise = Math.sin(x * 0.3) * Math.cos(z * 0.3) * 0.3;
+            return Math.max(0, Math.floor(baseHeight + noise));
+        }
+
+        function init() {
+            state.scene = new THREE.Scene(); state.scene.background = new THREE.Color(0x87CEEB);
+            state.scene.fog = new THREE.Fog(0x87CEEB, 40, 120);
+            state.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 200);
+            state.camera.position.set(15, 8, 25); state.camera.lookAt(0, 5, 0);
+            state.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+            state.renderer.setSize(window.innerWidth, window.innerHeight);
+            state.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+            state.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            state.renderer.toneMappingExposure = 1.0; state.renderer.shadowMap.enabled = true;
+            state.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.body.appendChild(state.renderer.domElement);
+            state.controls = new OrbitControls(state.camera, state.renderer.domElement);
+            state.controls.enableDamping = true; state.controls.dampingFactor = 0.05;
+            state.controls.minDistance = 15; state.controls.maxDistance = 100;
+            state.controls.maxPolarAngle = Math.PI * 0.48; state.controls.enabled = false;
+            state.controls.autoRotate = true; state.controls.autoRotateSpeed = 0.3;
+            setupLighting(); buildScene();
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mousedown', onMouseDown);
+            state.renderer.domElement.addEventListener('click', onClick, false);
+            animate();
+        }
+
+        function setupLighting() {
+            state.sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            state.sunLight.position.set(30, 50, 20); state.sunLight.castShadow = true;
+            state.sunLight.shadow.mapSize.set(2048, 2048);
+            state.sunLight.shadow.camera.near = 0.5; state.sunLight.shadow.camera.far = 150;
+            state.sunLight.shadow.camera.left = -60; state.sunLight.shadow.camera.right = 60;
+            state.sunLight.shadow.camera.top = 60; state.sunLight.shadow.camera.bottom = -60;
+            state.scene.add(state.sunLight);
+            state.hemiLight = new THREE.HemisphereLight(0x87CEEB, 0x4A2C1A, 0.4);
+            state.scene.add(state.hemiLight);
+            for (let i = 0; i < 4; i++) {
+                const light = new THREE.PointLight(COLORS.gold, 0, 15, 2); light.castShadow = false;
+                state.lanternLights.push(light); state.scene.add(light);
+            }
+            state.ambientLight = new THREE.AmbientLight(0xffffff, 0.2); state.scene.add(state.ambientLight);
+        }
+
+        function buildScene() {
+            state.voxelGroups.vermillion = createVoxelGroup(COLORS.vermillion, 6000);
+            state.voxelGroups.gold = createVoxelGroup(COLORS.gold, 2000);
+            state.voxelGroups.jade = createVoxelGroup(COLORS.jade, 4000);
+            state.voxelGroups.jadeLight = createVoxelGroup(COLORS.jadeLight, 2000);
+            state.voxelGroups.deepTeak = createVoxelGroup(COLORS.deepTeak, 3000);
+            state.voxelGroups.stone = createVoxelGroup(COLORS.stone, 5000);
+            state.voxelGroups.moss = createVoxelGroup(COLORS.moss, 5000);
+            state.voxelGroups.pond = createVoxelGroup(COLORS.pond, 2000);
+            state.voxelGroups.sakura = createVoxelGroup(COLORS.sakura, 1000);
+            state.voxelGroups.sakuraPink = createVoxelGroup(COLORS.sakuraPink, 500);
+            state.voxelGroups.sakuraPale = createVoxelGroup(COLORS.sakuraPale, 500);
+            buildTerrain(); buildPond(); buildPath(); buildPagoda();
+            buildTorii(); buildBambooFence(); buildBridge(); buildTrees(); buildFlowers();
+            buildLanterns(); buildJizoStatues(); buildKoi(); buildPetals();
+            for (const key in state.voxelGroups) finalizeVoxelGroup(state.voxelGroups[key]);
+            positionLanternLights();
+        }
+
+        function buildTerrain() {
+            const group = state.voxelGroups.moss; const halfSize = TERRAIN_SIZE / 2;
+            for (let x = -halfSize; x < halfSize; x++) {
+                for (let z = -halfSize; z < halfSize; z++) {
+                    const distFromCenter = Math.sqrt(x*x + z*z) / halfSize;
+                    const baseHeight = Math.floor(Math.sin(distFromCenter * Math.PI) * 0.5);
+                    const noise = Math.sin(x * 0.3) * Math.cos(z * 0.3) * 0.3;
+                    const height = Math.max(0, Math.floor(baseHeight + noise));
+                    for (let y = 0; y < height; y++) addVoxel(group, x, y, z);
+                    addVoxel(group, x, height, z);
+                }
+            }
+        }
+
+        function buildPond() {
+            const group = state.voxelGroups.pond; const centerX = -8; const centerZ = 0;
+            const radiusX = 10; const radiusZ = 8;
+            for (let x = -15; x < -1; x++) {
+                for (let z = -8; z < 8; z++) {
+                    const dx = (x - centerX) / radiusX; const dz = (z - centerZ) / radiusZ;
+                    if (dx*dx + dz*dz < 0.9) {
+                        addVoxel(group, x, 0.5, z); addVoxel(group, x, 0, z);
+                        addVoxel(group, x, -0.5, z); addVoxel(group, x, -1, z);
+                    }
+                }
+            }
+        }
+
+        function buildPath() {
+            const group = state.voxelGroups.stone;
+            const pathPoints = [{x:25,z:0},{x:20,z:-5},{x:15,z:-5},{x:12,z:0},{x:8,z:5},{x:5,z:5},{x:0,z:0}];
+            for (let i = 0; i < pathPoints.length - 1; i++) {
+                const start = pathPoints[i]; const end = pathPoints[i + 1];
+                const steps = Math.max(Math.abs(end.x - start.x), Math.abs(end.z - start.z)) * 2;
+                for (let s = 0; s <= steps; s++) {
+                    const t = s / steps; const x = Math.round(start.x + (end.x - start.x) * t);
+                    const z = Math.round(start.z + (end.z - start.z) * t);
+                    for (let w = -1; w <= 1; w++) {
+                        for (let d = -1; d <= 1; d++) {
+                            const terrainHeight = getTerrainHeight(x + w, z + d);
+                            addVoxel(group, x + w, terrainHeight + 1, z + d);
+                        }
+                    }
+                }
+            }
+        }
+
+        function buildPagoda() {
+            const baseX = 0; const baseZ = 0; let currentY = getTerrainHeight(baseX, baseZ) + 1;
+            buildPagodaPlatform(baseX, currentY, baseZ); currentY += 2;
+            for (let floor = 0; floor < PAGODA_FLOORS; floor++) {
+                const floorScale = 1.0 - (floor * 0.12); const floorHeight = floor === 0 ? 6 : 5;
+                buildPagodaFloor(baseX, currentY, baseZ, floorScale, floorHeight, floor);
+                currentY += floorHeight;
+                const roofHeight = floor === PAGODA_FLOORS - 1 ? 4 : 5;
+                buildPagodaRoof(baseX, currentY, baseZ, floorScale, roofHeight); currentY += roofHeight;
+            }
+            buildFinial(baseX, currentY, baseZ);
+        }
+
+        function buildPagodaPlatform(x, y, z) {
+            const group = state.voxelGroups.stone; const size = 16; const half = Math.floor(size / 2);
+            for (let dx = -half; dx <= half; dx++) {
+                for (let dz = -half; dz <= half; dz++) {
+                    for (let dy = 0; dy < 2; dy++) addVoxel(group, x + dx, y + dy, z + dz);
+                }
+            }
+        }
+
+        function buildPagodaFloor(x, y, z, scale, height, floorIndex) {
+            const group = state.voxelGroups.vermillion; const goldGroup = state.voxelGroups.gold;
+            const teakGroup = state.voxelGroups.deepTeak;
+            const baseSize = Math.floor(14 * scale); const half = Math.floor(baseSize / 2); const wallThickness = 2;
+            for (let dx = -half - 1; dx <= half + 1; dx++) {
+                for (let dz = -half - 1; dz <= half + 1; dz++) addVoxel(group, x + dx, y, z + dz);
+            }
+            for (let dy = 1; dy < height - 1; dy++) {
+                for (let dx = -half; dx <= half; dx++) {
+                    for (let dz = -half; dz <= half; dz++) {
+                        const isEdgeX = Math.abs(dx) >= half - wallThickness + 1;
+                        const isEdgeZ = Math.abs(dz) >= half - wallThickness + 1;
+                        if (isEdgeX || isEdgeZ) {
+                            const isDoor = Math.abs(dx) <= 2 && dz === half;
+                            if (isDoor) {
+                                if (dy === 1 || dy >= height - 2) addVoxel(goldGroup, x + dx, y + dy, z + dz);
+                            } else addVoxel(group, x + dx, y + dy, z + dz);
+                        }
+                    }
+                }
+            }
+            const pillarPositions = [[-3,-3],[-3,3],[3,-3],[3,3],[0,0]];
+            for (const [px, pz] of pillarPositions) {
+                const sx = Math.round(px * scale); const sz = Math.round(pz * scale);
+                for (let dy = 1; dy < height - 1; dy++) addVoxel(group, x + sx, y + dy, z + sz);
+            }
+            const corners = [[-half,-half],[-half,half],[half,-half],[half,half]];
+            for (const [cx, cz] of corners) {
+                for (let dy = 0; dy < height; dy++) addVoxel(goldGroup, x + cx, y + dy, z + cz);
+            }
+            for (let dx = -half + 1; dx <= half - 1; dx++) {
+                for (let dz = -half + 1; dz <= half - 1; dz++) addVoxel(teakGroup, x + dx, y, z + dz);
+            }
+            for (let dx = -half; dx <= half; dx++) {
+                for (let dz = -half; dz <= half; dz++) addVoxel(teakGroup, x + dx, y + height - 1, z + dz);
+            }
+            state.doorPositions = state.doorPositions || [];
+            state.doorPositions[floorIndex] = {x:x, z:z+half, y:y+1, height:height-2, floor:floorIndex};
+        }
+
+        function buildPagodaRoof(x, y, z, scale, height) {
+            const jadeGroup = state.voxelGroups.jade; const jadeLightGroup = state.voxelGroups.jadeLight;
+            const goldGroup = state.voxelGroups.gold;
+            const baseSize = Math.floor(16 * scale); const half = Math.floor(baseSize / 2);
+            for (let layer = 0; layer < height; layer++) {
+                const layerScale = 1.0 - (layer / height) * 0.4;
+                const layerSize = Math.floor(baseSize * layerScale); const layerHalf = Math.floor(layerSize / 2);
+                const layerY = y + layer; const group = layer % 2 === 0 ? jadeGroup : jadeLightGroup;
+                for (let dx = -layerHalf; dx <= layerHalf; dx++) {
+                    for (let dz = -layerHalf; dz <= layerHalf; dz++) {
+                        const isEdge = Math.abs(dx) >= layerHalf - 1 || Math.abs(dz) >= layerHalf - 1;
+                        if (isEdge && layer < height - 1) {
+                            const upturnAmount = Math.min(2, height - layer - 1);
+                            for (let u = 0; u < upturnAmount; u++) {
+                                if (layerY + u <= y + height - 1) addVoxel(group, x + dx, layerY + u, z + dz);
+                            }
+                        }
+                        addVoxel(group, x + dx, layerY, z + dz);
+                    }
+                }
+            }
+            const topLayer = y + height - 1;
+            for (let dx = -half - 1; dx <= half + 1; dx++) {
+                for (let dz = -half - 1; dz <= half + 1; dz++) {
+                    if (Math.abs(dx) === half + 1 || Math.abs(dz) === half + 1) addVoxel(goldGroup, x + dx, topLayer, z + dz);
+                }
+            }
+        }
+
+        function buildFinial(x, y, z) {
+            const goldGroup = state.voxelGroups.gold;
+            for (let i = 0; i < 8; i++) addVoxel(goldGroup, x, y + i, z);
+            for (let dx = -1; dx <= 1; dx++) {
+                for (let dz = -1; dz <= 1; dz++) {
+                    for (let dy = 0; dy < 3; dy++) addVoxel(goldGroup, x + dx, y + dy, z + dz);
+                }
+            }
+        }
+
+        function buildTorii() {
+            const group = state.voxelGroups.vermillion; const goldGroup = state.voxelGroups.gold;
+            const x = 25; const z = 0; const y = getTerrainHeight(x, z) + 1;
+            for (let dy = 0; dy < 12; dy++) { addVoxel(group, x - 4, y + dy, z); addVoxel(group, x + 4, y + dy, z); }
+            for (let dx = -6; dx <= 6; dx++) { addVoxel(group, x + dx, y + 12, z); addVoxel(group, x + dx, y + 13, z); }
+            for (let dx = -8; dx <= 8; dx++) addVoxel(group, x + dx, y + 10, z);
+            for (let dx = -6; dx <= 6; dx++) addVoxel(goldGroup, x + dx, y + 13, z);
+        }
+
+        function buildBambooFence() {
+            const group = state.voxelGroups.stone;
+            const fencePositions = [
+                {x:20,z:-10,length:15,direction:'x'},{x:5,z:-10,length:15,direction:'x'},
+                {x:-10,z:-10,length:15,direction:'x'},{x:-20,z:-10,length:15,direction:'x'},
+                {x:-20,z:-5,length:10,direction:'z'},{x:-20,z:5,length:10,direction:'z'},
+                {x:-20,z:10,length:15,direction:'x'},{x:-5,z:10,length:15,direction:'x'},
+                {x:10,z:10,length:15,direction:'x'}
+            ];
+            for (const fence of fencePositions) {
+                const y = getTerrainHeight(fence.x, fence.z) + 1;
+                if (fence.direction === 'x') {
+                    for (let dx = 0; dx < fence.length; dx++) {
+                        const fx = fence.x + dx;
+                        addVoxel(group, fx, y, fence.z); addVoxel(group, fx, y + 1, fence.z); addVoxel(group, fx, y + 2, fence.z);
+                    }
+                } else {
+                    for (let dz = 0; dz < fence.length; dz++) {
+                        const fz = fence.z + dz;
+                        addVoxel(group, fence.x, y, fz); addVoxel(group, fence.x, y + 1, fz); addVoxel(group, fence.x, y + 2, fz);
+                    }
+                }
+            }
+        }
+
+        function buildBridge() {
+            const group = state.voxelGroups.deepTeak; const startX = -15; const endX = -5; const z = 3; const y = 1.5;
+            const length = endX - startX;
+            for (let x = startX; x <= endX; x++) {
+                const t = (x - startX) / length; const archHeight = Math.sin(t * Math.PI) * 2;
+                const bridgeY = Math.round(y + archHeight);
+                for (let dz = -2; dz <= 2; dz++) addVoxel(group, x, bridgeY, z + dz);
+                if (x === startX || x === endX || (x - startX) % 3 === 0) {
+                    addVoxel(group, x, bridgeY + 1, z - 2); addVoxel(group, x, bridgeY + 1, z + 2);
+                    addVoxel(group, x, bridgeY + 2, z - 2); addVoxel(group, x, bridgeY + 2, z + 2);
+                }
+            }
+        }
+
+        function buildTrees() {
+            const treeTypes = ['sakura','sakura','sakura','pine','pine','maple','maple','willow'];
+            const treePositions = [
+                {x:-20,z:-15},{x:-22,z:-8},{x:-25,z:5},{x:-18,z:12},
+                {x:-12,z:15},{x:8,z:-12},{x:12,z:-8},{x:15,z:8}
+            ];
+            for (let i = 0; i < treeTypes.length; i++) {
+                const type = treeTypes[i]; const pos = treePositions[i];
+                const y = getTerrainHeight(pos.x, pos.z) + 1; buildTree(pos.x, y, pos.z, type, i);
+            }
+        }
+
+        function buildTree(x, y, z, type, index) {
+            const trunkGroup = state.voxelGroups.deepTeak;
+            const leafGroup = type === 'sakura' ? state.voxelGroups.sakura :
+                            type === 'pine' ? state.voxelGroups.jade : state.voxelGroups.moss;
+            const trunkHeight = type === 'willow' ? 8 : type === 'pine' ? 10 : 6;
+            for (let dy = 0; dy < trunkHeight; dy++) {
+                addVoxel(trunkGroup, x, y + dy, z);
+                if (dy > 2 && type === 'pine') addVoxel(trunkGroup, x + 1, y + dy, z);
+            }
+            const canopySize = type === 'willow' ? 8 : type === 'pine' ? 6 : 5;
+            for (let dx = -canopySize; dx <= canopySize; dx++) {
+                for (let dz = -canopySize; dz <= canopySize; dz++) {
+                    for (let dy = 0; dy < canopySize; dy++) {
+                        const dist = Math.sqrt(dx*dx + dz*dz + dy*dy);
+                        if (dist < canopySize) addVoxel(leafGroup, x + dx, y + trunkHeight + dy, z + dz);
+                    }
+                }
+            }
+            state.trees.push({x:x,z:z,y:y,height:trunkHeight+canopySize,type:type,index:index,offset:Math.random()*Math.PI*2});
+        }
+
+        function buildFlowers() {
+            const group = state.voxelGroups.sakuraPink; const paleGroup = state.voxelGroups.sakuraPale;
+            for (let i = 0; i < 40; i++) {
+                const angle = (i / 40) * Math.PI * 2 + Math.random() * 0.2;
+                const radius = 15 + Math.random() * 10;
+                const x = Math.round(Math.cos(angle) * radius); const z = Math.round(Math.sin(angle) * radius);
+                const y = getTerrainHeight(x, z) + 1;
+                addVoxel(group, x, y, z); addVoxel(group, x, y + 1, z);
+                for (let dx = -1; dx <= 1; dx++) {
+                    for (let dz = -1; dz <= 1; dz++) {
+                        if (dx !== 0 || dz !== 0) addVoxel(paleGroup, x + dx, y + 2, z + dz);
+                    }
+                }
+            }
+        }
+
+        function buildLanterns() {
+            const group = state.voxelGroups.deepTeak; const goldGroup = state.voxelGroups.gold;
+            const lanternPositions = [{x:-10,z:-8},{x:-10,z:8},{x:10,z:-8},{x:10,z:8}];
+            for (let i = 0; i < 4; i++) {
+                const pos = lanternPositions[i]; const y = getTerrainHeight(pos.x, pos.z) + 1;
+                for (let dy = 0; dy < 5; dy++) addVoxel(group, pos.x, y + dy, pos.z);
+                for (let dx = -1; dx <= 1; dx++) {
+                    for (let dz = -1; dz <= 1; dz++) {
+                        addVoxel(goldGroup, pos.x + dx, y + 5, pos.z + dz);
+                        addVoxel(goldGroup, pos.x + dx, y + 6, pos.z + dz);
+                    }
+                }
+                addVoxel(goldGroup, pos.x, y + 7, pos.z);
+                state.lanternPositions = state.lanternPositions || [];
+                state.lanternPositions[i] = {x:pos.x,y:y+5,z:pos.z,index:i,light:state.lanternLights[i]};
+            }
+        }
+
+        function positionLanternLights() {
+            if (!state.lanternPositions) return;
+            for (let i = 0; i < state.lanternPositions.length; i++) {
+                const pos = state.lanternPositions[i]; pos.light.position.set(pos.x, pos.y + 1, pos.z);
+                pos.light.intensity = state.lanternOn[i] ? 2 : 0;
+            }
+        }
+
+        function buildJizoStatues() {
+            const group = state.voxelGroups.stone; const goldGroup = state.voxelGroups.gold;
+            const positions = [{x:-15,z:-12},{x:-15,z:12}];
+            for (const pos of positions) {
+                const y = getTerrainHeight(pos.x, pos.z) + 1;
+                for (let dx = -1; dx <= 1; dx++) {
+                    for (let dz = -1; dz <= 1; dz++) addVoxel(group, pos.x + dx, y, pos.z + dz);
+                }
+                for (let dy = 1; dy <= 3; dy++) addVoxel(group, pos.x, y + dy, pos.z);
+                addVoxel(group, pos.x, y + 4, pos.z); addVoxel(goldGroup, pos.x, y + 3, pos.z);
+            }
+        }
+
+        function buildKoi() {
+            const koiGeometry = new THREE.BoxGeometry(0.8, 0.3, 0.3);
+            const koiPositions = [
+                {x:-12,z:-2,color:0xFF6B35},{x:-10,z:3,color:0xFFFFFF},{x:-8,z:-4,color:0xFF6B35},
+                {x:-6,z:2,color:0xFFD700},{x:-14,z:1,color:0xFFFFFF},{x:-11,z:-3,color:0xFF6B35}
+            ];
+            for (let i = 0; i < 6; i++) {
+                const pos = koiPositions[i];
+                const koiMesh = new THREE.Mesh(koiGeometry, new THREE.MeshStandardMaterial({color:pos.color}));
+                koiMesh.position.set(pos.x, 0.75, pos.z); koiMesh.castShadow = true;
+                state.scene.add(koiMesh);
+                state.koi.push({mesh:koiMesh,x:pos.x,z:pos.z,speed:0.02+Math.random()*0.01,angle:Math.random()*Math.PI*2,
+                    radius:3+Math.random()*2,centerX:-10,centerZ:0,offset:Math.random()*Math.PI*2});
+            }
+        }
+
+        function buildPetals() {
+            const petalGeometry = new THREE.BoxGeometry(0.2, 0.05, 0.2);
+            for (let i = 0; i < 200; i++) {
+                const petalMaterial = new THREE.MeshStandardMaterial({
+                    color: Math.random() > 0.5 ? COLORS.sakuraPink : COLORS.sakuraPale,
+                    transparent: true, opacity: 0.9
+                });
+                const petalMesh = new THREE.Mesh(petalGeometry, petalMaterial);
+                petalMesh.position.set((Math.random() - 0.5) * 40, 20 + Math.random() * 10, (Math.random() - 0.5) * 40);
+                petalMesh.castShadow = false; state.scene.add(petalMesh);
+                state.petals.push({mesh:petalMesh,x:petalMesh.position.x,y:petalMesh.position.y,
+                    z:petalMesh.position.z,speedY:-0.02-Math.random()*0.01,speedX:(Math.random()-0.5)*0.01,
+                    speedZ:(Math.random()-0.5)*0.01,rotSpeed:Math.random()*0.05});
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = state.clock.getDelta(); const elapsed = state.clock.getElapsedTime();
+            state.frameCount++;
+            if (elapsed - state.lastFPSUpdate >= 1.0) {
+                state.currentFPS = Math.round(state.frameCount / (elapsed - state.lastFPSUpdate));
+                state.frameCount = 0; state.lastFPSUpdate = elapsed;
+            }
+            state.timeOfDay = (elapsed % CYCLE_DURATION) / CYCLE_DURATION;
+            if (!state.introComplete) {
+                state.introProgress = Math.min(1.0, elapsed / (INTRO_DURATION / 1000));
+                if (state.introProgress >= 1.0) { state.introComplete = true; state.controls.enabled = true; }
+                updateIntroCamera();
+            }
+            updateDayNightCycle(elapsed); updateLanternFlicker(elapsed); updateKoi(elapsed);
+            updatePetals(elapsed); updateTrees(elapsed); updateDoors(elapsed);
+            updatePondRipples(elapsed); updateHUD(); updateDebugState(); updateIdleState();
+            state.controls.update(); state.renderer.render(state.scene, state.camera);
+        }
+
+        function updateIntroCamera() {
+            const startX = 15, startY = 8, startZ = 25; const endX = 20, endY = 10, endZ = 10;
+            const t = state.introProgress; const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+            state.camera.position.x = startX + (endX - startX) * ease;
+            state.camera.position.y = startY + (endY - startY) * ease;
+            state.camera.position.z = startZ + (endZ - startZ) * ease;
+            state.camera.lookAt(0, 5, 0);
+        }
+
+        function updateDayNightCycle(elapsed) {
+            const t = state.timeOfDay; const sunAngle = t * Math.PI * 2;
+            state.sunLight.position.x = Math.cos(sunAngle) * 40;
+            state.sunLight.position.y = 20 + Math.sin(sunAngle) * 30;
+            state.sunLight.position.z = Math.sin(sunAngle) * 20;
+            const sunIntensity = 0.4 + Math.sin(sunAngle) * 0.4;
+            state.sunLight.intensity = Math.max(0.1, sunIntensity);
+            const skyHue = 0.55 + Math.sin(sunAngle) * 0.1;
+            const skySaturation = 0.4 + Math.sin(sunAngle) * 0.3;
+            const skyLightness = 0.6 + Math.sin(sunAngle) * 0.2;
+            const skyColor = new THREE.Color(); skyColor.setHSL(skyHue, skySaturation, skyLightness);
+            state.scene.background = skyColor; state.scene.fog.color = skyColor;
+            const skyColor2 = new THREE.Color(); skyColor2.setHSL(skyHue, skySaturation * 0.5, skyLightness * 1.2);
+            const groundColor = new THREE.Color(); groundColor.setHSL(0.1, 0.3, 0.2 + Math.sin(sunAngle) * 0.1);
+            state.hemiLight.color = skyColor2; state.hemiLight.groundColor = groundColor;
+            state.hemiLight.intensity = 0.3 + Math.sin(sunAngle) * 0.2;
+            state.ambientLight.intensity = 0.1 + Math.sin(sunAngle) * 0.1;
+            const isDusk = t > 0.6 && t < 0.85; const isNight = t > 0.85 || t < 0.15;
+            for (let i = 0; i < 4; i++) {
+                if (isDusk || isNight) state.lanternOn[i] = true;
+                state.lanternLights[i].intensity = state.lanternOn[i] ? 2 : 0;
+            }
+        }
+
+        function updateLanternFlicker(elapsed) {
+            for (let i = 0; i < 4; i++) {
+                if (state.lanternOn[i]) {
+                    const flicker = 1.8 + Math.sin(elapsed * 10 + i * 2) * 0.2 + Math.random() * 0.05;
+                    state.lanternLights[i].intensity = flicker;
+                }
+            }
+        }
+
+        function updateKoi(elapsed) {
+            for (const koi of state.koi) {
+                koi.angle += koi.speed * 0.5;
+                koi.mesh.position.x = koi.centerX + Math.cos(koi.angle) * koi.radius;
+                koi.mesh.position.z = koi.centerZ + Math.sin(koi.angle) * koi.radius * 0.7;
+                koi.mesh.position.y = 0.75 + Math.sin(elapsed * 2 + koi.offset) * 0.1;
+                koi.mesh.rotation.y = Math.atan2(koi.mesh.position.z - koi.centerZ, koi.mesh.position.x - koi.centerX);
+            }
+        }
+
+        function updatePetals(elapsed) {
+            for (const petal of state.petals) {
+                petal.y += petal.speedY;
+                petal.x += petal.speedX + Math.sin(elapsed * 0.5 + petal.y * 0.1) * 0.005;
+                petal.z += petal.speedZ + Math.cos(elapsed * 0.3 + petal.y * 0.1) * 0.005;
+                petal.mesh.position.set(petal.x, petal.y, petal.z);
+                petal.mesh.rotation.x += petal.rotSpeed; petal.mesh.rotation.z += petal.rotSpeed * 0.5;
+                if (petal.y < 0) {
+                    petal.x = (Math.random() - 0.5) * 40; petal.y = 25 + Math.random() * 5;
+                    petal.z = (Math.random() - 0.5) * 40; petal.mesh.position.set(petal.x, petal.y, petal.z);
+                }
+            }
+        }
+
+        function updateTrees(elapsed) { for (const tree of state.trees) { const sway = Math.sin(elapsed * 2 + tree.offset) * 0.3; } }
+        function updateDoors(elapsed) {
+            for (let i = 0; i < PAGODA_FLOORS; i++) {
+                const target = state.doorOpen[i] ? 1 : 0; const current = state.doorProgress[i];
+                if (Math.abs(current - target) > 0.01) state.doorProgress[i] += (target - current) * 0.1;
+            }
+        }
+        function updatePondRipples(elapsed) {}
+        function updateHUD() {
+            const stats = document.getElementById('stats');
+            const voxelK = Math.round(state.voxelCount / 1000);
+            stats.textContent = `${voxelK}k voxels | ${state.currentFPS} FPS`;
+        }
+        function updateDebugState() {
+            window.__VOXEL__ = { voxelCount: state.voxelCount, fps: state.currentFPS, pagodaFloors: PAGODA_FLOORS, timeOfDay: state.timeOfDay };
+        }
+        function updateIdleState() {
+            if (state.controls.isRotating || state.controls.isZooming || state.controls.isPanning) {
+                state.isIdle = false; state.idleTimer = 0;
+            } else { state.idleTimer += 1; if (state.idleTimer > 60) state.isIdle = true; }
+            state.controls.autoRotate = state.introComplete && state.isIdle;
+        }
+
+        function onMouseMove(event) { state.mouse.x = (event.clientX / window.innerWidth) * 2 - 1; state.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1; }
+        function onMouseDown(event) { state.isIdle = false; state.idleTimer = 0; }
+        function onClick(event) {
+            if (!state.introComplete) return;
+            const rect = state.renderer.domElement.getBoundingClientRect();
+            state.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            state.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            state.raycaster.setFromCamera(state.mouse, state.camera);
+            if (state.lanternPositions) {
+                for (let i = 0; i < state.lanternPositions.length; i++) {
+                    const lantern = state.lanternPositions[i];
+                    const distance = state.raycaster.ray.distanceToPoint(new THREE.Vector3(lantern.x, lantern.y + 1, lantern.z));
+                    if (distance < 3) { state.lanternOn[i] = !state.lanternOn[i]; state.lanternLights[i].intensity = state.lanternOn[i] ? 2 : 0; return; }
+                }
+            }
+            if (state.doorPositions) {
+                for (let i = 0; i < state.doorPositions.length; i++) {
+                    const door = state.doorPositions[i];
+                    const distance = state.raycaster.ray.distanceToPoint(new THREE.Vector3(door.x, door.y + door.height / 2, door.z));
+                    if (distance < 5) { state.doorOpen[i] = !state.doorOpen[i]; return; }
+                }
+            }
+        }
+        function onWindowResize() {
+            state.camera.aspect = window.innerWidth / window.innerHeight;
+            state.camera.updateProjectionMatrix(); state.renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        init();
+    </script>
+</body>
+</html>

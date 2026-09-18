@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../app/widgets.dart';
-import '../../storage/storage_guard.dart';
 import '../../theme/luma_theme.dart';
 import '../data/database.dart';
 import '../finance_repository.dart';
@@ -118,42 +117,32 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
       _saving = true;
       _error = null;
     });
-    try {
-      final note = _noteController.text.trim().isEmpty
-          ? null
-          : _noteController.text.trim();
-      final merchantId = _kind == TxnKind.expense ? _merchant?.id : null;
-      final categoryId = _kind == TxnKind.expense ? _categoryId : null;
-      if (_isEditing) {
-        await widget.repo.updateTransaction(
-          id: widget.existing!.id,
-          kind: _kind,
-          amountCents: cents,
-          date: _date,
-          note: note,
-          potId: _potId,
-          merchantId: merchantId,
-          categoryId: categoryId,
-        );
-      } else {
-        await widget.repo.addTransaction(
-          kind: _kind,
-          amountCents: cents,
-          date: _date,
-          note: note,
-          potId: _potId,
-          merchantId: merchantId,
-          categoryId: categoryId,
-        );
-      }
-    } on StorageLimitExceededException catch (e) {
-      if (mounted) {
-        setState(() {
-          _saving = false;
-          _error = '$e';
-        });
-      }
-      return;
+    final note = _noteController.text.trim().isEmpty
+        ? null
+        : _noteController.text.trim();
+    final merchantId = _kind == TxnKind.expense ? _merchant?.id : null;
+    final categoryId = _kind == TxnKind.expense ? _categoryId : null;
+    if (_isEditing) {
+      await widget.repo.updateTransaction(
+        id: widget.existing!.id,
+        kind: _kind,
+        amountCents: cents,
+        date: _date,
+        note: note,
+        potId: _potId,
+        merchantId: merchantId,
+        categoryId: categoryId,
+      );
+    } else {
+      await widget.repo.addTransaction(
+        kind: _kind,
+        amountCents: cents,
+        date: _date,
+        note: note,
+        potId: _potId,
+        merchantId: merchantId,
+        categoryId: categoryId,
+      );
     }
     if (mounted) Navigator.of(context).pop();
   }

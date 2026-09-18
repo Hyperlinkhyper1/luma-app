@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:,">
+<title>Engine Test — Sonnet 5 (XHigh)</title>
+<style>
+  :root{
+    --bg:#eef1f4; --panel:#f8f9fb; --panel2:#ffffff; --ink:#182230; --muted:#67728a;
+    --line:#d9dde4; --accent:#d9531a; --accent2:#2f6fb0; --good:#1c8a52; --warn:#b8860b;
+    --danger:#c0392b; --power:#d9531a; --exhaust:#8a5a3a; --intake:#2f6fb0; --comp:#1c8a52;
+    --mono:'Cascadia Code','JetBrains Mono',Consolas,Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:var(--bg);
+    font-family:'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif;color:var(--ink)}
+  #scene{position:fixed;inset:0;width:100%;height:100%;display:block}
+  #vignette{position:fixed;inset:0;pointer-events:none;z-index:2;
+    background:radial-gradient(120% 90% at 50% 40%, rgba(0,0,0,0) 55%, rgba(20,26,36,.12) 100%)}
+  #ui{position:fixed;inset:0;pointer-events:none;z-index:5}
+  #ui.hidden .panel,#ui.hidden #topbar,#ui.hidden #cambar{display:none}
+  .panel{pointer-events:auto;position:absolute;background:var(--panel);border:1px solid var(--line);
+    border-radius:12px;box-shadow:0 8px 26px rgba(20,26,36,.12);overflow:hidden;display:flex;flex-direction:column}
+  .panel h3{margin:0;padding:9px 12px;font-size:11px;letter-spacing:1.6px;color:var(--muted);
+    border-bottom:1px solid var(--line);background:var(--panel2);font-weight:700;flex:0 0 auto}
+  .panel .body{padding:10px 12px;overflow-y:auto;flex:1 1 auto;min-height:0}
+  #left{left:14px;top:62px;width:284px;max-height:calc(100% - 148px)}
+  #right{right:14px;top:62px;width:322px;max-height:calc(100% - 148px)}
+  #topbar{pointer-events:auto;position:absolute;top:12px;left:14px;right:14px;display:flex;gap:10px;
+    align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:8px 14px;box-shadow:0 8px 26px rgba(20,26,36,.10);z-index:6}
+  #topbar .title{font-weight:800;letter-spacing:1.4px;font-size:13px;white-space:nowrap}
+  #topbar .title span{color:var(--accent)}
+  #topbar .sub{font-family:var(--mono);font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #topbar .tag{font-family:var(--mono);font-size:10.5px;border:1px solid var(--accent);color:var(--accent);
+    border-radius:999px;padding:2px 10px;white-space:nowrap;flex:0 0 auto}
+  #cambar{pointer-events:auto;position:absolute;bottom:12px;left:50%;transform:translateX(-50%);
+    display:flex;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:7px 9px;box-shadow:0 8px 26px rgba(20,26,36,.12);flex-wrap:wrap;justify-content:center;
+    max-width:calc(100% - 660px);z-index:6}
+  button{font-family:inherit;cursor:pointer}
+  .btn{border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:8px;
+    padding:6px 10px;font-size:12px;font-weight:600;transition:all .12s}
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+  .btn.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .btn.acc{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.acc:hover{background:#b54512;color:#fff}
+  .btn.sm{padding:4px 8px;font-size:11px}
+  .btn:disabled{opacity:.45;cursor:default}
+  .row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .lbl{font-size:10.5px;color:var(--muted);font-weight:700;letter-spacing:.6px;text-transform:uppercase;margin:10px 0 5px}
+  .lbl:first-child{margin-top:0}
+  input[type=range]{width:100%;accent-color:var(--accent)}
+  #rpmBig{font-family:var(--mono);font-size:32px;font-weight:700;letter-spacing:-1px;line-height:1}
+  #rpmBig small{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:1px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px 8px}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:5px 8px}
+  .stat .k{font-size:9.5px;color:var(--muted);letter-spacing:.5px;font-weight:700;text-transform:uppercase}
+  .stat .v{font-family:var(--mono);font-size:13px;font-weight:700}
+  .stat .v small{font-size:9.5px;color:var(--muted);font-weight:600}
+  canvas.graph{width:100%;height:56px;background:#10151d;border-radius:8px;display:block}
+  canvas.diag{width:100%;height:78px;background:var(--panel2);border:1px solid var(--line);
+    border-radius:8px;display:block}
+  #crankbar{position:relative;height:30px;background:var(--panel2);border:1px solid var(--line);
+    border-radius:8px;overflow:hidden;margin-top:4px}
+  #crankneedle{position:absolute;top:0;bottom:0;width:2px;background:var(--accent);z-index:2}
+  .tick{position:absolute;top:0;bottom:0;width:1px;background:#aab1bd}
+  .tick span{position:absolute;top:2px;left:2px;font-family:var(--mono);font-size:8.5px;color:var(--muted)}
+  .fdot{position:absolute;width:6px;height:6px;border-radius:50%;top:11px;transform:translateX(-3px)}
+  .cylgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+  .cyl{border:1px solid var(--line);background:var(--panel2);border-radius:8px;padding:5px 3px;
+    font-family:var(--mono);font-size:11px;font-weight:700;text-align:center;cursor:pointer;user-select:none}
+  .cyl .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:3px;vertical-align:baseline}
+  .cyl.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+  .meter{height:7px;background:#e3e7ee;border-radius:99px;overflow:hidden;margin-top:3px}
+  .meter i{display:block;height:100%;background:var(--accent2);width:0%}
+  .kbd{font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.85}
+  .kbd b{color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:4px;
+    padding:0 5px;font-weight:700}
+  #benchprog{height:7px;background:#e3e7ee;border-radius:99px;overflow:hidden;margin-top:6px;display:none}
+  #benchprog i{display:block;height:100%;background:var(--good);width:0%}
+  #modal{pointer-events:auto;position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+    background:rgba(20,26,36,.45);z-index:20}
+  #modal.open{display:flex}
+  #modal .card{background:var(--panel);border-radius:14px;border:1px solid var(--line);width:440px;
+    max-width:calc(100% - 40px);box-shadow:0 24px 70px rgba(0,0,0,.3)}
+  #modal table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12.5px}
+  #modal td{padding:5px 12px;border-bottom:1px solid var(--line)}
+  #modal td:last-child{text-align:right;font-weight:700}
+  #loader{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:30;
+    background:var(--bg);font-family:var(--mono);letter-spacing:3px;font-size:13px;color:var(--muted);
+    transition:opacity .5s}
+  #err{position:fixed;left:50%;transform:translateX(-50%);bottom:64px;z-index:40;display:none;
+    background:#7a2318;color:#fff;font-family:var(--mono);font-size:12px;border-radius:8px;
+    padding:8px 14px;max-width:80%}
+  #showui{pointer-events:auto;position:absolute;bottom:12px;left:12px;display:none;z-index:6}
+  #ui.hidden #showui{display:block}
+  select.sel-input{font-family:inherit;font-size:11.5px;background:var(--panel2);border:1px solid var(--line);
+    border-radius:6px;padding:4px 6px;color:var(--ink)}
+  @media (max-width:1220px){ #cambar{max-width:calc(100% - 40px)} #left{width:250px} #right{width:284px} }
+  @media (max-width:880px){ #left,#right{max-height:calc(50% - 90px)} #right{top:auto;bottom:70px} }
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div id="vignette"></div>
+
+<div id="ui">
+  <div id="topbar">
+    <div class="title">LUMA V8 <span>//</span> CUTAWAY BENCHMARK</div>
+    <div class="sub" id="firingSub">cross-plane 90&deg; &middot; 4-stroke &middot; firing &hellip;</div>
+    <div style="flex:1"></div>
+    <div class="tag">Sonnet 5 (XHigh)</div>
+    <button class="btn sm" id="bHide">Hide UI (H)</button>
+  </div>
+
+  <div class="panel" id="left">
+    <h3>ENGINE CONTROLS</h3>
+    <div class="body">
+      <div id="rpmBig">700 <small>RPM</small></div>
+      <input type="range" id="rpm" min="0" max="8000" step="25" value="700">
+      <div class="row" style="margin-top:6px">
+        <button class="btn sm" data-rpm="700">Idle</button>
+        <button class="btn sm" data-rpm="2000">2,000</button>
+        <button class="btn sm" data-rpm="4000">4,000</button>
+        <button class="btn sm" data-rpm="6000">6,000</button>
+        <button class="btn sm" data-rpm="8000">Redline</button>
+      </div>
+
+      <div class="row" style="margin-top:10px">
+        <button class="btn" id="bPause" style="flex:1">Pause (Space)</button>
+        <button class="btn" id="bReset" style="flex:1">Reset (R)</button>
+      </div>
+
+      <div class="lbl">Casing / view</div>
+      <div class="row">
+        <button class="btn sm" data-view="solid">Solid</button>
+        <button class="btn sm" data-view="glass">Transparent</button>
+        <button class="btn sm" data-view="cutaway">Cutaway (C)</button>
+        <button class="btn sm" data-view="hidden">Hide Casing</button>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <button class="btn sm" id="bIsolate">Isolate Selected Cylinder</button>
+      </div>
+
+      <div class="lbl">Benchmark</div>
+      <div class="row">
+        <button class="btn sm acc" id="bBench" style="flex:1">Run 30s Benchmark (B)</button>
+      </div>
+      <div id="benchprog"><i></i></div>
+      <div id="benchLive" style="font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:4px;display:none"></div>
+
+      <div class="lbl">Shortcuts</div>
+      <div class="kbd">
+        <b>Space</b> pause &nbsp; <b>R</b> reset &nbsp; <b>B</b> benchmark<br>
+        <b>C</b> cutaway &nbsp; <b>H</b> hide UI &nbsp; <b>1-8</b> select cylinder
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="right">
+    <h3>DIAGNOSTICS</h3>
+    <div class="body">
+      <div class="grid2">
+        <div class="stat"><div class="k">FPS</div><div class="v" id="sFps">--</div></div>
+        <div class="stat"><div class="k">Frame ms</div><div class="v" id="sFrame">--</div></div>
+        <div class="stat"><div class="k">Crank &deg;</div><div class="v" id="sCrank">0.0</div></div>
+        <div class="stat"><div class="k">Sim time</div><div class="v" id="sTime">0.0<small>s</small></div></div>
+        <div class="stat"><div class="k">Triangles</div><div class="v" id="sTris">--</div></div>
+        <div class="stat"><div class="k">Draw calls</div><div class="v" id="sCalls">--</div></div>
+        <div class="stat"><div class="k">Objects</div><div class="v" id="sObjs">--</div></div>
+        <div class="stat"><div class="k">Stroke</div><div class="v" id="sStroke">--</div></div>
+      </div>
+
+      <div class="lbl">FPS (last 4s)</div>
+      <canvas class="graph" id="fpsGraph"></canvas>
+
+      <div class="lbl">Crank angle &middot; 0&ndash;720&deg;</div>
+      <div id="crankbar"></div>
+
+      <div class="lbl">Cylinders &middot; select to track</div>
+      <div class="cylgrid" id="cylGrid"></div>
+
+      <div class="lbl">Selected cylinder <span id="selLabel" style="color:var(--ink)">#1</span></div>
+      <div class="grid2">
+        <div class="stat"><div class="k">Stroke</div><div class="v" id="cStroke">--</div></div>
+        <div class="stat"><div class="k">Crank &deg;</div><div class="v" id="cAngle">--</div></div>
+      </div>
+      <div class="stat" style="margin-top:6px">
+        <div class="k">Chamber pressure</div>
+        <div class="v" id="cPressure">-- <small>bar (sim)</small></div>
+        <div class="meter"><i id="cPressureBar"></i></div>
+      </div>
+      <div class="lbl">Valve lift (selected)</div>
+      <canvas class="diag" id="valveDiag"></canvas>
+      <div class="lbl">Pressure diagram (selected)</div>
+      <canvas class="diag" id="pressDiag"></canvas>
+    </div>
+  </div>
+
+  <div id="cambar">
+    <button class="btn sm" data-cam="hero">Hero</button>
+    <button class="btn sm" data-cam="front">Front</button>
+    <button class="btn sm" data-cam="side">Side</button>
+    <button class="btn sm" data-cam="top">Top</button>
+    <button class="btn sm" data-cam="cutaway">Cutaway</button>
+    <button class="btn sm" data-cam="cyl">Cylinder view</button>
+  </div>
+  <button class="btn sm" id="showui">Show UI (H)</button>
+</div>
+
+<div id="modal"><div class="card">
+  <h3 style="margin:0;padding:12px 16px;font-size:11px;letter-spacing:1.6px;color:var(--muted);border-bottom:1px solid var(--line)">BENCHMARK RESULTS &middot; <span id="benchDurLabel">30</span>S</h3>
+  <div style="padding:8px 4px 4px"><table id="benchTable"></table></div>
+  <div class="row" style="padding:12px 16px 16px">
+    <button class="btn sm acc" id="bAgain">Run again</button>
+    <button class="btn sm" id="bClose">Close</button>
+  </div>
+</div></div>
+
+<div id="err"></div>
+<div id="loader">ASSEMBLING V8&hellip;</div>
+
+<script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<script>
+setTimeout(function () {
+  var l = document.getElementById('loader');
+  if (l && l.parentNode) l.textContent = 'STILL LOADING — CHECK NETWORK (three.js CDN)…';
+}, 12000);
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const errBox = document.getElementById('err');
+window.addEventListener('error', (e) => {
+  errBox.style.display = 'block';
+  errBox.textContent = 'Error: ' + (e.message || e.error);
+});
+
+/* ============================================================
+   MECHANICAL MODEL
+   Cross-plane 90° V8: two banks 45° either side of vertical, four
+   crank throws 90° apart. Throw angles are picked at odd multiples
+   of 45° (45/135/225/315) specifically so that, combined with the
+   ±45° bank tilt, every cylinder's (bank angle − throw angle) lands
+   on a multiple of 90° — the necessary condition for eight evenly
+   spaced (90° apart) firing events across the 720° cycle. Each
+   cylinder's firing phase (phi) is then chosen so phi mod 360
+   equals that cylinder's geometric value, which is asserted below
+   rather than assumed.
+   ============================================================ */
+const D2R = Math.PI / 180;
+const THROW_DEG = [45, 135, 225, 315];      // per crank-pin pair, front→rear
+const THROW_R = 0.42;                        // crank throw radius
+const ROD_LEN = 1.52;                        // con-rod length
+const PAIR_SPACING = 1.22;                   // spacing between cylinder pairs along X
+
+const CYLINDERS = [
+  { id: 1, bank: 'L', pair: 0, phi: 630 },
+  { id: 2, bank: 'R', pair: 0, phi: 0 },
+  { id: 3, bank: 'L', pair: 1, phi: 180 },
+  { id: 4, bank: 'R', pair: 1, phi: 270 },
+  { id: 5, bank: 'L', pair: 2, phi: 90 },
+  { id: 6, bank: 'R', pair: 2, phi: 540 },
+  { id: 7, bank: 'L', pair: 3, phi: 360 },
+  { id: 8, bank: 'R', pair: 3, phi: 450 },
+];
+CYLINDERS.forEach((c) => {
+  c.bankAngle = c.bank === 'L' ? -45 : 45;
+  c.throwAngle = THROW_DEG[c.pair];
+  const g = (((c.bankAngle - c.throwAngle) % 360) + 360) % 360;
+  if (Math.abs(g - (c.phi % 360)) > 1e-6) {
+    console.error('firing geometry inconsistent for cylinder', c.id, g, c.phi % 360);
+  }
+  c.pairX = (c.pair - 1.5) * PAIR_SPACING;
+  c.rodXOff = c.bank === 'L' ? -0.065 : 0.065;
+  c.bankDir = new THREE.Vector3(0, Math.sin(c.bankAngle * D2R), Math.cos(c.bankAngle * D2R));
+});
+const FIRING_ORDER = [...CYLINDERS].sort((a, b) => a.phi - b.phi).map((c) => c.id);
+const idx1 = FIRING_ORDER.indexOf(1);
+const FIRING_DISPLAY = FIRING_ORDER.slice(idx1).concat(FIRING_ORDER.slice(0, idx1));
+document.getElementById('firingSub').textContent =
+  'cross-plane 90° · 4-stroke · firing ' + FIRING_DISPLAY.join('-');
+
+function circDist(a, b, mod) {
+  const d = Math.abs(a - b) % mod;
+  return Math.min(d, mod - d);
+}
+function raisedCos(d, width) {
+  if (d >= width / 2) return 0;
+  return 0.5 * (1 + Math.cos((2 * Math.PI * d) / width));
+}
+// Slider-crank piston displacement: distance from the crank centerline to the
+// piston pin, measured along the cylinder's own bore axis. `eff` is the crank
+// angle expressed relative to that bore axis, so x() is the same formula for
+// every cylinder regardless of bank or throw — only its phase differs.
+function pistonDistance(crankDeg, c) {
+  const eff = (crankDeg + c.throwAngle - c.bankAngle) * D2R;
+  const s = Math.sin(eff);
+  return THROW_R * Math.cos(eff) + Math.sqrt(Math.max(0, ROD_LEN * ROD_LEN - THROW_R * THROW_R * s * s));
+}
+function cylState(crankDeg, c) {
+  const cyclePos = (((crankDeg - c.phi) % 720) + 720) % 720;
+  let stroke;
+  if (cyclePos < 180) stroke = 'power';
+  else if (cyclePos < 360) stroke = 'exhaust';
+  else if (cyclePos < 540) stroke = 'intake';
+  else stroke = 'compression';
+  const intakeLift = raisedCos(circDist(cyclePos, 450, 720), 260);
+  const exhaustLift = raisedCos(circDist(cyclePos, 270, 720), 260);
+  let combustion = 0;
+  if (cyclePos < 100) combustion = Math.pow(1 - cyclePos / 100, 1.6);
+  // stylised chamber pressure (bar-ish units, not literal thermodynamics)
+  let pressure;
+  if (stroke === 'intake') pressure = 0.55 + 0.15 * Math.sin((cyclePos - 360) * D2R * (180 / 180));
+  else if (stroke === 'compression') pressure = 1 + 13 * Math.pow((cyclePos - 540) / 180, 2.1);
+  else if (stroke === 'power') pressure = 2 + 46 * Math.exp(-cyclePos / 34);
+  else pressure = 1.15 + 0.9 * Math.exp(-(cyclePos - 180) / 40);
+  return { cyclePos, stroke, intakeLift, exhaustLift, combustion, pressure };
+}
+const STROKE_COLOR = { power: '#d9531a', exhaust: '#8a5a3a', intake: '#2f6fb0', compression: '#1c8a52' };
+
+/* ============================================================
+   RENDERER / SCENE
+   ============================================================ */
+const canvas = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.localClippingEnabled = true;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xe9ecf1);
+scene.fog = new THREE.Fog(0xe9ecf1, 14, 34);
+
+const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.05, 200);
+camera.position.set(8.6, 5.3, 9.6);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0.2, 0.55, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 1.5;
+controls.maxDistance = 30;
+controls.update();
+
+// lights: key / fill / rim / ambient
+const hemi = new THREE.HemisphereLight(0xf3f5f8, 0x3a3f46, 0.55);
+scene.add(hemi);
+const key = new THREE.DirectionalLight(0xfff3e0, 2.1);
+key.position.set(6, 9, 5);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.camera.near = 1; key.shadow.camera.far = 30;
+key.shadow.camera.left = -8; key.shadow.camera.right = 8;
+key.shadow.camera.top = 8; key.shadow.camera.bottom = -8;
+key.shadow.bias = -0.0015;
+scene.add(key);
+const fill = new THREE.DirectionalLight(0xcfe0ff, 0.55);
+fill.position.set(-7, 4, -4);
+scene.add(fill);
+const rim = new THREE.DirectionalLight(0xffffff, 0.9);
+rim.position.set(-3, 6, -8);
+scene.add(rim);
+
+// ground: technical gridlines on a soft disc
+const groundGeo = new THREE.CircleGeometry(16, 64);
+const groundMat = new THREE.MeshStandardMaterial({ color: 0xe4e7ec, roughness: 0.95, metalness: 0 });
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -1.55;
+ground.receiveShadow = true;
+scene.add(ground);
+const grid = new THREE.GridHelper(20, 40, 0xb9c0cc, 0xd3d8e0);
+grid.position.y = -1.548;
+grid.material.opacity = 0.55;
+grid.material.transparent = true;
+scene.add(grid);
+
+/* ============================================================
+   MATERIALS (shared where possible)
+   ============================================================ */
+const matBlock = new THREE.MeshStandardMaterial({ color: 0x2b323c, metalness: 0.35, roughness: 0.55 });
+const matHead = new THREE.MeshStandardMaterial({ color: 0x9aa1ab, metalness: 0.65, roughness: 0.38 });
+const matCover = new THREE.MeshStandardMaterial({ color: 0x21262d, metalness: 0.4, roughness: 0.5 });
+const matLiner = new THREE.MeshStandardMaterial({ color: 0xc7cbd2, metalness: 0.85, roughness: 0.22 });
+const matPistonBase = new THREE.MeshStandardMaterial({ color: 0xd9d4c6, metalness: 0.7, roughness: 0.3 });
+const matRodBase = new THREE.MeshStandardMaterial({ color: 0x767c86, metalness: 0.82, roughness: 0.3 });
+const matCrank = new THREE.MeshStandardMaterial({ color: 0x565d68, metalness: 0.9, roughness: 0.2 });
+const matCam = new THREE.MeshStandardMaterial({ color: 0x6d7480, metalness: 0.75, roughness: 0.3 });
+const matValveIntakeBase = new THREE.MeshStandardMaterial({ color: 0xbfc4cc, metalness: 0.8, roughness: 0.25 });
+const matValveExhaustBase = new THREE.MeshStandardMaterial({ color: 0x8a4636, metalness: 0.7, roughness: 0.35 });
+const matSpring = new THREE.MeshStandardMaterial({ color: 0x8b909a, metalness: 0.8, roughness: 0.35 });
+const matFlywheel = new THREE.MeshStandardMaterial({ color: 0x22262b, metalness: 0.45, roughness: 0.55 });
+const matRing = new THREE.MeshStandardMaterial({ color: 0xa8823f, metalness: 0.7, roughness: 0.35 });
+const matChain = new THREE.MeshStandardMaterial({ color: 0x4a4e54, metalness: 0.85, roughness: 0.3 });
+const matGlassCasing = new THREE.MeshPhysicalMaterial({
+  color: 0xbfd4e8, metalness: 0.1, roughness: 0.08, transmission: 0.85,
+  transparent: true, opacity: 0.35, thickness: 0.4, ior: 1.3,
+});
+const cutawayPlane = new THREE.Plane(new THREE.Vector3(0, -0.55, 1).normalize(), 0.35);
+
+let objectCount = 0;
+function addObj(parent, obj) {
+  parent.add(obj);
+  objectCount++;
+  return obj;
+}
+function mesh(geo, mat, parent, castShadow = true, recvShadow = true) {
+  const m = new THREE.Mesh(geo, mat);
+  m.castShadow = castShadow;
+  m.receiveShadow = recvShadow;
+  addObj(parent, m);
+  return m;
+}
+
+/* ============================================================
+   ROOT GROUPS
+   ============================================================ */
+const Engine = new THREE.Group(); Engine.name = 'Engine'; scene.add(Engine);
+const Block = new THREE.Group(); Block.name = 'Block'; Engine.add(Block);
+const Crankshaft = new THREE.Group(); Crankshaft.name = 'Crankshaft'; Engine.add(Crankshaft);
+const LeftBank = new THREE.Group(); LeftBank.name = 'LeftBank'; Engine.add(LeftBank);
+const RightBank = new THREE.Group(); RightBank.name = 'RightBank'; Engine.add(RightBank);
+const Pistons = new THREE.Group(); Pistons.name = 'Pistons'; Engine.add(Pistons);
+const ConnectingRods = new THREE.Group(); ConnectingRods.name = 'ConnectingRods'; Engine.add(ConnectingRods);
+const Camshafts = new THREE.Group(); Camshafts.name = 'Camshafts'; Engine.add(Camshafts);
+const Valves = new THREE.Group(); Valves.name = 'Valves'; Engine.add(Valves);
+const TimingSystem = new THREE.Group(); TimingSystem.name = 'TimingSystem'; Engine.add(TimingSystem);
+const Flywheel = new THREE.Group(); Flywheel.name = 'Flywheel'; Engine.add(Flywheel);
+const CombustionEffects = new THREE.Group(); CombustionEffects.name = 'CombustionEffects'; Engine.add(CombustionEffects);
+
+const ENGINE_LEN = PAIR_SPACING * 3 + 2.6;
+const FRONT_X = -ENGINE_LEN / 2 - 0.3;
+const REAR_X = ENGINE_LEN / 2 + 0.3;
+
+/* ---------------- crankcase / oil pan / bell housing ---------------- */
+mesh(new THREE.BoxGeometry(ENGINE_LEN, 1.0, 1.55), matBlock, Block).position.set(0, -0.35, 0);
+mesh(new THREE.BoxGeometry(ENGINE_LEN - 0.2, 0.6, 1.3), matCover, Block).position.set(0, -0.95, 0);
+mesh(new THREE.CylinderGeometry(0.62, 0.62, 0.42, 24), matBlock, Block, true, true)
+  .rotation.z = Math.PI / 2;
+Block.children[Block.children.length - 1].position.set(REAR_X - 0.1, 0.15, 0);
+mesh(new THREE.CylinderGeometry(0.5, 0.6, 0.5, 24), matCover, Block, true, true)
+  .rotation.z = Math.PI / 2;
+Block.children[Block.children.length - 1].position.set(FRONT_X + 0.15, 0.15, 0);
+
+/* ---------------- bank casing (block wall / head / valve cover) ---------------- */
+function buildBank(group, sign) {
+  const bankAngle = sign * 45 * D2R;
+  group.rotation.x = bankAngle;
+  const wall = mesh(new THREE.BoxGeometry(ENGINE_LEN - 0.1, 1.5, 1.05), matBlock, group);
+  wall.position.set(0, 1.0, 0);
+  const head = mesh(new THREE.BoxGeometry(ENGINE_LEN - 0.14, 0.42, 1.15), matHead, group);
+  head.position.set(0, 1.86, 0);
+  const cover = mesh(new THREE.BoxGeometry(ENGINE_LEN - 0.3, 0.5, 0.92), matCover, group);
+  cover.position.set(0, 2.28, 0);
+  // exhaust manifold hint (4 stubby pipes)
+  for (let i = 0; i < 4; i++) {
+    const px = (i - 1.5) * PAIR_SPACING;
+    const pipe = mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.5, 12), matCover, group, true, false);
+    pipe.rotation.z = Math.PI / 2;
+    pipe.position.set(px, 1.35, 0.75);
+  }
+  return { wall, head, cover };
+}
+const leftCasing = buildBank(LeftBank, -1);
+const rightCasing = buildBank(RightBank, 1);
+
+/* ---------------- cylinder liners (static, local to each bank) ---------------- */
+function buildLiner(group) {
+  for (let pair = 0; pair < 4; pair++) {
+    const px = (pair - 1.5) * PAIR_SPACING;
+    const liner = mesh(new THREE.CylinderGeometry(0.34, 0.34, 1.9, 24, 1, true), matLiner, group, true, true);
+    liner.position.set(px, 1.05, 0);
+    liner.material = matLiner;
+    liner.renderOrder = 0;
+  }
+}
+buildLiner(LeftBank);
+buildLiner(RightBank);
+
+/* ---------------- crankshaft: main shaft + throws + counterweights ---------------- */
+const crankShaftMesh = mesh(new THREE.CylinderGeometry(0.22, 0.22, ENGINE_LEN, 20), matCrank, Crankshaft);
+crankShaftMesh.rotation.z = Math.PI / 2;
+
+const throwParts = []; // {pin, web1, web2, weight}
+for (let p = 0; p < 4; p++) {
+  const px = (p - 1.5) * PAIR_SPACING;
+  const pin = mesh(new THREE.CylinderGeometry(0.155, 0.155, 0.42, 16), matCrank, Crankshaft);
+  pin.rotation.z = Math.PI / 2;
+  const web1 = mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.12, 16), matCrank, Crankshaft);
+  web1.rotation.z = Math.PI / 2;
+  const web2 = mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.12, 16), matCrank, Crankshaft);
+  web2.rotation.z = Math.PI / 2;
+  const weight = mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.3, 20, 1, false, 0, Math.PI), matCrank, Crankshaft);
+  weight.rotation.z = Math.PI / 2;
+  throwParts.push({ px, pin, web1, web2, weight });
+}
+
+/* ---------------- flywheel ---------------- */
+const flyDisc = mesh(new THREE.CylinderGeometry(1.05, 1.05, 0.22, 40), matFlywheel, Flywheel);
+flyDisc.rotation.z = Math.PI / 2;
+flyDisc.position.set(REAR_X + 0.05, 0, 0);
+const flyRing = mesh(new THREE.TorusGeometry(0.98, 0.06, 10, 48), matRing, Flywheel);
+flyRing.rotation.y = Math.PI / 2;
+flyRing.position.set(REAR_X + 0.16, 0, 0);
+for (let i = 0; i < 8; i++) {
+  const a = (i / 8) * Math.PI * 2;
+  const bolt = mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.08, 8), matCrank, Flywheel, false, false);
+  bolt.rotation.z = Math.PI / 2;
+  bolt.position.set(REAR_X + 0.14, Math.sin(a) * 0.55, Math.cos(a) * 0.55);
+}
+
+/* ---------------- camshafts (one per bank, decorative half-speed spin) ---------------- */
+function buildCam(sign) {
+  const grp = new THREE.Group(); // static bank tilt only
+  grp.rotation.x = sign * 45 * D2R;
+  grp.position.set(0, 2.02, sign * -0.02);
+  Camshafts.add(grp); objectCount++;
+  const spin = new THREE.Group(); // this is what rotates at camDeg each frame
+  grp.add(spin); objectCount++;
+  const shaft = mesh(new THREE.CylinderGeometry(0.075, 0.075, ENGINE_LEN, 14), matCam, spin);
+  shaft.rotation.z = Math.PI / 2;
+  const lobes = [];
+  const cyls = CYLINDERS.filter((c) => c.bank === (sign < 0 ? 'L' : 'R'));
+  cyls.forEach((c) => {
+    [{ center: 450 }, { center: 270 }].forEach((v) => {
+      const localCamDeg = (v.center / 2) % 360; // decorative phase alignment, static local angle
+      const rad = localCamDeg * D2R;
+      const lobe = mesh(new THREE.SphereGeometry(0.12, 10, 8), matCam, spin, true, false);
+      lobe.scale.set(1, 1.6, 0.6);
+      lobe.position.set(c.pairX, Math.sin(rad) * 0.19, Math.cos(rad) * 0.19);
+      lobes.push(lobe);
+    });
+  });
+  return { grp, spin, lobes };
+}
+const camL = buildCam(-1);
+const camR = buildCam(1);
+
+/* ---------------- timing set: sprockets + instanced chain links ---------------- */
+const timingCrankSprocket = mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.1, 20), matChain, TimingSystem);
+timingCrankSprocket.rotation.z = Math.PI / 2;
+timingCrankSprocket.position.set(FRONT_X + 0.35, 0, 0);
+const camSprocketY = 2.02 * Math.cos(45 * D2R);
+[-1, 1].forEach((sign) => {
+  const spr = mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.1, 24), matChain, TimingSystem);
+  spr.rotation.z = Math.PI / 2;
+  spr.position.set(FRONT_X + 0.35, camSprocketY, sign * 0.02);
+});
+const CHAIN_LINKS = 44;
+const chainLinkGeo = new THREE.BoxGeometry(0.09, 0.06, 0.03);
+const chainMesh = new THREE.InstancedMesh(chainLinkGeo, matChain, CHAIN_LINKS);
+chainMesh.castShadow = true;
+TimingSystem.add(chainMesh); objectCount++;
+const chainDummy = new THREE.Object3D();
+function layoutChain(camDeg) {
+  // simple closed loop between crank sprocket (small) and a combined cam loop point (large), front of engine
+  const r1 = 0.26, r2 = 0.62;
+  const cx2 = FRONT_X + 0.35, cy1 = 0, cy2 = camSprocketY;
+  for (let i = 0; i < CHAIN_LINKS; i++) {
+    const t = (i / CHAIN_LINKS) * Math.PI * 2 + camDeg * D2R * 0.5;
+    // an elongated loop (tall oval) approximating the chain path between the
+    // small crank sprocket and the larger cam sprocket, front of the engine
+    const r = r1 + (r2 - r1) * (0.5 + 0.5 * Math.sin(t));
+    chainDummy.position.set(cx2, cy1 + (cy2 - cy1) * (0.5 + 0.5 * Math.sin(t)), Math.cos(t) * r);
+    chainDummy.rotation.set(0, 0, t);
+    chainDummy.updateMatrix();
+    chainMesh.setMatrixAt(i, chainDummy.matrix);
+  }
+  chainMesh.instanceMatrix.needsUpdate = true;
+}
+layoutChain(0);
+
+/* ---------------- per-cylinder dynamic parts ---------------- */
+const rodGeo = new THREE.BoxGeometry(0.11, ROD_LEN, 0.2);
+rodGeo.translate(0, ROD_LEN / 2, 0); // pivot at small end (piston pin)
+const pistonGeo = new THREE.CylinderGeometry(0.335, 0.335, 0.42, 24);
+const valveStemGeo = new THREE.CylinderGeometry(0.028, 0.028, 0.55, 8);
+const valveHeadGeo = new THREE.CylinderGeometry(0.14, 0.155, 0.05, 16);
+const springGeo = new THREE.TorusGeometry(0.1, 0.014, 6, 12);
+const rockerGeo = new THREE.BoxGeometry(0.42, 0.05, 0.09);
+rockerGeo.translate(0.21, 0, 0); // pivot at local origin
+
+const UP = new THREE.Vector3(0, 1, 0);
+const cylData = CYLINDERS.map((c) => {
+  const pistonMat = matPistonBase.clone();
+  const rodMat = matRodBase.clone();
+  const ivMat = matValveIntakeBase.clone();
+  const evMat = matValveExhaustBase.clone();
+  const piston = mesh(pistonGeo, pistonMat, Pistons);
+  const rod = mesh(rodGeo, rodMat, ConnectingRods);
+  const iv = mesh(valveStemGeo, ivMat, Valves);
+  const ivh = mesh(valveHeadGeo, ivMat, Valves, true, false);
+  const ev = mesh(valveStemGeo, evMat, Valves);
+  const evh = mesh(valveHeadGeo, evMat, Valves, true, false);
+  const ivSpring = mesh(springGeo, matSpring, Valves, false, false);
+  const evSpring = mesh(springGeo, matSpring, Valves, false, false);
+  const ivRocker = mesh(rockerGeo, matCam, Valves);
+  const evRocker = mesh(rockerGeo, matCam, Valves);
+  const combustSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: flameTexture(), color: 0xffa542, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+  combustSprite.scale.set(0.85, 0.85, 0.85);
+  CombustionEffects.add(combustSprite); objectCount++;
+  const flashLight = new THREE.PointLight(0xff8a3d, 0, 2.4, 2);
+  CombustionEffects.add(flashLight); objectCount++;
+  return { c, piston, rod, iv, ivh, ev, evh, ivSpring, evSpring, ivRocker, evRocker, combustSprite, flashLight, pistonMat, rodMat, ivMat, evMat };
+});
+
+function flameTexture() {
+  const s = 64;
+  const cvs = document.createElement('canvas'); cvs.width = cvs.height = s;
+  const ctx = cvs.getContext('2d');
+  const g = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+  g.addColorStop(0, 'rgba(255,244,214,1)');
+  g.addColorStop(0.35, 'rgba(255,170,60,0.9)');
+  g.addColorStop(1, 'rgba(255,90,20,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, s, s);
+  const tex = new THREE.CanvasTexture(cvs);
+  return tex;
+}
+
+/* ---------------- intake / exhaust particle flow (fixed-size buffer, no per-frame alloc) ---------------- */
+const FLOW_COUNT = 320;
+const flowGeo = new THREE.BufferGeometry();
+const flowPos = new Float32Array(FLOW_COUNT * 3);
+const flowInfo = new Float32Array(FLOW_COUNT * 4); // life, cylIndex, kind(0 intake/1 exhaust), speedSeed
+for (let i = 0; i < FLOW_COUNT; i++) {
+  flowInfo[i * 4 + 0] = -1; // dead
+}
+flowGeo.setAttribute('position', new THREE.BufferAttribute(flowPos, 3));
+const flowMat = new THREE.PointsMaterial({ size: 0.05, color: 0xbfd4ea, transparent: true, opacity: 0.65, depthWrite: false, blending: THREE.AdditiveBlending });
+const flowPoints = new THREE.Points(flowGeo, flowMat);
+CombustionEffects.add(flowPoints); objectCount++;
+let flowCursor = 0;
+
+/* ---------------- GPU stress-test pool (benchmark mode load ramp) ---------------- */
+const STRESS_MAX = 6000;
+const stressGeo = new THREE.IcosahedronGeometry(0.045, 1);
+const stressMat = new THREE.MeshStandardMaterial({ color: 0x9aa4b2, metalness: 0.6, roughness: 0.4 });
+const stressMesh = new THREE.InstancedMesh(stressGeo, stressMat, STRESS_MAX);
+stressMesh.count = 0;
+stressMesh.castShadow = false;
+scene.add(stressMesh); objectCount++;
+const stressDummy = new THREE.Object3D();
+(function seedStress() {
+  for (let i = 0; i < STRESS_MAX; i++) {
+    const r = 4 + Math.random() * 9;
+    const a = Math.random() * Math.PI * 2;
+    const y = -1.4 + Math.random() * 6.5;
+    stressDummy.position.set(Math.cos(a) * r, y, Math.sin(a) * r);
+    stressDummy.rotation.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
+    stressDummy.updateMatrix();
+    stressMesh.setMatrixAt(i, stressDummy.matrix);
+  }
+  stressMesh.instanceMatrix.needsUpdate = true;
+})();
+
+/* ============================================================
+   VISIBILITY / MATERIAL MODES
+   ============================================================ */
+let viewMode = 'cutaway';
+function applyViewMode() {
+  const clip = viewMode === 'cutaway' ? [cutawayPlane] : [];
+  [leftCasing, rightCasing].forEach((c) => {
+    [c.wall, c.head, c.cover].forEach((m) => {
+      m.visible = viewMode !== 'hidden';
+      if (viewMode === 'glass') {
+        m.material = matGlassCasing;
+      } else {
+        m.material = m === c.head ? matHead : (m === c.cover ? matCover : matBlock);
+      }
+      m.material.clippingPlanes = clip;
+      m.material.needsUpdate = true;
+    });
+  });
+  Block.children.forEach((m) => {
+    if (!(m instanceof THREE.Mesh)) return;
+    m.material.clippingPlanes = viewMode === 'cutaway' ? [cutawayPlane] : [];
+  });
+  document.querySelectorAll('[data-view]').forEach((b) => b.classList.toggle('on', b.dataset.view === viewMode));
+}
+applyViewMode();
+
+let isolate = false;
+function applyIsolate() {
+  cylData.forEach((cd) => {
+    const dim = isolate && cd.c.id !== state.sel;
+    const op = dim ? 0.12 : 1;
+    [cd.pistonMat, cd.rodMat, cd.ivMat, cd.evMat].forEach((m) => {
+      m.transparent = dim;
+      m.opacity = op;
+    });
+  });
+  document.getElementById('bIsolate').classList.toggle('on', isolate);
+}
+
+/* ============================================================
+   STATE + UI WIRING
+   ============================================================ */
+const state = {
+  rpmTarget: 700, rpm: 700, paused: false, crank: 0, simTime: 0, sel: 1,
+  bench: { active: false, t: 0, dur: 30, frames: [], stressStep: 0 },
+};
+
+const rpmSlider = document.getElementById('rpm');
+const rpmBig = document.getElementById('rpmBig');
+function setRpm(v) {
+  state.rpmTarget = Math.max(0, Math.min(8000, v));
+  rpmSlider.value = state.rpmTarget;
+  rpmBig.innerHTML = Math.round(state.rpmTarget) + ' <small>RPM</small>';
+}
+rpmSlider.addEventListener('input', () => setRpm(+rpmSlider.value));
+document.querySelectorAll('[data-rpm]').forEach((b) => b.addEventListener('click', () => setRpm(+b.dataset.rpm)));
+
+document.getElementById('bPause').addEventListener('click', togglePause);
+function togglePause() {
+  state.paused = !state.paused;
+  document.getElementById('bPause').textContent = state.paused ? 'Resume (Space)' : 'Pause (Space)';
+  document.getElementById('bPause').classList.toggle('on', state.paused);
+}
+document.getElementById('bReset').addEventListener('click', resetSim);
+function resetSim() {
+  state.crank = 0; state.simTime = 0; setRpm(700); state.paused = false;
+  document.getElementById('bPause').textContent = 'Pause (Space)';
+  document.getElementById('bPause').classList.remove('on');
+  goCamera('hero');
+}
+
+document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => { viewMode = b.dataset.view; applyViewMode(); }));
+document.getElementById('bIsolate').addEventListener('click', () => { isolate = !isolate; applyIsolate(); });
+
+const cylGrid = document.getElementById('cylGrid');
+CYLINDERS.forEach((c) => {
+  const btn = document.createElement('div');
+  btn.className = 'cyl';
+  btn.id = 'cyl' + c.id;
+  btn.innerHTML = '<span class="dot" style="background:#999"></span>' + c.id;
+  btn.addEventListener('click', () => selectCylinder(c.id));
+  cylGrid.appendChild(btn);
+});
+function selectCylinder(id) {
+  state.sel = id;
+  document.querySelectorAll('.cyl').forEach((b) => b.classList.toggle('sel', b.id === 'cyl' + id));
+  document.getElementById('selLabel').textContent = '#' + id;
+  if (isolate) applyIsolate();
+}
+selectCylinder(1);
+
+/* crank bar ticks + firing-order dots */
+const crankbar = document.getElementById('crankbar');
+for (let d = 0; d <= 720; d += 90) {
+  const t = document.createElement('div');
+  t.className = 'tick';
+  t.style.left = (d / 720) * 100 + '%';
+  t.innerHTML = '<span>' + d + '&deg;</span>';
+  crankbar.appendChild(t);
+}
+CYLINDERS.forEach((c) => {
+  const dot = document.createElement('div');
+  dot.className = 'fdot';
+  dot.style.left = (c.phi / 720) * 100 + '%';
+  dot.style.background = STROKE_COLOR.power;
+  dot.title = 'Cyl ' + c.id + ' fires at ' + c.phi + '°';
+  crankbar.appendChild(dot);
+});
+const needle = document.createElement('div');
+needle.id = 'crankneedle';
+crankbar.appendChild(needle);
+
+/* ---------------- camera presets ---------------- */
+const camPresets = {
+  hero: { pos: [8.6, 5.3, 9.6], target: [0.1, 0.35, 0] },
+  front: { pos: [FRONT_X - 6.4, 1.6, 0.3], target: [0, 0.5, 0] },
+  side: { pos: [0.1, 1.5, 8.4], target: [0.1, 0.4, 0] },
+  top: { pos: [0.1, 10.5, 0.05], target: [0.1, 0, 0] },
+  cutaway: { pos: [3.4, 2.9, 4.5], target: [0.1, 0.7, 0], view: 'cutaway' },
+};
+let camAnim = null;
+function goCamera(name) {
+  if (name === 'cyl') {
+    const c = CYLINDERS.find((x) => x.id === state.sel) || CYLINDERS[0];
+    const worldPos = new THREE.Vector3(c.pairX + c.rodXOff, 0, 0).addScaledVector(c.bankDir, 2.1);
+    const dir = c.bankDir.clone().multiplyScalar(0.6).add(new THREE.Vector3(0.9, 0.3, 1.2 * (c.bank === 'L' ? -1 : 1)));
+    camAnim = { from: camera.position.clone(), to: worldPos.clone().add(dir.multiplyScalar(1)).add(new THREE.Vector3(0,0.3,0)),
+      fromT: controls.target.clone(), toT: worldPos.clone(), t: 0 };
+    isolate = true; applyIsolate();
+    return;
+  }
+  const p = camPresets[name];
+  if (!p) return;
+  camAnim = { from: camera.position.clone(), to: new THREE.Vector3(...p.pos), fromT: controls.target.clone(), toT: new THREE.Vector3(...p.target), t: 0 };
+  if (p.view) { viewMode = p.view; applyViewMode(); }
+}
+document.querySelectorAll('[data-cam]').forEach((b) => b.addEventListener('click', () => goCamera(b.dataset.cam)));
+
+/* ---------------- UI hide ---------------- */
+document.getElementById('bHide').addEventListener('click', () => document.getElementById('ui').classList.add('hidden'));
+document.getElementById('showui').addEventListener('click', () => document.getElementById('ui').classList.remove('hidden'));
+
+/* ---------------- benchmark ---------------- */
+const benchBtn = document.getElementById('bBench');
+const benchProg = document.getElementById('benchprog');
+const benchLive = document.getElementById('benchLive');
+benchBtn.addEventListener('click', () => { state.bench.active ? stopBenchmark(true) : startBenchmark(); });
+function startBenchmark() {
+  state.bench.active = true; state.bench.t = 0; state.bench.frames = []; state.bench.stressStep = 0;
+  benchBtn.textContent = 'Stop Benchmark';
+  benchBtn.classList.add('on');
+  benchProg.style.display = 'block';
+  benchLive.style.display = 'block';
+  document.getElementById('benchprog').querySelector('i').style.width = '0%';
+}
+function stopBenchmark(userCancelled) {
+  state.bench.active = false;
+  benchBtn.textContent = 'Run 30s Benchmark (B)';
+  benchBtn.classList.remove('on');
+  benchProg.style.display = 'none';
+  benchLive.style.display = 'none';
+  stressMesh.count = 0;
+  if (!userCancelled && state.bench.frames.length > 4) showResults();
+}
+function showResults() {
+  const frames = state.bench.frames.slice();
+  const sortedT = frames.slice().sort((a, b) => a - b);
+  const avgFrame = frames.reduce((a, b) => a + b, 0) / frames.length;
+  const maxFrame = sortedT[sortedT.length - 1];
+  const minFrame = sortedT[0];
+  const onePctN = Math.max(1, Math.round(frames.length * 0.01));
+  const worst = sortedT.slice(sortedT.length - onePctN);
+  const onePctLowFps = 1000 / (worst.reduce((a, b) => a + b, 0) / worst.length);
+  const avgFps = 1000 / avgFrame;
+  const maxFps = 1000 / minFrame;
+  const minFps = 1000 / maxFrame;
+  const rows = [
+    ['Average FPS', avgFps.toFixed(1)],
+    ['1% Low FPS', onePctLowFps.toFixed(1)],
+    ['Minimum FPS', minFps.toFixed(1)],
+    ['Maximum FPS', maxFps.toFixed(1)],
+    ['Average Frame Time', avgFrame.toFixed(2) + ' ms'],
+    ['Maximum Frame Time', maxFrame.toFixed(2) + ' ms'],
+    ['Rendered Triangles', renderer.info.render.triangles.toLocaleString()],
+    ['Draw Calls', renderer.info.render.calls.toLocaleString()],
+    ['Benchmark Duration', state.bench.dur.toFixed(0) + ' s'],
+  ];
+  document.getElementById('benchDurLabel').textContent = state.bench.dur.toFixed(0);
+  const table = document.getElementById('benchTable');
+  table.innerHTML = rows.map((r) => '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td></tr>').join('');
+  document.getElementById('modal').classList.add('open');
+}
+document.getElementById('bAgain').addEventListener('click', () => { document.getElementById('modal').classList.remove('open'); startBenchmark(); });
+document.getElementById('bClose').addEventListener('click', () => document.getElementById('modal').classList.remove('open'));
+
+/* ---------------- keyboard shortcuts ---------------- */
+window.addEventListener('keydown', (e) => {
+  if (e.target && (e.target.tagName === 'INPUT')) return;
+  if (e.code === 'Space') { e.preventDefault(); togglePause(); }
+  else if (e.key === 'r' || e.key === 'R') resetSim();
+  else if (e.key === 'b' || e.key === 'B') benchBtn.click();
+  else if (e.key === 'c' || e.key === 'C') { viewMode = viewMode === 'cutaway' ? 'solid' : 'cutaway'; applyViewMode(); }
+  else if (e.key === 'h' || e.key === 'H') document.getElementById('ui').classList.toggle('hidden');
+  else if (e.key >= '1' && e.key <= '8') selectCylinder(+e.key);
+});
+
+/* ============================================================
+   PER-FRAME DIAGNOSTIC CANVASES
+   ============================================================ */
+const fpsCanvas = document.getElementById('fpsGraph');
+const fpsCtx = fpsCanvas.getContext('2d');
+const fpsHistory = new Array(140).fill(60);
+function drawFpsGraph() {
+  const w = fpsCanvas.width = fpsCanvas.clientWidth * devicePixelRatio;
+  const h = fpsCanvas.height = fpsCanvas.clientHeight * devicePixelRatio;
+  fpsCtx.clearRect(0, 0, w, h);
+  fpsCtx.fillStyle = '#10151d';
+  fpsCtx.fillRect(0, 0, w, h);
+  const maxV = 144;
+  fpsCtx.strokeStyle = 'rgba(255,255,255,.12)';
+  [30, 60, 120].forEach((v) => {
+    const y = h - (v / maxV) * h;
+    fpsCtx.beginPath(); fpsCtx.moveTo(0, y); fpsCtx.lineTo(w, y); fpsCtx.stroke();
+  });
+  fpsCtx.beginPath();
+  fpsHistory.forEach((v, i) => {
+    const x = (i / (fpsHistory.length - 1)) * w;
+    const y = h - Math.min(1, v / maxV) * h;
+    if (i === 0) fpsCtx.moveTo(x, y); else fpsCtx.lineTo(x, y);
+  });
+  fpsCtx.strokeStyle = '#e0651c';
+  fpsCtx.lineWidth = 2;
+  fpsCtx.stroke();
+}
+
+const valveCanvas = document.getElementById('valveDiag');
+const valveCtx = valveCanvas.getContext('2d');
+function drawValveDiagram(sel) {
+  const w = valveCanvas.width = valveCanvas.clientWidth * devicePixelRatio;
+  const h = valveCanvas.height = valveCanvas.clientHeight * devicePixelRatio;
+  valveCtx.clearRect(0, 0, w, h);
+  valveCtx.fillStyle = '#ffffff'; valveCtx.fillRect(0, 0, w, h);
+  const pad = 6 * devicePixelRatio;
+  const plotW = w - pad * 2, plotH = h - pad * 2;
+  function curve(centerFn, color) {
+    valveCtx.beginPath();
+    for (let d = 0; d <= 720; d += 4) {
+      const dist = circDist(d, centerFn, 720);
+      const lift = raisedCos(dist, 260);
+      const x = pad + (d / 720) * plotW;
+      const y = pad + plotH - lift * plotH;
+      if (d === 0) valveCtx.moveTo(x, y); else valveCtx.lineTo(x, y);
+    }
+    valveCtx.strokeStyle = color; valveCtx.lineWidth = 1.6 * devicePixelRatio; valveCtx.stroke();
+  }
+  curve(450, '#2f6fb0');
+  curve(270, '#8a5a3a');
+  const st = cylState(state.crank, sel);
+  const x = pad + (st.cyclePos / 720) * plotW;
+  valveCtx.strokeStyle = '#d9531a'; valveCtx.lineWidth = 1.5 * devicePixelRatio;
+  valveCtx.beginPath(); valveCtx.moveTo(x, pad); valveCtx.lineTo(x, pad + plotH); valveCtx.stroke();
+}
+
+const pressCanvas = document.getElementById('pressDiag');
+const pressCtx = pressCanvas.getContext('2d');
+function drawPressureDiagram(sel) {
+  const w = pressCanvas.width = pressCanvas.clientWidth * devicePixelRatio;
+  const h = pressCanvas.height = pressCanvas.clientHeight * devicePixelRatio;
+  pressCtx.clearRect(0, 0, w, h);
+  pressCtx.fillStyle = '#ffffff'; pressCtx.fillRect(0, 0, w, h);
+  const pad = 6 * devicePixelRatio;
+  const plotW = w - pad * 2, plotH = h - pad * 2;
+  let maxP = 1;
+  const pts = [];
+  for (let d = 0; d <= 720; d += 4) {
+    const cyclePos = (((d - sel.phi) % 720) + 720) % 720;
+    let stroke;
+    if (cyclePos < 180) stroke = 'power'; else if (cyclePos < 360) stroke = 'exhaust';
+    else if (cyclePos < 540) stroke = 'intake'; else stroke = 'compression';
+    let pressure;
+    if (stroke === 'intake') pressure = 0.55 + 0.15 * Math.sin((cyclePos - 360) * D2R);
+    else if (stroke === 'compression') pressure = 1 + 13 * Math.pow((cyclePos - 540) / 180, 2.1);
+    else if (stroke === 'power') pressure = 2 + 46 * Math.exp(-cyclePos / 34);
+    else pressure = 1.15 + 0.9 * Math.exp(-(cyclePos - 180) / 40);
+    pts.push([d, pressure]);
+    if (pressure > maxP) maxP = pressure;
+  }
+  pressCtx.beginPath();
+  pts.forEach(([d, p], i) => {
+    const x = pad + (d / 720) * plotW;
+    const y = pad + plotH - (p / maxP) * plotH;
+    if (i === 0) pressCtx.moveTo(x, y); else pressCtx.lineTo(x, y);
+  });
+  pressCtx.strokeStyle = '#c0392b'; pressCtx.lineWidth = 1.6 * devicePixelRatio; pressCtx.stroke();
+  const st = cylState(state.crank, sel);
+  const x = pad + (st.cyclePos / 720) * plotW;
+  pressCtx.strokeStyle = '#182230'; pressCtx.lineWidth = 1.2 * devicePixelRatio;
+  pressCtx.beginPath(); pressCtx.moveTo(x, pad); pressCtx.lineTo(x, pad + plotH); pressCtx.stroke();
+}
+
+/* ============================================================
+   ANIMATION LOOP
+   ============================================================ */
+const clock = new THREE.Clock();
+const scratchV1 = new THREE.Vector3();
+const scratchV2 = new THREE.Vector3();
+let lastFrameStart = performance.now();
+let fpsSmoothed = 60;
+let uiAccum = 0;
+
+function stepEngine(dt) {
+  state.rpm += (state.rpmTarget - state.rpm) * Math.min(1, dt * 4);
+  if (!state.paused) {
+    const degPerSec = state.rpm * 6; // 360*rpm/60
+    state.crank = (state.crank + degPerSec * dt) % 720;
+    state.simTime += dt;
+  }
+  const crankDeg = state.crank;
+  const camDeg = (crankDeg / 2) % 360;
+  document.getElementById('sCrank').textContent = crankDeg.toFixed(1);
+  document.getElementById('sTime').innerHTML = state.simTime.toFixed(1) + '<small>s</small>';
+  needle.style.left = (crankDeg / 720) * 100 + '%';
+
+  camL.spin.rotation.x = camDeg * D2R;
+  camR.spin.rotation.x = camDeg * D2R;
+
+  let selState = null;
+  cylData.forEach((cd) => {
+    const c = cd.c;
+    const x = pistonDistance(crankDeg, c);
+    const st = cylState(crankDeg, c);
+    if (c.id === state.sel) selState = st;
+
+    // crank pin world position
+    const pinAngle = (crankDeg + c.throwAngle) * D2R;
+    const pinY = THROW_R * Math.sin(pinAngle);
+    const pinZ = THROW_R * Math.cos(pinAngle);
+    scratchV1.set(c.pairX + c.rodXOff, pinY, pinZ);
+
+    // piston pin world position (along bank axis from crank centerline)
+    scratchV2.set(c.pairX + c.rodXOff, 0, 0).addScaledVector(c.bankDir, x);
+
+    cd.piston.position.copy(scratchV2);
+    cd.piston.quaternion.setFromUnitVectors(UP, c.bankDir);
+
+    // rod: box authored with pivot at its small end (0,0,0) extending +Y by ROD_LEN;
+    // place pivot at the piston pin, orient toward the crank pin.
+    const rodDir = scratchV1.clone().sub(scratchV2);
+    cd.rod.position.copy(scratchV2);
+    cd.rod.quaternion.setFromUnitVectors(UP, rodDir.normalize());
+
+    // valves: move along -bankDir from a closed base position near the head
+    const baseUp = 1.92;
+    const lateral = 0.16;
+    const ivBase = new THREE.Vector3(c.pairX - lateral, 0, 0).addScaledVector(c.bankDir, baseUp);
+    const evBase = new THREE.Vector3(c.pairX + lateral, 0, 0).addScaledVector(c.bankDir, baseUp);
+    const maxLift = 0.09;
+    cd.iv.position.copy(ivBase).addScaledVector(c.bankDir, -st.intakeLift * maxLift);
+    cd.iv.quaternion.setFromUnitVectors(UP, c.bankDir);
+    cd.ivh.position.copy(cd.iv.position).addScaledVector(c.bankDir, -0.28);
+    cd.ivh.quaternion.copy(cd.iv.quaternion);
+    cd.ev.position.copy(evBase).addScaledVector(c.bankDir, -st.exhaustLift * maxLift);
+    cd.ev.quaternion.setFromUnitVectors(UP, c.bankDir);
+    cd.evh.position.copy(cd.ev.position).addScaledVector(c.bankDir, -0.28);
+    cd.evh.quaternion.copy(cd.ev.quaternion);
+
+    cd.ivSpring.position.copy(ivBase).addScaledVector(c.bankDir, -0.1 - st.intakeLift * maxLift * 0.5);
+    cd.ivSpring.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), c.bankDir);
+    cd.ivSpring.scale.set(1, 1, 1 - st.intakeLift * 0.35);
+    cd.evSpring.position.copy(evBase).addScaledVector(c.bankDir, -0.1 - st.exhaustLift * maxLift * 0.5);
+    cd.evSpring.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), c.bankDir);
+    cd.evSpring.scale.set(1, 1, 1 - st.exhaustLift * 0.35);
+
+    const rockerPivot = new THREE.Vector3(c.pairX - lateral, 0, 0).addScaledVector(c.bankDir, baseUp + 0.32);
+    cd.ivRocker.position.copy(rockerPivot);
+    cd.ivRocker.quaternion.setFromUnitVectors(UP, c.bankDir);
+    cd.ivRocker.rotateZ(st.intakeLift * 0.35 * (c.bank === 'L' ? 1 : -1));
+    const rockerPivot2 = new THREE.Vector3(c.pairX + lateral, 0, 0).addScaledVector(c.bankDir, baseUp + 0.32);
+    cd.evRocker.position.copy(rockerPivot2);
+    cd.evRocker.quaternion.setFromUnitVectors(UP, c.bankDir);
+    cd.evRocker.rotateZ(-st.exhaustLift * 0.35 * (c.bank === 'L' ? 1 : -1));
+
+    // combustion flash
+    const flashPos = new THREE.Vector3(c.pairX, 0, 0).addScaledVector(c.bankDir, baseUp - 0.35);
+    cd.combustSprite.position.copy(flashPos);
+    cd.combustSprite.material.opacity = st.combustion * 0.95;
+    cd.combustSprite.scale.setScalar(0.55 + st.combustion * 0.6);
+    cd.flashLight.position.copy(flashPos);
+    cd.flashLight.intensity = st.combustion * 3.2;
+
+    updateCylButton(c.id, st.stroke);
+  });
+
+  // crank throws
+  throwParts.forEach((tp, i) => {
+    const throwAngle = THROW_DEG[i];
+    const ang = (crankDeg + throwAngle) * D2R;
+    const y = THROW_R * Math.sin(ang), z = THROW_R * Math.cos(ang);
+    tp.pin.position.set(tp.px, y, z);
+    tp.web1.position.set(tp.px - 0.14, y, z);
+    tp.web2.position.set(tp.px + 0.14, y, z);
+    tp.weight.position.set(tp.px, -y * 0.85, -z * 0.85);
+    tp.weight.rotation.x = ang + Math.PI;
+  });
+  flyDisc.rotation.x = crankDeg * D2R;
+  flyRing.rotation.x = crankDeg * D2R;
+  crankShaftMesh.rotation.x = crankDeg * D2R;
+
+  layoutChain(camDeg);
+
+  updateFlow(dt, crankDeg);
+
+  if (selState) {
+    document.getElementById('cStroke').textContent = selState.stroke;
+    document.getElementById('cStroke').style.color = STROKE_COLOR[selState.stroke];
+    document.getElementById('cAngle').textContent = selState.cyclePos.toFixed(1) + '°';
+    document.getElementById('cPressure').innerHTML = selState.pressure.toFixed(1) + ' <small>bar (sim)</small>';
+    document.getElementById('cPressureBar').style.width = Math.min(100, (selState.pressure / 48) * 100) + '%';
+    document.getElementById('sStroke').textContent = selState.stroke;
+  }
+}
+
+function updateCylButton(id, stroke) {
+  const el = document.getElementById('cyl' + id);
+  if (!el) return;
+  const dot = el.querySelector('.dot');
+  dot.style.background = STROKE_COLOR[stroke];
+}
+
+function updateFlow(dt, crankDeg) {
+  // spawn a couple of particles per frame near cylinders currently intaking/exhausting
+  for (let n = 0; n < 3; n++) {
+    const c = CYLINDERS[(Math.random() * 8) | 0];
+    const st = cylState(crankDeg, c);
+    if (st.stroke !== 'intake' && st.stroke !== 'exhaust') continue;
+    const i = flowCursor; flowCursor = (flowCursor + 1) % FLOW_COUNT;
+    const base = new THREE.Vector3(c.pairX, 0, 0).addScaledVector(c.bankDir, 2.15);
+    const jitter = (Math.random() - 0.5) * 0.3;
+    flowPos[i * 3 + 0] = base.x + jitter;
+    flowPos[i * 3 + 1] = base.y + (Math.random() - 0.5) * 0.15;
+    flowPos[i * 3 + 2] = base.z + jitter;
+    flowInfo[i * 4 + 0] = 1;
+    flowInfo[i * 4 + 1] = c.bankAngle;
+    flowInfo[i * 4 + 2] = st.stroke === 'intake' ? 0 : 1;
+  }
+  for (let i = 0; i < FLOW_COUNT; i++) {
+    if (flowInfo[i * 4 + 0] <= 0) continue;
+    flowInfo[i * 4 + 0] -= dt * 0.8;
+    flowPos[i * 3 + 1] += dt * (flowInfo[i * 4 + 2] === 1 ? 1.1 : 0.6);
+    if (flowInfo[i * 4 + 0] <= 0) flowPos[i * 3 + 1] = 999;
+  }
+  flowGeo.attributes.position.needsUpdate = true;
+}
+
+function updateStats(dt) {
+  const now = performance.now();
+  const frameMs = now - lastFrameStart;
+  lastFrameStart = now;
+  const fps = 1000 / Math.max(0.001, frameMs);
+  fpsSmoothed += (fps - fpsSmoothed) * 0.12;
+  fpsHistory.push(fps); fpsHistory.shift();
+
+  if (state.bench.active) {
+    state.bench.frames.push(frameMs);
+    state.bench.t += dt;
+    const pct = Math.min(100, (state.bench.t / state.bench.dur) * 100);
+    document.getElementById('benchprog').querySelector('i').style.width = pct + '%';
+    const targetStress = Math.min(STRESS_MAX, Math.floor((state.bench.t / state.bench.dur) * STRESS_MAX));
+    stressMesh.count = targetStress;
+    const liveAvg = state.bench.frames.length ? 1000 / (state.bench.frames.reduce((a, b) => a + b, 0) / state.bench.frames.length) : 0;
+    benchLive.textContent = 'elapsed ' + state.bench.t.toFixed(1) + 's / ' + state.bench.dur + 's  ·  running avg ' + liveAvg.toFixed(0) + ' fps  ·  stress objects ' + targetStress.toLocaleString();
+    if (state.bench.t >= state.bench.dur) stopBenchmark(false);
+  }
+
+  uiAccum += dt;
+  if (uiAccum > 0.12) {
+    uiAccum = 0;
+    document.getElementById('sFps').textContent = fpsSmoothed.toFixed(0);
+    document.getElementById('sFrame').textContent = frameMs.toFixed(1) + ' ms';
+    document.getElementById('sTris').textContent = renderer.info.render.triangles.toLocaleString();
+    document.getElementById('sCalls').textContent = renderer.info.render.calls.toLocaleString();
+    document.getElementById('sObjs').textContent = objectCount.toLocaleString();
+    drawFpsGraph();
+    const sel = CYLINDERS.find((c) => c.id === state.sel);
+    if (sel) { drawValveDiagram(sel); drawPressureDiagram(sel); }
+  }
+}
+
+function animateCamera(dt) {
+  if (!camAnim) return;
+  camAnim.t = Math.min(1, camAnim.t + dt / 0.75);
+  const e = 1 - Math.pow(1 - camAnim.t, 3);
+  camera.position.lerpVectors(camAnim.from, camAnim.to, e);
+  controls.target.lerpVectors(camAnim.fromT, camAnim.toT, e);
+  if (camAnim.t >= 1) camAnim = null;
+}
+
+function tick() {
+  requestAnimationFrame(tick);
+  const dt = Math.min(0.05, clock.getDelta());
+  stepEngine(dt);
+  animateCamera(dt);
+  controls.update();
+  renderer.render(scene, camera);
+  updateStats(dt);
+}
+
+function onResize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+window.addEventListener('resize', onResize);
+
+/* boot */
+applyViewMode();
+goCamera('hero');
+const loader = document.getElementById('loader');
+loader.style.opacity = '0';
+setTimeout(() => loader.remove(), 550);
+requestAnimationFrame(tick);
+
+window.__ENGINE__ = { get fps() { return fpsSmoothed; }, get rpm() { return state.rpm; }, get crank() { return state.crank; } };
+</script>
+</body>
+</html>

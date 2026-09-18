@@ -6,6 +6,7 @@ import '../../../../app/widgets.dart';
 import 'ui/accounts_tab.dart';
 import 'ui/global_search_page.dart';
 import 'ui/library_tab.dart';
+import 'ui/servers_tab.dart';
 import 'ui/settings_tab.dart';
 
 /// Root of the Minecraft Launcher plugin: a segmented sub-navigation over the
@@ -20,7 +21,7 @@ class MinecraftLauncherPage extends StatefulWidget {
 class _MinecraftLauncherPageState extends State<MinecraftLauncherPage> {
   int _tab = 0;
 
-  static const _tabs = ['Library', 'Accounts', 'Settings'];
+  static const _tabs = ['Library', 'Accounts', 'Servers', 'Settings'];
 
   @override
   Widget build(BuildContext context) {
@@ -64,6 +65,7 @@ class _MinecraftLauncherPageState extends State<MinecraftLauncherPage> {
             children: const [
               LibraryTab(),
               AccountsTab(),
+              ServersTab(),
               SettingsTab(),
             ],
           ),

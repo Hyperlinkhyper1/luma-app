@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -87,7 +87,6 @@ class NotesRepository extends ChangeNotifier {
   }
 
   Future<Note> create() async {
-    StorageGuard.instance.ensureWithinLimit();
     final note = Note(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       title: '',

@@ -16,7 +16,14 @@
 /// stores the turn's model as `"<providerID>/<modelID>"` (e.g.
 /// `"anthropic/claude-opus-4-6"`) so pricing/display can route per-turn by
 /// provider — see `opencode_scanner.dart`.
-enum AiUsageSource { claudeCode, codexCli, antigravity, opencode }
+///
+/// [freebuff] is a multi-harness orchestrator: a thread either runs through
+/// an embedded copy of Claude Code/Codex CLI (in which case its model is
+/// their own bare slug, e.g. `"claude-opus-4-8"`) or through Freebuff's own
+/// native multi-provider catalog (in which case it's `"<providerID>/<id>"`
+/// the same way opencode's is, e.g. `"z-ai/glm-5.3-flash"`) — see
+/// `freebuff_scanner.dart`.
+enum AiUsageSource { claudeCode, codexCli, antigravity, opencode, freebuff }
 
 /// Splits an opencode turn's stored `"<providerID>/<modelID>"` model into
 /// its two halves, or null when it carries no provider prefix (a turn whose

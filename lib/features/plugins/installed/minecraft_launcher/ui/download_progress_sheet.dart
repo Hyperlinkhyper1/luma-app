@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../../../app/widgets.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/minecraft_launcher_database.dart';
 import '../logic/game_process_manager.dart';
@@ -63,7 +64,7 @@ class _DownloadProgressDialog extends StatelessWidget {
     return AlertDialog(
       title: Text('Starting $instanceName'),
       content: SizedBox(
-        width: 380,
+        width: lumaDialogWidth(context, 380),
         child: ValueListenableBuilder<_ProgressState>(
           valueListenable: notifier,
           builder: (context, state, _) {

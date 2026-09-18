@@ -112,6 +112,16 @@
       "version": "1.1.0"
     },
     {
+      "id": "airline-tycoon",
+      "name": "Airline Tycoon",
+      "description": "Build and operate a 3D airport on Windows and Android, sign visiting airlines, and fly your own fleet.",
+      "icon": "flight",
+      "category": "Games",
+      "tags": ["Games", "Simulation"],
+      "free": true,
+      "version": "2.0.0"
+    },
+    {
       "id": "mood-journal",
       "name": "Mood Journal",
       "description": "Track your daily mood and write a short journal entry. See your emotional patterns on a monthly calendar heat-map and spot trends over time.",
@@ -134,7 +144,7 @@
     {
       "id": "ai-usage",
       "name": "AI Usage",
-      "description": "Three tools in one. Usage: a private dashboard for your Claude Code, Codex CLI, Antigravity and OpenCode spend — token counts and cost estimates by day and model, read entirely from your local session logs, and never sent anywhere. Leaderboard: every major model ranked on reasoning, coding and agent ratings, with context windows, prices and licences side by side. Open Source: work out which downloadable models your own hardware can actually run.",
+      "description": "Three tools in one. Usage: a private dashboard for your Claude Code, Codex CLI, Antigravity, OpenCode and Freebuff spend — token counts and cost estimates by day and model, read entirely from your local session logs, and never sent anywhere. Leaderboard: every major model ranked on reasoning, coding and agent ratings, with context windows, prices and licences side by side. Open Source: work out which downloadable models your own hardware can actually run.",
       "icon": "query_stats",
       "category": "Productivity",
       "tags": ["Productivity", "Analytics", "AI"],
@@ -359,6 +369,16 @@
       "icon": "account_circle",
       "category": "Productivity",
       "tags": ["Productivity", "Developer", "Minecraft"],
+      "free": true,
+      "version": "1.0.0"
+    },
+    {
+      "id": "whiteboard",
+      "name": "Whiteboard",
+      "description": "An endless sheet to draw on. Pen, highlighter, shapes, arrows, sticky notes and text, with seven inks, one-key tool shortcuts and full undo. Erase whole strokes with a sweep, pan and zoom the sheet, and export any board as a PNG cropped to exactly what you drew.",
+      "icon": "draw",
+      "category": "Productivity",
+      "tags": ["Productivity", "Utility"],
       "free": true,
       "version": "1.0.0"
     }

@@ -1,4 +1,5 @@
 import 'ai_usage_pricing_anthropic.dart';
+import 'ai_usage_pricing_freebuff.dart';
 import 'ai_usage_pricing_gemini.dart';
 import 'ai_usage_pricing_opencode.dart';
 import 'ai_usage_pricing_openai.dart';
@@ -6,6 +7,7 @@ import 'ai_usage_pricing_rates.dart';
 import 'ai_usage_source.dart';
 
 export 'ai_usage_pricing_anthropic.dart';
+export 'ai_usage_pricing_freebuff.dart';
 export 'ai_usage_pricing_gemini.dart';
 export 'ai_usage_pricing_opencode.dart';
 export 'ai_usage_pricing_openai.dart';
@@ -66,6 +68,32 @@ AiPricingRates? _opencodePricingFor(String model) {
   return exact ?? opencodeProviderPricingFor(provider);
 }
 
+/// A Freebuff turn's model is either a `"<providerID>/<modelID>"` pair from
+/// its own native multi-provider catalog, or a bare slug from an embedded
+/// Claude Code/Codex CLI thread (see `splitFreebuffModel`'s doc). Anthropic
+/// and OpenAI both route to this app's own exact tables either way — with or
+/// without the provider prefix, since [anthropicPricingFor]/
+/// [openAiPricingFor] already substring-match regardless. Every other
+/// provider resolves via [freebuffProviderPricingFor], which always returns
+/// a rate, for the same "measured by normal standards" reasoning
+/// `_opencodePricingFor` documents. A bare slug that isn't a recognized
+/// Anthropic or OpenAI model (Freebuff's own default harness, e.g. GLM) has
+/// no provider to key off of, so it prices at the generic fallback rather
+/// than going unbillable.
+AiPricingRates _freebuffPricingFor(String model) {
+  final split = splitFreebuffModel(model);
+  final provider = split?.$1.toLowerCase();
+  final modelId = split?.$2 ?? model;
+  if (provider == 'anthropic' || isAnthropicBillableModel(modelId)) {
+    return anthropicPricingFor(modelId) ?? kFreebuffGenericProviderFallback;
+  }
+  if (provider == 'openai' || isOpenAiBillableModel(modelId)) {
+    return openAiPricingFor(modelId) ?? kFreebuffGenericProviderFallback;
+  }
+  if (provider == null) return kFreebuffGenericProviderFallback;
+  return freebuffProviderPricingFor(provider);
+}
+
 /// Whether [model] is a recognized, priced model for [source]. Anything else
 /// is grouped as "Other" in the UI, with cost shown as n/a. For Antigravity,
 /// "recognized" means its detected model matched a known Gemini or Claude
@@ -84,6 +112,9 @@ bool isBillableModel(AiUsageSource source, String? model) => switch (source) {
       AiUsageSource.codexCli => isOpenAiBillableModel(model),
       AiUsageSource.antigravity => _antigravityPricingFor(model) != null,
       AiUsageSource.opencode => model != null && _opencodePricingFor(model) != null,
+      // See _freebuffPricingFor's doc: every well-formed Freebuff turn
+      // prices, the same way every opencode turn does.
+      AiUsageSource.freebuff => model != null && model.isNotEmpty,
     };
 
 /// Resolves [model]'s pricing rates for [source], or null if unrecognized.
@@ -92,6 +123,8 @@ AiPricingRates? pricingFor(AiUsageSource source, String? model) => switch (sourc
       AiUsageSource.codexCli => openAiPricingFor(model),
       AiUsageSource.antigravity => _antigravityPricingFor(model),
       AiUsageSource.opencode => model == null ? null : _opencodePricingFor(model),
+      AiUsageSource.freebuff =>
+        model == null || model.isEmpty ? null : _freebuffPricingFor(model),
     };
 
 /// Estimated USD cost of one turn's token usage, or 0 for a non-billable /

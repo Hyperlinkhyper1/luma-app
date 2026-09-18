@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../account/plan.dart';
 import '../account/login_page.dart';
 import '../account/plan_selection_page.dart';
 import '../app/widgets.dart';
+import '../storage/storage_guard.dart';
 import '../sync/sync_api.dart';
 import '../sync/sync_scope.dart';
 import '../sync/sync_service.dart';
+import '../sync/sync_state.dart';
 import '../theme/luma_theme.dart';
 
 /// Shows the sign-in screen. Kept here as the name every call site already
@@ -248,7 +251,7 @@ class _SignedInBody extends StatelessWidget {
         // ---- Storage usage ------------------------------------------------
         if (cloud) ...[
           Divider(color: luma.border, height: 32),
-          _StorageBar(account: account),
+          _StorageBar(sync: sync, account: account),
         ],
 
         // ---- Per-feature toggles -------------------------------------------
@@ -281,9 +284,9 @@ class _SignedInBody extends StatelessWidget {
                           fontSize: 14,
                           fontWeight: FontWeight.w500)),
                 ),
-                if (collection.id == 'settings')
+                if (isAutomaticSyncCollection(collection.id))
                   Tooltip(
-                    message: 'Theme and preferences always sync — this '
+                    message: 'Preferences and matching-device home layouts always sync — this '
                         'can\'t be turned off.',
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -294,6 +297,25 @@ class _SignedInBody extends StatelessWidget {
                         Text('Always on',
                             style: TextStyle(
                                 color: luma.textMuted, fontSize: 12)),
+                      ],
+                    ),
+                  )
+                else if (!sync.planAllowsCollection(collection.id))
+                  // Shown, but disabled with the reason stated: an option the
+                  // plan does not cover should explain itself rather than
+                  // silently vanish from the list.
+                  Tooltip(
+                    message: '${collection.label} syncs on the '
+                        '${planById(collection.minPlanId!).name} plan and above.',
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.workspace_premium_rounded,
+                            size: 14, color: luma.accent),
+                        const SizedBox(width: 6),
+                        Text('${planById(collection.minPlanId!).name} plan',
+                            style:
+                                TextStyle(color: luma.accent, fontSize: 12)),
                       ],
                     ),
                   )
@@ -387,6 +409,10 @@ class _SignedInBody extends StatelessWidget {
     if (enabled) {
       try {
         await sync.enableCollection(id);
+      } on SyncPlanRequiredException catch (e) {
+        if (context.mounted) {
+          await _showPlanRequired(context, e.requiredPlanId, e.label);
+        }
       } on SyncLimitExceededException catch (e) {
         if (context.mounted) await _showLimitReached(context, e.limit);
       }
@@ -434,6 +460,50 @@ class _SignedInBody extends StatelessWidget {
     await sync.disableCollection(id, removeRemote: removeRemote);
   }
 
+  Future<void> _showPlanRequired(
+    BuildContext context,
+    String requiredPlanId,
+    String label,
+  ) {
+    final luma = context.luma;
+    final plan = planById(requiredPlanId);
+    return showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: luma.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: luma.border),
+        ),
+        title: Text('${plan.name} plan needed',
+            style: TextStyle(color: luma.textPrimary)),
+        content: Text(
+          '$label syncs to the server on the ${plan.name} plan and above. '
+          'It keeps working on this device either way — only syncing it '
+          'between devices needs the plan.',
+          style: TextStyle(color: luma.textSecondary, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+          ),
+          LumaPrimaryButton(
+            label: 'See plans',
+            onTap: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const PlanSelectionPage(),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _showLimitReached(BuildContext context, int limit) {
     final luma = context.luma;
     return showDialog<void>(
@@ -472,34 +542,91 @@ class _SignedInBody extends StatelessWidget {
   }
 }
 
-class _StorageBar extends StatelessWidget {
-  const _StorageBar({required this.account});
+/// One entry in the server storage breakdown: a feature's plain-language
+/// name and how many bytes of it are saved on the server.
+class _StorageEntry {
+  const _StorageEntry({required this.label, required this.icon, required this.bytes});
+  final String label;
+  final IconData icon;
+  final int bytes;
+}
+
+class _StorageBar extends StatefulWidget {
+  const _StorageBar({required this.sync, required this.account});
+  final SyncService sync;
   final RemoteAccount? account;
+
+  @override
+  State<_StorageBar> createState() => _StorageBarState();
+}
+
+class _StorageBarState extends State<_StorageBar> {
+  bool _expanded = false;
+
+  /// Turns the server's per-feature byte counts into the same plain names
+  /// shown next to each sync toggle below, so "what's using my storage"
+  /// reads the same way as "what syncs from this device" — never a raw
+  /// server id like `mind_map` or `qr_codes`.
+  List<_StorageEntry> _breakdown() {
+    final account = widget.account;
+    if (account == null) return const [];
+    final knownById = {for (final c in widget.sync.collections) c.id: c};
+    final entries = <_StorageEntry>[];
+    for (final meta in account.collections.values) {
+      if (meta.size <= 0) continue;
+      final known = knownById[meta.name];
+      entries.add(_StorageEntry(
+        label: known?.label ?? _prettifyCollectionId(meta.name),
+        icon: known?.icon ?? Icons.storage_rounded,
+        bytes: meta.size,
+      ));
+    }
+    entries.sort((a, b) => b.bytes.compareTo(a.bytes));
+    return entries;
+  }
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final account = widget.account;
     final used = account?.usedBytes ?? 0;
     final quota = account?.quotaBytes ?? (10 * 1024 * 1024);
     final fraction = quota == 0 ? 0.0 : (used / quota).clamp(0.0, 1.0);
+    final breakdown = _breakdown();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Text('Storage',
-                style: TextStyle(
-                    color: luma.textSecondary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600)),
-            const Spacer(),
-            Text(
-              account == null
-                  ? 'Sync to see usage'
-                  : '${(fraction * 100).toStringAsFixed(fraction * 100 >= 10 ? 0 : 1)}% used',
-              style: TextStyle(color: luma.textMuted, fontSize: 12),
-            ),
-          ],
+        InkWell(
+          onTap: account == null
+              ? null
+              : () => setState(() => _expanded = !_expanded),
+          borderRadius: BorderRadius.circular(8),
+          child: Row(
+            children: [
+              Text('Storage',
+                  style: TextStyle(
+                      color: luma.textSecondary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600)),
+              const Spacer(),
+              Text(
+                account == null
+                    ? 'Sync to see usage'
+                    : '${StorageGuardService.formatBytes(used)} of '
+                        '${StorageGuardService.formatBytes(quota)} used',
+                style: TextStyle(color: luma.textMuted, fontSize: 12),
+              ),
+              if (account != null) ...[
+                const SizedBox(width: 4),
+                AnimatedRotation(
+                  turns: _expanded ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 150),
+                  child: Icon(Icons.expand_more_rounded,
+                      size: 18, color: luma.textMuted),
+                ),
+              ],
+            ],
+          ),
         ),
         const SizedBox(height: 8),
         ClipRRect(
@@ -512,9 +639,47 @@ class _StorageBar extends StatelessWidget {
                 fraction > 0.9 ? Colors.red.shade400 : luma.accent),
           ),
         ),
+        if (_expanded) ...[
+          const SizedBox(height: 12),
+          if (breakdown.isEmpty)
+            Text(
+              'Nothing saved on the server yet — turn something on below to '
+              'back it up.',
+              style: TextStyle(color: luma.textMuted, fontSize: 12),
+            )
+          else
+            for (final entry in breakdown)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Icon(entry.icon, size: 16, color: luma.textSecondary),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(entry.label,
+                          style:
+                              TextStyle(color: luma.textPrimary, fontSize: 13),
+                          overflow: TextOverflow.ellipsis),
+                    ),
+                    Text(StorageGuardService.formatBytes(entry.bytes),
+                        style:
+                            TextStyle(color: luma.textMuted, fontSize: 12)),
+                  ],
+                ),
+              ),
+        ],
       ],
     );
   }
+}
+
+/// Fallback name for a server collection id this app build doesn't
+/// recognise (e.g. saved by a newer version) — `mind_map` -> `Mind map`.
+String _prettifyCollectionId(String id) {
+  final words = id.split('_').where((w) => w.isNotEmpty);
+  return words
+      .map((w) => '${w[0].toUpperCase()}${w.substring(1)}')
+      .join(' ');
 }
 
 class _StatusText extends StatelessWidget {
@@ -632,7 +797,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
       title:
           Text('Change password', style: TextStyle(color: luma.textPrimary)),
       content: SizedBox(
-        width: 400,
+        width: lumaDialogWidth(context, 400),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -745,7 +910,7 @@ class _SessionsDialogState extends State<_SessionsDialog> {
       title:
           Text('Devices signed in', style: TextStyle(color: luma.textPrimary)),
       content: SizedBox(
-        width: 420,
+        width: lumaDialogWidth(context, 420),
         child: _buildBody(luma),
       ),
       actions: [
@@ -1010,7 +1175,7 @@ class _DataDeletionRequestDialogState
       title: Text('Ask to delete my data',
           style: TextStyle(color: luma.textPrimary)),
       content: SizedBox(
-        width: 420,
+        width: lumaDialogWidth(context, 420),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1120,7 +1285,7 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
       title: Text('Delete account?',
           style: TextStyle(color: Colors.red.shade400)),
       content: SizedBox(
-        width: 400,
+        width: lumaDialogWidth(context, 400),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,

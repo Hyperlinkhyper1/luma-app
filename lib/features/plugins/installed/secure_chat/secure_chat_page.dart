@@ -117,8 +117,10 @@ class _SignedOut extends StatelessWidget {
               style: TextStyle(
                   color: luma.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
-          SizedBox(
-            width: 420,
+          ConstrainedBox(
+            // maxWidth, not a fixed width: on a phone the paragraph has to
+            // shrink to the screen rather than run off both edges of it.
+            constraints: const BoxConstraints(maxWidth: 420),
             child: Text(
               'Sign in under Settings → Sync & account to invite people and '
               'chat. Messages are end-to-end encrypted on this device — the '

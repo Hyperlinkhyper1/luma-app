@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -101,7 +101,6 @@ class WifiSpeedTestRepository extends ChangeNotifier {
   }
 
   Future<void> add(SpeedTestResult result) async {
-    StorageGuard.instance.ensureWithinLimit();
     _results.add(result);
     notifyListeners();
     await _persist();

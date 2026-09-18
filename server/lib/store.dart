@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'activity.dart';
+import 'account_database.dart';
 import 'metrics_history.dart';
 import 'util.dart';
 
@@ -175,8 +176,8 @@ class StoredUser {
         passwordResetRequiredAtMs: j['passwordResetRequiredAtMs'] as int?,
         accessRevokedAtMs: j['accessRevokedAtMs'] as int?,
         accessRevokedReason: j['accessRevokedReason'] as String?,
-        oauthSubjects: (j['oauthSubjects'] as Map?)
-            ?.map((k, v) => MapEntry('$k', '$v')),
+        oauthSubjects:
+            (j['oauthSubjects'] as Map?)?.map((k, v) => MapEntry('$k', '$v')),
         recentIps: (j['recentIps'] as List?)?.whereType<String>().toList(),
       );
 }
@@ -394,14 +395,15 @@ class BannedIp {
       );
 }
 
-/// File-backed store. Everything is held in memory and written through to
-/// JSON files with atomic replace; blobs are stored as individual files.
+/// Account/session records are written through to normalized SQLite tables.
+/// Other feature metadata and ciphertext blobs retain their existing stores.
 /// All mutations must go through [lock] (the API layer does this).
 class Store {
   Store._(this.rootPath);
 
   final String rootPath;
   final AsyncLock lock = AsyncLock();
+  late final AccountDatabase _accounts;
 
   final Map<String, StoredUser> usersById = {};
   final Map<String, String> userIdByEmail = {}; // lowercased email -> id
@@ -456,17 +458,21 @@ class Store {
     final store = Store._(path);
     await Directory(path).create(recursive: true);
     await Directory('$path/blobs').create(recursive: true);
+    store._accounts = await AccountDatabase.open(path);
 
     final secretFile = File(store._secretFile);
     if (await secretFile.exists()) {
-      store.serverSecret =
-          Uint8List.fromList(base64Decode((await secretFile.readAsString()).trim()));
+      store.serverSecret = Uint8List.fromList(
+          base64Decode((await secretFile.readAsString()).trim()));
     } else {
       store.serverSecret = randomBytes(32);
-      await atomicWriteString(store._secretFile, base64Encode(store.serverSecret));
+      await atomicWriteString(
+          store._secretFile, base64Encode(store.serverSecret));
     }
 
-    final users = await _readJsonList(store._usersFile);
+    final users = store._accounts.migrated
+        ? store._accounts.readUsers()
+        : await _readJsonList(store._usersFile);
     var quotasMigrated = false;
     for (final u in users) {
       final user = StoredUser.fromJson(u as Map<String, dynamic>);
@@ -484,16 +490,23 @@ class Store {
         store.userIdByOAuth[oauthKey(provider, subject)] = user.id;
       });
     }
-    if (quotasMigrated) await store.saveUsers();
-
-    final sessions = await _readJsonList(store._sessionsFile);
+    final sessions = store._accounts.migrated
+        ? store._accounts.readSessions()
+        : await _readJsonList(store._sessionsFile);
     final now = DateTime.now().millisecondsSinceEpoch;
     for (final s in sessions) {
       final session = StoredSession.fromJson(s as Map<String, dynamic>);
-      if (session.expiresAtMs > now && store.usersById.containsKey(session.userId)) {
+      if (session.expiresAtMs > now &&
+          store.usersById.containsKey(session.userId)) {
         store.sessionsByTokenHash[session.tokenHash] = session;
       }
     }
+
+    await store._accounts.migrate(
+        path,
+        store.usersById.values.map((u) => u.toJson()).toList(),
+        store.sessionsByTokenHash.values.map((s) => s.toJson()).toList());
+    if (quotasMigrated) await store.saveUsers();
 
     final collections = await _readJsonMap(store._collectionsFile);
     collections.forEach((userId, value) {
@@ -537,7 +550,8 @@ class Store {
     final file = File(path);
     if (!await file.exists()) return const [];
     final decoded = jsonDecode(await file.readAsString());
-    return decoded is List ? decoded : const [];
+    if (decoded is! List) throw const FormatException('Invalid stored list.');
+    return decoded;
   }
 
   static Future<Map<String, dynamic>> _readJsonMap(String path) async {
@@ -566,18 +580,18 @@ class Store {
 
   /// Drops every OAuth link held by [user] — part of deleting the account.
   void unlinkAllOAuthIdentities(StoredUser user) {
-    user.oauthSubjects.forEach(
-        (provider, subject) => userIdByOAuth.remove(oauthKey(provider, subject)));
+    user.oauthSubjects.forEach((provider, subject) =>
+        userIdByOAuth.remove(oauthKey(provider, subject)));
     user.oauthSubjects.clear();
   }
 
   // ---- Persistence -------------------------------------------------------
 
-  Future<void> saveUsers() => atomicWriteString(
-      _usersFile, jsonEncode(usersById.values.map((u) => u.toJson()).toList()));
+  Future<void> saveUsers() async =>
+      _accounts.saveUsers(usersById.values.map((u) => u.toJson()).toList());
 
-  Future<void> saveSessions() => atomicWriteString(_sessionsFile,
-      jsonEncode(sessionsByTokenHash.values.map((s) => s.toJson()).toList()));
+  Future<void> saveSessions() async => _accounts
+      .saveSessions(sessionsByTokenHash.values.map((s) => s.toJson()).toList());
 
   Future<void> saveCollections() => atomicWriteString(
       _collectionsFile,
@@ -601,8 +615,7 @@ class Store {
     await saveActivity();
   }
 
-  Future<void> savePluginDownloads() => atomicWriteString(
-      _pluginDownloadsFile,
+  Future<void> savePluginDownloads() => atomicWriteString(_pluginDownloadsFile,
       jsonEncode(pluginDownloadsById.values.map((p) => p.toJson()).toList()));
 
   /// Records one plugin install/download and persists it. Caller holds
@@ -660,7 +673,8 @@ class Store {
   String blobPath(String userId, String collection) =>
       '$rootPath/blobs/$userId/$collection.bin';
 
-  Future<void> writeBlob(String userId, String collection, List<int> bytes) async {
+  Future<void> writeBlob(
+      String userId, String collection, List<int> bytes) async {
     await Directory('$rootPath/blobs/$userId').create(recursive: true);
     await atomicWriteBytes(blobPath(userId, collection), bytes);
   }

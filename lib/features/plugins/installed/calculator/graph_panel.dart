@@ -619,7 +619,7 @@ class _FunctionDialogState extends State<_FunctionDialog> {
         style: TextStyle(color: luma.textPrimary, fontSize: 16),
       ),
       content: SizedBox(
-        width: 360,
+        width: lumaDialogWidth(context, 360),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,

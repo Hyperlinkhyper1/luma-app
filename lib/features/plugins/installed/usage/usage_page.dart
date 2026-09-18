@@ -715,7 +715,7 @@ class _UsageSettingsDialog extends StatelessWidget {
       content: ListenableBuilder(
         listenable: repo,
         builder: (context, _) => SizedBox(
-          width: 320,
+          width: lumaDialogWidth(context, 320),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,

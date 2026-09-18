@@ -61,6 +61,12 @@ class _AiUsagePageState extends State<AiUsagePage> {
   AiUsageSection _section = AiUsageSection.usage;
   bool _collapsed = false;
 
+  /// Bumped every time the Tests section is selected. It keys [TestsTab], so
+  /// the tab is rebuilt from scratch on each visit and re-rolls the random
+  /// artwork on its hero tiles — an IndexedStack otherwise keeps the state
+  /// (and the first picture drawn) alive for the life of the page.
+  int _testsVisit = 0;
+
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
@@ -70,18 +76,21 @@ class _AiUsagePageState extends State<AiUsagePage> {
         _SectionRail(
           selected: _section,
           collapsed: _collapsed,
-          onSelect: (s) => setState(() => _section = s),
+          onSelect: (s) => setState(() {
+            if (s == AiUsageSection.tests && s != _section) _testsVisit++;
+            _section = s;
+          }),
           onToggleCollapsed: () => setState(() => _collapsed = !_collapsed),
         ),
         Container(width: 1, color: luma.border),
         Expanded(
           child: IndexedStack(
             index: _section.index,
-            children: const [
-              AiUsageDashboardTab(),
-              AiLeaderboardTab(),
-              OpenSourceTab(),
-              TestsTab(),
+            children: [
+              const AiUsageDashboardTab(),
+              const AiLeaderboardTab(),
+              const OpenSourceTab(),
+              TestsTab(key: ValueKey(_testsVisit)),
             ],
           ),
         ),

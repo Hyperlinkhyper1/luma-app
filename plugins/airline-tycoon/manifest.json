@@ -1,0 +1,14 @@
+{
+  "id": "airline-tycoon",
+  "name": "Airline Tycoon",
+  "version": "2.0.0",
+  "description": "Build and operate a 3D airport on Windows and Android, sign visiting airlines, and fly your own fleet.",
+  "icon": "flight",
+  "category": "Games",
+  "tags": [
+    "Games",
+    "Simulation"
+  ],
+  "details": "Run an airport and an airline together. On Windows and Android, explore a fully rotatable 3D airport, build terminal interiors, connect stands and taxiways, and follow aircraft and ground vehicles through simulated operations.\n\nSign seven-day contracts with visiting airlines or schedule your own aircraft on routes to real destinations. Aircraft compete for runway and stand access. Finite service vehicles and passenger queues affect boarding, delays, handling income and penalties.\n\nBuild check-in desks, security, seating, toilets and cafes. Purchase aircraft or lease them, choose fares, and follow the transaction ledger as flights trade.\n\nThe airport starts paused with a furnished regional field and a turboprop. One game day takes 24 minutes at 1x; 4x and 12x speeds are available. Running airports catch up while away, capped at 12 game days. Paused airports stay paused.\n\nThe new airport uses a separate versioned save, preserving previous airline saves. Other platforms retain the original airline game. All 3D assets are bundled for offline play.",
+  "screenshots": []
+}

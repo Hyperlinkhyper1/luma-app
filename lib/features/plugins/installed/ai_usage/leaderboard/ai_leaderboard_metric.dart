@@ -8,7 +8,7 @@ import 'ai_model.dart';
 /// up everywhere at once and can never mean two different things in two
 /// places.
 enum AiMetric {
-  llmStats('LLM Stats Index', unit: ''),
+  llmStats('Intelligence Index', unit: ''),
   reasoning('Reasoning Index', unit: ''),
   coding('Coding Index', unit: ''),
   agent('Agent Index', unit: ''),

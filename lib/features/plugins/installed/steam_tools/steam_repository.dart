@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show Platform;
 
@@ -33,7 +33,7 @@ class SteamRepository extends ChangeNotifier {
   final SteamApi _api;
   final ItadApi Function(String baseUrl, String? token) _itadApiFactory;
 
-  /// Null in tests that never touch the network. Price history needs this —
+  /// Null in tests that never touch the network. Price history needs this â€”
   /// it is read through the luma server's IsThereAnyDeal proxy, using an
   /// operator-configured key, so nobody has to register for one of their
   /// own. The library and store details never touch it at all.
@@ -62,7 +62,7 @@ class SteamRepository extends ChangeNotifier {
 
   SteamDatabase get db => _db;
 
-  /// False until [load] has run — the UI shows nothing rather than flashing
+  /// False until [load] has run â€” the UI shows nothing rather than flashing
   /// the connect form at someone who is already connected.
   bool get loaded => _loaded;
   bool get connected => _credentials?.isComplete ?? false;
@@ -143,9 +143,6 @@ class SteamRepository extends ChangeNotifier {
     } on SteamApiException catch (e) {
       _error = e.message;
       return false;
-    } on StorageLimitExceededException catch (e) {
-      _error = e.toString();
-      return false;
     } catch (e) {
       _error = 'Could not connect to Steam: $e';
       return false;
@@ -155,8 +152,8 @@ class SteamRepository extends ChangeNotifier {
     }
   }
 
-  /// Forgets the Steam account. Everything already tracked — whether it
-  /// came from this account's library or from a search — stays tracked;
+  /// Forgets the Steam account. Everything already tracked â€” whether it
+  /// came from this account's library or from a search â€” stays tracked;
   /// connecting Steam was only ever a bulk way to add to that list, so
   /// losing the connection is not a reason to lose what was added with it.
   Future<void> disconnect() async {
@@ -184,8 +181,6 @@ class SteamRepository extends ChangeNotifier {
       _lastSyncAt = DateTime.now();
     } on SteamApiException catch (e) {
       _error = e.message;
-    } on StorageLimitExceededException catch (e) {
-      _error = e.toString();
     } catch (e) {
       _error = 'Could not refresh your library: $e';
     } finally {
@@ -195,7 +190,6 @@ class SteamRepository extends ChangeNotifier {
   }
 
   Future<void> _syncLibrary(List<SteamLibraryGame> games) async {
-    StorageGuard.instance.ensureWithinLimit();
     await _db.syncOwnedLibrary([
       for (final g in games)
         (appId: g.appId, name: g.name, playtimeMinutes: g.playtimeMinutes),
@@ -203,7 +197,7 @@ class SteamRepository extends ChangeNotifier {
     StorageGuard.instance.scheduleRefresh();
   }
 
-  /// Steam's public store search — no key or connected account needed. This
+  /// Steam's public store search â€” no key or connected account needed. This
   /// is the plugin's main way to start tracking a game.
   Future<List<SteamSearchResult>> search(String term) =>
       _api.search(term, countryCode: countryCode);
@@ -211,7 +205,6 @@ class SteamRepository extends ChangeNotifier {
   /// Starts tracking [appId], then fetches its store page right away so the
   /// new tile has a price instead of sitting blank until the next open.
   Future<void> trackGame({required int appId, required String name}) async {
-    StorageGuard.instance.ensureWithinLimit();
     await _db.addTrackedGame(appId: appId, name: name);
     StorageGuard.instance.scheduleRefresh();
     unawaited(ensureDetails(appId, force: true));
@@ -252,8 +245,6 @@ class SteamRepository extends ChangeNotifier {
       if (details != null) await _applyDetails(details);
     } on SteamApiException catch (e) {
       _error = e.message;
-    } on StorageLimitExceededException {
-      // Over the storage cap: skip rather than crash the page.
     } catch (_) {
       // A single unreadable store page is not worth an error banner; the
       // page falls back to what the library already knows.
@@ -264,7 +255,6 @@ class SteamRepository extends ChangeNotifier {
   }
 
   Future<void> _applyDetails(SteamAppDetails details) async {
-    StorageGuard.instance.ensureWithinLimit();
     final price = details.price;
 
     await (_db.update(_db.steamGames)
@@ -298,7 +288,7 @@ class SteamRepository extends ChangeNotifier {
   /// Pulls the game's Steam price history from IsThereAnyDeal, through the
   /// luma server, unless a recent copy is already cached.
   ///
-  /// Does nothing without a signed-in, approved account — the chart shows a
+  /// Does nothing without a signed-in, approved account â€” the chart shows a
   /// sign-in prompt rather than an error, since the rest of the plugin works
   /// fine without one. If the account is fine but the operator simply hasn't
   /// configured a server-side ITAD key, that surfaces as an ordinary error
@@ -331,7 +321,6 @@ class SteamRepository extends ChangeNotifier {
     notifyListeners();
     final itad = _itadApiFactory(baseUrl, syncService.authToken);
     try {
-      StorageGuard.instance.ensureWithinLimit();
 
       var gameId = row.itadId;
       if (gameId == null || force) {
@@ -375,11 +364,9 @@ class SteamRepository extends ChangeNotifier {
       StorageGuard.instance.scheduleRefresh();
     } on ServerAccessDeniedException {
       // The gate shut between the check above and the request. Nothing to
-      // report — the UI already reflects "not signed in".
+      // report â€” the UI already reflects "not signed in".
     } on ItadApiException catch (e) {
       _error = e.message;
-    } on StorageLimitExceededException {
-      // Over the storage cap: leave whatever history is already cached.
     } catch (_) {
       // One unreadable history is not worth an error banner.
     } finally {
@@ -395,10 +382,10 @@ class SteamRepository extends ChangeNotifier {
   static const _storeCallSpacing = Duration(milliseconds: 1600);
 
   /// Re-reads every tracked game's current Steam price, one at a time.
-  /// Needs no Steam connection at all — the store API behind it is keyless.
+  /// Needs no Steam connection at all â€” the store API behind it is keyless.
   ///
   /// This is the price on the tracked-games tiles, which comes from Steam
-  /// itself rather than ITAD — Steam is authoritative for what a game costs
+  /// itself rather than ITAD â€” Steam is authoritative for what a game costs
   /// on Steam right now. The chart's history is a separate concern; see
   /// [ensureHistory].
   Future<void> refreshAllPrices() async {
@@ -446,7 +433,7 @@ class SteamRepository extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// The store region to price in, taken from the device locale — a user in
+  /// The store region to price in, taken from the device locale â€” a user in
   /// Amsterdam wants euros, not dollars.
   String get countryCode {
     try {

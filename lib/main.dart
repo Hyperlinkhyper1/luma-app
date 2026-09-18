@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -7,6 +8,7 @@ import 'account/password_reset_page.dart';
 import 'account/plan.dart';
 import 'app/app_shell.dart';
 import 'app/splash_screen.dart';
+import 'app/third_party_licenses.dart';
 import 'app/update/app_version.dart';
 import 'app/update/update_gate.dart';
 import 'app/window_controls.dart';
@@ -23,6 +25,8 @@ import 'features/plugins/installed/ai_usage/ai_usage_repository.dart';
 import 'features/plugins/installed/ai_usage/ai_usage_scope.dart';
 import 'features/plugins/installed/ai_usage/leaderboard/ai_catalog_repository.dart';
 import 'features/plugins/installed/ai_usage/leaderboard/ai_catalog_scope.dart';
+import 'features/plugins/installed/ai_usage/tests/ai_benchmark_repository.dart';
+import 'features/plugins/installed/ai_usage/tests/ai_benchmark_scope.dart';
 import 'features/plugins/installed/steam_tools/data/steam_database.dart';
 import 'features/plugins/installed/steam_tools/steam_repository.dart';
 import 'features/plugins/installed/steam_tools/steam_scope.dart';
@@ -38,6 +42,8 @@ import 'features/plugins/installed/account_overview/youtube_repository.dart';
 import 'features/plugins/installed/account_overview/youtube_scope.dart';
 import 'features/plugins/installed/data_management/data/data_management_database.dart';
 import 'features/plugins/installed/data_management/data_management_repository.dart';
+import 'features/plugins/installed/airline_tycoon/airline_tycoon_repository.dart';
+import 'features/plugins/installed/airline_tycoon/airline_tycoon_scope.dart';
 import 'features/plugins/installed/server_tycoon/server_tycoon_repository.dart';
 import 'features/plugins/installed/server_tycoon/server_tycoon_scope.dart';
 import 'features/plugins/installed/data_management/data_management_scope.dart';
@@ -75,6 +81,10 @@ import 'features/plugins/installed/mind_map/data/mind_map_database.dart'
 import 'features/plugins/installed/mind_map/migration/school_mind_map_import.dart';
 import 'features/plugins/installed/mind_map/mind_map_repository.dart';
 import 'features/plugins/installed/mind_map/mind_map_scope.dart';
+import 'features/plugins/installed/whiteboard/data/whiteboard_database.dart'
+    show WhiteboardDatabase;
+import 'features/plugins/installed/whiteboard/whiteboard_repository.dart';
+import 'features/plugins/installed/whiteboard/whiteboard_scope.dart';
 import 'features/plugins/installed/usage/data/usage_database.dart';
 import 'features/plugins/installed/usage/usage_repository.dart';
 import 'features/plugins/installed/usage/usage_scope.dart';
@@ -99,6 +109,8 @@ import 'features/plugins/plugin_catalog_service.dart';
 import 'features/plugins/plugin_repository.dart';
 import 'features/plugins/plugin_scope.dart';
 import 'features/notes/notes_repository.dart';
+import 'features/home/home_repository.dart';
+import 'features/home/home_scope.dart';
 import 'features/plugins/installed/cloud_files/cloud_files_controller.dart';
 import 'features/plugins/installed/cloud_files/cloud_files_scope.dart';
 import 'features/plugins/installed/secure_chat/chat_repository.dart' as secure_chat;
@@ -122,6 +134,7 @@ import 'theme/luma_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  registerThirdPartyLicenses();
   await initWindowChrome();
   final settings = await SettingsController.load();
   final passwordCrypto = await PasswordCrypto.load();
@@ -143,6 +156,7 @@ class LumaApp extends StatefulWidget {
 }
 
 class _LumaAppState extends State<LumaApp> {
+  late final HomeRepository _homeRepository = HomeRepository();
   late final AppDatabase _db = AppDatabase();
   late final FinanceRepository _repository = FinanceRepository(_db);
   late final PasswordDatabase _passwordDb = PasswordDatabase();
@@ -170,6 +184,8 @@ class _LumaAppState extends State<LumaApp> {
   late final DataManagementDatabase _dataManagementDb = DataManagementDatabase();
   late final DataManagementRepository _dataManagementRepository = DataManagementRepository(_dataManagementDb);
   late final ServerTycoonRepository _serverTycoonRepository = ServerTycoonRepository();
+  late final AirlineTycoonRepository _airlineTycoonRepository =
+      AirlineTycoonRepository(airportMode: Platform.isWindows || Platform.isAndroid);
   late final MoodJournalDatabase _moodJournalDb = MoodJournalDatabase();
   late final MoodJournalRepository _moodJournalRepository = MoodJournalRepository(_moodJournalDb);
   late final AiUsageDatabase _aiUsageDb = AiUsageDatabase();
@@ -181,10 +197,15 @@ class _LumaAppState extends State<LumaApp> {
       Cs2MarketRepository(_steamDb);
   late final AiCatalogRepository _aiCatalogRepository =
       AiCatalogRepository(_sync);
+  late final AiBenchmarkRepository _aiBenchmarkRepository =
+      AiBenchmarkRepository(_sync);
   late final SchoolDatabase _schoolDb = SchoolDatabase();
   late final SchoolRepository _schoolRepository = SchoolRepository(_schoolDb);
   late final MindMapDatabase _mindMapDb = MindMapDatabase();
   late final MindMapRepository _mindMapRepository = MindMapRepository(_mindMapDb);
+  late final WhiteboardDatabase _whiteboardDb = WhiteboardDatabase();
+  late final WhiteboardRepository _whiteboardRepository =
+      WhiteboardRepository(_whiteboardDb);
   late final AutoClickerRepository _autoClickerRepository =
       AutoClickerRepository();
   late final UsageDatabase _usageDb = UsageDatabase();
@@ -231,8 +252,8 @@ class _LumaAppState extends State<LumaApp> {
   // per-platform keys, so a revoked Google grant can't take either down.
   late final YoutubeRepository _youtubeRepository = YoutubeRepository();
 
-  // Global local-storage cap, enforced regardless of which plugins are
-  // installed — see StorageGuardService.
+  // Informational local-storage usage reporter (no cap) — see
+  // StorageGuardService.
   late final StorageGuardService _storageGuard = StorageGuardService();
 
   // Optional server sync: every feature registers an adapter; nothing is
@@ -240,8 +261,17 @@ class _LumaAppState extends State<LumaApp> {
   late final SyncService _sync = SyncService(
     syncCollectionLimit: () =>
         planById(widget.settings.selectedPlanId).maxSyncCollections,
+    currentPlanId: () => widget.settings.selectedPlanId,
     onServerPlan: (id) => widget.settings.setAdminPlan(id),
     collections: [
+    JsonStoreSyncCollection(
+      id: _homeRepository.collectionId,
+      label: 'Home layout (${_homeRepository.family})',
+      icon: Icons.dashboard_customize_rounded,
+      listenable: _homeRepository,
+      exporter: _homeRepository.exportData,
+      importer: _homeRepository.importData,
+    ),
     // Always synced (see SyncStateStore.collection / SyncService — the
     // 'settings' id defaults to enabled and can't be toggled off), so a
     // paired device always picks up the same theme/preferences.
@@ -328,6 +358,12 @@ class _LumaAppState extends State<LumaApp> {
       icon: Icons.hub_rounded,
       db: _mindMapDb,
     ),
+    DriftSyncCollection(
+      id: 'whiteboard',
+      label: 'Whiteboards',
+      icon: Icons.draw_rounded,
+      db: _whiteboardDb,
+    ),
     JsonStoreSyncCollection(
       id: 'price_tracker',
       label: 'Price tracker',
@@ -349,6 +385,19 @@ class _LumaAppState extends State<LumaApp> {
       label: 'Groceries',
       icon: Icons.local_grocery_store_rounded,
       db: _groceriesDb,
+    ),
+    // The game itself is free and fully playable offline on every plan;
+    // only carrying the airline between devices is a paid feature.
+    JsonStoreSyncCollection(
+      id: _airlineTycoonRepository.airportMode
+          ? 'airline_tycoon_airport_v2'
+          : 'airline_tycoon',
+      label: 'Airline Tycoon',
+      icon: Icons.flight_takeoff_rounded,
+      minPlanId: 'orbit',
+      listenable: _airlineTycoonRepository,
+      exporter: () => _airlineTycoonRepository.exportData(),
+      importer: (data) => _airlineTycoonRepository.importData(data),
     ),
   ]);
 
@@ -421,7 +470,6 @@ class _LumaAppState extends State<LumaApp> {
   void initState() {
     super.initState();
     StorageGuardService.instance = _storageGuard;
-    _applyPlanLimit();
     widget.settings.addListener(_onSettingsChanged);
     _storageGuard.refresh();
     _sync.init();
@@ -457,6 +505,7 @@ class _LumaAppState extends State<LumaApp> {
 
   @override
   void dispose() {
+    _homeRepository.dispose();
     _lifecycleListener?.dispose();
     widget.settings.removeListener(_onSettingsChanged);
     _deviceShare?.dispose();
@@ -482,8 +531,10 @@ class _LumaAppState extends State<LumaApp> {
     _steamDb.close();
     _schoolDb.close();
     _mindMapDb.close();
+    _whiteboardDb.close();
     _minecraftDb.close();
     _serverTycoonRepository.dispose();
+    _airlineTycoonRepository.dispose();
     _autoClickerRepository.dispose();
     _usageRepository.dispose();
     _usageDb.close();
@@ -510,27 +561,13 @@ class _LumaAppState extends State<LumaApp> {
     ]);
   }
 
-  /// Applies the selected plan's storage cap to the guard. Cheap — no-ops when
-  /// the limit is unchanged (so it's safe to call on every settings change).
-  void _applyPlanLimit() {
-    final plan = planById(widget.settings.selectedPlanId);
-    _storageGuard.setLimitBytes(plan.storageMb * 1024 * 1024);
-  }
-
-  /// Reacts to settings changes — only the plan affects the guard, but this
-  /// fires for any preference mutation; [setLimitBytes] bails out when the
-  /// value is the same, so the cost is a single comparison otherwise.
+  /// Reacts to settings changes — the plan no longer drives a local storage
+  /// cap, but a plan change still needs to start or stop the device-share
+  /// mirror.
   void _onSettingsChanged() {
-    final before = _storageGuard.limitBytes;
-    _applyPlanLimit();
     // The shared folder is Nova-only, so an upgrade has to start the mirror
     // and a downgrade has to stop it.
     unawaited(_syncDeviceShareWithPlan());
-    if (_storageGuard.limitBytes != before) {
-      // A downgrade may have pushed existing usage over the new (smaller) cap;
-      // re-scan so the banner / write-blocking reflects it right away.
-      _storageGuard.refresh();
-    }
   }
 
   @override
@@ -551,6 +588,8 @@ class _LumaAppState extends State<LumaApp> {
       repository: _secureChatRepository,
       child: SettingsScope(
       controller: widget.settings,
+      child: HomeScope(
+      repository: _homeRepository,
       child: FinanceScope(
         repository: _repository,
         child: PasswordScope(
@@ -575,10 +614,14 @@ class _LumaAppState extends State<LumaApp> {
                     repository: _dataManagementRepository,
                     child: ServerTycoonScope(
                       repository: _serverTycoonRepository,
+                      child: AirlineTycoonScope(
+                      repository: _airlineTycoonRepository,
                       child: MoodJournalScope(
                       repository: _moodJournalRepository,
                       child: AiCatalogScope(
                       repository: _aiCatalogRepository,
+                      child: AiBenchmarkScope(
+                      repository: _aiBenchmarkRepository,
                       child: SteamScope(
                       repository: _steamRepository,
                       child: Cs2MarketScope(
@@ -613,6 +656,8 @@ class _LumaAppState extends State<LumaApp> {
                       repository: _mcContentRepository,
                       child: YoutubeScope(
                       repository: _youtubeRepository,
+                      child: WhiteboardScope(
+                      repository: _whiteboardRepository,
                       child: ListenableBuilder(
                       listenable: widget.settings,
                       builder: (context, _) {
@@ -661,6 +706,8 @@ class _LumaAppState extends State<LumaApp> {
                     ),
                     ),
                     ),
+                    ),
+                    ),
                   ),
                   ),
                   ),
@@ -671,6 +718,8 @@ class _LumaAppState extends State<LumaApp> {
             ),
           ),
         ),
+      ),
+      ),
       ),
       ),
       ),
@@ -708,6 +757,9 @@ class _BootGateState extends State<_BootGate> {
   @override
   Widget build(BuildContext context) {
     final sync = SyncScope.of(context);
+    final plan = planById(SettingsScope.of(context).selectedPlanId);
+    final edition =
+        plan.id == 'core' ? 'Free edition' : '${plan.name} edition';
     return Stack(
       children: [
         const AppShell(),
@@ -728,6 +780,7 @@ class _BootGateState extends State<_BootGate> {
             version: AppVersion.isReleaseBuild
                 ? 'v${AppVersion.current}'
                 : 'Dev build',
+            edition: edition,
             onDone: () {
               setState(() => _showSplash = false);
               // Check for updates once the app is visible; the prompt (if any)

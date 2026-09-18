@@ -25,24 +25,23 @@ reference, how auth/admin/rate-limiting work), see
                                                └──────────────────┘
 ```
 
-**Security model (zero-knowledge):**
+**Security model (client-encrypted snapshots):**
 
-- Every feature's data is encrypted **on the device** with an authenticated
-  encrypt-then-MAC cipher (HMAC-SHA256 keystream + HMAC-SHA256 tag, with
-  independent sub-keys), using a key derived from the user's account
-  password (PBKDF2-HMAC-SHA256, 200,000 iterations). The server only ever
-  stores unreadable ciphertext.
+- New sync snapshots are encrypted **on the device** with AES-256-GCM.
+  Account derivation remains PBKDF2-HMAC-SHA256, normally 200,000 iterations,
+  with HKDF subkeys. Legacy custom-cipher blobs remain readable. Metadata,
+  account APIs, shared features and AI proxies are separate from encrypted
+  snapshot contents. See [architecture and limitations](docs/security/SECURITY_ARCHITECTURE.md).
 - The server never sees the account password either — the app sends a
   separate *auth key* derived from it, which the server hashes again
   before storing.
-- Consequence: **a forgotten password means the synced data cannot be
-  recovered.** Not by you, not by anyone. Users keep the local copies on
-  their devices, but the server-side snapshots are gone for good. Tell
-  your users this.
-- Login tokens are stored hashed; even someone who steals the server's
-  data directory cannot impersonate users or read their data.
+- Recovery depends on retained keys and trusted devices. There is no
+  universal server recovery key or tested portable backup system. Losing
+  all usable keys/devices can permanently lose data.
+- Login tokens are stored hashed. Server compromise still exposes metadata,
+  account verifiers and shared-feature content, and enables password guessing.
 - Each account gets **3 GB** of storage by default (configurable).
-- Nothing syncs by default: each user turns individual features on in
+- Settings sync is enabled for signed-in accounts; users select other collections in
   *Settings → Sync & account*.
 - **The app does not contact the server at all until an account exists and
   has been approved.** A fresh install makes zero requests to it; the only
@@ -322,8 +321,8 @@ Things the setup above already gives you:
 
 - [x] HTTPS everywhere (Caddy + Let's Encrypt, HSTS enabled)
 - [x] The app refuses plain-HTTP servers on the public internet
-- [x] Zero-knowledge encryption — server stores only authenticated
-      (encrypt-then-MAC) ciphertext
+- [x] Snapshot content encrypted client-side with authenticated envelopes;
+      metadata/shared-feature APIs remain outside this protection
 - [x] Passwords never reach the server; login secrets are PBKDF2-hashed
       again server-side with per-user salts
 - [x] Login tokens stored hashed, 90-day sliding expiry
@@ -367,18 +366,22 @@ Or do it by hand:
 
 ```powershell
 cd server
-dart compile exe bin/luma_server.dart -o luma_server.exe
+dart build cli --target bin/luma_server.dart -o build/local-bundle
 
 $env:LUMA_DATA_DIR = "C:\luma-sync-data"
-.\luma_server.exe
+.\build\local-bundle\bundle\bin\luma_server.exe
 ```
 
-> **Always run the compiled `luma_server.exe`, not `dart run`.** The exe reads
+> **Always run the compiled exe, not `dart run`.** The bundle reads
 > nothing from the Dart pub cache at runtime, so it avoids the intermittent
 > Windows "Het systeem kan het opgegeven pad niet vinden" (cannot find path)
 > compile errors that antivirus scanning + a running IDE can cause. If the
-> one-time `dart compile exe` step itself hits that error, just run it again.
+> one-time `dart build cli` step itself hits that error, just run it again.
 > See section 11.
+>
+> (`dart compile exe` no longer works: sqlite3 ships its native library via
+> build hooks, which only `dart build` runs. Keep `bundle\bin\` and
+> `bundle\lib\` together — the exe loads `sqlite3.dll` via `..\lib`.)
 
 Allow it through the Windows firewall for private networks when prompted
 (or: Settings → Windows Security → Firewall → Allow an app). Then in the
@@ -436,7 +439,7 @@ exist and read fine a moment later.
 **Fixes, in order of preference:**
 
 1. **Run the server as a compiled exe** (`.\run_local.ps1`, or
-   `dart compile exe`). A compiled exe reads nothing from the pub cache at
+   `dart build cli`). A compiled bundle reads nothing from the pub cache at
    runtime, so it never hits this. This is the recommended way to run the
    server locally.
 

@@ -13,6 +13,10 @@ const Map<String, AiPricingRates> kAnthropicPricing = {
   'claude-opus-4-7': AiPricingRates(input: 5.00, output: 25.00, cacheWrite: 6.25, cacheRead: 0.50),
   'claude-opus-4-6': AiPricingRates(input: 5.00, output: 25.00, cacheWrite: 6.25, cacheRead: 0.50),
   'claude-opus-4-5': AiPricingRates(input: 5.00, output: 25.00, cacheWrite: 6.25, cacheRead: 0.50),
+  'claude-opus-5': AiPricingRates(input: 5.00, output: 25.00, cacheWrite: 6.25, cacheRead: 0.50),
+  // Sonnet 5 launched Jun 30 2026 at an introductory $2/$10 due to rise Sep 1;
+  // Anthropic made that permanent (~Aug 10 2026), so $2/$10 is the rate.
+  'claude-sonnet-5': AiPricingRates(input: 2.00, output: 10.00, cacheWrite: 2.50, cacheRead: 0.20),
   'claude-sonnet-4-7': AiPricingRates(input: 3.00, output: 15.00, cacheWrite: 3.75, cacheRead: 0.30),
   'claude-sonnet-4-6': AiPricingRates(input: 3.00, output: 15.00, cacheWrite: 3.75, cacheRead: 0.30),
   'claude-sonnet-4-5': AiPricingRates(input: 3.00, output: 15.00, cacheWrite: 3.75, cacheRead: 0.30),
@@ -47,7 +51,13 @@ AiPricingRates? anthropicPricingFor(String? model) {
   }
   final m = model.toLowerCase();
   if (m.contains('fable') || m.contains('mythos')) return kAnthropicPricing['claude-fable-5'];
-  if (m.contains('opus')) return kAnthropicPricing['claude-opus-4-8'];
+  if (m.contains('opus')) return kAnthropicPricing['claude-opus-5'];
+  // Sonnet 5's $2/$10 rate was made permanent (Aug 2026), but it is the
+  // exception, not the tier: 4.5/4.6 and any unknown future Sonnet price at
+  // the $3/$15 standard, so only route an actual 5 there — slug or prose.
+  if (m.contains('sonnet-5') || m.contains('sonnet 5')) {
+    return kAnthropicPricing['claude-sonnet-5'];
+  }
   if (m.contains('sonnet')) return kAnthropicPricing['claude-sonnet-4-6'];
   if (m.contains('haiku')) return kAnthropicPricing['claude-haiku-4-5'];
   return null;

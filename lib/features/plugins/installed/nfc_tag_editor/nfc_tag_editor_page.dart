@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:nfc_manager/nfc_manager.dart' show NdefMessage;
 
 import '../../../../app/widgets.dart';
-import '../../../../storage/storage_guard.dart';
 import '../../../../theme/luma_theme.dart';
 import 'nfc_record.dart';
 import 'nfc_record_editor_sheet.dart';
@@ -488,12 +487,8 @@ class _NfcTagEditorPageState extends State<NfcTagEditorPage> {
     controller.dispose();
     final trimmed = name?.trim();
     if (trimmed == null || trimmed.isEmpty || !mounted) return;
-    try {
-      await NfcTagStore.instance.saveTemplate(trimmed, _records);
-      _snack('Saved "$trimmed".');
-    } on StorageLimitExceededException catch (e) {
-      _snack('$e');
-    }
+    await NfcTagStore.instance.saveTemplate(trimmed, _records);
+    _snack('Saved "$trimmed".');
   }
 
   Future<void> _confirmLockAndWrite() async {
@@ -1044,7 +1039,7 @@ class _HistoryTab extends StatelessWidget {
           style: TextStyle(color: luma.textPrimary, fontSize: 16),
         ),
         content: SizedBox(
-          width: 360,
+          width: lumaDialogWidth(ctx, 360),
           child: entry.records.isEmpty
               ? Text('No records.', style: TextStyle(color: luma.textMuted))
               : SingleChildScrollView(

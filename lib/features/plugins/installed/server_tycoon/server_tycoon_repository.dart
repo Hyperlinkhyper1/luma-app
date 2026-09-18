@@ -202,10 +202,6 @@ class ServerTycoonRepository extends ChangeNotifier {
   }
 
   Future<void> _save() async {
-    // Whole-state rewrite is the only persistence choke point this game has
-    // (every action calls _save()) — over the cap, skip writing rather than
-    // let an unawaited exception escape every fire-and-forget call site.
-    if (StorageGuard.instance.isOverLimit) return;
     try {
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/$_saveFileName');

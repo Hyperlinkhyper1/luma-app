@@ -67,8 +67,10 @@ class _SignedOut extends StatelessWidget {
                   fontSize: 18,
                   fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
-          SizedBox(
-            width: 420,
+          ConstrainedBox(
+            // maxWidth, not a fixed width: on a phone the paragraph has to
+            // shrink to the screen rather than run off both edges of it.
+            constraints: const BoxConstraints(maxWidth: 420),
             child: Text(
               'Sign in to your sync server under Settings → Sync & account, '
               'then come back here to upload files. Files are encrypted on '

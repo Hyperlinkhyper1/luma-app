@@ -6,6 +6,8 @@ import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../security/secure_secret_store.dart';
+
 /// Everything luma needs to keep a YouTube channel connected: the user's own
 /// Google Cloud OAuth client, and the tokens that client obtained.
 ///
@@ -50,26 +52,21 @@ class YoutubeCredentials {
     DateTime? expiresAt,
     String? channelId,
     String? channelTitle,
-  }) =>
-      YoutubeCredentials(
-        clientId: clientId,
-        clientSecret: clientSecret,
-        accessToken: accessToken ?? this.accessToken,
-        refreshToken: refreshToken,
-        expiresAt: expiresAt ?? this.expiresAt,
-        channelId: channelId ?? this.channelId,
-        channelTitle: channelTitle ?? this.channelTitle,
-      );
+  }) => YoutubeCredentials(
+    clientId: clientId,
+    clientSecret: clientSecret,
+    accessToken: accessToken ?? this.accessToken,
+    refreshToken: refreshToken,
+    expiresAt: expiresAt ?? this.expiresAt,
+    channelId: channelId ?? this.channelId,
+    channelTitle: channelTitle ?? this.channelTitle,
+  );
 }
 
-/// Stores the YouTube OAuth credentials locally, encrypted at rest.
-///
-/// Byte-for-byte the same encrypt-then-MAC HMAC-SHA256 stream cipher as
-/// `GithubCredentialStore`, with its own key file since it is an unrelated
-/// credential. This is obfuscation-at-rest rather than a hardware-backed
-/// secret store, the same tradeoff the other key stores make: it is the
-/// user's own revocable grant, sent only from this device straight to
-/// Google and never to a luma server.
+/// Stores this integration's credential using its historical authenticated
+/// cipher format. The independent encryption key is migrated to OS secure
+/// storage with verification before removing the legacy adjacent key file.
+/// Payload-cipher replacement remains a separate migration.
 class YoutubeCredentialStore {
   YoutubeCredentialStore._(this._key, this._dirPath);
 
@@ -88,13 +85,11 @@ class YoutubeCredentialStore {
     final dir = await getApplicationSupportDirectory();
     final keyFile = File('${dir.path}${Platform.pathSeparator}$_keyFileName');
 
-    Uint8List key;
-    if (await keyFile.exists()) {
-      key = base64Decode((await keyFile.readAsString()).trim());
-    } else {
-      key = _randomBytes(32);
-      await keyFile.writeAsString(base64Encode(key), flush: true);
-    }
+    final key = await SecureSecretStore.instance.loadKey(
+      'youtube.key',
+      keyFile,
+      encryptedDataExists: await File('${dir.path}/$_dataFileName').exists(),
+    );
     return _instance = YoutubeCredentialStore._(key, dir.path);
   }
 
@@ -217,7 +212,8 @@ class YoutubeCredentialStore {
   static Uint8List _randomBytes(int length) {
     final rng = Random.secure();
     return Uint8List.fromList(
-        List<int>.generate(length, (_) => rng.nextInt(256)));
+      List<int>.generate(length, (_) => rng.nextInt(256)),
+    );
   }
 
   static bool _constantTimeEquals(List<int> a, List<int> b) {

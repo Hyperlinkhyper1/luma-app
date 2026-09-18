@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import '../security/network_policy.dart';
+
 /// Thrown when something tries to reach a luma server while this device has
 /// no approved account. `toString()` is already user-facing.
 class ServerAccessDeniedException implements Exception {
@@ -83,10 +85,8 @@ typedef ServerAccess = ServerAccessGate;
 /// routing their traffic through this client means a missed check can't turn
 /// into a silent connection to the server.
 class GatedServerClient extends http.BaseClient {
-  GatedServerClient({
-    http.Client? inner,
-    this.allowBeforeApproval = const {},
-  }) : _inner = inner ?? http.Client();
+  GatedServerClient({http.Client? inner, this.allowBeforeApproval = const {}})
+    : _inner = inner ?? http.Client();
 
   final http.Client _inner;
 
@@ -99,6 +99,8 @@ class GatedServerClient extends http.BaseClient {
     if (!ServerAccessGate.instance.approved && !_isAllowed(request.url)) {
       throw const ServerAccessDeniedException();
     }
+    requirePrivateTransport(request.url);
+    request.followRedirects = false;
     return _inner.send(request);
   }
 

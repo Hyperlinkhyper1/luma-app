@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../app/widgets.dart';
-import '../../../../storage/storage_guard.dart';
 import '../../../../theme/luma_theme.dart';
 import 'worth_counter_store.dart';
 
@@ -595,12 +594,7 @@ class _ProductEditorDialogState extends State<_ProductEditorDialog> {
     }
     final existing = widget.existing;
     if (existing == null) {
-      try {
-        await widget.store.add(name: name, price: price, color: _color);
-      } on StorageLimitExceededException catch (e) {
-        if (mounted) setState(() => _error = '$e');
-        return;
-      }
+      await widget.store.add(name: name, price: price, color: _color);
     } else {
       widget.store.edit(existing.id, name: name, price: price, color: _color);
     }
@@ -617,7 +611,7 @@ class _ProductEditorDialogState extends State<_ProductEditorDialog> {
         style: TextStyle(color: luma.textPrimary, fontSize: 16),
       ),
       content: SizedBox(
-        width: 340,
+        width: lumaDialogWidth(context, 340),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,

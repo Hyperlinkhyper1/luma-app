@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
@@ -18,7 +18,7 @@ class DownloadHistoryEntry {
   final String title;
   final String filePath;
   final String mode; // 'Video' or 'Audio'
-  final String detail; // e.g. "1080p · 192 kbps" or "MP3 · 320 kbps"
+  final String detail; // e.g. "1080p Â· 192 kbps" or "MP3 Â· 320 kbps"
   final DateTime completedAt;
   final String source; // 'YouTube' or 'Spotify'
 
@@ -69,7 +69,6 @@ class DownloadHistoryStore {
   }
 
   Future<void> add(DownloadHistoryEntry entry) async {
-    StorageGuard.instance.ensureWithinLimit();
     final entries = await load();
     entries.insert(0, entry);
     await _save(entries);

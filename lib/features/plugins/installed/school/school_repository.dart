@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import '../../../../storage/storage_guard.dart';
@@ -11,7 +11,7 @@ class SchoolRepository {
   SchoolRepository(this._db);
   final SchoolDatabase _db;
 
-  // ── Subjects ────────────────────────────────────────────────────────────
+  // â”€â”€ Subjects â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Stream<List<SchoolSubject>> watchSubjects({bool includeArchived = false}) {
     final query = _db.select(_db.schoolSubjects)
@@ -23,7 +23,6 @@ class SchoolRepository {
   }
 
   Future<int> createSubject(String name, {int? color, double creditHours = 3}) {
-    StorageGuard.instance.ensureWithinLimit();
     final future = _db.into(_db.schoolSubjects).insert(
           SchoolSubjectsCompanion.insert(
             name: name,
@@ -50,7 +49,7 @@ class SchoolRepository {
   Future<void> deleteSubject(int id) =>
       (_db.delete(_db.schoolSubjects)..where((t) => t.id.equals(id))).go();
 
-  // ── Assignments ─────────────────────────────────────────────────────────
+  // â”€â”€ Assignments â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Stream<List<Assignment>> watchAssignments(
       {int? subjectId, bool includeCompleted = true}) {
@@ -68,7 +67,6 @@ class SchoolRepository {
     required DateTime dueDate,
     int priority = 1,
   }) {
-    StorageGuard.instance.ensureWithinLimit();
     final future = _db.into(_db.assignments).insert(
           AssignmentsCompanion.insert(
             subjectId: Value(subjectId),
@@ -119,7 +117,7 @@ class SchoolRepository {
   Future<void> deleteAssignment(int id) =>
       (_db.delete(_db.assignments)..where((t) => t.id.equals(id))).go();
 
-  // ── Timetable ───────────────────────────────────────────────────────────
+  // â”€â”€ Timetable â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Stream<List<TimetableEntry>> watchTimetable() {
     final query = _db.select(_db.timetableEntries)
@@ -138,7 +136,6 @@ class SchoolRepository {
     String? location,
     String? instructor,
   }) {
-    StorageGuard.instance.ensureWithinLimit();
     final future = _db.into(_db.timetableEntries).insert(
           TimetableEntriesCompanion.insert(
             subjectId: subjectId,
@@ -156,7 +153,7 @@ class SchoolRepository {
   Future<void> deleteTimetableEntry(int id) =>
       (_db.delete(_db.timetableEntries)..where((t) => t.id.equals(id))).go();
 
-  // ── Flashcard decks & cards ─────────────────────────────────────────────
+  // â”€â”€ Flashcard decks & cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Stream<List<FlashcardDeck>> watchDecks() {
     final query = _db.select(_db.flashcardDecks)
@@ -165,7 +162,6 @@ class SchoolRepository {
   }
 
   Future<int> createDeck(String name, {int? subjectId}) {
-    StorageGuard.instance.ensureWithinLimit();
     final future = _db.into(_db.flashcardDecks).insert(
           FlashcardDecksCompanion.insert(
             name: name,
@@ -195,7 +191,6 @@ class SchoolRepository {
   }
 
   Future<int> createCard(int deckId, String front, String back) {
-    StorageGuard.instance.ensureWithinLimit();
     final future = _db.into(_db.flashcards).insert(
           FlashcardsCompanion.insert(deckId: deckId, front: front, back: back),
         );
@@ -245,7 +240,7 @@ class SchoolRepository {
     );
   }
 
-  // ── Formulas ────────────────────────────────────────────────────────────
+  // â”€â”€ Formulas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Stream<List<Formula>> watchFormulas({String? category}) {
     final query = _db.select(_db.formulas)
@@ -260,7 +255,6 @@ class SchoolRepository {
     String category = 'Custom',
     String? description,
   }) {
-    StorageGuard.instance.ensureWithinLimit();
     final future = _db.into(_db.formulas).insert(
           FormulasCompanion.insert(
             name: name,
@@ -288,7 +282,7 @@ class SchoolRepository {
   Future<void> deleteFormula(int id) =>
       (_db.delete(_db.formulas)..where((t) => t.id.equals(id))).go();
 
-  // ── Grade components (per-subject weighting) ───────────────────────────
+  // â”€â”€ Grade components (per-subject weighting) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Stream<List<GradeComponent>> watchGradeComponents(int subjectId) {
     final query = _db.select(_db.gradeComponents)
@@ -303,7 +297,6 @@ class SchoolRepository {
     double scoreTotal = 100,
     double? scoreEarned,
   }) {
-    StorageGuard.instance.ensureWithinLimit();
     final future = _db.into(_db.gradeComponents).insert(
           GradeComponentsCompanion.insert(
             subjectId: subjectId,
@@ -366,7 +359,7 @@ class SchoolRepository {
     ], targetPercent);
   }
 
-  // ── GPA records ─────────────────────────────────────────────────────────
+  // â”€â”€ GPA records â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Stream<List<GpaRecord>> watchGpaRecords() {
     final query = _db.select(_db.gpaRecords)
@@ -381,7 +374,6 @@ class SchoolRepository {
     required double gradePoints,
     DateTime? date,
   }) {
-    StorageGuard.instance.ensureWithinLimit();
     final future = _db.into(_db.gpaRecords).insert(
           GpaRecordsCompanion.insert(
             subjectId: subjectId,
@@ -405,7 +397,7 @@ class SchoolRepository {
         ]));
   }
 
-  // ── Citations ───────────────────────────────────────────────────────────
+  // â”€â”€ Citations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Stream<List<Citation>> watchCitations() {
     final query = _db.select(_db.citations)
@@ -415,7 +407,6 @@ class SchoolRepository {
 
   Future<int> createCitation(
       CitationStyle style, SourceType sourceType, CitationFields fields) {
-    StorageGuard.instance.ensureWithinLimit();
     final formatted = formatCitation(style, sourceType, fields);
     final future = _db.into(_db.citations).insert(
           CitationsCompanion.insert(
@@ -432,7 +423,7 @@ class SchoolRepository {
   Future<void> deleteCitation(int id) =>
       (_db.delete(_db.citations)..where((t) => t.id.equals(id))).go();
 
-  // ── Study sessions ──────────────────────────────────────────────────────
+  // â”€â”€ Study sessions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Stream<List<StudySession>> watchStudySessions({int? subjectId}) {
     final query = _db.select(_db.studySessions)
@@ -442,7 +433,6 @@ class SchoolRepository {
   }
 
   Future<int> startSession({int? subjectId}) {
-    StorageGuard.instance.ensureWithinLimit();
     final future = _db.into(_db.studySessions).insert(
           StudySessionsCompanion.insert(
             subjectId: Value(subjectId),

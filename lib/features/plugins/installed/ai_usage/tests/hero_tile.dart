@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../../../../theme/luma_theme.dart';
@@ -67,7 +69,8 @@ class LumaHeroTile extends StatefulWidget {
     super.key,
     required this.title,
     required this.subtitle,
-    required this.imageAsset,
+    this.imageAsset,
+    this.imageFile,
     required this.fallbackIcon,
     required this.onTap,
     this.width = 340,
@@ -76,7 +79,15 @@ class LumaHeroTile extends StatefulWidget {
 
   final String title;
   final String subtitle;
-  final String imageAsset;
+
+  /// Bundled artwork. Prefer [imageFile] for anything downloaded at runtime —
+  /// benchmark tile art lives on the luma server now, not in the bundle.
+  final String? imageAsset;
+
+  /// A downloaded artwork file (server-cached tile art). Wins over
+  /// [imageAsset] when both are set; when neither resolves, the tile shows
+  /// the gradient stand-in with [fallbackIcon].
+  final File? imageFile;
   final IconData fallbackIcon;
   final VoidCallback onTap;
   final double width;
@@ -125,23 +136,10 @@ class _LumaHeroTileState extends State<LumaHeroTile> {
                   duration: const Duration(milliseconds: 320),
                   curve: Curves.easeOutCubic,
                   scale: _hovered ? 1.04 : 1,
-                  child: Image.asset(
-                    widget.imageAsset,
-                    fit: BoxFit.cover,
-                    alignment: Alignment.topCenter,
-                    errorBuilder: (context, error, stack) => DecoratedBox(
-                      decoration: const BoxDecoration(
-                        gradient: HeroTileWash.fallback,
-                      ),
-                      child: Align(
-                        alignment: const Alignment(0, -0.35),
-                        child: Icon(
-                          widget.fallbackIcon,
-                          size: 56,
-                          color: Colors.white.withValues(alpha: 0.62),
-                        ),
-                      ),
-                    ),
+                  child: _TileArtwork(
+                    imageAsset: widget.imageAsset,
+                    imageFile: widget.imageFile,
+                    fallbackIcon: widget.fallbackIcon,
                   ),
                 ),
                 const DecoratedBox(
@@ -220,5 +218,57 @@ class _LumaHeroTileState extends State<LumaHeroTile> {
         ),
       ),
     );
+  }
+}
+
+/// The artwork layer of a [LumaHeroTile]: a downloaded file first, then a
+/// bundled asset, then the gradient stand-in — so a tile whose artwork hasn't
+/// downloaded (or was never made) still looks deliberate rather than broken.
+class _TileArtwork extends StatelessWidget {
+  const _TileArtwork({
+    this.imageAsset,
+    this.imageFile,
+    required this.fallbackIcon,
+  });
+
+  final String? imageAsset;
+  final File? imageFile;
+  final IconData fallbackIcon;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget fallback() => DecoratedBox(
+          decoration: const BoxDecoration(
+            gradient: HeroTileWash.fallback,
+          ),
+          child: Align(
+            alignment: const Alignment(0, -0.35),
+            child: Icon(
+              fallbackIcon,
+              size: 56,
+              color: Colors.white.withValues(alpha: 0.62),
+            ),
+          ),
+        );
+
+    final file = imageFile;
+    if (file != null) {
+      return Image.file(
+        file,
+        fit: BoxFit.cover,
+        alignment: Alignment.topCenter,
+        errorBuilder: (context, error, stack) => fallback(),
+      );
+    }
+    final asset = imageAsset;
+    if (asset != null) {
+      return Image.asset(
+        asset,
+        fit: BoxFit.cover,
+        alignment: Alignment.topCenter,
+        errorBuilder: (context, error, stack) => fallback(),
+      );
+    }
+    return fallback();
   }
 }

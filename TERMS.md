@@ -1,6 +1,6 @@
 # Terms of Service
 
-**Last updated: August 10, 2026**
+**Last updated: September 12, 2026**
 
 These Terms govern your use of luma — the app — and the sync server I
 operate at `sync.luma-app.cc`. By downloading, installing, or using luma,
@@ -84,6 +84,16 @@ being able to inspect it: if I receive a credible report or legal process
 concerning illegal material tied to your account, I can suspend, remove,
 or otherwise act on that account even without being able to read the
 underlying ciphertext myself.
+
+## Reporting abuse or illegal content
+
+If you come across illegal content, or believe someone is using luma to
+harass or abuse another person, tell me at
+**customerservice@luma-app.cc**. I'll acknowledge your report, look into
+it, and act on the account if the report is credible — up to and
+including suspension or removal — even where the content itself is
+end-to-end encrypted and I cannot read it directly. Where required, I'll
+also report what's necessary to the appropriate authority.
 
 ## Family groups
 
@@ -211,3 +221,7 @@ using luma.
 ## Contact
 
 Questions about these Terms: **hyperlinkhyper@outlook.com**
+
+To report abuse or illegal content, see
+[Reporting abuse or illegal content](#reporting-abuse-or-illegal-content)
+above: **customerservice@luma-app.cc**

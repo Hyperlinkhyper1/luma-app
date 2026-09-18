@@ -28,9 +28,14 @@ String effortLabel(AiEffort? effort) => switch (effort) {
 /// needs to know whether there is anything to show before deciding to build
 /// this at all, and aggregating is a full pass over every turn in range.
 class EffortBreakdownSection extends StatelessWidget {
-  const EffortBreakdownSection({super.key, required this.tiers});
+  const EffortBreakdownSection({
+    super.key,
+    required this.tiers,
+    this.sort = AiUsageSortMetric.tokens,
+  });
 
   final List<ModelEffortUsageTotal> tiers;
+  final AiUsageSortMetric sort;
 
   @override
   Widget build(BuildContext context) {
@@ -39,13 +44,23 @@ class EffortBreakdownSection extends StatelessWidget {
     for (final t in tiers) {
       byModel.putIfAbsent(t.model, () => []).add(t);
     }
-    // Models ordered by their own total tokens, most-used first — matches
-    // the ordering convention of the model table above.
+    // Models ordered by the dashboard's model sort, most-used first —
+    // matches the ordering convention of the model table above.
     final models = byModel.keys.toList()
       ..sort((a, b) {
-        final aTokens = byModel[a]!.fold<int>(0, (s, e) => s + e.totalTokens);
-        final bTokens = byModel[b]!.fold<int>(0, (s, e) => s + e.totalTokens);
-        return bTokens.compareTo(aTokens);
+        final aTiers = byModel[a]!;
+        final bTiers = byModel[b]!;
+        return switch (sort) {
+          AiUsageSortMetric.tokens => bTiers
+              .fold<int>(0, (s, e) => s + e.totalTokens)
+              .compareTo(aTiers.fold<int>(0, (s, e) => s + e.totalTokens)),
+          AiUsageSortMetric.turns => bTiers
+              .fold<int>(0, (s, e) => s + e.turnCount)
+              .compareTo(aTiers.fold<int>(0, (s, e) => s + e.turnCount)),
+          AiUsageSortMetric.cost => bTiers
+              .fold<double>(0, (s, e) => s + e.cost)
+              .compareTo(aTiers.fold<double>(0, (s, e) => s + e.cost)),
+        };
       });
 
     return Column(

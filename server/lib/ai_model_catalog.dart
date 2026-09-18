@@ -267,6 +267,25 @@ class AiModel {
         if (sources.isNotEmpty) 'sources': sources,
       };
 
+  /// Returns a copy with the three benchmark columns the leaderboard sorts on
+  /// cleared, so the row shows a dash instead of a number.
+  ///
+  /// Artificial Analysis rebases its Intelligence Index every so often, and
+  /// when it does it retires the old models' scores rather than restating
+  /// them — the model's row comes back with `intelligence_index: null`. Since
+  /// [mergedWith] never blanks a value, a stored score from a retired scale
+  /// would otherwise sit on the board forever and outrank everything measured
+  /// on the current one. See [AiModelCatalogStore.retireRatingsExcept].
+  ///
+  /// Goes through the JSON form rather than restating three dozen fields, so
+  /// a field added later can't be silently dropped here.
+  AiModel withRatingsRetired() => AiModel.fromJson(
+        toJson()
+          ..remove('llmStatsIndex')
+          ..remove('codingIndex')
+          ..remove('agentIndex'),
+      );
+
   /// Returns a copy with every non-null field of [other] laid over this one.
   /// Merge order is OpenRouter → Artificial Analysis → Hugging Face, so a
   /// later source refines earlier values but never blanks them.
@@ -540,6 +559,36 @@ class AiModelCatalogStore {
         _refreshedAtMs = DateTime.now().millisecondsSinceEpoch;
         await _persist();
         return added;
+      });
+
+  /// Clears the benchmark columns of every stored model *not* in [rated],
+  /// and returns the ids it cleared.
+  ///
+  /// [rated] is the set of models the OpenRouter pass just came back with a
+  /// live Intelligence Index for. Anything else either lost its score when
+  /// Artificial Analysis rebased the index, or stopped being listed at all —
+  /// in both cases the number we hold is on a scale nothing else on the board
+  /// uses, so it reads as a retired model outranking current ones. Like
+  /// [pruneVendorsNotIn] this is deliberately a separate, explicit step:
+  /// [upsertModels] is additive on purpose so a mid-refresh hiccup can't wipe
+  /// the board, which means only a caller that knows the pass succeeded may
+  /// blank anything.
+  Future<List<String>> retireRatingsExcept(Set<String> rated) =>
+      _lock.synchronized(() async {
+        final retired = <String>[];
+        for (final m in _models.values.toList()) {
+          if (rated.contains(m.id)) continue;
+          if (m.llmStatsIndex == null &&
+              m.codingIndex == null &&
+              m.agentIndex == null) {
+            continue;
+          }
+          _models[m.id] = m.withRatingsRetired();
+          retired.add(m.id);
+        }
+        if (retired.isEmpty) return retired;
+        await _persist();
+        return retired;
       });
 
   /// Removes every stored model whose vendor isn't in [allowed].

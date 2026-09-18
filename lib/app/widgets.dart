@@ -551,3 +551,42 @@ class LumaEmptyState extends StatelessWidget {
     );
   }
 }
+
+// ─── Responsive helpers ─────────────────────────────────────────────────────
+
+/// Width under which the shell drops the side rail and the app is being used
+/// on a phone. Shared so pages agree with `AppShell` on what "phone" means
+/// instead of each picking its own number.
+const double kPhoneBreakpoint = 700;
+
+/// Layout questions every page ends up asking, answered in one place.
+extension LumaLayout on BuildContext {
+  /// True while this window is phone-narrow. Follows the window, so a
+  /// half-screen desktop window gets the phone layout too — which is what it
+  /// wants.
+  bool get isPhoneWidth => MediaQuery.sizeOf(this).width < kPhoneBreakpoint;
+
+  /// True on a phone-sized *device* in either orientation. Use this for
+  /// layouts that should stay phone-shaped when the phone is turned sideways.
+  bool get isPhoneForm =>
+      MediaQuery.sizeOf(this).shortestSide < kPhoneBreakpoint;
+}
+
+// There is deliberately no `keyboardOpen` here. `Scaffold` strips the bottom
+// view inset from its body — it has already shrunk the body by that much — so
+// `MediaQuery.viewInsetsOf` reads zero everywhere inside the app shell and a
+// helper built on it would quietly always be false. A page that needs to know
+// should watch the focus of the field being typed into instead.
+
+/// Width for a dialog's fixed-width content box.
+///
+/// A bare `SizedBox(width: 420)` inside an `AlertDialog` overflows on any
+/// phone: the dialog's own inset padding plus its content padding eat about
+/// 128px, so a 390px-wide screen has roughly 260px to give. This returns
+/// [preferred] when it fits and the honest available width when it doesn't.
+double lumaDialogWidth(BuildContext context, double preferred) {
+  const chrome = 128.0;
+  final available = MediaQuery.sizeOf(context).width - chrome;
+  if (available >= preferred) return preferred;
+  return available < 200 ? 200 : available;
+}

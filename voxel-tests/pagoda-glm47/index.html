@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pagoda test — GLM 4.7 (garden.js, vendored)</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #87b8e8; }
+    #app { position: fixed; inset: 0; }
+    #hud {
+      position: fixed; left: 12px; bottom: 12px; z-index: 10;
+      display: flex; gap: 8px; align-items: center;
+      font: 13px/1.4 system-ui, sans-serif; color: #10212b;
+      background: rgba(255,255,255,.82); border-radius: 10px; padding: 8px 10px;
+    }
+    #stats { position: fixed; right: 12px; bottom: 12px; z-index: 10;
+      font: 12px/1.4 system-ui, sans-serif; color: #10212b;
+      background: rgba(255,255,255,.82); border-radius: 10px; padding: 6px 9px; }
+    #playBtn.active { outline: 2px solid #2d6a4f; }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="hud">
+    <button id="playBtn" class="active" type="button">pause cycle</button>
+    <button id="resetCam" type="button">reset cam</button>
+    <label>time <input id="tod" type="range" min="0" max="1000" value="220" /></label>
+    <span id="todLabel">day</span>
+  </div>
+  <div id="stats">loading…</div>
+
+  <script type="module">
+    import { mountPagoda } from "./garden.js";
+    mountPagoda(document.getElementById("app"));
+  </script>
+</body>
+</html>

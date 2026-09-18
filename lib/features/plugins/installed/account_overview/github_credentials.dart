@@ -6,6 +6,8 @@ import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../security/secure_secret_store.dart';
+
 /// Everything the plugin needs to talk to GitHub as the user, plus the
 /// allowance figures it cannot always read back.
 ///
@@ -62,30 +64,25 @@ class GithubCredentials {
     double? storageAllowanceGb,
     double? minutesAllowance,
     bool clearAllowances = false,
-  }) =>
-      GithubCredentials(
-        token: token ?? this.token,
-        login: login ?? this.login,
-        copilotAllowance: clearAllowances
-            ? null
-            : (copilotAllowance ?? this.copilotAllowance),
-        storageAllowanceGb: clearAllowances
-            ? null
-            : (storageAllowanceGb ?? this.storageAllowanceGb),
-        minutesAllowance: clearAllowances
-            ? null
-            : (minutesAllowance ?? this.minutesAllowance),
-      );
+  }) => GithubCredentials(
+    token: token ?? this.token,
+    login: login ?? this.login,
+    copilotAllowance: clearAllowances
+        ? null
+        : (copilotAllowance ?? this.copilotAllowance),
+    storageAllowanceGb: clearAllowances
+        ? null
+        : (storageAllowanceGb ?? this.storageAllowanceGb),
+    minutesAllowance: clearAllowances
+        ? null
+        : (minutesAllowance ?? this.minutesAllowance),
+  );
 }
 
-/// Stores the GitHub token locally, encrypted at rest.
-///
-/// Mirrors `SteamCredentialStore` and `AiKeyStore` — the same
-/// encrypt-then-MAC HMAC-SHA256 stream cipher, with its own key file since
-/// it is an unrelated credential. This is obfuscation-at-rest rather than a
-/// hardware-backed secret store, the same tradeoff the other key stores
-/// make: it is the user's own revocable token, sent only from this device
-/// straight to api.github.com and never to a luma server.
+/// Stores this integration's credential using its historical authenticated
+/// cipher format. The independent encryption key is migrated to OS secure
+/// storage with verification before removing the legacy adjacent key file.
+/// Payload-cipher replacement remains a separate migration.
 class GithubCredentialStore {
   GithubCredentialStore._(this._key, this._dirPath);
 
@@ -104,17 +101,16 @@ class GithubCredentialStore {
     final dir = await getApplicationSupportDirectory();
     final keyFile = File('${dir.path}${Platform.pathSeparator}$_keyFileName');
 
-    Uint8List key;
-    if (await keyFile.exists()) {
-      key = base64Decode((await keyFile.readAsString()).trim());
-    } else {
-      key = _randomBytes(32);
-      await keyFile.writeAsString(base64Encode(key), flush: true);
-    }
+    final key = await SecureSecretStore.instance.loadKey(
+      'github.key',
+      keyFile,
+      encryptedDataExists: await File('${dir.path}/$_dataFileName').exists(),
+    );
     return _instance = GithubCredentialStore._(key, dir.path);
   }
 
-  File get _dataFile => File('$_dirPath${Platform.pathSeparator}$_dataFileName');
+  File get _dataFile =>
+      File('$_dirPath${Platform.pathSeparator}$_dataFileName');
 
   Future<GithubCredentials?> read() async {
     final file = _dataFile;
@@ -216,7 +212,8 @@ class GithubCredentialStore {
   static Uint8List _randomBytes(int length) {
     final rng = Random.secure();
     return Uint8List.fromList(
-        List<int>.generate(length, (_) => rng.nextInt(256)));
+      List<int>.generate(length, (_) => rng.nextInt(256)),
+    );
   }
 
   static bool _constantTimeEquals(List<int> a, List<int> b) {

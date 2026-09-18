@@ -30,8 +30,11 @@ Numbers are fractions of tile height and are the `stops` in
 
 **The purple is painted at runtime, never baked into the PNG.**
 
-The source image goes into `assets/tests/` untouched — no gradient, no band,
-no text in the pixels. Everything below `0.40` is Flutter drawing over it. Bake
+Tile artwork downloads from the luma server with the benchmark roster (see
+`server/benchmarks/`, served as previews over `/api/v1/ai-benchmarks/*` and
+cached on disk) — nothing benchmark-related ships in the app bundle anymore.
+The file on disk must stay untouched: no gradient, no band, no text in the
+pixels. Everything below `0.40` is Flutter drawing over it. Bake
 the wash into the file and it freezes at one aspect ratio, stops following the
 palette, and the second tile you make will not match the first.
 
@@ -88,10 +91,11 @@ The tile is one button, not a card with a button in it.
 
 ## Missing artwork
 
-`Image.asset` has an `errorBuilder` that paints `HeroTileWash.fallback` (a pink
+The tile tries a downloaded `imageFile` first, then a bundled `imageAsset`;
+both have an `errorBuilder` that paints `HeroTileWash.fallback` (a pink
 → mauve gradient echoing the reference art) with the tile's `fallbackIcon`. A
-tile whose PNG has not been dropped in yet looks deliberate, not broken, and
-the wash and label render identically either way.
+tile whose art hasn't downloaded yet — or was never made — looks deliberate,
+not broken, and the wash and label render identically either way.
 
 ## Adding another tile
 
@@ -99,7 +103,6 @@ the wash and label render identically either way.
 LumaHeroTile(
   title: 'Something Test',
   subtitle: 'Open the test screen',
-  imageAsset: 'assets/tests/something.png',
   fallbackIcon: Icons.science_rounded,
   onTap: () => Navigator.of(context).push(
     MaterialPageRoute<void>(builder: (_) => const SomethingTestPage()),
@@ -107,7 +110,8 @@ LumaHeroTile(
 ),
 ```
 
-Add it to the `Wrap` in `tests_tab.dart`. Tiles keep their 340px width and flow
+Pass `imageFile` with the server-cached artwork once the benchmark roster
+advertises it. Add the tile to the `Wrap` in `tests_tab.dart`. Tiles keep their 340px width and flow
 onto the next row rather than stretching — a hero tile stretched to fill a
 column loses the crop the artwork was framed for.
 

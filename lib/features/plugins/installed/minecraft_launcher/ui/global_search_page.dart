@@ -10,6 +10,7 @@ import '../minecraft_launcher_repository.dart';
 import '../minecraft_launcher_scope.dart';
 import 'hover_sync_scroll.dart';
 import 'instance_detail_page.dart';
+import 'modrinth_ui.dart';
 import 'project_detail_page.dart';
 
 /// Searches across the user's own instances (client-side, instant) and
@@ -60,34 +61,14 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
     }
   }
 
-  Future<void> _openModHit(ModrinthSearchHit hit, MinecraftLauncherRepository repository) async {
-    final instances = await repository.watchInstances().first;
-    if (instances.isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Create an instance first.')));
-      return;
-    }
-    final instance = instances.length == 1
-        ? instances.first
-        : await showDialog<McInstance>(
-            context: context,
-            builder: (context) => SimpleDialog(
-              title: const Text('Install into which instance?'),
-              children: [
-                for (final i in instances)
-                  SimpleDialogOption(
-                    onPressed: () => Navigator.pop(context, i),
-                    child: Text(i.name),
-                  ),
-              ],
-            ),
-          );
-    if (instance == null || !mounted) return;
+  /// Opens the project page without asking for an instance first — the
+  /// detail page only prompts for one if the user actually installs, so
+  /// browsing from global search costs no decisions up front.
+  void _openModHit(ModrinthSearchHit hit, MinecraftLauncherRepository repository) {
     Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => ProjectDetailPage(
         projectId: hit.projectId,
-        instance: instance,
+        instance: null,
         kind: 'mod',
         repository: repository,
       ),
@@ -176,36 +157,10 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
               for (final hit in _modHits)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: LumaCard(
-                    child: InkWell(
-                      onTap: () => _openModHit(hit, repository),
-                      child: Row(
-                        children: [
-                          if (hit.iconUrl != null)
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.network(hit.iconUrl!, width: 36, height: 36, fit: BoxFit.cover),
-                            )
-                          else
-                            LumaIconBadge(icon: Icons.extension_rounded, color: luma.accent, size: 36),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(hit.title, style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700)),
-                                Text(
-                                  hit.description,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(color: luma.textMuted, fontSize: 12),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  child: ModrinthProjectTile(
+                    hit: hit,
+                    dense: true,
+                    onOpen: () => _openModHit(hit, repository),
                   ),
                 ),
           ],

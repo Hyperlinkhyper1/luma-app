@@ -160,6 +160,9 @@ class LEs extends L {
   String get settingsCheckUpdates => 'Buscar actualizaciones';
 
   @override
+  String get settingsOpenSourceLicenses => 'Licencias de código abierto';
+
+  @override
   String get settingsSystem => 'Sistema';
 
   @override

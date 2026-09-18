@@ -149,7 +149,7 @@ class _ImportProgressDialog extends StatelessWidget {
     return AlertDialog(
       title: const Text('Importing modpack'),
       content: SizedBox(
-        width: 380,
+        width: lumaDialogWidth(context, 380),
         child: ValueListenableBuilder<_ImportStatus>(
           valueListenable: notifier,
           builder: (context, state, _) {

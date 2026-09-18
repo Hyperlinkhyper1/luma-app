@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GPT OSS 20B Pagoda Test</title>
+<script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body style="margin:0;overflow:hidden;">
+<canvas id="canvas"></canvas>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// Renderer
+const canvas = document.getElementById('canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x000000, 1);
+
+// Scene & Camera
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 2000);
+camera.position.set(0, 60, 150);
+
+// Controls
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.2;
+
+// Lights
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+dirLight.position.set(100, 200, 100);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.set(2048, 2048);
+scene.add(dirLight);
+
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0.5, 0.6);
+scene.add(hemiLight);
+
+// ---- Voxel and scene construction TODO ----
+const voxelCount = 24000;   // placeholder
+const fps = 60;             // placeholder
+
+// HUD
+const hud = document.createElement('div');
+hud.style.position = 'absolute';
+hud.style.top = '10px';
+hud.style.left = '10px';
+hud.style.color = '#fff';
+hud.style.fontFamily = 'Arial';
+hud.style.backgroundColor = 'rgba(0,0,0,0.3)';
+hud.style.padding = '5px 10px';
+hud.innerHTML = `VOXEL GARDEN<br>${voxelCount} voxels | ${fps} FPS<br>Click lanterns`;
+document.body.appendChild(hud);
+
+// Debug
+window.__VOXEL__ = {
+  voxelCount,
+  fps,
+  pagodaFloors: 5,
+  timeOfDay: 0.5
+};
+
+// Animation
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  const delta = clock.getDelta();
+  // TODO: Update sun, sky, lanterns, plants, etc.
+  renderer.render(scene, camera);
+}
+animate();
+
+// Resizing
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>

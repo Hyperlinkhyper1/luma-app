@@ -434,7 +434,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
           ],
         ),
         content: SizedBox(
-          width: 360,
+          width: lumaDialogWidth(dialogContext, 360),
           child: _store.history.isEmpty
               ? Text(
                   'Sums you work out show up here.',

@@ -1,0 +1,9 @@
+{
+  "id": "whiteboard",
+  "name": "Whiteboard",
+  "version": "1.0.0",
+  "description": "An endless sheet to draw on. Pen, highlighter, shapes, arrows, sticky notes and text, with everything saved as you draw it.",
+  "icon": "draw",
+  "category": "Productivity",
+  "details": "A whiteboard that behaves like one. Draw freehand with the pen, mark things up with a translucent highlighter, snap out straight lines, arrows, rectangles and ellipses, drop sticky notes and type text anywhere on the sheet. Pick from seven inks and three stroke widths; the paper stays light in both themes so ink you chose in the dark still reads in the morning.\n\nEvery tool has a one-key shortcut — P for pen, E for eraser, R for rectangle, V to select — and everything you do is undoable with Ctrl+Z. Select anything to move it, drag its corner to resize it, or hit Delete. The eraser takes out whole strokes as you sweep over them, so cleaning up is one gesture rather than dozens.\n\nPan and zoom the sheet with a drag on the hand tool or the scroll wheel, with a dot grid you can switch off. Finished boards export as a PNG cropped to exactly what you drew, and every board syncs across your devices."
+}

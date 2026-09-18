@@ -1,15 +1,16 @@
 # luma
 
-luma is a private, all-in-one desktop and Android app: a budgeting tool, a
+luma is a local-first desktop and Android app: a budgeting tool, a
 password manager, a file converter, notes, a built-in AI assistant, and a
 marketplace of 26 optional plugins — all in one clean interface, modeled
 after the Modrinth app (a fixed left icon rail, a slim top bar, rounded
 content cards).
 
-**Everything is local-first.** All of your data lives on your own device in
-a local database. Nothing is sent anywhere unless you explicitly turn on
-sync — and even then, it's end-to-end encrypted so the server can't read it
-either. luma ships with two lavender themes — **dark gray lavender**
+**Local storage and optional online features.** Sync snapshots are encrypted
+on the device before upload. AI prompts, shared features and external
+integrations have separate data flows; they are not covered by that promise.
+Security hardening is ongoing: read the [security limitations](docs/security/AUDIT_READINESS.md)
+and [upgrade precautions](docs/security/MIGRATION.md). luma ships with two lavender themes — **dark gray lavender**
 (default) and **white lavender** — switchable from the top-right toggle.
 
 ---
@@ -148,13 +149,13 @@ plugins, not even usage pings. Plugins that are useless without the server
 
 ## Sync & privacy
 
-Nothing syncs by default — you turn on individual features from
+Settings sync is enabled for signed-in accounts; other collections are selected from
 *Settings → Sync & account*. Two ways to sync between your own devices:
 
-- **Self-hosted server** — end-to-end encrypted: every feature's data is
-  encrypted on your device before it ever leaves it, using a key derived
-  from your account password. The server only ever stores unreadable
-  ciphertext and never sees your password. Sign in with an email and
+- **Self-hosted server** — sync snapshot contents are encrypted on your
+  device using an account-derived key. The server stores ciphertext and
+  observable metadata; shared-feature APIs and AI proxies are separate.
+  Sign in with an email and
   password, or — when the server operator has set it up — with Google or
   GitHub, which stands in for the address but never for the passphrase that
   does the encrypting. See [`SERVER_SETUP.md`](SERVER_SETUP.md) to run your

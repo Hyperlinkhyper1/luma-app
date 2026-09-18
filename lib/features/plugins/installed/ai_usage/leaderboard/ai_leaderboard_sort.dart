@@ -13,8 +13,9 @@ enum AiLeaderboardColumn {
     defaultDescending: false,
   ),
   llmStats(
-    label: 'LLM STATS',
-    help: 'Overall composite rating across every benchmark in the index',
+    label: 'INTELLIGENCE',
+    help: "Artificial Analysis' Intelligence Index — the composite across "
+        'every benchmark it runs, at the model\'s best reasoning effort',
   ),
   coding(
     label: 'CODING',

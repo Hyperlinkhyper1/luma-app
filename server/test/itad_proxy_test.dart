@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
+import 'package:luma_sync_server/ai_benchmark_store.dart';
 import 'package:luma_sync_server/ai_model_catalog.dart';
 import 'package:luma_sync_server/ai_usage_store.dart';
 import 'package:luma_sync_server/api.dart';
@@ -60,6 +61,7 @@ void main() {
         await SubwayStore.open(dir.path),
         await RecipeStore.open(dir.path),
         await AiModelCatalogStore.open(dir.path),
+        await AiBenchmarkStore.open(dir.path),
       ).handler;
     }
 

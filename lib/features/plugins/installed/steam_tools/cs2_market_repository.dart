@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart';
@@ -9,14 +9,14 @@ import 'cs2_market_api.dart';
 import 'cs2_models.dart';
 import 'data/steam_database.dart';
 
-/// Owns the CS2 item catalog (name, rarity, case, image — read from a
+/// Owns the CS2 item catalog (name, rarity, case, image â€” read from a
 /// community dataset, never Steam) and the Community Market prices read for
 /// whatever listings this device is watching.
 ///
 /// Two data sources, two very different shapes: the catalog is a single
 /// large fetch, refreshed rarely, held in memory for instant search; prices
 /// are one small request per exact listing, fetched on demand and recorded
-/// one row at a time — see [Cs2MarketPricePoints] for why that log is the
+/// one row at a time â€” see [Cs2MarketPricePoints] for why that log is the
 /// only price history that exists here at all.
 class Cs2MarketRepository extends ChangeNotifier {
   Cs2MarketRepository(
@@ -36,7 +36,7 @@ class Cs2MarketRepository extends ChangeNotifier {
   String? _catalogError;
   DateTime? _catalogFetchedAt;
 
-  /// Listings with a price check in flight — keyed by the exact market hash
+  /// Listings with a price check in flight â€” keyed by the exact market hash
   /// name, since two variants of the same skin are unrelated requests.
   final Set<String> _fetchingPrice = {};
 
@@ -69,7 +69,7 @@ class Cs2MarketRepository extends ChangeNotifier {
 
   /// Loads whatever catalog is cached on disk (instant), then refreshes it
   /// in the background if it is missing or older than
-  /// [Cs2CatalogService.freshness] — search works the moment a cache exists
+  /// [Cs2CatalogService.freshness] â€” search works the moment a cache exists
   /// at all, rather than blocking on a ~5 MB fetch every launch.
   Future<void> loadCatalog() async {
     if (_catalogLoaded) return;
@@ -116,7 +116,7 @@ class Cs2MarketRepository extends ChangeNotifier {
     }
   }
 
-  /// Case-insensitive substring search over name, weapon, rarity and case —
+  /// Case-insensitive substring search over name, weapon, rarity and case â€”
   /// entirely in memory, since the whole catalog is a couple thousand rows
   /// already held for this purpose. Capped at [limit] so a broad term like
   /// "case hardened" does not hand the grid a thousand tiles to lay out.
@@ -154,7 +154,7 @@ class Cs2MarketRepository extends ChangeNotifier {
   Future<bool> isTracked(String marketHashName) async =>
       await _db.cs2Item(marketHashName) != null;
 
-  /// Skins pinned to the top of the browse grid — a bookmark on the finish
+  /// Skins pinned to the top of the browse grid â€” a bookmark on the finish
   /// itself, independent of whether any of its wears are being tracked.
   Stream<Set<String>> watchPinnedSkinIds() => _db.watchPinnedSkinIds();
 
@@ -164,7 +164,7 @@ class Cs2MarketRepository extends ChangeNotifier {
   Future<void> togglePin(String skinId, {required bool pinned}) =>
       pinned ? unpinSkin(skinId) : pinSkin(skinId);
 
-  /// A one-off price read that is never persisted — how the detail page
+  /// A one-off price read that is never persisted â€” how the detail page
   /// shows "price now" for a listing that isn't being watched yet, without
   /// starting a history for something the user was only glancing at.
   Future<Cs2MarketPrice?> checkPriceOnce(String marketHashName) async {
@@ -185,15 +185,14 @@ class Cs2MarketRepository extends ChangeNotifier {
     }
   }
 
-  /// Starts watching one exact listing — a specific finish, wear and
-  /// StatTrak state — and fetches its price immediately so the new row has
+  /// Starts watching one exact listing â€” a specific finish, wear and
+  /// StatTrak state â€” and fetches its price immediately so the new row has
   /// one right away instead of waiting for the next sweep.
   Future<void> track({
     required Cs2SkinDef skin,
     String? wear,
     required bool statTrak,
   }) async {
-    StorageGuard.instance.ensureWithinLimit();
     final marketHashName =
         cs2MarketHashName(baseName: skin.name, wear: wear, statTrak: statTrak);
     await _db.addTrackedCs2Item(Cs2MarketItemsCompanion.insert(
@@ -235,7 +234,6 @@ class Cs2MarketRepository extends ChangeNotifier {
     _fetchingPrice.add(marketHashName);
     notifyListeners();
     try {
-      StorageGuard.instance.ensureWithinLimit();
       final price = await _api.priceOverview(marketHashName);
       await _db.recordCs2Price(
         marketHashName,
@@ -246,8 +244,6 @@ class Cs2MarketRepository extends ChangeNotifier {
       StorageGuard.instance.scheduleRefresh();
     } on Cs2MarketApiException catch (e) {
       _error = e.message;
-    } on StorageLimitExceededException {
-      // Over the storage cap: skip this reading rather than crash the page.
     } catch (_) {
       // One unreadable price is not worth an error banner.
     } finally {
@@ -257,7 +253,7 @@ class Cs2MarketRepository extends ChangeNotifier {
   }
 
   /// The Community Market rate-limits far more aggressively than the store
-  /// API — this spacing is deliberately wider than
+  /// API â€” this spacing is deliberately wider than
   /// `SteamRepository._storeCallSpacing`.
   static const _marketCallSpacing = Duration(milliseconds: 2600);
 

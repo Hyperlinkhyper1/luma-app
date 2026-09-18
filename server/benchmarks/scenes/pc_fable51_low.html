@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AETHERION NOVA‑9 — Interactive 3D Build</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+<style>
+  :root{--acc:#6cf2ff;--panel:rgba(10,12,18,.78);--line:rgba(255,255,255,.08);}
+  html,body{margin:0;height:100%;overflow:hidden;background:#06070a;font-family:"Segoe UI",Inter,system-ui,sans-serif;color:#dfe6ee;touch-action:none;}
+  #app{position:fixed;inset:0;}
+  canvas{display:block;}
+  #brand{position:fixed;left:22px;top:20px;pointer-events:none;user-select:none;}
+  #brand h1{margin:0;font-size:22px;letter-spacing:.32em;font-weight:700;color:#fff;text-shadow:0 0 18px rgba(108,242,255,.35);}
+  #brand h1 span{color:var(--acc);}
+  #brand p{margin:4px 0 0;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#7d8794;}
+  #hint{position:fixed;left:22px;bottom:18px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#5f6975;pointer-events:none;transition:opacity 1s;}
+  #tip{position:fixed;pointer-events:none;background:rgba(8,10,14,.9);border:1px solid rgba(108,242,255,.35);color:#e6faff;font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:6px 10px;border-radius:4px;transform:translate(14px,-50%);opacity:0;transition:opacity .15s;white-space:nowrap;box-shadow:0 0 18px rgba(108,242,255,.15);}
+  #tip b{display:block;font-size:9px;color:#7f9aa3;letter-spacing:.2em;margin-top:2px;}
+  /* HUD */
+  #hud{position:fixed;right:16px;bottom:16px;width:min(318px,calc(100vw - 32px));max-height:calc(100vh - 32px);display:flex;flex-direction:column;background:var(--panel);backdrop-filter:blur(16px) saturate(140%);-webkit-backdrop-filter:blur(16px);border:1px solid var(--line);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.06);overflow:hidden;font-size:12px;}
+  #hud header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,rgba(255,255,255,.04),transparent);}
+  #hud header .t{font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:#9aa6b2;}
+  #hud header .t i{display:inline-block;width:6px;height:6px;border-radius:50%;background:#3a4250;margin-right:8px;vertical-align:middle;transition:background .4s,box-shadow .4s;}
+  #hud.on header .t i{background:var(--rgb,#6cf2ff);box-shadow:0 0 8px var(--rgb,#6cf2ff);}
+  #collapse{background:none;border:1px solid var(--line);color:#8b96a3;border-radius:6px;width:24px;height:22px;cursor:pointer;font-size:12px;line-height:1;}
+  #collapse:hover{color:#fff;border-color:rgba(255,255,255,.25);}
+  #body{overflow-y:auto;padding:12px 14px 14px;display:flex;flex-direction:column;gap:12px;scrollbar-width:thin;scrollbar-color:#2a3140 transparent;}
+  #hud.min #body{display:none;}
+  .row{display:flex;align-items:center;gap:10px;}
+  .lbl{font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:#7d8794;margin-bottom:6px;display:flex;justify-content:space-between;}
+  .lbl output{color:#c9d3dd;letter-spacing:.05em;font-variant-numeric:tabular-nums;}
+  /* power */
+  #powerRow{display:flex;align-items:center;gap:14px;}
+  #power{position:relative;width:60px;height:60px;border-radius:50%;border:2px solid #2c3442;background:radial-gradient(circle at 50% 35%,#1b2030,#0b0e14 70%);cursor:pointer;display:grid;place-items:center;transition:border-color .4s,box-shadow .4s,transform .1s;flex:none;}
+  #power:active{transform:scale(.94);}
+  #power svg{width:26px;height:26px;stroke:#4b5666;fill:none;stroke-width:2.4;stroke-linecap:round;transition:stroke .4s,filter .4s;}
+  #hud.on #power{border-color:var(--rgb,#6cf2ff);box-shadow:0 0 22px color-mix(in srgb,var(--rgb,#6cf2ff) 55%,transparent),inset 0 0 14px color-mix(in srgb,var(--rgb,#6cf2ff) 25%,transparent);}
+  #hud.on #power svg{stroke:#fff;filter:drop-shadow(0 0 6px var(--rgb,#6cf2ff));}
+  #hud.booting #power{animation:pulse 1s ease-in-out infinite;}
+  @keyframes pulse{50%{box-shadow:0 0 34px color-mix(in srgb,var(--rgb,#6cf2ff) 85%,transparent);}}
+  #status{flex:1;min-width:0;}
+  #status .big{font-size:15px;font-weight:600;letter-spacing:.12em;color:#fff;}
+  #status .sub{font-size:10px;letter-spacing:.14em;color:#7d8794;text-transform:uppercase;margin-top:3px;height:13px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+  /* stats */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+  .stat{background:rgba(255,255,255,.035);border:1px solid var(--line);border-radius:8px;padding:7px 6px;text-align:center;}
+  .stat b{display:block;font-size:14px;font-weight:600;color:#fff;font-variant-numeric:tabular-nums;}
+  .stat span{font-size:8.5px;letter-spacing:.2em;text-transform:uppercase;color:#6f7986;}
+  /* color */
+  #colorRow{display:flex;align-items:center;gap:8px;}
+  #colorWrap{position:relative;width:40px;height:32px;border-radius:8px;overflow:hidden;border:1px solid var(--line);flex:none;background:var(--rgb,#6cf2ff);box-shadow:0 0 12px color-mix(in srgb,var(--rgb,#6cf2ff) 50%,transparent);}
+  #color{position:absolute;inset:-8px;width:60px;height:50px;border:0;padding:0;cursor:pointer;opacity:0;}
+  .swatches{display:flex;gap:6px;flex:1;}
+  .sw{width:22px;height:22px;border-radius:50%;border:2px solid rgba(255,255,255,.12);cursor:pointer;transition:transform .15s,border-color .15s;}
+  .sw:hover{transform:scale(1.15);border-color:#fff;}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;background:linear-gradient(90deg,var(--rgb,#6cf2ff) var(--p,50%),#232a36 var(--p,50%));outline:none;cursor:pointer;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#fff;border:2px solid #0b0e14;box-shadow:0 0 0 1px rgba(255,255,255,.25);}
+  input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:#fff;border:2px solid #0b0e14;}
+  #hueBar{background:linear-gradient(90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)!important;}
+  .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:8px;padding:3px;gap:3px;}
+  .seg button{background:transparent;border:0;color:#8b96a3;font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:6px 2px;border-radius:5px;cursor:pointer;transition:all .2s;}
+  .seg button:hover{color:#fff;}
+  .seg button.act{background:color-mix(in srgb,var(--rgb,#6cf2ff) 22%,rgba(255,255,255,.08));color:#fff;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--rgb,#6cf2ff) 45%,transparent);}
+  .toggles{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  .tg{display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.035);border:1px solid var(--line);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#aeb8c3;transition:all .2s;user-select:none;}
+  .tg:hover{border-color:rgba(255,255,255,.2);color:#fff;}
+  .tg i{width:26px;height:14px;border-radius:7px;background:#232a36;position:relative;flex:none;transition:background .25s;}
+  .tg i::after{content:"";position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;background:#7d8794;transition:all .25s;}
+  .tg.act{border-color:color-mix(in srgb,var(--rgb,#6cf2ff) 45%,transparent);color:#fff;}
+  .tg.act i{background:var(--rgb,#6cf2ff);}
+  .tg.act i::after{left:14px;background:#0b0e14;}
+  .tg.danger.act{border-color:rgba(255,90,90,.6);} .tg.danger.act i{background:#ff5a5a;}
+  .cams{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;}
+  .cams button{background:rgba(255,255,255,.035);border:1px solid var(--line);border-radius:7px;color:#aeb8c3;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;padding:7px 0;cursor:pointer;transition:all .2s;}
+  .cams button:hover{color:#fff;border-color:rgba(255,255,255,.25);background:rgba(255,255,255,.08);}
+  .cams button:active{transform:scale(.95);}
+  #loader{position:fixed;inset:0;background:#06070a;display:grid;place-items:center;z-index:10;transition:opacity .8s;font-size:11px;letter-spacing:.35em;text-transform:uppercase;color:#6cf2ff;}
+  #loader.hide{opacity:0;pointer-events:none;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="loader">Initialising Build…</div>
+<div id="brand"><h1>AETHERION <span>NOVA‑9</span></h1><p>Reference Build · Interactive Showcase</p></div>
+<div id="hint">Drag to orbit · Scroll to zoom · Hover parts to identify</div>
+<div id="tip"></div>
+
+<div id="hud" class="">
+  <header><div class="t"><i></i>System Control</div><button id="collapse" title="Collapse">–</button></header>
+  <div id="body">
+    <div id="powerRow">
+      <button id="power" title="Power"><svg viewBox="0 0 24 24"><path d="M12 3v9"/><path d="M6.3 6.6a8 8 0 1 0 11.4 0"/></svg></button>
+      <div id="status"><div class="big">STANDBY</div><div class="sub" id="statusSub">Press power to boot</div></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="sCpu">—</b><span>CPU °C</span></div>
+      <div class="stat"><b id="sGpu">—</b><span>GPU °C</span></div>
+      <div class="stat"><b id="sRpm">—</b><span>Fan RPM</span></div>
+      <div class="stat"><b id="sW">—</b><span>Watts</span></div>
+    </div>
+    <div>
+      <div class="lbl"><span>RGB Colour</span><output id="hexOut">#6CF2FF</output></div>
+      <div id="colorRow">
+        <div id="colorWrap"><input type="color" id="color" value="#6cf2ff" title="Pick any colour"></div>
+        <div class="swatches" id="swatches"></div>
+      </div>
+      <div style="margin-top:8px"><input type="range" id="hueBar" min="0" max="360" value="187" title="Hue"></div>
+    </div>
+    <div>
+      <div class="lbl"><span>Lighting Mode</span><output id="brightOut">100%</output></div>
+      <div class="seg" id="modes">
+        <button data-m="static" class="act">Static</button><button data-m="breathe">Breathe</button><button data-m="wave">Wave</button><button data-m="rainbow">Spectrum</button>
+      </div>
+      <div style="margin-top:8px"><input type="range" id="bright" min="0" max="100" value="100" title="Brightness"></div>
+    </div>
+    <div>
+      <div class="lbl"><span>Fan Curve</span><output id="fanOut">Auto · 55%</output></div>
+      <input type="range" id="fan" min="0" max="100" value="55">
+    </div>
+    <div class="toggles">
+      <div class="tg" id="tPanel">Side Panel <i></i></div>
+      <div class="tg" id="tExplode">Exploded <i></i></div>
+      <div class="tg" id="tOrbit">Auto Orbit <i></i></div>
+      <div class="tg" id="tSound">Sound <i></i></div>
+      <div class="tg danger" id="tBench" style="grid-column:1/-1">Stress Benchmark <i></i></div>
+    </div>
+    <div>
+      <div class="lbl"><span>Camera</span></div>
+      <div class="cams">
+        <button data-c="hero">Hero</button><button data-c="front">Front</button><button data-c="side">Side</button><button data-c="top">Top</button><button data-c="inside">Inside</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+/* ───────────────────────── renderer / scene ───────────────────────── */
+const app = document.getElementById('app');
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+app.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x06070a);
+scene.fog = new THREE.FogExp2(0x06070a, 0.035);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
+
+const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.1, 100);
+camera.position.set(7.2, 1.9, 5.4);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.07;
+controls.minDistance = 1.2; controls.maxDistance = 16;
+controls.maxPolarAngle = Math.PI * 0.52;
+controls.target.set(0, 0.1, 0);
+controls.autoRotateSpeed = 0.9;
+
+/* lights */
+const key = new THREE.DirectionalLight(0xdfe8ff, 2.2);
+key.position.set(6, 9, 5); key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -0.0006; key.shadow.normalBias = 0.02;
+const sc = key.shadow.camera; sc.near = 1; sc.far = 30; sc.left = sc.bottom = -6; sc.right = sc.top = 6;
+scene.add(key);
+const rim = new THREE.DirectionalLight(0x86a6ff, 0.9); rim.position.set(-7, 4, -6); scene.add(rim);
+scene.add(new THREE.HemisphereLight(0x3a4358, 0x05060a, 0.7));
+const spot = new THREE.SpotLight(0xffffff, 60, 30, 0.6, 0.5, 1.6); spot.position.set(0, 12, 0); spot.target.position.set(0, 0, 0); scene.add(spot, spot.target);
+
+/* ───────────────────────── helpers / materials ───────────────────────── */
+const M = {
+  alu:   new THREE.MeshStandardMaterial({ color: 0x2b2f36, metalness: 0.95, roughness: 0.32 }),
+  aluLt: new THREE.MeshStandardMaterial({ color: 0x5c626c, metalness: 0.95, roughness: 0.25 }),
+  black: new THREE.MeshStandardMaterial({ color: 0x121317, metalness: 0.35, roughness: 0.62 }),
+  blackGloss: new THREE.MeshStandardMaterial({ color: 0x0c0d10, metalness: 0.6, roughness: 0.18 }),
+  pcb:   new THREE.MeshStandardMaterial({ color: 0x0a0e13, metalness: 0.25, roughness: 0.55 }),
+  copper:new THREE.MeshStandardMaterial({ color: 0xc27a3f, metalness: 1, roughness: 0.3 }),
+  nickel:new THREE.MeshStandardMaterial({ color: 0xb9bcc2, metalness: 1, roughness: 0.15 }),
+  cable: new THREE.MeshStandardMaterial({ color: 0x1a1c22, metalness: 0.2, roughness: 0.8 }),
+  cableW:new THREE.MeshStandardMaterial({ color: 0xd9dde3, metalness: 0.1, roughness: 0.75 }),
+  tube:  new THREE.MeshStandardMaterial({ color: 0x15161a, metalness: 0.1, roughness: 0.9 }),
+  glass: new THREE.MeshPhysicalMaterial({ color: 0x9fb8cc, metalness: 0.15, roughness: 0.03, transparent: true, opacity: 0.16, envMapIntensity: 1.8, side: THREE.DoubleSide, depthWrite: false }),
+  bladeBase: { color: 0x1a1d24, metalness: 0.2, roughness: 0.5, transparent: true, opacity: 0.9 },
+  floor: new THREE.MeshStandardMaterial({ color: 0x0b0c10, metalness: 0.6, roughness: 0.35 }),
+};
+
+function rbox(w, h, d, mat, r = 0.02, seg = 2) {
+  const m = new THREE.Mesh(new RoundedBoxGeometry(w, h, d, seg, Math.min(r, Math.min(w, h, d) / 2)), mat);
+  m.castShadow = m.receiveShadow = true; return m;
+}
+function box(w, h, d, mat) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.castShadow = m.receiveShadow = true; return m; }
+function cyl(r, h, mat, seg = 32, rt) { const m = new THREE.Mesh(new THREE.CylinderGeometry(rt ?? r, r, h, seg), mat); m.castShadow = m.receiveShadow = true; return m; }
+function at(m, x, y, z) { m.position.set(x, y, z); return m; }
+function label(obj, name, desc) { obj.userData.label = name; obj.userData.desc = desc; return obj; }
+
+/* canvas textures */
+function canvasTex(w, h, draw, repeat) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat[0], repeat[1]); }
+  return t;
+}
+const finTex = canvasTex(64, 64, (g, w, h) => { g.fillStyle = '#1a1c20'; g.fillRect(0, 0, w, h); g.fillStyle = '#080909'; for (let x = 0; x < w; x += 8) g.fillRect(x, 0, 3, h); }, [24, 1]);
+const meshTex = canvasTex(64, 64, (g, w, h) => { g.fillStyle = '#15171b'; g.fillRect(0, 0, w, h); g.fillStyle = '#040405'; for (let y = 0; y < h; y += 8) for (let x = 0; x < w; x += 8) { g.beginPath(); g.arc(x + 4 + (y % 16 ? 4 : 0), y + 4, 2.4, 0, 7); g.fill(); } }, [12, 24]);
+const ventTex = canvasTex(64, 64, (g, w, h) => { g.fillStyle = '#1b1d22'; g.fillRect(0, 0, w, h); g.fillStyle = '#050506'; for (let y = 4; y < h; y += 12) g.fillRect(4, y, w - 8, 5); }, [1, 6]);
+function textTex(txt, w, h, size, color = '#fff', sub) {
+  return canvasTex(w, h, (g) => {
+    g.fillStyle = '#000'; g.fillRect(0, 0, w, h);
+    g.fillStyle = color; g.font = `700 ${size}px "Segoe UI",Inter,sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.letterSpacing = '6px'; g.fillText(txt, w / 2, sub ? h * 0.42 : h / 2);
+    if (sub) { g.font = `500 ${size * 0.42}px "Segoe UI",Inter,sans-serif`; g.letterSpacing = '3px'; g.fillText(sub, w / 2, h * 0.75); }
+  });
+}
+const finMat = new THREE.MeshStandardMaterial({ map: finTex, metalness: 0.8, roughness: 0.45 });
+const meshMat = new THREE.MeshStandardMaterial({ map: meshTex, metalness: 0.7, roughness: 0.5 });
+const ventMat = new THREE.MeshStandardMaterial({ map: ventTex, metalness: 0.8, roughness: 0.45 });
+
+/* ───────────────────────── RGB engine ───────────────────────── */
+const rgbItems = [];   // {mat, phase, delay, strength, lvl}
+const rgbLights = [];
+function rgbMat(delay = 1.5, strength = 2.2, extra = {}) {
+  const m = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.45, metalness: 0, emissive: 0xffffff, emissiveIntensity: 0, ...extra });
+  rgbItems.push({ mat: m, phase: 0, delay, strength, lvl: 0 }); return m;
+}
+function rgbLight(x, y, z, delay, intensity = 5, dist = 4) {
+  const l = new THREE.PointLight(0xffffff, 0, dist, 1.6); l.position.set(x, y, z); scene.add(l);
+  rgbLights.push({ light: l, phase: (y + z) / 8 + 0.5, delay, intensity, lvl: 0 }); return l;
+}
+
+/* ───────────────────────── fan factory ───────────────────────── */
+const rotors = [];
+function makeFan(size = 1.2, delay = 1.6, thick = 0.25) {
+  const g = new THREE.Group();
+  const t = 0.075, s = size / 2;
+  const frameMat = M.black;
+  [[0, s - t / 2, size, t], [0, -s + t / 2, size, t], [s - t / 2, 0, t, size], [-s + t / 2, 0, t, size]].forEach(([x, y, w, h]) => g.add(at(rbox(w, h, thick, frameMat, 0.02), x, y, 0)));
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(s - 0.06, 0.045, 10, 48), frameMat); ring.castShadow = true; g.add(ring);
+  // corner gussets
+  [[1, 1], [-1, 1], [1, -1], [-1, -1]].forEach(([a, b]) => g.add(at(box(0.12, 0.12, thick * 0.9, frameMat), a * (s - 0.1), b * (s - 0.1), 0)));
+  // RGB rings (front & back)
+  const rm = rgbMat(delay, 2.4);
+  const r1 = new THREE.Mesh(new THREE.TorusGeometry(s - 0.13, 0.022, 8, 56), rm); r1.position.z = thick / 2 - 0.01; g.add(r1);
+  const r2 = r1.clone(); r2.position.z = -thick / 2 + 0.01; g.add(r2);
+  // rotor
+  const rotor = new THREE.Group();
+  const hubMat = rgbMat(delay + 0.2, 1.4, { color: 0x101216, roughness: 0.3, metalness: 0.4 });
+  const hub = cyl(size * 0.17, thick * 0.8, hubMat, 32); hub.rotation.x = Math.PI / 2; rotor.add(hub);
+  const cap = new THREE.Mesh(new THREE.CircleGeometry(size * 0.11, 32), rgbMat(delay + 0.3, 3)); cap.position.z = thick * 0.4 + 0.002; rotor.add(cap);
+  const bladeMat = rgbMat(delay + 0.1, 0.55, M.bladeBase);
+  const bladeGeo = new THREE.BoxGeometry(size * 0.31, size * 0.13, 0.012);
+  bladeGeo.translate(size * 0.31 / 2 + size * 0.15, 0, 0);
+  for (let i = 0; i < 9; i++) {
+    const b = new THREE.Mesh(bladeGeo, bladeMat); b.castShadow = true;
+    b.rotation.set(0, 0, (i / 9) * Math.PI * 2);
+    b.rotateX(0.62); rotor.add(b);
+  }
+  g.add(rotor); rotors.push(rotor);
+  return g;
+}
+
+/* ───────────────────────── case ───────────────────────── */
+const W = 2.3, H = 5.0, D = 4.6, hx = W / 2, hy = H / 2, hz = D / 2;
+const pc = new THREE.Group(); scene.add(pc);
+const explodables = [];
+function explodable(g, off) { explodables.push({ g, home: g.position.clone(), off: new THREE.Vector3(...off) }); return g; }
+
+const frame = new THREE.Group(); pc.add(frame);
+const bar = 0.09;
+// 12 edges
+for (const sy of [-1, 1]) for (const sz of [-1, 1]) frame.add(at(rbox(W + bar, bar, bar, M.alu, 0.03), 0, sy * hy, sz * hz));
+for (const sx of [-1, 1]) for (const sz of [-1, 1]) frame.add(at(rbox(bar, H + bar, bar, M.alu, 0.03), sx * hx, 0, sz * hz));
+for (const sx of [-1, 1]) for (const sy of [-1, 1]) frame.add(at(rbox(bar, bar, D + bar, M.alu, 0.03), sx * hx, sy * hy, 0));
+// panels
+frame.add(label(at(box(0.04, H, D, M.black), -hx, 0, 0), 'Rear Side Panel', 'Brushed steel · cable chamber'));
+frame.add(label(at(box(W - 0.1, 0.04, D - 0.1, M.black), 0, -hy, 0), 'Chassis Floor', 'Anti-vibration base'));
+frame.add(label(at(box(W - 0.1, 0.05, D - 0.1, meshMat), 0, hy + 0.06, 0), 'Top Mesh Panel', 'Magnetic dust filter'));
+frame.add(label(at(box(W - 0.1, H - 0.1, 0.05, meshMat), 0, 0, hz + 0.06), 'Front Mesh Panel', 'High-airflow intake'));
+const rearPanel = at(box(W - 0.1, H - 0.1, 0.04, M.black), 0, 0, -hz); frame.add(label(rearPanel, 'Rear I/O Panel', 'Exhaust · PCIe slots'));
+frame.add(at(box(1.1, 1.1, 0.02, ventMat), -0.2, 1.1, -hz - 0.03)); // rear vent
+for (let i = 0; i < 7; i++) frame.add(at(box(0.16, 0.8, 0.02, ventMat), -0.9 + i * 0.28, -0.9, -hz - 0.03)); // pcie slot covers
+// motherboard tray
+const tray = at(box(0.05, H - 1.0, D - 0.1, M.alu), -0.95, 0.5, 0); frame.add(label(tray, 'Motherboard Tray', 'Cable routing grommets'));
+[[0.7, 0.75, 0.9, 0.35], [1.7, -1.6, 0.9, 0.3], [-1.45, -1.0, 0.35, 0.8], [0.3, 1.9, 0.6, 0.25]].forEach(([z, y, h, w]) => frame.add(at(rbox(0.03, h, w, M.blackGloss, 0.04), -0.92, y, z)));
+// feet
+for (const sx of [-1, 1]) for (const sz of [-1, 1]) frame.add(at(cyl(0.16, 0.14, M.blackGloss, 24), sx * (hx - 0.3), -hy - 0.1, sz * (hz - 0.45)));
+// front logo strip / power LED
+const frontStrip = new THREE.Mesh(new THREE.BoxGeometry(0.03, 2.6, 0.02), rgbMat(3.0, 3)); frontStrip.position.set(0.85, 0.3, hz + 0.09); frame.add(frontStrip);
+// Glass side panel
+const glass = new THREE.Mesh(new THREE.BoxGeometry(0.05, H - 0.12, D - 0.12), M.glass); glass.position.set(hx + 0.03, 0, 0); glass.userData.noPick = true; glass.renderOrder = 10;
+const glassGroup = new THREE.Group(); glassGroup.add(glass);
+[[0, hy - 0.1], [0, -hy + 0.1]].forEach(([_, y]) => glassGroup.add(at(rbox(0.06, 0.08, D - 0.2, M.blackGloss, 0.02), hx + 0.04, y, 0)));
+for (const sy of [-1, 1]) for (const sz of [-1, 1]) glassGroup.add(at(cyl(0.05, 0.03, M.aluLt, 16).rotateZ(Math.PI / 2), hx + 0.08, sy * (hy - 0.1), sz * (hz - 0.25)));
+pc.add(explodable(glassGroup, [1.6, 0, 0]));
+label(glassGroup, 'Tempered Glass Panel', '4mm smoked · tool-less');
+
+/* PSU shroud */
+const shroud = new THREE.Group();
+shroud.add(label(at(rbox(W - 0.12, 1.0, D - 0.12, M.black, 0.03), 0, -2.0, 0), 'PSU Shroud', 'AETHERION Volt 1000W Titanium'));
+shroud.add(at(box(0.02, 0.3, 1.1, ventMat), hx - 0.06, -2.05, -1.2));
+const psuLogo = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.24), rgbMat(0.05, 2.2, { emissiveMap: textTex('VOLT 1000', 512, 128, 60), color: 0x000000 }));
+psuLogo.position.set(hx - 0.04, -2.0, 0.6); psuLogo.rotation.y = Math.PI / 2; shroud.add(psuLogo);
+const shroudStrip = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.02, 3.4), rgbMat(2.8, 3)); shroudStrip.position.set(hx - 0.2, -1.49, -0.3); shroud.add(shroudStrip);
+// shroud grommets
+[[0.9, 0.35], [-0.2, 0.35]].forEach(([z, w]) => shroud.add(at(rbox(0.5, 0.03, w, M.blackGloss, 0.04), 0.3, -1.49, z)));
+pc.add(shroud);
+
+/* ───────────────────────── motherboard ───────────────────────── */
+const mobo = new THREE.Group(); mobo.position.set(-0.92, 0.1, -0.78); pc.add(mobo);
+label(mobo, 'Motherboard', 'AETHERION Z-Prime Nexus · E-ATX');
+mobo.add(at(box(0.03, 3.05, 2.44, M.pcb), 0, 0, 0));
+const mx = 0.015; // board surface local x
+// IO shroud
+const io = at(rbox(0.32, 0.75, 0.5, M.blackGloss, 0.03), mx + 0.16, 1.1, -0.95); mobo.add(io);
+const ioLogo = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.16), rgbMat(1.3, 2.4, { emissiveMap: textTex('AETHERION', 512, 128, 66), color: 0 }));
+ioLogo.position.set(mx + 0.33, 1.1, -0.95); ioLogo.rotation.y = Math.PI / 2; mobo.add(ioLogo);
+// VRM heatsinks
+mobo.add(at(box(0.25, 0.22, 1.1, finMat), mx + 0.125, 1.32, -0.15));
+mobo.add(at(box(0.25, 0.9, 0.22, finMat), mx + 0.125, 0.75, -0.66));
+// heatpipe joining vrm
+const hp = cyl(0.03, 0.9, M.nickel, 12); hp.rotation.x = Math.PI / 2; hp.position.set(mx + 0.28, 1.36, -0.15); mobo.add(hp);
+// chipset heatsink + m.2 covers
+mobo.add(label(at(rbox(0.06, 0.55, 0.55, M.blackGloss, 0.02), mx + 0.03, -0.7, 0.55), 'Chipset Heatsink', 'Z-Prime PCH · passive'));
+const chipLogo = new THREE.Mesh(new THREE.CircleGeometry(0.11, 32), rgbMat(1.5, 2.6)); chipLogo.position.set(mx + 0.065, -0.7, 0.55); chipLogo.rotation.y = Math.PI / 2; mobo.add(chipLogo);
+mobo.add(label(at(rbox(0.05, 0.22, 0.95, M.aluLt, 0.015), mx + 0.025, -0.15, 0.45), 'NVMe Heatsink', 'Gen5 SSD 4TB'));
+mobo.add(label(at(rbox(0.05, 0.22, 0.95, M.aluLt, 0.015), mx + 0.025, -1.2, 0.2), 'NVMe Heatsink', 'Gen5 SSD 2TB'));
+// pcie slots
+[0.0, -0.45, -0.95].forEach(y => mobo.add(at(box(0.07, 0.07, 1.25, M.blackGloss), mx + 0.035, y + 0.05, 0.05)));
+// 24 pin header, sata, battery, caps
+mobo.add(at(box(0.12, 0.45, 0.12, M.blackGloss), mx + 0.06, 0.6, 1.15));
+[0.0, -0.15, -0.3].forEach(y => mobo.add(at(box(0.08, 0.1, 0.16, M.blackGloss), mx + 0.04, -1.2 + y, 1.1)));
+const capGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.1, 10);
+for (let i = 0; i < 16; i++) { const c = new THREE.Mesh(capGeo, M.nickel); c.rotation.z = Math.PI / 2; c.position.set(mx + 0.05, 1.05 - Math.floor(i / 8) * 1.75, -0.85 + (i % 8) * 0.13 + 0.5); mobo.add(c); }
+// debug LEDs
+const dbgCols = [0xff3b3b, 0xffd23b, 0xffffff, 0x3bff7a]; const dbgMats = dbgCols.map(c => new THREE.MeshStandardMaterial({ color: 0x0a0a0a, emissive: c, emissiveIntensity: 0 }));
+dbgMats.forEach((m, i) => { const l = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.05, 0.05), m); l.position.set(mx + 0.02, 1.25, 0.82 + i * 0.08); mobo.add(l); });
+// CPU socket bracket (peeks beneath pump)
+mobo.add(at(box(0.04, 0.62, 0.62, M.aluLt), mx + 0.02, 0.75, -0.22));
+
+/* RAM */
+const ramG = new THREE.Group(); ramG.position.set(-0.9, 0.85, -0.05); label(ramG, 'DDR5 Memory', 'AETHERION Lumen 4×16GB · 7200MT/s');
+for (let i = 0; i < 4; i++) {
+  const s = new THREE.Group(); s.position.z = -0.14 + i * 0.095;
+  s.add(at(box(0.36, 1.3, 0.02, M.pcb), 0.18, 0, 0));
+  s.add(at(rbox(0.42, 1.3, 0.06, i % 2 ? M.aluLt : M.alu, 0.015), 0.21, 0, 0));
+  const bar = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.26, 0.062), rgbMat(1.0 + i * 0.12, 2.6, { roughness: 0.3 })); bar.position.set(0.44, 0, 0); s.add(bar);
+  ramG.add(s);
+}
+pc.add(explodable(ramG, [0.8, 0.5, 0]));
+
+/* ───────────────────────── AIO pump + radiator ───────────────────────── */
+const pumpG = new THREE.Group(); pumpG.position.set(-0.9, 0.85, -1.0); label(pumpG, 'CPU Liquid Block', 'AETHERION Cryo-Halo 360 · 2.1" LCD');
+pumpG.add(at(cyl(0.3, 0.06, M.copper, 32).rotateZ(Math.PI / 2), 0.03, 0, 0));
+pumpG.add(at(cyl(0.44, 0.32, M.blackGloss, 48).rotateZ(Math.PI / 2), 0.22, 0, 0));
+const pumpRing = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.025, 10, 64), rgbMat(2.4, 3)); pumpRing.rotation.y = Math.PI / 2; pumpRing.position.x = 0.385; pumpG.add(pumpRing);
+// LCD
+const lcdCanvas = document.createElement('canvas'); lcdCanvas.width = lcdCanvas.height = 256; const lg = lcdCanvas.getContext('2d');
+const lcdTex = new THREE.CanvasTexture(lcdCanvas); lcdTex.colorSpace = THREE.SRGBColorSpace;
+const lcdMat = new THREE.MeshBasicMaterial({ map: lcdTex, toneMapped: false });
+const lcd = new THREE.Mesh(new THREE.CircleGeometry(0.34, 48), lcdMat); lcd.rotation.y = Math.PI / 2; lcd.position.x = 0.386; pumpG.add(lcd);
+// tubes to radiator
+function tube(points, r, mat, seg = 40) { const c = new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(...p))); const m = new THREE.Mesh(new THREE.TubeGeometry(c, seg, r, 12, false), mat); m.castShadow = true; return m; }
+[[0.22, 0.34, -0.2], [0.22, 0.34, 0.0]].forEach(([x, y, z], i) => {
+  const dz = i ? 0.1 : -0.1;
+  pumpG.add(tube([[x, y, z], [x + 0.05, y + 0.35, z + dz * 2], [x + 0.35, y + 0.75, z - 0.5 + dz], [0.8, 1.2, -0.9 + dz]], 0.055, M.tube));
+  pumpG.add(at(cyl(0.07, 0.12, M.nickel, 16), x, y + 0.05, z)); // fittings
+});
+pc.add(explodable(pumpG, [1.2, 0.3, 0]));
+
+// top radiator + fans
+const topG = new THREE.Group(); label(topG, '360mm Radiator', 'Copper core · 3× Halo 120 fans');
+const rad = at(box(1.15, 0.27, 3.6, finMat), 0.05, 2.1, -0.1); topG.add(rad);
+topG.add(at(rbox(1.17, 0.29, 0.22, M.blackGloss, 0.03), 0.05, 2.1, -1.85));
+topG.add(at(rbox(1.17, 0.29, 0.22, M.blackGloss, 0.03), 0.05, 2.1, 1.65));
+topG.add(at(box(1.17, 0.29, 0.06, M.black), 0.05, 2.1, -0.1)); // center brace
+[-1.3, -0.05, 1.2].forEach((z, i) => { const f = makeFan(1.2, 1.6 + i * 0.15); f.rotation.x = -Math.PI / 2; f.position.set(0.05, 1.845, z); topG.add(f); });
+pc.add(explodable(topG, [0, 1.3, 0]));
+
+// front intake fans
+const frontG = new THREE.Group(); label(frontG, 'Front Intake Fans', '3× Halo 120 ARGB · 1800 RPM');
+[-0.85, 0.4, 1.65].forEach((y, i) => { const f = makeFan(1.2, 1.9 + i * 0.15); f.rotation.y = Math.PI; f.position.set(0.05, y, 2.0); frontG.add(f); });
+pc.add(explodable(frontG, [0, 0, 1.4]));
+// rear exhaust
+const rearG = new THREE.Group(); label(rearG, 'Rear Exhaust Fan', 'Halo 120 ARGB');
+const rf = makeFan(1.1, 2.2); rf.position.set(-0.2, 1.1, -2.15); rearG.add(rf);
+pc.add(explodable(rearG, [0, 0, -1.2]));
+
+/* ───────────────────────── GPU (vertical mount) ───────────────────────── */
+const gpu = new THREE.Group(); gpu.position.set(-0.55, -0.68, -0.5); label(gpu, 'Graphics Card', 'AETHERION Vortex RX‑9 · 24GB · triple axial');
+gpu.add(at(rbox(0.05, 1.28, 3.0, M.aluLt, 0.02), 0, 0, 0)); // backplate
+gpu.add(at(box(0.5, 1.2, 2.9, finMat), 0.3, 0, 0)); // fin stack
+gpu.add(at(rbox(0.12, 1.3, 3.0, M.black, 0.04), 0.55, 0, 0)); // shroud face plate
+gpu.add(at(box(0.5, 1.2, 0.04, M.blackGloss), 0.3, 0, 1.48)); // front end cap
+gpu.add(at(box(0.5, 1.2, 0.04, M.blackGloss), 0.3, 0, -1.48)); // rear end cap
+// front face cutouts represented by fan wells
+[-0.98, 0, 0.98].forEach((z, i) => {
+  gpu.add(at(cyl(0.47, 0.06, M.blackGloss, 40).rotateZ(Math.PI / 2), 0.58, 0, z));
+  const f = makeFan(0.95, 2.0 + i * 0.12, 0.16); f.rotation.y = Math.PI / 2; f.position.set(0.62, 0, z); gpu.add(f);
+});
+// heatpipes
+for (let i = 0; i < 5; i++) { const h = cyl(0.028, 2.7, M.nickel, 10); h.rotation.x = Math.PI / 2; h.position.set(0.08 + i * 0.1, 0.63, 0); gpu.add(h); }
+// top edge RGB + logo
+const gpuStrip = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.02, 2.4), rgbMat(2.0, 3)); gpuStrip.position.set(0.33, 0.685, 0); gpu.add(gpuStrip);
+const gpuLogo = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.2), rgbMat(2.1, 2.6, { emissiveMap: textTex('VORTEX RX-9', 768, 110, 62), color: 0 }));
+gpuLogo.position.set(0.33, 0.697, -0.5); gpuLogo.rotation.set(-Math.PI / 2, 0, Math.PI / 2); gpu.add(gpuLogo);
+const gpuSide = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.3), rgbMat(2.1, 2.2, { emissiveMap: textTex('AETHERION', 512, 154, 58, '#fff', 'VORTEX SERIES'), color: 0 }));
+gpuSide.position.set(0.6, -0.9 + 0.3, 1.501); gpuSide.rotation.set(0, 0, 0); gpuSide.position.set(0.32, 0.05, 1.501); gpu.add(gpuSide);
+// bracket + power connector
+gpu.add(at(box(0.7, 1.3, 0.03, M.aluLt), 0.3, 0.05, -1.52));
+gpu.add(at(box(0.16, 0.12, 0.35, M.blackGloss), 0.35, 0.72, 0.8));
+// vertical mount bracket + riser ribbon
+gpu.add(at(box(0.04, 1.4, 0.3, M.alu), -0.3, 0, -1.4));
+const riser = at(box(0.35, 0.03, 1.1, M.cable), -0.2, -0.6, 0.1); riser.rotation.z = 0.5; gpu.add(riser);
+// support rod
+gpu.add(at(cyl(0.02, 0.8, M.aluLt, 10), 0.4, -1.0, 1.2));
+pc.add(explodable(gpu, [1.4, 0, 0]));
+
+/* ───────────────────────── cables ───────────────────────── */
+const cables = new THREE.Group(); pc.add(cables); label(cables, 'Sleeved Cables', 'Custom individually-sleeved · cable combs');
+function bundle(pts, n, mat, r = 0.022, spread = 0.03, axis = 'y') {
+  for (let i = 0; i < n; i++) {
+    const o = (i - (n - 1) / 2) * spread;
+    cables.add(tube(pts.map(([x, y, z]) => axis === 'y' ? [x, y + o, z] : [x + o, y, z]), r, mat, 36));
+  }
+}
+// 24-pin: from header to grommet
+bundle([[-0.78, 0.7, 0.42], [-0.62, 0.7, 0.62], [-0.72, 0.7, 0.9], [-0.98, 0.72, 0.75]], 6, M.cable, 0.022, 0.032);
+bundle([[-0.78, 0.5, 0.42], [-0.62, 0.5, 0.64], [-0.72, 0.5, 0.92], [-0.98, 0.52, 0.75]], 6, M.cable, 0.022, 0.032);
+cables.add(at(rbox(0.05, 0.42, 0.06, M.blackGloss, 0.01), -0.62, 0.6, 0.64)); // comb
+// GPU 16-pin: from connector up, loop toward glass and down to shroud grommet
+bundle([[-0.2, 0.05, 0.3], [-0.05, 0.55, 0.45], [0.55, 0.45, 0.75], [0.7, -0.6, 0.95], [0.3, -1.48, 0.9]], 6, M.cable, 0.02, 0.03, 'x');
+cables.add(at(rbox(0.22, 0.05, 0.05, M.blackGloss, 0.01), 0.58, 0.0, 0.85)); // comb
+// CPU EPS: from mobo top rear to tray grommet
+bundle([[-0.8, 1.55, -1.85], [-0.6, 1.7, -1.75], [-0.85, 1.85, -1.6], [-0.98, 1.9, -1.45]], 4, M.cable, 0.02, 0.03, 'x');
+// ARGB fan leads (white accents)
+bundle([[-0.5, 1.72, -1.3], [-0.72, 1.6, -1.2], [-0.98, 1.75, -1.15]], 1, M.cableW, 0.014);
+bundle([[-0.35, 0.4, 1.4], [-0.6, 0.35, 1.2], [-0.98, 0.3, 1.0]], 1, M.cableW, 0.014);
+
+/* internal ambient RGB lights */
+rgbLight(0.3, 1.0, -0.2, 1.4, 7, 5);
+rgbLight(0.4, -0.7, 0.4, 2.0, 5, 4);
+rgbLight(0.2, 0.6, 1.9, 1.9, 4, 3.5);
+const glowFloor = rgbLight(0, -2.7, 0, 2.8, 4, 6);
+
+/* floor */
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), M.floor); floor.rotation.x = -Math.PI / 2; floor.position.y = -hy - 0.17; floor.receiveShadow = true; scene.add(floor);
+const gridTex = canvasTex(256, 256, (g, w, h) => { g.fillStyle = '#0b0c10'; g.fillRect(0, 0, w, h); g.strokeStyle = '#15171d'; g.lineWidth = 2; g.strokeRect(0, 0, w, h); }, [40, 40]);
+M.floor.map = gridTex; M.floor.needsUpdate = true;
+// soft pad under PC
+const pad = new THREE.Mesh(new THREE.CircleGeometry(4.5, 64), new THREE.MeshStandardMaterial({ color: 0x0f1117, roughness: 0.25, metalness: 0.7 })); pad.rotation.x = -Math.PI / 2; pad.position.y = -hy - 0.165; pad.receiveShadow = true; scene.add(pad);
+
+// compute phases for RGB items
+{
+  const v = new THREE.Vector3();
+  scene.updateMatrixWorld(true);
+  scene.traverse(o => { if (o.isMesh && o.material && rgbItems.some(it => it.mat === o.material)) { o.getWorldPosition(v); const it = rgbItems.find(it => it.mat === o.material); if (it.phase === 0) it.phase = (v.y + 2.5) / 5 * 0.6 + (v.z + 2.3) / 4.6 * 0.4; } });
+}
+
+/* ───────────────────────── post ───────────────────────── */
+const rt = new THREE.WebGLRenderTarget(innerWidth, innerHeight, { type: THREE.HalfFloatType, samples: 4 });
+const composer = new EffectComposer(renderer, rt);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.55, 0.6, 0.82); composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+/* ───────────────────────── state ───────────────────────── */
+const S = {
+  powered: false, bootT: 0, offT: 10, mode: 'static', color: new THREE.Color('#6cf2ff'), bright: 1,
+  fanSlider: 0.55, fanCur: 0, spin: 0, bench: false, explode: 0, explodeOn: false, panelOff: false, panelT: 0,
+  cpu: 24, gpu: 24, watts: 0, sound: false, clock: 0,
+};
+const hud = document.getElementById('hud');
+const $ = id => document.getElementById(id);
+function setCssColor() { document.documentElement.style.setProperty('--rgb', '#' + S.color.getHexString()); $('hexOut').textContent = '#' + S.color.getHexString().toUpperCase(); }
+setCssColor();
+
+/* audio */
+let AC = null, humGain = null;
+function initAudio() {
+  if (AC) return; AC = new (window.AudioContext || window.webkitAudioContext)();
+  const len = AC.sampleRate * 2, buf = AC.createBuffer(1, len, AC.sampleRate), d = buf.getChannelData(0); let last = 0;
+  for (let i = 0; i < len; i++) { const w = Math.random() * 2 - 1; last = (last + 0.02 * w) / 1.02; d[i] = last * 3.5; }
+  const src = AC.createBufferSource(); src.buffer = buf; src.loop = true;
+  const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 320;
+  humGain = AC.createGain(); humGain.gain.value = 0; src.connect(lp).connect(humGain).connect(AC.destination); src.start();
+}
+function click(freq = 1200, dur = 0.05, vol = 0.12) {
+  if (!S.sound || !AC) return; const o = AC.createOscillator(), g = AC.createGain(); o.type = 'square'; o.frequency.value = freq;
+  g.gain.setValueAtTime(vol, AC.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + dur); o.connect(g).connect(AC.destination); o.start(); o.stop(AC.currentTime + dur);
+}
+function chime() { if (!S.sound || !AC) return; [660, 880, 1320].forEach((f, i) => setTimeout(() => { const o = AC.createOscillator(), g = AC.createGain(); o.type = 'sine'; o.frequency.value = f; g.gain.setValueAtTime(0.08, AC.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + 0.35); o.connect(g).connect(AC.destination); o.start(); o.stop(AC.currentTime + 0.4); }, i * 110)); }
+
+/* ───────────────────────── HUD wiring ───────────────────────── */
+const statusBig = document.querySelector('#status .big'), statusSub = $('statusSub');
+$('power').addEventListener('click', () => {
+  S.powered = !S.powered; hud.classList.toggle('on', S.powered);
+  if (S.sound) { initAudio(); click(S.powered ? 900 : 400); }
+  if (S.powered) { S.bootT = 0; hud.classList.add('booting'); } else { S.offT = 0; hud.classList.remove('booting'); if (S.bench) { S.bench = false; toggle($('tBench'), false); } }
+  updateStatus();
+});
+function updateStatus() {
+  if (!S.powered) { statusBig.textContent = 'STANDBY'; statusSub.textContent = 'Press power to boot'; }
+  else if (S.bootT < 3.2) { statusBig.textContent = 'BOOTING'; }
+  else if (S.bench) { statusBig.textContent = 'STRESS TEST'; statusSub.textContent = 'Thermal load · 100% utilisation'; }
+  else { statusBig.textContent = 'ONLINE'; statusSub.textContent = 'Idle · ' + S.mode.toUpperCase() + ' lighting'; }
+}
+const colorInput = $('color'), hueBar = $('hueBar');
+colorInput.addEventListener('input', e => { S.color.set(e.target.value); const hsl = {}; S.color.getHSL(hsl); hueBar.value = Math.round(hsl.h * 360); setCssColor(); });
+hueBar.addEventListener('input', e => { const hsl = {}; S.color.getHSL(hsl); S.color.setHSL(e.target.value / 360, Math.max(hsl.s, 0.85), 0.55); colorInput.value = '#' + S.color.getHexString(); setCssColor(); });
+['#6cf2ff', '#ff3d6e', '#8f5bff', '#3bff7a', '#ffb02e', '#ffffff'].forEach(c => { const b = document.createElement('div'); b.className = 'sw'; b.style.background = c; b.title = c; b.onclick = () => { S.color.set(c); colorInput.value = c; const hsl = {}; S.color.getHSL(hsl); hueBar.value = Math.round(hsl.h * 360); setCssColor(); click(1500, 0.03, 0.05); }; $('swatches').appendChild(b); });
+$('modes').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.mode = b.dataset.m; [...e.currentTarget.children].forEach(x => x.classList.toggle('act', x === b)); updateStatus(); click(1400, 0.03, 0.05); });
+function rangeFill(el) { el.style.setProperty('--p', ((el.value - el.min) / (el.max - el.min) * 100) + '%'); }
+const brightEl = $('bright'), fanEl = $('fan');
+brightEl.addEventListener('input', () => { S.bright = brightEl.value / 100; $('brightOut').textContent = brightEl.value + '%'; rangeFill(brightEl); });
+fanEl.addEventListener('input', () => { S.fanSlider = fanEl.value / 100; const v = +fanEl.value; $('fanOut').textContent = (v < 25 ? 'Silent' : v < 70 ? 'Auto' : v < 95 ? 'Performance' : 'Turbo') + ' · ' + v + '%'; rangeFill(fanEl); });
+[brightEl, fanEl].forEach(rangeFill);
+function toggle(el, force) { const on = force ?? !el.classList.contains('act'); el.classList.toggle('act', on); return on; }
+$('tPanel').onclick = e => { S.panelOff = toggle(e.currentTarget); click(); };
+$('tExplode').onclick = e => { S.explodeOn = toggle(e.currentTarget); click(); };
+$('tOrbit').onclick = e => { controls.autoRotate = toggle(e.currentTarget); click(); };
+$('tSound').onclick = e => { S.sound = toggle(e.currentTarget); if (S.sound) { initAudio(); AC.resume(); click(); } };
+$('tBench').onclick = e => { S.bench = toggle(e.currentTarget); if (S.bench && !S.powered) $('power').click(); click(S.bench ? 700 : 500); updateStatus(); };
+$('collapse').onclick = () => { hud.classList.toggle('min'); $('collapse').textContent = hud.classList.contains('min') ? '+' : '–'; };
+const camPresets = { hero: [[7.2, 1.9, 5.4], [0, 0.1, 0]], front: [[1.2, 0.6, 9.0], [0, 0.2, 0]], side: [[9.2, 0.6, 0.3], [0, 0.1, 0]], top: [[2.5, 9.5, 1.5], [0, 0, 0]], inside: [[2.1, 0.5, 0.9], [-0.5, 0.4, -0.4]] };
+let camTween = null;
+document.querySelector('.cams').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; const p = camPresets[b.dataset.c]; camTween = { t: 0, p0: camera.position.clone(), t0: controls.target.clone(), p1: new THREE.Vector3(...p[0]), t1: new THREE.Vector3(...p[1]) }; click(1000, 0.04, 0.06); });
+controls.addEventListener('start', () => { camTween = null; document.getElementById('hint').style.opacity = 0; });
+
+/* hover picking */
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2(); const tip = $('tip'); let hoverPending = false, hoverEvt = null;
+renderer.domElement.addEventListener('pointermove', e => { hoverEvt = e; hoverPending = true; });
+renderer.domElement.addEventListener('pointerleave', () => { tip.style.opacity = 0; });
+function doHover() {
+  hoverPending = false; const e = hoverEvt; if (!e) return;
+  ptr.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(ptr, camera);
+  const hits = ray.intersectObject(pc, true); let found = null;
+  for (const h of hits) { if (h.object.userData.noPick) continue; let o = h.object; while (o && !o.userData.label) o = o.parent; if (o) { found = o; break; } else break; }
+  if (found) { tip.innerHTML = found.userData.label + '<b>' + found.userData.desc + '</b>'; tip.style.left = e.clientX + 'px'; tip.style.top = e.clientY + 'px'; tip.style.opacity = 1; renderer.domElement.style.cursor = 'crosshair'; }
+  else { tip.style.opacity = 0; renderer.domElement.style.cursor = ''; }
+}
+
+/* ───────────────────────── LCD drawing ───────────────────────── */
+const history = new Array(48).fill(30);
+function drawLCD(level) {
+  const w = 256, cx = 128; lg.clearRect(0, 0, w, w); lg.fillStyle = '#000'; lg.fillRect(0, 0, w, w);
+  if (level <= 0.01) { lcdTex.needsUpdate = true; return; }
+  const col = '#' + S.color.getHexString();
+  lg.save(); lg.globalAlpha = level;
+  if (S.bootT < 3.2) {
+    // boot logo
+    const p = Math.min(1, S.bootT / 2.8);
+    lg.strokeStyle = col; lg.lineWidth = 6; lg.lineCap = 'round';
+    lg.beginPath(); lg.arc(cx, cx, 92, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * p); lg.stroke();
+    lg.fillStyle = '#fff'; lg.font = '700 26px "Segoe UI",sans-serif'; lg.textAlign = 'center'; lg.textBaseline = 'middle'; lg.letterSpacing = '4px';
+    lg.fillText('AETHERION', cx, 112);
+    lg.font = '500 13px "Segoe UI",sans-serif'; lg.fillStyle = col; lg.letterSpacing = '3px';
+    const stages = ['PSU OK', 'MEMORY OK', 'CPU INIT', 'GPU LINK', 'POST OK'];
+    lg.fillText(stages[Math.min(4, Math.floor(S.bootT / 0.65))], cx, 148);
+  } else {
+    const t = Math.round(S.cpu), frac = (t - 20) / 80;
+    lg.strokeStyle = '#1b1f27'; lg.lineWidth = 12; lg.beginPath(); lg.arc(cx, cx, 100, Math.PI * 0.75, Math.PI * 2.25); lg.stroke();
+    lg.strokeStyle = S.bench ? '#ff5a5a' : col; lg.lineCap = 'round'; lg.beginPath(); lg.arc(cx, cx, 100, Math.PI * 0.75, Math.PI * 0.75 + Math.PI * 1.5 * Math.min(1, frac)); lg.stroke();
+    lg.fillStyle = '#fff'; lg.textAlign = 'center'; lg.textBaseline = 'middle'; lg.font = '700 64px "Segoe UI",sans-serif'; lg.letterSpacing = '0px'; lg.fillText(t + '°', cx + 6, 112);
+    lg.font = '500 12px "Segoe UI",sans-serif'; lg.fillStyle = '#8b96a3'; lg.letterSpacing = '3px'; lg.fillText(S.bench ? 'STRESS · CPU' : 'CPU PACKAGE', cx, 160);
+    // mini graph
+    lg.strokeStyle = col; lg.lineWidth = 2; lg.beginPath();
+    history.forEach((v, i) => { const x = 62 + i * (132 / 47), y = 208 - (v - 20) / 80 * 28; i ? lg.lineTo(x, y) : lg.moveTo(x, y); }); lg.stroke();
+    lg.fillStyle = '#8b96a3'; lg.font = '500 11px "Segoe UI",sans-serif'; lg.fillText('GPU ' + Math.round(S.gpu) + '°  ·  ' + Math.round(S.fanCur * 2050 + 350) + ' RPM', cx, 222);
+  }
+  lg.restore(); lcdTex.needsUpdate = true;
+}
+
+/* ───────────────────────── main loop ───────────────────────── */
+const clock = new THREE.Clock(); const tmpC = new THREE.Color(); const hsl = { h: 0, s: 0, l: 0 };
+let lcdAcc = 0, statAcc = 0, histAcc = 0;
+const smooth = (a, b, k) => a + (b - a) * k;
+function itemColor(phase, t, out) {
+  S.color.getHSL(hsl); let k = 1;
+  switch (S.mode) {
+    case 'static': out.copy(S.color); break;
+    case 'breathe': out.copy(S.color); k = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * 1.6)); break;
+    case 'wave': out.setHSL((hsl.h + 1 + 0.09 * Math.sin(t * 1.4 - phase * 5.0)) % 1, Math.max(hsl.s, 0.7), hsl.l); k = 0.6 + 0.4 * Math.sin(t * 1.4 - phase * 5.0 + 1.2); break;
+    case 'rainbow': out.setHSL((t * 0.07 + phase * 0.8) % 1, 1, 0.55); break;
+  }
+  return k;
+}
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05); const t = (S.clock += dt);
+  if (S.powered) S.bootT += dt; else S.offT += dt;
+  if (S.powered && S.bootT > 3.2 && hud.classList.contains('booting')) { hud.classList.remove('booting'); chime(); updateStatus(); }
+  if (S.powered && S.bootT < 3.2) statusSub.textContent = ['Power good…', 'Memory training…', 'CPU init…', 'GPU link…', 'POST complete'][Math.min(4, Math.floor(S.bootT / 0.65))];
+
+  /* fans */
+  const fanTarget = S.powered ? (S.bootT > 0.7 ? Math.min(1, 0.25 + 0.75 * S.fanSlider + (S.bench ? 0.35 : 0)) : 0) : 0;
+  S.fanCur = smooth(S.fanCur, fanTarget, 1 - Math.exp(-dt * (S.powered ? 0.9 : 0.45)));
+  S.spin += S.fanCur * 2.6 * Math.PI * 2 * dt;
+  rotors.forEach((r, i) => { r.rotation.z = S.spin * (i % 2 ? 1 : -1) * (i > 9 ? 1.15 : 1); });
+
+  /* thermals */
+  const cpuT = S.powered ? (S.bench ? 86 - 8 * S.fanSlider : 44 - 14 * S.fanSlider) : 24, gpuT = S.powered ? (S.bench ? 79 - 6 * S.fanSlider : 40 - 10 * S.fanSlider) : 24;
+  S.cpu = smooth(S.cpu, cpuT + Math.sin(t * 2.3) * 0.8, 1 - Math.exp(-dt * 0.25));
+  S.gpu = smooth(S.gpu, gpuT + Math.sin(t * 1.7) * 0.6, 1 - Math.exp(-dt * 0.2));
+  S.watts = smooth(S.watts, S.powered ? (S.bench ? 690 : 165) + Math.sin(t * 5) * 6 : 0, 1 - Math.exp(-dt * 1.2));
+
+  /* RGB */
+  for (const it of rgbItems) {
+    const target = S.powered && S.bootT > it.delay ? 1 : 0;
+    it.lvl = smooth(it.lvl, target, 1 - Math.exp(-dt * (target ? 3 : 2.2)));
+    if (it.lvl < 0.002 && it.mat.emissiveIntensity === 0) continue;
+    const k = itemColor(it.phase, t, tmpC);
+    it.mat.emissive.copy(tmpC); it.mat.emissiveIntensity = it.strength * S.bright * it.lvl * k;
+  }
+  for (const L of rgbLights) {
+    const target = S.powered && S.bootT > L.delay ? 1 : 0;
+    L.lvl = smooth(L.lvl, target, 1 - Math.exp(-dt * 3));
+    const k = itemColor(L.phase, t, tmpC); L.light.color.copy(tmpC); L.light.intensity = L.intensity * S.bright * L.lvl * k;
+  }
+  /* debug LEDs & PSU */
+  dbgMats.forEach((m, i) => { const on = S.powered && S.bootT > 0.15 + i * 0.32 && (i === 3 ? true : S.bootT < 0.5 + i * 0.32); m.emissiveIntensity = smooth(m.emissiveIntensity, on ? 4 : 0, 1 - Math.exp(-dt * 12)); });
+
+  /* explode / panel */
+  S.explode = smooth(S.explode, S.explodeOn ? 1 : 0, 1 - Math.exp(-dt * 3));
+  S.panelT = smooth(S.panelT, S.panelOff ? 1 : 0, 1 - Math.exp(-dt * 3));
+  const ease = x => x * x * (3 - 2 * x);
+  for (const ex of explodables) {
+    const e = ex.g === glassGroup ? Math.max(ease(S.explode), ease(S.panelT)) : ease(S.explode);
+    ex.g.position.copy(ex.home).addScaledVector(ex.off, e);
+  }
+  glass.material.opacity = 0.16 * (1 - 0.6 * ease(S.panelT) * (1 - ease(S.explode)));
+
+  /* camera tween */
+  if (camTween) { camTween.t += dt / 1.4; const k = ease(Math.min(1, camTween.t)); camera.position.lerpVectors(camTween.p0, camTween.p1, k); controls.target.lerpVectors(camTween.t0, camTween.t1, k); if (camTween.t >= 1) camTween = null; }
+  controls.update();
+
+  /* LCD + stats */
+  const lcdLevel = S.powered ? Math.min(1, Math.max(0, (S.bootT - 0.4) / 0.6)) : Math.max(0, 1 - S.offT * 2.5);
+  lcdAcc += dt; if (lcdAcc > 0.1) { lcdAcc = 0; drawLCD(lcdLevel); }
+  histAcc += dt; if (histAcc > 0.5) { histAcc = 0; history.push(S.cpu); history.shift(); }
+  statAcc += dt; if (statAcc > 0.25) {
+    statAcc = 0; const on = S.powered && S.bootT > 1.5;
+    $('sCpu').textContent = on ? Math.round(S.cpu) : '—'; $('sGpu').textContent = on ? Math.round(S.gpu) : '—';
+    $('sRpm').textContent = S.fanCur > 0.02 ? Math.round(S.fanCur * 2050 + 350) : '—'; $('sW').textContent = S.watts > 2 ? Math.round(S.watts) : '—';
+  }
+  if (humGain) humGain.gain.value = S.sound ? S.fanCur * 0.35 : 0;
+  if (hoverPending) doHover();
+
+  bloom.strength = 0.45 + 0.25 * S.bright;
+  composer.render();
+}
+animate();
+setTimeout(() => document.getElementById('loader').classList.add('hide'), 300);
+// auto boot shortly after load for an immediate showcase
+setTimeout(() => { if (!S.powered) $('power').click(); }, 1400);
+
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight); });
+addEventListener('keydown', e => { if (e.code === 'Space' && !e.target.closest('input,button')) { e.preventDefault(); $('power').click(); } });
+</script>
+</body>
+</html>

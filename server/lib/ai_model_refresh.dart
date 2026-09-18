@@ -47,6 +47,21 @@ Future<AiRefreshStatus> refreshAiCatalog(
     results.add(openRouter.result);
     if (openRouter.models.isNotEmpty) {
       added.addAll(await store.upsertModels(openRouter.models));
+
+      // Only a pass that actually came back may blank anything — see
+      // [AiModelCatalogStore.retireRatingsExcept] for why scores from a
+      // retired index scale have to go rather than linger.
+      final retired = await store.retireRatingsExcept({
+        for (final m in openRouter.models)
+          if (m.llmStatsIndex != null) m.id,
+      });
+      if (retired.isNotEmpty) {
+        results.add(AiRefreshSourceResult(
+          source: 'retired-ratings',
+          ok: true,
+          applied: retired.length,
+        ));
+      }
     }
 
     // Fetching already only keeps the allowed vendors, but that alone can't
