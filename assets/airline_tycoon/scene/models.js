@@ -423,7 +423,7 @@ window.AirportModels = (() => {
     for (const x of [.5, fw - .5]) paint(root, 0, fd, x, false, .5, white, cuts);
     for (const z of [.5, fd - .5]) paint(root, 0, fw, z, true, .5, white, cuts);
     // lead-in line enters from the -X (airside) edge and ends at a stop bar near +X
-    const stopX = w - (regional ? 9 : 14), cz = d / 2;
+    const stopX = w - (regional ? 9 : 14), cz = Number.isFinite(context?.lane) ? context.lane : d / 2;
     decal(g, stopX, .6, stopX / 2, cz, yellow);
     decal(g, .6, 8, stopX, cz, yellow);
     for (let x = 6; x < stopX - 4; x += 10) decal(g, .25, 2.2, x, cz, 0x1f1f1f, .165);
@@ -443,25 +443,58 @@ window.AirportModels = (() => {
     for (const z of [cz - 4, cz + 4]) cone(g, stopX - 16, z);
     lamp(g, 2.5, 2.5, regional ? 10 : 15);
     pool(g, w * .42, d / 2, Math.min(w, d) * .42);
-    if (contact) jetBridge(g, w, d);
+    if (contact) jetBridge(g, w, d, cz);
   }
-  /** Rotunda against the terminal plus a telescopic tunnel towards the nose. */
-  function jetBridge(g, w, d) {
-    const glass = 0x5fb4d6, frame = 0xd9dee2, dark = 0x3c4b52;
-    const rx = w - 4.5, rz = d * .5 + 11;
+  /** A jet bridge from the terminal to the aircraft's front left door: a
+      glass link out of the facade, the rotunda, a telescopic tunnel and the
+      cab with its bellows against the fuselage. The simulation walks
+      passengers along the same points (AirportWorld.bridgeRotunda/Cab). */
+  function jetBridge(g, w, d, lane) {
+    const glass = 0x5fb4d6, frame = 0xd9dee2, dark = 0x3c4b52, floor = 4.2;
+    const rx = w - 4.5, rz = Math.max(4.5, lane - 12);
+    const cx = w - 18.8, cz = lane - 5.2;
+    box(g, 4.5, 2.6, 3, w - 2.25, floor + 1.3, rz, glass, 'glass');
+    box(g, 4.5, .35, 3.4, w - 2.25, floor + 2.75, rz, frame, 'metal');
+    box(g, 4.5, .3, 3.4, w - 2.25, floor - .15, rz, frame, 'metal');
     cylinder(g, 4, 5, rx, 5.5, rz, glass, 'glass');
     cylinder(g, 4.3, .6, rx, 8.3, rz, frame, 'metal');
     cylinder(g, 4.3, .5, rx, 3, rz, frame, 'metal');
     cylinder(g, .7, 3, rx, 1.5, rz, 0xb8c0c4, 'metal');
-    const tx = w - 14 + 3, tz = d / 2 - 3.5;
-    const ex = rx + (tx - rx) * .05, ez = rz + (tz - rz) * .05;
-    line(g, ex, ez, tx, tz, 3, glass, 5.4, 'glass', 2.4);
-    line(g, ex, ez, tx, tz, 3.4, frame, 6.8, 'metal', .35);
-    line(g, ex, ez, tx, tz, 3.4, frame, 4.1, 'metal', .35);
-    box(g, 3.2, 3, 3.2, tx, 5.5, tz, dark, 'metal');
-    cylinder(g, .3, 3.8, tx, 1.9, tz, 0x9aa4a8, 'metal');
-    box(g, 2.6, .6, 1, tx, .5, tz, 0x404b50, 'metal');
+    const ex = rx + (cx - rx) * .12, ez = rz + (cz - rz) * .12;
+    line(g, ex, ez, cx, cz, 3, glass, floor + 1.2, 'glass', 2.4);
+    line(g, ex, ez, cx, cz, 3.4, frame, floor + 2.6, 'metal', .35);
+    line(g, ex, ez, cx, cz, 3.4, frame, floor - .1, 'metal', .35);
+    box(g, 3.2, 3, 3.2, cx, floor + 1.3, cz, dark, 'metal');
+    box(g, 1.6, 2.5, 1.4, cx, floor + 1.25, cz + 2.2, 0x2b3237, 'metal');
+    cylinder(g, .3, floor - .4, cx, (floor - .4) / 2, cz, 0x9aa4a8, 'metal');
+    box(g, 2.6, .6, 1, cx, .5, cz, 0x404b50, 'metal');
+    for (const x of [cx - .9, cx + .9]) cylinder(g, .35, .3, x, .35, cz, 0x1d2427).rotation.z = Math.PI / 2;
   }
+  /** Mobile stairs rolled up to a parked aircraft's front left door, in the
+      aircraft's own frame (nose towards -Z, left wing towards -X). */
+  function airstairsBody(modelId) {
+    const g = new T.Group(), s = spec(modelId);
+    const cy = s.radius + (s.wide ? 2.4 : 1.6), sill = cy - s.radius * .35;
+    const doorZ = -s.length / 2 + s.length * .14 + 1;
+    const near = -s.radius - .35, far = -s.radius - 5;
+    // Truck base under the flight of stairs.
+    box(g, 5.2, .7, 2.2, (near + far) / 2 - .4, .75, doorZ, 0xf2c230);
+    box(g, 1.8, 1.4, 2.2, far - .2, 1.3, doorZ, 0xf2c230);
+    box(g, .1, .7, 1.8, far - 1.12, 1.55, doorZ, 0x2c4d57, 'glass');
+    for (const x of [far + .4, near - .9]) for (const z of [doorZ - 1, doorZ + 1]) cylinder(g, .4, .3, x, .4, z, 0x1d2427).rotation.x = Math.PI / 2;
+    // The flight itself, rising to the sill, with handrails and a platform.
+    const run = far - near, rise = sill - 1.1, length = Math.hypot(run, rise);
+    const steps = box(g, length, .18, 1.5, (near + far) / 2, 1.1 + rise / 2, doorZ, 0xd9dee2, 'metal');
+    steps.rotation.z = Math.atan2(rise, -run);
+    for (const z of [doorZ - .78, doorZ + .78]) {
+      const rail = box(g, length, .06, .06, (near + far) / 2, 2.1 + rise / 2, z, 0xb8c0c4, 'metal');
+      rail.rotation.z = Math.atan2(rise, -run);
+    }
+    box(g, 1.2, .14, 1.6, near + .1, sill - .05, doorZ, 0xd9dee2, 'metal');
+    box(g, .06, 1, 1.6, near - .5, sill + .45, doorZ, 0xb8c0c4, 'metal');
+    return g;
+  }
+  const airstairs = modelId => instance(`stairs:${String(modelId || '').toLowerCase()}`, () => airstairsBody(modelId));
   /** Sliding-door entrance set into a facade: glass doors parked open, a
       teal header with the sign, a transom above and a mat inside. */
   function doorway(g, a, b, put, height, wall, facing, sign) {
@@ -3289,5 +3322,5 @@ window.AirportModels = (() => {
     return sprite;
   }
 
-  return {init, setNight, weather, noseFrame, facility, facilityFrame, carouselLoop, loopPoint, aircraft, vehicle, personGeometry, tree, palm, box, cylinder, sphere, decal, line, shape, light, pool, lamp, instance, bake, dispose, caption, label, materials, textures, spec};
+  return {init, setNight, weather, noseFrame, airstairs, facility, facilityFrame, carouselLoop, loopPoint, aircraft, vehicle, personGeometry, tree, palm, box, cylinder, sphere, decal, line, shape, light, pool, lamp, instance, bake, dispose, caption, label, materials, textures, spec};
 })();

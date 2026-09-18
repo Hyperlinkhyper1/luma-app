@@ -964,6 +964,14 @@ class AirlineTycoonRepository extends ChangeNotifier
             ...f.toJson(),
             'protected': world.protected(f),
             'upgradeCost': world.upgradeCost(f),
+            'upgradeCosts': {
+              for (final u in facilityUpgrades(f.kind))
+                u.id: world.upgradeCost(f, u.id),
+            },
+            if (standKinds.contains(f.kind)) ...{
+              'nose': world.standNose(f),
+              'lane': world.standLane(f),
+            },
             if (f.kind == 'entrance') 'door': _door(world.entranceDoor(f)),
           },
       ],
@@ -1085,7 +1093,11 @@ class AirlineTycoonRepository extends ChangeNotifier
         case 'demolish':
           error = world.demolish(_state, string('facilityId'));
         case 'upgrade':
-          error = world.upgrade(_state, string('facilityId'));
+          error = world.upgrade(
+            _state,
+            string('facilityId'),
+            attribute: string('attribute'),
+          );
         case 'buyVehicle':
           final depotArg = args['depotId'] is String
               ? args['depotId'] as String

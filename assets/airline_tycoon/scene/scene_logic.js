@@ -14,14 +14,12 @@ window.AirportSceneLogic = (() => {
     if(!def)return result('Waiting for construction catalog.');
     if(!Number.isFinite(p.x)||!Number.isFinite(p.y)||Math.abs(p.x)>4000||Math.abs(p.y)>4000)return result('Build inside the airport boundary (±4 km).');
     if(tool.moveId&&!old)return result('That building no longer exists.');
-    if(old&&(typeof old.protected==='boolean'?old.protected:(world.flights||[]).some(f=>!['completed','cancelled'].includes(f.stage)&&f.arrival<=world.time+120&&f.departure+180>=world.time)))return result('This facility is in use or needed by an imminent flight.');
     if(old&&old.kind!==tool.kind)return result('A moved building must keep its original type.');
     const candidate={x:p.x,y:p.y,width:p.w,depth:p.d};
     if(tool.kind==='standContact'&&!buildings.some(b=>b.kind==='terminal'&&gap(b,candidate)<=1))return result('A jet bridge needs this stand to touch a terminal section.');
     if(p.x+p.w>4000||p.y+p.d>4000)return result('The building extends beyond airport land.');
     if(interior.has(tool.kind)&&!buildings.some(b=>b.kind==='terminal'&&contains(b,candidate)))return result('Place this completely inside a terminal section.');
     for(const b of buildings)if(b.id!==old?.id&&overlaps(candidate,b)&&!(interior.has(tool.kind)&&b.kind==='terminal')&&!(tool.kind==='terminal'&&interior.has(b.kind)))return result(`This overlaps ${catalog.find(d=>d.kind===b.kind)?.name||friendly(b.kind)}.`);
-    if(old?.kind==='terminal'&&buildings.some(b=>interior.has(b.kind)&&contains(old,b)))return result('Move or remove the terminal furnishings first.');
     if(world.cash<cost)return result('Not enough cash for this construction.');
     return result(null);
   }

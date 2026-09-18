@@ -197,8 +197,11 @@ window.AirportLandside = (() => {
     }
     label(g, 'DEPARTURES', 10.25, 9, -K * .5, 1.7, '#eef6f4', {rotY: Math.PI / 2, width: 5});
     label(g, 'ARRIVALS', 10.25, 9, K * .5, 1.7, '#eef6f4', {rotY: Math.PI / 2, width: 5});
-    // Kerbside road: buses stop at the canopy, cars use the outer lane.
-    box(g, 16, .1, 2 * K + 100, 14, .05, -26, C.road, 'asphalt');
+    // Kerbside road: buses stop at the canopy, cars use the outer lane. It
+    // sits just above the forecourt paving, runs on into the bus station and
+    // meets the main road through a paved junction.
+    box(g, 13, .14, 2 * K + 106, 15.5, .07, -27, C.road, 'asphalt');
+    box(g, 12, .14, 2 * ROAD.half, 27, .07, 0, C.road, 'asphalt');
     box(g, .6, .35, 2 * K, 9.4, .22, 0, C.kerb, 'concrete');
     for (let v = -K - 70; v < K + 20; v += 8) decal(g, .18, 4.4, 14, v, C.paint);
     decal(g, .16, 2 * K + 96, 21.7, -26, 0xe0b23a);
@@ -445,13 +448,19 @@ window.AirportLandside = (() => {
   }
 
   /** The one-way forecourt loop: main road in, bus station, kerb, road out. */
+  /** Kerb lane (heading +v, next to the canopy) and outer lane (heading −v)
+      of the forecourt road, as u in metres out from the terminal wall. */
+  const KERB = {near: 12.4, far: 18.6};
   function paths(L) {
     const K = L.K, ring = arc(RING.at, 0, RING.radius, Math.PI * .78, -Math.PI * .78, 8);
+    // In on the main road, down the outer lane to the bus station, round
+    // and back up the kerb lane past the doors, then out the way it came.
     const road = route([
-      [ROAD.end - 44, -ROAD.lane], [128, -ROAD.lane], [36, -26], [28, -(K + 50)], [26, -(K + 84)],
-      [14, -(K + 94)], [14, -(K + 62)], [14, K + 22], [32, K + 12], [48, 24], [128, ROAD.lane],
+      [ROAD.end - 44, -ROAD.lane], [40, -ROAD.lane], [KERB.far, -ROAD.lane],
+      [KERB.far, -(K + 92)], [KERB.near, -(K + 92)], [KERB.near, K + 16],
+      [KERB.far, K + 16], [KERB.far, ROAD.lane], [40, ROAD.lane],
       [ROAD.end - 44, ROAD.lane], ...ring,
-    ], {radius: 11});
+    ], {radius: 6});
     const tram = route([
       [TRAM.at - TRAM.apart / 2, -(EDGE + 4)], [TRAM.at - TRAM.apart / 2, EDGE + 4],
       ...arc(TRAM.at, EDGE + 4, TRAM.apart / 2, Math.PI, 0, 6),
@@ -466,7 +475,7 @@ window.AirportLandside = (() => {
     ], {radius: 3.5});
     return {road, tram, rail};
   }
-  const townSpeed = p => p.u < 50 ? .5 : p.u < 120 ? .72 : 1;
+  const townSpeed = p => p.u < 50 ? .45 : p.u < 120 ? .72 : 1;
 
   // ── Assembly ──────────────────────────────────────────────────────────
   const UP = new T.Vector3(0, 1, 0), ONE = new T.Vector3(1, 1, 1);
@@ -505,7 +514,7 @@ window.AirportLandside = (() => {
     cars.castShadow = true;
     for (let i = 0; i < CARS; i++) cars.setColorAt(i, new T.Color(carPaint[(i * 7) % carPaint.length]));
     group.add(cars);
-    const traffic = Array.from({length: CARS}, (_, i) => ({s: road.length * i / CARS, lane: i % 2 ? -2.6 : 2.6}));
+    const traffic = Array.from({length: CARS}, (_, i) => ({s: road.length * i / CARS, lane: i % 2 ? -1.4 : 1.4}));
 
     const movers = [];
     function fleet(count, r, {speed, dwell = 0, stops = [], lane = 0, y = 0, slow = null, parts}) {
@@ -521,7 +530,7 @@ window.AirportLandside = (() => {
     }
     fleet(6, road, {
       speed: 13, dwell: 9, lane: 2.6, slow: townSpeed,
-      stops: [arcOf(road, 14, -(L.K + 74)), arcOf(road, 14, -(L.K + 40)), arcOf(road, 14, -L.K * .4), arcOf(road, 14, L.K * .5)],
+      stops: [arcOf(road, KERB.near, -(L.K + 70)), arcOf(road, KERB.near, -(L.K + 40)), arcOf(road, KERB.near, -L.K * .4), arcOf(road, KERB.near, L.K * .5)],
       parts: [['bus', busBody, 0]],
     });
     fleet(3, tram, {
@@ -560,13 +569,13 @@ window.AirportLandside = (() => {
       update(dt, {activity = .3, night = 0, paused = false, speed = 1} = {}) {
         const step = paused ? 0 : dt * Math.min(2.2, 1 + (Math.max(1, speed) - 1) * .12);
         const busy = Math.max(0, Math.min(1, activity));
-        const wanted = Math.max(6, Math.round((12 + 48 * busy) * (1 - .45 * Math.max(0, Math.min(1, night)))));
-        const stride = Math.max(1, Math.round(CARS / wanted));
+        const wanted = Math.round(CARS * busy * (1 - .45 * Math.max(0, Math.min(1, night))));
+        const stride = wanted ? Math.max(1, Math.round(CARS / wanted)) : Infinity;
         let n = 0;
         for (let i = 0; i < CARS; i++) {
           const c = traffic[i];
           c.s = (c.s + 16 * townSpeed(at(road, c.s)) * step) % road.length;
-          if (i % stride) continue;
+          if (!wanted || i % stride) continue;
           const p = at(road, c.s, c.lane);
           quat.setFromAxisAngle(UP, Math.atan2(-p.du, -p.dv));
           pos.set(p.u, 0, p.v);
@@ -576,7 +585,7 @@ window.AirportLandside = (() => {
         cars.instanceMatrix.needsUpdate = true;
         // Only the buses come and go with demand; trams and trains keep to
         // their timetable however quiet the airport is.
-        const buses = Math.max(1, Math.round(1 + 5 * busy));
+        const buses = busy > 0 ? Math.max(1, Math.round(6 * busy)) : 0;
         for (const m of movers) move(m, step);
         for (let i = 0; i < 6; i++) for (const part of movers[i].parts) part.mesh.visible = i < buses;
       },

@@ -92,9 +92,10 @@ assert(!logic.validate({...testWorld,cash:0},{kind:'checkIn'},{x:10,y:10,w:8,d:4
 assert(!logic.validate(testWorld,{kind:'stand'},{x:3990,y:0,w:60,d:65}).valid);
 const stand={id:'s',kind:'stand',x:200,y:200,width:60,depth:65};
 assert(logic.validate({...testWorld,facilities:[stand]},{kind:'stand',moveId:'s'},{x:200,y:200,w:60,d:65}).valid);
-assert(!logic.validate({...testWorld,flights:[{stage:'boarding',arrival:0,departure:50}]},{kind:'terminal',moveId:'t'},{x:0,y:0,w:120,d:60}).valid);
+// Buildings move even while in use; a terminal takes its furnishings along.
+assert(logic.validate({...testWorld,flights:[{stage:'boarding',arrival:0,departure:50}]},{kind:'terminal',moveId:'t'},{x:0,y:0,w:120,d:60}).valid);
 assert(logic.validate({...testWorld,facilities:[{...terminal,protected:false}],flights:[{stage:'boarding',arrival:0,departure:50}]},{kind:'terminal',moveId:'t'},{x:0,y:0,w:120,d:60}).valid);
-assert(!logic.validate({...testWorld,facilities:[{...terminal,protected:true}]},{kind:'terminal',moveId:'t'},{x:0,y:0,w:120,d:60}).valid);
+assert(logic.validate({...testWorld,facilities:[{...terminal,protected:true},{id:'c',kind:'checkIn',x:10,y:10,width:8,depth:4}]},{kind:'terminal',moveId:'t'},{x:300,y:300,w:120,d:60}).valid);
 const longTaxiway={id:'long-taxiway',kind:'taxiway',width:20,depth:1700,rotation:0};
 assert.deepEqual(Array.from(logic.footprint({facilities:[longTaxiway]},{kind:'taxiway',moveId:longTaxiway.id,rotation:0})),[20,1700]);
 assert.deepEqual(Array.from(logic.footprint({facilities:[longTaxiway]},{kind:'taxiway',moveId:longTaxiway.id,rotation:1})),[1700,20]);
@@ -199,7 +200,9 @@ console.log('PASS: containment, overlaps, funds, boundaries, move exclusions/pro
   rebuilt.update(1 / 30, {activity: 0, night: 1, paused: false, speed: 1});
   const quiet = cars.count;
   assert(quiet < busy, `a quiet airport at night thins the traffic (${busy} to ${quiet})`);
-  assert(quiet >= 6, 'the road is never completely empty');
+  assert.equal(quiet, 0, 'nobody arriving or leaving, nobody on the road');
+  const buses = rebuilt.group.children.filter(o => o.userData.mover === 'bus');
+  assert(buses.every(b => !b.visible), 'and no buses either');
 
   rebuilt.update(1 / 30, {activity: 1, paused: true, speed: 1});
   const before = new THREE.Vector3().setFromMatrixPosition(readMatrix(cars, 0));

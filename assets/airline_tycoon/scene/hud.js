@@ -98,7 +98,7 @@ window.AirportHud = (() => {
   const modelName = id => S.world?.modelNames?.[id] || friendly(id);
   const modelClass = id => S.world?.modelClasses?.[id] || '';
   const vehicleName = kind => ({fuel: 'Fuel truck', baggage: 'Baggage tug', bus: 'Passenger bus', pushback: 'Pushback tug'}[kind]) || friendly(kind);
-  const stageName = stage => ({approach: 'On approach', positioning: 'Towed to the stand', taxiIn: 'Taxiing to stand', taxiOut: 'Taxiing to runway', unloading: 'Unloading passengers', servicing: 'Ground services', departing: 'Taking off', remote: 'Flying the route', enRoute: 'Flying the route', awaitingStand: 'Waiting for a stand', awaitingAirport: 'Waiting for airport access'}[stage]) || friendly(stage);
+  const stageName = stage => ({approach: 'On approach', positioning: 'Towed to the stand', toHangar: 'Towed to the hangar', landing: 'Landing', pushback: 'Pushing back', boarding: 'Boarding', taxiIn: 'Taxiing to stand', taxiOut: 'Taxiing to runway', unloading: 'Unloading passengers', servicing: 'Ground services', departing: 'Taking off', remote: 'Flying the route', enRoute: 'Flying the route', awaitingStand: 'Waiting for a stand', awaitingAirport: 'Waiting for airport access'}[stage]) || friendly(stage);
   const standKinds = new Set(['stand', 'standRegional', 'standContact']);
   const stands = () => list('facilities').filter(f => standKinds.has(f.kind));
   const standCode = f => `${f.kind === 'standRegional' ? 'R' : f.kind === 'standContact' ? 'A' : 'B'}${String(f.id || '').replace(/\D/g, '').slice(-2).padStart(2, '0')}`;
@@ -322,9 +322,14 @@ window.AirportHud = (() => {
     if (f.kind === 'vehicleDepot') tabs.push(['vehicles', 'Vehicles', 'truck']);
     return tabs;
   }
+  /** What [f] offers to upgrade, each with its current level and next price. */
+  function upgradesOf(f, def) {
+    const list = def?.upgrades?.length ? def.upgrades : def?.upgrade ? [{id: 'main', ...def.upgrade}] : [];
+    return list.map(u => ({...u, level: f.levels?.[u.id] ?? (u === list[0] ? f.level || 1 : 1), cost: f.upgradeCosts ? f.upgradeCosts[u.id] ?? null : u === list[0] ? f.upgradeCost ?? null : null}));
+  }
   function invested(f, def) {
     let total = def?.cost || 0;
-    for (let level = 1; level < (f.level || 1); level++) total += upgradeCostAt(def?.cost || 0, level);
+    for (const u of upgradesOf(f, def)) for (let level = 1; level < u.level; level++) total += upgradeCostAt(def?.cost || 0, level);
     return total;
   }
   function standFlights(f) {
@@ -345,15 +350,16 @@ window.AirportHud = (() => {
     if (!tabs.some(([id]) => id === S.manage.tab)) S.manage.tab = 'general';
     const tab = S.manage.tab, cash = S.world?.cash ?? 0;
     const flights = tab === 'flights' ? standFlights(f).slice(0, 30) : [];
-    const signature = JSON.stringify([f, def?.upgrade, tab, S.manage.confirm, cash >= (f.upgradeCost ?? Infinity),
+    const upgrades = upgradesOf(f, def);
+    const signature = JSON.stringify([f, upgrades, tab, S.manage.confirm, upgrades.map(u => cash >= (u.cost ?? Infinity)),
       flights.map(x => [x.id, x.stage, x.arrival, x.departure]),
       tab === 'vehicles' ? [list('vehicles').map(v => v.kind), S.world?.vehicleCosts, Object.values(S.world?.vehicleCosts || {}).map(p => cash >= p)] : 0]);
     if (!force && signatures.manage === signature) return;
     signatures.manage = signature;
     $('manage-title').textContent = `${facilityName(f.kind)}${standKinds.has(f.kind) ? ` ${standCode(f)}` : ''}`;
-    const level = f.level || 1;
-    $('manage-level').textContent = def?.upgrade ? `Level ${level}` : '';
-    $('manage-level').classList.toggle('hidden', !def?.upgrade);
+    const level = upgrades[0]?.level || 1;
+    $('manage-level').textContent = upgrades.length ? `Level ${upgrades.reduce((n, u) => n + u.level, 0) - upgrades.length + 1}` : '';
+    $('manage-level').classList.toggle('hidden', !upgrades.length);
     $('manage-tabs').innerHTML = tabs.map(([id, label, icon]) => `<button type="button" role="tab" aria-selected="${id === tab}" class="${id === tab ? 'on' : ''}" data-manage-tab="${id}">${svg(icon)}<span>${esc(label)}</span></button>`).join('');
     const key = `manage:${f.kind}:${f.width}x${f.depth}`;
     let html = `<div class="manage-grid"><div>
@@ -365,7 +371,7 @@ window.AirportHud = (() => {
       const stat = (label, value) => `<div class="stat"><span class="label">${esc(label)}</span><span class="value">${value}</span></div>`;
       html += '<div class="stat-list">';
       html += stat('Status', f.connected ? '<span class="badge ok">Connected</span>' : '<span class="badge warn">Disconnected</span>');
-      if (def?.upgrade) html += stat(def.upgrade.attribute, `Level ${level} of ${MAX_LEVEL}`);
+      for (const u of upgrades) html += stat(u.attribute, `Level ${u.level} of ${MAX_LEVEL}`);
       html += stat('Footprint', `${esc(f.width)} × ${esc(f.depth)} m`);
       html += stat('In use', f.protected ? 'Yes · locked for flights' : 'No');
       if (standKinds.has(f.kind)) html += stat('Planned flights', String(standFlights(f).length));
@@ -376,19 +382,20 @@ window.AirportHud = (() => {
       html += '<div class="manage-actions">';
       if (f.kind === 'terminal') html += `<button type="button" class="filled" data-action="interior">${svg('interior')}Edit interior</button>`;
       html += `<button type="button" class="outline" data-manage="focus">${svg('focus')}Focus camera</button><button type="button" class="outline" data-manage="move">${svg('move')}Move</button>`;
-      if (def?.upgrade && f.upgradeCost != null) html += `<button type="button" class="outline" data-manage-tab="upgrade">${svg('upgrade')}Upgrade</button>`;
+      if (upgrades.some(u => u.cost != null)) html += `<button type="button" class="outline" data-manage-tab="upgrade">${svg('upgrade')}Upgrade</button>`;
       html += '</div>';
     } else if (tab === 'upgrade') {
-      if (!def?.upgrade) {
+      if (!upgrades.length) {
         html += '<div class="empty" style="padding:0">This building has no upgrades. It already does everything it can.</div>';
-      } else {
-        const cost = f.upgradeCost, maxed = cost == null || level >= MAX_LEVEL, affordable = !maxed && cash >= cost;
+      }
+      for (const u of upgrades) {
+        const maxed = u.cost == null || u.level >= MAX_LEVEL, affordable = !maxed && cash >= u.cost;
         html += `<div class="upgrade">
-          <div class="up-head"><span class="up-name">${esc(def.upgrade.attribute)}</span><span class="up-levels">${level}${maxed ? '' : `<span class="arrow">→</span><span class="pos">${level + 1}</span>`}</span></div>
-          <div class="up-bar" role="progressbar" aria-label="${esc(def.upgrade.attribute)} level" aria-valuemin="1" aria-valuemax="${MAX_LEVEL}" aria-valuenow="${level}">${Array.from({length: MAX_LEVEL}, (_, i) => `<span class="${i < level ? 'on' : i === level && !maxed ? 'next' : ''}"></span>`).join('')}</div>
-          <p class="up-effect">${esc(def.upgrade.effect)}</p>
-          ${maxed ? `<div class="up-max">${svg('star')}Maximum level</div>` : `<button type="button" class="filled up-buy" data-manage="upgrade" ${affordable ? '' : 'disabled'} title="Upgrade to level ${level + 1}">${svg('upgrade')}${esc(exactMoney(cost))}</button>`}
-          ${!maxed && !affordable ? `<div class="sub neg" style="margin-top:6px">You need ${esc(money(cost - cash))} more cash.</div>` : ''}
+          <div class="up-head"><span class="up-name">${esc(u.attribute)}</span><span class="up-levels">${u.level}${maxed ? '' : `<span class="arrow">→</span><span class="pos">${u.level + 1}</span>`}</span></div>
+          <div class="up-bar" role="progressbar" aria-label="${esc(u.attribute)} level" aria-valuemin="1" aria-valuemax="${MAX_LEVEL}" aria-valuenow="${u.level}">${Array.from({length: MAX_LEVEL}, (_, i) => `<span class="${i < u.level ? 'on' : i === u.level && !maxed ? 'next' : ''}"></span>`).join('')}</div>
+          <p class="up-effect">${esc(u.effect)}</p>
+          ${maxed ? `<div class="up-max">${svg('star')}Maximum level</div>` : `<button type="button" class="filled up-buy" data-manage="upgrade" data-attribute="${esc(u.id)}" ${affordable ? '' : 'disabled'} title="Upgrade ${esc(u.attribute.toLowerCase())} to level ${u.level + 1}">${svg('upgrade')}${esc(exactMoney(u.cost))}</button>`}
+          ${!maxed && !affordable ? `<div class="sub neg" style="margin-top:6px">You need ${esc(money(u.cost - cash))} more cash.</div>` : ''}
         </div>`;
       }
     } else if (tab === 'flights') {
@@ -416,10 +423,10 @@ window.AirportHud = (() => {
     }
     if (force) body.querySelector('button')?.blur();
   }
-  function manageAction(action) {
+  function manageAction(action, attribute) {
     const f = list('facilities').find(x => x.id === S.manage?.id);
     if (!f) return;
-    if (action === 'upgrade') command('upgrade', {facilityId: f.id});
+    if (action === 'upgrade') command('upgrade', {facilityId: f.id, attribute: attribute || ''});
     else if (action === 'focus') { scene.view('focus', null, f.id); S.manage = null; renderManage(true); }
     else if (action === 'move') { S.manage = null; renderManage(true); S.rotation = Number(f.rotation) || 0; setTool(f.kind, f.id); }
     else if (action === 'demolish') { S.manage.confirm = true; renderManage(true); }
@@ -880,7 +887,7 @@ window.AirportHud = (() => {
       else if (d.tool) { S.rotation = 0; setTool(S.tool === d.tool && !S.moveId ? null : d.tool); }
       else if (d.buy) command('buyVehicle', {kind: d.buy, depotId: d.depot || S.selected});
       else if (d.manageTab) { S.manage.tab = d.manageTab; S.manage.confirm = false; renderManage(true); }
-      else if (d.manage) manageAction(d.manage);
+      else if (d.manage) manageAction(d.manage, d.attribute);
       else if (d.manageOpen) select(d.manageOpen);
       else if (t.id === 'manage-close') closeManage();
       else if (d.accept) command('acceptContract', {offerId: d.accept});

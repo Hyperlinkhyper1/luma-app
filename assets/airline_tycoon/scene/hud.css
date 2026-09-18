@@ -385,3 +385,4 @@ button.filled.danger{background:var(--danger);color:#240b10}
 #clock svg{width:15px;height:15px;vertical-align:-3px;margin-right:6px;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 #clock svg.sun{stroke:var(--warning)}
 #clock svg.moon{stroke:var(--accent)}
+.upgrade+.upgrade{margin-top:10px}

@@ -262,6 +262,16 @@
     return worldSide || worldOf('+x', turnOf(f));
   }
   function worldOf(local, turn) { return Object.keys(sides).find(k => localSide(k, turn) === local); }
+  /** The stand's lead-in line as a Z coordinate in its model's nose frame. */
+  function laneInFrame(f, worldSide, noseSide) {
+    const turn = turnOf(f), w = turn % 2 ? f.depth : f.width, d = turn % 2 ? f.width : f.depth;
+    const frame = M.noseFrame(noseSide, w, d);
+    if (!Number.isFinite(f.lane)) return round(frame.D / 2);
+    const acrossX = worldSide.endsWith('z');
+    const [lx, lz] = toLocal(f, acrossX ? f.lane : f.x + f.width / 2, acrossX ? f.y + f.depth / 2 : f.lane);
+    const dx = lx - frame.offset[0], dz = lz - frame.offset[1], c = Math.cos(frame.angle), s = Math.sin(frame.angle);
+    return round(dx * s + dz * c);
+  }
 
   // ── Pavement junctions ────────────────────────────────────────────────
   // Where taxiways, stands and runways touch, their edge lines give way over
@@ -289,7 +299,7 @@
       if (b.kind !== 'taxiway' && !b.kind.startsWith('runway')) continue;
       if (a.kind === 'taxiway' ? vertical(a) !== alongX : !(standKinds.has(a.kind) && side === opposite[noseWorldSide(a, list)])) continue;
       if (standKinds.has(a.kind) && b.kind !== 'taxiway') continue;
-      const lateral = alongX ? a.x + a.width / 2 : a.y + a.depth / 2;
+      const lateral = standKinds.has(a.kind) && Number.isFinite(a.lane) ? a.lane : alongX ? a.x + a.width / 2 : a.y + a.depth / 2;
       const E = alongX ? [lateral, edge] : [edge, lateral];
       const alongEdge = alongX !== vertical(b);
       if (alongEdge) {
@@ -303,15 +313,11 @@
       if (!b.kind.startsWith('taxiway') || (a.kind === 'taxiway' && a.id > b.id)) continue;
       const bLateral = alongX ? b.x + b.width / 2 : b.y + b.depth / 2, shift = bLateral - lateral;
       if (Math.abs(shift) < .4) continue;
+      // Offset taxiways: one straight diagonal across to B's centreline.
       const bLength = alongX ? b.depth : b.width;
-      const L = Math.min(Math.max(Math.abs(shift) * 2.2, 14), bLength * .6);
+      const L = Math.min(Math.max(Math.abs(shift) * 4, 10), bLength * .6);
       const at = (lat, along) => alongX ? [lat, along] : [along, lat];
-      const points = [];
-      for (let i = 0; i <= 14; i++) {
-        const t = i / 14, s = t * t * (3 - 2 * t);
-        points.push(at(lateral + shift * s, edge + sign * L * t));
-      }
-      curves.push(points);
+      curves.push([at(lateral, edge), at(bLateral, edge + sign * L)]);
       // Hide B's own centreline where the bend replaces it.
       const far = edge + sign * L;
       cut(b, alongX ? [bLateral - .8, Math.min(edge, far), bLateral + .8, Math.max(edge, far)] : [Math.min(edge, far), bLateral - .8, Math.max(edge, far), bLateral + .8]);
@@ -338,9 +344,11 @@
     }
     const cuts = (joins?.cuts.get(f.id) || []).map(r => rectToLocal(f, r));
     if (standKinds.has(f.kind)) {
-      // Aircraft park nose-in towards the terminal they serve.
-      const worldSide = noseWorldSide(f, list);
-      return {noseSide: ['+x', '+z', '-x', '-z'].indexOf(localSide(worldSide, turn)), cuts};
+      // Aircraft park nose-in towards the terminal they serve, on the lead-in
+      // line the simulation lines up with the taxiway (both come from Dart).
+      const worldSide = f.nose || noseWorldSide(f, list);
+      const noseSide = ['+x', '+z', '-x', '-z'].indexOf(localSide(worldSide, turn));
+      return {noseSide, cuts, lane: laneInFrame(f, worldSide, noseSide)};
     }
     if (paved(f)) return {cuts};
     return {};
@@ -455,7 +463,7 @@
     const joins = pavementJoins(list);
     for (const f of list) {
       const context = contextFor(f, list, joins);
-      const signature = JSON.stringify([{...f, protected: undefined, connected: undefined, upgradeCost: undefined}, context]);
+      const signature = JSON.stringify([{...f, protected: undefined, connected: undefined, upgradeCost: undefined, upgradeCosts: undefined}, context]);
       const old = facilities.get(f.id);
       if (old?.signature === signature) { old.data = f; continue; }
       if (old) { scene.remove(old.mesh); M.dispose(old.mesh); }
@@ -468,31 +476,78 @@
   }
 
   // ── Moving things ─────────────────────────────────────────────────────
+  // Paths come from the simulation as corner-to-corner polylines. Vehicles
+  // and aircraft get their corners rounded here, and every mover is placed
+  // by distance along the path so speeds stay steady through the corners.
+  const WALK = 15;
+  const measured = new WeakMap();
+  function measure(path) {
+    let m = measured.get(path);
+    if (!m) {
+      const at = [0];
+      for (let i = 1; i < path.length; i++) at.push(at[i - 1] + Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]));
+      m = {at, total: at[at.length - 1]};
+      measured.set(path, m);
+    }
+    return m;
+  }
+  /** Position and heading [s] metres along [path]. */
+  function pathAt(path, s) {
+    if (!path?.length) return null;
+    const {at, total} = measure(path);
+    const d = Math.min(total, Math.max(0, s));
+    let i = 1;
+    while (i < path.length - 1 && at[i] < d) i++;
+    const a = path[i - 1] || path[0], b = path[i] || a, length = at[i] - at[i - 1] || 0;
+    const t = length ? (d - at[i - 1]) / length : 1;
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    return {x: a[0] + dx * t, y: a[1] + dy * t, z: (a[2] || 0) + ((b[2] || 0) - (a[2] || 0)) * t, heading: length ? Math.atan2(-dx, -dy) : null};
+  }
   function pathPoint(path, fraction) {
     if (!path?.length) return null;
-    let total = 0;
-    for (let i = 1; i < path.length; i++) total += Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]);
-    let remaining = total * Math.min(1, Math.max(0, fraction));
-    for (let i = 1; i < path.length; i++) {
-      const a = path[i - 1], b = path[i], dx = b[0] - a[0], dy = b[1] - a[1], length = Math.hypot(dx, dy);
-      if (remaining <= length || i === path.length - 1) {
-        const t = length ? Math.min(1, remaining / length) : 1;
-        return {x: a[0] + dx * t, y: a[1] + dy * t, z: (a[2] || 0) + ((b[2] || 0) - (a[2] || 0)) * t, heading: length ? Math.atan2(-dx, -dy) : null};
-      }
-      remaining -= length;
-    }
-    const last = path[path.length - 1];
-    return {x: last[0], y: last[1], z: last[2] || 0, heading: null};
+    return pathAt(path, measure(path).total * Math.min(1, Math.max(0, fraction)));
   }
+  const rounded = new WeakMap();
+  /** [path] with each corner replaced by a short curve of up to [radius]. */
+  function roundCorners(path, radius) {
+    if (!path || path.length < 3) return path;
+    let out = rounded.get(path);
+    if (out) return out;
+    out = [path[0]];
+    for (let i = 1; i < path.length - 1; i++) {
+      const p = path[i - 1], c = path[i], n = path[i + 1];
+      const il = Math.hypot(c[0] - p[0], c[1] - p[1]), ol = Math.hypot(n[0] - c[0], n[1] - c[1]);
+      const r = Math.min(radius, il / 2.02, ol / 2.02);
+      if (r < .5) { out.push(c); continue; }
+      const a = [c[0] - (c[0] - p[0]) / il * r, c[1] - (c[1] - p[1]) / il * r, c[2] || 0];
+      const b = [c[0] + (n[0] - c[0]) / ol * r, c[1] + (n[1] - c[1]) / ol * r, c[2] || 0];
+      for (let k = 0; k <= 6; k++) {
+        const s = k / 6, m = 1 - s;
+        out.push([m * m * a[0] + 2 * m * s * c[0] + s * s * b[0], m * m * a[1] + 2 * m * s * c[1] + s * s * b[1], c[2] || 0]);
+      }
+    }
+    out.push(path[path.length - 1]);
+    rounded.set(path, out);
+    return out;
+  }
+  /** The simulation's easing for this stage: steady, speeding up, braking or both. */
+  function eased(ease, u) {
+    const e = Number.isFinite(ease) ? ease : 1;
+    return e < 0 ? u * u * (3 - 2 * u) : e * u + (1 - e) * u * u;
+  }
+  const groundStages = new Set(['taxiIn', 'taxiOut', 'positioning', 'toHangar', 'pushback']);
   const parkedStages = new Set(['unloading', 'servicing', 'boarding', 'awaitingAirport']);
   const standLocal = new T.Vector3();
+  /** A point in a stand's nose frame: X towards the nose, Z across, with the
+      lead-in line at [lane]. [local] maps (W, D, lane) to [x, z]. */
   function standSpot(standId, local) {
     const stand = facilities.get(standId);
     if (!stand) return null;
     const f = stand.data, turn = ((Math.round(f.rotation || 0) % 4) + 4) % 4;
     const w = turn % 2 ? f.depth : f.width, d = turn % 2 ? f.width : f.depth;
     const side = stand.context?.noseSide || 0, frame = M.noseFrame(side, w, d);
-    const [lx, lz] = local(frame.W, frame.D), cos = Math.cos(frame.angle), sin = Math.sin(frame.angle);
+    const lane = stand.context?.lane ?? frame.D / 2;
+    const [lx, lz] = local(frame.W, frame.D, lane), cos = Math.cos(frame.angle), sin = Math.sin(frame.angle);
     standLocal.set(lx * cos + lz * sin + frame.offset[0], 0, -lx * sin + lz * cos + frame.offset[1]);
     stand.mesh.updateMatrixWorld();
     const p = standLocal.applyMatrix4(stand.mesh.matrixWorld);
@@ -500,33 +555,40 @@
   }
   function flightPose(f, now) {
     if (f.path?.length && f.nextEvent > f.stageStart) {
-      const p = pathPoint(f.path, (now - f.stageStart) / (f.nextEvent - f.stageStart));
+      const u = Math.min(1, Math.max(0, (now - f.stageStart) / (f.nextEvent - f.stageStart)));
+      const path = groundStages.has(f.stage) ? roundCorners(f.path, 22) : f.path;
+      const p = pathPoint(path, eased(f.ease, u));
       if (p && f.stage === 'pushback' && p.heading != null) p.heading += Math.PI;
       if (p) return p;
     }
-    if (parkedStages.has(f.stage) && standKinds.has(facilities.get(f.standId)?.data.kind)) {
-      const length = M.spec(f.modelId).length, regional = facilities.get(f.standId).data.kind === 'standRegional';
-      const spot = standSpot(f.standId, (w, d) => [w - (regional ? 9 : 14) + 1.5 - length / 2, d / 2]);
-      if (spot) return {x: spot.x, y: spot.y, z: 0, heading: spot.heading};
-    }
     return {x: f.x || 0, y: f.y || 0, z: f.z || 0, heading: f.heading || 0};
   }
+  // Where each service vehicle parks beside a nosed-in aircraft.
   const serviceSpots = {
-    fuel: (w, d) => [w * .45, d / 2 + 13],
-    baggage: (w, d) => [w * .3, d / 2 - 8],
-    bus: (w, d) => [w * .55, d / 2 - 15],
-    pushback: (w, d) => [w - 7, d / 2],
+    fuel: (w, d, lane) => [w * .45, lane + 13],
+    baggage: (w, d, lane) => [w * .3, lane - 9],
+    bus: (w, d, lane) => [w * .55, lane - 16],
+    pushback: (w, d, lane) => [w - 7, lane],
   };
   function vehiclePose(v, now) {
     let p = null;
-    if (v.path?.length && v.busyUntil > v.started) p = pathPoint(v.path, (now - v.started) / (v.busyUntil - v.started));
+    const arrive = v.arriveAt > v.started ? v.arriveAt : v.busyUntil;
+    if (v.path?.length && arrive > v.started) {
+      const u = Math.min(1, Math.max(0, (now - v.started) / (arrive - v.started)));
+      p = pathPoint(roundCorners(v.path, 6), eased(-1, u) * .15 + u * .85);
+    }
     p = p || {x: v.x || 0, y: v.y || 0, heading: v.heading || 0};
     if (v.flightId && !v.returning) {
       const flight = (world?.flights || []).find(f => f.id === v.flightId);
       const stand = flight && facilities.get(flight.standId);
-      if (stand && Math.hypot(p.x - (stand.data.x + stand.data.width / 2), p.y - (stand.data.y + stand.data.depth / 2)) < 6) {
+      const reach = stand && Math.hypot(p.x - (stand.data.x + stand.data.width / 2), p.y - (stand.data.y + stand.data.depth / 2));
+      if (stand && reach < 25) {
+        // Ease off the road onto the vehicle's own spot beside the aircraft.
         const spot = standSpot(flight.standId, serviceSpots[v.kind] || serviceSpots.bus);
-        if (spot) return {x: spot.x, y: spot.y, heading: spot.heading + (v.kind === 'pushback' ? Math.PI : 0)};
+        if (spot) {
+          const k = 1 - reach / 25, heading = spot.heading + (v.kind === 'pushback' ? Math.PI : 0);
+          return {x: p.x + (spot.x - p.x) * k, y: p.y + (spot.y - p.y) * k, heading: k > .6 || p.heading == null ? heading : p.heading};
+        }
       }
     }
     return p;
@@ -551,6 +613,11 @@
       if (['awaitingStand', 'awaitingAirport'].includes(flight.stage) && !flight.path?.length && !flight.x && !flight.y) continue;
       const item = track(`f:${flight.id}`, () => M.aircraft(flight.modelId, flight.carrier), flightPose(flight, now));
       item.data = flight; item.type = 'flight';
+      // Remote stands have no jet bridge: roll mobile stairs up to the door.
+      const standKind = facilities.get(flight.standId)?.data.kind;
+      const stairs = parkedStages.has(flight.stage) && standKinds.has(standKind) && standKind !== 'standContact';
+      if (stairs && !item.stairs) { item.stairs = M.airstairs(flight.modelId); item.mesh.add(item.stairs); }
+      else if (!stairs && item.stairs) { item.mesh.remove(item.stairs); item.stairs = null; }
       if (item.stage !== flight.stage && flight.stage !== 'parked') {
         if (item.caption) { item.mesh.remove(item.caption); M.dispose(item.caption); }
         item.caption = M.caption(`${flight.carrier || 'Flight'} · ${L.friendly(flight.stage)}`);
@@ -564,6 +631,9 @@
     }
     for (const [id, item] of entities) if (item.seen !== snapshotSerial) { scene.remove(item.mesh); M.dispose(item.mesh); entities.delete(id); }
     crowd.groups = L.crowdAllocation(next.passengers || [], quality);
+    terminalRects = [...facilities.values()].filter(v => v.data.kind === 'terminal').map(v => v.data);
+    const inside = interiorKinds();
+    furniture = [...facilities.values()].map(v => v.data).filter(f => inside.has(f.kind) && f.kind !== 'entrance');
   }
 
   // Passengers: two instanced meshes (clothes and heads) for everyone on screen.
@@ -647,40 +717,87 @@
     return {x: reclaimSpot.x, y: reclaimSpot.z, heading: Math.atan2(-(reclaimLook.x - reclaimSpot.x), -(reclaimLook.z - reclaimSpot.z))};
   }
   const personMatrix = new T.Matrix4(), personQuat = new T.Quaternion(), personPos = new T.Vector3(), personScale = new T.Vector3(1, 1, 1), up = new T.Vector3(0, 1, 0);
+  const hash = n => { const x = Math.sin(n * 12.9898) * 43758.5453; return x - Math.floor(x); };
+  let terminalRects = [];
+  const indoors = (x, z) => terminalRects.some(t => x >= t.x && x <= t.x + t.width && z >= t.y && z <= t.y + t.depth);
+  /** Somewhere to stand while waiting at [f]: a loose crowd that grows with
+      the number already there, kept off the furniture and inside the hall. */
+  function waitingSpot(f, k, seed, realNow) {
+    const cx = f.x + f.width / 2, cz = f.y + f.depth / 2;
+    const reach = Math.max(f.width, f.depth) / 2 + .8;
+    for (let tries = 0; tries < 4; tries++) {
+      const j = k + tries * 37;
+      const r = reach + .9 * Math.sqrt(j + .5) + hash(seed + j) * .8, a = j * 2.39996 + seed;
+      const x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
+      if (!indoors(x, z) || busyFloor(x, z, f.id)) continue;
+      // A gentle sway, as people shuffle about while they wait.
+      const t = realNow / 1000 * .35 + hash(seed * 3 + j) * 6.28;
+      return {x: x + Math.sin(t) * .25, z: z + Math.cos(t * .8) * .25, heading: Math.atan2(-(cx - x), -(cz - z)) + Math.sin(t * .6) * .6};
+    }
+    return {x: cx, z: cz, heading: 0};
+  }
+  let furniture = [];
+  const busyFloor = (x, z, except) => furniture.some(f => f.id !== except && x >= f.x - .2 && x <= f.x + f.width + .2 && z >= f.y - .2 && z <= f.y + f.depth + .2);
+  function place(n, x, y, z, heading, walking, i, realNow) {
+    const bob = walking ? Math.abs(Math.sin(realNow / 150 + i * 1.7)) * .06 : 0;
+    personQuat.setFromAxisAngle(up, heading + Math.PI);
+    personPos.set(x, y + bob, z);
+    personMatrix.compose(personPos, personQuat, personScale);
+    crowd.body.setMatrixAt(n, personMatrix);
+    crowd.head.setMatrixAt(n, personMatrix);
+  }
+  const floorAt = (x, z, lift) => (indoors(x, z) ? .3 : .02) + lift;
   function updateCrowd(now, realNow) {
     if (!crowd.body) return;
+    const waitingAt = new Map();
     let n = 0;
     for (const {group: g, visible} of crowd.groups) {
-      // Still inside the aircraft: they appear at the door when it is their turn.
-      if (g.stage === 'deplaning' && now < g.started) continue;
-      let p = null, moving = false;
-      if (g.path?.length && g.nextEvent > g.started && now < g.nextEvent) {
-        const travel = Math.max(.001, g.nextEvent - g.started);
-        p = pathPoint(g.path, (now - g.started) / travel);
-        moving = p && now < g.nextEvent;
-      }
-      p = p || {x: g.x || 0, y: g.y || 0, heading: 0};
-      const heading = p.heading ?? 0;
-      personQuat.setFromAxisAngle(up, heading + Math.PI);
       const seedBase = Number(String(g.id).replace(/\D/g, '')) || 0;
-      const atCarousel = g.arriving && reclaimStages.has(g.stage);
-      for (let i = 0; i < visible && n < crowd.capacity; i++, n++) {
-        const spot = atCarousel ? reclaimPlace(g, i, seedBase) : null;
-        if (spot) {
-          personQuat.setFromAxisAngle(up, spot.heading + Math.PI);
-          personPos.set(spot.x, .3, spot.y);
-          personMatrix.compose(personPos, personQuat, personScale);
-          crowd.body.setMatrixAt(n, personMatrix);
-          crowd.head.setMatrixAt(n, personMatrix);
+      const path = g.path?.length ? g.path : null;
+      const length = path ? measure(path).total : 0;
+      const target = g.facilityId ? facilities.get(g.facilityId)?.data : null;
+      if (g.arriving && reclaimStages.has(g.stage)) {
+        for (let i = 0; i < visible && n < crowd.capacity; i++) {
+          const spot = reclaimPlace(g, i, seedBase);
+          if (spot) place(n++, spot.x, .3, spot.y, spot.heading, false, i, realNow);
+        }
+        continue;
+      }
+      const single = g.interval > 0 && path;
+      for (let i = 0; i < visible && n < crowd.capacity; i++) {
+        let s;
+        if (single) {
+          // Single file on and off the aircraft, one passenger at a time.
+          s = (now - g.started - i * g.interval) * WALK;
+          if (s > length && g.stage === 'walkingOnBoard') continue;
+          if (s < 0 && g.stage === 'deplaning') continue;
+          if (s < 0) {
+            // Still queueing at the gate, in a line behind the lane.
+            const first = pathAt(path, 0), ahead = pathAt(path, Math.min(length, 2));
+            const queued = Math.ceil(-s / WALK / g.interval);
+            const dx = ahead.x - first.x, dz = ahead.y - first.y, dl = Math.hypot(dx, dz) || 1;
+            const x = first.x - dx / dl * queued * .7, z = first.y - dz / dl * queued * .7;
+            place(n++, x, floorAt(x, z, 0), z, Math.atan2(-dx, -dz), false, i, realNow);
+            continue;
+          }
+        } else if (path) {
+          // Walking together, strung out a little so they read as people.
+          s = (now - g.started) * WALK - i * .9;
+          if (s < 0) s = 0;
+        }
+        if (path && s < length) {
+          const p = pathAt(path, s);
+          const side = ((i % 3) - 1) * .45 * (single ? 0 : 1);
+          const h = p.heading ?? 0, ox = Math.cos(h) * side, oz = -Math.sin(h) * side;
+          place(n++, p.x + ox, floorAt(p.x, p.y, p.z || 0), p.y + oz, h, true, i, realNow);
           continue;
         }
-        personQuat.setFromAxisAngle(up, heading + Math.PI);
-        const r = .45 * Math.sqrt(i + .5), a = i * 2.39996 + seedBase;
-        const bob = moving ? Math.abs(Math.sin(realNow / 170 + i)) * .06 : 0;
-        personPos.set(p.x + Math.cos(a) * r, .3 + bob, p.y + Math.sin(a) * r);
-        personMatrix.compose(personPos, personQuat, personScale);
-        crowd.body.setMatrixAt(n, personMatrix);
-        crowd.head.setMatrixAt(n, personMatrix);
+        // Arrived: spread out around what they are waiting for.
+        const at = target || (path ? {id: `end:${g.id}`, x: path[path.length - 1][0] - 1, y: path[path.length - 1][1] - 1, width: 2, depth: 2} : {id: `g:${g.id}`, x: (g.x || 0) - 1, y: (g.y || 0) - 1, width: 2, depth: 2});
+        const k = waitingAt.get(at.id) || 0;
+        waitingAt.set(at.id, k + 1);
+        const spot = waitingSpot(at, k, seedBase % 97, realNow);
+        place(n++, spot.x, floorAt(spot.x, spot.z, 0), spot.z, spot.heading, false, i, realNow);
       }
     }
     crowd.body.count = crowd.head.count = n;
@@ -1026,10 +1143,15 @@
     updateCrowd(time, now);
     updateBags(time, now);
     if (district) {
-      // Landside traffic follows the airport's own load: waiting groups and
-      // turnarounds in progress both put cars and buses on the access road.
-      const turnarounds = (world?.flights || []).filter(f => !['scheduled', 'completed', 'cancelled', 'enRoute'].includes(f.stage)).length;
-      const activity = Math.min(1, (world?.passengers?.length || 0) / 14 + turnarounds / 8);
+      // Cars and buses only come when people do: passengers being dropped
+      // at the kerb for a departure, or walking out to it after arriving.
+      let kerbside = 0;
+      for (const g of world?.passengers || []) {
+        const droppedOff = g.stage === 'entrance' && g.path?.length && time > g.started - 4 && time < g.started + 1.5;
+        const pickedUp = g.arriving && g.stage === 'leaving';
+        if (droppedOff || pickedUp) kerbside += g.count || 0;
+      }
+      const activity = Math.min(1, kerbside / 60);
       district.update(dt, {activity, night: darkness, paused: !!world?.paused, speed: world?.speed || 1});
     }
     sky.position.copy(camera.position);

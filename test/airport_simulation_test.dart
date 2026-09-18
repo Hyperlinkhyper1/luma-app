@@ -146,7 +146,7 @@ void main() {
   test('vehicles drive back before accepting another service job', () {
     signAndPlace(world, airline, 'coastal');
     var sawReturning = false;
-    for (var i = 0; i < 160; i++) {
+    for (var i = 0; i < 400; i++) {
       world.advance(.5, airline, catalog);
       for (final v in world.vehicles) {
         if (v.returning) {
@@ -272,14 +272,41 @@ void main() {
     },
   );
 
-  test('imminent flight protects infrastructure from removal or movement', () {
+  test('an imminent flight protects infrastructure from removal only', () {
     signAndPlace(world, airline, 'coastal');
     final terminal = world.ofKind('terminal').first;
     expect(world.demolish(airline, terminal.id), isNotNull);
+    final stand = world.stands.first;
     expect(
-      world.build(airline, terminal.kind, 100, 100, 1, moving: terminal.id),
-      isNotNull,
+      world.build(airline, stand.kind, 400, 400, 0, moving: stand.id),
+      isNull,
+      reason: 'anything can be moved while in use',
     );
+  });
+
+  test('a moved terminal takes its furnishings along, turned with it', () {
+    final terminal = world.ofKind('terminal').first;
+    final inside = world.facilities
+        .where((f) => f.interior && terminal.contains(f.x, f.y))
+        .map((f) => f.id)
+        .toList();
+    expect(inside, isNotEmpty);
+    expect(
+      world.build(airline, 'terminal', 1000, 1000, 1, moving: terminal.id),
+      isNull,
+    );
+    final moved = world.facility(terminal.id)!;
+    expect((moved.width, moved.depth), (60.0, 120.0));
+    for (final id in inside) {
+      final f = world.facility(id)!;
+      expect(
+        moved.contains(f.x, f.y) &&
+            moved.contains(f.x + f.width, f.y + f.depth),
+        isTrue,
+        reason: '$id stays inside',
+      );
+      expect(f.rotation, 1);
+    }
   });
 
   test('furniture must fit inside terminals and may not overlap', () {
@@ -615,12 +642,16 @@ void main() {
             ..nextEvent = 1e9,
         );
       }
-      world.advance(90, airline, catalog);
+      world.advance(200, airline, catalog);
       final waiting = world.passengers.where(
         (p) => p.arriving && p.flightId != 'elsewhere',
       );
       expect(waiting, isNotEmpty);
-      expect(waiting.every((p) => p.stage == 'arrived'), isTrue);
+      expect(
+        waiting.every((p) => const {'deplaning', 'arrived'}.contains(p.stage)),
+        isTrue,
+      );
+      expect(waiting.any((p) => p.stage == 'arrived'), isTrue);
       expect(world.carouselLoad(carousel.id), carouselCapacity);
     });
   });
@@ -971,7 +1002,60 @@ void main() {
     expect(f.stage, 'positioning');
     final hangar = world.ofKind('hangar').single;
     expect(f.path.first, [hangar.x - 5, hangar.y - 25, 0]);
-    expect(f.path.last[0], world.facility(f.standId)!.cx);
+    final stand = world.facility(f.standId)!;
+    expect(f.path.last, world.parkingSpot(stand, aircraftModelById('atr72')!));
+  });
+
+  group('boarding one by one', () {
+    test('gate lanes and speed are upgraded separately', () {
+      airline.cashEur = 5000000;
+      final stand = world.stands.first;
+      final gate = world.ofKind('boardingGate').first;
+      final base = world.boardingRate(stand);
+      expect(world.upgrade(airline, gate.id, attribute: 'lanes'), isNull);
+      expect(gate.levelOf('lanes'), 2);
+      expect(gate.levelOf('speed'), 1);
+      expect(world.boardingRate(stand), closeTo(base * 2, 1e-9));
+      expect(world.upgrade(airline, gate.id, attribute: 'speed'), isNull);
+      expect(world.boardingRate(stand), greaterThan(base * 2));
+      final reloaded = AirportWorld.fromJson(
+        jsonDecode(jsonEncode(world.toJson())) as Map<String, Object?>,
+      );
+      expect(reloaded.facility(gate.id)!.levels, {'lanes': 2, 'speed': 2});
+    });
+
+    test('passengers walk out to the door in single file at that rate', () {
+      signAndPlace(world, airline, 'coastal');
+      AirportPassengerGroup? walking;
+      for (var i = 0; i < 400 && walking == null; i++) {
+        world.advance(1, airline, catalog);
+        walking = world.passengers
+            .where((p) => p.stage == 'walkingOnBoard')
+            .firstOrNull;
+      }
+      expect(walking, isNotNull);
+      final stand = world.stands.first;
+      expect(walking!.interval, closeTo(1 / world.boardingRate(stand), 1e-9));
+      final door = world.aircraftDoor(stand, aircraftModelById('atr72')!);
+      expect(walking.path.last, door);
+    });
+
+    test('aircraft park on a lead-in lined up with the taxiway', () {
+      final stand = world.stands.first;
+      final taxiway = world
+          .ofKind('taxiway')
+          .firstWhere((t) => t.x + t.width == stand.x);
+      expect(world.standNose(stand), '+x');
+      expect(world.standLane(stand), taxiway.cy);
+    });
+
+    test('departures are not delayed by the slower, visible movement', () {
+      signAndPlace(world, airline, 'coastal');
+      world.advance(400, airline, catalog);
+      final f = world.flights.first;
+      expect(f.stage, 'completed');
+      expect(f.delay, lessThan(5));
+    });
   });
 
   group('building upgrades', () {

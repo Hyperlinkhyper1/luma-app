@@ -101,9 +101,14 @@ applies the levels:
   income per level;
 - decor and bins count once per level; carousels hand out bags 25% faster.
 
-Hangars, service roads and entrances have no upgrades. Levels survive a
-move and a reload, and demolishing refunds half of the build cost plus the
-upgrades. The page mirrors `upgradeCostAt` only to show the refund.
+Hangars, service roads and entrances have no upgrades. Boarding gates have
+two, levelled separately (`facilityUpgrades`, stored per id in
+`AirportFacility.levels`): **boarding lanes** (one more lane per level) and
+**boarding speed** (+1.5 passengers per lane per minute). The `upgrade`
+command takes an optional `attribute`; without one it buys the main
+upgrade. Levels survive a move and a reload, and demolishing refunds half
+of the build cost plus every upgrade. The page mirrors `upgradeCostAt`
+only to show the refund.
 
 ## The passenger flow is required
 
@@ -128,8 +133,45 @@ Passengers and aircraft move the whole way:
   check-out and leave through the entrance to the kerb. Returning own flights
   bring their passengers home the same way;
 - own aircraft are towed from the hangar apron to the stand
-  (`positioning`) instead of appearing on it, and taxi-out continues from
-  where the pushback stopped.
+  (`positioning`) and back again after their return leg (`toHangar`).
+
+## Movement
+
+One game minute is one real second at 1×, so speeds are chosen to read on
+screen: passengers walk 15 m, vehicles drive 40 m and aircraft taxi 60 m per
+game minute (`AirportWorld.walkSpeed`, `vehicleSpeed`, `taxiSpeed`).
+
+- **Routes follow the pavement.** `_route` runs down the centreline of each
+  runway, taxiway or service road and turns where two meet, at the
+  `_portal` on their shared edge. The scene rounds the corners.
+- **Stands line up with their taxiway.** `standNose` points the aircraft at
+  the terminal it serves; `standLane` puts the lead-in line in line with a
+  taxiway meeting the entry edge end-on, so the yellow line carries straight
+  on. The snapshot sends `nose` and `lane`, and the stand model, parking
+  spot (`parkingSpot`) and service-vehicle spots all use them.
+- **Flights ease.** Each flight stage carries `ease`: the approach comes out
+  of the haze 12 km away and slows towards the threshold, the landing roll
+  brakes to taxi speed, taxiing pulls away and stops gently, and the
+  take-off accelerates down the runway and climbs out to 1,300 m before the
+  aircraft is removed. `delay` is measured when pushback starts, so the
+  slower movement never costs contract money.
+- **Boarding is single file.** `boardingRate` (gate lanes × speed, ×1.6 over
+  a jet bridge) sets each passenger's `interval`. Passengers walk the whole
+  way (`_gateToDoor`): out through the jet bridge on a contact stand
+  (`bridgeRotunda`, `bridgeCab`, the same points the scene draws), or out of
+  the terminal and up mobile stairs to the front left door on the others.
+  Deplaning runs the same path in reverse at the same rate.
+- **Vehicles drive, then work.** `arriveAt` is when a vehicle reaches the
+  stand; it pulls onto its own spot beside the aircraft and works there until
+  `busyUntil`. The pushback tug is sent when boarding starts.
+- **Crowds spread out.** Walking groups string out along their path; waiting
+  groups stand around their desk or gate, off the furniture and inside the
+  hall, and sway a little.
+- **Landside traffic follows real passengers.** Cars and buses only come for
+  people being dropped at the kerb or walking out to it; an idle airport has
+  an empty road. Trams and trains keep their timetable. The loop runs in on
+  the main road, down the outer forecourt lane to the bus station and back up
+  the kerb lane past the doors, all on paved lanes.
 
 ## Entrances
 
@@ -180,7 +222,9 @@ and count as fully placed.
 
 Contract cancellation charges the displayed total for unserved flights;
 active turnarounds finish. Cancel future owned flights before selling their
-aircraft. Occupied or imminently needed infrastructure cannot be removed.
+aircraft. Occupied or imminently needed infrastructure cannot be removed,
+but anything can be moved while in use; a terminal section takes its
+furnishings with it, turned with it (`_carry`).
 
 ## State and rendering
 
