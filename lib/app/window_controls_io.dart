@@ -35,6 +35,14 @@ class _MaximizeListener extends WindowListener {
   void onWindowFocus() => _focusEvents.add(true);
   @override
   void onWindowBlur() => _focusEvents.add(false);
+
+  @override
+  void onWindowClose() async {
+    // Keep the process resident so the pet's global hotkey continues to work
+    // after the user closes the desktop window. The app can still be ended by
+    // the operating system or task manager.
+    await windowManager.hide();
+  }
 }
 
 /// Hides the native title bar (keeping resize/snap) and shows the window once
@@ -43,6 +51,10 @@ Future<void> initWindowChrome() async {
   if (!hasCustomTitleBar) return;
   await windowManager.ensureInitialized();
   windowManager.addListener(_MaximizeListener());
+  // Closing the native window must not terminate the process: the global pet
+  // shortcut is owned by this process and needs to remain registered while
+  // the main window is hidden.
+  await windowManager.setPreventClose(true);
   const options = WindowOptions(
     size: Size(1200, 820),
     minimumSize: Size(940, 620),
@@ -75,13 +87,13 @@ Future<void> windowToggleMaximize() async {
 }
 
 Future<void> windowClose() =>
-    hasCustomTitleBar ? windowManager.close() : Future.value();
+    hasCustomTitleBar ? windowManager.hide() : Future.value();
 
 // ---- Pet window ------------------------------------------------------------
 //
 // The luma pet is summoned with a global hotkey from anywhere on the desktop,
 // so it has to be a window, not just an overlay inside an app that may well be
-// minimised at the time. luma is a single-window Flutter app, so "pet mode"
+// hidden at the time. luma is a single-window Flutter app, so "pet mode"
 // shrinks the one window we have into a small always-on-top panel and puts it
 // back exactly as it was on dismiss — including a maximised or minimised
 // state, which plain bounds can't describe.

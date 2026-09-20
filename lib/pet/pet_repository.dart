@@ -70,20 +70,25 @@ class PetRepository extends ChangeNotifier {
   bool _acceptBlur = false;
   Timer? _blurArmTimer;
 
-  /// Shift+Alt+Space.
+  /// Ctrl+Shift+Alt+Space.
   ///
   /// Windows can only register a chord of modifiers plus exactly one key, so
   /// the modifier is not optional. This particular one is unclaimed by the OS
   /// and impossible to hit while typing, unlike the tempting ones: Win+Space
   /// is the input-language switcher, Alt+Space opens the window menu, and
-  /// Shift+Space fires every time you type a capital before a space.
+  /// Shift+Space fires every time you type a capital before a space. Adding
+  /// Ctrl makes the summon chord explicit and keeps it out of normal typing.
   static HotKey defaultHotKey({HotKeyScope scope = HotKeyScope.system}) =>
       HotKey(
         identifier: scope == HotKeyScope.system
             ? _systemIdentifier
             : _inAppIdentifier,
         key: PhysicalKeyboardKey.space,
-        modifiers: const [HotKeyModifier.shift, HotKeyModifier.alt],
+        modifiers: const [
+          HotKeyModifier.control,
+          HotKeyModifier.shift,
+          HotKeyModifier.alt,
+        ],
         scope: scope,
       );
 

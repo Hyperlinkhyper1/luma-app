@@ -92,9 +92,9 @@ Cs2PriceSeries buildCs2PriceSeries(
   return Cs2PriceSeries(samples: samples, range: range, currency: currency);
 }
 
-/// Combines every tracked listing's readings into one "total value" series
-/// — at each observation, the sum of every listing's most-recently-known
-/// price. Reuses [Cs2PriceSeries]/[Cs2PriceSample] rather than a parallel
+/// Combines every tracked copy's readings into one "total value" series —
+/// at each observation, the sum of every copy's most-recently-known price.
+/// Reuses [Cs2PriceSeries]/[Cs2PriceSample] rather than a parallel
 /// "portfolio" type, since a total is just another price over time as far as
 /// the chart is concerned.
 ///
@@ -102,13 +102,24 @@ Cs2PriceSeries buildCs2PriceSeries(
 /// across a gap, unlike [buildCs2PriceSeries] just above. That's deliberate,
 /// not an oversight: a single listing's chart is a log of direct
 /// observations, so a gap is honestly just a gap. A portfolio total is a
-/// different kind of number — it only means something if every tracked
-/// listing contributes at once, and listings are checked staggered (see
+/// different kind of number — it only means something if every tracked copy
+/// contributes at once, and listings are checked staggered (see
 /// `Cs2MarketRepository._marketCallSpacing`), never in lockstep. Without
 /// carrying forward, the total would appear to crash to a fraction of its
 /// real value every time it was drawn between two listings' checks.
+///
+/// [entries] is needed alongside the price points because more than one
+/// copy can share a listing — Steam prices the listing once, but two copies
+/// of it each count toward the total. A copy only starts contributing from
+/// its own [Cs2MarketEntries.trackedAt], so buying a second copy shows up as
+/// the total stepping up right when it was added, not retroactively. This is
+/// necessarily an approximation for a copy that was *removed*: there is no
+/// "untracked at" timestamp kept anywhere, so a sold/removed copy is simply
+/// absent from [entries] and its contribution disappears for the whole
+/// window rather than only from when it was actually removed.
 Cs2PriceSeries buildCs2PortfolioSeries(
   List<Cs2MarketPricePoint> allPoints,
+  List<Cs2MarketEntry> entries,
   Cs2PriceRange range,
   DateTime now, {
   String fallbackCurrency = 'USD',
@@ -116,25 +127,37 @@ Cs2PriceSeries buildCs2PortfolioSeries(
   final currency =
       allPoints.isEmpty ? fallbackCurrency : allPoints.last.currency;
   final start = range.startFrom(now);
-  final lastKnown = <String, int>{};
+
+  final trackedSinceByHash = <String, List<DateTime>>{};
+  for (final entry in entries) {
+    (trackedSinceByHash[entry.marketHashName] ??= []).add(entry.trackedAt);
+  }
+  int unitsAt(String hash, DateTime at) =>
+      trackedSinceByHash[hash]?.where((since) => !since.isAfter(at)).length ??
+      0;
+
+  final lastPriceByHash = <String, int>{};
   final samples = <Cs2PriceSample>[];
 
-  int total() => lastKnown.values.fold<int>(0, (sum, cents) => sum + cents);
+  int totalAt(DateTime at) => lastPriceByHash.entries.fold<int>(
+        0,
+        (sum, e) => sum + e.value * unitsAt(e.key, at),
+      );
 
   final before = start == null
       ? const <Cs2MarketPricePoint>[]
       : allPoints.where((p) => p.observedAt.isBefore(start));
   for (final p in before) {
     if ((p.lowestCents ?? p.medianCents) case final cents?) {
-      lastKnown[p.marketHashName] = cents;
+      lastPriceByHash[p.marketHashName] = cents;
     }
   }
   // Seed one sample right at the window start from whatever was already
   // known coming in, so a real portfolio with no reading that happens to
   // land inside a narrow window still draws something rather than looking
   // empty.
-  if (start != null && lastKnown.isNotEmpty) {
-    samples.add(Cs2PriceSample(at: start, priceCents: total()));
+  if (start != null && lastPriceByHash.isNotEmpty) {
+    samples.add(Cs2PriceSample(at: start, priceCents: totalAt(start)));
   }
 
   final within = start == null
@@ -142,8 +165,10 @@ Cs2PriceSeries buildCs2PortfolioSeries(
       : allPoints.where((p) => !p.observedAt.isBefore(start));
   for (final p in within) {
     if ((p.lowestCents ?? p.medianCents) case final cents?) {
-      lastKnown[p.marketHashName] = cents;
-      samples.add(Cs2PriceSample(at: p.observedAt, priceCents: total()));
+      lastPriceByHash[p.marketHashName] = cents;
+      samples.add(
+        Cs2PriceSample(at: p.observedAt, priceCents: totalAt(p.observedAt)),
+      );
     }
   }
 

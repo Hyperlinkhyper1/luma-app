@@ -28,11 +28,12 @@ import 'util.dart';
 /// How a newly registered account becomes usable.
 enum ApprovalMode {
   /// The operator approves each account by hand from the admin dashboard.
-  /// No email is sent and no verification link exists — the default, so a
+  /// No email is sent and no verification code exists — the default, so a
   /// deployment works with no SMTP configured at all.
   manual,
 
-  /// The user approves their own account by opening a link emailed to them.
+  /// The user approves their own account by typing a 6-digit code emailed
+  /// to them.
   email,
 
   /// No approval step: accounts are active (and signed in) the moment they
@@ -60,6 +61,7 @@ class ServerConfig {
     required this.corsOrigin,
     required this.trustProxy,
     required this.verificationTtl,
+    required this.maxVerificationEmailsPerHour,
     required this.approvalMode,
     required this.adminKey,
     required this.mistralApiKey,
@@ -83,8 +85,15 @@ class ServerConfig {
   final String corsOrigin;
   final bool trustProxy;
 
-  /// How long an email-verification link stays valid.
+  /// How long an email-verification code stays valid.
   final Duration verificationTtl;
+
+  /// Hard ceiling on verification codes sent per hour, across every
+  /// requester — on top of the per-IP and per-email limits [Api] enforces
+  /// around it. The backstop against a botnet spread across many IPs and
+  /// throwaway addresses running up the Resend bill; see
+  /// LUMA_MAX_VERIFICATION_EMAILS_PER_HOUR in .env.example.
+  final int maxVerificationEmailsPerHour;
 
   /// How a new account gets approved before it can sign in. Defaults to
   /// [ApprovalMode.manual] — the operator approves each one from the admin
@@ -176,9 +185,8 @@ class ServerConfig {
   bool get wikiEnabled => wikiDir != null && wikiDir!.isNotEmpty;
 
   /// Where this server is reachable from the public internet, without a
-  /// trailing slash. Same value the verification mail uses; OAuth needs it
-  /// too, because the redirect URI has to be an absolute URL the provider
-  /// can send a browser back to.
+  /// trailing slash. OAuth needs it because the redirect URI has to be an
+  /// absolute URL the provider can send a browser back to.
   final String publicUrl;
 
   /// Client credentials per OAuth provider id, from
@@ -218,8 +226,10 @@ class ServerConfig {
       tokenTtl: Duration(days: intOf('LUMA_TOKEN_TTL_DAYS', 90)),
       corsOrigin: env['LUMA_CORS_ORIGIN'] ?? '*',
       trustProxy: env['LUMA_TRUST_PROXY'] == 'true',
-      verificationTtl:
-          Duration(hours: intOf('LUMA_VERIFICATION_TTL_HOURS', 24)),
+      verificationTtl: Duration(
+          minutes: intOf('LUMA_VERIFICATION_CODE_TTL_MINUTES', 10)),
+      maxVerificationEmailsPerHour:
+          intOf('LUMA_MAX_VERIFICATION_EMAILS_PER_HOUR', 50),
       // LUMA_APPROVAL_MODE wins; the older LUMA_REQUIRE_EMAIL_VERIFICATION
       // is still honoured so existing .env files keep their behaviour
       // (true → email, false → no approval at all).
@@ -292,6 +302,26 @@ class Api {
             maxRequests: 300, window: const Duration(minutes: 1)),
         _resendLimiter = RateLimiter(
             maxRequests: 3, window: const Duration(minutes: 15)),
+        // Deliberately tighter than [_authLimiter]: this one gates only the
+        // two endpoints that cost real money through Resend (register in
+        // email mode, and resend-verification), so it has to bite before a
+        // bot burns through the per-IP auth budget on cheap calls elsewhere.
+        _verificationSendLimiter = RateLimiter(
+            maxRequests: 3, window: const Duration(hours: 1)),
+        // Server-wide circuit breaker on top of the per-IP and per-email
+        // limits above: a botnet spread across enough IPs and throwaway
+        // addresses can still exhaust those, but not this one. Caps the
+        // worst case at [ServerConfig.maxVerificationEmailsPerHour] Resend
+        // calls an hour no matter how distributed the traffic is.
+        _verificationGlobalLimiter = RateLimiter(
+            maxRequests: config.maxVerificationEmailsPerHour,
+            window: const Duration(hours: 1)),
+        // Per-email limit on *wrong* code guesses. 6 digits is only
+        // 1,000,000 combinations, so this has to be tight; exhausting it
+        // also burns the outstanding code (see _verifyCode), so the window
+        // matching the code's own TTL is what actually forces a fresh one.
+        _codeAttemptLimiter = RateLimiter(
+            maxRequests: 5, window: const Duration(minutes: 10)),
         _adminFailLimiter = RateLimiter(
             maxRequests: 1, window: const Duration(minutes: 1)),
         _inviteLimiter = RateLimiter(
@@ -336,6 +366,15 @@ class Api {
   /// Extra, per-email limit on top of [_authLimiter] so someone can't spam
   /// verification mail to one address from many IPs.
   final RateLimiter _resendLimiter;
+
+  /// Per-IP budget for endpoints that trigger a paid Resend send.
+  final RateLimiter _verificationSendLimiter;
+
+  /// Server-wide budget for the same endpoints, regardless of IP or email.
+  final RateLimiter _verificationGlobalLimiter;
+
+  /// Per-email budget for wrong guesses against an outstanding code.
+  final RateLimiter _codeAttemptLimiter;
 
   /// Per-IP limit on *failed* admin-key attempts: one wrong guess per
   /// minute, so the admin key cannot be brute-forced by a bot. Successful
@@ -384,7 +423,7 @@ class Api {
       ..get('/health', _health)
       ..post('/api/v1/auth/params', _authParams)
       ..post('/api/v1/auth/register', _register)
-      ..get('/api/v1/auth/verify', _verify)
+      ..post('/api/v1/auth/verify-code', _verifyCode)
       ..post('/api/v1/auth/resend-verification', _resendVerification)
       ..post('/api/v1/auth/login', _login)
       ..get('/api/v1/auth/oauth/providers', _oauthProviders)
@@ -659,6 +698,15 @@ class Api {
     if (conn is HttpConnectionInfo) return conn.remoteAddress.address;
     return 'unknown';
   }
+
+  /// Gate in front of every Resend call ([_register]'s email-mode branch and
+  /// [_resendVerification]): true only when both the per-IP and the global
+  /// hourly budget have room, and consumes a slot from each when it does.
+  /// Checked *before* anything is written to the store, so a caller that
+  /// trips it never even gets a pending account created.
+  bool _allowVerificationSend(Request request) =>
+      _verificationSendLimiter.allow(_clientKey(request)) &&
+      _verificationGlobalLimiter.allow('global');
 
   /// Wraps a handler so it only runs with a valid bearer token; the session's
   /// user is passed along. Also slides the token expiry forward.
@@ -1015,6 +1063,15 @@ class Api {
     }
     final deviceLabel = body['deviceLabel'] as String?;
 
+    // Checked before anything touches the store: a caller over budget for
+    // Resend sends gets refused outright rather than left with a pending
+    // account it can never get a code for.
+    if (config.approvalMode == ApprovalMode.email &&
+        !_allowVerificationSend(request)) {
+      return errorResponse(429, 'rate_limited',
+          'Too many verification emails requested right now. Try again later.');
+    }
+
     return store.lock.synchronized(() async {
       if (store.userIdByEmail.containsKey(email)) {
         return errorResponse(409, 'email_taken', 'An account already exists for this email.');
@@ -1069,16 +1126,16 @@ class Api {
         });
       }
 
-      final verificationToken = await _issueVerificationToken(user);
+      final verificationCode = await _issueVerificationCode(user);
       await store.saveUsers();
       await store.logActivity(
           'account_registered', '$email registered (pending verification)');
-      await _sendVerificationEmail(user, verificationToken);
+      await _sendVerificationEmail(user, verificationCode);
       return jsonResponse(201, {
         'status': 'pending_approval',
         'approval': mode.name,
-        'message':
-            'Check your email to verify your account before signing in.',
+        'message': 'We sent a 6-digit code to $email — enter it to verify '
+            'your account before signing in.',
       });
     });
   }
@@ -1374,7 +1431,7 @@ class Api {
         }
         if (existing.isPending) {
           // The provider vouched for the address, which is precisely what an
-          // email-verification link was there to establish — so accept it in
+          // email-verification code was there to establish — so accept it in
           // that mode. Under manual approval the operator's decision is the
           // gate, and no provider substitutes for it.
           if (config.approvalMode == ApprovalMode.email) {
@@ -1515,51 +1572,74 @@ class Api {
     });
   }
 
-  /// Confirms a pending account from the link sent by [_sendVerificationEmail].
-  /// Returns a small HTML page (the user opens this in a browser from their
-  /// email client, not the app) mirroring the style of [_root].
-  Future<Response> _verify(Request request) async {
-    // In manual (or open) mode no verification links are ever issued, so
-    // this endpoint must be inert — it is the only path that could flip an
-    // account to 'active' without the operator pressing Approve.
+  /// Confirms a pending account with the 6-digit code from
+  /// [_sendVerificationEmail]. A POST the app itself calls, unlike the old
+  /// link this replaced — nothing here is meant to be opened in a browser.
+  Future<Response> _verifyCode(Request request) async {
+    // In manual (or open) mode no codes are ever issued, so this endpoint
+    // must be inert — it is the only path that could flip an account to
+    // 'active' without the operator pressing Approve.
     if (config.approvalMode != ApprovalMode.email) {
-      return _verifyPage(403,
+      return errorResponse(403, 'not_applicable',
           'This server approves accounts by hand from the admin dashboard — '
-          'email verification links are not used here.');
+          'there is no code to enter.');
     }
-    final token = request.url.queryParameters['token'];
-    if (token == null || token.isEmpty) {
-      return _verifyPage(400, 'Missing verification token.');
+    final body = await _readJson(request);
+    final email = _normalizeEmail(body['email']);
+    if (email == null) return errorResponse(400, 'bad_email', 'Invalid email.');
+    final code = body['code'];
+    if (code is! String || !RegExp(r'^\d{6}$').hasMatch(code)) {
+      return errorResponse(
+          400, 'bad_code', 'Enter the 6-digit code from your email.');
     }
-    final tokenHash = c.sha256.convert(utf8.encode(token)).toString();
 
     return store.lock.synchronized(() async {
-      StoredUser? user;
-      for (final u in store.usersById.values) {
-        final candidate = u.verificationTokenHash;
-        if (candidate != null &&
-            constantTimeEquals(
-                utf8.encode(candidate), utf8.encode(tokenHash))) {
-          user = u;
-          break;
+      final userId = store.userIdByEmail[email];
+      final user = userId == null ? null : store.usersById[userId];
+
+      // Checked before anything else so the attempt budget is spent
+      // uniformly whether or not the address has an account — otherwise the
+      // limiter's behaviour would itself leak which emails are registered.
+      if (!_codeAttemptLimiter.allow(email)) {
+        // Burn the outstanding code too: the attempt window matches the
+        // code's own TTL, so without this a caller could just wait out the
+        // window and resume guessing the same secret.
+        if (user != null && user.verificationTokenHash != null) {
+          user.verificationTokenHash = null;
+          user.verificationExpiresAtMs = null;
+          await store.saveUsers();
         }
+        return errorResponse(429, 'too_many_attempts',
+            'Too many incorrect attempts. Request a new code.');
+      }
+
+      if (user == null || !user.isPending || user.verificationTokenHash == null) {
+        return errorResponse(400, 'bad_code',
+            'That code is invalid or has already been used.');
+      }
+      final codeHash = c.sha256.convert(utf8.encode(code)).toString();
+      if (!constantTimeEquals(
+          utf8.encode(user.verificationTokenHash!), utf8.encode(codeHash))) {
+        return errorResponse(400, 'bad_code', 'That code is incorrect.');
       }
       final now = DateTime.now().millisecondsSinceEpoch;
-      if (user == null) {
-        return _verifyPage(
-            400, 'This verification link is invalid or has already been used.');
-      }
       if ((user.verificationExpiresAtMs ?? 0) <= now) {
-        return _verifyPage(400,
-            'This verification link has expired. Request a new one from the app.');
+        user.verificationTokenHash = null;
+        user.verificationExpiresAtMs = null;
+        await store.saveUsers();
+        return errorResponse(
+            400, 'code_expired', 'That code has expired. Request a new one.');
       }
       user.status = 'active';
       user.verificationTokenHash = null;
       user.verificationExpiresAtMs = null;
       await store.saveUsers();
-      await store.logActivity('account_verified', '${user.email} verified their email');
-      return _verifyPage(
-          200, 'Your email is verified. You can return to the app and sign in.');
+      await store.logActivity(
+          'account_verified', '${user.email} verified their email');
+      return jsonResponse(200, {
+        'status': 'verified',
+        'message': 'Your email is verified. Sign in to continue.',
+      });
     });
   }
 
@@ -1571,7 +1651,7 @@ class Api {
     if (email == null) return errorResponse(400, 'bad_email', 'Invalid email.');
 
     if (config.approvalMode != ApprovalMode.email) {
-      // No link exists to resend. Answered the same way for every address,
+      // No code exists to resend. Answered the same way for every address,
       // so this still says nothing about whether the account exists.
       return jsonResponse(200, {
         'status': 'pending_approval',
@@ -1583,16 +1663,19 @@ class Api {
       });
     }
 
-    if (!_resendLimiter.allow(email)) {
+    // Order matters: the cheap per-email check first, then the two shared
+    // budgets — so one address hammering this endpoint can't itself burn
+    // through the IP/global budget other callers depend on.
+    if (!_resendLimiter.allow(email) || !_allowVerificationSend(request)) {
       return errorResponse(429, 'rate_limited',
-          'Too many verification requests for this address. Try again later.');
+          'Too many verification requests. Try again later.');
     }
 
     const genericResponse = {
       'status': 'pending_verification',
       'message':
           'If that email has an unverified account, we just sent a new '
-              'verification link.',
+              'verification code.',
     };
 
     return store.lock.synchronized(() async {
@@ -1601,13 +1684,16 @@ class Api {
       if (user == null || !user.isPending) {
         return jsonResponse(200, genericResponse);
       }
-      final verificationToken = await _issueVerificationToken(user);
+      final verificationCode = await _issueVerificationCode(user);
       await store.saveUsers();
-      await _sendVerificationEmail(user, verificationToken);
+      await _sendVerificationEmail(user, verificationCode);
       return jsonResponse(200, genericResponse);
     });
   }
 
+  /// Small HTML status page for flows the browser lands on directly (only
+  /// the OAuth callback now — the old email-verification link used this too
+  /// before it was replaced by the in-app code).
   Response _verifyPage(int status, String message) => Response(
         status,
         body: '<!doctype html><html><head><meta charset="utf-8">'
@@ -8738,23 +8824,23 @@ window.lumaAskReason = function (form, message) {
     return trimmed.length > 60 ? trimmed.substring(0, 60) : trimmed;
   }
 
-  /// Generates a fresh verification token, stores only its hash against the
-  /// user (mirroring how session tokens are handled), and returns the raw
-  /// token to send by email. Caller holds the store lock.
-  Future<String> _issueVerificationToken(StoredUser user) async {
-    final token = base64UrlEncode(randomBytes(32)).replaceAll('=', '');
+  /// Generates a fresh 6-digit verification code, stores only its hash
+  /// against the user (mirroring how session tokens are handled), and
+  /// returns the raw code to send by email. Caller holds the store lock.
+  Future<String> _issueVerificationCode(StoredUser user) async {
+    final code = randomDigits(6);
     user.verificationTokenHash =
-        c.sha256.convert(utf8.encode(token)).toString();
+        c.sha256.convert(utf8.encode(code)).toString();
     user.verificationExpiresAtMs =
         DateTime.now().millisecondsSinceEpoch + config.verificationTtl.inMilliseconds;
-    return token;
+    return code;
   }
 
-  /// Best-effort send; a mail outage should not make registration fail
-  /// outright since the user can always request a fresh link.
-  Future<void> _sendVerificationEmail(StoredUser user, String token) async {
+  /// Best-effort send; a Resend outage should not make registration fail
+  /// outright since the user can always request a fresh code.
+  Future<void> _sendVerificationEmail(StoredUser user, String code) async {
     try {
-      await mailer.sendVerificationEmail(toEmail: user.email, token: token);
+      await mailer.sendVerificationCode(toEmail: user.email, code: code);
     } catch (e) {
       stderr.writeln(
           '[luma] could not send verification email to ${user.email}: $e');

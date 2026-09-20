@@ -55,6 +55,20 @@ Cs2MarketPricePoint _point(
       currency: 'USD',
     );
 
+Cs2MarketEntry _entry(
+  String hash,
+  DateTime trackedAt, {
+  int id = 0,
+  int? startingPriceCents,
+}) =>
+    Cs2MarketEntry(
+      id: id,
+      marketHashName: hash,
+      startingPriceCents: startingPriceCents,
+      startingPriceAt: null,
+      trackedAt: trackedAt,
+    );
+
 void main() {
   group('market hash names', () {
     test('a plain skin with a wear', () {
@@ -254,6 +268,7 @@ void main() {
     const redline = 'AK-47 | Redline (Field-Tested)';
     const karambit = '★ Karambit | Doppler (Factory New)';
     final now = DateTime(2026, 1, 10);
+    final longAgo = now.subtract(const Duration(days: 365));
 
     test('each reading updates the running total of every listing\'s '
         'latest known price', () {
@@ -262,7 +277,9 @@ void main() {
         _point(karambit, now.subtract(const Duration(hours: 1)), lowest: 50000),
         _point(redline, now, lowest: 1200),
       ];
-      final series = buildCs2PortfolioSeries(points, Cs2PriceRange.day, now);
+      final entries = [_entry(redline, longAgo), _entry(karambit, longAgo)];
+      final series =
+          buildCs2PortfolioSeries(points, entries, Cs2PriceRange.day, now);
       expect(series.samples.map((s) => s.priceCents), [1000, 51000, 51200]);
     });
 
@@ -272,7 +289,9 @@ void main() {
         _point(redline, now.subtract(const Duration(days: 10)), lowest: 1000),
         _point(karambit, now, lowest: 50000),
       ];
-      final series = buildCs2PortfolioSeries(points, Cs2PriceRange.week, now);
+      final entries = [_entry(redline, longAgo), _entry(karambit, longAgo)];
+      final series =
+          buildCs2PortfolioSeries(points, entries, Cs2PriceRange.week, now);
       // Seeded at the window start with just the Redline's carried-forward
       // price, then the Karambit's own in-window reading adds to the total.
       expect(series.samples.first.priceCents, 1000);
@@ -283,21 +302,55 @@ void main() {
       final points = [
         _point(redline, now.subtract(const Duration(days: 400)), lowest: 1000),
       ];
-      final series = buildCs2PortfolioSeries(points, Cs2PriceRange.all, now);
+      final entries = [_entry(redline, longAgo.subtract(const Duration(days: 365)))];
+      final series =
+          buildCs2PortfolioSeries(points, entries, Cs2PriceRange.all, now);
       expect(series.samples, hasLength(1));
       expect(series.samples.single.priceCents, 1000);
     });
 
     test('falls back to the median when a listing has no lowest', () {
       final points = [_point(redline, now, median: 750)];
-      final series = buildCs2PortfolioSeries(points, Cs2PriceRange.day, now);
+      final entries = [_entry(redline, longAgo)];
+      final series =
+          buildCs2PortfolioSeries(points, entries, Cs2PriceRange.day, now);
       expect(series.samples.single.priceCents, 750);
     });
 
     test('no readings at all is an empty series', () {
       final series =
-          buildCs2PortfolioSeries(const [], Cs2PriceRange.week, now);
+          buildCs2PortfolioSeries(const [], const [], Cs2PriceRange.week, now);
       expect(series.isEmpty, isTrue);
+    });
+
+    test('two copies of the same listing count the price twice', () {
+      final points = [_point(redline, now, lowest: 1000)];
+      final entries = [
+        _entry(redline, longAgo, id: 1),
+        _entry(redline, longAgo, id: 2),
+      ];
+      final series =
+          buildCs2PortfolioSeries(points, entries, Cs2PriceRange.day, now);
+      expect(series.samples.single.priceCents, 2000);
+    });
+
+    test('a second copy only starts contributing from when it was tracked',
+        () {
+      final firstCopyOnly =
+          now.subtract(const Duration(hours: 3)); // before the 2nd copy existed
+      final points = [
+        _point(redline, firstCopyOnly, lowest: 1000),
+        _point(redline, now, lowest: 1000),
+      ];
+      final entries = [
+        _entry(redline, longAgo, id: 1),
+        // Added an hour before "now" — too late to count at firstCopyOnly.
+        _entry(redline, now.subtract(const Duration(hours: 1)), id: 2),
+      ];
+      final series =
+          buildCs2PortfolioSeries(points, entries, Cs2PriceRange.day, now);
+      expect(series.samples.first.priceCents, 1000);
+      expect(series.samples.last.priceCents, 2000);
     });
   });
 
@@ -377,45 +430,8 @@ void main() {
       );
     });
 
-    test(
-        'watchAllCs2PriceHistory drops a listing\'s readings the moment it '
-        'is untracked', () async {
-      final ft = trackedRedline(wear: 'Field-Tested');
-      final mw = trackedRedline(wear: 'Minimal Wear');
-      await db.addTrackedCs2Item(ft);
-      await db.addTrackedCs2Item(mw);
-      await db.recordCs2Price(ft.marketHashName.value,
-          lowestCents: 1000, medianCents: null, currency: 'USD');
-      await db.recordCs2Price(mw.marketHashName.value,
-          lowestCents: 2000, medianCents: null, currency: 'USD');
-
-      await db.removeTrackedCs2Item(ft.marketHashName.value);
-
-      final all = await db.watchAllCs2PriceHistory().first;
-      expect(all, hasLength(1));
-      expect(all.single.marketHashName, mw.marketHashName.value);
-    });
-
-    test('untracking drops the row and every reading with it', () async {
-      final item = trackedRedline(wear: 'Field-Tested');
-      await db.addTrackedCs2Item(item);
-      await db.recordCs2Price(
-        item.marketHashName.value,
-        lowestCents: 3709,
-        medianCents: null,
-        currency: 'USD',
-      );
-
-      await db.removeTrackedCs2Item(item.marketHashName.value);
-
-      expect(await db.cs2Item(item.marketHashName.value), isNull);
-      expect(
-        await db.watchCs2PriceHistory(item.marketHashName.value).first,
-        isEmpty,
-      );
-    });
-
-    test('tracking the same listing twice changes nothing', () async {
+    test('tracking the same listing twice via addTrackedCs2Item changes '
+        'nothing — that only ensures the shared listing row exists', () async {
       final item = trackedRedline(wear: 'Field-Tested');
       await db.addTrackedCs2Item(item);
       await db.addTrackedCs2Item(item);
@@ -424,52 +440,132 @@ void main() {
       expect(all, hasLength(1));
     });
 
-    test('a starting price can be set on an already-tracked listing',
-        () async {
-      final item = trackedRedline(wear: 'Field-Tested');
-      await db.addTrackedCs2Item(item);
+    group('tracking multiple copies', () {
+      Future<int> addEntry(
+        String hash, {
+        int? startingPriceCents,
+      }) async {
+        final id = await db.into(db.cs2MarketEntries).insert(
+              Cs2MarketEntriesCompanion.insert(
+                marketHashName: hash,
+                startingPriceCents: Value(startingPriceCents),
+                startingPriceAt: Value(
+                  startingPriceCents == null ? null : DateTime.now(),
+                ),
+              ),
+            );
+        return id;
+      }
 
-      await db.setCs2StartingPrice(item.marketHashName.value, 3200);
+      test('tracking the same listing twice adds two entries, not one',
+          () async {
+        final item = trackedRedline(wear: 'Field-Tested');
+        await db.addTrackedCs2Item(item);
+        await addEntry(item.marketHashName.value);
+        await addEntry(item.marketHashName.value);
 
-      final row = await db.cs2Item(item.marketHashName.value);
-      expect(row!.startingPriceCents, 3200);
-      expect(row.startingPriceAt, isNotNull);
-    });
+        final entries =
+            await db.watchCs2Entries(item.marketHashName.value).first;
+        expect(entries, hasLength(2));
+      });
 
-    test('setting a starting price of null clears both the price and when it was set',
-        () async {
-      final item = trackedRedline(wear: 'Field-Tested');
-      await db.addTrackedCs2Item(item);
-      await db.setCs2StartingPrice(item.marketHashName.value, 3200);
+      test('watchAllCs2Entries covers every listing\'s copies', () async {
+        final ft = trackedRedline(wear: 'Field-Tested');
+        final mw = trackedRedline(wear: 'Minimal Wear');
+        await db.addTrackedCs2Item(ft);
+        await db.addTrackedCs2Item(mw);
+        await addEntry(ft.marketHashName.value);
+        await addEntry(ft.marketHashName.value);
+        await addEntry(mw.marketHashName.value);
 
-      await db.setCs2StartingPrice(item.marketHashName.value, null);
+        final all = await db.watchAllCs2Entries().first;
+        expect(all, hasLength(3));
+      });
 
-      final row = await db.cs2Item(item.marketHashName.value);
-      expect(row!.startingPriceCents, isNull);
-      expect(row.startingPriceAt, isNull);
-    });
+      test('removing one copy leaves a sibling copy, the listing and its '
+          'history intact', () async {
+        final item = trackedRedline(wear: 'Field-Tested');
+        await db.addTrackedCs2Item(item);
+        final first = await addEntry(item.marketHashName.value);
+        await addEntry(item.marketHashName.value);
+        await db.recordCs2Price(item.marketHashName.value,
+            lowestCents: 3709, medianCents: null, currency: 'USD');
 
-    test('a starting price can be recorded at track time via the companion',
-        () async {
-      final item = trackedRedline(wear: 'Field-Tested');
-      final withStart = Cs2MarketItemsCompanion(
-        marketHashName: item.marketHashName,
-        skinId: item.skinId,
-        displayName: item.displayName,
-        weaponName: item.weaponName,
-        rarityName: item.rarityName,
-        rarityColor: item.rarityColor,
-        caseName: item.caseName,
-        imageUrl: item.imageUrl,
-        wear: item.wear,
-        statTrak: item.statTrak,
-        startingPriceCents: const Value(2999),
-        startingPriceAt: Value(DateTime(2026, 1, 5)),
-      );
-      await db.addTrackedCs2Item(withStart);
+        await db.removeCs2Entry(first);
 
-      final row = await db.cs2Item(item.marketHashName.value);
-      expect(row!.startingPriceCents, 2999);
+        final remaining =
+            await db.watchCs2Entries(item.marketHashName.value).first;
+        expect(remaining, hasLength(1));
+        expect(await db.cs2Item(item.marketHashName.value), isNotNull);
+        expect(
+          await db.watchCs2PriceHistory(item.marketHashName.value).first,
+          isNotEmpty,
+        );
+      });
+
+      test('removing the last copy drops the listing and every reading with '
+          'it — there is nowhere else that history lives', () async {
+        final item = trackedRedline(wear: 'Field-Tested');
+        await db.addTrackedCs2Item(item);
+        final id = await addEntry(item.marketHashName.value);
+        await db.recordCs2Price(item.marketHashName.value,
+            lowestCents: 3709, medianCents: null, currency: 'USD');
+
+        await db.removeCs2Entry(id);
+
+        expect(await db.cs2Item(item.marketHashName.value), isNull);
+        expect(
+          await db.watchCs2PriceHistory(item.marketHashName.value).first,
+          isEmpty,
+        );
+      });
+
+      test('a starting price can be set on one entry without touching a '
+          'sibling copy\'s', () async {
+        final item = trackedRedline(wear: 'Field-Tested');
+        await db.addTrackedCs2Item(item);
+        final first = await addEntry(item.marketHashName.value,
+            startingPriceCents: 1000);
+        final second = await addEntry(item.marketHashName.value);
+
+        await db.setCs2EntryStartingPrice(second, 3200);
+
+        final entries =
+            await db.watchCs2Entries(item.marketHashName.value).first;
+        final byId = {for (final e in entries) e.id: e};
+        expect(byId[first]!.startingPriceCents, 1000);
+        expect(byId[second]!.startingPriceCents, 3200);
+      });
+
+      test('setting a starting price of null clears both the price and when '
+          'it was set', () async {
+        final item = trackedRedline(wear: 'Field-Tested');
+        await db.addTrackedCs2Item(item);
+        final id =
+            await addEntry(item.marketHashName.value, startingPriceCents: 3200);
+
+        await db.setCs2EntryStartingPrice(id, null);
+
+        final entries =
+            await db.watchCs2Entries(item.marketHashName.value).first;
+        expect(entries.single.startingPriceCents, isNull);
+        expect(entries.single.startingPriceAt, isNull);
+      });
+
+      test('a starting price can be recorded at track time via the companion',
+          () async {
+        final item = trackedRedline(wear: 'Field-Tested');
+        await db.addTrackedCs2Item(item);
+        await db.addCs2Entry(Cs2MarketEntriesCompanion.insert(
+          marketHashName: item.marketHashName.value,
+          startingPriceCents: const Value(2999),
+          startingPriceAt: Value(DateTime(2026, 1, 5)),
+        ));
+
+        final entries =
+            await db.watchCs2Entries(item.marketHashName.value).first;
+        expect(entries.single.startingPriceCents, 2999);
+      });
     });
   });
 }

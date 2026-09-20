@@ -65,6 +65,10 @@ enum _Step {
 
   /// Account created, but it still has to be approved.
   pending,
+
+  /// Waiting for the 6-digit code emailed to the address just registered
+  /// (or resumed from a previous session on this device).
+  code,
 }
 
 class LoginPage extends StatefulWidget {
@@ -104,6 +108,7 @@ class _LoginPageState extends State<LoginPage> {
   final _confirm = TextEditingController();
   final _passphrase = TextEditingController();
   final _passphraseConfirm = TextEditingController();
+  final _code = TextEditingController();
 
   late int _mode = widget.initialMode;
 
@@ -129,6 +134,17 @@ class _LoginPageState extends State<LoginPage> {
   void initState() {
     super.initState();
     _loadProviders();
+    // Resume straight into code entry when this device already has an
+    // account waiting on its email code (e.g. the dialog was closed after
+    // registering, or "Enter code" was tapped from the pending-approval
+    // screen) - there is no point sending the user back through
+    // credentials for an account that already exists.
+    final pending = widget.sync.pendingApprovalEmail;
+    if (pending != null &&
+        widget.sync.pendingApprovalMode == ServerApprovalMode.email) {
+      _step = _Step.code;
+      _email.text = pending;
+    }
   }
 
   @override
@@ -140,6 +156,7 @@ class _LoginPageState extends State<LoginPage> {
     _confirm.dispose();
     _passphrase.dispose();
     _passphraseConfirm.dispose();
+    _code.dispose();
     super.dispose();
   }
 
@@ -209,10 +226,56 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
       // The account exists but is not approved yet, so nothing is signed in.
+      final byEmail =
+          widget.sync.pendingApprovalMode == ServerApprovalMode.email;
       setState(() {
-        _step = _Step.pending;
-        _info = pendingMessage;
+        _step = byEmail ? _Step.code : _Step.pending;
+        _info = byEmail ? null : pendingMessage;
+        if (byEmail) _code.clear();
       });
+    });
+  }
+
+  // ---- 6-digit email code ---------------------------------------------------
+
+  Future<void> _submitCode() async {
+    final code = _code.text.trim();
+    if (code.length != 6 || int.tryParse(code) == null) {
+      setState(() => _error = 'Enter the 6-digit code from your email.');
+      return;
+    }
+    if (_password.text.isEmpty) {
+      setState(() => _error = 'Enter your password.');
+      return;
+    }
+    final email = widget.sync.pendingApprovalEmail ?? _email.text.trim();
+
+    await _run(() async {
+      await widget.sync.verifyEmailCode(code);
+      await widget.sync.signIn(
+        serverUrl: _server.text,
+        email: email,
+        password: _password.text,
+      );
+      _finish();
+    });
+  }
+
+  Future<void> _resendCode() async {
+    await _run(() async {
+      final message = await widget.sync.resendApprovalEmail();
+      setState(() => _info = message);
+    });
+  }
+
+  void _useDifferentEmail() {
+    widget.sync.cancelPendingApproval();
+    setState(() {
+      _step = _Step.credentials;
+      _mode = 1;
+      _code.clear();
+      _error = null;
+      _info = null;
     });
   }
 
@@ -460,6 +523,7 @@ class _LoginPageState extends State<LoginPage> {
                     _Step.browser => _browserPanel(),
                     _Step.passphrase => _passphrasePanel(),
                     _Step.pending => _pendingPanel(),
+                    _Step.code => _codePanel(),
                   },
                 ),
               ),
@@ -824,6 +888,85 @@ class _LoginPageState extends State<LoginPage> {
             icon: Icons.close_rounded,
             onTap: _close,
           ),
+        ),
+      ],
+    );
+  }
+
+  // ---- Panel: 6-digit email code -------------------------------------------
+
+  Widget _codePanel() {
+    final luma = context.luma;
+    final email = widget.sync.pendingApprovalEmail ?? _email.text.trim();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const SizedBox(height: 8),
+        Center(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: luma.accentSubtle,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.mark_email_read_rounded,
+                size: 30, color: luma.accent),
+          ),
+        ),
+        const SizedBox(height: 22),
+        _Heading(
+          title: 'Check your email',
+          subtitle: 'We sent a 6-digit code to $email. Enter it below to '
+              'verify your account.',
+          centered: true,
+        ),
+        const SizedBox(height: 20),
+        _LoginField(
+          controller: _code,
+          label: '6-digit code',
+          icon: Icons.pin_rounded,
+          enabled: !_busy,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          autofillHints: const [AutofillHints.oneTimeCode],
+          onSubmitted: (_) => _submitCode(),
+        ),
+        const SizedBox(height: 12),
+        _LoginField(
+          controller: _password,
+          label: 'Password',
+          icon: Icons.lock_outline_rounded,
+          enabled: !_busy,
+          obscure: true,
+          autofillHints: const [AutofillHints.password],
+          onSubmitted: (_) => _submitCode(),
+        ),
+        const SizedBox(height: 18),
+        LumaPrimaryButton(
+          label: 'Verify and sign in',
+          expand: true,
+          loading: _busy,
+          onTap: _busy ? null : _submitCode,
+        ),
+        _MessageBlock(error: _error, info: _info),
+        const SizedBox(height: 10),
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 14,
+          runSpacing: 6,
+          children: [
+            _TinyLink(
+              label: _busy ? 'Sending…' : 'Resend code',
+              icon: Icons.refresh_rounded,
+              onTap: _busy ? null : _resendCode,
+            ),
+            _TinyLink(
+              label: 'Use a different email',
+              icon: Icons.arrow_back_rounded,
+              onTap: _busy ? null : _useDifferentEmail,
+            ),
+          ],
         ),
       ],
     );

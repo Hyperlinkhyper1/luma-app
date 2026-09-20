@@ -620,6 +620,28 @@ class SyncService extends ChangeNotifier {
     }
   }
 
+  /// Submits the 6-digit code emailed for the account this device is
+  /// waiting on. Only confirms the code server-side — it does NOT sign
+  /// anything in, since that needs the password again; call [signIn]
+  /// right after this returns. Throws [StateError] when nothing is
+  /// pending, or [SyncApiException] when the server rejects the code (wrong,
+  /// expired, or too many attempts) — same contract as [resendApprovalEmail].
+  Future<void> verifyEmailCode(String code) async {
+    final s = _state;
+    final pending = s?.pendingApprovalEmail;
+    if (s == null ||
+        pending == null ||
+        pendingApprovalMode != ServerApprovalMode.email) {
+      throw StateError('No email verification is pending on this device.');
+    }
+    final api = SyncApi(s.serverUrl ?? kDefaultSyncServerUrl);
+    try {
+      await api.verifyEmailCode(email: pending, code: code);
+    } finally {
+      api.close();
+    }
+  }
+
   /// Forgets an account that was created here but never approved, so the
   /// user can start over with a different address.
   Future<void> cancelPendingApproval() async {

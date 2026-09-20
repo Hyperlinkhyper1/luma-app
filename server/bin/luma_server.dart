@@ -16,17 +16,18 @@ import 'package:luma_sync_server/subway_store.dart';
 Future<void> main() async {
   final config = ServerConfig.fromEnvironment(Platform.environment);
   final mailConfig = MailConfig.fromEnvironment(Platform.environment);
+  final resendConfig = ResendConfig.fromEnvironment(Platform.environment);
 
   if (!config.registrationEnabled) {
     stdout.writeln('[luma] NOTE: registration is CLOSED '
         '(LUMA_ALLOW_REGISTRATION=false). Existing accounts still work; no '
         'new accounts can be created. Remove that setting to reopen.');
   }
-  if (config.requireEmailVerification && !mailConfig.enabled) {
+  if (config.requireEmailVerification && !resendConfig.enabled) {
     stdout.writeln('[luma] NOTE: email verification is required but no '
-        'LUMA_SMTP_HOST is set; verification links will be logged to '
-        'stderr instead of emailed. Set the LUMA_SMTP_* variables to send '
-        'real email, or set LUMA_REQUIRE_EMAIL_VERIFICATION=false.');
+        'LUMA_RESEND_API_KEY is set; verification codes will be logged to '
+        'stderr instead of emailed. Set LUMA_RESEND_API_KEY to send real '
+        'email, or set LUMA_REQUIRE_EMAIL_VERIFICATION=false.');
   }
 
   final store = await Store.open(config.dataDir);
@@ -40,8 +41,17 @@ Future<void> main() async {
     config.dataDir,
     seedDir: await _benchmarkSeedDir(),
   );
-  final api = Api(store, config, Mailer(mailConfig), familyStore, chatStore,
-      aiUsage, subwayStore, recipeStore, aiCatalog, aiBenchmarks);
+  final api = Api(
+      store,
+      config,
+      Mailer(mailConfig, resendConfig: resendConfig),
+      familyStore,
+      chatStore,
+      aiUsage,
+      subwayStore,
+      recipeStore,
+      aiCatalog,
+      aiBenchmarks);
 
   final server = await shelf_io.serve(
     api.handler,

@@ -176,9 +176,10 @@ class _ModelBannerState extends State<ModelBanner> {
   }
 }
 
-/// Responsive grid of [ModelBanner] cards: two columns on wide screens, one
-/// below 560px. Renders whichever [models] the caller passes in — the full
-/// roster, or a search-filtered subset.
+/// Responsive grid of [ModelBanner] cards: four columns on wide desktop
+/// screens, two on medium widths, and one below 560px. Renders whichever
+/// [models] the caller passes in — the full roster, or a search-filtered
+/// subset.
 ///
 /// A lazily-built grid rather than a [Wrap]: the pagoda roster is 40+ models
 /// and building (and image-decoding) every card on the first frame is what
@@ -200,7 +201,11 @@ class ModelBannerGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         const spacing = 12.0;
-        final columns = constraints.maxWidth > 560 ? 2 : 1;
+        final columns = constraints.maxWidth >= 900
+            ? 4
+            : constraints.maxWidth > 560
+                ? 2
+                : 1;
         final width =
             (constraints.maxWidth - spacing * (columns - 1)) / columns;
         // Image row (16:10) plus the label row below it, with a few pixels

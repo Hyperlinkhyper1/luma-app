@@ -400,8 +400,9 @@ class SyncApi {
   /// this as a successful sign-in.
   ///
   /// [approvalMode] says who does the approving: `manual` (the operator, from
-  /// the admin dashboard — the default) or `email` (the user, by opening a
-  /// link). It decides whether offering to resend anything makes sense.
+  /// the admin dashboard — the default) or `email` (the user, by typing a
+  /// 6-digit code). It decides whether offering to resend anything makes
+  /// sense.
   Future<
       ({
         String? token,
@@ -532,7 +533,19 @@ class SyncApi {
     final body = await _postJson('/auth/resend-verification', {'email': email});
     return body['message'] as String? ??
         'If that email has an account waiting for approval, we just sent a '
-            'new link.';
+            'new code.';
+  }
+
+  /// Submits the 6-digit code emailed to [email] for the pending account
+  /// [register] created. Throws [SyncApiException] if the code is wrong,
+  /// expired, or the account has made too many bad attempts — the caller
+  /// still has to [login]/[authParams] afterwards, since this only flips the
+  /// account to active rather than signing anything in.
+  Future<void> verifyEmailCode({
+    required String email,
+    required String code,
+  }) async {
+    await _postJson('/auth/verify-code', {'email': email, 'code': code});
   }
 
   Future<void> logout() async {

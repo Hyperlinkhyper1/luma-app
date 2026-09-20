@@ -1,11 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../app/widgets.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/minecraft_launcher_database.dart';
-import '../logic/launcher_settings_store.dart';
 import '../logic/microsoft_auth_client.dart';
 import '../minecraft_launcher_repository.dart';
 import '../minecraft_launcher_scope.dart';
@@ -26,65 +27,71 @@ class _AccountsTabState extends State<AccountsTab> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
         children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Accounts',
-                style: TextStyle(
-                  color: context.luma.textPrimary,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Accounts',
+                  style: TextStyle(
+                    color: context.luma.textPrimary,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-            ),
-            LumaGhostButton(
-              label: 'Add offline account',
-              icon: Icons.person_add_alt_rounded,
-              onTap: () => _addOfflineAccount(context, repository),
-            ),
-            const SizedBox(width: 10),
-            LumaPrimaryButton(
-              label: 'Sign in with Microsoft',
-              icon: Icons.window_rounded,
-              onTap: () => _signInMicrosoft(context, repository),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        StreamData(
-          stream: repository.watchAccounts(),
-          builder: (context, accounts) {
-            if (accounts.isEmpty) {
-              return const Padding(
-                padding: EdgeInsets.only(top: 60),
-                child: LumaEmptyState(
-                  icon: Icons.person_outline_rounded,
-                  title: 'No accounts yet',
-                  subtitle: 'Sign in with a Microsoft account that owns '
-                      'Minecraft to get started. Once you have, you can add '
-                      'an offline profile for playing without a connection.',
-                ),
-              );
-            }
-            return Column(
-              children: [
-                for (final account in accounts)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _AccountCard(account: account, repository: repository),
+              LumaGhostButton(
+                label: 'Add offline account',
+                icon: Icons.person_add_alt_rounded,
+                onTap: () => _addOfflineAccount(context, repository),
+              ),
+              const SizedBox(width: 10),
+              LumaPrimaryButton(
+                label: 'Sign in with Microsoft',
+                icon: Icons.window_rounded,
+                onTap: () => _signInMicrosoft(context, repository),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          StreamData(
+            stream: repository.watchAccounts(),
+            builder: (context, accounts) {
+              if (accounts.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.only(top: 60),
+                  child: LumaEmptyState(
+                    icon: Icons.person_outline_rounded,
+                    title: 'No accounts yet',
+                    subtitle:
+                        'Sign in with a Microsoft account that owns '
+                        'Minecraft to get started. Once you have, you can add '
+                        'an offline profile for playing without a connection.',
                   ),
-              ],
-            );
-          },
-        ),
+                );
+              }
+              return Column(
+                children: [
+                  for (final account in accounts)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _AccountCard(
+                        account: account,
+                        repository: repository,
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
         ],
       ),
     );
   }
 
   Future<void> _addOfflineAccount(
-      BuildContext context, MinecraftLauncherRepository repository) async {
+    BuildContext context,
+    MinecraftLauncherRepository repository,
+  ) async {
     final controller = TextEditingController();
     final name = await showDialog<String>(
       context: context,
@@ -97,7 +104,10 @@ class _AccountsTabState extends State<AccountsTab> {
           onSubmitted: (v) => Navigator.pop(context, v),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(context, controller.text),
             child: const Text('Add'),
@@ -110,22 +120,37 @@ class _AccountsTabState extends State<AccountsTab> {
       await repository.addOfflineAccount(name.trim());
     } on StateError catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
     }
   }
 
   Future<void> _signInMicrosoft(
-      BuildContext context, MinecraftLauncherRepository repository) async {
-    var clientId = await LauncherSettingsStore.getMicrosoftClientId();
-    if (clientId == null || clientId.isEmpty) {
+    BuildContext context,
+    MinecraftLauncherRepository repository,
+  ) async {
+    final client = MicrosoftAuthClient();
+    if (!client.isConfigured) {
       if (!context.mounted) return;
-      clientId = await _promptClientId(context);
-      if (clientId == null || clientId.isEmpty) return;
-      await LauncherSettingsStore.setMicrosoftClientId(clientId);
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Microsoft sign-in is unavailable'),
+          content: const Text(
+            'This build is missing Luma’s Microsoft app registration. '
+            'Do not accept a consent screen that says Prism Launcher.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
     }
-
-    final client = MicrosoftAuthClient(clientId);
-    if (!context.mounted) return;
 
     try {
       final device = await client.requestDeviceCode();
@@ -134,18 +159,26 @@ class _AccountsTabState extends State<AccountsTab> {
       final navigator = Navigator.of(context);
       var cancelled = false;
       var dialogOpen = true;
-      unawaited(showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (dialogContext) => _DeviceCodeDialog(
-          device: device,
-          onCancel: () {
-            cancelled = true;
-            dialogOpen = false;
-            Navigator.pop(dialogContext);
-          },
+      unawaited(
+        showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (dialogContext) => _DeviceCodeDialog(
+            device: device,
+            onCancel: () {
+              cancelled = true;
+              dialogOpen = false;
+              Navigator.pop(dialogContext);
+            },
+          ),
+        ).whenComplete(() => dialogOpen = false),
+      );
+      unawaited(
+        launchUrl(
+          Uri.parse(device.verificationUri),
+          mode: LaunchMode.externalApplication,
         ),
-      ).whenComplete(() => dialogOpen = false));
+      );
 
       MicrosoftAuthResult result;
       try {
@@ -171,46 +204,6 @@ class _AccountsTabState extends State<AccountsTab> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
     }
   }
-
-  Future<String?> _promptClientId(BuildContext context) async {
-    final controller = TextEditingController();
-    return showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Microsoft sign-in needs an Azure app'),
-        content: SizedBox(
-          width: lumaDialogWidth(context, 420),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Online-mode sign-in requires your own free Azure AD (Entra ID) '
-                'app registration — Mojang does not let third-party launchers '
-                'reuse its own client ID. Create a public-client app with the '
-                '"XboxLive.signin offline_access" scope, then paste its '
-                'Application (client) ID below.',
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller,
-                autofocus: true,
-                decoration: const InputDecoration(labelText: 'Application (client) ID'),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('Continue'),
-          ),
-        ],
-      ),
-    );
-  }
-
 }
 
 /// The "go to this URL and enter this code" dialog shown for the duration of
@@ -232,26 +225,65 @@ class _DeviceCodeDialog extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Go to ${device.verificationUri} and enter this code:'),
+            Text(
+              'The code is shown below. Enter it on the Microsoft page '
+              'that just opened:',
+            ),
             const SizedBox(height: 12),
-            SelectableText(
-              device.userCode,
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: 2),
+            Row(
+              children: [
+                Expanded(
+                  child: SelectableText(
+                    device.userCode,
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Copy code',
+                  onPressed: () async {
+                    await Clipboard.setData(
+                      ClipboardData(text: device.userCode),
+                    );
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Code copied.')),
+                    );
+                  },
+                  icon: const Icon(Icons.copy_rounded),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             const Row(
               children: [
-                SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
                 SizedBox(width: 10),
-                Expanded(child: Text('Waiting for you to finish in the browser…')),
+                Expanded(
+                  child: Text('Waiting for you to finish in the browser…'),
+                ),
               ],
+            ),
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: () => launchUrl(
+                Uri.parse(device.verificationUri),
+                mode: LaunchMode.externalApplication,
+              ),
+              icon: const Icon(Icons.open_in_browser_rounded),
+              label: const Text('Open Microsoft sign-in'),
             ),
           ],
         ),
       ),
-      actions: [
-        TextButton(onPressed: onCancel, child: const Text('Cancel')),
-      ],
+      actions: [TextButton(onPressed: onCancel, child: const Text('Cancel'))],
     );
   }
 }
@@ -268,7 +300,9 @@ class _AccountCard extends StatelessWidget {
       child: Row(
         children: [
           LumaIconBadge(
-            icon: account.type == 'microsoft' ? Icons.window_rounded : Icons.person_rounded,
+            icon: account.type == 'microsoft'
+                ? Icons.window_rounded
+                : Icons.person_rounded,
             color: luma.accent,
           ),
           const SizedBox(width: 14),
@@ -285,7 +319,9 @@ class _AccountCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  account.type == 'microsoft' ? 'Microsoft account' : 'Offline account',
+                  account.type == 'microsoft'
+                      ? 'Microsoft account'
+                      : 'Offline account',
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
               ],
@@ -300,7 +336,11 @@ class _AccountCard extends StatelessWidget {
               ),
               child: Text(
                 'Active',
-                style: TextStyle(color: luma.accent, fontSize: 12, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  color: luma.accent,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             )
           else

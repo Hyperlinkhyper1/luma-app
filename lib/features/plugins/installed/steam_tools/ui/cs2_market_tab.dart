@@ -34,8 +34,15 @@ class Cs2MarketTab extends StatefulWidget {
 }
 
 class _Cs2MarketTabState extends State<Cs2MarketTab> {
-  final _searchController = TextEditingController();
-  String _query = '';
+  // Separate controllers and query strings per view — Browse and Tracked
+  // are different lists over different data, so a search left over from one
+  // silently narrowing the other (e.g. switching to Tracked with "ens" still
+  // in the box, hiding everything but one match) would read as tracked
+  // items having gone missing rather than a filter still being active.
+  final _browseController = TextEditingController();
+  final _trackedController = TextEditingController();
+  String _browseQuery = '';
+  String _trackedQuery = '';
   bool _started = false;
   _Cs2MarketView _view = _Cs2MarketView.browse;
 
@@ -49,7 +56,8 @@ class _Cs2MarketTabState extends State<Cs2MarketTab> {
 
   @override
   void dispose() {
-    _searchController.dispose();
+    _browseController.dispose();
+    _trackedController.dispose();
     super.dispose();
   }
 
@@ -57,13 +65,20 @@ class _Cs2MarketTabState extends State<Cs2MarketTab> {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final repository = Cs2MarketScope.of(context);
+    final tracked = _view == _Cs2MarketView.tracked;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _Toolbar(
-          controller: _searchController,
-          onQuery: (value) => setState(() => _query = value),
+          controller: tracked ? _trackedController : _browseController,
+          onQuery: (value) => setState(() {
+            if (tracked) {
+              _trackedQuery = value;
+            } else {
+              _browseQuery = value;
+            }
+          }),
           view: _view,
           onViewChanged: (v) => setState(() => _view = v),
         ),
@@ -92,11 +107,11 @@ class _Cs2MarketTabState extends State<Cs2MarketTab> {
               : const SizedBox.shrink(),
         ),
         Expanded(
-          child: _view == _Cs2MarketView.tracked
+          child: tracked
               // Tracked listings live entirely in the local database, not the
               // catalog fetch — this view works immediately, even before
               // `catalogLoaded` is true.
-              ? Cs2TrackedBody(repository: repository, query: _query)
+              ? Cs2TrackedBody(repository: repository, query: _trackedQuery)
               : ListenableBuilder(
                   listenable: repository,
                   builder: (context, _) {
@@ -112,7 +127,7 @@ class _Cs2MarketTabState extends State<Cs2MarketTab> {
                         ),
                       );
                     }
-                    final trimmed = _query.trim();
+                    final trimmed = _browseQuery.trim();
                     if (trimmed.isEmpty) {
                       return _BrowseBody(repository: repository);
                     }

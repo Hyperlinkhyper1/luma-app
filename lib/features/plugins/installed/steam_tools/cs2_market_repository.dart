@@ -171,6 +171,15 @@ class Cs2MarketRepository extends ChangeNotifier {
   Stream<List<Cs2MarketPricePoint>> watchAllPriceHistory() =>
       _db.watchAllCs2PriceHistory();
 
+  /// Every copy tracked of one exact listing â€” zero, one, or several, since
+  /// [track] adds a new one each time rather than refusing a duplicate.
+  Stream<List<Cs2MarketEntry>> watchEntries(String marketHashName) =>
+      _db.watchCs2Entries(marketHashName);
+
+  /// Every tracked copy across every listing â€” what the Tracked tab's grid
+  /// and portfolio total are built from.
+  Stream<List<Cs2MarketEntry>> watchAllEntries() => _db.watchAllCs2Entries();
+
   Future<bool> isTracked(String marketHashName) async =>
       await _db.cs2Item(marketHashName) != null;
 
@@ -205,13 +214,16 @@ class Cs2MarketRepository extends ChangeNotifier {
     }
   }
 
-  /// Starts watching one exact listing â€” a specific finish, wear and
-  /// StatTrak state â€” and fetches its price immediately so the new row has
-  /// one right away instead of waiting for the next sweep.
+  /// Adds one more tracked copy of one exact listing â€” a specific finish,
+  /// wear and StatTrak state â€” and fetches its shared price immediately so
+  /// a first copy has a reading right away instead of waiting for the next
+  /// sweep. Calling this again for a listing that already has copies adds
+  /// another one rather than refusing or replacing it: "I bought a second
+  /// one at a different price" is exactly what this is for.
   ///
-  /// [startingPriceCents] is the optional cost basis the user typed in
-  /// alongside the wear/grade they picked â€” see [setStartingPrice] for
-  /// setting or changing it after the fact.
+  /// [startingPriceCents] is the optional cost basis the user typed in for
+  /// this specific copy alongside the wear/grade they picked â€” see
+  /// [setEntryStartingPrice] for changing one copy's baseline afterwards.
   Future<void> track({
     required Cs2SkinDef skin,
     String? wear,
@@ -231,6 +243,9 @@ class Cs2MarketRepository extends ChangeNotifier {
       imageUrl: skin.imageUrl,
       wear: Value(wear),
       statTrak: Value(statTrak),
+    ));
+    await _db.addCs2Entry(Cs2MarketEntriesCompanion.insert(
+      marketHashName: marketHashName,
       startingPriceCents: Value(startingPriceCents),
       startingPriceAt:
           Value(startingPriceCents == null ? null : DateTime.now()),
@@ -239,17 +254,20 @@ class Cs2MarketRepository extends ChangeNotifier {
     unawaited(refreshPrice(marketHashName, force: true));
   }
 
-  Future<void> untrack(String marketHashName) async {
-    await _db.removeTrackedCs2Item(marketHashName);
+  /// Stops tracking one copy. Its listing's shared price and history are
+  /// only dropped once every copy of it is gone â€” see
+  /// [SteamDatabase.removeCs2Entry].
+  Future<void> untrackEntry(int entryId) async {
+    await _db.removeCs2Entry(entryId);
     StorageGuard.instance.scheduleRefresh();
   }
 
   /// Sets, changes, or (with `null`) clears the price gain/loss is measured
-  /// from for an already-tracked listing. Separate from [track] so a
-  /// baseline typed in wrong, or skipped entirely at track time, can still
-  /// be fixed later without untracking and losing the history built so far.
-  Future<void> setStartingPrice(String marketHashName, int? cents) async {
-    await _db.setCs2StartingPrice(marketHashName, cents);
+  /// from for one already-tracked copy. Separate from [track] so a baseline
+  /// typed in wrong, or skipped entirely at track time, can still be fixed
+  /// later without untracking and losing the history built so far.
+  Future<void> setEntryStartingPrice(int entryId, int? cents) async {
+    await _db.setCs2EntryStartingPrice(entryId, cents);
     StorageGuard.instance.scheduleRefresh();
   }
 

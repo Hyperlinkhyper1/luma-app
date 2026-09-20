@@ -105,5 +105,28 @@ void main() {
       await tester.pumpAndSettle();
       expect(picked?.id, 'pagoda_fable51_low');
     });
+
+    testWidgets('uses four banner columns on wide desktop layouts',
+        (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1000, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(app([
+        _benchmark('model_1', 'Model 1'),
+        _benchmark('model_2', 'Model 2'),
+        _benchmark('model_3', 'Model 3'),
+        _benchmark('model_4', 'Model 4'),
+      ]));
+      await tester.pumpAndSettle();
+
+      final banners = find.byType(ModelBanner);
+      expect(banners, findsNWidgets(4));
+      expect(
+        {
+          for (var i = 0; i < 4; i++) tester.getTopLeft(banners.at(i)).dx,
+        },
+        hasLength(4),
+      );
+    });
   });
 }

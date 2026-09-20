@@ -32,7 +32,7 @@ enum AiUsageSection {
   assets(
     icon: Icons.inventory_2_rounded,
     label: 'Assets',
-    blurb: 'Coming soon',
+    blurb: 'Free to use',
   );
 
   const AiUsageSection({
