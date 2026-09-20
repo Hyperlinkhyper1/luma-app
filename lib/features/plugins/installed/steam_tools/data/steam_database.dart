@@ -220,7 +220,7 @@ class SteamDatabase extends _$SteamDatabase {
             ));
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -244,24 +244,70 @@ class SteamDatabase extends _$SteamDatabase {
             // otherwise upgrading would silently wipe out every baseline
             // (and, from the UI's point of view, every tracked listing,
             // since the Tracked tab now reads entries rather than listings)
-            // a device already had.
+            // a device already had. Checked for an existing match first so
+            // this can never double a listing's entry if this step somehow
+            // runs more than once against the same data (see schemaVersion
+            // 6 below, added after exactly that happened for a real device).
             final existingListings = await select(cs2MarketItems).get();
-            await batch((b) {
-              for (final item in existingListings) {
-                b.insert(
-                  cs2MarketEntries,
-                  Cs2MarketEntriesCompanion.insert(
-                    marketHashName: item.marketHashName,
-                    startingPriceCents: Value(item.startingPriceCents),
-                    startingPriceAt: Value(item.startingPriceAt),
-                    trackedAt: Value(item.trackedAt),
-                  ),
-                );
-              }
-            });
+            for (final item in existingListings) {
+              final alreadyMigrated = await (select(cs2MarketEntries)
+                    ..where((e) =>
+                        e.marketHashName.equals(item.marketHashName) &
+                        e.trackedAt.equals(item.trackedAt)))
+                  .getSingleOrNull();
+              if (alreadyMigrated != null) continue;
+              await into(cs2MarketEntries).insert(
+                Cs2MarketEntriesCompanion.insert(
+                  marketHashName: item.marketHashName,
+                  startingPriceCents: Value(item.startingPriceCents),
+                  startingPriceAt: Value(item.startingPriceAt),
+                  trackedAt: Value(item.trackedAt),
+                ),
+              );
+            }
+          }
+          if (from < 6) {
+            // The schemaVersion 5 step above ran twice on at least one real
+            // device (most likely two app processes racing on first launch
+            // after the update, each seeing "not yet migrated" before either
+            // had committed), leaving two byte-for-byte identical entries
+            // per listing — every tracked copy showing up twice in the
+            // Tracked tab, doubling the portfolio total along with it.
+            await dedupeCs2Entries();
           }
         },
       );
+
+  /// Collapses entries that agree on listing, starting price and tracked-at
+  /// down to one each, keeping the lowest id — such entries are
+  /// indistinguishable copies of the same original one (a genuine second
+  /// copy of a skin practically always differs in at least one of those
+  /// fields), the signature a doubled schemaVersion-5 migration leaves
+  /// behind. Exposed as its own method, rather than inlined in the
+  /// migration, so it has something other than a live upgrade to be tested
+  /// against.
+  Future<void> dedupeCs2Entries() async {
+    final allEntries = await select(cs2MarketEntries).get();
+    final keptIdBySignature = <String, int>{};
+    final duplicateIds = <int>[];
+    for (final entry in allEntries) {
+      final signature = [
+        entry.marketHashName,
+        entry.startingPriceCents,
+        entry.startingPriceAt?.millisecondsSinceEpoch,
+        entry.trackedAt.millisecondsSinceEpoch,
+      ].join('|');
+      if (keptIdBySignature.containsKey(signature)) {
+        duplicateIds.add(entry.id);
+      } else {
+        keptIdBySignature[signature] = entry.id;
+      }
+    }
+    if (duplicateIds.isNotEmpty) {
+      await (delete(cs2MarketEntries)..where((e) => e.id.isIn(duplicateIds)))
+          .go();
+    }
+  }
 
   /// Every game this device is tracking, alphabetical.
   Stream<List<SteamGame>> watchTrackedGames() {

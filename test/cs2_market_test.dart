@@ -567,5 +567,99 @@ void main() {
         expect(entries.single.startingPriceCents, 2999);
       });
     });
+
+    group('dedupeCs2Entries', () {
+      Future<int> addEntry(
+        String hash, {
+        int? startingPriceCents,
+        DateTime? startingPriceAt,
+        DateTime? trackedAt,
+      }) =>
+          db.into(db.cs2MarketEntries).insert(
+                Cs2MarketEntriesCompanion.insert(
+                  marketHashName: hash,
+                  startingPriceCents: Value(startingPriceCents),
+                  startingPriceAt: Value(startingPriceAt),
+                  trackedAt: Value(trackedAt ?? DateTime(2026, 1, 1)),
+                ),
+              );
+
+      test('collapses byte-for-byte duplicate entries down to one', () async {
+        final item = trackedRedline(wear: 'Field-Tested');
+        await db.addTrackedCs2Item(item);
+        final at = DateTime(2026, 1, 1);
+        final kept = await addEntry(item.marketHashName.value,
+            startingPriceCents: 3200, startingPriceAt: at, trackedAt: at);
+        await addEntry(item.marketHashName.value,
+            startingPriceCents: 3200, startingPriceAt: at, trackedAt: at);
+
+        await db.dedupeCs2Entries();
+
+        final entries =
+            await db.watchCs2Entries(item.marketHashName.value).first;
+        expect(entries, hasLength(1));
+        expect(entries.single.id, kept);
+      });
+
+      test('a doubled migration for two listings is cleaned up independently',
+          () async {
+        final ft = trackedRedline(wear: 'Field-Tested');
+        final mw = trackedRedline(wear: 'Minimal Wear');
+        await db.addTrackedCs2Item(ft);
+        await db.addTrackedCs2Item(mw);
+        for (var i = 0; i < 2; i++) {
+          await addEntry(ft.marketHashName.value, startingPriceCents: 1000);
+          await addEntry(mw.marketHashName.value, startingPriceCents: 2000);
+        }
+
+        await db.dedupeCs2Entries();
+
+        expect(await db.watchCs2Entries(ft.marketHashName.value).first,
+            hasLength(1));
+        expect(await db.watchCs2Entries(mw.marketHashName.value).first,
+            hasLength(1));
+      });
+
+      test('a genuine second copy at a different price is left alone',
+          () async {
+        final item = trackedRedline(wear: 'Field-Tested');
+        await db.addTrackedCs2Item(item);
+        await addEntry(item.marketHashName.value, startingPriceCents: 1000);
+        await addEntry(item.marketHashName.value, startingPriceCents: 1500);
+
+        await db.dedupeCs2Entries();
+
+        final entries =
+            await db.watchCs2Entries(item.marketHashName.value).first;
+        expect(entries, hasLength(2));
+      });
+
+      test('a genuine second copy tracked at a different time is left alone',
+          () async {
+        final item = trackedRedline(wear: 'Field-Tested');
+        await db.addTrackedCs2Item(item);
+        await addEntry(item.marketHashName.value,
+            trackedAt: DateTime(2026, 1, 1));
+        await addEntry(item.marketHashName.value,
+            trackedAt: DateTime(2026, 2, 1));
+
+        await db.dedupeCs2Entries();
+
+        final entries =
+            await db.watchCs2Entries(item.marketHashName.value).first;
+        expect(entries, hasLength(2));
+      });
+
+      test('no duplicates is a no-op', () async {
+        final item = trackedRedline(wear: 'Field-Tested');
+        await db.addTrackedCs2Item(item);
+        await addEntry(item.marketHashName.value);
+
+        await db.dedupeCs2Entries();
+
+        expect(await db.watchCs2Entries(item.marketHashName.value).first,
+            hasLength(1));
+      });
+    });
   });
 }
