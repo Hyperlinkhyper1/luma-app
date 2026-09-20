@@ -344,20 +344,33 @@ class LEn extends L {
 
   @override
   String get petSettingsSubtitle =>
-      'Press Alt+Space anywhere to summon the pet, then type to jump to any page or plugin.';
+      'Press the shortcut anywhere to summon the pet, then type to jump to any page or plugin.';
 
   @override
-  String get petSettingsHotkey => 'Summon with Alt+Space';
+  String get petSettingsHotkey => 'Summon from anywhere';
 
   @override
   String get petSettingsHotkeyTaken =>
-      'Alt+Space is taken by another app, so the pet only opens from inside luma.';
+      'Another app already owns this shortcut, so it only works while luma is in front. Pick a different one below.';
+
+  @override
+  String get petSettingsRebind => 'Change';
+
+  @override
+  String get petSettingsRebindTitle => 'Press a new shortcut';
+
+  @override
+  String get petSettingsRebindSave => 'Use it';
 
   @override
   String get petSettingsName => 'Name';
 
   @override
-  String get petSettingsSummon => 'Say hello';
+  String get petSettingsSummon => 'Open the pet now';
+
+  @override
+  String get petSettingsSummonHint =>
+      'Brings the panel up straight away — no keyboard shortcut needed.';
 
   @override
   String get monthJan => 'Jan';

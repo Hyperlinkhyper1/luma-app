@@ -202,6 +202,105 @@ void main() {
     });
   });
 
+  group('gain/loss series', () {
+    const hash = 'AK-47 | Redline (Field-Tested)';
+    final now = DateTime(2026, 1, 10);
+
+    test('recentres every reading on the starting price', () {
+      final priceSeries = buildCs2PriceSeries(
+        [
+          _point(hash, now.subtract(const Duration(hours: 2)), lowest: 1000),
+          _point(hash, now, lowest: 1250),
+        ],
+        Cs2PriceRange.week,
+        now,
+      );
+      final series = buildCs2GainLossSeries(priceSeries, 1100);
+      expect(series.samples.map((s) => s.deltaCents), [-100, 150]);
+      expect(series.currentDeltaCents, 150);
+    });
+
+    test('current percent is the last delta over the starting price', () {
+      final priceSeries = buildCs2PriceSeries(
+        [_point(hash, now, lowest: 1500)],
+        Cs2PriceRange.week,
+        now,
+      );
+      final series = buildCs2GainLossSeries(priceSeries, 1000);
+      expect(series.currentPercent, closeTo(50, 0.001));
+    });
+
+    test('a zero starting price has no percent, not a divide-by-zero crash',
+        () {
+      final priceSeries = buildCs2PriceSeries(
+        [_point(hash, now, lowest: 500)],
+        Cs2PriceRange.week,
+        now,
+      );
+      final series = buildCs2GainLossSeries(priceSeries, 0);
+      expect(series.currentPercent, isNull);
+    });
+
+    test('empty price series yields an empty gain/loss series', () {
+      final priceSeries =
+          buildCs2PriceSeries(const [], Cs2PriceRange.week, now);
+      final series = buildCs2GainLossSeries(priceSeries, 1000);
+      expect(series.isEmpty, isTrue);
+      expect(series.currentDeltaCents, isNull);
+    });
+  });
+
+  group('portfolio series', () {
+    const redline = 'AK-47 | Redline (Field-Tested)';
+    const karambit = '★ Karambit | Doppler (Factory New)';
+    final now = DateTime(2026, 1, 10);
+
+    test('each reading updates the running total of every listing\'s '
+        'latest known price', () {
+      final points = [
+        _point(redline, now.subtract(const Duration(hours: 2)), lowest: 1000),
+        _point(karambit, now.subtract(const Duration(hours: 1)), lowest: 50000),
+        _point(redline, now, lowest: 1200),
+      ];
+      final series = buildCs2PortfolioSeries(points, Cs2PriceRange.day, now);
+      expect(series.samples.map((s) => s.priceCents), [1000, 51000, 51200]);
+    });
+
+    test('a reading from before the window is carried forward as a seed',
+        () {
+      final points = [
+        _point(redline, now.subtract(const Duration(days: 10)), lowest: 1000),
+        _point(karambit, now, lowest: 50000),
+      ];
+      final series = buildCs2PortfolioSeries(points, Cs2PriceRange.week, now);
+      // Seeded at the window start with just the Redline's carried-forward
+      // price, then the Karambit's own in-window reading adds to the total.
+      expect(series.samples.first.priceCents, 1000);
+      expect(series.samples.last.priceCents, 51000);
+    });
+
+    test('"All" has nothing to carry forward from, so no seed sample', () {
+      final points = [
+        _point(redline, now.subtract(const Duration(days: 400)), lowest: 1000),
+      ];
+      final series = buildCs2PortfolioSeries(points, Cs2PriceRange.all, now);
+      expect(series.samples, hasLength(1));
+      expect(series.samples.single.priceCents, 1000);
+    });
+
+    test('falls back to the median when a listing has no lowest', () {
+      final points = [_point(redline, now, median: 750)];
+      final series = buildCs2PortfolioSeries(points, Cs2PriceRange.day, now);
+      expect(series.samples.single.priceCents, 750);
+    });
+
+    test('no readings at all is an empty series', () {
+      final series =
+          buildCs2PortfolioSeries(const [], Cs2PriceRange.week, now);
+      expect(series.isEmpty, isTrue);
+    });
+  });
+
   group('tracking a listing needs no Steam account', () {
     late SteamDatabase db;
 
@@ -258,6 +357,45 @@ void main() {
       expect(history.last.lowestCents, 3800);
     });
 
+    test('watchAllCs2PriceHistory combines every tracked listing\'s readings',
+        () async {
+      final ft = trackedRedline(wear: 'Field-Tested');
+      final mw = trackedRedline(wear: 'Minimal Wear');
+      await db.addTrackedCs2Item(ft);
+      await db.addTrackedCs2Item(mw);
+
+      await db.recordCs2Price(ft.marketHashName.value,
+          lowestCents: 1000, medianCents: null, currency: 'USD');
+      await db.recordCs2Price(mw.marketHashName.value,
+          lowestCents: 2000, medianCents: null, currency: 'USD');
+
+      final all = await db.watchAllCs2PriceHistory().first;
+      expect(all, hasLength(2));
+      expect(
+        all.map((p) => p.marketHashName),
+        containsAll([ft.marketHashName.value, mw.marketHashName.value]),
+      );
+    });
+
+    test(
+        'watchAllCs2PriceHistory drops a listing\'s readings the moment it '
+        'is untracked', () async {
+      final ft = trackedRedline(wear: 'Field-Tested');
+      final mw = trackedRedline(wear: 'Minimal Wear');
+      await db.addTrackedCs2Item(ft);
+      await db.addTrackedCs2Item(mw);
+      await db.recordCs2Price(ft.marketHashName.value,
+          lowestCents: 1000, medianCents: null, currency: 'USD');
+      await db.recordCs2Price(mw.marketHashName.value,
+          lowestCents: 2000, medianCents: null, currency: 'USD');
+
+      await db.removeTrackedCs2Item(ft.marketHashName.value);
+
+      final all = await db.watchAllCs2PriceHistory().first;
+      expect(all, hasLength(1));
+      expect(all.single.marketHashName, mw.marketHashName.value);
+    });
+
     test('untracking drops the row and every reading with it', () async {
       final item = trackedRedline(wear: 'Field-Tested');
       await db.addTrackedCs2Item(item);
@@ -284,6 +422,54 @@ void main() {
 
       final all = await db.watchTrackedCs2Items().first;
       expect(all, hasLength(1));
+    });
+
+    test('a starting price can be set on an already-tracked listing',
+        () async {
+      final item = trackedRedline(wear: 'Field-Tested');
+      await db.addTrackedCs2Item(item);
+
+      await db.setCs2StartingPrice(item.marketHashName.value, 3200);
+
+      final row = await db.cs2Item(item.marketHashName.value);
+      expect(row!.startingPriceCents, 3200);
+      expect(row.startingPriceAt, isNotNull);
+    });
+
+    test('setting a starting price of null clears both the price and when it was set',
+        () async {
+      final item = trackedRedline(wear: 'Field-Tested');
+      await db.addTrackedCs2Item(item);
+      await db.setCs2StartingPrice(item.marketHashName.value, 3200);
+
+      await db.setCs2StartingPrice(item.marketHashName.value, null);
+
+      final row = await db.cs2Item(item.marketHashName.value);
+      expect(row!.startingPriceCents, isNull);
+      expect(row.startingPriceAt, isNull);
+    });
+
+    test('a starting price can be recorded at track time via the companion',
+        () async {
+      final item = trackedRedline(wear: 'Field-Tested');
+      final withStart = Cs2MarketItemsCompanion(
+        marketHashName: item.marketHashName,
+        skinId: item.skinId,
+        displayName: item.displayName,
+        weaponName: item.weaponName,
+        rarityName: item.rarityName,
+        rarityColor: item.rarityColor,
+        caseName: item.caseName,
+        imageUrl: item.imageUrl,
+        wear: item.wear,
+        statTrak: item.statTrak,
+        startingPriceCents: const Value(2999),
+        startingPriceAt: Value(DateTime(2026, 1, 5)),
+      );
+      await db.addTrackedCs2Item(withStart);
+
+      final row = await db.cs2Item(item.marketHashName.value);
+      expect(row!.startingPriceCents, 2999);
     });
   });
 }

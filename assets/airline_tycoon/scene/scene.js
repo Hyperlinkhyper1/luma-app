@@ -533,11 +533,11 @@
     zoneGroup.clear();
     for (const z of zones) {
       const color = zoneColors[z.zone] || 0xffffff, cx = z.x + z.width / 2, cz = z.y + z.depth / 2;
-      flat(zoneGroup, wash(color, .2), cx, cz, z.width, z.depth, .32, 1);
-      flat(zoneGroup, wash(color, .55), cx, z.y, z.width, .4, .33, 2);
-      flat(zoneGroup, wash(color, .55), cx, z.y + z.depth, z.width, .4, .33, 2);
-      flat(zoneGroup, wash(color, .55), z.x, cz, .4, z.depth, .33, 2);
-      flat(zoneGroup, wash(color, .55), z.x + z.width, cz, .4, z.depth, .33, 2);
+      flat(zoneGroup, wash(color, .3), cx, cz, z.width, z.depth, .32, 1);
+      flat(zoneGroup, wash(color, .75), cx, z.y, z.width, .4, .33, 2);
+      flat(zoneGroup, wash(color, .75), cx, z.y + z.depth, z.width, .4, .33, 2);
+      flat(zoneGroup, wash(color, .75), z.x, cz, .4, z.depth, .33, 2);
+      flat(zoneGroup, wash(color, .75), z.x + z.width, cz, .4, z.depth, .33, 2);
     }
   }
   // While placing furniture, the floor it may go on lights up green and the
@@ -712,7 +712,7 @@
     M.dispose(environment);
     environment.clear();
     const previous = district;
-    district = window.AirportLandside?.build(list) || null;
+    district = window.AirportLandside?.build(list, world?.zones || []) || null;
     if (district && district !== previous) scene.add(district.group);
     drawMarkings(environment, joins?.curves || []);
     const porches = [];

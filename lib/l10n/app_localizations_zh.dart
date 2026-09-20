@@ -331,19 +331,31 @@ class LZh extends L {
   String get petSettingsTitle => 'luma 宠物';
 
   @override
-  String get petSettingsSubtitle => '在任何地方按 Alt+Space 唤出宠物，输入即可跳到任意页面或插件。';
+  String get petSettingsSubtitle => '在任何地方按下快捷键唤出宠物，输入即可跳到任意页面或插件。';
 
   @override
-  String get petSettingsHotkey => '用 Alt+Space 唤出';
+  String get petSettingsHotkey => '随时唤出';
 
   @override
-  String get petSettingsHotkeyTaken => 'Alt+Space 已被其他应用占用，宠物只能在 luma 内打开。';
+  String get petSettingsHotkeyTaken => '快捷键已被其他应用占用，只有 luma 在前台时才有效。请在下方换一个。';
+
+  @override
+  String get petSettingsRebind => '更改';
+
+  @override
+  String get petSettingsRebindTitle => '按下新的快捷键';
+
+  @override
+  String get petSettingsRebindSave => '使用';
 
   @override
   String get petSettingsName => '名字';
 
   @override
-  String get petSettingsSummon => '打个招呼';
+  String get petSettingsSummon => '立即打开宠物';
+
+  @override
+  String get petSettingsSummonHint => '不需要快捷键，立刻弹出面板。';
 
   @override
   String get monthJan => '1月';

@@ -8,6 +8,7 @@ import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../app/window_controls.dart';
+import 'hotkey_probe.dart';
 
 /// How the pet is feeling. Drives both the face it paints and the line it
 /// says — see [PetSprite] and [LumaPetPanel].
@@ -69,15 +70,50 @@ class PetRepository extends ChangeNotifier {
   bool _acceptBlur = false;
   Timer? _blurArmTimer;
 
-  /// Alt+Space. Windows hands this to the focused window's system menu by
-  /// default, but a registered global hotkey is dispatched first, so that
-  /// menu never opens while the pet is armed.
-  static final HotKey summonHotKey = HotKey(
-    identifier: 'luma_pet_summon',
-    key: PhysicalKeyboardKey.space,
-    modifiers: const [HotKeyModifier.alt],
-    scope: HotKeyScope.system,
-  );
+  /// Shift+Alt+Space.
+  ///
+  /// Windows can only register a chord of modifiers plus exactly one key, so
+  /// the modifier is not optional. This particular one is unclaimed by the OS
+  /// and impossible to hit while typing, unlike the tempting ones: Win+Space
+  /// is the input-language switcher, Alt+Space opens the window menu, and
+  /// Shift+Space fires every time you type a capital before a space.
+  static HotKey defaultHotKey({HotKeyScope scope = HotKeyScope.system}) =>
+      HotKey(
+        identifier: scope == HotKeyScope.system
+            ? _systemIdentifier
+            : _inAppIdentifier,
+        key: PhysicalKeyboardKey.space,
+        modifiers: const [HotKeyModifier.shift, HotKeyModifier.alt],
+        scope: scope,
+      );
+
+  /// The chord written the way a person reads it — "Win + Space". Built here
+  /// rather than from `HotKey.debugName`, which spells out "Meta Left".
+  String get hotKeyLabel => [
+        for (final modifier in _hotKey.modifiers ?? const <HotKeyModifier>[])
+          switch (modifier) {
+            HotKeyModifier.alt => 'Alt',
+            HotKeyModifier.control => 'Ctrl',
+            HotKeyModifier.shift => 'Shift',
+            HotKeyModifier.meta => Platform.isMacOS ? 'Cmd' : 'Win',
+            HotKeyModifier.capsLock => 'Caps Lock',
+            HotKeyModifier.fn => 'Fn',
+          },
+        _hotKey.physicalKey.debugName ?? '?',
+      ].join(' + ');
+
+  static const _systemIdentifier = 'luma_pet_summon';
+  static const _inAppIdentifier = 'luma_pet_summon_inapp';
+
+  HotKey _hotKey = defaultHotKey();
+
+  /// Whether [_hotKey] is the user's own choice rather than the built-in
+  /// default — see [_load].
+  bool _hotKeyCustom = false;
+
+  /// The chord that summons the pet. Rebindable, because the good launcher
+  /// chords are popular and the first claim wins.
+  HotKey get hotKey => _hotKey;
 
   bool get loaded => _loaded;
 
@@ -100,7 +136,7 @@ class PetRepository extends ChangeNotifier {
   bool get hotKeyRegistered => _hotKeyRegistered;
 
   /// Set when the hotkey could not be registered — almost always because
-  /// another app already holds Alt+Space.
+  /// the OS or another app already holds the chord.
   String? get hotKeyError => _hotKeyError;
 
   /// Whether a global hotkey is possible at all here. Android and iOS have no
@@ -114,6 +150,7 @@ class PetRepository extends ChangeNotifier {
     if (_enabled) await _registerHotKey();
     if (hasCustomTitleBar) {
       _focusSub = windowFocusEvents.listen((focused) {
+        _hasFocus = focused;
         if (focused || !_visible || !_windowMode || !_acceptBlur) return;
         // Clicked away to another app: dismiss, the way every other summoned
         // launcher behaves.
@@ -133,6 +170,26 @@ class PetRepository extends ChangeNotifier {
         final name = (data['name'] as String?)?.trim();
         if (name != null && name.isNotEmpty) _name = name;
         _pats = (data['pats'] as num?)?.toInt() ?? 0;
+        // Only a chord the user picked themselves is restored. The saved copy
+        // of the built-in default is ignored on purpose, so changing that
+        // default reaches devices that already have a pet file — otherwise
+        // the first run would freeze whatever the default happened to be
+        // that day.
+        _hotKeyCustom = data['hotKeyCustom'] == true;
+        final hotKeyJson = _hotKeyCustom ? data['hotKey'] : null;
+        if (hotKeyJson is Map) {
+          try {
+            final parsed = HotKey.fromJson(hotKeyJson.cast<String, dynamic>());
+            _hotKey = HotKey(
+              identifier: _systemIdentifier,
+              key: parsed.key,
+              modifiers: parsed.modifiers ?? const [],
+              scope: HotKeyScope.system,
+            );
+          } catch (_) {
+            // Keep the default chord if the saved one cannot be read.
+          }
+        }
         final recents = data['recentIds'];
         if (recents is List) {
           _recentIds = [
@@ -157,6 +214,8 @@ class PetRepository extends ChangeNotifier {
         'name': _name,
         'pats': _pats,
         'recentIds': _recentIds,
+        'hotKey': _hotKey.toJson(),
+        'hotKeyCustom': _hotKeyCustom,
       }));
     } catch (_) {
       // Best-effort; the pet just forgets on the next launch.
@@ -164,27 +223,87 @@ class PetRepository extends ChangeNotifier {
   }
 
   Future<void> _registerHotKey() async {
-    if (!supportsGlobalHotKey) return;
+    // The in-app copy first, and always: it runs off the keyboard stream
+    // rather than the focus tree, so it fires wherever the user happens to be
+    // in luma. It is also the only thing that works when the global
+    // registration below is refused.
     try {
-      await hotKeyManager.register(summonHotKey, keyDownHandler: (_) {
-        unawaited(toggle());
-      });
+      await hotKeyManager.register(
+        _inAppTwin(_hotKey),
+        keyDownHandler: (_) => unawaited(toggle()),
+      );
+    } catch (_) {
+      // Nothing to do — the global hotkey may still come through.
+    }
+
+    if (!supportsGlobalHotKey) {
+      notifyListeners();
+      return;
+    }
+
+    // Ask the OS whether the chord is free before claiming it. The Windows
+    // plugin reports success whether or not RegisterHotKey worked, so without
+    // this a chord another app owns looks registered and silently never
+    // fires — see isGlobalHotKeyAvailable.
+    final available = await isGlobalHotKeyAvailable(_hotKey);
+    if (!available) {
+      _hotKeyRegistered = false;
+      _hotKeyError = 'taken';
+      notifyListeners();
+      return;
+    }
+
+    try {
+      await hotKeyManager.register(
+        _hotKey,
+        keyDownHandler: (_) => unawaited(toggle()),
+      );
       _hotKeyRegistered = true;
       _hotKeyError = null;
     } catch (_) {
       _hotKeyRegistered = false;
-      _hotKeyError = 'alreadyTaken';
+      _hotKeyError = 'taken';
     }
     notifyListeners();
   }
 
+  /// The same chord as an in-app hotkey. `hotkey_manager` keys its handlers
+  /// by identifier, so the twin needs its own.
+  static HotKey _inAppTwin(HotKey hotKey) => HotKey(
+        identifier: _inAppIdentifier,
+        key: hotKey.key,
+        modifiers: hotKey.modifiers,
+        scope: HotKeyScope.inapp,
+      );
+
   Future<void> _unregisterHotKey() async {
-    if (!_hotKeyRegistered) return;
     try {
-      await hotKeyManager.unregister(summonHotKey);
+      await hotKeyManager.unregister(_inAppTwin(_hotKey));
     } catch (_) {}
+    if (_hotKeyRegistered) {
+      try {
+        await hotKeyManager.unregister(_hotKey);
+      } catch (_) {}
+    }
     _hotKeyRegistered = false;
     notifyListeners();
+  }
+
+  /// Rebinds the summon chord, saving it and re-arming.
+  Future<void> setHotKey(HotKey newHotKey) async {
+    await _unregisterHotKey();
+    _hotKeyCustom = true;
+    _hotKey = HotKey(
+      identifier: _systemIdentifier,
+      key: newHotKey.key,
+      // A null modifiers list crashes the native Windows plugin on register —
+      // the same trap Auto Clicker hit.
+      modifiers: newHotKey.modifiers ?? const [],
+      scope: HotKeyScope.system,
+    );
+    if (_enabled) await _registerHotKey();
+    notifyListeners();
+    await _save();
   }
 
   /// Arms or disarms the global hotkey.
@@ -254,15 +373,42 @@ class PetRepository extends ChangeNotifier {
     }
   }
 
-  Future<void> toggle() => _visible ? close() : open();
+  DateTime? _lastToggleAt;
 
+  Future<void> toggle() async {
+    // The chord can reach us twice — the OS hotkey and the in-app one are
+    // both armed, and a held key repeats — which would open and immediately
+    // close the pet, looking exactly like nothing happened.
+    final now = DateTime.now();
+    final last = _lastToggleAt;
+    if (last != null && now.difference(last) < const Duration(milliseconds: 350)) {
+      return;
+    }
+    _lastToggleAt = now;
+    return _visible ? close() : open();
+  }
+
+  /// Arms click-away dismissal, but only once the window has actually taken
+  /// focus. Windows can refuse to bring a background process to the front, and
+  /// a pet that dismissed itself on the blur it was born with would flick open
+  /// and shut again before the user saw it.
   void _armBlurDismissal() {
     _acceptBlur = false;
     _blurArmTimer?.cancel();
-    _blurArmTimer = Timer(const Duration(milliseconds: 500), () {
-      _acceptBlur = true;
+    if (!hasCustomTitleBar) return;
+    _blurArmTimer = Timer.periodic(const Duration(milliseconds: 250), (timer) {
+      if (!_visible) {
+        timer.cancel();
+        return;
+      }
+      if (_hasFocus) {
+        _acceptBlur = true;
+        timer.cancel();
+      }
     });
   }
+
+  bool _hasFocus = false;
 
   /// Records that [id] was opened, so it floats to the top of the pet's list
   /// next time.

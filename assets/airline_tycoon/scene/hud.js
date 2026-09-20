@@ -59,13 +59,15 @@ window.AirportHud = (() => {
     interior: 'Passenger flow', shops: 'Shops & lounges', decor: 'Decor',
   };
   const outdoor = ['apron', 'airfield', 'terminal', 'services'];
-  // Airport mode sorts the furnishings by the hall they belong in.
+  // Airport mode sorts the furnishings by the part of the terminal they
+  // belong in. The terminal is one building; zoning its floor decides which
+  // part a piece of it is.
   const zones = {
-    arrival: {tab: 'Arrival hall', hall: 'terminalLandside', hint: 'Passengers come in from the road here: the entrance, ticket machines and check-in, then security through to the main hall.'},
-    main: {tab: 'Main hall', hall: 'terminal', hint: 'Past security: seating, toilets, lounges and the boarding gates the passengers wait at.'},
-    shops: {tab: 'Shops', hall: 'terminal', hint: 'Shops, cafés and restaurants in the main hall earn from passengers waiting for their flight.'},
-    departure: {tab: 'Departure hall', hall: 'terminalReclaim', hint: 'Arriving passengers leave through here: baggage carousels, customs and check-out to the kerb.'},
-    any: {tab: 'Anywhere', hall: null, hint: 'Information and bins fit in any of the three halls.'},
+    arrival: {tab: 'Arrival hall', paint: 'arrival', hint: 'Passengers come in from the road here: the entrance, ticket machines and check-in, then security through to the main hall.'},
+    main: {tab: 'Main hall', building: true, hint: 'Past security: seating, toilets, lounges and the boarding gates the passengers wait at. Floor you have not zoned counts as the main hall.'},
+    shops: {tab: 'Shops', hint: 'Shops, cafés and restaurants in the main hall earn from passengers waiting for their flight.'},
+    departure: {tab: 'Departure hall', paint: 'departure', hint: 'Arriving passengers leave through here: baggage carousels, customs and check-out to the kerb.'},
+    any: {tab: 'Anywhere', hint: 'Information and bins fit anywhere in the terminal.'},
   };
   const zoneOf = d => { const z = AirportSceneLogic.zoneOf(d.kind); return z === 'main' && d.category === 'shops' ? 'shops' : z; };
   const panelNames = ['Build', 'Contracts', 'Planning', 'Fleet', 'Routes', 'Schedule', 'Finances'];
@@ -298,13 +300,16 @@ window.AirportHud = (() => {
     // Airport mode offers the furnishings hall by hall, each tab led by the
     // hall itself so the terminal can grow from inside the mode too.
     const inTab = (d, c) => S.airport
-      ? (d.interior ? zoneOf(d) === c : zones[c]?.hall === d.kind && c !== 'shops')
+      ? (d.interior ? zoneOf(d) === c : zones[c]?.building && d.kind === 'terminal')
       : (d.category || (d.interior ? 'interior' : 'apron')) === c;
     const tabs = S.airport ? Object.keys(zones) : outdoor;
     if (!tabs.includes(S.category)) S.category = tabs[0];
-    const items = list('catalog').filter(d => inTab(d, S.category));
+    const items = list('catalog').filter(d => !d.hidden && inTab(d, S.category));
     const zone = S.airport ? zones[S.category] : null;
-    const missing = zone?.hall && !list('facilities').some(f => f.kind === zone.hall);
+    // Nothing zoned that way yet, and no old hall of that kind either.
+    const missing = !!zone?.paint
+      && !(S.world?.zones || []).some(z => z.zone === zone.paint)
+      && !list('facilities').some(f => AirportSceneLogic.hallZone(f.kind) === zone.paint);
     const signature = JSON.stringify([selected, S.tool, S.moveId, S.category, S.airport, S.zone, missing, list('catalog').map(d => d.kind + d.cost), S.world?.vehicleCosts, list('vehicles').length, list('facilities').length, (S.world?.cash || 0) >= 0]);
     return [signature, () => {
       let html = '';
@@ -315,19 +320,19 @@ window.AirportHud = (() => {
           .map(([id, label]) => `<button type="button" class="zone ${id} ${S.zone === id ? 'on' : ''}" data-zone="${id}">${esc(label)}</button>`).join('') + '</div>';
         html += S.zone
           ? `<div class="hint">Drag over the terminal floor to ${S.zone === 'none' ? 'rub the zone out' : `zone it as the ${esc(S.zone)} hall`}.</div>`
-          : '<div class="hint">Zone the floor to split one hall into the three parts: what you can place somewhere follows the zone under it, not the building.</div>';
+          : '<div class="hint">Zoning is free: drag over the floor to mark it out as the arrival, main or departure hall. What you can place somewhere follows the zone under it. Floor you leave unzoned counts as the main hall.</div>';
       }
       if (selected && S.airport) {
         html += `<div class="selected-card"><div class="title">${esc(facilityName(selected.kind))}</div>
           <div class="actions"><button type="button" class="filled" data-manage-open="${esc(selected.id)}">${svg('upgrade')}Manage</button><button type="button" data-action="move">${svg('move')}Move</button></div></div>`;
       }
       html += `<div class="tabs" role="tablist">${tabs.map(c => `<button type="button" role="tab" aria-selected="${c === S.category}" class="${c === S.category ? 'on' : ''}" data-category="${c}">${esc(zones[c] && S.airport ? zones[c].tab : categories[c])}</button>`).join('')}</div>`;
-      if (!S.airport && S.category === 'terminal') html += '<div class="hint">The terminal has three parts, like the original game: an <b>arrival hall</b> on the road side where passengers check in and go through security, the <b>main hall</b> behind it with shops and gates, and a <b>departure hall</b> next to the arrival hall with baggage reclaim, customs and the way out. Press <b>Airport</b> at the top to furnish them.</div>';
+      if (!S.airport && S.category === 'terminal') html += '<div class="hint">Build terminal sections side by side to make one hall, then press <b>Airport</b> at the top to zone the floor (free) into the three parts, like the original game: the <b>arrival hall</b> on the road side where passengers check in and go through security, the <b>main hall</b> with shops and gates, and the <b>departure hall</b> for arriving passengers.</div>';
       if (zone) html += `<div class="hint">${esc(zone.hint)}</div>`;
-      if (missing) html += `<div class="hint warn">You have no ${esc(zone.tab.toLowerCase())} yet. Build one${zone.hall === 'terminal' ? ' behind the arrival and departure halls' : ' on the road side, touching the main hall'} (the first card).</div>`;
+      if (missing) html += `<div class="hint warn">Nothing is zoned as the ${esc(zone.tab.toLowerCase())} yet. Press <b>${esc(zone.tab.split(' ')[0])}</b> above and drag over the floor — zoning is free.</div>`;
       html += '<div class="cards">';
       for (const d of items) {
-        const count = owned(d.kind), on = S.tool === d.kind && !S.moveId, affordable = (S.world?.cash ?? 0) >= d.cost;
+        const count = owned(d.kind) + (d.kind === 'terminal' ? list('facilities').filter(f => f.kind !== 'terminal' && AirportSceneLogic.hallKinds.has(f.kind)).length : 0), on = S.tool === d.kind && !S.moveId, affordable = (S.world?.cash ?? 0) >= d.cost;
         html += `<button type="button" class="build-card ${on ? 'on' : ''}" data-tool="${esc(d.kind)}" title="${esc(d.blurb || '')}">
           <span class="thumb"><img alt="" data-thumb="${esc(d.kind)}" ${thumbs.has(d.kind) ? `src="${thumbs.get(d.kind)}"` : ''}>${count ? `<span class="count">×${count}</span>` : ''}</span>
           <span class="card-name">${esc(d.name)}</span>

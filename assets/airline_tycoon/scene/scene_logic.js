@@ -43,6 +43,7 @@ window.AirportSceneLogic = (() => {
     const buildings=world.facilities||[], old=buildings.find(f=>f.id===tool.moveId), cost=tool.moveId?0:def?.cost, interior=interiorOf(world);
     const result=reason=>({valid:!reason,reason,cost,name:def?.name||friendly(tool.kind)});
     if(!def)return result('Waiting for construction catalog.');
+    if(def.hidden&&!tool.moveId)return result('Build a terminal and zone its floor instead.');
     if(!Number.isFinite(p.x)||!Number.isFinite(p.y)||Math.abs(p.x)>4000||Math.abs(p.y)>4000)return result('Build inside the airport boundary (±4 km).');
     if(tool.moveId&&!old)return result('That building no longer exists.');
     if(old&&old.kind!==tool.kind)return result('A moved building must keep its original type.');

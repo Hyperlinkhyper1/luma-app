@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../account/account_page.dart';
 import '../family/inbox_button.dart';
@@ -336,37 +335,31 @@ class _AppShellState extends State<AppShell> {
           child: MediaQuery(data: shellMedia, child: scaffold),
         );
 
-        return CallbackShortcuts(
-          // The same chord as the global hotkey, handled in-app as well: it
-          // keeps working when the OS-level registration was refused (another
-          // app holds Alt+Space) and on platforms that have no global
-          // hotkeys at all.
-          bindings: {
-            const SingleActivator(LogicalKeyboardKey.space, alt: true):
-                pet.toggle,
-          },
-          child: Focus(
-            // Something inside this subtree has to hold focus for the binding
-            // above to be reached; this claims it only when no page has, and
-            // stays out of the tab order.
-            autofocus: true,
-            skipTraversal: true,
-            child: Stack(
-              children: [
-                // Offstage rather than removed: the shell keeps its state, so
-                // dismissing the pet returns to exactly the page and scroll
-                // position it was summoned from.
-                Offstage(offstage: petWindow, child: shell),
-                if (pet.visible)
-                  Positioned.fill(
-                    child: LumaPetPanel(
-                      fullBleed: pet.windowMode,
-                      targets: _petTargets(t, installed),
-                    ),
-                  ),
-              ],
-            ),
-          ),
+        // No shortcut binding here on purpose: the in-app half of the summon
+        // chord is registered by PetRepository through hotkey_manager, which
+        // listens to the keyboard directly rather than through the focus
+        // tree — so it answers wherever the user is, and it follows the chord
+        // when they rebind it, which a hardcoded binding could not.
+        return Stack(
+          // Expand, not the default loose. An offstage child reports the
+          // smallest size it is allowed, and the boot gate's own stack hands
+          // this one loose constraints — so with a loose fit, the moment the
+          // shell goes offstage for the pet this stack sizes itself to 0x0,
+          // the panel is laid out into nothing, and the window paints black.
+          fit: StackFit.expand,
+          children: [
+            // Offstage rather than removed: the shell keeps its state, so
+            // dismissing the pet returns to exactly the page and scroll
+            // position it was summoned from.
+            Offstage(offstage: petWindow, child: shell),
+            if (pet.visible)
+              Positioned.fill(
+                child: LumaPetPanel(
+                  fullBleed: pet.windowMode,
+                  targets: _petTargets(t, installed),
+                ),
+              ),
+          ],
         );
       },
     );

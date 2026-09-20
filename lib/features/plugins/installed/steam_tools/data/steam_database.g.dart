@@ -2185,6 +2185,28 @@ class $Cs2MarketItemsTable extends Cs2MarketItems
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _startingPriceCentsMeta =
+      const VerificationMeta('startingPriceCents');
+  @override
+  late final GeneratedColumn<int> startingPriceCents = GeneratedColumn<int>(
+    'starting_price_cents',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _startingPriceAtMeta = const VerificationMeta(
+    'startingPriceAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startingPriceAt =
+      GeneratedColumn<DateTime>(
+        'starting_price_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     marketHashName,
@@ -2202,6 +2224,8 @@ class $Cs2MarketItemsTable extends Cs2MarketItems
     currency,
     priceFetchedAt,
     trackedAt,
+    startingPriceCents,
+    startingPriceAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2337,6 +2361,24 @@ class $Cs2MarketItemsTable extends Cs2MarketItems
         trackedAt.isAcceptableOrUnknown(data['tracked_at']!, _trackedAtMeta),
       );
     }
+    if (data.containsKey('starting_price_cents')) {
+      context.handle(
+        _startingPriceCentsMeta,
+        startingPriceCents.isAcceptableOrUnknown(
+          data['starting_price_cents']!,
+          _startingPriceCentsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('starting_price_at')) {
+      context.handle(
+        _startingPriceAtMeta,
+        startingPriceAt.isAcceptableOrUnknown(
+          data['starting_price_at']!,
+          _startingPriceAtMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -2406,6 +2448,14 @@ class $Cs2MarketItemsTable extends Cs2MarketItems
         DriftSqlType.dateTime,
         data['${effectivePrefix}tracked_at'],
       )!,
+      startingPriceCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}starting_price_cents'],
+      ),
+      startingPriceAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}starting_price_at'],
+      ),
     );
   }
 
@@ -2437,6 +2487,15 @@ class Cs2MarketItem extends DataClass implements Insertable<Cs2MarketItem> {
   final String currency;
   final DateTime? priceFetchedAt;
   final DateTime trackedAt;
+
+  /// What the user says they paid (or otherwise wants gain/loss measured
+  /// from) for this exact listing — a manual figure, never inferred from a
+  /// market reading, since the market price at track time and the user's
+  /// actual cost basis are frequently different numbers. Null means no
+  /// baseline has been set, in which case the chart has nothing to compare
+  /// against and only shows raw price.
+  final int? startingPriceCents;
+  final DateTime? startingPriceAt;
   const Cs2MarketItem({
     required this.marketHashName,
     required this.skinId,
@@ -2453,6 +2512,8 @@ class Cs2MarketItem extends DataClass implements Insertable<Cs2MarketItem> {
     required this.currency,
     this.priceFetchedAt,
     required this.trackedAt,
+    this.startingPriceCents,
+    this.startingPriceAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2482,6 +2543,12 @@ class Cs2MarketItem extends DataClass implements Insertable<Cs2MarketItem> {
       map['price_fetched_at'] = Variable<DateTime>(priceFetchedAt);
     }
     map['tracked_at'] = Variable<DateTime>(trackedAt);
+    if (!nullToAbsent || startingPriceCents != null) {
+      map['starting_price_cents'] = Variable<int>(startingPriceCents);
+    }
+    if (!nullToAbsent || startingPriceAt != null) {
+      map['starting_price_at'] = Variable<DateTime>(startingPriceAt);
+    }
     return map;
   }
 
@@ -2510,6 +2577,12 @@ class Cs2MarketItem extends DataClass implements Insertable<Cs2MarketItem> {
           ? const Value.absent()
           : Value(priceFetchedAt),
       trackedAt: Value(trackedAt),
+      startingPriceCents: startingPriceCents == null && nullToAbsent
+          ? const Value.absent()
+          : Value(startingPriceCents),
+      startingPriceAt: startingPriceAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(startingPriceAt),
     );
   }
 
@@ -2534,6 +2607,8 @@ class Cs2MarketItem extends DataClass implements Insertable<Cs2MarketItem> {
       currency: serializer.fromJson<String>(json['currency']),
       priceFetchedAt: serializer.fromJson<DateTime?>(json['priceFetchedAt']),
       trackedAt: serializer.fromJson<DateTime>(json['trackedAt']),
+      startingPriceCents: serializer.fromJson<int?>(json['startingPriceCents']),
+      startingPriceAt: serializer.fromJson<DateTime?>(json['startingPriceAt']),
     );
   }
   @override
@@ -2555,6 +2630,8 @@ class Cs2MarketItem extends DataClass implements Insertable<Cs2MarketItem> {
       'currency': serializer.toJson<String>(currency),
       'priceFetchedAt': serializer.toJson<DateTime?>(priceFetchedAt),
       'trackedAt': serializer.toJson<DateTime>(trackedAt),
+      'startingPriceCents': serializer.toJson<int?>(startingPriceCents),
+      'startingPriceAt': serializer.toJson<DateTime?>(startingPriceAt),
     };
   }
 
@@ -2574,6 +2651,8 @@ class Cs2MarketItem extends DataClass implements Insertable<Cs2MarketItem> {
     String? currency,
     Value<DateTime?> priceFetchedAt = const Value.absent(),
     DateTime? trackedAt,
+    Value<int?> startingPriceCents = const Value.absent(),
+    Value<DateTime?> startingPriceAt = const Value.absent(),
   }) => Cs2MarketItem(
     marketHashName: marketHashName ?? this.marketHashName,
     skinId: skinId ?? this.skinId,
@@ -2596,6 +2675,12 @@ class Cs2MarketItem extends DataClass implements Insertable<Cs2MarketItem> {
         ? priceFetchedAt.value
         : this.priceFetchedAt,
     trackedAt: trackedAt ?? this.trackedAt,
+    startingPriceCents: startingPriceCents.present
+        ? startingPriceCents.value
+        : this.startingPriceCents,
+    startingPriceAt: startingPriceAt.present
+        ? startingPriceAt.value
+        : this.startingPriceAt,
   );
   Cs2MarketItem copyWithCompanion(Cs2MarketItemsCompanion data) {
     return Cs2MarketItem(
@@ -2630,6 +2715,12 @@ class Cs2MarketItem extends DataClass implements Insertable<Cs2MarketItem> {
           ? data.priceFetchedAt.value
           : this.priceFetchedAt,
       trackedAt: data.trackedAt.present ? data.trackedAt.value : this.trackedAt,
+      startingPriceCents: data.startingPriceCents.present
+          ? data.startingPriceCents.value
+          : this.startingPriceCents,
+      startingPriceAt: data.startingPriceAt.present
+          ? data.startingPriceAt.value
+          : this.startingPriceAt,
     );
   }
 
@@ -2650,7 +2741,9 @@ class Cs2MarketItem extends DataClass implements Insertable<Cs2MarketItem> {
           ..write('lastMedianCents: $lastMedianCents, ')
           ..write('currency: $currency, ')
           ..write('priceFetchedAt: $priceFetchedAt, ')
-          ..write('trackedAt: $trackedAt')
+          ..write('trackedAt: $trackedAt, ')
+          ..write('startingPriceCents: $startingPriceCents, ')
+          ..write('startingPriceAt: $startingPriceAt')
           ..write(')'))
         .toString();
   }
@@ -2672,6 +2765,8 @@ class Cs2MarketItem extends DataClass implements Insertable<Cs2MarketItem> {
     currency,
     priceFetchedAt,
     trackedAt,
+    startingPriceCents,
+    startingPriceAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -2691,7 +2786,9 @@ class Cs2MarketItem extends DataClass implements Insertable<Cs2MarketItem> {
           other.lastMedianCents == this.lastMedianCents &&
           other.currency == this.currency &&
           other.priceFetchedAt == this.priceFetchedAt &&
-          other.trackedAt == this.trackedAt);
+          other.trackedAt == this.trackedAt &&
+          other.startingPriceCents == this.startingPriceCents &&
+          other.startingPriceAt == this.startingPriceAt);
 }
 
 class Cs2MarketItemsCompanion extends UpdateCompanion<Cs2MarketItem> {
@@ -2710,6 +2807,8 @@ class Cs2MarketItemsCompanion extends UpdateCompanion<Cs2MarketItem> {
   final Value<String> currency;
   final Value<DateTime?> priceFetchedAt;
   final Value<DateTime> trackedAt;
+  final Value<int?> startingPriceCents;
+  final Value<DateTime?> startingPriceAt;
   final Value<int> rowid;
   const Cs2MarketItemsCompanion({
     this.marketHashName = const Value.absent(),
@@ -2727,6 +2826,8 @@ class Cs2MarketItemsCompanion extends UpdateCompanion<Cs2MarketItem> {
     this.currency = const Value.absent(),
     this.priceFetchedAt = const Value.absent(),
     this.trackedAt = const Value.absent(),
+    this.startingPriceCents = const Value.absent(),
+    this.startingPriceAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   Cs2MarketItemsCompanion.insert({
@@ -2745,6 +2846,8 @@ class Cs2MarketItemsCompanion extends UpdateCompanion<Cs2MarketItem> {
     this.currency = const Value.absent(),
     this.priceFetchedAt = const Value.absent(),
     this.trackedAt = const Value.absent(),
+    this.startingPriceCents = const Value.absent(),
+    this.startingPriceAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : marketHashName = Value(marketHashName),
        skinId = Value(skinId),
@@ -2769,6 +2872,8 @@ class Cs2MarketItemsCompanion extends UpdateCompanion<Cs2MarketItem> {
     Expression<String>? currency,
     Expression<DateTime>? priceFetchedAt,
     Expression<DateTime>? trackedAt,
+    Expression<int>? startingPriceCents,
+    Expression<DateTime>? startingPriceAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2787,6 +2892,9 @@ class Cs2MarketItemsCompanion extends UpdateCompanion<Cs2MarketItem> {
       if (currency != null) 'currency': currency,
       if (priceFetchedAt != null) 'price_fetched_at': priceFetchedAt,
       if (trackedAt != null) 'tracked_at': trackedAt,
+      if (startingPriceCents != null)
+        'starting_price_cents': startingPriceCents,
+      if (startingPriceAt != null) 'starting_price_at': startingPriceAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2807,6 +2915,8 @@ class Cs2MarketItemsCompanion extends UpdateCompanion<Cs2MarketItem> {
     Value<String>? currency,
     Value<DateTime?>? priceFetchedAt,
     Value<DateTime>? trackedAt,
+    Value<int?>? startingPriceCents,
+    Value<DateTime?>? startingPriceAt,
     Value<int>? rowid,
   }) {
     return Cs2MarketItemsCompanion(
@@ -2825,6 +2935,8 @@ class Cs2MarketItemsCompanion extends UpdateCompanion<Cs2MarketItem> {
       currency: currency ?? this.currency,
       priceFetchedAt: priceFetchedAt ?? this.priceFetchedAt,
       trackedAt: trackedAt ?? this.trackedAt,
+      startingPriceCents: startingPriceCents ?? this.startingPriceCents,
+      startingPriceAt: startingPriceAt ?? this.startingPriceAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2877,6 +2989,12 @@ class Cs2MarketItemsCompanion extends UpdateCompanion<Cs2MarketItem> {
     if (trackedAt.present) {
       map['tracked_at'] = Variable<DateTime>(trackedAt.value);
     }
+    if (startingPriceCents.present) {
+      map['starting_price_cents'] = Variable<int>(startingPriceCents.value);
+    }
+    if (startingPriceAt.present) {
+      map['starting_price_at'] = Variable<DateTime>(startingPriceAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2901,6 +3019,8 @@ class Cs2MarketItemsCompanion extends UpdateCompanion<Cs2MarketItem> {
           ..write('currency: $currency, ')
           ..write('priceFetchedAt: $priceFetchedAt, ')
           ..write('trackedAt: $trackedAt, ')
+          ..write('startingPriceCents: $startingPriceCents, ')
+          ..write('startingPriceAt: $startingPriceAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -4481,6 +4601,8 @@ typedef $$Cs2MarketItemsTableCreateCompanionBuilder =
       Value<String> currency,
       Value<DateTime?> priceFetchedAt,
       Value<DateTime> trackedAt,
+      Value<int?> startingPriceCents,
+      Value<DateTime?> startingPriceAt,
       Value<int> rowid,
     });
 typedef $$Cs2MarketItemsTableUpdateCompanionBuilder =
@@ -4500,6 +4622,8 @@ typedef $$Cs2MarketItemsTableUpdateCompanionBuilder =
       Value<String> currency,
       Value<DateTime?> priceFetchedAt,
       Value<DateTime> trackedAt,
+      Value<int?> startingPriceCents,
+      Value<DateTime?> startingPriceAt,
       Value<int> rowid,
     });
 
@@ -4584,6 +4708,16 @@ class $$Cs2MarketItemsTableFilterComposer
 
   ColumnFilters<DateTime> get trackedAt => $composableBuilder(
     column: $table.trackedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get startingPriceCents => $composableBuilder(
+    column: $table.startingPriceCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startingPriceAt => $composableBuilder(
+    column: $table.startingPriceAt,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -4671,6 +4805,16 @@ class $$Cs2MarketItemsTableOrderingComposer
     column: $table.trackedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get startingPriceCents => $composableBuilder(
+    column: $table.startingPriceCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get startingPriceAt => $composableBuilder(
+    column: $table.startingPriceAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$Cs2MarketItemsTableAnnotationComposer
@@ -4742,6 +4886,16 @@ class $$Cs2MarketItemsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get trackedAt =>
       $composableBuilder(column: $table.trackedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get startingPriceCents => $composableBuilder(
+    column: $table.startingPriceCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get startingPriceAt => $composableBuilder(
+    column: $table.startingPriceAt,
+    builder: (column) => column,
+  );
 }
 
 class $$Cs2MarketItemsTableTableManager
@@ -4796,6 +4950,8 @@ class $$Cs2MarketItemsTableTableManager
                 Value<String> currency = const Value.absent(),
                 Value<DateTime?> priceFetchedAt = const Value.absent(),
                 Value<DateTime> trackedAt = const Value.absent(),
+                Value<int?> startingPriceCents = const Value.absent(),
+                Value<DateTime?> startingPriceAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => Cs2MarketItemsCompanion(
                 marketHashName: marketHashName,
@@ -4813,6 +4969,8 @@ class $$Cs2MarketItemsTableTableManager
                 currency: currency,
                 priceFetchedAt: priceFetchedAt,
                 trackedAt: trackedAt,
+                startingPriceCents: startingPriceCents,
+                startingPriceAt: startingPriceAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -4832,6 +4990,8 @@ class $$Cs2MarketItemsTableTableManager
                 Value<String> currency = const Value.absent(),
                 Value<DateTime?> priceFetchedAt = const Value.absent(),
                 Value<DateTime> trackedAt = const Value.absent(),
+                Value<int?> startingPriceCents = const Value.absent(),
+                Value<DateTime?> startingPriceAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => Cs2MarketItemsCompanion.insert(
                 marketHashName: marketHashName,
@@ -4849,6 +5009,8 @@ class $$Cs2MarketItemsTableTableManager
                 currency: currency,
                 priceFetchedAt: priceFetchedAt,
                 trackedAt: trackedAt,
+                startingPriceCents: startingPriceCents,
+                startingPriceAt: startingPriceAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

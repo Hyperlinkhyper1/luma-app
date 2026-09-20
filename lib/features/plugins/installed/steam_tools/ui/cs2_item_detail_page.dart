@@ -11,6 +11,7 @@ import '../data/steam_database.dart';
 import '../steam_price_history.dart' show formatSteamPrice;
 import 'cs2_price_chart.dart';
 import 'cs2_shared.dart';
+import 'cs2_starting_price_dialog.dart';
 
 /// One CS2 listing: its render, rarity, the case it drops from, its current
 /// Community Market price, and — once tracked — the history luma has built
@@ -122,14 +123,57 @@ class _Cs2ItemDetailPageState extends State<Cs2ItemDetailPage> {
 
   Future<void> _track() async {
     final skin = _skin!;
-    await Cs2MarketScope.of(context)
-        .track(skin: skin, wear: _wear, statTrak: _statTrak);
+    final result = await showCs2StartingPriceDialog(
+      context,
+      title: 'Track this listing',
+      subtitle: 'Pick the grade, and the price to measure gain and loss '
+          'from.',
+      wears: skin.wears,
+      wear: _wear,
+      wearEditable: skin.wears.length > 1,
+      suggestedCents: _transientPrice?.lowestCents ?? _transientPrice?.medianCents,
+    );
+    if (result == null || !mounted) return;
+    setState(() {
+      _wear = result.wear;
+      _transientPrice = null;
+      _transientError = null;
+    });
+    await Cs2MarketScope.of(context).track(
+      skin: skin,
+      wear: result.wear,
+      statTrak: _statTrak,
+      startingPriceCents: result.priceCents,
+    );
   }
 
   Future<void> _untrack(String hash) async {
     await Cs2MarketScope.of(context).untrack(hash);
     _autoCheckedHash = null;
     _autoCheck();
+  }
+
+  Future<void> _editStartingPrice(Cs2MarketItem row) async {
+    final result = await showCs2StartingPriceDialog(
+      context,
+      title: row.startingPriceCents == null
+          ? 'Set starting price'
+          : 'Edit starting price',
+      subtitle: 'The price gain and loss on the chart below is measured '
+          'from.',
+      wears: const [],
+      wear: row.wear,
+      wearEditable: false,
+      suggestedCents:
+          row.startingPriceCents ?? row.lastLowestCents ?? row.lastMedianCents,
+    );
+    if (result == null || !mounted) return;
+    await Cs2MarketScope.of(context)
+        .setStartingPrice(row.marketHashName, result.priceCents);
+  }
+
+  Future<void> _clearStartingPrice(String hash) async {
+    await Cs2MarketScope.of(context).setStartingPrice(hash, null);
   }
 
   @override
@@ -183,6 +227,11 @@ class _Cs2ItemDetailPageState extends State<Cs2ItemDetailPage> {
                 : _checkTransient(force: true),
             onTrack: _track,
             onUntrack: () => _untrack(hash),
+            onEditStartingPrice:
+                trackedRow == null ? null : () => _editStartingPrice(trackedRow),
+            onClearStartingPrice: trackedRow?.startingPriceCents == null
+                ? null
+                : () => _clearStartingPrice(hash),
           );
         },
       ),
@@ -206,6 +255,8 @@ class _DetailBody extends StatelessWidget {
     required this.onCheckNow,
     required this.onTrack,
     required this.onUntrack,
+    required this.onEditStartingPrice,
+    required this.onClearStartingPrice,
   });
 
   final Cs2SkinDef skin;
@@ -222,6 +273,8 @@ class _DetailBody extends StatelessWidget {
   final VoidCallback onCheckNow;
   final Future<void> Function() onTrack;
   final VoidCallback onUntrack;
+  final VoidCallback? onEditStartingPrice;
+  final VoidCallback? onClearStartingPrice;
 
   @override
   Widget build(BuildContext context) {
@@ -273,6 +326,17 @@ class _DetailBody extends StatelessWidget {
                         onTrack: onTrack,
                         onUntrack: onUntrack,
                       ),
+                      if (trackedRow case final row?) ...[
+                        const SizedBox(height: 16),
+                        _StartingPriceCard(
+                          startingPriceCents: row.startingPriceCents,
+                          startingPriceAt: row.startingPriceAt,
+                          currentCents: lowestCents ?? medianCents,
+                          currency: currency,
+                          onEdit: onEditStartingPrice!,
+                          onClear: onClearStartingPrice,
+                        ),
+                      ],
                       const SizedBox(height: 16),
                       StreamBuilder<List<Cs2MarketPricePoint>>(
                         stream: Cs2MarketScope.of(context)
@@ -281,6 +345,8 @@ class _DetailBody extends StatelessWidget {
                           points: snapshot.data ?? const [],
                           fallbackCurrency: currency,
                           tracked: tracked,
+                          startingPriceCents:
+                              tracked ? trackedRow!.startingPriceCents : null,
                           loading: loading ||
                               snapshot.connectionState ==
                                   ConnectionState.waiting,
@@ -596,6 +662,130 @@ class _PriceCard extends StatelessWidget {
     if (ago.inHours < 1) return 'Checked ${ago.inMinutes} min ago.';
     if (ago.inDays < 1) return 'Checked ${ago.inHours} h ago.';
     return 'Checked on ${DateFormat.yMMMd().format(at)}.';
+  }
+}
+
+/// The manual cost basis gain/loss is measured from, plus how the current
+/// price compares to it. Only ever shown for a tracked listing — an
+/// untracked one has no row to hang a baseline off of.
+class _StartingPriceCard extends StatelessWidget {
+  const _StartingPriceCard({
+    required this.startingPriceCents,
+    required this.startingPriceAt,
+    required this.currentCents,
+    required this.currency,
+    required this.onEdit,
+    required this.onClear,
+  });
+
+  final int? startingPriceCents;
+  final DateTime? startingPriceAt;
+  final int? currentCents;
+  final String currency;
+  final VoidCallback onEdit;
+  final VoidCallback? onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final starting = startingPriceCents;
+
+    return LumaCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.flag_rounded, size: 18, color: luma.accent),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Starting price',
+                  style: TextStyle(
+                    color: luma.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (starting == null) ...[
+            Text(
+              'Set what you paid — or any baseline — to see gain and loss '
+              'tracked against it below.',
+              style: TextStyle(
+                color: luma.textMuted,
+                fontSize: 12,
+                height: 1.45,
+              ),
+            ),
+            const SizedBox(height: 12),
+            LumaGhostButton(
+              label: 'Set starting price',
+              icon: Icons.add_rounded,
+              onTap: onEdit,
+            ),
+          ] else ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        formatSteamPrice(starting, currency),
+                        style: TextStyle(
+                          color: luma.textPrimary,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                      if (startingPriceAt case final at?) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Set ${DateFormat.yMMMd().format(at)}',
+                          style: TextStyle(
+                              color: luma.textMuted, fontSize: 11.5),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                if (currentCents case final current?)
+                  Cs2GainLossBadge(
+                    deltaCents: current - starting,
+                    startingCents: starting,
+                    currency: currency,
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                LumaGhostButton(
+                  label: 'Edit',
+                  icon: Icons.edit_rounded,
+                  onTap: onEdit,
+                ),
+                if (onClear != null) ...[
+                  const SizedBox(width: 8),
+                  LumaGhostButton(
+                    label: 'Clear',
+                    icon: Icons.close_rounded,
+                    onTap: onClear,
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }
 

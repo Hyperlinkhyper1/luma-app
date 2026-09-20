@@ -29,8 +29,9 @@ window.AirportLandside = (() => {
     minZ: Math.min(b.minZ, f.y), maxZ: Math.max(b.maxZ, f.y + f.depth),
   }), {minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity});
 
-  /** Terminal face, pointing away from the runways and stands. */
-  function layout(list) {
+  /** Terminal face, pointing away from the runways and stands. [zones] are
+      the painted floor zones, which name the canopy. */
+  function layout(list, zones = []) {
     const terminals = list.filter(f => AirportSceneLogic.hallKinds.has(f.kind));
     if (!terminals.length) return null;
     const t = extent(terminals);
@@ -47,17 +48,23 @@ window.AirportLandside = (() => {
     const H = Math.min(150, Math.max(45, span / 2));
     const origin = {x: (t.minX + t.maxX) / 2 + dir[0] * reach, z: (t.minZ + t.maxZ) / 2 + dir[1] * reach};
     const angle = Math.atan2(-dir[1], dir[0]), c = Math.cos(angle), s = Math.sin(angle), K = H + 30;
-    // The canopy names the arrival and departure halls that open on to it.
+    // The canopy names the arrival and departure floor that opens on to it,
+    // whether it is zoned that way or is one of the old separate halls.
     const signs = [];
-    for (const f of terminals) {
-      const text = {terminalLandside: 'ARRIVAL HALL', terminalReclaim: 'DEPARTURE HALL'}[f.kind];
-      if (!text) continue;
+    const named = [
+      ...zones.map(z => ({text: z.zone === 'arrival' ? 'ARRIVAL HALL' : z.zone === 'departure' ? 'DEPARTURE HALL' : null, ...z})),
+      ...terminals.map(f => ({text: {terminalLandside: 'ARRIVAL HALL', terminalReclaim: 'DEPARTURE HALL'}[f.kind], ...f})),
+    ];
+    for (const f of named) {
+      if (!f.text) continue;
       const corners = [[f.x, f.y], [f.x + f.width, f.y], [f.x, f.y + f.depth], [f.x + f.width, f.y + f.depth]]
         .map(([x, z]) => [(x - origin.x) * c - (z - origin.z) * s, (x - origin.x) * s + (z - origin.z) * c]);
-      if (Math.max(...corners.map(p => p[0])) < -1) continue;
-      const v = corners.reduce((n, p) => n + p[1], 0) / 4;
-      signs.push({text, v: Math.round(Math.min(K - 8, Math.max(-K + 8, v)) * 10) / 10});
+      if (Math.max(...corners.map(p => p[0])) < -3) continue;
+      const v = Math.round(Math.min(K - 8, Math.max(-K + 8, corners.reduce((n, p) => n + p[1], 0) / 4)) * 10) / 10;
+      if (signs.some(o => o.text === f.text && Math.abs(o.v - v) < 24)) continue;
+      signs.push({text: f.text, v});
     }
+    signs.sort((a, b) => a.v - b.v);
     return {origin, angle, dir, H, K, signs};
   }
 
@@ -503,8 +510,8 @@ window.AirportLandside = (() => {
   }
 
   let current = null;
-  function build(list) {
-    const L = layout(list || []);
+  function build(list, zones) {
+    const L = layout(list || [], zones || []);
     if (!L) { if (current) current.dispose(); current = null; return null; }
     const key = `${L.origin.x}|${L.origin.z}|${L.angle.toFixed(4)}|${L.K}|${L.signs.map(s => s.text + s.v).join()}`;
     if (current && current.key === key) return current;

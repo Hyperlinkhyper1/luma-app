@@ -7,6 +7,12 @@ import '../cs2_market_scope.dart';
 import '../cs2_models.dart';
 import 'cs2_item_detail_page.dart';
 import 'cs2_shared.dart';
+import 'cs2_tracked_tab.dart';
+
+/// The CS2 Market tool's own internal views — Browse is the whole catalog,
+/// Tracked is only what's being watched. Private to this file: nothing
+/// outside the tool needs to know which one is showing.
+enum _Cs2MarketView { browse, tracked }
 
 /// The CS2 Market tool: every CS2 item, browsable A–Z or narrowed by name,
 /// rarity or case, with a pin to keep favourites at the top and a way into
@@ -31,6 +37,7 @@ class _Cs2MarketTabState extends State<Cs2MarketTab> {
   final _searchController = TextEditingController();
   String _query = '';
   bool _started = false;
+  _Cs2MarketView _view = _Cs2MarketView.browse;
 
   @override
   void didChangeDependencies() {
@@ -57,6 +64,8 @@ class _Cs2MarketTabState extends State<Cs2MarketTab> {
         _Toolbar(
           controller: _searchController,
           onQuery: (value) => setState(() => _query = value),
+          view: _view,
+          onViewChanged: (v) => setState(() => _view = v),
         ),
         ListenableBuilder(
           listenable: repository,
@@ -83,37 +92,43 @@ class _Cs2MarketTabState extends State<Cs2MarketTab> {
               : const SizedBox.shrink(),
         ),
         Expanded(
-          child: ListenableBuilder(
-            listenable: repository,
-            builder: (context, _) {
-              if (!repository.catalogLoaded) {
-                return Center(
-                  child: SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: luma.accent,
-                    ),
-                  ),
-                );
-              }
-              final trimmed = _query.trim();
-              if (trimmed.isEmpty) {
-                return _BrowseBody(repository: repository);
-              }
-              // A single letter matches a huge share of a 2000+ item
-              // catalog — "a" alone turns up hundreds of skins, which reads
-              // as "search is broken and just dumped everything" rather
-              // than a real narrowing. Waiting for a second character keeps
-              // every real search fast (it's all in memory) while giving
-              // the list something to actually be short over.
-              if (trimmed.length < 2) {
-                return const _ShortQueryHint();
-              }
-              return _SearchBody(query: trimmed, repository: repository);
-            },
-          ),
+          child: _view == _Cs2MarketView.tracked
+              // Tracked listings live entirely in the local database, not the
+              // catalog fetch — this view works immediately, even before
+              // `catalogLoaded` is true.
+              ? Cs2TrackedBody(repository: repository, query: _query)
+              : ListenableBuilder(
+                  listenable: repository,
+                  builder: (context, _) {
+                    if (!repository.catalogLoaded) {
+                      return Center(
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: luma.accent,
+                          ),
+                        ),
+                      );
+                    }
+                    final trimmed = _query.trim();
+                    if (trimmed.isEmpty) {
+                      return _BrowseBody(repository: repository);
+                    }
+                    // A single letter matches a huge share of a 2000+ item
+                    // catalog — "a" alone turns up hundreds of skins, which
+                    // reads as "search is broken and just dumped everything"
+                    // rather than a real narrowing. Waiting for a second
+                    // character keeps every real search fast (it's all in
+                    // memory) while giving the list something to actually be
+                    // short over.
+                    if (trimmed.length < 2) {
+                      return const _ShortQueryHint();
+                    }
+                    return _SearchBody(query: trimmed, repository: repository);
+                  },
+                ),
         ),
       ],
     );
@@ -121,10 +136,17 @@ class _Cs2MarketTabState extends State<Cs2MarketTab> {
 }
 
 class _Toolbar extends StatelessWidget {
-  const _Toolbar({required this.controller, required this.onQuery});
+  const _Toolbar({
+    required this.controller,
+    required this.onQuery,
+    required this.view,
+    required this.onViewChanged,
+  });
 
   final TextEditingController controller;
   final ValueChanged<String> onQuery;
+  final _Cs2MarketView view;
+  final ValueChanged<_Cs2MarketView> onViewChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -195,6 +217,12 @@ class _Toolbar extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
+          LumaSegmentedTabs(
+            tabs: const ['Browse', 'Tracked'],
+            selectedIndex: view.index,
+            onSelect: (i) => onViewChanged(_Cs2MarketView.values[i]),
+          ),
+          const SizedBox(height: 14),
           SizedBox(
             height: 40,
             child: TextField(
@@ -203,7 +231,9 @@ class _Toolbar extends StatelessWidget {
               style: TextStyle(color: luma.textPrimary, fontSize: 13),
               decoration: InputDecoration(
                 isDense: true,
-                hintText: 'Search any CS2 item — name, weapon, rarity, case',
+                hintText: view == _Cs2MarketView.tracked
+                    ? 'Search what you track — name, weapon, rarity'
+                    : 'Search any CS2 item — name, weapon, rarity, case',
                 hintStyle: TextStyle(color: luma.textMuted, fontSize: 13),
                 prefixIcon:
                     Icon(Icons.search_rounded, size: 18, color: luma.textMuted),

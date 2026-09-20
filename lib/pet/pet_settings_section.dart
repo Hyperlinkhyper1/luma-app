@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hotkey_manager/hotkey_manager.dart';
 
 import '../app/widgets.dart';
 import '../l10n/app_localizations.dart';
@@ -7,7 +8,7 @@ import 'pet_repository.dart';
 import 'pet_scope.dart';
 import 'pet_sprite.dart';
 
-/// Settings for the luma pet: whether Alt+Space summons it, what it is
+/// Settings for the luma pet: whether a global chord summons it, what it is
 /// called, and a button to call it up from here — which is also the only way
 /// in when the hotkey could not be registered.
 class PetSettingsSection extends StatefulWidget {
@@ -25,6 +26,46 @@ class _PetSettingsSectionState extends State<PetSettingsSection> {
   void dispose() {
     _name.dispose();
     super.dispose();
+  }
+
+  /// Records a new summon chord. The way out when another app already owns
+  /// the default chord — common enough that the pet cannot assume it has one.
+  Future<void> _rebind(BuildContext context, PetRepository pet) async {
+    final t = L.of(context);
+    HotKey? recorded;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        final luma = dialogContext.luma;
+        return AlertDialog(
+          backgroundColor: luma.surface,
+          title: Text(
+            t.petSettingsRebindTitle,
+            style: TextStyle(color: luma.textPrimary, fontSize: 16),
+          ),
+          content: SizedBox(
+            width: 260,
+            child: HotKeyRecorder(
+              initalHotKey: pet.hotKey,
+              onHotKeyRecorded: (hotKey) => recorded = hotKey,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(t.settingsResetCancel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(t.petSettingsRebindSave),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed == true && recorded != null) {
+      await pet.setHotKey(recorded!);
+    }
   }
 
   @override
@@ -105,7 +146,22 @@ class _PetSettingsSectionState extends State<PetSettingsSection> {
                 ),
               ],
             ),
+          if (PetRepository.supportsGlobalHotKey && pet.enabled) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                HotKeyVirtualView(hotKey: pet.hotKey),
+                const Spacer(),
+                LumaGhostButton(
+                  label: t.petSettingsRebind,
+                  icon: Icons.keyboard_rounded,
+                  onTap: () => _rebind(context, pet),
+                ),
+              ],
+            ),
+          ],
           if (pet.enabled && pet.hotKeyError != null) ...[
+            const SizedBox(height: 10),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -124,8 +180,32 @@ class _PetSettingsSectionState extends State<PetSettingsSection> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
           ],
+          const SizedBox(height: 16),
+          // The way in that needs nothing else: no hotkey, no registration,
+          // no keyboard at all. Sits above the name field because it is what
+          // most people come to this card for.
+          Row(
+            children: [
+              LumaPrimaryButton(
+                label: t.petSettingsSummon,
+                icon: Icons.auto_awesome_rounded,
+                onTap: pet.open,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  t.petSettingsSummonHint,
+                  style: TextStyle(
+                    color: luma.textMuted,
+                    fontSize: 12.5,
+                    height: 1.35,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -149,12 +229,6 @@ class _PetSettingsSectionState extends State<PetSettingsSection> {
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              LumaGhostButton(
-                label: t.petSettingsSummon,
-                icon: Icons.auto_awesome_rounded,
-                onTap: pet.open,
               ),
             ],
           ),

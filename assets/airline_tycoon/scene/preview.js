@@ -10,7 +10,7 @@
   add('taxiway',-350,5,30,20);
   add('stand',-320,-90);Object.assign(facilities[facilities.length-1],{lane:-55,nose:'+x',gateDoor:{door:[-250,-60,0],kerb:[-253.5,-60,0]},walk:[[-250,-60,0],[-253.5,-60,0],[-278.5,-64,0]]});add('stand',-320,-20);Object.assign(facilities[facilities.length-1],{lane:15,nose:'+x'});
   add('terminal',-250,-90);add('terminal',-250,-30);
-  add('terminalLandside',-130,-90,40,60);add('terminalReclaim',-130,-30,40,60);
+  add('terminal',-130,-90,40,60);add('terminal',-130,-30,40,60);
   add('serviceRoad',-260,-100,10,230);
   add('fuelDepot',-290,100);add('baggage',-250,100);
   add('vehicleDepot',-260,130);add('hangar',-330,140);
@@ -19,5 +19,6 @@
   add('security',-126,-62);add('seating',-205,-68);
   add('toilets',-148,-40);add('cafe',-200,-40);
   add('boardingGate',-247,-62);add('boardingGate',-247,8);add('customs',-114,4);add('checkOut',-100,6);facilities[facilities.length-1].door={door:[-90,8,0],kerb:[-81,8,0]};
-  window.airportPreview={world:{version:2,time:0,paused:true,speed:1,cash:0,day:1,facilities,flights:[],vehicles:['fuel','baggage','bus','pushback'].map((kind,i)=>({id:`v${i+24}`,kind,x:-255,y:145,heading:0})),passengers:[],contracts:[],ledger:[],stats:{}},command(message){if(message.type==='command'&&message.action==='select')document.getElementById('status').textContent=`Preview selection: ${message.facilityId}`;}};
+  const zones=[{id:'z1',zone:'arrival',x:-130,y:-90,width:40,depth:60},{id:'z2',zone:'departure',x:-130,y:-30,width:40,depth:60}];
+  window.airportPreview={world:{version:2,time:0,paused:true,speed:1,cash:0,day:1,facilities,zones,flights:[],vehicles:['fuel','baggage','bus','pushback'].map((kind,i)=>({id:`v${i+24}`,kind,x:-255,y:145,heading:0})),passengers:[],contracts:[],ledger:[],stats:{}},command(message){if(message.type==='command'&&message.action==='select')document.getElementById('status').textContent=`Preview selection: ${message.facilityId}`;}};
 })();

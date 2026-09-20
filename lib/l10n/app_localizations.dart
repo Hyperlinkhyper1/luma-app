@@ -742,20 +742,38 @@ abstract class L {
   /// No description provided for @petSettingsSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Press Alt+Space anywhere to summon the pet, then type to jump to any page or plugin.'**
+  /// **'Press the shortcut anywhere to summon the pet, then type to jump to any page or plugin.'**
   String get petSettingsSubtitle;
 
   /// No description provided for @petSettingsHotkey.
   ///
   /// In en, this message translates to:
-  /// **'Summon with Alt+Space'**
+  /// **'Summon from anywhere'**
   String get petSettingsHotkey;
 
   /// No description provided for @petSettingsHotkeyTaken.
   ///
   /// In en, this message translates to:
-  /// **'Alt+Space is taken by another app, so the pet only opens from inside luma.'**
+  /// **'Another app already owns this shortcut, so it only works while luma is in front. Pick a different one below.'**
   String get petSettingsHotkeyTaken;
+
+  /// No description provided for @petSettingsRebind.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get petSettingsRebind;
+
+  /// No description provided for @petSettingsRebindTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Press a new shortcut'**
+  String get petSettingsRebindTitle;
+
+  /// No description provided for @petSettingsRebindSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Use it'**
+  String get petSettingsRebindSave;
 
   /// No description provided for @petSettingsName.
   ///
@@ -766,8 +784,14 @@ abstract class L {
   /// No description provided for @petSettingsSummon.
   ///
   /// In en, this message translates to:
-  /// **'Say hello'**
+  /// **'Open the pet now'**
   String get petSettingsSummon;
+
+  /// No description provided for @petSettingsSummonHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Brings the panel up straight away — no keyboard shortcut needed.'**
+  String get petSettingsSummonHint;
 
   /// No description provided for @monthJan.
   ///

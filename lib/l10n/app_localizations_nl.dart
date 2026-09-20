@@ -346,20 +346,33 @@ class LNl extends L {
 
   @override
   String get petSettingsSubtitle =>
-      'Druk overal op Alt+Space om het huisdier te roepen en typ om naar een pagina of plugin te springen.';
+      'Druk overal op de sneltoets om het huisdier te roepen en typ om naar een pagina of plugin te springen.';
 
   @override
-  String get petSettingsHotkey => 'Oproepen met Alt+Space';
+  String get petSettingsHotkey => 'Overal oproepen';
 
   @override
   String get petSettingsHotkeyTaken =>
-      'Alt+Space is al bezet door een andere app, dus het huisdier opent alleen vanuit luma.';
+      'Een andere app heeft deze sneltoets al, dus hij werkt alleen als luma vooraan staat. Kies hieronder een andere.';
+
+  @override
+  String get petSettingsRebind => 'Wijzigen';
+
+  @override
+  String get petSettingsRebindTitle => 'Druk een nieuwe sneltoets';
+
+  @override
+  String get petSettingsRebindSave => 'Gebruiken';
 
   @override
   String get petSettingsName => 'Naam';
 
   @override
-  String get petSettingsSummon => 'Zeg hallo';
+  String get petSettingsSummon => 'Huisdier openen';
+
+  @override
+  String get petSettingsSummonHint =>
+      'Zet het paneel meteen open — zonder sneltoets.';
 
   @override
   String get monthJan => 'jan';

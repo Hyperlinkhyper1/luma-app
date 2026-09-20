@@ -345,20 +345,33 @@ class LFr extends L {
 
   @override
   String get petSettingsSubtitle =>
-      'Appuie sur Alt+Espace n\'importe où pour appeler le compagnon, puis tape pour aller à une page ou un plugin.';
+      'Appuie sur le raccourci n\'importe où pour appeler le compagnon, puis tape pour aller à une page ou un plugin.';
 
   @override
-  String get petSettingsHotkey => 'Appeler avec Alt+Espace';
+  String get petSettingsHotkey => 'Appeler de partout';
 
   @override
   String get petSettingsHotkeyTaken =>
-      'Alt+Espace est déjà pris par une autre app : le compagnon ne s\'ouvre que depuis luma.';
+      'Une autre app possède déjà ce raccourci : il ne marche que si luma est au premier plan. Choisis-en un autre ci-dessous.';
+
+  @override
+  String get petSettingsRebind => 'Changer';
+
+  @override
+  String get petSettingsRebindTitle => 'Appuie sur un nouveau raccourci';
+
+  @override
+  String get petSettingsRebindSave => 'Utiliser';
 
   @override
   String get petSettingsName => 'Nom';
 
   @override
-  String get petSettingsSummon => 'Dire bonjour';
+  String get petSettingsSummon => 'Ouvrir le compagnon';
+
+  @override
+  String get petSettingsSummonHint =>
+      'Ouvre le panneau tout de suite, sans raccourci clavier.';
 
   @override
   String get monthJan => 'janv.';

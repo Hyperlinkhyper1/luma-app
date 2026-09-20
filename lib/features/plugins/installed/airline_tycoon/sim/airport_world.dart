@@ -31,6 +31,7 @@ class AirportFacilityDef {
     this.interior = false,
     required this.category,
     this.maxMtowTonnes,
+    this.hidden = false,
   });
   final String kind;
   final String name;
@@ -46,6 +47,10 @@ class AirportFacilityDef {
   /// Heaviest aircraft a stand accepts; null means any.
   final int? maxMtowTonnes;
 
+  /// Kept for airports that already have one, but no longer built: the
+  /// arrival and departure halls are zones of the one terminal now.
+  final bool hidden;
+
   Json toJson() {
     final upgrade = facilityUpgrade(kind);
     return {
@@ -55,6 +60,7 @@ class AirportFacilityDef {
       ],
       'kind': kind,
       'name': name,
+      'hidden': hidden,
       'width': width,
       'depth': depth,
       'height': height,
@@ -188,14 +194,16 @@ String? zoneRefusalFor(String kind, String zone) {
   return switch (wants) {
     'arrival' =>
       'This goes in the arrival hall, where passengers come in, buy a '
-          'ticket, check in and go through security.',
+          'ticket, check in and go through security. Zone a piece of floor '
+          'as the arrival hall first.',
     'departure' =>
       'This goes in the departure hall, where arriving passengers collect '
-          'their bags, clear customs and leave.',
+          'their bags, clear customs and leave. Zone a piece of floor as the '
+          'departure hall first.',
     _ =>
-      'Shops, food, seating and gates go in the main hall. The '
-          '${zone == 'arrival' ? 'arrival' : 'departure'} hall only takes '
-          '${zone == 'arrival' ? 'the entrance, tickets, check-in and security' : 'baggage reclaim, customs and check-out'}.',
+      'Shops, food, seating and gates go in the main hall. This floor is '
+          'zoned as the ${zone == 'arrival' ? 'arrival' : 'departure'} hall, '
+          'which only takes ${zone == 'arrival' ? 'the entrance, tickets, check-in and security' : 'baggage reclaim, customs and check-out'}.',
   };
 }
 
@@ -452,25 +460,28 @@ const airportFacilities = <AirportFacilityDef>[
     category: 'apron',
   ),
   AirportFacilityDef(
+    'terminal',
+    'Terminal',
+    120,
+    60,
+    12,
+    4000000,
+    'One hall for the whole terminal. Build as many as you need side by '
+        'side, then zone the floor for free in airport mode: arrival on the '
+        'road side, main hall in the middle, departure for arriving '
+        'passengers.',
+    category: 'terminal',
+  ),
+  AirportFacilityDef(
     'terminalLandside',
     'Arrival hall',
     60,
     40,
     12,
     2000000,
-    'On the road side, where passengers come in: the entrance, tickets, '
-        'check-in and security through to the main hall. No shops.',
+    'The old separate arrival hall. Zone a terminal floor instead.',
     category: 'terminal',
-  ),
-  AirportFacilityDef(
-    'terminal',
-    'Main hall',
-    120,
-    60,
-    12,
-    4000000,
-    'Past security: shops, food, seating, lounges and the boarding gates.',
-    category: 'terminal',
+    hidden: true,
   ),
   AirportFacilityDef(
     'terminalReclaim',
@@ -479,9 +490,9 @@ const airportFacilities = <AirportFacilityDef>[
     40,
     12,
     2000000,
-    'On the road side next to the arrival hall, where arriving passengers '
-        'leave: baggage reclaim, customs and check-out to the kerb. No shops.',
+    'The old separate departure hall. Zone a terminal floor instead.',
     category: 'terminal',
+    hidden: true,
   ),
   AirportFacilityDef(
     'hangar',
@@ -1403,12 +1414,12 @@ class AirportWorld {
     add('taxiway', -350, 5, width: 30, depth: 20);
     add('stand', -320, -90);
     add('stand', -320, -20);
-    // Main hall airside, with the arrival and departure halls side by side
-    // in front of it on the road side.
+    // One terminal: two sections airside and a strip along the road, zoned
+    // below into the arrival hall, the main hall and the departure hall.
     add('terminal', -250, -90);
     add('terminal', -250, -30);
-    add('terminalLandside', -130, -90, width: 40, depth: 60);
-    add('terminalReclaim', -130, -30, width: 40, depth: 60);
+    add('terminal', -130, -90, width: 40, depth: 60);
+    add('terminal', -130, -30, width: 40, depth: 60);
     add('serviceRoad', -260, -100, width: 10, depth: 230);
     add('fuelDepot', -290, 100);
     add('baggage', -250, 100);
@@ -1428,6 +1439,8 @@ class AirportWorld {
     for (final kind in ['fuel', 'baggage', 'bus', 'pushback']) {
       w.vehicles.add(AirportVehicle(w._id('v'), kind, -255, 145));
     }
+    w.paintZone('arrival', -130, -90, 40, 60);
+    w.paintZone('departure', -130, -30, 40, 60);
     w.resolveConnections();
     return w;
   }
@@ -1996,6 +2009,9 @@ class AirportWorld {
     if (candidate.x + candidate.width > 4000 ||
         candidate.y + candidate.depth > 4000) {
       return 'The building extends beyond airport land.';
+    }
+    if (def.hidden) {
+      return 'Build a terminal and zone its floor instead.';
     }
     if (def.interior && _terminal(candidate) == null) {
       final hall = switch (hallZoneOf(kind)) {

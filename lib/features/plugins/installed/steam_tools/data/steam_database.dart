@@ -121,6 +121,15 @@ class Cs2MarketItems extends Table {
 
   DateTimeColumn get trackedAt => dateTime().withDefault(currentDateAndTime)();
 
+  /// What the user says they paid (or otherwise wants gain/loss measured
+  /// from) for this exact listing — a manual figure, never inferred from a
+  /// market reading, since the market price at track time and the user's
+  /// actual cost basis are frequently different numbers. Null means no
+  /// baseline has been set, in which case the chart has nothing to compare
+  /// against and only shows raw price.
+  IntColumn get startingPriceCents => integer().nullable()();
+  DateTimeColumn get startingPriceAt => dateTime().nullable()();
+
   @override
   Set<Column> get primaryKey => {marketHashName};
 }
@@ -175,7 +184,7 @@ class SteamDatabase extends _$SteamDatabase {
             ));
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -187,6 +196,10 @@ class SteamDatabase extends _$SteamDatabase {
           }
           if (from < 3) {
             await m.createTable(cs2PinnedSkins);
+          }
+          if (from < 4) {
+            await m.addColumn(cs2MarketItems, cs2MarketItems.startingPriceCents);
+            await m.addColumn(cs2MarketItems, cs2MarketItems.startingPriceAt);
           }
         },
       );
@@ -327,6 +340,17 @@ class SteamDatabase extends _$SteamDatabase {
     return query.watch();
   }
 
+  /// Every reading across every tracked listing, oldest first — the raw
+  /// material for a combined "all tracked items" total. [removeTrackedCs2Item]
+  /// deletes a listing's rows out of this table the moment it's untracked, so
+  /// unlike most "every row" queries this one never needs to filter by what's
+  /// currently tracked â€” anything left in here already is.
+  Stream<List<Cs2MarketPricePoint>> watchAllCs2PriceHistory() {
+    final query = select(cs2MarketPricePoints)
+      ..orderBy([(p) => OrderingTerm.asc(p.observedAt)]);
+    return query.watch();
+  }
+
   /// Starts watching one specific listing. A no-op if it is already tracked
   /// — this does not refresh a row that already has one.
   Future<void> addTrackedCs2Item(Cs2MarketItemsCompanion item) =>
@@ -376,6 +400,19 @@ class SteamDatabase extends _$SteamDatabase {
         ),
       );
     });
+  }
+
+  /// Sets (or, with `null`, clears) the manual cost-basis a tracked listing's
+  /// gain/loss is measured from. [Cs2MarketItems.startingPriceAt] is stamped
+  /// to now alongside a non-null price so the chart can say when the
+  /// baseline was set, and cleared along with it.
+  Future<void> setCs2StartingPrice(String marketHashName, int? cents) async {
+    await (update(cs2MarketItems)
+          ..where((i) => i.marketHashName.equals(marketHashName)))
+        .write(Cs2MarketItemsCompanion(
+      startingPriceCents: Value(cents),
+      startingPriceAt: Value(cents == null ? null : DateTime.now()),
+    ));
   }
 
   /// Every pinned skin id, unordered — the browse grid sorts by this

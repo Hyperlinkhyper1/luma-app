@@ -120,9 +120,13 @@ assert(!messages.some(m => m.type === 'error'), JSON.stringify(messages));
 }
 {
   // Zoning: a painted piece of floor decides what may be placed on it,
-  // whichever hall it is in, and the scene marks it out.
-  const zoned = {...sandbox.airportPreview.world, zones: [{id: 'z1', zone: 'arrival', x: -250, y: -90, width: 50, depth: 60}]};
+  // whichever section of terminal it is in, and the scene marks it out.
+  const base = sandbox.airportPreview.world;
   const state = () => sandbox.airportDebug.state;
+  sandbox.airportReceive({type: 'snapshot', world: base});
+  assert.equal(new Set(base.facilities.filter(f => sandbox.AirportSceneLogic.hallKinds.has(f.kind)).map(f => f.kind)).size, 1, 'the terminal is one kind of building');
+  assert.equal(state().zoneGroup.children.length, base.zones.length * 5, 'every zone is drawn with its border');
+  const zoned = {...base, zones: [...base.zones, {id: 'z9', zone: 'arrival', x: -250, y: -90, width: 50, depth: 60}]};
   sandbox.airportReceive({type: 'snapshot', world: zoned});
   assert(state().zoneGroup.children.length >= 5, 'a painted zone is drawn with its border');
   const zoneWorld = {catalog: [{kind: 'shop', width: 12, depth: 8, cost: 1, interior: true, name: 'Duty free'}, {kind: 'checkIn', width: 8, depth: 4, cost: 1, interior: true, name: 'Check-in desks'}], facilities: zoned.facilities, zones: zoned.zones, cash: 9e9, time: 0, flights: []};
@@ -132,8 +136,9 @@ assert(!messages.some(m => m.type === 'error'), JSON.stringify(messages));
   assert(tryAt('shop', -180, -70, 12, 8).valid, 'and shops on the unzoned main hall floor');
   assert.equal(sandbox.AirportSceneLogic.zoneAt(zoneWorld, -240, -70), "arrival");
   assert.equal(sandbox.AirportSceneLogic.zoneAt(zoneWorld, -180, -70), null);
-  sandbox.airportReceive({type: 'snapshot', world: sandbox.airportPreview.world});
+  sandbox.airportReceive({type: 'snapshot', world: {...base, zones: []}});
   assert.equal(state().zoneGroup.children.length, 0, 'rubbing the zones out clears them');
+  sandbox.airportReceive({type: 'snapshot', world: base});
 }
 {
   // A connector taxiway is drawn the way traffic runs over it, not the way
@@ -187,7 +192,7 @@ assert(logic.validate(contactWorld,{kind:'standContact'},{x:120,y:0,w:60,d:65}).
 // hall, shops and gates in the main hall, reclaim, customs and the way out in
 // the departure hall.
 const interiorDef=(kind,width,depth)=>({kind,width,depth,cost:1,interior:true,name:kind});
-const halls={catalog:[...catalog,{kind:'terminalLandside',width:60,depth:40,cost:1,name:'Arrival hall'},{kind:'terminalReclaim',width:60,depth:40,cost:1,name:'Departure hall'},interiorDef('shop',12,8),interiorDef('customs',8,6),interiorDef('security',8,6),interiorDef('baggageCarousel',10,5),interiorDef('bins',2,1)],facilities:[terminal,{id:'a',kind:'terminalLandside',x:120,y:0,width:40,depth:60},{id:'d',kind:'terminalReclaim',x:120,y:60,width:40,depth:60}],cash:9e9,time:0,flights:[]};
+const halls={catalog:[...catalog,{kind:'terminalLandside',width:60,depth:40,cost:1,name:'Arrival hall',hidden:true},{kind:'terminalReclaim',width:60,depth:40,cost:1,name:'Departure hall',hidden:true},interiorDef('shop',12,8),interiorDef('customs',8,6),interiorDef('security',8,6),interiorDef('baggageCarousel',10,5),interiorDef('bins',2,1)],facilities:[terminal,{id:'a',kind:'terminalLandside',x:120,y:0,width:40,depth:60},{id:'d',kind:'terminalReclaim',x:120,y:60,width:40,depth:60}],cash:9e9,time:0,flights:[]};
 const at=(kind,x,y,w,d)=>logic.validate(halls,{kind},{x,y,w,d});
 assert.match(at('shop',125,10,12,8).reason,/main hall/,'no shops in the arrival hall');
 assert.match(at('shop',125,70,12,8).reason,/main hall/,'nor in the departure hall');
@@ -201,6 +206,9 @@ for(const [x,y] of [[125,10],[10,10],[125,70]])assert(at('bins',x,y,2,1).valid,'
 assert.match(at('customs',400,400,8,6).reason,/inside the departure hall/,'outside every hall');
 assert.equal(logic.zoneOf('checkIn'),'arrival');
 assert.equal(logic.hallZone('terminalReclaim'),'departure');
+// The old halls stay standing but are not built any more: zone instead.
+assert.match(logic.validate(halls,{kind:'terminalLandside'},{x:400,y:400,w:60,d:40}).reason,/zone its floor/);
+assert(logic.validate(halls,{kind:'terminal'},{x:400,y:400,w:120,d:60}).valid,'terminals still go up');
 const standKinds=['standRegional','standContact'];
 for(const kind of ['standRegional','standContact','shop','lounge','plant','fountain','infoBoard','seating','ticketMachine','vendingMachine','baggageCarousel','clothingShop','luxuryBoutique','vipLounge','checkInCounter','kiosk','foodShop','perfumeShop','restaurant','infoDesk','bins','coffeeToGo','arcade','flowerShop','foodCart','infoPanel','customs','checkOut','casino']){
   const size={standRegional:[40,45],standContact:[60,65],shop:[12,8],lounge:[14,10],plant:[2,2],fountain:[6,6],infoBoard:[4,2],seating:[8,4],ticketMachine:[1,1],vendingMachine:[1,1],baggageCarousel:[10,5],clothingShop:[8,6],luxuryBoutique:[8,6],vipLounge:[8,6],checkInCounter:[6,5],kiosk:[5,4],foodShop:[10,8],perfumeShop:[8,7],restaurant:[14,10],infoDesk:[5,4],bins:[2,1],coffeeToGo:[4,3],arcade:[10,8],flowerShop:[6,5],foodCart:[3,2],infoPanel:[1,1],customs:[8,6],checkOut:[8,4],casino:[12,10]}[kind];
@@ -231,7 +239,7 @@ console.log('PASS: containment, overlaps, funds, boundaries, move exclusions/pro
 {
   const land = sandbox.AirportLandside;
   const preview = sandbox.airportPreview.world.facilities;
-  const frame = land.layout(preview);
+  const frame = land.layout(preview, sandbox.airportPreview.world.zones);
   // The starter airport faces +X: runway and stands sit to the -X of the
   // terminals, so the public side is the entrance hall's front at x = -90.
   assert.equal(frame.dir.join(','), '1,0', 'landside faces away from the apron');
@@ -243,7 +251,7 @@ console.log('PASS: containment, overlaps, funds, boundaries, move exclusions/pro
     assert.equal(land.layout(moved).dir.join(','), expect, `apron moved to ${dx},${dz}`);
   }
   assert.equal(land.layout([]), null, 'no terminal, no landside');
-  assert.deepEqual(JSON.parse(JSON.stringify(frame.signs)), [{text: 'ARRIVAL HALL', v: -30}, {text: 'DEPARTURE HALL', v: 30}], 'the canopy names the halls behind it');
+  assert.equal(JSON.stringify(frame.signs), JSON.stringify([{text: 'ARRIVAL HALL', v: -30}, {text: 'DEPARTURE HALL', v: 30}]), 'the canopy names the zones behind it');
 
   sandbox.airportReceive({type: 'snapshot', world: sandbox.airportPreview.world});
   const district = sandbox.airportDebug.state.district;
@@ -267,9 +275,9 @@ console.log('PASS: containment, overlaps, funds, boundaries, move exclusions/pro
   if (process.env.LANDSIDE_STATS) console.log(`  landside: ${meshes} meshes, ${Math.round(triangles / 1000)}k triangles`);
 
   // A rebuild with the same terminals reuses the district; a moved terminal replaces it.
-  assert.equal(sandbox.AirportLandside.build(preview), district, 'unchanged terminals keep the district');
+  assert.equal(sandbox.AirportLandside.build(preview, sandbox.airportPreview.world.zones), district, 'unchanged terminals keep the district');
   const shifted = preview.map(f => sandbox.AirportSceneLogic.hallKinds.has(f.kind) ? {...f, x: f.x + 40} : f);
-  const rebuilt = sandbox.AirportLandside.build(shifted);
+  const rebuilt = sandbox.AirportLandside.build(shifted, sandbox.airportPreview.world.zones);
   assert(rebuilt && rebuilt !== district, 'a moved terminal rebuilds the district');
   assert.equal(rebuilt.group.position.x, -50);
 

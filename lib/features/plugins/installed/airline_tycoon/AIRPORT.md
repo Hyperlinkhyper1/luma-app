@@ -111,44 +111,48 @@ upgrade. Levels survive a move and a reload, and demolishing refunds half
 of the build cost plus every upgrade. The page mirrors `upgradeCostAt`
 only to show the refund.
 
-## The terminal's three halls
+## One terminal, three parts
 
-Like the original game, the terminal has three parts that join into one
-building wherever they touch (`hallKinds`):
+The terminal is one building: **Terminal** (`terminal`, 120 × 60 m, €4M).
+Build as many sections as you like side by side and they join into one hall
+wherever they touch (`hallKinds`). Which part of the terminal a piece of
+floor is comes from zoning it, not from the building:
 
-- The **arrival hall** (`terminalLandside`, 60 × 40 m) on the road side is
-  where passengers come in: the entrance, ticket machines, check-in desks
-  and staffed counters, and security through to the main hall
-  (`arrivalHallKinds`).
-- The **main hall** (`terminal`, 120 × 60 m) behind it has everything past
-  security: shops, food, seating, toilets, lounges, decor and the boarding
-  gates. Stands nose in to it and contact stands must touch it.
-- The **departure hall** (`terminalReclaim`, 60 × 40 m) on the road side
-  next to the arrival hall is where arriving passengers leave: baggage
+- The **arrival hall** is where passengers come in: the entrance, ticket
+  machines, check-in desks and staffed counters, and security through to the
+  main hall (`arrivalHallKinds`).
+- The **main hall** is everything past security: shops, food, seating,
+  toilets, lounges, decor and the boarding gates. Floor with no zone painted
+  on it counts as the main hall, and stands nose in to the terminal.
+- The **departure hall** is where arriving passengers leave: baggage
   carousels, customs and the check-out (`departureHallKinds`).
-- Information desks, boards, panels and bins fit in any hall
-  (`anyHallKinds`).
+- Information desks, boards, panels and bins fit anywhere (`anyHallKinds`).
 
 The names follow the game, not airport signage: the arrival hall is where
 you arrive at the airport, the departure hall where you leave it.
-`hallZoneOf` sorts a kind into its hall, and `zoneRefusal` (both mirrored in
-`scene_logic.js`) explains a wrong placement, for example "This goes in the
-departure hall …". The rule applies to new placements and moves; saves from
-before it keep their furnishings where they are, and a moved hall still takes
-all of its furnishings along.
+`hallZoneOf` sorts a kind into its part, `zoneOfPlacement` says which part a
+spot is, and `zoneRefusalFor` (mirrored in `scene_logic.js`) explains a
+wrong placement, for example "This goes in the departure hall … Zone a piece
+of floor as the departure hall first."
 
-The starter airport has the arrival hall (entrance, check-in, security) and
-the departure hall (customs, check-out) side by side along the road, with
-two main hall sections behind them. The arrival and departure halls wear a
-teal or blue band and their name on the facade, and the forecourt canopy
-names them from the road (`layout().signs`).
+The separate **Arrival hall** and **Departure hall** buildings
+(`terminalLandside`, `terminalReclaim`) are `hidden` in the catalog: airports
+that already have one keep it, and its floor defaults to that part
+(`hallZone`), but no new ones go up — `build` answers "Build a terminal and
+zone its floor instead."
+
+The starter airport is four terminal sections — two deep ones airside and a
+strip along the road — with the road-side strip zoned arrival (entrance,
+check-in, security) and departure (customs, check-out). The forecourt canopy
+names whichever arrival and departure floor reaches it (`layout().signs`,
+which reads the zones).
 
 ### Zoning the floor
 
-A hall's kind is only its default. Zoning marks out part of any terminal
-floor as one of the three parts, so a single big hall can be split without
-rebuilding it. In airport mode, pick Arrival, Main, Departure or Erase and
-drag a rectangle over the floor.
+Zoning marks out part of the terminal floor as one of the three parts, so
+one big hall is split without rebuilding anything. In airport mode, pick
+Arrival, Main, Departure or Erase and drag a rectangle over the floor. It
+costs nothing.
 
 - `AirportZone` rectangles live in `AirportWorld.zones`, are saved with the
   airport, and are painted in order: the last one wins where they overlap,
@@ -157,8 +161,10 @@ drag a rectangle over the floor.
 - `paintZone` snaps to a metre, refuses anything under 2 m and wants all
   four corners inside halls. Zoning is free.
 - `zoneOfPlacement` is what placement checks: the paint under the item's
-  middle, or the hall's own part when the floor is unpainted. `zoneRefusalFor`
-  gives the reason. (`zoneRefusal` is the same check for a bare hall kind.)
+  middle, or the building's own part when the floor is unpainted — the main
+  hall for a terminal, and arrival or departure for one of the old separate
+  halls. `zoneRefusalFor` gives the reason. (`zoneRefusal` is the same check
+  for a bare hall kind.)
 - The scene washes each zone in its colour with a border, tags it, and turns
   the floor green or red under the item being placed. `scene_logic.js`
   mirrors `zoneAt` so the placement preview agrees with the simulation.
@@ -178,12 +184,13 @@ panel leaves free.
 
 Build opens with the zoning buttons — Arrival, Main, Departure, Erase, which
 paint the floor (see above) — and one tab per hall: Arrival hall, Main hall,
-Shops, Departure hall and Anywhere. Each tab starts with the hall building itself,
-so the terminal can grow from inside the mode, and warns when that hall does
-not exist yet (older saves have only main hall sections). While an item is
-being placed, the halls it may go in turn green. Selecting a hall on the
-airfield offers **Airport mode** framed on that hall. Esc closes the panel
-first, then leaves the mode; the camera returns to where it was.
+Shops, Departure hall and Anywhere. The Main hall tab also carries the
+Terminal itself, so the building can grow from inside the mode, and a tab
+warns when nothing is zoned that way yet. While an item is being placed, the
+floor it may go on turns green and floor that refuses it turns red.
+Selecting a section on the airfield offers **Airport mode** framed on it.
+Esc closes the panel first, then leaves the mode; the camera returns to
+where it was.
 
 ## Lighting at night
 

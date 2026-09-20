@@ -345,20 +345,33 @@ class LEs extends L {
 
   @override
   String get petSettingsSubtitle =>
-      'Pulsa Alt+Espacio en cualquier momento para llamar a la mascota y escribe para saltar a cualquier página o plugin.';
+      'Pulsa el atajo en cualquier momento para llamar a la mascota y escribe para saltar a cualquier página o plugin.';
 
   @override
-  String get petSettingsHotkey => 'Llamar con Alt+Espacio';
+  String get petSettingsHotkey => 'Llamar desde cualquier sitio';
 
   @override
   String get petSettingsHotkeyTaken =>
-      'Otra app ya usa Alt+Espacio, así que la mascota solo se abre desde luma.';
+      'Otra app ya tiene este atajo, así que solo funciona con luma en primer plano. Elige otro abajo.';
+
+  @override
+  String get petSettingsRebind => 'Cambiar';
+
+  @override
+  String get petSettingsRebindTitle => 'Pulsa un atajo nuevo';
+
+  @override
+  String get petSettingsRebindSave => 'Usarlo';
 
   @override
   String get petSettingsName => 'Nombre';
 
   @override
-  String get petSettingsSummon => 'Saludar';
+  String get petSettingsSummon => 'Abrir la mascota';
+
+  @override
+  String get petSettingsSummonHint =>
+      'Abre el panel al instante, sin atajo de teclado.';
 
   @override
   String get monthJan => 'ene';

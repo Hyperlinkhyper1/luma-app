@@ -24,7 +24,10 @@ class Cs2MarketRepository extends ChangeNotifier {
     Cs2CatalogService? catalogService,
     Cs2MarketApi? api,
   })  : _catalogService = catalogService ?? Cs2CatalogService(),
-        _api = api ?? Cs2MarketApi();
+        _api = api ?? Cs2MarketApi() {
+    _sweepTimer = Timer.periodic(_sweepInterval, (_) => refreshAllPrices());
+    unawaited(_catchUpSweep());
+  }
 
   final SteamDatabase _db;
   final Cs2CatalogService _catalogService;
@@ -45,6 +48,18 @@ class Cs2MarketRepository extends ChangeNotifier {
   int _priceChecked = 0;
   int _priceTotal = 0;
   bool _cancelPriceRefresh = false;
+
+  /// How often tracked listings are swept for a fresh price with no user
+  /// present to press "Refresh prices" — this is what makes tracking build a
+  /// history on its own rather than only when the market tab happens to be
+  /// open. There is no OS-level background task behind this (unlike, say, a
+  /// push notification service): the timer only runs while the app process
+  /// is alive, same limitation [SyncService]'s periodic sync has. [
+  /// _catchUpSweep] is what keeps the cadence honest across restarts —
+  /// without it, a device that's only ever opened once a day would never
+  /// actually get six-hourly readings, just one per launch.
+  static const _sweepInterval = Duration(hours: 6);
+  Timer? _sweepTimer;
 
   bool get catalogLoaded => _catalogLoaded;
   bool get catalogLoading => _catalogLoading;
@@ -151,6 +166,11 @@ class Cs2MarketRepository extends ChangeNotifier {
   ) =>
       _db.watchCs2PriceHistory(marketHashName);
 
+  /// Every reading across every tracked listing, combined â€” what the Tracked
+  /// tab's total-value chart is built from.
+  Stream<List<Cs2MarketPricePoint>> watchAllPriceHistory() =>
+      _db.watchAllCs2PriceHistory();
+
   Future<bool> isTracked(String marketHashName) async =>
       await _db.cs2Item(marketHashName) != null;
 
@@ -188,10 +208,15 @@ class Cs2MarketRepository extends ChangeNotifier {
   /// Starts watching one exact listing â€” a specific finish, wear and
   /// StatTrak state â€” and fetches its price immediately so the new row has
   /// one right away instead of waiting for the next sweep.
+  ///
+  /// [startingPriceCents] is the optional cost basis the user typed in
+  /// alongside the wear/grade they picked â€” see [setStartingPrice] for
+  /// setting or changing it after the fact.
   Future<void> track({
     required Cs2SkinDef skin,
     String? wear,
     required bool statTrak,
+    int? startingPriceCents,
   }) async {
     final marketHashName =
         cs2MarketHashName(baseName: skin.name, wear: wear, statTrak: statTrak);
@@ -206,6 +231,9 @@ class Cs2MarketRepository extends ChangeNotifier {
       imageUrl: skin.imageUrl,
       wear: Value(wear),
       statTrak: Value(statTrak),
+      startingPriceCents: Value(startingPriceCents),
+      startingPriceAt:
+          Value(startingPriceCents == null ? null : DateTime.now()),
     ));
     StorageGuard.instance.scheduleRefresh();
     unawaited(refreshPrice(marketHashName, force: true));
@@ -213,6 +241,15 @@ class Cs2MarketRepository extends ChangeNotifier {
 
   Future<void> untrack(String marketHashName) async {
     await _db.removeTrackedCs2Item(marketHashName);
+    StorageGuard.instance.scheduleRefresh();
+  }
+
+  /// Sets, changes, or (with `null`) clears the price gain/loss is measured
+  /// from for an already-tracked listing. Separate from [track] so a
+  /// baseline typed in wrong, or skipped entirely at track time, can still
+  /// be fixed later without untracking and losing the history built so far.
+  Future<void> setStartingPrice(String marketHashName, int? cents) async {
+    await _db.setCs2StartingPrice(marketHashName, cents);
     StorageGuard.instance.scheduleRefresh();
   }
 
@@ -304,9 +341,25 @@ class Cs2MarketRepository extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Runs an immediate sweep if any tracked listing has gone longer than
+  /// [_sweepInterval] without a reading â€” otherwise a device that's only
+  /// opened once a day would get one reading per launch rather than the four
+  /// a real 6h cadence implies. Only fires once, on construction; the
+  /// periodic timer takes over from there for as long as the app stays open.
+  Future<void> _catchUpSweep() async {
+    final items = await _db.watchTrackedCs2Items().first;
+    if (items.isEmpty) return;
+    final now = DateTime.now();
+    final overdue = items.any((item) =>
+        item.priceFetchedAt == null ||
+        now.difference(item.priceFetchedAt!) >= _sweepInterval);
+    if (overdue) unawaited(refreshAllPrices());
+  }
+
   @override
   void dispose() {
     _cancelPriceRefresh = true;
+    _sweepTimer?.cancel();
     _catalogService.close();
     _api.close();
     super.dispose();

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../app/window_title_bar.dart';
 import '../theme/luma_theme.dart';
-import 'pet_repository.dart';
 import 'pet_scope.dart';
 
 /// Title-bar button that summons the luma pet.
@@ -25,10 +24,11 @@ class _PetSummonButtonState extends State<PetSummonButton> {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final pet = PetScope.of(context);
-    final shortcut =
-        PetRepository.supportsGlobalHotKey && pet.hotKeyRegistered
-            ? '${pet.name} · Alt+Space'
-            : pet.name;
+    // Only advertise the chord when it actually took: a shortcut the OS
+    // refused is worse than no shortcut at all.
+    final shortcut = pet.hotKeyRegistered
+        ? '${pet.name} · ${pet.hotKeyLabel}'
+        : pet.name;
     return Tooltip(
       message: shortcut,
       waitDuration: const Duration(milliseconds: 500),

@@ -123,7 +123,14 @@ class _LumaPetPanelState extends State<LumaPetPanel> {
     // fall back to the best match rather than pointing past the end.
     if (_selected >= _results.length) _selected = 0;
 
-    final card = _card(context, luma, pet);
+    // The panel is layered *over* the shell, not inside it, so the app's own
+    // Scaffold is a sibling rather than an ancestor: without this there is no
+    // Material in scope, and the text field and rows fail outright. Kept
+    // transparent so the card below still paints its own surface.
+    final card = Material(
+      type: MaterialType.transparency,
+      child: _card(context, luma, pet),
+    );
 
     if (widget.fullBleed) return card;
 
