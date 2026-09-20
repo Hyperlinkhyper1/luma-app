@@ -284,6 +284,82 @@ class LEn extends L {
       'Dev build · made with care on someone\'s laptop';
 
   @override
+  String get petSearchHint => 'Search plugins and pages';
+
+  @override
+  String get petMoodIdle => 'What are we opening?';
+
+  @override
+  String get petMoodCurious => 'Ooh, let me look…';
+
+  @override
+  String get petMoodHappy => 'That tickles.';
+
+  @override
+  String get petMoodDelighted => 'Best day ever!';
+
+  @override
+  String get petMoodSleepy => 'Still up? Me too.';
+
+  @override
+  String get petNoResults => 'Nothing by that name';
+
+  @override
+  String get petNoResultsHint => 'Try a shorter word, or just part of one.';
+
+  @override
+  String get petSectionJumpTo => 'JUMP TO';
+
+  @override
+  String get petSectionResults => 'RESULTS';
+
+  @override
+  String get petKindPlugin => 'Plugin';
+
+  @override
+  String get petKindPage => 'Page';
+
+  @override
+  String get petHintMove => 'move';
+
+  @override
+  String get petHintOpen => 'open';
+
+  @override
+  String get petHintClose => 'close';
+
+  @override
+  String get petClose => 'Close';
+
+  @override
+  String get petPatsTooltip => 'Pats given';
+
+  @override
+  String petPatLabel(String name) {
+    return 'Pat $name';
+  }
+
+  @override
+  String get petSettingsTitle => 'luma pet';
+
+  @override
+  String get petSettingsSubtitle =>
+      'Press Alt+Space anywhere to summon the pet, then type to jump to any page or plugin.';
+
+  @override
+  String get petSettingsHotkey => 'Summon with Alt+Space';
+
+  @override
+  String get petSettingsHotkeyTaken =>
+      'Alt+Space is taken by another app, so the pet only opens from inside luma.';
+
+  @override
+  String get petSettingsName => 'Name';
+
+  @override
+  String get petSettingsSummon => 'Say hello';
+
+  @override
   String get monthJan => 'Jan';
 
   @override

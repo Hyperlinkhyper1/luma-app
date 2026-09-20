@@ -144,6 +144,9 @@ flutter:
     - assets/airline_tycoon/
     - assets/airline_tycoon/scene/
     - assets/airline_tycoon/scene/vendor/
+    - assets/asset_studio/
+    - assets/asset_studio/models/
+    - assets/asset_studio/thumbs/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

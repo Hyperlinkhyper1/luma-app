@@ -971,8 +971,11 @@ class AirlineTycoonRepository extends ChangeNotifier
             if (standKinds.contains(f.kind)) ...{
               'nose': world.standNose(f),
               'lane': world.standLane(f),
+              'gateDoor': _door(world.boardingDoor(f)),
+              'walk': world.boardingWalk(f),
             },
-            if (f.kind == 'entrance') 'door': _door(world.entranceDoor(f)),
+            if (f.kind == 'entrance' || f.kind == 'checkOut')
+              'door': _door(world.entranceDoor(f)),
           },
       ],
       'idleAircraft': idleAircraft,
@@ -1092,6 +1095,14 @@ class AirlineTycoonRepository extends ChangeNotifier
           );
         case 'demolish':
           error = world.demolish(_state, string('facilityId'));
+        case 'paintZone':
+          error = world.paintZone(
+            string('zone'),
+            number('x'),
+            number('y'),
+            number('width'),
+            number('depth'),
+          );
         case 'upgrade':
           error = world.upgrade(
             _state,

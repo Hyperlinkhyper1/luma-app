@@ -284,6 +284,83 @@ class LFr extends L {
       'Version de développement · un outil local épuré';
 
   @override
+  String get petSearchHint => 'Rechercher plugins et pages';
+
+  @override
+  String get petMoodIdle => 'On ouvre quoi ?';
+
+  @override
+  String get petMoodCurious => 'Oh, je regarde…';
+
+  @override
+  String get petMoodHappy => 'Ça chatouille.';
+
+  @override
+  String get petMoodDelighted => 'Quelle belle journée !';
+
+  @override
+  String get petMoodSleepy => 'Encore debout ? Moi aussi.';
+
+  @override
+  String get petNoResults => 'Rien à ce nom';
+
+  @override
+  String get petNoResultsHint =>
+      'Essaie un mot plus court, ou juste un morceau.';
+
+  @override
+  String get petSectionJumpTo => 'ALLER À';
+
+  @override
+  String get petSectionResults => 'RÉSULTATS';
+
+  @override
+  String get petKindPlugin => 'Plugin';
+
+  @override
+  String get petKindPage => 'Page';
+
+  @override
+  String get petHintMove => 'naviguer';
+
+  @override
+  String get petHintOpen => 'ouvrir';
+
+  @override
+  String get petHintClose => 'fermer';
+
+  @override
+  String get petClose => 'Fermer';
+
+  @override
+  String get petPatsTooltip => 'Caresses données';
+
+  @override
+  String petPatLabel(String name) {
+    return 'Caresser $name';
+  }
+
+  @override
+  String get petSettingsTitle => 'compagnon luma';
+
+  @override
+  String get petSettingsSubtitle =>
+      'Appuie sur Alt+Espace n\'importe où pour appeler le compagnon, puis tape pour aller à une page ou un plugin.';
+
+  @override
+  String get petSettingsHotkey => 'Appeler avec Alt+Espace';
+
+  @override
+  String get petSettingsHotkeyTaken =>
+      'Alt+Espace est déjà pris par une autre app : le compagnon ne s\'ouvre que depuis luma.';
+
+  @override
+  String get petSettingsName => 'Nom';
+
+  @override
+  String get petSettingsSummon => 'Dire bonjour';
+
+  @override
   String get monthJan => 'janv.';
 
   @override

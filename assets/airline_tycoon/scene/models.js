@@ -87,6 +87,79 @@ window.AirportModels = (() => {
     material.customProgramCacheKey = () => 'luma-macro';
     return material;
   }
+  // Artificial light: downlights in the terminal halls and floodlights over
+  // the stands and service yards. Every lit material reads the same uniforms:
+  // the lit areas, each with its strength, the height its lights hang at and
+  // how far apart they are, and how bright the indoor and outdoor lights are
+  // right now (they come on at dusk; indoors they stay on in airport mode).
+  const LIGHTS = 48;
+  const indoorUniforms = {
+    lightRects: {value: Array.from({length: LIGHTS}, () => new T.Vector4(0, 0, 0, 0))},
+    lightInfo: {value: Array.from({length: LIGHTS}, () => new T.Vector4(0, 0, 1, 0))},
+    lightCount: {value: 0},
+    indoorLevel: {value: 0},
+    outdoorLevel: {value: 0},
+    lightColor: {value: new T.Color(0xfff0da)},
+  };
+  function indoor(material) {
+    const before = material.onBeforeCompile, key = material.customProgramCacheKey === T.Material.prototype.customProgramCacheKey ? 'plain' : material.customProgramCacheKey();
+    material.onBeforeCompile = (shader, renderer) => {
+      before.call(material, shader, renderer);
+      Object.assign(shader.uniforms, indoorUniforms);
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vIndoor;')
+        .replace('#include <project_vertex>', `#include <project_vertex>
+          vec4 indoorAt = vec4(transformed, 1.0);
+          #ifdef USE_INSTANCING
+            indoorAt = instanceMatrix * indoorAt;
+          #endif
+          vIndoor = (modelMatrix * indoorAt).xyz;`);
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', `#include <common>
+          varying vec3 vIndoor;
+          uniform vec4 lightRects[${LIGHTS}];
+          uniform vec4 lightInfo[${LIGHTS}];
+          uniform int lightCount;
+          uniform float indoorLevel, outdoorLevel;
+          uniform vec3 lightColor;
+          float indoorLight(vec3 p) {
+            if (indoorLevel <= 0.0 && outdoorLevel <= 0.0) return 0.0;
+            for (int i = 0; i < ${LIGHTS}; i++) {
+              if (i >= lightCount) break;
+              vec4 r = lightRects[i], info = lightInfo[i];
+              if (p.x > r.x && p.x < r.z && p.z > r.y && p.z < r.w) {
+                if (p.y > info.y) return 0.0;
+                vec2 cell = fract(p.xz / info.z) - .5;
+                return (info.w > .5 ? outdoorLevel : indoorLevel) * info.x * (.72 + .55 * exp(-dot(cell, cell) * 10.0));
+              }
+            }
+            return 0.0;
+          }`)
+        .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
+          float indoorGlow = indoorLight(vIndoor);
+          if (indoorGlow > 0.0) {
+            vec3 indoorUp = inverseTransformDirection(normal, viewMatrix);
+            reflectedLight.indirectDiffuse += material.diffuseColor * lightColor * indoorGlow * (.55 + .45 * max(indoorUp.y, 0.0));
+          }`);
+    };
+    material.customProgramCacheKey = () => `${key}+indoor`;
+    return material;
+  }
+  /** The lit areas: {rect: [minX, minZ, maxX, maxZ], power, top, spacing,
+      outdoor}. Halls come first, so they win where areas overlap. */
+  function setLights(areas) {
+    const list = areas.slice(0, LIGHTS);
+    list.forEach((a, i) => {
+      indoorUniforms.lightRects.value[i].set(a.rect[0], a.rect[1], a.rect[2], a.rect[3]);
+      indoorUniforms.lightInfo.value[i].set(a.power, a.top, a.spacing, a.outdoor ? 1 : 0);
+    });
+    indoorUniforms.lightCount.value = list.length;
+  }
+  function lightLevels(indoors, outdoors) {
+    indoorUniforms.indoorLevel.value = Math.max(0, indoors);
+    indoorUniforms.outdoorLevel.value = Math.max(0, outdoors);
+  }
+
   const materials = {
     // Image-based light from the sky map fills every surface evenly; kept
     // low so the sun and its shadows, not the fill, shape the airport.
@@ -102,6 +175,7 @@ window.AirportModels = (() => {
     pool: new T.MeshBasicMaterial({vertexColors: true, map: glow, transparent: true, opacity: 0, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false}),
   };
   for (const m of Object.values(materials)) m.userData.env = m.envMapIntensity ?? 1;
+  for (const kind of ['paint', 'metal', 'glass', 'water', 'concrete', 'asphalt', 'tile']) indoor(materials[kind]);
   const textured = {concrete: 10, asphalt: 14, grass: 24, tile: 6};
   const sources = new Map();
   for (const [kind, material] of Object.entries(materials)) {
@@ -265,7 +339,7 @@ window.AirportModels = (() => {
     g.traverse(o => { if (o.isMesh && !o.userData.owned && !o.material.userData.baked && o.material.userData.kind) found.push(o); });
     for (const o of found) {
       const kind = o.material.userData.kind;
-      const role = o.userData.roof ? 'roof' : o.userData.interior ? 'interior' : o.castShadow ? 'cast' : 'flat';
+      const role = o.userData.roof ? 'roof' : o.userData.upper ? 'upper' : o.userData.interior ? 'interior' : o.castShadow ? 'cast' : 'flat';
       const key = `${kind}|${role}`;
       if (!buckets.has(key)) buckets.set(key, {kind, role, parts: []});
       buckets.get(key).parts.push({geo: plain(o.geometry), matrix: new T.Matrix4().multiplyMatrices(inverse, o.matrixWorld), color: o.material.color});
@@ -274,11 +348,12 @@ window.AirportModels = (() => {
     const out = [];
     for (const {kind, role, parts} of buckets.values()) {
       const m = new T.Mesh(merge(parts, kind, offset), materials[kind]);
-      m.castShadow = role === 'cast' || role === 'roof' || role === 'interior';
+      m.castShadow = role === 'cast' || role === 'roof' || role === 'interior' || role === 'upper';
       m.receiveShadow = kind !== 'light' && kind !== 'pool';
       if (kind === 'pool') m.renderOrder = 2;
       m.userData.ownGeometry = true;
       if (role === 'roof') m.userData.roof = true;
+      if (role === 'upper') m.userData.upper = true;
       if (role === 'interior') m.userData.interior = true;
       g.add(m);
       out.push(m);
@@ -375,9 +450,11 @@ window.AirportModels = (() => {
     for (let z = 6; z < d - 4; z += 30) for (const x of [.4, w - .4]) if (!isCut(x, z, cuts)) light(g, x, .3, z, 0xfff9e8, .6);
     for (let z = 20; z < d; z += 15) light(g, w / 2, .16, z, 0xf2fbff, .22);
   }
-  function taxiway(g, w, d, cuts) {
+  /** [vertical] is which way traffic runs over it, not its shape: a short
+      connector can be square or wider than it is long. */
+  function taxiway(g, w, d, cuts, vertical = d >= w) {
     box(g, w, .1, d, w / 2, .05, d / 2, 0xe8e8e8, 'asphalt');
-    const vertical = d >= w, length = Math.max(w, d), yellow = 0xf1c643;
+    const length = vertical ? d : w, yellow = 0xf1c643;
     if (vertical) {
       paint(g, 0, d, w / 2, false, .35, yellow, cuts);
       for (const x of [.6, w - .6]) paint(g, 0, d, x, false, .2, yellow, cuts);
@@ -510,10 +587,21 @@ window.AirportModels = (() => {
     for (const t of [a + .8, b - .8]) put(t - .12, t + .12, .1, 4.25, .2, -.5, 0xfff0c8, 'light');
     return sign(facing);
   }
+  // The three parts of the terminal: floor, roof, and the band and name
+  // round the top of the facade.
+  const hallStyles = {
+    arrival: {floor: 0xcbb088, roof: 0x8d9ea4, band: 0x2d6b76, sign: 'ARRIVAL HALL  ·  CHECK-IN'},
+    departure: {floor: 0xa7b4bb, roof: 0x8f9bb0, band: 0x34558c, sign: 'DEPARTURE HALL  ·  BAGGAGE'},
+    main: {floor: 0xa9a398, roof: 0xaeb7bb, band: null, sign: null},
+  };
+  /** A terminal hall: [context.zone] is 'arrival', 'main' or 'departure'.
+      Everything on the walls above the knee-high base is tagged `upper`, so
+      airport mode can lower the walls and look straight in. */
   function terminal(g, w, d, context) {
-    const open = context?.open || {};
-    box(g, w, .3, d, w / 2, .15, d / 2, 0xa9a398, 'tile').userData.interior = true;
+    const open = context?.open || {}, style = hallStyles[context?.zone] || hallStyles.main;
+    box(g, w, .3, d, w / 2, .15, d / 2, style.floor, 'tile').userData.interior = true;
     const wall = .5, height = 11, frame = 0xe7e8e4, glass = 0x4ea7cf;
+    const firstWall = g.children.length, base = m => { m.userData.base = true; return m; };
     const sides = [
       ['-z', w, [w / 2, 0 + wall / 2], true, -1],
       ['+z', w, [w / 2, d - wall / 2], true, 1],
@@ -522,9 +610,12 @@ window.AirportModels = (() => {
     ];
     for (const [name, length, [cx, cz], alongX, out] of sides) {
       if (open[name]) continue;
-      const gaps = (context?.doors || []).filter(o => o.side === name)
-        .map(o => Math.min(length - 4.5, Math.max(4.5, o.at))).sort((p, q) => p - q)
-        .map(at => [at - 3.5, at + 3.5]);
+      // Entrance and exit doorways; one that would run into the last is dropped.
+      const gaps = [];
+      for (const o of (context?.doors || []).filter(o => o.side === name).map(o => ({...o, at: Math.min(length - 4.5, Math.max(4.5, o.at))})).sort((p, q) => p.at - q.at)) {
+        if (gaps.length && o.at - 3.5 < gaps[gaps.length - 1][1] + 1) continue;
+        gaps.push([o.at - 3.5, o.at + 3.5, o.label || 'ENTRANCE']);
+      }
       // [a, b] along the wall, [off] metres outward from its centre line.
       const put = (a, b, h, y, thick, off, color, kind) => {
         const mid = (a + b) / 2, len = b - a;
@@ -534,7 +625,7 @@ window.AirportModels = (() => {
       let from = 0;
       for (const [a, b] of [...gaps, [length, length]]) {
         if (a - from > .05) {
-          put(from, a, 1.2, .9, wall, 0, 0xcfd3d0);
+          base(put(from, a, 1.2, .9, wall, 0, 0xcfd3d0));
           put(from, a, height - 2.6, 1.5 + (height - 2.6) / 2, wall * .6, 0, glass, 'glass');
           put(from, a, .25, 5.8, wall, 0, frame, 'metal');
         }
@@ -547,16 +638,29 @@ window.AirportModels = (() => {
         put(tt - .175, tt + .175, height - 2.6, 1.5 + (height - 2.6) / 2, wall + .08, 0, frame, 'metal');
       }
       const facing = alongX ? (out > 0 ? 0 : Math.PI) : (out > 0 ? Math.PI / 2 : -Math.PI / 2);
-      for (const [a, b] of gaps) {
+      for (const [a, b, text] of gaps) {
         doorway(g, a, b, put, height, wall, facing, rotY => {
           const at = (a + b) / 2, o = wall / 2 + .28;
-          label(g, 'ENTRANCE', alongX ? at : cx + o * out, 4.7, alongX ? cz + o * out : at, .55, '#ffffff', {rotY, width: 5});
+          label(g, text, alongX ? at : cx + o * out, 4.7, alongX ? cz + o * out : at, .55, '#ffffff', {rotY, width: 5});
         });
+        base(put(a - .2, b + .2, .08, .34, wall + .2, 0, 0x3b4347));
       }
     }
+    // The arrival and departure halls wear a coloured band and their name on
+    // every outside wall; the main hall carries the airport's name.
+    if (style.band) {
+      for (const [name, x, z, rotY, length] of [['-z', w / 2, -.04, Math.PI, w], ['+z', w / 2, d + .04, 0, w], ['-x', -.04, d / 2, -Math.PI / 2, d], ['+x', w + .04, d / 2, Math.PI / 2, d]]) {
+        if (open[name]) continue;
+        const along = name.endsWith('z');
+        box(g, along ? length : .12, .7, along ? .12 : length, along ? x : x + (name === '-x' ? .06 : -.06), height - 1.75, along ? z + (name === '-z' ? .06 : -.06) : z, style.band);
+        label(g, style.sign, x, height - .55, z, Math.min(length / 16, 1.6), '#1c4e5a', {rotY, width: 8});
+      }
+    } else if (!open['-z']) label(g, 'LUMA INTERNATIONAL', w / 2, height - .55, -.02, Math.min(w / 12, 1.8), '#1c4e5a');
+    for (let x = 10; x < w - 5; x += 25) if (!open['-z']) light(g, x, height - 1.4, .05, 0xfff0c8, .4);
+    for (let i = firstWall; i < g.children.length; i++) if (!g.children[i].userData.base) g.children[i].userData.upper = true;
     // roof with skylights, services and a sign
     const roofParts = [];
-    roofParts.push(box(g, w, .7, d, w / 2, height + .35, d / 2, 0xaeb7bb, 'metal'));
+    roofParts.push(box(g, w, .7, d, w / 2, height + .35, d / 2, style.roof, 'metal'));
     for (let z = 1.5; z < d - 1; z += 3) roofParts.push(box(g, w - 1, .14, .22, w / 2, height + .77, z, 0xc5ccce, 'metal'));
     for (const [x, z, ww, dd] of [[w / 2, .35, w, .7], [w / 2, d - .35, w, .7], [.35, d / 2, .7, d], [w - .35, d / 2, .7, d]]) {
       if ((x < 1 && open['-x']) || (x > w - 1 && open['+x']) || (z < 1 && open['-z']) || (z > d - 1 && open['+z'])) continue;
@@ -572,8 +676,6 @@ window.AirportModels = (() => {
       const unit = box(g, 5, 1.8, 3.4, x, height + 1.6, d * .78, 0xa3b0b1, 'metal'); unit.userData.roof = true;
       const fan = cylinder(g, 1, .25, x, height + 2.6, d * .78, 0x5a6668, 'metal'); fan.userData.roof = true;
     }
-    if (!open['-z']) label(g, 'LUMA INTERNATIONAL', w / 2, height - .55, -.02, Math.min(w / 12, 1.8), '#1c4e5a');
-    for (let x = 10; x < w - 5; x += 25) light(g, x, height - 1.4, .05, 0xfff0c8, .4);
   }
   function hangar(g, w, d) {
     box(g, w, .2, d, w / 2, .1, d / 2, 0xffffff, 'concrete');
@@ -2918,6 +3020,193 @@ window.AirportModels = (() => {
     label(g, 'EXIT · CHECK-OUT', w / 2, 2.6, .18, .3, '#ffffff', {width: 7});
   }
 
+  function airportCasino(g, w, d) {
+    const u = w / 12, v = d / 10, x = w / 2, z = d / 2, s = Math.min(u, v);
+    const arch = 0x29272b, arch2 = 0x3b373d, dark = 0x202124;
+    const deepRed = 0x703d46, burgundy = 0x5c333b, darkGreen = 0x315344, casGreen = 0x3f6650;
+    const deepBlue = 0x394c60, purple = 0x675070;
+    const gold = 0xc6a15b, darkGold = 0x9b7844, metal = 0x858789;
+    const tWood = 0x704f38, dWood = 0x4b3427, slotBody = 0x45484a;
+    const scrDark = 0x14252d;
+    const warm = 0xffc978, goldGlow = 0xffd86a, redGlow = 0xe66c68, blueGlow = 0x7fe0e8;
+    const skin = 0xd8b49a;
+
+    // Layered dark floor with burgundy and green gaming zones and gold edges.
+    box(g, 11.85 * u, .04, 9.85 * v, x, .02, z, arch);
+    box(g, 11.4 * u, .03, 9.4 * v, x, .042, z, dark);
+    box(g, 4.0 * u, .05, 5.4 * v, 2.6 * u, .058, 3.0 * v, burgundy);
+    box(g, 3.2 * u, .05, 2.6 * v, 8.4 * u, .058, 7.0 * v, darkGreen);
+    box(g, 4.6 * u, .05, 4.0 * v, x, .064, 5.4 * v, 0x1d1b1e);
+    box(g, 11.0 * u, .02, .10 * u, x, .07, 0.55 * v, gold);
+
+    // Enclosure: back wall, side walls with gold crown reveals.
+    box(g, 11.85 * u, 3.0, .18 * v, x, 1.5, .18 * v, arch);
+    box(g, 11.6 * u, 1.10, .08 * v, x, .55, .28 * v, deepRed);
+    box(g, 11.65 * u, .09, .12 * v, x, 1.695, .29 * v, gold, 'metal');
+    box(g, .18 * u, 3.0, 9.85 * v, .18 * u, 1.5, z, arch);
+    box(g, .10 * u, 1.10, 9.5 * v, .28 * u, .55, z, deepRed);
+    box(g, .13 * u, .09, 9.5 * v, .28 * u, 1.695, z, gold, 'metal');
+    box(g, .18 * u, 3.0, 9.85 * v, w - .18 * u, 1.5, z, arch);
+    box(g, .10 * u, 1.10, 9.5 * v, w - .28 * u, .55, z, deepRed);
+    box(g, .13 * u, .08, 9.5 * v, w - .28 * u, 1.70, z, gold, 'metal');
+    for (const px of [3.0, 6.0, 9.0]) box(g, 1.30 * u, 1.20, .05 * v, px * u, 1.55, .28 * v, darkGold, 'metal');
+
+    // Gold columns defining the gaming floor.
+    for (const cxx of [3.0 * u, 9.0 * u]) {
+      cylinder(g, .20 * s, 2.90, cxx, 1.45, 1.20 * v, arch2, 'paint', .20 * s, 12);
+      cylinder(g, .24 * s, .20, cxx, .10, 1.20 * v, gold, 'metal', .24 * s, 12);
+    }
+
+    // Storefront: pillared portal, glass bays, gold fascia and sign.
+    for (const px of [3.30, 6.70]) {
+      box(g, .42 * u, 3.2, .42 * v, px * u, 1.60, 9.62 * v, arch2);
+      box(g, .46 * u, .13, .46 * v, px * u, 3.135, 9.62 * v, gold, 'metal');
+    }
+    // 'glass' renders opaque here, so the window bays are drawn as frames.
+    for (const wx of [1.55 * u, w - 1.55 * u]) {
+      box(g, 2.10 * u, .52, .16 * v, wx, .26, 9.70 * v, arch);
+      for (const y of [.35, 2.41]) box(g, 2.10 * u, .05, .06 * v, wx, y, 9.70 * v, metal, 'metal');
+      for (const dx of [-1.02, 0, 1.02]) box(g, .05 * u, 2.12, .06 * v, wx + dx * u, 1.38, 9.70 * v, metal, 'metal');
+      box(g, 2.14 * u, .09, .08 * v, wx, 2.43, 9.70 * v, gold, 'metal');
+    }
+    box(g, 11.85 * u, .70, .52 * v, x, 2.78, 9.62 * v, arch2);
+    box(g, 11.9 * u, .07, .58 * v, x, 3.145, 9.62 * v, gold, 'metal').userData.roof = true;
+    // label() sizes are the text height in metres.
+    label(g, 'GOLDEN SKY', x, 2.96, 9.96 * v, .2, '#f9fcf6', {width: 5});
+    label(g, 'CASINO', x, 2.68, 9.96 * v, .1, '#ffd86a', {width: 3});
+    light(g, x, 2.80, 9.88 * v, goldGlow, .16);
+    light(g, 3.3 * u, 2.80, 9.84 * v, redGlow, .11);
+    light(g, 8.7 * u, 2.80, 9.84 * v, redGlow, .11);
+
+    // Slot machine zone on the west side, two staggered rows.
+    const slots = [
+      {z: 1.6, top: goldGlow, scr: blueGlow, name: 'LUCKY 7', accent: purple},
+      {z: 2.5, top: redGlow, scr: goldGlow, name: '777', accent: deepRed},
+      {z: 3.4, top: goldGlow, scr: blueGlow, name: 'GOLD RUSH', accent: gold},
+      {z: 5.6, top: redGlow, scr: blueGlow, name: 'STAR SPIN', accent: blueGlow},
+      {z: 6.5, top: goldGlow, scr: redGlow, name: '777', accent: gold},
+    ];
+    let idx = 0;
+    for (const sl of slots) {
+      const sx = (idx < 3 ? 1.30 : 2.60) * u, sz = sl.z * v;
+      box(g, .62 * u, 2.36, .70 * v, sx, 1.185, sz, slotBody);
+      box(g, .40 * u, .52, .08 * v, sx + .26 * u, 1.72, sz + .04 * v, scrDark);
+      light(g, sx + .30 * u, 1.72, sz + .06 * v, sl.scr, .09);
+      box(g, .34 * u, .08, .66 * v, sx + .24 * u, 1.34, sz, darkGold, 'metal');
+      box(g, .30 * u, .26, .76 * v, sx + .20 * u, 2.28, sz, sl.top);
+      label(g, sl.name, sx + .44 * u, 2.28, sz, .06, '#f9fcf6', {rotY: Math.PI / 2, width: 3});
+      light(g, sx + .37 * u, 2.28, sz, sl.top, .06);
+      idx++;
+    }
+    for (const [stx, sz] of [[2.15 * u, 1.6 * v], [2.15 * u, 2.5 * v], [3.45 * u, 6.5 * v]]) {
+      cylinder(g, .19 * s, .08, stx, .71, sz, burgundy, 'paint', .19 * s, 10);
+      cylinder(g, .045 * s, .70, stx, .36, sz, metal, 'metal', .045 * s, 8);
+      cylinder(g, .20 * s, .05, stx, .025, sz, darkGold, 'metal', .20 * s, 8);
+    }
+
+    // Roulette centrepiece.
+    const rx = 8.3 * u, rz = 5.4 * v;
+    box(g, 2.60 * u, .76, 2.60 * v, rx, .38, rz, dWood);
+    box(g, 2.72 * u, .14, 2.72 * v, rx, .735, rz, gold, 'metal');
+    box(g, 2.30 * u, .08, 2.30 * v, rx, .755, rz, casGreen);
+    box(g, .05 * u, .012, 2.10 * v, rx, .795, rz, gold);
+    box(g, 1.90 * u, .012, .05 * v, rx, .795, rz, gold);
+    cylinder(g, .62 * s, .22, rx, .82, rz - 1.30 * v, dWood, 'paint', .62 * s, 12);
+    cylinder(g, .55 * s, .12, rx, .925, rz - 1.30 * v, dark, 'paint', .55 * s, 12);
+    cylinder(g, .46 * s, .09, rx, 0.99, rz - 1.30 * v, deepRed, 'paint', .46 * s, 12);
+    cylinder(g, .16 * s, .10, rx, 1.025, rz - 1.30 * v, gold, 'metal', .16 * s, 12);
+    cylinder(g, .68 * s, .20, rx, .795, rz - 1.30 * v, tWood, 'paint', .68 * s, 12);
+    box(g, 1.10 * u, .26, .55 * v, rx, .79, rz + 1.15 * v, tWood);
+    box(g, 1.10 * u, .22, .06 * v, rx, .88, rz + .88 * v, darkGold, 'metal');
+    box(g, 2.85 * u, .30, .10 * v, rx, .17, rz - 1.32 * v, burgundy);
+    box(g, 2.85 * u, .05, .08 * v, rx, .34, rz - 1.32 * v, gold, 'metal');
+    box(g, .10 * u, .30, 2.60 * v, rx - 1.42 * u, .17, rz, burgundy);
+    box(g, .10 * u, .30, 2.60 * v, rx + 1.42 * u, .17, rz, burgundy);
+    box(g, 2.85 * u, .05, .08 * v, rx, .345, rz + 1.42 * u, gold, 'metal');
+    for (const [chx, chz, cc] of [[-.75, .55, deepRed], [.80, .35, casGreen]]) {
+      cylinder(g, .06 * s, .06, rx + chx * u, .795, rz + chz * v, cc, 'paint', .06 * s, 8);
+    }
+    box(g, .13 * u, .01, .09 * v, rx - .10 * u, .795, rz + .20 * v, 0xefe7d6);
+    box(g, .13 * u, .01, .09 * v, rx + .15 * u, .795, rz + .30 * v, 0xefe7d6);
+    cylinder(g, .55 * s, .06, rx, 2.85, rz, gold, 'metal', .55 * s, 12);
+    cylinder(g, .40 * s, .05, rx, 2.79, rz, dark, 'paint', .40 * s, 10);
+    light(g, rx, 2.73, rz, goldGlow, .17);
+    // The roulette dealer, facing the players.
+    box(g, .27 * u, .05, .22 * v, rx, .875, rz + 1.28 * v, 0x22222a);
+    box(g, .27 * u, .60, .22 * v, rx, 1.05, rz + 1.28 * v, 0x22222a);
+    box(g, .34 * u, .62, .24 * v, rx, 1.58, rz + 1.28 * v, deepRed);
+    box(g, .12 * u, .42, .10 * v, rx, 1.64, rz + 1.16 * v, 0xefe7d6);
+    sphere(g, rx, 1.97, rz + 1.28 * v, .13 * s, .16, .13 * s, skin);
+
+    // Two card tables in the south-east zone, each with a dealer.
+    for (const [cxx, czz] of [[6.9, 7.4], [9.6, 7.4]]) {
+      const tx = cxx * u, tz = czz * v;
+      box(g, 1.70 * u, .88, 1.10 * v, tx, .44, tz, dWood);
+      box(g, 1.80 * u, .11, 1.20 * v, tx, .805, tz, gold, 'metal');
+      box(g, 1.55 * u, .09, 1.05 * v, tx, .83, tz, casGreen);
+      box(g, 1.44 * u, .14, .08 * v, tx, .83, tz - .52 * v, tWood);
+      box(g, 1.44 * u, .10, .04 * v, tx, .83, tz, tWood);
+      for (const [cx2, cz2, cc] of [[-.42, .20, deepRed], [.30, -.18, casGreen], [.12, .28, gold]]) {
+        cylinder(g, .05 * s, .06, tx + cx2 * u, .895, tz + cz2 * v, cc, 'paint', .05 * s, 8);
+      }
+      box(g, .12 * u, .01, .085 * v, tx - .15 * u, .895, tz + .10 * v, 0xefe7d6);
+      box(g, .12 * u, .01, .085 * v, tx + .05 * u, .895, tz - .12 * v, 0xefe7d6);
+      box(g, .25 * u, .05, .20 * v, tx, .875, tz - .72 * v, 0x22222a);
+      box(g, .25 * u, .54, .20 * v, tx, 1.06, tz - .72 * v, 0x22222a);
+      box(g, .32 * u, .60, .22 * v, tx, 1.55, tz - .72 * v, deepRed);
+      sphere(g, tx, 1.92, tz - .72 * v, .12 * s, .15, .12 * s, skin);
+    }
+
+    // Cashier and chip service, with a glass security partition.
+    const cashX = 10.2 * u, cashZ = 1.55 * v;
+    box(g, 1.05 * u, 1.00, .70 * v, cashX, .50, cashZ, dWood);
+    box(g, 1.10 * u, .11, .76 * v, cashX, 1.02, cashZ, darkGold, 'metal');
+    box(g, 1.12 * u, .05, .78 * v, cashX, 1.085, cashZ, metal, 'metal');
+    box(g, 1.06 * u, .19, .07 * v, cashX, .71, cashZ + .36 * v, casGreen);
+    label(g, 'CASHIER', cashX, .71, cashZ + .41 * v, .06, '#f9fcf6', {width: 3});
+    // Security glass is drawn as gold-framed panels so the cashier stays visible.
+    for (const cx of [cashX - .50 * u, cashX + .50 * u]) {
+      box(g, .08 * u, 1.40, .06 * v, cx, 1.60, cashZ, gold, 'metal');
+      for (const dz of [-.5, .5]) box(g, .04 * u, 1.35, .04 * v, cx, 1.63, cashZ + dz * .70 * v, gold, 'metal');
+    }
+    box(g, .48 * u, .08, .14 * v, cashX, .68, cashZ + .36 * v, darkGold, 'metal');
+    cylinder(g, .07 * s, .13, cashX - .20 * u, 1.06, cashZ + .25 * v, gold, 'paint', .07 * s, 8);
+    box(g, .24 * u, .06, .20 * v, cashX, .035, cashZ - .62 * v, 0x22222a);
+    box(g, .24 * u, .50, .20 * v, cashX, .31, cashZ - .62 * v, 0x22222a);
+    box(g, .32 * u, .54, .22 * v, cashX, .60, cashZ - .62 * v, deepBlue);
+    sphere(g, cashX, 1.00, cashZ - .62 * v, .12 * s, .14, .12 * s, skin);
+
+    // Premium high-limit alcove with a velvet booth divider.
+    box(g, .10 * u, 1.44, 1.85 * v, 3.75 * u, .72, 1.35 * v, burgundy);
+    box(g, .14 * u, .11, 1.90 * v, 3.75 * u, 1.435, 1.35 * v, gold, 'metal');
+    box(g, 1.30 * u, .96, .80 * v, 2.95 * u, .48, .95 * v, dWood);
+    box(g, 1.38 * u, .18, .88 * v, 2.95 * u, .785, .95 * v, gold, 'metal');
+    box(g, 1.24 * u, .16, .78 * v, 2.95 * u, .825, .95 * v, deepRed);
+    label(g, 'VIP', 2.95 * u, 1.06, 1.35 * v, .08, '#ffd86a', {rotY: -Math.PI / 2, width: 2});
+
+    // Representative players around the floor.
+    box(g, .24 * u, .06, .20 * v, 2.70 * u, .745, 2.5 * v, 0x2d2d33).rotation.y = -Math.PI / 2;
+    box(g, .24 * u, .50, .20 * v, 2.70 * u, .985, 2.5 * v, 0x2d2d33).rotation.y = -Math.PI / 2;
+    box(g, .32 * u, .54, .24 * v, 2.70 * u, 1.46, 2.5 * v, deepBlue).rotation.y = -Math.PI / 2;
+    sphere(g, 2.70 * u, 1.79, 2.5 * v, .12 * s, .14, .12 * s, skin);
+    box(g, .24 * u, .06, .20 * v, 6.9 * u, .745, 8.15 * v, 0x2d2d33).rotation.y = Math.PI;
+    box(g, .24 * u, .50, .20 * v, 6.9 * u, .985, 8.15 * v, 0x2d2d33).rotation.y = Math.PI;
+    box(g, .32 * u, .54, .24 * v, 6.9 * u, 1.46, 8.15 * v, burgundy).rotation.y = Math.PI;
+    sphere(g, 6.9 * u, 1.79, 8.15 * v, .12 * s, .14, .12 * s, skin);
+    box(g, .26 * u, .06, .22 * v, 7.6 * u, .045, 4.10 * v, 0x2d2d33);
+    box(g, .26 * u, .54, .22 * v, 7.6 * u, .27, 4.10 * v, 0x2d2d33);
+    box(g, .34 * u, .56, .24 * v, 7.6 * u, .77, 4.10 * v, darkGreen);
+    sphere(g, 7.6 * u, 1.17, 4.10 * v, .12 * s, .15, .12 * s, skin);
+
+    // Ceiling beams with warm gold pendants over each gaming zone.
+    box(g, 11.2 * u, .10, .22 * v, x, 2.92, 4.85 * v, arch2).userData.roof = true;
+    for (const [lx, lz, lc] of [[1.8, 4.85, redGlow], [4.0, 4.85, blueGlow], [6.2, 4.85, goldGlow], [8.3, 4.85, warm], [10.4, 4.85, warm]]) {
+      cylinder(g, .015 * s, .32, lx * u, 2.71, lz * v, metal, 'metal', .015 * s, 6);
+      cylinder(g, .10 * s, .16, lx * u, 2.545, lz * v, gold, 'metal', .10 * s, 10);
+      light(g, lx * u, 2.46, lz * v, lc, .12);
+    }
+  }
+
   function interior(g, w, d, k, context = {}) {
     switch (k) {
       case 'entrance':
@@ -2974,6 +3263,9 @@ window.AirportModels = (() => {
         break;
       case 'flowerShop':
         onFloor(g, flowerShop, w, d);
+        break;
+      case 'casino':
+        onFloor(g, airportCasino, w, d);
         break;
       case 'arcade':
         onFloor(g, airportArcade, w, d);
@@ -3103,10 +3395,10 @@ window.AirportModels = (() => {
     const g = new T.Group(), turn = ((Math.round(f.rotation || 0) % 4) + 4) % 4;
     const w = turn % 2 ? f.depth : f.width, d = turn % 2 ? f.width : f.depth, k = f.kind;
     if (k.startsWith('runway')) runway(g, w, d, context.cuts);
-    else if (k === 'taxiway') taxiway(g, w, d, context.cuts);
+    else if (k === 'taxiway') taxiway(g, w, d, context.cuts, context.vertical ?? d >= w);
     else if (k === 'serviceRoad') serviceRoad(g, w, d);
     else if (k === 'stand' || k === 'standRegional' || k === 'standContact') stand(g, w, d, f, context);
-    else if (k === 'terminal') terminal(g, w, d, context);
+    else if (k === 'terminal' || k === 'terminalLandside' || k === 'terminalReclaim') terminal(g, w, d, {...context, zone: k === 'terminalLandside' ? 'arrival' : k === 'terminalReclaim' ? 'departure' : 'main'});
     else if (k === 'hangar') hangar(g, w, d);
     else if (k === 'fuelDepot') fuelDepot(g, w, d);
     else if (k === 'baggage') { serviceBuilding(g, w, d, 'BAGGAGE HALL', 0x44565a); for (let x = 3; x < w - 3; x += 7) { box(g, 5, .5, 1.4, x, .45, 1.2, 0x2b3134, 'metal'); for (let i = 0; i < 3; i++) box(g, .7, .45, .5, x - 1.5 + i * 1.5, .95, 1.2, [0x3d5a80, 0x8a4b3c, 0x333b3f][i]); } }
@@ -3322,5 +3614,5 @@ window.AirportModels = (() => {
     return sprite;
   }
 
-  return {init, setNight, weather, noseFrame, airstairs, facility, facilityFrame, carouselLoop, loopPoint, aircraft, vehicle, personGeometry, tree, palm, box, cylinder, sphere, decal, line, shape, light, pool, lamp, instance, bake, dispose, caption, label, materials, textures, spec};
+  return {init, setNight, setLights, lightLevels, indoor, weather, noseFrame, airstairs, facility, facilityFrame, carouselLoop, loopPoint, aircraft, vehicle, personGeometry, tree, palm, box, cylinder, sphere, decal, line, shape, light, pool, lamp, instance, bake, dispose, caption, label, materials, textures, spec};
 })();

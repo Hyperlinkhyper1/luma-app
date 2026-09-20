@@ -59,7 +59,15 @@ window.AirportHud = (() => {
     interior: 'Passenger flow', shops: 'Shops & lounges', decor: 'Decor',
   };
   const outdoor = ['apron', 'airfield', 'terminal', 'services'];
-  const indoor = ['interior', 'shops', 'decor'];
+  // Airport mode sorts the furnishings by the hall they belong in.
+  const zones = {
+    arrival: {tab: 'Arrival hall', hall: 'terminalLandside', hint: 'Passengers come in from the road here: the entrance, ticket machines and check-in, then security through to the main hall.'},
+    main: {tab: 'Main hall', hall: 'terminal', hint: 'Past security: seating, toilets, lounges and the boarding gates the passengers wait at.'},
+    shops: {tab: 'Shops', hall: 'terminal', hint: 'Shops, cafés and restaurants in the main hall earn from passengers waiting for their flight.'},
+    departure: {tab: 'Departure hall', hall: 'terminalReclaim', hint: 'Arriving passengers leave through here: baggage carousels, customs and check-out to the kerb.'},
+    any: {tab: 'Anywhere', hall: null, hint: 'Information and bins fit in any of the three halls.'},
+  };
+  const zoneOf = d => { const z = AirportSceneLogic.zoneOf(d.kind); return z === 'main' && d.category === 'shops' ? 'shops' : z; };
   const panelNames = ['Build', 'Contracts', 'Planning', 'Fleet', 'Routes', 'Schedule', 'Finances'];
 
   const S = {
@@ -67,7 +75,7 @@ window.AirportHud = (() => {
     cutaway: store.get('cutaway') === '1', grid: store.get('grid') === '1',
     quality: store.get('quality') === 'low' ? 'low' : 'high', stats: store.get('stats') === '1',
     notices: [], schedule: {aircraft: null, route: null, stand: '', delay: 120},
-    category: 'apron', interiorOf: null,
+    category: 'apron', airport: false, zone: null,
     plan: {focus: null, slot: null, card: null, drag: null, scrollTo: null},
     manage: null,
     contractsUi: {tab: 'offers', open: null},
@@ -136,11 +144,18 @@ window.AirportHud = (() => {
     if (name === 'Fleet' || name === 'Routes') { command('openPage', {page: name}); return; }
     S.panel = S.panel === name ? null : name;
     if (S.panel === 'Planning' && S.plan.scrollTo == null) S.plan.scrollTo = S.world?.time || 0;
-    if (S.panel !== 'Build' && S.interiorOf) exitInterior();
     renderPanel(true);
     renderNotices();
   }
+  /** The floor-zoning tool: drag over the terminal floor to mark it out. */
+  function setZone(zone) {
+    S.zone = zone || null;
+    if (S.zone) { S.tool = null; S.moveId = null; scene.tool({kind: null}); renderTool(); }
+    scene.view('zone', S.zone);
+    renderPanel(true);
+  }
   function setTool(kind, moveId = null) {
+    if (kind && S.zone) setZone(null);
     S.tool = kind; S.moveId = kind ? moveId : null;
     if (kind && compact()) S.panel = null;
     scene.tool({kind, rotation: S.rotation, moveId: S.moveId});
@@ -172,22 +187,34 @@ window.AirportHud = (() => {
     renderPanel(true);
     renderNotices();
   }
-  function enterInterior(id) {
+  const halls = () => list('facilities').filter(f => AirportSceneLogic.hallKinds.has(f.kind));
+  /** Airport mode, like the original game: zoomed in over the terminal with
+      the roofs off, furnished hall by hall. [id] frames one hall. */
+  function enterAirport(id = null) {
+    if (!halls().length) { notify('Build the terminal first: an arrival hall and a departure hall on the road side, and a main hall behind them (Build → Terminal).', 'error'); return; }
     S.manage = null;
     renderManage(true);
-    S.interiorOf = id;
-    if (!indoor.includes(S.category)) S.category = 'interior';
-    S.panel = 'Build';
-    scene.view('interior', null, id);
+    S.airport = true;
+    const hall = id && list('facilities').find(f => f.id === id);
+    const zone = hall ? AirportSceneLogic.hallZone(hall.kind) : null;
+    if (zone) S.category = zone;
+    else if (!zones[S.category]) S.category = 'arrival';
+    if (S.tool && !isInterior(S.tool) && !isHall(S.tool)) setTool(null);
+    if (!S.panel && !compact()) S.panel = 'Build';
+    renderViewbar(); renderPanel(true); renderNotices();
+    scene.view('airport', true, id);
+  }
+  function exitAirport() {
+    if (!S.airport) return;
+    S.airport = false;
+    if (!outdoor.includes(S.category)) S.category = 'terminal';
+    if (S.tool && isInterior(S.tool)) setTool(null);
+    if (S.zone) setZone(null);
+    scene.view('airport', false);
     renderViewbar(); renderPanel(true);
   }
-  function exitInterior() {
-    S.interiorOf = null;
-    if (!outdoor.includes(S.category)) S.category = 'apron';
-    if (S.tool && indoor.includes(list('catalog').find(d => d.kind === S.tool)?.category)) setTool(null);
-    scene.view('cutaway', S.cutaway);
-    renderPanel(true);
-  }
+  const isInterior = kind => !!list('catalog').find(d => d.kind === kind)?.interior;
+  const isHall = kind => AirportSceneLogic.hallKinds.has(kind);
 
   // ── Rendering ─────────────────────────────────────────────────────────
   function renderTop() {
@@ -212,10 +239,16 @@ window.AirportHud = (() => {
   function renderViewbar() {
     for (const b of document.querySelectorAll('[data-toggle]')) {
       const name = b.dataset.toggle;
-      const on = name === 'quality' ? S.quality === 'high' : name === 'cutaway' ? S.cutaway || !!S.interiorOf : S[name];
+      const on = name === 'quality' ? S.quality === 'high' : name === 'cutaway' ? S.cutaway || S.airport : S[name];
       b.classList.toggle('on', !!on);
       if (name === 'quality') b.title = S.quality === 'high' ? 'Quality: high (click for performance)' : 'Quality: performance (click for high)';
     }
+    for (const b of document.querySelectorAll('[data-mode]')) {
+      const on = (b.dataset.mode === 'airport') === S.airport;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-pressed', String(on));
+    }
+    document.body.classList.toggle('airport-mode', S.airport);
   }
   function renderDock() {
     for (const b of document.querySelectorAll('#dock [data-open]')) b.classList.toggle('on', S.panel === b.dataset.open);
@@ -245,7 +278,7 @@ window.AirportHud = (() => {
     const panel = $('panel');
     panel.classList.toggle('hidden', !S.panel);
     if (!S.panel) { signatures.panel = null; return; }
-    $('panel-title').textContent = S.panel === 'Build' && S.interiorOf ? 'Terminal interior' : S.panel;
+    $('panel-title').textContent = S.panel === 'Build' && S.airport ? 'Build · Airport' : S.panel;
     const builders = {Build: buildPanel, Contracts: contractsPanel, Planning: planningPanel, Schedule: schedulePanel, Finances: financesPanel};
     const [signature, render, after] = builders[S.panel]();
     const key = `${S.panel}|${signature}`;
@@ -262,21 +295,36 @@ window.AirportHud = (() => {
   // Build: category tabs with preview cards.
   function buildPanel() {
     const selected = list('facilities').find(f => f.id === S.selected);
-    const tabs = S.interiorOf ? indoor : outdoor;
+    // Airport mode offers the furnishings hall by hall, each tab led by the
+    // hall itself so the terminal can grow from inside the mode too.
+    const inTab = (d, c) => S.airport
+      ? (d.interior ? zoneOf(d) === c : zones[c]?.hall === d.kind && c !== 'shops')
+      : (d.category || (d.interior ? 'interior' : 'apron')) === c;
+    const tabs = S.airport ? Object.keys(zones) : outdoor;
     if (!tabs.includes(S.category)) S.category = tabs[0];
-    const items = list('catalog').filter(d => (d.category || (d.interior ? 'interior' : 'apron')) === S.category);
-    const signature = JSON.stringify([selected, S.tool, S.moveId, S.category, S.interiorOf, list('catalog').map(d => d.kind + d.cost), S.world?.vehicleCosts, list('vehicles').length, list('facilities').length, (S.world?.cash || 0) >= 0]);
+    const items = list('catalog').filter(d => inTab(d, S.category));
+    const zone = S.airport ? zones[S.category] : null;
+    const missing = zone?.hall && !list('facilities').some(f => f.kind === zone.hall);
+    const signature = JSON.stringify([selected, S.tool, S.moveId, S.category, S.airport, S.zone, missing, list('catalog').map(d => d.kind + d.cost), S.world?.vehicleCosts, list('vehicles').length, list('facilities').length, (S.world?.cash || 0) >= 0]);
     return [signature, () => {
       let html = '';
-      if (S.interiorOf) {
-        html += `<div class="mode-banner">${svg('interior')}<span class="grow"><b>Editing terminal interior</b><br><span class="sub">Roof removed · items snap to 1 m · passengers walk around furniture</span></span><button type="button" class="outline" data-action="exitInterior">${svg('exit')}Done</button></div>`;
+      if (S.airport) {
+        html += `<div class="mode-banner">${svg('interior')}<span class="grow"><b>Airport mode</b><br><span class="sub">Roofs off · walls lowered · items snap to 1 m · green floor takes the item you are placing</span></span><button type="button" class="outline" data-action="exitAirport">${svg('exit')}Airfield</button></div>`;
+        // Zoning: mark out the three parts of the terminal on the floor.
+        html += '<div class="zone-bar">' + [['arrival', 'Arrival'], ['main', 'Main'], ['departure', 'Departure'], ['none', 'Erase']]
+          .map(([id, label]) => `<button type="button" class="zone ${id} ${S.zone === id ? 'on' : ''}" data-zone="${id}">${esc(label)}</button>`).join('') + '</div>';
+        html += S.zone
+          ? `<div class="hint">Drag over the terminal floor to ${S.zone === 'none' ? 'rub the zone out' : `zone it as the ${esc(S.zone)} hall`}.</div>`
+          : '<div class="hint">Zone the floor to split one hall into the three parts: what you can place somewhere follows the zone under it, not the building.</div>';
       }
-      if (selected && S.interiorOf) {
+      if (selected && S.airport) {
         html += `<div class="selected-card"><div class="title">${esc(facilityName(selected.kind))}</div>
           <div class="actions"><button type="button" class="filled" data-manage-open="${esc(selected.id)}">${svg('upgrade')}Manage</button><button type="button" data-action="move">${svg('move')}Move</button></div></div>`;
       }
-      html += `<div class="tabs" role="tablist">${tabs.map(c => `<button type="button" role="tab" aria-selected="${c === S.category}" class="${c === S.category ? 'on' : ''}" data-category="${c}">${esc(categories[c])}</button>`).join('')}</div>`;
-      if (!S.interiorOf && S.category === 'terminal') html += '<div class="hint">Build terminal sections side by side to form one hall. Select a section and press <b>Edit interior</b> to furnish it.</div>';
+      html += `<div class="tabs" role="tablist">${tabs.map(c => `<button type="button" role="tab" aria-selected="${c === S.category}" class="${c === S.category ? 'on' : ''}" data-category="${c}">${esc(zones[c] && S.airport ? zones[c].tab : categories[c])}</button>`).join('')}</div>`;
+      if (!S.airport && S.category === 'terminal') html += '<div class="hint">The terminal has three parts, like the original game: an <b>arrival hall</b> on the road side where passengers check in and go through security, the <b>main hall</b> behind it with shops and gates, and a <b>departure hall</b> next to the arrival hall with baggage reclaim, customs and the way out. Press <b>Airport</b> at the top to furnish them.</div>';
+      if (zone) html += `<div class="hint">${esc(zone.hint)}</div>`;
+      if (missing) html += `<div class="hint warn">You have no ${esc(zone.tab.toLowerCase())} yet. Build one${zone.hall === 'terminal' ? ' behind the arrival and departure halls' : ' on the road side, touching the main hall'} (the first card).</div>`;
       html += '<div class="cards">';
       for (const d of items) {
         const count = owned(d.kind), on = S.tool === d.kind && !S.moveId, affordable = (S.world?.cash ?? 0) >= d.cost;
@@ -378,9 +426,9 @@ window.AirportHud = (() => {
       if (f.kind === 'vehicleDepot') html += stat('Vehicles based here', String(list('vehicles').length));
       html += stat('Invested', esc(money(invested(f, def))));
       html += '</div>';
-      if (!f.connected) html += `<div class="hint" style="padding:10px 0 0">${f.kind === 'terminal' ? 'Place an entrance inside this terminal so passengers can get in.' : 'Connect it to the rest of the airport with taxiways, service roads or a terminal to put it to work.'}</div>`;
+      if (!f.connected) html += `<div class="hint" style="padding:10px 0 0">${f.kind === 'terminalLandside' ? 'Place an entrance in this arrival hall so passengers can get in.' : isHall(f.kind) ? 'Join this hall to an arrival hall that has an entrance, so passengers can get in.' : 'Connect it to the rest of the airport with taxiways, service roads or a terminal to put it to work.'}</div>`;
       html += '<div class="manage-actions">';
-      if (f.kind === 'terminal') html += `<button type="button" class="filled" data-action="interior">${svg('interior')}Edit interior</button>`;
+      if (isHall(f.kind)) html += `<button type="button" class="filled" data-action="interior">${svg('interior')}Airport mode</button>`;
       html += `<button type="button" class="outline" data-manage="focus">${svg('focus')}Focus camera</button><button type="button" class="outline" data-manage="move">${svg('move')}Move</button>`;
       if (upgrades.some(u => u.cost != null)) html += `<button type="button" class="outline" data-manage-tab="upgrade">${svg('upgrade')}Upgrade</button>`;
       html += '</div>';
@@ -862,6 +910,7 @@ window.AirportHud = (() => {
     for (const b of document.querySelectorAll('#dock [data-open]')) b.innerHTML = `${svg(b.dataset.open)}<span>${b.dataset.open}</span>`;
     for (const b of document.querySelectorAll('[data-view]')) b.innerHTML = svg(b.dataset.view);
     for (const b of document.querySelectorAll('[data-toggle]')) b.innerHTML = svg(b.dataset.toggle);
+    for (const b of document.querySelectorAll('[data-mode]')) b.innerHTML = `${svg(b.dataset.mode === 'airport' ? 'interior' : 'Fleet')}<span>${b.dataset.mode === 'airport' ? 'Airport' : 'Airfield'}</span>`;
     $('panel-close').innerHTML = svg('close');
     $('manage-close').innerHTML = svg('close');
     // A click on the dimmed backdrop, outside the window, closes it.
@@ -879,11 +928,13 @@ window.AirportHud = (() => {
       else if (d.view) scene.view(d.view);
       else if (d.toggle) toggle(d.toggle);
       else if (d.open) openPanel(d.open);
-      else if (t.id === 'panel-close') { S.panel = null; if (S.interiorOf) exitInterior(); renderPanel(); renderNotices(); }
+      else if (t.id === 'panel-close') { S.panel = null; renderPanel(); renderNotices(); }
+      else if (d.mode) { if (d.mode === 'airport') enterAirport(); else exitAirport(); }
       else if (t.id === 'rotate') rotate();
       else if (t.id === 'cancel-tool') setTool(null);
       else if (d.dismiss) dismiss(Number(d.dismiss));
       else if (d.category) { S.category = d.category; renderPanel(true); }
+      else if (d.zone) setZone(S.zone === d.zone ? null : d.zone);
       else if (d.tool) { S.rotation = 0; setTool(S.tool === d.tool && !S.moveId ? null : d.tool); }
       else if (d.buy) command('buyVehicle', {kind: d.buy, depotId: d.depot || S.selected});
       else if (d.manageTab) { S.manage.tab = d.manageTab; S.manage.confirm = false; renderManage(true); }
@@ -906,8 +957,8 @@ window.AirportHud = (() => {
       else if (d.action === 'retrySave') command('retrySave');
       else if (d.action === 'dismissAway') command('dismissAway');
       else if (d.action === 'focus') scene.view('focus', null, S.selected);
-      else if (d.action === 'interior') enterInterior(S.selected);
-      else if (d.action === 'exitInterior') exitInterior();
+      else if (d.action === 'interior') enterAirport(S.selected);
+      else if (d.action === 'exitAirport') exitAirport();
       else if (d.action === 'move') {
         const f = list('facilities').find(x => x.id === S.selected);
         if (f) { S.rotation = Number(f.rotation) || 0; setTool(f.kind, f.id); }
@@ -932,14 +983,16 @@ window.AirportHud = (() => {
       const key = event.key;
       if (key === 'Escape') {
         if (S.manage) closeManage();
+        else if (S.zone) setZone(null);
         else if (S.tool) setTool(null);
-        else if (S.interiorOf) exitInterior();
         else if (S.panel) { S.panel = null; renderPanel(); renderNotices(); }
+        else if (S.airport) exitAirport();
       } else if (key === 'r' || key === 'R') rotate();
       else if (key === ' ') { event.preventDefault(); command(S.world?.paused !== false ? 'resume' : 'pause'); }
       else if (key === '1' || key === '2' || key === '3') command('speed', {speed: [1, 4, 12][Number(key) - 1]});
       else if (key === 'c' || key === 'C') toggle('cutaway');
       else if (key === 'g' || key === 'G') toggle('grid');
+      else if (key === 't' || key === 'T') { if (S.airport) exitAirport(); else enterAirport(); }
       else if (key === 'b' || key === 'B') openPanel('Build');
       else if (key === 'p' || key === 'P') openPanel('Planning');
       else if (key === 'F3') { event.preventDefault(); toggle('stats'); }
@@ -965,12 +1018,16 @@ window.AirportHud = (() => {
   function update(world) {
     S.world = world;
     if (S.selected && !list('facilities').some(f => f.id === S.selected)) S.selected = null;
-    if (S.interiorOf && !list('facilities').some(f => f.id === S.interiorOf)) exitInterior();
+    if (S.airport && !halls().length) exitAirport();
     renderTop(); renderPanel(); renderNotices(); renderTool(); renderManage();
   }
   function theme(palette) {
     const root = document.documentElement.style;
     for (const [name, value] of Object.entries(palette || {})) if (/^[a-z0-9-]+$/.test(name) && /^#[0-9a-f]{6,8}$/i.test(value)) root.setProperty(`--${name}`, value);
   }
-  return {attach, update, result, select, place, theme, get tool() { return S.tool; }};
+  /** The scene hands back a floor rectangle to zone. */
+  function paintZone(rect) {
+    command('paintZone', {zone: rect.zone, x: rect.x, y: rect.y, width: rect.width, depth: rect.depth});
+  }
+  return {attach, update, result, select, place, paintZone, theme, airportClosed: exitAirport, get tool() { return S.tool; }, get airport() { return S.airport; }};
 })();

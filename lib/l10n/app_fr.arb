@@ -100,6 +100,36 @@
   },
   "aboutVersionDev": "Version de développement · un outil local épuré",
 
+  "petSearchHint": "Rechercher plugins et pages",
+  "petMoodIdle": "On ouvre quoi ?",
+  "petMoodCurious": "Oh, je regarde…",
+  "petMoodHappy": "Ça chatouille.",
+  "petMoodDelighted": "Quelle belle journée !",
+  "petMoodSleepy": "Encore debout ? Moi aussi.",
+  "petNoResults": "Rien à ce nom",
+  "petNoResultsHint": "Essaie un mot plus court, ou juste un morceau.",
+  "petSectionJumpTo": "ALLER À",
+  "petSectionResults": "RÉSULTATS",
+  "petKindPlugin": "Plugin",
+  "petKindPage": "Page",
+  "petHintMove": "naviguer",
+  "petHintOpen": "ouvrir",
+  "petHintClose": "fermer",
+  "petClose": "Fermer",
+  "petPatsTooltip": "Caresses données",
+  "petPatLabel": "Caresser {name}",
+  "@petPatLabel": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "petSettingsTitle": "compagnon luma",
+  "petSettingsSubtitle": "Appuie sur Alt+Espace n'importe où pour appeler le compagnon, puis tape pour aller à une page ou un plugin.",
+  "petSettingsHotkey": "Appeler avec Alt+Espace",
+  "petSettingsHotkeyTaken": "Alt+Espace est déjà pris par une autre app : le compagnon ne s'ouvre que depuis luma.",
+  "petSettingsName": "Nom",
+  "petSettingsSummon": "Dire bonjour",
+
   "monthJan": "janv.",
   "monthFeb": "févr.",
   "monthMar": "mars",

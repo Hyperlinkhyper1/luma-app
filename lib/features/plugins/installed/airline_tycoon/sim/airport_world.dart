@@ -84,6 +84,121 @@ const terminalEssentials = [
 /// Every kind an aircraft can park on.
 const standKinds = {'stand', 'standRegional', 'standContact'};
 
+/// Buildings passengers walk around inside. Like the original game the
+/// terminal has three parts: the arrival hall on the road side, where
+/// passengers come in, buy a ticket, check in and go through security; the
+/// main hall behind it with the shops and gates; and the departure hall next
+/// to the arrival hall, where arriving passengers collect their bags, clear
+/// customs and leave. They join into one building wherever they touch.
+const hallKinds = {'terminal', 'terminalLandside', 'terminalReclaim'};
+
+/// The arrival hall: the way in, tickets, check-in and security.
+const arrivalHallKinds = {
+  'entrance',
+  'checkIn',
+  'checkInCounter',
+  'ticketMachine',
+  'security',
+};
+
+/// The departure hall: baggage reclaim, customs and the way out.
+const departureHallKinds = {'baggageCarousel', 'customs', 'checkOut'};
+
+/// Information and bins fit in any of the three halls.
+const anyHallKinds = {'infoDesk', 'infoBoard', 'infoPanel', 'bins'};
+
+/// A painted part of a terminal floor. Zoning splits one hall into the three
+/// parts of the terminal without rebuilding it: what may be placed inside a
+/// zone follows the zone, not the building it stands in.
+class AirportZone {
+  AirportZone({
+    required this.id,
+    required this.zone,
+    required this.x,
+    required this.y,
+    required this.width,
+    required this.depth,
+  });
+
+  final String id;
+  final String zone;
+  final double x, y, width, depth;
+
+  bool contains(double px, double py) =>
+      px >= x && px <= x + width && py >= y && py <= y + depth;
+
+  bool overlaps(AirportZone o) =>
+      x < o.x + o.width &&
+      x + width > o.x &&
+      y < o.y + o.depth &&
+      y + depth > o.y;
+
+  bool covers(AirportZone o) =>
+      x <= o.x &&
+      y <= o.y &&
+      x + width >= o.x + o.width &&
+      y + depth >= o.y + o.depth;
+
+  Json toJson() => {
+    'id': id,
+    'zone': zone,
+    'x': x,
+    'y': y,
+    'width': width,
+    'depth': depth,
+  };
+
+  factory AirportZone.fromJson(Json j) => AirportZone(
+    id: j['id'] as String? ?? 'z',
+    zone: hallZones.contains(j['zone']) ? j['zone'] as String : 'main',
+    x: _number(j, 'x'),
+    y: _number(j, 'y'),
+    width: math.max(1, _number(j, 'width', 1)),
+    depth: math.max(1, _number(j, 'depth', 1)),
+  );
+}
+
+/// The three parts of the terminal, as zones.
+const hallZones = {'arrival', 'main', 'departure'};
+
+/// Which hall [kind] belongs in: 'arrival', 'departure', 'main', or 'any'.
+String hallZoneOf(String kind) => arrivalHallKinds.contains(kind)
+    ? 'arrival'
+    : departureHallKinds.contains(kind)
+    ? 'departure'
+    : anyHallKinds.contains(kind)
+    ? 'any'
+    : 'main';
+
+/// The zone a [hallKind] building is.
+String hallZone(String hallKind) => switch (hallKind) {
+  'terminalLandside' => 'arrival',
+  'terminalReclaim' => 'departure',
+  _ => 'main',
+};
+
+/// Why [kind] cannot go in a [hallKind] hall, or null when it can.
+String? zoneRefusal(String kind, String hallKind) =>
+    zoneRefusalFor(kind, hallZone(hallKind));
+
+/// Why [kind] cannot go in a part of the terminal zoned [zone].
+String? zoneRefusalFor(String kind, String zone) {
+  final wants = hallZoneOf(kind);
+  if (wants == 'any' || wants == zone) return null;
+  return switch (wants) {
+    'arrival' =>
+      'This goes in the arrival hall, where passengers come in, buy a '
+          'ticket, check in and go through security.',
+    'departure' =>
+      'This goes in the departure hall, where arriving passengers collect '
+          'their bags, clear customs and leave.',
+    _ =>
+      'Shops, food, seating and gates go in the main hall. The '
+          '${zone == 'arrival' ? 'arrival' : 'departure'} hall only takes '
+          '${zone == 'arrival' ? 'the entrance, tickets, check-in and security' : 'baggage reclaim, customs and check-out'}.',
+  };
+}
+
 /// Interior pieces that only lift passenger mood.
 const decorKinds = {'plant', 'fountain', 'infoBoard', 'infoPanel'};
 
@@ -192,7 +307,7 @@ FacilityUpgrade? facilityUpgrade(String kind) =>
       attribute: 'Asphalt',
       effect: 'Aircraft taxi 10% faster per level.',
     ),
-    'terminal' => (
+    'terminal' || 'terminalLandside' || 'terminalReclaim' => (
       attribute: 'Comfort',
       effect: 'Passengers are 1% happier per level, averaged over sections.',
     ),
@@ -337,13 +452,35 @@ const airportFacilities = <AirportFacilityDef>[
     category: 'apron',
   ),
   AirportFacilityDef(
+    'terminalLandside',
+    'Arrival hall',
+    60,
+    40,
+    12,
+    2000000,
+    'On the road side, where passengers come in: the entrance, tickets, '
+        'check-in and security through to the main hall. No shops.',
+    category: 'terminal',
+  ),
+  AirportFacilityDef(
     'terminal',
-    'Terminal section',
+    'Main hall',
     120,
     60,
     12,
     4000000,
-    'Furnish its interior with passenger services.',
+    'Past security: shops, food, seating, lounges and the boarding gates.',
+    category: 'terminal',
+  ),
+  AirportFacilityDef(
+    'terminalReclaim',
+    'Departure hall',
+    60,
+    40,
+    12,
+    2000000,
+    'On the road side next to the arrival hall, where arriving passengers '
+        'leave: baggage reclaim, customs and check-out to the kerb. No shops.',
     category: 'terminal',
   ),
   AirportFacilityDef(
@@ -403,7 +540,7 @@ const airportFacilities = <AirportFacilityDef>[
     4,
     3,
     15000,
-    'Passenger entry to connected terminal sections.',
+    'The way in from the kerb, in the arrival hall.',
     interior: true,
     category: 'interior',
   ),
@@ -460,7 +597,8 @@ const airportFacilities = <AirportFacilityDef>[
     6,
     3,
     90000,
-    'Screen 6 passengers per game minute.',
+    'Passport and bag checks between the arrival hall and the main hall: '
+        '6 passengers per game minute. Required.',
     interior: true,
     category: 'interior',
   ),
@@ -482,7 +620,8 @@ const airportFacilities = <AirportFacilityDef>[
     4,
     2,
     40000,
-    'Arriving passengers check out here on their way to the exit, 10 per game minute. Required.',
+    'The way out: arriving passengers check out here and leave through the '
+        'nearest door to the kerb, 10 per game minute. Required.',
     interior: true,
     category: 'interior',
   ),
@@ -716,6 +855,18 @@ const airportFacilities = <AirportFacilityDef>[
     category: 'shops',
   ),
   AirportFacilityDef(
+    'casino',
+    'Casino',
+    12,
+    10,
+    3,
+    650000,
+    'Slots, roulette and card tables: €40 per passenger, and a strong mood '
+        'boost for the wait.',
+    interior: true,
+    category: 'shops',
+  ),
+  AirportFacilityDef(
     'plant',
     'Palm planter',
     2,
@@ -795,6 +946,9 @@ class AirportFacility {
   double get cx => x + width / 2;
   double get cy => y + depth / 2;
   bool get runway => kind.startsWith('runway');
+
+  /// Whether passengers walk around inside this building.
+  bool get hall => hallKinds.contains(kind);
   bool get interior => facilityDef(kind).interior;
   bool contains(double px, double py) =>
       px >= x && px <= x + width && py >= y && py <= y + depth;
@@ -876,6 +1030,9 @@ class AirportFlight {
   double ease = 1;
   int passengers, boarded = 0;
   bool settled = false;
+
+  /// Whether this flight's departing passengers have been sent to the kerb.
+  bool paxSpawned = false;
   bool returning = false, returnSettled = false;
   double returnAt = 0;
   String? issue;
@@ -910,6 +1067,7 @@ class AirportFlight {
     'serviced': serviced,
     'path': path,
     'ease': ease,
+    'paxSpawned': paxSpawned,
   };
   factory AirportFlight.fromJson(Json j) {
     final f = AirportFlight(
@@ -943,6 +1101,7 @@ class AirportFlight {
         .map((p) => (p as List).map((n) => (n as num).toDouble()).toList())
         .toList();
     f.ease = _number(j, 'ease', 1);
+    f.paxSpawned = j['paxSpawned'] == true || j['stage'] != 'scheduled';
     return f;
   }
 }
@@ -1080,6 +1239,78 @@ class AirportWorld {
 
   List<AirportFacility> ofKind(String kind) =>
       facilities.where((f) => f.kind == kind).toList();
+
+  /// Terminal sections and entrance halls: everywhere passengers go indoors.
+  List<AirportFacility> get halls => facilities.where((f) => f.hall).toList();
+
+  /// Painted floor zones, in the order they were painted: the last one wins
+  /// where they overlap.
+  final List<AirportZone> zones = [];
+
+  /// The zone painted over (x, y), or null where the floor is unpainted.
+  String? zoneAt(double x, double y) {
+    for (var i = zones.length - 1; i >= 0; i--) {
+      if (zones[i].contains(x, y)) return zones[i].zone;
+    }
+    return null;
+  }
+
+  /// The zone a building at [x], [y] stands in: the paint under it, or the
+  /// hall's own part of the terminal.
+  String zoneOfPlacement(double x, double y, String hallKind) =>
+      zoneAt(x, y) ?? hallZone(hallKind);
+
+  /// Paints [zone] ('arrival', 'main', 'departure', or 'none' to rub it out)
+  /// over a rectangle of terminal floor. Returns why it cannot be painted.
+  String? paintZone(
+    String zone,
+    double x,
+    double y,
+    double width,
+    double depth,
+  ) {
+    if (zone != 'none' && !hallZones.contains(zone)) return 'Unknown zone.';
+    final rect = AirportZone(
+      id: 'tmp',
+      zone: zone,
+      x: x.roundToDouble(),
+      y: y.roundToDouble(),
+      width: width.roundToDouble(),
+      depth: depth.roundToDouble(),
+    );
+    if (rect.width < 2 || rect.depth < 2) {
+      return 'Drag over a larger piece of floor: 2 m at least.';
+    }
+    if (zone == 'none') {
+      final hit = zones.where(rect.overlaps).toList();
+      if (hit.isEmpty) return 'No zone painted there.';
+      zones.removeWhere(hit.contains);
+      return null;
+    }
+    for (final corner in [
+      [rect.x, rect.y],
+      [rect.x + rect.width, rect.y],
+      [rect.x, rect.y + rect.depth],
+      [rect.x + rect.width, rect.y + rect.depth],
+    ]) {
+      if (!halls.any((h) => h.contains(corner[0], corner[1]))) {
+        return 'Zone the floor inside the terminal.';
+      }
+    }
+    zones.removeWhere(rect.covers);
+    zones.add(
+      AirportZone(
+        id: _id('z'),
+        zone: zone,
+        x: rect.x,
+        y: rect.y,
+        width: rect.width,
+        depth: rect.depth,
+      ),
+    );
+    return null;
+  }
+
   List<AirportFacility> get stands =>
       facilities.where((f) => standKinds.contains(f.kind)).toList();
 
@@ -1111,7 +1342,7 @@ class AirportWorld {
 
   /// Satisfaction the terminal's average comfort level adds.
   double get terminalComfort {
-    final sections = ofKind('terminal');
+    final sections = halls;
     if (sections.isEmpty) return 0;
     return sections.fold(0, (n, t) => n + t.level - 1) / sections.length * .01;
   }
@@ -1172,24 +1403,28 @@ class AirportWorld {
     add('taxiway', -350, 5, width: 30, depth: 20);
     add('stand', -320, -90);
     add('stand', -320, -20);
+    // Main hall airside, with the arrival and departure halls side by side
+    // in front of it on the road side.
     add('terminal', -250, -90);
     add('terminal', -250, -30);
+    add('terminalLandside', -130, -90, width: 40, depth: 60);
+    add('terminalReclaim', -130, -30, width: 40, depth: 60);
     add('serviceRoad', -260, -100, width: 10, depth: 230);
     add('fuelDepot', -290, 100);
     add('baggage', -250, 100);
     add('vehicleDepot', -260, 130);
     add('hangar', -330, 140);
     add('tower', -210, 140);
-    add('entrance', -142, -65);
-    add('checkIn', -160, -62);
-    add('security', -180, -62);
+    add('entrance', -98, -62);
+    add('checkIn', -112, -76);
+    add('security', -126, -62);
     add('seating', -205, -68);
     add('toilets', -148, -40);
     add('cafe', -200, -40);
     add('boardingGate', -247, -62);
     add('boardingGate', -247, 8);
-    add('customs', -140, 18);
-    add('checkOut', -140, 10);
+    add('customs', -114, 4);
+    add('checkOut', -100, 6);
     for (final kind in ['fuel', 'baggage', 'bus', 'pushback']) {
       w.vehicles.add(AirportVehicle(w._id('v'), kind, -255, 145));
     }
@@ -1210,10 +1445,17 @@ class AirportWorld {
   List<AirportFacility> _network(
     AirportFacility start,
     AirportFacility end,
-    String kind,
-  ) {
+    String kind, {
+    Set<String> also = const {},
+  }) {
     final allowed = facilities
-        .where((f) => f.kind == kind || f.id == start.id || f.id == end.id)
+        .where(
+          (f) =>
+              f.kind == kind ||
+              also.contains(f.kind) ||
+              f.id == start.id ||
+              f.id == end.id,
+        )
         .toList();
     final pending = <List<AirportFacility>>[
       [start],
@@ -1233,7 +1475,7 @@ class AirportWorld {
   }
 
   AirportFacility? _terminal(AirportFacility item) {
-    for (final t in ofKind('terminal')) {
+    for (final t in halls) {
       if (t.contains(item.x, item.y) &&
           t.contains(item.x + item.width, item.y + item.depth)) {
         return t;
@@ -1255,8 +1497,12 @@ class AirportWorld {
   // than to match a stopwatch: walking crowds, trucks and taxiing aircraft
   // all move at a watchable pace.
 
-  /// Walking pace of passengers.
-  static const walkSpeed = 15.0;
+  /// Walking pace of passengers: a brisk walk on screen at 1×.
+  static const walkSpeed = 3.0;
+
+  /// How long before departure passengers start turning up at the kerb, and
+  /// how long before it the last of them arrive. They trickle in between.
+  static const checkInOpens = 240.0, checkInCloses = 150.0;
 
   /// Driving pace of ground service vehicles.
   static const vehicleSpeed = 40.0;
@@ -1320,7 +1566,7 @@ class AirportWorld {
     double? best;
     for (final t in ofKind('taxiway')) {
       if (_touchingSide(stand, t) != entry) continue;
-      if ((t.depth >= t.width) != acrossX) continue;
+      if ((flowAxis(t) == 'z') != acrossX) continue;
       final lateral = acrossX ? t.cx : t.cy;
       if (best == null || (lateral - centre).abs() < (best - centre).abs()) {
         best = lateral;
@@ -1387,8 +1633,68 @@ class AirportWorld {
   static const bridgeCab = (back: 18.8, left: 5.2);
   static const bridgeFloor = 4.2;
 
+  /// Where the walk between a gate and its aircraft crosses the wall of the
+  /// gate's hall: the doorway, and the point just outside it. Passengers
+  /// never walk through a wall; the hall model opens one here.
+  ({List<double> door, List<double> kerb})? boardingDoor(
+    AirportFacility stand,
+  ) {
+    final gate = _gate(stand);
+    final hall = gate == null ? null : _terminal(gate);
+    if (gate == null || hall == null) return null;
+    double nx, ny;
+    List<double> at;
+    if (stand.kind == 'standContact') {
+      // The jet bridge's rotunda stands against the wall it passes through.
+      final r = standPoint(stand, -2, bridgeRotunda.left);
+      final sides = <(double, double, double)>[
+        ((r[0] - hall.x).abs(), -1, 0),
+        ((hall.x + hall.width - r[0]).abs(), 1, 0),
+        ((r[1] - hall.y).abs(), 0, -1),
+        ((hall.y + hall.depth - r[1]).abs(), 0, 1),
+      ]..sort((a, b) => a.$1.compareTo(b.$1));
+      nx = sides.first.$2;
+      ny = sides.first.$3;
+      at = [nx == 0 ? r[0] : 0, ny == 0 ? r[1] : 0, 0];
+    } else {
+      // Out through the wall the stand lies beyond, in line with the gate.
+      final dx = stand.cx - gate.cx, dy = stand.cy - gate.cy;
+      final acrossX = dx.abs() >= dy.abs();
+      nx = acrossX ? (dx > 0 ? 1 : -1) : 0;
+      ny = acrossX ? 0 : (dy > 0 ? 1 : -1);
+      at = [nx == 0 ? gate.cx : 0, ny == 0 ? gate.cy : 0, 0];
+    }
+    if (nx == 0) {
+      at[0] = at[0].clamp(hall.x + 4, hall.x + hall.width - 4).toDouble();
+      at[1] = ny > 0 ? hall.y + hall.depth : hall.y;
+    } else {
+      at[0] = nx > 0 ? hall.x + hall.width : hall.x;
+      at[1] = at[1].clamp(hall.y + 4, hall.y + hall.depth - 4).toDouble();
+    }
+    final outX = at[0] + nx * 2, outY = at[1] + ny * 2;
+    if (halls.any((o) => o.id != hall.id && o.contains(outX, outY))) {
+      return null;
+    }
+    return (door: at, kerb: [at[0] + nx * 3.5, at[1] + ny * 3.5, 0.0]);
+  }
+
+  /// The walkway passengers use between the gate's door and the aircraft on
+  /// a stand without a jet bridge: out of the hall, across the apron and up
+  /// to the stairs. The scene fences and covers the same line.
+  List<List<double>> boardingWalk(AirportFacility stand) {
+    if (stand.kind == 'standContact') return const [];
+    final exit = boardingDoor(stand);
+    if (exit == null) return const [];
+    return [
+      exit.door,
+      exit.kerb,
+      standPoint(stand, _stopBack(stand) + 6, 9),
+    ];
+  }
+
   /// The walk between a gate and the aircraft door: through the jet bridge on
-  /// a contact stand, out of the terminal and up the stairs on the others.
+  /// a contact stand, out of the gate's door and along the walkway to the
+  /// stairs on the others.
   List<List<double>> _gateToDoor(
     AirportFacility gate,
     AirportFacility stand,
@@ -1396,9 +1702,11 @@ class AirportWorld {
     List<double> from,
   ) {
     final door = aircraftDoor(stand, model);
+    final exit = boardingDoor(stand);
     if (stand.kind == 'standContact') {
       return [
         [from[0], from[1], 0],
+        if (exit != null) exit.door,
         standPoint(stand, -2, bridgeRotunda.left),
         standPoint(stand, bridgeRotunda.back, bridgeRotunda.left, bridgeFloor),
         standPoint(stand, bridgeCab.back, bridgeCab.left, bridgeFloor),
@@ -1411,17 +1719,9 @@ class AirportWorld {
       _stopBack(stand) + a.length * .14 + 1,
       a.radius + 4.5,
     );
-    final hall = _terminal(gate);
-    final exit = hall == null
-        ? foot
-        : [
-            foot[0].clamp(hall.x, hall.x + hall.width).toDouble(),
-            foot[1].clamp(hall.y, hall.y + hall.depth).toDouble(),
-            0.0,
-          ];
     return [
       [from[0], from[1], 0],
-      exit,
+      ...boardingWalk(stand),
       foot,
       door,
     ];
@@ -1442,9 +1742,38 @@ class AirportWorld {
   static bool _linear(AirportFacility f) =>
       f.kind == 'taxiway' || f.kind == 'serviceRoad' || f.runway;
 
+  static bool _pavement(AirportFacility f) =>
+      f.kind == 'taxiway' || f.runway || standKinds.contains(f.kind);
+
+  /// Which way traffic runs over [f]: 'x' or 'z'. A long strip runs down its
+  /// length, but a short connector between a taxiway and a stand is often
+  /// square or even wider than it is long, and then what it touches decides.
+  String flowAxis(AirportFacility f) {
+    final ratio = f.width / math.max(.01, f.depth);
+    if (ratio > 2) return 'x';
+    if (ratio < .5) return 'z';
+    var minusX = false, plusX = false, minusZ = false, plusZ = false;
+    for (final o in facilities) {
+      if (o.id == f.id || !_pavement(o)) continue;
+      switch (_touchingSide(f, o)) {
+        case '-x':
+          minusX = true;
+        case '+x':
+          plusX = true;
+        case '-z':
+          minusZ = true;
+        case '+z':
+          plusZ = true;
+      }
+    }
+    final alongX = minusX && plusX, alongZ = minusZ && plusZ;
+    if (alongX != alongZ) return alongX ? 'x' : 'z';
+    return f.depth >= f.width ? 'z' : 'x';
+  }
+
   /// The closest point to [p] on [f]'s centreline.
-  static List<double> _onCentreline(AirportFacility f, List<double> p) =>
-      f.depth >= f.width
+  List<double> _onCentreline(AirportFacility f, List<double> p) =>
+      flowAxis(f) == 'z'
       ? [f.cx, p[1].clamp(f.y, f.y + f.depth).toDouble(), 0]
       : [p[0].clamp(f.x, f.x + f.width).toDouble(), f.cy, 0];
 
@@ -1455,7 +1784,7 @@ class AirportWorld {
     final y0 = math.max(a.y, b.y), y1 = math.min(a.y + a.depth, b.y + b.depth);
     final edgeAlongY = (x1 - x0) < (y1 - y0);
     bool endOn(AirportFacility f) =>
-        _linear(f) && (f.depth >= f.width) != edgeAlongY;
+        _linear(f) && (flowAxis(f) == 'z') != edgeAlongY;
     double lateral(AirportFacility f) => edgeAlongY ? f.cy : f.cx;
     bool entryOf(AirportFacility stand, AirportFacility other) =>
         standKinds.contains(stand.kind) &&
@@ -1543,10 +1872,11 @@ class AirportWorld {
     for (final f in facilities) {
       f.connected = false;
     }
-    for (final t in ofKind('terminal')) {
+    for (final t in halls) {
       t.connected = ofKind('entrance').any((e) {
         final et = _terminal(e);
-        return et != null && _network(et, t, 'terminal').isNotEmpty;
+        return et != null &&
+            _network(et, t, 'terminal', also: hallKinds).isNotEmpty;
       });
     }
     for (final f in facilities.where((f) => f.interior)) {
@@ -1668,21 +1998,35 @@ class AirportWorld {
       return 'The building extends beyond airport land.';
     }
     if (def.interior && _terminal(candidate) == null) {
-      return 'Place this completely inside a terminal section.';
+      final hall = switch (hallZoneOf(kind)) {
+        'arrival' => 'arrival hall',
+        'departure' => 'departure hall',
+        'main' => 'main hall',
+        _ => 'terminal',
+      };
+      return 'Place this completely inside the $hall.';
+    }
+    if (def.interior) {
+      final hall = _terminal(candidate)!;
+      final refusal = zoneRefusalFor(
+        kind,
+        zoneOfPlacement(candidate.cx, candidate.cy, hall.kind),
+      );
+      if (refusal != null) return refusal;
     }
     if (kind == 'standContact' &&
         !ofKind('terminal').any((t) => t.gap(candidate) <= 1)) {
-      return 'A jet bridge needs this stand to touch a terminal section.';
+      return 'A jet bridge needs this stand to touch the main hall.';
     }
     for (final b in facilities) {
       if (b.id == old?.id) continue;
       if (candidate.overlaps(b) &&
-          !(def.interior && b.kind == 'terminal') &&
-          !(kind == 'terminal' && b.interior)) {
+          !(def.interior && b.hall) &&
+          !(hallKinds.contains(kind) && b.interior)) {
         return 'This overlaps ${facilityDef(b.kind).name}.';
       }
     }
-    final furnishings = old?.kind == 'terminal'
+    final furnishings = old?.hall == true
         ? facilities
               .where((b) => b.interior && _terminal(b)?.id == old!.id)
               .toList()
@@ -1783,7 +2127,7 @@ class AirportWorld {
     if (protected(f)) {
       return 'Cancel imminent flights and finish active operations before changing airport infrastructure.';
     }
-    if (f.kind == 'terminal' &&
+    if (f.hall &&
         facilities.any((b) => b.interior && _terminal(b)?.id == f.id)) {
       return 'Remove the terminal furnishings first.';
     }
@@ -2281,9 +2625,19 @@ class AirportWorld {
     final target = time + minutes;
     while (time < target - .000001) {
       var next = math.min(target, (time / 1440).floor() * 1440 + 1440.0);
+      for (final f in flights.where((f) => !f.finished).toList()) {
+        if (!f.paxSpawned && f.departure - checkInOpens <= time + .000001) {
+          final stand = facility(f.standId);
+          if (stand != null && stand.connected) _spawnPassengers(f, stand);
+        }
+      }
       for (final f in flights.where((f) => !f.finished)) {
         final due = f.stage == 'scheduled' ? f.arrival : f.nextEvent;
         if (due > time + .000001) next = math.min(next, due);
+        final opens = f.departure - checkInOpens;
+        if (!f.paxSpawned && opens > time + .000001) {
+          next = math.min(next, opens);
+        }
       }
       for (final p in passengers.where((p) => p.stage != 'ready')) {
         if (p.nextEvent > time + .000001) next = math.min(next, p.nextEvent);
@@ -2730,9 +3084,7 @@ class AirportWorld {
         0.0,
       ];
       final outX = door[0] + nx * 2, outY = door[1] + ny * 2;
-      if (ofKind(
-        'terminal',
-      ).any((o) => o.id != t.id && o.contains(outX, outY))) {
+      if (halls.any((o) => o.id != t.id && o.contains(outX, outY))) {
         continue;
       }
       final distance =
@@ -2763,10 +3115,15 @@ class AirportWorld {
   }
 
   void _spawnPassengers(AirportFlight f, AirportFacility stand) {
+    if (f.paxSpawned) return;
     final gate = _gate(stand),
         entrances = ofKind('entrance').where((e) => e.connected).toList();
     if (gate == null || entrances.isEmpty) return;
+    f.paxSpawned = true;
     final route = _entranceRoute(entrances.first);
+    // Travellers turn up over the check-in window, not all at once.
+    final window = (f.departure - checkInCloses - time).clamp(0.0, 80.0);
+    final groups = math.max(1, (f.passengers / 10).ceil());
     for (var n = 0; n < f.passengers; n += 10) {
       final p = AirportPassengerGroup(
         _id('p'),
@@ -2780,7 +3137,7 @@ class AirportWorld {
       } else {
         // Groups arrive at the kerb one after another and walk in.
         p.path = route;
-        p.started = time + (n / 10) * .5;
+        p.started = time + window * (n / 10) / groups + (n / 10) * .5;
         p.nextEvent = p.started + math.max(1, _pathLength(route) / walkSpeed);
       }
       passengers.add(p);
@@ -2791,7 +3148,7 @@ class AirportWorld {
   /// placement and blocked corridors affect real passenger travel.
   List<List<double>> _walk(double sx, double sy, AirportFacility target) {
     const cell = 2.0;
-    final terminals = ofKind('terminal').where((t) => t.connected).toList();
+    final terminals = halls.where((t) => t.connected).toList();
     final sourceObstacles = facilities
         .where((f) => f.interior && f.contains(sx, sy))
         .map((f) => f.id)
@@ -2899,6 +3256,21 @@ class AirportWorld {
     return f.passengers * interval;
   }
 
+  /// Orders desks by when they are next free, then by how far [p] has to walk.
+  int _soonestNearest(
+    AirportFacility a,
+    AirportFacility b,
+    AirportPassengerGroup p,
+  ) {
+    final free = math
+        .max(queues[a.id] ?? time, time)
+        .compareTo(math.max(queues[b.id] ?? time, time));
+    if (free != 0) return free;
+    double far(AirportFacility f) =>
+        (f.cx - p.x) * (f.cx - p.x) + (f.cy - p.y) * (f.cy - p.y);
+    return far(a).compareTo(far(b));
+  }
+
   /// Sends an arriving group to the least busy connected [kinds] desk.
   /// False when there is none, or no way to walk there.
   bool _queueArrival(
@@ -2909,9 +3281,7 @@ class AirportWorld {
   ) {
     final desks =
         facilities.where((b) => kinds.contains(b.kind) && b.connected).toList()
-          ..sort(
-            (a, b) => (queues[a.id] ?? time).compareTo(queues[b.id] ?? time),
-          );
+          ..sort((a, b) => _soonestNearest(a, b, p));
     if (desks.isEmpty) return false;
     final desk = desks.first, path = _walk(p.x, p.y, desk);
     if (path.isEmpty) return false;
@@ -3022,7 +3392,22 @@ class AirportWorld {
       case 'customs':
         if (!_queueArrival(p, const {'checkOut'}, 'checkOut', 10)) hold();
       case 'checkOut':
+        final desk = facility(p.facilityId);
         p.facilityId = null;
+        // Out through the nearest door of the departure hall to the kerb,
+        // where they are picked up.
+        final exit = desk == null
+            ? const <List<double>>[]
+            : _entranceRoute(desk);
+        if (exit.isNotEmpty) {
+          p.path = exit.reversed.toList();
+          p.started = time;
+          p.stage = 'leaving';
+          p.x = p.path.last[0];
+          p.y = p.path.last[1];
+          p.nextEvent = time + math.max(.5, _pathLength(p.path) / walkSpeed);
+          return;
+        }
         final exits = ofKind('entrance').where((e) => e.connected).toList();
         if (exits.isEmpty) {
           passengers.remove(p);
@@ -3083,7 +3468,7 @@ class AirportWorld {
       target = _gate(stand);
     } else {
       final kinds = switch (nextKind) {
-        'seating' => {'seating', 'lounge', 'vipLounge', 'arcade'},
+        'seating' => {'seating', 'lounge', 'vipLounge', 'arcade', 'casino'},
         'checkIn' => {'checkIn', 'checkInCounter', 'ticketMachine'},
         'cafe' => {
           'cafe',
@@ -3107,9 +3492,7 @@ class AirportWorld {
           facilities
               .where((b) => kinds.contains(b.kind) && b.connected)
               .toList()
-            ..sort(
-              (a, b) => (queues[a.id] ?? time).compareTo(queues[b.id] ?? time),
-            );
+            ..sort((a, b) => _soonestNearest(a, b, p));
       if (candidates.isNotEmpty) target = candidates.first;
     }
     if (target == null && nextKind == 'shop') {
@@ -3222,6 +3605,9 @@ class AirportWorld {
       sell(p.count * 18, 'Fashion boutique sales');
     } else if (nextKind == 'shop') {
       sell(p.count * 14, 'Duty-free sales');
+    } else if (target.kind == 'casino') {
+      sell(p.count * 40, 'Casino wagers');
+      p.satisfaction = (p.satisfaction + .06).clamp(0, 1);
     } else if (target.kind == 'arcade') {
       sell(p.count * 12, 'Arcade tokens');
       p.satisfaction = (p.satisfaction + .07).clamp(0, 1);
@@ -3256,9 +3642,7 @@ class AirportWorld {
     if (free.isEmpty) return;
     final v = free.first;
     final origins = facilities
-        .where(
-          (b) => !b.interior && b.kind != 'terminal' && b.contains(v.x, v.y),
-        )
+        .where((b) => !b.interior && !b.hall && b.contains(v.x, v.y))
         .toList();
     if (origins.isEmpty) return;
     final toSupply = _network(origins.first, sources.first, 'serviceRoad');
@@ -3514,6 +3898,7 @@ class AirportWorld {
     'nextId': nextId,
     'lastSeenEpochMs': lastSeenEpochMs,
     'facilities': facilities.map((f) => f.toJson()).toList(),
+    'zones': zones.map((z) => z.toJson()).toList(),
     'flights': flights.map((f) => f.toJson()).toList(),
     'contracts': contracts.map((c) => c.toJson()).toList(),
     'vehicles': vehicles.map((v) => v.toJson()).toList(),
@@ -3537,6 +3922,7 @@ class AirportWorld {
     w.facilities.addAll(
       _objects(j['facilities']).map(AirportFacility.fromJson),
     );
+    w.zones.addAll(_objects(j['zones']).map(AirportZone.fromJson));
     w.flights.addAll(_objects(j['flights']).map(AirportFlight.fromJson));
     w.contracts.addAll(_objects(j['contracts']).map(AirportContract.fromJson));
     w.vehicles.addAll(_objects(j['vehicles']).map(AirportVehicle.fromJson));

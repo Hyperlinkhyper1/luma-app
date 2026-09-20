@@ -31,7 +31,7 @@ window.AirportLandside = (() => {
 
   /** Terminal face, pointing away from the runways and stands. */
   function layout(list) {
-    const terminals = list.filter(f => f.kind === 'terminal');
+    const terminals = list.filter(f => AirportSceneLogic.hallKinds.has(f.kind));
     if (!terminals.length) return null;
     const t = extent(terminals);
     const airside = list.filter(f => /^(runway|taxiway|stand)/.test(f.kind));
@@ -45,10 +45,20 @@ window.AirportLandside = (() => {
     const reach = (alongX ? t.maxX - t.minX : t.maxZ - t.minZ) / 2;
     const span = alongX ? t.maxZ - t.minZ : t.maxX - t.minX;
     const H = Math.min(150, Math.max(45, span / 2));
-    return {
-      origin: {x: (t.minX + t.maxX) / 2 + dir[0] * reach, z: (t.minZ + t.maxZ) / 2 + dir[1] * reach},
-      angle: Math.atan2(-dir[1], dir[0]), dir, H, K: H + 30,
-    };
+    const origin = {x: (t.minX + t.maxX) / 2 + dir[0] * reach, z: (t.minZ + t.maxZ) / 2 + dir[1] * reach};
+    const angle = Math.atan2(-dir[1], dir[0]), c = Math.cos(angle), s = Math.sin(angle), K = H + 30;
+    // The canopy names the arrival and departure halls that open on to it.
+    const signs = [];
+    for (const f of terminals) {
+      const text = {terminalLandside: 'ARRIVAL HALL', terminalReclaim: 'DEPARTURE HALL'}[f.kind];
+      if (!text) continue;
+      const corners = [[f.x, f.y], [f.x + f.width, f.y], [f.x, f.y + f.depth], [f.x + f.width, f.y + f.depth]]
+        .map(([x, z]) => [(x - origin.x) * c - (z - origin.z) * s, (x - origin.x) * s + (z - origin.z) * c]);
+      if (Math.max(...corners.map(p => p[0])) < -1) continue;
+      const v = corners.reduce((n, p) => n + p[1], 0) / 4;
+      signs.push({text, v: Math.round(Math.min(K - 8, Math.max(-K + 8, v)) * 10) / 10});
+    }
+    return {origin, angle, dir, H, K, signs};
   }
 
   // ── Paths ─────────────────────────────────────────────────────────────
@@ -195,8 +205,8 @@ window.AirportLandside = (() => {
       cylinder(g, .34, 8.3, 8.8, 4.15, v, 0xb5bdbf, 'metal');
       light(g, 8.8, 7.5, v, 0xfff0c8, .5);
     }
-    label(g, 'DEPARTURES', 10.25, 9, -K * .5, 1.7, '#eef6f4', {rotY: Math.PI / 2, width: 5});
-    label(g, 'ARRIVALS', 10.25, 9, K * .5, 1.7, '#eef6f4', {rotY: Math.PI / 2, width: 5});
+    const signs = L.signs?.length ? L.signs : [{text: 'DEPARTURES', v: -K * .5}, {text: 'ARRIVALS', v: K * .5}];
+    for (const s of signs) label(g, s.text, 10.25, 9, s.v, 1.7, '#eef6f4', {rotY: Math.PI / 2, width: 7});
     // Kerbside road: buses stop at the canopy, cars use the outer lane. It
     // sits just above the forecourt paving, runs on into the bus station and
     // meets the main road through a paved junction.
@@ -496,7 +506,7 @@ window.AirportLandside = (() => {
   function build(list) {
     const L = layout(list || []);
     if (!L) { if (current) current.dispose(); current = null; return null; }
-    const key = `${L.origin.x}|${L.origin.z}|${L.angle.toFixed(4)}|${L.K}`;
+    const key = `${L.origin.x}|${L.origin.z}|${L.angle.toFixed(4)}|${L.K}|${L.signs.map(s => s.text + s.v).join()}`;
     if (current && current.key === key) return current;
     if (current) current.dispose();
 

@@ -100,6 +100,36 @@
   },
   "aboutVersionDev": "Testversie · met liefde gemaakt op iemands laptop",
 
+  "petSearchHint": "Zoek plugins en pagina's",
+  "petMoodIdle": "Wat gaan we openen?",
+  "petMoodCurious": "Oeh, even kijken…",
+  "petMoodHappy": "Dat kietelt.",
+  "petMoodDelighted": "Beste dag ooit!",
+  "petMoodSleepy": "Nog wakker? Ik ook.",
+  "petNoResults": "Niets met die naam",
+  "petNoResultsHint": "Probeer een korter woord, of een stukje ervan.",
+  "petSectionJumpTo": "SPRING NAAR",
+  "petSectionResults": "RESULTATEN",
+  "petKindPlugin": "Plugin",
+  "petKindPage": "Pagina",
+  "petHintMove": "kiezen",
+  "petHintOpen": "openen",
+  "petHintClose": "sluiten",
+  "petClose": "Sluiten",
+  "petPatsTooltip": "Aaitjes gegeven",
+  "petPatLabel": "Aai {name}",
+  "@petPatLabel": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "petSettingsTitle": "luma-huisdier",
+  "petSettingsSubtitle": "Druk overal op Alt+Space om het huisdier te roepen en typ om naar een pagina of plugin te springen.",
+  "petSettingsHotkey": "Oproepen met Alt+Space",
+  "petSettingsHotkeyTaken": "Alt+Space is al bezet door een andere app, dus het huisdier opent alleen vanuit luma.",
+  "petSettingsName": "Naam",
+  "petSettingsSummon": "Zeg hallo",
+
   "monthJan": "jan",
   "monthFeb": "feb",
   "monthMar": "mrt",

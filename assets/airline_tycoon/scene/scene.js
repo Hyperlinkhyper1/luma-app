@@ -123,7 +123,7 @@
   let distance = 500, azimuth = .8, polar = .78;
   let active = true, cutaway = false, world = null, tool = null, selected = null, quality = 'high', gridWanted = false, district = null;
   let receivedAt = performance.now();
-  const interiorKinds = () => new Set((world?.catalog || []).filter(d => d.interior).map(d => d.kind).concat(['entrance', 'checkIn', 'checkInCounter', 'infoDesk', 'bins', 'infoPanel', 'ticketMachine', 'security', 'customs', 'checkOut', 'seating', 'toilets', 'cafe', 'restaurant', 'vendingMachine', 'coffeeToGo', 'foodCart', 'boardingGate', 'shop', 'kiosk', 'foodShop', 'perfumeShop', 'flowerShop', 'clothingShop', 'luxuryBoutique', 'lounge', 'vipLounge', 'arcade', 'plant', 'fountain', 'infoBoard', 'baggageCarousel']));
+  const interiorKinds = () => new Set((world?.catalog || []).filter(d => d.interior).map(d => d.kind).concat(['entrance', 'checkIn', 'checkInCounter', 'infoDesk', 'bins', 'infoPanel', 'ticketMachine', 'security', 'customs', 'checkOut', 'seating', 'toilets', 'cafe', 'restaurant', 'vendingMachine', 'coffeeToGo', 'foodCart', 'boardingGate', 'shop', 'kiosk', 'foodShop', 'perfumeShop', 'flowerShop', 'clothingShop', 'luxuryBoutique', 'lounge', 'vipLounge', 'arcade', 'casino', 'plant', 'fountain', 'infoBoard', 'baggageCarousel']));
   const standKinds = new Set(['stand', 'standRegional', 'standContact']);
 
   function cameraUpdate() {
@@ -147,12 +147,30 @@
     scene.fog.near = 1400 + distance * 1.4;
     scene.fog.far = 7000 + distance * 3;
     $('compass').style.transform = `rotate(${-azimuth}rad)`;
+    if (airportLimits && !glide) {
+      // Airport mode keeps the camera over the terminal.
+      target.x = Math.min(airportLimits.maxX, Math.max(airportLimits.minX, target.x));
+      target.z = Math.min(airportLimits.maxZ, Math.max(airportLimits.minZ, target.z));
+      distance = Math.min(distance, airportLimits.far);
+    }
     const reach = Math.min(1100, Math.max(160, distance * .9));
     Object.assign(sun.shadow.camera, {left: -reach, right: reach, top: reach, bottom: -reach, near: 1, far: 3200});
     sun.shadow.camera.updateProjectionMatrix();
   }
 
   // ── Time of day ───────────────────────────────────────────────────────
+  let shownTime = null;
+  /** Game time for this frame: runs smoothly at the game speed and eases
+      towards the simulation's clock instead of jumping to it. */
+  function displayTime(dt) {
+    const target = gameTime();
+    if (shownTime == null || Math.abs(target - shownTime) > 3) shownTime = target;
+    else {
+      const next = shownTime + (world?.paused ? 0 : dt * (world?.speed || 1));
+      shownTime = Math.max(shownTime, next + (target - next) * Math.min(1, dt * 1.5));
+    }
+    return shownTime;
+  }
   function gameTime() {
     if (!world) return 360;
     const elapsed = world.paused ? 0 : Math.min(1.5, (performance.now() - receivedAt) / 1000);
@@ -217,6 +235,9 @@
     renderer.toneMappingExposure = .9 + .22 * day;
     darkness = night;
     if (Math.abs(night - lastNight) > .01) { M.setNight(night); lastNight = night; }
+    // The terminal lights come on at dusk. In airport mode they are always
+    // on, a little brighter, so the halls read at any time of day.
+    M.lightLevels(airport ? .22 + .9 * night : 1.05 * night, night);
   }
 
   // ── Facilities ────────────────────────────────────────────────────────
@@ -280,9 +301,25 @@
   // another one meets its centreline, curving across when they are offset.
   const paved = f => f.kind === 'taxiway' || f.kind.startsWith('runway') || standKinds.has(f.kind);
   const opposite = {'+x': '-x', '-x': '+x', '+z': '-z', '-z': '+z'};
-  const vertical = f => f.depth >= f.width;
+  /** Which way traffic runs over [f], 'x' or 'z' (Dart: flowAxis). A long
+      strip runs down its length, but a short connector between a taxiway and
+      a stand is often square or wider than it is long, and then what it
+      touches decides. */
+  function flowAxis(f, list) {
+    const ratio = f.width / Math.max(.01, f.depth);
+    if (ratio > 2) return 'x';
+    if (ratio < .5) return 'z';
+    const sides = new Set();
+    for (const o of list) if (o.id !== f.id && paved(o)) { const side = touchingSide(f, o); if (side) sides.add(side); }
+    const alongX = sides.has('-x') && sides.has('+x'), alongZ = sides.has('-z') && sides.has('+z');
+    if (alongX !== alongZ) return alongX ? 'x' : 'z';
+    return f.depth >= f.width ? 'z' : 'x';
+  }
+  let flows = new Map();
+  const vertical = f => (flows.get(f.id) || (f.depth >= f.width ? 'z' : 'x')) === 'z';
   function pavementJoins(list) {
     const cuts = new Map(), curves = [];
+    flows = new Map(list.filter(paved).map(f => [f.id, flowAxis(f, list)]));
     const cut = (f, rect) => { if (!cuts.has(f.id)) cuts.set(f.id, []); cuts.get(f.id).push(rect); };
     const pads = list.filter(paved);
     for (const a of pads) for (const b of pads) {
@@ -327,18 +364,20 @@
 
   function contextFor(f, list, joins) {
     const turn = turnOf(f);
-    if (f.kind === 'terminal') {
+    if (L.hallKinds.has(f.kind)) {
+      // Terminal sections and entrance halls join into one open building.
       const open = {}, doors = [];
-      for (const t of list) if (t.kind === 'terminal' && t.id !== f.id) { const side = touchingSide(f, t); if (side) open[localSide(side, turn)] = true; }
-      // Entrances cut a doorway into whichever outside wall the simulation
-      // sends their passengers through.
+      for (const t of list) if (L.hallKinds.has(t.kind) && t.id !== f.id) { const side = touchingSide(f, t); if (side) open[localSide(side, turn)] = true; }
+      // Entrances and check-outs cut a doorway into whichever outside wall
+      // the simulation sends their passengers through.
       const w = turn % 2 ? f.depth : f.width, d = turn % 2 ? f.width : f.depth;
       for (const e of list) {
-        const at = e.kind === 'entrance' && e.door?.door;
+        const at = (e.kind === 'entrance' || e.kind === 'checkOut') && e.door?.door
+          || (standKinds.has(e.kind) && e.gateDoor?.door);
         if (!at || at[0] < f.x - .5 || at[0] > f.x + f.width + .5 || at[1] < f.y - .5 || at[1] > f.y + f.depth + .5) continue;
         const [lx, lz] = toLocal(f, at[0], at[1]);
         const side = Math.abs(lz) < .6 ? '-z' : Math.abs(lz - d) < .6 ? '+z' : Math.abs(lx) < .6 ? '-x' : Math.abs(lx - w) < .6 ? '+x' : null;
-        if (side) doors.push({side, at: round(side.endsWith('z') ? lx : lz)});
+        if (side) doors.push({side, at: round(side.endsWith('z') ? lx : lz), label: e.kind === 'checkOut' ? 'EXIT' : standKinds.has(e.kind) ? 'GATE' : 'ENTRANCE'});
       }
       return {open, doors};
     }
@@ -350,11 +389,210 @@
       const noseSide = ['+x', '+z', '-x', '-z'].indexOf(localSide(worldSide, turn));
       return {noseSide, cuts, lane: laneInFrame(f, worldSide, noseSide)};
     }
+    if (f.kind === 'taxiway') return {cuts, vertical: vertical(f) !== (turn % 2 === 1)};
     if (paved(f)) return {cuts};
     return {};
   }
   function roofMode() {
-    for (const {mesh} of facilities.values()) mesh.traverse(o => { if (o.userData.roof) o.visible = !cutaway; });
+    for (const {mesh, data} of facilities.values()) {
+      const hall = L.hallKinds.has(data.kind);
+      mesh.traverse(o => {
+        if (o.userData.roof) o.visible = !cutaway && !(airport && hall);
+        if (o.userData.upper) o.visible = !airport;
+      });
+    }
+  }
+
+  // ── Airport mode ──────────────────────────────────────────────────────
+  // The original game's terminal view: the camera flies in over the halls
+  // and stays there, the roofs come off, the walls drop to knee height, each
+  // hall carries a name tag and the lights are on.
+  let airport = false, airportLimits = null, savedView = null, glide = null;
+  function hallBounds(id) {
+    let b = null;
+    for (const {data: f} of facilities.values()) {
+      if (!L.hallKinds.has(f.kind) || (id && f.id !== id)) continue;
+      b = b || {minX: Infinity, minZ: Infinity, maxX: -Infinity, maxZ: -Infinity};
+      b.minX = Math.min(b.minX, f.x); b.minZ = Math.min(b.minZ, f.y);
+      b.maxX = Math.max(b.maxX, f.x + f.width); b.maxZ = Math.max(b.maxZ, f.y + f.depth);
+    }
+    return b;
+  }
+  /** Screen width the side panel covers, in pixels, when it is open. */
+  function panelCover() {
+    const panel = $('panel');
+    return panel && !panel.classList.contains('hidden') && innerWidth > 820 ? panel.getBoundingClientRect().width + 24 : 0;
+  }
+  const fitDistance = (b, cover = 0) => Math.max(55, Math.max(b.maxX - b.minX, (b.maxZ - b.minZ) * .9) / (Math.tan(camera.fov * Math.PI / 360) * Math.min(camera.aspect * (1 - cover / Math.max(1, innerWidth)), 1)) * .8);
+  /** Glide to frame [b], centred in the part of the screen the panel leaves free. */
+  function glideToFit(b, far) {
+    const cover = panelCover(), d = Math.min(far, fitDistance(b, cover));
+    const shift = cover / 2 * 2 * d * Math.tan(camera.fov * Math.PI / 360) / Math.max(1, innerHeight);
+    glideTo((b.minX + b.maxX) / 2 + Math.cos(azimuth) * shift, (b.minZ + b.maxZ) / 2 - Math.sin(azimuth) * shift, d, azimuth, .66);
+  }
+  function glideTo(x, z, d, az, pol) {
+    const turn = az - azimuth;
+    glide = {from: [target.x, target.z, distance, azimuth, polar], to: [x, z, d, azimuth + turn - Math.round(turn / (2 * Math.PI)) * 2 * Math.PI, pol], t: 0};
+  }
+  function glideStep(dt) {
+    if (!glide) return;
+    glide.t = Math.min(1, glide.t + dt / .75);
+    const k = glide.t * glide.t * (3 - 2 * glide.t), [a, b] = [glide.from, glide.to];
+    target.x = a[0] + (b[0] - a[0]) * k;
+    target.z = a[1] + (b[1] - a[1]) * k;
+    distance = a[2] * Math.pow(b[2] / a[2], k);
+    azimuth = a[3] + (b[3] - a[3]) * k;
+    polar = a[4] + (b[4] - a[4]) * k;
+    if (glide.t >= 1) glide = null;
+    cameraUpdate();
+  }
+  /** Airport mode on (framing [id], or every hall) or off. */
+  function setAirport(on, id) {
+    const all = hallBounds();
+    if (on && all) {
+      if (!airport) savedView = [target.x, target.z, distance, azimuth, polar];
+      airport = true;
+      const far = fitDistance(all) * 1.6, framed = (id && hallBounds(id)) || all;
+      airportLimits = {minX: all.minX - 70, maxX: all.maxX + 70, minZ: all.minZ - 70, maxZ: all.maxZ + 70, far};
+      glideToFit(framed, far);
+      fineGrid.position.set(Math.round((all.minX + all.maxX) / 2), .36, Math.round((all.minZ + all.maxZ) / 2));
+    } else if (!on && airport) {
+      airport = false;
+      airportLimits = null;
+      if (savedView) glideTo(...savedView);
+      savedView = null;
+    }
+    roofMode();
+    zoneHints();
+  }
+  // Name tags over each hall, kept on screen in airport mode.
+  const tags = document.createElement('div'), tagAt = new T.Vector3();
+  tags.id = 'hall-tags';
+  $('hud').prepend(tags);
+  const zoneNames = {arrival: 'Arrival hall', main: 'Main hall', departure: 'Departure hall'};
+  /** Halls of one zone that touch, as one area each (a main hall is often
+      several sections side by side). */
+  function hallAreas() {
+    const halls = [...facilities.values()].map(v => v.data).filter(f => L.hallKinds.has(f.kind)), areas = [];
+    const done = new Set();
+    for (const f of halls) {
+      if (done.has(f.id)) continue;
+      const zone = L.hallZone(f.kind), area = [f];
+      done.add(f.id);
+      for (let i = 0; i < area.length; i++) for (const t of halls) {
+        if (!done.has(t.id) && L.hallZone(t.kind) === zone && touchingSide(area[i], t)) { done.add(t.id); area.push(t); }
+      }
+      // The tag sits on the largest section, where there is most floor.
+      const big = area.reduce((a, b) => b.width * b.depth > a.width * a.depth ? b : a);
+      areas.push({id: area.map(a => a.id).sort()[0], zone, x: big.x + big.width / 2, z: big.y + big.depth / 2});
+    }
+    // A painted zone names itself, over the hall's own name.
+    for (const z of world?.zones || []) areas.push({id: z.id, zone: z.zone, x: z.x + z.width / 2, z: z.y + z.depth / 2});
+    return areas;
+  }
+  function updateTags() {
+    if (!airport) { if (tags.childElementCount) tags.replaceChildren(); return; }
+    const seen = new Set();
+    for (const {id, zone, x, z} of hallAreas()) {
+      seen.add(id);
+      let tag = tags.querySelector(`[data-hall="${id}"]`);
+      if (!tag) { tag = document.createElement('div'); tag.dataset.hall = id; tags.append(tag); }
+      if (tag.dataset.zone !== zone) { tag.dataset.zone = zone; tag.className = `hall-tag ${zone}`; tag.textContent = zoneNames[zone]; }
+      tagAt.set(x, 1, z).project(camera);
+      const on = tagAt.z < 1 && Math.abs(tagAt.x) < 1.1 && Math.abs(tagAt.y) < 1.1;
+      tag.style.display = on ? '' : 'none';
+      if (on) tag.style.transform = `translate(${((tagAt.x + 1) / 2 * innerWidth).toFixed(1)}px, ${((1 - tagAt.y) / 2 * innerHeight).toFixed(1)}px) translate(-50%, -50%)`;
+    }
+    for (const tag of [...tags.children]) if (!seen.has(tag.dataset.hall)) tag.remove();
+  }
+  // Painted floor zones: the three parts of the terminal, marked out on the
+  // floor. What may be placed inside one follows the zone, not the building.
+  const hints = new T.Group(), zoneGroup = new T.Group();
+  const hintGeometry = new T.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+  scene.add(hints, zoneGroup);
+  const zoneColors = {arrival: 0x3fa3b3, main: 0xc6b596, departure: 0x6f8fd6, none: 0xff6b81};
+  const washes = new Map();
+  function wash(color, opacity) {
+    const key = `${color}|${opacity}`;
+    if (!washes.has(key)) washes.set(key, new T.MeshBasicMaterial({color, transparent: true, opacity, depthWrite: false}));
+    return washes.get(key);
+  }
+  const flat = (group, material, x, z, w, d, y, order) => {
+    const m = new T.Mesh(hintGeometry, material);
+    m.position.set(x, y, z);
+    m.scale.set(Math.max(.05, w), 1, Math.max(.05, d));
+    m.renderOrder = order;
+    group.add(m);
+    return m;
+  };
+  let zoneSignature = null;
+  function syncZones(zones) {
+    const signature = JSON.stringify(zones);
+    if (signature === zoneSignature) return;
+    zoneSignature = signature;
+    zoneGroup.clear();
+    for (const z of zones) {
+      const color = zoneColors[z.zone] || 0xffffff, cx = z.x + z.width / 2, cz = z.y + z.depth / 2;
+      flat(zoneGroup, wash(color, .2), cx, cz, z.width, z.depth, .32, 1);
+      flat(zoneGroup, wash(color, .55), cx, z.y, z.width, .4, .33, 2);
+      flat(zoneGroup, wash(color, .55), cx, z.y + z.depth, z.width, .4, .33, 2);
+      flat(zoneGroup, wash(color, .55), z.x, cz, .4, z.depth, .33, 2);
+      flat(zoneGroup, wash(color, .55), z.x + z.width, cz, .4, z.depth, .33, 2);
+    }
+  }
+  // While placing furniture, the floor it may go on lights up green and the
+  // parts that refuse it turn red.
+  function zoneHints() {
+    hints.clear();
+    if (!tool || !interiorKinds().has(tool.kind)) return;
+    const fits = zone => !L.zoneRefusalFor(tool.kind, zone);
+    for (const {data: f} of facilities.values()) {
+      if (!L.hallKinds.has(f.kind) || !fits(L.hallZone(f.kind))) continue;
+      flat(hints, wash(0x57d9a3, .2), f.x + f.width / 2, f.y + f.depth / 2, f.width - .8, f.depth - .8, .345, 2);
+    }
+    for (const z of world?.zones || []) {
+      flat(hints, wash(fits(z.zone) ? 0x57d9a3 : 0xff6b81, fits(z.zone) ? .22 : .16), z.x + z.width / 2, z.y + z.depth / 2, z.width - .4, z.depth - .4, .35, 3);
+    }
+  }
+  // ── Zoning tool ───────────────────────────────────────────────────────
+  // Drag a rectangle over the floor to mark it out; the drag paints instead
+  // of moving the camera while the tool is up.
+  const floorPlane = new T.Plane(new T.Vector3(0, 1, 0), -.3);
+  let zoneTool = null, zoneDrag = null, zonePreview = null;
+  function groundPoint(x, y) {
+    ray(x, y);
+    return raycaster.ray.intersectPlane(floorPlane, point) ? {x: point.x, z: point.z} : null;
+  }
+  function setZoneTool(zone) {
+    zoneTool = zone || null;
+    endZoneDrag(false);
+    status.textContent = !zoneTool ? ''
+      : zoneTool === 'none' ? 'Drag over a zone to rub it out'
+      : `Drag over the terminal floor to zone it as the ${L.hallNames[zoneTool].toLowerCase()}`;
+  }
+  function zoneRect() {
+    if (!zoneDrag) return null;
+    const a = zoneDrag.from, b = zoneDrag.to;
+    return {
+      zone: zoneTool,
+      x: Math.round(Math.min(a.x, b.x)), y: Math.round(Math.min(a.z, b.z)),
+      width: Math.round(Math.abs(a.x - b.x)), depth: Math.round(Math.abs(a.z - b.z)),
+    };
+  }
+  function showZonePreview() {
+    const r = zoneRect();
+    if (!zonePreview) { zonePreview = flat(scene, wash(0xffffff, .35), 0, 0, 1, 1, .38, 4); }
+    zonePreview.visible = !!r;
+    if (!r) return;
+    zonePreview.material = wash(zoneColors[zoneTool] || 0xffffff, .38);
+    zonePreview.position.set(r.x + r.width / 2, .38, r.y + r.depth / 2);
+    zonePreview.scale.set(Math.max(.05, r.width), 1, Math.max(.05, r.depth));
+  }
+  function endZoneDrag(commit) {
+    const r = commit ? zoneRect() : null;
+    zoneDrag = null;
+    if (zonePreview) zonePreview.visible = false;
+    if (r && r.width >= 2 && r.depth >= 2) window.AirportHud?.paintZone(r);
   }
   function bounds(includeRunway) {
     const b = new T.Box3();
@@ -388,18 +626,18 @@
   /** The kerbside outside an entrance door: a porch roof over the doors, a
       paved apron out to the kerb and a drop-off lane. On the landside wall
       the forecourt already provides all of it. */
-  function drawPorch(g, e, list, porches) {
+  function drawPorch(g, e, list, porches, sign = 'DROP-OFF') {
     const [dx, dz] = e.door.door, [kx, kz] = e.door.kerb;
     const len = Math.hypot(kx - dx, kz - dz) || 1, nx = (kx - dx) / len, nz = (kz - dz) / len;
-    const L = district?.L;
-    if (L && Math.abs(nx - L.dir[0]) < .01 && Math.abs(nz - L.dir[1]) < .01 && Math.abs((dx - L.origin.x) * nx + (dz - L.origin.z) * nz) < 1) return;
+    const face = district?.L;
+    if (face && Math.abs(nx - face.dir[0]) < .01 && Math.abs(nz - face.dir[1]) < .01 && Math.abs((dx - face.origin.x) * nx + (dz - face.origin.z) * nz) < 1) return;
     // Local frame: u outward from the door, v along the wall.
     const at = (u, v) => [dx + nx * u - nz * v, dz + nz * u + nx * v];
     const rect = (u0, u1, v0, v1) => {
       const [ax, az] = at(u0, v0), [bx, bz] = at(u1, v1);
       return {minX: Math.min(ax, bx), maxX: Math.max(ax, bx), minZ: Math.min(az, bz), maxZ: Math.max(az, bz)};
     };
-    const blocked = r => list.some(f => !interiorKinds().has(f.kind) && f.kind !== 'terminal' && f.x < r.maxX && f.x + f.width > r.minX && f.y < r.maxZ && f.y + f.depth > r.minZ);
+    const blocked = r => list.some(f => !interiorKinds().has(f.kind) && !L.hallKinds.has(f.kind) && f.x < r.maxX && f.x + f.width > r.minX && f.y < r.maxZ && f.y + f.depth > r.minZ);
     const put = (u0, u1, v0, v1, h, y, color, kind) => {
       const r = rect(u0, u1, v0, v1);
       return M.box(g, r.maxX - r.minX, h, r.maxZ - r.minZ, (r.minX + r.maxX) / 2, y, (r.minZ + r.maxZ) / 2, color, kind);
@@ -419,7 +657,7 @@
     for (const v of [-3, 0, 3]) { const [lx, lz] = at(4, v); M.light(g, lx, 5.35, lz, 0xfff0c8, .45); M.pool(g, lx, lz, 4.5, 0xffe8b8); }
     for (let v = -7; v <= 7; v += 2) { const [bx, bz] = at(len + .9, v); M.box(g, .28, .9, .28, bx, .45, bz, 0xbcc3c4, 'metal'); }
     const [sx, sz] = at(7.85, 0);
-    M.label(g, 'DEPARTURES', sx, 5.3, sz, .8, '#eef6f4', {rotY: Math.atan2(nx, nz), width: 5});
+    M.label(g, sign, sx, 5.3, sz, .8, '#eef6f4', {rotY: Math.atan2(nx, nz), width: 5});
     // Drop-off lane along the kerb, if there is room for one.
     const lane = rect(len + 1.6, len + 9.6, -18, 18);
     if (!blocked(lane)) {
@@ -427,6 +665,47 @@
       put(len + 1.6, len + 9.6, -18, 18, .1, .05, 0xd2d5d0, 'asphalt');
       for (let v = -16; v < 16; v += 5) put(len + 5.5, len + 5.7, v, v + 2.5, .02, .11, 0xf2f0e6);
       put(len + 1.9, len + 2.1, -17.5, 17.5, .02, .11, 0xe0b23a);
+    }
+  }
+  /** The way out to an aircraft with no jet bridge: a railed, ribbed walkway
+      from the gate's door across the apron, and painted lanes over the stand
+      itself, where a roof would foul the wing. */
+  function drawGateWalk(g, points, stand) {
+    const W = 3.6, H = 2.75;
+    const inside = (x, z) => x > stand.x - .5 && x < stand.x + stand.width + .5 && z > stand.y - .5 && z < stand.y + stand.depth + .5;
+    for (let i = 1; i < points.length; i++) {
+      const [ax, az] = points[i - 1], [bx, bz] = points[i];
+      const full = Math.hypot(bx - ax, bz - az);
+      if (full < .5) continue;
+      const nx = (bx - ax) / full, nz = (bz - az) / full, angle = Math.atan2(-nz, nx);
+      const place = (u, v, along, across, h, y, color, kind) => {
+        const m = M.box(g, along, h, across, ax + nx * u - nz * v, y, az + nz * u + nx * v, color, kind);
+        m.rotation.y = angle;
+        return m;
+      };
+      // How much of this segment is still off the stand.
+      let open = inside(ax, az) ? 0 : full;
+      if (open && inside(bx, bz)) {
+        let lo = 0, hi = full;
+        for (let k = 0; k < 16; k++) { const mid = (lo + hi) / 2; if (inside(ax + nx * mid, az + nz * mid)) hi = mid; else lo = mid; }
+        open = lo;
+      }
+      if (open > .5) {
+        place(open / 2, 0, open, W, .12, .06, 0xd8dad4, 'concrete');
+        for (const v of [-W / 2, W / 2]) {
+          place(open / 2, v, open, .16, .12, 1.05, 0xc3cacb, 'metal');
+          for (let u = .6; u < open; u += 3) place(u, v, .12, .12, 1.05, .52, 0xaab2b4, 'metal');
+        }
+        for (let u = 2; u < open - .5; u += 5) {
+          place(u, 0, .16, W, .14, H, 0xdfe5e6, 'metal');
+          for (const v of [-W / 2, W / 2]) place(u, v, .16, .16, H - 1.05, 1.05 + (H - 1.05) / 2, 0xdfe5e6, 'metal');
+        }
+      }
+      // On the stand, paint the lanes instead.
+      for (let u = Math.max(open, 0); u < full - .4; u += 2.4) {
+        const step = Math.min(1.5, full - .3 - u);
+        for (const v of [-W / 2, W / 2]) place(u + step / 2, v, step, .22, .02, .17, 0xf2f0e6);
+      }
     }
   }
   function updateEnvironment(list, joins) {
@@ -437,7 +716,8 @@
     if (district && district !== previous) scene.add(district.group);
     drawMarkings(environment, joins?.curves || []);
     const porches = [];
-    for (const e of list) if (e.kind === 'entrance' && e.door?.door) drawPorch(environment, e, list, porches);
+    for (const e of list) if ((e.kind === 'entrance' || e.kind === 'checkOut') && e.door?.door) drawPorch(environment, e, list, porches, e.kind === 'checkOut' ? 'PICK-UP' : 'DROP-OFF');
+    for (const s of list) if (standKinds.has(s.kind) && s.walk?.length > 1) drawGateWalk(environment, s.walk, s);
     // The landside covers the ground behind the terminal; keep the treeline out of it.
     const taken = district?.rect;
     const inside = (r, x, z) => x >= r.minX - 12 && x <= r.maxX + 12 && z >= r.minZ - 12 && z <= r.maxZ + 12;
@@ -456,6 +736,23 @@
     }
     M.bake(environment);
   }
+  /** Where the airport's lights are at night. The halls are lit up to their
+      outside walls and on across the open sides where they join; high masts
+      floodlight the stands and service yards, fainter along the taxiways. */
+  function lightAreas(list) {
+    const halls = list.filter(f => L.hallKinds.has(f.kind)), areas = [];
+    for (const f of halls) {
+      const edge = side => halls.some(t => t !== f && touchingSide(f, t) === side) ? -.2 : .3;
+      areas.push({rect: [f.x + edge('-x'), f.y + edge('-z'), f.x + f.width - edge('+x'), f.y + f.depth - edge('+z')], power: 1, top: 10.6, spacing: 8, outdoor: false});
+    }
+    const yards = {fuelDepot: .5, baggage: .5, vehicleDepot: .5, hangar: .35, serviceRoad: .3, taxiway: .16}, outside = [];
+    for (const f of list) {
+      const power = standKinds.has(f.kind) ? .7 : yards[f.kind];
+      if (power) outside.push({rect: [f.x, f.y, f.x + f.width, f.y + f.depth], power, top: 40, spacing: standKinds.has(f.kind) ? 22 : 26, outdoor: true});
+    }
+    // The shader takes so many areas; the faint taxiway lights go first.
+    return [...areas, ...outside.sort((a, b) => b.power - a.power)];
+  }
   function syncFacilities(list) {
     let changed = false;
     const ids = new Set(list.map(f => f.id));
@@ -472,14 +769,19 @@
       facilities.set(f.id, {mesh, data: f, signature, context});
       changed = true;
     }
-    if (changed) { roofMode(); updateEnvironment(list, joins); if (selected) select(selected); }
+    if (changed) {
+      roofMode(); updateEnvironment(list, joins); zoneHints();
+      if (selected) select(selected);
+      M.setLights(lightAreas(list));
+      if (airport && !hallBounds()) window.AirportHud?.airportClosed?.();
+    }
   }
 
   // ── Moving things ─────────────────────────────────────────────────────
   // Paths come from the simulation as corner-to-corner polylines. Vehicles
   // and aircraft get their corners rounded here, and every mover is placed
   // by distance along the path so speeds stay steady through the corners.
-  const WALK = 15;
+  const WALK = 3;
   const measured = new WeakMap();
   function measure(path) {
     let m = measured.get(path);
@@ -631,7 +933,7 @@
     }
     for (const [id, item] of entities) if (item.seen !== snapshotSerial) { scene.remove(item.mesh); M.dispose(item.mesh); entities.delete(id); }
     crowd.groups = L.crowdAllocation(next.passengers || [], quality);
-    terminalRects = [...facilities.values()].filter(v => v.data.kind === 'terminal').map(v => v.data);
+    terminalRects = [...facilities.values()].filter(v => L.hallKinds.has(v.data.kind)).map(v => v.data);
     const inside = interiorKinds();
     furniture = [...facilities.values()].map(v => v.data).filter(f => inside.has(f.kind) && f.kind !== 'entrance');
   }
@@ -644,7 +946,7 @@
     const capacity = L.crowdBudget(quality);
     if (crowd.capacity === capacity) return;
     for (const m of [crowd.body, crowd.head]) if (m) { scene.remove(m); m.dispose(); }
-    const material = new T.MeshStandardMaterial({vertexColors: true, roughness: .8});
+    const material = M.indoor(new T.MeshStandardMaterial({vertexColors: true, roughness: .8}));
     crowd.body = new T.InstancedMesh(M.personGeometry('body'), material, capacity);
     crowd.head = new T.InstancedMesh(M.personGeometry('head'), material, capacity);
     for (let i = 0; i < capacity; i++) {
@@ -661,7 +963,7 @@
   const bagColors = [0x243542, 0x6e3b38, 0x4d5d43, 0xc5b39a, 0x5c6570, 0x8a6a9c, 0xc9a14a, 0xd9d3c4, 0x2f6fb0, 0xb0413e].map(c => new T.Color(c));
   const bagMatrix = new T.Matrix4(), bagQuat = new T.Quaternion(), bagPos = new T.Vector3(), bagScale = new T.Vector3();
   function buildBags() {
-    bags.mesh = new T.InstancedMesh(new T.BoxGeometry(1, 1, 1), new T.MeshStandardMaterial({vertexColors: false, roughness: .7}), bags.capacity);
+    bags.mesh = new T.InstancedMesh(new T.BoxGeometry(1, 1, 1), M.indoor(new T.MeshStandardMaterial({vertexColors: false, roughness: .7})), bags.capacity);
     for (let i = 0; i < bags.capacity; i++) bags.mesh.setColorAt(i, bagColors[(i * 7) % bagColors.length]);
     bags.mesh.frustumCulled = false;
     bags.mesh.count = 0;
@@ -717,89 +1019,165 @@
     return {x: reclaimSpot.x, y: reclaimSpot.z, heading: Math.atan2(-(reclaimLook.x - reclaimSpot.x), -(reclaimLook.z - reclaimSpot.z))};
   }
   const personMatrix = new T.Matrix4(), personQuat = new T.Quaternion(), personPos = new T.Vector3(), personScale = new T.Vector3(1, 1, 1), up = new T.Vector3(0, 1, 0);
-  const hash = n => { const x = Math.sin(n * 12.9898) * 43758.5453; return x - Math.floor(x); };
-  let terminalRects = [];
+  const hash = n => { const x = Math.sin(n * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
+  let terminalRects = [], furniture = [];
   const indoors = (x, z) => terminalRects.some(t => x >= t.x && x <= t.x + t.width && z >= t.y && z <= t.y + t.depth);
-  /** Somewhere to stand while waiting at [f]: a loose crowd that grows with
-      the number already there, kept off the furniture and inside the hall. */
-  function waitingSpot(f, k, seed, realNow) {
-    const cx = f.x + f.width / 2, cz = f.y + f.depth / 2;
-    const reach = Math.max(f.width, f.depth) / 2 + .8;
-    for (let tries = 0; tries < 4; tries++) {
-      const j = k + tries * 37;
-      const r = reach + .9 * Math.sqrt(j + .5) + hash(seed + j) * .8, a = j * 2.39996 + seed;
-      const x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
-      if (!indoors(x, z) || busyFloor(x, z, f.id)) continue;
-      // A gentle sway, as people shuffle about while they wait.
-      const t = realNow / 1000 * .35 + hash(seed * 3 + j) * 6.28;
-      return {x: x + Math.sin(t) * .25, z: z + Math.cos(t * .8) * .25, heading: Math.atan2(-(cx - x), -(cz - z)) + Math.sin(t * .6) * .6};
-    }
-    return {x: cx, z: cz, heading: 0};
-  }
-  let furniture = [];
   const busyFloor = (x, z, except) => furniture.some(f => f.id !== except && x >= f.x - .2 && x <= f.x + f.width + .2 && z >= f.y - .2 && z <= f.y + f.depth + .2);
-  function place(n, x, y, z, heading, walking, i, realNow) {
-    const bob = walking ? Math.abs(Math.sin(realNow / 150 + i * 1.7)) * .06 : 0;
-    personQuat.setFromAxisAngle(up, heading + Math.PI);
-    personPos.set(x, y + bob, z);
-    personMatrix.compose(personPos, personQuat, personScale);
-    crowd.body.setMatrixAt(n, personMatrix);
-    crowd.head.setMatrixAt(n, personMatrix);
-  }
   const floorAt = (x, z, lift) => (indoors(x, z) ? .3 : .02) + lift;
+  // How people use each kind of place: queue up in front of a desk, wait in
+  // an area in front of a gate, or go inside a shop, café or lounge.
+  const queueKinds = new Set(['checkIn', 'checkInCounter', 'ticketMachine', 'security', 'customs', 'checkOut', 'infoDesk', 'vendingMachine', 'coffeeToGo', 'foodCart', 'kiosk']);
+  const insideKinds = new Set(['shop', 'clothingShop', 'luxuryBoutique', 'perfumeShop', 'flowerShop', 'foodShop', 'restaurant', 'cafe', 'lounge', 'vipLounge', 'arcade', 'seating', 'toilets']);
+
+  /** Unit axis from [f] into the hall it stands in: where its queue forms. */
+  function hallAxis(f) {
+    const cx = f.x + f.width / 2, cz = f.y + f.depth / 2;
+    const t = terminalRects.find(t => cx >= t.x && cx <= t.x + t.width && cz >= t.y && cz <= t.y + t.depth);
+    const hx = t ? t.x + t.width / 2 : cx + 1, hz = t ? t.y + t.depth / 2 : cz;
+    const dx = hx - cx, dz = hz - cz;
+    return Math.abs(dx) >= Math.abs(dz) ? [Math.sign(dx) || 1, 0] : [0, Math.sign(dz) || 1];
+  }
+  /** Slot [rank] of a queue at [f]: rows of [perRow] across the axis,
+      snaking back and forth, the front row nearest the desk. */
+  function queueSlot(f, rank, perRow, spacing, seed, loose = .2) {
+    const [ax, az] = hallAxis(f), px = -az, pz = ax;
+    const cx = f.x + f.width / 2, cz = f.y + f.depth / 2;
+    const half = Math.abs(ax) ? f.width / 2 : f.depth / 2;
+    const row = Math.floor(rank / perRow), col = rank % perRow;
+    const lane = (row % 2 ? perRow - 1 - col : col) - (perRow - 1) / 2;
+    const back = half + .9 + row * spacing + (hash(seed) - .5) * loose;
+    const side = lane * spacing * .85 + (hash(seed + 1) - .5) * loose;
+    return {x: cx + ax * back + px * side, z: cz + az * back + pz * side, heading: Math.atan2(ax, az) + (hash(seed + 2) - .5) * loose * 1.4};
+  }
+  /** A spot inside [f] for someone shopping, eating or sitting. */
+  function insideSpot(f, seed) {
+    for (let k = 0; k < 6; k++) {
+      const x = f.x + .6 + hash(seed + k * 7) * Math.max(.1, f.width - 1.2);
+      const z = f.y + .6 + hash(seed + k * 13 + 3) * Math.max(.1, f.depth - 1.2);
+      if (!busyFloor(x, z, f.id)) return {x, z, heading: hash(seed + 5) * 6.283};
+    }
+    return {x: f.x + f.width / 2, z: f.y + f.depth / 2, heading: hash(seed) * 6.283};
+  }
+  /** Somewhere near [x, z] to stand, kept off the furniture and inside. */
+  function nearSpot(x, z, seed, spread) {
+    for (let k = 0; k < 6; k++) {
+      const r = spread * Math.sqrt(hash(seed + k * 3)), a = hash(seed + k * 5 + 1) * 6.283;
+      const px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
+      if (!busyFloor(px, pz) && (!indoors(x, z) || indoors(px, pz))) return {x: px, z: pz, heading: hash(seed + 9) * 6.283};
+    }
+    return {x, z, heading: 0};
+  }
+
+  // Every visible passenger keeps a display position that walks towards
+  // where the simulation says they should be, so nobody ever teleports:
+  // queues shuffle forward, crowds reform and walkers follow the path.
+  const people = new Map();
+  let crowdTime = null, crowdFrame = 0;
   function updateCrowd(now, realNow) {
     if (!crowd.body) return;
-    const waitingAt = new Map();
-    let n = 0;
+    const dGame = crowdTime == null ? 0 : Math.max(0, now - crowdTime);
+    crowdTime = now;
+    const persons = [];
     for (const {group: g, visible} of crowd.groups) {
-      const seedBase = Number(String(g.id).replace(/\D/g, '')) || 0;
+      const seedBase = (Number(String(g.id).replace(/\D/g, '')) || 0) * 17;
       const path = g.path?.length ? g.path : null;
       const length = path ? measure(path).total : 0;
       const target = g.facilityId ? facilities.get(g.facilityId)?.data : null;
       if (g.arriving && reclaimStages.has(g.stage)) {
-        for (let i = 0; i < visible && n < crowd.capacity; i++) {
+        for (let i = 0; i < visible; i++) {
           const spot = reclaimPlace(g, i, seedBase);
-          if (spot) place(n++, spot.x, .3, spot.y, spot.heading, false, i, realNow);
+          if (spot) persons.push({key: `${g.id}#${i}`, x: spot.x, z: spot.y, y: .3, heading: spot.heading});
         }
         continue;
       }
       const single = g.interval > 0 && path;
-      for (let i = 0; i < visible && n < crowd.capacity; i++) {
-        let s;
+      for (let i = 0; i < visible; i++) {
+        const seed = seedBase + i * 101, key = `${g.id}#${i}`;
+        const pace = .9 + hash(seed + 11) * .2;
+        let s = null;
         if (single) {
           // Single file on and off the aircraft, one passenger at a time.
           s = (now - g.started - i * g.interval) * WALK;
           if (s > length && g.stage === 'walkingOnBoard') continue;
           if (s < 0 && g.stage === 'deplaning') continue;
-          if (s < 0) {
-            // Still queueing at the gate, in a line behind the lane.
-            const first = pathAt(path, 0), ahead = pathAt(path, Math.min(length, 2));
-            const queued = Math.ceil(-s / WALK / g.interval);
-            const dx = ahead.x - first.x, dz = ahead.y - first.y, dl = Math.hypot(dx, dz) || 1;
-            const x = first.x - dx / dl * queued * .7, z = first.y - dz / dl * queued * .7;
-            place(n++, x, floorAt(x, z, 0), z, Math.atan2(-dx, -dz), false, i, realNow);
+          if (s < 0) { persons.push({key, wait: 'board', facility: target || null, g, i, at: path[0]}); continue; }
+        } else if (path) {
+          if (g.stage === 'entrance' && now < g.started) {
+            // Just dropped off at the kerb, gathering their bags.
+            const a = path[0], b = path[1] || a, dx = b[0] - a[0], dz = b[1] - a[1], dl = Math.hypot(dx, dz) || 1;
+            const side = (hash(seed + 2) - .5) * 7, back = hash(seed + 4) * 1.5;
+            persons.push({key, x: a[0] - dz / dl * side - dx / dl * back, z: a[1] + dx / dl * side - dz / dl * back, y: .02, heading: Math.atan2(-dx, -dz)});
             continue;
           }
-        } else if (path) {
-          // Walking together, strung out a little so they read as people.
-          s = (now - g.started) * WALK - i * .9;
-          if (s < 0) s = 0;
+          // Walking as a loose group: each person keeps their own place in it.
+          s = (now - g.started) * WALK * pace - hash(seed + 6) * 3 - (i % 3) * .5;
         }
         if (path && s < length) {
-          const p = pathAt(path, s);
-          const side = ((i % 3) - 1) * .45 * (single ? 0 : 1);
-          const h = p.heading ?? 0, ox = Math.cos(h) * side, oz = -Math.sin(h) * side;
-          place(n++, p.x + ox, floorAt(p.x, p.y, p.z || 0), p.y + oz, h, true, i, realNow);
+          const p = pathAt(path, Math.max(0, s));
+          const h = p.heading ?? 0, side = single ? 0 : (hash(seed + 8) - .5) * 2.6;
+          const x = p.x + Math.cos(h) * side, z = p.y - Math.sin(h) * side;
+          persons.push({key, x, z, y: floorAt(p.x, p.y, p.z || 0), heading: h});
           continue;
         }
-        // Arrived: spread out around what they are waiting for.
-        const at = target || (path ? {id: `end:${g.id}`, x: path[path.length - 1][0] - 1, y: path[path.length - 1][1] - 1, width: 2, depth: 2} : {id: `g:${g.id}`, x: (g.x || 0) - 1, y: (g.y || 0) - 1, width: 2, depth: 2});
-        const k = waitingAt.get(at.id) || 0;
-        waitingAt.set(at.id, k + 1);
-        const spot = waitingSpot(at, k, seedBase % 97, realNow);
-        place(n++, spot.x, floorAt(spot.x, spot.z, 0), spot.z, spot.heading, false, i, realNow);
+        const end = path ? path[path.length - 1] : [g.x || 0, g.y || 0];
+        persons.push({key, wait: target && queueKinds.has(target.kind) ? 'queue' : target && insideKinds.has(target.kind) ? 'inside' : target && target.kind === 'boardingGate' ? 'gate' : 'near', facility: target, g, i, seed, at: end});
       }
     }
+    // Queues and gate areas take a place in line by arrival order, so a
+    // group that leaves lets everyone behind step forward.
+    const lines = new Map();
+    for (const p of persons) {
+      if (!p.wait || !p.facility || (p.wait !== 'queue' && p.wait !== 'gate' && p.wait !== 'board')) continue;
+      const k = `${p.facility.id}|${p.wait}`;
+      if (!lines.has(k)) lines.set(k, []);
+      lines.get(k).push(p);
+    }
+    for (const line of lines.values()) {
+      line.sort((a, b) => (a.g.started - b.g.started) || String(a.g.id).localeCompare(String(b.g.id)) || a.i - b.i);
+      line.forEach((p, rank) => {
+        const f = p.facility, wide = Math.abs(hallAxis(f)[0]) ? f.depth : f.width;
+        const spot = p.wait === 'queue' ? queueSlot(f, rank, Math.max(2, Math.min(8, Math.floor(wide / .7))), .8, p.seed || rank)
+          : p.wait === 'board' ? queueSlot(f, rank, 2, .75, rank)
+          : queueSlot(f, rank, 9, 2, p.seed || rank, 1.3);
+        p.x = spot.x; p.z = spot.z; p.heading = spot.heading; p.y = floorAt(spot.x, spot.z, 0);
+      });
+    }
+    for (const p of persons) {
+      if (p.x != null) continue;
+      const spot = p.wait === 'inside' ? insideSpot(p.facility, p.seed) : nearSpot(p.at[0], p.at[1], p.seed || 0, 3.5);
+      p.x = spot.x; p.z = spot.z; p.heading = spot.heading; p.y = floorAt(spot.x, spot.z, 0);
+    }
+    // Walk every display position towards its target at walking pace.
+    const reach = dGame * WALK * 1.8;
+    let n = 0;
+    crowdFrame++;
+    for (const p of persons) {
+      if (n >= crowd.capacity) break;
+      let st = people.get(p.key);
+      if (!st) { st = {x: p.x, z: p.z, y: p.y, h: p.heading, phase: hash(n + crowdFrame) * 6.283}; people.set(p.key, st); }
+      const dx = p.x - st.x, dz = p.z - st.z, dist = Math.hypot(dx, dz);
+      let moved = 0;
+      if (dist > 20) { st.x = p.x; st.z = p.z; }
+      else if (dist > .01) {
+        moved = Math.min(dist, reach);
+        st.x += dx / dist * moved; st.z += dz / dist * moved;
+      }
+      st.y += (p.y - st.y) * Math.min(1, dist > 0 ? moved / dist + .1 : 1);
+      const face = moved > .002 ? Math.atan2(-dx, -dz) : p.heading;
+      let turn = face - st.h;
+      turn -= Math.round(turn / 6.283) * 6.283;
+      st.h += turn * .25;
+      st.seen = crowdFrame;
+      const walking = moved > .002;
+      const bob = walking ? Math.abs(Math.sin(realNow / 150 + st.phase)) * .06 : 0;
+      personQuat.setFromAxisAngle(up, st.h + Math.PI);
+      personPos.set(st.x, st.y + bob, st.z);
+      personMatrix.compose(personPos, personQuat, personScale);
+      crowd.body.setMatrixAt(n, personMatrix);
+      crowd.head.setMatrixAt(n, personMatrix);
+      n++;
+    }
+    if (crowdFrame % 120 === 0) for (const [k, st] of people) if (st.seen !== crowdFrame) people.delete(k);
     crowd.body.count = crowd.head.count = n;
     crowd.body.instanceMatrix.needsUpdate = crowd.head.instanceMatrix.needsUpdate = true;
   }
@@ -814,7 +1192,9 @@
     world = next;
     receivedAt = began;
     syncFacilities(next.facilities || []);
+    syncZones(next.zones || []);
     syncEntities(next);
+    if (tool) zoneHints();
     if (first) frame();
     $('loading').classList.add('hidden');
     perf.snapshots++;
@@ -828,6 +1208,7 @@
     const interior = tool && interiorKinds().has(tool.kind);
     grid.visible = (!!tool && !interior) || gridWanted;
     fineGrid.visible = !!interior;
+    zoneHints();
     status.textContent = tool ? 'Click to place · Drag to move · Right-drag to orbit' : '';
   }
   function select(id) {
@@ -837,13 +1218,11 @@
     outline.setFromObject(item.mesh);
     outline.visible = true;
   }
-  function focus(id, interior = false) {
+  function focus(id) {
     const item = facilities.get(id);
     if (!item) return;
-    target.set(item.data.x + item.data.width / 2, 0, item.data.y + item.data.depth / 2);
-    distance = Math.max(interior ? 70 : 100, Math.max(item.data.width, item.data.depth) * (interior ? 1.25 : 2));
-    if (interior) { polar = .62; cutaway = true; roofMode(); fineGrid.position.set(Math.round(target.x), .36, Math.round(target.z)); }
-    cameraUpdate();
+    const d = Math.max(airport ? 45 : 100, Math.max(item.data.width, item.data.depth) * (airport ? 1.6 : 2));
+    glideTo(item.data.x + item.data.width / 2, item.data.y + item.data.depth / 2, airportLimits ? Math.min(d, airportLimits.far) : d, azimuth, polar);
   }
   function receive(message) {
     try {
@@ -861,7 +1240,8 @@
           case 'visible': active = !!m.value; break;
           case 'stats': statsBox.classList.toggle('hidden', !m.value); break;
           case 'select': select(m.id); break;
-          case 'interior': focus(m.id, true); break;
+          case 'zone': setZoneTool(m.value); break;
+          case 'airport': setAirport(!!m.value, m.id); break;
           case 'quality': {
             quality = m.value === 'low' ? 'low' : 'high';
             const low = quality === 'low';
@@ -988,8 +1368,11 @@
   function click(x, y) {
     if (tool) { hover(x, y); if (location) window.AirportHud?.place(location); return; }
     const hits = ray(x, y).intersectObjects([...facilities.values()].map(v => v.mesh), true);
-    if (!hits.length) { outline.visible = false; selected = null; window.AirportHud?.select(null); return; }
-    let mesh = hits[0].object;
+    // Hidden roofs and walls still sit in the way of the ray; skip them.
+    const shown = o => { for (; o; o = o.parent) if (!o.visible) return false; return true; };
+    const hit = hits.find(h => shown(h.object));
+    if (!hit) { outline.visible = false; selected = null; window.AirportHud?.select(null); return; }
+    let mesh = hit.object;
     while (mesh && !mesh.userData.facilityId) mesh = mesh.parent;
     if (mesh) { select(mesh.userData.facilityId); window.AirportHud?.select(selected); }
   }
@@ -1012,13 +1395,17 @@
     polar = Math.max(.12, Math.min(1.42, polar - dy * .0038));
   }
   canvas.addEventListener('pointerdown', e => {
+    glide = null;
     try { canvas.setPointerCapture(e.pointerId); } catch (_) { /* pointer already gone */ }
     pointers.set(e.pointerId, {x: e.clientX, y: e.clientY});
     if (pointers.size === 2) {
       const mid = touchMid();
+      endZoneDrag(false);
       gesture = {x: mid.x, y: mid.y, moved: gesture?.moved || false, orbit: false, pinch: touchDistance(), twist: touchAngle(), mid};
     } else {
       gesture = {x: e.clientX, y: e.clientY, moved: false, orbit: isOrbitButton(e), pinch: null, twist: null, mid: null};
+      const start = zoneTool && !gesture.orbit ? groundPoint(e.clientX, e.clientY) : null;
+      if (start) { zoneDrag = {from: start, to: start}; gesture.zone = true; showZonePreview(); }
     }
   });
   canvas.addEventListener('pointermove', e => {
@@ -1026,6 +1413,11 @@
     const old = pointers.get(e.pointerId), dx = e.clientX - old.x, dy = e.clientY - old.y;
     pointers.set(e.pointerId, {x: e.clientX, y: e.clientY});
     if (Math.hypot(e.clientX - gesture.x, e.clientY - gesture.y) > 5) gesture.moved = true;
+    if (gesture.zone && zoneDrag) {
+      const at = groundPoint(e.clientX, e.clientY);
+      if (at) { zoneDrag.to = at; showZonePreview(); }
+      return;
+    }
     if (pointers.size === 2) {
       const nextDist = touchDistance(), nextAngle = touchAngle(), nextMid = touchMid();
       if (gesture.pinch && nextDist > 0) distance = Math.max(25, Math.min(7000, distance * gesture.pinch / nextDist));
@@ -1051,6 +1443,12 @@
     target.z += (dx * Math.sin(azimuth) - dy * Math.cos(azimuth)) * scale;
   }
   canvas.addEventListener('pointerup', e => {
+    if (gesture?.zone) {
+      endZoneDrag(true);
+      pointers.delete(e.pointerId);
+      if (!pointers.size) gesture = null;
+      return;
+    }
     const shouldClick = gesture && !gesture.moved && pointers.size === 1 && e.button === 0;
     pointers.delete(e.pointerId);
     if (shouldClick) click(e.clientX, e.clientY);
@@ -1063,13 +1461,15 @@
     }
   });
   canvas.addEventListener('pointercancel', e => {
+    endZoneDrag(false);
     pointers.delete(e.pointerId);
     gesture = pointers.size ? {x: e.clientX, y: e.clientY, moved: true, orbit: false, pinch: null, twist: null, mid: null} : null;
   });
   canvas.addEventListener('contextmenu', e => e.preventDefault());
   canvas.addEventListener('wheel', e => {
     e.preventDefault();
-    distance = Math.max(25, Math.min(7000, distance * Math.exp(e.deltaY * .001)));
+    glide = null;
+    distance = Math.max(airport ? 18 : 25, Math.min(7000, distance * Math.exp(e.deltaY * .001)));
     cameraUpdate();
   }, {passive: false});
   const held = new Set();
@@ -1082,6 +1482,7 @@
   addEventListener('blur', () => held.clear());
   function keyboard(dt) {
     if (!held.size) return;
+    glide = null;
     const step = dt * 60;
     if (held.has('w') || held.has('arrowup')) pan(0, 9 * step);
     if (held.has('s') || held.has('arrowdown')) pan(0, -9 * step);
@@ -1124,7 +1525,8 @@
       }
     }
     keyboard(dt);
-    const time = gameTime();
+    glideStep(dt);
+    const time = displayTime(dt);
     daylight(time);
     const blend = 1 - Math.exp(-dt / .09);
     for (const item of entities.values()) {
@@ -1155,6 +1557,7 @@
       district.update(dt, {activity, night: darkness, paused: !!world?.paused, speed: world?.speed || 1});
     }
     sky.position.copy(camera.position);
+    updateTags();
     renderer.render(scene, camera);
     started = true;
     perf.cpu += performance.now() - began;
@@ -1199,9 +1602,9 @@
     // The preview page can be driven without a visible tab for checks.
     window.airportDebug = {
       frame: () => step(performance.now()),
-      camera: (x, z, d, az, pol) => { target.set(x, 0, z); distance = d; azimuth = az; polar = pol; cameraUpdate(); },
-      time: minutes => { world.time = minutes; receivedAt = performance.now(); },
-      get state() { return {scene, camera, renderer, target, distance, facilities, entities, world, district}; },
+      camera: (x, z, d, az, pol) => { glide = null; target.set(x, 0, z); distance = d; azimuth = az; polar = pol; cameraUpdate(); },
+      time: minutes => { world.time = minutes; receivedAt = performance.now(); shownTime = null; },
+      get state() { return {scene, camera, renderer, target, distance, azimuth, polar, facilities, entities, world, district, airport, airportLimits, zoneTool, zoneGroup}; },
     };
   }
 })();

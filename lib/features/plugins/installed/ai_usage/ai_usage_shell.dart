@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../theme/luma_theme.dart';
 import 'ai_usage_page.dart';
+import 'assets/assets_tab.dart';
 import 'leaderboard/ai_leaderboard_tab.dart';
 import 'open_source/open_source_tab.dart';
 import 'tests/tests_tab.dart';
@@ -27,6 +28,11 @@ enum AiUsageSection {
     icon: Icons.science_rounded,
     label: 'Tests',
     blurb: 'Experiments in progress',
+  ),
+  assets(
+    icon: Icons.inventory_2_rounded,
+    label: 'Assets',
+    blurb: 'Coming soon',
   );
 
   const AiUsageSection({
@@ -91,6 +97,7 @@ class _AiUsagePageState extends State<AiUsagePage> {
               const AiLeaderboardTab(),
               const OpenSourceTab(),
               TestsTab(key: ValueKey(_testsVisit)),
+              const AssetsTab(),
             ],
           ),
         ),

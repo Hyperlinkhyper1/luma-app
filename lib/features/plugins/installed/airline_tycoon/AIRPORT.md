@@ -13,9 +13,9 @@ The new airport starts paused with two connected stands and an ATR 72.
 3. Follow aircraft, passenger groups, and ground vehicles. Delays and missing
    services reduce contract income. Read the schedule's issue text when a
    flight waits. Fees and operating costs appear in Finances.
-4. Build connected taxiways and service roads before adding stands. Place
-   passenger facilities inside terminal sections. Use cutaway to see the
-   interior. Security and amenity queues make additional facilities useful.
+4. Build connected taxiways and service roads before adding stands. Press
+   **Airport** (or T) to furnish the terminal's three halls. Security and
+   amenity queues make additional facilities useful.
 
 Drag to move across the map, right-drag (or Shift/Ctrl-drag) to orbit,
 and scroll to zoom. Touch: one finger moves, two fingers pinch to zoom,
@@ -24,12 +24,12 @@ drag to move and twist to turn. Construction snaps to
 grid, quality and performance-stats controls sit under the top bar.
 Keyboard: WASD/arrows pan, Q/E turn, +/- zoom, Space pauses, 1/2/3 set the
 speed, R rotates, Esc cancels or closes, C and G toggle cutaway and grid,
-B opens Build, P opens Planning, F3 shows performance stats.
+T switches between the airfield and airport mode, B opens Build, P opens
+Planning, F3 shows performance stats.
 
 Build shows category tabs with a 3D preview card per item (rendered from the
-same model that gets placed). Selecting a terminal section offers **Edit
-interior**: the roof comes off, the camera moves in, and the tabs switch to
-passenger flow, shops & lounges and decor.
+same model that gets placed). Outside it builds the airfield; in airport
+mode (below) it furnishes the terminal hall by hall.
 
 Stands come in three kinds. Regional stands take aircraft up to 45 t.
 Remote stands take anything and need a bus. Contact stands must touch a
@@ -61,7 +61,8 @@ share the duty-free stop with the rest. Luxury boutiques (8 × 6 m) take four mi
 and lift the passenger's mood a little. VIP lounges & bars (8 × 6 m) are
 the premium waiting area next to seating and lounges: €35 per passenger and
 +0.08 satisfaction. An arcade (10 × 8 m) is another seating alternative:
-€12 per passenger and +0.07 satisfaction.
+€12 per passenger and +0.07 satisfaction. A casino (12 × 10 m) is the most
+expensive seating alternative: €40 per passenger and +0.06 satisfaction.
 
 Baggage carousels (10 × 5 m) are required by every medium and long-haul
 contract. When such a flight finishes unloading, its passengers walk from the
@@ -110,6 +111,96 @@ upgrade. Levels survive a move and a reload, and demolishing refunds half
 of the build cost plus every upgrade. The page mirrors `upgradeCostAt`
 only to show the refund.
 
+## The terminal's three halls
+
+Like the original game, the terminal has three parts that join into one
+building wherever they touch (`hallKinds`):
+
+- The **arrival hall** (`terminalLandside`, 60 × 40 m) on the road side is
+  where passengers come in: the entrance, ticket machines, check-in desks
+  and staffed counters, and security through to the main hall
+  (`arrivalHallKinds`).
+- The **main hall** (`terminal`, 120 × 60 m) behind it has everything past
+  security: shops, food, seating, toilets, lounges, decor and the boarding
+  gates. Stands nose in to it and contact stands must touch it.
+- The **departure hall** (`terminalReclaim`, 60 × 40 m) on the road side
+  next to the arrival hall is where arriving passengers leave: baggage
+  carousels, customs and the check-out (`departureHallKinds`).
+- Information desks, boards, panels and bins fit in any hall
+  (`anyHallKinds`).
+
+The names follow the game, not airport signage: the arrival hall is where
+you arrive at the airport, the departure hall where you leave it.
+`hallZoneOf` sorts a kind into its hall, and `zoneRefusal` (both mirrored in
+`scene_logic.js`) explains a wrong placement, for example "This goes in the
+departure hall …". The rule applies to new placements and moves; saves from
+before it keep their furnishings where they are, and a moved hall still takes
+all of its furnishings along.
+
+The starter airport has the arrival hall (entrance, check-in, security) and
+the departure hall (customs, check-out) side by side along the road, with
+two main hall sections behind them. The arrival and departure halls wear a
+teal or blue band and their name on the facade, and the forecourt canopy
+names them from the road (`layout().signs`).
+
+### Zoning the floor
+
+A hall's kind is only its default. Zoning marks out part of any terminal
+floor as one of the three parts, so a single big hall can be split without
+rebuilding it. In airport mode, pick Arrival, Main, Departure or Erase and
+drag a rectangle over the floor.
+
+- `AirportZone` rectangles live in `AirportWorld.zones`, are saved with the
+  airport, and are painted in order: the last one wins where they overlap,
+  and painting over a zone that is completely covered removes it. Erase
+  takes out every zone the rectangle touches.
+- `paintZone` snaps to a metre, refuses anything under 2 m and wants all
+  four corners inside halls. Zoning is free.
+- `zoneOfPlacement` is what placement checks: the paint under the item's
+  middle, or the hall's own part when the floor is unpainted. `zoneRefusalFor`
+  gives the reason. (`zoneRefusal` is the same check for a bare hall kind.)
+- The scene washes each zone in its colour with a border, tags it, and turns
+  the floor green or red under the item being placed. `scene_logic.js`
+  mirrors `zoneAt` so the placement preview agrees with the simulation.
+- Items already standing on floor that is later zoned differently keep
+  working; the zone only decides what may be placed from then on.
+
+## Airport mode: the terminal view
+
+The **Airport** switch under the top bar (or T) is the original game's
+terminal view. The camera glides in over the halls and stays there
+(`airportLimits`): panning stops 70 m past the terminal and zoom out stops at
+1.6 × the framing distance. The roofs of the halls come off, their walls drop
+to the knee-high base (everything above it is tagged `upper` and baked
+apart), each hall area gets a name tag, and the hall lights are on whatever
+the time. The camera frames the halls in the part of the screen the side
+panel leaves free.
+
+Build opens with the zoning buttons — Arrival, Main, Departure, Erase, which
+paint the floor (see above) — and one tab per hall: Arrival hall, Main hall,
+Shops, Departure hall and Anywhere. Each tab starts with the hall building itself,
+so the terminal can grow from inside the mode, and warns when that hall does
+not exist yet (older saves have only main hall sections). While an item is
+being placed, the halls it may go in turn green. Selecting a hall on the
+airfield offers **Airport mode** framed on that hall. Esc closes the panel
+first, then leaves the mode; the camera returns to where it was.
+
+## Lighting at night
+
+`models.js` patches every standard material with lit areas (`setLights`):
+up to 48 rectangles, each with a strength, the height its lights hang at and
+how far apart they are. `scene.js` feeds it (`lightAreas`):
+
+- the halls, lit to their outside walls and on across the joins, under a
+  grid of downlights 8 m apart below the 10.6 m ceiling;
+- floodlights over the stands (0.7), the fuel, baggage and vehicle depots
+  (0.5), hangars (0.35), service roads (0.3) and, faintly, taxiways (0.16).
+  When there are too many, the faintest go first.
+
+`lightLevels(indoors, outdoors)` follows the sun: both come up with the dusk.
+Indoors they stay at a quarter in daylight in airport mode. The glass keeps
+its evening glow, so the facades read as lit from inside.
+
 ## The passenger flow is required
 
 `terminalEssentials` lists what every airport needs: entrance, check-in
@@ -119,8 +210,8 @@ security, a boarding gate, **customs** (8 × 6 m, 6 per game minute) and
 no contract can be signed or placed and no own flight scheduled, and a
 planned flight waits at its stand with "The terminal needs …" until the
 missing piece is built. The starter airport includes customs and check-out
-in the second terminal section. Older saves without them have to build
-them before flights continue.
+in the departure hall. Older saves without them have to build them before
+flights continue.
 
 Passengers and aircraft move the whole way:
 
@@ -130,7 +221,7 @@ Passengers and aircraft move the whole way:
 - every arriving flight, not only those with checked bags, lets its
   passengers off: they walk from the aircraft to the gate (`deplaning`),
   collect bags when the contract needs a carousel, then queue at customs and
-  check-out and leave through the entrance to the kerb. Returning own flights
+  check-out and leave through the departure hall's exit to the kerb. Returning own flights
   bring their passengers home the same way;
 - own aircraft are towed from the hangar apron to the stand
   (`positioning`) and back again after their return leg (`toHangar`).
@@ -138,8 +229,12 @@ Passengers and aircraft move the whole way:
 ## Movement
 
 One game minute is one real second at 1×, so speeds are chosen to read on
-screen: passengers walk 15 m, vehicles drive 40 m and aircraft taxi 60 m per
+screen: passengers walk 3 m, vehicles drive 40 m and aircraft taxi 60 m per
 game minute (`AirportWorld.walkSpeed`, `vehicleSpeed`, `taxiSpeed`).
+Because walking takes real time, departing passengers start turning up at
+the kerb `checkInOpens` (240) minutes before departure and trickle in
+until `checkInCloses` (150) minutes before it, instead of all arriving when
+the aircraft lands. Among equally free desks, a group picks the nearest.
 
 - **Routes follow the pavement.** `_route` runs down the centreline of each
   runway, taxiway or service road and turns where two meet, at the
@@ -155,35 +250,50 @@ game minute (`AirportWorld.walkSpeed`, `vehicleSpeed`, `taxiSpeed`).
   take-off accelerates down the runway and climbs out to 1,300 m before the
   aircraft is removed. `delay` is measured when pushback starts, so the
   slower movement never costs contract money.
-- **Boarding is single file.** `boardingRate` (gate lanes × speed, ×1.6 over
-  a jet bridge) sets each passenger's `interval`. Passengers walk the whole
-  way (`_gateToDoor`): out through the jet bridge on a contact stand
-  (`bridgeRotunda`, `bridgeCab`, the same points the scene draws), or out of
-  the terminal and up mobile stairs to the front left door on the others.
-  Deplaning runs the same path in reverse at the same rate.
+- **Boarding is single file, through a door.** `boardingRate` (gate lanes ×
+  speed, ×1.6 over a jet bridge) sets each passenger's `interval`. Passengers
+  walk the whole way (`_gateToDoor`) and never through a wall:
+  `boardingDoor` puts a doorway in the wall of the gate's hall — at the jet
+  bridge's rotunda on a contact stand, else on the wall the stand lies
+  beyond, in line with the gate — and the hall model opens it with a GATE
+  sign. From there it is the jet bridge (`bridgeRotunda`, `bridgeCab`, the
+  same points the scene draws), or `boardingWalk`: a railed, ribbed walkway
+  across the apron, painted lanes over the stand itself (a roof there would
+  foul the wing) and up the mobile stairs to the front left door. Deplaning
+  runs the same path in reverse at the same rate.
 - **Vehicles drive, then work.** `arriveAt` is when a vehicle reaches the
   stand; it pulls onto its own spot beside the aircraft and works there until
   `busyUntil`. The pushback tug is sent when boarding starts.
-- **Crowds spread out.** Walking groups string out along their path; waiting
-  groups stand around their desk or gate, off the furniture and inside the
-  hall, and sway a little.
+- **Crowds behave like people.** Groups walk as a loose cluster, each person
+  keeping their own place and pace. At a desk they queue in snaking rows by
+  order of arrival, so the line steps forward as groups are served; at a gate
+  they spread through a waiting area; in shops, cafés, lounges and seating
+  they go inside. Every passenger keeps a display position that walks towards
+  where the simulation puts them (`people` in `scene.js`), so nobody
+  teleports when a queue shuffles or a new walk starts.
+- **The display clock never runs backwards.** The simulation ticks on a
+  200 ms timer that can stall; `displayTime` runs at game speed and eases
+  towards the simulation's clock instead of snapping back to it.
 - **Landside traffic follows real passengers.** Cars and buses only come for
   people being dropped at the kerb or walking out to it; an idle airport has
   an empty road. Trams and trains keep their timetable. The loop runs in on
   the main road, down the outer forecourt lane to the bus station and back up
   the kerb lane past the doors, all on paved lanes.
 
-## Entrances
+## Entrances and exits
 
 An entrance is a doorway, not just furniture. `AirportWorld.entranceDoor`
-puts its doors on the nearest outside wall of its terminal section (a wall
-shared with another section is inside the hall) and the kerb
-`kerbDistance` (9 m) outside. Departing passengers are dropped at the
-kerb, walk through the doors and on to the entrance; arrivals leave the
-same way. The snapshot sends that `door` with the entrance, the terminal
-model opens the wall there (sliding doors, header, sign) and, unless the
-door is on the landside wall where the forecourt already covers it, the
-scene adds a porch roof, a paved apron and a drop-off lane.
+puts its doors on the nearest outside wall of its hall (a wall shared with
+another hall is inside the building) and the kerb `kerbDistance` (9 m)
+outside. Departing passengers are dropped at the kerb, walk through the
+doors and on to the entrance. The check-out works the same way as the exit:
+arrivals walk from it out through the nearest door of the departure hall to
+the kerb, and only fall back to an entrance when the check-out has no outside
+wall. The snapshot sends that `door` with each entrance and check-out, the
+hall model opens the wall there (sliding doors, header, ENTRANCE or EXIT)
+and, unless the door is on the landside wall where the forecourt already
+covers it, the scene adds a porch roof, a paved apron and a drop-off or
+pick-up lane.
 
 ## Contracts and planning
 
@@ -237,6 +347,16 @@ offset. Where taxiways, stands and runways touch, `pavementJoins` in
 (`cuts` in each model's own frame) and draws joined-up centrelines: a
 stand's lead-in runs on to the taxiway centreline, and a taxiway ending on
 an offset one curves across.
+
+Which way a taxiway's lines run is `flowAxis` (Dart, mirrored in
+`scene.js`): a strip more than twice as long as it is wide runs down its
+length, and anything squarer runs the way it is used, which is the axis
+with pavement on both sides. A short connector between a taxiway and a
+stand is often square or wider than it is long, and taking its footprint
+for its direction used to draw its centreline and edge lines across the
+traffic, leaving the stand's lead-in hanging. `standLane` and the taxi
+routes (`_onCentreline`, `_portal`) read the same axis, so the painted line
+and the path the aircraft drives agree.
 
 Time of day comes from game time: sunrise at 06:00, sunset at 20:00. A
 shader dome (`sky`) draws the gradient, the sun, the moon and stars; the

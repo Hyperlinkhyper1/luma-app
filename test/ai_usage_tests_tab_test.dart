@@ -28,10 +28,12 @@ Widget _app({AiBenchmarkManifest manifest = AiBenchmarkManifest.empty}) =>
 void main() {
   // The shell drives its IndexedStack off the enum's index, so a section added
   // anywhere but the end silently shows the wrong tab. Pin both.
-  test('Tests is the last rail section', () {
-    expect(AiUsageSection.values.length, 4);
+  test('rail sections keep their stack order', () {
+    expect(AiUsageSection.values.length, 5);
     expect(AiUsageSection.tests.index, 3);
     expect(AiUsageSection.tests.label, 'Tests');
+    expect(AiUsageSection.assets.index, 4);
+    expect(AiUsageSection.assets.label, 'Assets');
   });
 
   testWidgets('the tile names itself in the purple band', (tester) async {

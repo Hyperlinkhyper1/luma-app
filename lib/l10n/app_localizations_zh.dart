@@ -272,6 +272,80 @@ class LZh extends L {
   String get aboutVersionDev => '开发版 · 简洁的本地工具';
 
   @override
+  String get petSearchHint => '搜索插件和页面';
+
+  @override
+  String get petMoodIdle => '要打开什么呢？';
+
+  @override
+  String get petMoodCurious => '唔，我找找…';
+
+  @override
+  String get petMoodHappy => '好痒呀。';
+
+  @override
+  String get petMoodDelighted => '今天最开心！';
+
+  @override
+  String get petMoodSleepy => '还没睡？我也是。';
+
+  @override
+  String get petNoResults => '没有这个名字';
+
+  @override
+  String get petNoResultsHint => '试试更短的词，或者其中一部分。';
+
+  @override
+  String get petSectionJumpTo => '快速前往';
+
+  @override
+  String get petSectionResults => '搜索结果';
+
+  @override
+  String get petKindPlugin => '插件';
+
+  @override
+  String get petKindPage => '页面';
+
+  @override
+  String get petHintMove => '选择';
+
+  @override
+  String get petHintOpen => '打开';
+
+  @override
+  String get petHintClose => '关闭';
+
+  @override
+  String get petClose => '关闭';
+
+  @override
+  String get petPatsTooltip => '摸过的次数';
+
+  @override
+  String petPatLabel(String name) {
+    return '摸摸 $name';
+  }
+
+  @override
+  String get petSettingsTitle => 'luma 宠物';
+
+  @override
+  String get petSettingsSubtitle => '在任何地方按 Alt+Space 唤出宠物，输入即可跳到任意页面或插件。';
+
+  @override
+  String get petSettingsHotkey => '用 Alt+Space 唤出';
+
+  @override
+  String get petSettingsHotkeyTaken => 'Alt+Space 已被其他应用占用，宠物只能在 luma 内打开。';
+
+  @override
+  String get petSettingsName => '名字';
+
+  @override
+  String get petSettingsSummon => '打个招呼';
+
+  @override
   String get monthJan => '1月';
 
   @override

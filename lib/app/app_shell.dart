@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../account/account_page.dart';
 import '../family/inbox_button.dart';
@@ -48,10 +49,15 @@ import '../features/plugins/installed/worth_counter/worth_counter_page.dart';
 import '../features/plugins/installed/media_downloader/media_downloader_page.dart';
 import '../features/plugins/installed/recipe_book/recipe_book_page.dart';
 import '../features/plugins/installed/roblox_tools/roblox_tools_page.dart';
+import '../features/plugins/plugin_icons.dart';
 import '../features/plugins/plugin_repository.dart';
 import '../features/plugins/plugin_scope.dart';
 import '../features/plugins/plugins_page.dart';
 import '../finance/finance_page.dart';
+import '../pet/luma_pet_panel.dart';
+import '../pet/pet_scope.dart';
+import '../pet/pet_search.dart';
+import '../pet/pet_summon_button.dart';
 import 'server_account_gate.dart';
 import '../settings/settings_controller.dart';
 import '../settings/settings_page.dart';
@@ -98,6 +104,11 @@ class _AppShellState extends State<AppShell> {
   // Non-null while an installed plugin's page is being shown, taking
   // priority over [_selectedIndex].
   String? _selectedPluginId;
+
+  // The window size the shell was last laid out against. Held so the pet can
+  // shrink the desktop window without the shell reflowing into the phone
+  // layout behind it — see [build].
+  Size? _shellSize;
 
   // Where the system/hardware Back button walks to. Every navigation records
   // the screen it left, so Back retraces those steps in-app instead of
@@ -177,8 +188,20 @@ class _AppShellState extends State<AppShell> {
     final t = L.of(context);
     final settings = SettingsScope.of(context);
     final pluginRepo = PluginScope.of(context);
+    final pet = PetScope.of(context);
     final index = _selectedIndex ?? _startIndex(settings.startScreen);
     final titles = _titles(t);
+
+    // While the pet has the desktop window shrunk to panel size, the shell is
+    // measured against the window it will be restored to, not the panel. It
+    // is offstage anyway, and reflowing it into the phone layout at 480px
+    // would rebuild every page from scratch — losing whatever the user had
+    // open — only to undo it a second later.
+    final mq = MediaQuery.of(context);
+    final petWindow = pet.visible && pet.windowMode;
+    if (!petWindow) _shellSize = mq.size;
+    final shellSize = petWindow ? (_shellSize ?? mq.size) : mq.size;
+    final shellMedia = mq.copyWith(size: shellSize);
 
     return StreamBuilder<List<InstalledPluginRecord>>(
       stream: pluginRepo.watchInstalled(),
@@ -195,12 +218,11 @@ class _AppShellState extends State<AppShell> {
         }
         final showingPlugin = activePlugin != null;
         final title = showingPlugin ? activePlugin.name : titles[index];
-        final isPhone = MediaQuery.sizeOf(context).width < _phoneBreakpoint;
+        final isPhone = shellSize.width < _phoneBreakpoint;
         // A phone-sized device in *either* orientation. Landscape widens the
         // window past the width breakpoint, so immersive plugins use the
         // shortest side to stay full-screen when the phone is turned sideways.
-        final isPhoneForm =
-            MediaQuery.sizeOf(context).shortestSide < _phoneBreakpoint;
+        final isPhoneForm = shellSize.shortestSide < _phoneBreakpoint;
         final immersive = showingPlugin &&
             isPhoneForm &&
             _phoneImmersivePlugins.contains(activePlugin.pluginId);
@@ -241,7 +263,13 @@ class _AppShellState extends State<AppShell> {
           body: Column(
             children: [
               if (!immersive)
-                WindowTitleBar(title: title, trailing: const InboxButton()),
+                WindowTitleBar(
+                  title: title,
+                  trailing: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [PetSummonButton(), InboxButton()],
+                  ),
+                ),
               Expanded(
                 child: immersive
                     // No title bar here, so inset the plugin ourselves: the
@@ -295,7 +323,7 @@ class _AppShellState extends State<AppShell> {
         // plugin open) lets the pop through to the OS, which then exits the
         // app. Everywhere else, Back retraces our own navigation history.
         final canExit = _history.isEmpty && _selectedPluginId == null;
-        return PopScope(
+        final shell = PopScope(
           canPop: canExit,
           onPopInvokedWithResult: (didPop, _) {
             if (didPop) return;
@@ -305,10 +333,100 @@ class _AppShellState extends State<AppShell> {
             }
             _goBack();
           },
-          child: scaffold,
+          child: MediaQuery(data: shellMedia, child: scaffold),
+        );
+
+        return CallbackShortcuts(
+          // The same chord as the global hotkey, handled in-app as well: it
+          // keeps working when the OS-level registration was refused (another
+          // app holds Alt+Space) and on platforms that have no global
+          // hotkeys at all.
+          bindings: {
+            const SingleActivator(LogicalKeyboardKey.space, alt: true):
+                pet.toggle,
+          },
+          child: Focus(
+            // Something inside this subtree has to hold focus for the binding
+            // above to be reached; this claims it only when no page has, and
+            // stays out of the tab order.
+            autofocus: true,
+            skipTraversal: true,
+            child: Stack(
+              children: [
+                // Offstage rather than removed: the shell keeps its state, so
+                // dismissing the pet returns to exactly the page and scroll
+                // position it was summoned from.
+                Offstage(offstage: petWindow, child: shell),
+                if (pet.visible)
+                  Positioned.fill(
+                    child: LumaPetPanel(
+                      fullBleed: pet.windowMode,
+                      targets: _petTargets(t, installed),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         );
       },
     );
+  }
+
+  /// Icons for the fixed sections, in the same order as [_titles] and the
+  /// rail's own destinations.
+  static const _sectionIcons = [
+    Icons.dashboard_rounded,
+    Icons.swap_horiz_rounded,
+    Icons.account_balance_wallet_rounded,
+    Icons.lock_rounded,
+    Icons.sticky_note_2_rounded,
+    Icons.smart_toy_rounded,
+    Icons.extension_rounded,
+    Icons.settings_rounded,
+    Icons.badge_rounded,
+  ];
+
+  /// Hidden aliases, so "money" finds Finance and "todo" finds the errand
+  /// plugin even though neither word is in the label. Deliberately English
+  /// only: they are extras layered on top of the localized labels, which are
+  /// what the list actually matches on first.
+  static const _sectionKeywords = <List<String>>[
+    ['dashboard', 'start'],
+    ['convert', 'file', 'image', 'video', 'audio'],
+    ['money', 'budget', 'bank', 'spending'],
+    ['vault', 'login', 'credentials'],
+    ['note', 'scratch'],
+    ['ai', 'chat', 'ask'],
+    ['marketplace', 'install', 'extensions'],
+    ['preferences', 'theme', 'language'],
+    ['plan', 'profile', 'sync'],
+  ];
+
+  /// Everything the pet can take the user to: the fixed sections plus every
+  /// installed plugin. Built here because the shell is the only place that
+  /// knows how to open both.
+  List<PetTarget> _petTargets(L t, List<InstalledPluginRecord> installed) {
+    final titles = _titles(t);
+    return [
+      for (var i = 0; i < titles.length; i++)
+        PetTarget(
+          id: 'section:$i',
+          label: titles[i],
+          icon: _sectionIcons[i],
+          kind: PetTargetKind.section,
+          keywords: _sectionKeywords[i],
+          open: () => _selectFixed(i),
+        ),
+      for (final plugin in installed)
+        PetTarget(
+          id: 'plugin:${plugin.pluginId}',
+          label: plugin.name,
+          icon: pluginIconFor(plugin.icon),
+          kind: PetTargetKind.plugin,
+          keywords: [plugin.pluginId.replaceAll('-', ' ')],
+          open: () => _selectPlugin(plugin.pluginId),
+        ),
+    ];
   }
 
   static int _startIndex(StartScreen screen) => switch (screen) {

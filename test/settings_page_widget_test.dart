@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/l10n/app_localizations.dart';
+import 'package:luma/pet/pet_repository.dart';
+import 'package:luma/pet/pet_scope.dart';
 import 'package:luma/settings/settings_controller.dart';
 import 'package:luma/settings/settings_page.dart';
 import 'package:luma/settings/settings_scope.dart';
@@ -36,7 +38,13 @@ Future<SettingsController> _pump(
       supportedLocales: L.supportedLocales,
       home: SettingsScope(
         controller: settings,
-        child: const Scaffold(body: SettingsPage()),
+        // The page carries the luma pet's settings card, which reads the
+        // app-wide repository. Left uninitialised on purpose: nothing here
+        // touches its hotkey or its file.
+        child: PetScope(
+          repository: PetRepository(),
+          child: const Scaffold(body: SettingsPage()),
+        ),
       ),
     ),
   );

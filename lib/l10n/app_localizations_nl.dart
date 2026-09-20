@@ -285,6 +285,83 @@ class LNl extends L {
       'Testversie · met liefde gemaakt op iemands laptop';
 
   @override
+  String get petSearchHint => 'Zoek plugins en pagina\'s';
+
+  @override
+  String get petMoodIdle => 'Wat gaan we openen?';
+
+  @override
+  String get petMoodCurious => 'Oeh, even kijken…';
+
+  @override
+  String get petMoodHappy => 'Dat kietelt.';
+
+  @override
+  String get petMoodDelighted => 'Beste dag ooit!';
+
+  @override
+  String get petMoodSleepy => 'Nog wakker? Ik ook.';
+
+  @override
+  String get petNoResults => 'Niets met die naam';
+
+  @override
+  String get petNoResultsHint =>
+      'Probeer een korter woord, of een stukje ervan.';
+
+  @override
+  String get petSectionJumpTo => 'SPRING NAAR';
+
+  @override
+  String get petSectionResults => 'RESULTATEN';
+
+  @override
+  String get petKindPlugin => 'Plugin';
+
+  @override
+  String get petKindPage => 'Pagina';
+
+  @override
+  String get petHintMove => 'kiezen';
+
+  @override
+  String get petHintOpen => 'openen';
+
+  @override
+  String get petHintClose => 'sluiten';
+
+  @override
+  String get petClose => 'Sluiten';
+
+  @override
+  String get petPatsTooltip => 'Aaitjes gegeven';
+
+  @override
+  String petPatLabel(String name) {
+    return 'Aai $name';
+  }
+
+  @override
+  String get petSettingsTitle => 'luma-huisdier';
+
+  @override
+  String get petSettingsSubtitle =>
+      'Druk overal op Alt+Space om het huisdier te roepen en typ om naar een pagina of plugin te springen.';
+
+  @override
+  String get petSettingsHotkey => 'Oproepen met Alt+Space';
+
+  @override
+  String get petSettingsHotkeyTaken =>
+      'Alt+Space is al bezet door een andere app, dus het huisdier opent alleen vanuit luma.';
+
+  @override
+  String get petSettingsName => 'Naam';
+
+  @override
+  String get petSettingsSummon => 'Zeg hallo';
+
+  @override
   String get monthJan => 'jan';
 
   @override

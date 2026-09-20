@@ -10,6 +10,7 @@ import '../app/update/update_gate.dart';
 import '../app/widgets.dart';
 import '../features/chat/ai_settings_section.dart';
 import '../l10n/app_localizations.dart';
+import '../pet/pet_settings_section.dart';
 import '../theme/coffee_ornaments.dart';
 import '../theme/luma_theme.dart';
 import '../theme/theme_style.dart';
@@ -144,6 +145,17 @@ class SettingsPage extends StatelessWidget {
                 subtitle: t.settingsAiAssistantSub,
                 child: const AiSettingsSection(),
               ),
+
+              const SizedBox(height: 24),
+
+              // ---- luma pet ----------------------------------------------
+              _SectionHeader(
+                icon: Icons.auto_awesome_rounded,
+                title: t.petSettingsTitle,
+                subtitle: null,
+              ),
+              const SizedBox(height: 12),
+              const PetSettingsSection(),
 
               const SizedBox(height: 24),
 

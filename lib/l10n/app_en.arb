@@ -100,6 +100,36 @@
   },
   "aboutVersionDev": "Dev build · made with care on someone's laptop",
 
+  "petSearchHint": "Search plugins and pages",
+  "petMoodIdle": "What are we opening?",
+  "petMoodCurious": "Ooh, let me look…",
+  "petMoodHappy": "That tickles.",
+  "petMoodDelighted": "Best day ever!",
+  "petMoodSleepy": "Still up? Me too.",
+  "petNoResults": "Nothing by that name",
+  "petNoResultsHint": "Try a shorter word, or just part of one.",
+  "petSectionJumpTo": "JUMP TO",
+  "petSectionResults": "RESULTS",
+  "petKindPlugin": "Plugin",
+  "petKindPage": "Page",
+  "petHintMove": "move",
+  "petHintOpen": "open",
+  "petHintClose": "close",
+  "petClose": "Close",
+  "petPatsTooltip": "Pats given",
+  "petPatLabel": "Pat {name}",
+  "@petPatLabel": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "petSettingsTitle": "luma pet",
+  "petSettingsSubtitle": "Press Alt+Space anywhere to summon the pet, then type to jump to any page or plugin.",
+  "petSettingsHotkey": "Summon with Alt+Space",
+  "petSettingsHotkeyTaken": "Alt+Space is taken by another app, so the pet only opens from inside luma.",
+  "petSettingsName": "Name",
+  "petSettingsSummon": "Say hello",
+
   "monthJan": "Jan",
   "monthFeb": "Feb",
   "monthMar": "Mar",

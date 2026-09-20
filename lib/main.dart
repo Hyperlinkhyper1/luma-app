@@ -121,6 +121,8 @@ import 'finance/data/database.dart';
 import 'finance/finance_repository.dart';
 import 'finance/finance_scope.dart';
 import 'p2p/peer_sync_controller.dart';
+import 'pet/pet_repository.dart';
+import 'pet/pet_scope.dart';
 import 'p2p/peer_sync_scope.dart';
 import 'settings/settings_controller.dart';
 import 'settings/settings_scope.dart';
@@ -418,6 +420,11 @@ class _LumaAppState extends State<LumaApp> {
   // Optional peer-to-peer (Wi-Fi/LAN) sync between same-account devices.
   late final PeerSyncController _peerSync = PeerSyncController(sync: _sync);
 
+  // The luma pet: the Alt+Space quick launcher. Owned here rather than by the
+  // shell because its global hotkey has to keep working while the window is
+  // minimised, which is exactly when no page is around to hold it.
+  late final PetRepository _petRepository = PetRepository();
+
   // The SFTP plugin's shared folder, mirrored device-to-device over the same
   // LAN links. Lives here rather than in the plugin page so files keep
   // arriving while the user is elsewhere in the app. Nova-only, and null
@@ -480,6 +487,7 @@ class _LumaAppState extends State<LumaApp> {
     _secureChatRepository.init();
     _recipeBookController.init();
     _autoClickerRepository.init();
+    unawaited(_petRepository.init());
     _usageRepository.init();
     unawaited(_importSchoolMindMaps());
     _lifecycleListener = AppLifecycleListener(
@@ -536,6 +544,7 @@ class _LumaAppState extends State<LumaApp> {
     _serverTycoonRepository.dispose();
     _airlineTycoonRepository.dispose();
     _autoClickerRepository.dispose();
+    _petRepository.dispose();
     _usageRepository.dispose();
     _usageDb.close();
     _groceriesDb.close();
@@ -572,7 +581,9 @@ class _LumaAppState extends State<LumaApp> {
 
   @override
   Widget build(BuildContext context) {
-    return StorageGuardScope(
+    return PetScope(
+      repository: _petRepository,
+      child: StorageGuardScope(
       service: _storageGuard,
       child: SyncScope(
       service: _sync,
@@ -718,6 +729,7 @@ class _LumaAppState extends State<LumaApp> {
             ),
           ),
         ),
+      ),
       ),
       ),
       ),

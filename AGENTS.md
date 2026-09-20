@@ -41,6 +41,10 @@ lib/
   finance/                   Personal finance (drift SQLite); amounts stored as integer cents
   l10n/                      ARB files + generated localizations (en, nl, fr, es, zh); config in l10n.yaml
   p2p/                       Wi-Fi/LAN peer sync (nsd + WebSocket protocol)
+  pet/                       The luma pet: Alt+Space quick launcher. A global
+                             hotkey shrinks the one desktop window into a small
+                             always-on-top panel that searches every page and
+                             installed plugin, then restores it exactly
   settings/                  SettingsController (shared_preferences-like, ChangeNotifier)
   storage/                   StorageGuard: local-disk-usage display only, no cap
   sync/                      Server sync (SyncService coordinates multiple SyncCollection adapters)
