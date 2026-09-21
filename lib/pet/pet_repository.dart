@@ -68,7 +68,7 @@ class PetRepository extends ChangeNotifier {
   int _patStreak = 0;
   String _query = '';
 
-  /// Ctrl+Shift+Alt+Space.
+  /// Ctrl+Shift+Space.
   ///
   /// Windows can only register a chord of modifiers plus exactly one key, so
   /// the modifier is not optional. This particular one is unclaimed by the OS
@@ -85,7 +85,6 @@ class PetRepository extends ChangeNotifier {
         modifiers: const [
           HotKeyModifier.control,
           HotKeyModifier.shift,
-          HotKeyModifier.alt,
         ],
         scope: scope,
       );

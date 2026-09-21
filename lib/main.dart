@@ -464,7 +464,7 @@ class _LumaAppState extends State<LumaApp> {
   // Optional peer-to-peer (Wi-Fi/LAN) sync between same-account devices.
   late final PeerSyncController _peerSync = PeerSyncController(sync: _sync);
 
-  // The luma pet: the Ctrl+Shift+Alt+Space quick launcher. Owned here rather than by the
+  // The luma pet: the Ctrl+Shift+Space quick launcher. Owned here rather than by the
   // shell because its global hotkey has to keep working while the window is
   // minimised, which is exactly when no page is around to hold it.
   late final PetRepository _petRepository = PetRepository();

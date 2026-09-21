@@ -30,18 +30,17 @@ void main() {
   });
 
   group('the summon chord', () {
-    test('defaults to Ctrl+Shift+Alt+Space', () {
+    test('defaults to Ctrl+Shift+Space', () {
       final pet = PetRepository();
       expect(
         pet.hotKey.modifiers,
         [
           HotKeyModifier.control,
           HotKeyModifier.shift,
-          HotKeyModifier.alt,
         ],
       );
       expect(pet.hotKey.physicalKey, PhysicalKeyboardKey.space);
-      expect(pet.hotKeyLabel, 'Ctrl + Shift + Alt + Space');
+      expect(pet.hotKeyLabel, 'Ctrl + Shift + Space');
     });
 
     test('carries a modifier, which Windows requires to register at all', () {
