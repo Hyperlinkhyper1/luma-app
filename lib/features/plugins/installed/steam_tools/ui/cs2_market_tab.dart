@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../account/plan.dart';
+import '../../../../../settings/settings_scope.dart';
 import '../../../../../theme/luma_theme.dart';
+import '../../../../../sync/sync_scope.dart';
 import '../cs2_market_repository.dart';
 import '../cs2_market_scope.dart';
 import '../cs2_models.dart';
@@ -52,6 +55,7 @@ class _Cs2MarketTabState extends State<Cs2MarketTab> {
     if (_started) return;
     _started = true;
     Cs2MarketScope.of(context).loadCatalog();
+    Cs2MarketScope.of(context).refreshOfflineSnapshot();
   }
 
   @override
@@ -82,6 +86,7 @@ class _Cs2MarketTabState extends State<Cs2MarketTab> {
           view: _view,
           onViewChanged: (v) => setState(() => _view = v),
         ),
+        const _OfflineSavingCard(),
         ListenableBuilder(
           listenable: repository,
           builder: (context, _) {
@@ -150,6 +155,100 @@ class _Cs2MarketTabState extends State<Cs2MarketTab> {
   }
 }
 
+class _OfflineSavingCard extends StatelessWidget {
+  const _OfflineSavingCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = SettingsScope.of(context);
+    if (!planAtLeast(settings.selectedPlanId, 'orbit')) {
+      return const SizedBox.shrink();
+    }
+    final repository = Cs2MarketScope.of(context);
+    final sync = SyncScope.of(context);
+    return ListenableBuilder(
+      listenable: repository,
+      builder: (context, _) => Container(
+        margin: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+        child: LumaCard(
+          padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+          child: Row(
+            children: [
+              Icon(
+                Icons.cloud_sync_rounded,
+                size: 20,
+                color: context.luma.accent,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Keep saving while offline',
+                      style: TextStyle(
+                        color: context.luma.textPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      _description(repository, sync.serverReady),
+                      style: TextStyle(
+                        color: context.luma.textMuted,
+                        fontSize: 11,
+                      ),
+                    ),
+                    if (repository.offlineError case final error?) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        error,
+                        style: TextStyle(
+                          color: context.luma.danger,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Switch(
+                value: repository.offlineTrackingEnabled,
+                onChanged:
+                    sync.serverReady &&
+                        !repository.offlineSaving &&
+                        !repository.offlineLoading
+                    ? repository.setOfflineTracking
+                    : null,
+                activeThumbColor: context.luma.accent,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  static String _description(Cs2MarketRepository repository, bool serverReady) {
+    if (!serverReady)
+      return 'Sign in to an approved Orbit or Nova account to enable this.';
+    if (repository.offlineLoading) return 'Loading the shared market tracker…';
+    if (repository.offlineSaving) return 'Saving your tracked listings…';
+    if (!repository.offlineTrackingEnabled) {
+      return 'The server checks tracked skins every ${repository.offlineIntervalHours == 1 ? 'hour' : '6 hours'} once enabled.';
+    }
+    final next = repository.offlineNextCheckAt;
+    if (next == null) {
+      return 'Scheduled server checks are enabled.';
+    }
+    final local = next.toLocal();
+    final minute = local.minute.toString().padLeft(2, '0');
+    return 'Server checks every ${repository.offlineIntervalHours} hour${repository.offlineIntervalHours == 1 ? '' : 's'} · next at ${local.hour}:$minute';
+  }
+}
+
 class _Toolbar extends StatelessWidget {
   const _Toolbar({
     required this.controller,
@@ -196,8 +295,7 @@ class _Toolbar extends StatelessWidget {
                       listenable: repository,
                       builder: (context, _) => Text(
                         _subtitle(repository),
-                        style:
-                            TextStyle(color: luma.textMuted, fontSize: 11.5),
+                        style: TextStyle(color: luma.textMuted, fontSize: 11.5),
                       ),
                     ),
                   ],
@@ -250,8 +348,11 @@ class _Toolbar extends StatelessWidget {
                     ? 'Search what you track — name, weapon, rarity'
                     : 'Search any CS2 item — name, weapon, rarity, case',
                 hintStyle: TextStyle(color: luma.textMuted, fontSize: 13),
-                prefixIcon:
-                    Icon(Icons.search_rounded, size: 18, color: luma.textMuted),
+                prefixIcon: Icon(
+                  Icons.search_rounded,
+                  size: 18,
+                  color: luma.textMuted,
+                ),
                 filled: true,
                 fillColor: luma.surface,
                 contentPadding: EdgeInsets.zero,
@@ -287,8 +388,8 @@ class _Toolbar extends StatelessWidget {
     final freshness = ago.inDays >= 1
         ? 'updated ${ago.inDays}d ago'
         : ago.inHours >= 1
-            ? 'updated ${ago.inHours}h ago'
-            : 'updated just now';
+        ? 'updated ${ago.inHours}h ago'
+        : 'updated just now';
     return '$count items catalogued, $freshness.';
   }
 }
@@ -440,7 +541,8 @@ class _ShortQueryHint extends StatelessWidget {
     return LumaEmptyState(
       icon: Icons.keyboard_rounded,
       title: 'Keep typing',
-      subtitle: 'One letter matches too much of the catalog to be useful — '
+      subtitle:
+          'One letter matches too much of the catalog to be useful — '
           'a couple more will narrow it down.',
     );
   }
@@ -461,7 +563,8 @@ class _SearchBody extends StatelessWidget {
       return LumaEmptyState(
         icon: Icons.search_off_rounded,
         title: 'No items match "$query"',
-        subtitle: 'Try a weapon name, a rarity like "Covert", or a case '
+        subtitle:
+            'Try a weapon name, a rarity like "Covert", or a case '
             'name.',
       );
     }
@@ -543,7 +646,8 @@ class _CatalogTileState extends State<_CatalogTile> {
             ),
             onLongPress: () => _showPinMenu(context, null, skin, pinned),
             child: Semantics(
-              label: '${skin.name}, ${skin.rarityName}. '
+              label:
+                  '${skin.name}, ${skin.rarityName}. '
                   '${skin.caseName == null ? 'No case' : 'From ${skin.caseName}'}'
                   '${pinned ? '. Pinned' : ''}',
               button: true,
@@ -575,8 +679,11 @@ class _CatalogTileState extends State<_CatalogTile> {
                                 color: luma.accentSubtle,
                                 shape: BoxShape.circle,
                               ),
-                              child: Icon(Icons.push_pin_rounded,
-                                  size: 13, color: luma.accent),
+                              child: Icon(
+                                Icons.push_pin_rounded,
+                                size: 13,
+                                color: luma.accent,
+                              ),
                             ),
                           ),
                       ],
@@ -655,10 +762,7 @@ Future<void> _showPinMenu(
       side: BorderSide(color: luma.border),
     ),
     items: [
-      PopupMenuItem(
-        value: 'pin',
-        child: Text(pinned ? 'Unpin' : 'Pin to top'),
-      ),
+      PopupMenuItem(value: 'pin', child: Text(pinned ? 'Unpin' : 'Pin to top')),
     ],
   );
   if (action == 'pin' && context.mounted) {

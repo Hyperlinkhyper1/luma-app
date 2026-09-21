@@ -16,37 +16,35 @@ import 'package:luma/theme/luma_theme.dart';
 /// switched off — the pet bobs and blinks on a repeating timer, which would
 /// otherwise still be pending when the test ends.
 Widget _app(PetRepository pet, List<PetTarget> targets) => PetScope(
-      repository: pet,
-      child: MaterialApp(
-        theme: LumaTheme.dark,
-        localizationsDelegates: const [
-          L.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        supportedLocales: L.supportedLocales,
-        home: Builder(
-          builder: (context) => MediaQuery(
-            data: MediaQuery.of(context).copyWith(disableAnimations: true),
-            child: Scaffold(
-              body: LumaPetPanel(targets: targets, fullBleed: true),
-            ),
-          ),
-        ),
+  repository: pet,
+  child: MaterialApp(
+    theme: LumaTheme.dark,
+    localizationsDelegates: const [
+      L.delegate,
+      GlobalMaterialLocalizations.delegate,
+      GlobalWidgetsLocalizations.delegate,
+      GlobalCupertinoLocalizations.delegate,
+    ],
+    supportedLocales: L.supportedLocales,
+    home: Builder(
+      builder: (context) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(disableAnimations: true),
+        child: Scaffold(body: LumaPetPanel(targets: targets, fullBleed: true)),
       ),
-    );
+    ),
+  ),
+);
 
 void main() {
   late List<String> opened;
 
   PetTarget target(String label, String id) => PetTarget(
-        id: id,
-        label: label,
-        icon: Icons.circle,
-        kind: PetTargetKind.plugin,
-        open: () => opened.add(id),
-      );
+    id: id,
+    label: label,
+    icon: Icons.circle,
+    kind: PetTargetKind.plugin,
+    open: () => opened.add(id),
+  );
 
   late List<PetTarget> targets;
 
@@ -59,8 +57,9 @@ void main() {
     ];
   });
 
-  testWidgets('lists everything it can open before anything is typed',
-      (tester) async {
+  testWidgets('lists everything it can open before anything is typed', (
+    tester,
+  ) async {
     await tester.pumpWidget(_app(PetRepository(), targets));
     await tester.pump();
 
@@ -87,8 +86,9 @@ void main() {
     expect(find.text('Nothing by that name'), findsOneWidget);
   });
 
-  testWidgets('arrow keys move the selection and Enter opens it',
-      (tester) async {
+  testWidgets('arrow keys move the selection and Enter opens it', (
+    tester,
+  ) async {
     final pet = PetRepository();
     await tester.pumpWidget(_app(pet, targets));
     await pet.open();
@@ -135,6 +135,39 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
   });
 
+  testWidgets('a compact target opens inside the pet and can go back', (
+    tester,
+  ) async {
+    final compact = PetTarget(
+      id: 'plugin:auto-clicker',
+      label: 'Auto Clicker',
+      icon: Icons.ads_click_rounded,
+      kind: PetTargetKind.plugin,
+      open: () => opened.add('main-auto-clicker'),
+      compactBuilder: (_, back) => Material(
+        child: Column(
+          children: [
+            const Text('Compact Auto Clicker'),
+            TextButton(onPressed: back, child: const Text('Back to pet')),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpWidget(_app(PetRepository(), [compact]));
+    await tester.pump();
+
+    await tester.tap(find.text('Auto Clicker'));
+    await tester.pump();
+
+    expect(find.text('Compact Auto Clicker'), findsOneWidget);
+    expect(opened, isEmpty);
+
+    await tester.tap(find.text('Back to pet'));
+    await tester.pump();
+
+    expect(find.text('Auto Clicker'), findsOneWidget);
+  });
+
   testWidgets('tapping the pet pats it', (tester) async {
     final pet = PetRepository();
     await tester.pumpWidget(_app(pet, targets));
@@ -156,17 +189,20 @@ void main() {
     await tester.pump();
 
     final labels = tester
-        .widgetList<Text>(find.descendant(
-          of: find.byType(ListView),
-          matching: find.byType(Text),
-        ))
+        .widgetList<Text>(
+          find.descendant(
+            of: find.byType(ListView),
+            matching: find.byType(Text),
+          ),
+        )
         .map((t) => t.data)
         .toList();
     expect(labels.first, 'Whiteboard');
   });
 
-  testWidgets('lays out in a pet-sized window with no Scaffold above it',
-      (tester) async {
+  testWidgets('lays out in a pet-sized window with no Scaffold above it', (
+    tester,
+  ) async {
     // The exact shape the shell builds while the pet has the window shrunk,
     // and two ways it went black. The panel is layered over an *offstage*
     // shell, so the app's own Scaffold is a sibling rather than an ancestor:
@@ -179,30 +215,32 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(PetScope(
-      repository: PetRepository(),
-      child: MaterialApp(
-        theme: LumaTheme.dark,
-        localizationsDelegates: L.localizationsDelegates,
-        supportedLocales: L.supportedLocales,
-        // The outer stack is the boot gate's, which holds the splash over
-        // the shell. It hands its children *loose* constraints, which is what
-        // makes the inner stack's fit load-bearing.
-        home: Stack(
-          children: [
-            Stack(
-              fit: StackFit.expand,
-              children: [
-                const Offstage(offstage: true, child: Scaffold()),
-                Positioned.fill(
-                  child: LumaPetPanel(targets: targets, fullBleed: true),
-                ),
-              ],
-            ),
-          ],
+    await tester.pumpWidget(
+      PetScope(
+        repository: PetRepository(),
+        child: MaterialApp(
+          theme: LumaTheme.dark,
+          localizationsDelegates: L.localizationsDelegates,
+          supportedLocales: L.supportedLocales,
+          // The outer stack is the boot gate's, which holds the splash over
+          // the shell. It hands its children *loose* constraints, which is what
+          // makes the inner stack's fit load-bearing.
+          home: Stack(
+            children: [
+              Stack(
+                fit: StackFit.expand,
+                children: [
+                  const Offstage(offstage: true, child: Scaffold()),
+                  Positioned.fill(
+                    child: LumaPetPanel(targets: targets, fullBleed: true),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
-    ));
+    );
     await tester.pump();
 
     expect(tester.takeException(), isNull);
@@ -214,19 +252,20 @@ void main() {
 
   group('the Settings card', () {
     Widget settingsCard(PetRepository pet) => PetScope(
-          repository: pet,
-          child: MaterialApp(
-            theme: LumaTheme.dark,
-            localizationsDelegates: L.localizationsDelegates,
-            supportedLocales: L.supportedLocales,
-            home: const Scaffold(
-              body: SingleChildScrollView(child: PetSettingsSection()),
-            ),
-          ),
-        );
+      repository: pet,
+      child: MaterialApp(
+        theme: LumaTheme.dark,
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
+        home: const Scaffold(
+          body: SingleChildScrollView(child: PetSettingsSection()),
+        ),
+      ),
+    );
 
-    testWidgets('its button opens the pet with no hotkey involved',
-        (tester) async {
+    testWidgets('its button opens the pet with no hotkey involved', (
+      tester,
+    ) async {
       final pet = PetRepository();
       await pet.setEnabled(false);
       await tester.pumpWidget(settingsCard(pet));

@@ -89,6 +89,12 @@ Future<void> windowToggleMaximize() async {
 Future<void> windowClose() =>
     hasCustomTitleBar ? windowManager.hide() : Future.value();
 
+Future<void> windowShow() async {
+  if (!hasCustomTitleBar) return;
+  await windowManager.show();
+  await windowManager.focus();
+}
+
 // ---- Pet window ------------------------------------------------------------
 //
 // The luma pet is summoned with a global hotkey from anywhere on the desktop,

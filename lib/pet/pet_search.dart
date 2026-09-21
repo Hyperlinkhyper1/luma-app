@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 
 /// What a pet result actually opens: a built-in section of the app or an
@@ -14,9 +16,11 @@ class PetTarget {
     required this.id,
     required this.label,
     required this.icon,
+    this.iconName,
     required this.kind,
     required this.open,
     this.keywords = const [],
+    this.compactBuilder,
   });
 
   /// Stable across restarts (`section:3`, `plugin:mind-map`): the recents list
@@ -25,6 +29,7 @@ class PetTarget {
 
   final String label;
   final IconData icon;
+  final String? iconName;
   final PetTargetKind kind;
 
   /// Extra words that should match this target without being shown, so
@@ -33,7 +38,12 @@ class PetTarget {
 
   /// Opens the target. The panel closes itself first, so this runs against a
   /// shell that is already back to its normal size.
-  final VoidCallback open;
+  final FutureOr<void> Function() open;
+
+  /// A purpose-built view that stays inside the small pet window. Most
+  /// targets leave this null and navigate the main app instead.
+  final Widget Function(BuildContext context, VoidCallback back)?
+  compactBuilder;
 }
 
 /// Scores [label] against [query], both already lowercased. Higher is better;

@@ -211,72 +211,76 @@ class Cs2PinnedSkins extends Table {
 )
 class SteamDatabase extends _$SteamDatabase {
   SteamDatabase([QueryExecutor? executor])
-      : super(executor ??
+    : super(
+        executor ??
             driftDatabase(
               name: 'luma_steam',
               native: DriftNativeOptions(
                 databaseDirectory: getApplicationSupportDirectory,
               ),
-            ));
+            ),
+      );
 
   @override
   int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) => m.createAll(),
-        onUpgrade: (m, from, to) async {
-          if (from < 2) {
-            await m.createTable(cs2MarketItems);
-            await m.createTable(cs2MarketPricePoints);
-          }
-          if (from < 3) {
-            await m.createTable(cs2PinnedSkins);
-          }
-          if (from < 4) {
-            await m.addColumn(cs2MarketItems, cs2MarketItems.startingPriceCents);
-            await m.addColumn(cs2MarketItems, cs2MarketItems.startingPriceAt);
-          }
-          if (from < 5) {
-            await m.createTable(cs2MarketEntries);
-            // Every listing tracked before entries existed becomes that
-            // listing's first entry, carrying its starting price along —
-            // otherwise upgrading would silently wipe out every baseline
-            // (and, from the UI's point of view, every tracked listing,
-            // since the Tracked tab now reads entries rather than listings)
-            // a device already had. Checked for an existing match first so
-            // this can never double a listing's entry if this step somehow
-            // runs more than once against the same data (see schemaVersion
-            // 6 below, added after exactly that happened for a real device).
-            final existingListings = await select(cs2MarketItems).get();
-            for (final item in existingListings) {
-              final alreadyMigrated = await (select(cs2MarketEntries)
-                    ..where((e) =>
+    onCreate: (m) => m.createAll(),
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.createTable(cs2MarketItems);
+        await m.createTable(cs2MarketPricePoints);
+      }
+      if (from < 3) {
+        await m.createTable(cs2PinnedSkins);
+      }
+      if (from < 4) {
+        await m.addColumn(cs2MarketItems, cs2MarketItems.startingPriceCents);
+        await m.addColumn(cs2MarketItems, cs2MarketItems.startingPriceAt);
+      }
+      if (from < 5) {
+        await m.createTable(cs2MarketEntries);
+        // Every listing tracked before entries existed becomes that
+        // listing's first entry, carrying its starting price along —
+        // otherwise upgrading would silently wipe out every baseline
+        // (and, from the UI's point of view, every tracked listing,
+        // since the Tracked tab now reads entries rather than listings)
+        // a device already had. Checked for an existing match first so
+        // this can never double a listing's entry if this step somehow
+        // runs more than once against the same data (see schemaVersion
+        // 6 below, added after exactly that happened for a real device).
+        final existingListings = await select(cs2MarketItems).get();
+        for (final item in existingListings) {
+          final alreadyMigrated =
+              await (select(cs2MarketEntries)..where(
+                    (e) =>
                         e.marketHashName.equals(item.marketHashName) &
-                        e.trackedAt.equals(item.trackedAt)))
+                        e.trackedAt.equals(item.trackedAt),
+                  ))
                   .getSingleOrNull();
-              if (alreadyMigrated != null) continue;
-              await into(cs2MarketEntries).insert(
-                Cs2MarketEntriesCompanion.insert(
-                  marketHashName: item.marketHashName,
-                  startingPriceCents: Value(item.startingPriceCents),
-                  startingPriceAt: Value(item.startingPriceAt),
-                  trackedAt: Value(item.trackedAt),
-                ),
-              );
-            }
-          }
-          if (from < 6) {
-            // The schemaVersion 5 step above ran twice on at least one real
-            // device (most likely two app processes racing on first launch
-            // after the update, each seeing "not yet migrated" before either
-            // had committed), leaving two byte-for-byte identical entries
-            // per listing — every tracked copy showing up twice in the
-            // Tracked tab, doubling the portfolio total along with it.
-            await dedupeCs2Entries();
-          }
-        },
-      );
+          if (alreadyMigrated != null) continue;
+          await into(cs2MarketEntries).insert(
+            Cs2MarketEntriesCompanion.insert(
+              marketHashName: item.marketHashName,
+              startingPriceCents: Value(item.startingPriceCents),
+              startingPriceAt: Value(item.startingPriceAt),
+              trackedAt: Value(item.trackedAt),
+            ),
+          );
+        }
+      }
+      if (from < 6) {
+        // The schemaVersion 5 step above ran twice on at least one real
+        // device (most likely two app processes racing on first launch
+        // after the update, each seeing "not yet migrated" before either
+        // had committed), leaving two byte-for-byte identical entries
+        // per listing — every tracked copy showing up twice in the
+        // Tracked tab, doubling the portfolio total along with it.
+        await dedupeCs2Entries();
+      }
+    },
+  );
 
   /// Collapses entries that agree on listing, starting price and tracked-at
   /// down to one each, keeping the lowest id — such entries are
@@ -304,8 +308,9 @@ class SteamDatabase extends _$SteamDatabase {
       }
     }
     if (duplicateIds.isNotEmpty) {
-      await (delete(cs2MarketEntries)..where((e) => e.id.isIn(duplicateIds)))
-          .go();
+      await (delete(
+        cs2MarketEntries,
+      )..where((e) => e.id.isIn(duplicateIds))).go();
     }
   }
 
@@ -341,8 +346,9 @@ class SteamDatabase extends _$SteamDatabase {
   /// Stops tracking a game and drops its price history with it.
   Future<void> removeTrackedGame(int appId) async {
     await transaction(() async {
-      await (delete(steamPricePoints)..where((p) => p.appId.equals(appId)))
-          .go();
+      await (delete(
+        steamPricePoints,
+      )..where((p) => p.appId.equals(appId))).go();
       await (delete(steamGames)..where((g) => g.appId.equals(appId))).go();
     });
   }
@@ -382,8 +388,9 @@ class SteamDatabase extends _$SteamDatabase {
     if (owned.isEmpty) {
       await stillOwned.write(const SteamGamesCompanion(owned: Value(false)));
     } else {
-      await (stillOwned..where((g) => g.appId.isNotIn(owned)))
-          .write(const SteamGamesCompanion(owned: Value(false)));
+      await (stillOwned..where((g) => g.appId.isNotIn(owned))).write(
+        const SteamGamesCompanion(owned: Value(false)),
+      );
     }
   }
 
@@ -397,8 +404,9 @@ class SteamDatabase extends _$SteamDatabase {
     Iterable<SteamPricePointsCompanion> points,
   ) async {
     await transaction(() async {
-      await (delete(steamPricePoints)..where((p) => p.appId.equals(appId)))
-          .go();
+      await (delete(
+        steamPricePoints,
+      )..where((p) => p.appId.equals(appId))).go();
       await batch((b) => b.insertAll(steamPricePoints, points.toList()));
     });
   }
@@ -408,13 +416,15 @@ class SteamDatabase extends _$SteamDatabase {
   Future<void> forgetAllHistory() async {
     await transaction(() async {
       await delete(steamPricePoints).go();
-      await update(steamGames).write(const SteamGamesCompanion(
-        itadId: Value(null),
-        itadUnknown: Value(false),
-        lowestEverCents: Value(null),
-        lowestEverAt: Value(null),
-        historyFetchedAt: Value(null),
-      ));
+      await update(steamGames).write(
+        const SteamGamesCompanion(
+          itadId: Value(null),
+          itadUnknown: Value(false),
+          lowestEverCents: Value(null),
+          lowestEverAt: Value(null),
+          historyFetchedAt: Value(null),
+        ),
+      );
     });
   }
 
@@ -431,10 +441,17 @@ class SteamDatabase extends _$SteamDatabase {
     return query.watchSingleOrNull();
   }
 
-  Future<Cs2MarketItem?> cs2Item(String marketHashName) =>
-      (select(cs2MarketItems)
-            ..where((i) => i.marketHashName.equals(marketHashName)))
-          .getSingleOrNull();
+  Future<Cs2MarketItem?> cs2Item(String marketHashName) => (select(
+    cs2MarketItems,
+  )..where((i) => i.marketHashName.equals(marketHashName))).getSingleOrNull();
+
+  Future<List<Cs2MarketItem>> allCs2Items() => select(cs2MarketItems).get();
+
+  Future<List<Cs2MarketEntry>> allCs2Entries() =>
+      select(cs2MarketEntries).get();
+
+  Future<List<Cs2MarketPricePoint>> allCs2PricePoints() =>
+      select(cs2MarketPricePoints).get();
 
   Stream<List<Cs2MarketPricePoint>> watchCs2PriceHistory(
     String marketHashName,
@@ -461,6 +478,31 @@ class SteamDatabase extends _$SteamDatabase {
   /// deliberately doesn't add a copy either; call [addCs2Entry] for that.
   Future<void> addTrackedCs2Item(Cs2MarketItemsCompanion item) =>
       into(cs2MarketItems).insert(item, mode: InsertMode.insertOrIgnore);
+
+  /// Replaces the CS2 market data received from the offline server snapshot.
+  /// Entry ids are intentionally not carried across devices; they are local
+  /// row identities, while their market hash, baseline and tracked timestamp
+  /// are the user data that needs to travel.
+  Future<void> replaceCs2OfflineData({
+    required List<Cs2MarketItemsCompanion> items,
+    required List<Cs2MarketEntriesCompanion> entries,
+    required List<Cs2MarketPricePointsCompanion> points,
+  }) async {
+    await transaction(() async {
+      await delete(cs2MarketPricePoints).go();
+      await delete(cs2MarketEntries).go();
+      await delete(cs2MarketItems).go();
+      for (final item in items) {
+        await into(cs2MarketItems).insert(item);
+      }
+      for (final entry in entries) {
+        await into(cs2MarketEntries).insert(entry);
+      }
+      for (final point in points) {
+        await into(cs2MarketPricePoints).insert(point);
+      }
+    });
+  }
 
   /// Every entry (copy) tracked for [marketHashName], oldest first.
   Stream<List<Cs2MarketEntry>> watchCs2Entries(String marketHashName) {
@@ -492,23 +534,23 @@ class SteamDatabase extends _$SteamDatabase {
   /// than always cleaning up.
   Future<void> removeCs2Entry(int id) async {
     await transaction(() async {
-      final entry =
-          await (select(cs2MarketEntries)..where((e) => e.id.equals(id)))
-              .getSingleOrNull();
+      final entry = await (select(
+        cs2MarketEntries,
+      )..where((e) => e.id.equals(id))).getSingleOrNull();
       if (entry == null) return;
       await (delete(cs2MarketEntries)..where((e) => e.id.equals(id))).go();
 
-      final remaining = await (select(cs2MarketEntries)
-            ..where((e) => e.marketHashName.equals(entry.marketHashName)))
-          .get();
+      final remaining = await (select(
+        cs2MarketEntries,
+      )..where((e) => e.marketHashName.equals(entry.marketHashName))).get();
       if (remaining.isNotEmpty) return;
 
-      await (delete(cs2MarketPricePoints)
-            ..where((p) => p.marketHashName.equals(entry.marketHashName)))
-          .go();
-      await (delete(cs2MarketItems)
-            ..where((i) => i.marketHashName.equals(entry.marketHashName)))
-          .go();
+      await (delete(
+        cs2MarketPricePoints,
+      )..where((p) => p.marketHashName.equals(entry.marketHashName))).go();
+      await (delete(
+        cs2MarketItems,
+      )..where((i) => i.marketHashName.equals(entry.marketHashName))).go();
     });
   }
 
@@ -525,14 +567,16 @@ class SteamDatabase extends _$SteamDatabase {
   }) async {
     final now = DateTime.now();
     await transaction(() async {
-      await (update(cs2MarketItems)
-            ..where((i) => i.marketHashName.equals(marketHashName)))
-          .write(Cs2MarketItemsCompanion(
-        lastLowestCents: Value(lowestCents),
-        lastMedianCents: Value(medianCents),
-        currency: Value(currency),
-        priceFetchedAt: Value(now),
-      ));
+      await (update(
+        cs2MarketItems,
+      )..where((i) => i.marketHashName.equals(marketHashName))).write(
+        Cs2MarketItemsCompanion(
+          lastLowestCents: Value(lowestCents),
+          lastMedianCents: Value(medianCents),
+          currency: Value(currency),
+          priceFetchedAt: Value(now),
+        ),
+      );
       await into(cs2MarketPricePoints).insert(
         Cs2MarketPricePointsCompanion.insert(
           marketHashName: marketHashName,
@@ -550,23 +594,24 @@ class SteamDatabase extends _$SteamDatabase {
   /// stamped to now alongside a non-null price so the chart can say when
   /// the baseline was set, and cleared along with it.
   Future<void> setCs2EntryStartingPrice(int entryId, int? cents) async {
-    await (update(cs2MarketEntries)..where((e) => e.id.equals(entryId)))
-        .write(Cs2MarketEntriesCompanion(
-      startingPriceCents: Value(cents),
-      startingPriceAt: Value(cents == null ? null : DateTime.now()),
-    ));
+    await (update(cs2MarketEntries)..where((e) => e.id.equals(entryId))).write(
+      Cs2MarketEntriesCompanion(
+        startingPriceCents: Value(cents),
+        startingPriceAt: Value(cents == null ? null : DateTime.now()),
+      ),
+    );
   }
 
   /// Every pinned skin id, unordered — the browse grid sorts by this
   /// membership, not by [Cs2PinnedSkins.pinnedAt].
-  Stream<Set<String>> watchPinnedSkinIds() => select(cs2PinnedSkins)
-      .watch()
-      .map((rows) => {for (final row in rows) row.skinId});
+  Stream<Set<String>> watchPinnedSkinIds() => select(
+    cs2PinnedSkins,
+  ).watch().map((rows) => {for (final row in rows) row.skinId});
 
   Future<void> pinSkin(String skinId) => into(cs2PinnedSkins).insert(
-        Cs2PinnedSkinsCompanion.insert(skinId: skinId),
-        mode: InsertMode.insertOrIgnore,
-      );
+    Cs2PinnedSkinsCompanion.insert(skinId: skinId),
+    mode: InsertMode.insertOrIgnore,
+  );
 
   Future<void> unpinSkin(String skinId) async {
     await (delete(cs2PinnedSkins)..where((p) => p.skinId.equals(skinId))).go();

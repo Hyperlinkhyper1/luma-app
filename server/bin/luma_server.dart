@@ -7,6 +7,7 @@ import 'package:luma_sync_server/ai_model_catalog.dart';
 import 'package:luma_sync_server/ai_usage_store.dart';
 import 'package:luma_sync_server/api.dart';
 import 'package:luma_sync_server/chat_store.dart';
+import 'package:luma_sync_server/cs2_offline_store.dart';
 import 'package:luma_sync_server/family_store.dart';
 import 'package:luma_sync_server/mail.dart';
 import 'package:luma_sync_server/recipe_store.dart';
@@ -31,6 +32,11 @@ Future<void> main() async {
   }
 
   final store = await Store.open(config.dataDir);
+  final cs2OfflineStore = await Cs2OfflineStore.open(config.dataDir);
+  final cs2OfflineScheduler = Cs2OfflineScheduler(
+    accounts: store,
+    store: cs2OfflineStore,
+  );
   final familyStore = await FamilyStore.open(config.dataDir);
   final chatStore = await ChatStore.open(config.dataDir);
   final aiUsage = await AiUsageStore.open(config.dataDir);
@@ -51,7 +57,8 @@ Future<void> main() async {
       subwayStore,
       recipeStore,
       aiCatalog,
-      aiBenchmarks);
+      aiBenchmarks,
+      cs2OfflineStore: cs2OfflineStore);
 
   final server = await shelf_io.serve(
     api.handler,
@@ -62,7 +69,8 @@ Future<void> main() async {
   server.autoCompress = true;
 
   stdout.writeln('[luma] sync server listening on port ${server.port}');
-  stdout.writeln('[luma] data directory: ${Directory(config.dataDir).absolute.path}');
+  stdout.writeln(
+      '[luma] data directory: ${Directory(config.dataDir).absolute.path}');
   stdout.writeln(
       '[luma] registration: ${config.allowRegistration ? 'open' : 'closed'}');
   stdout.writeln('[luma] plan quotas: core 5 MB · orbit 15 MB · nova 30 MB');
@@ -78,11 +86,13 @@ Future<void> main() async {
   // Graceful shutdown so in-flight writes complete.
   ProcessSignal.sigint.watch().listen((_) async {
     stdout.writeln('[luma] shutting down...');
+    cs2OfflineScheduler.dispose();
     await server.close();
     exit(0);
   });
   if (!Platform.isWindows) {
     ProcessSignal.sigterm.watch().listen((_) async {
+      cs2OfflineScheduler.dispose();
       await server.close();
       exit(0);
     });

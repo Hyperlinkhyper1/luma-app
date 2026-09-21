@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart' show sha256, Hmac;
@@ -52,6 +52,7 @@ class SyncService extends ChangeNotifier {
     this.syncCollectionLimit,
     this.currentPlanId,
     this.onServerPlan,
+    this.onSyncCompleted,
   });
 
   final List<SyncCollection> collections;
@@ -72,6 +73,11 @@ class SyncService extends ChangeNotifier {
   /// (see SettingsController.setAdminPlan). Null/empty means the server has
   /// no grant on file (or is older than the planId field).
   final void Function(String? planId)? onServerPlan;
+
+  /// Lets server-backed feature caches pull their own snapshots after a
+  /// successful account sync, without making them part of encrypted generic
+  /// collections the server cannot inspect.
+  final Future<void> Function()? onSyncCompleted;
 
   SyncStateStore? _state;
   SyncApi? _api;
@@ -1014,11 +1020,9 @@ class SyncService extends ChangeNotifier {
   /// Turns syncing on for a collection and uploads it right away. Throws
   /// [SyncLimitExceededException] if the current plan's limit on the number
   /// of synced collections is already reached.
-  SyncCollection? collectionById(String id) =>
-      collections.cast<SyncCollection?>().firstWhere(
-            (c) => c?.id == id,
-            orElse: () => null,
-          );
+  SyncCollection? collectionById(String id) => collections
+      .cast<SyncCollection?>()
+      .firstWhere((c) => c?.id == id, orElse: () => null);
 
   bool _planAllows(SyncCollection collection) =>
       planAtLeast(currentPlanId?.call(), collection.minPlanId);
@@ -1040,7 +1044,10 @@ class SyncService extends ChangeNotifier {
       // "this needs Orbit" rather than the misleading "you are out of slots".
       final collection = collectionById(id);
       if (collection != null && !_planAllows(collection)) {
-        throw SyncPlanRequiredException(collection.minPlanId!, collection.label);
+        throw SyncPlanRequiredException(
+          collection.minPlanId!,
+          collection.label,
+        );
       }
       final limit = syncCollectionLimit?.call();
       if (limit != null && enabledSyncCollectionCount >= limit) {
@@ -1206,6 +1213,20 @@ class SyncService extends ChangeNotifier {
     return run;
   }
 
+  Future<Map<String, dynamic>?> getCs2OfflineSnapshot() async {
+    final api = _api;
+    if (api == null || !serverReady) return null;
+    return api.cs2OfflineSnapshot();
+  }
+
+  Future<Map<String, dynamic>?> putCs2OfflineSnapshot(
+    Map<String, dynamic> snapshot,
+  ) async {
+    final api = _api;
+    if (api == null || !serverReady) return null;
+    return api.putCs2OfflineSnapshot(snapshot);
+  }
+
   Future<void> _syncOnce({required bool silent}) async {
     final s = _state;
     final api = _api;
@@ -1278,6 +1299,14 @@ class SyncService extends ChangeNotifier {
     _status = errors.isEmpty ? SyncStatus.idle : SyncStatus.error;
     _lastError = errors.isEmpty ? null : errors.join('\n');
     notifyListeners();
+    if (errors.isEmpty) {
+      try {
+        await onSyncCompleted?.call();
+      } catch (_) {
+        // A feature cache being unavailable must not turn account sync into
+        // an error after all encrypted collections already converged.
+      }
+    }
   }
 
   Future<void> _syncCollection(

@@ -49,6 +49,7 @@ class _LumaPetPanelState extends State<LumaPetPanel> {
 
   int _selected = 0;
   List<PetTarget> _results = const [];
+  PetTarget? _compactTarget;
 
   @override
   void initState() {
@@ -102,10 +103,13 @@ class _LumaPetPanelState extends State<LumaPetPanel> {
   Future<void> _open(PetTarget target) async {
     final pet = PetScope.read(context);
     await pet.recordOpen(target.id);
-    // Close first: on desktop this puts the window back to full size, so the
-    // page the user asked for is laid out for the real window, not the panel.
+    final compactBuilder = target.compactBuilder;
+    if (compactBuilder != null) {
+      setState(() => _compactTarget = target);
+      return;
+    }
+    await target.open();
     await pet.close(navigating: true);
-    target.open();
   }
 
   Future<void> _dismiss() => PetScope.read(context).close();
@@ -127,9 +131,15 @@ class _LumaPetPanelState extends State<LumaPetPanel> {
     // Scaffold is a sibling rather than an ancestor: without this there is no
     // Material in scope, and the text field and rows fail outright. Kept
     // transparent so the card below still paints its own surface.
+    final compactTarget = _compactTarget;
     final card = Material(
       type: MaterialType.transparency,
-      child: _card(context, luma, pet),
+      child: compactTarget == null
+          ? _card(context, luma, pet)
+          : compactTarget.compactBuilder!(
+              context,
+              () => setState(() => _compactTarget = null),
+            ),
     );
 
     if (widget.fullBleed) return card;
@@ -317,12 +327,12 @@ class _LumaPetPanelState extends State<LumaPetPanel> {
   }
 
   String _moodLine(L t, PetMood mood) => switch (mood) {
-        PetMood.idle => t.petMoodIdle,
-        PetMood.curious => t.petMoodCurious,
-        PetMood.happy => t.petMoodHappy,
-        PetMood.delighted => t.petMoodDelighted,
-        PetMood.sleepy => t.petMoodSleepy,
-      };
+    PetMood.idle => t.petMoodIdle,
+    PetMood.curious => t.petMoodCurious,
+    PetMood.happy => t.petMoodHappy,
+    PetMood.delighted => t.petMoodDelighted,
+    PetMood.sleepy => t.petMoodSleepy,
+  };
 
   Widget _searchField(LumaPalette luma, L t) {
     return Padding(
@@ -337,7 +347,11 @@ class _LumaPetPanelState extends State<LumaPetPanel> {
         decoration: InputDecoration(
           hintText: t.petSearchHint,
           hintStyle: TextStyle(color: luma.textMuted, fontSize: 15),
-          prefixIcon: Icon(Icons.search_rounded, color: luma.textMuted, size: 20),
+          prefixIcon: Icon(
+            Icons.search_rounded,
+            color: luma.textMuted,
+            size: 20,
+          ),
           filled: true,
           fillColor: luma.background,
           isDense: true,
@@ -445,8 +459,7 @@ class _LumaPetPanelState extends State<LumaPetPanel> {
                     style: TextStyle(
                       color: luma.textPrimary,
                       fontSize: 14,
-                      fontWeight:
-                          selected ? FontWeight.w600 : FontWeight.w400,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
                     ),
                   ),
                 ),
@@ -458,8 +471,11 @@ class _LumaPetPanelState extends State<LumaPetPanel> {
                 ),
                 if (selected) ...[
                   const SizedBox(width: 10),
-                  Icon(Icons.keyboard_return_rounded,
-                      size: 15, color: luma.accent),
+                  Icon(
+                    Icons.keyboard_return_rounded,
+                    size: 15,
+                    color: luma.accent,
+                  ),
                 ],
               ],
             ),
@@ -511,21 +527,17 @@ class _LumaPetPanelState extends State<LumaPetPanel> {
   }
 
   Widget _key(LumaPalette luma, String label) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-        decoration: BoxDecoration(
-          color: luma.surface,
-          border: Border.all(color: luma.border),
-          borderRadius: BorderRadius.circular(5),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: luma.textSecondary,
-            fontSize: 10.5,
-            height: 1.4,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+    decoration: BoxDecoration(
+      color: luma.surface,
+      border: Border.all(color: luma.border),
+      borderRadius: BorderRadius.circular(5),
+    ),
+    child: Text(
+      label,
+      style: TextStyle(color: luma.textSecondary, fontSize: 10.5, height: 1.4),
+    ),
+  );
 }
 
 class _MoveIntent extends Intent {
