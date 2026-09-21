@@ -59,6 +59,25 @@ class UpdateService {
   /// until something fails.
   String? lastError;
 
+  @visibleForTesting
+  static Future<String> writeWindowsInstallerLauncher(
+    String installerPath,
+  ) async {
+    final installer = File(installerPath);
+    final installerName = installer.uri.pathSegments.last;
+    final launcher = File(
+      '${installer.parent.path}${Platform.pathSeparator}launch-update.cmd',
+    );
+    await launcher.writeAsString(
+      '@echo off\r\n'
+      'ping -n 3 127.0.0.1 >NUL\r\n'
+      'cd /d "%~dp0"\r\n'
+      '"$installerName" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART\r\n',
+      flush: true,
+    );
+    return launcher.path;
+  }
+
   /// Returns update details if the latest published release is newer than the
   /// running build, otherwise null. Never throws — network/parse failures just
   /// mean "no update right now".
@@ -300,10 +319,14 @@ class UpdateService {
       // same device: installing with luma.exe already closed completes in
       // under two seconds). `ping` is used instead of `timeout` because
       // `timeout` needs a real console and silently no-ops without one.
-      await Process.start('cmd', [
+      // Keep the compound command in a script: Dart escapes nested quotes
+      // when building a Windows command line, but cmd.exe treats those
+      // backslashes literally and otherwise tries to launch `\`.
+      final launcherPath = await writeWindowsInstallerLauncher(installerPath);
+      await Process.start('cmd.exe', [
+        '/D',
         '/C',
-        'ping -n 3 127.0.0.1 >NUL & '
-            'start "" "$installerPath" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART',
+        launcherPath,
       ], mode: ProcessStartMode.detached);
       return true;
     } catch (e, st) {

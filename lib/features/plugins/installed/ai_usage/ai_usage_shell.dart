@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../theme/luma_theme.dart';
 import 'ai_usage_page.dart';
+import 'ai_agent_builder_tab.dart';
+import 'ai_markdown_library_tab.dart';
 import 'assets/assets_tab.dart';
 import 'leaderboard/ai_leaderboard_tab.dart';
 import 'open_source/open_source_tab.dart';
@@ -13,6 +15,16 @@ enum AiUsageSection {
     icon: Icons.query_stats_rounded,
     label: 'AI Usage',
     blurb: 'Your own token spend',
+  ),
+  library(
+    icon: Icons.menu_book_rounded,
+    label: 'Library',
+    blurb: 'Reusable Markdown context',
+  ),
+  agents(
+    icon: Icons.smart_toy_rounded,
+    label: 'Agents',
+    blurb: 'Build Codex specialists',
   ),
   leaderboard(
     icon: Icons.leaderboard_rounded,
@@ -94,6 +106,8 @@ class _AiUsagePageState extends State<AiUsagePage> {
             index: _section.index,
             children: [
               const AiUsageDashboardTab(),
+              const AiMarkdownLibraryTab(),
+              const AiAgentBuilderTab(),
               const AiLeaderboardTab(),
               const OpenSourceTab(),
               TestsTab(key: ValueKey(_testsVisit)),
@@ -187,7 +201,11 @@ class _RailItem extends StatelessWidget {
           ),
         ),
         SizedBox(width: collapsed ? 17 : 13),
-        Icon(section.icon, size: 20, color: selected ? luma.accent : foreground),
+        Icon(
+          section.icon,
+          size: 20,
+          color: selected ? luma.accent : foreground,
+        ),
         if (!collapsed) ...[
           const SizedBox(width: 12),
           Expanded(
@@ -287,10 +305,7 @@ class _CollapseButton extends StatelessWidget {
                           'Collapse',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: luma.textMuted,
-                            fontSize: 12,
-                          ),
+                          style: TextStyle(color: luma.textMuted, fontSize: 12),
                         ),
                       ),
                       const SizedBox(width: 10),

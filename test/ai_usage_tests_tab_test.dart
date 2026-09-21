@@ -26,13 +26,15 @@ Widget _app({AiBenchmarkManifest manifest = AiBenchmarkManifest.empty}) =>
     );
 
 void main() {
-  // The shell drives its IndexedStack off the enum's index, so a section added
-  // anywhere but the end silently shows the wrong tab. Pin both.
+  // The shell drives its IndexedStack off the enum's index, so keep the
+  // navigation order and stack order in lockstep.
   test('rail sections keep their stack order', () {
-    expect(AiUsageSection.values.length, 5);
-    expect(AiUsageSection.tests.index, 3);
+    expect(AiUsageSection.values.length, 7);
+    expect(AiUsageSection.library.index, 1);
+    expect(AiUsageSection.agents.index, 2);
+    expect(AiUsageSection.tests.index, 5);
     expect(AiUsageSection.tests.label, 'Tests');
-    expect(AiUsageSection.assets.index, 4);
+    expect(AiUsageSection.assets.index, 6);
     expect(AiUsageSection.assets.label, 'Assets');
   });
 
@@ -46,8 +48,9 @@ void main() {
     expect(find.text('Open the test screen'), findsNWidgets(3));
   });
 
-  testWidgets('the whole tile is one button that opens the test screen',
-      (tester) async {
+  testWidgets('the whole tile is one button that opens the test screen', (
+    tester,
+  ) async {
     await tester.pumpWidget(_app());
 
     expect(find.byType(PagodaTestPage), findsNothing);
@@ -59,8 +62,9 @@ void main() {
 
   // With no roster the tiles show their gradient stand-in rather than
   // throwing: the tab must look deliberate with no account at all.
-  testWidgets('tiles with no downloaded artwork yet still render',
-      (tester) async {
+  testWidgets('tiles with no downloaded artwork yet still render', (
+    tester,
+  ) async {
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
 

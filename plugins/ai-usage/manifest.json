@@ -2,7 +2,7 @@
   "id": "ai-usage",
   "name": "AI Usage",
   "version": "1.0.0",
-  "description": "See what your AI tools cost you, which models are good, and which ones your own PC could run. All read from your laptop, nothing sent away.",
+  "description": "Track local AI usage, keep a Markdown context library, build reusable specialists for Luma and Codex, and compare models. Nothing leaves your laptop unless you choose a provider.",
   "icon": "query_stats",
   "category": "Productivity"
 }
