@@ -40,7 +40,14 @@ Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+; {userdesktop}, not {commondesktop}: this install is always non-admin
+; (PrivilegesRequired=lowest above), and {commondesktop} is the all-users
+; desktop, which a non-admin process can never write to. With the wrong
+; constant this failed silently on every single install — logged as
+; "IPersistFile::Save failed; code 0x80070005" (access denied) under
+; /VERYSILENT, where the message box that would normally surface it is
+; suppressed — without ever stopping the install or being visible anywhere.
+Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
 ; No "skipifsilent" — this must also fire during a silent updater-driven

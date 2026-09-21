@@ -280,12 +280,30 @@ class UpdateService {
       }
 
       // /VERYSILENT: no UI. /SUPPRESSMSGBOXES: no prompts. /NORESTART: never
-      // reboot. CloseApplications=yes (set in the .iss) handles closing the
-      // running luma.exe, and the [Run] entry relaunches it afterward.
-      await Process.start(installerPath, [
-        '/VERYSILENT',
-        '/SUPPRESSMSGBOXES',
-        '/NORESTART',
+      // reboot.
+      //
+      // Routed through the same "ping"-based delay the installer's own
+      // [Run] relaunch step already uses, rather than starting the
+      // installer directly: CloseApplications=yes (in the .iss) asks
+      // RestartManager to close the still-running luma.exe cooperatively
+      // (WM_QUERYENDSESSION) before copying files, but Flutter's Windows
+      // runner never answers that message. Confirmed on a real device —
+      // when the installer is launched while luma.exe is still alive,
+      // RestartManager waits its full ~30s timeout, gives up, and
+      // /VERYSILENT's suppressed "couldn't close applications" prompt
+      // defaults to Abort, which rolls back the *entire* install. The
+      // caller's own `exit(0)` moments later doesn't help — by the time it
+      // runs, RestartManager's wait loop is usually already committed to
+      // failing. Waiting a couple of seconds here for this process to have
+      // actually exited before the installer even starts means
+      // RestartManager finds nothing to close at all (confirmed on the
+      // same device: installing with luma.exe already closed completes in
+      // under two seconds). `ping` is used instead of `timeout` because
+      // `timeout` needs a real console and silently no-ops without one.
+      await Process.start('cmd', [
+        '/C',
+        'ping -n 3 127.0.0.1 >NUL & '
+            'start "" "$installerPath" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART',
       ], mode: ProcessStartMode.detached);
       return true;
     } catch (e, st) {
