@@ -65,14 +65,20 @@ class UpdateService {
   ) async {
     final installer = File(installerPath);
     final installerName = installer.uri.pathSegments.last;
+    if (!RegExp(r'^[a-zA-Z0-9][a-zA-Z0-9._-]*$').hasMatch(installerName)) {
+      throw const FormatException('Invalid installer filename.');
+    }
     final launcher = File(
-      '${installer.parent.path}${Platform.pathSeparator}launch-update.cmd',
+      '${installer.parent.path}${Platform.pathSeparator}launch-update.vbs',
     );
     await launcher.writeAsString(
-      '@echo off\r\n'
-      'ping -n 3 127.0.0.1 >NUL\r\n'
-      'cd /d "%~dp0"\r\n'
-      '"$installerName" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART\r\n',
+      'Set shell = CreateObject("WScript.Shell")\r\n'
+      'WScript.Sleep 2000\r\n'
+      'shell.CurrentDirectory = '
+      'CreateObject("Scripting.FileSystemObject").'
+      'GetParentFolderName(WScript.ScriptFullName)\r\n'
+      'shell.Run Chr(34) & "$installerName" & Chr(34) & '
+      '" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART", 0, False\r\n',
       flush: true,
     );
     return launcher.path;
@@ -301,9 +307,8 @@ class UpdateService {
       // /VERYSILENT: no UI. /SUPPRESSMSGBOXES: no prompts. /NORESTART: never
       // reboot.
       //
-      // Routed through the same "ping"-based delay the installer's own
-      // [Run] relaunch step already uses, rather than starting the
-      // installer directly: CloseApplications=yes (in the .iss) asks
+      // Routed through a two-second delay rather than starting the installer
+      // directly: CloseApplications=yes (in the .iss) asks
       // RestartManager to close the still-running luma.exe cooperatively
       // (WM_QUERYENDSESSION) before copying files, but Flutter's Windows
       // runner never answers that message. Confirmed on a real device —
@@ -317,15 +322,12 @@ class UpdateService {
       // actually exited before the installer even starts means
       // RestartManager finds nothing to close at all (confirmed on the
       // same device: installing with luma.exe already closed completes in
-      // under two seconds). `ping` is used instead of `timeout` because
-      // `timeout` needs a real console and silently no-ops without one.
-      // Keep the compound command in a script: Dart escapes nested quotes
-      // when building a Windows command line, but cmd.exe treats those
-      // backslashes literally and otherwise tries to launch `\`.
+      // under two seconds).
+      // Keep the delay and command in a windowless script. Passing a compound
+      // command to cmd.exe makes Dart escape its nested quotes, which cmd.exe
+      // treats literally, while launching cmd.exe also opens a terminal.
       final launcherPath = await writeWindowsInstallerLauncher(installerPath);
-      await Process.start('cmd.exe', [
-        '/D',
-        '/C',
+      await Process.start('wscript.exe', [
         launcherPath,
       ], mode: ProcessStartMode.detached);
       return true;

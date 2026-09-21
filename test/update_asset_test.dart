@@ -100,29 +100,37 @@ void main() {
     });
   });
 
-  test(
-    'Windows installer handoff preserves a quoted path through cmd.exe',
-    () async {
-      if (!Platform.isWindows) return;
+  test('Windows installer handoff uses a windowless launcher', () async {
+    if (!Platform.isWindows) return;
 
-      final temp = await Directory.systemTemp.createTemp(
-        'luma update handoff ',
-      );
-      addTearDown(() => temp.delete(recursive: true));
-      final marker = File('${temp.path}\\installer-started.txt');
-      final installer = File('${temp.path}\\fake-installer.cmd');
-      await installer.writeAsString(
-        '@echo off\r\n'
-        '> "${marker.path}" echo started\r\n',
-      );
+    final temp = await Directory.systemTemp.createTemp('luma update handoff ');
+    addTearDown(() => temp.delete(recursive: true));
+    final marker = File('${temp.path}\\installer-started.txt');
+    final installer = File('${temp.path}\\fake-installer.cmd');
+    await installer.writeAsString(
+      '@echo off\r\n'
+      '> "${marker.path}" echo started\r\n',
+    );
 
-      final launcher = await UpdateService.writeWindowsInstallerLauncher(
-        installer.path,
-      );
-      final result = await Process.run('cmd.exe', ['/D', '/C', launcher]);
+    final launcher = await UpdateService.writeWindowsInstallerLauncher(
+      installer.path,
+    );
+    final result = await Process.run('wscript.exe', [launcher]);
 
-      expect(result.exitCode, 0, reason: result.stderr as String);
-      expect(marker.existsSync(), isTrue);
-    },
-  );
+    for (var attempt = 0; attempt < 50 && !marker.existsSync(); attempt++) {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+
+    expect(result.exitCode, 0, reason: result.stderr as String);
+    expect(marker.existsSync(), isTrue);
+  });
+
+  test('Windows installer relaunch does not route through cmd.exe', () {
+    final installerScript = File(
+      'windows${Platform.pathSeparator}installer${Platform.pathSeparator}luma.iss',
+    ).readAsStringSync();
+
+    expect(installerScript, isNot(contains('Filename: "{cmd}"')));
+    expect(installerScript, contains('Filename: "{app}\\{#MyAppExeName}"'));
+  });
 }
