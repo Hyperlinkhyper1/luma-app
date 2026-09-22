@@ -34,6 +34,23 @@ class AiUsageTurns extends Table {
   // tool didn't say"; 0 is a real answer (a free model). Used only as a
   // fallback — see `costForRow` in ai_usage_stats.dart.
   RealColumn get reportedCost => real().nullable()();
+  // Which of the user's other devices this turn was synced from. Null means
+  // it was scanned on this device — the only rows this device ever uploads.
+  TextColumn get deviceId => text().nullable()();
+}
+
+/// The user's other devices whose usage has been pulled from the sync server,
+/// with the server version of each one's upload so an unchanged device is
+/// never downloaded twice.
+class AiUsageRemoteDevices extends Table {
+  TextColumn get deviceId => text()();
+  TextColumn get name => text()();
+  IntColumn get version => integer().withDefault(const Constant(0))();
+  IntColumn get turnCount => integer().withDefault(const Constant(0))();
+  DateTimeColumn get uploadedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {deviceId};
 }
 
 /// Tracks which JSONL files have already been scanned (path + mtime + how
@@ -49,7 +66,7 @@ class AiUsageScanFiles extends Table {
   Set<Column> get primaryKey => {path};
 }
 
-@DriftDatabase(tables: [AiUsageTurns, AiUsageScanFiles])
+@DriftDatabase(tables: [AiUsageTurns, AiUsageScanFiles, AiUsageRemoteDevices])
 class AiUsageDatabase extends _$AiUsageDatabase {
   AiUsageDatabase([QueryExecutor? executor])
       : super(executor ??
@@ -61,7 +78,7 @@ class AiUsageDatabase extends _$AiUsageDatabase {
             ));
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -78,6 +95,12 @@ class AiUsageDatabase extends _$AiUsageDatabase {
             await customStatement('DROP TABLE IF EXISTS ai_usage_scan_files');
             await m.createTable(aiUsageTurns);
             await m.createTable(aiUsageScanFiles);
+            await m.createTable(aiUsageRemoteDevices);
+            return;
+          }
+          if (from < 6) {
+            await m.addColumn(aiUsageTurns, aiUsageTurns.deviceId);
+            await m.createTable(aiUsageRemoteDevices);
           }
         },
       );

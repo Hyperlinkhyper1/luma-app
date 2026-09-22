@@ -30,8 +30,9 @@ void main() {
   // navigation order and stack order in lockstep.
   test('rail sections keep their stack order', () {
     expect(AiUsageSection.values.length, 7);
-    expect(AiUsageSection.library.index, 1);
-    expect(AiUsageSection.agents.index, 2);
+    expect(AiUsageSection.openSource.index, 2);
+    expect(AiUsageSection.library.index, 3);
+    expect(AiUsageSection.agents.index, 4);
     expect(AiUsageSection.tests.index, 5);
     expect(AiUsageSection.tests.label, 'Tests');
     expect(AiUsageSection.assets.index, 6);

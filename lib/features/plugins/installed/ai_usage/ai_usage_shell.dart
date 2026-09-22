@@ -16,16 +16,6 @@ enum AiUsageSection {
     label: 'AI Usage',
     blurb: 'Your own token spend',
   ),
-  library(
-    icon: Icons.menu_book_rounded,
-    label: 'Library',
-    blurb: 'Reusable Markdown context',
-  ),
-  agents(
-    icon: Icons.smart_toy_rounded,
-    label: 'Agents',
-    blurb: 'Build Codex specialists',
-  ),
   leaderboard(
     icon: Icons.leaderboard_rounded,
     label: 'Leaderboard',
@@ -35,6 +25,16 @@ enum AiUsageSection {
     icon: Icons.memory_rounded,
     label: 'Open Source',
     blurb: 'What your hardware can run',
+  ),
+  library(
+    icon: Icons.menu_book_rounded,
+    label: 'Library',
+    blurb: 'Reusable Markdown context',
+  ),
+  agents(
+    icon: Icons.smart_toy_rounded,
+    label: 'Agents',
+    blurb: 'Codex, Claude Code & opencode',
   ),
   tests(
     icon: Icons.science_rounded,
@@ -102,14 +102,15 @@ class _AiUsagePageState extends State<AiUsagePage> {
         ),
         Container(width: 1, color: luma.border),
         Expanded(
+          // Children must stay in [AiUsageSection] declaration order.
           child: IndexedStack(
             index: _section.index,
             children: [
               const AiUsageDashboardTab(),
-              const AiMarkdownLibraryTab(),
-              const AiAgentBuilderTab(),
               const AiLeaderboardTab(),
               const OpenSourceTab(),
+              const AiMarkdownLibraryTab(),
+              const AiAgentBuilderTab(),
               TestsTab(key: ValueKey(_testsVisit)),
               const AssetsTab(),
             ],

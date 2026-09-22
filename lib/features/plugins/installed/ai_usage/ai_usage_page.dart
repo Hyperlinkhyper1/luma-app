@@ -121,7 +121,7 @@ class _AiUsageDashboardTabState extends State<AiUsageDashboardTab> {
           );
         }
 
-        if (found == false) {
+        if (found == false && repo.remoteDevices.isEmpty) {
           return Padding(
             padding: const EdgeInsets.all(24),
             child: LumaEmptyState(
@@ -196,8 +196,9 @@ const String _kNoLogsSubtitle =
     'AI Usage reads session logs from Claude Code (~/.claude/projects), '
     'Codex CLI (~/.codex/sessions), Antigravity (~/.gemini/antigravity), '
     'OpenCode (~/.local/share/opencode), and Freebuff '
-    '(~/.config/freebuff-desktop/projects) on this device — nothing is '
-    'ever sent anywhere. Use one of these tools here, then rescan.';
+    '(~/.config/freebuff-desktop/projects) on this device. Nothing leaves '
+    'it unless you turn on AI Usage sync in Settings, which also adds up '
+    'your other devices. Use one of these tools here, then rescan.';
 
 // ─── View settings: sorting + company grouping ─────────────────────────────
 
@@ -445,11 +446,23 @@ class _TopBar extends StatelessWidget {
     if (repo.scanning) return 'Scanning…';
     final at = repo.lastScanAt;
     if (at == null) return '';
+    final devices = repo.remoteDevices.length;
+    final synced = devices == 0
+        ? ''
+        : ' · incl. $devices other ${devices == 1 ? 'device' : 'devices'}';
     if (repo.lastTurnsAdded == 0) {
-      return 'Up to date · ${DateFormat('h:mm a').format(at)}';
+      return 'Up to date · ${DateFormat('h:mm a').format(at)}$synced';
     }
-    return '${repo.lastTurnsAdded} new turns · ${DateFormat('h:mm a').format(at)}';
+    return '${repo.lastTurnsAdded} new turns · ${DateFormat('h:mm a').format(at)}$synced';
   }
+
+  String _devicesTooltip() => [
+    'Usage summed across your devices:',
+    'This device',
+    for (final d in repo.remoteDevices)
+      '${d.name} · ${d.turnCount} turns · synced '
+          '${DateFormat('MMM d, h:mm a').format(d.uploadedAt.toLocal())}',
+  ].join('\n');
 
   @override
   Widget build(BuildContext context) {
@@ -463,11 +476,14 @@ class _TopBar extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         Flexible(
-          child: Text(
-            _statusLabel(),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: luma.textMuted, fontSize: 12),
+          child: Tooltip(
+            message: repo.remoteDevices.isEmpty ? '' : _devicesTooltip(),
+            child: Text(
+              _statusLabel(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: luma.textMuted, fontSize: 12),
+            ),
           ),
         ),
         const Spacer(),

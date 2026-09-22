@@ -151,6 +151,17 @@ class $AiUsageTurnsTable extends AiUsageTurns
     type: DriftSqlType.double,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _deviceIdMeta = const VerificationMeta(
+    'deviceId',
+  );
+  @override
+  late final GeneratedColumn<String> deviceId = GeneratedColumn<String>(
+    'device_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -166,6 +177,7 @@ class $AiUsageTurnsTable extends AiUsageTurns
     source,
     effort,
     reportedCost,
+    deviceId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -263,6 +275,12 @@ class $AiUsageTurnsTable extends AiUsageTurns
         ),
       );
     }
+    if (data.containsKey('device_id')) {
+      context.handle(
+        _deviceIdMeta,
+        deviceId.isAcceptableOrUnknown(data['device_id']!, _deviceIdMeta),
+      );
+    }
     return context;
   }
 
@@ -328,6 +346,10 @@ class $AiUsageTurnsTable extends AiUsageTurns
         DriftSqlType.double,
         data['${effectivePrefix}reported_cost'],
       ),
+      deviceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}device_id'],
+      ),
     );
   }
 
@@ -358,6 +380,7 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
   final AiUsageSource source;
   final AiEffort? effort;
   final double? reportedCost;
+  final String? deviceId;
   const AiUsageTurn({
     required this.id,
     required this.sessionId,
@@ -372,6 +395,7 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
     required this.source,
     this.effort,
     this.reportedCost,
+    this.deviceId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -403,6 +427,9 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
     if (!nullToAbsent || reportedCost != null) {
       map['reported_cost'] = Variable<double>(reportedCost);
     }
+    if (!nullToAbsent || deviceId != null) {
+      map['device_id'] = Variable<String>(deviceId);
+    }
     return map;
   }
 
@@ -429,6 +456,9 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
       reportedCost: reportedCost == null && nullToAbsent
           ? const Value.absent()
           : Value(reportedCost),
+      deviceId: deviceId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deviceId),
     );
   }
 
@@ -457,6 +487,7 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
         serializer.fromJson<String?>(json['effort']),
       ),
       reportedCost: serializer.fromJson<double?>(json['reportedCost']),
+      deviceId: serializer.fromJson<String?>(json['deviceId']),
     );
   }
   @override
@@ -480,6 +511,7 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
         $AiUsageTurnsTable.$convertereffortn.toJson(effort),
       ),
       'reportedCost': serializer.toJson<double?>(reportedCost),
+      'deviceId': serializer.toJson<String?>(deviceId),
     };
   }
 
@@ -497,6 +529,7 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
     AiUsageSource? source,
     Value<AiEffort?> effort = const Value.absent(),
     Value<double?> reportedCost = const Value.absent(),
+    Value<String?> deviceId = const Value.absent(),
   }) => AiUsageTurn(
     id: id ?? this.id,
     sessionId: sessionId ?? this.sessionId,
@@ -511,6 +544,7 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
     source: source ?? this.source,
     effort: effort.present ? effort.value : this.effort,
     reportedCost: reportedCost.present ? reportedCost.value : this.reportedCost,
+    deviceId: deviceId.present ? deviceId.value : this.deviceId,
   );
   AiUsageTurn copyWithCompanion(AiUsageTurnsCompanion data) {
     return AiUsageTurn(
@@ -537,6 +571,7 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
       reportedCost: data.reportedCost.present
           ? data.reportedCost.value
           : this.reportedCost,
+      deviceId: data.deviceId.present ? data.deviceId.value : this.deviceId,
     );
   }
 
@@ -555,7 +590,8 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
           ..write('project: $project, ')
           ..write('source: $source, ')
           ..write('effort: $effort, ')
-          ..write('reportedCost: $reportedCost')
+          ..write('reportedCost: $reportedCost, ')
+          ..write('deviceId: $deviceId')
           ..write(')'))
         .toString();
   }
@@ -575,6 +611,7 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
     source,
     effort,
     reportedCost,
+    deviceId,
   );
   @override
   bool operator ==(Object other) =>
@@ -592,7 +629,8 @@ class AiUsageTurn extends DataClass implements Insertable<AiUsageTurn> {
           other.project == this.project &&
           other.source == this.source &&
           other.effort == this.effort &&
-          other.reportedCost == this.reportedCost);
+          other.reportedCost == this.reportedCost &&
+          other.deviceId == this.deviceId);
 }
 
 class AiUsageTurnsCompanion extends UpdateCompanion<AiUsageTurn> {
@@ -609,6 +647,7 @@ class AiUsageTurnsCompanion extends UpdateCompanion<AiUsageTurn> {
   final Value<AiUsageSource> source;
   final Value<AiEffort?> effort;
   final Value<double?> reportedCost;
+  final Value<String?> deviceId;
   const AiUsageTurnsCompanion({
     this.id = const Value.absent(),
     this.sessionId = const Value.absent(),
@@ -623,6 +662,7 @@ class AiUsageTurnsCompanion extends UpdateCompanion<AiUsageTurn> {
     this.source = const Value.absent(),
     this.effort = const Value.absent(),
     this.reportedCost = const Value.absent(),
+    this.deviceId = const Value.absent(),
   });
   AiUsageTurnsCompanion.insert({
     this.id = const Value.absent(),
@@ -638,6 +678,7 @@ class AiUsageTurnsCompanion extends UpdateCompanion<AiUsageTurn> {
     required AiUsageSource source,
     this.effort = const Value.absent(),
     this.reportedCost = const Value.absent(),
+    this.deviceId = const Value.absent(),
   }) : sessionId = Value(sessionId),
        timestamp = Value(timestamp),
        model = Value(model),
@@ -656,6 +697,7 @@ class AiUsageTurnsCompanion extends UpdateCompanion<AiUsageTurn> {
     Expression<String>? source,
     Expression<String>? effort,
     Expression<double>? reportedCost,
+    Expression<String>? deviceId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -672,6 +714,7 @@ class AiUsageTurnsCompanion extends UpdateCompanion<AiUsageTurn> {
       if (source != null) 'source': source,
       if (effort != null) 'effort': effort,
       if (reportedCost != null) 'reported_cost': reportedCost,
+      if (deviceId != null) 'device_id': deviceId,
     });
   }
 
@@ -689,6 +732,7 @@ class AiUsageTurnsCompanion extends UpdateCompanion<AiUsageTurn> {
     Value<AiUsageSource>? source,
     Value<AiEffort?>? effort,
     Value<double?>? reportedCost,
+    Value<String?>? deviceId,
   }) {
     return AiUsageTurnsCompanion(
       id: id ?? this.id,
@@ -704,6 +748,7 @@ class AiUsageTurnsCompanion extends UpdateCompanion<AiUsageTurn> {
       source: source ?? this.source,
       effort: effort ?? this.effort,
       reportedCost: reportedCost ?? this.reportedCost,
+      deviceId: deviceId ?? this.deviceId,
     );
   }
 
@@ -753,6 +798,9 @@ class AiUsageTurnsCompanion extends UpdateCompanion<AiUsageTurn> {
     if (reportedCost.present) {
       map['reported_cost'] = Variable<double>(reportedCost.value);
     }
+    if (deviceId.present) {
+      map['device_id'] = Variable<String>(deviceId.value);
+    }
     return map;
   }
 
@@ -771,7 +819,8 @@ class AiUsageTurnsCompanion extends UpdateCompanion<AiUsageTurn> {
           ..write('project: $project, ')
           ..write('source: $source, ')
           ..write('effort: $effort, ')
-          ..write('reportedCost: $reportedCost')
+          ..write('reportedCost: $reportedCost, ')
+          ..write('deviceId: $deviceId')
           ..write(')'))
         .toString();
   }
@@ -1039,6 +1088,372 @@ class AiUsageScanFilesCompanion extends UpdateCompanion<AiUsageScanFile> {
   }
 }
 
+class $AiUsageRemoteDevicesTable extends AiUsageRemoteDevices
+    with TableInfo<$AiUsageRemoteDevicesTable, AiUsageRemoteDevice> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AiUsageRemoteDevicesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _deviceIdMeta = const VerificationMeta(
+    'deviceId',
+  );
+  @override
+  late final GeneratedColumn<String> deviceId = GeneratedColumn<String>(
+    'device_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _versionMeta = const VerificationMeta(
+    'version',
+  );
+  @override
+  late final GeneratedColumn<int> version = GeneratedColumn<int>(
+    'version',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _turnCountMeta = const VerificationMeta(
+    'turnCount',
+  );
+  @override
+  late final GeneratedColumn<int> turnCount = GeneratedColumn<int>(
+    'turn_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _uploadedAtMeta = const VerificationMeta(
+    'uploadedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> uploadedAt = GeneratedColumn<DateTime>(
+    'uploaded_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    deviceId,
+    name,
+    version,
+    turnCount,
+    uploadedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'ai_usage_remote_devices';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AiUsageRemoteDevice> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('device_id')) {
+      context.handle(
+        _deviceIdMeta,
+        deviceId.isAcceptableOrUnknown(data['device_id']!, _deviceIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_deviceIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('version')) {
+      context.handle(
+        _versionMeta,
+        version.isAcceptableOrUnknown(data['version']!, _versionMeta),
+      );
+    }
+    if (data.containsKey('turn_count')) {
+      context.handle(
+        _turnCountMeta,
+        turnCount.isAcceptableOrUnknown(data['turn_count']!, _turnCountMeta),
+      );
+    }
+    if (data.containsKey('uploaded_at')) {
+      context.handle(
+        _uploadedAtMeta,
+        uploadedAt.isAcceptableOrUnknown(data['uploaded_at']!, _uploadedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uploadedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {deviceId};
+  @override
+  AiUsageRemoteDevice map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AiUsageRemoteDevice(
+      deviceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}device_id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      version: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}version'],
+      )!,
+      turnCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}turn_count'],
+      )!,
+      uploadedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}uploaded_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AiUsageRemoteDevicesTable createAlias(String alias) {
+    return $AiUsageRemoteDevicesTable(attachedDatabase, alias);
+  }
+}
+
+class AiUsageRemoteDevice extends DataClass
+    implements Insertable<AiUsageRemoteDevice> {
+  final String deviceId;
+  final String name;
+  final int version;
+  final int turnCount;
+  final DateTime uploadedAt;
+  const AiUsageRemoteDevice({
+    required this.deviceId,
+    required this.name,
+    required this.version,
+    required this.turnCount,
+    required this.uploadedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['device_id'] = Variable<String>(deviceId);
+    map['name'] = Variable<String>(name);
+    map['version'] = Variable<int>(version);
+    map['turn_count'] = Variable<int>(turnCount);
+    map['uploaded_at'] = Variable<DateTime>(uploadedAt);
+    return map;
+  }
+
+  AiUsageRemoteDevicesCompanion toCompanion(bool nullToAbsent) {
+    return AiUsageRemoteDevicesCompanion(
+      deviceId: Value(deviceId),
+      name: Value(name),
+      version: Value(version),
+      turnCount: Value(turnCount),
+      uploadedAt: Value(uploadedAt),
+    );
+  }
+
+  factory AiUsageRemoteDevice.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AiUsageRemoteDevice(
+      deviceId: serializer.fromJson<String>(json['deviceId']),
+      name: serializer.fromJson<String>(json['name']),
+      version: serializer.fromJson<int>(json['version']),
+      turnCount: serializer.fromJson<int>(json['turnCount']),
+      uploadedAt: serializer.fromJson<DateTime>(json['uploadedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'deviceId': serializer.toJson<String>(deviceId),
+      'name': serializer.toJson<String>(name),
+      'version': serializer.toJson<int>(version),
+      'turnCount': serializer.toJson<int>(turnCount),
+      'uploadedAt': serializer.toJson<DateTime>(uploadedAt),
+    };
+  }
+
+  AiUsageRemoteDevice copyWith({
+    String? deviceId,
+    String? name,
+    int? version,
+    int? turnCount,
+    DateTime? uploadedAt,
+  }) => AiUsageRemoteDevice(
+    deviceId: deviceId ?? this.deviceId,
+    name: name ?? this.name,
+    version: version ?? this.version,
+    turnCount: turnCount ?? this.turnCount,
+    uploadedAt: uploadedAt ?? this.uploadedAt,
+  );
+  AiUsageRemoteDevice copyWithCompanion(AiUsageRemoteDevicesCompanion data) {
+    return AiUsageRemoteDevice(
+      deviceId: data.deviceId.present ? data.deviceId.value : this.deviceId,
+      name: data.name.present ? data.name.value : this.name,
+      version: data.version.present ? data.version.value : this.version,
+      turnCount: data.turnCount.present ? data.turnCount.value : this.turnCount,
+      uploadedAt: data.uploadedAt.present
+          ? data.uploadedAt.value
+          : this.uploadedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AiUsageRemoteDevice(')
+          ..write('deviceId: $deviceId, ')
+          ..write('name: $name, ')
+          ..write('version: $version, ')
+          ..write('turnCount: $turnCount, ')
+          ..write('uploadedAt: $uploadedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(deviceId, name, version, turnCount, uploadedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AiUsageRemoteDevice &&
+          other.deviceId == this.deviceId &&
+          other.name == this.name &&
+          other.version == this.version &&
+          other.turnCount == this.turnCount &&
+          other.uploadedAt == this.uploadedAt);
+}
+
+class AiUsageRemoteDevicesCompanion
+    extends UpdateCompanion<AiUsageRemoteDevice> {
+  final Value<String> deviceId;
+  final Value<String> name;
+  final Value<int> version;
+  final Value<int> turnCount;
+  final Value<DateTime> uploadedAt;
+  final Value<int> rowid;
+  const AiUsageRemoteDevicesCompanion({
+    this.deviceId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.version = const Value.absent(),
+    this.turnCount = const Value.absent(),
+    this.uploadedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AiUsageRemoteDevicesCompanion.insert({
+    required String deviceId,
+    required String name,
+    this.version = const Value.absent(),
+    this.turnCount = const Value.absent(),
+    required DateTime uploadedAt,
+    this.rowid = const Value.absent(),
+  }) : deviceId = Value(deviceId),
+       name = Value(name),
+       uploadedAt = Value(uploadedAt);
+  static Insertable<AiUsageRemoteDevice> custom({
+    Expression<String>? deviceId,
+    Expression<String>? name,
+    Expression<int>? version,
+    Expression<int>? turnCount,
+    Expression<DateTime>? uploadedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (deviceId != null) 'device_id': deviceId,
+      if (name != null) 'name': name,
+      if (version != null) 'version': version,
+      if (turnCount != null) 'turn_count': turnCount,
+      if (uploadedAt != null) 'uploaded_at': uploadedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AiUsageRemoteDevicesCompanion copyWith({
+    Value<String>? deviceId,
+    Value<String>? name,
+    Value<int>? version,
+    Value<int>? turnCount,
+    Value<DateTime>? uploadedAt,
+    Value<int>? rowid,
+  }) {
+    return AiUsageRemoteDevicesCompanion(
+      deviceId: deviceId ?? this.deviceId,
+      name: name ?? this.name,
+      version: version ?? this.version,
+      turnCount: turnCount ?? this.turnCount,
+      uploadedAt: uploadedAt ?? this.uploadedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (deviceId.present) {
+      map['device_id'] = Variable<String>(deviceId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (version.present) {
+      map['version'] = Variable<int>(version.value);
+    }
+    if (turnCount.present) {
+      map['turn_count'] = Variable<int>(turnCount.value);
+    }
+    if (uploadedAt.present) {
+      map['uploaded_at'] = Variable<DateTime>(uploadedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AiUsageRemoteDevicesCompanion(')
+          ..write('deviceId: $deviceId, ')
+          ..write('name: $name, ')
+          ..write('version: $version, ')
+          ..write('turnCount: $turnCount, ')
+          ..write('uploadedAt: $uploadedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AiUsageDatabase extends GeneratedDatabase {
   _$AiUsageDatabase(QueryExecutor e) : super(e);
   $AiUsageDatabaseManager get managers => $AiUsageDatabaseManager(this);
@@ -1046,6 +1461,8 @@ abstract class _$AiUsageDatabase extends GeneratedDatabase {
   late final $AiUsageScanFilesTable aiUsageScanFiles = $AiUsageScanFilesTable(
     this,
   );
+  late final $AiUsageRemoteDevicesTable aiUsageRemoteDevices =
+      $AiUsageRemoteDevicesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1053,6 +1470,7 @@ abstract class _$AiUsageDatabase extends GeneratedDatabase {
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     aiUsageTurns,
     aiUsageScanFiles,
+    aiUsageRemoteDevices,
   ];
 }
 
@@ -1071,6 +1489,7 @@ typedef $$AiUsageTurnsTableCreateCompanionBuilder =
       required AiUsageSource source,
       Value<AiEffort?> effort,
       Value<double?> reportedCost,
+      Value<String?> deviceId,
     });
 typedef $$AiUsageTurnsTableUpdateCompanionBuilder =
     AiUsageTurnsCompanion Function({
@@ -1087,6 +1506,7 @@ typedef $$AiUsageTurnsTableUpdateCompanionBuilder =
       Value<AiUsageSource> source,
       Value<AiEffort?> effort,
       Value<double?> reportedCost,
+      Value<String?> deviceId,
     });
 
 class $$AiUsageTurnsTableFilterComposer
@@ -1164,6 +1584,11 @@ class $$AiUsageTurnsTableFilterComposer
     column: $table.reportedCost,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnFilters<String> get deviceId => $composableBuilder(
+    column: $table.deviceId,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$AiUsageTurnsTableOrderingComposer
@@ -1239,6 +1664,11 @@ class $$AiUsageTurnsTableOrderingComposer
     column: $table.reportedCost,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get deviceId => $composableBuilder(
+    column: $table.deviceId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AiUsageTurnsTableAnnotationComposer
@@ -1298,6 +1728,9 @@ class $$AiUsageTurnsTableAnnotationComposer
     column: $table.reportedCost,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get deviceId =>
+      $composableBuilder(column: $table.deviceId, builder: (column) => column);
 }
 
 class $$AiUsageTurnsTableTableManager
@@ -1346,6 +1779,7 @@ class $$AiUsageTurnsTableTableManager
                 Value<AiUsageSource> source = const Value.absent(),
                 Value<AiEffort?> effort = const Value.absent(),
                 Value<double?> reportedCost = const Value.absent(),
+                Value<String?> deviceId = const Value.absent(),
               }) => AiUsageTurnsCompanion(
                 id: id,
                 sessionId: sessionId,
@@ -1360,6 +1794,7 @@ class $$AiUsageTurnsTableTableManager
                 source: source,
                 effort: effort,
                 reportedCost: reportedCost,
+                deviceId: deviceId,
               ),
           createCompanionCallback:
               ({
@@ -1376,6 +1811,7 @@ class $$AiUsageTurnsTableTableManager
                 required AiUsageSource source,
                 Value<AiEffort?> effort = const Value.absent(),
                 Value<double?> reportedCost = const Value.absent(),
+                Value<String?> deviceId = const Value.absent(),
               }) => AiUsageTurnsCompanion.insert(
                 id: id,
                 sessionId: sessionId,
@@ -1390,6 +1826,7 @@ class $$AiUsageTurnsTableTableManager
                 source: source,
                 effort: effort,
                 reportedCost: reportedCost,
+                deviceId: deviceId,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -1588,6 +2025,224 @@ typedef $$AiUsageScanFilesTableProcessedTableManager =
       AiUsageScanFile,
       PrefetchHooks Function()
     >;
+typedef $$AiUsageRemoteDevicesTableCreateCompanionBuilder =
+    AiUsageRemoteDevicesCompanion Function({
+      required String deviceId,
+      required String name,
+      Value<int> version,
+      Value<int> turnCount,
+      required DateTime uploadedAt,
+      Value<int> rowid,
+    });
+typedef $$AiUsageRemoteDevicesTableUpdateCompanionBuilder =
+    AiUsageRemoteDevicesCompanion Function({
+      Value<String> deviceId,
+      Value<String> name,
+      Value<int> version,
+      Value<int> turnCount,
+      Value<DateTime> uploadedAt,
+      Value<int> rowid,
+    });
+
+class $$AiUsageRemoteDevicesTableFilterComposer
+    extends Composer<_$AiUsageDatabase, $AiUsageRemoteDevicesTable> {
+  $$AiUsageRemoteDevicesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get deviceId => $composableBuilder(
+    column: $table.deviceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get version => $composableBuilder(
+    column: $table.version,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get turnCount => $composableBuilder(
+    column: $table.turnCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get uploadedAt => $composableBuilder(
+    column: $table.uploadedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AiUsageRemoteDevicesTableOrderingComposer
+    extends Composer<_$AiUsageDatabase, $AiUsageRemoteDevicesTable> {
+  $$AiUsageRemoteDevicesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get deviceId => $composableBuilder(
+    column: $table.deviceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get version => $composableBuilder(
+    column: $table.version,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get turnCount => $composableBuilder(
+    column: $table.turnCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get uploadedAt => $composableBuilder(
+    column: $table.uploadedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AiUsageRemoteDevicesTableAnnotationComposer
+    extends Composer<_$AiUsageDatabase, $AiUsageRemoteDevicesTable> {
+  $$AiUsageRemoteDevicesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get deviceId =>
+      $composableBuilder(column: $table.deviceId, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<int> get version =>
+      $composableBuilder(column: $table.version, builder: (column) => column);
+
+  GeneratedColumn<int> get turnCount =>
+      $composableBuilder(column: $table.turnCount, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get uploadedAt => $composableBuilder(
+    column: $table.uploadedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$AiUsageRemoteDevicesTableTableManager
+    extends
+        RootTableManager<
+          _$AiUsageDatabase,
+          $AiUsageRemoteDevicesTable,
+          AiUsageRemoteDevice,
+          $$AiUsageRemoteDevicesTableFilterComposer,
+          $$AiUsageRemoteDevicesTableOrderingComposer,
+          $$AiUsageRemoteDevicesTableAnnotationComposer,
+          $$AiUsageRemoteDevicesTableCreateCompanionBuilder,
+          $$AiUsageRemoteDevicesTableUpdateCompanionBuilder,
+          (
+            AiUsageRemoteDevice,
+            BaseReferences<
+              _$AiUsageDatabase,
+              $AiUsageRemoteDevicesTable,
+              AiUsageRemoteDevice
+            >,
+          ),
+          AiUsageRemoteDevice,
+          PrefetchHooks Function()
+        > {
+  $$AiUsageRemoteDevicesTableTableManager(
+    _$AiUsageDatabase db,
+    $AiUsageRemoteDevicesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AiUsageRemoteDevicesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AiUsageRemoteDevicesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$AiUsageRemoteDevicesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> deviceId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<int> version = const Value.absent(),
+                Value<int> turnCount = const Value.absent(),
+                Value<DateTime> uploadedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AiUsageRemoteDevicesCompanion(
+                deviceId: deviceId,
+                name: name,
+                version: version,
+                turnCount: turnCount,
+                uploadedAt: uploadedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String deviceId,
+                required String name,
+                Value<int> version = const Value.absent(),
+                Value<int> turnCount = const Value.absent(),
+                required DateTime uploadedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => AiUsageRemoteDevicesCompanion.insert(
+                deviceId: deviceId,
+                name: name,
+                version: version,
+                turnCount: turnCount,
+                uploadedAt: uploadedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AiUsageRemoteDevicesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AiUsageDatabase,
+      $AiUsageRemoteDevicesTable,
+      AiUsageRemoteDevice,
+      $$AiUsageRemoteDevicesTableFilterComposer,
+      $$AiUsageRemoteDevicesTableOrderingComposer,
+      $$AiUsageRemoteDevicesTableAnnotationComposer,
+      $$AiUsageRemoteDevicesTableCreateCompanionBuilder,
+      $$AiUsageRemoteDevicesTableUpdateCompanionBuilder,
+      (
+        AiUsageRemoteDevice,
+        BaseReferences<
+          _$AiUsageDatabase,
+          $AiUsageRemoteDevicesTable,
+          AiUsageRemoteDevice
+        >,
+      ),
+      AiUsageRemoteDevice,
+      PrefetchHooks Function()
+    >;
 
 class $AiUsageDatabaseManager {
   final _$AiUsageDatabase _db;
@@ -1596,4 +2251,6 @@ class $AiUsageDatabaseManager {
       $$AiUsageTurnsTableTableManager(_db, _db.aiUsageTurns);
   $$AiUsageScanFilesTableTableManager get aiUsageScanFiles =>
       $$AiUsageScanFilesTableTableManager(_db, _db.aiUsageScanFiles);
+  $$AiUsageRemoteDevicesTableTableManager get aiUsageRemoteDevices =>
+      $$AiUsageRemoteDevicesTableTableManager(_db, _db.aiUsageRemoteDevices);
 }
