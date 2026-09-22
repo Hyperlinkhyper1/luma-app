@@ -173,6 +173,48 @@ void main() {
   });
 
   test(
+    'legacy production server URL migrates to the canonical HTTPS origin',
+    () async {
+      final credentials = jsonEncode({
+        'serverUrl': 'http://192.168.2.158:8080',
+        'email': 'approved@example.invalid',
+        'token': 'approved-token',
+        'encryptionKey': base64Encode(Uint8List(32)),
+        'accountApproved': true,
+      });
+      FlutterSecureStorage.setMockInitialValues({
+        'luma.sync.credentials': credentials,
+      });
+      final dir = await Directory.systemTemp.createTemp('luma-sync-origin-');
+      addTearDown(() => dir.delete(recursive: true));
+      final file = File('${dir.path}/sync.json');
+      await file.writeAsString(
+        jsonEncode({
+          'serverUrl': 'http://192.168.2.158:8080',
+          'email': 'approved@example.invalid',
+          'credentialsProtected': true,
+          'accountApproved': true,
+        }),
+      );
+
+      final state = await SyncStateStore.load(stateFile: file);
+
+      expect(state.serverUrl, 'https://sync.luma-app.cc');
+      expect(state.accountApproved, isTrue);
+      expect(state.serverReady, isTrue);
+      final migratedCredentials = jsonDecode(
+        (await const FlutterSecureStorage().read(
+          key: 'luma.sync.credentials',
+        ))!,
+      ) as Map<String, dynamic>;
+      expect(
+        migratedCredentials['serverUrl'],
+        'https://sync.luma-app.cc',
+      );
+    },
+  );
+
+  test(
     'sync credentials migrate out of JSON and bind token to protected origin',
     () async {
       FlutterSecureStorage.setMockInitialValues({});

@@ -7,6 +7,7 @@ import 'server_access.dart';
 
 /// The one luma sync server. Fixed so no UI ever needs to ask for it.
 const kDefaultSyncServerUrl = 'https://sync.luma-app.cc';
+const _legacyDefaultSyncServerUrl = 'http://192.168.2.158:8080';
 
 /// How the server approves a newly created account — mirrors `ApprovalMode`
 /// in server/lib/api.dart, and comes back on the register response.
@@ -359,6 +360,15 @@ class SyncApi {
       url = url.substring(0, url.length - 1);
     }
     return url;
+  }
+
+  /// Replaces the old built-in development address without changing URLs
+  /// that users deliberately configured for self-hosted servers.
+  static String? canonicalizeSavedServerUrl(String? raw) {
+    if (raw == null) return null;
+    return normalizeBaseUrl(raw) == _legacyDefaultSyncServerUrl
+        ? kDefaultSyncServerUrl
+        : raw;
   }
 
   /// Sync servers must use HTTPS; plain HTTP is only tolerated for

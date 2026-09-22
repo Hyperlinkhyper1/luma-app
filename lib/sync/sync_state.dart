@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:path_provider/path_provider.dart';
 
 import '../security/secure_secret_store.dart';
+import 'sync_api.dart';
 
 /// Preferences and the current device's dashboard are automatic collections.
 bool isAutomaticSyncCollection(String id) =>
@@ -165,8 +166,11 @@ class SyncStateStore {
       }
       data = {...data, ...jsonDecode(credentials) as Map<String, dynamic>};
     }
+    var serverUrlMigrated = false;
     try {
-      store.serverUrl = data['serverUrl'] as String?;
+      final savedServerUrl = data['serverUrl'] as String?;
+      store.serverUrl = SyncApi.canonicalizeSavedServerUrl(savedServerUrl);
+      serverUrlMigrated = savedServerUrl != store.serverUrl;
       store.email = data['email'] as String?;
       store.token = data['token'] as String?;
       final enc = data['encryptionKey'];
@@ -209,8 +213,9 @@ class SyncStateStore {
       throw StateError('Invalid sync state. Restore the original credentials.');
     }
     if (file != null &&
-        !protected &&
-        (store.token != null || store.encryptionKey != null)) {
+        (serverUrlMigrated ||
+            (!protected &&
+                (store.token != null || store.encryptionKey != null)))) {
       await store.save();
     }
     return store;

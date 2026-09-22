@@ -115,6 +115,10 @@ void main() {
     final launcher = await UpdateService.writeWindowsInstallerLauncher(
       installer.path,
     );
+    expect(
+      await File(launcher).readAsString(),
+      contains('/FORCECLOSEAPPLICATIONS'),
+    );
     final result = await Process.run('wscript.exe', [launcher]);
 
     for (var attempt = 0; attempt < 50 && !marker.existsSync(); attempt++) {
@@ -130,6 +134,7 @@ void main() {
       'windows${Platform.pathSeparator}installer${Platform.pathSeparator}luma.iss',
     ).readAsStringSync();
 
+    expect(installerScript, contains('CloseApplications=force'));
     expect(installerScript, isNot(contains('Filename: "{cmd}"')));
     expect(installerScript, contains('Filename: "{app}\\{#MyAppExeName}"'));
   });

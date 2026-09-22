@@ -28,7 +28,9 @@ Compression=lzma2
 SolidCompression=yes
 ; Closes a running luma.exe before copying files, and we relaunch it via the
 ; [Run] entry below — together this makes silent updates seamless.
-CloseApplications=yes
+; Flutter does not answer Restart Manager's cooperative close message. Force
+; closure so a second luma window cannot make a silent update abort.
+CloseApplications=force
 UninstallDisplayIcon={app}\{#MyAppExeName}
 SetupIconFile=..\runner\resources\app_icon.ico
 
