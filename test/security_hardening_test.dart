@@ -381,32 +381,108 @@ void main() {
       addTearDown(() => dir.delete(recursive: true));
       final file = File('${dir.path}/legacy.key');
       await file.writeAsString(base64Encode(key));
-      final store = SecureSecretStore();
+      final data = File('${dir.path}/vault.sqlite');
+      await data.writeAsString('ciphertext');
+      final store = SecureSecretStore(storageDir: dir);
       expect(
-        await store.loadKey('test.key', file, encryptedDataExists: true),
+        await store.loadKey('test.key', file, encryptedData: [data]),
         key,
       );
       expect(await file.exists(), isFalse);
       expect(
-        await store.loadKey('test.key', file, encryptedDataExists: true),
+        await store.loadKey('test.key', file, encryptedData: [data]),
         key,
       );
       await file.writeAsString('broken');
       await expectLater(
-        store.loadKey('broken.key', file, encryptedDataExists: true),
+        store.loadKey('broken.key', file, encryptedData: [data]),
         throwsA(anything),
       );
       expect(await file.readAsString(), 'broken');
-      await expectLater(
-        store.loadKey(
+      expect(await data.exists(), isTrue);
+      expect(store.lostKeys, isEmpty);
+    },
+  );
+
+  test(
+    'a lost key moves its data aside and starts over instead of crashing',
+    () async {
+      FlutterSecureStorage.setMockInitialValues({});
+      final dir = await Directory.systemTemp.createTemp('luma-security-');
+      addTearDown(() => dir.delete(recursive: true));
+      final data = File('${dir.path}/vault.sqlite');
+      await data.writeAsString('ciphertext');
+      final store = SecureSecretStore(storageDir: dir);
+
+      final fresh = await store.loadKey(
+        'missing.key',
+        File('${dir.path}/missing'),
+        encryptedData: [data, File('${dir.path}/vault.sqlite-wal')],
+      );
+
+      expect(fresh, hasLength(32));
+      expect(await data.exists(), isFalse);
+      final moved = dir
+          .listSync()
+          .whereType<File>()
+          .where((f) => f.path.contains('vault.sqlite.lost-key-'))
+          .toList();
+      expect(moved, hasLength(1));
+      expect(await moved.single.readAsString(), 'ciphertext');
+      expect(store.lostKeys, {'missing.key'});
+      expect(
+        await store.loadKey(
           'missing.key',
           File('${dir.path}/missing'),
-          encryptedDataExists: true,
+          encryptedData: [data],
         ),
-        throwsStateError,
+        fresh,
       );
     },
   );
+
+  test('a missing secure storage file is restored from its backup', () async {
+    FlutterSecureStorage.setMockInitialValues({});
+    final dir = await Directory.systemTemp.createTemp('luma-security-');
+    addTearDown(() => dir.delete(recursive: true));
+    final backup = File('${dir.path}/flutter_secure_storage.dat.bak');
+    await backup.writeAsBytes([1, 2, 3]);
+
+    await SecureSecretStore(storageDir: dir).read('anything');
+
+    expect(
+      await File('${dir.path}/flutter_secure_storage.dat').readAsBytes(),
+      [1, 2, 3],
+    );
+  });
+
+  test('lost sync credentials load as signed out and pull on sign-in', () async {
+    FlutterSecureStorage.setMockInitialValues({});
+    final dir = await Directory.systemTemp.createTemp('luma-security-');
+    addTearDown(() => dir.delete(recursive: true));
+    final stateFile = File('${dir.path}/luma_sync.json');
+    await stateFile.writeAsString(
+      jsonEncode({
+        'serverUrl': 'https://sync.example.com',
+        'email': 'a@example.com',
+        'credentialsProtected': true,
+        'accountApproved': true,
+        'localAccountMigrated': true,
+        'collections': {
+          'passwords': {'enabled': true, 'lastSyncedVersion': 6},
+        },
+      }),
+    );
+
+    final state = await SyncStateStore.load(stateFile: stateFile);
+
+    expect(state.credentialsLost, isTrue);
+    expect(state.signedIn, isFalse);
+    expect(state.serverReady, isFalse);
+    expect(state.email, 'a@example.com');
+    expect(state.collection('passwords').enabled, isTrue);
+    expect(state.collection('passwords').lastSyncedVersion, isNull);
+  });
 
   test('sync uses versioned AES-GCM and rejects unknown versions', () {
     final sealed = SyncCrypto.sealRaw(
