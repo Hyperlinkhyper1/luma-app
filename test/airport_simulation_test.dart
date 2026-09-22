@@ -7,6 +7,20 @@ import 'package:luma/features/plugins/installed/airline_tycoon/data/aircraft.dar
 import 'package:luma/features/plugins/installed/airline_tycoon/data/airport_catalog.dart';
 import 'package:luma/features/plugins/installed/airline_tycoon/sim/airport_world.dart';
 
+/// The starter airport's floor zoned as [zone].
+AirportZone zoned(AirportWorld world, String zone) =>
+    world.zones.firstWhere((z) => z.zone == zone);
+
+/// The biggest section of terminal with no zone painted on it: the main
+/// hall of the starter airport.
+AirportFacility mainHall(AirportWorld world) => world.halls
+    .where((h) => world.zoneAt(h.cx, h.cy) == null)
+    .reduce((a, b) => b.width * b.depth > a.width * a.depth ? b : a);
+
+/// The terminal section [f] stands in.
+AirportFacility hallOf(AirportWorld world, AirportFacility f) =>
+    world.halls.firstWhere((h) => h.contains(f.cx, f.cy));
+
 /// Signs an offer and places its flights on the first stand that fits, an
 /// hour from now: the one-step contract flow the older tests assume.
 String? signAndPlace(
@@ -146,7 +160,7 @@ void main() {
   test('vehicles drive back before accepting another service job', () {
     signAndPlace(world, airline, 'coastal');
     var sawReturning = false;
-    for (var i = 0; i < 160; i++) {
+    for (var i = 0; i < 400; i++) {
       world.advance(.5, airline, catalog);
       for (final v in world.vehicles) {
         if (v.returning) {
@@ -272,14 +286,41 @@ void main() {
     },
   );
 
-  test('imminent flight protects infrastructure from removal or movement', () {
+  test('an imminent flight protects infrastructure from removal only', () {
     signAndPlace(world, airline, 'coastal');
     final terminal = world.ofKind('terminal').first;
     expect(world.demolish(airline, terminal.id), isNotNull);
+    final stand = world.stands.first;
     expect(
-      world.build(airline, terminal.kind, 100, 100, 1, moving: terminal.id),
-      isNotNull,
+      world.build(airline, stand.kind, 400, 400, 0, moving: stand.id),
+      isNull,
+      reason: 'anything can be moved while in use',
     );
+  });
+
+  test('a moved terminal takes its furnishings along, turned with it', () {
+    final terminal = world.ofKind('terminal').first;
+    final inside = world.facilities
+        .where((f) => f.interior && terminal.contains(f.x, f.y))
+        .map((f) => f.id)
+        .toList();
+    expect(inside, isNotEmpty);
+    expect(
+      world.build(airline, 'terminal', 1000, 1000, 1, moving: terminal.id),
+      isNull,
+    );
+    final moved = world.facility(terminal.id)!;
+    expect((moved.width, moved.depth), (60.0, 120.0));
+    for (final id in inside) {
+      final f = world.facility(id)!;
+      expect(
+        moved.contains(f.x, f.y) &&
+            moved.contains(f.x + f.width, f.y + f.depth),
+        isTrue,
+        reason: '$id stays inside',
+      );
+      expect(f.rotation, 1);
+    }
   });
 
   test('furniture must fit inside terminals and may not overlap', () {
@@ -386,20 +427,14 @@ void main() {
     );
   });
 
-  test('a jet bridge stand has to touch a terminal', () {
+  test('a jet bridge stand has to touch the main hall', () {
     final terminal = world.ofKind('terminal').first;
     expect(
       world.build(airline, 'standContact', 500, 500, 0),
-      contains('terminal'),
+      contains('main hall'),
     );
     expect(
-      world.build(
-        airline,
-        'standContact',
-        terminal.x + terminal.width,
-        terminal.y,
-        0,
-      ),
+      world.build(airline, 'standContact', terminal.x + 40, terminal.y - 65, 0),
       isNull,
     );
     expect(world.ofKind('standContact'), hasLength(1));
@@ -462,18 +497,12 @@ void main() {
   });
 
   test('a staffed counter replaces the check-in desks', () {
-    final terminal = world.ofKind('terminal').last;
+    final hall = zoned(world, 'arrival');
     world.facilities.removeWhere((f) => f.kind == 'checkIn');
     world.resolveConnections();
     expect(world.hasService('checkIn'), isFalse);
     expect(
-      world.build(
-        airline,
-        'checkInCounter',
-        terminal.x + 60,
-        terminal.y + 40,
-        0,
-      ),
+      world.build(airline, 'checkInCounter', hall.x + 4, hall.y + 8, 0),
       isNull,
     );
     expect(world.hasService('checkIn'), isTrue);
@@ -490,19 +519,15 @@ void main() {
   });
 
   test('ticket machines share the check-in queue with the desks', () {
-    final terminal = world.ofKind('terminal').last;
+    final hall = zoned(world, 'arrival');
     expect(
-      world.build(
-        airline,
-        'ticketMachine',
-        terminal.x + 60,
-        terminal.y + 40,
-        0,
-      ),
+      world.build(airline, 'ticketMachine', hall.x + 4, hall.y + 8, 0),
       isNull,
     );
     final kiosk = world.ofKind('ticketMachine').single;
     expect(kiosk.connected, isTrue);
+    // A long queue at the desks sends travellers to the machine instead.
+    world.queues[world.ofKind('checkIn').single.id] = world.time + 600;
     signAndPlace(world, airline, 'coastal');
     var used = false;
     for (var i = 0; i < 400 && !used; i++) {
@@ -548,15 +573,9 @@ void main() {
     });
 
     test('arrivals wait for bags, collect them and leave', () {
-      final terminal = world.ofKind('terminal').last;
+      final hall = zoned(world, 'departure');
       expect(
-        world.build(
-          airline,
-          'baggageCarousel',
-          terminal.x + 60,
-          terminal.y + 40,
-          0,
-        ),
+        world.build(airline, 'baggageCarousel', hall.x + 4, hall.y + 8, 0),
         isNull,
       );
       final carousel = world.ofKind('baggageCarousel').single;
@@ -589,14 +608,8 @@ void main() {
     });
 
     test('a full carousel keeps the next arrivals waiting', () {
-      final terminal = world.ofKind('terminal').last;
-      world.build(
-        airline,
-        'baggageCarousel',
-        terminal.x + 60,
-        terminal.y + 40,
-        0,
-      );
+      final hall = zoned(world, 'departure');
+      world.build(airline, 'baggageCarousel', hall.x + 4, hall.y + 8, 0);
       final carousel = world.ofKind('baggageCarousel').single;
       final c = reclaimContract();
       world.placeContract(c.id, world.stands.first.id, world.time + 60);
@@ -615,20 +628,52 @@ void main() {
             ..nextEvent = 1e9,
         );
       }
-      world.advance(90, airline, catalog);
+      world.advance(200, airline, catalog);
       final waiting = world.passengers.where(
         (p) => p.arriving && p.flightId != 'elsewhere',
       );
       expect(waiting, isNotEmpty);
-      expect(waiting.every((p) => p.stage == 'arrived'), isTrue);
+      expect(
+        waiting.every((p) => const {'deplaning', 'arrived'}.contains(p.stage)),
+        isTrue,
+      );
+      expect(waiting.any((p) => p.stage == 'arrived'), isTrue);
       expect(world.carouselLoad(carousel.id), carouselCapacity);
     });
+  });
+
+  test('food carts sell cheap snacks in tight corners', () {
+    final terminal = mainHall(world);
+    expect(
+      world.build(airline, 'foodCart', terminal.x + 50, terminal.y + 20, 0),
+      isNull,
+    );
+    signAndPlace(world, airline, 'coastal');
+    world.advance(400, airline, catalog);
+    expect(
+      world.ledger.where((e) => e['description'] == 'Food cart sales'),
+      isNotEmpty,
+    );
+  });
+
+  test('coffee to-go stalls sell to passengers on the way to the gate', () {
+    final terminal = mainHall(world);
+    expect(
+      world.build(airline, 'coffeeToGo', terminal.x + 50, terminal.y + 30, 0),
+      isNull,
+    );
+    signAndPlace(world, airline, 'coastal');
+    world.advance(400, airline, catalog);
+    expect(
+      world.ledger.where((e) => e['description'] == 'Coffee to-go sales'),
+      isNotEmpty,
+    );
   });
 
   test('restaurants serve instead of the café', () {
     world.facilities.removeWhere((f) => f.kind == 'cafe');
     world.resolveConnections();
-    final terminal = world.ofKind('terminal').last;
+    final terminal = mainHall(world);
     expect(
       world.build(airline, 'restaurant', terminal.x + 50, terminal.y + 30, 0),
       isNull,
@@ -643,9 +688,12 @@ void main() {
 
   test('bins make the terminal cleaner and passengers happier', () {
     expect(world.cleanliness, .6);
+    // No toilets costs satisfaction, so the bonus has room to show.
+    world.facilities.removeWhere((f) => f.kind == 'toilets');
+    world.resolveConnections();
     final plain = AirportWorld.fromJson(world.toJson());
     final plainAirline = AirlineGameState.fromJson(airline.toJson());
-    final terminal = world.ofKind('terminal').last;
+    final terminal = mainHall(world);
     for (var i = 0; i < 3; i++) {
       expect(
         world.build(
@@ -671,9 +719,11 @@ void main() {
 
   test('information desks raise passenger satisfaction', () {
     expect(world.infoDeskBonus, 0);
+    world.facilities.removeWhere((f) => f.kind == 'toilets');
+    world.resolveConnections();
     final plain = AirportWorld.fromJson(world.toJson());
     final plainAirline = AirlineGameState.fromJson(airline.toJson());
-    final terminal = world.ofKind('terminal').last;
+    final terminal = mainHall(world);
     expect(
       world.build(airline, 'infoDesk', terminal.x + 60, terminal.y + 40, 0),
       isNull,
@@ -692,7 +742,7 @@ void main() {
   test('vending machines stand in for the café', () {
     world.facilities.removeWhere((f) => f.kind == 'cafe');
     world.resolveConnections();
-    final terminal = world.ofKind('terminal').last;
+    final terminal = mainHall(world);
     expect(
       world.build(
         airline,
@@ -716,7 +766,7 @@ void main() {
   });
 
   test('fashion boutiques sell to passengers after security', () {
-    final terminal = world.ofKind('terminal').last;
+    final terminal = mainHall(world);
     expect(
       world.build(airline, 'clothingShop', terminal.x + 60, terminal.y + 40, 0),
       isNull,
@@ -730,7 +780,7 @@ void main() {
   });
 
   test('luxury boutiques sell to passengers after security', () {
-    final terminal = world.ofKind('terminal').last;
+    final terminal = mainHall(world);
     expect(
       world.build(
         airline,
@@ -749,8 +799,40 @@ void main() {
     );
   });
 
+  test('arcades earn tokens and lift the mood of the wait', () {
+    final terminal = mainHall(world);
+    expect(
+      world.build(airline, 'arcade', terminal.x + 60, terminal.y + 40, 0),
+      isNull,
+    );
+    world.facilities.removeWhere((f) => f.kind == 'seating');
+    world.resolveConnections();
+    signAndPlace(world, airline, 'coastal');
+    world.advance(400, airline, catalog);
+    expect(
+      world.ledger.where((e) => e['description'] == 'Arcade tokens'),
+      isNotEmpty,
+    );
+  });
+
+  test('casinos earn wagers and lift the mood of the wait', () {
+    final terminal = mainHall(world);
+    expect(
+      world.build(airline, 'casino', terminal.x + 60, terminal.y + 40, 0),
+      isNull,
+    );
+    world.facilities.removeWhere((f) => f.kind == 'seating');
+    world.resolveConnections();
+    signAndPlace(world, airline, 'coastal');
+    world.advance(400, airline, catalog);
+    expect(
+      world.ledger.where((e) => e['description'] == 'Casino wagers'),
+      isNotEmpty,
+    );
+  });
+
   test('VIP lounges host passengers before boarding', () {
-    final terminal = world.ofKind('terminal').last;
+    final terminal = mainHall(world);
     expect(
       world.build(airline, 'vipLounge', terminal.x + 60, terminal.y + 40, 0),
       isNull,
@@ -766,7 +848,7 @@ void main() {
   });
 
   test('duty-free food halls sell to passengers after security', () {
-    final terminal = world.ofKind('terminal').last;
+    final terminal = mainHall(world);
     expect(
       world.build(airline, 'foodShop', terminal.x + 60, terminal.y + 30, 0),
       isNull,
@@ -782,7 +864,7 @@ void main() {
   });
 
   test('perfume boutiques sell to a quarter of each group', () {
-    final terminal = world.ofKind('terminal').last;
+    final terminal = mainHall(world);
     expect(
       world.build(airline, 'perfumeShop', terminal.x + 60, terminal.y + 30, 0),
       isNull,
@@ -798,8 +880,22 @@ void main() {
     }
   });
 
+  test('flower shops sell to passengers after security', () {
+    final terminal = mainHall(world);
+    expect(
+      world.build(airline, 'flowerShop', terminal.x + 60, terminal.y + 30, 0),
+      isNull,
+    );
+    signAndPlace(world, airline, 'coastal');
+    world.advance(400, airline, catalog);
+    expect(
+      world.ledger.where((e) => e['description'] == 'Flower shop sales'),
+      isNotEmpty,
+    );
+  });
+
   test('newsstand kiosks sell to passengers after security', () {
-    final terminal = world.ofKind('terminal').last;
+    final terminal = mainHall(world);
     expect(
       world.build(airline, 'kiosk', terminal.x + 60, terminal.y + 40, 0),
       isNull,
@@ -813,7 +909,7 @@ void main() {
   });
 
   test('duty-free shops earn from passengers on their way to the gate', () {
-    final terminal = world.ofKind('terminal').last;
+    final terminal = mainHall(world);
     expect(
       world.build(airline, 'shop', terminal.x + 60, terminal.y + 40, 0),
       isNull,
@@ -825,6 +921,410 @@ void main() {
       world.ledger.where((e) => e['description'] == 'Duty-free sales'),
       isNotEmpty,
     );
+  });
+
+  test('passengers walk in from the kerb through the entrance doors', () {
+    final entrance = world.ofKind('entrance').single;
+    final hall = hallOf(world, entrance);
+    final door = world.entranceDoor(entrance)!;
+    // The nearest outside wall of the entrance's section: the road side.
+    expect(door.door[0], hall.x + hall.width);
+    expect(door.kerb[0], door.door[0] + AirportWorld.kerbDistance);
+    expect(door.kerb[1], door.door[1]);
+    signAndPlace(world, airline, 'coastal');
+    for (var i = 0; i < 200 && world.passengers.isEmpty; i++) {
+      world.advance(1, airline, catalog);
+    }
+    final group = world.passengers.first;
+    expect(group.path.first, door.kerb);
+    expect(group.path[1], door.door);
+    world.advance(400, airline, catalog);
+    expect(world.flights.where((f) => f.boarded > 0), isNotEmpty);
+  });
+
+  group('customs, check-in and check-out are required', () {
+    for (final kind in ['customs', 'checkOut', 'checkIn']) {
+      test('no contracts and no own flights without $kind', () {
+        world.facilities.removeWhere((f) => f.kind == kind);
+        world.resolveConnections();
+        expect(world.contractBlocker('coastal'), isNotNull);
+        expect(
+          world.schedule(
+            airline,
+            catalog,
+            aircraftId: 'ac1',
+            routeId: 'rt1',
+            departure: 500,
+          ),
+          isNotNull,
+        );
+      });
+    }
+
+    test('planned flights wait at the stand when customs is removed', () {
+      signAndPlace(world, airline, 'coastal');
+      world.facilities.removeWhere((f) => f.kind == 'customs');
+      world.resolveConnections();
+      world.advance(120, airline, catalog);
+      final f = world.flights.first;
+      expect(f.stage, isNot('completed'));
+      expect(f.issue, contains('customs'));
+    });
+
+    test('arrivals walk off, clear customs, check out and leave', () {
+      signAndPlace(world, airline, 'coastal');
+      final seen = <String>{};
+      var boarding = false;
+      for (var i = 0; i < 400; i++) {
+        world.advance(1, airline, catalog);
+        for (final p in world.passengers) {
+          if (p.arriving) seen.add(p.stage);
+          if (p.stage == 'walkingOnBoard') boarding = true;
+        }
+      }
+      expect(
+        seen,
+        containsAll(['deplaning', 'customs', 'checkOut', 'leaving']),
+      );
+      expect(boarding, isTrue, reason: 'departing groups walk to the plane');
+      expect(world.passengers.where((p) => p.arriving), isEmpty);
+      expect(world.flights.first.stage, 'completed');
+    });
+  });
+
+  test('own aircraft are towed from the hangar instead of appearing', () {
+    expect(
+      world.schedule(
+        airline,
+        catalog,
+        aircraftId: 'ac1',
+        routeId: 'rt1',
+        departure: 500,
+      ),
+      isNull,
+    );
+    world.advance(420 - world.time + .5, airline, catalog);
+    final f = world.flights.single;
+    expect(f.stage, 'positioning');
+    final hangar = world.ofKind('hangar').single;
+    expect(f.path.first, [hangar.x - 5, hangar.y - 25, 0]);
+    final stand = world.facility(f.standId)!;
+    expect(f.path.last, world.parkingSpot(stand, aircraftModelById('atr72')!));
+  });
+
+  group('boarding one by one', () {
+    test('gate lanes and speed are upgraded separately', () {
+      airline.cashEur = 5000000;
+      final stand = world.stands.first;
+      final gate = world.ofKind('boardingGate').first;
+      final base = world.boardingRate(stand);
+      expect(world.upgrade(airline, gate.id, attribute: 'lanes'), isNull);
+      expect(gate.levelOf('lanes'), 2);
+      expect(gate.levelOf('speed'), 1);
+      expect(world.boardingRate(stand), closeTo(base * 2, 1e-9));
+      expect(world.upgrade(airline, gate.id, attribute: 'speed'), isNull);
+      expect(world.boardingRate(stand), greaterThan(base * 2));
+      final reloaded = AirportWorld.fromJson(
+        jsonDecode(jsonEncode(world.toJson())) as Map<String, Object?>,
+      );
+      expect(reloaded.facility(gate.id)!.levels, {'lanes': 2, 'speed': 2});
+    });
+
+    test('passengers walk out to the door in single file at that rate', () {
+      signAndPlace(world, airline, 'coastal');
+      AirportPassengerGroup? walking;
+      for (var i = 0; i < 400 && walking == null; i++) {
+        world.advance(1, airline, catalog);
+        walking = world.passengers
+            .where((p) => p.stage == 'walkingOnBoard')
+            .firstOrNull;
+      }
+      expect(walking, isNotNull);
+      final stand = world.stands.first;
+      expect(walking!.interval, closeTo(1 / world.boardingRate(stand), 1e-9));
+      final door = world.aircraftDoor(stand, aircraftModelById('atr72')!);
+      expect(walking.path.last, door);
+    });
+
+    test('aircraft park on a lead-in lined up with the taxiway', () {
+      final stand = world.stands.first;
+      final taxiway = world
+          .ofKind('taxiway')
+          .firstWhere((t) => t.x + t.width == stand.x);
+      expect(world.standNose(stand), '+x');
+      expect(world.standLane(stand), taxiway.cy);
+    });
+
+    test('departures are not delayed by the slower, visible movement', () {
+      signAndPlace(world, airline, 'coastal');
+      world.advance(400, airline, catalog);
+      final f = world.flights.first;
+      expect(f.stage, 'completed');
+      expect(f.delay, lessThan(5));
+    });
+  });
+
+  group('zoning the terminal floor', () {
+    test('a painted zone decides what may be placed on it', () {
+      airline.cashEur = 50000000;
+      world.zones.clear();
+      final main = world.ofKind('terminal').first;
+      // Half of a main hall section becomes an arrival hall.
+      expect(
+        world.paintZone('arrival', main.x + 10, main.y + 10, 50, 40),
+        isNull,
+      );
+      expect(world.zones.single.zone, 'arrival');
+      expect(world.zoneAt(main.x + 20, main.y + 20), 'arrival');
+      expect(world.zoneAt(main.x + 100, main.y + 20), isNull);
+      expect(
+        world.build(airline, 'shop', main.x + 20, main.y + 20, 0),
+        contains('main hall'),
+      );
+      expect(
+        world.build(airline, 'checkIn', main.x + 20, main.y + 20, 0),
+        isNull,
+      );
+      expect(
+        world.build(airline, 'checkIn', main.x + 100, main.y + 20, 0),
+        contains('arrival hall'),
+      );
+      expect(world.build(airline, 'shop', main.x + 100, main.y + 20, 0), isNull);
+    });
+
+    test('zones are painted over, rubbed out and saved', () {
+      world.zones.clear();
+      final main = world.ofKind('terminal').first;
+      expect(world.paintZone('departure', 500, 500, 20, 20), contains('inside'));
+      expect(world.paintZone('arrival', main.x + 10, main.y + 10, 1, 40), contains('larger'));
+      expect(world.paintZone('sideways', main.x + 10, main.y + 10, 20, 20), contains('Unknown'));
+      expect(world.paintZone('arrival', main.x + 10, main.y + 10, 40, 40), isNull);
+      // A later zone wins where they overlap, and covers the one under it.
+      expect(world.paintZone('departure', main.x + 10, main.y + 10, 40, 40), isNull);
+      expect(world.zones, hasLength(1));
+      expect(world.zoneAt(main.x + 20, main.y + 20), 'departure');
+      expect(world.paintZone('arrival', main.x + 20, main.y + 20, 10, 10), isNull);
+      expect(world.zoneAt(main.x + 25, main.y + 25), 'arrival');
+      expect(world.zoneAt(main.x + 15, main.y + 15), 'departure');
+      final reloaded = AirportWorld.fromJson(
+        jsonDecode(jsonEncode(world.toJson())) as Map<String, dynamic>,
+      );
+      expect(reloaded.zones, hasLength(2));
+      expect(reloaded.zoneAt(main.x + 25, main.y + 25), 'arrival');
+      expect(world.paintZone('none', main.x + 5, main.y + 5, 60, 60), isNull);
+      expect(world.zones, isEmpty);
+      expect(world.paintZone('none', main.x + 5, main.y + 5, 60, 60), contains('No zone'));
+    });
+  });
+
+  group('boarding through the gate door', () {
+    test('the walk leaves through a door and follows the walkway', () {
+      final stand = world.stands.first;
+      final door = world.boardingDoor(stand)!;
+      final hall = world.ofKind('terminal').firstWhere(
+        (t) => t.contains(door.door[0] + 1, door.door[1]),
+      );
+      // On the wall of the gate's hall, facing the stand, with the apron
+      // point just outside it.
+      expect(door.door[0], hall.x);
+      expect(door.kerb[0], lessThan(door.door[0]));
+      expect(hall.contains(door.door[0] + 1, door.door[1]), isTrue);
+      final walk = world.boardingWalk(stand);
+      expect(walk.first, door.door);
+      expect(walk.last[0], lessThan(stand.x + stand.width));
+      signAndPlace(world, airline, 'coastal');
+      var walked = false;
+      for (var i = 0; i < 400 && !walked; i++) {
+        world.advance(1, airline, catalog);
+        for (final p in world.passengers) {
+          if (p.stage != 'walkingOnBoard') continue;
+          walked = true;
+          // Out through the door, along the walkway, then up to the door.
+          expect(p.path.any((q) => q[0] == door.door[0] && q[1] == door.door[1]), isTrue);
+          expect(p.path.last[2], greaterThan(0), reason: 'up into the cabin');
+        }
+      }
+      expect(walked, isTrue);
+    });
+  });
+
+  group('taxi lines join up', () {
+    test('a short connector runs the way it is used, not the way it is shaped', () {
+      airline.cashEur = 50000000;
+      final stand = world.stands.first;
+      final stub = world
+          .ofKind('taxiway')
+          .firstWhere((t) => t.gap(stand) < .01 && t.width < 60);
+      // The stub is wider than it is deep, but traffic runs across it.
+      expect(world.flowAxis(stub), 'x');
+      expect(world.standLane(stand), stub.cy);
+      // A square connector takes its direction from what it touches.
+      final square = AirportFacility(
+        id: 'square',
+        kind: 'taxiway',
+        x: stub.x,
+        y: stub.y + 40,
+        width: 30,
+        depth: 30,
+      );
+      world.facilities.add(square);
+      expect(world.flowAxis(square), 'x');
+      // A long taxiway still runs down its length.
+      final long = world.ofKind('taxiway').firstWhere((t) => t.depth > 500);
+      expect(world.flowAxis(long), 'z');
+    });
+  });
+
+  group('three halls like the original game', () {
+    test('one terminal building, zoned into the three parts', () {
+      airline.cashEur = 50000000;
+      // The halls are all one kind; only the zoning tells them apart.
+      expect(world.ofKind('terminalLandside'), isEmpty);
+      expect(world.ofKind('terminalReclaim'), isEmpty);
+      expect(world.halls.map((h) => h.kind).toSet(), {'terminal'});
+      expect(
+        world.build(airline, 'terminalLandside', 400, 400, 0),
+        contains('zone its floor'),
+      );
+      expect(facilityDef('terminalLandside').hidden, isTrue);
+      expect(facilityDef('terminal').hidden, isFalse);
+    });
+
+    test('each part takes only its own piece of the journey', () {
+      airline.cashEur = 50000000;
+      final arrival = zoned(world, 'arrival');
+      final departure = zoned(world, 'departure');
+      final main = mainHall(world);
+      String? at(String kind, AirportZone hall) =>
+          world.build(airline, kind, hall.x + 4, hall.y + 8, 0);
+      String? inMain(String kind) =>
+          world.build(airline, kind, main.x + 60, main.y + 40, 0);
+      expect(at('shop', arrival), contains('main hall'));
+      expect(at('seating', departure), contains('main hall'));
+      expect(at('boardingGate', arrival), contains('main hall'));
+      expect(at('customs', arrival), contains('departure hall'));
+      expect(inMain('checkOut'), contains('departure hall'));
+      expect(inMain('baggageCarousel'), contains('departure hall'));
+      expect(at('ticketMachine', departure), contains('arrival hall'));
+      expect(inMain('security'), contains('arrival hall'));
+      expect(
+        world.build(airline, 'customs', 500, 500, 0),
+        contains('inside the departure hall'),
+      );
+      void fits(String kind, AirportZone hall) {
+        expect(at(kind, hall), isNull, reason: '$kind in ${hall.zone}');
+        world.facilities.removeWhere(
+          (f) => f.kind == kind && f.x == hall.x + 4 && f.y == hall.y + 8,
+        );
+      }
+
+      for (final kind in ['ticketMachine', 'security', 'bins', 'infoDesk']) {
+        fits(kind, arrival);
+      }
+      for (final kind in ['baggageCarousel', 'customs', 'bins', 'infoDesk']) {
+        fits(kind, departure);
+      }
+      expect(inMain('shop'), isNull);
+    });
+
+    test('passengers come in through the arrival hall and leave through '
+        'the departure hall', () {
+      final arrival = zoned(world, 'arrival');
+      final departure = zoned(world, 'departure');
+      expect(world.halls.every((h) => h.connected), isTrue);
+      for (final kind in ['entrance', 'checkIn', 'security']) {
+        final f = world.ofKind(kind).single;
+        expect(arrival.contains(f.cx, f.cy), isTrue, reason: kind);
+      }
+      for (final kind in ['customs', 'checkOut']) {
+        final f = world.ofKind(kind).single;
+        expect(departure.contains(f.cx, f.cy), isTrue, reason: kind);
+      }
+      final checkOut = world.ofKind('checkOut').single;
+      final exit = world.entranceDoor(checkOut)!;
+      expect(exit.door[0], hallOf(world, checkOut).x + hallOf(world, checkOut).width);
+      expect(departure.contains(exit.door[0] - 1, exit.door[1]), isTrue);
+      signAndPlace(world, airline, 'coastal');
+      final kerbs = <String>{};
+      for (var i = 0; i < 400; i++) {
+        world.advance(1, airline, catalog);
+        for (final p in world.passengers) {
+          if (p.arriving && p.stage == 'leaving' && p.path.isNotEmpty) {
+            kerbs.add(p.path.last.take(2).join(','));
+          }
+        }
+      }
+      expect(kerbs, {exit.kerb.take(2).join(',')});
+      expect(world.flights.first.stage, 'completed');
+      expect(world.flights.first.boarded, greaterThan(0));
+    });
+  });
+
+  group('building upgrades', () {
+    test('an upgrade charges the next level and survives a reload', () {
+      airline.cashEur = 5000000;
+      final stand = world.stands.first;
+      final cost = world.upgradeCost(stand)!;
+      expect(cost, upgradeCostAt(facilityDef(stand.kind), 1));
+      expect(world.upgrade(airline, stand.id), isNull);
+      expect(stand.level, 2);
+      expect(airline.cashEur, 5000000 - cost);
+      expect(
+        world.upgradeCost(stand),
+        upgradeCostAt(facilityDef(stand.kind), 2),
+      );
+      final reloaded = AirportWorld.fromJson(
+        jsonDecode(jsonEncode(world.toJson())) as Map<String, Object?>,
+      );
+      expect(reloaded.facility(stand.id)!.level, 2);
+    });
+
+    test('maxed, unaffordable and fixed buildings are refused', () {
+      airline.cashEur = 5000000;
+      expect(
+        world.upgrade(airline, world.ofKind('hangar').single.id),
+        isNotNull,
+      );
+      final stand = world.stands.first..level = maxFacilityLevel;
+      expect(world.upgradeCost(stand), isNull);
+      expect(world.upgrade(airline, stand.id), 'Already at the highest level.');
+      airline.cashEur = 0;
+      expect(
+        world.upgrade(airline, world.stands.last.id),
+        'Not enough cash for this upgrade.',
+      );
+    });
+
+    test('demolishing refunds half of the upgrades too', () {
+      airline.cashEur = 1000000;
+      final taxiway = world.ofKind('taxiway').last;
+      final def = facilityDef('taxiway');
+      expect(world.upgrade(airline, taxiway.id), isNull);
+      final before = airline.cashEur;
+      expect(world.demolish(airline, taxiway.id), isNull);
+      expect(
+        airline.cashEur - before,
+        ((def.cost + upgradeCostAt(def, 1)) * .5).round(),
+      );
+    });
+
+    test('an upgraded shop sells more to each passenger', () {
+      final terminal = mainHall(world);
+      expect(
+        world.build(airline, 'shop', terminal.x + 60, terminal.y + 40, 0),
+        isNull,
+      );
+      world.ofKind('shop').single.level = 2;
+      signAndPlace(world, airline, 'coastal');
+      world.advance(400, airline, catalog);
+      final sales = world.ledger
+          .where((e) => e['description'] == 'Duty-free sales')
+          .map((e) => e['amount'])
+          .toList();
+      expect(sales, isNotEmpty);
+      final allowed = {for (var n = 1; n <= 10; n++) (n * 14 * 1.15).round()};
+      expect(sales.every(allowed.contains), isTrue, reason: '$sales');
+    });
   });
 
   group('planning like the timetable in the original game', () {

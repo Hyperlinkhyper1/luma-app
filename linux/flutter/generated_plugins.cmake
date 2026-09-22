@@ -4,6 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   audioplayers_linux
+  desktop_multi_window
   flutter_onnxruntime
   flutter_secure_storage_linux
   hotkey_manager_linux

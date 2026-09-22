@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:mailer/mailer.dart';
@@ -5,7 +6,9 @@ import 'package:mailer/smtp_server.dart';
 
 /// SMTP configuration, read from environment variables (see .env.example).
 /// If [host] is empty, mail sending is disabled and callers should log
-/// instead (useful for local development without a real mail server).
+/// instead (useful for local development without a real mail server). Used
+/// only for family/chat invite email now — account verification goes
+/// through [ResendConfig] instead (see [Mailer.sendVerificationCode]).
 class MailConfig {
   MailConfig({
     required this.host,
@@ -15,7 +18,6 @@ class MailConfig {
     required this.fromAddress,
     required this.fromName,
     required this.useSsl,
-    required this.publicUrl,
   });
 
   final String host;
@@ -25,9 +27,6 @@ class MailConfig {
   final String fromAddress;
   final String fromName;
   final bool useSsl;
-
-  /// Base URL used to build the verification link, e.g. https://sync.example.com.
-  final String publicUrl;
 
   bool get enabled => host.isNotEmpty;
 
@@ -42,61 +41,89 @@ class MailConfig {
       fromAddress: env['LUMA_SMTP_FROM'] ?? '',
       fromName: env['LUMA_SMTP_FROM_NAME'] ?? 'Luma',
       useSsl: (env['LUMA_SMTP_SSL'] ?? 'false').toLowerCase() == 'true',
-      publicUrl: (env['LUMA_PUBLIC_URL'] ?? 'http://localhost:8080')
-          .replaceAll(RegExp(r'/+$'), ''),
     );
   }
 }
 
-/// Sends account-related email. Falls back to logging to stderr when
-/// [MailConfig.enabled] is false, so local dev works without real SMTP.
+/// Resend (https://resend.com) configuration for the account-verification
+/// email only. If [apiKey] is empty, sending is disabled and the code is
+/// logged to stderr instead — useful for local testing, same fallback as
+/// [MailConfig].
+class ResendConfig {
+  ResendConfig({
+    required this.apiKey,
+    required this.fromAddress,
+    required this.fromName,
+  });
+
+  final String apiKey;
+  final String fromAddress;
+  final String fromName;
+
+  bool get enabled => apiKey.isNotEmpty;
+
+  factory ResendConfig.fromEnvironment(Map<String, String> env) =>
+      ResendConfig(
+        apiKey: env['LUMA_RESEND_API_KEY'] ?? '',
+        fromAddress: env['LUMA_RESEND_FROM'] ?? 'noreply@sync.example.com',
+        fromName: env['LUMA_RESEND_FROM_NAME'] ?? 'Luma',
+      );
+}
+
+/// Sends account-related email: verification codes via the Resend HTTP API
+/// ([sendVerificationCode]), family and chat invites via SMTP (the rest of
+/// this class). Falls back to logging to stderr when the relevant config
+/// isn't enabled, so local dev works with neither configured.
 class Mailer {
-  Mailer(this.config);
+  Mailer(this.config, {ResendConfig? resendConfig})
+      : resendConfig = resendConfig ?? ResendConfig.fromEnvironment(const {});
 
   final MailConfig config;
+  final ResendConfig resendConfig;
 
-  String verificationLink(String token) =>
-      '${config.publicUrl}/api/v1/auth/verify?token=$token';
-
-  Future<void> sendVerificationEmail({
+  /// Sends the 6-digit code a new account types back into the app to prove
+  /// it owns [toEmail]. Callers should treat a thrown [StateError] the same
+  /// way as an SMTP send failure — best-effort, since the user can always
+  /// ask for a fresh code.
+  Future<void> sendVerificationCode({
     required String toEmail,
-    required String token,
+    required String code,
   }) async {
-    final link = verificationLink(token);
-    if (!config.enabled) {
-      stderr.writeln('[luma] SMTP not configured; verification link for '
-          '$toEmail: $link');
+    if (!resendConfig.enabled) {
+      stderr.writeln(
+          '[luma] Resend not configured; verification code for $toEmail: $code');
       return;
     }
 
-    final smtp = SmtpServer(
-      config.host,
-      port: config.port,
-      username: config.username.isEmpty ? null : config.username,
-      password: config.password.isEmpty ? null : config.password,
-      ssl: config.useSsl,
-    );
-
-    final message = Message()
-      ..from = Address(config.fromAddress, config.fromName)
-      ..recipients.add(toEmail)
-      ..subject = 'Verify your Luma account'
-      ..text = 'Welcome to Luma!\n\n'
-          'Please verify your email address by opening this link:\n$link\n\n'
-          'This link expires in 24 hours. If you did not create a Luma '
-          'account, you can ignore this email.'
-      ..html = '<p>Welcome to Luma!</p>'
-          '<p>Please verify your email address by clicking the link below:</p>'
-          '<p><a href="$link">$link</a></p>'
-          '<p>This link expires in 24 hours. If you did not create a Luma '
-          'account, you can ignore this email.</p>';
-
+    final client = HttpClient();
     try {
-      await send(message, smtp);
-    } on MailerException catch (e) {
-      stderr.writeln('[luma] failed to send verification email to '
-          '$toEmail: $e');
-      rethrow;
+      final request =
+          await client.postUrl(Uri.parse('https://api.resend.com/emails'));
+      request.headers
+        ..set(HttpHeaders.authorizationHeader, 'Bearer ${resendConfig.apiKey}')
+        ..contentType = ContentType.json;
+      request.add(utf8.encode(jsonEncode({
+        'from': '${resendConfig.fromName} <${resendConfig.fromAddress}>',
+        'to': [toEmail],
+        'subject': 'Your Luma verification code',
+        'text': 'Your Luma verification code is $code\n\n'
+            'It expires in 10 minutes. If you did not try to create a Luma '
+            'account, you can ignore this email.',
+        'html': '<p>Your Luma verification code is:</p>'
+            '<p style="font-size:28px;font-weight:700;letter-spacing:6px">'
+            '$code</p>'
+            '<p>It expires in 10 minutes. If you did not try to create a '
+            'Luma account, you can ignore this email.</p>',
+      })));
+      final response = await request.close();
+      if (response.statusCode >= 300) {
+        final body = await response.transform(utf8.decoder).join();
+        throw StateError(
+            'Resend API returned ${response.statusCode}: $body');
+      }
+      await response.drain<void>();
+    } finally {
+      client.close();
     }
   }
 

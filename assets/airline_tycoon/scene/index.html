@@ -14,6 +14,7 @@
       </div>
     </div>
     <div id="viewbar" class="card toolbar" role="toolbar" aria-label="Camera">
+      <div class="segmented mode" role="group" aria-label="View mode"><button type="button" data-mode="airfield" title="Airfield: runways, stands and buildings (T)"></button><button type="button" data-mode="airport" title="Airport mode: zoom in on the terminal and furnish its halls (T)"></button></div>
       <button type="button" class="icon" data-view="fit" title="Fit airport" aria-label="Fit airport"></button>
       <button type="button" class="icon" data-view="reset" title="Reset camera" aria-label="Reset camera"></button>
       <button type="button" class="icon" data-toggle="cutaway" title="Terminal cutaway (C)" aria-label="Terminal cutaway"></button>
@@ -40,6 +41,12 @@
     </div>
   </div>
   <nav id="dock" class="card" aria-label="Airport panels"></nav>
+  <div id="manage" class="hidden">
+    <div class="manage-card card" role="dialog" aria-modal="true" aria-labelledby="manage-title">
+      <div class="manage-head"><h2 id="manage-title"></h2><span id="manage-level" class="badge"></span><button id="manage-close" type="button" class="icon" title="Close (Esc)" aria-label="Close building window"></button></div>
+      <div class="manage-main"><nav id="manage-tabs" role="tablist" aria-label="Building sections"></nav><div id="manage-body"></div></div>
+    </div>
+  </div>
   <div id="stats" class="hidden"></div>
   <div id="compass" title="North">N ↑</div>
 </div>

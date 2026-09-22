@@ -1655,6 +1655,17 @@ class $RecurringRulesTable extends RecurringRules
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _reminderDaysBeforeMeta =
+      const VerificationMeta('reminderDaysBefore');
+  @override
+  late final GeneratedColumn<int> reminderDaysBefore = GeneratedColumn<int>(
+    'reminder_days_before',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(7),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1669,6 +1680,7 @@ class $RecurringRulesTable extends RecurringRules
     categoryId,
     active,
     isBill,
+    reminderDaysBefore,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1751,6 +1763,15 @@ class $RecurringRulesTable extends RecurringRules
         isBill.isAcceptableOrUnknown(data['is_bill']!, _isBillMeta),
       );
     }
+    if (data.containsKey('reminder_days_before')) {
+      context.handle(
+        _reminderDaysBeforeMeta,
+        reminderDaysBefore.isAcceptableOrUnknown(
+          data['reminder_days_before']!,
+          _reminderDaysBeforeMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1812,6 +1833,10 @@ class $RecurringRulesTable extends RecurringRules
         DriftSqlType.bool,
         data['${effectivePrefix}is_bill'],
       )!,
+      reminderDaysBefore: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}reminder_days_before'],
+      )!,
     );
   }
 
@@ -1843,6 +1868,10 @@ class RecurringRule extends DataClass implements Insertable<RecurringRule> {
   /// income) so it can be surfaced in the "due soon" reminder list. Only
   /// meaningful for expense-kind rules.
   final bool isBill;
+
+  /// How many days before [nextDue] this bill should start showing in the
+  /// "due soon" reminder card. Only meaningful when [isBill] is true.
+  final int reminderDaysBefore;
   const RecurringRule({
     required this.id,
     required this.name,
@@ -1856,6 +1885,7 @@ class RecurringRule extends DataClass implements Insertable<RecurringRule> {
     this.categoryId,
     required this.active,
     required this.isBill,
+    required this.reminderDaysBefore,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1888,6 +1918,7 @@ class RecurringRule extends DataClass implements Insertable<RecurringRule> {
     }
     map['active'] = Variable<bool>(active);
     map['is_bill'] = Variable<bool>(isBill);
+    map['reminder_days_before'] = Variable<int>(reminderDaysBefore);
     return map;
   }
 
@@ -1913,6 +1944,7 @@ class RecurringRule extends DataClass implements Insertable<RecurringRule> {
           : Value(categoryId),
       active: Value(active),
       isBill: Value(isBill),
+      reminderDaysBefore: Value(reminderDaysBefore),
     );
   }
 
@@ -1938,6 +1970,7 @@ class RecurringRule extends DataClass implements Insertable<RecurringRule> {
       categoryId: serializer.fromJson<int?>(json['categoryId']),
       active: serializer.fromJson<bool>(json['active']),
       isBill: serializer.fromJson<bool>(json['isBill']),
+      reminderDaysBefore: serializer.fromJson<int>(json['reminderDaysBefore']),
     );
   }
   @override
@@ -1960,6 +1993,7 @@ class RecurringRule extends DataClass implements Insertable<RecurringRule> {
       'categoryId': serializer.toJson<int?>(categoryId),
       'active': serializer.toJson<bool>(active),
       'isBill': serializer.toJson<bool>(isBill),
+      'reminderDaysBefore': serializer.toJson<int>(reminderDaysBefore),
     };
   }
 
@@ -1976,6 +2010,7 @@ class RecurringRule extends DataClass implements Insertable<RecurringRule> {
     Value<int?> categoryId = const Value.absent(),
     bool? active,
     bool? isBill,
+    int? reminderDaysBefore,
   }) => RecurringRule(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -1989,6 +2024,7 @@ class RecurringRule extends DataClass implements Insertable<RecurringRule> {
     categoryId: categoryId.present ? categoryId.value : this.categoryId,
     active: active ?? this.active,
     isBill: isBill ?? this.isBill,
+    reminderDaysBefore: reminderDaysBefore ?? this.reminderDaysBefore,
   );
   RecurringRule copyWithCompanion(RecurringRulesCompanion data) {
     return RecurringRule(
@@ -2012,6 +2048,9 @@ class RecurringRule extends DataClass implements Insertable<RecurringRule> {
           : this.categoryId,
       active: data.active.present ? data.active.value : this.active,
       isBill: data.isBill.present ? data.isBill.value : this.isBill,
+      reminderDaysBefore: data.reminderDaysBefore.present
+          ? data.reminderDaysBefore.value
+          : this.reminderDaysBefore,
     );
   }
 
@@ -2029,7 +2068,8 @@ class RecurringRule extends DataClass implements Insertable<RecurringRule> {
           ..write('merchantId: $merchantId, ')
           ..write('categoryId: $categoryId, ')
           ..write('active: $active, ')
-          ..write('isBill: $isBill')
+          ..write('isBill: $isBill, ')
+          ..write('reminderDaysBefore: $reminderDaysBefore')
           ..write(')'))
         .toString();
   }
@@ -2048,6 +2088,7 @@ class RecurringRule extends DataClass implements Insertable<RecurringRule> {
     categoryId,
     active,
     isBill,
+    reminderDaysBefore,
   );
   @override
   bool operator ==(Object other) =>
@@ -2064,7 +2105,8 @@ class RecurringRule extends DataClass implements Insertable<RecurringRule> {
           other.merchantId == this.merchantId &&
           other.categoryId == this.categoryId &&
           other.active == this.active &&
-          other.isBill == this.isBill);
+          other.isBill == this.isBill &&
+          other.reminderDaysBefore == this.reminderDaysBefore);
 }
 
 class RecurringRulesCompanion extends UpdateCompanion<RecurringRule> {
@@ -2080,6 +2122,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRule> {
   final Value<int?> categoryId;
   final Value<bool> active;
   final Value<bool> isBill;
+  final Value<int> reminderDaysBefore;
   const RecurringRulesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -2093,6 +2136,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRule> {
     this.categoryId = const Value.absent(),
     this.active = const Value.absent(),
     this.isBill = const Value.absent(),
+    this.reminderDaysBefore = const Value.absent(),
   });
   RecurringRulesCompanion.insert({
     this.id = const Value.absent(),
@@ -2107,6 +2151,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRule> {
     this.categoryId = const Value.absent(),
     this.active = const Value.absent(),
     this.isBill = const Value.absent(),
+    this.reminderDaysBefore = const Value.absent(),
   }) : name = Value(name),
        kind = Value(kind),
        amountCents = Value(amountCents),
@@ -2125,6 +2170,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRule> {
     Expression<int>? categoryId,
     Expression<bool>? active,
     Expression<bool>? isBill,
+    Expression<int>? reminderDaysBefore,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2139,6 +2185,8 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRule> {
       if (categoryId != null) 'category_id': categoryId,
       if (active != null) 'active': active,
       if (isBill != null) 'is_bill': isBill,
+      if (reminderDaysBefore != null)
+        'reminder_days_before': reminderDaysBefore,
     });
   }
 
@@ -2155,6 +2203,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRule> {
     Value<int?>? categoryId,
     Value<bool>? active,
     Value<bool>? isBill,
+    Value<int>? reminderDaysBefore,
   }) {
     return RecurringRulesCompanion(
       id: id ?? this.id,
@@ -2169,6 +2218,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRule> {
       categoryId: categoryId ?? this.categoryId,
       active: active ?? this.active,
       isBill: isBill ?? this.isBill,
+      reminderDaysBefore: reminderDaysBefore ?? this.reminderDaysBefore,
     );
   }
 
@@ -2215,6 +2265,9 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRule> {
     if (isBill.present) {
       map['is_bill'] = Variable<bool>(isBill.value);
     }
+    if (reminderDaysBefore.present) {
+      map['reminder_days_before'] = Variable<int>(reminderDaysBefore.value);
+    }
     return map;
   }
 
@@ -2232,7 +2285,8 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRule> {
           ..write('merchantId: $merchantId, ')
           ..write('categoryId: $categoryId, ')
           ..write('active: $active, ')
-          ..write('isBill: $isBill')
+          ..write('isBill: $isBill, ')
+          ..write('reminderDaysBefore: $reminderDaysBefore')
           ..write(')'))
         .toString();
   }
@@ -6132,6 +6186,7 @@ typedef $$RecurringRulesTableCreateCompanionBuilder =
       Value<int?> categoryId,
       Value<bool> active,
       Value<bool> isBill,
+      Value<int> reminderDaysBefore,
     });
 typedef $$RecurringRulesTableUpdateCompanionBuilder =
     RecurringRulesCompanion Function({
@@ -6147,6 +6202,7 @@ typedef $$RecurringRulesTableUpdateCompanionBuilder =
       Value<int?> categoryId,
       Value<bool> active,
       Value<bool> isBill,
+      Value<int> reminderDaysBefore,
     });
 
 final class $$RecurringRulesTableReferences
@@ -6262,6 +6318,11 @@ class $$RecurringRulesTableFilterComposer
 
   ColumnFilters<bool> get isBill => $composableBuilder(
     column: $table.isBill,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get reminderDaysBefore => $composableBuilder(
+    column: $table.reminderDaysBefore,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6389,6 +6450,11 @@ class $$RecurringRulesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get reminderDaysBefore => $composableBuilder(
+    column: $table.reminderDaysBefore,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$PotsTableOrderingComposer get potId {
     final $$PotsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -6498,6 +6564,11 @@ class $$RecurringRulesTableAnnotationComposer
 
   GeneratedColumn<bool> get isBill =>
       $composableBuilder(column: $table.isBill, builder: (column) => column);
+
+  GeneratedColumn<int> get reminderDaysBefore => $composableBuilder(
+    column: $table.reminderDaysBefore,
+    builder: (column) => column,
+  );
 
   $$PotsTableAnnotationComposer get potId {
     final $$PotsTableAnnotationComposer composer = $composerBuilder(
@@ -6611,6 +6682,7 @@ class $$RecurringRulesTableTableManager
                 Value<int?> categoryId = const Value.absent(),
                 Value<bool> active = const Value.absent(),
                 Value<bool> isBill = const Value.absent(),
+                Value<int> reminderDaysBefore = const Value.absent(),
               }) => RecurringRulesCompanion(
                 id: id,
                 name: name,
@@ -6624,6 +6696,7 @@ class $$RecurringRulesTableTableManager
                 categoryId: categoryId,
                 active: active,
                 isBill: isBill,
+                reminderDaysBefore: reminderDaysBefore,
               ),
           createCompanionCallback:
               ({
@@ -6639,6 +6712,7 @@ class $$RecurringRulesTableTableManager
                 Value<int?> categoryId = const Value.absent(),
                 Value<bool> active = const Value.absent(),
                 Value<bool> isBill = const Value.absent(),
+                Value<int> reminderDaysBefore = const Value.absent(),
               }) => RecurringRulesCompanion.insert(
                 id: id,
                 name: name,
@@ -6652,6 +6726,7 @@ class $$RecurringRulesTableTableManager
                 categoryId: categoryId,
                 active: active,
                 isBill: isBill,
+                reminderDaysBefore: reminderDaysBefore,
               ),
           withReferenceMapper: (p0) => p0
               .map(

@@ -284,6 +284,96 @@ class LFr extends L {
       'Version de développement · un outil local épuré';
 
   @override
+  String get petSearchHint => 'Rechercher plugins et pages';
+
+  @override
+  String get petMoodIdle => 'On ouvre quoi ?';
+
+  @override
+  String get petMoodCurious => 'Oh, je regarde…';
+
+  @override
+  String get petMoodHappy => 'Ça chatouille.';
+
+  @override
+  String get petMoodDelighted => 'Quelle belle journée !';
+
+  @override
+  String get petMoodSleepy => 'Encore debout ? Moi aussi.';
+
+  @override
+  String get petNoResults => 'Rien à ce nom';
+
+  @override
+  String get petNoResultsHint =>
+      'Essaie un mot plus court, ou juste un morceau.';
+
+  @override
+  String get petSectionJumpTo => 'ALLER À';
+
+  @override
+  String get petSectionResults => 'RÉSULTATS';
+
+  @override
+  String get petKindPlugin => 'Plugin';
+
+  @override
+  String get petKindPage => 'Page';
+
+  @override
+  String get petHintMove => 'naviguer';
+
+  @override
+  String get petHintOpen => 'ouvrir';
+
+  @override
+  String get petHintClose => 'fermer';
+
+  @override
+  String get petClose => 'Fermer';
+
+  @override
+  String get petPatsTooltip => 'Caresses données';
+
+  @override
+  String petPatLabel(String name) {
+    return 'Caresser $name';
+  }
+
+  @override
+  String get petSettingsTitle => 'compagnon luma';
+
+  @override
+  String get petSettingsSubtitle =>
+      'Appuie sur le raccourci n\'importe où pour appeler le compagnon, puis tape pour aller à une page ou un plugin.';
+
+  @override
+  String get petSettingsHotkey => 'Appeler de partout';
+
+  @override
+  String get petSettingsHotkeyTaken =>
+      'Une autre app possède déjà ce raccourci : il ne marche que si luma est au premier plan. Choisis-en un autre ci-dessous.';
+
+  @override
+  String get petSettingsRebind => 'Changer';
+
+  @override
+  String get petSettingsRebindTitle => 'Appuie sur un nouveau raccourci';
+
+  @override
+  String get petSettingsRebindSave => 'Utiliser';
+
+  @override
+  String get petSettingsName => 'Nom';
+
+  @override
+  String get petSettingsSummon => 'Ouvrir le compagnon';
+
+  @override
+  String get petSettingsSummonHint =>
+      'Ouvre le panneau tout de suite, sans raccourci clavier.';
+
+  @override
   String get monthJan => 'janv.';
 
   @override

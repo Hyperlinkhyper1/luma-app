@@ -13,6 +13,13 @@ Uint8List randomBytes(int length) {
   return Uint8List.fromList(List<int>.generate(length, (_) => rng.nextInt(256)));
 }
 
+/// A cryptographically random numeric string of [length] digits, each drawn
+/// independently so there is no modulo bias. Used for one-time email codes.
+String randomDigits(int length) {
+  final rng = Random.secure();
+  return List<int>.generate(length, (_) => rng.nextInt(10)).join();
+}
+
 /// PBKDF2-HMAC-SHA256 (RFC 2898). Used to hash the client's already-derived
 /// auth key before storing it, using only the `crypto` package.
 Uint8List pbkdf2Sha256(

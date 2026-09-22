@@ -131,6 +131,13 @@ void main() {
       await expectLater(sync.resendApprovalEmail(), throwsStateError);
     });
 
+    test('submitting a verification code needs a pending account', () async {
+      final sync = SyncService(collections: const []);
+      await sync.init();
+      expect(sync.pendingApprovalEmail, isNull);
+      await expectLater(sync.verifyEmailCode('123456'), throwsStateError);
+    });
+
     test('approval defaults to manual, so no UI offers to resend anything',
         () async {
       final sync = SyncService(collections: const []);

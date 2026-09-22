@@ -45,19 +45,38 @@ class MicrosoftAuthResult {
 }
 
 /// Implements the Minecraft launcher's standard "Microsoft device code +
-/// Xbox Live + XSTS" sign-in chain. Requires the user to have created their
-/// own Azure AD (Entra ID) public-client app registration (see
-/// `LauncherSettingsStore.getMicrosoftClientId`) — Mojang's own client IDs
-/// aren't reusable by third-party launchers.
+/// Xbox Live + XSTS" sign-in chain.
 class MicrosoftAuthClient {
-  MicrosoftAuthClient(this.clientId);
+  MicrosoftAuthClient([String? clientId])
+    : clientId = clientId?.trim().isNotEmpty == true
+          ? clientId!.trim()
+          : defaultClientId;
+
+  /// Public client IDs are not secrets. Each launcher must use its own
+  /// Microsoft app registration so the consent screen identifies that
+  /// launcher. Builds provide the registration with
+  /// `--dart-define=MICROSOFT_CLIENT_ID=...`.
+  static const defaultClientId = String.fromEnvironment(
+    'MICROSOFT_CLIENT_ID',
+    defaultValue: '',
+  );
+
   final String clientId;
+
+  bool get isConfigured => clientId.isNotEmpty;
 
   static const _scope = 'XboxLive.signin offline_access';
 
   Future<DeviceCodeInfo> requestDeviceCode() async {
+    if (!isConfigured) {
+      throw MicrosoftAuthException(
+        'Microsoft sign-in is not configured for this build.',
+      );
+    }
     final res = await http.post(
-      Uri.parse('https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode'),
+      Uri.parse(
+        'https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode',
+      ),
       body: {'client_id': clientId, 'scope': _scope},
     );
     final json = _decode(res);
@@ -75,12 +94,19 @@ class MicrosoftAuthClient {
   /// exchange chain. Throws [MicrosoftAuthException] on timeout or denial.
   Future<MicrosoftAuthResult> pollAndSignIn(DeviceCodeInfo device) async {
     final msa = await _pollForMsaToken(device);
-    return _exchangeForMinecraft(msaAccessToken: msa.$1, msaRefreshToken: msa.$2);
+    return _exchangeForMinecraft(
+      msaAccessToken: msa.$1,
+      msaRefreshToken: msa.$2,
+    );
   }
 
-  Future<MicrosoftAuthResult> signInWithRefreshToken(String refreshToken) async {
+  Future<MicrosoftAuthResult> signInWithRefreshToken(
+    String refreshToken,
+  ) async {
     final res = await http.post(
-      Uri.parse('https://login.microsoftonline.com/consumers/oauth2/v2.0/token'),
+      Uri.parse(
+        'https://login.microsoftonline.com/consumers/oauth2/v2.0/token',
+      ),
       body: {
         'client_id': clientId,
         'grant_type': 'refresh_token',
@@ -100,7 +126,9 @@ class MicrosoftAuthClient {
     while (DateTime.now().isBefore(deadline)) {
       await Future.delayed(Duration(seconds: device.interval));
       final res = await http.post(
-        Uri.parse('https://login.microsoftonline.com/consumers/oauth2/v2.0/token'),
+        Uri.parse(
+          'https://login.microsoftonline.com/consumers/oauth2/v2.0/token',
+        ),
         body: {
           'client_id': clientId,
           'grant_type': 'urn:ietf:params:oauth:grant-type:device_code',
@@ -110,7 +138,10 @@ class MicrosoftAuthClient {
       final json = jsonDecode(res.body) as Map<String, dynamic>;
       final error = json['error'] as String?;
       if (error == null) {
-        return (json['access_token'] as String, json['refresh_token'] as String);
+        return (
+          json['access_token'] as String,
+          json['refresh_token'] as String,
+        );
       }
       if (error == 'authorization_pending') continue;
       if (error == 'authorization_declined') {
@@ -119,7 +150,9 @@ class MicrosoftAuthClient {
       if (error == 'expired_token') {
         throw MicrosoftAuthException('The sign-in code expired. Try again.');
       }
-      throw MicrosoftAuthException(json['error_description'] as String? ?? error);
+      throw MicrosoftAuthException(
+        json['error_description'] as String? ?? error,
+      );
     }
     throw MicrosoftAuthException('Timed out waiting for sign-in.');
   }
@@ -131,7 +164,10 @@ class MicrosoftAuthClient {
     // 1. Xbox Live user token.
     final xblRes = await http.post(
       Uri.parse('https://user.auth.xboxlive.com/user/authenticate'),
-      headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
       body: jsonEncode({
         'Properties': {
           'AuthMethod': 'RPS',
@@ -144,12 +180,16 @@ class MicrosoftAuthClient {
     );
     final xbl = _decode(xblRes);
     final xblToken = xbl['Token'] as String;
-    final uhs = ((xbl['DisplayClaims'] as Map)['xui'] as List).first['uhs'] as String;
+    final uhs =
+        ((xbl['DisplayClaims'] as Map)['xui'] as List).first['uhs'] as String;
 
     // 2. XSTS token, scoped to Minecraft services.
     final xstsRes = await http.post(
       Uri.parse('https://xsts.auth.xboxlive.com/xsts/authorize'),
-      headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
       body: jsonEncode({
         'Properties': {
           'SandboxId': 'RETAIL',
@@ -164,11 +204,13 @@ class MicrosoftAuthClient {
       final code = body['XErr'] as int?;
       if (code == 2148916233) {
         throw MicrosoftAuthException(
-            'This Microsoft account has no Xbox profile. Create one at xbox.com and try again.');
+          'This Microsoft account has no Xbox profile. Create one at xbox.com and try again.',
+        );
       }
       if (code == 2148916238) {
         throw MicrosoftAuthException(
-            'This account is under 18 and needs a family group to sign in to Xbox services.');
+          'This account is under 18 and needs a family group to sign in to Xbox services.',
+        );
       }
       throw MicrosoftAuthException('Xbox sign-in was rejected.');
     }
@@ -177,7 +219,9 @@ class MicrosoftAuthClient {
 
     // 3. Minecraft services access token.
     final mcRes = await http.post(
-      Uri.parse('https://api.minecraftservices.com/authentication/login_with_xbox'),
+      Uri.parse(
+        'https://api.minecraftservices.com/authentication/login_with_xbox',
+      ),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'identityToken': 'XBL3.0 x=$uhs;$xstsToken'}),
     );
@@ -191,7 +235,9 @@ class MicrosoftAuthClient {
       headers: {'Authorization': 'Bearer $mcAccessToken'},
     );
     if (profileRes.statusCode == 404) {
-      throw MicrosoftAuthException('This Microsoft account does not own Minecraft.');
+      throw MicrosoftAuthException(
+        'This Microsoft account does not own Minecraft.',
+      );
     }
     final profile = _decode(profileRes);
 
@@ -213,7 +259,10 @@ class MicrosoftAuthClient {
     }
     if (res.statusCode >= 400) {
       throw MicrosoftAuthException(
-          json['error_description'] as String? ?? json['Message'] as String? ?? 'Request failed (${res.statusCode}).');
+        json['error_description'] as String? ??
+            json['Message'] as String? ??
+            'Request failed (${res.statusCode}).',
+      );
     }
     return json;
   }

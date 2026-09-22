@@ -29,9 +29,10 @@ window.AirportLandside = (() => {
     minZ: Math.min(b.minZ, f.y), maxZ: Math.max(b.maxZ, f.y + f.depth),
   }), {minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity});
 
-  /** Terminal face, pointing away from the runways and stands. */
-  function layout(list) {
-    const terminals = list.filter(f => f.kind === 'terminal');
+  /** Terminal face, pointing away from the runways and stands. [zones] are
+      the painted floor zones, which name the canopy. */
+  function layout(list, zones = []) {
+    const terminals = list.filter(f => AirportSceneLogic.hallKinds.has(f.kind));
     if (!terminals.length) return null;
     const t = extent(terminals);
     const airside = list.filter(f => /^(runway|taxiway|stand)/.test(f.kind));
@@ -45,10 +46,26 @@ window.AirportLandside = (() => {
     const reach = (alongX ? t.maxX - t.minX : t.maxZ - t.minZ) / 2;
     const span = alongX ? t.maxZ - t.minZ : t.maxX - t.minX;
     const H = Math.min(150, Math.max(45, span / 2));
-    return {
-      origin: {x: (t.minX + t.maxX) / 2 + dir[0] * reach, z: (t.minZ + t.maxZ) / 2 + dir[1] * reach},
-      angle: Math.atan2(-dir[1], dir[0]), dir, H, K: H + 30,
-    };
+    const origin = {x: (t.minX + t.maxX) / 2 + dir[0] * reach, z: (t.minZ + t.maxZ) / 2 + dir[1] * reach};
+    const angle = Math.atan2(-dir[1], dir[0]), c = Math.cos(angle), s = Math.sin(angle), K = H + 30;
+    // The canopy names the arrival and departure floor that opens on to it,
+    // whether it is zoned that way or is one of the old separate halls.
+    const signs = [];
+    const named = [
+      ...zones.map(z => ({text: z.zone === 'arrival' ? 'ARRIVAL HALL' : z.zone === 'departure' ? 'DEPARTURE HALL' : null, ...z})),
+      ...terminals.map(f => ({text: {terminalLandside: 'ARRIVAL HALL', terminalReclaim: 'DEPARTURE HALL'}[f.kind], ...f})),
+    ];
+    for (const f of named) {
+      if (!f.text) continue;
+      const corners = [[f.x, f.y], [f.x + f.width, f.y], [f.x, f.y + f.depth], [f.x + f.width, f.y + f.depth]]
+        .map(([x, z]) => [(x - origin.x) * c - (z - origin.z) * s, (x - origin.x) * s + (z - origin.z) * c]);
+      if (Math.max(...corners.map(p => p[0])) < -3) continue;
+      const v = Math.round(Math.min(K - 8, Math.max(-K + 8, corners.reduce((n, p) => n + p[1], 0) / 4)) * 10) / 10;
+      if (signs.some(o => o.text === f.text && Math.abs(o.v - v) < 24)) continue;
+      signs.push({text: f.text, v});
+    }
+    signs.sort((a, b) => a.v - b.v);
+    return {origin, angle, dir, H, K, signs};
   }
 
   // ── Paths ─────────────────────────────────────────────────────────────
@@ -195,10 +212,13 @@ window.AirportLandside = (() => {
       cylinder(g, .34, 8.3, 8.8, 4.15, v, 0xb5bdbf, 'metal');
       light(g, 8.8, 7.5, v, 0xfff0c8, .5);
     }
-    label(g, 'DEPARTURES', 10.25, 9, -K * .5, 1.7, '#eef6f4', {rotY: Math.PI / 2, width: 5});
-    label(g, 'ARRIVALS', 10.25, 9, K * .5, 1.7, '#eef6f4', {rotY: Math.PI / 2, width: 5});
-    // Kerbside road: buses stop at the canopy, cars use the outer lane.
-    box(g, 16, .1, 2 * K + 100, 14, .05, -26, C.road, 'asphalt');
+    const signs = L.signs?.length ? L.signs : [{text: 'DEPARTURES', v: -K * .5}, {text: 'ARRIVALS', v: K * .5}];
+    for (const s of signs) label(g, s.text, 10.25, 9, s.v, 1.7, '#eef6f4', {rotY: Math.PI / 2, width: 7});
+    // Kerbside road: buses stop at the canopy, cars use the outer lane. It
+    // sits just above the forecourt paving, runs on into the bus station and
+    // meets the main road through a paved junction.
+    box(g, 13, .14, 2 * K + 106, 15.5, .07, -27, C.road, 'asphalt');
+    box(g, 12, .14, 2 * ROAD.half, 27, .07, 0, C.road, 'asphalt');
     box(g, .6, .35, 2 * K, 9.4, .22, 0, C.kerb, 'concrete');
     for (let v = -K - 70; v < K + 20; v += 8) decal(g, .18, 4.4, 14, v, C.paint);
     decal(g, .16, 2 * K + 96, 21.7, -26, 0xe0b23a);
@@ -445,13 +465,19 @@ window.AirportLandside = (() => {
   }
 
   /** The one-way forecourt loop: main road in, bus station, kerb, road out. */
+  /** Kerb lane (heading +v, next to the canopy) and outer lane (heading −v)
+      of the forecourt road, as u in metres out from the terminal wall. */
+  const KERB = {near: 12.4, far: 18.6};
   function paths(L) {
     const K = L.K, ring = arc(RING.at, 0, RING.radius, Math.PI * .78, -Math.PI * .78, 8);
+    // In on the main road, down the outer lane to the bus station, round
+    // and back up the kerb lane past the doors, then out the way it came.
     const road = route([
-      [ROAD.end - 44, -ROAD.lane], [128, -ROAD.lane], [36, -26], [28, -(K + 50)], [26, -(K + 84)],
-      [14, -(K + 94)], [14, -(K + 62)], [14, K + 22], [32, K + 12], [48, 24], [128, ROAD.lane],
+      [ROAD.end - 44, -ROAD.lane], [40, -ROAD.lane], [KERB.far, -ROAD.lane],
+      [KERB.far, -(K + 92)], [KERB.near, -(K + 92)], [KERB.near, K + 16],
+      [KERB.far, K + 16], [KERB.far, ROAD.lane], [40, ROAD.lane],
       [ROAD.end - 44, ROAD.lane], ...ring,
-    ], {radius: 11});
+    ], {radius: 6});
     const tram = route([
       [TRAM.at - TRAM.apart / 2, -(EDGE + 4)], [TRAM.at - TRAM.apart / 2, EDGE + 4],
       ...arc(TRAM.at, EDGE + 4, TRAM.apart / 2, Math.PI, 0, 6),
@@ -466,7 +492,7 @@ window.AirportLandside = (() => {
     ], {radius: 3.5});
     return {road, tram, rail};
   }
-  const townSpeed = p => p.u < 50 ? .5 : p.u < 120 ? .72 : 1;
+  const townSpeed = p => p.u < 50 ? .45 : p.u < 120 ? .72 : 1;
 
   // ── Assembly ──────────────────────────────────────────────────────────
   const UP = new T.Vector3(0, 1, 0), ONE = new T.Vector3(1, 1, 1);
@@ -484,10 +510,10 @@ window.AirportLandside = (() => {
   }
 
   let current = null;
-  function build(list) {
-    const L = layout(list || []);
+  function build(list, zones) {
+    const L = layout(list || [], zones || []);
     if (!L) { if (current) current.dispose(); current = null; return null; }
-    const key = `${L.origin.x}|${L.origin.z}|${L.angle.toFixed(4)}|${L.K}`;
+    const key = `${L.origin.x}|${L.origin.z}|${L.angle.toFixed(4)}|${L.K}|${L.signs.map(s => s.text + s.v).join()}`;
     if (current && current.key === key) return current;
     if (current) current.dispose();
 
@@ -505,7 +531,7 @@ window.AirportLandside = (() => {
     cars.castShadow = true;
     for (let i = 0; i < CARS; i++) cars.setColorAt(i, new T.Color(carPaint[(i * 7) % carPaint.length]));
     group.add(cars);
-    const traffic = Array.from({length: CARS}, (_, i) => ({s: road.length * i / CARS, lane: i % 2 ? -2.6 : 2.6}));
+    const traffic = Array.from({length: CARS}, (_, i) => ({s: road.length * i / CARS, lane: i % 2 ? -1.4 : 1.4}));
 
     const movers = [];
     function fleet(count, r, {speed, dwell = 0, stops = [], lane = 0, y = 0, slow = null, parts}) {
@@ -521,7 +547,7 @@ window.AirportLandside = (() => {
     }
     fleet(6, road, {
       speed: 13, dwell: 9, lane: 2.6, slow: townSpeed,
-      stops: [arcOf(road, 14, -(L.K + 74)), arcOf(road, 14, -(L.K + 40)), arcOf(road, 14, -L.K * .4), arcOf(road, 14, L.K * .5)],
+      stops: [arcOf(road, KERB.near, -(L.K + 70)), arcOf(road, KERB.near, -(L.K + 40)), arcOf(road, KERB.near, -L.K * .4), arcOf(road, KERB.near, L.K * .5)],
       parts: [['bus', busBody, 0]],
     });
     fleet(3, tram, {
@@ -560,13 +586,13 @@ window.AirportLandside = (() => {
       update(dt, {activity = .3, night = 0, paused = false, speed = 1} = {}) {
         const step = paused ? 0 : dt * Math.min(2.2, 1 + (Math.max(1, speed) - 1) * .12);
         const busy = Math.max(0, Math.min(1, activity));
-        const wanted = Math.max(6, Math.round((12 + 48 * busy) * (1 - .45 * Math.max(0, Math.min(1, night)))));
-        const stride = Math.max(1, Math.round(CARS / wanted));
+        const wanted = Math.round(CARS * busy * (1 - .45 * Math.max(0, Math.min(1, night))));
+        const stride = wanted ? Math.max(1, Math.round(CARS / wanted)) : Infinity;
         let n = 0;
         for (let i = 0; i < CARS; i++) {
           const c = traffic[i];
           c.s = (c.s + 16 * townSpeed(at(road, c.s)) * step) % road.length;
-          if (i % stride) continue;
+          if (!wanted || i % stride) continue;
           const p = at(road, c.s, c.lane);
           quat.setFromAxisAngle(UP, Math.atan2(-p.du, -p.dv));
           pos.set(p.u, 0, p.v);
@@ -576,7 +602,7 @@ window.AirportLandside = (() => {
         cars.instanceMatrix.needsUpdate = true;
         // Only the buses come and go with demand; trams and trains keep to
         // their timetable however quiet the airport is.
-        const buses = Math.max(1, Math.round(1 + 5 * busy));
+        const buses = busy > 0 ? Math.max(1, Math.round(6 * busy)) : 0;
         for (const m of movers) move(m, step);
         for (let i = 0; i < 6; i++) for (const part of movers[i].parts) part.mesh.visible = i < buses;
       },

@@ -35,6 +35,7 @@ void main() {
         corsOrigin: '*',
         trustProxy: false,
         verificationTtl: const Duration(hours: 24),
+        maxVerificationEmailsPerHour: 50,
         approvalMode: ApprovalMode.open,
         adminKey: 'test-admin-key',
         mistralApiKey: null,

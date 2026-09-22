@@ -982,7 +982,11 @@ class _SignalsView extends StatelessWidget {
             child: LumaCollapsibleSection(
               icon: Icons.remove_circle_outline_rounded,
               title: 'Quiet checks',
-              subtitle: '${quiet.length} checks found nothing worth flagging',
+              subtitle: quiet.any((t) => t.oneWay)
+                  ? '${quiet.length} found nothing — a dash means the '
+                      'check only ever counts against a text, so finding '
+                      'nothing left it with no opinion'
+                  : '${quiet.length} checks found nothing worth flagging',
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -995,7 +999,12 @@ class _SignalsView extends StatelessWidget {
                           Padding(
                             padding: const EdgeInsets.only(top: 3),
                             child: Icon(
-                              Icons.check_rounded,
+                              // A tick would claim the text passed something.
+                              // A one-way check that found nothing has not
+                              // cleared the text; it simply has no opinion.
+                              t.oneWay
+                                  ? Icons.remove_rounded
+                                  : Icons.check_rounded,
                               size: 15,
                               color: luma.textMuted,
                             ),

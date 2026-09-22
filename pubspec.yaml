@@ -54,6 +54,7 @@ dependencies:
   qr_flutter: ^4.1.0
   barcode_widget: ^2.0.4
   window_manager: ^0.5.1
+  desktop_multi_window: ^0.3.1
   fl_chart: ^0.70.0
   open_file: ^4.0.0
   url_launcher: ^6.3.2
@@ -144,6 +145,9 @@ flutter:
     - assets/airline_tycoon/
     - assets/airline_tycoon/scene/
     - assets/airline_tycoon/scene/vendor/
+    - assets/asset_studio/
+    - assets/asset_studio/models/
+    - assets/asset_studio/thumbs/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

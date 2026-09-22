@@ -12,6 +12,7 @@ import 'ai_model_catalog.dart';
 import 'ai_model_refresh.dart';
 import 'ai_usage_store.dart';
 import 'chat_store.dart';
+import 'cs2_offline_store.dart';
 import 'deploy_console.dart';
 import 'update_check.dart';
 import 'family_store.dart';
@@ -28,11 +29,12 @@ import 'util.dart';
 /// How a newly registered account becomes usable.
 enum ApprovalMode {
   /// The operator approves each account by hand from the admin dashboard.
-  /// No email is sent and no verification link exists — the default, so a
+  /// No email is sent and no verification code exists — the default, so a
   /// deployment works with no SMTP configured at all.
   manual,
 
-  /// The user approves their own account by opening a link emailed to them.
+  /// The user approves their own account by typing a 6-digit code emailed
+  /// to them.
   email,
 
   /// No approval step: accounts are active (and signed in) the moment they
@@ -60,6 +62,7 @@ class ServerConfig {
     required this.corsOrigin,
     required this.trustProxy,
     required this.verificationTtl,
+    required this.maxVerificationEmailsPerHour,
     required this.approvalMode,
     required this.adminKey,
     required this.mistralApiKey,
@@ -83,8 +86,15 @@ class ServerConfig {
   final String corsOrigin;
   final bool trustProxy;
 
-  /// How long an email-verification link stays valid.
+  /// How long an email-verification code stays valid.
   final Duration verificationTtl;
+
+  /// Hard ceiling on verification codes sent per hour, across every
+  /// requester — on top of the per-IP and per-email limits [Api] enforces
+  /// around it. The backstop against a botnet spread across many IPs and
+  /// throwaway addresses running up the Resend bill; see
+  /// LUMA_MAX_VERIFICATION_EMAILS_PER_HOUR in .env.example.
+  final int maxVerificationEmailsPerHour;
 
   /// How a new account gets approved before it can sign in. Defaults to
   /// [ApprovalMode.manual] — the operator approves each one from the admin
@@ -176,9 +186,8 @@ class ServerConfig {
   bool get wikiEnabled => wikiDir != null && wikiDir!.isNotEmpty;
 
   /// Where this server is reachable from the public internet, without a
-  /// trailing slash. Same value the verification mail uses; OAuth needs it
-  /// too, because the redirect URI has to be an absolute URL the provider
-  /// can send a browser back to.
+  /// trailing slash. OAuth needs it because the redirect URI has to be an
+  /// absolute URL the provider can send a browser back to.
   final String publicUrl;
 
   /// Client credentials per OAuth provider id, from
@@ -219,7 +228,9 @@ class ServerConfig {
       corsOrigin: env['LUMA_CORS_ORIGIN'] ?? '*',
       trustProxy: env['LUMA_TRUST_PROXY'] == 'true',
       verificationTtl:
-          Duration(hours: intOf('LUMA_VERIFICATION_TTL_HOURS', 24)),
+          Duration(minutes: intOf('LUMA_VERIFICATION_CODE_TTL_MINUTES', 10)),
+      maxVerificationEmailsPerHour:
+          intOf('LUMA_MAX_VERIFICATION_EMAILS_PER_HOUR', 50),
       // LUMA_APPROVAL_MODE wins; the older LUMA_REQUIRE_EMAIL_VERIFICATION
       // is still honoured so existing .env files keep their behaviour
       // (true → email, false → no approval at all).
@@ -281,35 +292,64 @@ const int kSupportMessagesPerDay = 15;
 class Api {
   /// [oauthClient] is only passed by tests, which substitute one that
   /// resolves an identity without a round trip to Google or GitHub.
-  Api(this.store, this.config, this.mailer, this.familyStore, this.chatStore,
-      this.aiUsage, this.subwayStore, this.recipeStore, this.aiCatalog,
+  Api(
+      this.store,
+      this.config,
+      this.mailer,
+      this.familyStore,
+      this.chatStore,
+      this.aiUsage,
+      this.subwayStore,
+      this.recipeStore,
+      this.aiCatalog,
       this.aiBenchmarks,
-      {OAuthClient? oauthClient})
+      {OAuthClient? oauthClient,
+      this.cs2OfflineStore})
       : _oauthClient = oauthClient ?? OAuthClient(),
-        _authLimiter = RateLimiter(
-            maxRequests: 15, window: const Duration(minutes: 10)),
-        _generalLimiter = RateLimiter(
-            maxRequests: 300, window: const Duration(minutes: 1)),
-        _resendLimiter = RateLimiter(
-            maxRequests: 3, window: const Duration(minutes: 15)),
-        _adminFailLimiter = RateLimiter(
-            maxRequests: 1, window: const Duration(minutes: 1)),
-        _inviteLimiter = RateLimiter(
-            maxRequests: 10, window: const Duration(hours: 1)),
-        _aiChatLimiter = RateLimiter(
-            maxRequests: 20, window: const Duration(minutes: 1)),
-        _itadLimiter = RateLimiter(
-            maxRequests: 60, window: const Duration(minutes: 1)),
-        _syncWriteLimiter = RateLimiter(
-            maxRequests: 60, window: const Duration(minutes: 1)),
-        _uploadLimiter = RateLimiter(
-            maxRequests: 30, window: const Duration(minutes: 10)),
-        _socketLimiter = RateLimiter(
-            maxRequests: 30, window: const Duration(minutes: 1)),
-        _adminLimiter = RateLimiter(
-            maxRequests: 240, window: const Duration(minutes: 1)),
-        _loginFailLimiter = RateLimiter(
-            maxRequests: 10, window: const Duration(minutes: 15)) {
+        _authLimiter =
+            RateLimiter(maxRequests: 15, window: const Duration(minutes: 10)),
+        _generalLimiter =
+            RateLimiter(maxRequests: 300, window: const Duration(minutes: 1)),
+        _resendLimiter =
+            RateLimiter(maxRequests: 3, window: const Duration(minutes: 15)),
+        // Deliberately tighter than [_authLimiter]: this one gates only the
+        // two endpoints that cost real money through Resend (register in
+        // email mode, and resend-verification), so it has to bite before a
+        // bot burns through the per-IP auth budget on cheap calls elsewhere.
+        _verificationSendLimiter =
+            RateLimiter(maxRequests: 3, window: const Duration(hours: 1)),
+        // Server-wide circuit breaker on top of the per-IP and per-email
+        // limits above: a botnet spread across enough IPs and throwaway
+        // addresses can still exhaust those, but not this one. Caps the
+        // worst case at [ServerConfig.maxVerificationEmailsPerHour] Resend
+        // calls an hour no matter how distributed the traffic is.
+        _verificationGlobalLimiter = RateLimiter(
+            maxRequests: config.maxVerificationEmailsPerHour,
+            window: const Duration(hours: 1)),
+        // Per-email limit on *wrong* code guesses. 6 digits is only
+        // 1,000,000 combinations, so this has to be tight; exhausting it
+        // also burns the outstanding code (see _verifyCode), so the window
+        // matching the code's own TTL is what actually forces a fresh one.
+        _codeAttemptLimiter =
+            RateLimiter(maxRequests: 5, window: const Duration(minutes: 10)),
+        _adminFailLimiter =
+            RateLimiter(maxRequests: 1, window: const Duration(minutes: 1)),
+        _inviteLimiter =
+            RateLimiter(maxRequests: 10, window: const Duration(hours: 1)),
+        _aiChatLimiter =
+            RateLimiter(maxRequests: 20, window: const Duration(minutes: 1)),
+        _itadLimiter =
+            RateLimiter(maxRequests: 60, window: const Duration(minutes: 1)),
+        _syncWriteLimiter =
+            RateLimiter(maxRequests: 60, window: const Duration(minutes: 1)),
+        _uploadLimiter =
+            RateLimiter(maxRequests: 30, window: const Duration(minutes: 10)),
+        _socketLimiter =
+            RateLimiter(maxRequests: 30, window: const Duration(minutes: 1)),
+        _adminLimiter =
+            RateLimiter(maxRequests: 240, window: const Duration(minutes: 1)),
+        _loginFailLimiter =
+            RateLimiter(maxRequests: 10, window: const Duration(minutes: 15)) {
     _adminSessionExpiryByTokenHash.addAll(_adminSessions.load());
   }
 
@@ -323,6 +363,7 @@ class Api {
   final RecipeStore recipeStore;
   final AiModelCatalogStore aiCatalog;
   final AiBenchmarkStore aiBenchmarks;
+  final Cs2OfflineStore? cs2OfflineStore;
   final SubwayRelay _subwayRelay = SubwayRelay();
   final SubwayTicketStore _subwayTickets = SubwayTicketStore();
 
@@ -336,6 +377,15 @@ class Api {
   /// Extra, per-email limit on top of [_authLimiter] so someone can't spam
   /// verification mail to one address from many IPs.
   final RateLimiter _resendLimiter;
+
+  /// Per-IP budget for endpoints that trigger a paid Resend send.
+  final RateLimiter _verificationSendLimiter;
+
+  /// Server-wide budget for the same endpoints, regardless of IP or email.
+  final RateLimiter _verificationGlobalLimiter;
+
+  /// Per-email budget for wrong guesses against an outstanding code.
+  final RateLimiter _codeAttemptLimiter;
 
   /// Per-IP limit on *failed* admin-key attempts: one wrong guess per
   /// minute, so the admin key cannot be brute-forced by a bot. Successful
@@ -384,7 +434,7 @@ class Api {
       ..get('/health', _health)
       ..post('/api/v1/auth/params', _authParams)
       ..post('/api/v1/auth/register', _register)
-      ..get('/api/v1/auth/verify', _verify)
+      ..post('/api/v1/auth/verify-code', _verifyCode)
       ..post('/api/v1/auth/resend-verification', _resendVerification)
       ..post('/api/v1/auth/login', _login)
       ..get('/api/v1/auth/oauth/providers', _oauthProviders)
@@ -403,7 +453,8 @@ class Api {
           _requireAuth(_requestAccountDeletion))
       ..post('/api/v1/account/deletion-request/cancel',
           _requireAuth(_cancelAccountDeletionRequest))
-      ..get('/api/v1/ai/mistral-key-configured', _requireAuth(_mistralKeyStatus))
+      ..get(
+          '/api/v1/ai/mistral-key-configured', _requireAuth(_mistralKeyStatus))
       ..get('/api/v1/ai/status', _requireAuth(_aiStatus))
       ..post('/api/v1/ai/mistral/chat', _requireAuth(_mistralChatProxy))
       ..post('/api/v1/ai/google/chat', _requireAuth(_googleChatProxy))
@@ -411,6 +462,8 @@ class Api {
       ..get('/api/v1/steam/itad/lookup', _requireAuth(_itadLookupProxy))
       ..get('/api/v1/steam/itad/history', _requireAuth(_itadHistoryProxy))
       ..post('/api/v1/steam/itad/overview', _requireAuth(_itadOverviewProxy))
+      ..get('/api/v1/steam/cs2/offline', _requireAuth(_cs2OfflineGet))
+      ..put('/api/v1/steam/cs2/offline', _requireAuth(_cs2OfflinePut))
       ..get('/api/v1/sync/<collection>', _requireAuth(_getBlob))
       ..put('/api/v1/sync/<collection>', _requireAuth(_putBlob))
       ..delete('/api/v1/sync/<collection>', _requireAuth(_deleteBlobHandler))
@@ -446,9 +499,12 @@ class Api {
           _requireAuth(_sendChatMessage))
       ..get('/api/v1/ai-models', _requireAuth(_listAiModels))
       ..get('/api/v1/ai-benchmarks', _requireAuth(_listAiBenchmarks))
-      ..get('/api/v1/ai-benchmarks/scene/<id>', _requireAuth(_getAiBenchmarkScene))
-      ..get('/api/v1/ai-benchmarks/preview/<id>', _requireAuth(_getAiBenchmarkPreview))
-      ..get('/api/v1/ai-benchmarks/fallback/<file>', _requireAuth(_getAiBenchmarkFallback))
+      ..get('/api/v1/ai-benchmarks/scene/<id>',
+          _requireAuth(_getAiBenchmarkScene))
+      ..get('/api/v1/ai-benchmarks/preview/<id>',
+          _requireAuth(_getAiBenchmarkPreview))
+      ..get('/api/v1/ai-benchmarks/fallback/<file>',
+          _requireAuth(_getAiBenchmarkFallback))
       ..get('/api/v1/recipes', _requireAuth(_listPublicRecipes))
       ..post('/api/v1/recipes', _requireAuth(_publishRecipe))
       ..get('/api/v1/recipes/media/<photoId>', _requireAuth(_getRecipeMedia))
@@ -460,17 +516,22 @@ class Api {
       ..post('/api/v1/recipes/<id>/reviews', _requireAuth(_putRecipeReview))
       ..post('/api/v1/recipes/<id>/reviews/photo',
           _requireAuth(_uploadReviewPhoto))
-      ..delete('/api/v1/recipes/<id>/reviews', _requireAuth(_deleteRecipeReview))
+      ..delete(
+          '/api/v1/recipes/<id>/reviews', _requireAuth(_deleteRecipeReview))
       ..post('/api/v1/plugins/download', _requireAuth(_reportPluginDownload))
       ..post('/api/v1/subway/rooms', _requireAuth(_createSubwayRoom))
       ..get('/api/v1/subway/rooms', _requireAuth(_listSubwayRooms))
-      ..post('/api/v1/subway/rooms/<code>/invite', _requireAuth(_inviteToSubwayRoom))
+      ..post('/api/v1/subway/rooms/<code>/invite',
+          _requireAuth(_inviteToSubwayRoom))
       ..post('/api/v1/subway/rooms/<code>/join', _requireAuth(_joinSubwayRoom))
       ..put('/api/v1/subway/rooms/<code>/state', _requireAuth(_putSubwayState))
       ..get('/api/v1/subway/rooms/<code>/state', _requireAuth(_getSubwayState))
-      ..post('/api/v1/subway/rooms/<code>/clock/claim', _requireAuth(_claimSubwayClock))
-      ..post('/api/v1/subway/rooms/<code>/clock/release', _requireAuth(_releaseSubwayClock))
-      ..post('/api/v1/subway/rooms/<code>/ticket', _requireAuth(_mintSubwayTicket))
+      ..post('/api/v1/subway/rooms/<code>/clock/claim',
+          _requireAuth(_claimSubwayClock))
+      ..post('/api/v1/subway/rooms/<code>/clock/release',
+          _requireAuth(_releaseSubwayClock))
+      ..post(
+          '/api/v1/subway/rooms/<code>/ticket', _requireAuth(_mintSubwayTicket))
       ..get('/api/v1/subway/room/<room>', _subwayRoomSocket)
       ..get('/admin/login', _adminLoginPage)
       ..post('/admin/login', _adminLoginSubmit)
@@ -526,7 +587,8 @@ class Api {
       // roster form.
       ..get('/admin/website/team', _requireAdmin(_adminTeamEditor))
       ..post('/admin/website/team', _requireAdmin(_adminTeamSave))
-      ..post('/admin/website/<page|.*>/delete', _requireAdmin(_adminWebsiteDelete))
+      ..post(
+          '/admin/website/<page|.*>/delete', _requireAdmin(_adminWebsiteDelete))
       ..get('/admin/website/<page|.*>', _requireAdmin(_adminWebsiteEditor))
       ..post('/admin/website/<page|.*>', _requireAdmin(_adminWebsiteSave));
 
@@ -601,7 +663,8 @@ class Api {
         final key = _clientKey(request);
         final (tag, limiter) = _limiterFor(request.method, request.url.path);
         if (!limiter.allow('$tag:$key')) {
-          return errorResponse(429, 'rate_limited', 'Too many requests. Slow down.');
+          return errorResponse(
+              429, 'rate_limited', 'Too many requests. Slow down.');
         }
         return inner(request);
       };
@@ -660,6 +723,15 @@ class Api {
     return 'unknown';
   }
 
+  /// Gate in front of every Resend call ([_register]'s email-mode branch and
+  /// [_resendVerification]): true only when both the per-IP and the global
+  /// hourly budget have room, and consumes a slot from each when it does.
+  /// Checked *before* anything is written to the store, so a caller that
+  /// trips it never even gets a pending account created.
+  bool _allowVerificationSend(Request request) =>
+      _verificationSendLimiter.allow(_clientKey(request)) &&
+      _verificationGlobalLimiter.allow('global');
+
   /// Wraps a handler so it only runs with a valid bearer token; the session's
   /// user is passed along. Also slides the token expiry forward.
   Handler _requireAuth(
@@ -674,7 +746,8 @@ class Api {
       final session = store.sessionsByTokenHash[tokenHash];
       final now = DateTime.now().millisecondsSinceEpoch;
       if (session == null || session.expiresAtMs <= now) {
-        return errorResponse(401, 'unauthorized', 'Session expired. Sign in again.');
+        return errorResponse(
+            401, 'unauthorized', 'Session expired. Sign in again.');
       }
       final user = store.usersById[session.userId];
       if (user == null) {
@@ -749,11 +822,12 @@ class Api {
         return Response.found('/admin/login');
       }
       final expected = config.adminKey!;
-      final match = constantTimeEquals(
-          utf8.encode(provided), utf8.encode(expected));
+      final match =
+          constantTimeEquals(utf8.encode(provided), utf8.encode(expected));
       if (!match) {
         _adminFailLimiter.allow(clientKey);
-        return errorResponse(401, 'unauthorized', 'Invalid or missing admin key.');
+        return errorResponse(
+            401, 'unauthorized', 'Invalid or missing admin key.');
       }
       final response = _withAdminHeaders(await handler(request));
       // Loading the dashboard itself via an old `?key=` bookmark: piggyback a
@@ -835,7 +909,6 @@ class Api {
   late final AdminSessionStore _adminSessions =
       AdminSessionStore(config.dataDir);
 
-
   /// Whether to mark the session cookie `Secure` (HTTPS-only). Mirrors the
   /// scheme-detection [_originHint] already uses for the landing page: trust
   /// the proxy's forwarded-proto header, and otherwise assume plain HTTP only
@@ -875,7 +948,8 @@ class Api {
   }
 
   Response _adminLoginPage(Request request) {
-    if (!config.adminEnabled) return errorResponse(404, 'not_found', 'Not found.');
+    if (!config.adminEnabled)
+      return errorResponse(404, 'not_found', 'Not found.');
     final locked = int.tryParse(request.url.queryParameters['locked'] ?? '');
     return Response(200,
         body: _adminLoginFormHtml(
@@ -888,7 +962,8 @@ class Api {
   }
 
   Future<Response> _adminLoginSubmit(Request request) async {
-    if (!config.adminEnabled) return errorResponse(404, 'not_found', 'Not found.');
+    if (!config.adminEnabled)
+      return errorResponse(404, 'not_found', 'Not found.');
     final clientKey = _clientKey(request);
     if (_adminFailLimiter.isLimited(clientKey)) {
       final wait = _adminFailLimiter.retryAfterSeconds(clientKey);
@@ -1011,13 +1086,24 @@ class Api {
     }
     final iterations = body['kdfIterations'];
     if (iterations is! int || iterations < 50000 || iterations > 5000000) {
-      return errorResponse(400, 'bad_kdf_iterations', 'Invalid KDF iterations.');
+      return errorResponse(
+          400, 'bad_kdf_iterations', 'Invalid KDF iterations.');
     }
     final deviceLabel = body['deviceLabel'] as String?;
 
+    // Checked before anything touches the store: a caller over budget for
+    // Resend sends gets refused outright rather than left with a pending
+    // account it can never get a code for.
+    if (config.approvalMode == ApprovalMode.email &&
+        !_allowVerificationSend(request)) {
+      return errorResponse(429, 'rate_limited',
+          'Too many verification emails requested right now. Try again later.');
+    }
+
     return store.lock.synchronized(() async {
       if (store.userIdByEmail.containsKey(email)) {
-        return errorResponse(409, 'email_taken', 'An account already exists for this email.');
+        return errorResponse(
+            409, 'email_taken', 'An account already exists for this email.');
       }
       final authSalt = randomBytes(16);
       final authHash = await _hashAuthKey(authKey, authSalt);
@@ -1069,16 +1155,16 @@ class Api {
         });
       }
 
-      final verificationToken = await _issueVerificationToken(user);
+      final verificationCode = await _issueVerificationCode(user);
       await store.saveUsers();
       await store.logActivity(
           'account_registered', '$email registered (pending verification)');
-      await _sendVerificationEmail(user, verificationToken);
+      await _sendVerificationEmail(user, verificationCode);
       return jsonResponse(201, {
         'status': 'pending_approval',
         'approval': mode.name,
-        'message':
-            'Check your email to verify your account before signing in.',
+        'message': 'We sent a 6-digit code to $email — enter it to verify '
+            'your account before signing in.',
       });
     });
   }
@@ -1143,7 +1229,8 @@ class Api {
       if (user != null && user.passwordResetRequired) {
         return _passwordResetRequiredResponse();
       }
-      return errorResponse(401, 'invalid_credentials', 'Wrong email or password.');
+      return errorResponse(
+          401, 'invalid_credentials', 'Wrong email or password.');
     }
 
     // Checked only once the password is known to be right, so this never
@@ -1199,8 +1286,7 @@ class Api {
   Future<Response> _oauthStart(Request request) async {
     final body = await _readJson(request);
     final spec = OAuthProviderSpec.byId(body['provider'] as String?);
-    final providerConfig =
-        spec == null ? null : config.oauthProviders[spec.id];
+    final providerConfig = spec == null ? null : config.oauthProviders[spec.id];
     if (spec == null || providerConfig == null || !providerConfig.configured) {
       return errorResponse(400, 'unknown_provider',
           'This server is not set up for that sign-in method.');
@@ -1232,16 +1318,15 @@ class Api {
   /// user can close — the app is polling and picks it up from there.
   Future<Response> _oauthCallback(Request request) async {
     final spec = OAuthProviderSpec.byId(request.params['provider']);
-    final providerConfig =
-        spec == null ? null : config.oauthProviders[spec.id];
+    final providerConfig = spec == null ? null : config.oauthProviders[spec.id];
     if (spec == null || providerConfig == null || !providerConfig.configured) {
       return _verifyPage(404, 'Unknown sign-in provider.');
     }
     final query = request.url.queryParameters;
     final flow = _oauthFlows.byState(query['state']);
     if (flow == null || flow.provider != spec.id) {
-      return _verifyPage(400,
-          'This sign-in link has expired. Start again from the luma app.');
+      return _verifyPage(
+          400, 'This sign-in link has expired. Start again from the luma app.');
     }
     if (query['error'] != null) {
       flow.error = 'Sign-in was cancelled at ${spec.displayName}.';
@@ -1374,7 +1459,7 @@ class Api {
         }
         if (existing.isPending) {
           // The provider vouched for the address, which is precisely what an
-          // email-verification link was there to establish — so accept it in
+          // email-verification code was there to establish — so accept it in
           // that mode. Under manual approval the operator's decision is the
           // gate, and no provider substitutes for it.
           if (config.approvalMode == ApprovalMode.email) {
@@ -1396,8 +1481,8 @@ class Api {
         final token = await _createSession(existing, deviceLabel: deviceLabel);
         existing.lastLoginAtMs = DateTime.now().millisecondsSinceEpoch;
         await store.saveUsers();
-        await store.logActivity('login',
-            '${existing.email} logged in with ${spec.displayName}');
+        await store.logActivity(
+            'login', '${existing.email} logged in with ${spec.displayName}');
         return jsonResponse(200, {
           'token': token.$1,
           'expiresAtMs': token.$2,
@@ -1417,7 +1502,8 @@ class Api {
       }
       final iterations = body['kdfIterations'];
       if (iterations is! int || iterations < 50000 || iterations > 5000000) {
-        return errorResponse(400, 'bad_kdf_iterations', 'Invalid KDF iterations.');
+        return errorResponse(
+            400, 'bad_kdf_iterations', 'Invalid KDF iterations.');
       }
       final authSalt = randomBytes(16);
       // Under manual approval a new account still waits for the operator;
@@ -1444,9 +1530,10 @@ class Api {
         // The account exists now, so this flow can never complete — a retry
         // on it would only fail the pending check.
         _oauthFlows.remove(flow);
-        await store.logActivity('account_registered',
+        await store.logActivity(
+            'account_registered',
             '${user.email} registered with ${spec.displayName} '
-            '(awaiting approval)');
+                '(awaiting approval)');
         return jsonResponse(201, {
           'status': 'pending_approval',
           'approval': config.approvalMode.name,
@@ -1515,51 +1602,78 @@ class Api {
     });
   }
 
-  /// Confirms a pending account from the link sent by [_sendVerificationEmail].
-  /// Returns a small HTML page (the user opens this in a browser from their
-  /// email client, not the app) mirroring the style of [_root].
-  Future<Response> _verify(Request request) async {
-    // In manual (or open) mode no verification links are ever issued, so
-    // this endpoint must be inert — it is the only path that could flip an
-    // account to 'active' without the operator pressing Approve.
+  /// Confirms a pending account with the 6-digit code from
+  /// [_sendVerificationEmail]. A POST the app itself calls, unlike the old
+  /// link this replaced — nothing here is meant to be opened in a browser.
+  Future<Response> _verifyCode(Request request) async {
+    // In manual (or open) mode no codes are ever issued, so this endpoint
+    // must be inert — it is the only path that could flip an account to
+    // 'active' without the operator pressing Approve.
     if (config.approvalMode != ApprovalMode.email) {
-      return _verifyPage(403,
+      return errorResponse(
+          403,
+          'not_applicable',
           'This server approves accounts by hand from the admin dashboard — '
-          'email verification links are not used here.');
+              'there is no code to enter.');
     }
-    final token = request.url.queryParameters['token'];
-    if (token == null || token.isEmpty) {
-      return _verifyPage(400, 'Missing verification token.');
+    final body = await _readJson(request);
+    final email = _normalizeEmail(body['email']);
+    if (email == null) return errorResponse(400, 'bad_email', 'Invalid email.');
+    final code = body['code'];
+    if (code is! String || !RegExp(r'^\d{6}$').hasMatch(code)) {
+      return errorResponse(
+          400, 'bad_code', 'Enter the 6-digit code from your email.');
     }
-    final tokenHash = c.sha256.convert(utf8.encode(token)).toString();
 
     return store.lock.synchronized(() async {
-      StoredUser? user;
-      for (final u in store.usersById.values) {
-        final candidate = u.verificationTokenHash;
-        if (candidate != null &&
-            constantTimeEquals(
-                utf8.encode(candidate), utf8.encode(tokenHash))) {
-          user = u;
-          break;
+      final userId = store.userIdByEmail[email];
+      final user = userId == null ? null : store.usersById[userId];
+
+      // Checked before anything else so the attempt budget is spent
+      // uniformly whether or not the address has an account — otherwise the
+      // limiter's behaviour would itself leak which emails are registered.
+      if (!_codeAttemptLimiter.allow(email)) {
+        // Burn the outstanding code too: the attempt window matches the
+        // code's own TTL, so without this a caller could just wait out the
+        // window and resume guessing the same secret.
+        if (user != null && user.verificationTokenHash != null) {
+          user.verificationTokenHash = null;
+          user.verificationExpiresAtMs = null;
+          await store.saveUsers();
         }
+        return errorResponse(429, 'too_many_attempts',
+            'Too many incorrect attempts. Request a new code.');
+      }
+
+      if (user == null ||
+          !user.isPending ||
+          user.verificationTokenHash == null) {
+        return errorResponse(
+            400, 'bad_code', 'That code is invalid or has already been used.');
+      }
+      final codeHash = c.sha256.convert(utf8.encode(code)).toString();
+      if (!constantTimeEquals(
+          utf8.encode(user.verificationTokenHash!), utf8.encode(codeHash))) {
+        return errorResponse(400, 'bad_code', 'That code is incorrect.');
       }
       final now = DateTime.now().millisecondsSinceEpoch;
-      if (user == null) {
-        return _verifyPage(
-            400, 'This verification link is invalid or has already been used.');
-      }
       if ((user.verificationExpiresAtMs ?? 0) <= now) {
-        return _verifyPage(400,
-            'This verification link has expired. Request a new one from the app.');
+        user.verificationTokenHash = null;
+        user.verificationExpiresAtMs = null;
+        await store.saveUsers();
+        return errorResponse(
+            400, 'code_expired', 'That code has expired. Request a new one.');
       }
       user.status = 'active';
       user.verificationTokenHash = null;
       user.verificationExpiresAtMs = null;
       await store.saveUsers();
-      await store.logActivity('account_verified', '${user.email} verified their email');
-      return _verifyPage(
-          200, 'Your email is verified. You can return to the app and sign in.');
+      await store.logActivity(
+          'account_verified', '${user.email} verified their email');
+      return jsonResponse(200, {
+        'status': 'verified',
+        'message': 'Your email is verified. Sign in to continue.',
+      });
     });
   }
 
@@ -1571,7 +1685,7 @@ class Api {
     if (email == null) return errorResponse(400, 'bad_email', 'Invalid email.');
 
     if (config.approvalMode != ApprovalMode.email) {
-      // No link exists to resend. Answered the same way for every address,
+      // No code exists to resend. Answered the same way for every address,
       // so this still says nothing about whether the account exists.
       return jsonResponse(200, {
         'status': 'pending_approval',
@@ -1583,16 +1697,18 @@ class Api {
       });
     }
 
-    if (!_resendLimiter.allow(email)) {
+    // Order matters: the cheap per-email check first, then the two shared
+    // budgets — so one address hammering this endpoint can't itself burn
+    // through the IP/global budget other callers depend on.
+    if (!_resendLimiter.allow(email) || !_allowVerificationSend(request)) {
       return errorResponse(429, 'rate_limited',
-          'Too many verification requests for this address. Try again later.');
+          'Too many verification requests. Try again later.');
     }
 
     const genericResponse = {
       'status': 'pending_verification',
-      'message':
-          'If that email has an unverified account, we just sent a new '
-              'verification link.',
+      'message': 'If that email has an unverified account, we just sent a new '
+          'verification code.',
     };
 
     return store.lock.synchronized(() async {
@@ -1601,13 +1717,16 @@ class Api {
       if (user == null || !user.isPending) {
         return jsonResponse(200, genericResponse);
       }
-      final verificationToken = await _issueVerificationToken(user);
+      final verificationCode = await _issueVerificationCode(user);
       await store.saveUsers();
-      await _sendVerificationEmail(user, verificationToken);
+      await _sendVerificationEmail(user, verificationCode);
       return jsonResponse(200, genericResponse);
     });
   }
 
+  /// Small HTML status page for flows the browser lands on directly (only
+  /// the OAuth callback now — the old email-verification link used this too
+  /// before it was replaced by the in-app code).
   Response _verifyPage(int status, String message) => Response(
         status,
         body: '<!doctype html><html><head><meta charset="utf-8">'
@@ -1654,13 +1773,15 @@ class Api {
         iterations is! int ||
         iterations < 50000 ||
         iterations > 5000000) {
-      return errorResponse(400, 'bad_request', 'Invalid change-password payload.');
+      return errorResponse(
+          400, 'bad_request', 'Invalid change-password payload.');
     }
 
-    final currentHash =
-        await _hashAuthKey(current, Uint8List.fromList(base64Decode(user.authSalt)));
+    final currentHash = await _hashAuthKey(
+        current, Uint8List.fromList(base64Decode(user.authSalt)));
     if (!constantTimeEquals(currentHash, base64Decode(user.authHash))) {
-      return errorResponse(401, 'invalid_credentials', 'Current password is wrong.');
+      return errorResponse(
+          401, 'invalid_credentials', 'Current password is wrong.');
     }
 
     final auth = request.headers['authorization']!;
@@ -1734,7 +1855,8 @@ class Api {
     final body = await _readJson(request);
     final authKey = _decodeB64(body['authKey'], minLen: 32, maxLen: 64);
     if (authKey == null) {
-      return errorResponse(400, 'bad_request', 'Auth key required to delete account.');
+      return errorResponse(
+          400, 'bad_request', 'Auth key required to delete account.');
     }
     final hash = await _hashAuthKey(
         authKey, Uint8List.fromList(base64Decode(user.authSalt)));
@@ -1744,7 +1866,8 @@ class Api {
     return store.lock.synchronized(() async {
       final email = user.email;
       await _tearDownAccount(user);
-      await store.logActivity('account_deleted', '$email deleted their account');
+      await store.logActivity(
+          'account_deleted', '$email deleted their account');
       return jsonResponse(200, {'ok': true});
     });
   }
@@ -1763,6 +1886,7 @@ class Api {
     store.sessionsByTokenHash.removeWhere((_, s) => s.userId == user.id);
     store.collectionsByUser.remove(user.id);
     await store.deleteUserData(user.id);
+    await cs2OfflineStore?.deleteForUser(user.id);
     await store.saveUsers();
     await store.saveSessions();
     await store.saveCollections();
@@ -1793,8 +1917,8 @@ class Api {
           'Tell the operator why you want your data deleted.');
     }
     if (reason.length > 2000) {
-      return errorResponse(400, 'reason_too_long',
-          'Keep the reason under 2000 characters.');
+      return errorResponse(
+          400, 'reason_too_long', 'Keep the reason under 2000 characters.');
     }
     return store.lock.synchronized(() async {
       final existing = store.pendingDeletionRequestFor(user.id);
@@ -1855,10 +1979,10 @@ class Api {
       'mistralConfigured': config.mistralKeyConfigured,
       'googleConfigured': config.googleKeyConfigured,
       'usage': {
-        'fiveHourPct':
-            pct(aiUsage.tokensUsed(user.id, const Duration(hours: 5)), kAiTokens5h),
-        'weeklyPct':
-            pct(aiUsage.tokensUsed(user.id, const Duration(days: 7)), kAiTokensWeek),
+        'fiveHourPct': pct(
+            aiUsage.tokensUsed(user.id, const Duration(hours: 5)), kAiTokens5h),
+        'weeklyPct': pct(aiUsage.tokensUsed(user.id, const Duration(days: 7)),
+            kAiTokensWeek),
         'supportUsed': aiUsage.supportMessagesUsed(user.id),
         'supportLimit': kSupportMessagesPerDay,
       },
@@ -1886,7 +2010,8 @@ class Api {
   static const _googleModeModels = {
     'normal': 'gemini-flash-lite-latest', // Aurora 1.0
     'smarter': 'gemini-flash-latest', // Nebula 1.0
-    'smartest': 'gemini-flash-latest', // Pulsar 1.0 — same model, forced high reasoning effort
+    'smartest':
+        'gemini-flash-latest', // Pulsar 1.0 — same model, forced high reasoning effort
   };
 
   /// Proxies a chat-completion request to Google AI Studio's
@@ -1897,8 +2022,8 @@ class Api {
   /// exact `usage.total_tokens` Google reports per call.
   Future<Response> _googleChatProxy(Request request, StoredUser user) async {
     if (!config.googleKeyConfigured) {
-      return errorResponse(404, 'not_configured',
-          'No server-wide Google AI key is configured.');
+      return errorResponse(
+          404, 'not_configured', 'No server-wide Google AI key is configured.');
     }
     Map<String, dynamic> body;
     try {
@@ -1910,18 +2035,22 @@ class Api {
       return errorResponse(400, 'bad_request', 'messages is required.');
     }
     if (aiUsage.tokensUsed(user.id, const Duration(hours: 5)) >= kAiTokens5h) {
-      return errorResponse(429, 'usage_limit',
+      return errorResponse(
+          429,
+          'usage_limit',
           "You've hit your assistant usage limit for now — it frees up again "
-          'over the next few hours.');
+              'over the next few hours.');
     }
     if (aiUsage.tokensUsed(user.id, const Duration(days: 7)) >= kAiTokensWeek) {
-      return errorResponse(429, 'usage_limit',
+      return errorResponse(
+          429,
+          'usage_limit',
           "You've hit your weekly assistant usage limit — it frees up again "
-          'over the coming days.');
+              'over the coming days.');
     }
 
-    final model = _googleModeModels[body['model']] ??
-        _googleModeModels['normal']!;
+    final model =
+        _googleModeModels[body['model']] ?? _googleModeModels['normal']!;
     final maxTokensRaw = body['max_tokens'];
     final upstreamBody = {
       ...body,
@@ -1933,8 +2062,8 @@ class Api {
     try {
       final upstreamRequest = await httpClient.postUrl(Uri.parse(
           'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'));
-      upstreamRequest.headers
-          .set(HttpHeaders.authorizationHeader, 'Bearer ${config.googleApiKey}');
+      upstreamRequest.headers.set(
+          HttpHeaders.authorizationHeader, 'Bearer ${config.googleApiKey}');
       upstreamRequest.headers.contentType = ContentType.json;
       upstreamRequest.write(jsonEncode(upstreamBody));
       final upstreamResponse =
@@ -1954,7 +2083,8 @@ class Api {
       return Response(upstreamResponse.statusCode,
           body: responseBody, headers: {'Content-Type': 'application/json'});
     } catch (e) {
-      return errorResponse(502, 'upstream_error', 'Could not reach the AI service.');
+      return errorResponse(
+          502, 'upstream_error', 'Could not reach the AI service.');
     } finally {
       httpClient.close();
     }
@@ -1962,6 +2092,176 @@ class Api {
 
   Response _itadStatus(Request request, StoredUser user) =>
       jsonResponse(200, {'configured': config.itadKeyConfigured});
+
+  Future<Response> _cs2OfflineGet(Request request, StoredUser user) async {
+    final offline = cs2OfflineStore;
+    if (offline == null) {
+      return errorResponse(503, 'not_configured',
+          'CS2 offline saving is not configured on this server.');
+    }
+    if (!_cs2OfflinePlanAllowed(user)) {
+      return errorResponse(403, 'plan_required',
+          'CS2 offline saving requires an Orbit or Nova account.');
+    }
+    final existing = offline.forUser(user.id);
+    if (existing != null && existing['enabled'] == true) {
+      final intervalHours = user.planId == 'nova' ? 1 : 6;
+      if (existing['intervalHours'] != intervalHours) {
+        existing['intervalHours'] = intervalHours;
+        existing['nextCheckAtMs'] = _nextCs2OfflineBoundary(
+          DateTime.now().toUtc(),
+          intervalHours,
+        );
+        await offline.put(user.id, existing);
+      }
+    }
+    return jsonResponse(200, _cs2OfflineJson(existing));
+  }
+
+  Future<Response> _cs2OfflinePut(Request request, StoredUser user) async {
+    final offline = cs2OfflineStore;
+    if (offline == null) {
+      return errorResponse(503, 'not_configured',
+          'CS2 offline saving is not configured on this server.');
+    }
+    if (!_cs2OfflinePlanAllowed(user)) {
+      return errorResponse(403, 'plan_required',
+          'CS2 offline saving requires an Orbit or Nova account.');
+    }
+    final raw = await request.readAsString();
+    if (raw.length > 4 * 1024 * 1024) {
+      return errorResponse(
+          413, 'body_too_large', 'CS2 offline saving data is too large.');
+    }
+    Object? decoded;
+    try {
+      decoded = jsonDecode(raw);
+    } catch (_) {
+      return errorResponse(400, 'bad_request', 'Malformed request body.');
+    }
+    if (decoded is! Map) {
+      return errorResponse(400, 'bad_request', 'A JSON object is required.');
+    }
+    final enabled = decoded['enabled'];
+    final rawItems = decoded['items'];
+    final rawEntries = decoded['entries'];
+    final rawPoints = decoded['points'];
+    if (enabled is! bool ||
+        rawItems is! List ||
+        rawEntries is! List ||
+        rawPoints is! List) {
+      return errorResponse(400, 'bad_request',
+          'enabled, items, entries and points are required.');
+    }
+    if (rawItems.length > 500 ||
+        rawEntries.length > 1000 ||
+        rawPoints.length > 20000) {
+      return errorResponse(400, 'bad_request',
+          'Too many tracked listings or price observations.');
+    }
+    final items = <Map<String, dynamic>>[];
+    for (final item in rawItems) {
+      if (item is! Map || item['marketHashName'] is! String) {
+        return errorResponse(400, 'bad_request',
+            'Every tracked listing needs a market hash name.');
+      }
+      final hash = item['marketHashName'] as String;
+      if (hash.isEmpty || hash.length > 300) {
+        return errorResponse(400, 'bad_request', 'Invalid market hash name.');
+      }
+      items.add(Map<String, dynamic>.from(item));
+    }
+    final entries = <Map<String, dynamic>>[];
+    for (final entry in rawEntries) {
+      if (entry is! Map || entry['marketHashName'] is! String) {
+        return errorResponse(
+            400, 'bad_request', 'Every tracked copy needs a market hash name.');
+      }
+      entries.add(Map<String, dynamic>.from(entry));
+    }
+    final points = <Map<String, dynamic>>[];
+    for (final point in rawPoints) {
+      if (point is! Map || point['marketHashName'] is! String) {
+        return errorResponse(400, 'bad_request',
+            'Every price observation needs a market hash name.');
+      }
+      points.add(Map<String, dynamic>.from(point));
+    }
+
+    final intervalHours = user.planId == 'nova' ? 1 : 6;
+    final previous = offline.forUser(user.id);
+    final config = previous == null
+        ? <String, dynamic>{}
+        : Map<String, dynamic>.from(previous);
+    config['enabled'] = enabled;
+    config['intervalHours'] = intervalHours;
+    config['items'] = items;
+    config['entries'] = entries;
+    config['points'] = _mergeCs2OfflinePoints(
+      previous?['points'],
+      points,
+      maxPoints: 20000,
+    );
+    if (!enabled) {
+      config['nextCheckAtMs'] = null;
+    } else if (previous?['enabled'] != true ||
+        previous?['intervalHours'] != intervalHours ||
+        previous?['nextCheckAtMs'] == null) {
+      config['nextCheckAtMs'] = _nextCs2OfflineBoundary(
+        DateTime.now().toUtc(),
+        intervalHours,
+      );
+    }
+    await offline.put(user.id, config);
+    return jsonResponse(200, _cs2OfflineJson(config));
+  }
+
+  bool _cs2OfflinePlanAllowed(StoredUser user) =>
+      user.planId == 'orbit' || user.planId == 'nova';
+
+  Map<String, dynamic> _cs2OfflineJson(Map<String, dynamic>? raw) {
+    final config = raw ?? const <String, dynamic>{};
+    return {
+      'enabled': config['enabled'] == true,
+      'intervalHours': (config['intervalHours'] as num?)?.toInt() ?? 0,
+      'nextCheckAtMs': config['nextCheckAtMs'],
+      'lastCheckedAtMs': config['lastCheckedAtMs'],
+      'items': config['items'] is List ? config['items'] : const [],
+      'entries': config['entries'] is List ? config['entries'] : const [],
+      'points': config['points'] is List ? config['points'] : const [],
+    };
+  }
+
+  static int _nextCs2OfflineBoundary(DateTime now, int intervalHours) {
+    final intervalMs = Duration(hours: intervalHours).inMilliseconds;
+    final nowMs = now.millisecondsSinceEpoch;
+    return ((nowMs ~/ intervalMs) + 1) * intervalMs;
+  }
+
+  static List<Map<String, dynamic>> _mergeCs2OfflinePoints(
+    Object? previous,
+    List<Map<String, dynamic>> incoming, {
+    required int maxPoints,
+  }) {
+    final merged = <String, Map<String, dynamic>>{};
+    if (previous is List) {
+      for (final point in previous.whereType<Map>()) {
+        final copy = Map<String, dynamic>.from(point);
+        final key = '${copy['marketHashName']}|${copy['observedAtMs']}';
+        merged[key] = copy;
+      }
+    }
+    for (final point in incoming) {
+      final key = '${point['marketHashName']}|${point['observedAtMs']}';
+      merged[key] = point;
+    }
+    final values = merged.values.toList()
+      ..sort((a, b) => ((a['observedAtMs'] as num?)?.toInt() ?? 0)
+          .compareTo((b['observedAtMs'] as num?)?.toInt() ?? 0));
+    return values.length <= maxPoints
+        ? values
+        : values.sublist(values.length - maxPoints);
+  }
 
   /// A Steam app id has no meaning to IsThereAnyDeal — it identifies games by
   /// its own id, resolved once here and then cached client-side.
@@ -1972,8 +2272,7 @@ class Api {
     }
     final appId = int.tryParse(request.url.queryParameters['appid'] ?? '');
     if (appId == null) {
-      return errorResponse(
-          400, 'bad_request', 'appid must be a Steam app id.');
+      return errorResponse(400, 'bad_request', 'appid must be a Steam app id.');
     }
     return _forwardToItad(
       Uri.https('api.isthereanydeal.com', '/games/lookup/v1', {
@@ -2103,9 +2402,11 @@ class Api {
     final isNewUserTurn = lastMessage?['role'] == 'user';
     if (isNewUserTurn &&
         aiUsage.supportMessagesUsed(user.id) >= kSupportMessagesPerDay) {
-      return errorResponse(429, 'usage_limit',
+      return errorResponse(
+          429,
+          'usage_limit',
           "You've used all $kSupportMessagesPerDay Luma Support messages for "
-          'today — more tomorrow.');
+              'today — more tomorrow.');
     }
     final maxTokensRaw = body['max_tokens'];
     final upstreamBody = {
@@ -2126,8 +2427,8 @@ class Api {
     final httpClient = HttpClient();
     try {
       final upstreamRequest = await httpClient.postUrl(Uri.parse(url));
-      upstreamRequest.headers
-          .set(HttpHeaders.authorizationHeader, 'Bearer ${config.mistralApiKey}');
+      upstreamRequest.headers.set(
+          HttpHeaders.authorizationHeader, 'Bearer ${config.mistralApiKey}');
       upstreamRequest.headers.contentType = ContentType.json;
       upstreamRequest.write(jsonEncode(upstreamBody));
       final upstreamResponse =
@@ -2206,7 +2507,8 @@ class Api {
         int.tryParse(request.headers['x-payload-saved-at'] ?? '') ??
             DateTime.now().millisecondsSinceEpoch;
     if (baseVersion < 0) {
-      return errorResponse(400, 'bad_version', 'X-Base-Version header required.');
+      return errorResponse(
+          400, 'bad_version', 'X-Base-Version header required.');
     }
 
     // Read the body with a hard cap so oversized uploads cannot exhaust RAM.
@@ -2214,8 +2516,7 @@ class Api {
     // user's quota could possibly accept (replacing their existing blob), so
     // a 5 MB-quota account can't buffer 256 MB into memory per request. The
     // authoritative quota check still happens under the lock below.
-    final existingSize =
-        store.collectionsByUser[user.id]?[name]?.size ?? 0;
+    final existingSize = store.collectionsByUser[user.id]?[name]?.size ?? 0;
     final quotaHeadroom =
         user.quotaBytes - store.usedBytes(user.id) + existingSize;
     final cap = quotaHeadroom < config.maxBlobBytes
@@ -2244,13 +2545,13 @@ class Api {
     }
 
     return store.lock.synchronized(() async {
-      final perUser =
-          store.collectionsByUser.putIfAbsent(user.id, () => {});
+      final perUser = store.collectionsByUser.putIfAbsent(user.id, () => {});
       final existing = perUser[name];
       final currentVersion = existing?.version ?? 0;
 
       if (baseVersion != currentVersion) {
-        return errorResponse(409, 'version_conflict', 'Server has a newer snapshot.',
+        return errorResponse(
+            409, 'version_conflict', 'Server has a newer snapshot.',
             extra: {
               'version': currentVersion,
               'payloadSavedAtMs': existing?.payloadSavedAtMs ?? 0,
@@ -2490,8 +2791,10 @@ class Api {
       'ratingAvg': summary.avg,
       'myRating': mine?.rating,
       if (includeReviews)
-        'reviews':
-            recipeStore.reviewsFor(r.id).map((rv) => _reviewJson(rv, viewer)).toList(),
+        'reviews': recipeStore
+            .reviewsFor(r.id)
+            .map((rv) => _reviewJson(rv, viewer))
+            .toList(),
     };
   }
 
@@ -2505,14 +2808,16 @@ class Api {
         'createdAtMs': r.createdAtMs,
       };
 
-  Response _listPublicRecipes(Request request, StoredUser user) => jsonResponse(200, {
+  Response _listPublicRecipes(Request request, StoredUser user) =>
+      jsonResponse(200, {
         'recipes':
             recipeStore.browse().map((r) => _recipeJson(r, user)).toList(),
       });
 
   Response _getPublicRecipe(Request request, StoredUser user) {
     final recipe = recipeStore.recipesById[request.params['id']];
-    if (recipe == null) return errorResponse(404, 'not_found', 'Recipe not found.');
+    if (recipe == null)
+      return errorResponse(404, 'not_found', 'Recipe not found.');
     return jsonResponse(200, _recipeJson(recipe, user, includeReviews: true));
   }
 
@@ -2527,10 +2832,12 @@ class Api {
     int cook,
     String ingredients,
     String steps
-  })? _parseRecipeBody(Map<String, dynamic> body, {required void Function(Response) fail}) {
+  })? _parseRecipeBody(Map<String, dynamic> body,
+      {required void Function(Response) fail}) {
     final title = (body['title'] as String? ?? '').trim();
     if (title.isEmpty || title.length > 200) {
-      fail(errorResponse(400, 'bad_title', 'A title of up to 200 characters is required.'));
+      fail(errorResponse(
+          400, 'bad_title', 'A title of up to 200 characters is required.'));
       return null;
     }
     final descRaw = (body['description'] as String?)?.trim();
@@ -2547,10 +2854,12 @@ class Api {
       final n = v is int ? v : (v is num ? v.toInt() : fallback);
       return n < lo ? lo : (n > hi ? hi : n);
     }
+
     final ingredientsRaw = body['ingredients'];
     final stepsRaw = body['steps'];
     if (ingredientsRaw is! List || stepsRaw is! List) {
-      fail(errorResponse(400, 'bad_body', 'ingredients and steps must be lists.'));
+      fail(errorResponse(
+          400, 'bad_body', 'ingredients and steps must be lists.'));
       return null;
     }
     if (ingredientsRaw.length > 100 || stepsRaw.length > 100) {
@@ -2620,9 +2929,11 @@ class Api {
 
   Future<Response> _updatePublicRecipe(Request request, StoredUser user) async {
     final recipe = recipeStore.recipesById[request.params['id']];
-    if (recipe == null) return errorResponse(404, 'not_found', 'Recipe not found.');
+    if (recipe == null)
+      return errorResponse(404, 'not_found', 'Recipe not found.');
     if (recipe.authorId != user.id) {
-      return errorResponse(403, 'forbidden', 'You can only edit your own recipes.');
+      return errorResponse(
+          403, 'forbidden', 'You can only edit your own recipes.');
     }
     final body = await _readJson(request);
     Response? error;
@@ -2646,9 +2957,11 @@ class Api {
 
   Future<Response> _deletePublicRecipe(Request request, StoredUser user) async {
     final recipe = recipeStore.recipesById[request.params['id']];
-    if (recipe == null) return errorResponse(404, 'not_found', 'Recipe not found.');
+    if (recipe == null)
+      return errorResponse(404, 'not_found', 'Recipe not found.');
     if (recipe.authorId != user.id) {
-      return errorResponse(403, 'forbidden', 'You can only delete your own recipes.');
+      return errorResponse(
+          403, 'forbidden', 'You can only delete your own recipes.');
     }
     return store.lock.synchronized(() async {
       await recipeStore.deleteRecipe(recipe.id);
@@ -2658,7 +2971,8 @@ class Api {
 
   Response _listRecipeReviews(Request request, StoredUser user) {
     final recipe = recipeStore.recipesById[request.params['id']];
-    if (recipe == null) return errorResponse(404, 'not_found', 'Recipe not found.');
+    if (recipe == null)
+      return errorResponse(404, 'not_found', 'Recipe not found.');
     return jsonResponse(200, {
       'reviews': recipeStore
           .reviewsFor(recipe.id)
@@ -2671,11 +2985,13 @@ class Api {
   /// (1..5); text is optional.
   Future<Response> _putRecipeReview(Request request, StoredUser user) async {
     final recipe = recipeStore.recipesById[request.params['id']];
-    if (recipe == null) return errorResponse(404, 'not_found', 'Recipe not found.');
+    if (recipe == null)
+      return errorResponse(404, 'not_found', 'Recipe not found.');
     final body = await _readJson(request);
     final rating = body['rating'];
     if (rating is! int || rating < 1 || rating > 5) {
-      return errorResponse(400, 'bad_rating', 'A rating from 1 to 5 is required.');
+      return errorResponse(
+          400, 'bad_rating', 'A rating from 1 to 5 is required.');
     }
     final text = (body['text'] as String? ?? '').trim();
     if (text.length > 2000) {
@@ -2690,19 +3006,17 @@ class Api {
           ..text = text
           ..updatedAtMs = now;
       } else {
-        recipeStore.reviewsByRecipeId
-            .putIfAbsent(recipe.id, () => [])
-            .insert(
-                0,
-                RecipeReview(
-                  id: _newRecipeId(),
-                  recipeId: recipe.id,
-                  userId: user.id,
-                  userEmail: user.email,
-                  rating: rating,
-                  text: text,
-                  createdAtMs: now,
-                ));
+        recipeStore.reviewsByRecipeId.putIfAbsent(recipe.id, () => []).insert(
+            0,
+            RecipeReview(
+              id: _newRecipeId(),
+              recipeId: recipe.id,
+              userId: user.id,
+              userEmail: user.email,
+              rating: rating,
+              text: text,
+              createdAtMs: now,
+            ));
       }
       await recipeStore.saveReviews();
       return jsonResponse(200, _recipeJson(recipe, user, includeReviews: true));
@@ -2711,7 +3025,8 @@ class Api {
 
   Future<Response> _deleteRecipeReview(Request request, StoredUser user) async {
     final recipe = recipeStore.recipesById[request.params['id']];
-    if (recipe == null) return errorResponse(404, 'not_found', 'Recipe not found.');
+    if (recipe == null)
+      return errorResponse(404, 'not_found', 'Recipe not found.');
     return store.lock.synchronized(() async {
       final list = recipeStore.reviewsByRecipeId[recipe.id];
       if (list != null) {
@@ -2728,9 +3043,11 @@ class Api {
 
   Future<Response> _uploadRecipePhoto(Request request, StoredUser user) async {
     final recipe = recipeStore.recipesById[request.params['id']];
-    if (recipe == null) return errorResponse(404, 'not_found', 'Recipe not found.');
+    if (recipe == null)
+      return errorResponse(404, 'not_found', 'Recipe not found.');
     if (recipe.authorId != user.id) {
-      return errorResponse(403, 'forbidden', 'You can only edit your own recipes.');
+      return errorResponse(
+          403, 'forbidden', 'You can only edit your own recipes.');
     }
     final bytes = await _readCappedBytes(request, RecipeStore.maxPhotoBytes);
     if (bytes == null) {
@@ -2749,10 +3066,12 @@ class Api {
 
   Future<Response> _uploadReviewPhoto(Request request, StoredUser user) async {
     final recipe = recipeStore.recipesById[request.params['id']];
-    if (recipe == null) return errorResponse(404, 'not_found', 'Recipe not found.');
+    if (recipe == null)
+      return errorResponse(404, 'not_found', 'Recipe not found.');
     final review = recipeStore.reviewBy(recipe.id, user.id);
     if (review == null) {
-      return errorResponse(404, 'no_review', 'Post your review before adding a photo.');
+      return errorResponse(
+          404, 'no_review', 'Post your review before adding a photo.');
     }
     final bytes = await _readCappedBytes(request, RecipeStore.maxPhotoBytes);
     if (bytes == null) {
@@ -2803,7 +3122,8 @@ class Api {
   /// Records a plugin install for the dashboard's aggregate counter.
   /// Authenticated: the app only ever reaches a luma server once its account
   /// is approved, so anonymous stats pings no longer exist.
-  Future<Response> _reportPluginDownload(Request request, StoredUser user) async {
+  Future<Response> _reportPluginDownload(
+      Request request, StoredUser user) async {
     Map<String, dynamic> body;
     try {
       body = await _readJson(request);
@@ -2879,9 +3199,11 @@ class Api {
     }
     return store.lock.synchronized(() async {
       final room = subwayStore.roomsByCode[code];
-      if (room == null) return errorResponse(404, 'not_found', 'Room not found.');
+      if (room == null)
+        return errorResponse(404, 'not_found', 'Room not found.');
       if (room.ownerId != user.id) {
-        return errorResponse(403, 'forbidden', 'Only the room owner can invite.');
+        return errorResponse(
+            403, 'forbidden', 'Only the room owner can invite.');
       }
       if (chatStore.conversationBetween(user.id, contactUserId) == null) {
         return errorResponse(403, 'not_a_contact',
@@ -2902,7 +3224,8 @@ class Api {
     final code = (request.params['code'] ?? '').toUpperCase();
     return store.lock.synchronized(() async {
       final room = subwayStore.roomsByCode[code];
-      if (room == null) return errorResponse(404, 'not_found', 'Room not found.');
+      if (room == null)
+        return errorResponse(404, 'not_found', 'Room not found.');
       if (room.memberIds.add(user.id)) {
         room.updatedAtMs = _nowMs;
         await subwayStore.saveRooms();
@@ -2951,8 +3274,10 @@ class Api {
       return errorResponse(403, 'forbidden', 'Not a member of this room.');
     }
     final stateJson = await subwayStore.readState(code);
-    if (stateJson == null) return errorResponse(404, 'no_state', 'Room has no state yet.');
-    return Response.ok(stateJson, headers: {'Content-Type': 'application/json'});
+    if (stateJson == null)
+      return errorResponse(404, 'no_state', 'Room has no state yet.');
+    return Response.ok(stateJson,
+        headers: {'Content-Type': 'application/json'});
   }
 
   /// A lease on "who runs the world clock right now" (see world.js/mp.js on
@@ -2963,7 +3288,8 @@ class Api {
     final code = (request.params['code'] ?? '').toUpperCase();
     return store.lock.synchronized(() async {
       final room = subwayStore.roomsByCode[code];
-      if (room == null) return errorResponse(404, 'not_found', 'Room not found.');
+      if (room == null)
+        return errorResponse(404, 'not_found', 'Room not found.');
       if (!room.isMember(user.id)) {
         return errorResponse(403, 'forbidden', 'Not a member of this room.');
       }
@@ -2972,7 +3298,8 @@ class Api {
           room.clockLeaseExpiresAtMs != null &&
           room.clockLeaseExpiresAtMs! > now;
       if (held && room.clockHolderId != user.id) {
-        return jsonResponse(200, {'granted': false, 'holderId': room.clockHolderId});
+        return jsonResponse(
+            200, {'granted': false, 'holderId': room.clockHolderId});
       }
       room.clockHolderId = user.id;
       room.clockLeaseExpiresAtMs = now + _clockLeaseTtl.inMilliseconds;
@@ -2988,7 +3315,8 @@ class Api {
     final code = (request.params['code'] ?? '').toUpperCase();
     return store.lock.synchronized(() async {
       final room = subwayStore.roomsByCode[code];
-      if (room == null) return errorResponse(404, 'not_found', 'Room not found.');
+      if (room == null)
+        return errorResponse(404, 'not_found', 'Room not found.');
       if (room.clockHolderId == user.id) {
         room.clockHolderId = null;
         room.clockLeaseExpiresAtMs = null;
@@ -3121,13 +3449,15 @@ class Api {
     final body = await _readJson(request);
     final name = (body['name'] as String?)?.trim() ?? '';
     if (name.isEmpty || name.length > 60) {
-      return errorResponse(400, 'bad_name', 'Family name must be 1–60 characters.');
+      return errorResponse(
+          400, 'bad_name', 'Family name must be 1–60 characters.');
     }
     // No control characters: the name is later interpolated into an email
     // Subject header (see Mailer.sendFamilyInviteEmail), where a CR/LF would
     // be an SMTP header-injection vector.
     if (name.codeUnits.any((c) => c < 0x20 || c == 0x7f)) {
-      return errorResponse(400, 'bad_name', 'Family name contains invalid characters.');
+      return errorResponse(
+          400, 'bad_name', 'Family name contains invalid characters.');
     }
 
     return store.lock.synchronized(() async {
@@ -3136,8 +3466,8 @@ class Api {
             'You already belong to a family. Leave it before creating another.');
       }
       final now = _nowMs;
-      final family =
-          Family(id: _genId(), name: name, ownerUserId: user.id, createdAtMs: now);
+      final family = Family(
+          id: _genId(), name: name, ownerUserId: user.id, createdAtMs: now);
       familyStore.familiesById[family.id] = family;
       familyStore.membersByFamilyId[family.id] = {
         user.id: FamilyMember(
@@ -3149,8 +3479,7 @@ class Api {
       familyStore.familyIdByUserId[user.id] = family.id;
       await familyStore.saveFamilies();
       await familyStore.saveMembers();
-      return jsonResponse(
-          201, _familyJson(family, user, includeInvites: true));
+      return jsonResponse(201, _familyJson(family, user, includeInvites: true));
     });
   }
 
@@ -3165,9 +3494,11 @@ class Api {
   Future<Response> _inviteFamilyMember(Request request, StoredUser user) async {
     final familyId = request.params['id']!;
     final family = familyStore.familiesById[familyId];
-    if (family == null) return errorResponse(404, 'not_found', 'Family not found.');
+    if (family == null)
+      return errorResponse(404, 'not_found', 'Family not found.');
     if (family.ownerUserId != user.id) {
-      return errorResponse(403, 'forbidden', 'Only the family owner can invite members.');
+      return errorResponse(
+          403, 'forbidden', 'Only the family owner can invite members.');
     }
     final body = await _readJson(request);
     final email = _normalizeEmail(body['email']);
@@ -3180,13 +3511,18 @@ class Api {
     return store.lock.synchronized(() async {
       final now = _nowMs;
       final existingUserId = store.userIdByEmail[email];
-      if (existingUserId != null && familyStore.isMember(familyId, existingUserId)) {
-        return errorResponse(409, 'already_member', 'That person is already in the family.');
+      if (existingUserId != null &&
+          familyStore.isMember(familyId, existingUserId)) {
+        return errorResponse(
+            409, 'already_member', 'That person is already in the family.');
       }
       final alreadyPending = familyStore.invitesById.values.any((i) =>
-          i.familyId == familyId && i.inviteeEmail == email && i.isPendingAt(now));
+          i.familyId == familyId &&
+          i.inviteeEmail == email &&
+          i.isPendingAt(now));
       if (alreadyPending) {
-        return errorResponse(409, 'invite_pending', 'An invite is already pending for that email.');
+        return errorResponse(409, 'invite_pending',
+            'An invite is already pending for that email.');
       }
 
       final owner = store.usersById[user.id]!;
@@ -3245,7 +3581,8 @@ class Api {
         return errorResponse(404, 'not_found', 'Invite not found.');
       }
       if (!invite.isPendingAt(now)) {
-        return errorResponse(410, 'invite_not_pending', 'This invite is no longer available.');
+        return errorResponse(
+            410, 'invite_not_pending', 'This invite is no longer available.');
       }
       final family = familyStore.familiesById[invite.familyId];
       if (family == null) {
@@ -3260,8 +3597,8 @@ class Api {
           ? kFamilyMemberLimit[kDefaultPlanId]!
           : _familyMemberLimitFor(owner);
       if (familyStore.membersOf(family.id).length >= limit) {
-        return errorResponse(403, 'family_limit_exceeded',
-            'This family is full.');
+        return errorResponse(
+            403, 'family_limit_exceeded', 'This family is full.');
       }
 
       familyStore.membersByFamilyId.putIfAbsent(family.id, () => {})[user.id] =
@@ -3275,11 +3612,13 @@ class Api {
       invite.respondedAtMs = now;
       await familyStore.saveMembers();
       await familyStore.saveInvites();
-      return jsonResponse(200, _familyJson(family, user, includeInvites: false));
+      return jsonResponse(
+          200, _familyJson(family, user, includeInvites: false));
     });
   }
 
-  Future<Response> _declineFamilyInvite(Request request, StoredUser user) async {
+  Future<Response> _declineFamilyInvite(
+      Request request, StoredUser user) async {
     final inviteId = request.params['inviteId']!;
     return store.lock.synchronized(() async {
       final now = _nowMs;
@@ -3288,7 +3627,8 @@ class Api {
         return errorResponse(404, 'not_found', 'Invite not found.');
       }
       if (!invite.isPendingAt(now)) {
-        return errorResponse(410, 'invite_not_pending', 'This invite is no longer available.');
+        return errorResponse(
+            410, 'invite_not_pending', 'This invite is no longer available.');
       }
       invite.status = 'declined';
       invite.respondedAtMs = now;
@@ -3301,11 +3641,13 @@ class Api {
     final familyId = request.params['id']!;
     final targetUserId = request.params['userId']!;
     final family = familyStore.familiesById[familyId];
-    if (family == null) return errorResponse(404, 'not_found', 'Family not found.');
+    if (family == null)
+      return errorResponse(404, 'not_found', 'Family not found.');
     final isOwner = family.ownerUserId == user.id;
     final isSelf = targetUserId == user.id;
     if (!isOwner && !isSelf) {
-      return errorResponse(403, 'forbidden', 'Only the family owner can remove other members.');
+      return errorResponse(
+          403, 'forbidden', 'Only the family owner can remove other members.');
     }
     if (targetUserId == family.ownerUserId) {
       return errorResponse(409, 'owner_cannot_leave',
@@ -3324,9 +3666,11 @@ class Api {
   Future<Response> _deleteFamily(Request request, StoredUser user) async {
     final familyId = request.params['id']!;
     final family = familyStore.familiesById[familyId];
-    if (family == null) return errorResponse(404, 'not_found', 'Family not found.');
+    if (family == null)
+      return errorResponse(404, 'not_found', 'Family not found.');
     if (family.ownerUserId != user.id) {
-      return errorResponse(403, 'forbidden', 'Only the family owner can delete the family.');
+      return errorResponse(
+          403, 'forbidden', 'Only the family owner can delete the family.');
     }
     return store.lock.synchronized(() async {
       familyStore.deleteFamilyData(familyId);
@@ -3341,9 +3685,11 @@ class Api {
   Future<Response> _addSharedEvent(Request request, StoredUser user) async {
     final familyId = request.params['id']!;
     final family = familyStore.familiesById[familyId];
-    if (family == null) return errorResponse(404, 'not_found', 'Family not found.');
+    if (family == null)
+      return errorResponse(404, 'not_found', 'Family not found.');
     if (!familyStore.isMember(familyId, user.id)) {
-      return errorResponse(403, 'forbidden', 'You are not a member of this family.');
+      return errorResponse(
+          403, 'forbidden', 'You are not a member of this family.');
     }
     final body = await _readJson(request);
     final parsed = _parseSharedEventBody(body, familyId);
@@ -3354,7 +3700,8 @@ class Api {
     if (fields.visibility == 'subset') {
       for (final id in fields.visibleMemberUserIds) {
         if (!familyStore.isMember(familyId, id)) {
-          return errorResponse(400, 'bad_member', 'One of the chosen members is not in this family.');
+          return errorResponse(400, 'bad_member',
+              'One of the chosen members is not in this family.');
         }
       }
     }
@@ -3393,7 +3740,8 @@ class Api {
       return errorResponse(404, 'not_found', 'Family not found.');
     }
     if (!familyStore.isMember(familyId, user.id)) {
-      return errorResponse(403, 'forbidden', 'You are not a member of this family.');
+      return errorResponse(
+          403, 'forbidden', 'You are not a member of this family.');
     }
     final events = familyStore.visibleEvents(familyId, user.id);
     return jsonResponse(200, {'events': events.map(_sharedEventJson).toList()});
@@ -3403,11 +3751,14 @@ class Api {
     final familyId = request.params['id']!;
     final eventId = request.params['eventId']!;
     final family = familyStore.familiesById[familyId];
-    if (family == null) return errorResponse(404, 'not_found', 'Family not found.');
+    if (family == null)
+      return errorResponse(404, 'not_found', 'Family not found.');
     final event = familyStore.sharedEventsByFamilyId[familyId]?[eventId];
-    if (event == null) return errorResponse(404, 'not_found', 'Event not found.');
+    if (event == null)
+      return errorResponse(404, 'not_found', 'Event not found.');
     if (event.authorUserId != user.id && family.ownerUserId != user.id) {
-      return errorResponse(403, 'forbidden', 'Only the author or family owner can edit this event.');
+      return errorResponse(403, 'forbidden',
+          'Only the author or family owner can edit this event.');
     }
     final body = await _readJson(request);
     final parsed = _parseSharedEventBody(body, familyId);
@@ -3418,7 +3769,8 @@ class Api {
     if (fields.visibility == 'subset') {
       for (final id in fields.visibleMemberUserIds) {
         if (!familyStore.isMember(familyId, id)) {
-          return errorResponse(400, 'bad_member', 'One of the chosen members is not in this family.');
+          return errorResponse(400, 'bad_member',
+              'One of the chosen members is not in this family.');
         }
       }
     }
@@ -3447,11 +3799,14 @@ class Api {
     final familyId = request.params['id']!;
     final eventId = request.params['eventId']!;
     final family = familyStore.familiesById[familyId];
-    if (family == null) return errorResponse(404, 'not_found', 'Family not found.');
+    if (family == null)
+      return errorResponse(404, 'not_found', 'Family not found.');
     final event = familyStore.sharedEventsByFamilyId[familyId]?[eventId];
-    if (event == null) return errorResponse(404, 'not_found', 'Event not found.');
+    if (event == null)
+      return errorResponse(404, 'not_found', 'Event not found.');
     if (event.authorUserId != user.id && family.ownerUserId != user.id) {
-      return errorResponse(403, 'forbidden', 'Only the author or family owner can delete this event.');
+      return errorResponse(403, 'forbidden',
+          'Only the author or family owner can delete this event.');
     }
     return store.lock.synchronized(() async {
       familyStore.sharedEventsByFamilyId[familyId]?.remove(eventId);
@@ -3472,15 +3827,15 @@ class Api {
     }
     final visibility = body['visibility'] as String? ?? 'all';
     if (visibility != 'all' && visibility != 'subset') {
-      return const _ParseError('bad_visibility', "visibility must be 'all' or 'subset'.");
-    }
-    final memberIds = (body['memberUserIds'] as List?)
-            ?.map((e) => e as String)
-            .toList() ??
-        const <String>[];
-    if (visibility == 'subset' && memberIds.isEmpty) {
       return const _ParseError(
-          'bad_members', 'Choose at least one member when sharing with specific people.');
+          'bad_visibility', "visibility must be 'all' or 'subset'.");
+    }
+    final memberIds =
+        (body['memberUserIds'] as List?)?.map((e) => e as String).toList() ??
+            const <String>[];
+    if (visibility == 'subset' && memberIds.isEmpty) {
+      return const _ParseError('bad_members',
+          'Choose at least one member when sharing with specific people.');
     }
     return _ParsedSharedEvent(
       title: title,
@@ -3510,7 +3865,8 @@ class Api {
       await mailer.sendFamilyInviteEmail(
           toEmail: toEmail, inviterEmail: inviterEmail, familyName: familyName);
     } catch (e) {
-      stderr.writeln('[luma] could not send family invite email to $toEmail: $e');
+      stderr
+          .writeln('[luma] could not send family invite email to $toEmail: $e');
     }
   }
 
@@ -3558,14 +3914,15 @@ class Api {
   Response _getChatKey(Request request, StoredUser user) {
     final userId = request.params['userId']!;
     final key = chatStore.publicKeyByUserId[userId];
-    if (key == null) return errorResponse(404, 'not_found', 'No public key for that user.');
+    if (key == null)
+      return errorResponse(404, 'not_found', 'No public key for that user.');
     return jsonResponse(200, {'userId': userId, 'publicKey': key});
   }
 
   Future<Response> _sendChatInvite(Request request, StoredUser user) async {
     if (!chatStore.publicKeyByUserId.containsKey(user.id)) {
-      return errorResponse(400, 'no_key',
-          'Set up chat encryption on this device first.');
+      return errorResponse(
+          400, 'no_key', 'Set up chat encryption on this device first.');
     }
     final body = await _readJson(request);
     final email = _normalizeEmail(body['email']);
@@ -3583,12 +3940,14 @@ class Api {
       final existingUserId = store.userIdByEmail[email];
       if (existingUserId != null &&
           chatStore.conversationBetween(user.id, existingUserId) != null) {
-        return errorResponse(409, 'already_chatting', 'You already have a chat with that person.');
+        return errorResponse(409, 'already_chatting',
+            'You already have a chat with that person.');
       }
       final alreadyPending = chatStore.invitesById.values.any((i) =>
           i.fromUserId == user.id && i.toEmail == email && i.isPendingAt(now));
       if (alreadyPending) {
-        return errorResponse(409, 'invite_pending', 'An invite is already pending for that email.');
+        return errorResponse(409, 'invite_pending',
+            'An invite is already pending for that email.');
       }
 
       final invite = ChatInvite(
@@ -3611,7 +3970,8 @@ class Api {
 
   Response _listChatInvites(Request request, StoredUser user) {
     final now = _nowMs;
-    final invites = chatStore.pendingInvitesForEmail(user.email.toLowerCase(), now);
+    final invites =
+        chatStore.pendingInvitesForEmail(user.email.toLowerCase(), now);
     return jsonResponse(200, {
       'invites': invites.map((i) {
         final inviter = store.usersById[i.fromUserId];
@@ -3627,8 +3987,8 @@ class Api {
 
   Future<Response> _acceptChatInvite(Request request, StoredUser user) async {
     if (!chatStore.publicKeyByUserId.containsKey(user.id)) {
-      return errorResponse(400, 'no_key',
-          'Set up chat encryption on this device first.');
+      return errorResponse(
+          400, 'no_key', 'Set up chat encryption on this device first.');
     }
     final inviteId = request.params['inviteId']!;
     return store.lock.synchronized(() async {
@@ -3638,10 +3998,12 @@ class Api {
         return errorResponse(404, 'not_found', 'Invite not found.');
       }
       if (!invite.isPendingAt(now)) {
-        return errorResponse(410, 'invite_not_pending', 'This invite is no longer available.');
+        return errorResponse(
+            410, 'invite_not_pending', 'This invite is no longer available.');
       }
 
-      var conversation = chatStore.conversationBetween(invite.fromUserId, user.id);
+      var conversation =
+          chatStore.conversationBetween(invite.fromUserId, user.id);
       conversation ??= ChatConversation(
         id: _genId(),
         userAId: invite.fromUserId,
@@ -3705,12 +4067,16 @@ class Api {
     final sinceMs = int.tryParse(request.url.queryParameters['since'] ?? '');
     final messages = chatStore.messagesFor(conversationId, sinceMs: sinceMs);
     return jsonResponse(200, {
-      'messages': messages.map((m) => {
-            'id': m.id,
-            'senderUserId': m.senderUserId,
-            'createdAtMs': m.createdAtMs,
-            'blob': m.senderUserId == user.id ? m.blobForSender : m.blobForRecipient,
-          }).toList(),
+      'messages': messages
+          .map((m) => {
+                'id': m.id,
+                'senderUserId': m.senderUserId,
+                'createdAtMs': m.createdAtMs,
+                'blob': m.senderUserId == user.id
+                    ? m.blobForSender
+                    : m.blobForRecipient,
+              })
+          .toList(),
     });
   }
 
@@ -3749,7 +4115,8 @@ class Api {
             0, messages.length - _maxChatMessagesPerConversation);
       }
       await chatStore.saveMessages();
-      return jsonResponse(201, {'id': message.id, 'createdAtMs': message.createdAtMs});
+      return jsonResponse(
+          201, {'id': message.id, 'createdAtMs': message.createdAtMs});
     });
   }
 
@@ -3761,7 +4128,8 @@ class Api {
     required String inviterEmail,
   }) async {
     try {
-      await mailer.sendChatInviteEmail(toEmail: toEmail, inviterEmail: inviterEmail);
+      await mailer.sendChatInviteEmail(
+          toEmail: toEmail, inviterEmail: inviterEmail);
     } catch (e) {
       stderr.writeln('[luma] could not send chat invite email to $toEmail: $e');
     }
@@ -3794,7 +4162,9 @@ class Api {
     var pending = 0;
     var usedTotal = 0;
     var quotaTotal = 0;
-    final planCounts = <String, int>{for (final id in kPlanQuotaBytes.keys) id: 0};
+    final planCounts = <String, int>{
+      for (final id in kPlanQuotaBytes.keys) id: 0
+    };
     for (final u in users) {
       if (u.isPending) {
         pending++;
@@ -3884,7 +4254,11 @@ class Api {
         'label': 'Collections',
         'bytes': await fileBytes('collections.json')
       },
-      {'id': 'activity', 'label': 'Activity', 'bytes': await fileBytes('activity.json')},
+      {
+        'id': 'activity',
+        'label': 'Activity',
+        'bytes': await fileBytes('activity.json')
+      },
       {
         'id': 'plugin_downloads',
         'label': 'Plugin stats',
@@ -3895,7 +4269,11 @@ class Api {
         'label': 'Metrics history',
         'bytes': await fileBytes('metrics_history.json')
       },
-      {'id': 'families', 'label': 'Families', 'bytes': await fileBytes('families.json')},
+      {
+        'id': 'families',
+        'label': 'Families',
+        'bytes': await fileBytes('families.json')
+      },
       {
         'id': 'family_members',
         'label': 'Family members',
@@ -3911,7 +4289,11 @@ class Api {
         'label': 'Shared events',
         'bytes': await fileBytes('family_shared_events.json')
       },
-      {'id': 'chat_keys', 'label': 'Chat keys', 'bytes': await fileBytes('chat_keys.json')},
+      {
+        'id': 'chat_keys',
+        'label': 'Chat keys',
+        'bytes': await fileBytes('chat_keys.json')
+      },
       {
         'id': 'chat_invites',
         'label': 'Chat invites',
@@ -3927,7 +4309,11 @@ class Api {
         'label': 'Chat messages',
         'bytes': await fileBytes('chat_messages.json')
       },
-      {'id': 'recipes', 'label': 'Recipes', 'bytes': await fileBytes('recipes.json')},
+      {
+        'id': 'recipes',
+        'label': 'Recipes',
+        'bytes': await fileBytes('recipes.json')
+      },
       {
         'id': 'recipe_reviews',
         'label': 'Recipe reviews',
@@ -3948,13 +4334,21 @@ class Api {
         'label': 'Subway states',
         'bytes': await dirBytes('subway_state')
       },
-      {'id': 'ai_models', 'label': 'AI models', 'bytes': await fileBytes('ai_models.json')},
+      {
+        'id': 'ai_models',
+        'label': 'AI models',
+        'bytes': await fileBytes('ai_models.json')
+      },
       {
         'id': 'ai_benchmarks',
         'label': 'AI benchmark scenes',
         'bytes': await dirBytes('ai_benchmarks')
       },
-      {'id': 'ai_usage', 'label': 'AI usage', 'bytes': await fileBytes('ai_usage.json')},
+      {
+        'id': 'ai_usage',
+        'label': 'AI usage',
+        'bytes': await fileBytes('ai_usage.json')
+      },
       {
         'id': 'admin_sessions',
         'label': 'Admin sessions',
@@ -3988,7 +4382,8 @@ class Api {
         Duration(hours: hours).inMilliseconds;
     final events = store.activity.where((a) => a.createdAtMs >= cutoff).toList()
       ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
-    return jsonResponse(200, {'events': events.map((e) => e.toJson()).toList()});
+    return jsonResponse(
+        200, {'events': events.map((e) => e.toJson()).toList()});
   }
 
   /// Approves a pending account, which is how accounts normally become
@@ -4131,13 +4526,14 @@ class Api {
         return errorResponse(404, 'not_found', 'No account with that email.');
       }
       user.accessRevokedAtMs = DateTime.now().millisecondsSinceEpoch;
-      user.accessRevokedReason =
-          reason.isEmpty ? null : (reason.length > 500 ? reason.substring(0, 500) : reason);
+      user.accessRevokedReason = reason.isEmpty
+          ? null
+          : (reason.length > 500 ? reason.substring(0, 500) : reason);
       store.sessionsByTokenHash.removeWhere((_, s) => s.userId == user.id);
       await store.saveUsers();
       await store.saveSessions();
-      await store.logActivity('access_revoked',
-          '$email had their access revoked by an admin');
+      await store.logActivity(
+          'access_revoked', '$email had their access revoked by an admin');
       return _adminFormResponse(request, '/admin');
     });
   }
@@ -4299,9 +4695,8 @@ class Api {
     final requests = store.deletionRequestsById.values.toList()
       ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
     return jsonResponse(200, {
-      'requests': requests
-          .map((r) => {...r.toJson(), 'pending': r.isPending})
-          .toList(),
+      'requests':
+          requests.map((r) => {...r.toJson(), 'pending': r.isPending}).toList(),
     });
   }
 
@@ -4332,8 +4727,8 @@ class Api {
         return errorResponse(404, 'not_found', 'No such deletion request.');
       }
       if (!req.isPending) {
-        return errorResponse(409, 'already_decided',
-            'That request was already ${req.status}.');
+        return errorResponse(
+            409, 'already_decided', 'That request was already ${req.status}.');
       }
       req.decidedAtMs = DateTime.now().millisecondsSinceEpoch;
       req.adminNote = note.isEmpty ? null : note;
@@ -4378,7 +4773,8 @@ class Api {
       return jsonResponse(200, json ?? {'ok': true});
     }
     final key = request.url.queryParameters['key'];
-    final withKey = key != null ? '$path?key=${Uri.encodeQueryComponent(key)}' : path;
+    final withKey =
+        key != null ? '$path?key=${Uri.encodeQueryComponent(key)}' : path;
     return Response.found(fragment != null ? '$withKey#$fragment' : withKey);
   }
 
@@ -4411,7 +4807,8 @@ class Api {
       await store.saveUsers();
       await store.logActivity(
           'plan_granted', '$email was granted the $planId plan');
-      return _adminFormResponse(request, '/admin', fragment: 'products',
+      return _adminFormResponse(request, '/admin',
+          fragment: 'products',
           json: {'ok': true, 'planId': planId, 'quotaBytes': user.quotaBytes});
     });
   }
@@ -4453,8 +4850,9 @@ class Api {
             body: body, headers: {'Content-Type': 'application/json'});
       }
       final key = request.url.queryParameters['key'];
-      final withKey =
-          key != null ? '/admin?key=${Uri.encodeQueryComponent(key)}' : '/admin';
+      final withKey = key != null
+          ? '/admin?key=${Uri.encodeQueryComponent(key)}'
+          : '/admin';
       return Response.found('$withKey#control');
     } catch (_) {
       return errorResponse(
@@ -4501,8 +4899,9 @@ class Api {
             body: body, headers: {'Content-Type': 'application/json'});
       }
       final key = request.url.queryParameters['key'];
-      final withKey =
-          key != null ? '/admin?key=${Uri.encodeQueryComponent(key)}' : '/admin';
+      final withKey = key != null
+          ? '/admin?key=${Uri.encodeQueryComponent(key)}'
+          : '/admin';
       return Response.found('$withKey#control');
     } catch (_) {
       return errorResponse(
@@ -4561,7 +4960,6 @@ class Api {
     repoPathConfigured: config.repoPathConfigured,
   );
 
-
   // ---------------------------------------------------------------------
   // Website (wiki) editor — /admin/website
   //
@@ -4610,9 +5008,11 @@ class Api {
           'Website editing is not configured (LUMA_WIKI_DIR unset).');
     }
     if (!Directory(_wikiContentPath).existsSync()) {
-      return errorResponse(500, 'wiki_missing',
+      return errorResponse(
+          500,
+          'wiki_missing',
           'Wiki source not found at $_wikiContentPath — run deploy.sh once '
-          'to upload it.');
+              'to upload it.');
     }
     return null;
   }
@@ -5096,7 +5496,8 @@ border-radius:999px;padding:2px 8px}
   static final _assetNameRe = RegExp(r'^[A-Za-z0-9][A-Za-z0-9._-]*$');
 
   Response _serveFile(File file, String name, {String cache = 'no-store'}) {
-    if (!file.existsSync()) return errorResponse(404, 'not_found', 'Not found.');
+    if (!file.existsSync())
+      return errorResponse(404, 'not_found', 'Not found.');
     final ext = name.contains('.') ? name.split('.').last.toLowerCase() : '';
     final type = _assetTypes[ext];
     if (type == null) return errorResponse(404, 'not_found', 'Not found.');
@@ -5140,7 +5541,8 @@ border-radius:999px;padding:2px 8px}
     if (unavailable != null) return unavailable;
     final dir = Directory('${config.wikiDir}/site/_astro');
     if (!dir.existsSync()) {
-      return errorResponse(404, 'not_found', 'No built site yet — publish once.');
+      return errorResponse(
+          404, 'not_found', 'No built site yet — publish once.');
     }
     // Use exactly the stylesheets a built wiki page links, in order —
     // concatenating every page's CSS lets unrelated pages override the
@@ -5188,7 +5590,8 @@ border-radius:999px;padding:2px 8px}
     }
     final buf = StringBuffer();
     for (final f in files) {
-      buf.writeln(f.readAsStringSync()
+      buf.writeln(f
+          .readAsStringSync()
           .replaceAll('url(/_astro/', 'url(/admin/website/preview/astro/')
           .replaceAll('url("/_astro/', 'url("/admin/website/preview/astro/')
           .replaceAll("url('/_astro/", "url('/admin/website/preview/astro/"));
@@ -5234,7 +5637,8 @@ border-radius:999px;padding:2px 8px}
     }
     final root = '${config.wikiDir}/source/public';
     final file = File('$root/$rel');
-    if (!file.absolute.path.replaceAll('\\', '/')
+    if (!file.absolute.path
+        .replaceAll('\\', '/')
         .startsWith(Directory(root).absolute.path.replaceAll('\\', '/'))) {
       return errorResponse(404, 'not_found', 'Not found.');
     }
@@ -5255,7 +5659,8 @@ border-radius:999px;padding:2px 8px}
     }
     final rawName = request.url.queryParameters['name'] ?? '';
     final dot = rawName.lastIndexOf('.');
-    if (dot <= 0) return errorResponse(400, 'bad_name', 'Filename needs an extension.');
+    if (dot <= 0)
+      return errorResponse(400, 'bad_name', 'Filename needs an extension.');
     final ext = rawName.substring(dot + 1).toLowerCase();
     if (!{'png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'avif'}.contains(ext)) {
       return errorResponse(400, 'bad_type',
@@ -5285,7 +5690,8 @@ border-radius:999px;padding:2px 8px}
     while (File('${dir.path}/$name').existsSync()) {
       name = '$stem-${++n}.$ext';
     }
-    await File('${dir.path}/$name').writeAsBytes(bytes.takeBytes(), flush: true);
+    await File('${dir.path}/$name')
+        .writeAsBytes(bytes.takeBytes(), flush: true);
     return jsonResponse(200, {'url': '/images/uploads/$name'});
   }
 
@@ -5304,11 +5710,38 @@ border-radius:999px;padding:2px 8px}
   /// nothing at all, so anything unrecognised is replaced with the fallback
   /// on save rather than trusted through.
   static const _teamIcons = [
-    'user', 'users', 'star', 'sparkles', 'leaf', 'coffee', 'moon', 'rocket',
-    'brush', 'palette', 'wrench', 'braces', 'bot', 'book', 'shield', 'zap',
-    'globe', 'compass', 'gamepad', 'package', 'server', 'key', 'image',
-    'message', 'pencil', 'activity', 'smile', 'puzzle', 'cloud', 'mail',
-    'github', 'discord',
+    'user',
+    'users',
+    'star',
+    'sparkles',
+    'leaf',
+    'coffee',
+    'moon',
+    'rocket',
+    'brush',
+    'palette',
+    'wrench',
+    'braces',
+    'bot',
+    'book',
+    'shield',
+    'zap',
+    'globe',
+    'compass',
+    'gamepad',
+    'package',
+    'server',
+    'key',
+    'image',
+    'message',
+    'pencil',
+    'activity',
+    'smile',
+    'puzzle',
+    'cloud',
+    'mail',
+    'github',
+    'discord',
   ];
 
   File get _wikiTeamFile => File('$_wikiContentPath/team.json');
@@ -5596,8 +6029,11 @@ border-radius:999px;padding:2px 8px}
     while (await file.exists()) {
       file = File('${dir.path}/$baseSlug-${n++}.md');
     }
-    final slug =
-        file.path.replaceAll('\\', '/').split('/').last.replaceFirst(RegExp(r'\.md$'), '');
+    final slug = file.path
+        .replaceAll('\\', '/')
+        .split('/')
+        .last
+        .replaceFirst(RegExp(r'\.md$'), '');
 
     final tagsYaml = tags.map(_yamlStr).join(', ');
     final frontmatter = 'title: ${_yamlStr(title)}\n'
@@ -7326,9 +7762,8 @@ syncToolbar();
 
     final rows = users.map((u) {
       final used = store.usedBytes(u.id);
-      final pct = u.quotaBytes > 0
-          ? (used / u.quotaBytes * 100).clamp(0, 100)
-          : 0.0;
+      final pct =
+          u.quotaBytes > 0 ? (used / u.quotaBytes * 100).clamp(0, 100) : 0.0;
       final statusClass = u.status == 'active' ? 'ok' : 'warn';
       final safeEmail = _htmlEscape(u.email);
       final bannedIps = store.bannedIpsFor(u);
@@ -7391,8 +7826,7 @@ syncToolbar();
                   'account itself is left alone; use Revoke for that.',
               danger: true)
         else
-          item('/admin/ip-unban',
-              'Lift IP ban (${bannedIps.length})',
+          item('/admin/ip-unban', 'Lift IP ban (${bannedIps.length})',
               confirm: 'Unblock the ${bannedIps.length} address'
                   '${bannedIps.length == 1 ? '' : 'es'} banned for $safeEmail?'),
       ];
@@ -7430,7 +7864,8 @@ syncToolbar();
           '</tr>';
     }).join();
 
-    final subscriptionRows = users.where((u) => u.planId != kDefaultPlanId).map((u) {
+    final subscriptionRows =
+        users.where((u) => u.planId != kDefaultPlanId).map((u) {
       final label = planLabels[u.planId] ?? u.planId;
       return '<tr>'
           '<td>${_htmlEscape(u.email)}</td>'
@@ -7521,7 +7956,8 @@ syncToolbar();
     // ---- Inbox: data-deletion requests ------------------------------------
     final deletionRequests = store.deletionRequestsById.values.toList()
       ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
-    final pendingDeletions = deletionRequests.where((r) => r.isPending).toList();
+    final pendingDeletions =
+        deletionRequests.where((r) => r.isPending).toList();
     final decidedDeletions =
         deletionRequests.where((r) => !r.isPending).toList();
 
@@ -8233,7 +8669,6 @@ window.lumaAskReason = function (form, message) {
 })();
 ''';
 
-
   /// Vanilla JS (no external deps, per the self-contained-dashboard style):
   /// polls /admin/metrics every 2s for a live reading, and separately loads
   /// persisted history from /admin/metrics/history for whichever range is
@@ -8738,23 +9173,22 @@ window.lumaAskReason = function (form, message) {
     return trimmed.length > 60 ? trimmed.substring(0, 60) : trimmed;
   }
 
-  /// Generates a fresh verification token, stores only its hash against the
-  /// user (mirroring how session tokens are handled), and returns the raw
-  /// token to send by email. Caller holds the store lock.
-  Future<String> _issueVerificationToken(StoredUser user) async {
-    final token = base64UrlEncode(randomBytes(32)).replaceAll('=', '');
-    user.verificationTokenHash =
-        c.sha256.convert(utf8.encode(token)).toString();
-    user.verificationExpiresAtMs =
-        DateTime.now().millisecondsSinceEpoch + config.verificationTtl.inMilliseconds;
-    return token;
+  /// Generates a fresh 6-digit verification code, stores only its hash
+  /// against the user (mirroring how session tokens are handled), and
+  /// returns the raw code to send by email. Caller holds the store lock.
+  Future<String> _issueVerificationCode(StoredUser user) async {
+    final code = randomDigits(6);
+    user.verificationTokenHash = c.sha256.convert(utf8.encode(code)).toString();
+    user.verificationExpiresAtMs = DateTime.now().millisecondsSinceEpoch +
+        config.verificationTtl.inMilliseconds;
+    return code;
   }
 
-  /// Best-effort send; a mail outage should not make registration fail
-  /// outright since the user can always request a fresh link.
-  Future<void> _sendVerificationEmail(StoredUser user, String token) async {
+  /// Best-effort send; a Resend outage should not make registration fail
+  /// outright since the user can always request a fresh code.
+  Future<void> _sendVerificationEmail(StoredUser user, String code) async {
     try {
-      await mailer.sendVerificationEmail(toEmail: user.email, token: token);
+      await mailer.sendVerificationCode(toEmail: user.email, code: code);
     } catch (e) {
       stderr.writeln(
           '[luma] could not send verification email to ${user.email}: $e');
@@ -8812,7 +9246,6 @@ window.lumaAskReason = function (form, message) {
     }
     return decoded;
   }
-
 }
 
 /// One node of the /admin/website page tree: a path segment that either is
@@ -8822,6 +9255,7 @@ window.lumaAskReason = function (form, message) {
 class _WikiTreeNode {
   final Map<String, _WikiTreeNode> children = {};
   String? pagePath;
+
   /// Set when no page exists at this path, but some other page links to it.
   String? phantomPath;
 }

@@ -1,4 +1,5 @@
 import 'dart:ffi';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/app/update/update_service.dart';
@@ -39,20 +40,22 @@ void main() {
       );
     });
 
-    test('a 64-bit ARM phone falls back to the 32-bit APK, not the reverse',
-        () {
-      const only32 = ['luma-1.0.250-armeabi-v7a.apk'];
-      expect(
-        UpdateService.pickAssetName(only32, abi: Abi.androidArm64),
-        'luma-1.0.250-armeabi-v7a.apk',
-      );
+    test(
+      'a 64-bit ARM phone falls back to the 32-bit APK, not the reverse',
+      () {
+        const only32 = ['luma-1.0.250-armeabi-v7a.apk'];
+        expect(
+          UpdateService.pickAssetName(only32, abi: Abi.androidArm64),
+          'luma-1.0.250-armeabi-v7a.apk',
+        );
 
-      const only64 = ['luma-1.0.250-arm64-v8a.apk'];
-      expect(
-        UpdateService.pickAssetName(only64, abi: Abi.androidArm),
-        isNull,
-      );
-    });
+        const only64 = ['luma-1.0.250-arm64-v8a.apk'];
+        expect(
+          UpdateService.pickAssetName(only64, abi: Abi.androidArm),
+          isNull,
+        );
+      },
+    );
 
     test('still updates from an older release that has one universal APK', () {
       expect(
@@ -95,5 +98,39 @@ void main() {
         isNull,
       );
     });
+  });
+
+  test('Windows installer handoff uses a windowless launcher', () async {
+    if (!Platform.isWindows) return;
+
+    final temp = await Directory.systemTemp.createTemp('luma update handoff ');
+    addTearDown(() => temp.delete(recursive: true));
+    final marker = File('${temp.path}\\installer-started.txt');
+    final installer = File('${temp.path}\\fake-installer.cmd');
+    await installer.writeAsString(
+      '@echo off\r\n'
+      '> "${marker.path}" echo started\r\n',
+    );
+
+    final launcher = await UpdateService.writeWindowsInstallerLauncher(
+      installer.path,
+    );
+    final result = await Process.run('wscript.exe', [launcher]);
+
+    for (var attempt = 0; attempt < 50 && !marker.existsSync(); attempt++) {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+
+    expect(result.exitCode, 0, reason: result.stderr as String);
+    expect(marker.existsSync(), isTrue);
+  });
+
+  test('Windows installer relaunch does not route through cmd.exe', () {
+    final installerScript = File(
+      'windows${Platform.pathSeparator}installer${Platform.pathSeparator}luma.iss',
+    ).readAsStringSync();
+
+    expect(installerScript, isNot(contains('Filename: "{cmd}"')));
+    expect(installerScript, contains('Filename: "{app}\\{#MyAppExeName}"'));
   });
 }

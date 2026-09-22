@@ -284,6 +284,96 @@ class LEs extends L {
       'Versión de desarrollo · una herramienta local sencilla';
 
   @override
+  String get petSearchHint => 'Busca plugins y páginas';
+
+  @override
+  String get petMoodIdle => '¿Qué abrimos?';
+
+  @override
+  String get petMoodCurious => 'Uy, déjame mirar…';
+
+  @override
+  String get petMoodHappy => 'Eso hace cosquillas.';
+
+  @override
+  String get petMoodDelighted => '¡El mejor día!';
+
+  @override
+  String get petMoodSleepy => '¿Aún despierto? Yo también.';
+
+  @override
+  String get petNoResults => 'Nada con ese nombre';
+
+  @override
+  String get petNoResultsHint =>
+      'Prueba una palabra más corta, o solo un trozo.';
+
+  @override
+  String get petSectionJumpTo => 'IR A';
+
+  @override
+  String get petSectionResults => 'RESULTADOS';
+
+  @override
+  String get petKindPlugin => 'Plugin';
+
+  @override
+  String get petKindPage => 'Página';
+
+  @override
+  String get petHintMove => 'mover';
+
+  @override
+  String get petHintOpen => 'abrir';
+
+  @override
+  String get petHintClose => 'cerrar';
+
+  @override
+  String get petClose => 'Cerrar';
+
+  @override
+  String get petPatsTooltip => 'Caricias dadas';
+
+  @override
+  String petPatLabel(String name) {
+    return 'Acariciar a $name';
+  }
+
+  @override
+  String get petSettingsTitle => 'mascota luma';
+
+  @override
+  String get petSettingsSubtitle =>
+      'Pulsa el atajo en cualquier momento para llamar a la mascota y escribe para saltar a cualquier página o plugin.';
+
+  @override
+  String get petSettingsHotkey => 'Llamar desde cualquier sitio';
+
+  @override
+  String get petSettingsHotkeyTaken =>
+      'Otra app ya tiene este atajo, así que solo funciona con luma en primer plano. Elige otro abajo.';
+
+  @override
+  String get petSettingsRebind => 'Cambiar';
+
+  @override
+  String get petSettingsRebindTitle => 'Pulsa un atajo nuevo';
+
+  @override
+  String get petSettingsRebindSave => 'Usarlo';
+
+  @override
+  String get petSettingsName => 'Nombre';
+
+  @override
+  String get petSettingsSummon => 'Abrir la mascota';
+
+  @override
+  String get petSettingsSummonHint =>
+      'Abre el panel al instante, sin atajo de teclado.';
+
+  @override
   String get monthJan => 'ene';
 
   @override

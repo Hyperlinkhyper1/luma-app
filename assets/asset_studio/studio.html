@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f8f9f6">
+<title>Airform Asset Studio</title>
+<!-- @style -->
+</head>
+<body>
+<div class="app-shell">
+  <header class="topbar">
+    <a class="brand" href="#" data-action="home" aria-label="Airform asset studio">
+      <svg width="29" height="31" viewBox="0 0 29 31" fill="none" aria-hidden="true"><path d="m14.5 1 13 7.5v14l-13 7.5L1.5 22.5v-14z" fill="#365E50"/><path d="m14.5 6 8.5 4.9v9.2L14.5 25l-8.5-4.9v-9.2z" stroke="#EDF2E9" stroke-width="1.3"/><path d="m6 11 8.5 4.8L23 11M14.5 15.8V25M10.3 8.5l8.5 4.9v9.1" stroke="#EDF2E9" stroke-width="1.3"/></svg>
+      <span>airform<span class="brand-period">.</span></span>
+    </a>
+    <div class="brand-divider"></div>
+    <span class="workspace-name">Asset studio</span>
+    <div class="topbar-actions">
+      <span class="save-status"><i data-icon="circleCheck" data-size="14"></i><span id="save-status">Saved locally</span></span>
+      <button class="guide-button" data-action="guide"><i data-icon="circleHelp" data-size="16"></i><span>Quick guide</span></button>
+      <button class="button button-primary export-button" data-action="export">Export model<i data-icon="arrowUpRight" data-size="17"></i></button>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <section class="page-intro">
+      <div>
+        <div class="breadcrumb"><i data-icon="plane" data-size="13"></i><span>AIRPORT ASSETS</span><i data-icon="chevronRight" data-size="11"></i><span id="asset-category"></span></div>
+        <div class="title-row"><h1 id="asset-name"></h1><span class="asset-tag"><span></span>Procedural</span></div>
+        <p class="page-description" id="asset-description"></p>
+        <div class="asset-switcher" id="asset-switcher" role="tablist" aria-label="Terminal collection assets"></div>
+      </div>
+      <div class="asset-id"><span>TERMINAL COLLECTION</span><div><span class="id-line"></span><span id="asset-code"></span></div></div>
+    </section>
+
+    <div class="workspace-grid">
+      <div class="viewer-expand-backdrop" id="expand-backdrop" hidden></div>
+      <section class="viewer" id="viewer" aria-label="Model workspace">
+        <div class="viewer-header">
+          <div class="viewer-tabs" role="tablist" aria-label="Workspace view">
+            <button role="tab" id="preview-tab" aria-controls="preview-panel" data-tab="preview"><i data-icon="box" data-size="16"></i>3D preview<span class="tab-indicator"></span></button>
+            <button role="tab" id="source-tab" aria-controls="source-panel" data-tab="source"><i data-icon="code2" data-size="16"></i>Source code<span class="tab-indicator"></span></button>
+          </div>
+          <div class="viewer-header-actions">
+            <div class="camera-select" id="camera-select"><select aria-label="Camera view" id="view-select"><option value="isometric">Isometric</option><option value="front">Front view</option><option value="right">Right view</option><option value="back">Back view</option><option value="top">Top view</option></select><i data-icon="chevronDown" data-size="13"></i></div>
+            <span class="toolbar-divider"></span>
+            <button class="icon-button" id="expand-button" data-action="expand" aria-label="Expand viewport" title="Expand viewport"><i data-icon="expand" data-size="16"></i></button>
+          </div>
+        </div>
+
+        <div class="preview-panel" id="preview-panel" role="tabpanel" aria-labelledby="preview-tab">
+          <div class="model-scene" id="model-scene">
+            <div class="canvas-mount" id="canvas-mount"></div>
+            <div class="dimension-labels" id="dimension-labels" aria-hidden="true">
+              <span class="dimension-label" id="width-label"></span>
+              <span class="dimension-label" id="depth-label"></span>
+            </div>
+          </div>
+          <div class="viewport-caption"><span class="live-caption"><span></span>LIVE PREVIEW</span><span>1 unit = 1 meter</span></div>
+          <button class="view-cube" data-action="reset-camera" aria-label="Reset to isometric view" title="Isometric view (F)">
+            <svg width="65" height="65" viewBox="0 0 70 70" fill="none" aria-hidden="true"><path d="m35 6 25 14.5L35 35 10 20.5z" fill="var(--cube-top)" stroke="var(--cube-line)"/><path d="M10 20.5 35 35v29L10 49.5z" fill="var(--cube-left)" stroke="var(--cube-line)"/><path d="M35 35 60 20.5v29L35 64z" fill="var(--cube-right)" stroke="var(--cube-line)"/><text x="35" y="24" fill="var(--cube-text)" text-anchor="middle" font-size="8" font-family="sans-serif">TOP</text><text x="22" y="45" fill="var(--cube-text)" text-anchor="middle" font-size="7" transform="rotate(30 22 45)" font-family="sans-serif">FRONT</text><text x="47" y="45" fill="var(--cube-text)" text-anchor="middle" font-size="7" transform="rotate(-30 47 45)" font-family="sans-serif">RIGHT</text></svg>
+            <span>Y UP</span>
+          </button>
+          <div class="floating-tools" aria-label="Viewport tools">
+            <button data-interaction="orbit" aria-label="Orbit tool" title="Orbit (O)"><i data-icon="mousePointer2" data-size="17"></i></button>
+            <button data-interaction="pan" aria-label="Pan tool" title="Pan (H)"><i data-icon="hand" data-size="17"></i></button>
+            <span></span>
+            <button data-setting="bounds" aria-label="Toggle footprint dimensions" title="Footprint bounds (B)"><i data-icon="ruler" data-size="17"></i></button>
+            <button data-setting="grid" aria-label="Toggle ground grid" title="Grid (G)"><i data-icon="grid2x2" data-size="17"></i></button>
+          </div>
+          <div class="viewport-bottom">
+            <svg class="axis-gizmo" width="60" height="56" viewBox="0 0 60 56" fill="none" aria-label="Y-up coordinate system"><path d="M28 36V10" stroke="#76A388" stroke-width="1.5"/><path d="m28 36 21 10" stroke="#C78678" stroke-width="1.5"/><path d="m28 36-20 10" stroke="#7C98B9" stroke-width="1.5"/><circle cx="28" cy="36" r="3" fill="var(--gizmo-hub)" stroke="var(--cube-line)"/><circle cx="28" cy="9" r="6.5" fill="var(--gizmo-y)"/><circle cx="49" cy="46" r="6.5" fill="var(--gizmo-x)"/><circle cx="8" cy="46" r="6.5" fill="var(--gizmo-z)"/><text x="28" y="12" text-anchor="middle" fill="#5F886A" font-size="8" font-family="sans-serif">Y</text><text x="49" y="49" text-anchor="middle" fill="#B27464" font-size="8" font-family="sans-serif">X</text><text x="8" y="49" text-anchor="middle" fill="#6F8BA6" font-size="8" font-family="sans-serif">Z</text></svg>
+            <span class="orbit-hint"><i data-icon="mouse" data-size="14"></i><span id="orbit-hint">Drag to orbit</span><i></i>Scroll to zoom</span>
+            <div class="scene-utility-buttons">
+              <button class="icon-button" id="turntable-button" data-action="turntable" aria-label="Start turntable" title="Auto orbit"><i data-icon="play" data-size="15"></i></button>
+              <button class="icon-button" data-action="capture" aria-label="Save preview image" title="Save preview image"><i data-icon="camera" data-size="16"></i></button>
+              <button class="icon-button" data-action="reset-camera" aria-label="Reset camera" title="Reset camera (F)"><i data-icon="rotateCcw" data-size="16"></i></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="source-panel" id="source-panel" role="tabpanel" aria-labelledby="source-tab" hidden>
+          <div id="source-code"></div>
+          <div class="source-note"><i data-icon="info" data-size="14"></i><span>Only donor helpers. No textures, fonts, or external assets.</span><button data-action="wiring">View wiring<i data-icon="arrowUpRight" data-size="13"></i></button></div>
+        </div>
+
+        <footer class="viewer-footer" id="preview-footer">
+          <div class="shading-select"><i data-icon="layers2" data-size="15"></i><select aria-label="Render style" id="shading-select"><option value="solid">Solid</option><option value="wireframe">Wireframe</option></select><i data-icon="chevronDown" data-size="12"></i></div>
+          <div class="rotation-control" aria-label="Quarter-turn rotation"><i data-icon="rotateCw" data-size="14"></i><div id="rotation-buttons"></div></div>
+          <div class="zoom-control"><button class="icon-button" data-action="zoom-out" aria-label="Zoom out"><i data-icon="minus" data-size="14"></i></button><span id="zoom-value">100%</span><button class="icon-button" data-action="zoom-in" aria-label="Zoom in"><i data-icon="plus" data-size="14"></i></button></div>
+        </footer>
+        <footer class="viewer-footer" id="source-footer" hidden>
+          <span class="code-footer-language">JavaScript</span><span class="code-footer-label">Static geometry / Donor helpers</span><button class="small-text-button" data-action="copy-full"><i data-icon="copy" data-size="12"></i>Copy full snippet</button>
+        </footer>
+      </section>
+
+      <aside class="inspector" aria-label="Model inspector">
+        <div class="inspector-tabs" role="tablist" aria-label="Inspector">
+          <button role="tab" data-inspector="properties" aria-controls="properties-panel">Properties<span class="tab-indicator"></span></button>
+          <button role="tab" data-inspector="checks" aria-controls="checks-panel">Checks<span class="check-dot" id="check-dot"></span><span class="tab-indicator"></span></button>
+          <i class="inspector-header-icon" data-icon="sliders" data-size="15"></i>
+        </div>
+
+        <div class="inspector-content" id="properties-panel" role="tabpanel">
+          <section class="property-section dimensions-section">
+            <div class="section-heading"><h2>Dimensions</h2><span>METERS</span></div>
+            <div class="dimension-fields">
+              <label class="dimension-field"><span>Width</span><div><input id="width-input" aria-label="Width in meters" type="number" min="0.5" max="16" step="0.1"><span>m</span></div></label>
+              <label class="dimension-field"><span>Depth</span><div><input id="depth-input" aria-label="Depth in meters" type="number" min="0.5" max="10" step="0.1"><span>m</span></div></label>
+            </div>
+            <div class="height-row"><span>Model height</span><span><i data-icon="lock" data-size="11"></i><span id="model-height"></span></span></div>
+          </section>
+          <section class="property-section palette-section">
+            <div class="section-heading"><h2>Color palette</h2><span>VERTEX COLORS</span></div>
+            <div class="palette-swatches" id="palette" role="group" aria-label="Model color palette"></div>
+            <div class="selected-color"><span id="color-name"></span><button data-action="copy-color" title="Copy color value"><span id="color-value"></span><i data-icon="copy" data-size="11"></i></button></div>
+          </section>
+          <section class="property-section scene-settings-section">
+            <div class="section-heading"><h2>Scene settings</h2></div>
+            <div class="toggle-row"><span>Ground grid</span><button role="switch" class="toggle" data-setting="grid" aria-label="Ground grid"><span></span></button></div>
+            <div class="toggle-row"><span>Footprint bounds</span><button role="switch" class="toggle" data-setting="bounds" aria-label="Footprint bounds"><span></span></button></div>
+            <div class="toggle-row"><span>Screen emission</span><button role="switch" class="toggle" data-setting="emission" aria-label="Screen emission"><span></span></button></div>
+          </section>
+          <button class="ready-message" data-inspector="checks"><span class="ready-icon"><i data-icon="shieldCheck" data-size="20"></i></span><span><strong>Built to fit your terminal.</strong><span>Low-poly and made to fit your world.</span></span><i data-icon="chevronRight" data-size="14"></i></button>
+        </div>
+
+        <div class="inspector-content checks-content" id="checks-panel" role="tabpanel" hidden>
+          <div class="checks-heading"><span class="check-heading-icon" id="checks-icon"><i data-icon="shieldCheck" data-size="24"></i></span><h2 id="checks-title">Geometry checks</h2><p>Real checks on your live model.</p></div>
+          <div class="check-list" id="check-list"></div>
+          <p class="validation-note"><i data-icon="info" data-size="13"></i><span>Uses preview helpers. Confirm with <code>AirportModels.bake(g)</code> in your donor before shipping.</span></p>
+        </div>
+
+        <div class="inspector-footer">
+          <button data-action="reset-all" id="reset-all"><i data-icon="rotateCcw" data-size="13"></i>Reset to defaults</button>
+          <button data-action="validate" id="validate" hidden><i data-icon="shieldCheck" data-size="14"></i>Run checks again</button>
+          <span>v1.0</span>
+        </div>
+      </aside>
+    </div>
+
+    <footer class="workspace-status">
+      <div class="geometry-status">
+        <span class="status-ready" id="status-ready"><i data-icon="circleCheck" data-size="13"></i><span id="status-text">Preparing geometry</span></span>
+        <span class="status-divider"></span>
+        <span><strong id="status-calls">--</strong> helper calls</span>
+        <span><strong id="status-triangles">--</strong> triangles</span>
+        <span><strong>0</strong> textures</span>
+      </div>
+      <span class="engine-status"><span></span>THREE.JS<span class="engine-divider">/</span>WEBGL</span>
+    </footer>
+  </main>
+
+  <div id="dialog-root"></div>
+  <div id="toast-root"></div>
+</div>
+<!-- @scripts -->
+</body>
+</html>

@@ -46,9 +46,9 @@ window.AirportModels = (() => {
       for (let i = 0; i < 40; i++) { c.fillStyle = `rgba(${rand() > .5 ? '60,95,50' : '170,190,120'},${.05 + rand() * .07})`; c.beginPath(); c.ellipse(rand() * s, rand() * s, 10 + rand() * 30, 8 + rand() * 20, rand() * 3, 0, TAU); c.fill(); }
     }), 24],
     tile: [noiseTexture(256, (c, s) => {
-      speckle(c, s, '#cfcbc3', 50, 2500, .9);
-      for (let x = 0; x < 4; x++) for (let y = 0; y < 4; y++) if ((x + y) % 2) { c.fillStyle = 'rgba(70,80,95,.16)'; c.fillRect(x * s / 4, y * s / 4, s / 4, s / 4); }
-      c.strokeStyle = 'rgba(60,60,60,.45)'; c.lineWidth = 1.5;
+      speckle(c, s, '#b3aea4', 50, 2500, .9);
+      for (let x = 0; x < 4; x++) for (let y = 0; y < 4; y++) if ((x + y) % 2) { c.fillStyle = 'rgba(60,58,54,.14)'; c.fillRect(x * s / 4, y * s / 4, s / 4, s / 4); }
+      c.strokeStyle = 'rgba(50,48,44,.5)'; c.lineWidth = 1.5;
       for (let i = 0; i <= s; i += s / 4) { c.beginPath(); c.moveTo(i, 0); c.lineTo(i, s); c.moveTo(0, i); c.lineTo(s, i); c.stroke(); }
     }), 6],
   };
@@ -61,18 +61,121 @@ window.AirportModels = (() => {
 
   // ── Materials ─────────────────────────────────────────────────────────
   const standard = extra => new T.MeshStandardMaterial({vertexColors: true, ...extra});
+  /** Large-scale colour drift in world space, so tiled ground textures stop
+      visibly repeating: two octaves of value noise multiplied into albedo. */
+  function weather(material, strength, scale) {
+    material.onBeforeCompile = shader => {
+      shader.uniforms.macroStrength = {value: strength};
+      shader.uniforms.macroScale = {value: 1 / scale};
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec2 vMacro;')
+        .replace('#include <project_vertex>', '#include <project_vertex>\nvMacro = (modelMatrix * vec4(transformed, 1.0)).xz;');
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', `#include <common>
+          varying vec2 vMacro;
+          uniform float macroStrength, macroScale;
+          float macroHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+          float macroNoise(vec2 p) {
+            vec2 i = floor(p), f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            return mix(mix(macroHash(i), macroHash(i + vec2(1.0, 0.0)), f.x), mix(macroHash(i + vec2(0.0, 1.0)), macroHash(i + vec2(1.0, 1.0)), f.x), f.y);
+          }`)
+        .replace('#include <map_fragment>', `#include <map_fragment>
+          float macro = macroNoise(vMacro * macroScale) * .6 + macroNoise(vMacro * macroScale * 4.3 + 17.0) * .4;
+          diffuseColor.rgb *= 1.0 + (macro - .5) * macroStrength;`);
+    };
+    material.customProgramCacheKey = () => 'luma-macro';
+    return material;
+  }
+  // Artificial light: downlights in the terminal halls and floodlights over
+  // the stands and service yards. Every lit material reads the same uniforms:
+  // the lit areas, each with its strength, the height its lights hang at and
+  // how far apart they are, and how bright the indoor and outdoor lights are
+  // right now (they come on at dusk; indoors they stay on in airport mode).
+  const LIGHTS = 48;
+  const indoorUniforms = {
+    lightRects: {value: Array.from({length: LIGHTS}, () => new T.Vector4(0, 0, 0, 0))},
+    lightInfo: {value: Array.from({length: LIGHTS}, () => new T.Vector4(0, 0, 1, 0))},
+    lightCount: {value: 0},
+    indoorLevel: {value: 0},
+    outdoorLevel: {value: 0},
+    lightColor: {value: new T.Color(0xfff0da)},
+  };
+  function indoor(material) {
+    const before = material.onBeforeCompile, key = material.customProgramCacheKey === T.Material.prototype.customProgramCacheKey ? 'plain' : material.customProgramCacheKey();
+    material.onBeforeCompile = (shader, renderer) => {
+      before.call(material, shader, renderer);
+      Object.assign(shader.uniforms, indoorUniforms);
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vIndoor;')
+        .replace('#include <project_vertex>', `#include <project_vertex>
+          vec4 indoorAt = vec4(transformed, 1.0);
+          #ifdef USE_INSTANCING
+            indoorAt = instanceMatrix * indoorAt;
+          #endif
+          vIndoor = (modelMatrix * indoorAt).xyz;`);
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', `#include <common>
+          varying vec3 vIndoor;
+          uniform vec4 lightRects[${LIGHTS}];
+          uniform vec4 lightInfo[${LIGHTS}];
+          uniform int lightCount;
+          uniform float indoorLevel, outdoorLevel;
+          uniform vec3 lightColor;
+          float indoorLight(vec3 p) {
+            if (indoorLevel <= 0.0 && outdoorLevel <= 0.0) return 0.0;
+            for (int i = 0; i < ${LIGHTS}; i++) {
+              if (i >= lightCount) break;
+              vec4 r = lightRects[i], info = lightInfo[i];
+              if (p.x > r.x && p.x < r.z && p.z > r.y && p.z < r.w) {
+                if (p.y > info.y) return 0.0;
+                vec2 cell = fract(p.xz / info.z) - .5;
+                return (info.w > .5 ? outdoorLevel : indoorLevel) * info.x * (.72 + .55 * exp(-dot(cell, cell) * 10.0));
+              }
+            }
+            return 0.0;
+          }`)
+        .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
+          float indoorGlow = indoorLight(vIndoor);
+          if (indoorGlow > 0.0) {
+            vec3 indoorUp = inverseTransformDirection(normal, viewMatrix);
+            reflectedLight.indirectDiffuse += material.diffuseColor * lightColor * indoorGlow * (.55 + .45 * max(indoorUp.y, 0.0));
+          }`);
+    };
+    material.customProgramCacheKey = () => `${key}+indoor`;
+    return material;
+  }
+  /** The lit areas: {rect: [minX, minZ, maxX, maxZ], power, top, spacing,
+      outdoor}. Halls come first, so they win where areas overlap. */
+  function setLights(areas) {
+    const list = areas.slice(0, LIGHTS);
+    list.forEach((a, i) => {
+      indoorUniforms.lightRects.value[i].set(a.rect[0], a.rect[1], a.rect[2], a.rect[3]);
+      indoorUniforms.lightInfo.value[i].set(a.power, a.top, a.spacing, a.outdoor ? 1 : 0);
+    });
+    indoorUniforms.lightCount.value = list.length;
+  }
+  function lightLevels(indoors, outdoors) {
+    indoorUniforms.indoorLevel.value = Math.max(0, indoors);
+    indoorUniforms.outdoorLevel.value = Math.max(0, outdoors);
+  }
+
   const materials = {
-    paint: standard({roughness: .72}),
-    metal: standard({roughness: .32, metalness: .55}),
+    // Image-based light from the sky map fills every surface evenly; kept
+    // low so the sun and its shadows, not the fill, shape the airport.
+    paint: standard({roughness: .72, envMapIntensity: .5}),
+    metal: standard({roughness: .32, metalness: .55, envMapIntensity: .8}),
     glass: standard({roughness: .06, metalness: .65, envMapIntensity: 1.6, emissive: new T.Color(0xffc977), emissiveIntensity: 0}),
     water: standard({roughness: .04, metalness: .2, envMapIntensity: 2}),
-    concrete: standard({roughness: .95, map: textures.concrete[0]}),
-    asphalt: standard({roughness: .9, map: textures.asphalt[0]}),
-    grass: standard({roughness: 1, map: textures.grass[0]}),
-    tile: standard({roughness: .45, map: textures.tile[0]}),
+    concrete: weather(standard({roughness: .92, envMapIntensity: .4, map: textures.concrete[0]}), .28, 38),
+    asphalt: weather(standard({roughness: .88, envMapIntensity: .4, map: textures.asphalt[0]}), .3, 52),
+    grass: weather(standard({roughness: 1, envMapIntensity: .35, map: textures.grass[0]}), .42, 64),
+    tile: weather(standard({roughness: .62, envMapIntensity: .45, map: textures.tile[0]}), .1, 18),
     light: new T.MeshBasicMaterial({vertexColors: true, toneMapped: false}),
     pool: new T.MeshBasicMaterial({vertexColors: true, map: glow, transparent: true, opacity: 0, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false}),
   };
+  for (const m of Object.values(materials)) m.userData.env = m.envMapIntensity ?? 1;
+  for (const kind of ['paint', 'metal', 'glass', 'water', 'concrete', 'asphalt', 'tile']) indoor(materials[kind]);
   const textured = {concrete: 10, asphalt: 14, grass: 24, tile: 6};
   const sources = new Map();
   for (const [kind, material] of Object.entries(materials)) {
@@ -114,6 +217,9 @@ window.AirportModels = (() => {
     materials.glass.emissiveIntensity = night * 1.1;
     materials.light.color.setScalar(.55 + .45 * Math.min(1, night * 2));
     materials.pool.opacity = night * .85;
+    // The environment map is a daytime sky; at night it would make every
+    // roof and window glow blue, so reflections fade with the light.
+    for (const m of Object.values(materials)) if ('envMapIntensity' in m) m.envMapIntensity = m.userData.env * (1 - .78 * night);
   }
 
   // ── Primitives ────────────────────────────────────────────────────────
@@ -193,6 +299,10 @@ window.AirportModels = (() => {
     for (const p of parts) total += p.geo.attributes.position.count;
     const pos = new Float32Array(total * 3), nor = new Float32Array(total * 3), col = new Float32Array(total * 3);
     const scale = textured[kind], uv = scale || kind === 'pool' ? new Float32Array(total * 2) : null;
+    // Cheap ambient occlusion: walls darken towards the ground they stand on
+    // and undersides stay in shade, which is most of what makes boxes read as
+    // solid objects instead of flat-lit cut-outs.
+    const occlude = !['light', 'pool', 'glass', 'water'].includes(kind);
     let o = 0, u = 0;
     for (const {geo, matrix, color} of parts) {
       normalMatrix.getNormalMatrix(matrix);
@@ -202,7 +312,8 @@ window.AirportModels = (() => {
         n.fromBufferAttribute(N, i).applyMatrix3(normalMatrix).normalize();
         pos[o] = v.x; pos[o + 1] = v.y; pos[o + 2] = v.z;
         nor[o] = n.x; nor[o + 1] = n.y; nor[o + 2] = n.z;
-        col[o] = color.r; col[o + 1] = color.g; col[o + 2] = color.b;
+        const shade = !occlude || n.y > .5 ? 1 : n.y < -.5 ? .7 : .6 + .4 * Math.min(1, Math.max(0, v.y / 3.2));
+        col[o] = color.r * shade; col[o + 1] = color.g * shade; col[o + 2] = color.b * shade;
         if (kind === 'pool' && UV) { uv[u] = UV.getX(i); uv[u + 1] = UV.getY(i); }
         else if (uv) {
           const ax = Math.abs(n.x), ay = Math.abs(n.y), az = Math.abs(n.z);
@@ -228,7 +339,7 @@ window.AirportModels = (() => {
     g.traverse(o => { if (o.isMesh && !o.userData.owned && !o.material.userData.baked && o.material.userData.kind) found.push(o); });
     for (const o of found) {
       const kind = o.material.userData.kind;
-      const role = o.userData.roof ? 'roof' : o.userData.interior ? 'interior' : o.castShadow ? 'cast' : 'flat';
+      const role = o.userData.roof ? 'roof' : o.userData.upper ? 'upper' : o.userData.interior ? 'interior' : o.castShadow ? 'cast' : 'flat';
       const key = `${kind}|${role}`;
       if (!buckets.has(key)) buckets.set(key, {kind, role, parts: []});
       buckets.get(key).parts.push({geo: plain(o.geometry), matrix: new T.Matrix4().multiplyMatrices(inverse, o.matrixWorld), color: o.material.color});
@@ -237,11 +348,12 @@ window.AirportModels = (() => {
     const out = [];
     for (const {kind, role, parts} of buckets.values()) {
       const m = new T.Mesh(merge(parts, kind, offset), materials[kind]);
-      m.castShadow = role === 'cast' || role === 'roof' || role === 'interior';
+      m.castShadow = role === 'cast' || role === 'roof' || role === 'interior' || role === 'upper';
       m.receiveShadow = kind !== 'light' && kind !== 'pool';
       if (kind === 'pool') m.renderOrder = 2;
       m.userData.ownGeometry = true;
       if (role === 'roof') m.userData.roof = true;
+      if (role === 'upper') m.userData.upper = true;
       if (role === 'interior') m.userData.interior = true;
       g.add(m);
       out.push(m);
@@ -297,12 +409,36 @@ window.AirportModels = (() => {
     box(g, .7, .5, .7, x, .25, z, 0xd34b3d);
   }
 
+  // ── Pavement markings ─────────────────────────────────────────────────
+  // Where two pavements meet, scene.js passes "cuts": local rectangles
+  // [x0, z0, x1, z1] in which edge lines and edge lights give way, so a
+  // junction reads as one surface instead of two painted boxes.
+  const isCut = (x, z, cuts) => !!cuts && cuts.some(c => x >= c[0] - .01 && x <= c[2] + .01 && z >= c[1] - .01 && z <= c[3] + .01);
+  /** The parts of [a, b] on a line at [fixed] that no cut covers. */
+  function uncut(a, b, fixed, alongX, cuts) {
+    let spans = [[a, b]];
+    for (const c of cuts || []) {
+      const [lo, hi] = alongX ? [c[1], c[3]] : [c[0], c[2]];
+      if (fixed < lo - .01 || fixed > hi + .01) continue;
+      const [s, e] = alongX ? [c[0], c[2]] : [c[1], c[3]];
+      spans = spans.flatMap(([p, q]) => e <= p || s >= q ? [[p, q]] : [[p, s], [e, q]].filter(([x, y]) => y - x > .4));
+    }
+    return spans;
+  }
+  /** A painted line from [a] to [b] along X (at z = fixed) or Z, minus the cuts. */
+  function paint(g, a, b, fixed, alongX, width, color, cuts, y = .16) {
+    for (const [p, q] of uncut(a, b, fixed, alongX, cuts)) {
+      if (alongX) decal(g, q - p, width, (p + q) / 2, fixed, color, y);
+      else decal(g, width, q - p, fixed, (p + q) / 2, color, y);
+    }
+  }
+
   // ── Facilities ────────────────────────────────────────────────────────
-  function runway(g, w, d) {
+  function runway(g, w, d, cuts) {
     box(g, w, .12, d, w / 2, .06, d / 2, 0xffffff, 'asphalt');
     const white = 0xf4f3ea;
     for (let z = 90; z < d - 90; z += 50) decal(g, .9, 28, w / 2, z, white);
-    for (const edge of [1.2, w - 1.2]) decal(g, .5, d - 8, edge, d / 2, white);
+    for (const edge of [1.2, w - 1.2]) paint(g, 4, d - 4, edge, false, .5, white, cuts);
     for (const end of [0, 1]) {
       const z0 = end ? d - 40 : 40, dir = end ? -1 : 1;
       for (let x = 3; x < w / 2 - 3; x += 3.4) { decal(g, 1.8, 30, x, z0, white); decal(g, 1.8, 30, w - x, z0, white); }
@@ -311,22 +447,25 @@ window.AirportModels = (() => {
     }
     label(g, '09', w / 2, .15, 90, 9, '#f6f5ec', {ground: true});
     label(g, '27', w / 2, .15, d - 90, 9, '#f6f5ec', {ground: true, rotY: Math.PI});
-    for (let z = 6; z < d - 4; z += 30) for (const x of [.4, w - .4]) { light(g, x, .3, z, 0xfff9e8, .6); }
+    for (let z = 6; z < d - 4; z += 30) for (const x of [.4, w - .4]) if (!isCut(x, z, cuts)) light(g, x, .3, z, 0xfff9e8, .6);
     for (let z = 20; z < d; z += 15) light(g, w / 2, .16, z, 0xf2fbff, .22);
   }
-  function taxiway(g, w, d) {
+  /** [vertical] is which way traffic runs over it, not its shape: a short
+      connector can be square or wider than it is long. */
+  function taxiway(g, w, d, cuts, vertical = d >= w) {
     box(g, w, .1, d, w / 2, .05, d / 2, 0xe8e8e8, 'asphalt');
-    const vertical = d >= w, length = Math.max(w, d);
+    const length = vertical ? d : w, yellow = 0xf1c643;
     if (vertical) {
-      decal(g, .35, d, w / 2, d / 2, 0xf1c643);
-      for (const x of [.6, w - .6]) decal(g, .2, d, x, d / 2, 0xf1c643);
+      paint(g, 0, d, w / 2, false, .35, yellow, cuts);
+      for (const x of [.6, w - .6]) paint(g, 0, d, x, false, .2, yellow, cuts);
     } else {
-      decal(g, w, .35, w / 2, d / 2, 0xf1c643);
-      for (const z of [.6, d - .6]) decal(g, w, .2, w / 2, z, 0xf1c643);
+      paint(g, 0, w, d / 2, true, .35, yellow, cuts);
+      for (const z of [.6, d - .6]) paint(g, 0, w, z, true, .2, yellow, cuts);
     }
+    const lamp = (x, z, color, size, y = .3) => { if (!isCut(x, z, cuts)) light(g, x, y, z, color, size); };
     for (let t = 8; t < length; t += 16) {
-      if (vertical) { light(g, .3, .3, t, 0x3f7dff, .5); light(g, w - .3, .3, t, 0x3f7dff, .5); light(g, w / 2, .15, t, 0x46ff8c, .28); }
-      else { light(g, t, .3, .3, 0x3f7dff, .5); light(g, t, .3, d - .3, 0x3f7dff, .5); light(g, t, .15, d / 2, 0x46ff8c, .28); }
+      if (vertical) { lamp(.3, t, 0x3f7dff, .5); lamp(w - .3, t, 0x3f7dff, .5); lamp(w / 2, t, 0x46ff8c, .28, .15); }
+      else { lamp(t, .3, 0x3f7dff, .5); lamp(t, d - .3, 0x3f7dff, .5); lamp(t, d / 2, 0x46ff8c, .28, .15); }
     }
   }
   function serviceRoad(g, w, d) {
@@ -353,12 +492,15 @@ window.AirportModels = (() => {
     root.add(g);
     [w, d] = [frame.W, frame.D];
     const regional = f.kind === 'standRegional', contact = f.kind === 'standContact';
-    box(g, w, .12, d, w / 2, .06, d / 2, 0xe4e0d8, 'concrete');
+    box(g, w, .12, d, w / 2, .06, d / 2, 0xc9c5bc, 'concrete');
     const white = 0xf5f3ea, yellow = 0xf2c230, red = 0xe0452f;
-    for (const x of [.5, w - .5]) decal(g, .5, d, x, d / 2, white);
-    decal(g, w, .5, w / 2, .5, white); decal(g, w, .5, w / 2, d - .5, white);
+    // The border is drawn unrotated, in the facility's own frame, because
+    // that is the frame the junction cuts arrive in.
+    const [fw, fd] = side % 2 ? [d, w] : [w, d], cuts = context?.cuts;
+    for (const x of [.5, fw - .5]) paint(root, 0, fd, x, false, .5, white, cuts);
+    for (const z of [.5, fd - .5]) paint(root, 0, fw, z, true, .5, white, cuts);
     // lead-in line enters from the -X (airside) edge and ends at a stop bar near +X
-    const stopX = w - (regional ? 9 : 14), cz = d / 2;
+    const stopX = w - (regional ? 9 : 14), cz = Number.isFinite(context?.lane) ? context.lane : d / 2;
     decal(g, stopX, .6, stopX / 2, cz, yellow);
     decal(g, .6, 8, stopX, cz, yellow);
     for (let x = 6; x < stopX - 4; x += 10) decal(g, .25, 2.2, x, cz, 0x1f1f1f, .165);
@@ -378,50 +520,147 @@ window.AirportModels = (() => {
     for (const z of [cz - 4, cz + 4]) cone(g, stopX - 16, z);
     lamp(g, 2.5, 2.5, regional ? 10 : 15);
     pool(g, w * .42, d / 2, Math.min(w, d) * .42);
-    if (contact) jetBridge(g, w, d);
+    if (contact) jetBridge(g, w, d, cz);
   }
-  /** Rotunda against the terminal plus a telescopic tunnel towards the nose. */
-  function jetBridge(g, w, d) {
-    const glass = 0x5fb4d6, frame = 0xd9dee2, dark = 0x3c4b52;
-    const rx = w - 4.5, rz = d * .5 + 11;
+  /** A jet bridge from the terminal to the aircraft's front left door: a
+      glass link out of the facade, the rotunda, a telescopic tunnel and the
+      cab with its bellows against the fuselage. The simulation walks
+      passengers along the same points (AirportWorld.bridgeRotunda/Cab). */
+  function jetBridge(g, w, d, lane) {
+    const glass = 0x5fb4d6, frame = 0xd9dee2, dark = 0x3c4b52, floor = 4.2;
+    const rx = w - 4.5, rz = Math.max(4.5, lane - 12);
+    const cx = w - 18.8, cz = lane - 5.2;
+    box(g, 4.5, 2.6, 3, w - 2.25, floor + 1.3, rz, glass, 'glass');
+    box(g, 4.5, .35, 3.4, w - 2.25, floor + 2.75, rz, frame, 'metal');
+    box(g, 4.5, .3, 3.4, w - 2.25, floor - .15, rz, frame, 'metal');
     cylinder(g, 4, 5, rx, 5.5, rz, glass, 'glass');
     cylinder(g, 4.3, .6, rx, 8.3, rz, frame, 'metal');
     cylinder(g, 4.3, .5, rx, 3, rz, frame, 'metal');
     cylinder(g, .7, 3, rx, 1.5, rz, 0xb8c0c4, 'metal');
-    const tx = w - 14 + 3, tz = d / 2 - 3.5;
-    const ex = rx + (tx - rx) * .05, ez = rz + (tz - rz) * .05;
-    line(g, ex, ez, tx, tz, 3, glass, 5.4, 'glass', 2.4);
-    line(g, ex, ez, tx, tz, 3.4, frame, 6.8, 'metal', .35);
-    line(g, ex, ez, tx, tz, 3.4, frame, 4.1, 'metal', .35);
-    box(g, 3.2, 3, 3.2, tx, 5.5, tz, dark, 'metal');
-    cylinder(g, .3, 3.8, tx, 1.9, tz, 0x9aa4a8, 'metal');
-    box(g, 2.6, .6, 1, tx, .5, tz, 0x404b50, 'metal');
+    const ex = rx + (cx - rx) * .12, ez = rz + (cz - rz) * .12;
+    line(g, ex, ez, cx, cz, 3, glass, floor + 1.2, 'glass', 2.4);
+    line(g, ex, ez, cx, cz, 3.4, frame, floor + 2.6, 'metal', .35);
+    line(g, ex, ez, cx, cz, 3.4, frame, floor - .1, 'metal', .35);
+    box(g, 3.2, 3, 3.2, cx, floor + 1.3, cz, dark, 'metal');
+    box(g, 1.6, 2.5, 1.4, cx, floor + 1.25, cz + 2.2, 0x2b3237, 'metal');
+    cylinder(g, .3, floor - .4, cx, (floor - .4) / 2, cz, 0x9aa4a8, 'metal');
+    box(g, 2.6, .6, 1, cx, .5, cz, 0x404b50, 'metal');
+    for (const x of [cx - .9, cx + .9]) cylinder(g, .35, .3, x, .35, cz, 0x1d2427).rotation.z = Math.PI / 2;
   }
-  function terminal(g, w, d, context) {
-    const open = context?.open || {};
-    box(g, w, .3, d, w / 2, .15, d / 2, 0xffffff, 'tile').userData.interior = true;
-    const wall = .5, height = 11, frame = 0xe7e8e4, glass = 0x4ea7cf;
-    const sides = [
-      ['-z', w, [w / 2, 0 + wall / 2], true],
-      ['+z', w, [w / 2, d - wall / 2], true],
-      ['-x', d, [wall / 2, d / 2], false],
-      ['+x', d, [w - wall / 2, d / 2], false],
-    ];
-    for (const [name, length, [cx, cz], alongX] of sides) {
-      if (open[name]) continue;
-      const W = alongX ? length : wall, D = alongX ? wall : length;
-      box(g, W, 1.2, D, cx, .9, cz, 0xcfd3d0);
-      box(g, alongX ? W : wall * .6, height - 2.6, alongX ? wall * .6 : D, cx, 1.5 + (height - 2.6) / 2, cz, glass, 'glass');
-      box(g, W, 1.1, D, cx, height - .55, cz, frame);
-      for (let t = 0; t <= length; t += 6) {
-        const px = alongX ? Math.min(w - .2, Math.max(.2, t)) : cx, pz = alongX ? cz : Math.min(d - .2, Math.max(.2, t));
-        box(g, alongX ? .35 : wall + .08, height - 2.6, alongX ? wall + .08 : .35, px, 1.5 + (height - 2.6) / 2, pz, frame, 'metal');
-      }
-      box(g, W, .25, D, cx, 5.8, cz, frame, 'metal');
+  /** Mobile stairs rolled up to a parked aircraft's front left door, in the
+      aircraft's own frame (nose towards -Z, left wing towards -X). */
+  function airstairsBody(modelId) {
+    const g = new T.Group(), s = spec(modelId);
+    const cy = s.radius + (s.wide ? 2.4 : 1.6), sill = cy - s.radius * .35;
+    const doorZ = -s.length / 2 + s.length * .14 + 1;
+    const near = -s.radius - .35, far = -s.radius - 5;
+    // Truck base under the flight of stairs.
+    box(g, 5.2, .7, 2.2, (near + far) / 2 - .4, .75, doorZ, 0xf2c230);
+    box(g, 1.8, 1.4, 2.2, far - .2, 1.3, doorZ, 0xf2c230);
+    box(g, .1, .7, 1.8, far - 1.12, 1.55, doorZ, 0x2c4d57, 'glass');
+    for (const x of [far + .4, near - .9]) for (const z of [doorZ - 1, doorZ + 1]) cylinder(g, .4, .3, x, .4, z, 0x1d2427).rotation.x = Math.PI / 2;
+    // The flight itself, rising to the sill, with handrails and a platform.
+    const run = far - near, rise = sill - 1.1, length = Math.hypot(run, rise);
+    const steps = box(g, length, .18, 1.5, (near + far) / 2, 1.1 + rise / 2, doorZ, 0xd9dee2, 'metal');
+    steps.rotation.z = Math.atan2(rise, -run);
+    for (const z of [doorZ - .78, doorZ + .78]) {
+      const rail = box(g, length, .06, .06, (near + far) / 2, 2.1 + rise / 2, z, 0xb8c0c4, 'metal');
+      rail.rotation.z = Math.atan2(rise, -run);
     }
+    box(g, 1.2, .14, 1.6, near + .1, sill - .05, doorZ, 0xd9dee2, 'metal');
+    box(g, .06, 1, 1.6, near - .5, sill + .45, doorZ, 0xb8c0c4, 'metal');
+    return g;
+  }
+  const airstairs = modelId => instance(`stairs:${String(modelId || '').toLowerCase()}`, () => airstairsBody(modelId));
+  /** Sliding-door entrance set into a facade: glass doors parked open, a
+      teal header with the sign, a transom above and a mat inside. */
+  function doorway(g, a, b, put, height, wall, facing, sign) {
+    const glass = 0x4ea7cf, teal = 0x2e6c78, frame = 0xe7e8e4;
+    put(a, b, height - 6.2, 5.1 + (height - 6.2) / 2, wall * .6, 0, glass, 'glass');
+    put(a - .3, b + .3, .8, 4.7, wall, 0, teal, 'metal');
+    for (const t of [a, b]) put(t - .2, t + .2, 4.3, 2.3, wall, 0, frame, 'metal');
+    for (const [p, q] of [[a + .3, a + 1.9], [b - 1.9, b - .3]]) {
+      put(p, q, 4, 2.3, .1, -.18, 0x9fd6e6, 'glass');
+      put(p, q, .12, 4.25, .16, -.18, 0xb8c0c4, 'metal');
+    }
+    put(a + .2, b - .2, .04, .32, 2.6, -1.6, 0x3b4347);
+    for (const t of [a + .8, b - .8]) put(t - .12, t + .12, .1, 4.25, .2, -.5, 0xfff0c8, 'light');
+    return sign(facing);
+  }
+  // The three parts of the terminal: floor, roof, and the band and name
+  // round the top of the facade.
+  const hallStyles = {
+    arrival: {floor: 0xcbb088, roof: 0x8d9ea4, band: 0x2d6b76, sign: 'ARRIVAL HALL  ·  CHECK-IN'},
+    departure: {floor: 0xa7b4bb, roof: 0x8f9bb0, band: 0x34558c, sign: 'DEPARTURE HALL  ·  BAGGAGE'},
+    main: {floor: 0xa9a398, roof: 0xaeb7bb, band: null, sign: null},
+  };
+  /** A terminal hall: [context.zone] is 'arrival', 'main' or 'departure'.
+      Everything on the walls above the knee-high base is tagged `upper`, so
+      airport mode can lower the walls and look straight in. */
+  function terminal(g, w, d, context) {
+    const open = context?.open || {}, style = hallStyles[context?.zone] || hallStyles.main;
+    box(g, w, .3, d, w / 2, .15, d / 2, style.floor, 'tile').userData.interior = true;
+    const wall = .5, height = 11, frame = 0xe7e8e4, glass = 0x4ea7cf;
+    const firstWall = g.children.length, base = m => { m.userData.base = true; return m; };
+    const sides = [
+      ['-z', w, [w / 2, 0 + wall / 2], true, -1],
+      ['+z', w, [w / 2, d - wall / 2], true, 1],
+      ['-x', d, [wall / 2, d / 2], false, -1],
+      ['+x', d, [w - wall / 2, d / 2], false, 1],
+    ];
+    for (const [name, length, [cx, cz], alongX, out] of sides) {
+      if (open[name]) continue;
+      // Entrance and exit doorways; one that would run into the last is dropped.
+      const gaps = [];
+      for (const o of (context?.doors || []).filter(o => o.side === name).map(o => ({...o, at: Math.min(length - 4.5, Math.max(4.5, o.at))})).sort((p, q) => p.at - q.at)) {
+        if (gaps.length && o.at - 3.5 < gaps[gaps.length - 1][1] + 1) continue;
+        gaps.push([o.at - 3.5, o.at + 3.5, o.label || 'ENTRANCE']);
+      }
+      // [a, b] along the wall, [off] metres outward from its centre line.
+      const put = (a, b, h, y, thick, off, color, kind) => {
+        const mid = (a + b) / 2, len = b - a;
+        return alongX ? box(g, len, h, thick, mid, y, cz + off * out, color, kind) : box(g, thick, h, len, cx + off * out, y, mid, color, kind);
+      };
+      const inGap = t => gaps.some(([a, b]) => t > a - .3 && t < b + .3);
+      let from = 0;
+      for (const [a, b] of [...gaps, [length, length]]) {
+        if (a - from > .05) {
+          base(put(from, a, 1.2, .9, wall, 0, 0xcfd3d0));
+          put(from, a, height - 2.6, 1.5 + (height - 2.6) / 2, wall * .6, 0, glass, 'glass');
+          put(from, a, .25, 5.8, wall, 0, frame, 'metal');
+        }
+        from = b;
+      }
+      put(0, length, 1.1, height - .55, wall, 0, frame);
+      for (let t = 0; t <= length; t += 6) {
+        if (inGap(t)) continue;
+        const tt = Math.min(length - .2, Math.max(.2, t));
+        put(tt - .175, tt + .175, height - 2.6, 1.5 + (height - 2.6) / 2, wall + .08, 0, frame, 'metal');
+      }
+      const facing = alongX ? (out > 0 ? 0 : Math.PI) : (out > 0 ? Math.PI / 2 : -Math.PI / 2);
+      for (const [a, b, text] of gaps) {
+        doorway(g, a, b, put, height, wall, facing, rotY => {
+          const at = (a + b) / 2, o = wall / 2 + .28;
+          label(g, text, alongX ? at : cx + o * out, 4.7, alongX ? cz + o * out : at, .55, '#ffffff', {rotY, width: 5});
+        });
+        base(put(a - .2, b + .2, .08, .34, wall + .2, 0, 0x3b4347));
+      }
+    }
+    // The arrival and departure halls wear a coloured band and their name on
+    // every outside wall; the main hall carries the airport's name.
+    if (style.band) {
+      for (const [name, x, z, rotY, length] of [['-z', w / 2, -.04, Math.PI, w], ['+z', w / 2, d + .04, 0, w], ['-x', -.04, d / 2, -Math.PI / 2, d], ['+x', w + .04, d / 2, Math.PI / 2, d]]) {
+        if (open[name]) continue;
+        const along = name.endsWith('z');
+        box(g, along ? length : .12, .7, along ? .12 : length, along ? x : x + (name === '-x' ? .06 : -.06), height - 1.75, along ? z + (name === '-z' ? .06 : -.06) : z, style.band);
+        label(g, style.sign, x, height - .55, z, Math.min(length / 16, 1.6), '#1c4e5a', {rotY, width: 8});
+      }
+    } else if (!open['-z']) label(g, 'LUMA INTERNATIONAL', w / 2, height - .55, -.02, Math.min(w / 12, 1.8), '#1c4e5a');
+    for (let x = 10; x < w - 5; x += 25) if (!open['-z']) light(g, x, height - 1.4, .05, 0xfff0c8, .4);
+    for (let i = firstWall; i < g.children.length; i++) if (!g.children[i].userData.base) g.children[i].userData.upper = true;
     // roof with skylights, services and a sign
     const roofParts = [];
-    roofParts.push(box(g, w, .7, d, w / 2, height + .35, d / 2, 0xaeb7bb, 'metal'));
+    roofParts.push(box(g, w, .7, d, w / 2, height + .35, d / 2, style.roof, 'metal'));
     for (let z = 1.5; z < d - 1; z += 3) roofParts.push(box(g, w - 1, .14, .22, w / 2, height + .77, z, 0xc5ccce, 'metal'));
     for (const [x, z, ww, dd] of [[w / 2, .35, w, .7], [w / 2, d - .35, w, .7], [.35, d / 2, .7, d], [w - .35, d / 2, .7, d]]) {
       if ((x < 1 && open['-x']) || (x > w - 1 && open['+x']) || (z < 1 && open['-z']) || (z > d - 1 && open['+z'])) continue;
@@ -437,8 +676,6 @@ window.AirportModels = (() => {
       const unit = box(g, 5, 1.8, 3.4, x, height + 1.6, d * .78, 0xa3b0b1, 'metal'); unit.userData.roof = true;
       const fan = cylinder(g, 1, .25, x, height + 2.6, d * .78, 0x5a6668, 'metal'); fan.userData.roof = true;
     }
-    if (!open['-z']) label(g, 'LUMA INTERNATIONAL', w / 2, height - .55, -.02, Math.min(w / 12, 1.8), '#1c4e5a');
-    for (let x = 10; x < w - 5; x += 25) light(g, x, height - 1.4, .05, 0xfff0c8, .4);
   }
   function hangar(g, w, d) {
     box(g, w, .2, d, w / 2, .1, d / 2, 0xffffff, 'concrete');
@@ -1961,6 +2198,1015 @@ window.AirportModels = (() => {
     for (const [bx, col] of bays) box(g, .42 * u, .10, .07 * v, x + bx * u, 1.28, z - .22 * v, col);
   }
 
+  function coffeeToGo(g, w, d) {
+    const u = w / 4, v = d / 3, x = w / 2, z = d / 2, s = Math.min(u, v);
+    const ivory = 0xe5e0d5, panel = 0xd8d3c6, dark = 0x343b3e, wood = 0x805d42, lightWood = 0xa77b55;
+    const top = 0x4a4039, metal = 0x8b9295, equip = 0x454d50, bean = 0x704c36;
+    const green = 0x47704f, teal = 0x2a6d7a, cup = 0xeee8dc, menuD = 0x1b2e36;
+    const warm = 0xffd99a, glassC = 0xcfe0e2;
+
+    // Floor and pickup mat.
+    box(g, 3.9 * u, .04, 2.9 * v, x, .02, z, ivory);
+    box(g, 1.5 * u, .025, .7 * v, 2.95 * u, .045, 2.45 * v, top);
+
+    // Three-wall shell tied together at the corners, with wood wainscot.
+    box(g, 3.9 * u, 2.30, .12 * v, x, 1.15, .18 * v, panel);
+    box(g, .13 * u, 2.30, 2.60 * v, .115 * u, 1.15, 1.44 * v, panel);
+    box(g, .13 * u, 2.30, 2.60 * v, 3.885 * u, 1.15, 1.44 * v, panel);
+    box(g, 3.7 * u, .80, .08 * v, x, .40, .25 * v, wood);
+    box(g, .08 * u, .80, 2.30 * v, .20 * u, .40, 1.50 * v, wood);
+    box(g, .08 * u, .80, 2.30 * v, 3.80 * u, .40, 1.50 * v, wood);
+    box(g, 3.8 * u, .06, .16 * v, x, 2.32, .20 * v, wood);
+    box(g, .16 * u, .06, 2.50 * v, .13 * u, 2.32, 1.44 * v, wood);
+    box(g, .16 * u, .06, 2.50 * v, 3.87 * u, 2.32, 1.44 * v, wood);
+    // Cup dispenser on the left wall.
+    box(g, .08 * u, .30, .18 * v, .20 * u, 1.35, 2.20 * v, metal, 'metal');
+    cylinder(g, .05 * s, .14, .26 * u, 1.30, 2.20 * v, cup, 'paint', .05 * s, 8);
+
+    // Hanging menu board.
+    // label() sizes are the text height in metres.
+    box(g, 1.7 * u, .62, .08 * v, 1.80 * u, 1.92, .265 * v, menuD);
+    label(g, 'ESPRESSO - LATTE - CAPPUCCINO', 1.80 * u, 2.04, .31 * v, .05, '#eee8dc', {width: 8});
+    label(g, 'TEA - HOT CHOCOLATE', 1.80 * u, 1.92, .31 * v, .045, '#eee8dc', {width: 6});
+    label(g, 'PASTRIES - SNACKS', 1.80 * u, 1.80, .31 * v, .045, '#a77b55', {width: 6});
+
+    // Service counter: order at the left, pickup at the right.
+    box(g, 3.2 * u, .90, .60 * v, x, .45, 1.60 * v, ivory);
+    box(g, 3.2 * u, .50, .06 * v, x, .35, 1.915 * v, wood);
+    box(g, 3.3 * u, .09, .68 * v, x, .935, 1.60 * v, top);
+    box(g, 3.34 * u, .04, .72 * v, x, .99, 1.60 * v, metal, 'metal');
+    label(g, 'ORDER', 1.0 * u, .60, 1.95 * v, .06, '#eee8dc', {width: 3});
+    label(g, 'PICK UP', 2.95 * u, .60, 1.95 * v, .06, '#eee8dc', {width: 3.5});
+
+    // Barista behind the counter at the espresso machine.
+    staffMember(g, 2.05 * u, 1.19 * v, green, {skin: 0xd8b49a, hair: 0x4a3524, cap: true});
+
+    // Commercial espresso machine: the visual anchor.
+    box(g, .70 * u, .28, .40 * v, 2.5 * u, 1.10, 1.45 * v, metal, 'metal');
+    box(g, .64 * u, .40, .36 * v, 2.5 * u, 1.42, 1.44 * v, equip);
+    box(g, .66 * u, .07, .38 * v, 2.5 * u, 1.635, 1.44 * v, metal, 'metal');
+    box(g, .14 * u, .12, .12 * v, 2.5 * u, 1.26, 1.58 * v, dark);
+    cylinder(g, .05 * s, .07, 2.5 * u, 1.30, 1.60 * v, cup, 'paint', .04 * s, 8);
+    cylinder(g, .012 * s, .18, 2.78 * u, 1.38, 1.50 * v, metal, 'metal', .012 * s, 6);
+    cylinder(g, .045 * s, .03, 2.5 * u, 1.52, 1.62 * v, cup, 'paint', .045 * s, 8).rotation.x = Math.PI / 2;
+    light(g, 2.5 * u, 1.30, 1.64 * v, warm, .09);
+
+    // Coffee grinder with a bean hopper.
+    box(g, .18 * u, .16, .18 * v, 1.78 * u, 1.04, 1.45 * v, equip);
+    box(g, .14 * u, .20, .14 * v, 1.78 * u, 1.20, 1.45 * v, dark);
+    cylinder(g, .065 * s, .15, 1.78 * u, 1.36, 1.45 * v, metal, 'metal', .065 * s, 8);
+    cylinder(g, .06 * s, .05, 1.78 * u, 1.31, 1.45 * v, bean, 'paint', .06 * s, 8);
+
+    // Stacked takeaway cups between the machine and the pastry case.
+    cylinder(g, .055 * s, .16, 3.00 * u, 1.04, 1.42 * v, cup, 'paint', .05 * s, 8);
+    cylinder(g, .07 * s, .05, 2.94 * u, .995, 1.30 * v, dark, 'paint', .07 * s, 8);
+
+    // Small glass pastry display at the right counter end.
+    box(g, .70 * u, .18, .50 * v, 3.45 * u, 1.06, 1.60 * v, dark);
+    box(g, .64 * u, .34, .44 * v, 3.45 * u, 1.31, 1.60 * v, glassC, 'glass');
+    box(g, .58 * u, .03, .38 * v, 3.45 * u, 1.29, 1.60 * v, metal, 'metal');
+    sphere(g, 3.32 * u, 1.21, 1.55 * v, .06 * s, .045 * s, .05 * s, 0xd98245);
+    sphere(g, 3.48 * u, 1.21, 1.65 * v, .06 * s, .045 * s, .05 * s, 0xd98245);
+    cylinder(g, .05 * s, .06, 3.58 * u, 1.17, 1.58 * v, lightWood, 'paint', .05 * s, 8);
+    cylinder(g, .05 * s, .06, 3.34 * u, 1.33, 1.65 * v, 0xc98a4a, 'paint', .05 * s, 8);
+    light(g, 3.45 * u, 1.40, 1.62 * v, warm, .08);
+
+    // Order and payment position.
+    box(g, .05 * u, .12, .05 * v, 1.0 * u, 1.02, 1.64 * v, dark);
+    box(g, .26 * u, .20, .04 * v, 1.0 * u, 1.13, 1.66 * v, menuD);
+    light(g, 1.0 * u, 1.13, 1.62 * v, warm, .06);
+    box(g, .10 * u, .09, .12 * v, 1.28 * u, 1.015, 1.70 * v, equip);
+
+    // Pickup tray with two finished takeaway coffees.
+    box(g, .55 * u, .03, .32 * v, 2.95 * u, .99, 1.75 * v, lightWood);
+    cylinder(g, .06 * s, .14, 2.86 * u, 1.06, 1.75 * v, cup, 'paint', .05 * s, 8);
+    cylinder(g, .065 * s, .06, 2.86 * u, 1.07, 1.75 * v, bean, 'paint', .066 * s, 8);
+    cylinder(g, .065 * s, .04, 2.86 * u, 1.14, 1.75 * v, dark, 'paint', .065 * s, 8);
+    cylinder(g, .06 * s, .14, 3.05 * u, 1.06, 1.75 * v, cup, 'paint', .05 * s, 8);
+    cylinder(g, .065 * s, .04, 3.05 * u, 1.14, 1.75 * v, green, 'paint', .065 * s, 8);
+
+    // Tiny condiment station on the left counter.
+    box(g, .12 * u, .10, .14 * v, .50 * u, 1.02, 1.72 * v, cup);
+    cylinder(g, .05 * s, .12, .66 * u, 1.03, 1.72 * v, metal, 'metal', .05 * s, 8);
+    cylinder(g, .07 * s, .05, .82 * u, .995, 1.74 * v, dark, 'paint', .07 * s, 8);
+
+    // Cold bottled drinks resting on the counter.
+    box(g, .42 * u, .03, .22 * v, .60 * u, .985, 1.42 * v, metal, 'metal');
+    cylinder(g, .035 * s, .16, .52 * u, 1.07, 1.42 * v, teal, 'paint', .035 * s, 6);
+    cylinder(g, .035 * s, .16, .68 * u, 1.07, 1.42 * v, 0xd98245, 'paint', .035 * s, 6);
+
+    // Back-wall shelving: cup store on the left, syrup and bag store on the right.
+    box(g, 1.1 * u, .05, .26 * v, .90 * u, 1.10, .38 * v, wood);
+    box(g, 1.1 * u, .05, .26 * v, .90 * u, 1.42, .38 * v, wood);
+    for (const cx of [.50, .70, .90]) cylinder(g, .055 * s, .16, cx * u, 1.20, .38 * v, cup, 'paint', .05 * s, 8);
+    cylinder(g, .07 * s, .06, 1.15 * u, 1.15, .38 * v, dark, 'paint', .07 * s, 8);
+    for (const cx of [.55, .78]) cylinder(g, .055 * s, .16, cx * u, 1.52, .38 * v, cup, 'paint', .05 * s, 8);
+    box(g, .18 * u, .14, .12 * v, 1.15 * u, 1.51, .38 * v, teal);
+    box(g, 1.1 * u, .05, .26 * v, 3.30 * u, 1.45, .38 * v, wood);
+    box(g, 1.1 * u, .05, .26 * v, 3.30 * u, 1.85, .38 * v, wood);
+    for (const [bx, bc] of [[2.90, 0xd98245], [3.10, green], [3.30, bean], [3.50, teal], [3.70, 0xc95a50]]) {
+      cylinder(g, .04 * s, .15, bx * u, 1.54, .38 * v, bc, 'paint', .03 * s, 6);
+    }
+    for (const [bx, bc] of [[2.95, bean], [3.17, green], [3.39, dark]]) box(g, .16 * u, .20, .11 * v, bx * u, 1.97, .38 * v, bc);
+    cylinder(g, .06 * s, .10, 3.72 * u, 1.92, .38 * v, panel, 'paint', .05 * s, 8);
+    sphere(g, 3.72 * u, 2.05, .38 * v, .09 * s, .11 * s, .09 * s, green);
+
+    // Overhead fascia resting on the side walls via front posts.
+    box(g, .09 * u, 2.35, .09 * v, .24 * u, 1.175, 2.60 * v, wood);
+    box(g, .09 * u, 2.35, .09 * v, 3.78 * u, 1.175, 2.60 * v, wood);
+    box(g, 3.7 * u, .55, .30 * v, x, 2.50, 2.50 * v, dark).userData.roof = true;
+    box(g, 3.76 * u, .06, .34 * v, x, 2.21, 2.50 * v, wood);
+    label(g, 'RUNWAY ROAST', x + .35 * u, 2.57, 2.66 * v, .17, '#f9fcf6', {width: 5});
+    label(g, 'COFFEE TO GO', x + .35 * u, 2.37, 2.66 * v, .08, '#a77b55', {width: 4});
+    cylinder(g, .09 * s, .14, .62 * u, 2.50, 2.66 * v, cup, 'paint', .075 * s, 8).rotation.x = Math.PI / 2;
+    box(g, .03 * u, .08, .05 * v, .78 * u, 2.50, 2.66 * v, cup);
+    light(g, x, 2.44, 2.70 * v, warm, .12);
+    // A projecting blade sign readable from the terminal.
+    box(g, .10 * u, .55, .26 * v, 3.86 * u, 1.85, 2.86 * v, dark);
+    label(g, 'COFFEE', 3.908 * u, 1.92, 2.86 * v, .085, '#eee8dc', {rotY: Math.PI / 2, width: 3});
+    label(g, 'TO GO', 3.908 * u, 1.76, 2.86 * v, .07, '#a77b55', {rotY: Math.PI / 2, width: 3});
+  }
+
+  function airportArcade(g, w, d) {
+    const u = w / 10, v = d / 8, x = w / 2, z = d / 2, s = Math.min(u, v);
+    const arch = 0x292d30, arch2 = 0x3b4347, cab = 0x343b3e, cab2 = 0x45484a;
+    const metal = 0x777f82, darkScr = 0x14252d, glassC = 0xcfe0e2;
+    const purple = 0x795a9b, blue = 0x3976a8, teal = 0x2a6d7a, pink = 0xc85f8f;
+    const red = 0xc95a50, orange = 0xd98245, yellow = 0xe2c84b, green = 0x4f8b58;
+    const glowB = 0x7fe0e8, glowW = 0xffc978;
+
+    // Dark floor with a geometric neon inlay carpet.
+    box(g, 9.85 * u, .04, 7.85 * v, x, .02, z, arch);
+    box(g, 3.8 * u, .025, 4.6 * v, x, .045, 4.1 * v, 0x1f1b2b);
+    box(g, 3.6 * u, .012, .08 * v, x, .06, 2.0 * v, purple);
+    box(g, 3.6 * u, .012, .08 * v, x, .06, 6.2 * v, pink);
+    box(g, .08 * u, .012, 4.2 * v, 3.2 * u, .06, 4.1 * v, blue);
+    box(g, .08 * u, .012, 4.2 * v, 6.8 * u, .06, 4.1 * v, teal);
+
+    // Back wall and side walls with neon accent friezes.
+    box(g, 9.85 * u, 3.0, .16 * v, x, 1.5, .18 * v, arch);
+    box(g, 9.6 * u, .08, .08 * v, x, 2.3, .24 * v, purple);
+    box(g, .16 * u, 3.0, 7.85 * v, .18 * u, 1.5, z, arch);
+    box(g, .08 * u, .08, 7.6 * v, .24 * u, 2.3, z, blue);
+    box(g, .16 * u, 3.0, 7.85 * v, w - .18 * u, 1.5, z, arch);
+    box(g, .08 * u, .08, 7.6 * v, w - .24 * u, 2.3, z, pink);
+
+    // Storefront: entrance pillars, deep fascia, illuminated marquee.
+    box(g, .5 * u, 3.1, .5 * v, .35 * u, 1.55, 7.65 * v, arch);
+    box(g, .5 * u, 3.1, .5 * v, 2.65 * u, 1.55, 7.65 * v, arch);
+    box(g, .5 * u, 3.1, .5 * v, 7.35 * u, 1.55, 7.65 * v, arch);
+    box(g, .5 * u, 3.1, .5 * v, w - .35 * u, 1.55, 7.65 * v, arch);
+    // 'glass' renders opaque here, so the side bays are drawn as frames.
+    for (const bx of [1.5, w / u - 1.5]) {
+      box(g, 1.9 * u, .40, .18 * v, bx * u, .20, 7.70 * v, arch2);
+      for (const y of [.60, 2.16]) box(g, 1.9 * u, .05, .06 * v, bx * u, y, 7.70 * v, metal, 'metal');
+      for (const dx of [-.95, 0, .95]) box(g, .05 * u, 1.95, .06 * v, (bx + dx) * u, 1.38, 7.70 * v, metal, 'metal');
+    }
+    box(g, 4.3 * u, .03, .6 * v, x, .04, 7.55 * v, purple);
+    box(g, 9.85 * u, .65, .55 * v, x, 2.78, 7.65 * v, arch);
+    box(g, 9.9 * u, .06, .62 * v, x, 3.12, 7.65 * v, purple).userData.roof = true;
+    box(g, 4.4 * u, .48, .08 * v, x, 2.78, 7.86 * v, 0x15161c);
+    // label() sizes are the text height in metres.
+    label(g, 'ARCADE', x, 2.89, 7.90 * v, .24, '#f9fcf6', {width: 4});
+    label(g, 'PIXEL PORT  -  LEVEL UP', x, 2.65, 7.90 * v, .09, '#7fe0e8', {width: 7});
+    light(g, x, 2.80, 7.84 * v, glowB, .16);
+    light(g, 2.65 * u, 2.78, 7.78 * v, glowW, .12);
+    light(g, 7.35 * u, 2.78, 7.78 * v, glowW, .12);
+
+    // Five upright arcade cabinets along the west wall.
+    const cabs = [
+      {z: 1.2, name: 'STAR RUN', col: blue, scrCol: 0x1a4563, marq: teal, lit: glowB},
+      {z: 2.2, name: 'VOID DASH', col: purple, scrCol: 0x4a1e5c, marq: pink, lit: glowW},
+      {z: 3.2, name: 'GALAXY', col: red, scrCol: 0x541c22, marq: yellow, lit: glowW},
+      {z: 4.2, name: 'BLOCK DROP', col: orange, scrCol: 0x5c4218, marq: orange, lit: glowW},
+      {z: 5.2, name: 'HYPERBALL', col: green, scrCol: 0x1e4a2c, marq: green, lit: glowB},
+    ];
+    for (const c of cabs) {
+      const cx = .85 * u, cz = c.z * v;
+      box(g, .75 * u, .85, .85 * v, cx, .43, cz, cab);
+      box(g, .80 * u, .10, .90 * v, cx, .10, cz, arch2);
+      box(g, .30 * u, .12, .80 * v, cx + .45 * u, .86, cz, c.col);
+      cylinder(g, .02 * s, .12, cx + .48 * u, .96, cz - .18 * v, metal, 'metal', .02 * s, 6);
+      sphere(g, cx + .48 * u, 1.03, cz - .18 * v, .04 * s, .04 * s, .04 * s, red);
+      cylinder(g, .02 * s, .12, cx + .48 * u, .96, cz + .18 * v, metal, 'metal', .02 * s, 6);
+      sphere(g, cx + .48 * u, 1.03, cz + .18 * v, .04 * s, .04 * s, .04 * s, blue);
+      box(g, .75 * u, .95, .85 * v, cx, 1.38, cz, cab);
+      box(g, .05 * u, .58, .72 * v, cx + .32 * u, 1.32, cz, c.scrCol);
+      light(g, cx + .38 * u, 1.32, cz, c.lit, .10);
+      box(g, .24 * u, .22, .85 * v, cx + .30 * u, 1.75, cz, c.marq);
+      label(g, c.name, cx + .43 * u, 1.75, cz, .06, '#f9fcf6', {rotY: Math.PI / 2, width: 3});
+    }
+
+    // Twin seated racing game in the north-east corner.
+    for (const rx of [7.3 * u, 8.7 * u]) {
+      box(g, 1.15 * u, 1.70, .85 * v, rx, 1.05, 1.2 * v, cab);
+      box(g, 1.05 * u, .12, .90 * v, rx, 1.86, 1.2 * v, red);
+      box(g, .95 * u, .65, .05 * v, rx, 1.32, 1.6 * v, 0x1a334d);
+      light(g, rx, 1.32, 1.65 * v, glowB, .13);
+      box(g, .90 * u, .30, .50 * v, rx, .82, 1.8 * v, cab2);
+      cylinder(g, .14 * s, .05, rx, .96, 1.9 * v, metal, 'metal', .14 * s, 10);
+      box(g, 1.05 * u, .16, 1.40 * v, rx, .08, 2.7 * v, arch2);
+      const seatCol = rx < 8 * u ? red : blue;
+      box(g, .80 * u, .34, .70 * v, rx, .32, 2.8 * v, seatCol);
+      box(g, .76 * u, .85, .20 * v, rx, .85, 3.15 * v, seatCol);
+      box(g, .70 * u, .25, .18 * v, rx, 1.28, 3.15 * v, darkScr);
+    }
+    box(g, 2.7 * u, .34, .30 * v, 8.0 * u, 2.05, 1.2 * v, arch);
+    label(g, 'TURBO RACER 2P', 8.0 * u, 2.06, 1.37 * v, .1, '#ffe2a8', {width: 6});
+
+    // Air hockey table as the centrepiece.
+    const ax = 5.0 * u, az = 4.1 * v;
+    box(g, 2.2 * u, .12, 3.2 * v, ax, .06, az, arch2);
+    cylinder(g, .12 * s, .68, ax - .85 * u, .42, az - 1.1 * v, metal, 'metal', .10 * s, 8);
+    cylinder(g, .12 * s, .68, ax + .85 * u, .42, az - 1.1 * v, metal, 'metal', .10 * s, 8);
+    cylinder(g, .12 * s, .68, ax - .85 * u, .42, az + 1.1 * v, metal, 'metal', .10 * s, 8);
+    cylinder(g, .12 * s, .68, ax + .85 * u, .42, az + 1.1 * v, metal, 'metal', .10 * s, 8);
+    box(g, 2.2 * u, .24, 3.3 * v, ax, .80, az, cab);
+    box(g, 1.86 * u, .06, 2.96 * v, ax, .915, az, 0x253b5c);
+    box(g, 1.84 * u, .025, .06 * v, ax, .94, az, red);
+    box(g, .70 * u, .06, .08 * v, ax, .935, az - 1.42 * v, darkScr);
+    box(g, .70 * u, .06, .08 * v, ax, .935, az + 1.42 * v, darkScr);
+    cylinder(g, .07 * s, .035, ax + .25 * u, .957, az - .35 * v, yellow, 'paint', .07 * s, 8);
+    cylinder(g, .10 * s, .07, ax - .3 * u, .975, az - .75 * v, blue, 'paint', .07 * s, 8);
+    cylinder(g, .10 * s, .07, ax + .3 * u, .975, az + .75 * v, red, 'paint', .07 * s, 8);
+    box(g, .06 * u, 1.25, .08 * v, ax - 1.02 * u, 1.40, az, metal, 'metal');
+    box(g, .06 * u, 1.25, .08 * v, ax + 1.02 * u, 1.40, az, metal, 'metal');
+    box(g, 2.10 * u, .24, .18 * v, ax, 2.02, az, arch);
+    label(g, 'AIR HOCKEY  04 - 02', ax, 2.02, az + .10 * v, .09, '#7fe0e8', {width: 7});
+    label(g, 'AIR HOCKEY  04 - 02', ax, 2.02, az - .10 * v, .09, '#7fe0e8', {rotY: Math.PI, width: 7});
+    light(g, ax, 1.85, az, glowB, .14);
+
+    // Dance and rhythm stage in the south-east corner.
+    const dx = 8.1 * u, dz = 5.8 * v;
+    box(g, 2.1 * u, .16, 1.8 * v, dx, .08, dz, arch2);
+    box(g, .38 * u, .03, .38 * v, dx - .45 * u, .17, dz, pink);
+    box(g, .38 * u, .03, .38 * v, dx + .45 * u, .17, dz, blue);
+    box(g, .38 * u, .03, .38 * v, dx, .17, dz - .45 * v, green);
+    box(g, .38 * u, .03, .38 * v, dx, .17, dz + .45 * v, yellow);
+    box(g, 1.9 * u, .06, .06 * v, dx, .88, dz + .65 * v, metal, 'metal');
+    cylinder(g, .04 * s, .84, dx - .85 * u, .44, dz + .65 * v, metal, 'metal', .04 * s, 6);
+    cylinder(g, .04 * s, .84, dx + .85 * u, .44, dz + .65 * v, metal, 'metal', .04 * s, 6);
+    box(g, 1.8 * u, 1.9, .50 * v, dx, 1.05, 4.6 * v, cab);
+    box(g, 1.4 * u, .75, .04 * v, dx, 1.38, 4.86 * v, 0x1b2836);
+    box(g, 1.6 * u, .22, .52 * v, dx, 2.05, 4.6 * v, pink);
+    label(g, 'DANCE RHYTHM', dx, 2.06, 4.88 * v, .08, '#f9fcf6', {width: 5.5});
+    light(g, dx, 1.40, 4.92 * v, glowW, .12);
+
+    // Glass claw machine near the entrance. 'glass' renders opaque here, so
+    // the upper enclosure is a frame and the prizes stay visible.
+    const px = 1.3 * u, pz = 6.6 * v;
+    box(g, .95 * u, .85, .95 * v, px, .425, pz, cab);
+    box(g, .34 * u, .32, .04 * v, px + .46 * u, .32, pz, arch);
+    for (const y of [.81, 1.81]) box(g, .90 * u, .05, .90 * v, px, y, pz, metal, 'metal');
+    box(g, .05 * u, 1.00, .05 * v, px + .42 * u, 1.31, pz - .42 * v, metal, 'metal');
+    box(g, .05 * u, 1.00, .05 * v, px + .42 * u, 1.31, pz + .42 * v, metal, 'metal');
+    box(g, .05 * u, 1.00, .05 * v, px - .42 * u, 1.31, pz - .42 * v, metal, 'metal');
+    box(g, .05 * u, 1.00, .05 * v, px - .42 * u, 1.31, pz + .42 * v, metal, 'metal');
+    sphere(g, px - .15 * u, .97, pz - .15 * v, .10 * s, .10 * s, .10 * s, pink);
+    sphere(g, px + .15 * u, .97, pz - .12 * v, .10 * s, .10 * s, .10 * s, yellow);
+    sphere(g, px - .10 * u, .97, pz + .15 * v, .10 * s, .10 * s, .10 * s, teal);
+    sphere(g, px + .12 * u, .97, pz + .16 * v, .10 * s, .10 * s, .10 * s, green);
+    sphere(g, px, 1.10, pz, .10 * s, .10 * s, .10 * s, purple);
+    box(g, .08 * u, .22, .08 * v, px, 1.65, pz, metal, 'metal');
+    box(g, 1.0 * u, .32, 1.0 * v, px, 1.93, pz, yellow);
+    label(g, 'CRAZY CLAW', px + .51 * u, 1.94, pz, .07, '#15161c', {rotY: Math.PI / 2, width: 4});
+    light(g, px, 1.75, pz, glowW, .11);
+
+    // Prize and ticket redemption desk in the north-west corner, staffed.
+    box(g, 1.8 * u, .90, .65 * v, 2.3 * u, .45, 1.0 * v, arch);
+    box(g, 1.9 * u, .08, .72 * v, 2.3 * u, .93, 1.0 * v, teal);
+    box(g, .45 * u, .24, .35 * v, 2.5 * u, 1.08, 1.0 * v, cab2);
+    label(g, 'PRIZES', 2.3 * u, 1.42, 1.35 * v, .08, '#ffd99a', {width: 3});
+    box(g, 1.8 * u, .06, .30 * v, 2.3 * u, 1.55, .40 * v, metal, 'metal');
+    box(g, .24 * u, .20, .20 * v, 1.7 * u, 1.66, .40 * v, pink);
+    box(g, .24 * u, .20, .20 * v, 2.3 * u, 1.66, .40 * v, yellow);
+    box(g, .24 * u, .20, .20 * v, 2.9 * u, 1.66, .40 * v, blue);
+    staffMember(g, 2.3 * u, .65 * v, teal, {skin: 0xc68b5e, hair: 0x241c17});
+
+    // Ceiling beams with multi-coloured mood pendants.
+    box(g, 9.5 * u, .10, .22 * v, x, 2.92, 2.5 * v, arch).userData.roof = true;
+    box(g, 9.5 * u, .10, .22 * v, x, 2.92, 5.5 * v, arch).userData.roof = true;
+    for (const [lx, lz, col] of [[2.8, 3.5, glowB], [7.5, 3.0, glowW], [5.0, 6.2, glowB], [8.0, 6.0, glowW]]) {
+      cylinder(g, .015 * s, .28, lx * u, 2.74, lz * v, metal, 'metal', .015 * s, 6);
+      cylinder(g, .09 * s, .14, lx * u, 2.54, lz * v, col === glowB ? blue : purple, 'paint', .16 * s, 10);
+      light(g, lx * u, 2.44, lz * v, col, .11);
+    }
+  }
+
+  function flowerShop(g, w, d) {
+    const u = w / 6, v = d / 5, x = w / 2, z = d / 2, s = Math.min(u, v);
+    const ivory = 0xe8e1d5, grey = 0xd8d3c6, wood = 0x8a6748, lightWood = 0xa9825d;
+    const dark = 0x3b4347, metal = 0x8b9295, green = 0x47704f, leafD = 0x31563b, leafL = 0x6f9365;
+    const accent = 0x8d6f88, glassC = 0xcfe0e2, warm = 0xffdda6, cool = 0xd8f0ef;
+    const pink = 0xd9829b, lpink = 0xe6aeb8, red = 0xc95a50, yellow = 0xe2c84b;
+    const orange = 0xe69b52, purple = 0x8b72a1, lavender = 0xaa93bd, cream = 0xeee8dc, blue = 0x668eae;
+
+    // A lean stylised bouquet: wrap, collar, five heads, foliage.
+    function bouquet(px, pz, py, sc, head) {
+      box(g, .30 * sc, .30 * sc, .30 * sc, px * u, py + .15 * sc, pz * v, cream);
+      box(g, .10 * sc, .22 * sc, .10 * sc, px * u, py + .34 * sc, pz * v, green);
+      cylinder(g, .012 * sc, .30 * sc, px * u, py + .36 * sc, pz * v, leafD, 'paint', .012 * sc, 6);
+      sphere(g, px * u, (py + .53 * sc) * u, pz * v, .075 * sc, .075 * sc, .075 * sc, head);
+      const sides = [[-.11, .42, .03], [.11, .43, .02], [-.05, .48, -.05], [.07, .47, .06]];
+      for (const [ox, oy, oz] of sides) sphere(g, (px + ox) * u, (py + oy) * u, (pz + oz) * v, .065 * sc, .065 * sc, .065 * sc, head);
+      sphere(g, (px - .04 * sc / u) * u, (py + .40) * u, (pz + .10 * sc / v) * v, .05 * sc, .05 * sc, .05 * sc, leafL);
+    }
+    // A metal florist bucket with a colour-grouped fan of heads.
+    function bucket(px, pz, heads, baseY) {
+      baseY = baseY || 0;
+      cylinder(g, .13 * s, .24, px * u, baseY + .12, pz * v, metal, 'metal', .10 * s, 10);
+      for (let i = 0; i < heads.length; i++) {
+        const ox = (i - (heads.length - 1) / 2) * .07;
+        cylinder(g, .012 * s, .34, (px + ox) * u, baseY + .36, pz * v, leafD, 'paint', .012 * s, 6);
+        sphere(g, (px + ox) * u, baseY + .55, pz * v, .055 * s, .055 * s, .055 * s, heads[i]);
+      }
+    }
+    function plant(px, pz, ps, pot) {
+      cylinder(g, .14 * ps, .22, px * u, .11, pz * v, pot, 'paint', .11 * ps, 10);
+      cylinder(g, .025 * ps, .30, px * u, .34, pz * v, wood, 'paint', .025 * ps, 6);
+      sphere(g, px * u, .56 * ps, pz * v, .22 * ps, .26 * ps, .22 * ps, leafD);
+      sphere(g, (px - .14 * ps) * u, .46 * ps, (pz + .06 * ps / v) * v, .14 * ps, .17 * ps, .14 * ps, leafL);
+      sphere(g, (px + .13 * ps) * u, .50 * ps, (pz - .05 * ps / v) * v, .13 * ps, .16 * ps, .13 * ps, green);
+    }
+    function wallPlanter(px, py, pz, heads) {
+      box(g, .34, .24, .28, px * u, py, pz * v, wood);
+      for (let i = 0; i < 3; i++) sphere(g, (px + (i - 1) * .13) * u, py + .20, pz * v + .02, .07 * s, .07 * s, .07 * s, heads[i]);
+    }
+
+    // Floor with a welcome inlay.
+    box(g, 5.85 * u, .04, 4.85 * v, x, .02, z, grey);
+    box(g, 2.30 * u, .025, .85 * v, 1.52 * u, .045, 4.42 * v, accent);
+    // label() sizes are the text height in metres.
+    label(g, 'FRESH FLOWERS', 1.52 * u, .05, 4.40 * v, .1, '#47704f', {ground: true, width: 5});
+
+    // Three finished walls: wood wainscot and cap rails.
+    box(g, 5.85 * u, 2.90, .14 * v, x, 1.45, .20 * v, ivory);
+    box(g, .14 * u, 2.90, 4.70 * v, .20 * u, 1.45, 2.45 * v, grey);
+    box(g, .16 * u, 2.90, 4.70 * v, 5.80 * u, 1.45, 2.45 * v, ivory);
+    box(g, 5.65 * u, .80, .08 * v, x, .40, .28 * v, lightWood);
+    box(g, .08 * u, .80, 4.50 * v, .28 * u, .40, 2.45 * v, lightWood);
+    box(g, .08 * u, .80, 4.50 * v, 5.72 * u, .40, 2.45 * v, lightWood);
+    box(g, 5.70 * u, .08, .20 * v, x, 2.86, .22 * v, wood);
+    box(g, .20 * u, .08, 4.55 * v, .20 * u, 2.86, 2.45 * v, wood);
+    box(g, .20 * u, .08, 4.55 * v, 5.80 * u, 2.86, 2.45 * v, wood);
+
+    // Storefront: open pergola door on the left, a window bay on the right.
+    box(g, .42 * u, 3.0, .42 * v, .42 * u, 1.50, 4.72 * v, ivory);
+    box(g, .42 * u, 3.0, .42 * v, 2.62 * u, 1.50, 4.72 * v, ivory);
+    box(g, .42 * u, 3.0, .42 * v, 5.58 * u, 1.50, 4.72 * v, ivory);
+    box(g, 5.85 * u, .62, .42 * v, x, 2.78, 4.72 * v, ivory);
+    box(g, 5.90 * u, .06, .50 * v, x, 3.07, 4.72 * v, green).userData.roof = true;
+    box(g, 2.30 * u, .42, .06 * v, 1.52 * u, 2.80, 4.95 * v, accent);
+    label(g, 'PETAL & STEM', 1.52 * u, 2.90, 4.99 * v, .18, '#f9fcf6', {width: 5});
+    label(g, 'FLORIST', 1.52 * u, 2.68, 4.99 * v, .1, '#31563b', {width: 3});
+    light(g, 1.52 * u, 2.55, 4.95 * v, warm, .12);
+    // 'glass' renders opaque here, so the window is drawn as a mullioned frame.
+    box(g, 2.62 * u, .40, .18 * v, 4.10 * u, .20, 4.74 * v, dark);
+    for (const wx of [3.43, 4.77]) {
+      for (const y of [.44, 2.42]) box(g, 1.22 * u, .05, .06 * v, wx * u, y, 4.90 * v, metal, 'metal');
+      for (const dx of [-.5, .5]) box(g, .05 * u, 2.0, .06 * v, (wx + dx * 1.22) * u, 1.43, 4.90 * v, metal, 'metal');
+    }
+    box(g, .07 * u, 2.05, .09 * v, 4.10 * u, 1.435, 4.90 * v, metal, 'metal');
+    box(g, 2.20 * u, .06, .55 * v, 1.52 * u, .05, 4.60 * v, lightWood);
+    box(g, 2.40 * u, .14, .20 * v, 1.52 * u, 2.28, 4.62 * v, wood);
+    for (const [gx, gc] of [[.85, pink], [1.75, purple], [2.20, leafL]]) sphere(g, gx * u, 2.36, 4.74 * v, .075 * s, .075 * s, .075 * s, gc);
+    box(g, .03 * u, .20, .03 * v, 1.52 * u, 2.12, 4.62 * v, metal, 'metal');
+    cylinder(g, .10 * s, .16, 1.52 * u, 1.96, 4.62 * v, wood, 'paint', .075 * s, 10);
+    sphere(g, 1.45 * u, 2.06, 4.63 * v, .07 * s, .07 * s, .07 * s, pink);
+    sphere(g, 1.60 * u, 2.06, 4.61 * v, .07 * s, .07 * s, .07 * s, yellow);
+    sphere(g, 1.52 * u, 1.86, 4.62 * v, .09 * s, .12 * s, .09 * s, leafD);
+    wallPlanter(.42, 1.10, 4.80, [red, pink, lpink]);
+    wallPlanter(2.62, 1.10, 4.80, [yellow, cream, orange]);
+
+    // Flower-wall feature on the north-east section.
+    box(g, 1.35 * u, 1.30, .07 * v, 4.55 * u, 1.58, .30 * v, leafD);
+    box(g, 1.45 * u, .07, .10 * v, 4.55 * u, .92, .32 * v, wood);
+    box(g, 1.45 * u, .07, .10 * v, 4.55 * u, 2.24, .32 * v, wood);
+    const wallBlooms = [[4.15, 1.35, pink], [4.60, 1.25, lavender], [4.95, 1.40, cream], [4.35, 1.80, lpink], [4.80, 1.72, purple]];
+    for (const [bx, by, bc] of wallBlooms) sphere(g, bx * u, by, .37 * v, .085 * s, .085 * s, .085 * s, bc);
+
+    // Central stepped bouquet table.
+    box(g, 2.30 * u, .08, 1.40 * v, 3.05 * u, .40, 2.50 * v, lightWood);
+    box(g, 1.00 * u, .38, 1.00 * v, 3.05 * u, .19, 2.50 * v, dark);
+    box(g, 1.10 * u, .12, .70 * v, 3.05 * u, .49, 2.50 * v, wood);
+    bouquet(2.75, 2.55, .53, 1.0, purple);
+    bouquet(3.40, 2.55, .53, 1.0, pink);
+    box(g, .35 * u, .20, .30 * v, 3.05 * u, .52, 2.18 * v, accent);
+    light(g, 3.05 * u, 1.25, 2.50 * v, warm, .13);
+
+    // North-west stepped wall shelving.
+    box(g, 2.90 * u, .16, .42 * v, 1.85 * u, .08, .45 * v, lightWood);
+    box(g, 2.90 * u, .07, .40 * v, 1.85 * u, .835, .45 * v, wood);
+    box(g, 2.90 * u, .07, .40 * v, 1.85 * u, 1.435, .45 * v, wood);
+    bucket(.95, .45, [red, pink, orange], .80);
+    bouquet(2.60, .45, 1.45, .78, lavender);
+    light(g, 1.85 * u, 2.00, .72 * v, warm, .13);
+
+    // East wall bucket rack for single stems.
+    box(g, .35 * u, .07, 1.30 * v, 5.55 * u, 1.05, 2.55 * v, wood);
+    bucket(5.42, 2.20, [blue, purple, lavender], 1.07);
+    bucket(5.42, 2.90, [yellow, cream, orange], 1.07);
+
+    // Cooled premium bouquet cabinet on the west wall.
+    box(g, .55 * u, 1.90, 1.90 * v, .55 * u, .95, 2.55 * v, dark);
+    box(g, .05 * u, 1.70, 1.70 * v, .84 * u, .97, 2.55 * v, cool);
+    box(g, .05 * u, .05, 1.60 * v, .87 * u, 1.20, 2.55 * v, metal, 'metal');
+    // Glass front is drawn as a frame so the bouquet stays visible.
+    for (const y of [.12, 1.82]) box(g, .06 * u, .06, 1.72 * v, .92 * u, y, 2.55 * v, metal, 'metal');
+    for (const dz of [-.5, .5]) box(g, .06 * u, 1.70, .06 * v, .92 * u, .97, (2.55 + dz * 1.90 / v) * v, metal, 'metal');
+    bouquet(.62, 2.55, .16, .85, cream);
+    label(g, 'PREMIUM', .50 * u, 2.10, 2.55 * v, .08, '#f9fcf6', {rotY: Math.PI / 2, width: 3});
+    light(g, 1.00 * u, 1.80, 2.55 * v, cool, .11);
+
+    // Wrapping and prep counter at the rear right, with a florist at work.
+    box(g, 1.35 * u, .82, .62 * v, 4.85 * u, .41, .78 * v, lightWood);
+    box(g, 1.42 * u, .07, .68 * v, 4.85 * u, .84, .78 * v, wood);
+    box(g, .10 * u, .50, .64 * v, 4.17 * u, .47, .78 * v, accent);
+    box(g, .90 * u, 1.10, .20 * v, 4.90 * u, 1.43, .48 * v, wood);
+    box(g, .95 * u, .05, .24 * v, 4.90 * u, 1.45, .52 * v, wood);
+    box(g, .50 * u, .10, .20 * v, 4.75 * u, .90, .82 * v, cream);
+    label(g, 'WRAPPING', 4.85 * u, 1.07, 1.13 * v, .07, '#3b4347', {width: 3.5});
+    staffMember(g, 4.60 * u, 1.05 * v, accent, {skin: 0xc68b5e, hair: 0x35291f});
+
+    // Small service and payment nook against the east wall.
+    box(g, .70 * u, .78, .50 * v, 5.40 * u, .39, 1.55 * v, lightWood);
+    box(g, .74 * u, .06, .54 * v, 5.40 * u, .81, 1.55 * v, dark);
+    box(g, .22 * u, .16, .04 * v, 5.40 * u, 1.00, 1.32 * v, 0x1b2e36).rotation.y = Math.PI;
+    light(g, 5.40 * u, 1.00, 1.27 * v, 0x7fe0e8, .05);
+
+    // Floor greenery kept to the circulation edges.
+    plant(5.15, 4.20, 1.0, accent);
+
+    // Ceiling beams and pendants.
+    box(g, 5.30 * u, .10, .20 * v, 3.00 * u, 2.90, 1.70 * v, ivory).userData.roof = true;
+    box(g, 5.30 * u, .10, .20 * v, 3.00 * u, 2.90, 3.60 * v, ivory).userData.roof = true;
+    cylinder(g, .015 * s, .28, 3.05 * u, 2.72, 2.50 * v, green, 'paint', .015 * s, 6);
+    cylinder(g, .08 * s, .14, 3.05 * u, 2.50, 2.50 * v, wood, 'paint', .16 * s, 10);
+    light(g, 3.05 * u, 2.41, 2.50 * v, warm, .10);
+    cylinder(g, .015 * s, .22, 1.52 * u, 2.13, 4.40 * v, green, 'paint', .015 * s, 6);
+    cylinder(g, .07 * s, .12, 1.52 * u, 1.97, 4.40 * v, wood, 'paint', .14 * s, 10);
+    light(g, 1.52 * u, 1.89, 4.40 * v, warm, .09);
+  }
+
+  function foodCart(g, w, d) {
+    const u = w / 3, v = d / 2, x = w / 2, z = d / 2;
+    const body = 0xd8d3c6, counter = 0x805d42, wood = 0xa77b55;
+    const dark = 0x3b4347, metal = 0x8b9295, teal = 0x2a6d7a, orange = 0xd98a45;
+    const canopyC = 0xe5e0d5, inside = 0x343b3e, warm = 0xffd99a;
+
+    // Four mobility wheels keep the bottom clear of the ground line.
+    for (const wx of [0.75, 2.25]) {
+      for (const wz of [0.55, 1.45]) {
+        cylinder(g, .18, .09, wx * u, .18, wz * v, dark, 'paint', .18, 8).rotation.z = Math.PI / 2;
+      }
+    }
+
+    // Cart body: dark skirt, main cabinet, teal band, service doors.
+    box(g, 1.94 * u, .16, 1.24 * v, x, .30, z, dark);
+    box(g, 1.9 * u, .88, 1.2 * v, x, .74, z, body);
+    box(g, 1.9 * u, .18, .05 * v, x, .98, z + .61 * v, teal);
+    for (const dx of [-0.52, 0.52]) {
+      box(g, .85 * u, .60, .05 * v, x + dx * u, .70, z + .61 * v, body);
+      box(g, .03 * u, .14, .03 * v, x + dx * u + .32 * u, .74, z + .63 * v, dark);
+    }
+
+    // Passenger counter on the +z side.
+    box(g, 2.0 * u, .08, 1.28 * v, x, 1.20, z, counter);
+
+    // Glass snack display: dark base, glass box, two shelves, pastries.
+    box(g, .72 * u, .18, .5 * v, 1.9 * u, 1.31, z + .30 * v, dark);
+    // 'glass' renders opaque here, so the case is drawn as a frame.
+    for (const y of [1.41, 1.75]) box(g, .66 * u, .04, .46 * v, 1.9 * u, y, z + .30 * v, metal, 'metal');
+    for (const dx of [-.5, .5]) box(g, .05 * u, .34, .05 * v, (1.9 + dx * .66) * u, 1.58, z + .30 * v, metal, 'metal');
+    for (const sy of [1.44, 1.60]) box(g, .58 * u, .03, .38 * v, 1.9 * u, sy, z + .30 * v, wood);
+    for (const px of [1.72, 1.90, 2.08]) sphere(g, px * u, 1.50, z + .30 * v, .085, .075, .085, 0xd9a24b);
+    box(g, .26 * u, .08, .20 * v, 1.78 * u, 1.645, z + .30 * v, 0xe8e3d6);
+    box(g, .26 * u, .08, .20 * v, 2.02 * u, 1.645, z + .30 * v, 0xe8e3d6);
+    light(g, 1.9 * u, 1.74, z + .30 * v, warm, .08);
+
+    // Coffee station to the left of the counter.
+    box(g, .40 * u, .42, .28 * v, 0.85 * u, 1.43, z + .32 * v, metal, 'metal');
+    box(g, .28 * u, .09, .02 * v, 0.85 * u, 1.42, z + .465 * v, dark);
+    box(g, .05 * u, .05, .02 * v, 0.77 * u, 1.56, z + .465 * v, teal);
+    for (const cx of [1.12, 1.22]) cylinder(g, .04, .11, cx * u, 1.275, z + .45 * v, canopyC, 'paint', .04, 6);
+
+    // Bottled drinks between the stations, plus a fruit crate.
+    for (const [bx, bc] of [[1.32, 0x4776a8], [1.44, 0xd98a45]]) cylinder(g, .045, .28, bx * u, 1.36, z + .44 * v, bc, 'paint', .045, 8);
+    box(g, .26 * u, .16, .26 * v, 2.40 * u, 1.30, z + .40 * v, counter);
+    sphere(g, 2.35 * u, 1.42, z + .40 * v, .055, .05, .055, orange);
+    sphere(g, 2.45 * u, 1.42, z + .40 * v, .055, .05, .055, 0xc95a50);
+
+    // Hanging menu board over the counter front.
+    // label() sizes are the text height in metres.
+    box(g, 1.3 * u, .50, .03 * v, x, 1.95, z + .68 * v, inside);
+    label(g, 'COFFEE - SNACKS', x, 2.05, z + .715 * v, .07, '#e5e0d5', {width: 5});
+    label(g, 'SANDWICHES - DRINKS', x, 1.87, z + .715 * v, .07, '#e5e0d5', {width: 5.5});
+
+    // Canopy posts, roof, trim and shop sign.
+    for (const [px, pz] of [[0.60, 0.44], [2.40, 0.44], [0.60, 1.60], [2.40, 1.60]]) {
+      box(g, .05, 1.10, .05, px * u, 1.78, pz * v, metal, 'metal');
+    }
+    box(g, 1.9 * u, .08, 1.5 * v, x, 2.34, z, canopyC).userData.roof = true;
+    box(g, 1.9 * u, .05, .06 * v, x, 2.295, z + .73 * v, teal).userData.roof = true;
+    box(g, 1.3 * u, .20, .03 * v, x, 2.34, z + .78 * v, teal).userData.roof = true;
+    label(g, 'GRAB & GO', x, 2.34, z + .812 * v, .09, '#f9fcf6', {width: 4});
+    light(g, x, 2.26, z, warm, .10);
+
+    // One employee working behind the cart.
+    staffMember(g, 1.1 * u, z - .80 * v, teal, {skin: 0xd8b49a, hair: 0x35291f});
+
+    // Rear storage doors and counter props.
+    for (const dx of [-0.5, 0.5]) {
+      box(g, .7 * u, .50, .02 * v, x + dx * u, .70, z - .615 * v, dark);
+      box(g, .03 * u, .12, .03 * v, x + dx * u - .20 * u, .70, z - .625 * v, metal, 'metal');
+    }
+    box(g, .12 * u, .11, .10 * v, 0.72 * u, 1.275, z + .50 * v, metal, 'metal');
+    cylinder(g, .025, .11, 0.56 * u, 1.275, z + .50 * v, orange, 'paint', .025, 6);
+    cylinder(g, .025, .11, 0.59 * u, 1.275, z + .50 * v, 0xc95a50, 'paint', .025, 6);
+  }
+
+  function flightInfoPanel(g, w, d) {
+    const u = w, v = d, x = w / 2, z = d / 2, s = Math.min(u, v);
+    const housing = 0x3b4347, frame2 = 0x555e62, metal = 0x8b9295;
+    const scr = 0x14252d, scr2 = 0x1b2e36, glow = 0x7fe0e8;
+    const teal = 0x2a6d7a, ok = 0x4f8b58, warn = 0xe0b53f;
+
+    // Base plate, pedestal column and neck collar. The screen faces +z.
+    box(g, .70 * u, .06, .56 * v, x, .03, z, housing);
+    box(g, .62 * u, .05, .48 * v, x, .07, z, frame2);
+    cylinder(g, .06 * s, 1.02, x, .60, z, metal, 'metal', .06 * s, 8);
+    cylinder(g, .09 * s, .08, x, 1.115, z, frame2, 'paint', .09 * s, 10);
+
+    // Single portrait display: rear housing, bezel, screen, header, glow.
+    box(g, .74 * u, 1.04, .09 * v, x, 1.60, z - .04 * v, housing);
+    box(g, .68 * u, .96, .04 * v, x, 1.60, z + .015 * v, frame2);
+    box(g, .60 * u, .86, .04 * v, x, 1.58, z + .04 * v, scr);
+    box(g, .60 * u, .14, .05 * v, x, 1.955, z + .045 * v, teal);
+    // label() sizes are the text height in metres.
+    label(g, 'DEPARTURES', x - .06 * u, 1.955, z + .078 * v, .09, '#f9fcf6', {width: 3});
+    label(g, 'T1', x + .23 * u, 1.955, z + .078 * v, .065, '#7fe0e8', {width: 1});
+    light(g, x, 1.55, z + .058 * v, glow, .06);
+
+    // Column headers.
+    label(g, 'TIME', x - .22 * u, 1.83, z + .072 * v, .05, '#9fd4de', {width: 1.6});
+    label(g, 'DESTINATION', x - .01 * u, 1.83, z + .072 * v, .05, '#9fd4de', {width: 2.6});
+    label(g, 'GATE', x + .22 * u, 1.83, z + .072 * v, .05, '#9fd4de', {width: 1.4});
+
+    // Five compact flight rows with a status chip on the left edge.
+    const rows = [
+      ['13:05', 'TOKYO', 'A07', ok],
+      ['13:20', 'PARIS', 'C04', warn],
+      ['13:45', 'BERLIN', 'B08', ok],
+      ['14:10', 'MADRID', 'A15', ok],
+      ['14:25', 'ROME', 'C11', warn],
+    ];
+    for (let i = 0; i < 5; i++) {
+      const [t, dest, gt, col] = rows[i];
+      const ry = 1.715 - i * .13;
+      box(g, .035 * u, .06, .03 * v, x - .275 * u, ry, z + .065 * v, col);
+      label(g, t, x - .20 * u, ry, z + .072 * v, .065, '#f9fcf6', {width: 1.6});
+      label(g, dest, x - .01 * u, ry, z + .072 * v, .065, '#f9fcf6', {width: 2});
+      label(g, gt, x + .22 * u, ry, z + .072 * v, .065, '#cfd8d4', {width: 1});
+    }
+
+    // Bottom footer strip with a tiny clock block; top trim caps the housing.
+    box(g, .60 * u, .05, .04 * v, x, 1.165, z + .04 * v, scr2);
+    label(g, '12:38', x, 1.165, z + .078 * v, .055, '#7fe0e8', {width: 1.4});
+    box(g, .76 * u, .03, .11 * v, x, 2.125, z - .04 * v, metal, 'metal');
+    box(g, .76 * u, .03, .11 * v, x, 1.075, z - .04 * v, metal, 'metal');
+  }
+
+  function flightInformationBoard(g, w, d) {
+    const u = w / 4, v = d, x = w / 2, z = d / 2, s = Math.min(u, v);
+    const frame = 0x3b4347, frame2 = 0x555e62, metal = 0x8b9295;
+    const scr = 0x14252d, scr2 = 0x1b2e36, glow = 0x7fe0e8;
+    const teal = 0x2a6d7a, dep = 0x3976a8, ok = 0x4f8b58, warn = 0xe0b53f, alert = 0xc95a50;
+    const F = z + .30 * v, B = z - .30 * v;
+
+    // Base, brace and posts.
+    box(g, 2.6 * u, .10, .74 * v, x, .05, z, frame);
+    box(g, 2.4 * u, .06, .62 * v, x, .115, z, frame2);
+    box(g, 2.0 * u, .10, .12 * v, x, .45, z, frame2);
+    cylinder(g, .08 * s, 1.00, 1.05 * u, .62, z, metal, 'metal', .08 * s, 8);
+    cylinder(g, .08 * s, 1.00, 2.95 * u, .62, z, metal, 'metal', .08 * s, 8);
+
+    // Central spine housing and cap.
+    box(g, 3.90 * u, 1.98, .44 * v, x, 1.64, z, frame);
+    box(g, 3.92 * u, .06, .50 * v, x, 2.655, z, metal, 'metal').userData.roof = true;
+
+    // Front face stack: bezel, screen, teal header band, glow.
+    box(g, 3.84 * u, 1.84, .05 * v, x, 1.60, z + .225 * v, frame2);
+    box(g, 3.66 * u, 1.46, .06 * v, x, 1.49, z + .27 * v, scr);
+    box(g, 3.66 * u, .26, .07 * v, x, 2.40, z + .275 * v, teal);
+    // label() sizes are the text height in metres.
+    label(g, 'DEPARTURES', .70 * u, 2.40, z + .31 * v, .14, '#f9fcf6', {width: 5});
+    label(g, 'T1', 3.60 * u, 2.40, z + .31 * v, .1, '#7fe0e8', {width: 1});
+    light(g, x, 1.60, z + .33 * v, glow, .12);
+
+    // Back face stack mirrors the front.
+    box(g, 3.84 * u, 1.84, .05 * v, x, 1.60, z - .225 * v, frame2);
+    box(g, 3.66 * u, 1.46, .06 * v, x, 1.49, z - .27 * v, scr);
+    box(g, 3.66 * u, .26, .07 * v, x, 2.40, z - .275 * v, teal);
+    label(g, 'DEPARTURES', .70 * u, 2.40, z - .31 * v, .14, '#f9fcf6', {rotY: Math.PI, width: 5});
+    label(g, 'T1', 3.60 * u, 2.40, z - .31 * v, .1, '#7fe0e8', {rotY: Math.PI, width: 1});
+    light(g, x, 1.60, z - .33 * v, glow, .12);
+
+    // Column headers on the front screen.
+    for (const [cx, txt] of [[.66, 'TIME'], [1.50, 'DESTINATION'], [2.52, 'FLIGHT'], [3.05, 'GATE'], [3.55, 'STATUS']]) {
+      label(g, txt, cx * u, 2.10, F + .001 * v, .06, '#9fd4de', {width: 2.4});
+    }
+
+    // Six flight rows: chip, time, destination, flight, gate, status.
+    const rows = [
+      ['12:40', 'LONDON', 'AX241', 'B12', 'BOARDING', teal, '#7fe0e8'],
+      ['13:05', 'TOKYO', 'VX882', 'A07', 'ON TIME', ok, '#8fd39b'],
+      ['13:20', 'PARIS', 'NX104', 'C04', 'DELAYED', warn, '#e6c25e'],
+      ['13:45', 'BERLIN', 'QF331', 'B08', 'ON TIME', ok, '#8fd39b'],
+      ['14:10', 'MADRID', 'LX520', 'A15', 'GATE OPEN', dep, '#8fc0e8'],
+      ['14:25', 'ATHENS', 'SR097', 'D02', 'FINAL CALL', alert, '#e89a92'],
+    ];
+    for (let i = 0; i < 6; i++) {
+      const [t, dest, fl, gt, st, col, txt] = rows[i];
+      const ry = 1.86 - i * .19;
+      box(g, .10 * u, .10, .02 * v, .33 * u, ry, F, col);
+      label(g, t, .66 * u, ry, F + .001 * v, .1, '#f9fcf6', {width: 2.6});
+      label(g, dest, 1.50 * u, ry, F + .001 * v, .1, '#f9fcf6', {width: 2.6});
+      label(g, fl, 2.52 * u, ry, F + .001 * v, .08, '#cfd8d4', {width: 2.2});
+      label(g, gt, 3.05 * u, ry, F + .001 * v, .08, '#cfd8d4', {width: 1.2});
+      label(g, st, 3.55 * u, ry, F + .001 * v, .08, txt, {width: 3});
+    }
+
+    // Back rows: a compact mirrored list for the opposite corridor.
+    const back = [
+      ['12:55', 'OSLO NX302 A02', ok],
+      ['13:15', 'DUBLIN AX118 C01', teal],
+      ['13:30', 'ROME VX405 B04', warn],
+      ['13:50', 'VIENNA NX227 A09', ok],
+      ['14:05', 'HELSINKI SR611 D06', dep],
+      ['14:20', 'ZURICH LX083 C07', warn],
+    ];
+    for (let i = 0; i < 6; i++) {
+      const [t, combo, col] = back[i];
+      const ry = 1.86 - i * .19;
+      box(g, .10 * u, .10, .02 * v, .33 * u, ry, B, col);
+      label(g, t, 1.10 * u, ry, B - .001 * v, .1, '#f9fcf6', {rotY: Math.PI, width: 2.6});
+      label(g, combo, 2.60 * u, ry, B - .001 * v, .09, '#cfd8d4', {rotY: Math.PI, width: 5});
+    }
+
+    // Twin clock crowning the board.
+    box(g, 1.15 * u, .33, .34 * v, x, 2.83, z, frame).userData.roof = true;
+    cylinder(g, .12 * s, .03, x, 2.83, z + .165 * v, scr2, 'paint', .12 * s, 10).rotation.x = Math.PI / 2;
+    cylinder(g, .12 * s, .03, x, 2.83, z - .165 * v, scr2, 'paint', .12 * s, 10).rotation.x = Math.PI / 2;
+    box(g, .015 * u, .09, .02 * v, x, 2.855, z + .184 * v, 0xf9fcf6);
+    box(g, .055 * u, .015, .02 * v, x + .02 * u, 2.83, z + .184 * v, 0xf9fcf6);
+
+    // Terminal directory strip on the plinth front.
+    box(g, 1.5 * u, .12, .06 * v, x, .155, z + .37 * v, teal);
+    label(g, 'TERMINAL 1 - LEVEL B', x, .155, z + .40 * v, .07, '#f9fcf6', {background: '#3b4347', width: 4});
+  }
+
+  /** One-way customs lane. Passengers enter at +Z under the CUSTOMS gantry,
+      show documents at the station, pass the staffed booth and leave through
+      the green gate at -Z. label() sizes are the text height in metres. */
+  function oneWayCustoms(g, w, d) {
+    const u = w / 5, v = d / 4, x = w / 2, z = d / 2, s = Math.min(u, v);
+    const body = 0xd8d3c6, cream = 0xe5e0d5, dark = 0x3b4347, top = 0x454d50;
+    const metal = 0x8b9295, customs = 0x315d50, proceed = 0x4f8b58;
+    const pc = 0x343b3e, screen = 0x1b2e36, glow = 0x7fe0e8, post = 0x737b7e;
+    const yellow = 0xe0b53f, stop = 0xc95a50, glassC = 0xcfe0e2, brass = 0xc89d4c;
+    const warm = 0xffd99a, skin = 0xd8b49a, jacket = 0x395d4e, trouser = 0x212a25;
+
+    // 1) Customs-green approach carpet with painted entry chevrons.
+    box(g, 4.72 * u, .04, 3.76 * v, x, .02, z, cream);
+    box(g, 1.20 * u, .025, 3.40 * v, 2.45 * u, .045, 2.20 * v, customs);
+    for (const cx of [1.95, 2.40, 2.85]) box(g, .22 * u, .022, .14 * v, cx * u, .082, 2.20 * v, customs).rotation.y = Math.PI;
+    label(g, 'ENTRY', 2.45 * u, .075, 3.84 * v, .25, '#315d50', {ground: true});
+
+    // 2) Entry gantry: the CUSTOMS / DOUANE sign faces the entry side (+Z).
+    for (const px of [1.20, 3.70]) cylinder(g, .07 * s, 2.20, px * u, 1.10, 3.52 * v, metal, 'metal', .07 * s, 8);
+    box(g, 2.70 * u, .18, .24 * v, 2.45 * u, 2.10, 3.50 * v, dark).userData.roof = true;
+    box(g, 2.78 * u, .04, .26 * v, 2.45 * u, 2.16, 3.50 * v, metal, 'metal');
+    box(g, 2.74 * u, .46, .06 * v, 2.45 * u, 2.40, 3.70 * v, customs);
+    label(g, 'CUSTOMS', 2.45 * u, 2.48, 3.74 * v, .24, '#f9fcf6', {width: 5});
+    label(g, 'DOUANE', 2.45 * u, 2.27, 3.74 * v, .12, '#e5e0d5', {width: 4});
+    light(g, 2.45 * u, 2.36, 3.75 * v, glow, .12);
+    box(g, .05 * u, .02, .05 * v, 2.45 * u, 2.10, 3.50 * v, metal, 'metal');
+    box(g, .04 * u, .04, .04 * v, 2.45 * u, 2.06, 3.50 * v, metal, 'metal');
+    light(g, 2.45 * u, 2.04, 3.40 * v, warm, .10);
+
+    // 3) Controlled lane: glass on the west, rail and STOP panel on the east.
+    box(g, .06 * u, .08, 2.40 * v, 1.45 * u, .04, 2.10 * v, customs);
+    box(g, .08 * u, 1.95, 2.40 * v, 1.28 * u, .975, 2.10 * v, metal, 'metal');
+    box(g, .05 * u, 1.82, 2.20 * v, 1.34 * u, 1.035, 2.10 * v, glassC, 'glass');
+    box(g, .08 * u, .04, 2.40 * v, 1.28 * u, 1.94, 2.10 * v, metal, 'metal');
+    for (const pz of [3.40, 2.52]) {
+      cylinder(g, .14 * s, .05, 3.62 * u, .05, pz * v, metal, 'metal', .16 * s, 10);
+      cylinder(g, .045 * s, .82, 3.62 * u, .43, pz * v, post, 'metal', .045 * s, 8);
+    }
+    box(g, .84 * u, .045, .03 * v, 3.62 * u, .69, 2.96 * v, customs);
+    box(g, .04 * u, .12, .14 * v, 3.62 * u, .92, 3.40 * v, stop);
+    label(g, 'STOP', 3.62 * u, 1.05, 3.49 * v, .09, '#f9fcf6', {width: 3});
+    box(g, .16 * u, .12, .02 * v, 1.34 * u, .90, 2.10 * v, customs);
+    label(g, 'CUSTOMS', 1.34 * u, 1.02, 2.13 * v, .06, '#f9fcf6', {width: 5});
+
+    // 4) Document station at the start of the lane.
+    box(g, .50 * u, .62, .42 * v, 2.05 * u, .31, 2.30 * v, body);
+    box(g, .54 * u, .06, .46 * v, 2.05 * u, .64, 2.30 * v, top);
+    box(g, .54 * u, .04, .48 * v, 2.05 * u, .68, 2.30 * v, metal, 'metal');
+    box(g, .42 * u, .12, .04 * v, 2.05 * u, .66, 2.46 * v, customs);
+    cylinder(g, .012, .60, 1.85 * u, .50, 2.42 * v, brass, 'paint', .012 * s, 6);
+    box(g, .40 * u, .04, .28 * v, 2.25 * u, .78, 2.50 * v, cream).rotation.z = -.25;
+    box(g, .22 * u, .015, .16 * v, 2.05 * u, .685, 2.30 * v, cream);
+
+    // 5) Staffed booth: passenger in the lane, officer behind it.
+    box(g, .72 * u, .86, 1.08 * v, 3.05 * u, .43, 2.35 * v, body);
+    box(g, .78 * u, .09, 1.18 * v, 3.05 * u, .88, 2.35 * v, top);
+    box(g, .80 * u, .04, 1.20 * v, 3.05 * u, .93, 2.35 * v, metal, 'metal');
+    box(g, .78 * u, .42, .07 * v, 3.05 * u, .48, 2.90 * v, customs);
+    box(g, .04 * u, .18, .06 * v, 3.50 * u, .28, 2.40 * v, customs);
+    box(g, .30 * u, .54, .46 * v, 2.70 * u, .27, 2.35 * v, body);
+    box(g, .32 * u, .08, .54 * v, 2.70 * u, .57, 2.35 * v, top);
+    box(g, .32 * u, .035, .06 * v, 2.70 * u, .59, 2.60 * v, yellow);
+
+    // 6) Officer's monitor, keyboard, scanner, radio and pen.
+    box(g, .10 * u, .10, .26 * v, 3.02 * u, .97, 1.95 * v, pc);
+    box(g, .48 * u, .33, .05 * v, 3.05 * u, 1.18, 1.95 * v, screen).rotation.y = Math.PI;
+    light(g, 3.05 * u, 1.18, 1.86 * v, glow, .07);
+    box(g, .42 * u, .035, .20 * v, 3.05 * u, .955, 2.12 * v, pc);
+    box(g, .25 * u, .13, .22 * v, 2.75 * u, .955, 2.65 * v, metal, 'metal');
+    box(g, .18 * u, .03, .10 * v, 2.75 * u, 1.025, 2.65 * v, customs);
+    box(g, .24 * u, .06, .18 * v, 3.40 * u, .95, 2.65 * v, cream);
+    box(g, .06 * u, .12, .04 * v, 2.55 * u, 1.10, 2.62 * v, pc);
+    cylinder(g, .012, .10, 3.30 * u, 1.10, 2.62 * v, brass, 'paint', .012 * s, 6);
+
+    // 7) Customs officer behind the desk.
+    box(g, .27 * u, .05, .22 * v, 3.05 * u, .05, 1.48 * v, trouser);
+    box(g, .27 * u, .50, .22 * v, 3.05 * u, .275, 1.48 * v, trouser);
+    box(g, .08 * u, .05, .12 * v, 2.89 * u, .05, 1.40 * v, 0x101515);
+    box(g, .29 * u, .05, .24 * v, 3.05 * u, .52, 1.48 * v, 0x111518);
+    box(g, .37 * u, .55, .24 * v, 3.05 * u, .79, 1.48 * v, jacket);
+    box(g, .40 * u, .06, .28 * v, 3.05 * u, 1.32, 1.42 * v, jacket);
+    box(g, .12 * u, .42, .10 * v, 3.05 * u, .80, 1.59 * v, cream);
+    box(g, .18 * u, .06, .20 * v, 3.05 * u, 1.42, 1.46 * v, customs);
+    sphere(g, 3.05 * u, 1.21, 1.48 * v, .13 * s, .16, .13 * s, skin);
+
+    // 8) Rear cabinet with drawers, water bottle and clearance placard.
+    box(g, .86 * u, .78, .62 * v, 3.62 * u, .39, 1.16 * v, body);
+    box(g, .94 * u, .07, .68 * v, 3.62 * u, .78, 1.16 * v, top);
+    box(g, .92 * u, .04, .70 * v, 3.62 * u, .44, 1.16 * v, metal, 'metal');
+    box(g, .76 * u, .15, .56 * v, 3.65 * u, .68, 1.16 * v, customs);
+    box(g, .74 * u, .08, .04 * v, 3.65 * u, .55, 1.40 * v, metal, 'metal');
+    box(g, .74 * u, .08, .04 * v, 3.65 * u, .42, 1.40 * v, metal, 'metal');
+    box(g, .65 * u, .82, .08 * v, 3.66 * u, .95, .38 * v, customs);
+    label(g, 'CLEARANCE', 3.66 * u, 1.16, .43 * v, .1, '#f9fcf6', {width: 6});
+    cylinder(g, .025, .04, 3.50 * u, 1.05, .30 * v, stop, 'paint', .025 * s, 6);
+    cylinder(g, .025, .04, 3.66 * u, 1.05, .30 * v, customs, 'paint', .025 * s, 6);
+    cylinder(g, .025, .04, 3.78 * u, 1.05, .30 * v, proceed, 'paint', .025 * s, 6);
+    light(g, 3.66 * u, 1.05, .28 * v, proceed, .04);
+    cylinder(g, .04, .16, 3.40 * u, 1.06, .40 * v, 0x66a9d9, 'paint', .04 * s, 6);
+
+    // 9) Exit gate after the officer: arrows and a green proceed lamp.
+    const gateZ = .74 * v;
+    box(g, 1.40 * u, .10, .40 * v, 2.45 * u, 1.78, gateZ, metal, 'metal');
+    box(g, 1.30 * u, .06, .36 * v, 2.45 * u, 1.74, gateZ, dark);
+    label(g, '>', 2.20 * u, 1.78, gateZ + .22 * v, .12, '#4f8b58', {width: 1});
+    label(g, '>', 2.70 * u, 1.78, gateZ + .22 * v, .12, '#4f8b58', {width: 1});
+    cylinder(g, .04, .06, 2.45 * u, 1.74, gateZ + .20 * v, proceed, 'paint', .04 * s, 6);
+    light(g, 2.45 * u, 1.76, gateZ + .20 * v, glow, .05);
+    for (const [gx, dz] of [[1.84, .10], [3.06, -.10]]) {
+      box(g, .42 * u, 1.20, .04 * v, gx * u, .60, gateZ + dz * v, glassC, 'glass');
+      box(g, .46 * u, .10, .06 * v, gx * u, .06, gateZ + dz * v, metal, 'metal');
+      box(g, .46 * u, .10, .06 * v, gx * u, 1.78, gateZ + dz * v, metal, 'metal');
+    }
+    box(g, .06 * u, 1.40, .06 * v, 1.50 * u, .70, gateZ - .10 * v, metal, 'metal');
+    box(g, .06 * u, 1.40, .06 * v, 3.42 * u, .70, gateZ - .10 * v, metal, 'metal');
+    box(g, .12 * u, .10, .09 * v, 1.60 * u, 1.09, gateZ, stop);
+    cylinder(g, .05, .02, 1.60 * u, 1.14, gateZ, stop, 'paint', .05 * s, 6);
+    box(g, .14 * u, .14, .10 * v, 3.26 * u, 1.06, gateZ, proceed);
+    cylinder(g, .06, .03, 3.26 * u, 1.13, gateZ, proceed, 'paint', .06 * s, 6);
+    light(g, 3.26 * u, 1.05, gateZ, proceed, .06);
+    label(g, 'EXIT', 2.45 * u, .075, .33 * v, .25, '#4f8b58', {ground: true});
+
+    // 10) A passenger waiting at the document station with a rolling case.
+    box(g, .28 * u, .05, .22 * v, 2.20 * u, .05, 2.92 * v, 0x2d2d33);
+    box(g, .28 * u, .50, .22 * v, 2.20 * u, .275, 2.92 * v, 0x2d2d33);
+    box(g, .08 * u, .05, .12 * v, 2.06 * u, .05, 2.86 * v, 0x1a1a1d);
+    box(g, .38 * u, .52, .24 * v, 2.20 * u, .79, 2.92 * v, 0x6b5a7c);
+    box(g, .12 * u, .30, .10 * v, 2.20 * u, .82, 3.02 * v, cream);
+    sphere(g, 2.20 * u, 1.20, 2.92 * v, .13 * s, .16, .13 * s, skin);
+    box(g, .22 * u, .06, .20 * v, 2.20 * u, 1.42, 2.92 * v, 0x2d2d33);
+    box(g, .28 * u, .40, .18 * v, 1.70 * u, .20, 3.12 * v, 0x343b3e);
+    box(g, .10 * u, .06, .06 * v, 1.70 * u, .45, 3.12 * v, brass, 'metal');
+    cylinder(g, .03, .04, 1.60 * u, .05, 3.12 * v, 0x101515, 'paint', .03 * s, 8);
+    cylinder(g, .03, .04, 1.80 * u, .05, 3.12 * v, 0x101515, 'paint', .03 * s, 8);
+  }
+  /** Arrivals check-out: a row of exit gates with boarding-pass readers and
+      glass paddles, under an EXIT sign. */
+  function checkOutGates(g, w, d) {
+    const steel = 0xc7ced0, teal = 0x2a6d7a;
+    box(g, w, .02, d, w / 2, .01, d / 2, 0x4a4f55);
+    const lanes = Math.max(2, Math.round(w / 1.6));
+    const pitch = w / lanes;
+    for (let i = 0; i <= lanes; i++) {
+      const x = Math.min(w - .2, Math.max(.2, i * pitch));
+      box(g, .3, 1, 1.6, x, .5, d / 2, steel, 'metal');
+      box(g, .32, .06, 1.62, x, 1.02, d / 2, teal);
+      box(g, .22, .12, .22, x, 1.1, d / 2 - .5, 0x1b2e36);
+      light(g, x, 1.17, d / 2 - .5, i % 3 ? 0x4cff7a : 0xff4a3a, .1);
+      if (i < lanes) for (const s of [-1, 1]) box(g, pitch / 2 - .3, .55, .04, x + pitch / 2 + s * (pitch / 4), .7, d / 2 + .3, 0x9fd6e6, 'glass');
+    }
+    for (const z of [.4, d - .4]) box(g, w - .4, .03, .5, w / 2, .03, z, 0xf2c230);
+    box(g, w, .45, .14, w / 2, 2.6, .1, teal);
+    label(g, 'EXIT · CHECK-OUT', w / 2, 2.6, .18, .3, '#ffffff', {width: 7});
+  }
+
+  function airportCasino(g, w, d) {
+    const u = w / 12, v = d / 10, x = w / 2, z = d / 2, s = Math.min(u, v);
+    const arch = 0x29272b, arch2 = 0x3b373d, dark = 0x202124;
+    const deepRed = 0x703d46, burgundy = 0x5c333b, darkGreen = 0x315344, casGreen = 0x3f6650;
+    const deepBlue = 0x394c60, purple = 0x675070;
+    const gold = 0xc6a15b, darkGold = 0x9b7844, metal = 0x858789;
+    const tWood = 0x704f38, dWood = 0x4b3427, slotBody = 0x45484a;
+    const scrDark = 0x14252d;
+    const warm = 0xffc978, goldGlow = 0xffd86a, redGlow = 0xe66c68, blueGlow = 0x7fe0e8;
+    const skin = 0xd8b49a;
+
+    // Layered dark floor with burgundy and green gaming zones and gold edges.
+    box(g, 11.85 * u, .04, 9.85 * v, x, .02, z, arch);
+    box(g, 11.4 * u, .03, 9.4 * v, x, .042, z, dark);
+    box(g, 4.0 * u, .05, 5.4 * v, 2.6 * u, .058, 3.0 * v, burgundy);
+    box(g, 3.2 * u, .05, 2.6 * v, 8.4 * u, .058, 7.0 * v, darkGreen);
+    box(g, 4.6 * u, .05, 4.0 * v, x, .064, 5.4 * v, 0x1d1b1e);
+    box(g, 11.0 * u, .02, .10 * u, x, .07, 0.55 * v, gold);
+
+    // Enclosure: back wall, side walls with gold crown reveals.
+    box(g, 11.85 * u, 3.0, .18 * v, x, 1.5, .18 * v, arch);
+    box(g, 11.6 * u, 1.10, .08 * v, x, .55, .28 * v, deepRed);
+    box(g, 11.65 * u, .09, .12 * v, x, 1.695, .29 * v, gold, 'metal');
+    box(g, .18 * u, 3.0, 9.85 * v, .18 * u, 1.5, z, arch);
+    box(g, .10 * u, 1.10, 9.5 * v, .28 * u, .55, z, deepRed);
+    box(g, .13 * u, .09, 9.5 * v, .28 * u, 1.695, z, gold, 'metal');
+    box(g, .18 * u, 3.0, 9.85 * v, w - .18 * u, 1.5, z, arch);
+    box(g, .10 * u, 1.10, 9.5 * v, w - .28 * u, .55, z, deepRed);
+    box(g, .13 * u, .08, 9.5 * v, w - .28 * u, 1.70, z, gold, 'metal');
+    for (const px of [3.0, 6.0, 9.0]) box(g, 1.30 * u, 1.20, .05 * v, px * u, 1.55, .28 * v, darkGold, 'metal');
+
+    // Gold columns defining the gaming floor.
+    for (const cxx of [3.0 * u, 9.0 * u]) {
+      cylinder(g, .20 * s, 2.90, cxx, 1.45, 1.20 * v, arch2, 'paint', .20 * s, 12);
+      cylinder(g, .24 * s, .20, cxx, .10, 1.20 * v, gold, 'metal', .24 * s, 12);
+    }
+
+    // Storefront: pillared portal, glass bays, gold fascia and sign.
+    for (const px of [3.30, 6.70]) {
+      box(g, .42 * u, 3.2, .42 * v, px * u, 1.60, 9.62 * v, arch2);
+      box(g, .46 * u, .13, .46 * v, px * u, 3.135, 9.62 * v, gold, 'metal');
+    }
+    // 'glass' renders opaque here, so the window bays are drawn as frames.
+    for (const wx of [1.55 * u, w - 1.55 * u]) {
+      box(g, 2.10 * u, .52, .16 * v, wx, .26, 9.70 * v, arch);
+      for (const y of [.35, 2.41]) box(g, 2.10 * u, .05, .06 * v, wx, y, 9.70 * v, metal, 'metal');
+      for (const dx of [-1.02, 0, 1.02]) box(g, .05 * u, 2.12, .06 * v, wx + dx * u, 1.38, 9.70 * v, metal, 'metal');
+      box(g, 2.14 * u, .09, .08 * v, wx, 2.43, 9.70 * v, gold, 'metal');
+    }
+    box(g, 11.85 * u, .70, .52 * v, x, 2.78, 9.62 * v, arch2);
+    box(g, 11.9 * u, .07, .58 * v, x, 3.145, 9.62 * v, gold, 'metal').userData.roof = true;
+    // label() sizes are the text height in metres.
+    label(g, 'GOLDEN SKY', x, 2.96, 9.96 * v, .2, '#f9fcf6', {width: 5});
+    label(g, 'CASINO', x, 2.68, 9.96 * v, .1, '#ffd86a', {width: 3});
+    light(g, x, 2.80, 9.88 * v, goldGlow, .16);
+    light(g, 3.3 * u, 2.80, 9.84 * v, redGlow, .11);
+    light(g, 8.7 * u, 2.80, 9.84 * v, redGlow, .11);
+
+    // Slot machine zone on the west side, two staggered rows.
+    const slots = [
+      {z: 1.6, top: goldGlow, scr: blueGlow, name: 'LUCKY 7', accent: purple},
+      {z: 2.5, top: redGlow, scr: goldGlow, name: '777', accent: deepRed},
+      {z: 3.4, top: goldGlow, scr: blueGlow, name: 'GOLD RUSH', accent: gold},
+      {z: 5.6, top: redGlow, scr: blueGlow, name: 'STAR SPIN', accent: blueGlow},
+      {z: 6.5, top: goldGlow, scr: redGlow, name: '777', accent: gold},
+    ];
+    let idx = 0;
+    for (const sl of slots) {
+      const sx = (idx < 3 ? 1.30 : 2.60) * u, sz = sl.z * v;
+      box(g, .62 * u, 2.36, .70 * v, sx, 1.185, sz, slotBody);
+      box(g, .40 * u, .52, .08 * v, sx + .26 * u, 1.72, sz + .04 * v, scrDark);
+      light(g, sx + .30 * u, 1.72, sz + .06 * v, sl.scr, .09);
+      box(g, .34 * u, .08, .66 * v, sx + .24 * u, 1.34, sz, darkGold, 'metal');
+      box(g, .30 * u, .26, .76 * v, sx + .20 * u, 2.28, sz, sl.top);
+      label(g, sl.name, sx + .44 * u, 2.28, sz, .06, '#f9fcf6', {rotY: Math.PI / 2, width: 3});
+      light(g, sx + .37 * u, 2.28, sz, sl.top, .06);
+      idx++;
+    }
+    for (const [stx, sz] of [[2.15 * u, 1.6 * v], [2.15 * u, 2.5 * v], [3.45 * u, 6.5 * v]]) {
+      cylinder(g, .19 * s, .08, stx, .71, sz, burgundy, 'paint', .19 * s, 10);
+      cylinder(g, .045 * s, .70, stx, .36, sz, metal, 'metal', .045 * s, 8);
+      cylinder(g, .20 * s, .05, stx, .025, sz, darkGold, 'metal', .20 * s, 8);
+    }
+
+    // Roulette centrepiece.
+    const rx = 8.3 * u, rz = 5.4 * v;
+    box(g, 2.60 * u, .76, 2.60 * v, rx, .38, rz, dWood);
+    box(g, 2.72 * u, .14, 2.72 * v, rx, .735, rz, gold, 'metal');
+    box(g, 2.30 * u, .08, 2.30 * v, rx, .755, rz, casGreen);
+    box(g, .05 * u, .012, 2.10 * v, rx, .795, rz, gold);
+    box(g, 1.90 * u, .012, .05 * v, rx, .795, rz, gold);
+    cylinder(g, .62 * s, .22, rx, .82, rz - 1.30 * v, dWood, 'paint', .62 * s, 12);
+    cylinder(g, .55 * s, .12, rx, .925, rz - 1.30 * v, dark, 'paint', .55 * s, 12);
+    cylinder(g, .46 * s, .09, rx, 0.99, rz - 1.30 * v, deepRed, 'paint', .46 * s, 12);
+    cylinder(g, .16 * s, .10, rx, 1.025, rz - 1.30 * v, gold, 'metal', .16 * s, 12);
+    cylinder(g, .68 * s, .20, rx, .795, rz - 1.30 * v, tWood, 'paint', .68 * s, 12);
+    box(g, 1.10 * u, .26, .55 * v, rx, .79, rz + 1.15 * v, tWood);
+    box(g, 1.10 * u, .22, .06 * v, rx, .88, rz + .88 * v, darkGold, 'metal');
+    box(g, 2.85 * u, .30, .10 * v, rx, .17, rz - 1.32 * v, burgundy);
+    box(g, 2.85 * u, .05, .08 * v, rx, .34, rz - 1.32 * v, gold, 'metal');
+    box(g, .10 * u, .30, 2.60 * v, rx - 1.42 * u, .17, rz, burgundy);
+    box(g, .10 * u, .30, 2.60 * v, rx + 1.42 * u, .17, rz, burgundy);
+    box(g, 2.85 * u, .05, .08 * v, rx, .345, rz + 1.42 * u, gold, 'metal');
+    for (const [chx, chz, cc] of [[-.75, .55, deepRed], [.80, .35, casGreen]]) {
+      cylinder(g, .06 * s, .06, rx + chx * u, .795, rz + chz * v, cc, 'paint', .06 * s, 8);
+    }
+    box(g, .13 * u, .01, .09 * v, rx - .10 * u, .795, rz + .20 * v, 0xefe7d6);
+    box(g, .13 * u, .01, .09 * v, rx + .15 * u, .795, rz + .30 * v, 0xefe7d6);
+    cylinder(g, .55 * s, .06, rx, 2.85, rz, gold, 'metal', .55 * s, 12);
+    cylinder(g, .40 * s, .05, rx, 2.79, rz, dark, 'paint', .40 * s, 10);
+    light(g, rx, 2.73, rz, goldGlow, .17);
+    // The roulette dealer, facing the players.
+    box(g, .27 * u, .05, .22 * v, rx, .875, rz + 1.28 * v, 0x22222a);
+    box(g, .27 * u, .60, .22 * v, rx, 1.05, rz + 1.28 * v, 0x22222a);
+    box(g, .34 * u, .62, .24 * v, rx, 1.58, rz + 1.28 * v, deepRed);
+    box(g, .12 * u, .42, .10 * v, rx, 1.64, rz + 1.16 * v, 0xefe7d6);
+    sphere(g, rx, 1.97, rz + 1.28 * v, .13 * s, .16, .13 * s, skin);
+
+    // Two card tables in the south-east zone, each with a dealer.
+    for (const [cxx, czz] of [[6.9, 7.4], [9.6, 7.4]]) {
+      const tx = cxx * u, tz = czz * v;
+      box(g, 1.70 * u, .88, 1.10 * v, tx, .44, tz, dWood);
+      box(g, 1.80 * u, .11, 1.20 * v, tx, .805, tz, gold, 'metal');
+      box(g, 1.55 * u, .09, 1.05 * v, tx, .83, tz, casGreen);
+      box(g, 1.44 * u, .14, .08 * v, tx, .83, tz - .52 * v, tWood);
+      box(g, 1.44 * u, .10, .04 * v, tx, .83, tz, tWood);
+      for (const [cx2, cz2, cc] of [[-.42, .20, deepRed], [.30, -.18, casGreen], [.12, .28, gold]]) {
+        cylinder(g, .05 * s, .06, tx + cx2 * u, .895, tz + cz2 * v, cc, 'paint', .05 * s, 8);
+      }
+      box(g, .12 * u, .01, .085 * v, tx - .15 * u, .895, tz + .10 * v, 0xefe7d6);
+      box(g, .12 * u, .01, .085 * v, tx + .05 * u, .895, tz - .12 * v, 0xefe7d6);
+      box(g, .25 * u, .05, .20 * v, tx, .875, tz - .72 * v, 0x22222a);
+      box(g, .25 * u, .54, .20 * v, tx, 1.06, tz - .72 * v, 0x22222a);
+      box(g, .32 * u, .60, .22 * v, tx, 1.55, tz - .72 * v, deepRed);
+      sphere(g, tx, 1.92, tz - .72 * v, .12 * s, .15, .12 * s, skin);
+    }
+
+    // Cashier and chip service, with a glass security partition.
+    const cashX = 10.2 * u, cashZ = 1.55 * v;
+    box(g, 1.05 * u, 1.00, .70 * v, cashX, .50, cashZ, dWood);
+    box(g, 1.10 * u, .11, .76 * v, cashX, 1.02, cashZ, darkGold, 'metal');
+    box(g, 1.12 * u, .05, .78 * v, cashX, 1.085, cashZ, metal, 'metal');
+    box(g, 1.06 * u, .19, .07 * v, cashX, .71, cashZ + .36 * v, casGreen);
+    label(g, 'CASHIER', cashX, .71, cashZ + .41 * v, .06, '#f9fcf6', {width: 3});
+    // Security glass is drawn as gold-framed panels so the cashier stays visible.
+    for (const cx of [cashX - .50 * u, cashX + .50 * u]) {
+      box(g, .08 * u, 1.40, .06 * v, cx, 1.60, cashZ, gold, 'metal');
+      for (const dz of [-.5, .5]) box(g, .04 * u, 1.35, .04 * v, cx, 1.63, cashZ + dz * .70 * v, gold, 'metal');
+    }
+    box(g, .48 * u, .08, .14 * v, cashX, .68, cashZ + .36 * v, darkGold, 'metal');
+    cylinder(g, .07 * s, .13, cashX - .20 * u, 1.06, cashZ + .25 * v, gold, 'paint', .07 * s, 8);
+    box(g, .24 * u, .06, .20 * v, cashX, .035, cashZ - .62 * v, 0x22222a);
+    box(g, .24 * u, .50, .20 * v, cashX, .31, cashZ - .62 * v, 0x22222a);
+    box(g, .32 * u, .54, .22 * v, cashX, .60, cashZ - .62 * v, deepBlue);
+    sphere(g, cashX, 1.00, cashZ - .62 * v, .12 * s, .14, .12 * s, skin);
+
+    // Premium high-limit alcove with a velvet booth divider.
+    box(g, .10 * u, 1.44, 1.85 * v, 3.75 * u, .72, 1.35 * v, burgundy);
+    box(g, .14 * u, .11, 1.90 * v, 3.75 * u, 1.435, 1.35 * v, gold, 'metal');
+    box(g, 1.30 * u, .96, .80 * v, 2.95 * u, .48, .95 * v, dWood);
+    box(g, 1.38 * u, .18, .88 * v, 2.95 * u, .785, .95 * v, gold, 'metal');
+    box(g, 1.24 * u, .16, .78 * v, 2.95 * u, .825, .95 * v, deepRed);
+    label(g, 'VIP', 2.95 * u, 1.06, 1.35 * v, .08, '#ffd86a', {rotY: -Math.PI / 2, width: 2});
+
+    // Representative players around the floor.
+    box(g, .24 * u, .06, .20 * v, 2.70 * u, .745, 2.5 * v, 0x2d2d33).rotation.y = -Math.PI / 2;
+    box(g, .24 * u, .50, .20 * v, 2.70 * u, .985, 2.5 * v, 0x2d2d33).rotation.y = -Math.PI / 2;
+    box(g, .32 * u, .54, .24 * v, 2.70 * u, 1.46, 2.5 * v, deepBlue).rotation.y = -Math.PI / 2;
+    sphere(g, 2.70 * u, 1.79, 2.5 * v, .12 * s, .14, .12 * s, skin);
+    box(g, .24 * u, .06, .20 * v, 6.9 * u, .745, 8.15 * v, 0x2d2d33).rotation.y = Math.PI;
+    box(g, .24 * u, .50, .20 * v, 6.9 * u, .985, 8.15 * v, 0x2d2d33).rotation.y = Math.PI;
+    box(g, .32 * u, .54, .24 * v, 6.9 * u, 1.46, 8.15 * v, burgundy).rotation.y = Math.PI;
+    sphere(g, 6.9 * u, 1.79, 8.15 * v, .12 * s, .14, .12 * s, skin);
+    box(g, .26 * u, .06, .22 * v, 7.6 * u, .045, 4.10 * v, 0x2d2d33);
+    box(g, .26 * u, .54, .22 * v, 7.6 * u, .27, 4.10 * v, 0x2d2d33);
+    box(g, .34 * u, .56, .24 * v, 7.6 * u, .77, 4.10 * v, darkGreen);
+    sphere(g, 7.6 * u, 1.17, 4.10 * v, .12 * s, .15, .12 * s, skin);
+
+    // Ceiling beams with warm gold pendants over each gaming zone.
+    box(g, 11.2 * u, .10, .22 * v, x, 2.92, 4.85 * v, arch2).userData.roof = true;
+    for (const [lx, lz, lc] of [[1.8, 4.85, redGlow], [4.0, 4.85, blueGlow], [6.2, 4.85, goldGlow], [8.3, 4.85, warm], [10.4, 4.85, warm]]) {
+      cylinder(g, .015 * s, .32, lx * u, 2.71, lz * v, metal, 'metal', .015 * s, 6);
+      cylinder(g, .10 * s, .16, lx * u, 2.545, lz * v, gold, 'metal', .10 * s, 10);
+      light(g, lx * u, 2.46, lz * v, lc, .12);
+    }
+  }
+
   function interior(g, w, d, k, context = {}) {
     switch (k) {
       case 'entrance':
@@ -2012,6 +3258,21 @@ window.AirportModels = (() => {
       case 'vendingMachine':
         onFloor(g, vendingMachine, w, d);
         break;
+      case 'foodCart':
+        onFloor(g, foodCart, w, d);
+        break;
+      case 'flowerShop':
+        onFloor(g, flowerShop, w, d);
+        break;
+      case 'casino':
+        onFloor(g, airportCasino, w, d);
+        break;
+      case 'arcade':
+        onFloor(g, airportArcade, w, d);
+        break;
+      case 'coffeeToGo':
+        onFloor(g, coffeeToGo, w, d);
+        break;
       case 'bins':
         onFloor(g, trashBins, w, d);
         break;
@@ -2020,6 +3281,12 @@ window.AirportModels = (() => {
         break;
       case 'checkInCounter':
         onFloor(g, checkInCounter, w, d);
+        break;
+      case 'customs':
+        onFloor(g, oneWayCustoms, w, d);
+        break;
+      case 'checkOut':
+        onFloor(g, checkOutGates, w, d);
         break;
       case 'ticketMachine':
         onFloor(g, ticketMachine, w, d);
@@ -2116,9 +3383,10 @@ window.AirportModels = (() => {
         light(g, w / 2, 1.1, d / 2 + 1.2, 0x9fe3ff, .2);
         break;
       case 'infoBoard':
-        for (const x of [.4, w - .4]) cylinder(g, .08, 2.2, x, 1.4, d / 2, 0x7d878a, 'metal');
-        box(g, w - .2, 1.6, .2, w / 2, 2.8, d / 2, 0x151f28);
-        for (let r = 0; r < 5; r++) box(g, w - .6, .16, .05, w / 2, 2.25 + r * .27, d / 2 - .12, r ? 0xf5c542 : 0xffffff, 'light');
+        flightInformationBoard(g, w, d);
+        break;
+      case 'infoPanel':
+        flightInfoPanel(g, w, d);
         break;
     }
   }
@@ -2126,11 +3394,11 @@ window.AirportModels = (() => {
   function facility(f, context = {}) {
     const g = new T.Group(), turn = ((Math.round(f.rotation || 0) % 4) + 4) % 4;
     const w = turn % 2 ? f.depth : f.width, d = turn % 2 ? f.width : f.depth, k = f.kind;
-    if (k.startsWith('runway')) runway(g, w, d);
-    else if (k === 'taxiway') taxiway(g, w, d);
+    if (k.startsWith('runway')) runway(g, w, d, context.cuts);
+    else if (k === 'taxiway') taxiway(g, w, d, context.cuts, context.vertical ?? d >= w);
     else if (k === 'serviceRoad') serviceRoad(g, w, d);
     else if (k === 'stand' || k === 'standRegional' || k === 'standContact') stand(g, w, d, f, context);
-    else if (k === 'terminal') terminal(g, w, d, context);
+    else if (k === 'terminal' || k === 'terminalLandside' || k === 'terminalReclaim') terminal(g, w, d, {...context, zone: k === 'terminalLandside' ? 'arrival' : k === 'terminalReclaim' ? 'departure' : 'main'});
     else if (k === 'hangar') hangar(g, w, d);
     else if (k === 'fuelDepot') fuelDepot(g, w, d);
     else if (k === 'baggage') { serviceBuilding(g, w, d, 'BAGGAGE HALL', 0x44565a); for (let x = 3; x < w - 3; x += 7) { box(g, 5, .5, 1.4, x, .45, 1.2, 0x2b3134, 'metal'); for (let i = 0; i < 3; i++) box(g, .7, .45, .5, x - 1.5 + i * 1.5, .95, 1.2, [0x3d5a80, 0x8a4b3c, 0x333b3f][i]); } }
@@ -2346,5 +3614,5 @@ window.AirportModels = (() => {
     return sprite;
   }
 
-  return {init, setNight, noseFrame, facility, facilityFrame, carouselLoop, loopPoint, aircraft, vehicle, personGeometry, tree, palm, box, cylinder, sphere, decal, line, shape, light, pool, lamp, instance, bake, dispose, caption, label, materials, textures, spec};
+  return {init, setNight, setLights, lightLevels, indoor, weather, noseFrame, airstairs, facility, facilityFrame, carouselLoop, loopPoint, aircraft, vehicle, personGeometry, tree, palm, box, cylinder, sphere, decal, line, shape, light, pool, lamp, instance, bake, dispose, caption, label, materials, textures, spec};
 })();

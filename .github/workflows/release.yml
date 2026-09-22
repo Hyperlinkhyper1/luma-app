@@ -205,8 +205,30 @@ jobs:
       # universal APK ~240 MB against a 20 MB Windows installer, and a phone
       # then downloaded three ABIs to use one. The in-app updater picks the
       # asset matching its own ABI (UpdateService.pickAssetName).
+      # Gradle resolves the Kotlin/AGP plugins from Maven Central and the
+      # Gradle Plugin Portal on every cold run, and shared GitHub-hosted
+      # runner IPs occasionally draw a 429 (Too Many Requests) from
+      # repo.maven.apache.org mid-resolve. Flutter's own Gradle retry only
+      # waits 100ms, nowhere near long enough to clear a rate-limit window.
+      # Same class of flake as the apt mirror (Linux job) and SPM downloads
+      # (iOS job) above — wrap it in the same backoff-retry pattern.
       - name: Build APKs
-        run: flutter build apk --release --split-per-abi --no-tree-shake-icons --dart-define=APP_VERSION=${{ steps.ver.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          retry() {
+            for attempt in 1 2 3; do
+              if "$@"; then
+                return 0
+              fi
+              echo "attempt $attempt failed: $*"
+              sleep 30
+            done
+            return 1
+          }
+
+          retry flutter build apk --release --split-per-abi --no-tree-shake-icons --dart-define=APP_VERSION=${{ steps.ver.outputs.version }}
 
       # Fail loudly if the APKs somehow got a debug signature anyway — a
       # debug-signed release is worse than no release, because phones with

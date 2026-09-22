@@ -96,8 +96,8 @@ class StoredUser {
 
   bool get accessRevoked => accessRevokedAtMs != null;
 
-  /// SHA-256 of the current email-verification token, or null if there is
-  /// none outstanding (never verified yet, or already verified/used).
+  /// SHA-256 of the current 6-digit email-verification code, or null if
+  /// there is none outstanding (never verified yet, or already verified/used).
   String? verificationTokenHash;
   int? verificationExpiresAtMs;
 

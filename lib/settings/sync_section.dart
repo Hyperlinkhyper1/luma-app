@@ -84,9 +84,11 @@ class _SignedOutBody extends StatelessWidget {
         Align(
           alignment: Alignment.centerLeft,
           child: LumaPrimaryButton(
-            label: sync.pendingApprovalEmail != null
-                ? 'Sign in'
-                : 'Set up account',
+            label: sync.pendingApprovalEmail == null
+                ? 'Set up account'
+                : sync.pendingApprovalMode == ServerApprovalMode.email
+                    ? 'Enter code'
+                    : 'Sign in',
             icon: Icons.person_add_rounded,
             onTap: () => showAccountSetupDialog(context, sync,
                 initialMode: sync.pendingApprovalEmail != null ? 0 : 1),
@@ -100,7 +102,7 @@ class _SignedOutBody extends StatelessWidget {
 /// Shown while an account created on this device is still waiting to be
 /// approved: nothing server-backed works yet, and this is where the user can
 /// start over with a different address (or, when the server approves by
-/// email rather than by hand, ask for another link).
+/// email rather than by hand, ask for another code).
 class _PendingApprovalNotice extends StatefulWidget {
   const _PendingApprovalNotice({required this.sync});
   final SyncService sync;
@@ -139,10 +141,10 @@ class _PendingApprovalNoticeState extends State<_PendingApprovalNotice> {
       children: [
         Text(
           byEmail
-              ? '$email is waiting to be approved. Open the link in the email '
-                  'we sent, then sign in. Until then this device does not '
-                  'contact the server at all, and the plugins that need it '
-                  'stay switched off.'
+              ? '$email is waiting to be approved. Enter the 6-digit code we '
+                  'emailed you to finish signing in. Until then this device '
+                  'does not contact the server at all, and the plugins that '
+                  'need it stay switched off.'
               : '$email is waiting for the server operator to approve it. '
                   'There is nothing to do in the meantime — just sign in once '
                   'they have. Until then this device does not contact the '
@@ -163,7 +165,7 @@ class _PendingApprovalNoticeState extends State<_PendingApprovalNotice> {
           children: [
             if (byEmail)
               LumaGhostButton(
-                label: _busy ? 'Sending…' : 'Resend approval email',
+                label: _busy ? 'Sending…' : 'Resend code',
                 icon: Icons.mail_outline_rounded,
                 onTap: _busy ? null : _resend,
               ),
