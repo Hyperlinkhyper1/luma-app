@@ -36,6 +36,10 @@ const Map<String, AiPricingRates> kOpenAiPricing = {
   'gpt-5.4': AiPricingRates(input: 2.50, output: 15.00, cacheWrite: 0, cacheRead: 0.25),
   'gpt-5.3-codex': AiPricingRates(input: 1.75, output: 14.00, cacheWrite: 0, cacheRead: 0.175),
   'gpt-5.6': AiPricingRates(input: 4.00, output: 20.00, cacheWrite: 0, cacheRead: 0.40),
+  // Not a Codex model — luma's own Assistant defaults to it (OpenAiClient).
+  // Without an entry it would price at the flagship fallback, ~60x over.
+  'gpt-4o-mini': AiPricingRates(input: 0.15, output: 0.60, cacheWrite: 0, cacheRead: 0.075),
+  'gpt-4o': AiPricingRates(input: 2.50, output: 10.00, cacheWrite: 0, cacheRead: 1.25),
 };
 
 /// Version substrings checked, in order, when a model doesn't match

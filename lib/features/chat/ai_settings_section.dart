@@ -7,6 +7,7 @@ import '../../settings/settings_controller.dart';
 import '../../settings/settings_scope.dart';
 import '../../sync/sync_scope.dart';
 import '../../theme/luma_theme.dart';
+import '../plugins/installed/ai_usage/ai_usage_scope.dart';
 import 'ai_agent_store.dart';
 import 'ai_key_store.dart';
 import 'providers/ai_client.dart';
@@ -337,6 +338,7 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
 
   Future<void> _testConnection() async {
     final typed = _controller.text.trim();
+    final aiUsage = AiUsageScope.maybeOf(context);
     AiClient client = _provider.client;
     String? key = typed.isNotEmpty ? typed : null;
     if (key == null) {
@@ -360,7 +362,7 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
     }
     setState(() => _testing = true);
     try {
-      await client.chat(
+      final result = await client.chat(
         apiKey: key,
         history: const [AiTurn(role: 'user', text: 'Hi')],
         systemPrompt: '',
@@ -368,6 +370,14 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
         executeTool: (_, __) async => const {},
         metadataFor: (_, __) => null,
       );
+      final usage = result.usage;
+      if (usage != null) {
+        await aiUsage?.recordLumaCall(
+          providerId: widget.providerId,
+          usage: usage,
+          feature: 'Key test',
+        );
+      }
       _showSnack('Connection works.');
     } on AiError catch (e) {
       _showSnack(e.message);

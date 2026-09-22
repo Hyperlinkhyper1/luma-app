@@ -2,6 +2,8 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../../storage/storage_guard.dart';
+import '../../../chat/providers/ai_client.dart';
+import 'ai_usage_source.dart';
 import 'antigravity_scanner.dart';
 import 'claude_code_scanner.dart';
 import 'codex_cli_scanner.dart';
@@ -38,6 +40,7 @@ class AiUsageRepository extends ChangeNotifier {
   bool? _antigravityDirFound;
   bool? _opencodeDbFound;
   bool? _freebuffDirFound;
+  bool _lumaUsageFound = false;
   DateTime? _lastScanAt;
   List<AiUsageRemoteDevice> _remoteDevices = const [];
   ClaudeCodeScanResult? _lastClaudeResult;
@@ -71,6 +74,9 @@ class AiUsageRepository extends ChangeNotifier {
   /// Whether *any* source was found â€” drives the page's empty-state gate.
   /// Null until the first [rescan] completes.
   bool? get anyDirFound {
+    // luma's own AI having logged a call is enough to show the page, even
+    // before the first rescan and with no CLI tool on this device.
+    if (_lumaUsageFound) return true;
     if (_claudeCodeDirFound == null &&
         _codexCliDirFound == null &&
         _antigravityDirFound == null &&
@@ -151,11 +157,62 @@ class AiUsageRepository extends ChangeNotifier {
       _remoteDevices = await (_db.select(
         _db.aiUsageRemoteDevices,
       )..orderBy([(d) => OrderingTerm.asc(d.name)])).get();
+      final lumaTurn = await (_db.select(_db.aiUsageTurns)
+            ..where((t) => t.source.equalsValue(AiUsageSource.luma))
+            ..limit(1))
+          .getSingleOrNull();
+      _lumaUsageFound = _lumaUsageFound || lumaTurn != null;
     } finally {
       _scanning = false;
       notifyListeners();
     }
   }
+
+  /// Logs one call luma's own AI made — an Assistant reply, a Mind Map
+  /// suggestion, a crash diagnosis — as an [AiUsageSource.luma] turn, so it
+  /// is counted, priced and synced like any scanned CLI turn.
+  ///
+  /// [providerId] is the `AiProviderId` name the call went through and
+  /// [feature] the part of luma that made it, stored as the turn's project.
+  /// [sessionId] groups calls from one conversation; one-off calls default
+  /// to the feature. Never throws: a failed write loses one row of usage,
+  /// which must never turn a reply the user already has into an error.
+  Future<void> recordLumaCall({
+    required String providerId,
+    required AiTokenUsage usage,
+    required String feature,
+    String? sessionId,
+    DateTime? at,
+  }) async {
+    final timestamp = (at ?? DateTime.now()).toUtc();
+    try {
+      await _db.into(_db.aiUsageTurns).insert(
+            AiUsageTurnsCompanion.insert(
+              sessionId: sessionId ?? 'luma:$feature',
+              timestamp: timestamp,
+              model: '$providerId/${_bareModel(usage.model)}',
+              inputTokens: Value(usage.inputTokens),
+              outputTokens: Value(usage.outputTokens),
+              cacheReadTokens: Value(usage.cacheReadTokens),
+              cacheCreationTokens: Value(usage.cacheWriteTokens),
+              messageId: Value('luma:${timestamp.microsecondsSinceEpoch}'),
+              project: Value(feature),
+              source: AiUsageSource.luma,
+            ),
+          );
+    } catch (error) {
+      debugPrint('Could not log AI usage: $error');
+      return;
+    }
+    if (!_lumaUsageFound) {
+      _lumaUsageFound = true;
+      notifyListeners();
+    }
+  }
+
+  /// Gemini answers with `models/<id>`; the provider is already the prefix.
+  static String _bareModel(String model) =>
+      model.startsWith('models/') ? model.substring('models/'.length) : model;
 
   /// Turns in `[start, end)`, soonest first, across every source and every
   /// synced device. A null

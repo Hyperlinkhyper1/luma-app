@@ -189,14 +189,17 @@ String _sourceLabel(AiUsageSource source) => switch (source) {
       AiUsageSource.antigravity => 'Antigravity',
       AiUsageSource.opencode => 'OpenCode',
       AiUsageSource.freebuff => 'Freebuff',
+      AiUsageSource.luma => 'Luma',
     };
 
-/// Shown when not one of the five tools has left anything on this device.
+/// Shown when not one of the five tools has left anything on this device,
+/// and luma's own AI hasn't been used here yet either.
 const String _kNoLogsSubtitle =
     'AI Usage reads session logs from Claude Code (~/.claude/projects), '
     'Codex CLI (~/.codex/sessions), Antigravity (~/.gemini/antigravity), '
     'OpenCode (~/.local/share/opencode), and Freebuff '
-    '(~/.config/freebuff-desktop/projects) on this device. Nothing leaves '
+    '(~/.config/freebuff-desktop/projects) on this device, and logs every '
+    "call luma's own Assistant makes. Nothing leaves "
     'it unless you turn on AI Usage sync in Settings, which also adds up '
     'your other devices. Use one of these tools here, then rescan.';
 
@@ -526,6 +529,7 @@ class _SourceFilterBar extends StatelessWidget {
     AiUsageSource.antigravity,
     AiUsageSource.opencode,
     AiUsageSource.freebuff,
+    AiUsageSource.luma,
   ];
 
   @override
@@ -538,6 +542,7 @@ class _SourceFilterBar extends StatelessWidget {
         'Antigravity (est.)',
         'OpenCode',
         'Freebuff',
+        'Luma',
       ],
       selectedIndex: _options.indexOf(selected),
       onSelect: (i) => onSelect(_options[i]),

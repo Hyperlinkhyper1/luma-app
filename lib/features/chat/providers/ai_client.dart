@@ -42,9 +42,63 @@ typedef AiToolMetadata = String? Function(
 /// The assistant's finished reply for one user turn, after any tool calls
 /// the model requested have been resolved.
 class AiChatResult {
-  const AiChatResult({required this.text, this.metadataJson});
+  const AiChatResult({required this.text, this.metadataJson, this.usage});
   final String text;
   final String? metadataJson;
+
+  /// Tokens this reply cost, summed over every request its tool loop made.
+  /// Null when the provider reported no usage at all.
+  final AiTokenUsage? usage;
+}
+
+/// What one reply cost in tokens, as the provider itself reported it.
+///
+/// [inputTokens] excludes [cacheReadTokens]: providers that fold cached
+/// input into their prompt count (the OpenAI shape) are split apart here, so
+/// each field can be priced at its own rate without double counting.
+/// Reasoning ("thinking") tokens are billed as output and counted in
+/// [outputTokens].
+class AiTokenUsage {
+  const AiTokenUsage({
+    required this.model,
+    this.inputTokens = 0,
+    this.outputTokens = 0,
+    this.cacheReadTokens = 0,
+    this.cacheWriteTokens = 0,
+    this.requests = 1,
+  });
+
+  /// The model that actually answered — the provider's own `model` field
+  /// when the response carries one, otherwise the model that was asked for.
+  final String model;
+  final int inputTokens;
+  final int outputTokens;
+  final int cacheReadTokens;
+  final int cacheWriteTokens;
+
+  /// How many API requests went into this reply (one per tool hop).
+  final int requests;
+
+  int get totalTokens =>
+      inputTokens + outputTokens + cacheReadTokens + cacheWriteTokens;
+
+  /// Adds [other]'s counts to this one's, keeping [other]'s model — the
+  /// last request of a tool loop is the one that produced the reply.
+  AiTokenUsage operator +(AiTokenUsage other) => AiTokenUsage(
+        model: other.model,
+        inputTokens: inputTokens + other.inputTokens,
+        outputTokens: outputTokens + other.outputTokens,
+        cacheReadTokens: cacheReadTokens + other.cacheReadTokens,
+        cacheWriteTokens: cacheWriteTokens + other.cacheWriteTokens,
+        requests: requests + other.requests,
+      );
+}
+
+/// Sums two optional usages, where either side may be missing.
+AiTokenUsage? addAiUsage(AiTokenUsage? a, AiTokenUsage? b) {
+  if (a == null) return b;
+  if (b == null) return a;
+  return a + b;
 }
 
 /// Base for anything that goes wrong talking to an AI provider.

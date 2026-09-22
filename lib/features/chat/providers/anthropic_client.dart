@@ -9,10 +9,12 @@ class _RawResponse {
     required this.text,
     required this.toolUses,
     required this.rawContent,
+    this.usage,
   });
   final String text;
   final List<Map<String, dynamic>> toolUses;
   final List<Map<String, dynamic>> rawContent;
+  final AiTokenUsage? usage;
 }
 
 /// Talks to Anthropic's Messages API directly from the device using the
@@ -56,15 +58,17 @@ class AnthropicClient implements AiClient {
 
     var hops = 0;
     String? metadataJson;
+    AiTokenUsage? usage;
     while (true) {
       final res =
           await _send(apiKey: apiKey, messages: messages, systemPrompt: systemPrompt, tools: toolSchemas);
+      usage = addAiUsage(usage, res.usage);
 
       if (res.toolUses.isEmpty) {
         final text = res.text.isEmpty
             ? "I couldn't come up with a reply for that."
             : res.text;
-        return AiChatResult(text: text, metadataJson: metadataJson);
+        return AiChatResult(text: text, metadataJson: metadataJson, usage: usage);
       }
 
       hops++;
@@ -74,6 +78,7 @@ class AnthropicClient implements AiClient {
               ? "I couldn't finish that — too many tool steps."
               : res.text,
           metadataJson: metadataJson,
+          usage: usage,
         );
       }
 
@@ -164,6 +169,21 @@ class AnthropicClient implements AiClient {
       text: textParts.join('\n').trim(),
       toolUses: toolUses,
       rawContent: content,
+      usage: _usageFrom(decoded),
+    );
+  }
+
+  static AiTokenUsage? _usageFrom(Map<String, dynamic> decoded) {
+    final usage = decoded['usage'];
+    if (usage is! Map) return null;
+    int count(String key) => (usage[key] as num?)?.toInt() ?? 0;
+    final model = decoded['model'];
+    return AiTokenUsage(
+      model: model is String && model.isNotEmpty ? model : defaultModel,
+      inputTokens: count('input_tokens'),
+      outputTokens: count('output_tokens'),
+      cacheReadTokens: count('cache_read_input_tokens'),
+      cacheWriteTokens: count('cache_creation_input_tokens'),
     );
   }
 }

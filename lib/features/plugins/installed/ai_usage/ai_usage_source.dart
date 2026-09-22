@@ -23,7 +23,16 @@
 /// native multi-provider catalog (in which case it's `"<providerID>/<id>"`
 /// the same way opencode's is, e.g. `"z-ai/glm-5.3-flash"`) — see
 /// `freebuff_scanner.dart`.
-enum AiUsageSource { claudeCode, codexCli, antigravity, opencode, freebuff }
+///
+/// [luma] is luma's own AI — the Assistant chat and the one-off calls other
+/// features make through the same providers (Mind Map suggestions, the
+/// Minecraft crash analyzer). Nothing scans for these: each call is written
+/// here the moment it finishes, from the token counts the provider returned
+/// (see `AiUsageRepository.recordLumaCall`). Its model is stored as
+/// `"<providerId>/<model>"` like opencode's — the provider being luma's
+/// `AiProviderId` (`anthropic`/`openai`/`mistral`/`google`) — since the
+/// chat can switch provider between messages.
+enum AiUsageSource { claudeCode, codexCli, antigravity, opencode, freebuff, luma }
 
 /// Splits an opencode turn's stored `"<providerID>/<modelID>"` model into
 /// its two halves, or null when it carries no provider prefix (a turn whose

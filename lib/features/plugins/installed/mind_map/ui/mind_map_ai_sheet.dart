@@ -6,6 +6,7 @@ import '../../../../../theme/luma_theme.dart';
 import '../../../../chat/ai_key_store.dart';
 import '../../../../chat/providers/ai_client.dart';
 import '../../../../chat/providers/ai_providers.dart';
+import '../../ai_usage/ai_usage_scope.dart';
 import '../data/mind_map_database.dart';
 import '../io/mind_map_outline.dart';
 import '../mind_map_repository.dart';
@@ -95,6 +96,7 @@ class _MindMapAiSheetState extends State<MindMapAiSheet> {
     });
 
     final settings = SettingsScope.of(context);
+    final aiUsage = AiUsageScope.maybeOf(context);
     final provider = aiProviderById(settings.aiProviderId);
 
     if (!settings.canSendAiMessage) {
@@ -127,6 +129,14 @@ class _MindMapAiSheetState extends State<MindMapAiSheet> {
         metadataFor: (_, _) => null,
       );
       settings.recordAiCall();
+      final usage = result.usage;
+      if (usage != null) {
+        await aiUsage?.recordLumaCall(
+          providerId: provider.id.name,
+          usage: usage,
+          feature: 'Mind Map',
+        );
+      }
       final parsed = _parse(result.text);
       if (!mounted) return;
       if (parsed.isEmpty) {

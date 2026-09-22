@@ -1,6 +1,7 @@
 import 'ai_usage_pricing_anthropic.dart';
 import 'ai_usage_pricing_freebuff.dart';
 import 'ai_usage_pricing_gemini.dart';
+import 'ai_usage_pricing_luma.dart';
 import 'ai_usage_pricing_opencode.dart';
 import 'ai_usage_pricing_openai.dart';
 import 'ai_usage_pricing_rates.dart';
@@ -9,6 +10,7 @@ import 'ai_usage_source.dart';
 export 'ai_usage_pricing_anthropic.dart';
 export 'ai_usage_pricing_freebuff.dart';
 export 'ai_usage_pricing_gemini.dart';
+export 'ai_usage_pricing_luma.dart';
 export 'ai_usage_pricing_opencode.dart';
 export 'ai_usage_pricing_openai.dart';
 export 'ai_usage_pricing_rates.dart';
@@ -115,6 +117,7 @@ bool isBillableModel(AiUsageSource source, String? model) => switch (source) {
       // See _freebuffPricingFor's doc: every well-formed Freebuff turn
       // prices, the same way every opencode turn does.
       AiUsageSource.freebuff => model != null && model.isNotEmpty,
+      AiUsageSource.luma => lumaPricingFor(model) != null,
     };
 
 /// Resolves [model]'s pricing rates for [source], or null if unrecognized.
@@ -125,6 +128,7 @@ AiPricingRates? pricingFor(AiUsageSource source, String? model) => switch (sourc
       AiUsageSource.opencode => model == null ? null : _opencodePricingFor(model),
       AiUsageSource.freebuff =>
         model == null || model.isEmpty ? null : _freebuffPricingFor(model),
+      AiUsageSource.luma => lumaPricingFor(model),
     };
 
 /// Estimated USD cost of one turn's token usage, or 0 for a non-billable /
