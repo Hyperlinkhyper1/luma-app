@@ -75,6 +75,107 @@ void main() {
     expect(skill, contains('This project uses the Scope pattern.'));
   });
 
+  test('renders Claude Code and opencode subagents', () {
+    AiAgentDefinition agent(String model) => AiAgentDefinition(
+      id: 'reviewer',
+      name: 'Flutter Code Reviewer',
+      description: 'Reviews Flutter code safely.',
+      instructions: 'Inspect code and report actionable findings.',
+      outputFormat: '',
+      preferredModel: model,
+      updatedAt: DateTime(2026),
+    );
+
+    final claude = repository.claudeCodeAgent(agent('sonnet'));
+    expect(claude, startsWith('---\nname: flutter-code-reviewer\n'));
+    expect(claude, contains('model: "sonnet"'));
+    expect(claude, contains('Inspect code and report actionable findings.'));
+
+    final opencode = repository.opencodeAgent(
+      agent('anthropic/claude-sonnet-5'),
+    );
+    expect(opencode, contains('mode: subagent'));
+    expect(opencode, contains('model: "anthropic/claude-sonnet-5"'));
+    expect(opencode, isNot(contains('name:')));
+
+    // opencode rejects a bare model id, so it stays out of the frontmatter.
+    final bare = repository.opencodeAgent(agent('sonnet'));
+    expect(bare, isNot(contains('model:')));
+    expect(bare, contains('## Preferred model'));
+
+    expect(
+      AiWorkbenchRepository.projectPathFor(
+        agent(''),
+        AiAgentTarget.claudeCode,
+      ),
+      ['.claude', 'agents', 'flutter-code-reviewer.md'],
+    );
+    expect(
+      AiWorkbenchRepository.projectPathFor(agent(''), AiAgentTarget.opencode),
+      ['.opencode', 'agents', 'flutter-code-reviewer.md'],
+    );
+    expect(
+      AiWorkbenchRepository.projectPathFor(agent(''), AiAgentTarget.codex),
+      ['.agents', 'skills', 'flutter-code-reviewer', 'SKILL.md'],
+    );
+  });
+
+  test('installs an agent where each tool looks for it', () async {
+    final agent = AiAgentDefinition(
+      id: 'a',
+      name: 'Doc Writer',
+      description: 'Writes docs.',
+      instructions: 'Write clear docs.',
+      outputFormat: '',
+      updatedAt: DateTime(2026),
+    );
+    for (final target in AiAgentTarget.values) {
+      final path = await repository.installAgent(
+        agent,
+        directory.path,
+        target,
+      );
+      expect(await File(path).readAsString(), contains('Write clear docs.'));
+    }
+    expect(
+      await File(
+        '${directory.path}/.claude/agents/doc-writer.md',
+      ).exists(),
+      isTrue,
+    );
+  });
+
+  test('exports and imports the library and agents for sync', () async {
+    await repository.saveMarkdown(title: 'Context', body: 'Body');
+    await repository.saveAgent(
+      name: 'Helper',
+      description: '',
+      instructions: 'Help.',
+      outputFormat: '',
+      libraryEntryIds: [repository.markdownEntries.single.id],
+      preferredModel: '',
+    );
+    final snapshot = await repository.exportData();
+
+    final other = await Directory.systemTemp.createTemp('luma_ai_wb_other_');
+    addTearDown(() => other.delete(recursive: true));
+    final device = AiWorkbenchRepository(
+      supportDirectoryProvider: () async => other,
+    );
+    addTearDown(device.dispose);
+    await device.importData(snapshot);
+
+    expect(device.markdownEntries.single.title, 'Context');
+    expect(device.agents.single.name, 'Helper');
+
+    final reloaded = AiWorkbenchRepository(
+      supportDirectoryProvider: () async => other,
+    );
+    addTearDown(reloaded.dispose);
+    await reloaded.ready;
+    expect(reloaded.agents.single.libraryEntryIds, hasLength(1));
+  });
+
   test('creates stable Codex slugs', () {
     expect(
       AiWorkbenchRepository.slugFor('Flutter Code Reviewer'),

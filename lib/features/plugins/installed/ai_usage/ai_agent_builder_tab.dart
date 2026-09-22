@@ -11,7 +11,8 @@ import 'ai_workbench_models.dart';
 import 'ai_workbench_repository.dart';
 import 'ai_workbench_scope.dart';
 
-/// Builds reusable specialist definitions and exports them for Codex.
+/// Builds reusable specialist definitions and installs them into Codex,
+/// Claude Code or opencode.
 class AiAgentBuilderTab extends StatefulWidget {
   const AiAgentBuilderTab({super.key});
 
@@ -24,6 +25,7 @@ class _AiAgentBuilderTabState extends State<AiAgentBuilderTab> {
   String? _editingId;
   bool _editorReady = false;
   bool _saving = false;
+  AiAgentTarget _target = AiAgentTarget.codex;
   late final TextEditingController _nameController;
   late final TextEditingController _descriptionController;
   late final TextEditingController _instructionsController;
@@ -129,44 +131,46 @@ class _AiAgentBuilderTabState extends State<AiAgentBuilderTab> {
     AiAgentDefinition agent,
   ) async {
     await Clipboard.setData(ClipboardData(text: repo.codexPrompt(agent)));
-    if (mounted) _toast('Prompt copied — paste it into Codex');
+    if (mounted) _toast('Prompt copied — paste it into ${_target.label}');
   }
 
-  Future<void> _exportSkill(
+  Future<void> _exportAgent(
     AiWorkbenchRepository repo,
     AiAgentDefinition agent,
   ) async {
-    final slug = AiWorkbenchRepository.slugFor(agent.name);
-    final skill = repo.codexSkill(agent);
+    final target = _target;
+    final contents = repo.agentFileFor(agent, target);
     final path = await FilePicker.saveFile(
-      dialogTitle: 'Export Codex skill',
-      fileName: '$slug-SKILL.md',
+      dialogTitle: 'Export ${target.label} ${target.fileLabel}',
+      fileName: AiWorkbenchRepository.exportFileNameFor(agent, target),
       type: FileType.custom,
       allowedExtensions: ['md'],
-      bytes: Uint8List.fromList(utf8.encode(skill)),
+      bytes: Uint8List.fromList(utf8.encode(contents)),
     );
     if (path == null) return;
-    if (!Platform.isAndroid) await File(path).writeAsString(skill, flush: true);
-    if (mounted) _toast('Exported Codex skill');
+    if (!Platform.isAndroid) {
+      await File(path).writeAsString(contents, flush: true);
+    }
+    if (mounted) _toast('Exported ${target.label} ${target.fileLabel}');
   }
 
-  Future<void> _installSkill(
+  Future<void> _installAgent(
     AiWorkbenchRepository repo,
     AiAgentDefinition agent,
   ) async {
+    final target = _target;
     final project = await FilePicker.getDirectoryPath(
-      dialogTitle: 'Choose the Codex project folder',
+      dialogTitle: 'Choose the ${target.label} project folder',
     );
     if (project == null) return;
-    final slug = AiWorkbenchRepository.slugFor(agent.name);
-    final skillPath =
-        '$project${Platform.pathSeparator}.agents${Platform.pathSeparator}skills${Platform.pathSeparator}$slug${Platform.pathSeparator}SKILL.md';
-    if (await File(skillPath).exists() && mounted) {
+    final relative = AiWorkbenchRepository.projectPathFor(agent, target);
+    final path = [project, ...relative].join(Platform.pathSeparator);
+    if (await File(path).exists() && mounted) {
       final replace = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Replace existing skill?'),
-          content: Text('$slug already exists in this project.'),
+          title: Text('Replace existing ${target.fileLabel}?'),
+          content: Text('${relative.join('/')} already exists in this project.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -181,7 +185,7 @@ class _AiAgentBuilderTabState extends State<AiAgentBuilderTab> {
       );
       if (replace != true) return;
     }
-    final written = await repo.installCodexSkill(agent, project);
+    final written = await repo.installAgent(agent, project, target);
     if (mounted) _toast('Installed at $written');
   }
 
@@ -236,6 +240,9 @@ class _AiAgentBuilderTabState extends State<AiAgentBuilderTab> {
                       libraryEntries: repo.markdownEntries,
                       selectedLibraryIds: _selectedLibraryIds,
                       saving: _saving,
+                      target: _target,
+                      onTargetChanged: (target) =>
+                          setState(() => _target = target),
                       onToggleLibrary: (id, value) => setState(
                         () => value
                             ? _selectedLibraryIds.add(id)
@@ -248,12 +255,12 @@ class _AiAgentBuilderTabState extends State<AiAgentBuilderTab> {
                       onCopyPrompt: selected == null
                           ? null
                           : () => _copyPrompt(repo, selected),
-                      onExportSkill: selected == null
+                      onExport: selected == null
                           ? null
-                          : () => _exportSkill(repo, selected),
-                      onInstallSkill: selected == null
+                          : () => _exportAgent(repo, selected),
+                      onInstall: selected == null
                           ? null
-                          : () => _installSkill(repo, selected),
+                          : () => _installAgent(repo, selected),
                     );
                     if (narrow) {
                       return Column(
@@ -301,7 +308,7 @@ class _AgentHeader extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              '$count ${count == 1 ? 'agent' : 'agents'} · reusable specialists for Luma and Codex',
+              '$count ${count == 1 ? 'agent' : 'agents'} · reusable specialists for Codex, Claude Code and opencode',
               style: TextStyle(color: context.luma.textSecondary),
             ),
           ],
@@ -414,12 +421,14 @@ class _AgentEditor extends StatelessWidget {
     required this.libraryEntries,
     required this.selectedLibraryIds,
     required this.saving,
+    required this.target,
+    required this.onTargetChanged,
     required this.onToggleLibrary,
     required this.onSave,
     required this.onDelete,
     required this.onCopyPrompt,
-    required this.onExportSkill,
-    required this.onInstallSkill,
+    required this.onExport,
+    required this.onInstall,
   });
   final AiAgentDefinition? agent;
   final TextEditingController nameController;
@@ -430,12 +439,14 @@ class _AgentEditor extends StatelessWidget {
   final List<AiMarkdownEntry> libraryEntries;
   final Set<String> selectedLibraryIds;
   final bool saving;
+  final AiAgentTarget target;
+  final ValueChanged<AiAgentTarget> onTargetChanged;
   final void Function(String id, bool value) onToggleLibrary;
   final VoidCallback onSave;
   final VoidCallback? onDelete;
   final VoidCallback? onCopyPrompt;
-  final VoidCallback? onExportSkill;
-  final VoidCallback? onInstallSkill;
+  final VoidCallback? onExport;
+  final VoidCallback? onInstall;
 
   InputDecoration _decoration(String label, String hint) =>
       InputDecoration(labelText: label, hintText: hint);
@@ -487,7 +498,7 @@ class _AgentEditor extends StatelessWidget {
                     controller: modelController,
                     decoration: _decoration(
                       'Preferred model (optional)',
-                      'Leave blank to choose when running',
+                      'sonnet for Claude Code, anthropic/claude-sonnet-5 for opencode',
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -552,6 +563,29 @@ class _AgentEditor extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
+          if (agent != null) ...[
+            Row(
+              children: [
+                Text(
+                  'Use with',
+                  style: TextStyle(color: luma.textSecondary, fontSize: 12),
+                ),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: LumaSegmentedTabs(
+                      tabs: [for (final t in AiAgentTarget.values) t.label],
+                      selectedIndex: target.index,
+                      onSelect: (i) =>
+                          onTargetChanged(AiAgentTarget.values[i]),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+          ],
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -565,15 +599,15 @@ class _AgentEditor extends StatelessWidget {
                 ),
               if (agent != null)
                 LumaGhostButton(
-                  label: 'Export SKILL.md',
+                  label: 'Export ${target.fileLabel}',
                   icon: Icons.download_rounded,
-                  onTap: onExportSkill,
+                  onTap: onExport,
                 ),
               if (agent != null)
                 LumaGhostButton(
-                  label: 'Install for Codex',
+                  label: 'Install for ${target.label}',
                   icon: Icons.integration_instructions_rounded,
-                  onTap: onInstallSkill,
+                  onTap: onInstall,
                 ),
               LumaPrimaryButton(
                 label: saving ? 'Saving…' : 'Save agent',

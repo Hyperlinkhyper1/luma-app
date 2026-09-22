@@ -6,7 +6,43 @@ import 'package:path_provider/path_provider.dart';
 
 import 'ai_workbench_models.dart';
 
-/// Local-first storage and Codex export helpers for the AI Workbench tabs.
+/// The coding agents an [AiAgentDefinition] can be installed into, each with
+/// its own on-disk format and project location.
+enum AiAgentTarget {
+  codex(
+    label: 'Codex',
+    fileLabel: 'SKILL.md',
+    projectDirectory: ['.agents', 'skills'],
+  ),
+  claudeCode(
+    label: 'Claude Code',
+    fileLabel: 'subagent',
+    projectDirectory: ['.claude', 'agents'],
+  ),
+  opencode(
+    label: 'opencode',
+    fileLabel: 'agent',
+    projectDirectory: ['.opencode', 'agents'],
+  );
+
+  const AiAgentTarget({
+    required this.label,
+    required this.fileLabel,
+    required this.projectDirectory,
+  });
+
+  final String label;
+
+  /// What the exported file is called in that tool's own docs.
+  final String fileLabel;
+
+  /// Where the tool looks for project-level definitions, relative to the
+  /// project root. Codex skills get a folder per skill; Claude Code and
+  /// opencode read one Markdown file per agent straight from this directory.
+  final List<String> projectDirectory;
+}
+
+/// Local-first storage and agent export helpers for the AI Workbench tabs.
 class AiWorkbenchRepository extends ChangeNotifier {
   AiWorkbenchRepository({
     Future<Directory> Function()? supportDirectoryProvider,
@@ -70,6 +106,37 @@ class AiWorkbenchRepository extends ChangeNotifier {
   void _sort() {
     _markdownEntries.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
     _agents.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+  }
+
+  /// Snapshot for the `ai_usage` sync collection: the whole library and
+  /// every agent, in the same shape as the local file.
+  Future<Object?> exportData() async {
+    await _ready;
+    return {
+      'markdownEntries': _markdownEntries.map((e) => e.toJson()).toList(),
+      'agents': _agents.map((e) => e.toJson()).toList(),
+    };
+  }
+
+  /// Replaces the library and agents with a synced snapshot.
+  Future<void> importData(Object? data) async {
+    await _ready;
+    if (data is! Map) throw const FormatException('Invalid AI workbench data.');
+    final notes = data['markdownEntries'];
+    final agents = data['agents'];
+    _markdownEntries = [
+      for (final item in notes is List ? notes : const [])
+        if (item is Map)
+          AiMarkdownEntry.fromJson(Map<String, dynamic>.from(item)),
+    ];
+    _agents = [
+      for (final item in agents is List ? agents : const [])
+        if (item is Map)
+          AiAgentDefinition.fromJson(Map<String, dynamic>.from(item)),
+    ];
+    _sort();
+    notifyListeners();
+    await _persist();
   }
 
   Future<void> _persist() async {
@@ -162,7 +229,7 @@ class AiWorkbenchRepository extends ChangeNotifier {
     return null;
   }
 
-  /// A self-contained prompt for pasting into an existing Codex session.
+  /// A self-contained prompt for pasting into any agent's chat session.
   String codexPrompt(AiAgentDefinition agent) {
     final buffer = StringBuffer()
       ..writeln('You are the "${agent.name}" specialist.')
@@ -180,20 +247,115 @@ class AiWorkbenchRepository extends ChangeNotifier {
 
   /// Generates the standard Codex skill file for this agent.
   String codexSkill(AiAgentDefinition agent) {
-    final slug = slugFor(agent.name);
-    final description = agent.description.trim().isEmpty
-        ? 'Specialist agent created in Luma.'
-        : agent.description.trim().replaceAll('\n', ' ');
     final buffer = StringBuffer()
       ..writeln('---')
-      ..writeln('name: $slug')
-      ..writeln('description: ${_yamlText(description)}')
+      ..writeln('name: ${slugFor(agent.name)}')
+      ..writeln('description: ${_yamlText(_description(agent))}')
       ..writeln('---')
       ..writeln()
+      ..writeln(_body(agent, includeModel: true));
+    return '${buffer.toString().trimRight()}\n';
+  }
+
+  /// A Claude Code subagent (`.claude/agents/<name>.md`). Claude Code reads
+  /// `name` and `description` to decide when to delegate, and `model` accepts
+  /// its aliases (`sonnet`, `opus`, `haiku`, `inherit`) or a full model id.
+  String claudeCodeAgent(AiAgentDefinition agent) {
+    final model = agent.preferredModel.trim();
+    final buffer = StringBuffer()
+      ..writeln('---')
+      ..writeln('name: ${slugFor(agent.name)}')
+      ..writeln('description: ${_yamlText(_description(agent))}');
+    if (model.isNotEmpty) buffer.writeln('model: ${_yamlText(model)}');
+    buffer
+      ..writeln('---')
+      ..writeln()
+      ..writeln(_body(agent, includeModel: false));
+    return '${buffer.toString().trimRight()}\n';
+  }
+
+  /// An opencode subagent (`.opencode/agents/<name>.md`); the file name is
+  /// the agent's name. opencode only accepts `provider/model` ids, so any
+  /// other model stays in the body as guidance instead of breaking the agent.
+  String opencodeAgent(AiAgentDefinition agent) {
+    final model = agent.preferredModel.trim();
+    final modelIsQualified = RegExp(r'^[^\s/]+/\S+$').hasMatch(model);
+    final buffer = StringBuffer()
+      ..writeln('---')
+      ..writeln('description: ${_yamlText(_description(agent))}')
+      ..writeln('mode: subagent');
+    if (modelIsQualified) buffer.writeln('model: ${_yamlText(model)}');
+    buffer
+      ..writeln('---')
+      ..writeln()
+      ..writeln(_body(agent, includeModel: !modelIsQualified));
+    return '${buffer.toString().trimRight()}\n';
+  }
+
+  /// The file contents for [target].
+  String agentFileFor(AiAgentDefinition agent, AiAgentTarget target) =>
+      switch (target) {
+        AiAgentTarget.codex => codexSkill(agent),
+        AiAgentTarget.claudeCode => claudeCodeAgent(agent),
+        AiAgentTarget.opencode => opencodeAgent(agent),
+      };
+
+  /// Where [target] expects this agent inside a project, as path segments
+  /// relative to the project root.
+  static List<String> projectPathFor(
+    AiAgentDefinition agent,
+    AiAgentTarget target,
+  ) {
+    final slug = slugFor(agent.name);
+    return switch (target) {
+      AiAgentTarget.codex => [...target.projectDirectory, slug, 'SKILL.md'],
+      AiAgentTarget.claudeCode ||
+      AiAgentTarget.opencode => [...target.projectDirectory, '$slug.md'],
+    };
+  }
+
+  /// Suggested file name when exporting to a location the user picks.
+  static String exportFileNameFor(
+    AiAgentDefinition agent,
+    AiAgentTarget target,
+  ) {
+    final slug = slugFor(agent.name);
+    return target == AiAgentTarget.codex ? '$slug-SKILL.md' : '$slug.md';
+  }
+
+  /// Writes the agent into [projectDirectory] where [target] picks it up.
+  Future<String> installAgent(
+    AiAgentDefinition agent,
+    String projectDirectory,
+    AiAgentTarget target,
+  ) async {
+    final file = File(
+      [
+        projectDirectory,
+        ...projectPathFor(agent, target),
+      ].join(Platform.pathSeparator),
+    );
+    await file.parent.create(recursive: true);
+    await file.writeAsString(agentFileFor(agent, target), flush: true);
+    return file.path;
+  }
+
+  Future<String> installCodexSkill(
+    AiAgentDefinition agent,
+    String projectDirectory,
+  ) => installAgent(agent, projectDirectory, AiAgentTarget.codex);
+
+  static String _description(AiAgentDefinition agent) =>
+      agent.description.trim().isEmpty
+      ? 'Specialist agent created in Luma.'
+      : agent.description.trim().replaceAll('\n', ' ');
+
+  String _body(AiAgentDefinition agent, {required bool includeModel}) {
+    final buffer = StringBuffer()
       ..writeln('# ${agent.name}')
       ..writeln()
       ..writeln(agent.instructions.trim());
-    if (agent.preferredModel.trim().isNotEmpty) {
+    if (includeModel && agent.preferredModel.trim().isNotEmpty) {
       buffer
         ..writeln()
         ..writeln('## Preferred model')
@@ -206,23 +368,7 @@ class AiWorkbenchRepository extends ChangeNotifier {
         ..writeln(agent.outputFormat.trim());
     }
     _appendLibraryContext(buffer, agent);
-    return buffer.toString().trimRight() + '\n';
-  }
-
-  Future<String> installCodexSkill(
-    AiAgentDefinition agent,
-    String projectDirectory,
-  ) async {
-    final skillDirectory = Directory(
-      '${projectDirectory}${Platform.pathSeparator}.agents'
-      '${Platform.pathSeparator}skills${Platform.pathSeparator}${slugFor(agent.name)}',
-    );
-    await skillDirectory.create(recursive: true);
-    final skillFile = File(
-      '${skillDirectory.path}${Platform.pathSeparator}SKILL.md',
-    );
-    await skillFile.writeAsString(codexSkill(agent), flush: true);
-    return skillFile.path;
+    return buffer.toString().trimRight();
   }
 
   static String slugFor(String value) {

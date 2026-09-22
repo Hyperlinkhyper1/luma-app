@@ -26,6 +26,13 @@ final StreamController<bool> _focusEvents = StreamController<bool>.broadcast();
 /// every other summoned launcher behaves.
 Stream<bool> get windowFocusEvents => _focusEvents.stream;
 
+final StreamController<void> _closeEvents = StreamController<void>.broadcast();
+
+/// Fires when the user closes the desktop window. The process stays resident
+/// for the pet, so this — not process exit — is the app's real "closing"
+/// moment, and where work meant to run on close has to hook in.
+Stream<void> get windowCloseEvents => _closeEvents.stream;
+
 class _MaximizeListener extends WindowListener {
   @override
   void onWindowMaximize() => _events.add(null);
@@ -41,6 +48,7 @@ class _MaximizeListener extends WindowListener {
     // Keep the process resident so the pet's global hotkey continues to work
     // after the user closes the desktop window. The app can still be ended by
     // the operating system or task manager.
+    _closeEvents.add(null);
     await windowManager.hide();
   }
 }
@@ -86,8 +94,11 @@ Future<void> windowToggleMaximize() async {
   }
 }
 
-Future<void> windowClose() =>
-    hasCustomTitleBar ? windowManager.hide() : Future.value();
+Future<void> windowClose() async {
+  if (!hasCustomTitleBar) return;
+  _closeEvents.add(null);
+  await windowManager.hide();
+}
 
 Future<void> windowShow() async {
   if (!hasCustomTitleBar) return;

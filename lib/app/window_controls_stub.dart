@@ -11,6 +11,8 @@ Stream<void> get windowEvents => const Stream<void>.empty();
 
 Stream<bool> get windowFocusEvents => const Stream<bool>.empty();
 
+Stream<void> get windowCloseEvents => const Stream<void>.empty();
+
 Future<void> initWindowChrome() async {}
 
 Future<void> windowStartDrag() async {}

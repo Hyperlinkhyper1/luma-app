@@ -22,6 +22,7 @@ import 'features/plugins/installed/mood_journal/data/mood_journal_database.dart'
 import 'features/plugins/installed/mood_journal/mood_journal_repository.dart';
 import 'features/plugins/installed/mood_journal/mood_journal_scope.dart';
 import 'features/plugins/installed/ai_usage/data/ai_usage_database.dart';
+import 'features/plugins/installed/ai_usage/ai_usage_cloud_sync.dart';
 import 'features/plugins/installed/ai_usage/ai_workbench_repository.dart';
 import 'features/plugins/installed/ai_usage/ai_workbench_scope.dart';
 import 'features/plugins/installed/ai_usage/ai_usage_repository.dart';
@@ -226,6 +227,12 @@ class _LumaAppState extends State<LumaApp> {
   );
   late final AiWorkbenchRepository _aiWorkbenchRepository =
       AiWorkbenchRepository();
+  // Per-device usage totals, shared through the server only on open and on
+  // close rather than the collection loop — see AiUsageCloudSync.
+  late final AiUsageCloudSync _aiUsageCloudSync = AiUsageCloudSync(
+    db: _aiUsageDb,
+    store: SyncServiceAiUsageStore(_sync),
+  );
   late final SteamDatabase _steamDb = SteamDatabase();
   late final SteamRepository _steamRepository = SteamRepository(
     _steamDb,
@@ -392,9 +399,19 @@ class _LumaAppState extends State<LumaApp> {
         icon: Icons.mood_rounded,
         db: _moodJournalDb,
       ),
-      // AI Usage's database is a derived, re-scannable cache of the user's own
-      // local Claude Code logs — deliberately excluded from sync; it can be
-      // rebuilt any time by rescanning and may grow large.
+      // AI Usage: the agents and Markdown library sync here like any other
+      // collection. The usage numbers themselves are per-device uploads that
+      // this toggle switches on, pushed only on open/close by
+      // _aiUsageCloudSync so a growing log history never rides the
+      // 10-second loop.
+      JsonStoreSyncCollection(
+        id: kAiUsageSyncCollectionId,
+        label: 'AI Usage (agents, library & usage)',
+        icon: Icons.query_stats_rounded,
+        listenable: _aiWorkbenchRepository,
+        exporter: _aiWorkbenchRepository.exportData,
+        importer: _aiWorkbenchRepository.importData,
+      ),
       DriftSyncCollection(
         id: 'school',
         label: 'School',
@@ -520,6 +537,9 @@ class _LumaAppState extends State<LumaApp> {
       .catchError((_) {});
 
   AppLifecycleListener? _lifecycleListener;
+  StreamSubscription<void>? _windowCloseSubscription;
+  bool _aiUsageSyncAvailable = false;
+  DateTime? _aiUsageOpenedAt;
 
   @override
   void initState() {
@@ -527,7 +547,8 @@ class _LumaAppState extends State<LumaApp> {
     StorageGuardService.instance = _storageGuard;
     widget.settings.addListener(_onSettingsChanged);
     _storageGuard.refresh();
-    _sync.init();
+    final syncInit = _sync.init();
+    unawaited(_syncAiUsageOnOpen(syncInit));
     _peerSync.init();
     unawaited(_syncDeviceShareWithPlan());
     _familyRepository.init();
@@ -538,7 +559,85 @@ class _LumaAppState extends State<LumaApp> {
     unawaited(_petRepository.init());
     _usageRepository.init();
     unawaited(_importSchoolMindMaps());
-    _lifecycleListener = AppLifecycleListener(onDetach: _onAppDetach);
+    _lifecycleListener = AppLifecycleListener(
+      onDetach: _onAppDetach,
+      onPause: _pushAiUsage,
+      onResume: _onAppResumed,
+    );
+    _windowCloseSubscription = windowCloseEvents.listen((_) => _pushAiUsage());
+  }
+
+  /// "Opening" for AI Usage sync: once the account state is loaded, scan the
+  /// local logs so the upload is current, then pull the other devices'
+  /// totals and push this one's. Kept off the startup path — a few seconds
+  /// late is fine for numbers that only change when an AI tool runs.
+  Future<void> _syncAiUsageOnOpen(Future<void> syncInit) async {
+    try {
+      await syncInit;
+      _aiUsageSyncAvailable = _sync.serverReady &&
+          _sync.isEnabled(kAiUsageSyncCollectionId);
+      _sync.addListener(_onSyncStateChanged);
+      await Future<void>.delayed(const Duration(seconds: 5));
+      if (!mounted) return;
+      await _runAiUsageOpenSync(rescan: true);
+    } catch (error) {
+      debugPrint('AI usage sync on open failed: $error');
+    }
+  }
+
+  /// Coming back to the app is "opening" it again — on Android, and on the
+  /// desktop where closing only hides the window. Throttled so flicking
+  /// between windows doesn't turn into a sync per focus change.
+  void _onAppResumed() {
+    final last = _aiUsageOpenedAt;
+    if (last == null ||
+        DateTime.now().difference(last) < const Duration(minutes: 5)) {
+      return;
+    }
+    unawaited(
+      _runAiUsageOpenSync(rescan: true).catchError((Object error) {
+        debugPrint('AI usage sync on resume failed: $error');
+      }),
+    );
+  }
+
+  Future<void> _runAiUsageOpenSync({required bool rescan}) async {
+    _aiUsageOpenedAt = DateTime.now();
+    if (rescan && _sync.isEnabled(kAiUsageSyncCollectionId)) {
+      await _aiUsageRepository.rescan();
+    }
+    await _aiUsageCloudSync.syncOnOpen();
+    await _aiUsageRepository.loadRemoteDevices();
+  }
+
+  /// Turning AI Usage sync on (or signing in with it on) counts as opening:
+  /// without this the first exchange would wait for the next restart.
+  /// Turning it off drops the other devices' numbers straight away.
+  void _onSyncStateChanged() {
+    final available =
+        _sync.serverReady && _sync.isEnabled(kAiUsageSyncCollectionId);
+    final wasAvailable = _aiUsageSyncAvailable;
+    _aiUsageSyncAvailable = available;
+    if (available == wasAvailable) return;
+    unawaited(
+      _runAiUsageOpenSync(rescan: available).catchError((Object error) {
+        debugPrint('AI usage sync failed: $error');
+      }),
+    );
+  }
+
+  /// "Closing" for AI Usage sync: the desktop window closing (the process
+  /// stays up for the pet) or the app going to the background on Android.
+  /// A no-op without network traffic when nothing new was scanned.
+  Future<void> _pushAiUsage() async {
+    try {
+      if (_sync.isEnabled(kAiUsageSyncCollectionId)) {
+        await _aiUsageRepository.rescan();
+      }
+      await _aiUsageCloudSync.pushOnClose();
+    } catch (error) {
+      debugPrint('AI usage sync on close failed: $error');
+    }
   }
 
   /// Carries maps made in School's retired mind map tab over to the Mind Map
@@ -561,6 +660,8 @@ class _LumaAppState extends State<LumaApp> {
   void dispose() {
     _homeRepository.dispose();
     _lifecycleListener?.dispose();
+    _windowCloseSubscription?.cancel();
+    _sync.removeListener(_onSyncStateChanged);
     widget.settings.removeListener(_onSettingsChanged);
     _deviceShare?.dispose();
     _peerSync.dispose();
@@ -613,6 +714,7 @@ class _LumaAppState extends State<LumaApp> {
       _chatRepository.purgeEmptyConversations(),
       NotesRepository().purgeEmpty(),
       _sync.saveState(),
+      _pushAiUsage(),
     ]);
   }
 

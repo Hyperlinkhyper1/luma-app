@@ -39,6 +39,7 @@ class AiUsageRepository extends ChangeNotifier {
   bool? _opencodeDbFound;
   bool? _freebuffDirFound;
   DateTime? _lastScanAt;
+  List<AiUsageRemoteDevice> _remoteDevices = const [];
   ClaudeCodeScanResult? _lastClaudeResult;
   CodexCliScanResult? _lastCodexResult;
   AntigravityScanResult? _lastAntigravityResult;
@@ -85,6 +86,20 @@ class AiUsageRepository extends ChangeNotifier {
   }
 
   DateTime? get lastScanAt => _lastScanAt;
+
+  /// The user's other devices whose usage is included in [watchRange], as
+  /// of the last [loadRemoteDevices]. Empty when AI Usage sync is off.
+  List<AiUsageRemoteDevice> get remoteDevices => _remoteDevices;
+
+  /// Re-reads which other devices' usage is stored here. Called after a
+  /// cloud sync pulls new numbers, and after every [rescan].
+  Future<void> loadRemoteDevices() async {
+    final devices = await (_db.select(
+      _db.aiUsageRemoteDevices,
+    )..orderBy([(d) => OrderingTerm.asc(d.name)])).get();
+    _remoteDevices = devices;
+    notifyListeners();
+  }
   ClaudeCodeScanResult? get lastClaudeResult => _lastClaudeResult;
   CodexCliScanResult? get lastCodexResult => _lastCodexResult;
   AntigravityScanResult? get lastAntigravityResult => _lastAntigravityResult;
@@ -133,13 +148,17 @@ class AiUsageRepository extends ChangeNotifier {
       if (lastTurnsAdded > 0) {
         StorageGuard.instance.scheduleRefresh();
       }
+      _remoteDevices = await (_db.select(
+        _db.aiUsageRemoteDevices,
+      )..orderBy([(d) => OrderingTerm.asc(d.name)])).get();
     } finally {
       _scanning = false;
       notifyListeners();
     }
   }
 
-  /// Turns in `[start, end)`, soonest first, across every source. A null
+  /// Turns in `[start, end)`, soonest first, across every source and every
+  /// synced device. A null
   /// [start] is unbounded ("All time"). Live-updates as [rescan] adds new
   /// rows.
   Stream<List<AiUsageTurn>> watchRange(DateTime? start, DateTime end) {
