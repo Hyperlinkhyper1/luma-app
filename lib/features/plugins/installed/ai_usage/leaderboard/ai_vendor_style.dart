@@ -60,6 +60,7 @@ String vendorInitials(String vendor) =>
 /// `"Hugging Face"` isn't one of the 12 model vendors — it's a hub, not a
 /// lab — so it gets its own identity below rather than borrowing one.
 const Map<String, String> kNewsSourceVendor = {
+  'Anthropic': 'anthropic',
   'OpenAI': 'openai',
   'Google AI': 'google',
   'Google DeepMind': 'google',

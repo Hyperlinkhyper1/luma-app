@@ -108,19 +108,27 @@ const Set<String> kAllowedVendors = {
 
 /// One vendor blog polled for the leaderboard's news rail.
 ///
-/// Only feeds that actually exist are listed — Anthropic, Meta, Mistral and
-/// xAI publish no public RSS at the time of writing, so their releases reach
-/// the rail through Hugging Face's blog and the aggregators rather than
-/// first-party. A feed that starts 404ing contributes nothing and shows as
-/// failed in the admin refresh log; it never fails the refresh as a whole.
+/// Most are RSS/Atom. Anthropic, Meta, Mistral and xAI publish no public
+/// feed at the time of writing; Anthropic's newsroom is read straight from
+/// its HTML listing instead (see [parseAnthropicNews]), the others reach the
+/// rail through Hugging Face's blog. A feed that starts 404ing — or a page
+/// whose markup changes out from under its parser — contributes nothing and
+/// shows as failed in the admin refresh log; it never fails the refresh as a
+/// whole.
 class AiNewsFeed {
-  const AiNewsFeed(this.source, this.url);
+  const AiNewsFeed(this.source, this.url, {this.parse = parseFeed});
 
   final String source;
   final String url;
+
+  /// Turns the fetched body into items. [parseFeed] for real feeds; a
+  /// page-specific reader for sources that only publish HTML.
+  final List<AiNewsItem> Function(String body, String source) parse;
 }
 
 const List<AiNewsFeed> kAiNewsFeeds = [
+  AiNewsFeed('Anthropic', 'https://www.anthropic.com/news',
+      parse: parseAnthropicNews),
   AiNewsFeed('OpenAI', 'https://openai.com/news/rss.xml'),
   AiNewsFeed('Google AI', 'https://blog.google/technology/ai/rss/'),
   AiNewsFeed('Google DeepMind', 'https://deepmind.google/blog/rss.xml'),
@@ -382,7 +390,7 @@ class AiCatalogFetcher {
       AiNewsFeed feed) async {
     try {
       final body = await _getString(Uri.parse(feed.url));
-      final parsed = parseFeed(body, feed.source)
+      final parsed = feed.parse(body, feed.source)
         ..sort((a, b) => b.publishedAtMs.compareTo(a.publishedAtMs));
       final items = parsed.take(kAiNewsPerFeed).toList();
       return (
@@ -561,6 +569,64 @@ List<AiNewsItem> parseFeed(String xml, String source) {
   return items;
 }
 
+/// Reads Anthropic's newsroom listing, which has no RSS.
+///
+/// Every article on the page is an `<a href="/news/<slug>">` holding a
+/// `<time>` and a title — a heading plus a `<p>` summary on the featured
+/// cards, a bare `<span>` in the list below them. The class names are hashed
+/// CSS modules that change between deploys, so only tag structure is relied
+/// on. A featured article shows up twice (card and list row); the two merge
+/// so its summary survives. Anchors without a date — nav and footer links
+/// into /news — are skipped. Exposed for testing.
+List<AiNewsItem> parseAnthropicNews(String html, String source) {
+  final byUrl = <String, AiNewsItem>{};
+  final anchors = RegExp(
+    r'<a\b[^>]*\bhref="((?:https://www\.anthropic\.com)?/news/[a-z0-9][^"#?]*)"[^>]*>([\s\S]*?)</a>',
+    caseSensitive: false,
+  ).allMatches(html);
+  for (final anchor in anchors) {
+    final body = anchor.group(2)!;
+    final time = _tagText(body, 'time');
+    final date = time == null ? null : _parseMonthDayYear(time);
+    if (date == null) continue;
+    final heading = RegExp(r'<h[1-6]\b[^>]*>([\s\S]*?)</h[1-6]>',
+            caseSensitive: false)
+        .firstMatch(body);
+    final title = heading != null
+        ? _cleanText(heading.group(1)!)
+        // The list row: drop the date/category block, and what's left is the
+        // title.
+        : _cleanText(body.replaceFirst(
+            RegExp(r'<div\b[^>]*>(?:(?!<div\b)[\s\S])*?</time>[\s\S]*?</div>',
+                caseSensitive: false),
+            ''));
+    if (title.isEmpty) continue;
+    final path = anchor.group(1)!;
+    final url =
+        path.startsWith('http') ? path : 'https://www.anthropic.com$path';
+    byUrl[url] = AiNewsItem(
+      id: _hashId(url),
+      title: title,
+      url: url,
+      source: source,
+      publishedAtMs: date.millisecondsSinceEpoch,
+      summary: _clampSummary(_tagText(body, 'p')) ?? byUrl[url]?.summary,
+    );
+  }
+  return byUrl.values.toList();
+}
+
+/// `Aug 31, 2026` / `September 3, 2026`, as UTC midnight.
+DateTime? _parseMonthDayYear(String raw) {
+  final match = RegExp(r'([A-Za-z]{3})[A-Za-z]*\.?\s+(\d{1,2}),?\s+(\d{4})')
+      .firstMatch(raw);
+  if (match == null) return null;
+  final month = _rfc822Months.indexOf(match.group(1)!.toLowerCase()) + 1;
+  if (month == 0) return null;
+  return DateTime.utc(
+      int.parse(match.group(3)!), month, int.parse(match.group(2)!));
+}
+
 String? _tagText(String chunk, String tag) {
   final match = RegExp('<$tag(?:\\s[^>]*)?>([\\s\\S]*?)</$tag>',
           caseSensitive: false)
@@ -646,14 +712,24 @@ String _cleanText(String raw) {
   return text.replaceAll(RegExp(r'\s+'), ' ').trim();
 }
 
-/// The handful of entities feeds actually use. `&amp;` is resolved last so a
-/// double-encoded `&amp;lt;` doesn't turn into a tag on the way through.
+/// The handful of named entities feeds actually use, plus numeric ones
+/// (React-rendered pages write an apostrophe as `&#x27;`). `&amp;` is
+/// resolved last so a double-encoded `&amp;lt;` doesn't turn into a tag on
+/// the way through.
 String _decodeEntities(String raw) {
   return raw
+      .replaceAllMapped(RegExp(r'&#(x[0-9a-fA-F]+|\d+);'), (m) {
+        final digits = m.group(1)!;
+        final code = digits.startsWith('x')
+            ? int.tryParse(digits.substring(1), radix: 16)
+            : int.tryParse(digits);
+        return code == null || code > 0x10FFFF
+            ? m.group(0)!
+            : String.fromCharCode(code);
+      })
       .replaceAll('&lt;', '<')
       .replaceAll('&gt;', '>')
       .replaceAll('&quot;', '"')
-      .replaceAll('&#39;', "'")
       .replaceAll('&apos;', "'")
       .replaceAll('&nbsp;', ' ')
       .replaceAll('&amp;', '&');
