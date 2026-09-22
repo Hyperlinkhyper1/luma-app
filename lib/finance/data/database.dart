@@ -72,6 +72,10 @@ class RecurringRules extends Table {
   /// income) so it can be surfaced in the "due soon" reminder list. Only
   /// meaningful for expense-kind rules.
   BoolColumn get isBill => boolean().withDefault(const Constant(false))();
+
+  /// How many days before [nextDue] this bill should start showing in the
+  /// "due soon" reminder card. Only meaningful when [isBill] is true.
+  IntColumn get reminderDaysBefore => integer().withDefault(const Constant(7))();
 }
 
 /// Rules that automatically move money from the main balance into a pot.
@@ -159,7 +163,7 @@ class AppDatabase extends _$AppDatabase {
             ));
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -175,6 +179,10 @@ class AppDatabase extends _$AppDatabase {
           if (from < 3) {
             await m.addColumn(recurringRules, recurringRules.isBill);
             await m.createTable(balanceSnapshots);
+          }
+          if (from < 4) {
+            await m.addColumn(
+                recurringRules, recurringRules.reminderDaysBefore);
           }
         },
       );

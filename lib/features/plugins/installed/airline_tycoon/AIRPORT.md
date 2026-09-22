@@ -13,9 +13,9 @@ The new airport starts paused with two connected stands and an ATR 72.
 3. Follow aircraft, passenger groups, and ground vehicles. Delays and missing
    services reduce contract income. Read the schedule's issue text when a
    flight waits. Fees and operating costs appear in Finances.
-4. Build connected taxiways and service roads before adding stands. Place
-   passenger facilities inside terminal sections. Use cutaway to see the
-   interior. Security and amenity queues make additional facilities useful.
+4. Build connected taxiways and service roads before adding stands. Press
+   **Airport** (or T) to furnish the terminal's three halls. Security and
+   amenity queues make additional facilities useful.
 
 Drag to move across the map, right-drag (or Shift/Ctrl-drag) to orbit,
 and scroll to zoom. Touch: one finger moves, two fingers pinch to zoom,
@@ -24,19 +24,20 @@ drag to move and twist to turn. Construction snaps to
 grid, quality and performance-stats controls sit under the top bar.
 Keyboard: WASD/arrows pan, Q/E turn, +/- zoom, Space pauses, 1/2/3 set the
 speed, R rotates, Esc cancels or closes, C and G toggle cutaway and grid,
-B opens Build, P opens Planning, F3 shows performance stats.
+T switches between the airfield and airport mode, B opens Build, P opens
+Planning, F3 shows performance stats.
 
 Build shows category tabs with a 3D preview card per item (rendered from the
-same model that gets placed). Selecting a terminal section offers **Edit
-interior**: the roof comes off, the camera moves in, and the tabs switch to
-passenger flow, shops & lounges and decor.
+same model that gets placed). Outside it builds the airfield; in airport
+mode (below) it furnishes the terminal hall by hall.
 
 Stands come in three kinds. Regional stands take aircraft up to 45 t.
 Remote stands take anything and need a bus. Contact stands must touch a
 terminal; their jet bridge removes the bus and boards 60% faster. Aircraft
 park nose-in towards the nearest terminal. Duty-free shops (€14 per
 passenger, after security) and lounges (€20, replaces seating) earn retail
-income; plants, fountains and information boards add a little satisfaction, and each
+income; plants, fountains, information boards and the smaller flight info screen add
+a little satisfaction, and each
 staffed information desk (5 × 4 m) adds 0.02, up to 0.06 for three.
 Cleanliness runs from 60% with no bins to 100% with ten sets of recycling
 bins (2 × 1 m, `cleanliness`); the gap above 60% is worth up to +0.05
@@ -48,15 +49,20 @@ Staffed check-in counters (6 × 5 m) are a full check-in with two agents,
 a bag drop and a queue lane, 10 passengers per game minute. Vending machines
 (1 × 1 m) stand in for the café: one minute per group and €3 per passenger
 instead of three minutes and €8; a restaurant (14 × 10 m) is the other end
-of that stop: five minutes, €26 and a small mood boost. Fashion boutiques (8 × 6 m) share the duty-free
+of that stop: five minutes, €26 and a small mood boost. A coffee to-go stall (4 × 3 m) is quicker still:
+ninety seconds and €6, and a food cart (3 × 2 m) is cheaper still: one
+minute and €4, sized to fit tight corners. Fashion boutiques (8 × 6 m) share the duty-free
 stop: a passenger browses whichever shop frees up first, three minutes and
 €18 in a boutique. A newsstand kiosk (5 × 4 m) is the cheap end: ninety
-seconds and €9; a duty-free food & drink hall (10 × 8 m) takes two and a
+seconds and €9; a flower shop (6 × 5 m) takes two minutes and earns €16; a duty-free food & drink hall (10 × 8 m) takes two and a
 half minutes and earns €20. A perfume boutique (8 × 7 m) is low demand and
-high value: two minutes, and a quarter of each group spends €90. Luxury boutiques (8 × 6 m) take four minutes, earn €26
+high value: two minutes, and a quarter of each group spends €90. Both
+share the duty-free stop with the rest. Luxury boutiques (8 × 6 m) take four minutes, earn €26
 and lift the passenger's mood a little. VIP lounges & bars (8 × 6 m) are
 the premium waiting area next to seating and lounges: €35 per passenger and
-+0.08 satisfaction.
++0.08 satisfaction. An arcade (10 × 8 m) is another seating alternative:
+€12 per passenger and +0.07 satisfaction. A casino (12 × 10 m) is the most
+expensive seating alternative: €40 per passenger and +0.06 satisfaction.
 
 Baggage carousels (10 × 5 m) are required by every medium and long-haul
 contract. When such a flight finishes unloading, its passengers walk from the
@@ -68,6 +74,233 @@ scene the bags ride the belt (an instanced mesh in `scene.js`, path from
 `AirportModels.loopPoint`), vanish as the group collects them, and the
 waiting people stand around the carousel. The model's static luggage only
 appears in Build previews.
+
+## Managing and upgrading buildings
+
+Clicking a building opens its management window, like the original game:
+a large preview, a **General** tab (status, footprint, what it is locked
+by, money invested, Focus / Move / Edit interior) and an **Upgrade** tab,
+plus **Flights** on a stand and **Vehicles** at a vehicle depot. The trash
+button on the preview asks once before it demolishes.
+
+Every building starts at level 1 and most go up to 5
+(`maxFacilityLevel`). `facilityUpgrade(kind)` names the upgraded
+attribute and its effect; `upgradeCostAt(def, level)` prices the next
+level at 40% of the build cost times the current level. The simulation
+applies the levels:
+
+- runways (Surface & lighting): landing and take-off 15% faster per level;
+- taxiways (Asphalt): taxi 10% faster, averaged over the taxi path;
+- stands (Asphalt): ground handling and boarding 15% faster;
+- fuel depot, baggage hall, vehicle depot (Equipment): services 20% faster;
+- control tower (Radar): approaches 10% shorter, best tower counts;
+- terminal sections (Comfort): +1% satisfaction per level, averaged;
+- staffed desks, security, gates, toilets (Staff): 25% faster service;
+  an information desk counts once per level;
+- shops and food (Stock & staff): 15% more sales, 25% quicker service;
+- seating, lounges and the arcade (Comfort): +1% satisfaction and 15% more
+  income per level;
+- decor and bins count once per level; carousels hand out bags 25% faster.
+
+Hangars, service roads and entrances have no upgrades. Boarding gates have
+two, levelled separately (`facilityUpgrades`, stored per id in
+`AirportFacility.levels`): **boarding lanes** (one more lane per level) and
+**boarding speed** (+1.5 passengers per lane per minute). The `upgrade`
+command takes an optional `attribute`; without one it buys the main
+upgrade. Levels survive a move and a reload, and demolishing refunds half
+of the build cost plus every upgrade. The page mirrors `upgradeCostAt`
+only to show the refund.
+
+## One terminal, three parts
+
+The terminal is one building: **Terminal** (`terminal`, 120 × 60 m, €4M).
+Build as many sections as you like side by side and they join into one hall
+wherever they touch (`hallKinds`). Which part of the terminal a piece of
+floor is comes from zoning it, not from the building:
+
+- The **arrival hall** is where passengers come in: the entrance, ticket
+  machines, check-in desks and staffed counters, and security through to the
+  main hall (`arrivalHallKinds`).
+- The **main hall** is everything past security: shops, food, seating,
+  toilets, lounges, decor and the boarding gates. Floor with no zone painted
+  on it counts as the main hall, and stands nose in to the terminal.
+- The **departure hall** is where arriving passengers leave: baggage
+  carousels, customs and the check-out (`departureHallKinds`).
+- Information desks, boards, panels and bins fit anywhere (`anyHallKinds`).
+
+The names follow the game, not airport signage: the arrival hall is where
+you arrive at the airport, the departure hall where you leave it.
+`hallZoneOf` sorts a kind into its part, `zoneOfPlacement` says which part a
+spot is, and `zoneRefusalFor` (mirrored in `scene_logic.js`) explains a
+wrong placement, for example "This goes in the departure hall … Zone a piece
+of floor as the departure hall first."
+
+The separate **Arrival hall** and **Departure hall** buildings
+(`terminalLandside`, `terminalReclaim`) are `hidden` in the catalog: airports
+that already have one keep it, and its floor defaults to that part
+(`hallZone`), but no new ones go up — `build` answers "Build a terminal and
+zone its floor instead."
+
+The starter airport is four terminal sections — two deep ones airside and a
+strip along the road — with the road-side strip zoned arrival (entrance,
+check-in, security) and departure (customs, check-out). The forecourt canopy
+names whichever arrival and departure floor reaches it (`layout().signs`,
+which reads the zones).
+
+### Zoning the floor
+
+Zoning marks out part of the terminal floor as one of the three parts, so
+one big hall is split without rebuilding anything. In airport mode, pick
+Arrival, Main, Departure or Erase and drag a rectangle over the floor. It
+costs nothing.
+
+- `AirportZone` rectangles live in `AirportWorld.zones`, are saved with the
+  airport, and are painted in order: the last one wins where they overlap,
+  and painting over a zone that is completely covered removes it. Erase
+  takes out every zone the rectangle touches.
+- `paintZone` snaps to a metre, refuses anything under 2 m and wants all
+  four corners inside halls. Zoning is free.
+- `zoneOfPlacement` is what placement checks: the paint under the item's
+  middle, or the building's own part when the floor is unpainted — the main
+  hall for a terminal, and arrival or departure for one of the old separate
+  halls. `zoneRefusalFor` gives the reason. (`zoneRefusal` is the same check
+  for a bare hall kind.)
+- The scene washes each zone in its colour with a border, tags it, and turns
+  the floor green or red under the item being placed. `scene_logic.js`
+  mirrors `zoneAt` so the placement preview agrees with the simulation.
+- Items already standing on floor that is later zoned differently keep
+  working; the zone only decides what may be placed from then on.
+
+## Airport mode: the terminal view
+
+The **Airport** switch under the top bar (or T) is the original game's
+terminal view. The camera glides in over the halls and stays there
+(`airportLimits`): panning stops 70 m past the terminal and zoom out stops at
+1.6 × the framing distance. The roofs of the halls come off, their walls drop
+to the knee-high base (everything above it is tagged `upper` and baked
+apart), each hall area gets a name tag, and the hall lights are on whatever
+the time. The camera frames the halls in the part of the screen the side
+panel leaves free.
+
+Build opens with the zoning buttons — Arrival, Main, Departure, Erase, which
+paint the floor (see above) — and one tab per hall: Arrival hall, Main hall,
+Shops, Departure hall and Anywhere. The Main hall tab also carries the
+Terminal itself, so the building can grow from inside the mode, and a tab
+warns when nothing is zoned that way yet. While an item is being placed, the
+floor it may go on turns green and floor that refuses it turns red.
+Selecting a section on the airfield offers **Airport mode** framed on it.
+Esc closes the panel first, then leaves the mode; the camera returns to
+where it was.
+
+## Lighting at night
+
+`models.js` patches every standard material with lit areas (`setLights`):
+up to 48 rectangles, each with a strength, the height its lights hang at and
+how far apart they are. `scene.js` feeds it (`lightAreas`):
+
+- the halls, lit to their outside walls and on across the joins, under a
+  grid of downlights 8 m apart below the 10.6 m ceiling;
+- floodlights over the stands (0.7), the fuel, baggage and vehicle depots
+  (0.5), hangars (0.35), service roads (0.3) and, faintly, taxiways (0.16).
+  When there are too many, the faintest go first.
+
+`lightLevels(indoors, outdoors)` follows the sun: both come up with the dusk.
+Indoors they stay at a quarter in daylight in airport mode. The glass keeps
+its evening glow, so the facades read as lit from inside.
+
+## The passenger flow is required
+
+`terminalEssentials` lists what every airport needs: entrance, check-in
+(desks or a staffed counter; ticket machines alone do not count),
+security, a boarding gate, **customs** (8 × 6 m, 6 per game minute) and
+**arrivals check-out** (8 × 4 m, 10 per game minute). Without all of them
+no contract can be signed or placed and no own flight scheduled, and a
+planned flight waits at its stand with "The terminal needs …" until the
+missing piece is built. The starter airport includes customs and check-out
+in the departure hall. Older saves without them have to build them before
+flights continue.
+
+Passengers and aircraft move the whole way:
+
+- departing groups get out at the kerb, walk in, queue through check-in and
+  security, wait at the gate, then file out to the aircraft during boarding
+  (`walkingOnBoard`) and are hidden once on board (`boarded`);
+- every arriving flight, not only those with checked bags, lets its
+  passengers off: they walk from the aircraft to the gate (`deplaning`),
+  collect bags when the contract needs a carousel, then queue at customs and
+  check-out and leave through the departure hall's exit to the kerb. Returning own flights
+  bring their passengers home the same way;
+- own aircraft are towed from the hangar apron to the stand
+  (`positioning`) and back again after their return leg (`toHangar`).
+
+## Movement
+
+One game minute is one real second at 1×, so speeds are chosen to read on
+screen: passengers walk 3 m, vehicles drive 40 m and aircraft taxi 60 m per
+game minute (`AirportWorld.walkSpeed`, `vehicleSpeed`, `taxiSpeed`).
+Because walking takes real time, departing passengers start turning up at
+the kerb `checkInOpens` (240) minutes before departure and trickle in
+until `checkInCloses` (150) minutes before it, instead of all arriving when
+the aircraft lands. Among equally free desks, a group picks the nearest.
+
+- **Routes follow the pavement.** `_route` runs down the centreline of each
+  runway, taxiway or service road and turns where two meet, at the
+  `_portal` on their shared edge. The scene rounds the corners.
+- **Stands line up with their taxiway.** `standNose` points the aircraft at
+  the terminal it serves; `standLane` puts the lead-in line in line with a
+  taxiway meeting the entry edge end-on, so the yellow line carries straight
+  on. The snapshot sends `nose` and `lane`, and the stand model, parking
+  spot (`parkingSpot`) and service-vehicle spots all use them.
+- **Flights ease.** Each flight stage carries `ease`: the approach comes out
+  of the haze 12 km away and slows towards the threshold, the landing roll
+  brakes to taxi speed, taxiing pulls away and stops gently, and the
+  take-off accelerates down the runway and climbs out to 1,300 m before the
+  aircraft is removed. `delay` is measured when pushback starts, so the
+  slower movement never costs contract money.
+- **Boarding is single file, through a door.** `boardingRate` (gate lanes ×
+  speed, ×1.6 over a jet bridge) sets each passenger's `interval`. Passengers
+  walk the whole way (`_gateToDoor`) and never through a wall:
+  `boardingDoor` puts a doorway in the wall of the gate's hall — at the jet
+  bridge's rotunda on a contact stand, else on the wall the stand lies
+  beyond, in line with the gate — and the hall model opens it with a GATE
+  sign. From there it is the jet bridge (`bridgeRotunda`, `bridgeCab`, the
+  same points the scene draws), or `boardingWalk`: a railed, ribbed walkway
+  across the apron, painted lanes over the stand itself (a roof there would
+  foul the wing) and up the mobile stairs to the front left door. Deplaning
+  runs the same path in reverse at the same rate.
+- **Vehicles drive, then work.** `arriveAt` is when a vehicle reaches the
+  stand; it pulls onto its own spot beside the aircraft and works there until
+  `busyUntil`. The pushback tug is sent when boarding starts.
+- **Crowds behave like people.** Groups walk as a loose cluster, each person
+  keeping their own place and pace. At a desk they queue in snaking rows by
+  order of arrival, so the line steps forward as groups are served; at a gate
+  they spread through a waiting area; in shops, cafés, lounges and seating
+  they go inside. Every passenger keeps a display position that walks towards
+  where the simulation puts them (`people` in `scene.js`), so nobody
+  teleports when a queue shuffles or a new walk starts.
+- **The display clock never runs backwards.** The simulation ticks on a
+  200 ms timer that can stall; `displayTime` runs at game speed and eases
+  towards the simulation's clock instead of snapping back to it.
+- **Landside traffic follows real passengers.** Cars and buses only come for
+  people being dropped at the kerb or walking out to it; an idle airport has
+  an empty road. Trams and trains keep their timetable. The loop runs in on
+  the main road, down the outer forecourt lane to the bus station and back up
+  the kerb lane past the doors, all on paved lanes.
+
+## Entrances and exits
+
+An entrance is a doorway, not just furniture. `AirportWorld.entranceDoor`
+puts its doors on the nearest outside wall of its hall (a wall shared with
+another hall is inside the building) and the kerb `kerbDistance` (9 m)
+outside. Departing passengers are dropped at the kerb, walk through the
+doors and on to the entrance. The check-out works the same way as the exit:
+arrivals walk from it out through the nearest door of the departure hall to
+the kerb, and only fall back to an entrance when the check-out has no outside
+wall. The snapshot sends that `door` with each entrance and check-out, the
+hall model opens the wall there (sliding doors, header, ENTRANCE or EXIT)
+and, unless the door is on the landside wall where the forecourt already
+covers it, the scene adds a porch roof, a paved apron and a drop-off or
+pick-up lane.
 
 ## Contracts and planning
 
@@ -106,9 +339,41 @@ and count as fully placed.
 
 Contract cancellation charges the displayed total for unserved flights;
 active turnarounds finish. Cancel future owned flights before selling their
-aircraft. Occupied or imminently needed infrastructure cannot be removed.
+aircraft. Occupied or imminently needed infrastructure cannot be removed,
+but anything can be moved while in use; a terminal section takes its
+furnishings with it, turned with it (`_carry`).
 
 ## State and rendering
+
+The camera's near plane follows its height (15%, 0.5–400 m) and the far
+plane its distance. With the old fixed 1 m near plane, the few centimetres
+between grass, pavement and paint were unresolved from a few hundred metres
+up, which flickered. The ground plane is also pushed back with a polygon
+offset. Where taxiways, stands and runways touch, `pavementJoins` in
+`scene.js` cuts their edge lines and edge lights over the shared stretch
+(`cuts` in each model's own frame) and draws joined-up centrelines: a
+stand's lead-in runs on to the taxiway centreline, and a taxiway ending on
+an offset one curves across.
+
+Which way a taxiway's lines run is `flowAxis` (Dart, mirrored in
+`scene.js`): a strip more than twice as long as it is wide runs down its
+length, and anything squarer runs the way it is used, which is the axis
+with pavement on both sides. A short connector between a taxiway and a
+stand is often square or wider than it is long, and taking its footprint
+for its direction used to draw its centreline and edge lines across the
+traffic, leaving the stand's lead-in hanging. `standLane` and the taxi
+routes (`_onCentreline`, `_portal`) read the same axis, so the painted line
+and the path the aircraft drives agree.
+
+Time of day comes from game time: sunrise at 06:00, sunset at 20:00. A
+shader dome (`sky`) draws the gradient, the sun, the moon and stars; the
+palette is keyed on sun elevation. By night the directional light becomes a
+dim moon, window glass and lamps light up, and sky reflections fade.
+Textured ground materials get a world-space macro-variation noise
+(`AirportModels.weather`) so their tiling stops showing, and `bake` shades
+vertex colours darker towards the ground as cheap ambient occlusion. The
+sky's image-based fill is kept low on purpose so the sun and its shadows
+shape the scene.
 
 All airport controls live inside the scene page
 (`assets/airline_tycoon/scene/hud.js`). The page sends every change as a

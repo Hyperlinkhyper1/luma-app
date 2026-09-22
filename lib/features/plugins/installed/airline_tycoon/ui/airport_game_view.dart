@@ -55,6 +55,8 @@ class _AirportGameViewState extends State<AirportGameView> {
     'place',
     'move',
     'demolish',
+    'paintZone',
+    'upgrade',
     'buyVehicle',
     'acceptContract',
     'cancelContract',

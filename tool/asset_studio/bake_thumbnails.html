@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>thumbnail bake</title>
+<style>body{background:#888;margin:0;font:12px sans-serif}#log{padding:8px;white-space:pre-wrap}</style></head>
+<body>
+<div id="log">starting…</div>
+<!-- @scripts -->
+<script>
+(async () => {
+  const T = THREE;
+  const catalog = window.STUDIO.catalog;
+  const log = document.getElementById('log');
+  const paint = new T.MeshStandardMaterial({vertexColors: true, flatShading: true, roughness: .83, metalness: 0});
+  const metal = new T.MeshStandardMaterial({vertexColors: true, flatShading: true, roughness: .63, metalness: .2});
+  const glass = new T.MeshStandardMaterial({vertexColors: true, flatShading: true, roughness: .2, metalness: .05, transparent: true, opacity: .32, depthWrite: false});
+  const emission = new T.MeshBasicMaterial({vertexColors: true, toneMapped: false});
+  const materials = {paint, metal, glass};
+  function paintGeometry(indexed, color) {
+    const g = indexed.toNonIndexed(); indexed.dispose(); g.deleteAttribute('uv');
+    const value = new T.Color(color);
+    const colors = new Float32Array(g.getAttribute('position').count * 3);
+    for (let i = 0; i < colors.length; i += 3) { colors[i] = value.r; colors[i+1] = value.g; colors[i+2] = value.b; }
+    g.setAttribute('color', new T.BufferAttribute(colors, 3));
+    return g;
+  }
+  const coloredBox = (c) => paintGeometry(new T.BoxGeometry(1,1,1), c);
+  const box = (g,w,h,d,x,y,z,color,kind='paint') => { const m = new T.Mesh(coloredBox(color), materials[kind]||paint); m.scale.set(w,h,d); m.position.set(x,y,z); g.add(m); return m; };
+  const cylinder = (g,r,h,x,y,z,color,kind='paint',rt=r,seg=8) => { const m = new T.Mesh(paintGeometry(new T.CylinderGeometry(rt,r,h,Math.max(3,Math.min(16,Math.round(seg)))), color), materials[kind]||paint); m.position.set(x,y,z); g.add(m); return m; };
+  const sphere = (g,x,y,z,sx,sy,sz,color,kind='paint') => { const m = new T.Mesh(paintGeometry(new T.SphereGeometry(1,8,6), color), materials[kind]||paint); m.scale.set(sx,sy,sz); m.position.set(x,y,z); g.add(m); return m; };
+  const light = (g,x,y,z,color=0xfff4d6,size=.35) => { const m = new T.Mesh(coloredBox(color), emission); m.scale.setScalar(size); m.position.set(x,y,z); g.add(m); return m; };
+  const label = (g,text,x,y,z,size=6,color='#f9fcf6',o={}) => { const m = new T.Mesh(coloredBox(new T.Color(color).getHex()), emission); const w = o.width ?? Math.max(.2, String(text).length*size*.01); m.scale.set(w, o.ground?.005:size*.015, o.ground?size*.015:.005); m.position.set(x,y,z); m.rotation.y = o.rotY ?? 0; g.add(m); return m; };
+
+  const W = 480, H = 320;
+  const renderer = new T.WebGLRenderer({antialias: true, alpha: true, preserveDrawingBuffer: true});
+  renderer.setPixelRatio(1);
+  renderer.setSize(W, H);
+  renderer.outputColorSpace = T.SRGBColorSpace;
+  renderer.toneMapping = T.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  document.body.appendChild(renderer.domElement);
+
+  const scene = new T.Scene();
+  scene.add(new T.HemisphereLight(0xffffff, 0xa8b39f, 1.9));
+  const key = new T.DirectionalLight(0xfffbf1, 3.1); key.position.set(-3.5, 7, 5); scene.add(key);
+  const fill = new T.DirectionalLight(0xe5f2f6, .6); fill.position.set(4, 3, -4); scene.add(fill);
+  const camera = new T.OrthographicCamera(-3, 3, 2, -2, .1, 200);
+
+  const done = [];
+  for (const a of catalog) {
+    const fn = new Function('box','cylinder','sphere','light','label',
+      `${document.querySelector('script[data-model="'+a.id+'"]').textContent}\nreturn ${a.functionName};`)(box, cylinder, sphere, light, label);
+    const group = new T.Group();
+    fn(group, a.width, a.depth);
+    group.position.set(-a.width/2, 0, -a.depth/2);
+    scene.add(group);
+
+    const bounds = new T.Box3().setFromObject(group);
+    const size = new T.Vector3(); bounds.getSize(size);
+    const centre = new T.Vector3(); bounds.getCenter(centre);
+    // Same isometric direction as the studio, framed on this model's bounds.
+    const dir = new T.Vector3(4.8, 4.8, 7.2).normalize();
+    camera.position.copy(centre).addScaledVector(dir, 60);
+    camera.lookAt(centre);
+    camera.updateMatrixWorld();
+    const box3 = new T.Box3().setFromObject(group);
+    const corners = [];
+    for (const x of [box3.min.x, box3.max.x]) for (const y of [box3.min.y, box3.max.y]) for (const z of [box3.min.z, box3.max.z]) corners.push(new T.Vector3(x, y, z));
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const c of corners) {
+      const v = c.clone().applyMatrix4(camera.matrixWorldInverse);
+      minX = Math.min(minX, v.x); maxX = Math.max(maxX, v.x);
+      minY = Math.min(minY, v.y); maxY = Math.max(maxY, v.y);
+    }
+    // The frustum is in camera space, so framing is just the view-space
+    // bounds, padded and widened to the image's aspect.
+    const aspect = W / H;
+    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    let halfW = (maxX - minX) / 2 * 1.08, halfH = (maxY - minY) / 2 * 1.08;
+    if (halfW / halfH < aspect) halfW = halfH * aspect; else halfH = halfW / aspect;
+    camera.left = cx - halfW; camera.right = cx + halfW;
+    camera.bottom = cy - halfH; camera.top = cy + halfH;
+    camera.updateProjectionMatrix();
+    camera.updateMatrixWorld();
+    renderer.render(scene, camera);
+    const dataUrl = renderer.domElement.toDataURL('image/png');
+    await fetch('/write', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id: a.id, dataUrl})});
+    done.push(a.id);
+    log.textContent = `${done.length}/${catalog.length}: ${a.id}`;
+    scene.remove(group);
+    group.traverse((o) => { if (o.isMesh) o.geometry.dispose(); });
+  }
+  log.textContent = `done ${done.length}`;
+  window.__done = done.length;
+})();
+</script>
+</body>
+</html>

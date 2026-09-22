@@ -625,6 +625,174 @@ abstract class L {
   /// **'Dev build · made with care on someone\'s laptop'**
   String get aboutVersionDev;
 
+  /// No description provided for @petSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search plugins and pages'**
+  String get petSearchHint;
+
+  /// No description provided for @petMoodIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'What are we opening?'**
+  String get petMoodIdle;
+
+  /// No description provided for @petMoodCurious.
+  ///
+  /// In en, this message translates to:
+  /// **'Ooh, let me look…'**
+  String get petMoodCurious;
+
+  /// No description provided for @petMoodHappy.
+  ///
+  /// In en, this message translates to:
+  /// **'That tickles.'**
+  String get petMoodHappy;
+
+  /// No description provided for @petMoodDelighted.
+  ///
+  /// In en, this message translates to:
+  /// **'Best day ever!'**
+  String get petMoodDelighted;
+
+  /// No description provided for @petMoodSleepy.
+  ///
+  /// In en, this message translates to:
+  /// **'Still up? Me too.'**
+  String get petMoodSleepy;
+
+  /// No description provided for @petNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing by that name'**
+  String get petNoResults;
+
+  /// No description provided for @petNoResultsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Try a shorter word, or just part of one.'**
+  String get petNoResultsHint;
+
+  /// No description provided for @petSectionJumpTo.
+  ///
+  /// In en, this message translates to:
+  /// **'JUMP TO'**
+  String get petSectionJumpTo;
+
+  /// No description provided for @petSectionResults.
+  ///
+  /// In en, this message translates to:
+  /// **'RESULTS'**
+  String get petSectionResults;
+
+  /// No description provided for @petKindPlugin.
+  ///
+  /// In en, this message translates to:
+  /// **'Plugin'**
+  String get petKindPlugin;
+
+  /// No description provided for @petKindPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Page'**
+  String get petKindPage;
+
+  /// No description provided for @petHintMove.
+  ///
+  /// In en, this message translates to:
+  /// **'move'**
+  String get petHintMove;
+
+  /// No description provided for @petHintOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'open'**
+  String get petHintOpen;
+
+  /// No description provided for @petHintClose.
+  ///
+  /// In en, this message translates to:
+  /// **'close'**
+  String get petHintClose;
+
+  /// No description provided for @petClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get petClose;
+
+  /// No description provided for @petPatsTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Pats given'**
+  String get petPatsTooltip;
+
+  /// No description provided for @petPatLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Pat {name}'**
+  String petPatLabel(String name);
+
+  /// No description provided for @petSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'luma pet'**
+  String get petSettingsTitle;
+
+  /// No description provided for @petSettingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Press the shortcut anywhere to summon the pet, then type to jump to any page or plugin.'**
+  String get petSettingsSubtitle;
+
+  /// No description provided for @petSettingsHotkey.
+  ///
+  /// In en, this message translates to:
+  /// **'Summon from anywhere'**
+  String get petSettingsHotkey;
+
+  /// No description provided for @petSettingsHotkeyTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'Another app already owns this shortcut, so it only works while luma is in front. Pick a different one below.'**
+  String get petSettingsHotkeyTaken;
+
+  /// No description provided for @petSettingsRebind.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get petSettingsRebind;
+
+  /// No description provided for @petSettingsRebindTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Press a new shortcut'**
+  String get petSettingsRebindTitle;
+
+  /// No description provided for @petSettingsRebindSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Use it'**
+  String get petSettingsRebindSave;
+
+  /// No description provided for @petSettingsName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get petSettingsName;
+
+  /// No description provided for @petSettingsSummon.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the pet now'**
+  String get petSettingsSummon;
+
+  /// No description provided for @petSettingsSummonHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Brings the panel up straight away — no keyboard shortcut needed.'**
+  String get petSettingsSummonHint;
+
   /// No description provided for @monthJan.
   ///
   /// In en, this message translates to:

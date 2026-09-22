@@ -59,6 +59,31 @@ class UpdateService {
   /// until something fails.
   String? lastError;
 
+  @visibleForTesting
+  static Future<String> writeWindowsInstallerLauncher(
+    String installerPath,
+  ) async {
+    final installer = File(installerPath);
+    final installerName = installer.uri.pathSegments.last;
+    if (!RegExp(r'^[a-zA-Z0-9][a-zA-Z0-9._-]*$').hasMatch(installerName)) {
+      throw const FormatException('Invalid installer filename.');
+    }
+    final launcher = File(
+      '${installer.parent.path}${Platform.pathSeparator}launch-update.vbs',
+    );
+    await launcher.writeAsString(
+      'Set shell = CreateObject("WScript.Shell")\r\n'
+      'WScript.Sleep 2000\r\n'
+      'shell.CurrentDirectory = '
+      'CreateObject("Scripting.FileSystemObject").'
+      'GetParentFolderName(WScript.ScriptFullName)\r\n'
+      'shell.Run Chr(34) & "$installerName" & Chr(34) & '
+      '" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART", 0, False\r\n',
+      flush: true,
+    );
+    return launcher.path;
+  }
+
   /// Returns update details if the latest published release is newer than the
   /// running build, otherwise null. Never throws — network/parse failures just
   /// mean "no update right now".
@@ -280,12 +305,30 @@ class UpdateService {
       }
 
       // /VERYSILENT: no UI. /SUPPRESSMSGBOXES: no prompts. /NORESTART: never
-      // reboot. CloseApplications=yes (set in the .iss) handles closing the
-      // running luma.exe, and the [Run] entry relaunches it afterward.
-      await Process.start(installerPath, [
-        '/VERYSILENT',
-        '/SUPPRESSMSGBOXES',
-        '/NORESTART',
+      // reboot.
+      //
+      // Routed through a two-second delay rather than starting the installer
+      // directly: CloseApplications=yes (in the .iss) asks
+      // RestartManager to close the still-running luma.exe cooperatively
+      // (WM_QUERYENDSESSION) before copying files, but Flutter's Windows
+      // runner never answers that message. Confirmed on a real device —
+      // when the installer is launched while luma.exe is still alive,
+      // RestartManager waits its full ~30s timeout, gives up, and
+      // /VERYSILENT's suppressed "couldn't close applications" prompt
+      // defaults to Abort, which rolls back the *entire* install. The
+      // caller's own `exit(0)` moments later doesn't help — by the time it
+      // runs, RestartManager's wait loop is usually already committed to
+      // failing. Waiting a couple of seconds here for this process to have
+      // actually exited before the installer even starts means
+      // RestartManager finds nothing to close at all (confirmed on the
+      // same device: installing with luma.exe already closed completes in
+      // under two seconds).
+      // Keep the delay and command in a windowless script. Passing a compound
+      // command to cmd.exe makes Dart escape its nested quotes, which cmd.exe
+      // treats literally, while launching cmd.exe also opens a terminal.
+      final launcherPath = await writeWindowsInstallerLauncher(installerPath);
+      await Process.start('wscript.exe', [
+        launcherPath,
       ], mode: ProcessStartMode.detached);
       return true;
     } catch (e, st) {

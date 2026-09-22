@@ -284,6 +284,95 @@ class LEn extends L {
       'Dev build · made with care on someone\'s laptop';
 
   @override
+  String get petSearchHint => 'Search plugins and pages';
+
+  @override
+  String get petMoodIdle => 'What are we opening?';
+
+  @override
+  String get petMoodCurious => 'Ooh, let me look…';
+
+  @override
+  String get petMoodHappy => 'That tickles.';
+
+  @override
+  String get petMoodDelighted => 'Best day ever!';
+
+  @override
+  String get petMoodSleepy => 'Still up? Me too.';
+
+  @override
+  String get petNoResults => 'Nothing by that name';
+
+  @override
+  String get petNoResultsHint => 'Try a shorter word, or just part of one.';
+
+  @override
+  String get petSectionJumpTo => 'JUMP TO';
+
+  @override
+  String get petSectionResults => 'RESULTS';
+
+  @override
+  String get petKindPlugin => 'Plugin';
+
+  @override
+  String get petKindPage => 'Page';
+
+  @override
+  String get petHintMove => 'move';
+
+  @override
+  String get petHintOpen => 'open';
+
+  @override
+  String get petHintClose => 'close';
+
+  @override
+  String get petClose => 'Close';
+
+  @override
+  String get petPatsTooltip => 'Pats given';
+
+  @override
+  String petPatLabel(String name) {
+    return 'Pat $name';
+  }
+
+  @override
+  String get petSettingsTitle => 'luma pet';
+
+  @override
+  String get petSettingsSubtitle =>
+      'Press the shortcut anywhere to summon the pet, then type to jump to any page or plugin.';
+
+  @override
+  String get petSettingsHotkey => 'Summon from anywhere';
+
+  @override
+  String get petSettingsHotkeyTaken =>
+      'Another app already owns this shortcut, so it only works while luma is in front. Pick a different one below.';
+
+  @override
+  String get petSettingsRebind => 'Change';
+
+  @override
+  String get petSettingsRebindTitle => 'Press a new shortcut';
+
+  @override
+  String get petSettingsRebindSave => 'Use it';
+
+  @override
+  String get petSettingsName => 'Name';
+
+  @override
+  String get petSettingsSummon => 'Open the pet now';
+
+  @override
+  String get petSettingsSummonHint =>
+      'Brings the panel up straight away — no keyboard shortcut needed.';
+
+  @override
   String get monthJan => 'Jan';
 
   @override

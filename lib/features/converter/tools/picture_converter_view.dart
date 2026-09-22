@@ -12,7 +12,8 @@ import '../converter_widgets.dart';
 import '../file_saver.dart';
 import '../image_convert.dart';
 
-/// Convert images between PNG, JPG, BMP and TIFF (and rasterize SVG sources).
+/// Convert images between PNG, JPG, BMP, TIFF and ICO (and rasterize SVG
+/// sources).
 class PictureConverterView extends StatefulWidget {
   const PictureConverterView({super.key, required this.onBack});
 
@@ -46,6 +47,7 @@ class _PictureConverterViewState extends State<PictureConverterView> {
         'bmp',
         'tif',
         'tiff',
+        'ico',
         'svg',
         'oip',
       ],
@@ -67,7 +69,7 @@ class _PictureConverterViewState extends State<PictureConverterView> {
       _source = source;
       _result = null;
       _error = source == null
-          ? 'That file is not a supported image (PNG, JPG, BMP, TIFF, SVG or OIP).'
+          ? 'That file is not a supported image (PNG, JPG, BMP, TIFF, ICO, SVG or OIP).'
           : null;
       // Default the target to something different from the source.
       _target =
@@ -174,7 +176,7 @@ class _PictureConverterViewState extends State<PictureConverterView> {
     return ToolScaffold(
       icon: Icons.image_outlined,
       title: 'Picture converter',
-      subtitle: 'Convert between PNG, JPG, BMP, TIFF, SVG and OIP',
+      subtitle: 'Convert between PNG, JPG, BMP, TIFF, ICO, SVG and OIP',
       onBack: widget.onBack,
       children: [
         if (_bytes == null)
@@ -182,13 +184,13 @@ class _PictureConverterViewState extends State<PictureConverterView> {
             onTap: _pickFile,
             icon: Icons.add_photo_alternate_outlined,
             title: 'Tap to pick a picture',
-            subtitle: 'PNG · JPG · BMP · TIFF · SVG · OIP',
+            subtitle: 'PNG · JPG · BMP · TIFF · ICO · SVG · OIP',
           )
         else
           ConverterFileCard(
             name: _name!,
-            // SVG can't be shown by Image.memory — fall back to an icon.
-            thumbnail: _isSvg ? null : _bytes,
+            // SVG and ICO can't be shown by Image.memory — fall back to an icon.
+            thumbnail: _isSvg || _source == PictureFormat.ico ? null : _bytes,
             icon: Icons.image_outlined,
             meta: formatBytes(_size),
             badge: _source == null ? null : FormatChip(label: _source!.label),

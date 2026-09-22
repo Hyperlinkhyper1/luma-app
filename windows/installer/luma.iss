@@ -40,18 +40,31 @@ Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+; {userdesktop}, not {commondesktop}: this install is always non-admin
+; (PrivilegesRequired=lowest above), and {commondesktop} is the all-users
+; desktop, which a non-admin process can never write to. With the wrong
+; constant this failed silently on every single install — logged as
+; "IPersistFile::Save failed; code 0x80070005" (access denied) under
+; /VERYSILENT, where the message box that would normally surface it is
+; suppressed — without ever stopping the install or being visible anywhere.
+Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
 ; No "skipifsilent" — this must also fire during a silent updater-driven
 ; install so the app relaunches itself automatically after updating.
 ;
-; Routed through a short `ping`-based delay rather than launching luma.exe
-; directly: CloseApplications kills the outgoing process right before the
-; file copy, and launching the new luma.exe within the same instant
+; Delayed briefly rather than launching luma.exe immediately:
+; CloseApplications kills the outgoing process right before the file copy,
+; and launching the new luma.exe within the same instant
 ; intermittently crashed on startup (Event Viewer: dcomp.dll, exception
 ; 0xE0464645) because the old window's DirectComposition/GPU compositor
 ; state hadn't been torn down yet. A couple of seconds gives Windows time to
-; release it first. (`ping` is used instead of `timeout` because `timeout`
-; needs a real console and silently no-ops without one.)
-Filename: "{cmd}"; Parameters: "/C ping -n 3 127.0.0.1 >NUL & start """" ""{app}\{#MyAppExeName}"""; Description: "Launch luma"; Flags: nowait postinstall runhidden
+; release it first. Running the executable directly avoids cmd.exe quoting
+; bugs and prevents a terminal window from appearing during an update.
+Filename: "{app}\{#MyAppExeName}"; Description: "Launch luma"; Flags: nowait postinstall runhidden; BeforeInstall: DelayLumaRelaunch
+
+[Code]
+procedure DelayLumaRelaunch;
+begin
+  Sleep(2000);
+end;

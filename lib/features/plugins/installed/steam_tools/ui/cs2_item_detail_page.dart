@@ -11,6 +11,7 @@ import '../data/steam_database.dart';
 import '../steam_price_history.dart' show formatSteamPrice;
 import 'cs2_price_chart.dart';
 import 'cs2_shared.dart';
+import 'cs2_starting_price_dialog.dart';
 
 /// One CS2 listing: its render, rarity, the case it drops from, its current
 /// Community Market price, and — once tracked — the history luma has built
@@ -120,16 +121,66 @@ class _Cs2ItemDetailPageState extends State<Cs2ItemDetailPage> {
     _autoCheck();
   }
 
-  Future<void> _track() async {
+  /// Adds a tracked copy of the current listing. [hasEntries] switches both
+  /// the dialog's copy and whether the grade is still choosable: the first
+  /// copy of a listing may want to pick a different wear before committing,
+  /// but once any copy of *this exact* hash exists, wear is no longer a free
+  /// choice — it's what makes this the listing it is.
+  Future<void> _track({
+    required bool hasEntries,
+    required int? suggestedCents,
+  }) async {
     final skin = _skin!;
-    await Cs2MarketScope.of(context)
-        .track(skin: skin, wear: _wear, statTrak: _statTrak);
+    final result = await showCs2StartingPriceDialog(
+      context,
+      title: hasEntries ? 'Track another copy' : 'Track this listing',
+      subtitle: hasEntries
+          ? 'The price to measure this copy\'s gain and loss from.'
+          : 'Pick the grade, and the price to measure gain and loss from.',
+      wears: skin.wears,
+      wear: _wear,
+      wearEditable: !hasEntries && skin.wears.length > 1,
+      suggestedCents: suggestedCents,
+    );
+    if (result == null || !mounted) return;
+    setState(() {
+      _wear = result.wear;
+      _transientPrice = null;
+      _transientError = null;
+    });
+    await Cs2MarketScope.of(context).track(
+      skin: skin,
+      wear: result.wear,
+      statTrak: _statTrak,
+      startingPriceCents: result.priceCents,
+    );
   }
 
-  Future<void> _untrack(String hash) async {
-    await Cs2MarketScope.of(context).untrack(hash);
+  Future<void> _untrackEntry(int entryId) async {
+    await Cs2MarketScope.of(context).untrackEntry(entryId);
     _autoCheckedHash = null;
     _autoCheck();
+  }
+
+  Future<void> _editStartingPrice(Cs2MarketEntry entry, {int? currentCents}) async {
+    final result = await showCs2StartingPriceDialog(
+      context,
+      title: entry.startingPriceCents == null
+          ? 'Set starting price'
+          : 'Edit starting price',
+      subtitle: 'The price this copy\'s gain and loss is measured from.',
+      wears: const [],
+      wear: _wear,
+      wearEditable: false,
+      suggestedCents: entry.startingPriceCents ?? currentCents,
+    );
+    if (result == null || !mounted) return;
+    await Cs2MarketScope.of(context)
+        .setEntryStartingPrice(entry.id, result.priceCents);
+  }
+
+  Future<void> _clearStartingPrice(int entryId) async {
+    await Cs2MarketScope.of(context).setEntryStartingPrice(entryId, null);
   }
 
   @override
@@ -163,26 +214,42 @@ class _Cs2ItemDetailPageState extends State<Cs2ItemDetailPage> {
       backgroundColor: luma.background,
       body: StreamBuilder<Cs2MarketItem?>(
         stream: repository.watchItem(hash),
-        builder: (context, snapshot) {
-          final trackedRow = snapshot.data;
+        builder: (context, itemSnapshot) {
+          final trackedRow = itemSnapshot.data;
           final tracked = trackedRow != null;
-          return _DetailBody(
-            skin: skin,
-            wear: _wear,
-            statTrak: _statTrak,
-            hash: hash,
-            tracked: tracked,
-            trackedRow: trackedRow,
-            transientPrice: _transientPrice,
-            transientLoading: _transientLoading,
-            transientError: _transientError,
-            onWearChanged: skin.wears.length > 1 ? _onWearChanged : null,
-            onStatTrakChanged: skin.stattrak ? _onStatTrakChanged : null,
-            onCheckNow: () => tracked
-                ? repository.refreshPrice(hash, force: true)
-                : _checkTransient(force: true),
-            onTrack: _track,
-            onUntrack: () => _untrack(hash),
+          return StreamBuilder<List<Cs2MarketEntry>>(
+            stream: repository.watchEntries(hash),
+            builder: (context, entriesSnapshot) {
+              final entries = entriesSnapshot.data ?? const [];
+              final currentCents = tracked
+                  ? (trackedRow.lastLowestCents ?? trackedRow.lastMedianCents)
+                  : _transientPrice?.lowestCents ?? _transientPrice?.medianCents;
+              return _DetailBody(
+                skin: skin,
+                wear: _wear,
+                statTrak: _statTrak,
+                hash: hash,
+                tracked: tracked,
+                trackedRow: trackedRow,
+                entries: entries,
+                transientPrice: _transientPrice,
+                transientLoading: _transientLoading,
+                transientError: _transientError,
+                onWearChanged: skin.wears.length > 1 ? _onWearChanged : null,
+                onStatTrakChanged: skin.stattrak ? _onStatTrakChanged : null,
+                onCheckNow: () => tracked
+                    ? repository.refreshPrice(hash, force: true)
+                    : _checkTransient(force: true),
+                onTrack: () => _track(
+                  hasEntries: entries.isNotEmpty,
+                  suggestedCents: currentCents,
+                ),
+                onEditEntry: (entry) =>
+                    _editStartingPrice(entry, currentCents: currentCents),
+                onRemoveEntry: _untrackEntry,
+                onClearEntry: _clearStartingPrice,
+              );
+            },
           );
         },
       ),
@@ -198,6 +265,7 @@ class _DetailBody extends StatelessWidget {
     required this.hash,
     required this.tracked,
     required this.trackedRow,
+    required this.entries,
     required this.transientPrice,
     required this.transientLoading,
     required this.transientError,
@@ -205,7 +273,9 @@ class _DetailBody extends StatelessWidget {
     required this.onStatTrakChanged,
     required this.onCheckNow,
     required this.onTrack,
-    required this.onUntrack,
+    required this.onEditEntry,
+    required this.onRemoveEntry,
+    required this.onClearEntry,
   });
 
   final Cs2SkinDef skin;
@@ -214,6 +284,7 @@ class _DetailBody extends StatelessWidget {
   final String hash;
   final bool tracked;
   final Cs2MarketItem? trackedRow;
+  final List<Cs2MarketEntry> entries;
   final Cs2MarketPrice? transientPrice;
   final bool transientLoading;
   final String? transientError;
@@ -221,7 +292,9 @@ class _DetailBody extends StatelessWidget {
   final ValueChanged<bool>? onStatTrakChanged;
   final VoidCallback onCheckNow;
   final Future<void> Function() onTrack;
-  final VoidCallback onUntrack;
+  final ValueChanged<Cs2MarketEntry> onEditEntry;
+  final ValueChanged<int> onRemoveEntry;
+  final ValueChanged<int> onClearEntry;
 
   @override
   Widget build(BuildContext context) {
@@ -235,6 +308,12 @@ class _DetailBody extends StatelessWidget {
     final fetchedAt = tracked ? trackedRow!.priceFetchedAt : null;
     final loading = tracked ? false : transientLoading;
     final priceError = tracked ? null : transientError;
+    // The Price/Gain & Loss toggle only makes sense for one baseline — with
+    // several copies each having their own starting price, the shared chart
+    // falls back to plain price rather than picking one copy's baseline to
+    // speak for all of them.
+    final chartStartingPriceCents =
+        entries.length == 1 ? entries.single.startingPriceCents : null;
 
     return Stack(
       children: [
@@ -271,8 +350,19 @@ class _DetailBody extends StatelessWidget {
                         tracked: tracked,
                         onCheckNow: onCheckNow,
                         onTrack: onTrack,
-                        onUntrack: onUntrack,
                       ),
+                      if (entries.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        _EntriesCard(
+                          entries: entries,
+                          currentCents: lowestCents ?? medianCents,
+                          currency: currency,
+                          onAddAnother: onTrack,
+                          onEdit: onEditEntry,
+                          onRemove: onRemoveEntry,
+                          onClear: onClearEntry,
+                        ),
+                      ],
                       const SizedBox(height: 16),
                       StreamBuilder<List<Cs2MarketPricePoint>>(
                         stream: Cs2MarketScope.of(context)
@@ -281,6 +371,7 @@ class _DetailBody extends StatelessWidget {
                           points: snapshot.data ?? const [],
                           fallbackCurrency: currency,
                           tracked: tracked,
+                          startingPriceCents: chartStartingPriceCents,
                           loading: loading ||
                               snapshot.connectionState ==
                                   ConnectionState.waiting,
@@ -476,7 +567,6 @@ class _PriceCard extends StatelessWidget {
     required this.tracked,
     required this.onCheckNow,
     required this.onTrack,
-    required this.onUntrack,
   });
 
   final int? lowestCents;
@@ -488,7 +578,6 @@ class _PriceCard extends StatelessWidget {
   final bool tracked;
   final VoidCallback onCheckNow;
   final Future<void> Function() onTrack;
-  final VoidCallback onUntrack;
 
   @override
   Widget build(BuildContext context) {
@@ -567,18 +656,11 @@ class _PriceCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          if (tracked)
-            LumaGhostButton(
-              label: 'Stop tracking',
-              icon: Icons.star_rounded,
-              onTap: onUntrack,
-            )
-          else
-            LumaPrimaryButton(
-              label: 'Track this listing',
-              icon: Icons.star_border_rounded,
-              onTap: onTrack,
-            ),
+          LumaPrimaryButton(
+            label: tracked ? 'Track another copy' : 'Track this listing',
+            icon: tracked ? Icons.add_rounded : Icons.star_border_rounded,
+            onTap: onTrack,
+          ),
         ],
       ),
     );
@@ -596,6 +678,173 @@ class _PriceCard extends StatelessWidget {
     if (ago.inHours < 1) return 'Checked ${ago.inMinutes} min ago.';
     if (ago.inDays < 1) return 'Checked ${ago.inHours} h ago.';
     return 'Checked on ${DateFormat.yMMMd().format(at)}.';
+  }
+}
+
+/// Every tracked copy of this listing, each with its own cost basis and
+/// gain/loss against the (shared) current price — plus a way to add
+/// another. A skin bought twice at two different prices is two entries
+/// here, not one row averaging them away.
+class _EntriesCard extends StatelessWidget {
+  const _EntriesCard({
+    required this.entries,
+    required this.currentCents,
+    required this.currency,
+    required this.onAddAnother,
+    required this.onEdit,
+    required this.onRemove,
+    required this.onClear,
+  });
+
+  final List<Cs2MarketEntry> entries;
+  final int? currentCents;
+  final String currency;
+  final Future<void> Function() onAddAnother;
+  final ValueChanged<Cs2MarketEntry> onEdit;
+  final ValueChanged<int> onRemove;
+  final ValueChanged<int> onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+
+    return LumaCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.inventory_2_rounded, size: 18, color: luma.accent),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  entries.length == 1
+                      ? 'Your copy'
+                      : 'Your copies (${entries.length})',
+                  style: TextStyle(
+                    color: luma.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          for (final entry in entries) ...[
+            _EntryRow(
+              entry: entry,
+              currentCents: currentCents,
+              currency: currency,
+              onEdit: () => onEdit(entry),
+              onRemove: () => onRemove(entry.id),
+              onClear: () => onClear(entry.id),
+            ),
+            if (entry != entries.last) ...[
+              const SizedBox(height: 12),
+              Divider(height: 1, color: luma.border),
+              const SizedBox(height: 12),
+            ],
+          ],
+          const SizedBox(height: 12),
+          LumaGhostButton(
+            label: 'Track another copy',
+            icon: Icons.add_rounded,
+            onTap: onAddAnother,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EntryRow extends StatelessWidget {
+  const _EntryRow({
+    required this.entry,
+    required this.currentCents,
+    required this.currency,
+    required this.onEdit,
+    required this.onRemove,
+    required this.onClear,
+  });
+
+  final Cs2MarketEntry entry;
+  final int? currentCents;
+  final String currency;
+  final VoidCallback onEdit;
+  final VoidCallback onRemove;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final starting = entry.startingPriceCents;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    starting == null
+                        ? 'No starting price set'
+                        : formatSteamPrice(starting, currency),
+                    style: TextStyle(
+                      color: starting == null
+                          ? luma.textMuted
+                          : luma.textPrimary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    'Tracked ${DateFormat.yMMMd().format(entry.trackedAt)}',
+                    style: TextStyle(color: luma.textMuted, fontSize: 11.5),
+                  ),
+                ],
+              ),
+            ),
+            if (starting != null && currentCents != null)
+              Cs2GainLossBadge(
+                deltaCents: currentCents! - starting,
+                startingCents: starting,
+                currency: currency,
+              ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            LumaGhostButton(
+              label: starting == null ? 'Set price' : 'Edit',
+              icon: Icons.edit_rounded,
+              onTap: onEdit,
+            ),
+            if (starting != null)
+              LumaGhostButton(
+                label: 'Clear price',
+                icon: Icons.close_rounded,
+                onTap: onClear,
+              ),
+            LumaGhostButton(
+              label: 'Stop tracking this copy',
+              icon: Icons.delete_outline_rounded,
+              onTap: onRemove,
+            ),
+          ],
+        ),
+      ],
+    );
   }
 }
 

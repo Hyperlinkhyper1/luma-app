@@ -1,4 +1,9 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../account/account_page.dart';
 import '../family/inbox_button.dart';
@@ -10,6 +15,9 @@ import '../features/notes/notes_page.dart';
 import '../features/passwords/passwords_page.dart';
 import '../features/plugins/installed/data_management/data_management_page.dart';
 import '../features/plugins/installed/auto_clicker/auto_clicker_page.dart';
+import '../features/plugins/installed/auto_clicker/auto_clicker_repository.dart';
+import '../features/plugins/installed/auto_clicker/auto_clicker_scope.dart';
+import '../features/plugins/installed/auto_clicker/clicker_engine.dart';
 import '../features/plugins/installed/calculator/calculator_page.dart';
 import '../features/plugins/installed/calendar/calendar_page.dart';
 import '../features/plugins/installed/cloud_files/cloud_files_page.dart';
@@ -48,10 +56,17 @@ import '../features/plugins/installed/worth_counter/worth_counter_page.dart';
 import '../features/plugins/installed/media_downloader/media_downloader_page.dart';
 import '../features/plugins/installed/recipe_book/recipe_book_page.dart';
 import '../features/plugins/installed/roblox_tools/roblox_tools_page.dart';
+import '../features/plugins/plugin_icons.dart';
 import '../features/plugins/plugin_repository.dart';
 import '../features/plugins/plugin_scope.dart';
 import '../features/plugins/plugins_page.dart';
 import '../finance/finance_page.dart';
+import '../pet/luma_pet_panel.dart';
+import '../pet/pet_repository.dart';
+import '../pet/pet_scope.dart';
+import '../pet/pet_search.dart';
+import '../pet/pet_summon_button.dart';
+import '../pet/pet_window_protocol.dart';
 import 'server_account_gate.dart';
 import '../settings/settings_controller.dart';
 import '../settings/settings_page.dart';
@@ -62,6 +77,7 @@ import 'bottom_nav.dart';
 import 'nav_rail.dart';
 import 'widgets.dart';
 import 'window_title_bar.dart';
+import 'window_controls.dart';
 
 /// Below this width the vertical icon rail is replaced with a bottom nav bar,
 /// since a fixed 72px-wide rail leaves too little room for phone content.
@@ -99,6 +115,200 @@ class _AppShellState extends State<AppShell> {
   // priority over [_selectedIndex].
   String? _selectedPluginId;
 
+  PetRepository? _petRepository;
+  AutoClickerRepository? _autoClickerRepository;
+  WindowController? _petWindow;
+  List<PetTarget> _latestPetTargets = const [];
+  bool _openingPetWindow = false;
+  bool _petWindowFailed = false;
+  bool _channelRegistered = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final pet = PetScope.of(context);
+    final autoClicker = AutoClickerScope.of(context);
+    if (!identical(_petRepository, pet)) {
+      _petRepository?.removeListener(_onPetChanged);
+      _petRepository = pet..addListener(_onPetChanged);
+    }
+    _autoClickerRepository = autoClicker;
+    if (!_channelRegistered && hasCustomTitleBar) {
+      _channelRegistered = true;
+      unawaited(petMainChannel.setMethodCallHandler(_handlePetWindowCall));
+    }
+  }
+
+  @override
+  void dispose() {
+    _petRepository?.removeListener(_onPetChanged);
+    if (_channelRegistered) {
+      unawaited(petMainChannel.setMethodCallHandler(null));
+    }
+    final window = _petWindow;
+    if (window != null) {
+      unawaited(window.invokeMethod<void>(petWindowMethodClose));
+    }
+    super.dispose();
+  }
+
+  void _onPetChanged() {
+    final pet = _petRepository;
+    if (pet == null || !hasCustomTitleBar) return;
+    if (pet.visible) {
+      unawaited(_openPetWindow());
+    } else {
+      unawaited(_closePetWindow());
+    }
+  }
+
+  Future<void> _openPetWindow() async {
+    final pet = _petRepository;
+    if (pet == null ||
+        !pet.visible ||
+        _petWindow != null ||
+        _openingPetWindow ||
+        _latestPetTargets.isEmpty) {
+      return;
+    }
+    _openingPetWindow = true;
+    try {
+      final settings = SettingsScope.of(context);
+      final locale = Localizations.localeOf(context);
+      final brightness = Theme.of(context).brightness;
+      final controller = await WindowController.create(
+        WindowConfiguration(
+          hiddenAtLaunch: true,
+          arguments: jsonEncode({
+            'kind': petWindowKind,
+            'name': pet.name,
+            'pats': pet.pats,
+            'recentIds': pet.recentIds,
+            'locale': locale.languageCode,
+            'brightness': brightness.name,
+            'accent': settings.accentSeed?.toARGB32(),
+            'targets': [
+              for (final target in _latestPetTargets) _targetJson(target),
+            ],
+            'autoClicker': _autoClickerSnapshot(),
+          }),
+        ),
+      );
+      if (!mounted || !pet.visible) {
+        await controller.invokeMethod<void>(petWindowMethodClose);
+        return;
+      }
+      _petWindow = controller;
+      if (_petWindowFailed && mounted) setState(() => _petWindowFailed = false);
+    } catch (_) {
+      if (mounted) setState(() => _petWindowFailed = true);
+    } finally {
+      _openingPetWindow = false;
+    }
+  }
+
+  Future<void> _closePetWindow() async {
+    final window = _petWindow;
+    _petWindow = null;
+    if (window == null) return;
+    try {
+      await window.invokeMethod<void>(petWindowMethodClose);
+    } catch (_) {}
+  }
+
+  Map<String, dynamic> _targetJson(PetTarget target) => {
+    'id': target.id,
+    'label': target.label,
+    'iconName': target.iconName,
+    'kind': target.kind.name,
+    'keywords': target.keywords,
+  };
+
+  Future<dynamic> _handlePetWindowCall(MethodCall call) async {
+    final pet = _petRepository!;
+    switch (call.method) {
+      case petMethodPat:
+        pet.pat();
+      case petMethodRecordOpen:
+        await pet.recordOpen(call.arguments as String);
+      case petMethodOpenTarget:
+        final id = call.arguments as String;
+        if (id.startsWith('section:')) {
+          final index = int.tryParse(id.substring('section:'.length));
+          if (index != null) _selectFixed(index);
+        } else if (id.startsWith('plugin:')) {
+          _selectPlugin(id.substring('plugin:'.length));
+        }
+        await windowShow();
+      case petMethodDismiss:
+        if (call.arguments == true) await windowShow();
+        await pet.close(navigating: call.arguments == true);
+      case petMethodAutoClicker:
+        return _handleAutoClickerCommand(
+          Map<String, dynamic>.from(call.arguments as Map? ?? const {}),
+        );
+      default:
+        throw MissingPluginException('Unknown pet method ${call.method}');
+    }
+    return null;
+  }
+
+  Map<String, dynamic> _handleAutoClickerCommand(Map<String, dynamic> command) {
+    final repo = _autoClickerRepository!;
+    switch (command['action']) {
+      case 'toggle':
+        repo.toggle();
+      case 'setInterval':
+        repo.setIntervalMs((command['value'] as num?)?.toInt() ?? 1);
+      case 'setButton':
+        final value = command['value'] as String?;
+        repo.setButton(
+          ClickButton.values.firstWhere(
+            (button) => button.name == value,
+            orElse: () => ClickButton.left,
+          ),
+        );
+      case 'setDoubleClick':
+        repo.setDoubleClick(command['value'] == true);
+      case 'setClickAtCursor':
+        repo.setClickAtCursor(command['value'] == true);
+      case 'captureCursor':
+        final point = ClickerEngine.cursorPosition;
+        if (point != null) repo.setFixedPoint(point);
+      case 'setRepeatMode':
+        repo.setRepeatMode(
+          command['value'] == 'count'
+              ? ClickRepeatMode.count
+              : ClickRepeatMode.untilStopped,
+        );
+      case 'setRepeatCount':
+        repo.setRepeatCount((command['value'] as num?)?.toInt() ?? 1);
+    }
+    return _autoClickerSnapshot();
+  }
+
+  Map<String, dynamic> _autoClickerSnapshot() {
+    final repo = _autoClickerRepository!;
+    final fixed = repo.fixedPoint;
+    return {
+      'supported': repo.supported,
+      'loaded': repo.loaded,
+      'intervalMs': repo.intervalMs,
+      'randomOffsetMs': repo.randomOffsetMs,
+      'button': repo.button.name,
+      'doubleClick': repo.doubleClick,
+      'clickAtCursor': repo.clickAtCursor,
+      if (fixed != null) 'fixedX': fixed.x,
+      if (fixed != null) 'fixedY': fixed.y,
+      'repeatMode': repo.repeatMode.name,
+      'repeatCount': repo.repeatCount,
+      'isRunning': repo.isRunning,
+      'clicksDone': repo.clicksDone,
+      'hotKey': repo.hotKey.debugName,
+      'hotKeyError': repo.hotKeyError,
+    };
+  }
+
   // Where the system/hardware Back button walks to. Every navigation records
   // the screen it left, so Back retraces those steps in-app instead of
   // popping the root route (which, on Android, quits the whole app the moment
@@ -107,16 +317,16 @@ class _AppShellState extends State<AppShell> {
   final List<_NavEntry> _history = [];
 
   static List<String> _titles(L t) => [
-        t.navHome,
-        t.navFileConverter,
-        t.navFinance,
-        t.navPasswordManager,
-        t.navNotes,
-        t.navAssistant,
-        t.navPlugins,
-        t.navSettings,
-        t.navAccount,
-      ];
+    t.navHome,
+    t.navFileConverter,
+    t.navFinance,
+    t.navPasswordManager,
+    t.navNotes,
+    t.navAssistant,
+    t.navPlugins,
+    t.navSettings,
+    t.navAccount,
+  ];
 
   _NavEntry get _currentEntry => _NavEntry(_selectedIndex, _selectedPluginId);
 
@@ -177,13 +387,27 @@ class _AppShellState extends State<AppShell> {
     final t = L.of(context);
     final settings = SettingsScope.of(context);
     final pluginRepo = PluginScope.of(context);
+    final pet = PetScope.of(context);
     final index = _selectedIndex ?? _startIndex(settings.startScreen);
     final titles = _titles(t);
+
+    final mq = MediaQuery.of(context);
+    final shellSize = mq.size;
+    final shellMedia = mq.copyWith(size: shellSize);
 
     return StreamBuilder<List<InstalledPluginRecord>>(
       stream: pluginRepo.watchInstalled(),
       builder: (context, snapshot) {
         final installed = snapshot.data ?? const <InstalledPluginRecord>[];
+        _latestPetTargets = _petTargets(t, installed);
+        if (pet.visible &&
+            hasCustomTitleBar &&
+            _petWindow == null &&
+            !_openingPetWindow) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) unawaited(_openPetWindow());
+          });
+        }
         InstalledPluginRecord? activePlugin;
         if (_selectedPluginId != null) {
           for (final p in installed) {
@@ -195,13 +419,13 @@ class _AppShellState extends State<AppShell> {
         }
         final showingPlugin = activePlugin != null;
         final title = showingPlugin ? activePlugin.name : titles[index];
-        final isPhone = MediaQuery.sizeOf(context).width < _phoneBreakpoint;
+        final isPhone = shellSize.width < _phoneBreakpoint;
         // A phone-sized device in *either* orientation. Landscape widens the
         // window past the width breakpoint, so immersive plugins use the
         // shortest side to stay full-screen when the phone is turned sideways.
-        final isPhoneForm =
-            MediaQuery.sizeOf(context).shortestSide < _phoneBreakpoint;
-        final immersive = showingPlugin &&
+        final isPhoneForm = shellSize.shortestSide < _phoneBreakpoint;
+        final immersive =
+            showingPlugin &&
             isPhoneForm &&
             _phoneImmersivePlugins.contains(activePlugin.pluginId);
 
@@ -241,7 +465,13 @@ class _AppShellState extends State<AppShell> {
           body: Column(
             children: [
               if (!immersive)
-                WindowTitleBar(title: title, trailing: const InboxButton()),
+                WindowTitleBar(
+                  title: title,
+                  trailing: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [PetSummonButton(), InboxButton()],
+                  ),
+                ),
               Expanded(
                 child: immersive
                     // No title bar here, so inset the plugin ourselves: the
@@ -253,37 +483,36 @@ class _AppShellState extends State<AppShell> {
                           Positioned.fill(
                             child: ColoredBox(color: luma.background),
                           ),
-                          Positioned.fill(
-                            child: SafeArea(child: content),
-                          ),
+                          Positioned.fill(child: SafeArea(child: content)),
                           _PhoneBackButton(onTap: _closePlugin),
                         ],
                       )
                     : (isPhone
-                        ? content
-                        : Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              NavRail(
-                                selectedIndex: showingPlugin ? -1 : index,
-                                selectedPluginId: showingPlugin
-                                    ? activePlugin.pluginId
-                                    : null,
-                                installedPlugins: installed,
-                                onSelect: _selectFixed,
-                                onSelectPlugin: _selectPlugin,
-                              ),
-                              Expanded(child: content),
-                            ],
-                          )),
+                          ? content
+                          : Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                NavRail(
+                                  selectedIndex: showingPlugin ? -1 : index,
+                                  selectedPluginId: showingPlugin
+                                      ? activePlugin.pluginId
+                                      : null,
+                                  installedPlugins: installed,
+                                  onSelect: _selectFixed,
+                                  onSelectPlugin: _selectPlugin,
+                                ),
+                                Expanded(child: content),
+                              ],
+                            )),
               ),
             ],
           ),
           bottomNavigationBar: (isPhone && !immersive)
               ? BottomNav(
                   selectedIndex: showingPlugin ? -1 : index,
-                  selectedPluginId:
-                      showingPlugin ? activePlugin.pluginId : null,
+                  selectedPluginId: showingPlugin
+                      ? activePlugin.pluginId
+                      : null,
                   installedPlugins: installed,
                   onSelect: _selectFixed,
                   onSelectPlugin: _selectPlugin,
@@ -295,7 +524,7 @@ class _AppShellState extends State<AppShell> {
         // plugin open) lets the pop through to the OS, which then exits the
         // app. Everywhere else, Back retraces our own navigation history.
         final canExit = _history.isEmpty && _selectedPluginId == null;
-        return PopScope(
+        final shell = PopScope(
           canPop: canExit,
           onPopInvokedWithResult: (didPop, _) {
             if (didPop) return;
@@ -305,17 +534,100 @@ class _AppShellState extends State<AppShell> {
             }
             _goBack();
           },
-          child: scaffold,
+          child: MediaQuery(data: shellMedia, child: scaffold),
+        );
+
+        // No shortcut binding here on purpose: the in-app half of the summon
+        // chord is registered by PetRepository through hotkey_manager, which
+        // listens to the keyboard directly rather than through the focus
+        // tree — so it answers wherever the user is, and it follows the chord
+        // when they rebind it, which a hardcoded binding could not.
+        return Stack(
+          // Expand, not the default loose. An offstage child reports the
+          // smallest size it is allowed, and the boot gate's own stack hands
+          // this one loose constraints — so with a loose fit, the moment the
+          // shell goes offstage for the pet this stack sizes itself to 0x0,
+          // the panel is laid out into nothing, and the window paints black.
+          fit: StackFit.expand,
+          children: [
+            shell,
+            if (pet.visible && (!hasCustomTitleBar || _petWindowFailed))
+              Positioned.fill(
+                child: LumaPetPanel(
+                  fullBleed: false,
+                  targets: _latestPetTargets,
+                ),
+              ),
+          ],
         );
       },
     );
   }
 
+  /// Icons for the fixed sections, in the same order as [_titles] and the
+  /// rail's own destinations.
+  static const _sectionIcons = [
+    Icons.dashboard_rounded,
+    Icons.swap_horiz_rounded,
+    Icons.account_balance_wallet_rounded,
+    Icons.lock_rounded,
+    Icons.sticky_note_2_rounded,
+    Icons.smart_toy_rounded,
+    Icons.extension_rounded,
+    Icons.settings_rounded,
+    Icons.badge_rounded,
+  ];
+
+  /// Hidden aliases, so "money" finds Finance and "todo" finds the errand
+  /// plugin even though neither word is in the label. Deliberately English
+  /// only: they are extras layered on top of the localized labels, which are
+  /// what the list actually matches on first.
+  static const _sectionKeywords = <List<String>>[
+    ['dashboard', 'start'],
+    ['convert', 'file', 'image', 'video', 'audio'],
+    ['money', 'budget', 'bank', 'spending'],
+    ['vault', 'login', 'credentials'],
+    ['note', 'scratch'],
+    ['ai', 'chat', 'ask'],
+    ['marketplace', 'install', 'extensions'],
+    ['preferences', 'theme', 'language'],
+    ['plan', 'profile', 'sync'],
+  ];
+
+  /// Everything the pet can take the user to: the fixed sections plus every
+  /// installed plugin. Built here because the shell is the only place that
+  /// knows how to open both.
+  List<PetTarget> _petTargets(L t, List<InstalledPluginRecord> installed) {
+    final titles = _titles(t);
+    return [
+      for (var i = 0; i < titles.length; i++)
+        PetTarget(
+          id: 'section:$i',
+          label: titles[i],
+          icon: _sectionIcons[i],
+          iconName: 'section:$i',
+          kind: PetTargetKind.section,
+          keywords: _sectionKeywords[i],
+          open: () => _selectFixed(i),
+        ),
+      for (final plugin in installed)
+        PetTarget(
+          id: 'plugin:${plugin.pluginId}',
+          label: plugin.name,
+          icon: pluginIconFor(plugin.icon),
+          iconName: plugin.icon,
+          kind: PetTargetKind.plugin,
+          keywords: [plugin.pluginId.replaceAll('-', ' ')],
+          open: () => _selectPlugin(plugin.pluginId),
+        ),
+    ];
+  }
+
   static int _startIndex(StartScreen screen) => switch (screen) {
-        StartScreen.home => 0,
-        StartScreen.converter => 1,
-        StartScreen.finance => 2,
-      };
+    StartScreen.home => 0,
+    StartScreen.converter => 1,
+    StartScreen.finance => 2,
+  };
 
   /// Plugins that do nothing at all without the server, mapped to the copy
   /// shown in their place until this device has an approved account. Kept
@@ -324,19 +636,21 @@ class _AppShellState extends State<AppShell> {
   /// gate must not depend on a file downloaded at runtime.
   static const serverOnlyPlugins =
       <String, ({String title, String description, IconData icon})>{
-    'cloud-files': (
-      title: 'Cloud Files needs an approved account',
-      description: 'Cloud Files keeps your files on the luma server, '
-          'locked on this device first.',
-      icon: Icons.cloud_off_rounded,
-    ),
-    'secure-chat': (
-      title: 'Chat needs an approved account',
-      description: 'Chat passes locked messages between '
-          'accounts through the luma server.',
-      icon: Icons.lock_outline_rounded,
-    ),
-  };
+        'cloud-files': (
+          title: 'Cloud Files needs an approved account',
+          description:
+              'Cloud Files keeps your files on the luma server, '
+              'locked on this device first.',
+          icon: Icons.cloud_off_rounded,
+        ),
+        'secure-chat': (
+          title: 'Chat needs an approved account',
+          description:
+              'Chat passes locked messages between '
+              'accounts through the luma server.',
+          icon: Icons.lock_outline_rounded,
+        ),
+      };
 
   /// Resolves a plugin id to its page, wrapping the server-only ones in a
   /// [ServerAccountGate] so they stay inert until an account is approved.
@@ -353,51 +667,51 @@ class _AppShellState extends State<AppShell> {
   }
 
   static Widget _pluginBodyFor(String pluginId, L t) => switch (pluginId) {
-        'qr-code-generator' => const QrCodeGeneratorPage(),
-        'card-wallet' => const CardWalletPage(),
-        'errand-manager' => const ErrandsPage(),
-        'file-tree' => const FileTreePage(),
-        'file-viewer' => const FileViewerPage(),
-        'bulletin-board' => const BulletinBoardPage(),
-        'price-tracker' => const PriceTrackerPage(),
-        'calculator' => const CalculatorPage(),
-        'calendar' => const CalendarPage(),
-        'cloud-files' => const CloudFilesPage(),
-        'data-management' => const DataManagementPage(),
-        'server-tycoon' => const ServerTycoonPage(),
-        'airline-tycoon' => const AirlineTycoonPage(),
-        'space-colony' => const SpaceColonyPage(),
-        'subway-builder' => const SubwayBuilderPage(),
-        'transport-tracker' => const TransportTrackerPage(),
-        'city-planner' => const CityPlannerPage(),
-        'mood-journal' => const MoodJournalPage(),
-        'ai-usage' => const AiUsagePage(),
-        'steam-tools' => const SteamToolsPage(),
-        'ai-detector' => const AiDetectorPage(),
-        'youtube-downloader' => const MediaDownloaderPage(),
-        'school' => const SchoolPage(),
-        'mind-map' => const MindMapPage(),
-        'whiteboard' => const WhiteboardPage(),
-        'machine-learning' => const MachineLearningPage(),
-        'auto-clicker' => const AutoClickerPage(),
-        'usage' => const UsagePage(),
-        'wifi-speed-test' => const WifiSpeedTestPage(),
-        'groceries-list' => const GroceriesPage(),
-        'minecraft-launcher' => const MinecraftLauncherPage(),
-        'secure-chat' => const SecureChatPage(),
-        'sftp' => const SftpPage(),
-        'recipe-book' => const RecipeBookPage(),
-        'worth-counter' => const WorthCounterPage(),
-        'gallery' => const GalleryPage(),
-        'nfc-tag-editor' => const NfcTagEditorPage(),
-        'roblox-tools' => const RobloxToolsPage(),
-        'device-health' => const DeviceHealthPage(),
-        'account-overview' => const AccountOverviewPage(),
-        _ => LumaEmptyState(
-            icon: Icons.extension_off_rounded,
-            title: t.shellPluginUnavailable,
-          ),
-      };
+    'qr-code-generator' => const QrCodeGeneratorPage(),
+    'card-wallet' => const CardWalletPage(),
+    'errand-manager' => const ErrandsPage(),
+    'file-tree' => const FileTreePage(),
+    'file-viewer' => const FileViewerPage(),
+    'bulletin-board' => const BulletinBoardPage(),
+    'price-tracker' => const PriceTrackerPage(),
+    'calculator' => const CalculatorPage(),
+    'calendar' => const CalendarPage(),
+    'cloud-files' => const CloudFilesPage(),
+    'data-management' => const DataManagementPage(),
+    'server-tycoon' => const ServerTycoonPage(),
+    'airline-tycoon' => const AirlineTycoonPage(),
+    'space-colony' => const SpaceColonyPage(),
+    'subway-builder' => const SubwayBuilderPage(),
+    'transport-tracker' => const TransportTrackerPage(),
+    'city-planner' => const CityPlannerPage(),
+    'mood-journal' => const MoodJournalPage(),
+    'ai-usage' => const AiUsagePage(),
+    'steam-tools' => const SteamToolsPage(),
+    'ai-detector' => const AiDetectorPage(),
+    'youtube-downloader' => const MediaDownloaderPage(),
+    'school' => const SchoolPage(),
+    'mind-map' => const MindMapPage(),
+    'whiteboard' => const WhiteboardPage(),
+    'machine-learning' => const MachineLearningPage(),
+    'auto-clicker' => const AutoClickerPage(),
+    'usage' => const UsagePage(),
+    'wifi-speed-test' => const WifiSpeedTestPage(),
+    'groceries-list' => const GroceriesPage(),
+    'minecraft-launcher' => const MinecraftLauncherPage(),
+    'secure-chat' => const SecureChatPage(),
+    'sftp' => const SftpPage(),
+    'recipe-book' => const RecipeBookPage(),
+    'worth-counter' => const WorthCounterPage(),
+    'gallery' => const GalleryPage(),
+    'nfc-tag-editor' => const NfcTagEditorPage(),
+    'roblox-tools' => const RobloxToolsPage(),
+    'device-health' => const DeviceHealthPage(),
+    'account-overview' => const AccountOverviewPage(),
+    _ => LumaEmptyState(
+      icon: Icons.extension_off_rounded,
+      title: t.shellPluginUnavailable,
+    ),
+  };
 }
 
 /// A single step in [_AppShellState._history]: the fixed-section index (null
@@ -438,8 +752,11 @@ class _PhoneBackButton extends StatelessWidget {
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.all(10),
-            child: Icon(Icons.arrow_back_rounded,
-                color: luma.textPrimary, size: 22),
+            child: Icon(
+              Icons.arrow_back_rounded,
+              color: luma.textPrimary,
+              size: 22,
+            ),
           ),
         ),
       ),

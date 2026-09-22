@@ -92,8 +92,8 @@ class _ServerAccountRequiredState extends State<ServerAccountRequired> {
                   pending != null
                       ? byEmail
                           ? 'Your account ($pending) still needs a thumbs-up. '
-                              'Tap the link in the email we sent, '
-                              'then sign in here — until then we leave the '
+                              'Enter the 6-digit code we emailed you '
+                              'to finish signing in — until then we leave the '
                               'server completely alone.'
                           : 'Your account ($pending) is waiting on the '
                               'server owner to say yes. Nothing for you to do '
@@ -126,16 +126,16 @@ class _ServerAccountRequiredState extends State<ServerAccountRequired> {
                   runSpacing: 10,
                   children: [
                     LumaPrimaryButton(
-                      label: pending != null ? 'Sign in' : 'Set up account',
+                      label: pending != null
+                          ? (byEmail ? 'Enter code' : 'Sign in')
+                          : 'Set up account',
                       icon: Icons.person_add_rounded,
                       onTap: () => showAccountSetupDialog(context, sync,
                           initialMode: pending != null ? 0 : 1),
                     ),
                     if (pending != null && byEmail)
                       LumaGhostButton(
-                        label: _resending
-                            ? 'Sending…'
-                            : 'Resend approval email',
+                        label: _resending ? 'Sending…' : 'Resend code',
                         icon: Icons.mail_outline_rounded,
                         onTap: _resending ? null : () => _resend(sync),
                       ),

@@ -22,10 +22,10 @@ enum ServerApprovalMode {
   open;
 
   static ServerApprovalMode parse(String? raw) => switch (raw) {
-        'email' => ServerApprovalMode.email,
-        'open' => ServerApprovalMode.open,
-        _ => ServerApprovalMode.manual,
-      };
+    'email' => ServerApprovalMode.email,
+    'open' => ServerApprovalMode.open,
+    _ => ServerApprovalMode.manual,
+  };
 }
 
 /// Metadata the server keeps for one synced collection.
@@ -50,9 +50,11 @@ class RemoteCollectionMeta {
         version: j['version'] as int,
         size: j['size'] as int,
         payloadSavedAt: DateTime.fromMillisecondsSinceEpoch(
-            j['payloadSavedAtMs'] as int? ?? 0),
-        updatedAt:
-            DateTime.fromMillisecondsSinceEpoch(j['updatedAtMs'] as int? ?? 0),
+          j['payloadSavedAtMs'] as int? ?? 0,
+        ),
+        updatedAt: DateTime.fromMillisecondsSinceEpoch(
+          j['updatedAtMs'] as int? ?? 0,
+        ),
       );
 }
 
@@ -126,7 +128,8 @@ class RemoteAccount {
       deletionRequest: j['deletionRequest'] == null
           ? null
           : DataDeletionRequest.fromJson(
-              j['deletionRequest'] as Map<String, dynamic>),
+              j['deletionRequest'] as Map<String, dynamic>,
+            ),
       collections: collections,
     );
   }
@@ -174,7 +177,8 @@ class DataDeletionRequest {
         reason: j['reason'] as String? ?? '',
         status: j['status'] as String? ?? statusPending,
         createdAt: DateTime.fromMillisecondsSinceEpoch(
-            j['createdAtMs'] as int? ?? 0),
+          j['createdAtMs'] as int? ?? 0,
+        ),
         decidedAt: j['decidedAtMs'] == null
             ? null
             : DateTime.fromMillisecondsSinceEpoch(j['decidedAtMs'] as int),
@@ -270,14 +274,16 @@ class RemoteSession {
   final bool isCurrent;
 
   factory RemoteSession.fromJson(Map<String, dynamic> j) => RemoteSession(
-        id: j['id'] as String,
-        deviceLabel: j['deviceLabel'] as String?,
-        createdAt: DateTime.fromMillisecondsSinceEpoch(
-            j['createdAtMs'] as int? ?? 0),
-        expiresAt: DateTime.fromMillisecondsSinceEpoch(
-            j['expiresAtMs'] as int? ?? 0),
-        isCurrent: j['isCurrent'] as bool? ?? false,
-      );
+    id: j['id'] as String,
+    deviceLabel: j['deviceLabel'] as String?,
+    createdAt: DateTime.fromMillisecondsSinceEpoch(
+      j['createdAtMs'] as int? ?? 0,
+    ),
+    expiresAt: DateTime.fromMillisecondsSinceEpoch(
+      j['expiresAtMs'] as int? ?? 0,
+    ),
+    isCurrent: j['isCurrent'] as bool? ?? false,
+  );
 }
 
 class RemoteBlob {
@@ -333,11 +339,11 @@ class SyncApiException implements Exception {
 /// throws [ServerAccessDeniedException] before a socket is opened.
 class SyncApi {
   SyncApi(String baseUrl, {this.token, http.Client? client})
-      : baseUrl = normalizeBaseUrl(baseUrl),
-        _client = GatedServerClient(
-          inner: client,
-          allowBeforeApproval: ServerAccessGate.accountSetupPaths,
-        );
+    : baseUrl = normalizeBaseUrl(baseUrl),
+      _client = GatedServerClient(
+        inner: client,
+        allowBeforeApproval: ServerAccessGate.accountSetupPaths,
+      );
 
   final String baseUrl;
   String? token;
@@ -365,7 +371,8 @@ class SyncApi {
     if (uri.scheme == 'https') return null;
     if (uri.scheme != 'http') return 'Only http(s) addresses are supported.';
     final host = uri.host;
-    final isPrivate = host == 'localhost' ||
+    final isPrivate =
+        host == 'localhost' ||
         host.endsWith('.local') ||
         RegExp(r'^127\.').hasMatch(host) ||
         RegExp(r'^10\.').hasMatch(host) ||
@@ -374,18 +381,20 @@ class SyncApi {
     return isPrivate
         ? null
         : 'Plain http is only allowed for local/home-network servers. '
-            'Use https:// for servers on the internet.';
+              'Use https:// for servers on the internet.';
   }
 
   Uri _uri(String path) => Uri.parse('$baseUrl/api/v1$path');
 
-  Map<String, String> get _authHeaders =>
-      {if (token != null) 'Authorization': 'Bearer $token'};
+  Map<String, String> get _authHeaders => {
+    if (token != null) 'Authorization': 'Bearer $token',
+  };
 
   // ---- Auth ----------------------------------------------------------------
 
   Future<({Uint8List kdfSalt, int kdfIterations})> authParams(
-      String email) async {
+    String email,
+  ) async {
     final body = await _postJson('/auth/params', {'email': email});
     return (
       kdfSalt: Uint8List.fromList(base64Decode(body['kdfSalt'] as String)),
@@ -400,15 +409,18 @@ class SyncApi {
   /// this as a successful sign-in.
   ///
   /// [approvalMode] says who does the approving: `manual` (the operator, from
-  /// the admin dashboard — the default) or `email` (the user, by opening a
-  /// link). It decides whether offering to resend anything makes sense.
+  /// the admin dashboard — the default) or `email` (the user, by typing a
+  /// 6-digit code). It decides whether offering to resend anything makes
+  /// sense.
   Future<
-      ({
-        String? token,
-        bool pendingApproval,
-        String? message,
-        ServerApprovalMode approvalMode
-      })> register({
+    ({
+      String? token,
+      bool pendingApproval,
+      String? message,
+      ServerApprovalMode approvalMode,
+    })
+  >
+  register({
     required String email,
     required Uint8List authKey,
     required Uint8List kdfSalt,
@@ -429,7 +441,8 @@ class SyncApi {
         token: null,
         pendingApproval: true,
         approvalMode: mode,
-        message: body['message'] as String? ??
+        message:
+            body['message'] as String? ??
             'Your account has to be approved before you can sign in.',
       );
     }
@@ -441,10 +454,11 @@ class SyncApi {
     );
   }
 
-  Future<String> login(
-      {required String email,
-      required Uint8List authKey,
-      String? deviceLabel}) async {
+  Future<String> login({
+    required String email,
+    required Uint8List authKey,
+    String? deviceLabel,
+  }) async {
     final body = await _postJson('/auth/login', {
       'email': email,
       'authKey': base64Encode(authKey),
@@ -474,7 +488,8 @@ class SyncApi {
   /// Opens a browser sign-in. Returns the provider URL to send the user to
   /// and the private ticket every later step is keyed by.
   Future<({String ticket, String authUrl})> oauthStart(
-      String providerId) async {
+    String providerId,
+  ) async {
     final body = await _postJson('/auth/oauth/start', {'provider': providerId});
     return (
       ticket: body['ticket'] as String,
@@ -496,12 +511,9 @@ class SyncApi {
   /// server checks [authKey] against what it has on file, so a wrong
   /// passphrase fails here exactly as it would on a password sign-in.
   Future<
-      ({
-        String? token,
-        bool pendingApproval,
-        String? message,
-        String? email
-      })> oauthComplete({
+    ({String? token, bool pendingApproval, String? message, String? email})
+  >
+  oauthComplete({
     required String ticket,
     required Uint8List authKey,
     required Uint8List kdfSalt,
@@ -532,7 +544,19 @@ class SyncApi {
     final body = await _postJson('/auth/resend-verification', {'email': email});
     return body['message'] as String? ??
         'If that email has an account waiting for approval, we just sent a '
-            'new link.';
+            'new code.';
+  }
+
+  /// Submits the 6-digit code emailed to [email] for the pending account
+  /// [register] created. Throws [SyncApiException] if the code is wrong,
+  /// expired, or the account has made too many bad attempts — the caller
+  /// still has to [login]/[authParams] afterwards, since this only flips the
+  /// account to active rather than signing anything in.
+  Future<void> verifyEmailCode({
+    required String email,
+    required String code,
+  }) async {
+    await _postJson('/auth/verify-code', {'email': email, 'code': code});
   }
 
   Future<void> logout() async {
@@ -603,7 +627,8 @@ class SyncApi {
       'reason': reason,
     });
     return DataDeletionRequest.fromJson(
-        body['request'] as Map<String, dynamic>);
+      body['request'] as Map<String, dynamic>,
+    );
   }
 
   /// Withdraws a still-undecided request.
@@ -619,8 +644,10 @@ class SyncApi {
   /// (see [MistralProxyClient]), which uses the key server-side.
   Future<bool> mistralKeyConfigured() async {
     final response = await _client
-        .get(Uri.parse('$baseUrl/api/v1/ai/mistral-key-configured'),
-            headers: _authHeaders)
+        .get(
+          Uri.parse('$baseUrl/api/v1/ai/mistral-key-configured'),
+          headers: _authHeaders,
+        )
         .timeout(_jsonTimeout);
     final body = _decodeOrThrow(response);
     return body['configured'] == true;
@@ -645,6 +672,29 @@ class SyncApi {
     return RemoteAccount.fromJson(_decodeOrThrow(response));
   }
 
+  /// Gets the server-maintained CS2 market snapshot used by Orbit/Nova
+  /// offline saving. Unlike ordinary encrypted collections, the server must
+  /// read the market hash names to perform the scheduled Steam checks.
+  Future<Map<String, dynamic>> cs2OfflineSnapshot() async {
+    final response = await _client
+        .get(_uri('/steam/cs2/offline'), headers: _authHeaders)
+        .timeout(_jsonTimeout);
+    return _decodeOrThrow(response);
+  }
+
+  Future<Map<String, dynamic>> putCs2OfflineSnapshot(
+    Map<String, dynamic> snapshot,
+  ) async {
+    final response = await _client
+        .put(
+          _uri('/steam/cs2/offline'),
+          headers: {..._authHeaders, 'Content-Type': 'application/json'},
+          body: jsonEncode(snapshot),
+        )
+        .timeout(_blobTimeout);
+    return _decodeOrThrow(response);
+  }
+
   /// Returns null when the server has no snapshot for this collection.
   Future<RemoteBlob?> getBlob(String collection) async {
     final response = await _client
@@ -658,7 +708,8 @@ class SyncApi {
       bytes: response.bodyBytes,
       version: int.tryParse(response.headers['x-version'] ?? '') ?? 0,
       payloadSavedAt: DateTime.fromMillisecondsSinceEpoch(
-          int.tryParse(response.headers['x-payload-saved-at'] ?? '') ?? 0),
+        int.tryParse(response.headers['x-payload-saved-at'] ?? '') ?? 0,
+      ),
     );
   }
 
@@ -697,7 +748,9 @@ class SyncApi {
   // ---- Internals -------------------------------------------------------------
 
   Future<Map<String, dynamic>> _postJson(
-      String path, Map<String, dynamic> body) async {
+    String path,
+    Map<String, dynamic> body,
+  ) async {
     final response = await _client
         .post(
           _uri(path),
@@ -721,8 +774,10 @@ class SyncApi {
     throw _errorFrom(response, decoded: decoded);
   }
 
-  SyncApiException _errorFrom(http.Response response,
-      {Map<String, dynamic>? decoded}) {
+  SyncApiException _errorFrom(
+    http.Response response, {
+    Map<String, dynamic>? decoded,
+  }) {
     decoded ??= () {
       try {
         final raw = jsonDecode(utf8.decode(response.bodyBytes));

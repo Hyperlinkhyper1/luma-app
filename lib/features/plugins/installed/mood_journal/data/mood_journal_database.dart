@@ -27,4 +27,20 @@ class MoodJournalDatabase extends _$MoodJournalDatabase {
 
   @override
   int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          // schemaVersion was bumped to 2 for this column, but the
+          // migration to actually add it was never written — every device
+          // still on a version-1 file has no `images` column at all, so any
+          // query touching it (drift always selects every declared column)
+          // fails with "no such column: images" the moment mood_journal is
+          // opened.
+          if (from < 2) {
+            await m.addColumn(moodEntries, moodEntries.images);
+          }
+        },
+      );
 }
