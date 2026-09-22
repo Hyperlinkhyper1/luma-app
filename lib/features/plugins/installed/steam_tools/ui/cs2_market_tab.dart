@@ -330,10 +330,24 @@ class _Toolbar extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          LumaSegmentedTabs(
-            tabs: const ['Browse', 'Tracked'],
-            selectedIndex: view.index,
-            onSelect: (i) => onViewChanged(_Cs2MarketView.values[i]),
+          Row(
+            children: [
+              Expanded(
+                child: LumaSegmentedTabs(
+                  tabs: const ['Browse', 'Tracked'],
+                  selectedIndex: view.index,
+                  onSelect: (i) => onViewChanged(_Cs2MarketView.values[i]),
+                ),
+              ),
+              if (view == _Cs2MarketView.tracked) ...[
+                const SizedBox(width: 8),
+                IconButton(
+                  tooltip: 'Tracked settings',
+                  onPressed: () => _showTrackedSettings(context),
+                  icon: const Icon(Icons.settings_rounded),
+                ),
+              ],
+            ],
           ),
           const SizedBox(height: 14),
           SizedBox(
@@ -391,6 +405,27 @@ class _Toolbar extends StatelessWidget {
         ? 'updated ${ago.inHours}h ago'
         : 'updated just now';
     return '$count items catalogued, $freshness.';
+  }
+
+  void _showTrackedSettings(BuildContext context) {
+    final settings = SettingsScope.of(context);
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Tracked settings'),
+        content: ListenableBuilder(
+          listenable: settings,
+          builder: (context, _) => SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Count CS2 value as investments'),
+            subtitle: const Text('Include tracked weapon values in Finance and the dashboard.'),
+            value: settings.includeCs2InInvestments,
+            onChanged: settings.setIncludeCs2InInvestments,
+          ),
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Done'))],
+      ),
+    );
   }
 }
 

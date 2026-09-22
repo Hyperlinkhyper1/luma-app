@@ -751,6 +751,7 @@ class _LumaAppState extends State<LumaApp> {
                         repository: _homeRepository,
                         child: FinanceScope(
                           repository: _repository,
+                          cs2Market: _cs2MarketRepository,
                           child: PasswordScope(
                             repository: _passwordRepository,
                             child: PluginScope(

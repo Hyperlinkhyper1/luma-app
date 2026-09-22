@@ -22,15 +22,32 @@ Future<void> runPetWindow(
   WindowController controller,
   Map<String, dynamic> arguments,
 ) async {
-  await windowManager.ensureInitialized();
-  await windowManager.setPreventClose(true);
   await controller.setWindowMethodHandler((call) async {
     if (call.method != petWindowMethodClose) {
       throw MissingPluginException('Unknown pet window method ${call.method}');
     }
-    await windowManager.setPreventClose(false);
-    await windowManager.destroy();
+    try {
+      await windowManager.setPreventClose(false);
+      await windowManager.destroy();
+    } catch (_) {
+      await controller.hide();
+    }
   });
+
+  try {
+    await _setUpPetWindow();
+  } catch (_) {
+    // window_manager is missing from this engine (the runner did not register
+    // plugins for sub-windows). The window was created hidden, so show it
+    // through desktop_multi_window rather than leaving it invisible.
+    await controller.show();
+  }
+  runApp(_PetWindowApp(arguments: arguments));
+}
+
+Future<void> _setUpPetWindow() async {
+  await windowManager.ensureInitialized();
+  await windowManager.setPreventClose(true);
 
   const options = WindowOptions(
     size: kPetPanelSize,
@@ -48,7 +65,6 @@ Future<void> runPetWindow(
     await windowManager.show();
     await windowManager.focus();
   });
-  runApp(_PetWindowApp(arguments: arguments));
 }
 
 class _PetWindowRepository extends PetRepository {

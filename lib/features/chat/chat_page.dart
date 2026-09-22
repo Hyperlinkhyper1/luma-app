@@ -9,6 +9,9 @@ import '../../sync/sync_service.dart';
 import '../../theme/luma_theme.dart';
 import '../plugins/plugin_scope.dart';
 import '../plugins/installed/qr_code_generator/qr_code_scope.dart';
+import '../plugins/installed/calendar/calendar_scope.dart';
+import '../plugins/installed/steam_tools/cs2_market_scope.dart';
+import '../notes/notes_repository.dart';
 import 'ai_agent_store.dart';
 import 'ai_key_store.dart';
 import 'ai_tools.dart';
@@ -32,10 +35,12 @@ class ChatPage extends StatefulWidget {
     super.key,
     required this.onOpenSettings,
     required this.onOpenPlugin,
+    required this.onNavigate,
   });
 
   final VoidCallback onOpenSettings;
   final ValueChanged<String> onOpenPlugin;
+  final ValueChanged<String> onNavigate;
 
   @override
   State<ChatPage> createState() => _ChatPageState();
@@ -60,6 +65,10 @@ class _ChatPageState extends State<ChatPage> {
       tools: AiToolRegistry(
         pluginRepository: PluginScope.of(context),
         qrCodeRepository: QrCodeScope.of(context),
+        calendarRepository: CalendarScope.of(context),
+        notesRepository: NotesRepository(),
+        cs2MarketRepository: Cs2MarketScope.of(context),
+        navigate: widget.onNavigate,
       ),
       settings: SettingsScope.of(context),
       syncService: SyncScope.of(context),
