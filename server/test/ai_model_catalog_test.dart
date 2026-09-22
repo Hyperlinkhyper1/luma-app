@@ -290,6 +290,46 @@ void main() {
     });
   });
 
+  group('parseAnthropicNews', () {
+    // Trimmed from the live page: a featured card and the same article's list
+    // row, a list-only row, and a dateless nav link into /news.
+    const page = '''
+<a href="/news/improving-alignment-security-efforts" class="Card_x1"><div class="m"><span class="s">Announcements</span><time class="d">Aug 31, 2026</time></div><h4 class="t">Improving our alignment and security efforts</h4><p class="b">We are sharing some of the changes we&#x27;ve made. More detail follows.</p></a>
+<li><a href="/news/accenture-embedded-evaluation" class="List_y2"><div class="m"><time class="d">Sep 18, 2026</time><span class="s">Announcements</span></div><span class="t"> Partnering with Accenture on embedded evaluation</span></a></li>
+<li><a href="/news/improving-alignment-security-efforts" class="List_y2"><div class="m"><time class="d">Aug 31, 2026</time><span class="s">Announcements</span></div><span class="t">Improving our alignment and security efforts</span></a></li>
+<a href="https://www.anthropic.com/news/announcing-our-updated-responsible-scaling-policy" class="n">Responsible Scaling Policy</a>
+''';
+
+    test('reads cards and list rows, merging duplicates', () {
+      final items = parseAnthropicNews(page, 'Anthropic');
+      expect(items.map((i) => i.url), [
+        'https://www.anthropic.com/news/improving-alignment-security-efforts',
+        'https://www.anthropic.com/news/accenture-embedded-evaluation',
+      ]);
+      final featured = items.first;
+      expect(featured.title, 'Improving our alignment and security efforts');
+      expect(featured.summary,
+          startsWith("We are sharing some of the changes we've made."));
+      expect(
+        DateTime.fromMillisecondsSinceEpoch(featured.publishedAtMs,
+            isUtc: true),
+        DateTime.utc(2026, 8, 31),
+      );
+    });
+
+    test('the list-row title excludes the date and category', () {
+      final items = parseAnthropicNews(page, 'Anthropic');
+      expect(
+          items.last.title, 'Partnering with Accenture on embedded evaluation');
+      expect(items.last.summary, isNull);
+    });
+
+    test('a page with no dated articles yields nothing', () {
+      expect(parseAnthropicNews('<html><a href="/news/x">X</a></html>', 'A'),
+          isEmpty);
+    });
+  });
+
   group('AiModelCatalogStore', () {
     late Directory dir;
 

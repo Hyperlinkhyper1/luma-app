@@ -13,6 +13,7 @@ import 'ai_model.dart';
 import 'ai_model_detail_page.dart';
 import 'ai_pareto.dart';
 import 'ai_vendor_style.dart';
+import 'vendor_logos.dart';
 
 /// The Leaderboard's **Insights** view: a scrollable page of everything that
 /// doesn't fit a single table or chart — the price/performance frontier,
@@ -467,29 +468,54 @@ class _NewsList extends StatelessWidget {
   }
 }
 
-class _NewsCard extends StatelessWidget {
+class _NewsCard extends StatefulWidget {
   const _NewsCard({required this.item});
 
   final AiNewsItem item;
 
   @override
+  State<_NewsCard> createState() => _NewsCardState();
+}
+
+class _NewsCardState extends State<_NewsCard> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
+    final item = widget.item;
     final luma = context.luma;
-    final badgeColor = newsSourceColor(item.source);
+    final brand = newsSourceColor(item.source);
+    final still = MediaQuery.disableAnimationsOf(context);
+    const motion = Duration(milliseconds: 240);
     return LumaCard(
       padding: EdgeInsets.zero,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(context.lumaDecor.cardRadius),
         child: InkWell(
-          onTap: () =>
-              launchUrl(Uri.parse(item.url), mode: LaunchMode.externalApplication),
+          onTap: () => launchUrl(
+            Uri.parse(item.url),
+            mode: LaunchMode.externalApplication,
+          ),
+          onHover: (hovered) => setState(() => _hovered = hovered),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
               AspectRatio(
-                aspectRatio: 16 / 9,
-                child: _NewsBanner(item: item, badgeColor: badgeColor),
+                aspectRatio: 2,
+                child: ClipRect(
+                  child: AnimatedScale(
+                    scale: _hovered && !still ? 1.04 : 1,
+                    duration: still ? Duration.zero : motion,
+                    curve: Curves.easeOutCubic,
+                    child: _NewsBanner(item: item, brand: brand),
+                  ),
+                ),
+              ),
+              AnimatedContainer(
+                duration: still ? Duration.zero : motion,
+                height: 2,
+                color: brand.withValues(alpha: _hovered ? 0.95 : 0.45),
               ),
               Padding(
                 padding: const EdgeInsets.all(14),
@@ -499,24 +525,22 @@ class _NewsCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Flexible(
+                        Expanded(
                           child: Text(
-                            item.source,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            item.publishedAt == null
+                                ? item.source
+                                : relativeDay(item.publishedAt!),
                             style: TextStyle(
-                              color: badgeColor,
+                              color: luma.textMuted,
                               fontSize: 11,
-                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),
-                        if (item.publishedAt != null) ...[
-                          const SizedBox(width: 6),
-                          Text('· ${relativeDay(item.publishedAt!)}',
-                              style:
-                                  TextStyle(color: luma.textMuted, fontSize: 11)),
-                        ],
+                        Icon(
+                          Icons.north_east_rounded,
+                          size: 15,
+                          color: _hovered ? brand : luma.textMuted,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 5),
@@ -525,10 +549,11 @@ class _NewsCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                          color: luma.textPrimary,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          height: 1.3),
+                        color: luma.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        height: 1.3,
+                      ),
                     ),
                     if (item.summary != null) ...[
                       const SizedBox(height: 5),
@@ -537,7 +562,10 @@ class _NewsCard extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                            color: luma.textMuted, fontSize: 12.5, height: 1.4),
+                          color: luma.textMuted,
+                          fontSize: 12.5,
+                          height: 1.4,
+                        ),
                       ),
                     ],
                   ],
@@ -552,63 +580,343 @@ class _NewsCard extends StatelessWidget {
 }
 
 /// The card's top banner: the article's own lead image when the feed
-/// supplied one, or — since most of the feeds here never do — a tinted
-/// gradient in the source's colour with its badge, so a missing photo never
-/// reads as a broken one.
+/// supplied one, or — since most of the feeds here never do — generated
+/// cover art in the source's colour. Either way the source's masthead sits
+/// bottom-left, so every card is identifiable at a glance.
 class _NewsBanner extends StatelessWidget {
-  const _NewsBanner({required this.item, required this.badgeColor});
+  const _NewsBanner({required this.item, required this.brand});
 
   final AiNewsItem item;
-  final Color badgeColor;
+  final Color brand;
 
   @override
   Widget build(BuildContext context) {
-    final luma = context.luma;
-    final placeholder = Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            badgeColor.withValues(alpha: 0.28),
-            luma.surface,
-          ],
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final art = RepaintBoundary(
+      child: CustomPaint(
+        painter: _BannerArtPainter(
+          brand: brand,
+          seed: _stableSeed(item.id.isEmpty ? item.url : item.id),
+          dark: dark,
+          monogram: newsSourceInitials(item.source),
         ),
       ),
-      alignment: Alignment.center,
-      child: VendorBadge(
-        vendor: kNewsSourceVendor[item.source] ?? item.source,
-        vendorName: item.source,
-        size: 44,
-      ),
     );
-
-    if (item.imageUrl == null) return placeholder;
+    final hasImage = item.imageUrl != null;
+    final published = item.publishedAt;
+    final fresh =
+        published != null &&
+        DateTime.now().difference(published) < const Duration(hours: 48);
 
     return Stack(
       fit: StackFit.expand,
       children: [
-        Image.network(
-          item.imageUrl!,
-          fit: BoxFit.cover,
-          loadingBuilder: (context, child, progress) =>
-              progress == null ? child : placeholder,
-          errorBuilder: (context, error, stack) => placeholder,
-        ),
-        // The badge still shows over a real photo — it's what identifies the
-        // source at a glance, not just decoration for the empty case.
+        if (hasImage)
+          Image.network(
+            item.imageUrl!,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, progress) =>
+                progress == null ? child : art,
+            errorBuilder: (context, error, stack) => art,
+          )
+        else
+          art,
+        if (hasImage)
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                stops: [0.45, 1],
+                colors: [Color(0x00000000), Color(0x99000000)],
+              ),
+            ),
+          ),
         Positioned(
-          left: 10,
-          bottom: 10,
-          child: VendorBadge(
-            vendor: kNewsSourceVendor[item.source] ?? item.source,
-            vendorName: item.source,
-            size: 32,
+          left: 14,
+          right: 14,
+          bottom: 12,
+          child: _SourceMasthead(
+            source: item.source,
+            brand: brand,
+            onDark: hasImage || dark,
+          ),
+        ),
+        if (fresh)
+          Positioned(top: 12, right: 12, child: _FreshPill(brand: brand)),
+      ],
+    );
+  }
+}
+
+/// The source's mark and name, set like a publication masthead.
+class _SourceMasthead extends StatelessWidget {
+  const _SourceMasthead({
+    required this.source,
+    required this.brand,
+    required this.onDark,
+  });
+
+  final String source;
+  final Color brand;
+  final bool onDark;
+
+  @override
+  Widget build(BuildContext context) {
+    final vendor = kNewsSourceVendor[source];
+    return Row(
+      children: [
+        if (vendor != null)
+          VendorLogo(vendor: vendor, vendorName: source, size: 26)
+        else
+          Container(
+            width: 24,
+            height: 24,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: brand,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(color: brand.withValues(alpha: 0.45), blurRadius: 10),
+              ],
+            ),
+            child: Text(
+              newsSourceInitials(source),
+              style: TextStyle(
+                color: _inkOn(brand),
+                fontSize: 9.5,
+                fontWeight: FontWeight.w800,
+                height: 1,
+              ),
+            ),
+          ),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text(
+            source,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: onDark ? Colors.white : const Color(0xFF14121A),
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.1,
+              shadows: onDark
+                  ? const [Shadow(color: Color(0x66000000), blurRadius: 6)]
+                  : null,
+            ),
           ),
         ),
       ],
     );
   }
+}
+
+/// Flags an article from the last two days.
+class _FreshPill extends StatelessWidget {
+  const _FreshPill({required this.brand});
+
+  final Color brand;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: brand,
+        borderRadius: BorderRadius.circular(context.lumaDecor.pillRadius),
+      ),
+      child: Text(
+        'NEW',
+        style: TextStyle(
+          color: _inkOn(brand),
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.8,
+        ),
+      ),
+    );
+  }
+}
+
+/// Black or white, whichever reads on [fill] — the brand colours run from
+/// xAI's near-white to DeepSeek's indigo.
+Color _inkOn(Color fill) =>
+    fill.computeLuminance() > 0.4 ? const Color(0xFF14121A) : Colors.white;
+
+/// FNV-1a over the key, so an article keeps the same cover art across runs
+/// (`String.hashCode` makes no such promise).
+int _stableSeed(String key) {
+  var hash = 0x811c9dc5;
+  for (final unit in key.codeUnits) {
+    hash = ((hash ^ unit) * 0x01000193) & 0x7fffffff;
+  }
+  return hash;
+}
+
+/// Cover art for an article with no image of its own: a wash in the
+/// source's colour, two glows, one of four line motifs and an oversized
+/// monogram, all placed by [seed] — every card from one source shares a
+/// palette but no two look the same.
+class _BannerArtPainter extends CustomPainter {
+  _BannerArtPainter({
+    required this.brand,
+    required this.seed,
+    required this.dark,
+    required this.monogram,
+  });
+
+  final Color brand;
+  final int seed;
+  final bool dark;
+  final String monogram;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rnd = math.Random(seed);
+    final w = size.width;
+    final h = size.height;
+    final rect = Offset.zero & size;
+    final hsl = HSLColor.fromColor(brand);
+    final sat = math.min(hsl.saturation, 0.8);
+    final base = hsl.withSaturation(sat);
+    final shifted = base.withHue((hsl.hue + 24 + rnd.nextDouble() * 36) % 360);
+    final ink = dark ? Colors.white : Colors.black;
+
+    final angle = rnd.nextDouble() * math.pi;
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment(-math.cos(angle), -math.sin(angle)),
+          end: Alignment(math.cos(angle), math.sin(angle)),
+          colors: [
+            base.withLightness(dark ? 0.20 : 0.84).toColor(),
+            shifted
+                .withSaturation(sat * 0.7)
+                .withLightness(dark ? 0.07 : 0.95)
+                .toColor(),
+          ],
+        ).createShader(rect),
+    );
+
+    final hot = Offset(
+      w * (0.55 + rnd.nextDouble() * 0.4),
+      h * (-0.1 + rnd.nextDouble() * 0.5),
+    );
+    _glow(
+      canvas,
+      hot,
+      w * 0.6,
+      base.withLightness(dark ? 0.55 : 0.62).toColor().withValues(alpha: 0.55),
+    );
+    _glow(
+      canvas,
+      Offset(w * rnd.nextDouble() * 0.4, h * (0.7 + rnd.nextDouble() * 0.4)),
+      w * 0.45,
+      shifted
+          .withLightness(dark ? 0.5 : 0.7)
+          .toColor()
+          .withValues(alpha: dark ? 0.35 : 0.45),
+    );
+
+    final line = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    switch (seed % 4) {
+      case 0:
+        final dot = Paint();
+        for (var x = 8.0; x < w; x += 16) {
+          for (var y = 8.0; y < h; y += 16) {
+            dot.color = ink.withValues(alpha: 0.16 * (x / w));
+            canvas.drawCircle(Offset(x, y), 1.2, dot);
+          }
+        }
+      case 1:
+        for (var r = 20.0; r < w; r += 20) {
+          line.color = ink.withValues(alpha: 0.13 * (1 - r / w));
+          canvas.drawCircle(hot, r, line);
+        }
+      case 2:
+        line.color = ink.withValues(alpha: 0.07);
+        for (var x = -h; x < w; x += 14) {
+          canvas.drawLine(Offset(x, h), Offset(x + h, 0), line);
+        }
+      default:
+        final nodes = [
+          for (var i = 0; i < 7; i++)
+            Offset(
+              w * (0.4 + rnd.nextDouble() * 0.56),
+              h * (0.08 + rnd.nextDouble() * 0.7),
+            ),
+        ];
+        line.color = ink.withValues(alpha: 0.2);
+        for (var i = 0; i < nodes.length; i++) {
+          canvas.drawLine(nodes[i], nodes[(i + 1) % nodes.length], line);
+          if (i.isEven) {
+            canvas.drawLine(nodes[i], nodes[(i + 3) % nodes.length], line);
+          }
+        }
+        final node = Paint()..color = ink.withValues(alpha: 0.45);
+        for (final n in nodes) {
+          canvas.drawCircle(n, 2.6, node);
+        }
+        canvas.drawCircle(
+          nodes.first,
+          7,
+          line
+            ..color = base.withLightness(dark ? 0.72 : 0.4).toColor()
+            ..strokeWidth = 1.6,
+        );
+    }
+
+    final mark = TextPainter(
+      text: TextSpan(
+        text: monogram,
+        style: TextStyle(
+          fontSize: h * 0.9,
+          fontWeight: FontWeight.w900,
+          height: 1,
+          letterSpacing: -h * 0.04,
+          color: ink.withValues(alpha: dark ? 0.08 : 0.07),
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    mark.paint(canvas, Offset(w - mark.width * 0.9, h - mark.height * 0.8));
+    mark.dispose();
+
+    // Seats the masthead.
+    final shade = dark ? Colors.black : Colors.white;
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          stops: const [0.45, 1],
+          colors: [shade.withValues(alpha: 0), shade.withValues(alpha: 0.35)],
+        ).createShader(rect),
+    );
+  }
+
+  void _glow(Canvas canvas, Offset center, double radius, Color color) {
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [color, color.withValues(alpha: 0)],
+        ).createShader(Rect.fromCircle(center: center, radius: radius)),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_BannerArtPainter old) =>
+      old.brand != brand ||
+      old.seed != seed ||
+      old.dark != dark ||
+      old.monogram != monogram;
 }
 
 /// The excerpt shown under the title: just the opening sentence rather than
