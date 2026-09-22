@@ -115,6 +115,10 @@ class SyncStateStore {
 
   final Map<String, CollectionSyncState> collections = {};
 
+  /// Set when the saved credentials were gone from secure storage at load,
+  /// so this device came back signed out and must sign in again.
+  bool credentialsLost = false;
+
   bool get signedIn =>
       token != null && encryptionKey != null && serverUrl != null;
 
@@ -157,14 +161,20 @@ class SyncStateStore {
 
     final store = SyncStateStore._(file);
     final protected = data['credentialsProtected'] == true;
+    var credentialsLost = false;
     if (protected) {
       final credentials = await SecureSecretStore.instance.read(
         'sync.credentials',
       );
       if (credentials == null) {
-        throw StateError('Sync credentials are unavailable in secure storage.');
+        // Secure storage lost them. Come back signed out, keeping the email
+        // so signing in again is one step. The next sign-in then pulls every
+        // collection from the server rather than pushing whatever is local.
+        credentialsLost = true;
+        data = {...data, 'accountApproved': false};
+      } else {
+        data = {...data, ...jsonDecode(credentials) as Map<String, dynamic>};
       }
-      data = {...data, ...jsonDecode(credentials) as Map<String, dynamic>};
     }
     var serverUrlMigrated = false;
     try {
@@ -208,6 +218,14 @@ class SyncStateStore {
             store.collections[id] = CollectionSyncState.fromJson(raw);
           }
         });
+      }
+      if (credentialsLost) {
+        store.credentialsLost = true;
+        for (final st in store.collections.values) {
+          st
+            ..lastSyncedVersion = null
+            ..lastSyncedHash = null;
+        }
       }
     } catch (_) {
       throw StateError('Invalid sync state. Restore the original credentials.');

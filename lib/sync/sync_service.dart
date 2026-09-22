@@ -227,6 +227,16 @@ class SyncService extends ChangeNotifier {
   Future<void> init() async {
     _state = await SyncStateStore.load();
     final s = _state!;
+    if (s.credentialsLost) _requiresReauth = true;
+    if (SecureSecretStore.instance.lostKeys.contains('passwords.key')) {
+      // The local vault was moved aside with its lost key and this one is
+      // empty. Pull the server copy instead of pushing the empty vault over
+      // it.
+      s.collection('passwords')
+        ..lastSyncedVersion = null
+        ..lastSyncedHash = null;
+      await s.save();
+    }
     if (!s.localAccountMigrated) {
       // One-time migration: local-only (serverless) identities predate the
       // plan-based server sync limits, so any device still using one is

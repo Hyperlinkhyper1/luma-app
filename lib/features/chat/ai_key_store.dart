@@ -29,14 +29,20 @@ class AiKeyStore {
     final dir = await getApplicationSupportDirectory();
     final keyFile = File('${dir.path}${Platform.pathSeparator}$_keyFileName');
 
-    final hasData = await dir.list().any(
-      (entry) =>
-          entry.path.contains('luma_ai_apikey_') && entry.path.endsWith('.dat'),
-    );
+    final data = await dir
+        .list()
+        .where(
+          (entry) =>
+              entry is File &&
+              entry.path.contains('luma_ai_apikey_') &&
+              entry.path.endsWith('.dat'),
+        )
+        .cast<File>()
+        .toList();
     final key = await SecureSecretStore.instance.loadKey(
       'ai.key',
       keyFile,
-      encryptedDataExists: hasData,
+      encryptedData: data,
     );
     return _instance = AiKeyStore._(key, dir.path);
   }

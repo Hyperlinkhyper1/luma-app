@@ -88,7 +88,7 @@ class YoutubeCredentialStore {
     final key = await SecureSecretStore.instance.loadKey(
       'youtube.key',
       keyFile,
-      encryptedDataExists: await File('${dir.path}/$_dataFileName').exists(),
+      encryptedData: [File('${dir.path}/$_dataFileName')],
     );
     return _instance = YoutubeCredentialStore._(key, dir.path);
   }

@@ -42,9 +42,10 @@ class PasswordCrypto {
     final key = await SecureSecretStore.instance.loadKey(
       'passwords.key',
       file,
-      encryptedDataExists: await File(
-        '${dir.path}/luma_passwords.sqlite',
-      ).exists(),
+      encryptedData: [
+        for (final suffix in ['', '-wal', '-shm', '-journal'])
+          File('${dir.path}/luma_passwords.sqlite$suffix'),
+      ],
     );
     return _instance = PasswordCrypto._(key);
   }
