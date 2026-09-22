@@ -61,25 +61,51 @@ class UpdateService {
 
   @visibleForTesting
   static Future<String> writeWindowsInstallerLauncher(
-    String installerPath,
-  ) async {
+    String installerPath, {
+    required int appPid,
+    required String appExePath,
+  }) async {
     final installer = File(installerPath);
     final installerName = installer.uri.pathSegments.last;
     if (!RegExp(r'^[a-zA-Z0-9][a-zA-Z0-9._-]*$').hasMatch(installerName)) {
       throw const FormatException('Invalid installer filename.');
     }
+    if (appExePath.contains('"') || appExePath.contains('\n')) {
+      throw const FormatException('Invalid app path.');
+    }
     final launcher = File(
       '${installer.parent.path}${Platform.pathSeparator}launch-update.vbs',
     );
+    // Waits for this process to really be gone before the installer starts,
+    // and kills it (plus any other luma.exe from the same install) if it
+    // outlives `exit(0)`. Any luma.exe still alive when the installer starts
+    // costs a ~30s Restart Manager shutdown with nothing on screen, and
+    // reopening luma inside that window locks its files and rolls the whole
+    // install back. install.log next to the installer records every attempt.
     await launcher.writeAsString(
       'Set shell = CreateObject("WScript.Shell")\r\n'
-      'WScript.Sleep 2000\r\n'
+      'Set wmi = GetObject("winmgmts:\\\\.\\root\\cimv2")\r\n'
+      'WScript.Sleep 500\r\n'
+      'For i = 1 To 40\r\n'
+      '  If wmi.ExecQuery("SELECT ProcessId FROM Win32_Process '
+      'WHERE ProcessId = $appPid").Count = 0 Then Exit For\r\n'
+      '  WScript.Sleep 250\r\n'
+      'Next\r\n'
+      'killed = False\r\n'
+      'For Each p In wmi.ExecQuery("SELECT * FROM Win32_Process '
+      'WHERE Name = \'luma.exe\'")\r\n'
+      '  If LCase(p.ExecutablePath & "") = LCase("$appExePath") Then\r\n'
+      '    p.Terminate\r\n'
+      '    killed = True\r\n'
+      '  End If\r\n'
+      'Next\r\n'
+      'If killed Then WScript.Sleep 1000\r\n'
       'shell.CurrentDirectory = '
       'CreateObject("Scripting.FileSystemObject").'
       'GetParentFolderName(WScript.ScriptFullName)\r\n'
       'shell.Run Chr(34) & "$installerName" & Chr(34) & '
       '" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART '
-      '/FORCECLOSEAPPLICATIONS", 0, False\r\n',
+      '/FORCECLOSEAPPLICATIONS /LOG=install.log", 0, False\r\n',
       flush: true,
     );
     return launcher.path;
@@ -308,8 +334,9 @@ class UpdateService {
       // /VERYSILENT: no UI. /SUPPRESSMSGBOXES: no prompts. /NORESTART: never
       // reboot.
       //
-      // Routed through a two-second delay rather than starting the installer
-      // directly: CloseApplications=yes (in the .iss) asks
+      // Routed through a launcher that waits for this process to exit (see
+      // [writeWindowsInstallerLauncher]) rather than starting the installer
+      // directly: CloseApplications (in the .iss) asks
       // RestartManager to close the still-running luma.exe cooperatively
       // (WM_QUERYENDSESSION) before copying files, but Flutter's Windows
       // runner never answers that message. Confirmed on a real device —
@@ -327,7 +354,11 @@ class UpdateService {
       // Keep the delay and command in a windowless script. Passing a compound
       // command to cmd.exe makes Dart escape its nested quotes, which cmd.exe
       // treats literally, while launching cmd.exe also opens a terminal.
-      final launcherPath = await writeWindowsInstallerLauncher(installerPath);
+      final launcherPath = await writeWindowsInstallerLauncher(
+        installerPath,
+        appPid: pid,
+        appExePath: Platform.resolvedExecutable,
+      );
       await Process.start('wscript.exe', [
         launcherPath,
       ], mode: ProcessStartMode.detached);

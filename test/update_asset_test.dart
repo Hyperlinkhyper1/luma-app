@@ -114,11 +114,12 @@ void main() {
 
     final launcher = await UpdateService.writeWindowsInstallerLauncher(
       installer.path,
+      appPid: 0x7ffffffc,
+      appExePath: '${temp.path}\\missing\\luma.exe',
     );
-    expect(
-      await File(launcher).readAsString(),
-      contains('/FORCECLOSEAPPLICATIONS'),
-    );
+    final script = await File(launcher).readAsString();
+    expect(script, contains('/FORCECLOSEAPPLICATIONS'));
+    expect(script, contains('/LOG=install.log'));
     final result = await Process.run('wscript.exe', [launcher]);
 
     for (var attempt = 0; attempt < 50 && !marker.existsSync(); attempt++) {
@@ -128,6 +129,38 @@ void main() {
     expect(result.exitCode, 0, reason: result.stderr as String);
     expect(marker.existsSync(), isTrue);
   });
+
+  test('Windows installer handoff kills an app that outlives exit', () async {
+    if (!Platform.isWindows) return;
+
+    final temp = await Directory.systemTemp.createTemp('luma update kill ');
+    addTearDown(() => temp.delete(recursive: true));
+    final marker = File('${temp.path}\\installer-started.txt');
+    final installer = File('${temp.path}\\fake-installer.cmd');
+    await installer.writeAsString(
+      '@echo off\r\n'
+      '> "${marker.path}" echo started\r\n',
+    );
+    final fakeApp = await File(
+      '${Platform.environment['SystemRoot']}\\System32\\PING.EXE',
+    ).copy('${temp.path}\\luma.exe');
+    final app = await Process.start(fakeApp.path, ['-n', '120', '127.0.0.1']);
+    addTearDown(() => app.kill(ProcessSignal.sigkill));
+
+    final launcher = await UpdateService.writeWindowsInstallerLauncher(
+      installer.path,
+      appPid: app.pid,
+      appExePath: fakeApp.path,
+    );
+    final result = await Process.run('wscript.exe', [launcher]);
+    expect(result.exitCode, 0, reason: result.stderr as String);
+
+    await app.exitCode.timeout(const Duration(seconds: 5));
+    for (var attempt = 0; attempt < 50 && !marker.existsSync(); attempt++) {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    expect(marker.existsSync(), isTrue);
+  }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('Windows installer relaunch does not route through cmd.exe', () {
     final installerScript = File(
