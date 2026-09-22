@@ -15,4 +15,9 @@ class AiUsageScope extends InheritedNotifier<AiUsageRepository> {
     assert(scope != null, 'AiUsageScope was not found in the widget tree');
     return scope!.notifier!;
   }
+
+  /// For callers that only log into the repository and so neither need to
+  /// rebuild on its changes nor fail when it is missing (a widget test).
+  static AiUsageRepository? maybeOf(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<AiUsageScope>()?.notifier;
 }

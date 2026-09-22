@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../settings/settings_controller.dart';
 import '../../sync/sync_service.dart';
+import '../plugins/installed/ai_usage/ai_usage_repository.dart';
 import 'ai_agent_store.dart';
 import 'ai_key_store.dart';
 import 'ai_tools.dart';
@@ -30,12 +31,14 @@ class ChatController extends ChangeNotifier {
     required AiToolRegistry tools,
     required SettingsController settings,
     SyncService? syncService,
+    AiUsageRepository? aiUsage,
   })  : _repository = repository,
         _keyStore = keyStore,
         _agentStore = agentStore,
         _tools = tools,
         _settings = settings,
-        _syncService = syncService;
+        _syncService = syncService,
+        _aiUsage = aiUsage;
 
   final ChatRepository _repository;
   final AiKeyStore _keyStore;
@@ -43,6 +46,9 @@ class ChatController extends ChangeNotifier {
   final AiToolRegistry _tools;
   final SettingsController _settings;
   final SyncService? _syncService;
+
+  /// Where each reply's token usage is logged for the AI Usage plugin.
+  final AiUsageRepository? _aiUsage;
 
   static const _maxHistoryTurns = 20;
 
@@ -142,6 +148,15 @@ class ChatController extends ChangeNotifier {
       if (!usingServerKey) _settings.recordAiCall();
       _settings.recordModelUsage(
           modelUsageKeyFor(providerId, mode: googleMode));
+      final usage = result.usage;
+      if (usage != null) {
+        await _aiUsage?.recordLumaCall(
+          providerId: providerId,
+          usage: usage,
+          feature: 'Assistant',
+          sessionId: 'luma:chat:$conversationId',
+        );
+      }
     } on AiError catch (e) {
       await _repository.addMessage(conversationId, 'error', e.message);
     } catch (e) {

@@ -23,6 +23,8 @@ const Map<String, AiPricingRates> kAnthropicPricing = {
   'claude-haiku-4-7': AiPricingRates(input: 1.00, output: 5.00, cacheWrite: 1.25, cacheRead: 0.10),
   'claude-haiku-4-6': AiPricingRates(input: 1.00, output: 5.00, cacheWrite: 1.25, cacheRead: 0.10),
   'claude-haiku-4-5': AiPricingRates(input: 1.00, output: 5.00, cacheWrite: 1.25, cacheRead: 0.10),
+  // luma's own Assistant default (AnthropicClient.defaultModel).
+  'claude-3-5-haiku': AiPricingRates(input: 0.80, output: 4.00, cacheWrite: 1.00, cacheRead: 0.08),
 };
 
 /// Whether [model] is one of Anthropic's billable model families. Anything

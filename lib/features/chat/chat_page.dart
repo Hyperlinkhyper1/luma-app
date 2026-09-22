@@ -7,6 +7,7 @@ import '../../settings/sync_section.dart';
 import '../../sync/sync_scope.dart';
 import '../../sync/sync_service.dart';
 import '../../theme/luma_theme.dart';
+import '../plugins/installed/ai_usage/ai_usage_scope.dart';
 import '../plugins/plugin_scope.dart';
 import '../plugins/installed/qr_code_generator/qr_code_scope.dart';
 import '../plugins/installed/calendar/calendar_scope.dart';
@@ -72,6 +73,7 @@ class _ChatPageState extends State<ChatPage> {
       ),
       settings: SettingsScope.of(context),
       syncService: SyncScope.of(context),
+      aiUsage: AiUsageScope.maybeOf(context),
     );
   }
 

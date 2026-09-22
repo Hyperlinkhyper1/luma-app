@@ -76,13 +76,18 @@ class OpenAiCompatibleClient implements AiClient {
 
     var hops = 0;
     String? metadataJson;
+    AiTokenUsage? usage;
     while (true) {
-      final message = await _send(
+      final response = await _send(
         apiKey,
         messages,
         toolSchemas,
         useAgent ? agentId : null,
       );
+      usage = addAiUsage(usage, _usageFrom(response));
+      final choices = response['choices'] as List;
+      final message = (choices.first as Map<String, dynamic>)['message']
+          as Map<String, dynamic>;
       final toolCalls =
           (message['tool_calls'] as List?)?.cast<Map<String, dynamic>>() ??
               const [];
@@ -92,6 +97,7 @@ class OpenAiCompatibleClient implements AiClient {
         return AiChatResult(
           text: text.isEmpty ? "I couldn't come up with a reply for that." : text,
           metadataJson: metadataJson,
+          usage: usage,
         );
       }
 
@@ -100,6 +106,7 @@ class OpenAiCompatibleClient implements AiClient {
         return AiChatResult(
           text: "I couldn't finish that — too many tool steps.",
           metadataJson: metadataJson,
+          usage: usage,
         );
       }
 
@@ -209,9 +216,34 @@ class OpenAiCompatibleClient implements AiClient {
           '$providerLabel returned an error (${res.statusCode}).');
     }
 
-    final decoded = jsonDecode(res.body) as Map<String, dynamic>;
-    final choices = decoded['choices'] as List;
-    return (choices.first as Map<String, dynamic>)['message']
-        as Map<String, dynamic>;
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  /// Reads the OpenAI-shape `usage` block. Cached input is reported inside
+  /// `prompt_tokens` there, so it is split back out; and Gemini leaves its
+  /// thinking tokens out of `completion_tokens` while still counting them in
+  /// `total_tokens`, so any remainder of the total is billed as output.
+  ///
+  /// The luma server's proxies return the provider's body unchanged, so this
+  /// works the same for server-key chats — except that what they were sent
+  /// is a mode name, which is why the response's own `model` wins over
+  /// [defaultModel].
+  AiTokenUsage? _usageFrom(Map<String, dynamic> response) {
+    final usage = response['usage'];
+    if (usage is! Map) return null;
+    int count(Object? value) => (value as num?)?.toInt() ?? 0;
+    final prompt = count(usage['prompt_tokens']);
+    var completion = count(usage['completion_tokens']);
+    final total = count(usage['total_tokens']);
+    final details = usage['prompt_tokens_details'];
+    final cached = details is Map ? count(details['cached_tokens']) : 0;
+    if (total > prompt + completion) completion = total - prompt;
+    final model = response['model'];
+    return AiTokenUsage(
+      model: model is String && model.isNotEmpty ? model : defaultModel,
+      inputTokens: (prompt - cached).clamp(0, prompt),
+      outputTokens: completion,
+      cacheReadTokens: cached.clamp(0, prompt),
+    );
   }
 }

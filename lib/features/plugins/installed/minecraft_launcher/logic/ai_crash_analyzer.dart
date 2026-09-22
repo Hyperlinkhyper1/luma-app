@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import '../../../../../features/chat/ai_key_store.dart';
 import '../../../../../features/chat/providers/ai_client.dart';
 import '../../../../../features/chat/providers/ai_providers.dart';
+import '../../ai_usage/ai_usage_scope.dart';
 import '../../../../../settings/settings_scope.dart';
 
 class AiCrashAnalyzerException implements Exception {
@@ -29,6 +30,7 @@ Future<bool> isAiAvailable(BuildContext context) async {
 /// (the same primitive the full chat UI is built on), not a conversation.
 Future<String> analyzeCrashLog(BuildContext context, String logTail) async {
   final settings = SettingsScope.of(context);
+  final aiUsage = AiUsageScope.maybeOf(context);
   if (!settings.canSendAiMessage) {
     throw AiCrashAnalyzerException("You've hit today's AI usage limit — try again tomorrow.");
   }
@@ -65,6 +67,14 @@ Future<String> analyzeCrashLog(BuildContext context, String logTail) async {
       metadataFor: (_, _) => null,
     );
     settings.recordAiCall();
+    final usage = result.usage;
+    if (usage != null) {
+      await aiUsage?.recordLumaCall(
+        providerId: provider.id.name,
+        usage: usage,
+        feature: 'Minecraft crash analyzer',
+      );
+    }
     return result.text;
   } on AiError catch (e) {
     throw AiCrashAnalyzerException(e.message);

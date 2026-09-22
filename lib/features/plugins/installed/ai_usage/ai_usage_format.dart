@@ -1,4 +1,5 @@
 import 'ai_usage_pricing_freebuff.dart';
+import 'ai_usage_pricing_luma.dart';
 import 'ai_usage_source.dart';
 
 /// Display formatting shared by the Usage tab and the widgets split out of
@@ -20,6 +21,7 @@ String displayName(AiUsageSource source, String model) => switch (source) {
       AiUsageSource.antigravity => 'Antigravity · $model',
       AiUsageSource.opencode => 'OpenCode · ${_shortOpencodeModelName(model)}',
       AiUsageSource.freebuff => 'Freebuff · ${_shortFreebuffModelName(model)}',
+      AiUsageSource.luma => 'Luma · ${_shortLumaModelName(model)}',
     };
 
 /// "anthropic/claude-opus-4-6" -> "Opus 4.6", "openai/gpt-5.4" -> "GPT 5.4",
@@ -110,3 +112,18 @@ String formatTokens(int n) {
 }
 
 String formatCost(double cost) => '\$${cost.toStringAsFixed(2)}';
+
+/// "anthropic/claude-3-5-haiku-20241022" -> "Haiku 3.5", "openai/gpt-4o-mini"
+/// -> "GPT 4o mini". Gemini and Mistral slugs are already readable and stay
+/// as they are, rather than naming a release their `-latest` alias only
+/// probably points at.
+String _shortLumaModelName(String model) {
+  final split = splitLumaModel(model);
+  if (split == null) return model;
+  final (provider, modelId) = split;
+  return switch (provider) {
+    'anthropic' => _shortModelName(modelId),
+    'openai' => _shortOpenAiModelName(modelId),
+    _ => modelId,
+  };
+}

@@ -676,6 +676,14 @@ String companyForModel(AiUsageSource source, String model) {
             ? 'Other'
             : '${provider[0].toUpperCase()}${provider.substring(1)}',
       };
+    case AiUsageSource.luma:
+      return switch (splitLumaModel(model)?.$1) {
+        'anthropic' => 'Anthropic',
+        'openai' => 'OpenAI',
+        'google' => 'Google',
+        'mistral' => 'Mistral',
+        _ => 'Other',
+      };
   }
 }
 
