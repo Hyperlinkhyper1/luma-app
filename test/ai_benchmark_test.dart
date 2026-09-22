@@ -23,6 +23,7 @@ AiBenchmark _benchmark({
   String model = 'Demo 1.0',
   String html = '<html>demo</html>',
   bool hasPreview = true,
+  String previewSha256 = '',
 }) {
   final bytes = utf8.encode(html);
   return AiBenchmark(
@@ -33,19 +34,28 @@ AiBenchmark _benchmark({
     sizeBytes: bytes.length,
     sha256: sha256.convert(bytes).toString(),
     hasPreview: hasPreview,
+    previewSha256: previewSha256,
   );
 }
 
 /// An [AiBenchmarkApi] that answers from memory instead of the network.
 class _FakeApi extends AiBenchmarkApi {
-  _FakeApi({AiBenchmarkManifest? manifest, this.sceneHtml = const {}})
+  _FakeApi(
+      {AiBenchmarkManifest? manifest,
+      this.sceneHtml = const {},
+      this.previews = const {},
+      this.fallbacks = const {}})
       : _manifest = manifest ?? AiBenchmarkManifest.empty,
         super('https://sync.example.com');
 
   final AiBenchmarkManifest _manifest;
   final Map<String, String> sceneHtml;
+  final Map<String, List<int>> previews;
+  final Map<String, List<int>> fallbacks;
   int manifestCalls = 0;
   int sceneCalls = 0;
+  int previewCalls = 0;
+  int fallbackCalls = 0;
 
   @override
   Future<AiBenchmarkFetchResult> fetchManifest({String? knownEtag}) async {
@@ -64,10 +74,18 @@ class _FakeApi extends AiBenchmarkApi {
   }
 
   @override
-  Future<Uint8List?> fetchPreview(String id) async => null;
+  Future<Uint8List?> fetchPreview(String id) async {
+    previewCalls++;
+    final bytes = previews[id];
+    return bytes == null ? null : Uint8List.fromList(bytes);
+  }
 
   @override
-  Future<Uint8List?> fetchFallback(String file) async => null;
+  Future<Uint8List?> fetchFallback(String file) async {
+    fallbackCalls++;
+    final bytes = fallbacks[file];
+    return bytes == null ? null : Uint8List.fromList(bytes);
+  }
 }
 
 /// A [SyncService] that only answers the three questions the benchmark
@@ -144,6 +162,47 @@ void main() {
       expect(m.ofKind('engine').single.id, 'engine_b');
       expect(m.byId('nope'), isNull);
       expect(m.fallbackPreviews, {'pagoda': 'pagoda-preview.png'});
+    });
+
+    test('parses preview hashes into entries and maps', () {
+      final m = AiBenchmarkManifest.fromJson({
+        'refreshedAtMs': 1000,
+        'fallbackPreviews': {'pagoda': 'pagoda-preview.png'},
+        'fallbackHashes': {'pagoda-preview.png': 'fallbackhash'},
+        'previewHashes': {'pagoda_a': 'maphash'},
+        'benchmarks': [
+          {
+            'id': 'pagoda_a',
+            'kind': 'pagoda',
+            'model': 'A',
+            'description': '',
+            'sizeBytes': 10,
+            'sha256': 'x',
+            'hasPreview': true,
+          },
+          {
+            'id': 'pagoda_b',
+            'kind': 'pagoda',
+            'model': 'B',
+            'description': '',
+            'sizeBytes': 10,
+            'sha256': 'x',
+            'hasPreview': true,
+            'previewSha256': 'inlinehash',
+          },
+        ],
+      });
+      expect(m.previewHashes, {'pagoda_a': 'maphash'});
+      expect(m.fallbackHashes, {'pagoda-preview.png': 'fallbackhash'});
+      expect(m.byId('pagoda_a')!.previewSha256, 'maphash');
+      expect(m.byId('pagoda_b')!.previewSha256, 'inlinehash');
+    });
+
+    test('missing hashes degrade to empty, not an error', () {
+      final m = AiBenchmarkManifest.fromJson({'benchmarks': []});
+      expect(m.previewHashes, isEmpty);
+      expect(m.fallbackHashes, isEmpty);
+      expect(m.byId('x'), isNull);
     });
   });
 
@@ -261,6 +320,79 @@ void main() {
       expect(repo.previewFile('engine_demo'), isNull);
       expect(repo.fallbackFile('pagoda'), isNotNull);
       expect(repo.fallbackFile('engine'), isNull);
+    });
+
+    test('warmPreviews re-downloads a preview whose hash changed', () async {
+      final fresh = [10, 20, 30];
+      final freshHash = sha256.convert(fresh).toString();
+      final manifest = AiBenchmarkManifest(
+        benchmarks: [_benchmark(previewSha256: freshHash)],
+        fallbackPreviews: const {'pagoda': 'pagoda-preview.png'},
+        previewHashes: const {},
+        fallbackHashes: const {},
+        refreshedAt: null,
+      );
+      final api = _FakeApi(manifest: manifest, previews: {
+        'pagoda_demo': fresh,
+      });
+      final repo = repoWith(manifest, sync: _FakeSync(), api: api);
+
+      // A stale file from before the re-render sits in the cache.
+      final root = Directory(
+          '${support.path}${Platform.pathSeparator}$kAiBenchmarkCacheDir'
+          '${Platform.pathSeparator}previews');
+      await root.create(recursive: true);
+      await File('${root.path}/pagoda_demo.png').writeAsBytes([1, 2, 3]);
+
+      await repo.refreshFromServer();
+      await repo.warmPreviews();
+      expect(api.previewCalls, 1);
+      expect(await File('${root.path}/pagoda_demo.png').readAsBytes(), fresh);
+
+      // Second warm sees matching bytes and leaves the network alone.
+      await repo.warmPreviews();
+      expect(api.previewCalls, 1);
+    });
+
+    test('warmPreviews keeps a preview with no hash to compare', () async {
+      final manifest = _manifest([_benchmark()]);
+      final api = _FakeApi(manifest: manifest);
+      final repo = repoWith(manifest, sync: _FakeSync(), api: api);
+      final dir = Directory(
+          '${support.path}${Platform.pathSeparator}$kAiBenchmarkCacheDir'
+          '${Platform.pathSeparator}previews');
+      await dir.create(recursive: true);
+      await File('${dir.path}/pagoda_demo.png').writeAsBytes([1, 2, 3]);
+
+      await repo.refreshFromServer();
+      await repo.warmPreviews();
+      expect(api.previewCalls, 0);
+      expect(await File('${dir.path}/pagoda_demo.png').readAsBytes(), [1, 2, 3]);
+    });
+
+    test('warmPreviews re-downloads generic artwork whose hash changed',
+        () async {
+      const file = 'pagoda-preview.png';
+      final fresh = [7, 8, 9];
+      final manifest = AiBenchmarkManifest(
+        benchmarks: [_benchmark(hasPreview: false)],
+        fallbackPreviews: const {'pagoda': file},
+        previewHashes: const {},
+        fallbackHashes: {file: sha256.convert(fresh).toString()},
+        refreshedAt: null,
+      );
+      final api = _FakeApi(manifest: manifest, fallbacks: {file: fresh});
+      final repo = repoWith(manifest, sync: _FakeSync(), api: api);
+      final dir = Directory(
+          '${support.path}${Platform.pathSeparator}$kAiBenchmarkCacheDir'
+          '${Platform.pathSeparator}fallbacks');
+      await dir.create(recursive: true);
+      await File('${dir.path}/$file').writeAsBytes([9]);
+
+      await repo.refreshFromServer();
+      await repo.warmPreviews();
+      expect(api.fallbackCalls, 1);
+      expect(await File('${dir.path}/$file').readAsBytes(), fresh);
     });
   });
 }

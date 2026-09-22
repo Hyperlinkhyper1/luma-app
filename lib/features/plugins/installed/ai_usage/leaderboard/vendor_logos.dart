@@ -11,7 +11,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 /// Google's own guidelines ask for a white or black field, so one shared
 /// tile keeps every vendor legible in both app themes.
 ///
-/// Vendors with no obtainable artwork (`pickle`, `laguna`, unknown keys)
+/// Vendors with no obtainable artwork (`pickle`, unknown keys)
 /// fall back to the hand-drawn marks at the bottom of this file.
 class VendorLogo extends StatelessWidget {
   const VendorLogo({
@@ -114,6 +114,10 @@ class _VendorMarkPainter extends CustomPainter {
         _pickle(canvas);
       case 'laguna':
         _laguna(canvas);
+      case 'seed':
+        _seed(canvas);
+      case 'hy4':
+        _hunyuan(canvas);
       default:
         _fallback(canvas);
     }
@@ -209,11 +213,26 @@ void _google(Canvas c) {
 
 /// xAI's X cut.
 void _xai(Canvas c) {
-  const color = Color(0xFF06B6D4);
+  const color = Color(0xFFF5F5F5);
   c.drawLine(const Offset(9.5, 9.5), const Offset(22.5, 22.5),
       _stroke(color, 4.2));
   c.drawLine(const Offset(22.5, 9.5), const Offset(9.5, 22.5),
       _stroke(color, 4.2));
+}
+
+/// ByteDance Seed's three rising bars, in its blue/teal brand palette.
+void _seed(Canvas c) {
+  c.drawRRect(_rr(7, 17, 5, 8, 1.5), _fill(const Color(0xFF29B6D1)));
+  c.drawRRect(_rr(14, 12, 5, 13, 1.5), _fill(const Color(0xFF1685D5)));
+  c.drawRRect(_rr(21, 7, 5, 18, 1.5), _fill(const Color(0xFF3455DB)));
+}
+
+/// Tencent Hunyuan's blue interlocking-loop emblem.
+void _hunyuan(Canvas c) {
+  const blue = Color(0xFF00A4FF);
+  c.drawOval(const Rect.fromLTWH(6.5, 10, 14, 12), _stroke(blue, 3.3));
+  c.drawOval(const Rect.fromLTWH(11.5, 10, 14, 12),
+      _stroke(const Color(0xFF55C7FF), 3.3));
 }
 
 /// Meta's infinity loop, as two stroked rings.
@@ -352,17 +371,22 @@ void _pickle(Canvas c) {
   c.drawCircle(const Offset(14.8, 20), 0.9, speck);
 }
 
-/// Laguna's sun-over-wave on cyan.
+/// Poolside's umbrella mark in its blue brand color.
 void _laguna(Canvas c) {
-  c.drawRRect(_rr(6, 6, 20, 20, 6), _fill(const Color(0xFF22D3EE)));
-  c.drawCircle(const Offset(12.5, 12.5), 2.8, _fill(Colors.white));
+  c.drawRRect(_rr(6, 6, 20, 20, 6), _fill(const Color(0xFF6C63FF)));
   c.drawPath(
     Path()
-      ..moveTo(9.5, 19.5)
-      ..cubicTo(12, 16.8, 14, 16.8, 16.25, 19.5)
-      ..cubicTo(18.5, 22.2, 20.5, 22.2, 22.5, 19.5),
-    _stroke(Colors.white, 2.2),
+      ..moveTo(9, 16)
+      ..cubicTo(9.5, 11.5, 13, 9, 16, 9)
+      ..cubicTo(19, 9, 22.5, 11.5, 23, 16)
+      ..lineTo(9, 16)
+      ..moveTo(16, 16)
+      ..lineTo(16, 22)
+      ..cubicTo(16, 24, 19, 24, 19, 22),
+    _stroke(Colors.white, 1.8),
   );
+  c.drawLine(const Offset(16, 16), const Offset(16, 22),
+      _stroke(Colors.white, 1.8));
 }
 
 /// Fallback: a plain voxel cube outline.

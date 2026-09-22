@@ -22,6 +22,7 @@ class AiBenchmarkEntry {
     required this.sha256,
     required this.updatedAtMs,
     required this.hasPreview,
+    this.previewSha256 = '',
   });
 
   /// File stem of the scene, e.g. `pagoda_haiku45`. Also the detail-route key
@@ -47,6 +48,11 @@ class AiBenchmarkEntry {
   /// back to the kind's generic artwork, then to a plain icon tile.
   final bool hasPreview;
 
+  /// SHA-256 of the preview PNG, or '' when there is none. The client caches
+  /// previews on disk and re-downloads when this changes, so a re-rendered
+  /// banner actually reaches installs that already cached the old one.
+  final String previewSha256;
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'kind': kind,
@@ -56,6 +62,7 @@ class AiBenchmarkEntry {
         'sha256': sha256,
         'updatedAtMs': updatedAtMs,
         'hasPreview': hasPreview,
+        'previewSha256': previewSha256,
       };
 }
 
@@ -74,7 +81,7 @@ class AiBenchmarkStore {
   final String _dataDir;
   final String? _seedDir;
 
-  static const _dirName = 'ai_benchmarks';
+  static const dirName = 'ai_benchmarks';
 
   static final RegExp idPattern = RegExp(r'^[a-z0-9_]{1,80}$');
 
@@ -85,12 +92,12 @@ class AiBenchmarkStore {
 
   static Future<AiBenchmarkStore> open(String dataDir,
       {String? seedDir}) async {
-    await Directory('$dataDir/$_dirName').create(recursive: true);
-    await Directory('$dataDir/$_dirName/previews').create(recursive: true);
+    await Directory('$dataDir/$dirName').create(recursive: true);
+    await Directory('$dataDir/$dirName/previews').create(recursive: true);
     return AiBenchmarkStore._(dataDir, seedDir);
   }
 
-  String get _dir => '$_dataDir/$_dirName';
+  String get _dir => '$_dataDir/$dirName';
 
   /// Every benchmarked scene, manifest order first, then any scene file on
   /// disk the manifest doesn't name yet (with a derived display name, so a
@@ -120,6 +127,19 @@ class AiBenchmarkStore {
   /// Generic tile artwork per test kind, e.g. `pagoda-preview.png`.
   Future<Map<String, String>> fallbackPreviews() async =>
       (await _readRoster()).fallbacks;
+
+  /// SHA-256 per generic artwork file, so clients refresh a fallback they
+  /// already cached when the operator replaces it.
+  Future<Map<String, String>> fallbackHashes() async {
+    final hashes = <String, String>{};
+    for (final file in (await _readRoster()).fallbacks.values.toSet()) {
+      final found = await _previewFile(file);
+      if (found == null) continue;
+      final hash = await _fileHash(found);
+      if (hash.isNotEmpty) hashes[file] = hash;
+    }
+    return hashes;
+  }
 
   Future<({List<int> bytes, String etag})?> readScene(String id) async {
     if (!_validId(id)) return null;
@@ -154,14 +174,18 @@ class AiBenchmarkStore {
     final benchmarks = await list();
     var refreshedAtMs = 0;
     var totalBytes = 0;
+    final previewHashes = <String, String>{};
     for (final b in benchmarks) {
       if (b.updatedAtMs > refreshedAtMs) refreshedAtMs = b.updatedAtMs;
       totalBytes += b.sizeBytes;
+      if (b.previewSha256.isNotEmpty) previewHashes[b.id] = b.previewSha256;
     }
     return (
       json: {
         'refreshedAtMs': refreshedAtMs,
         'fallbackPreviews': await fallbackPreviews(),
+        'fallbackHashes': await fallbackHashes(),
+        'previewHashes': previewHashes,
         'benchmarks': [for (final b in benchmarks) b.toJson()],
       },
       // Count, bytes and newest mtime move together on any change; a
@@ -216,6 +240,7 @@ class AiBenchmarkStore {
       _RosterItem item, File scene) async {
     final stat = await scene.stat();
     final bytes = await scene.readAsBytes();
+    final preview = await _previewFile('${item.id}.png');
     return AiBenchmarkEntry(
       id: item.id,
       kind: item.kind,
@@ -224,8 +249,27 @@ class AiBenchmarkStore {
       sizeBytes: bytes.length,
       sha256: sha256.convert(bytes).toString(),
       updatedAtMs: stat.modified.millisecondsSinceEpoch,
-      hasPreview: await _previewFile('${item.id}.png') != null,
+      hasPreview: preview != null,
+      previewSha256: preview == null ? '' : await _fileHash(preview),
     );
+  }
+
+  /// SHA-256 of a small file, cached by modification time so every manifest
+  /// fetch doesn't re-hash ~80 previews from scratch.
+  final Map<String, ({int mtimeMs, String hash})> _hashCache = {};
+
+  Future<String> _fileHash(File file) async {
+    try {
+      final stat = await file.stat();
+      final mtimeMs = stat.modified.millisecondsSinceEpoch;
+      final cached = _hashCache[file.path];
+      if (cached != null && cached.mtimeMs == mtimeMs) return cached.hash;
+      final hash = sha256.convert(await file.readAsBytes()).toString();
+      _hashCache[file.path] = (mtimeMs: mtimeMs, hash: hash);
+      return hash;
+    } catch (_) {
+      return '';
+    }
   }
 
   String _etagFor(FileStat stat, List<int> bytes) =>

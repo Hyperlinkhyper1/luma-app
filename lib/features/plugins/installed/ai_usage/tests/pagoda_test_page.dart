@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
@@ -12,6 +11,7 @@ import 'ai_benchmark_scope.dart';
 import 'model_banner.dart';
 import 'model_search_field.dart';
 import 'test_view_prefs.dart';
+import '../../_shared/windows_webview.dart' show windowsAssetPath;
 
 /// The **Pagoda Test** page loads an interactive Three.js voxel garden
 /// benchmark — a procedurally generated Japanese garden with a 5-story pagoda.
@@ -49,6 +49,7 @@ String? pagodaVendorKey(String model) {
   }
   if (m.contains('muse spark') || m.contains('llama')) return 'meta';
   if (m.contains('grok')) return 'x-ai';
+  if (m.contains('hy4')) return 'hy4';
   if (m.contains('gemini') || m.contains('gemma')) return 'google';
   if (m.contains('gpt') || m.contains('openai')) return 'openai';
   if (m.contains('glm') || m.contains('zhipu')) return 'z-ai';
@@ -97,6 +98,8 @@ String pagodaVendorName(String model) {
       return 'Google';
     case 'seed':
       return 'ByteDance';
+    case 'hy4':
+      return 'Tencent Hunyuan';
     case 'xiaomi':
       return 'Xiaomi';
     case 'github':
@@ -104,7 +107,7 @@ String pagodaVendorName(String model) {
     case 'pickle':
       return 'Big Pickle';
     case 'laguna':
-      return 'Laguna';
+      return 'Poolside';
     case _:
       return m;
   }
@@ -153,8 +156,9 @@ List<Color> pagodaBrandStops(String model) {
     return [vendorColor('minimax')];
   }
   if (m.contains('seed')) {
-    return const [Color(0xFF38BDF8)];
+    return const [Color(0xFF00C8C8)];
   }
+  if (m.contains('hy4')) return [vendorColor('tencent')];
   if (m.contains('mimo') || m.contains('xiaomi')) {
     return const [Color(0xFFFF6900)];
   }
@@ -164,11 +168,13 @@ List<Color> pagodaBrandStops(String model) {
     return const [Color(0xFF6E40C9)];
   }
   if (m.contains('pickle')) return const [Color(0xFF6DBE45)];
-  if (m.contains('laguna')) return const [Color(0xFF22D3EE)];
+  if (m.contains('laguna')) return const [Color(0xFF6C63FF)];
   return const [kVendorColorFallback];
 }
 
 class _PagodaTestPageState extends State<PagodaTestPage> {
+  static const _nativeModelId = 'pagoda_gpt6_luna_low';
+  static const _nativeModelName = 'GPT 6 Luna (Low)';
   String? _selectedId;
   bool _bannerView = false;
   final _searchController = TextEditingController();
@@ -200,7 +206,17 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
     return ListenableBuilder(
       listenable: repo,
       builder: (context, _) {
-        final benchmarks = repo.benchmarksOfKind('pagoda');
+        final benchmarks = [
+          ...repo.benchmarksOfKind('pagoda').where((b) => b.id != _nativeModelId),
+          const AiBenchmark(
+            id: _nativeModelId,
+            kind: 'pagoda',
+            model: _nativeModelName,
+            description: 'Independent voxel garden benchmark',
+            sizeBytes: 0,
+            sha256: '',
+          ),
+        ];
         final query = _query.trim().toLowerCase();
         final filtered = query.isEmpty
             ? benchmarks
@@ -210,6 +226,12 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
               ];
 
         if (_selectedId != null) {
+          if (_selectedId == _nativeModelId) {
+            return _sceneView(
+              context,
+              benchmarks.firstWhere((b) => b.id == _nativeModelId),
+            );
+          }
           final selected = repo.byId(_selectedId!);
           if (selected == null) {
             // The roster moved under us (rare) — back to the list.
@@ -383,9 +405,13 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
           onPressed: () => setState(() => _selectedId = null),
         ),
       ),
-      body: FutureBuilder<File>(
-        future: repo.sceneFile(benchmark.id),
-        builder: (context, snapshot) {
+      body: benchmark.id == _nativeModelId
+          ? _SceneWebview(
+              path: windowsAssetPath('assets/pagoda_gpt6_luna_low.html'),
+            )
+          : FutureBuilder<File>(
+              future: repo.sceneFile(benchmark.id),
+              builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
             return Center(
               child: Column(
@@ -422,8 +448,8 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
             );
           }
           return _SceneWebview(path: snapshot.data!.path);
-        },
-      ),
+              },
+            ),
     );
   }
 }
@@ -431,9 +457,10 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
 /// The embedded scene, remounted per file so going back and opening another
 /// model never shows the previous scene.
 class _SceneWebview extends StatefulWidget {
-  const _SceneWebview({required this.path});
+  const _SceneWebview({this.path, this.html});
 
-  final String path;
+  final String? path;
+  final String? html;
 
   @override
   State<_SceneWebview> createState() => _SceneWebviewState();
@@ -449,8 +476,10 @@ class _SceneWebviewState extends State<_SceneWebview> {
       children: [
         Positioned.fill(
           child: WindowsWebview(
-            key: ValueKey(widget.path),
-            fileUrl: Uri.file(widget.path).toString(),
+            key: ValueKey(widget.path ?? 'native-pagoda'),
+            fileUrl:
+                widget.path == null ? null : Uri.file(widget.path!).toString(),
+            html: widget.html,
             onLoaded: () {
               if (mounted) setState(() => _loading = false);
             },

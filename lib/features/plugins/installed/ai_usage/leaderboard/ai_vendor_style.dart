@@ -12,7 +12,9 @@ const Map<String, Color> kVendorColors = {
   'anthropic': Color(0xFFF97316),
   'openai': Color(0xFF22C55E),
   'google': Color(0xFF3B82F6),
-  'x-ai': Color(0xFF06B6D4),
+  // xAI's Grok mark is monochrome; use its white-on-dark brand treatment.
+  'x-ai': Color(0xFFF5F5F5),
+  'tencent': Color(0xFF00A4FF),
   'z-ai': Color(0xFFD946EF),
   'qwen': Color(0xFF8B5CF6),
   'deepseek': Color(0xFF6366F1),

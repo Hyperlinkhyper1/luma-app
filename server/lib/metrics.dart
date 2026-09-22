@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'metrics_rate.dart';
+
 /// A best-effort snapshot of host resource usage for the admin dashboard.
 /// Every field is nullable — when a metric can't be read on this platform
 /// it's simply omitted rather than faked.
@@ -38,12 +40,10 @@ class SystemMetrics {
         'diskWriteBytesPerSec': diskWriteBytesPerSec,
       };
 
-  /// Takes ~[interval] to complete on platforms that need two samples to
-  /// derive a rate (CPU %, network and disk throughput on Linux).
-  static Future<SystemMetrics> sample(
-      {Duration interval = const Duration(milliseconds: 400)}) async {
+  /// Linux rates use the full interval since the previous dashboard poll.
+  static Future<SystemMetrics> sample() async {
     try {
-      if (Platform.isLinux) return _sampleLinux(interval);
+      if (Platform.isLinux) return _sampleLinux();
       if (Platform.isWindows) return _sampleWindows();
     } catch (_) {
       // Fall through to "unsupported" below.
@@ -53,49 +53,33 @@ class SystemMetrics {
 
   // ---- Linux: /proc and /sys are the standard, dependency-free source ----
 
-  static Future<SystemMetrics> _sampleLinux(Duration interval) async {
-    final cpu1 = _readProcStatTotals();
-    final net1 = await _readNetTotals();
-    final disk1 = _readDiskTotals();
-    await Future.delayed(interval);
-    final cpu2 = _readProcStatTotals();
-    final net2 = await _readNetTotals();
-    final disk2 = _readDiskTotals();
+  static final _linuxClock = Stopwatch()..start();
+  static final _linuxRates = MetricsRateSampler();
 
-    double? cpuPercent;
-    if (cpu1 != null && cpu2 != null) {
-      final totalDelta = cpu2.total - cpu1.total;
-      final idleDelta = cpu2.idle - cpu1.idle;
-      if (totalDelta > 0) {
-        cpuPercent =
-            ((totalDelta - idleDelta) / totalDelta * 100).clamp(0, 100);
-      }
-    }
-
+  static Future<SystemMetrics> _sampleLinux() async {
+    final cpu = _readProcStatTotals();
+    final net = await _readNetTotals();
+    final disk = _readDiskTotals();
+    final rates = _linuxRates.add(MetricsCounters(
+      elapsedUs: _linuxClock.elapsedMicroseconds,
+      cpuTotal: cpu?.total,
+      cpuIdle: cpu?.idle,
+      rxBytes: net?.rx,
+      txBytes: net?.tx,
+      diskReadBytes: disk?.readBytes,
+      diskWriteBytes: disk?.writeBytes,
+    ));
     final mem = _readMemInfo();
-    final seconds = interval.inMicroseconds / 1e6;
-
-    double? rxRate, txRate;
-    if (net1 != null && net2 != null) {
-      rxRate = (net2.rx - net1.rx) / seconds;
-      txRate = (net2.tx - net1.tx) / seconds;
-    }
-
-    double? readRate, writeRate;
-    if (disk1 != null && disk2 != null) {
-      readRate = (disk2.readBytes - disk1.readBytes) / seconds;
-      writeRate = (disk2.writeBytes - disk1.writeBytes) / seconds;
-    }
 
     return SystemMetrics(
       platformSupported: true,
-      cpuPercent: cpuPercent,
+      cpuPercent: rates?.cpuPercent,
       ramUsedBytes: mem?.usedBytes,
       ramTotalBytes: mem?.totalBytes,
-      netRxBytesPerSec: rxRate,
-      netTxBytesPerSec: txRate,
-      diskReadBytesPerSec: readRate,
-      diskWriteBytesPerSec: writeRate,
+      netRxBytesPerSec: rates?.rxBytesPerSec,
+      netTxBytesPerSec: rates?.txBytesPerSec,
+      diskReadBytesPerSec: rates?.diskReadBytesPerSec,
+      diskWriteBytesPerSec: rates?.diskWriteBytesPerSec,
     );
   }
 
@@ -110,7 +94,8 @@ class SystemMetrics {
           .toList(growable: false);
       // user nice system idle iowait irq softirq steal guest guest_nice
       final idle = parts[3] + (parts.length > 4 ? parts[4] : 0);
-      final total = parts.fold<int>(0, (a, b) => a + b);
+      // guest/guest_nice are already included in user/nice on Linux.
+      final total = parts.take(8).fold<int>(0, (a, b) => a + b);
       return (total: total, idle: idle);
     } catch (_) {
       return null;
@@ -231,8 +216,9 @@ $disk = Get-CimInstance Win32_PerfFormattedData_PerfDisk_PhysicalDisk |
       platformSupported: true,
       cpuPercent: asDouble(decoded['cpu'])?.clamp(0, 100),
       ramTotalBytes: totalKb == null ? null : totalKb * 1024,
-      ramUsedBytes:
-          (totalKb == null || freeKb == null) ? null : (totalKb - freeKb) * 1024,
+      ramUsedBytes: (totalKb == null || freeKb == null)
+          ? null
+          : (totalKb - freeKb) * 1024,
       netRxBytesPerSec: asDouble(decoded['rx']),
       netTxBytesPerSec: asDouble(decoded['tx']),
       diskReadBytesPerSec: asDouble(decoded['diskRead']),

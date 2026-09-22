@@ -74,7 +74,6 @@ class AiBenchmarkRepository extends ChangeNotifier {
   bool _loaded = false;
   String? _etag;
   String? _error;
-  bool _previewsWarming = false;
 
   AiBenchmarkManifest get manifest => _manifest;
 
@@ -160,22 +159,43 @@ class AiBenchmarkRepository extends ChangeNotifier {
     }
   }
 
+  /// The in-flight preview warm, if any. Concurrent callers share it instead
+  /// of starting a second pass — and, just as importantly, awaiting
+  /// [warmPreviews] always waits for the work to finish rather than silently
+  /// skipping it because a background pass (kicked off by
+  /// [refreshFromServer]) is still running.
+  Future<void>? _warmingFuture;
+
   /// Downloads the PNG previews for the whole roster in the background, so the
   /// model cards show artwork instead of placeholder icons. Small files, cached
   /// once — the scene HTML itself still only downloads when opened.
-  Future<void> warmPreviews() async {
-    if (_previewsWarming || _manifest.isEmpty) return;
+  ///
+  /// Cached files are verified against the manifest's hashes: a preview the
+  /// server re-rendered is re-downloaded rather than sitting stale behind the
+  /// old bytes forever. Hashing a dozen megabytes of PNGs takes a fraction of
+  /// a second and only runs on roster refreshes.
+  Future<void> warmPreviews() {
+    if (_manifest.isEmpty) return Future.value();
+    _warmingFuture ??= _warmPreviewsImpl().whenComplete(
+      () => _warmingFuture = null,
+    );
+    return _warmingFuture!;
+  }
+
+  Future<void> _warmPreviewsImpl() async {
     final sync = _sync;
     final baseUrl = sync?.serverUrl;
     if (sync == null || !sync.serverReady || baseUrl == null) return;
-    _previewsWarming = true;
     final api = _apiFactory(baseUrl, sync.authToken);
     try {
       final root = await _cacheRoot();
       for (final b in _manifest.benchmarks) {
         if (!b.hasPreview) continue;
         final file = File('${root.path}/previews/${b.id}.png');
-        if (await file.exists()) continue;
+        final expected = _manifest.previewHashes[b.id] ?? b.previewSha256;
+        if (await file.exists() && await _matchesHash(file, expected)) {
+          continue;
+        }
         try {
           final bytes = await api.fetchPreview(b.id);
           if (bytes == null) continue;
@@ -187,7 +207,11 @@ class AiBenchmarkRepository extends ChangeNotifier {
       }
       for (final fallback in _manifest.fallbackPreviews.values) {
         final file = File('${root.path}/fallbacks/$fallback');
-        if (await file.exists()) continue;
+        if (await file.exists() &&
+            await _matchesHash(
+                file, _manifest.fallbackHashes[fallback] ?? '')) {
+          continue;
+        }
         try {
           final bytes = await api.fetchFallback(fallback);
           if (bytes == null) continue;
@@ -200,9 +224,20 @@ class AiBenchmarkRepository extends ChangeNotifier {
     } catch (_) {
       // Preview warming is cosmetic; failures stay silent.
     } finally {
-      _previewsWarming = false;
       api.close();
       notifyListeners();
+    }
+  }
+
+  /// Whether the cached [file] still matches the manifest's [expected]
+  /// SHA-256. An empty expectation means an old server that sends no hashes —
+  /// trust the file, as before.
+  Future<bool> _matchesHash(File file, String expected) async {
+    if (expected.isEmpty) return true;
+    try {
+      return sha256.convert(await file.readAsBytes()).toString() == expected;
+    } catch (_) {
+      return false;
     }
   }
 
@@ -310,6 +345,8 @@ class AiBenchmarkRepository extends ChangeNotifier {
         'manifest': {
           'refreshedAtMs': manifest.refreshedAt?.millisecondsSinceEpoch,
           'fallbackPreviews': manifest.fallbackPreviews,
+          'previewHashes': manifest.previewHashes,
+          'fallbackHashes': manifest.fallbackHashes,
           'benchmarks': [
             for (final b in manifest.benchmarks)
               {
@@ -321,6 +358,7 @@ class AiBenchmarkRepository extends ChangeNotifier {
                 'sha256': b.sha256,
                 'updatedAtMs': b.updatedAt?.millisecondsSinceEpoch,
                 'hasPreview': b.hasPreview,
+                'previewSha256': b.previewSha256,
               },
           ],
         },

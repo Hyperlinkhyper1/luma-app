@@ -151,6 +151,13 @@ void main() {
       expect(benchmarks.length, 2);
       expect(benchmarks.first['sha256'], isNotEmpty);
       expect(benchmarks.first['sizeBytes'], greaterThan(0));
+      expect(benchmarks.first['previewSha256'], isNotEmpty);
+      final previewHashes = decoded['previewHashes'] as Map;
+      expect(previewHashes['pagoda_demo'],
+          (decoded['benchmarks'] as List).first['previewSha256']);
+      expect(previewHashes, isNot(contains('engine_demo')));
+      final fallbackHashes = decoded['fallbackHashes'] as Map;
+      expect(fallbackHashes['pagoda-preview.png'], isNotEmpty);
     });
 
     test('works with no seed at all', () async {
