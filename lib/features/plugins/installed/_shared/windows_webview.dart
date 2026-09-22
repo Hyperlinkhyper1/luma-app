@@ -24,13 +24,15 @@ String windowsAssetPath(String assetPath) {
 class WindowsWebview extends StatefulWidget {
   const WindowsWebview({
     super.key,
-    required this.fileUrl,
+    this.fileUrl,
+    this.html,
     this.onLoaded,
     this.onController,
   });
 
   /// A `file:///...` URL to load.
-  final String fileUrl;
+  final String? fileUrl;
+  final String? html;
   final VoidCallback? onLoaded;
 
   /// Fired once with the underlying [WebviewController] right after it's
@@ -88,7 +90,11 @@ class _WindowsWebviewState extends State<WindowsWebview> {
         .then((_) {
       if (mounted) widget.onLoaded?.call();
     });
-    await _controller.loadUrl(widget.fileUrl);
+    if (widget.html case final html?) {
+      await _controller.loadStringContent(html);
+    } else if (widget.fileUrl case final fileUrl?) {
+      await _controller.loadUrl(fileUrl);
+    }
     if (mounted) setState(() => _ready = true);
   }
 

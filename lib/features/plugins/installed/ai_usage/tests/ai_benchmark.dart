@@ -17,6 +17,7 @@ class AiBenchmark {
     required this.sha256,
     this.updatedAt,
     this.hasPreview = false,
+    this.previewSha256 = '',
   });
 
   /// File stem of the scene, e.g. `pagoda_haiku45`. Also the cache key the
@@ -40,6 +41,11 @@ class AiBenchmark {
   /// the UI falls back to the test's generic artwork, then to a plain icon.
   final bool hasPreview;
 
+  /// SHA-256 of the preview PNG as the manifest reported it. The repository
+  /// re-downloads a cached preview when this changes, so a re-rendered banner
+  /// replaces the stale file instead of sitting behind it forever.
+  final String previewSha256;
+
   bool get isPagoda => kind == 'pagoda';
   bool get isEngine => kind == 'engine';
   bool get isPc => kind == 'pc';
@@ -57,6 +63,7 @@ class AiBenchmark {
           ? null
           : DateTime.fromMillisecondsSinceEpoch(updatedAtMs),
       hasPreview: j['hasPreview'] as bool? ?? false,
+      previewSha256: j['previewSha256'] as String? ?? '',
     );
   }
 }
@@ -68,6 +75,8 @@ class AiBenchmarkManifest {
     required this.benchmarks,
     required this.fallbackPreviews,
     required this.refreshedAt,
+    this.previewHashes = const {},
+    this.fallbackHashes = const {},
   });
 
   static const AiBenchmarkManifest empty = AiBenchmarkManifest(
@@ -80,6 +89,13 @@ class AiBenchmarkManifest {
 
   /// Generic artwork file per test kind, e.g. `{pagoda: pagoda-preview.png}`.
   final Map<String, String> fallbackPreviews;
+
+  /// SHA-256 per scene preview, keyed by benchmark id. Absent (or mismatched)
+  /// means the cached file is stale and must be re-downloaded.
+  final Map<String, String> previewHashes;
+
+  /// SHA-256 per generic artwork file, keyed by file name.
+  final Map<String, String> fallbackHashes;
   final DateTime? refreshedAt;
 
   bool get isEmpty => benchmarks.isEmpty;
@@ -102,12 +118,33 @@ class AiBenchmarkManifest {
         fallbacks[e.key as String] = e.value as String;
       }
     }
+    Map<String, String> hashes(Object? node) {
+      final out = <String, String>{};
+      for (final e in (node as Map? ?? const {}).entries) {
+        if (e.key is String && e.value is String) {
+          out[e.key as String] = e.value as String;
+        }
+      }
+      return out;
+    }
+
+    // Older servers send no hashes at all; newer ones may also send the
+    // per-entry hash inline. The inline value wins when both are present.
+    final previewHashes = hashes(j['previewHashes']);
     return AiBenchmarkManifest(
       benchmarks: [
         for (final b in (j['benchmarks'] as List? ?? const []))
-          if (b is Map<String, dynamic>) AiBenchmark.fromJson(b),
+          if (b is Map<String, dynamic>)
+            AiBenchmark.fromJson({
+              ...b,
+              if ((b['previewSha256'] as String?)?.isNotEmpty != true &&
+                  previewHashes[b['id']] is String)
+                'previewSha256': previewHashes[b['id']],
+            }),
       ],
       fallbackPreviews: fallbacks,
+      previewHashes: previewHashes,
+      fallbackHashes: hashes(j['fallbackHashes']),
       refreshedAt: (ms == null || ms == 0)
           ? null
           : DateTime.fromMillisecondsSinceEpoch(ms),

@@ -19,6 +19,7 @@ jobs:
         with:
           flutter-version: '3.44.4'
           channel: stable
+          cache: true
       - run: flutter pub get --enforce-lockfile
       - run: dart analyze lib/security test/security_hardening_test.dart
       - run: flutter test --no-pub test/security_hardening_test.dart test/sync_test.dart test/server_access_test.dart test/local_account_test.dart test/p2p_test.dart test/sftp_test.dart test/youtube_credentials_test.dart test/settings_page_widget_test.dart test/update_asset_test.dart

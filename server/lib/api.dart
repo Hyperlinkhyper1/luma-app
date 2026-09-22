@@ -10,6 +10,7 @@ import 'package:shelf_router/shelf_router.dart';
 import 'ai_benchmark_store.dart';
 import 'ai_model_catalog.dart';
 import 'ai_model_refresh.dart';
+import 'preview_render.dart';
 import 'ai_usage_store.dart';
 import 'chat_store.dart';
 import 'cs2_offline_store.dart';
@@ -304,7 +305,9 @@ class Api {
       this.aiCatalog,
       this.aiBenchmarks,
       {OAuthClient? oauthClient,
-      this.cs2OfflineStore})
+      this.cs2OfflineStore,
+      PreviewRenderService? previewRenders})
+      : _oauthClient = oauthClient ?? OAuthClient(),
       : _oauthClient = oauthClient ?? OAuthClient(),
         _authLimiter =
             RateLimiter(maxRequests: 15, window: const Duration(minutes: 10)),

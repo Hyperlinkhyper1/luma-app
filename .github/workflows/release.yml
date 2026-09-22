@@ -42,17 +42,23 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.44.4'
           channel: stable
+          cache: true
 
       - run: flutter --version
 
       - run: flutter pub get
 
       - name: Build Windows release
-        run: flutter build windows --release --no-tree-shake-icons --dart-define=APP_VERSION=${{ steps.ver.outputs.version }}
+        run: flutter build windows --release --no-pub --no-tree-shake-icons --dart-define=APP_VERSION=${{ steps.ver.outputs.version }}
 
-      - name: Install Inno Setup
-        run: choco install innosetup --no-progress -y
+      - name: Ensure Inno Setup is available
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe')) {
+            choco install innosetup --no-progress -y
+          }
 
       - name: Build installer
         shell: pwsh
@@ -86,7 +92,9 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.44.4'
           channel: stable
+          cache: true
 
       - run: flutter --version
 
@@ -135,7 +143,7 @@ jobs:
             libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
 
       - name: Build Linux release
-        run: flutter build linux --release --no-tree-shake-icons --dart-define=APP_VERSION=${{ steps.ver.outputs.version }}
+        run: flutter build linux --release --no-pub --no-tree-shake-icons --dart-define=APP_VERSION=${{ steps.ver.outputs.version }}
 
       - name: Archive Linux bundle
         run: |
@@ -166,7 +174,9 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.44.4'
           channel: stable
+          cache: true
 
       # Gradle/AGP 8.7 (pinned in android/settings.gradle.kts) doesn't support
       # the very newest JDKs yet, same reason the local build pins JDK 21.
@@ -174,6 +184,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
 
       - run: flutter pub get
 
@@ -228,7 +240,7 @@ jobs:
             return 1
           }
 
-          retry flutter build apk --release --split-per-abi --no-tree-shake-icons --dart-define=APP_VERSION=${{ steps.ver.outputs.version }}
+          retry flutter build apk --release --no-pub --split-per-abi --no-tree-shake-icons --dart-define=APP_VERSION=${{ steps.ver.outputs.version }}
 
       # Fail loudly if the APKs somehow got a debug signature anyway — a
       # debug-signed release is worse than no release, because phones with
@@ -285,7 +297,9 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.44.4'
           channel: stable
+          cache: true
 
       - run: flutter pub get
 
@@ -322,7 +336,7 @@ jobs:
             return 1
           }
 
-          retry flutter build ios --release --no-codesign --no-tree-shake-icons --dart-define=APP_VERSION=${{ steps.ver.outputs.version }}
+          retry flutter build ios --release --no-pub --no-codesign --no-tree-shake-icons --dart-define=APP_VERSION=${{ steps.ver.outputs.version }}
 
       # An .ipa is just a zip of Payload/<App>.app, so this doesn't require
       # Xcode's archive/export step (which needs a signing identity).
