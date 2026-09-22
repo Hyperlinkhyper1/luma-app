@@ -8732,7 +8732,10 @@ window.lumaAskReason = function (form, message) {
   tip.className = 'chart-tip';
   document.body.appendChild(tip);
 
-  function drawGraph(canvas, series, maxValue) {
+  // Autoscaled graphs (maxValue null) never scale below [minScale], so a
+  // few KB/s of idle chatter stays near the floor instead of filling the
+  // chart the way a real burst would.
+  function drawGraph(canvas, series, maxValue, minScale) {
     if (!canvas) return;
     canvas._series = series;
     const ctx = ensureHiDPI(canvas);
@@ -8751,7 +8754,7 @@ window.lumaAskReason = function (form, message) {
 
     let max = maxValue;
     if (max == null) {
-      max = 1;
+      max = minScale || 1;
       for (const s of series) {
         for (const v of s.values) max = Math.max(max, v);
       }
@@ -8830,11 +8833,11 @@ window.lumaAskReason = function (form, message) {
     drawGraph(document.getElementById('netGraph'), [
       { values: history.rx, color: '#8a7ee0', label: '↓ down' },
       { values: history.tx, color: '#7ee08a', label: '↑ up' },
-    ], null);
+    ], null, 256 * 1024);
     drawGraph(document.getElementById('diskGraph'), [
       { values: history.diskRead, color: '#8a7ee0', label: '↓ read' },
       { values: history.diskWrite, color: '#7ee08a', label: '↑ write' },
-    ], null);
+    ], null, 4 * 1024 * 1024);
   }
 
   function esc(v) {
