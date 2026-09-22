@@ -78,7 +78,8 @@ class UpdateService {
       'CreateObject("Scripting.FileSystemObject").'
       'GetParentFolderName(WScript.ScriptFullName)\r\n'
       'shell.Run Chr(34) & "$installerName" & Chr(34) & '
-      '" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART", 0, False\r\n',
+      '" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART '
+      '/FORCECLOSEAPPLICATIONS", 0, False\r\n',
       flush: true,
     );
     return launcher.path;
