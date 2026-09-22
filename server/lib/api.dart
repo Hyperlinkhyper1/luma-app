@@ -308,7 +308,6 @@ class Api {
       this.cs2OfflineStore,
       PreviewRenderService? previewRenders})
       : _oauthClient = oauthClient ?? OAuthClient(),
-      : _oauthClient = oauthClient ?? OAuthClient(),
         _authLimiter =
             RateLimiter(maxRequests: 15, window: const Duration(minutes: 10)),
         _generalLimiter =

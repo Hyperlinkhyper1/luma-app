@@ -56,7 +56,7 @@ class PreviewRenderService {
   bool? _nodeOk;
 
   bool get enabled {
-    if (_enabledOverride != null) return _enabledOverride;
+    if (_enabledOverride != null) return _enabledOverride!;
     return _environment['LUMA_PREVIEW_RENDER'] == '1';
   }
 

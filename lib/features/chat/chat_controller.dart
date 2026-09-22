@@ -51,7 +51,12 @@ class ChatController extends ChangeNotifier {
       'productivity utility. Be concise and friendly. If the user asks for '
       'something a plugin does but they may not have it installed, use your '
       'tools to install it and complete the action for them rather than just '
-      'explaining the steps.';
+      'explaining the steps. When a tool reports needs_info, ask the user the '
+      'specific missing question and wait for their answer before trying again. '
+      'For CS2 tracking, the user’s paid price is a manual cost basis and must '
+      'never be guessed from market price; ask what they paid when absent. '
+      'Do not say an event, note, dinner or tracked item was saved unless the '
+      'corresponding tool reports success.';
 
   bool _sending = false;
   bool get isSending => _sending;

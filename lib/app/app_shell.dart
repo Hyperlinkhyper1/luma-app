@@ -452,6 +452,20 @@ class _AppShellState extends State<AppShell> {
                         onOpenSettings: () =>
                             _selectFixed(NavRail.settingsIndex),
                         onOpenPlugin: _selectPlugin,
+                        onNavigate: (destination) {
+                          switch (destination.toLowerCase()) {
+                            case 'home': _selectFixed(0);
+                            case 'converter': _selectFixed(1);
+                            case 'finance': _selectFixed(2);
+                            case 'passwords': _selectFixed(3);
+                            case 'notes': _selectFixed(4);
+                            case 'assistant': _selectFixed(5);
+                            case 'plugins': _selectFixed(6);
+                            case 'settings': _selectFixed(NavRail.settingsIndex);
+                            case 'account': _selectFixed(NavRail.accountIndex);
+                            default: _selectPlugin(destination);
+                          }
+                        },
                       ),
                       PluginsPage(onOpenPlugin: _selectPlugin),
                       SettingsPage(onEditHome: _editHome),

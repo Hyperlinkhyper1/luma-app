@@ -60,23 +60,26 @@ class HomeClassicMetric extends StatelessWidget {
     if (kind == 'investments') {
       return StreamBuilder<List<Holding>>(
         stream: repo.watchHoldings(),
-        builder: (context, snapshot) {
+        builder: (context, snapshot) => StreamBuilder<int>(
+        stream: FinanceScope.of(context).cs2Market?.watchTrackedPortfolioCents() ?? Stream<int>.value(0),
+        builder: (context, cs2Value) {
           if (snapshot.hasError) {
             return const Text('Could not load investments.');
           }
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
+          final cs2 = (context.dependOnInheritedWidgetOfExactType<SettingsScope>()?.notifier?.includeCs2InInvestments ?? true) ? (cs2Value.data ?? 0) : 0;
           return amount(
             snapshot.data!.fold<int>(
               0,
               (sum, h) =>
                   sum +
                   ((h.lastPriceCents ?? h.avgCostCents) * h.shares).round(),
-            ),
+            ) + cs2,
           );
         },
-      );
+      ));
     }
     return StreamBuilder<List<FinanceTransaction>>(
       stream: repo.watchTransactions(),

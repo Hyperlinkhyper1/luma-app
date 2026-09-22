@@ -438,6 +438,18 @@ class Cs2MarketRepository extends ChangeNotifier {
   /// and portfolio total are built from.
   Stream<List<Cs2MarketEntry>> watchAllEntries() => _db.watchAllCs2Entries();
 
+  /// Current market value of every tracked copy, in the listing currency
+  /// cents (CS2 prices are currently displayed and stored as USD).
+  Stream<int> watchTrackedPortfolioCents() => watchAllEntries().asyncMap((entries) async {
+        final items = {
+          for (final item in await _db.allCs2Items()) item.marketHashName: item,
+        };
+        return entries.fold<int>(0, (sum, entry) {
+          final item = items[entry.marketHashName];
+          return sum + (item?.lastLowestCents ?? item?.lastMedianCents ?? 0);
+        });
+      });
+
   Future<bool> isTracked(String marketHashName) async =>
       await _db.cs2Item(marketHashName) != null;
 

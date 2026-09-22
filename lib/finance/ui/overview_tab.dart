@@ -6,6 +6,7 @@ import '../data/database.dart';
 import '../finance_scope.dart';
 import '../logic/finance_logic.dart';
 import '../logic/money.dart';
+import '../../settings/settings_scope.dart';
 import 'lookups.dart';
 import 'overview_graphs.dart';
 
@@ -23,7 +24,9 @@ class OverviewTab extends StatelessWidget {
         stream: repo.watchCategories(),
         builder: (context, categories) => StreamData<List<Holding>>(
           stream: repo.watchHoldings(),
-          builder: (context, holdings) => StreamData<List<RecurringRule>>(
+          builder: (context, holdings) => StreamBuilder<int>(
+            stream: FinanceScope.of(context).cs2Market?.watchTrackedPortfolioCents() ?? Stream<int>.value(0),
+            builder: (context, cs2Value) => StreamData<List<RecurringRule>>(
             stream: repo.watchRecurring(),
             builder: (context, recurring) => StreamData<List<FinanceTransaction>>(
               stream: repo.watchTransactions(),
@@ -35,6 +38,8 @@ class OverviewTab extends StatelessWidget {
                     pots: pots,
                     categories: categories,
                     holdings: holdings,
+                    cs2Cents: cs2Value.data ?? 0,
+                    includeCs2: context.dependOnInheritedWidgetOfExactType<SettingsScope>()?.notifier?.includeCs2InInvestments ?? true,
                     recurring: recurring,
                     txns: txns,
                     graphs: graphs,
@@ -55,6 +60,8 @@ class _OverviewBody extends StatefulWidget {
     required this.pots,
     required this.categories,
     required this.holdings,
+    required this.cs2Cents,
+    required this.includeCs2,
     required this.recurring,
     required this.txns,
     required this.graphs,
@@ -64,6 +71,8 @@ class _OverviewBody extends StatefulWidget {
   final List<Pot> pots;
   final List<Category> categories;
   final List<Holding> holdings;
+  final int cs2Cents;
+  final bool includeCs2;
   final List<RecurringRule> recurring;
   final List<FinanceTransaction> txns;
   final List<OverviewGraph> graphs;
@@ -96,7 +105,8 @@ class _OverviewBodyState extends State<_OverviewBody> {
       final price = h.lastPriceCents ?? h.avgCostCents;
       return sum + (price * h.shares).round();
     });
-    final netWorth = balances.totalCents + portfolio;
+    final investments = portfolio + (widget.includeCs2 ? widget.cs2Cents : 0);
+    final netWorth = balances.totalCents + investments;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 40),
@@ -107,7 +117,7 @@ class _OverviewBodyState extends State<_OverviewBody> {
             netWorthCents: netWorth,
             availableCents: balances.mainCents,
             potsCents: balances.potsTotalCents,
-            investmentsCents: portfolio,
+            investmentsCents: investments,
           ),
           const SizedBox(height: 16),
           Row(

@@ -80,6 +80,7 @@ class SettingsController extends ChangeNotifier {
     required List<String> navOrder,
     required List<String> visitedCountries,
     required bool useAmericanGpaScale,
+    required bool includeCs2InInvestments,
     required File? file,
   })  : _themeMode = themeMode,
         _themeStyle = themeStyle,
@@ -102,6 +103,7 @@ class SettingsController extends ChangeNotifier {
         _navOrder = navOrder,
         _visitedCountries = visitedCountries,
         _useAmericanGpaScale = useAmericanGpaScale,
+        _includeCs2InInvestments = includeCs2InInvestments,
         _file = file;
 
   // These fields are deliberately assigned in the initializer list (rather than
@@ -149,6 +151,7 @@ class SettingsController extends ChangeNotifier {
   List<String> _navOrder;
   List<String> _visitedCountries;
   bool _useAmericanGpaScale;
+  bool _includeCs2InInvestments;
   final File? _file;
 
   static const _aiDailyCallLimit = 10;
@@ -193,6 +196,7 @@ class SettingsController extends ChangeNotifier {
   /// When true, the School plugin's GPA calculator uses the US 4.0 scale
   /// instead of the Dutch 1-10 grading scale, which is the default.
   bool get useAmericanGpaScale => _useAmericanGpaScale;
+  bool get includeCs2InInvestments => _includeCs2InInvestments;
 
   /// Number of days a redeemed plan code grants before reverting to Core.
   static const planCodeDurationDays = 30;
@@ -483,6 +487,12 @@ class SettingsController extends ChangeNotifier {
     _changed();
   }
 
+  void setIncludeCs2InInvestments(bool value) {
+    if (value == _includeCs2InInvestments) return;
+    _includeCs2InInvestments = value;
+    _changed();
+  }
+
   /// Switches directly to a plan that doesn't require a code (only Core
   /// today). Orbit/Nova must go through [redeemPlanCode].
   void setSelectedPlanId(String id) {
@@ -513,6 +523,7 @@ class SettingsController extends ChangeNotifier {
     _navOrder = const [];
     _visitedCountries = const [];
     _useAmericanGpaScale = false;
+    _includeCs2InInvestments = true;
     _changed();
   }
 
@@ -539,6 +550,7 @@ class SettingsController extends ChangeNotifier {
         'navOrder': _navOrder,
         'visitedCountries': _visitedCountries,
         'useAmericanGpaScale': _useAmericanGpaScale,
+        'includeCs2InInvestments': _includeCs2InInvestments,
       };
 
   /// Replaces every preference with a previously exported snapshot.
@@ -558,6 +570,7 @@ class SettingsController extends ChangeNotifier {
     _navOrder = _parseNavOrder(data['navOrder']);
     _visitedCountries = _parseStringList(data['visitedCountries']);
     _useAmericanGpaScale = data['useAmericanGpaScale'] == true;
+    _includeCs2InInvestments = data['includeCs2InInvestments'] != false;
     notifyListeners();
     await _persist();
   }
@@ -592,6 +605,7 @@ class SettingsController extends ChangeNotifier {
         'navOrder': _navOrder,
         'visitedCountries': _visitedCountries,
         'useAmericanGpaScale': _useAmericanGpaScale,
+        'includeCs2InInvestments': _includeCs2InInvestments,
       }));
     } catch (_) {
       // Ignore — preferences just won't survive a restart.
@@ -638,6 +652,7 @@ class SettingsController extends ChangeNotifier {
       navOrder: _parseNavOrder(data['navOrder']),
       visitedCountries: _parseStringList(data['visitedCountries']),
       useAmericanGpaScale: data['useAmericanGpaScale'] == true,
+      includeCs2InInvestments: data['includeCs2InInvestments'] != false,
       file: file,
     );
   }

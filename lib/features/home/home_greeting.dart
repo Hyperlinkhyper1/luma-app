@@ -52,7 +52,9 @@ class _HomeGreetingState extends State<HomeGreeting> {
       stream: repo.watchTransactions(),
       builder: (context, transactions) => StreamBuilder<List<Holding>>(
         stream: repo.watchHoldings(),
-        builder: (context, holdings) {
+        builder: (context, holdings) => StreamBuilder<int>(
+        stream: FinanceScope.of(context).cs2Market?.watchTrackedPortfolioCents() ?? Stream<int>.value(0),
+        builder: (context, cs2Value) {
           final metric = layout.heroMetric;
           final needsTransactions = metric != 'investments';
           final needsHoldings = metric == 'investments' || metric == 'netWorth';
@@ -71,13 +73,14 @@ class _HomeGreetingState extends State<HomeGreeting> {
             (sum, h) =>
                 sum + ((h.lastPriceCents ?? h.avgCostCents) * h.shares).round(),
           );
+          final investmentTotal = portfolio + ((context.dependOnInheritedWidgetOfExactType<SettingsScope>()?.notifier?.includeCs2InInvestments ?? true) ? (cs2Value.data ?? 0) : 0);
           final now = DateTime.now();
           final monthly = txns.where(
             (t) => t.date.year == now.year && t.date.month == now.month,
           );
           final value = switch (metric) {
             'cash' => balances.totalCents,
-            'investments' => portfolio,
+            'investments' => investmentTotal,
             'income' =>
               monthly
                   .where((t) => t.kind == TxnKind.income)
@@ -86,7 +89,7 @@ class _HomeGreetingState extends State<HomeGreeting> {
               monthly
                   .where((t) => t.kind == TxnKind.expense)
                   .fold<int>(0, (sum, t) => sum + t.amountCents),
-            _ => balances.totalCents + portfolio,
+            _ => balances.totalCents + investmentTotal,
           };
           final hide =
               context
@@ -99,6 +102,7 @@ class _HomeGreetingState extends State<HomeGreeting> {
             hide ? '••••••' : formatCents(value),
           );
         },
+        ),
       ),
     );
   }
