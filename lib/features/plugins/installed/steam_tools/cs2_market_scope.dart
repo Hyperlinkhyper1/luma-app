@@ -15,4 +15,9 @@ class Cs2MarketScope extends InheritedNotifier<Cs2MarketRepository> {
     assert(scope != null, 'Cs2MarketScope was not found in the widget tree');
     return scope!.notifier!;
   }
+
+  /// The repository without subscribing to its changes, or null when the
+  /// scope is absent — for widgets that only want its streams.
+  static Cs2MarketRepository? maybeOf(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<Cs2MarketScope>()?.notifier;
 }
