@@ -6,6 +6,7 @@ import '../../finance/finance_scope.dart';
 import '../../finance/logic/finance_logic.dart';
 import '../../finance/logic/money.dart';
 import '../../l10n/app_localizations.dart';
+import '../plugins/installed/steam_tools/cs2_market_scope.dart';
 import '../../settings/settings_scope.dart';
 import '../../theme/luma_theme.dart';
 
@@ -61,7 +62,7 @@ class HomeClassicMetric extends StatelessWidget {
       return StreamBuilder<List<Holding>>(
         stream: repo.watchHoldings(),
         builder: (context, snapshot) => StreamBuilder<int>(
-        stream: FinanceScope.of(context).cs2Market?.watchTrackedPortfolioCents() ?? Stream<int>.value(0),
+        stream: Cs2MarketScope.maybeOf(context)?.watchTrackedPortfolioCents() ?? Stream<int>.value(0),
         builder: (context, cs2Value) {
           if (snapshot.hasError) {
             return const Text('Could not load investments.');

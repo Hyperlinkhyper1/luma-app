@@ -8,6 +8,7 @@ import '../../finance/finance_scope.dart';
 import '../../finance/logic/finance_logic.dart';
 import '../../finance/logic/money.dart';
 import '../../l10n/app_localizations.dart';
+import '../plugins/installed/steam_tools/cs2_market_scope.dart';
 import '../../settings/settings_scope.dart';
 import '../../theme/luma_theme.dart';
 import 'home_layout.dart';
@@ -53,7 +54,7 @@ class _HomeGreetingState extends State<HomeGreeting> {
       builder: (context, transactions) => StreamBuilder<List<Holding>>(
         stream: repo.watchHoldings(),
         builder: (context, holdings) => StreamBuilder<int>(
-        stream: FinanceScope.of(context).cs2Market?.watchTrackedPortfolioCents() ?? Stream<int>.value(0),
+        stream: Cs2MarketScope.maybeOf(context)?.watchTrackedPortfolioCents() ?? Stream<int>.value(0),
         builder: (context, cs2Value) {
           final metric = layout.heroMetric;
           final needsTransactions = metric != 'investments';

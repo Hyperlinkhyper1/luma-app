@@ -6,6 +6,7 @@ import '../data/database.dart';
 import '../finance_scope.dart';
 import '../logic/finance_logic.dart';
 import '../logic/money.dart';
+import '../../features/plugins/installed/steam_tools/cs2_market_scope.dart';
 import '../../settings/settings_scope.dart';
 import 'lookups.dart';
 import 'overview_graphs.dart';
@@ -25,28 +26,41 @@ class OverviewTab extends StatelessWidget {
         builder: (context, categories) => StreamData<List<Holding>>(
           stream: repo.watchHoldings(),
           builder: (context, holdings) => StreamBuilder<int>(
-            stream: FinanceScope.of(context).cs2Market?.watchTrackedPortfolioCents() ?? Stream<int>.value(0),
+            stream:
+                Cs2MarketScope.maybeOf(context)?.watchTrackedPortfolioCents() ??
+                Stream<int>.value(0),
             builder: (context, cs2Value) => StreamData<List<RecurringRule>>(
-            stream: repo.watchRecurring(),
-            builder: (context, recurring) => StreamData<List<FinanceTransaction>>(
-              stream: repo.watchTransactions(),
-              builder: (context, txns) => StreamData<List<OverviewGraph>>(
-                stream: repo.watchOverviewGraphs(),
-                builder: (context, graphs) => StreamData<List<BalanceSnapshot>>(
-                  stream: repo.watchNetWorthHistory(),
-                  builder: (context, netWorthHistory) => _OverviewBody(
-                    pots: pots,
-                    categories: categories,
-                    holdings: holdings,
-                    cs2Cents: cs2Value.data ?? 0,
-                    includeCs2: context.dependOnInheritedWidgetOfExactType<SettingsScope>()?.notifier?.includeCs2InInvestments ?? true,
-                    recurring: recurring,
-                    txns: txns,
-                    graphs: graphs,
-                    netWorthHistory: netWorthHistory,
+              stream: repo.watchRecurring(),
+              builder: (context, recurring) =>
+                  StreamData<List<FinanceTransaction>>(
+                    stream: repo.watchTransactions(),
+                    builder: (context, txns) => StreamData<List<OverviewGraph>>(
+                      stream: repo.watchOverviewGraphs(),
+                      builder: (context, graphs) =>
+                          StreamData<List<BalanceSnapshot>>(
+                            stream: repo.watchNetWorthHistory(),
+                            builder: (context, netWorthHistory) =>
+                                _OverviewBody(
+                                  pots: pots,
+                                  categories: categories,
+                                  holdings: holdings,
+                                  cs2Cents: cs2Value.data ?? 0,
+                                  includeCs2:
+                                      context
+                                          .dependOnInheritedWidgetOfExactType<
+                                            SettingsScope
+                                          >()
+                                          ?.notifier
+                                          ?.includeCs2InInvestments ??
+                                      true,
+                                  recurring: recurring,
+                                  txns: txns,
+                                  graphs: graphs,
+                                  netWorthHistory: netWorthHistory,
+                                ),
+                          ),
+                    ),
                   ),
-                ),
-              ),
             ),
           ),
         ),
@@ -147,11 +161,17 @@ class _OverviewBodyState extends State<_OverviewBody> {
               Expanded(child: _SectionTitle('Dashboard')),
               TextButton.icon(
                 onPressed: () => setState(() => _isEditing = !_isEditing),
-                icon: Icon(_isEditing ? Icons.check_rounded : Icons.edit_rounded, size: 16),
+                icon: Icon(
+                  _isEditing ? Icons.check_rounded : Icons.edit_rounded,
+                  size: 16,
+                ),
                 label: Text(_isEditing ? 'Done' : 'Edit'),
                 style: TextButton.styleFrom(
                   foregroundColor: luma.textSecondary,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   minimumSize: Size.zero,
                 ),
               ),
@@ -179,13 +199,20 @@ class _OverviewBodyState extends State<_OverviewBody> {
               runSpacing: 12,
               children: [
                 for (final pot in widget.pots)
-                  _PotChip(pot: pot, balanceCents: balances.balanceForPot(pot.id)),
+                  _PotChip(
+                    pot: pot,
+                    balanceCents: balances.balanceForPot(pot.id),
+                  ),
               ],
             ),
           const SizedBox(height: 24),
           _SectionTitle('This week'),
           const SizedBox(height: 12),
-          _WeeklyReview(txns: widget.txns, categories: widget.categories, now: now),
+          _WeeklyReview(
+            txns: widget.txns,
+            categories: widget.categories,
+            now: now,
+          ),
           if (widget.holdings.isNotEmpty) ...[
             const SizedBox(height: 24),
             _SectionTitle('Investments'),
@@ -248,7 +275,8 @@ class _DashboardGraphs extends StatelessWidget {
                 subtitle: Text(_subtitleFor(g)),
                 trailing: IconButton(
                   icon: const Icon(Icons.delete_outline, color: Colors.red),
-                  onPressed: () => FinanceScope.of(context).deleteOverviewGraph(g.id),
+                  onPressed: () =>
+                      FinanceScope.of(context).deleteOverviewGraph(g.id),
                 ),
               );
             },
@@ -261,10 +289,7 @@ class _DashboardGraphs extends StatelessWidget {
           ),
         ] else ...[
           for (final g in graphs) ...[
-            _GraphCard(
-              title: _titleFor(g),
-              child: _buildGraph(g),
-            ),
+            _GraphCard(title: _titleFor(g), child: _buildGraph(g)),
             const SizedBox(height: 16),
           ],
         ],
@@ -278,7 +303,7 @@ class _DashboardGraphs extends StatelessWidget {
     if (g.dataSource == 'income_vs_expense') return 'Income vs Expense';
     return 'Unknown Graph';
   }
-  
+
   String _subtitleFor(OverviewGraph g) {
     if (g.graphType == 'line') return 'Line Chart';
     if (g.graphType == 'pie') return 'Pie Chart';
@@ -296,7 +321,7 @@ class _DashboardGraphs extends StatelessWidget {
     }
     return const SizedBox();
   }
-  
+
   void _showAddGraphDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -308,21 +333,29 @@ class _DashboardGraphs extends StatelessWidget {
             ListTile(
               title: const Text('Net Worth Over Time'),
               onTap: () {
-                FinanceScope.of(context).addOverviewGraph(graphType: 'line', dataSource: 'net_worth');
+                FinanceScope.of(
+                  context,
+                ).addOverviewGraph(graphType: 'line', dataSource: 'net_worth');
                 Navigator.pop(context);
               },
             ),
             ListTile(
               title: const Text('Spending by Category'),
               onTap: () {
-                FinanceScope.of(context).addOverviewGraph(graphType: 'pie', dataSource: 'category_spending');
+                FinanceScope.of(context).addOverviewGraph(
+                  graphType: 'pie',
+                  dataSource: 'category_spending',
+                );
                 Navigator.pop(context);
               },
             ),
             ListTile(
               title: const Text('Income vs Expense'),
               onTap: () {
-                FinanceScope.of(context).addOverviewGraph(graphType: 'bar', dataSource: 'income_vs_expense');
+                FinanceScope.of(context).addOverviewGraph(
+                  graphType: 'bar',
+                  dataSource: 'income_vs_expense',
+                );
                 Navigator.pop(context);
               },
             ),
@@ -344,8 +377,14 @@ class _GraphCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(title,
-              style: TextStyle(color: context.luma.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
+          Text(
+            title,
+            style: TextStyle(
+              color: context.luma.textSecondary,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: 16),
           child,
         ],
@@ -386,8 +425,10 @@ class _HeroCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Net worth',
-              style: TextStyle(color: luma.textSecondary, fontSize: 13)),
+          Text(
+            'Net worth',
+            style: TextStyle(color: luma.textSecondary, fontSize: 13),
+          ),
           const SizedBox(height: 6),
           Text(
             formatCents(netWorthCents),
@@ -472,10 +513,12 @@ class _StatCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: luma.textSecondary, fontSize: 13)),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: luma.textSecondary, fontSize: 13),
+                ),
                 const SizedBox(height: 4),
                 FittedBox(
                   fit: BoxFit.scaleDown,
@@ -569,8 +612,11 @@ class _WeeklyReview extends StatelessWidget {
     final luma = context.luma;
     final catById = {for (final c in categories) c.id: c};
 
-    final weekStart = DateTime(now.year, now.month, now.day)
-        .subtract(Duration(days: now.weekday - 1));
+    final weekStart = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).subtract(Duration(days: now.weekday - 1));
     final weekEnd = weekStart.add(const Duration(days: 7));
 
     final byCategory = <int?, int>{};
@@ -578,14 +624,13 @@ class _WeeklyReview extends StatelessWidget {
     for (final t in txns) {
       if (t.kind != TxnKind.expense) continue;
       if (t.date.isBefore(weekStart) || !t.date.isBefore(weekEnd)) continue;
-      byCategory[t.categoryId] = (byCategory[t.categoryId] ?? 0) + t.amountCents;
+      byCategory[t.categoryId] =
+          (byCategory[t.categoryId] ?? 0) + t.amountCents;
       total += t.amountCents;
     }
 
     if (total == 0) {
-      return LumaCard(
-        child: _MutedHint('No spending recorded yet this week.'),
-      );
+      return LumaCard(child: _MutedHint('No spending recorded yet this week.'));
     }
 
     final entries = byCategory.entries.toList()
@@ -599,8 +644,10 @@ class _WeeklyReview extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Spent this week',
-                  style: TextStyle(color: luma.textSecondary, fontSize: 13)),
+              Text(
+                'Spent this week',
+                style: TextStyle(color: luma.textSecondary, fontSize: 13),
+              ),
               Text(
                 formatCents(total),
                 style: TextStyle(
@@ -639,8 +686,9 @@ class _ReviewRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final color =
-        category != null ? Color(category!.colorValue) : luma.textMuted;
+    final color = category != null
+        ? Color(category!.colorValue)
+        : luma.textMuted;
     final name = category?.name ?? 'Uncategorized';
     final icon = category != null
         ? materialIcon(category!.iconCodepoint)
@@ -653,8 +701,7 @@ class _ReviewRow extends StatelessWidget {
           children: [
             Icon(icon, size: 16, color: color),
             const SizedBox(width: 8),
-            Text(name,
-                style: TextStyle(color: luma.textPrimary, fontSize: 13)),
+            Text(name, style: TextStyle(color: luma.textPrimary, fontSize: 13)),
             const Spacer(),
             Text(
               formatCents(amountCents),
@@ -705,8 +752,10 @@ class _InvestmentsSummary extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Portfolio value',
-                    style: TextStyle(color: luma.textSecondary, fontSize: 13)),
+                Text(
+                  'Portfolio value',
+                  style: TextStyle(color: luma.textSecondary, fontSize: 13),
+                ),
                 const SizedBox(height: 4),
                 Text(
                   formatCents(value),
@@ -722,8 +771,10 @@ class _InvestmentsSummary extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text('Gain / loss',
-                  style: TextStyle(color: luma.textSecondary, fontSize: 13)),
+              Text(
+                'Gain / loss',
+                style: TextStyle(color: luma.textSecondary, fontSize: 13),
+              ),
               const SizedBox(height: 4),
               Text(
                 formatSignedCents(gain),
@@ -785,9 +836,7 @@ class _UpcomingRow extends StatelessWidget {
     return Row(
       children: [
         LumaIconBadge(
-          icon: isIncome
-              ? Icons.south_west_rounded
-              : Icons.autorenew_rounded,
+          icon: isIncome ? Icons.south_west_rounded : Icons.autorenew_rounded,
           color: color,
           size: 34,
         ),
@@ -796,9 +845,13 @@ class _UpcomingRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(rule.name,
-                  style: TextStyle(
-                      color: luma.textPrimary, fontWeight: FontWeight.w600)),
+              Text(
+                rule.name,
+                style: TextStyle(
+                  color: luma.textPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const SizedBox(height: 2),
               Text(
                 '${rule.cadence == Cadence.weekly ? 'Weekly' : 'Monthly'} · next ${_shortDate(rule.nextDue)}',
@@ -821,29 +874,37 @@ class _SectionTitle extends StatelessWidget {
   final String text;
   @override
   Widget build(BuildContext context) => Text(
-        text,
-        style: TextStyle(
-          color: context.luma.textPrimary,
-          fontSize: 16,
-          fontWeight: FontWeight.w700,
-        ),
-      );
+    text,
+    style: TextStyle(
+      color: context.luma.textPrimary,
+      fontSize: 16,
+      fontWeight: FontWeight.w700,
+    ),
+  );
 }
 
 class _MutedHint extends StatelessWidget {
   const _MutedHint(this.text);
   final String text;
   @override
-  Widget build(BuildContext context) => Text(
-        text,
-        style: TextStyle(color: context.luma.textMuted, fontSize: 13),
-      );
+  Widget build(BuildContext context) =>
+      Text(text, style: TextStyle(color: context.luma.textMuted, fontSize: 13));
 }
 
 String _shortDate(DateTime d) {
   const months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
   return '${d.day} ${months[d.month - 1]}';
 }
