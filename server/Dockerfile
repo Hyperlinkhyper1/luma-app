@@ -38,6 +38,21 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /data
 
+# The admin dashboard's "Render missing banners" / "Re-render all" buttons
+# (PreviewRenderService) shoot AI benchmark scenes in a headless Chromium
+# driven by node — see tool/render_previews.mjs. Scenes load three.js from a
+# CDN at render time; the fonts cover the scenes' HUD text, CJK included.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        nodejs npm chromium \
+        fonts-liberation fonts-noto-cjk fonts-noto-color-emoji \
+    && rm -rf /var/lib/apt/lists/*
+COPY tool/package.json tool/package-lock.json /app/tool/
+RUN cd /app/tool && npm ci --omit=dev --no-audit --no-fund
+COPY tool/*.mjs /app/tool/
+ENV LUMA_PREVIEW_TOOL=/app/tool/render_previews.mjs
+ENV LUMA_CHROMIUM_BIN=/usr/bin/chromium
+
 COPY --from=build /tmp/build-output/bundle/ /app/bundle/
 
 # The AI benchmark scenes the app downloads on demand (see

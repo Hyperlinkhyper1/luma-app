@@ -78,14 +78,18 @@ void main() {
     expect(find.text('PC Test'), findsOneWidget);
   });
 
-  testWidgets('a test page with no roster explains itself', (tester) async {
-    await tester.pumpWidget(_app());
-    await tester.tap(find.widgetWithText(LumaHeroTile, 'Pagoda Test'));
-    await tester.pumpAndSettle();
+  testWidgets(
+    'local Step 5 benchmark is available without a roster',
+    (tester) async {
+      await tester.pumpWidget(_app());
+      await tester.tap(find.widgetWithText(LumaHeroTile, 'Pagoda Test'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('No benchmarks yet'), findsOneWidget);
-    expect(find.textContaining('approved account'), findsOneWidget);
-  });
+      expect(find.text('Step 5'), findsOneWidget);
+      expect(find.text('GPT 6 Luna (Low)'), findsOneWidget);
+      expect(find.text('No benchmarks yet'), findsNothing);
+    },
+  );
 
   test('the wash goes opaque exactly at the bottom third', () {
     expect(HeroTileWash.solidStart, closeTo(2 / 3, 1e-9));

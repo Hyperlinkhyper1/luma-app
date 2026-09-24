@@ -37,6 +37,8 @@ class StoredUser {
     this.status = 'active',
     this.verificationTokenHash,
     this.verificationExpiresAtMs,
+    this.passwordResetCodeHash,
+    this.passwordResetCodeExpiresAtMs,
     this.lastLoginAtMs,
     this.planId = kDefaultPlanId,
     this.passwordResetRequiredAtMs,
@@ -101,6 +103,13 @@ class StoredUser {
   String? verificationTokenHash;
   int? verificationExpiresAtMs;
 
+  /// SHA-256 of the 6-digit "forgot password" code emailed by
+  /// Api._forgotPassword, or null when none is outstanding. Kept apart from
+  /// [verificationTokenHash] so asking for a reset can never verify a
+  /// pending account, and verifying can never reset a password.
+  String? passwordResetCodeHash;
+  int? passwordResetCodeExpiresAtMs;
+
   /// Provider id ('google', 'github') -> that provider's immutable user id,
   /// for every identity linked to this account. Written the first time
   /// someone signs in with a provider whose *verified* address matches
@@ -150,6 +159,8 @@ class StoredUser {
         'status': status,
         'verificationTokenHash': verificationTokenHash,
         'verificationExpiresAtMs': verificationExpiresAtMs,
+        'passwordResetCodeHash': passwordResetCodeHash,
+        'passwordResetCodeExpiresAtMs': passwordResetCodeExpiresAtMs,
         'lastLoginAtMs': lastLoginAtMs,
         'planId': planId,
         'passwordResetRequiredAtMs': passwordResetRequiredAtMs,
@@ -171,6 +182,9 @@ class StoredUser {
         status: j['status'] as String? ?? 'active',
         verificationTokenHash: j['verificationTokenHash'] as String?,
         verificationExpiresAtMs: j['verificationExpiresAtMs'] as int?,
+        passwordResetCodeHash: j['passwordResetCodeHash'] as String?,
+        passwordResetCodeExpiresAtMs:
+            j['passwordResetCodeExpiresAtMs'] as int?,
         lastLoginAtMs: j['lastLoginAtMs'] as int?,
         planId: j['planId'] as String? ?? kDefaultPlanId,
         passwordResetRequiredAtMs: j['passwordResetRequiredAtMs'] as int?,

@@ -1,0 +1,3 @@
+# Only the Dart sources are compiled in the build stage; the render tool's
+# dependencies are installed fresh in the image (see the Dockerfile).
+tool/node_modules/

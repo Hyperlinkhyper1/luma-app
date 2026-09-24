@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:luma/sync/server_access.dart';
@@ -58,6 +60,27 @@ void main() {
         throwsA(isA<ServerAccessDeniedException>()),
       );
       expect(inner.sent, hasLength(1));
+    });
+
+    test('a forgotten password can be reset while signed out', () async {
+      final inner = _RecordingClient();
+      final api = SyncApi('https://sync.luma-app.cc', client: inner);
+
+      await api.requestPasswordResetCode('a@b.c').catchError((_) => '');
+      await api
+          .resetPasswordWithCode(
+            email: 'a@b.c',
+            code: '123456',
+            newAuthKey: Uint8List(32),
+            newKdfSalt: Uint8List(16),
+            newKdfIterations: 200000,
+          )
+          .catchError((_) {});
+
+      expect(inner.sent.map((u) => u.path), [
+        '/api/v1/auth/forgot-password',
+        '/api/v1/auth/reset-with-code',
+      ]);
     });
 
     test('opening the gate lets everything through again', () async {

@@ -36,6 +36,9 @@ class RateLimiter {
     return true;
   }
 
+  /// Drops every recorded hit for [key], giving it a full budget again.
+  void forget(String key) => _hits.remove(key);
+
   /// Seconds until [key]'s oldest hit ages out of the window and a slot
   /// frees up — 0 if [key] isn't currently over budget. Lets a 429 response
   /// carry a `Retry-After` header instead of leaving the caller to guess.

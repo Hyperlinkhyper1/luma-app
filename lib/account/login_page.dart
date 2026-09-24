@@ -69,6 +69,12 @@ enum _Step {
   /// Waiting for the 6-digit code emailed to the address just registered
   /// (or resumed from a previous session on this device).
   code,
+
+  /// Forgot password: which address should the reset code go to.
+  forgot,
+
+  /// Forgot password: the emailed code plus the new password.
+  reset,
 }
 
 class LoginPage extends StatefulWidget {
@@ -276,6 +282,96 @@ class _LoginPageState extends State<LoginPage> {
       _code.clear();
       _error = null;
       _info = null;
+    });
+  }
+
+  // ---- Forgot password ------------------------------------------------------
+
+  void _openForgotPassword() {
+    setState(() {
+      _step = _Step.forgot;
+      _error = null;
+      _info = null;
+    });
+  }
+
+  void _backToSignIn({String? info}) {
+    setState(() {
+      _step = _Step.credentials;
+      _mode = 0;
+      _code.clear();
+      _confirm.clear();
+      _error = null;
+      _info = info;
+    });
+  }
+
+  Future<void> _sendResetCode() async {
+    final email = _email.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      setState(() => _error = 'Enter a valid email address.');
+      return;
+    }
+    final urlError = SyncApi.validateServerUrl(_server.text);
+    if (urlError != null) {
+      setState(() => _error = urlError);
+      return;
+    }
+    await _run(() async {
+      final message = await widget.sync
+          .requestPasswordReset(serverUrl: _server.text, email: email);
+      setState(() {
+        if (_step != _Step.reset) {
+          _step = _Step.reset;
+          _code.clear();
+          _password.clear();
+          _confirm.clear();
+        }
+        _info = message;
+      });
+    });
+  }
+
+  Future<void> _submitReset() async {
+    final code = _code.text.trim();
+    if (code.length != 6 || int.tryParse(code) == null) {
+      setState(() => _error = 'Enter the 6-digit code from your email.');
+      return;
+    }
+    if (_password.text.length < 10) {
+      setState(() => _error =
+          'Use at least 10 characters — this password protects your '
+          'encrypted data.');
+      return;
+    }
+    if (_password.text != _confirm.text) {
+      setState(() => _error = 'Passwords do not match.');
+      return;
+    }
+    final email = _email.text.trim();
+
+    await _run(() async {
+      await widget.sync.resetPasswordWithCode(
+        serverUrl: _server.text,
+        email: email,
+        code: code,
+        newPassword: _password.text,
+      );
+      try {
+        await widget.sync.signIn(
+          serverUrl: _server.text,
+          email: email,
+          password: _password.text,
+        );
+      } catch (_) {
+        // The reset itself went through and burned the code, so sending
+        // the user back here would only earn them "code already used".
+        _backToSignIn(
+          info: 'Your password was reset. Sign in with your new password.',
+        );
+        return;
+      }
+      _finish();
     });
   }
 
@@ -524,6 +620,8 @@ class _LoginPageState extends State<LoginPage> {
                     _Step.passphrase => _passphrasePanel(),
                     _Step.pending => _pendingPanel(),
                     _Step.code => _codePanel(),
+                    _Step.forgot => _forgotPanel(),
+                    _Step.reset => _resetPanel(),
                   },
                 ),
               ),
@@ -617,6 +715,18 @@ class _LoginPageState extends State<LoginPage> {
           ],
           onSubmitted: creating ? null : (_) => _submitCredentials(),
         ),
+        if (_cloudMode && !creating)
+          Align(
+            alignment: Alignment.centerRight,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: _TinyLink(
+                label: 'Forgot password?',
+                icon: Icons.help_outline_rounded,
+                onTap: _busy ? null : _openForgotPassword,
+              ),
+            ),
+          ),
         if (creating) ...[
           const SizedBox(height: 12),
           _LoginField(
@@ -965,6 +1075,152 @@ class _LoginPageState extends State<LoginPage> {
               label: 'Use a different email',
               icon: Icons.arrow_back_rounded,
               onTap: _busy ? null : _useDifferentEmail,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // ---- Panels: forgot password ----------------------------------------------
+
+  Widget _forgotPanel() {
+    final luma = context.luma;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const SizedBox(height: 8),
+        Center(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: luma.accentSubtle,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.lock_reset_rounded, size: 30, color: luma.accent),
+          ),
+        ),
+        const SizedBox(height: 22),
+        const _Heading(
+          title: 'Forgot your password?',
+          subtitle: 'Enter the email of your account and we will send you a '
+              '6-digit code to choose a new password. The code works for 15 '
+              'minutes.',
+          centered: true,
+        ),
+        const SizedBox(height: 20),
+        _LoginField(
+          controller: _email,
+          label: 'Email',
+          icon: Icons.alternate_email_rounded,
+          enabled: !_busy,
+          autofocus: true,
+          keyboardType: TextInputType.emailAddress,
+          autofillHints: const [AutofillHints.email],
+          onSubmitted: (_) => _sendResetCode(),
+        ),
+        const SizedBox(height: 18),
+        LumaPrimaryButton(
+          label: 'Send code',
+          expand: true,
+          loading: _busy,
+          onTap: _busy ? null : _sendResetCode,
+        ),
+        _MessageBlock(error: _error, info: _info),
+        const SizedBox(height: 10),
+        Center(
+          child: _TinyLink(
+            label: 'Back to sign in',
+            icon: Icons.arrow_back_rounded,
+            onTap: _busy ? null : _backToSignIn,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _resetPanel() {
+    final luma = context.luma;
+    final email = _email.text.trim();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const SizedBox(height: 8),
+        Center(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: luma.accentSubtle,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.mark_email_read_rounded,
+                size: 30, color: luma.accent),
+          ),
+        ),
+        const SizedBox(height: 22),
+        _Heading(
+          title: 'Choose a new password',
+          subtitle: 'If $email has an account, a 6-digit code is on its way. '
+              'Enter it within 15 minutes, together with your new password.',
+          centered: true,
+        ),
+        const SizedBox(height: 20),
+        _LoginField(
+          controller: _code,
+          label: '6-digit code',
+          icon: Icons.pin_rounded,
+          enabled: !_busy,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          autofillHints: const [AutofillHints.oneTimeCode],
+        ),
+        const SizedBox(height: 12),
+        _LoginField(
+          controller: _password,
+          label: 'New password',
+          icon: Icons.lock_outline_rounded,
+          enabled: !_busy,
+          obscure: true,
+          autofillHints: const [AutofillHints.newPassword],
+        ),
+        const SizedBox(height: 10),
+        _StrengthMeter(controller: _password),
+        const SizedBox(height: 12),
+        _LoginField(
+          controller: _confirm,
+          label: 'Confirm new password',
+          icon: Icons.lock_reset_rounded,
+          enabled: !_busy,
+          obscure: true,
+          onSubmitted: (_) => _submitReset(),
+        ),
+        const SizedBox(height: 18),
+        LumaPrimaryButton(
+          label: 'Reset password and sign in',
+          expand: true,
+          loading: _busy,
+          onTap: _busy ? null : _submitReset,
+        ),
+        _MessageBlock(error: _error, info: _info),
+        const SizedBox(height: 12),
+        const _ResetWarning(),
+        const SizedBox(height: 12),
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 14,
+          runSpacing: 6,
+          children: [
+            _TinyLink(
+              label: _busy ? 'Sending…' : 'Send a new code',
+              icon: Icons.refresh_rounded,
+              onTap: _busy ? null : _sendResetCode,
+            ),
+            _TinyLink(
+              label: 'Back to sign in',
+              icon: Icons.arrow_back_rounded,
+              onTap: _busy ? null : _backToSignIn,
             ),
           ],
         ),
@@ -1635,8 +1891,46 @@ class _KeyWarning extends StatelessWidget {
           Expanded(
             child: Text(
               'Everything is encrypted with this before it leaves the device. '
-              'If you forget it, your synced data cannot be recovered — there '
-              'is no reset.',
+              'If you forget it you can reset it by email, but the synced '
+              'copies on the server are erased — only what is still on your '
+              'devices comes back.',
+              style: TextStyle(
+                color: luma.textSecondary,
+                fontSize: 11.5,
+                height: 1.45,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// What a forgotten-password reset costs, shown before the user commits.
+class _ResetWarning extends StatelessWidget {
+  const _ResetWarning();
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: luma.warning.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.warning_amber_rounded, size: 16, color: luma.warning),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Your synced data is locked with your old password, so a reset '
+              'erases the copies on the server and signs out every device. '
+              'Whatever is still on your devices uploads again once they sign '
+              'in with the new password.',
               style: TextStyle(
                 color: luma.textSecondary,
                 fontSize: 11.5,

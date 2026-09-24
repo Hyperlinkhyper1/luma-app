@@ -124,6 +124,27 @@ class AiBenchmarkStore {
     return entries;
   }
 
+  /// Every servable scene id and whether it has a preview, in [list] order.
+  /// Unlike [list] this hashes nothing, so the admin dashboard can poll it.
+  Future<List<({String id, bool hasPreview})>> previewCoverage() async {
+    final ids = <String>[];
+    for (final item in (await _readRoster()).benchmarks) {
+      if (!ids.contains(item.id) && await _sceneFile(item.id) != null) {
+        ids.add(item.id);
+      }
+    }
+    for (final id in await _sceneIdsOnDisk()) {
+      if (!ids.contains(id)) ids.add(id);
+    }
+    return [
+      for (final id in ids)
+        (id: id, hasPreview: await _previewFile('$id.png') != null),
+    ];
+  }
+
+  /// The read-only seed directory under the data-directory overrides, if any.
+  String? get seedDir => _seedDir;
+
   /// Generic tile artwork per test kind, e.g. `pagoda-preview.png`.
   Future<Map<String, String>> fallbackPreviews() async =>
       (await _readRoster()).fallbacks;
@@ -200,12 +221,13 @@ class AiBenchmarkStore {
       idPattern.hasMatch(id) &&
       (id.startsWith('pagoda_') ||
           id.startsWith('engine_') ||
-          id.startsWith('pc_'));
+          id.startsWith('pc_') ||
+          id.startsWith('cathedral_'));
 
   Future<File?> _sceneFile(String id) async {
-    final override = File('$_dir/$id.html');
+    final override = File('$_dir/$id.${_extOf(id)}');
     if (await override.exists()) return override;
-    final seed = _seedDir == null ? null : File('$_seedDir/scenes/$id.html');
+    final seed = _seedDir == null ? null : File('$_seedDir/scenes/$id.${_extOf(id)}');
     if (seed != null && await seed.exists()) return seed;
     return null;
   }
@@ -227,9 +249,12 @@ class AiBenchmarkStore {
     for (final dir in dirs) {
       if (!await dir.exists()) continue;
       await for (final entity in dir.list()) {
-        if (entity is! File || !entity.path.endsWith('.html')) continue;
+        if (entity is! File) continue;
         final base = entity.uri.pathSegments.last;
-        final id = base.substring(0, base.length - '.html'.length);
+        final dot = base.lastIndexOf('.');
+        if (dot < 0) continue;
+        final id = base.substring(0, dot);
+        if (base.substring(dot + 1) != _extOf(id)) continue;
         if (_validId(id)) ids.add(id);
       }
     }
@@ -275,9 +300,12 @@ class AiBenchmarkStore {
   String _etagFor(FileStat stat, List<int> bytes) =>
       '"${stat.size}-${stat.modified.millisecondsSinceEpoch}"';
 
+  static String _extOf(String id) => id.startsWith('cathedral_') ? 'glb' : 'html';
+
   static String _kindOf(String id) {
     if (id.startsWith('engine_')) return 'engine';
     if (id.startsWith('pc_')) return 'pc';
+    if (id.startsWith('cathedral_')) return 'cathedral';
     return 'pagoda';
   }
 
@@ -290,7 +318,9 @@ class AiBenchmarkStore {
             ? id.substring('engine_'.length)
             : id.startsWith('pc_')
                 ? id.substring('pc_'.length)
-                : id;
+                : id.startsWith('cathedral_')
+                    ? id.substring('cathedral_'.length)
+                    : id;
     return stem
         .split('_')
         .where((p) => p.isNotEmpty)
@@ -358,7 +388,9 @@ class _Roster {
               id: e['id'] as String,
               kind: e['kind'] == 'engine'
                   ? 'engine'
-                  : e['kind'] == 'pc'
+                  : e['kind'] == 'cathedral'
+                      ? 'cathedral'
+                      : e['kind'] == 'pc'
                       ? 'pc'
                       : 'pagoda',
               model: e['model'] as String? ?? (e['id'] as String),
