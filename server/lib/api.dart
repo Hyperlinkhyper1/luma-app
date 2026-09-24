@@ -290,6 +290,9 @@ const int kAiTokensWeek = 40000;
 /// from the token budgets above.
 const int kSupportMessagesPerDay = 15;
 
+/// How long an emailed "forgot password" code stays valid.
+const Duration kPasswordResetCodeTtl = Duration(minutes: 15);
+
 class Api {
   /// [oauthClient] is only passed by tests, which substitute one that
   /// resolves an identity without a round trip to Google or GitHub.
@@ -308,6 +311,9 @@ class Api {
       this.cs2OfflineStore,
       PreviewRenderService? previewRenders})
       : _oauthClient = oauthClient ?? OAuthClient(),
+        previewRenders = previewRenders ??
+            PreviewRenderService(
+                dataDir: config.dataDir, seedDir: aiBenchmarks.seedDir),
         _authLimiter =
             RateLimiter(maxRequests: 15, window: const Duration(minutes: 10)),
         _generalLimiter =
@@ -334,6 +340,10 @@ class Api {
         // matching the code's own TTL is what actually forces a fresh one.
         _codeAttemptLimiter =
             RateLimiter(maxRequests: 5, window: const Duration(minutes: 10)),
+        // Same idea for password-reset codes, with the window matching
+        // [kPasswordResetCodeTtl] for the same reason.
+        _resetCodeAttemptLimiter =
+            RateLimiter(maxRequests: 5, window: kPasswordResetCodeTtl),
         _adminFailLimiter =
             RateLimiter(maxRequests: 1, window: const Duration(minutes: 1)),
         _inviteLimiter =
@@ -365,6 +375,10 @@ class Api {
   final RecipeStore recipeStore;
   final AiModelCatalogStore aiCatalog;
   final AiBenchmarkStore aiBenchmarks;
+
+  /// Renders benchmark banners for the dashboard's Control panel. Tests
+  /// substitute one with a fake renderer process.
+  final PreviewRenderService previewRenders;
   final Cs2OfflineStore? cs2OfflineStore;
   final SubwayRelay _subwayRelay = SubwayRelay();
   final SubwayTicketStore _subwayTickets = SubwayTicketStore();
@@ -388,6 +402,10 @@ class Api {
 
   /// Per-email budget for wrong guesses against an outstanding code.
   final RateLimiter _codeAttemptLimiter;
+
+  /// Per-email budget for wrong guesses against an outstanding
+  /// password-reset code.
+  final RateLimiter _resetCodeAttemptLimiter;
 
   /// Per-IP limit on *failed* admin-key attempts: one wrong guess per
   /// minute, so the admin key cannot be brute-forced by a bot. Successful
@@ -439,6 +457,8 @@ class Api {
       ..post('/api/v1/auth/verify-code', _verifyCode)
       ..post('/api/v1/auth/resend-verification', _resendVerification)
       ..post('/api/v1/auth/login', _login)
+      ..post('/api/v1/auth/forgot-password', _forgotPassword)
+      ..post('/api/v1/auth/reset-with-code', _resetPasswordWithCode)
       ..get('/api/v1/auth/oauth/providers', _oauthProviders)
       ..post('/api/v1/auth/oauth/start', _oauthStart)
       ..get('/api/v1/auth/oauth/callback/<provider>', _oauthCallback)
@@ -564,6 +584,13 @@ class Api {
       ..get('/admin/groceries/status', _requireAdmin(_adminGroceriesStatus))
       ..post('/admin/ai-models/refresh', _requireAdmin(_adminAiModelsRefresh))
       ..get('/admin/ai-models/status', _requireAdmin(_adminAiModelsStatus))
+      ..post('/admin/benchmark-banners/render',
+          _requireAdmin(_adminBannersRender))
+      ..post('/admin/benchmark-banners/stop', _requireAdmin(_adminBannersStop))
+      ..get('/admin/benchmark-banners/status',
+          _requireAdmin(_adminBannersStatus))
+      ..get('/admin/benchmark-banners/image/<id>',
+          _requireAdmin(_adminBannerImage))
       ..post('/admin/deploy', _requireAdmin(_deploy.requestDeploy))
       ..get('/admin/deploy/status', _requireAdmin(_deploy.deployStatus))
       ..post('/admin/system/check-updates',
@@ -1179,7 +1206,8 @@ class Api {
       'password_reset_required',
       'The server operator reset this account\'s password. Open luma on a '
           'device that is still signed in and choose a new password there, '
-          'then sign in with it here.');
+          'then sign in with it here — or use "Forgot password?" to get a '
+          'reset code by email.');
 
   /// Refusal handed to an account whose access an operator revoked. Carries
   /// their note when there is one, because "you are locked out" with no
@@ -1850,6 +1878,148 @@ class Api {
       await store.logActivity('password_reset_done',
           '${user.email} set a new password after an admin reset');
       return jsonResponse(200, {'ok': true});
+    });
+  }
+
+  /// Emails a 6-digit code (valid for [kPasswordResetCodeTtl]) that
+  /// [_resetPasswordWithCode] accepts in place of the forgotten password.
+  /// Answers identically whether or not the address has an account, so it
+  /// cannot be used to enumerate accounts. Asking again replaces the code.
+  Future<Response> _forgotPassword(Request request) async {
+    final body = await _readJson(request);
+    final email = _normalizeEmail(body['email']);
+    if (email == null) return errorResponse(400, 'bad_email', 'Invalid email.');
+
+    // Same layering as [_resendVerification]: per-email first, then the
+    // shared per-IP and global Resend budgets.
+    if (!_resendLimiter.allow('reset:$email') ||
+        !_allowVerificationSend(request)) {
+      return errorResponse(429, 'rate_limited',
+          'Too many reset requests. Try again later.');
+    }
+
+    const genericResponse = {
+      'status': 'reset_code_sent',
+      'message': 'If that email has a luma account, we just sent it a '
+          '6-digit reset code.',
+    };
+
+    return store.lock.synchronized(() async {
+      final userId = store.userIdByEmail[email];
+      final user = userId == null ? null : store.usersById[userId];
+      // A pending account has nothing to reset into, and a revoked one must
+      // not be able to talk its way back in through its inbox.
+      if (user == null || user.isPending || user.accessRevoked) {
+        return jsonResponse(200, genericResponse);
+      }
+      final code = randomDigits(6);
+      user.passwordResetCodeHash =
+          c.sha256.convert(utf8.encode(code)).toString();
+      user.passwordResetCodeExpiresAtMs =
+          DateTime.now().millisecondsSinceEpoch +
+              kPasswordResetCodeTtl.inMilliseconds;
+      await store.saveUsers();
+      await store.logActivity(
+          'password_reset_requested', '$email asked for a password reset code');
+      try {
+        await mailer.sendPasswordResetCode(
+            toEmail: user.email, code: code, validFor: kPasswordResetCodeTtl);
+      } catch (e) {
+        stderr.writeln(
+            '[luma] could not send password reset email to ${user.email}: $e');
+      }
+      return jsonResponse(200, genericResponse);
+    });
+  }
+
+  /// Sets a new password for someone who proved they own the address with
+  /// the code from [_forgotPassword]. Same key payload as [_resetPassword]
+  /// plus `email` and `code`.
+  ///
+  /// Sync is zero-knowledge, and unlike [_resetPassword] there is no signed-in
+  /// device holding the old key to re-seal the snapshots — so they would be
+  /// unreadable under the new password. They are deleted instead, and every
+  /// session is revoked; each device re-uploads its local copy once it signs
+  /// in with the new password.
+  Future<Response> _resetPasswordWithCode(Request request) async {
+    final body = await _readJson(request);
+    final email = _normalizeEmail(body['email']);
+    if (email == null) return errorResponse(400, 'bad_email', 'Invalid email.');
+    final code = body['code'];
+    if (code is! String || !RegExp(r'^\d{6}$').hasMatch(code)) {
+      return errorResponse(
+          400, 'bad_code', 'Enter the 6-digit code from your email.');
+    }
+    final next = _decodeB64(body['newAuthKey'], minLen: 32, maxLen: 64);
+    final newSalt = _decodeB64(body['newKdfSalt'], minLen: 16, maxLen: 64);
+    final iterations = body['newKdfIterations'];
+    if (next == null ||
+        newSalt == null ||
+        iterations is! int ||
+        iterations < 50000 ||
+        iterations > 5000000) {
+      return errorResponse(
+          400, 'bad_request', 'Invalid password-reset payload.');
+    }
+
+    return store.lock.synchronized(() async {
+      final userId = store.userIdByEmail[email];
+      final user = userId == null ? null : store.usersById[userId];
+
+      // Spent whether or not the account exists, and burns the code once
+      // exhausted — see [_verifyCode] for why both matter.
+      if (!_resetCodeAttemptLimiter.allow(email)) {
+        if (user != null && user.passwordResetCodeHash != null) {
+          user.passwordResetCodeHash = null;
+          user.passwordResetCodeExpiresAtMs = null;
+          await store.saveUsers();
+        }
+        return errorResponse(429, 'too_many_attempts',
+            'Too many incorrect attempts. Request a new code.');
+      }
+
+      if (user == null ||
+          user.passwordResetCodeHash == null ||
+          user.accessRevoked) {
+        return errorResponse(
+            400, 'bad_code', 'That code is invalid or has already been used.');
+      }
+      final codeHash = c.sha256.convert(utf8.encode(code)).toString();
+      if (!constantTimeEquals(utf8.encode(user.passwordResetCodeHash!),
+          utf8.encode(codeHash))) {
+        return errorResponse(400, 'bad_code', 'That code is incorrect.');
+      }
+      final now = DateTime.now().millisecondsSinceEpoch;
+      if ((user.passwordResetCodeExpiresAtMs ?? 0) <= now) {
+        user.passwordResetCodeHash = null;
+        user.passwordResetCodeExpiresAtMs = null;
+        await store.saveUsers();
+        return errorResponse(
+            400, 'code_expired', 'That code has expired. Request a new one.');
+      }
+
+      final authSalt = randomBytes(16);
+      user.authSalt = base64Encode(authSalt);
+      user.authHash = base64Encode(await _hashAuthKey(next, authSalt));
+      user.kdfSalt = base64Encode(newSalt);
+      user.kdfIterations = iterations;
+      user.passwordResetCodeHash = null;
+      user.passwordResetCodeExpiresAtMs = null;
+      user.passwordResetRequiredAtMs = null;
+      store.sessionsByTokenHash.removeWhere((_, s) => s.userId == user.id);
+      store.collectionsByUser.remove(user.id);
+      await store.deleteUserData(user.id);
+      await store.saveUsers();
+      await store.saveSessions();
+      await store.saveCollections();
+      _loginFailLimiter.forget(email);
+      _resetCodeAttemptLimiter.forget(email);
+      await store.logActivity('password_reset_done',
+          '$email reset their password with an emailed code');
+      return jsonResponse(200, {
+        'ok': true,
+        'message': 'Your password was reset. Sign in with your new password.',
+      });
     });
   }
 
@@ -2756,6 +2926,62 @@ class Api {
         // operator can tell a missing key from a broken upstream.
         'artificialAnalysisConfigured': config.artificialAnalysisConfigured,
       });
+
+  /// Starts a banner render: `?mode=missing` (the default) for scenes
+  /// without a banner, `?mode=all` to re-render every one. Like the model
+  /// refresh it can take a long while (a minute or two per scene), so this
+  /// only launches the job; the dashboard follows it via
+  /// [_adminBannersStatus].
+  Future<Response> _adminBannersRender(Request request) async {
+    final mode = request.url.queryParameters['mode'] == 'all'
+        ? PreviewRenderMode.all
+        : PreviewRenderMode.missing;
+    if (previewRenders.status.running) {
+      return errorResponse(
+          409, 'render_running', 'A banner render is already running.');
+    }
+    final problem = await previewRenders.start(mode);
+    if (problem == null) {
+      return jsonResponse(202, {
+        'started': true,
+        'count': previewRenders.status.items.length,
+      });
+    }
+    if (previewRenders.status.error == problem) {
+      return errorResponse(503, 'renderer_unavailable', problem);
+    }
+    return jsonResponse(200, {'started': false, 'message': problem});
+  }
+
+  Response _adminBannersStop(Request request) =>
+      jsonResponse(200, {'stopped': previewRenders.stop()});
+
+  Future<Response> _adminBannersStatus(Request request) async {
+    final coverage = await previewRenders.coverage();
+    return jsonResponse(200, {
+      ...previewRenders.status.toJson(),
+      'sceneCount': coverage.scenes,
+      'missingCount': coverage.missing,
+    });
+  }
+
+  /// A scene's current banner, so the dashboard can show what a render
+  /// produced. The app's own preview route needs a user session, which the
+  /// admin dashboard doesn't have.
+  Future<Response> _adminBannerImage(Request request) async {
+    final id = request.params['id']!;
+    if (!AiBenchmarkStore.idPattern.hasMatch(id)) {
+      return errorResponse(400, 'bad_benchmark_id', 'Invalid benchmark id.');
+    }
+    final preview = await aiBenchmarks.readPreview(id);
+    if (preview == null) {
+      return errorResponse(404, 'not_found', 'No banner for this scene.');
+    }
+    return Response(200, body: preview.bytes, headers: {
+      'Content-Type': 'image/png',
+      'Cache-Control': 'no-store',
+    });
+  }
 
   // ---- Handlers: recipes ---------------------------------------------------
 
@@ -8206,6 +8432,29 @@ syncToolbar();
         '</div>'
         '</div>'
         '<div class="card">'
+        '<h2>AI benchmark banners</h2>'
+        '<div class="maint-desc">Renders the model-card banners of the AI '
+        'Usage plugin\'s Tests tab, one scene at a time in a headless '
+        'browser. Pagoda banners are shot in daylight, framed as the whole '
+        'garden from above. <strong>Each scene takes a minute or two;</strong> '
+        'a scene that fails to render keeps its old banner.</div>'
+        '<div class="maint-actions">'
+        '<button id="bannersMissingBtn" type="button" class="btn btn-primary">'
+        'Render missing banners</button>'
+        '<button id="bannersAllBtn" type="button" class="btn btn-ghost">'
+        'Re-render all</button>'
+        '<button id="bannersStopBtn" type="button" class="btn btn-ghost btn-sm" '
+        'style="display:none">Stop</button>'
+        '</div>'
+        '<div id="bannersSummary" class="maint-status">Loading banner '
+        'status…</div>'
+        '<div id="bannersLog" class="maint-out" style="display:none">'
+        '<table><thead><tr><th>Scene</th><th>Status</th><th>Banner</th>'
+        '<th>Detail</th></tr></thead>'
+        '<tbody id="bannersRows"></tbody></table>'
+        '</div>'
+        '</div>'
+        '<div class="card">'
         '<h2>Server update</h2>'
         '<div class="maint-desc">Pulls the latest code, rebuilds the image '
         'and recreates the container. <strong>The server restarts and is '
@@ -8237,6 +8486,7 @@ syncToolbar();
         '<script>$_adminMetricsScript</script>'
         '<script>$_adminGroceriesScript</script>'
         '<script>$_adminAiModelsScript</script>'
+        '<script>$_adminBannersScript</script>'
         '<script>${DeployConsole.deployScript}</script>'
         '<script>${UpdateCheckConsole.updateCheckScript}</script>'
         '</body></html>';
@@ -8665,6 +8915,138 @@ window.lumaAskReason = function (form, message) {
         btn.textContent = 'Refresh model data';
         summary.textContent = 'Could not start the refresh.';
       });
+  });
+
+  load();
+})();
+''';
+
+  /// Control panel tab: "Render missing banners" / "Re-render all" POST to
+  /// /admin/benchmark-banners/render and then poll
+  /// /admin/benchmark-banners/status every 3s while the job runs, one row
+  /// per scene with a thumbnail of each banner as it lands. Like the model
+  /// refresh, the job outlives the request, so a reload mid-render picks the
+  /// same poll back up.
+  static const _adminBannersScript = r'''
+(function () {
+  const missingBtn = document.getElementById('bannersMissingBtn');
+  const allBtn = document.getElementById('bannersAllBtn');
+  const stopBtn = document.getElementById('bannersStopBtn');
+  const summary = document.getElementById('bannersSummary');
+  const logBox = document.getElementById('bannersLog');
+  const rows = document.getElementById('bannersRows');
+  if (!missingBtn || !allBtn || !stopBtn || !summary || !logBox || !rows) return;
+
+  function esc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    })[c]);
+  }
+
+  const BADGE = {
+    queued: ['', 'queued'],
+    rendering: ['warn', 'rendering…'],
+    ok: ['ok', 'done'],
+    failed: ['err', 'failed'],
+    skipped: ['', 'skipped'],
+  };
+
+  let timer = null;
+
+  function render(data) {
+    const running = !!data.running;
+    const items = data.items || [];
+    missingBtn.disabled = running || data.missingCount === 0;
+    allBtn.disabled = running || data.sceneCount === 0;
+    missingBtn.textContent = 'Render missing banners'
+      + (data.missingCount > 0 ? ' (' + data.missingCount + ')' : '');
+    stopBtn.style.display = running ? '' : 'none';
+
+    const done = items.filter((i) => i.state === 'ok').length;
+    const failed = items.filter((i) => i.state === 'failed').length;
+    const finished = items.filter((i) => i.state === 'ok' || i.state === 'failed').length;
+    let text = '<strong>' + data.sceneCount + '</strong> scenes · '
+      + (data.missingCount === 0 ? 'every one has a banner'
+        : data.missingCount + ' without a banner');
+    if (running) {
+      const current = items.find((i) => i.state === 'rendering');
+      text += ' — <strong>rendering ' + Math.min(finished + 1, items.length)
+        + ' of ' + items.length + '</strong>'
+        + (current ? ' · ' + esc(current.id) : '');
+    } else if (data.error) {
+      text += ' — <span class="badge err">failed</span> ' + esc(data.error);
+    } else if (data.finishedAtMs && items.length) {
+      text += ' — <span class="badge ' + (failed ? 'warn' : 'ok') + '">'
+        + done + ' rendered' + (failed ? ', ' + failed + ' failed' : '')
+        + '</span>' + (data.stopped ? ' (stopped)' : '')
+        + ' <span class="muted">' + new Date(data.finishedAtMs).toLocaleString() + '</span>';
+    }
+    summary.innerHTML = text;
+
+    logBox.style.display = items.length ? 'block' : 'none';
+    const stamp = data.finishedAtMs || Date.now();
+    rows.innerHTML = items.map((i) => {
+      const b = BADGE[i.state] || ['', i.state];
+      const img = i.state === 'ok'
+        ? '<a href="/admin/benchmark-banners/image/' + encodeURIComponent(i.id)
+          + '?v=' + stamp + '" target="_blank" rel="noopener">'
+          + '<img alt="" style="width:96px;height:60px;object-fit:cover;'
+          + 'border-radius:6px;display:block" src="/admin/benchmark-banners/image/'
+          + encodeURIComponent(i.id) + '?v=' + stamp + '"></a>'
+        : '';
+      return '<tr><td>' + esc(i.id) + '</td>'
+        + '<td><span class="badge ' + b[0] + '">' + b[1] + '</span></td>'
+        + '<td>' + img + '</td>'
+        + '<td class="muted" style="font-size:12px">' + esc(i.detail || '—') + '</td></tr>';
+    }).join('');
+    return running;
+  }
+
+  function load() {
+    fetch('/admin/benchmark-banners/status')
+      .then((r) => r.json())
+      .then((data) => {
+        clearTimeout(timer);
+        if (render(data)) timer = setTimeout(load, 3000);
+      })
+      .catch(() => {
+        summary.textContent = 'Could not read the banner status.';
+      });
+  }
+
+  function start(mode) {
+    missingBtn.disabled = true;
+    allBtn.disabled = true;
+    fetch('/admin/benchmark-banners/render?mode=' + mode, { method: 'POST' })
+      .then((r) => r.json().then((body) => ({ ok: r.ok, body })))
+      .then(({ ok, body }) => {
+        if (!ok || body.started === false) {
+          const msg = body.message
+            || 'Could not start the render.';
+          summary.innerHTML = '<span class="badge ' + (ok ? 'ok' : 'err') + '">'
+            + (ok ? 'nothing to do' : 'failed') + '</span> ' + esc(msg);
+          missingBtn.disabled = false;
+          allBtn.disabled = false;
+          return;
+        }
+        setTimeout(load, 500);
+      })
+      .catch(() => {
+        missingBtn.disabled = false;
+        allBtn.disabled = false;
+        summary.textContent = 'Could not start the render.';
+      });
+  }
+
+  missingBtn.addEventListener('click', () => start('missing'));
+  allBtn.addEventListener('click', () => {
+    if (confirm('Re-render every benchmark banner, one scene at a time? '
+      + 'This replaces the current banners and takes a while.')) start('all');
+  });
+  stopBtn.addEventListener('click', () => {
+    stopBtn.disabled = true;
+    fetch('/admin/benchmark-banners/stop', { method: 'POST' })
+      .finally(() => { stopBtn.disabled = false; setTimeout(load, 800); });
   });
 
   load();

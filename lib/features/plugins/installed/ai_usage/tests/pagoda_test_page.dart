@@ -38,6 +38,7 @@ class PagodaTestPage extends StatefulWidget {
 /// model name as its own vendor.
 String? pagodaVendorKey(String model) {
   final m = model.toLowerCase();
+  if (m.contains('step 5') || m.contains('stepfun')) return 'stepfun';
   if (m.contains('mistral')) return 'mistralai';
   if (m.contains('nemotron')) return 'nvidia';
   if (m.contains('haiku') ||
@@ -72,6 +73,8 @@ String? pagodaVendorKey(String model) {
 String pagodaVendorName(String model) {
   final m = model;
   switch (pagodaVendorKey(model)) {
+    case 'stepfun':
+      return 'StepFun';
     case 'anthropic':
       return 'Anthropic';
     case 'meta':
@@ -119,6 +122,9 @@ String pagodaVendorName(String model) {
 /// constant. Mistral returns three colors (yellow/orange/red blocks).
 List<Color> pagodaBrandStops(String model) {
   final m = model.toLowerCase();
+  if (m.contains('step 5') || m.contains('stepfun')) {
+    return [vendorColor('stepfun')];
+  }
   if (m.contains('mistral')) {
     return const [
       Color(0xFFFFD800),
@@ -173,8 +179,7 @@ List<Color> pagodaBrandStops(String model) {
 }
 
 class _PagodaTestPageState extends State<PagodaTestPage> {
-  static const _nativeModelId = 'pagoda_gpt6_luna_low';
-  static const _nativeModelName = 'GPT 6 Luna (Low)';
+  static const _nativeModelIds = {'pagoda_gpt6_luna_low', 'pagoda_step5'};
   String? _selectedId;
   bool _bannerView = false;
   final _searchController = TextEditingController();
@@ -207,11 +212,21 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
       listenable: repo,
       builder: (context, _) {
         final benchmarks = [
-          ...repo.benchmarksOfKind('pagoda').where((b) => b.id != _nativeModelId),
+          ...repo
+              .benchmarksOfKind('pagoda')
+              .where((b) => !_nativeModelIds.contains(b.id)),
           const AiBenchmark(
-            id: _nativeModelId,
+            id: 'pagoda_step5',
             kind: 'pagoda',
-            model: _nativeModelName,
+            model: 'Step 5',
+            description: 'StepFun Step 5 Preview voxel garden benchmark',
+            sizeBytes: 0,
+            sha256: '',
+          ),
+          const AiBenchmark(
+            id: 'pagoda_gpt6_luna_low',
+            kind: 'pagoda',
+            model: 'GPT 6 Luna (Low)',
             description: 'Independent voxel garden benchmark',
             sizeBytes: 0,
             sha256: '',
@@ -226,10 +241,10 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
               ];
 
         if (_selectedId != null) {
-          if (_selectedId == _nativeModelId) {
+          if (_nativeModelIds.contains(_selectedId)) {
             return _sceneView(
               context,
-              benchmarks.firstWhere((b) => b.id == _nativeModelId),
+              benchmarks.firstWhere((b) => b.id == _selectedId),
             );
           }
           final selected = repo.byId(_selectedId!);
@@ -405,9 +420,13 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
           onPressed: () => setState(() => _selectedId = null),
         ),
       ),
-      body: benchmark.id == _nativeModelId
+      body: _nativeModelIds.contains(benchmark.id)
           ? _SceneWebview(
-              path: windowsAssetPath('assets/pagoda_gpt6_luna_low.html'),
+              path: windowsAssetPath(
+                benchmark.id == 'pagoda_step5'
+                    ? 'assets/tests/pagoda_step5.html'
+                    : 'assets/pagoda_gpt6_luna_low.html',
+              ),
             )
           : FutureBuilder<File>(
               future: repo.sceneFile(benchmark.id),

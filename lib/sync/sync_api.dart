@@ -569,6 +569,34 @@ class SyncApi {
     await _postJson('/auth/verify-code', {'email': email, 'code': code});
   }
 
+  /// Asks the server to email a 6-digit password-reset code to [email]. The
+  /// reply is deliberately generic, so the returned message is safe to show
+  /// whether or not the address has an account.
+  Future<String> requestPasswordResetCode(String email) async {
+    final body = await _postJson('/auth/forgot-password', {'email': email});
+    return body['message'] as String? ??
+        'If that email has a luma account, we just sent it a reset code.';
+  }
+
+  /// Sets a new password using the code from [requestPasswordResetCode]. The
+  /// server wipes the account's synced snapshots (they were sealed under the
+  /// old key) and revokes every session; the caller signs in afterwards.
+  Future<void> resetPasswordWithCode({
+    required String email,
+    required String code,
+    required Uint8List newAuthKey,
+    required Uint8List newKdfSalt,
+    required int newKdfIterations,
+  }) async {
+    await _postJson('/auth/reset-with-code', {
+      'email': email,
+      'code': code,
+      'newAuthKey': base64Encode(newAuthKey),
+      'newKdfSalt': base64Encode(newKdfSalt),
+      'newKdfIterations': newKdfIterations,
+    });
+  }
+
   Future<void> logout() async {
     await _postJson('/auth/logout', const {});
   }

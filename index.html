@@ -85,12 +85,15 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 // =====================================================================
 // SPECIFICATION
 // Engine frame: crank axis = +Z (front of engine at +Z), +Y up.
-// Crank angle θ rotates counter-clockwise viewed from the front.
+// Like a real engine the crank turns clockwise seen from the front, so the
+// physical rotation about +Z is ROT·θ with ROT = −1; θ itself only grows.
 // Cylinder numbering (GM style): left bank 1-3-5-7, right bank 2-4-6-8,
-// cylinder 1 at the front of the left bank. Cycle angle 0 = TDC at the
-// start of intake, 360 = TDC firing.
+// "left" being the driver's side looking forward from the flywheel, which
+// puts the left bank on +X. Cylinder 1 is the front of the left bank.
+// Cycle angle 0 = TDC at the start of intake, 360 = TDC firing.
 // =====================================================================
 const DEG = Math.PI / 180;
+const ROT = -1;
 const mod = (a, n) => ((a % n) + n) % n;
 const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 
@@ -105,25 +108,62 @@ const SPEC = {
   pinR: 0.2, mainR: 0.27,
   firingOrder: [1, 8, 4, 3, 6, 5, 7, 2],
   valveTilt: 14 * DEG, valveX: 0.22, valveZ: 0.2, seatY: 2.46,
-  stemLen: 1.12, bucketH: 0.2, camBase: 0.2, maxLift: 0.24,
+  stemLen: 1.12, bucketH: 0.2, bucketR: 0.18, camBase: 0.22, maxLift: 0.1, noseR: 0.13,
   intake:  { open: -22, dur: 260 },   // IVO 22° BTDC, IVC 58° ABDC
   exhaust: { open: 482, dur: 260 },   // EVO 58° BBDC, EVC 22° ATDC
   crankSprocketTeeth: 20, sprocketPitch: 0.0723,
-  chainZ: 3.15, beltZ: 3.62,
+  beltZ: 3.62,
 };
 SPEC.crankSprocketR = SPEC.crankSprocketTeeth * SPEC.sprocketPitch / (2 * Math.PI);
 SPEC.camSprocketR = 2 * SPEC.crankSprocketR;   // 40 teeth → exact 2:1
 SPEC.camOffsetAlongAxis = SPEC.stemLen + SPEC.bucketH - 0.16 + SPEC.camBase; // seat → cam centre
+
+// ---------------------------------------------------------------------
+// Cam lobes: circular-arc cams for flat bucket followers. Each lobe is a
+// base circle (b), two flank arcs (ρf) and a nose arc (ρn), each tangent to
+// the next. A flat follower always sits on the lobe's support function
+// h(ψ), ψ being the angle between the follower axis and the lobe
+// centreline, so valve lift = h(ψ) − b exactly: the lobe that is drawn is
+// the lobe that moves the valve.
+// ---------------------------------------------------------------------
+function makeCam(ev) {
+  const b = SPEC.camBase, l = SPEC.maxLift, rn = SPEC.noseR;
+  const H = ev.dur / 4 * DEG;                 // half the event, in cam radians
+  const e = b - rn, dn = e + l;               // dn: cam centre → nose-arc centre
+  // flank circle internally tangent to the base circle at ψ = H and to the nose circle
+  const q = -l * (2 * e + l) / (2 * (dn * Math.cos(H) - e));   // ρf − b
+  if (!(q > 0) || !(rn > 0)) throw new Error('cam: nose radius incompatible with lift/duration');
+  const psiJ = Math.atan2(q * Math.sin(H), dn + q * Math.cos(H));  // flank/nose junction
+  return { b, l, rn, H, dn, q, rf: q + b, psiJ };
+}
+// support function h(ψ) and its derivative dh/dψ (= follower contact offset)
+function camSupport(c, psi) {
+  const a = Math.abs(psi);
+  if (a >= c.H) return c.b;
+  if (a <= c.psiJ) return c.rn + c.dn * Math.cos(a);
+  return c.rf - c.q * Math.cos(a - c.H);
+}
+function camSlope(c, psi) {
+  const a = Math.abs(psi), s = Math.sign(psi);
+  if (a >= c.H) return 0;
+  if (a <= c.psiJ) return -s * c.dn * Math.sin(a);
+  return s * c.q * Math.sin(a - c.H);
+}
+SPEC.intake.cam = makeCam(SPEC.intake);
+SPEC.exhaust.cam = makeCam(SPEC.exhaust);
 
 const zThrow = [0, 1, 2, 3].map(k => 1.5 * SPEC.throwSpacing - k * SPEC.throwSpacing);
 
 // ---------------------------------------------------------------------
 // Cylinder table: all phasing is derived from firing order + geometry
 // ---------------------------------------------------------------------
+// gamma: cylinder axis angle in the engine XY plane; side: which half of X;
+// sIn: bank-local x side facing the valley; chainZ: plane of that bank's cam chain
 const BANK = {
-  L: { gamma: 135, rot: 45 * DEG, sIn: +1 },   // sIn = bank-local x side facing the valley
-  R: { gamma: 45,  rot: -45 * DEG, sIn: -1 },
+  L: { gamma: 45,  rot: -45 * DEG, side: +1, sIn: -1, chainZ: 3.24 },
+  R: { gamma: 135, rot: 45 * DEG,  side: -1, sIn: +1, chainZ: 3.02 },
 };
+const bankOnSide = s => (BANK.L.side === s ? 'L' : 'R');
 const throwPhase = [null, null, null, null];
 const cylinders = [];
 for (let c = 1; c <= 8; c++) {
@@ -133,8 +173,8 @@ for (let c = 1; c <= 8; c++) {
   const gamma = BANK[bank].gamma;
   // fires (cycle 360) at θ = 90n  →  cycle offset
   const offset = mod(360 - 90 * n, 720);
-  // mechanical TDC requires θ + φk − γ ≡ 0 at θ = 90n
-  const phi = mod(gamma - 90 * n, 360);
+  // throw k points at ROT·θ + φk; mechanical TDC needs that to equal γ at θ = 90n
+  const phi = mod(gamma - ROT * 90 * n, 360);
   if (throwPhase[k] === null) throwPhase[k] = phi;
   else if (Math.abs(throwPhase[k] - phi) > 1e-9)
     throw new Error(`firing order inconsistent with shared crank throw ${k}`);
@@ -151,10 +191,11 @@ for (let c = 1; c <= 8; c++) {
 // =====================================================================
 // MECHANICAL STATE (pure functions of crank angle θ in degrees)
 // =====================================================================
+// ψ = half the crank angle from peak lift, since the cam turns at half speed
 function valveLift(cyc, ev) {
-  const t = mod(cyc - ev.open, 720) / ev.dur;
-  if (t <= 0 || t >= 1) return 0;
-  return SPEC.maxLift * 0.5 * (1 - Math.cos(2 * Math.PI * t));
+  const fromOpen = mod(cyc - ev.open, 720);
+  if (fromOpen >= ev.dur) return 0;
+  return camSupport(ev.cam, (fromOpen - ev.dur / 2) / 2 * DEG) - ev.cam.b;
 }
 function sparkAdvance(rpm) { return 8 + 26 * clamp(rpm / 6000, 0, 1); }
 function strokeOf(cyc) { return cyc < 180 ? 0 : cyc < 360 ? 1 : cyc < 540 ? 2 : 3; }
@@ -163,7 +204,7 @@ const STROKE_COL = ['#4aa8ff', '#6fd08c', '#ff7a2f', '#b58cff'];
 
 function solveCylinder(cy, theta, rpm) {
   const { crankR: r, rodL: l } = SPEC;
-  const beta = (theta + throwPhase[cy.k]) * DEG;
+  const beta = (ROT * theta + throwPhase[cy.k]) * DEG;
   const psi = beta - cy.gamma * DEG;
   const sinP = Math.sin(psi);
   const s = r * Math.cos(psi) + Math.sqrt(Math.max(0, l * l - r * r * sinP * sinP));
@@ -269,6 +310,7 @@ const CAT = {};
 const CAT_NAMES = { block: 'Block', heads: 'Heads', covers: 'Valve covers', pistons: 'Pistons', rods: 'Con-rods',
   crank: 'Crankshaft', valvetrain: 'Valve train', timing: 'Timing/belt', flywheel: 'Flywheel',
   intake: 'Intake', exhaust: 'Exhaust', effects: 'Combustion/flow' };
+const catOn = Object.fromEntries(Object.keys(CAT_NAMES).map(c => [c, true]));
 function reg(cat, obj) { (CAT[cat] ||= []).push(obj); return obj; }
 
 function mesh(geo, mat, cast = true, recv = true) {
@@ -499,7 +541,7 @@ const VALVE_GEO = (() => {
     valve: new THREE.LatheGeometry(p, 28),
     spring: new THREE.TubeGeometry(new HelixCurve(0.105, 7), 220, 0.017, 6, false),
     retainer: new THREE.CylinderGeometry(0.12, 0.08, 0.04, 20).translate(0, 0.94, 0),
-    bucket: new THREE.CylinderGeometry(0.15, 0.15, SPEC.bucketH, 28).translate(0, SPEC.stemLen + SPEC.bucketH / 2 - 0.16, 0),
+    bucket: new THREE.CylinderGeometry(SPEC.bucketR, SPEC.bucketR, SPEC.bucketH, 28).translate(0, SPEC.stemLen + SPEC.bucketH / 2 - 0.16, 0),
     seat: new THREE.TorusGeometry(0.165, 0.018, 8, 28).rotateX(Math.PI / 2),
     guide: new THREE.CylinderGeometry(0.06, 0.06, 0.28, 12).translate(0, 0.4, 0),
     springSeat: new THREE.CylinderGeometry(0.13, 0.13, 0.02, 20).translate(0, 0.5, 0),
@@ -547,20 +589,27 @@ function buildValves(cy) {
 }
 
 // Cam lobe profile derived from the lift law itself:
-// a lobe point at cam-local angle ω faces the follower (direction g) when
-// cam angle χ = g − ω, i.e. crank θ = 2(g − ω), cycle = θ + offset.
-function lobeGeometry(offset, ev, g) {
+// Outline = envelope of the follower face: the point touching a face with
+// normal direction ψ (from the centreline) is h·n + h'·t. The cam turns by
+// ROT·θ/2, so the centreline's cam-local angle cl must satisfy
+// ROT·θpeak/2 + cl = g (g = direction of the follower) at peak lift.
+function lobeOutline(offset, ev, g) {
+  const c = ev.cam, thetaPeak = mod(ev.open + ev.dur / 2 - offset, 720);
+  const cl = (g - ROT * thetaPeak / 2) * DEG;
   const pts = [];
-  for (let i = 0; i < 256; i++) {
-    const w = i / 256 * 360;
-    const R = SPEC.camBase + valveLift(mod(2 * (g - w) + offset, 720), ev);
-    pts.push(new THREE.Vector2(R * Math.cos(w * DEG), R * Math.sin(w * DEG)));
+  for (let i = 0; i < 720; i++) {
+    const psi = -Math.PI + i / 720 * 2 * Math.PI, a = cl + psi;
+    const h = camSupport(c, psi), dh = camSlope(c, psi);
+    pts.push(new THREE.Vector2(h * Math.cos(a) - dh * Math.sin(a), h * Math.sin(a) + dh * Math.cos(a)));
   }
-  return extrudeZ(new THREE.Shape(pts), 0.13, 0.008, 4);
+  return pts;
+}
+function lobeGeometry(offset, ev, g) {
+  return extrudeZ(new THREE.Shape(lobeOutline(offset, ev, g)), 0.13, 0.008, 4);
 }
 function buildCams(b) {
   const bk = banks[b], sIn = BANK[b].sIn;
-  const z0 = bk.zMin - 0.75, z1 = SPEC.chainZ;
+  const z0 = bk.zMin - 0.75, z1 = BANK[b].chainZ;
   for (const type of ['in', 'ex']) {
     const sx = type === 'in' ? sIn : -sIn;
     const { u } = valveFrame(sx);
@@ -588,7 +637,7 @@ function buildCams(b) {
       const cap = mesh(capGeo, M.aluCast); cap.position.set(cx, cyy + 0.2, jz); cap.rotation.z = BANK[b].rot * 0; bk.head.add(cap);
       const tower = mesh(new THREE.BoxGeometry(0.42, cyy - 3.3, 0.16), M.aluCast); tower.position.set(cx, (cyy + 3.3) / 2 - 0.08, jz); bk.head.add(tower);
       reg('heads', cap); reg('heads', tower);
-      boltSet(bk.head, [-0.15, 0.15].map(dx => ({ p: V(cx + dx, cyy + 0.29, jz), n: Y_AXIS })));
+      reg('heads', boltSet(bk.head, [-0.15, 0.15].map(dx => ({ p: V(cx + dx, cyy + 0.29, jz), n: Y_AXIS }))));
     }
   }
 }
@@ -596,11 +645,13 @@ function buildCams(b) {
 // ---------- block, heads, covers ----------
 function buildBlock() {
   const hw = 0.7, deck = SPEC.deckY;
-  const P = (b, x, y) => { const v = b2e(b, x, y, 0); return new THREE.Vector2(v.x, v.y); };
+  // bank-local corner on the valley (inner) or outer side of the bore
+  const P = (b, inner, y) => { const v = b2e(b, (inner ? 1 : -1) * BANK[b].sIn * hw, y, 0); return new THREE.Vector2(v.x, v.y); };
+  const bp = bankOnSide(+1), bn = bankOnSide(-1);
   const pts = [
     new THREE.Vector2(-1.3, -0.78), new THREE.Vector2(1.3, -0.78),
-    P('R', hw, 0.95), P('R', hw, deck), P('R', -hw, deck), new THREE.Vector2(0.38, 1.15),
-    new THREE.Vector2(-0.38, 1.15), P('L', hw, deck), P('L', -hw, deck), P('L', -hw, 0.95),
+    P(bp, false, 0.95), P(bp, false, deck), P(bp, true, deck), new THREE.Vector2(0.38, 1.15),
+    new THREE.Vector2(-0.38, 1.15), P(bn, true, deck), P(bn, false, deck), P(bn, false, 0.95),
   ];
   const len = 5.9;
   const blk = withEdges(mesh(extrudeZ(new THREE.Shape(pts), len), M.block, false), M.edge, 20);
@@ -690,40 +741,51 @@ class LoopPath {
     } else { pos.copy(seg.dir).multiplyScalar(u).add(seg.p0); tan.copy(seg.dir); }
   }
 }
+const BELT_RIBS = 5, BELT_RIB_P = 0.036, BELT_RIB_H = 0.022;   // 5-rib poly-V belt
 const timing = new THREE.Group(); engine.add(timing);
 const accessory = new THREE.Group(); engine.add(accessory);
 const drive = { sprockets: [], pulleys: [] };
 function buildTiming() {
   const Rc = SPEC.crankSprocketR, Rk = SPEC.camSprocketR, pitch = SPEC.sprocketPitch;
-  const cs = mesh(extrudeZ(gearShape(SPEC.crankSprocketTeeth, Rc - 0.035, Rc + 0.03, 0.12), 0.12, 0.004), M.steel);
-  cs.position.z = SPEC.chainZ; timing.add(cs); drive.crankSprocket = cs;
+  const crankGearGeo = extrudeZ(gearShape(SPEC.crankSprocketTeeth, Rc - 0.035, Rc + 0.03, 0.12), 0.12, 0.004);
   const camGearGeo = (() => {
     const s = gearShape(SPEC.crankSprocketTeeth * 2, Rk - 0.035, Rk + 0.03, 0.08);
     for (let i = 0; i < 5; i++) { const a = i * 2 * Math.PI / 5; s.holes.push(circlePath(0.25 * Math.cos(a), 0.25 * Math.sin(a), 0.08)); }
     return extrudeZ(s, 0.1, 0.004);
   })();
-  const circles = [{ x: 0, y: 0, r: Rc }];
-  // CCW order: crank → right exhaust → right intake → left intake → left exhaust
-  const order = [['R', 'ex'], ['R', 'in'], ['L', 'in'], ['L', 'ex']];
-  for (const [b, type] of order) {
-    const bk = banks[b], cam = bk.cams[type === 'in' ? 0 : 1], c = cam.userData.center;
-    const p = b2e(b, c.x, c.y, SPEC.chainZ);
-    const g = mesh(camGearGeo, M.steel); g.position.copy(p); timing.add(g);
-    drive.sprockets.push({ mesh: g, bank: b });
-    circles.push({ x: p.x, y: p.y, r: Rk });
-  }
-  const path = new LoopPath(circles);
-  const nLinks = Math.round(path.length / pitch);
-  const links = new THREE.InstancedMesh(new THREE.BoxGeometry(path.length / nLinks * 0.92, 0.06, 0.13), M.chain, nLinks);
-  links.castShadow = true; timing.add(links);
-  const pins = new THREE.InstancedMesh(zCyl(0.018, 0.17, 6), M.darkSteel, nLinks); timing.add(pins);
-  drive.chain = { path, links, pins, n: nLinks, radius: Rc };
-  // guides along the two long straight runs
-  for (const sg of path.segs) if (!sg.arc && sg.len > 1.5) {
-    const guide = mesh(new THREE.BoxGeometry(sg.len * 0.8, 0.06, 0.16), M.rubber);
-    const nrm = new THREE.Vector2(sg.dir.y, -sg.dir.x);
-    guide.position.set(sg.p0.x + sg.dir.x * sg.len / 2 + nrm.x * 0.07, sg.p0.y + sg.dir.y * sg.len / 2 + nrm.y * 0.07, SPEC.chainZ);
-    guide.rotation.z = Math.atan2(sg.dir.y, sg.dir.x); timing.add(guide);
+  const pinGeo = zCyl(0.018, 0.17, 6);
+  drive.crankSprockets = []; drive.chains = [];
+  // One chain per bank, as on DOHC V8s: a 20T crank sprocket drives both 40T
+  // cam sprockets of that bank, each bank in its own plane along the crank.
+  for (const b of ['L', 'R']) {
+    const z = BANK[b].chainZ;
+    const cs = mesh(crankGearGeo, M.steel); cs.position.z = z; timing.add(cs); drive.crankSprockets.push(cs);
+    const circles = [{ x: 0, y: 0, r: Rc }];
+    for (const cam of banks[b].cams) {
+      const c = cam.userData.center, p = b2e(b, c.x, c.y, z);
+      const g = mesh(camGearGeo, M.steel); g.position.copy(p); timing.add(g);
+      drive.sprockets.push({ mesh: g, bank: b });
+      circles.push({ x: p.x, y: p.y, r: Rk });
+    }
+    // LoopPath expects the circles counter-clockwise around the loop
+    const mx = circles.reduce((s, c) => s + c.x, 0) / circles.length;
+    const my = circles.reduce((s, c) => s + c.y, 0) / circles.length;
+    circles.sort((a, c) => Math.atan2(a.y - my, a.x - mx) - Math.atan2(c.y - my, c.x - mx));
+    const path = new LoopPath(circles);
+    const n = Math.round(path.length / pitch);
+    const links = new THREE.InstancedMesh(new THREE.BoxGeometry(path.length / n * 0.92, 0.06, 0.13), M.chain, n);
+    links.castShadow = true; timing.add(links);
+    const pins = new THREE.InstancedMesh(pinGeo, M.darkSteel, n); timing.add(pins);
+    drive.chains.push({ path, links, pins, n, radius: Rc, z });
+    // fixed guide on one long run, sprung tensioner shoe on the other
+    for (const sg of path.segs) if (!sg.arc && sg.len > 1.5) {
+      const nrm = new THREE.Vector2(sg.dir.y, -sg.dir.x);
+      const guide = mesh(new THREE.BoxGeometry(sg.len * 0.8, 0.06, 0.16), M.rubber);
+      guide.position.set(sg.p0.x + sg.dir.x * sg.len / 2 + nrm.x * 0.07, sg.p0.y + sg.dir.y * sg.len / 2 + nrm.y * 0.07, z);
+      guide.rotation.z = Math.atan2(sg.dir.y, sg.dir.x); timing.add(guide);
+      const back = mesh(new THREE.BoxGeometry(sg.len * 0.8, 0.05, 0.05), M.darkSteel);
+      back.position.copy(guide.position).add(V(nrm.x * 0.055, nrm.y * 0.055, 0)); back.rotation.z = guide.rotation.z; timing.add(back);
+    }
   }
   timing.traverse(o => (o.isMesh || o.isInstancedMesh) && reg('timing', o));
 
@@ -737,8 +799,11 @@ function buildTiming() {
   ];
   for (const p of acc) {
     const g = new THREE.Group(); g.position.set(p.x, p.y, SPEC.beltZ); accessory.add(g);
-    const prof = [[0.05, -0.11], [p.r, -0.11], [p.r - 0.03, -0.08], [p.r, -0.05], [p.r - 0.03, -0.02], [p.r, 0.01], [p.r - 0.03, 0.04], [p.r, 0.07], [p.r, 0.11], [0.05, 0.11]]
-      .map(([x, y]) => new THREE.Vector2(x, y));
+    // edge lips, then one V-groove per belt rib at the same pitch
+    const prof = [[0.05, -0.11], [p.r + 0.015, -0.11], [p.r + 0.015, -0.095], [p.r, -0.09]];
+    for (let i = 0; i < BELT_RIBS; i++) { const u0 = -0.09 + i * BELT_RIB_P; prof.push([p.r - BELT_RIB_H, u0 + BELT_RIB_P / 2], [p.r, u0 + BELT_RIB_P]); }
+    prof.push([p.r + 0.015, 0.095], [p.r + 0.015, 0.11], [0.05, 0.11]);
+    prof.forEach((q, i) => prof[i] = new THREE.Vector2(q[0], q[1]));
     const lathe = new THREE.LatheGeometry(prof, 48); lathe.rotateX(Math.PI / 2);
     g.add(mesh(lathe, p.name === 'crank' ? M.darkSteel : M.alu));
     const hubG = zCyl(Math.min(0.12, p.r * 0.5), 0.26, 6); g.add(mesh(hubG, M.bolt));
@@ -753,10 +818,16 @@ function buildTiming() {
   const hb = mesh(zCyl(0.5, 0.14, 48), M.rubber); hb.position.set(0, 0, SPEC.beltZ - 0.18); accessory.add(hb);
   const beltPath = new LoopPath(acc);
   const nb = Math.round(beltPath.length / 0.05);
-  const belt = new THREE.InstancedMesh(new THREE.BoxGeometry(beltPath.length / nb * 1.02, 0.035, 0.2), M.belt, nb);
+  // Poly-V section in the instance frame: x along the belt, +y toward the
+  // pulleys. Back band sits on the groove crests, ribs reach into the grooves.
+  const sec = new THREE.Shape(), t = 0.015;
+  sec.moveTo(-0.1, -t); sec.lineTo(0.1, -t); sec.lineTo(0.1, t); sec.lineTo(0.09, t);
+  for (let i = BELT_RIBS - 1; i >= 0; i--) { const u0 = -0.09 + i * BELT_RIB_P; sec.lineTo(u0 + BELT_RIB_P / 2, t + BELT_RIB_H * 0.9); sec.lineTo(u0, t); }
+  sec.lineTo(-0.1, t); sec.closePath();
+  const segGeo = extrudeZ(sec, beltPath.length / nb * 1.02, 0, 1); segGeo.rotateY(Math.PI / 2);
+  const belt = new THREE.InstancedMesh(segGeo, M.belt, nb);
   belt.castShadow = true; accessory.add(belt);
-  const ribs = new THREE.InstancedMesh(new THREE.BoxGeometry(0.012, 0.037, 0.2), M.rubber, Math.floor(nb / 3)); accessory.add(ribs);
-  drive.belt = { path: beltPath, mesh: belt, ribs, n: nb, radius: 0.56 };
+  drive.belt = { path: beltPath, mesh: belt, n: nb, radius: 0.56 };
   accessory.traverse(o => (o.isMesh || o.isInstancedMesh) && reg('timing', o));
 }
 
@@ -769,6 +840,7 @@ engine.add(exhaustGroups.L, exhaustGroups.R);
 const flows = []; // {cy, type, lut:[Vector3]}
 function curveLUT(curve, n = 64) { return Array.from({ length: n + 1 }, (_, i) => curve.getPointAt(i / n)); }
 function buildIntake() {
+  const railTops = {};
   const plY = 4.35, plW = 0.72, plH = 0.4, z0 = -2.55, z1 = 2.55;
   const pl = withEdges(mesh(extrudeZ(roundRect(-plW, plY - plH, plW, plY + plH, 0.3), z1 - z0, 0.03), M.alu), M.edge, 40);
   intake.add(pl);
@@ -783,7 +855,7 @@ function buildIntake() {
   const inlet = mesh(new THREE.TorusGeometry(0.33, 0.05, 10, 40), M.steel); inlet.position.set(0, plY, z1 + 0.52); intake.add(inlet);
   // runners
   for (const cy of cylinders) {
-    const b = cy.bank, sIn = BANK[b].sIn, sw = b === 'R' ? 1 : -1;
+    const b = cy.bank, sIn = BANK[b].sIn, sw = BANK[b].side;
     const port = b2e(b, sIn * 1.08, 2.95, cy.z);
     const pts = [
       V(sw * 0.2, plY + plH - 0.1, cy.z * 0.97),
@@ -797,13 +869,27 @@ function buildIntake() {
     const fl = mesh(new THREE.BoxGeometry(0.06, 0.4, 0.4), M.aluCast); fl.position.copy(port); fl.rotation.z = BANK[b].rot; intake.add(fl);
     const inj = mesh(new THREE.CylinderGeometry(0.035, 0.05, 0.3, 10), M.coil);
     inj.position.copy(curve.getPointAt(0.82)).add(V(0, 0.2, 0)); inj.rotation.z = -sw * 0.5; intake.add(inj);
-    flows.push({ cy, type: 'in', lut: curveLUT(curve) });
+    // injector top = centre + half its length along its tilted axis
+    (railTops[b] ||= []).push(V(sw * Math.sin(0.5) * 0.15, Math.cos(0.5) * 0.15, 0).add(inj.position));
+    flows.push({ cy, type: 'in', lut: curveLUT(curve), group: intake });
   }
+  // fuel rails: one per bank across the injector tops, crossed over at the rear
+  const railEnds = {};
+  for (const b of ['L', 'R']) {
+    const tops = railTops[b], n = tops.length;
+    const x = tops.reduce((s, p) => s + p.x, 0) / n, y = tops.reduce((s, p) => s + p.y, 0) / n + 0.05;
+    const zs = tops.map(p => p.z), za = Math.min(...zs) - 0.35, zb = Math.max(...zs) + 0.35;
+    const rail = mesh(zCyl(0.065, zb - za, 16), M.steel); rail.position.set(x, y, (za + zb) / 2); intake.add(rail);
+    for (const z of [za, zb]) { const cap = mesh(zCyl(0.08, 0.06, 6), M.darkSteel); cap.position.set(x, y, z); intake.add(cap); }
+    railEnds[b] = V(x, y, za);
+  }
+  const cross = new THREE.CatmullRomCurve3([railEnds.L, railEnds.L.clone().add(V(0, 0.2, -0.35)), railEnds.R.clone().add(V(0, 0.2, -0.35)), railEnds.R]);
+  intake.add(mesh(new THREE.TubeGeometry(cross, 32, 0.03, 8, false), M.steel));
   intake.traverse(o => (o.isMesh) && reg('intake', o));
 }
 function buildExhaust() {
   for (const b of ['L', 'R']) {
-    const grp = exhaustGroups[b], sOut = -BANK[b].sIn, sw = b === 'R' ? 1 : -1;
+    const grp = exhaustGroups[b], sOut = -BANK[b].sIn, sw = BANK[b].side;
     const cyls = cylinders.filter(c => c.bank === b).sort((a, c) => c.z - a.z);
     const collZ = -3.45, collX = sw * 3.05, collY = -0.95;
     cyls.forEach((cy, i) => {
@@ -814,7 +900,7 @@ function buildExhaust() {
       const curve = new THREE.CatmullRomCurve3(pts, false, 'centripetal');
       grp.add(mesh(new THREE.TubeGeometry(curve, 64, 0.1, 14, false), M.exhaust));
       const fl = mesh(new THREE.BoxGeometry(0.06, 0.36, 0.36), M.darkSteel); fl.position.copy(port); fl.rotation.z = BANK[b].rot; grp.add(fl);
-      flows.push({ cy, type: 'ex', lut: curveLUT(curve) });
+      flows.push({ cy, type: 'ex', lut: curveLUT(curve), group: grp });
     });
     const flangeBar = mesh(new THREE.BoxGeometry(0.05, 0.12, cyls[0].z - cyls[3].z + 0.5), M.darkSteel);
     flangeBar.position.copy(b2e(b, sOut * 1.1, 3.2, (cyls[0].z + cyls[3].z) / 2)); flangeBar.rotation.z = BANK[b].rot; grp.add(flangeBar);
@@ -822,6 +908,42 @@ function buildExhaust() {
     const tail = mesh(zCyl(0.14, 1.2, 20), M.exhaust); tail.position.set(collX, collY, collZ - 1.12); grp.add(tail);
     const o2 = mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.25, 8), M.steel); o2.position.set(collX, collY + 0.3, collZ - 0.4); grp.add(o2);
     grp.traverse(o => o.isMesh && reg('exhaust', o));
+  }
+}
+
+// ---------- starter, oil filter, engine mounts ----------
+function buildAncillaries() {
+  // Starter: its 11T pinion sits on the ring gear's pitch circle but is shown
+  // retracted along its shaft, as it is once the engine is running.
+  const fwZ = SPEC.crankRearZ - 0.12, ringPitchR = 1.48;
+  const pinionR = ringPitchR * 11 / 132, a = 200 * DEG, cd = ringPitchR + pinionR;
+  const sx = cd * Math.cos(a), sy = cd * Math.sin(a);
+  const starter = new THREE.Group(); starter.position.set(sx, sy, 0); engine.add(starter);
+  const pin = mesh(extrudeZ(gearShape(11, pinionR - 0.035, pinionR + 0.035, 0.03), 0.1, 0.004), M.steel);
+  pin.position.z = fwZ + 0.2; starter.add(pin);
+  const nose = mesh(zCyl(0.17, 0.3, 24), M.aluCast); nose.position.z = fwZ + 0.42; starter.add(nose);
+  const motor = mesh(zCyl(0.24, 0.72, 32), M.darkSteel); motor.position.z = fwZ + 0.93; starter.add(motor);
+  const endCap = mesh(zCyl(0.2, 0.08, 24), M.aluCast); endCap.position.z = fwZ + 1.33; starter.add(endCap);
+  const sol = mesh(zCyl(0.11, 0.5, 20), M.steel); sol.position.set(-0.1, 0.3, fwZ + 0.62); starter.add(sol);
+  const term = mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.12, 8), M.plug); term.position.set(-0.1, 0.44, fwZ + 0.8); starter.add(term);
+  starter.traverse(o => o.isMesh && reg('flywheel', o));
+
+  // Oil filter on a tilted adapter boss on the +X side of the crankcase
+  const filt = new THREE.Group(); filt.position.set(1.33, -0.45, 1.3); filt.rotation.z = -2.2; engine.add(filt);
+  filt.add(mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.1, 24).translate(0, 0.05, 0), M.aluCast));
+  const can = mesh(new THREE.CylinderGeometry(0.23, 0.23, 0.55, 32).translate(0, 0.4, 0), new THREE.MeshStandardMaterial({ color: 0x1d4f8c, metalness: 0.4, roughness: 0.4 }));
+  filt.add(can);
+  for (let i = 0; i < 12; i++) { const rib = mesh(new THREE.BoxGeometry(0.03, 0.08, 0.03), M.darkSteel); const t = i / 12 * Math.PI * 2; rib.position.set(0.235 * Math.cos(t), 0.64, 0.235 * Math.sin(t)); filt.add(rib); }
+  filt.traverse(o => o.isMesh && reg('block', o));
+
+  // Engine mounts: cast bracket, rubber isolator, frame stud
+  for (const s of [-1, 1]) {
+    const m = new THREE.Group(); m.position.set(s * 1.2, 0.05, -0.2); engine.add(m);
+    const br = mesh(new THREE.BoxGeometry(0.2, 0.7, 0.9), M.castIron); br.position.x = s * 0.1; m.add(br);
+    const iso = mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.3, 24).rotateZ(Math.PI / 2), M.rubber); iso.position.x = s * 0.35; m.add(iso);
+    const plate = mesh(new THREE.BoxGeometry(0.06, 0.5, 0.5), M.darkSteel); plate.position.x = s * 0.53; m.add(plate);
+    boltSet(m, [[0.2, 0.3], [-0.2, 0.3], [0.2, -0.3], [-0.2, -0.3]].map(([y, z]) => ({ p: V(s * 0.21, y, z), n: V(s, 0, 0) })));
+    m.traverse(o => (o.isMesh || o.isInstancedMesh) && reg('block', o));
   }
 }
 
@@ -848,6 +970,7 @@ buildBlock();
 buildTiming();
 buildIntake();
 buildExhaust();
+buildAncillaries();
 buildFlowParticles();
 
 const fireLights = [0, 1].map(() => { const l = new THREE.PointLight(0xff8a30, 0, 3.2, 2); engine.add(l); reg('effects', l); return l; });
@@ -862,15 +985,16 @@ const _o = new THREE.Object3D(), _p2 = new THREE.Vector2(), _t2 = new THREE.Vect
 function updateFlow(dTheta) {
   const step = clamp(Math.abs(dTheta), 0, 60) * Math.sign(dTheta) / 360;
   for (let f = 0; f < flows.length; f++) {
-    const fl = flows[f], lift = (fl.type === 'in' ? fl.cy.liftIn : fl.cy.liftEx) / SPEC.maxLift;
+    const fl = flows[f], shown = catOn[fl.type === 'in' ? 'intake' : 'exhaust'];
+    const lift = shown ? (fl.type === 'in' ? fl.cy.liftIn : fl.cy.liftEx) / SPEC.maxLift : 0;
     const col = fl.type === 'in' ? [0.25, 0.55, 1.0] : [1.0, 0.45, 0.12];
     for (let i = 0; i < PER_FLOW; i++) {
       const idx = f * PER_FLOW + i;
       let u = flowU[idx] + step * 1.8 * lift;
       u = mod(u, 1); flowU[idx] = u;
       const x = u * 64, i0 = Math.floor(x), i1 = Math.min(64, i0 + 1), t = x - i0;
-      const a = fl.lut[i0], b = fl.lut[i1];
-      flowPos[idx * 3] = a.x + (b.x - a.x) * t; flowPos[idx * 3 + 1] = a.y + (b.y - a.y) * t; flowPos[idx * 3 + 2] = a.z + (b.z - a.z) * t;
+      const a = fl.lut[i0], b = fl.lut[i1], o = fl.group.position;   // follow the pipe when exploded
+      flowPos[idx * 3] = o.x + a.x + (b.x - a.x) * t; flowPos[idx * 3 + 1] = o.y + a.y + (b.y - a.y) * t; flowPos[idx * 3 + 2] = o.z + a.z + (b.z - a.z) * t;
       const fade = Math.sin(Math.PI * u) * lift * 0.9;
       flowCol[idx * 3] = col[0] * fade; flowCol[idx * 3 + 1] = col[1] * fade; flowCol[idx * 3 + 2] = col[2] * fade;
     }
@@ -880,16 +1004,18 @@ function updateFlow(dTheta) {
 
 function updateEngine(dThetaSigned, dtReal) {
   const theta = sim.theta, th = theta * DEG;
-  crank.rotation.z = th;                                 // crank + flywheel
-  for (const b of ['L', 'R']) for (const cam of banks[b].cams) cam.rotation.z = th / 2;   // exact 2:1
-  drive.crankSprocket.rotation.z = th;
-  for (const s of drive.sprockets) s.mesh.rotation.z = th / 2;
-  for (const p of drive.pulleys) p.g.rotation.z = th * p.ratio;
+  const phys = ROT * th;                                 // physical crank rotation about +Z
+  crank.rotation.z = phys;                               // crank + flywheel
+  for (const b of ['L', 'R']) for (const cam of banks[b].cams) cam.rotation.z = phys / 2;   // exact 2:1
+  for (const s of drive.crankSprockets) s.rotation.z = phys;
+  for (const s of drive.sprockets) s.mesh.rotation.z = phys / 2;
+  for (const p of drive.pulleys) p.g.rotation.z = phys * p.ratio;
   drive.throttle.rotation.x = Math.PI / 2 - clamp(0.08 + sim.rpm / 8000, 0, 1) * 1.3;
 
-  // chain + belt strands move at the crank sprocket/pulley surface speed
+  // chain + belt strands move at the crank sprocket/pulley surface speed; the
+  // loops are parametrised counter-clockwise, so a clockwise crank runs them backwards
   const moveStrand = (st, inst, pitchScale, extra) => {
-    const off = th * st.radius, L = st.path.length, n = inst.count;
+    const off = phys * st.radius, L = st.path.length, n = inst.count;
     for (let i = 0; i < n; i++) {
       st.path.sample(off + i * L / n * pitchScale, _p2, _t2);
       _o.position.set(_p2.x, _p2.y, extra.z); _o.rotation.set(0, 0, Math.atan2(_t2.y, _t2.x));
@@ -898,10 +1024,11 @@ function updateEngine(dThetaSigned, dtReal) {
     }
     inst.instanceMatrix.needsUpdate = true;
   };
-  moveStrand(drive.chain, drive.chain.links, 1, { z: SPEC.chainZ });
-  moveStrand(drive.chain, drive.chain.pins, 1, { z: SPEC.chainZ });
-  moveStrand(drive.belt, drive.belt.mesh, 1, { z: SPEC.beltZ, lift: -0.02 });
-  moveStrand(drive.belt, drive.belt.ribs, drive.belt.n / drive.belt.ribs.count, { z: SPEC.beltZ, lift: -0.04 });
+  for (const ch of drive.chains) {
+    moveStrand(ch, ch.links, 1, { z: ch.z });
+    moveStrand(ch, ch.pins, 1, { z: ch.z });
+  }
+  moveStrand(drive.belt, drive.belt.mesh, 1, { z: SPEC.beltZ, lift: -0.015 });
 
   // cylinders
   const fwdSweep = Math.max(0, dThetaSigned);
@@ -947,8 +1074,7 @@ function applyExplode(e) {
   for (const b of ['L', 'R']) {
     banks[b].head.position.y = e * 1.7;
     banks[b].cover.position.y = e * 1.4;
-    const sw = b === 'R' ? 1 : -1;
-    exhaustGroups[b].position.set(sw * e * 1.9, -e * 0.4, 0);
+    exhaustGroups[b].position.set(BANK[b].side * e * 1.9, -e * 0.4, 0);
   }
   intake.position.y = e * 4.2;
   timing.position.z = e * 1.4;
@@ -980,13 +1106,28 @@ function selfCheck() {
       if (Math.abs(cy.cyc % 360) < 1e-9 && Math.abs(cy.s - (SPEC.crankR + SPEC.rodL)) > 1e-9) nan = true;
     }
   }
+  // cam ↔ valve: rotate the drawn lobe outline exactly as the cam turns and
+  // check that its reach toward the bucket equals base circle + valve lift
+  let camErr = 0, maxContact = 0;
+  for (const cy of cylinders) for (const ev of [SPEC.intake, SPEC.exhaust]) {
+    const g = 90, outline = lobeOutline(cy.offset, ev, g);
+    for (let th = 0; th < 720; th += 1.7) {          // off the outline's 0.5° grid on purpose
+      const dir = (g - ROT * th / 2) * DEG, cx = Math.cos(dir), sy = Math.sin(dir);
+      let reach = -Infinity;
+      for (const p of outline) reach = Math.max(reach, p.x * cx + p.y * sy);
+      camErr = Math.max(camErr, Math.abs(reach - SPEC.camBase - valveLift(mod(th + cy.offset, 720), ev)));
+    }
+  }
+  for (const ev of [SPEC.intake, SPEC.exhaust]) for (let p = -90; p <= 90; p += 0.1) maxContact = Math.max(maxContact, Math.abs(camSlope(ev.cam, p * DEG)));
   const camRatio = ((720 * DEG) / 2) / (720 * DEG);
   const fo = fires.join('-');
-  const pass = maxRodErr < 1e-9 && !nan && fo === SPEC.firingOrder.join('-') && camRatio === 0.5 && minClear > 0;
+  const pass = maxRodErr < 1e-9 && !nan && fo === SPEC.firingOrder.join('-') && camRatio === 0.5 && minClear > 0
+    && camErr < 1e-3 && maxContact < SPEC.bucketR;
   out.push(`self-check ${pass ? 'PASS' : 'FAIL'} · rod length err ${maxRodErr.toExponential(1)}`);
   out.push(`firing order ${fo} · cam/crank ${camRatio}`);
   out.push(`throws ${throwPhase.map(p => p + '°').join(' ')} (cross-plane)`);
   out.push(`min valve-to-piston clearance ${minClear.toFixed(3)}`);
+  out.push(`lobe vs valve lift err ${camErr.toExponential(1)} · bucket contact ≤ ${maxContact.toFixed(3)} of r ${SPEC.bucketR}`);
   console.log(out.join('\n'));
   return { pass, text: out.join('\n') };
 }
@@ -1032,26 +1173,38 @@ function selectCylinder(c) {
 }
 
 const CAMS = {
-  HERO: [[8.2, 7.4, 11.5], [0, 1.3, 0]],
+  HERO: [[7.4, 6.4, 10.2], [0, 1.2, 0]],
   FRONT: [[0, 2.2, 14], [0, 1.6, 0]],
   SIDE: [[15, 2.5, 0], [0, 1.3, 0]],
   TOP: [[0, 16, 0.01], [0, 1.2, 0]],
-  INTERNAL: [[3.2, 1.6, 6.2], [0, 1.0, 0.4]],
+  INTERNAL: [[4.6, 2.2, 6.2], [0, 0.9, 0.5]],
 };
-let camTween = null;
+// INTERNAL is an x-ray view: it hides the outer systems, and leaving it brings them back
+const XRAY_HIDES = ['covers', 'intake', 'exhaust', 'timing'];
+let camTween = null, xray = false;
 for (const name of Object.keys(CAMS)) {
   const b = document.createElement('button'); b.textContent = name;
-  b.onclick = () => { camTween = { t: 0, fromP: camera.position.clone(), fromT: controls.target.clone(), toP: V(...CAMS[name][0]), toT: V(...CAMS[name][1]) }; };
+  b.onclick = () => {
+    const want = name === 'INTERNAL';
+    if (want !== xray) { XRAY_HIDES.forEach(c => setCat(c, !want)); xray = want; }
+    camTween = { t: 0, fromP: camera.position.clone(), fromT: controls.target.clone(), toP: V(...CAMS[name][0]), toT: V(...CAMS[name][1]) };
+  };
   $('camBtns').appendChild(b);
 }
 camera.position.set(...CAMS.HERO[0]); controls.target.set(...CAMS.HERO[1]);
 
 $('explode').addEventListener('input', e => { sim.explode = e.target.value / 100; $('explodev').textContent = e.target.value + '%'; applyExplode(sim.explode); });
 
+const catBox = {};
+function setCat(cat, on) {
+  catOn[cat] = on; catBox[cat].checked = on;
+  (CAT[cat] || []).forEach(o => o.visible = on);
+}
 for (const [cat, label] of Object.entries(CAT_NAMES)) {
   const l = document.createElement('label');
   l.innerHTML = `<input type="checkbox" checked> ${label}`;
-  l.firstChild.onchange = e => (CAT[cat] || []).forEach(o => o.visible = e.target.checked);
+  catBox[cat] = l.firstChild;
+  l.firstChild.onchange = e => setCat(cat, e.target.checked);
   $('toggles').appendChild(l);
 }
 $('hide').onclick = () => { $('hud').classList.toggle('min'); $('hide').textContent = $('hud').classList.contains('min') ? '+' : '–'; };
@@ -1084,8 +1237,8 @@ selectCylinder(1);
 applyExplode(0);
 const clock = new THREE.Clock();
 let hudTimer = 0;
-function frame() {
-  const dt = Math.min(clock.getDelta(), 0.1);
+// The only place the master crank angle changes. Returns the signed sweep in degrees.
+function advanceCrank(dt) {
   let dTheta = 0;
   if (sim.manual) {
     if (sim.pendingTheta !== undefined) {
@@ -1098,6 +1251,11 @@ function frame() {
     sim.theta = mod(sim.theta + dTheta, 720);
   }
   if (!Number.isFinite(sim.theta)) sim.theta = 0;
+  return dTheta;
+}
+function frame() {
+  const dt = Math.min(clock.getDelta(), 0.1);
+  const dTheta = advanceCrank(dt);
   updateEngine(sim.manual ? 0 : dTheta, sim.paused ? 0 : dt);
   if (sim.manual && dTheta !== 0) updateFlow(dTheta);
   if (camTween) {
@@ -1114,7 +1272,7 @@ function frame() {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-window.engineDebug = { sim, cylinders, SPEC, throwPhase, selfCheck };
+window.engineDebug = { sim, cylinders, SPEC, throwPhase, selfCheck, camera, controls, banks, drive, CAT, advanceCrank, updateEngine, crank };
 
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();

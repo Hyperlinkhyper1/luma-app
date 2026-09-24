@@ -36,7 +36,7 @@ class AutoClickerRepository extends ChangeNotifier {
   int _repeatCount = 100;
   HotKey _hotKey = HotKey(
     key: PhysicalKeyboardKey.f6,
-    modifiers: const [],
+    modifiers: const [HotKeyModifier.control, HotKeyModifier.shift],
     scope: HotKeyScope.system,
   );
 
@@ -98,6 +98,7 @@ class AutoClickerRepository extends ChangeNotifier {
           orElse: () => ClickRepeatMode.untilStopped,
         );
         _repeatCount = (data['repeatCount'] as num?)?.toInt() ?? _repeatCount;
+        var migrateHotKey = false;
         final hotKeyJson = data['hotKey'];
         if (hotKeyJson is Map) {
           try {
@@ -105,17 +106,35 @@ class AutoClickerRepository extends ChangeNotifier {
             // A null modifiers list crashes the native Windows plugin when
             // registering, so normalize it to empty (older settings files
             // saved before this was fixed can still have it as null).
-            _hotKey = parsed.modifiers == null
-                ? HotKey(
-                    identifier: parsed.identifier,
-                    key: parsed.key,
-                    modifiers: const [],
-                    scope: parsed.scope,
-                  )
-                : parsed;
+            final modifiers = parsed.modifiers ?? const <HotKeyModifier>[];
+            migrateHotKey = parsed.modifiers == null;
+            _hotKey = HotKey(
+              identifier: parsed.identifier,
+              key: parsed.key,
+              modifiers: modifiers,
+              scope: parsed.scope,
+            );
+            // Older releases used bare F6. Requiring Ctrl+Shift prevents an
+            // ordinary function-key press from starting the clicker.
+            if (_hotKey.physicalKey == PhysicalKeyboardKey.f6 &&
+                modifiers.isEmpty) {
+              _hotKey = HotKey(
+                identifier: _hotKey.identifier,
+                key: _hotKey.key,
+                modifiers: const [
+                  HotKeyModifier.control,
+                  HotKeyModifier.shift,
+                ],
+                scope: _hotKey.scope,
+              );
+              migrateHotKey = true;
+            }
           } catch (_) {
-            // Keep the default F6 hotkey if the saved one can't be parsed.
+            // Keep the default shortcut if the saved one can't be parsed.
           }
+        }
+        if (migrateHotKey) {
+          await _save();
         }
       }
     } catch (_) {
@@ -240,9 +259,9 @@ class AutoClickerRepository extends ChangeNotifier {
   }
 
   /// [clickImmediately] fires the first click right away instead of waiting a
-  /// full interval — used by the hotkey so a long interval doesn't make F6
-  /// feel dead. The UI Start button keeps the delay, because an instant click
-  /// there would land on luma's own Stop button under the cursor.
+  /// full interval — used by the hotkey so a long interval doesn't make the
+  /// shortcut feel dead. The UI Start button keeps the delay to avoid an
+  /// instant click landing on luma's own Stop button under the cursor.
   void start({bool clickImmediately = false}) {
     if (_isRunning || !supported) return;
     if (_repeatMode == ClickRepeatMode.count && _repeatCount <= 0) return;

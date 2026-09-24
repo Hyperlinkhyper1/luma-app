@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../../../../theme/luma_theme.dart';
 import 'ai_benchmark_repository.dart';
 import 'ai_benchmark_scope.dart';
+import 'cathedral_test_page.dart';
 import 'engine_test_page.dart';
 import 'hero_tile.dart';
 import 'pagoda_test_page.dart';
@@ -121,6 +122,17 @@ class _TestsTabState extends State<TestsTab> {
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
                       builder: (_) => const PcTestPage(),
+                    ),
+                  ),
+                ),
+                LumaHeroTile(
+                  title: 'Cathedral Test',
+                  subtitle: 'New · Open the test screen',
+                  imageFile: _tileArt(repo, 'cathedral'),
+                  fallbackIcon: Icons.church_rounded,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const CathedralTestPage(),
                     ),
                   ),
                 ),

@@ -39,13 +39,18 @@ class ServerAccessGate extends ChangeNotifier {
   static final ServerAccessGate instance = ServerAccessGate._();
 
   /// The only paths that may be called before an account is approved: the
-  /// account handshake (look up KDF params, register, sign in, ask for
-  /// another verification mail). Everything else is refused.
+  /// account handshake (look up KDF params, register, sign in, verify the
+  /// emailed code, recover a forgotten password). Everything else is refused.
   static const accountSetupPaths = {
     '/api/v1/auth/params',
     '/api/v1/auth/register',
     '/api/v1/auth/login',
     '/api/v1/auth/resend-verification',
+    '/api/v1/auth/verify-code',
+    // Recovering a forgotten password happens signed out by definition, and
+    // like the rest carries only what the user just typed.
+    '/api/v1/auth/forgot-password',
+    '/api/v1/auth/reset-with-code',
     // Signing in with Google or GitHub is the same handshake wearing a
     // different hat: it ends in a session token for an approved account, and
     // like the rest of this list it carries nothing but what the user just

@@ -247,13 +247,13 @@ class AiBenchmarkRepository extends ChangeNotifier {
   /// [AiBenchmarkApiException] when the download fails or the bytes don't
   /// match the manifest's hash — the caller shows a retry, never a WebView
   /// pointed at half a file.
-  Future<File> sceneFile(String id) async {
+  Future<File> sceneFile(String id, {String extension = 'html'}) async {
     final benchmark = byId(id);
     if (benchmark == null) {
       throw StateError('Unknown benchmark "$id".');
     }
     final root = await _cacheRoot();
-    final file = File('${root.path}/scenes/$id.html');
+    final file = File('${root.path}/scenes/$id.$extension');
     if (await _validScene(file, benchmark)) return file;
 
     final sync = _sync;

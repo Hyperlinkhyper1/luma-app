@@ -45,8 +45,8 @@ class MailConfig {
   }
 }
 
-/// Resend (https://resend.com) configuration for the account-verification
-/// email only. If [apiKey] is empty, sending is disabled and the code is
+/// Resend (https://resend.com) configuration for the account-code emails
+/// (verification and password reset). If [apiKey] is empty, sending is disabled and the code is
 /// logged to stderr instead — useful for local testing, same fallback as
 /// [MailConfig].
 class ResendConfig {
@@ -94,7 +94,55 @@ class Mailer {
           '[luma] Resend not configured; verification code for $toEmail: $code');
       return;
     }
+    await _sendViaResend(
+      toEmail: toEmail,
+      subject: 'Your Luma verification code',
+      text: 'Your Luma verification code is $code\n\n'
+          'It expires in 10 minutes. If you did not try to create a Luma '
+          'account, you can ignore this email.',
+      html: '<p>Your Luma verification code is:</p>'
+          '<p style="font-size:28px;font-weight:700;letter-spacing:6px">'
+          '$code</p>'
+          '<p>It expires in 10 minutes. If you did not try to create a '
+          'Luma account, you can ignore this email.</p>',
+    );
+  }
 
+  /// Sends the 6-digit code that lets someone who forgot their password
+  /// choose a new one. Same failure contract as [sendVerificationCode].
+  Future<void> sendPasswordResetCode({
+    required String toEmail,
+    required String code,
+    required Duration validFor,
+  }) async {
+    if (!resendConfig.enabled) {
+      stderr.writeln('[luma] Resend not configured; password reset code for '
+          '$toEmail: $code');
+      return;
+    }
+    final minutes = validFor.inMinutes;
+    await _sendViaResend(
+      toEmail: toEmail,
+      subject: 'Your Luma password reset code',
+      text: 'Someone asked to reset the password of your Luma account.\n\n'
+          'Your reset code is $code\n\n'
+          'It expires in $minutes minutes. If this was not you, ignore this '
+          'email — your password stays the same.',
+      html: '<p>Someone asked to reset the password of your Luma account. '
+          'Your reset code is:</p>'
+          '<p style="font-size:28px;font-weight:700;letter-spacing:6px">'
+          '$code</p>'
+          '<p>It expires in $minutes minutes. If this was not you, ignore '
+          'this email — your password stays the same.</p>',
+    );
+  }
+
+  Future<void> _sendViaResend({
+    required String toEmail,
+    required String subject,
+    required String text,
+    required String html,
+  }) async {
     final client = HttpClient();
     try {
       final request =
@@ -105,15 +153,9 @@ class Mailer {
       request.add(utf8.encode(jsonEncode({
         'from': '${resendConfig.fromName} <${resendConfig.fromAddress}>',
         'to': [toEmail],
-        'subject': 'Your Luma verification code',
-        'text': 'Your Luma verification code is $code\n\n'
-            'It expires in 10 minutes. If you did not try to create a Luma '
-            'account, you can ignore this email.',
-        'html': '<p>Your Luma verification code is:</p>'
-            '<p style="font-size:28px;font-weight:700;letter-spacing:6px">'
-            '$code</p>'
-            '<p>It expires in 10 minutes. If you did not try to create a '
-            'Luma account, you can ignore this email.</p>',
+        'subject': subject,
+        'text': text,
+        'html': html,
       })));
       final response = await request.close();
       if (response.statusCode >= 300) {

@@ -658,6 +658,56 @@ class SyncService extends ChangeNotifier {
     }
   }
 
+  /// Asks the server to email a 6-digit password-reset code (valid for 15
+  /// minutes) to [email]. Returns the server's deliberately generic message.
+  /// Part of the account handshake, so it works with the gate closed.
+  Future<String> requestPasswordReset({
+    required String serverUrl,
+    required String email,
+  }) async {
+    final api = SyncApi(serverUrl);
+    try {
+      return await api.requestPasswordResetCode(email.trim().toLowerCase());
+    } finally {
+      api.close();
+    }
+  }
+
+  /// Sets [newPassword] on the account using the emailed [code]. Does not
+  /// sign in — call [signIn] with the new password afterwards.
+  ///
+  /// Nobody holds the old encryption key here, so the server cannot keep the
+  /// synced snapshots readable: it deletes them and signs every device out.
+  /// Signing in afterwards re-uploads this device's local data; the other
+  /// devices do the same once they sign in with the new password.
+  Future<void> resetPasswordWithCode({
+    required String serverUrl,
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    final newSalt = SyncCrypto.randomBytes(16);
+    const newIterations = SyncCrypto.defaultKdfIterations;
+    final newKeys = await SyncCrypto.deriveKeys(
+      password: newPassword,
+      kdfSalt: newSalt,
+      iterations: newIterations,
+    );
+    final api = SyncApi(serverUrl);
+    try {
+      await api.resetPasswordWithCode(
+        email: normalizedEmail,
+        code: code,
+        newAuthKey: newKeys.authKey,
+        newKdfSalt: newSalt,
+        newKdfIterations: newIterations,
+      );
+    } finally {
+      api.close();
+    }
+  }
+
   /// Forgets an account that was created here but never approved, so the
   /// user can start over with a different address.
   Future<void> cancelPendingApproval() async {

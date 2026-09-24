@@ -134,6 +134,40 @@ void main() {
     expect(sync.signedIn, isFalse);
   });
 
+  testWidgets('"Forgot password?" is offered on sign-in, not on create',
+      (tester) async {
+    await pumpLogin(tester, initialMode: 1);
+    expect(find.text('Forgot password?'), findsNothing);
+
+    await tester.tap(find.text('Sign in').first);
+    await tester.pump();
+    expect(find.text('Forgot password?'), findsOneWidget);
+  });
+
+  testWidgets('the forgot-password step refuses a bad email before sending',
+      (tester) async {
+    final sync = await pumpLogin(tester, initialMode: 0);
+
+    await tester.tap(find.text('Forgot password?'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Forgot your password?'), findsOneWidget);
+
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Email'), 'not-an-email');
+    await tester.tap(find.text('Send code'));
+    await tester.pump();
+
+    expect(find.text('Enter a valid email address.'), findsOneWidget);
+    expect(find.text('Choose a new password'), findsNothing);
+    expect(sync.signedIn, isFalse);
+
+    await tester.tap(find.text('Back to sign in'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Welcome back'), findsOneWidget);
+  });
+
   testWidgets('the narrow layout keeps everything but the brand panel',
       (tester) async {
     await pumpLogin(tester, size: const Size(420, 900));

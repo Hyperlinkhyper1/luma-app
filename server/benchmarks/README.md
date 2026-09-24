@@ -35,7 +35,14 @@ rebuilt from disk on every request, so there is no refresh or rescan step.
 1. Drop the scene in as `scenes/<test>_<model>.html` (`pagoda_…` or
    `engine_…`), fully self-contained (inline JS/CSS — the app loads it from
    disk with no network beside it).
-2. Optionally add `previews/<test>_<model>.png` (16:10 crops best).
+2. Optionally add `previews/<test>_<model>.png` (16:10 crops best), or let
+   the admin dashboard render it: Maintenance tab → **AI benchmark banners** →
+   *Render missing banners* shoots every scene that has none, one by one;
+   *Re-render all* redoes them all. Pagoda banners come out consistent
+   whatever the scene: fast-forwarded to its brightest time of day and
+   framed as the whole garden from an elevated three-quarter angle (see
+   `server/tool/`). Rendered banners land in
+   `<dataDir>/ai_benchmarks/previews/`, overriding the checked-in ones.
 3. Add one stanza to `manifest.json` (or to
    `<dataDir>/ai_benchmarks/manifest.json` to override without touching the
    checkout):

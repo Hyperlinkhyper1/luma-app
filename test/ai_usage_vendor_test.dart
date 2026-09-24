@@ -20,6 +20,11 @@ AiBenchmark _benchmark(String id, String model) => AiBenchmark(
 
 void main() {
   group('pagodaVendorKey', () {
+    test('Step 5 is StepFun', () {
+      expect(pagodaVendorKey('Step 5'), 'stepfun');
+      expect(pagodaVendorKey('Step 5 Preview'), 'stepfun');
+    });
+
     test('Fable is Anthropic', () {
       expect(pagodaVendorKey('Fable 5.1 (Low)'), 'anthropic');
       expect(pagodaVendorKey('Fable 5 (Medium)'), 'anthropic');
@@ -42,6 +47,7 @@ void main() {
 
   group('pagodaVendorName', () {
     test('never echoes the model name for a known vendor', () {
+      expect(pagodaVendorName('Step 5'), 'StepFun');
       expect(pagodaVendorName('Fable 5.1 (Low)'), 'Anthropic');
       expect(pagodaVendorName('Fable 5.1 (High)'), 'Anthropic');
       expect(pagodaVendorName('Mimo v2.5 Pro'), 'Xiaomi');

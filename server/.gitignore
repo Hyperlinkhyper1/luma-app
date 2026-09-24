@@ -8,3 +8,6 @@ luma_server
 # Runtime data and secrets — never commit these
 data/
 .env
+
+# Banner render tool dependencies (npm install in tool/)
+tool/node_modules/
