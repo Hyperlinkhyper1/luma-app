@@ -266,6 +266,15 @@ check_updates() {
     echo "No separate wiki container/service found — wiki (if served via luma-sync/caddy) was already restarted with the server."
   fi
 
+  # Kernel and driver updates only take effect after the host itself
+  # reboots; restarting the containers doesn't load them. Say so rather than
+  # rebooting the machine from a button.
+  if [ -f /var/run/reboot-required ]; then
+    echo
+    echo "==> The host needs a reboot for some updates (kernel/drivers) to take effect:"
+    cat /var/run/reboot-required.pkgs 2>/dev/null || true
+  fi
+
   echo
   echo "==> System update and restart complete."
 }
@@ -286,6 +295,20 @@ while true; do
     beat=5
   fi
   beat=$((beat - 1))
+
+  # The re-exec after a deploy only covers deploys made through the button.
+  # A checkout updated any other way (a manual `git pull` on the host) left
+  # the old copy running, and an old copy answers the "System updates"
+  # button with whatever that button used to do — for a while that was a
+  # read-only listing that never restarted anything, while the dashboard
+  # reported "server and wiki restarted". Swap onto the current file before
+  # claiming any request, so a request is always handled by the script on
+  # disk.
+  if { [ -f "$REQUEST_FILE" ] || [ -f "$UPDATE_REQUEST_FILE" ]; } &&
+     [ "$(script_hash)" != "$SELF_HASH" ]; then
+    echo "[deploy-watcher] script changed on disk — reloading before handling the request." >&2
+    exec "$SCRIPT_DIR/deploy-watcher.sh"
+  fi
 
   if [ -f "$REQUEST_FILE" ]; then
     # Lock first, then drop the request: the container checks the lock

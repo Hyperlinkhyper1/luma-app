@@ -20,7 +20,22 @@
 //    from an elevated three-quarter angle through a long lens.
 //
 // Exposed as window.__lumaShot for the renderer to drive.
-export function installShotControl() {
+//
+// A hand-set framing (saved from the admin dashboard's framing editor) takes
+// the fitted pose's place: `useFraming` pins the main camera to the exact
+// world pose the operator saw. Two options change what is installed:
+//
+//  - `clock: false` leaves time alone. Engine and PC scenes, which run on
+//    their own clock, get only the camera hook so a saved framing can
+//    still be applied to them.
+//  - `interactive: true` is the framing editor: the scene runs live in a
+//    sandboxed iframe under the operator's mouse, the clock is left alone,
+//    and the parent page talks to it over postMessage — `capture` reads the
+//    live camera's world pose, `preview` pins a pose (or the automatic fit)
+//    for a look, `release` hands the camera back.
+export function installShotControl(options = {}) {
+  const interactive = !!options.interactive;
+  const ownsClock = !interactive && options.clock !== false;
   const realNow = performance.now.bind(performance);
   const RealDate = Date;
   const realRAF = window.requestAnimationFrame.bind(window);
@@ -35,6 +50,7 @@ export function installShotControl() {
     stepMs: 1000 / 60,
     suppress: false,
     frames: 0,
+    renders: 0,
     lastSteps: 0,
     pose: null,
     cam: null,
@@ -49,22 +65,6 @@ export function installShotControl() {
     st.rate = r;
   };
 
-  const morning = new RealDate();
-  morning.setHours(11, 30, 0, 0);
-  const wall0 = morning.getTime();
-  const v0 = vnow();
-  const wallNow = () => wall0 + (vnow() - v0);
-  function VDate(...args) {
-    if (!new.target) return new RealDate(wallNow()).toString();
-    return args.length ? new RealDate(...args) : new RealDate(wallNow());
-  }
-  VDate.prototype = RealDate.prototype;
-  VDate.now = wallNow;
-  VDate.parse = RealDate.parse;
-  VDate.UTC = RealDate.UTC;
-  window.Date = VDate;
-  performance.now = vnow;
-
   let pending = new Map();
   let seq = 0;
   let scheduled = 0;
@@ -78,15 +78,60 @@ export function installShotControl() {
     const wait = Math.max(0, lastFrame + MIN_FRAME_GAP_MS - realNow());
     scheduled = setTimeout(() => realRAF(frame), wait);
   };
-  window.requestAnimationFrame = (cb) => {
-    const id = ++seq;
-    pending.set(id, cb);
-    schedule();
-    return id;
-  };
-  window.cancelAnimationFrame = (id) => {
-    pending.delete(id);
-  };
+
+  if (ownsClock) {
+    const morning = new RealDate();
+    morning.setHours(11, 30, 0, 0);
+    const wall0 = morning.getTime();
+    const v0 = vnow();
+    const wallNow = () => wall0 + (vnow() - v0);
+    function VDate(...args) {
+      if (!new.target) return new RealDate(wallNow()).toString();
+      return args.length ? new RealDate(...args) : new RealDate(wallNow());
+    }
+    VDate.prototype = RealDate.prototype;
+    VDate.now = wallNow;
+    VDate.parse = RealDate.parse;
+    VDate.UTC = RealDate.UTC;
+    window.Date = VDate;
+    performance.now = vnow;
+    window.requestAnimationFrame = (cb) => {
+      const id = ++seq;
+      pending.set(id, cb);
+      schedule();
+      return id;
+    };
+    window.cancelAnimationFrame = (id) => {
+      pending.delete(id);
+    };
+  }
+
+  // The editor's iframe is sandboxed to an opaque origin, where touching
+  // localStorage throws; a scene that saves settings would die on load.
+  if (interactive) {
+    for (const name of ['localStorage', 'sessionStorage']) {
+      try {
+        void window[name];
+      } catch {
+        const data = new Map();
+        const shim = {
+          getItem: (k) => (data.has(String(k)) ? data.get(String(k)) : null),
+          setItem: (k, v) => void data.set(String(k), String(v)),
+          removeItem: (k) => void data.delete(String(k)),
+          clear: () => data.clear(),
+          key: (i) => [...data.keys()][i] ?? null,
+          get length() {
+            return data.size;
+          },
+        };
+        try {
+          Object.defineProperty(window, name, { value: shim, configurable: true });
+        } catch {
+          // Left as is; the scene may still cope.
+        }
+      }
+    }
+  }
 
   function runBatch() {
     const queue = pending;
@@ -143,15 +188,19 @@ export function installShotControl() {
     const lens = [cam.far, cam.zoom, cam.fov];
     const fog = scene.fog;
     const fogSaved = fog ? [fog.near, fog.far, fog.density] : null;
-    cam.position.set(p.px, p.py, p.pz);
-    cam.up.set(0, 1, 0);
-    cam.lookAt(p.tx, p.ty, p.tz);
-    cam.far = Math.max(cam.far, p.far);
-    cam.zoom = p.zoom;
+    if (p.manual) {
+      placeWorld(cam, p);
+    } else {
+      cam.position.set(p.px, p.py, p.pz);
+      cam.up.set(0, 1, 0);
+      cam.lookAt(p.tx, p.ty, p.tz);
+    }
+    cam.far = Math.max(cam.far, p.far || 0);
+    cam.zoom = p.zoom || 1;
     if (p.fov) cam.fov = p.fov;
     cam.updateProjectionMatrix();
     cam.updateMatrixWorld(true);
-    if (fog && p.fogScale > 1) {
+    if (fog && p.fogScale > 1 && !p.manual) {
       if (typeof fog.density === 'number') fog.density = fog.density / p.fogScale;
       else {
         fog.near *= p.fogScale;
@@ -188,6 +237,7 @@ export function installShotControl() {
       // the outer one; only the outermost call is the scene's real view.
       if (depth > 0) return original.apply(this, arguments);
       depth++;
+      st.renders++;
       try {
         note(scene, camera);
         if (st.pose && camera === st.cam) {
@@ -528,6 +578,88 @@ export function installShotControl() {
     };
   }
 
+  // Saved framings are world poses, so a camera parented to a rig is placed
+  // through the rig's inverse and lands exactly where the operator saw it.
+  function placeWorld(cam, p) {
+    cam.up.set(0, 1, 0);
+    cam.position.set(p.px, p.py, p.pz);
+    cam.quaternion.set(p.qx, p.qy, p.qz, p.qw);
+    const parent = cam.parent;
+    if (!parent) return;
+    parent.updateMatrixWorld(true);
+    const m = cam.matrix.clone().compose(cam.position, cam.quaternion, cam.scale);
+    const inv = parent.matrixWorld.clone();
+    if (typeof inv.invert === 'function') inv.invert();
+    else inv.getInverse(parent.matrixWorld);
+    m.premultiply(inv);
+    m.decompose(cam.position, cam.quaternion, cam.scale.clone());
+  }
+
+  function worldPose(cam) {
+    cam.updateMatrixWorld(true);
+    const pos = cam.position.clone();
+    const q = cam.quaternion.clone();
+    cam.matrixWorld.decompose(pos, q, cam.scale.clone());
+    const r = (v) => Number(v.toFixed(5));
+    return {
+      px: r(pos.x),
+      py: r(pos.y),
+      pz: r(pos.z),
+      qx: r(q.x),
+      qy: r(q.y),
+      qz: r(q.z),
+      qw: r(q.w),
+      fov: cam.isPerspectiveCamera ? r(cam.fov) : 0,
+      zoom: r(cam.zoom || 1),
+    };
+  }
+
+  // Pins the main camera to a hand-set framing for every draw from now on.
+  function useFraming(pose) {
+    const view = mainView();
+    if (!view) return { ok: false, reason: 'no three.js camera seen' };
+    st.cam = view.cam;
+    st.pose = { ...pose, manual: true, fogScale: 1 };
+    return {
+      ok: true,
+      camera: `hand-set, ${pose.fov ? `fov ${Number(pose.fov).toFixed(0)}` : `zoom ${Number(pose.zoom || 1).toFixed(2)}`}`,
+    };
+  }
+
+  if (interactive) {
+    window.addEventListener('message', (e) => {
+      if (e.source !== window.parent) return;
+      const m = e.data;
+      if (!m || typeof m !== 'object' || typeof m.lumaShot !== 'string') return;
+      let reply;
+      try {
+        if (m.lumaShot === 'ping') {
+          reply = { ok: !!mainView() };
+        } else if (m.lumaShot === 'capture') {
+          const view = mainView();
+          reply = view
+            ? { ok: true, pose: worldPose(view.cam) }
+            : { ok: false, reason: 'The scene has not drawn a three.js camera yet.' };
+        } else if (m.lumaShot === 'preview') {
+          if (m.pose) {
+            reply = useFraming(m.pose);
+          } else {
+            st.azimuth = null;
+            reply = frameView();
+          }
+        } else if (m.lumaShot === 'release') {
+          st.pose = null;
+          reply = { ok: true };
+        } else {
+          return;
+        }
+      } catch (err) {
+        reply = { ok: false, reason: String(err && err.message ? err.message : err) };
+      }
+      window.parent.postMessage({ lumaShot: 'reply', id: m.id, ...reply }, '*');
+    });
+  }
+
   window.__lumaShot = {
     setWarp(on, maxSteps) {
       st.warp = !!on;
@@ -540,10 +672,14 @@ export function installShotControl() {
     virtualMs: () => vnow(),
     lastSteps: () => st.lastSteps,
     frame: frameView,
+    useFraming,
+    // Without the virtual clock there are no virtual frames to count, so
+    // count the scene's own draws instead.
     waitFrames(n) {
+      const count = () => (ownsClock ? st.frames : st.renders);
       return new Promise((resolve) => {
-        const start = st.frames;
-        const tick = () => (st.frames - start >= n ? resolve(true) : realRAF(tick));
+        const start = count();
+        const tick = () => (count() - start >= n ? resolve(true) : realRAF(tick));
         realRAF(tick);
         setTimeout(() => resolve(false), 30000);
       });

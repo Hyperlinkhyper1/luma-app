@@ -11,6 +11,10 @@ enum PreviewRenderMode {
 
   /// Every scene, replacing the banners already there.
   all,
+
+  /// The scenes the operator picked in the dashboard's catalog, or the one
+  /// whose framing was just saved.
+  selected,
 }
 
 /// One scene in a render job, as the admin dashboard lists it.
@@ -27,7 +31,18 @@ class PreviewRenderItem {
   /// why it failed.
   String detail = '';
 
-  Map<String, dynamic> toJson() => {'id': id, 'state': state, 'detail': detail};
+  /// When the renderer started and finished this scene, so the dashboard
+  /// can estimate how long the rest of the job will take.
+  int? startedAtMs;
+  int? finishedAtMs;
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'state': state,
+        'detail': detail,
+        if (startedAtMs != null) 'startedAtMs': startedAtMs,
+        if (finishedAtMs != null) 'finishedAtMs': finishedAtMs,
+      };
 }
 
 /// The current (or last) render job.
@@ -42,6 +57,10 @@ class PreviewRenderStatus {
   /// crashed); null when it ran to completion.
   String? error;
   List<PreviewRenderItem> items = [];
+
+  /// Scenes asked for while a job was running; they get a job of their own
+  /// as soon as this one ends.
+  final List<String> queued = [];
 
   /// The renderer's recent output, for when a row's detail isn't enough.
   final List<String> log = [];
@@ -59,6 +78,7 @@ class PreviewRenderStatus {
         'stopped': stopped,
         'error': error,
         'items': [for (final i in items) i.toJson()],
+        'queued': queued,
         'log': log,
       };
 }
@@ -151,7 +171,10 @@ class PreviewRenderService {
   /// Scene count and how many of those lack a banner, for the dashboard.
   Future<({int scenes, int missing})> coverage() async {
     final all = await (await _store()).previewCoverage();
-    return (scenes: all.length, missing: all.where((c) => !c.hasPreview).length);
+    return (
+      scenes: all.length,
+      missing: all.where((c) => !c.hasPreview).length
+    );
   }
 
   /// Render missing banners in the background when [enabled]. Returns
@@ -169,21 +192,32 @@ class PreviewRenderService {
   ///
   /// [status.running] is set synchronously before the first await, so two
   /// concurrent calls can never both launch a renderer.
-  Future<String?> start(PreviewRenderMode mode) async {
+  ///
+  /// [PreviewRenderMode.selected] renders [only], in catalog order; ids that
+  /// name no scene are dropped.
+  Future<String?> start(PreviewRenderMode mode, {List<String>? only}) async {
     if (status.running) return 'A banner render is already running.';
     status.running = true;
     try {
       final store = await _store();
       final coverage = await store.previewCoverage();
+      final picked = only?.toSet() ?? const <String>{};
       final ids = [
         for (final c in coverage)
-          if (mode == PreviewRenderMode.all || !c.hasPreview) c.id,
+          if (switch (mode) {
+            PreviewRenderMode.all => true,
+            PreviewRenderMode.missing => !c.hasPreview,
+            PreviewRenderMode.selected => picked.contains(c.id),
+          })
+            c.id,
       ];
       if (ids.isEmpty) {
         status.running = false;
-        return mode == PreviewRenderMode.missing
-            ? 'Every scene already has a banner.'
-            : 'There are no scenes to render.';
+        return switch (mode) {
+          PreviewRenderMode.missing => 'Every scene already has a banner.',
+          PreviewRenderMode.selected => 'None of those scenes exist.',
+          PreviewRenderMode.all => 'There are no scenes to render.',
+        };
       }
       final problem = await _toolProblem();
       if (problem != null) {
@@ -224,12 +258,26 @@ class PreviewRenderService {
     }
   }
 
+  /// Renders [ids] now, or right after the running job when there is one.
+  /// Returns null when a job started, `'queued'` when they wait for the
+  /// running one, otherwise why nothing will render.
+  Future<String?> enqueue(List<String> ids) async {
+    if (status.running) {
+      for (final id in ids) {
+        if (!status.queued.contains(id)) status.queued.add(id);
+      }
+      return 'queued';
+    }
+    return start(PreviewRenderMode.selected, only: ids);
+  }
+
   /// Stops the running job. The scene being rendered keeps its old banner;
-  /// the rest are marked skipped.
+  /// the rest are marked skipped, and nothing queued behind it runs.
   bool stop() {
     final process = _process;
     if (!status.running || process == null) return false;
     status.stopped = true;
+    status.queued.clear();
     process.kill();
     return true;
   }
@@ -268,15 +316,21 @@ class PreviewRenderService {
       final start = RegExp(r'^START (\S+)').firstMatch(line);
       final ok = RegExp(r'^OK\s+(\S+)').firstMatch(line);
       final fail = RegExp(r'^FAIL (\S+?): (.*)$').firstMatch(line);
+      final now = DateTime.now().millisecondsSinceEpoch;
       if (start != null) {
-        current = _item(start.group(1)!)?..state = 'rendering';
+        current = _item(start.group(1)!)
+          ?..state = 'rendering'
+          ..startedAtMs = now;
       } else if (ok != null) {
-        _item(ok.group(1)!)?.state = 'ok';
+        _item(ok.group(1)!)
+          ?..state = 'ok'
+          ..finishedAtMs = now;
         current = null;
       } else if (fail != null) {
         _item(fail.group(1)!)
           ?..state = 'failed'
-          ..detail = fail.group(2)!;
+          ..detail = fail.group(2)!
+          ..finishedAtMs = now;
         current = null;
       } else if (line.startsWith('  ') && current != null) {
         final note = line.trim();
@@ -317,6 +371,24 @@ class PreviewRenderService {
     stdout.writeln('[luma] preview-render: finished, $done of '
         '${status.items.length} rendered'
         '${status.stopped ? ' (stopped)' : ''} (exit $code)');
+    if (status.queued.isNotEmpty) {
+      final next = List<String>.of(status.queued);
+      status.queued.clear();
+      await start(PreviewRenderMode.selected, only: next);
+    }
+  }
+
+  /// The in-page half of the framing editor: the renderer's shot control in
+  /// interactive mode (real clock, the scene's own controls), ready to
+  /// inline into a scene as a classic script. Null when the tool isn't
+  /// installed beside the render script.
+  Future<String?> editorScript() async {
+    final path = '${File(_script).parent.path}${Platform.pathSeparator}'
+        'shot_control.mjs';
+    if (!await _fileExists(path)) return null;
+    final source = await File(path).readAsString();
+    return '${source.replaceFirst('export function', 'function')}\n'
+        'installShotControl({ interactive: true });\n';
   }
 
   /// What stops the renderer from running here, or null when it can.

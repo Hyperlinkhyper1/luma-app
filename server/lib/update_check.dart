@@ -27,7 +27,11 @@ enum UpdateCheckPhase {
 
   /// The last update finished; [UpdateCheckStatus.log] holds its output and
   /// the server and wiki have been restarted.
-  done;
+  done,
+
+  /// The last update finished, but this server process is older than the
+  /// request — whatever ran on the host never restarted it.
+  notRestarted;
 
   String get wireName => name;
 }
@@ -69,15 +73,27 @@ class UpdateCheckStatus {
 /// reuses the same deploy-watcher.sh request/log handoff on the shared
 /// `/data` volume, just with its own file names.
 class UpdateCheckConsole {
-  UpdateCheckConsole({required this.dataDir, required this.repoPathConfigured});
+  UpdateCheckConsole({
+    required this.dataDir,
+    required this.repoPathConfigured,
+    required this.startedAt,
+  });
 
   final String dataDir;
   final bool repoPathConfigured;
+
+  /// When this server process started. A finished update requested after
+  /// this moment means the restart it promised never happened.
+  final DateTime startedAt;
 
   File get _lockFile => File('$dataDir/update-check.lock');
   File get _requestFile => File('$dataDir/update-check.request');
   File get _logFile => File('$dataDir/update-check.log');
   File get _checkedAtFile => File('$dataDir/update-check.done');
+
+  /// Written by this container, never by the watcher (which deletes the
+  /// request file when it claims it), so it outlives the claim.
+  File get _requestedAtFile => File('$dataDir/update-check.requested');
   File get _heartbeatFile => File('$dataDir/deploy.watcher');
 
   static const _lockMaxAge = Duration(seconds: 60);
@@ -105,10 +121,10 @@ class UpdateCheckConsole {
     }
   }
 
-  Future<DateTime?> _readCheckedAt() async {
+  Future<DateTime?> _readTimestamp(File file) async {
     try {
-      if (!await _checkedAtFile.exists()) return null;
-      return DateTime.tryParse((await _checkedAtFile.readAsString()).trim());
+      if (!await file.exists()) return null;
+      return DateTime.tryParse((await file.readAsString()).trim());
     } catch (_) {
       return null;
     }
@@ -146,9 +162,18 @@ class UpdateCheckConsole {
       );
     }
 
-    final checkedAt = await _readCheckedAt();
+    final checkedAt = await _readTimestamp(_checkedAtFile);
+    final requestedAt = await _readTimestamp(_requestedAtFile);
+    final UpdateCheckPhase phase;
+    if (checkedAt == null) {
+      phase = UpdateCheckPhase.idle;
+    } else if (requestedAt != null && startedAt.isBefore(requestedAt)) {
+      phase = UpdateCheckPhase.notRestarted;
+    } else {
+      phase = UpdateCheckPhase.done;
+    }
     return UpdateCheckStatus(
-      phase: checkedAt == null ? UpdateCheckPhase.idle : UpdateCheckPhase.done,
+      phase: phase,
       log: await _readLog(),
       checkedAt: checkedAt,
       watcherAlive: watcherAlive,
@@ -168,8 +193,10 @@ class UpdateCheckConsole {
           'A system update is already in progress. Wait for it to finish.');
     }
 
+    final now = DateTime.now().toUtc().toIso8601String();
     await _requestFile.parent.create(recursive: true);
-    await _requestFile.writeAsString(DateTime.now().toIso8601String());
+    await _requestedAtFile.writeAsString(now);
+    await _requestFile.writeAsString(now);
 
     final watcherAlive = await isWatcherAlive;
     return jsonResponse(200, {
@@ -257,6 +284,12 @@ class UpdateCheckConsole {
             ? 'Last updated ' + new Date(data.checkedAt).toLocaleString() + ' — server and wiki restarted.'
             : 'Update complete — server and wiki restarted.';
       }
+    },
+    notRestarted: {
+      busy: false, color: RED, poll: 0,
+      text: 'Updates ran, but the server did not restart — see the log below. '
+          + 'If the log has no "Restarting server and wiki" step, the host '
+          + 'watcher is an old copy: sudo systemctl restart luma-deploy-watcher'
     }
   };
 

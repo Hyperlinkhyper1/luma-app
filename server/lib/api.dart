@@ -591,6 +591,16 @@ class Api {
           _requireAdmin(_adminBannersStatus))
       ..get('/admin/benchmark-banners/image/<id>',
           _requireAdmin(_adminBannerImage))
+      ..get('/admin/benchmark-banners/catalog',
+          _requireAdmin(_adminBannersCatalog))
+      ..get('/admin/benchmark-banners/scene/<id>',
+          _requireAdmin(_adminBannerScene))
+      ..get('/admin/benchmark-banners/framing/<id>',
+          _requireAdmin(_adminBannerFramingGet))
+      ..put('/admin/benchmark-banners/framing/<id>',
+          _requireAdmin(_adminBannerFramingSave))
+      ..delete('/admin/benchmark-banners/framing/<id>',
+          _requireAdmin(_adminBannerFramingDelete))
       ..post('/admin/deploy', _requireAdmin(_deploy.requestDeploy))
       ..get('/admin/deploy/status', _requireAdmin(_deploy.deployStatus))
       ..post('/admin/system/check-updates',
@@ -888,9 +898,16 @@ class Api {
   /// browser history, and the Referer header. These headers close that off
   /// for the cookie-authenticated path; `no-store` also keeps a shared/public
   /// machine from caching a page full of account data.
+  ///
+  /// A handler that sets its own Content-Security-Policy keeps it: the
+  /// framing editor's scene page is sandboxed to an opaque origin by its
+  /// own policy, which is stricter about the dashboard than this one.
   Response _withAdminHeaders(Response response) => response.change(headers: {
         'Referrer-Policy': 'no-referrer',
         'Cache-Control': 'no-store',
+        if (response.headers['content-security-policy'] case final own?)
+          'Content-Security-Policy': own
+        else
         // The dashboard is self-contained (inline styles/scripts, same-origin
         // fetches) — everything external is refused, so even an HTML-injection
         // slip could not load or exfiltrate to an outside host.
@@ -2928,19 +2945,44 @@ class Api {
       });
 
   /// Starts a banner render: `?mode=missing` (the default) for scenes
-  /// without a banner, `?mode=all` to re-render every one. Like the model
-  /// refresh it can take a long while (a minute or two per scene), so this
-  /// only launches the job; the dashboard follows it via
-  /// [_adminBannersStatus].
+  /// without a banner, `?mode=all` to re-render every one, `?mode=selected`
+  /// with a JSON body `{"ids": [...]}` for the scenes picked in the
+  /// catalog. Like the model refresh it can take a long while (a minute or
+  /// two per scene), so this only launches the job; the dashboard follows
+  /// it via [_adminBannersStatus].
   Future<Response> _adminBannersRender(Request request) async {
-    final mode = request.url.queryParameters['mode'] == 'all'
-        ? PreviewRenderMode.all
-        : PreviewRenderMode.missing;
+    final mode = switch (request.url.queryParameters['mode']) {
+      'all' => PreviewRenderMode.all,
+      'selected' => PreviewRenderMode.selected,
+      _ => PreviewRenderMode.missing,
+    };
+    List<String>? only;
+    if (mode == PreviewRenderMode.selected) {
+      final ids = (await _readJson(request))['ids'];
+      only = ids is List
+          ? [
+              for (final id in ids)
+                if (id is String && AiBenchmarkStore.idPattern.hasMatch(id)) id,
+            ]
+          : const [];
+      if (only.isEmpty) {
+        return errorResponse(400, 'no_scenes', 'Pick at least one scene.');
+      }
+      // Picked scenes wait behind a running job rather than bouncing.
+      if (previewRenders.status.running) {
+        await previewRenders.enqueue(only);
+        return jsonResponse(202, {
+          'started': false,
+          'queued': true,
+          'count': previewRenders.status.queued.length,
+        });
+      }
+    }
     if (previewRenders.status.running) {
       return errorResponse(
           409, 'render_running', 'A banner render is already running.');
     }
-    final problem = await previewRenders.start(mode);
+    final problem = await previewRenders.start(mode, only: only);
     if (problem == null) {
       return jsonResponse(202, {
         'started': true,
@@ -2981,6 +3023,81 @@ class Api {
       'Content-Type': 'image/png',
       'Cache-Control': 'no-store',
     });
+  }
+
+  /// Every scene for the dashboard's banner catalog.
+  Future<Response> _adminBannersCatalog(Request request) async =>
+      jsonResponse(200, {'scenes': await aiBenchmarks.bannerCatalog()});
+
+  /// A scene for the framing editor, with the shot control's interactive
+  /// half inlined ahead of the scene's own scripts.
+  ///
+  /// Scenes are model-written HTML, so the page gets a CSP `sandbox`: it
+  /// runs in an opaque origin, never the dashboard's, and can neither read
+  /// the admin cookie nor call admin routes. The editor talks to it only
+  /// over postMessage. Scenes load three.js from CDNs, hence the otherwise
+  /// open policy.
+  Future<Response> _adminBannerScene(Request request) async {
+    final id = request.params['id']!;
+    final scene = await aiBenchmarks.readScene(id);
+    if (scene == null || id.startsWith('cathedral_')) {
+      return errorResponse(404, 'not_found', 'No framable scene with that id.');
+    }
+    final script = await previewRenders.editorScript();
+    if (script == null) {
+      return errorResponse(503, 'renderer_unavailable',
+          'The render tool (shot_control.mjs) is not installed here.');
+    }
+    final html = utf8.decode(scene.bytes, allowMalformed: true);
+    final tag = '<script>${script.replaceAll('</script', r'<\/script')}'
+        '</script>';
+    final head = RegExp(r'<head[^>]*>', caseSensitive: false).firstMatch(html);
+    final body = head != null
+        ? html.replaceRange(head.end, head.end, tag)
+        : '$tag$html';
+    return Response(200, body: body, headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Content-Security-Policy': 'sandbox allow-scripts allow-pointer-lock; '
+          "default-src * data: blob: 'unsafe-inline' 'unsafe-eval'; "
+          "frame-ancestors 'self'",
+    });
+  }
+
+  Future<Response> _adminBannerFramingGet(Request request) async {
+    final id = request.params['id']!;
+    return jsonResponse(200, {'framing': await aiBenchmarks.readFraming(id)});
+  }
+
+  /// Saves the camera the operator set up in the framing editor and
+  /// re-renders that scene's banner with it — right away, or after the
+  /// running job.
+  Future<Response> _adminBannerFramingSave(Request request) async {
+    final id = request.params['id']!;
+    final pose = AiBenchmarkStore.cleanFraming(await _readJson(request));
+    if (pose == null) {
+      return errorResponse(400, 'bad_framing', 'That is not a camera pose.');
+    }
+    if (await aiBenchmarks.readScene(id) == null ||
+        !await aiBenchmarks.writeFraming(id, pose)) {
+      return errorResponse(404, 'not_found', 'No framable scene with that id.');
+    }
+    final render = await previewRenders.enqueue([id]);
+    return jsonResponse(200, {
+      'saved': true,
+      'render': render == null
+          ? 'started'
+          : render == 'queued'
+              ? 'queued'
+              : 'failed',
+      if (render != null && render != 'queued') 'message': render,
+    });
+  }
+
+  /// Back to automatic framing. Doesn't re-render; the catalog offers that.
+  Future<Response> _adminBannerFramingDelete(Request request) async {
+    final id = request.params['id']!;
+    return jsonResponse(
+        200, {'deleted': await aiBenchmarks.deleteFraming(id)});
   }
 
   // ---- Handlers: recipes ---------------------------------------------------
@@ -5186,7 +5303,12 @@ class Api {
   late final UpdateCheckConsole _updateCheck = UpdateCheckConsole(
     dataDir: config.dataDir,
     repoPathConfigured: config.repoPathConfigured,
+    startedAt: _startedAt,
   );
+
+  /// Set when the Api is built at startup — not lazily like [_updateCheck],
+  /// whose first use may come long after the process started.
+  final DateTime _startedAt = DateTime.now();
 
   // ---------------------------------------------------------------------
   // Website (wiki) editor — /admin/website
@@ -8248,7 +8370,7 @@ syncToolbar();
     final body = '<!doctype html><html><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
         '<title>luma admin</title>'
-        '<style>$_adminCss</style>'
+        '<style>$_adminCss$_bannersCss</style>'
         '</head><body class="no-js"><div class="wrap">'
         '<header class="top"><h1>luma<span class="dot">.</span> admin</h1>'
         '<span class="sub">server console</span>'
@@ -8436,11 +8558,14 @@ syncToolbar();
         '<div class="maint-desc">Renders the model-card banners of the AI '
         'Usage plugin\'s Tests tab, one scene at a time in a headless '
         'browser. Pagoda banners are shot in daylight, framed as the whole '
-        'garden from above. <strong>Each scene takes a minute or two;</strong> '
-        'a scene that fails to render keeps its old banner.</div>'
+        'garden from above, unless you framed one by hand in the catalog. '
+        '<strong>Each scene takes a minute or two;</strong> a scene that '
+        'fails to render keeps its old banner.</div>'
         '<div class="maint-actions">'
         '<button id="bannersMissingBtn" type="button" class="btn btn-primary">'
         'Render missing banners</button>'
+        '<button id="bannersCatalogBtn" type="button" class="btn btn-ghost">'
+        '$_bnGridIcon Browse &amp; pick…</button>'
         '<button id="bannersAllBtn" type="button" class="btn btn-ghost">'
         'Re-render all</button>'
         '<button id="bannersStopBtn" type="button" class="btn btn-ghost btn-sm" '
@@ -8448,11 +8573,20 @@ syncToolbar();
         '</div>'
         '<div id="bannersSummary" class="maint-status">Loading banner '
         'status…</div>'
+        '<div id="bannersProgress" class="bn-progress" hidden>'
+        '<div class="bn-progress-head"><span id="bannersProgressLabel"></span>'
+        '<span id="bannersProgressEta" class="muted"></span></div>'
+        '<div id="bannersBar" class="bn-bar" role="progressbar" '
+        'aria-label="Banner render progress" aria-valuemin="0" '
+        'aria-valuemax="100" aria-valuenow="0">'
+        '<div id="bannersBarFill" class="bn-bar-fill"></div></div>'
+        '</div>'
         '<div id="bannersLog" class="maint-out" style="display:none">'
         '<table><thead><tr><th>Scene</th><th>Status</th><th>Banner</th>'
         '<th>Detail</th></tr></thead>'
         '<tbody id="bannersRows"></tbody></table>'
         '</div>'
+        '$_bnDialogsHtml'
         '</div>'
         '<div class="card">'
         '<h2>Server update</h2>'
@@ -8921,26 +9055,199 @@ window.lumaAskReason = function (form, message) {
 })();
 ''';
 
+  static const _bnGridIcon = '<svg class="bn-ico" viewBox="0 0 24 24" '
+      'aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/>'
+      '<rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" '
+      'width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" '
+      'rx="1.5"/></svg>';
+
+  static const _bnCloseIcon = '<svg class="bn-ico" viewBox="0 0 24 24" '
+      'aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+
+  /// The banner card's two dialogs: the catalog of every scene (pick some,
+  /// re-render them) and the framing editor (fly the scene's own camera to
+  /// the shot you want, save, and that scene re-renders with it).
+  static const _bnDialogsHtml =
+      '<dialog id="bnCatalog" class="bn-dialog" aria-labelledby="bnCatalogTitle">'
+      '<div class="bn-dlg-head"><div><h2 id="bnCatalogTitle">Banner catalog</h2>'
+      '<div id="bnCatalogCount" class="bn-dlg-sub">Loading scenes…</div></div>'
+      '<button type="button" class="bn-icon-btn" data-close aria-label="Close">'
+      '$_bnCloseIcon</button></div>'
+      '<div class="bn-toolbar">'
+      '<input id="bnSearch" class="bn-input" type="search" '
+      'placeholder="Search model or id" aria-label="Search scenes" autocomplete="off">'
+      '<div id="bnKinds" class="range-tabs bn-kinds" role="group" '
+      'aria-label="Test kind"></div>'
+      '<label class="bn-check"><input id="bnMissingOnly" type="checkbox"> '
+      'Missing only</label>'
+      '<label class="bn-check"><input id="bnFramedOnly" type="checkbox"> '
+      'Hand-framed</label>'
+      '<span class="bn-spacer"></span>'
+      '<button id="bnSelectShown" type="button" class="btn btn-ghost btn-sm">'
+      'Select shown</button>'
+      '<button id="bnClear" type="button" class="btn btn-ghost btn-sm">'
+      'Clear</button></div>'
+      '<div id="bnGrid" class="bn-grid" aria-live="off"></div>'
+      '<div class="bn-dlg-foot">'
+      '<span id="bnSelCount" class="bn-foot-note" aria-live="polite">'
+      'Nothing selected</span>'
+      '<button id="bnRenderSelected" type="button" class="btn btn-primary" '
+      'disabled>Re-render selected</button></div>'
+      '</dialog>'
+      '<dialog id="bnFramer" class="bn-dialog bn-dialog--wide" '
+      'aria-labelledby="bnFramerTitle">'
+      '<div class="bn-dlg-head"><div><h2 id="bnFramerTitle">Frame banner</h2>'
+      '<div id="bnFramerSub" class="bn-dlg-sub"></div></div>'
+      '<button type="button" class="bn-icon-btn" data-close aria-label="Close">'
+      '$_bnCloseIcon</button></div>'
+      '<div class="bn-framer-bar">'
+      '<div id="bnViewModes" class="range-tabs bn-modes" role="group" '
+      'aria-label="What the frame shows">'
+      '<button type="button" class="range-btn active" data-mode="live" '
+      'aria-pressed="true">Your camera</button>'
+      '<button type="button" class="range-btn" data-mode="auto" '
+      'aria-pressed="false">Auto framing</button>'
+      '<button type="button" class="range-btn" data-mode="saved" '
+      'aria-pressed="false">Saved framing</button></div>'
+      '<label class="bn-check"><input id="bnThirds" type="checkbox" checked> '
+      'Thirds grid</label></div>'
+      '<div id="bnStageWrap" class="bn-stage-wrap"><div id="bnStage" class="bn-stage">'
+      '<iframe id="bnSceneFrame" title="Scene" width="1120" height="700" '
+      'sandbox="allow-scripts allow-pointer-lock"></iframe>'
+      '<div id="bnThirdsGrid" class="bn-thirds" aria-hidden="true"></div>'
+      '<div id="bnStageMsg" class="bn-stage-msg">Loading scene…</div>'
+      '</div></div>'
+      '<p class="bn-help">Move with the scene\'s own controls — usually drag '
+      'to orbit, scroll to zoom, right-drag to pan. The frame is exactly the '
+      'banner (1120 × 700). The time of day is still picked at render time: '
+      'the brightest daylight.</p>'
+      '<div class="bn-dlg-foot">'
+      '<span id="bnFrameStatus" class="bn-foot-note" aria-live="polite"></span>'
+      '<button id="bnFrameReset" type="button" class="btn btn-danger btn-sm" '
+      'hidden>Reset to auto</button>'
+      '<button type="button" class="btn btn-ghost" data-close>Cancel</button>'
+      '<button id="bnFrameSave" type="button" class="btn btn-primary" disabled>'
+      'Save &amp; re-render</button></div>'
+      '</dialog>';
+
+  static const _bannersCss = r'''
+.bn-ico{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.btn .bn-ico{margin-right:7px}
+.bn-progress{margin-top:12px}
+.bn-progress[hidden]{display:none}
+.bn-progress-head{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;color:#cdc7e2;margin-bottom:7px;font-variant-numeric:tabular-nums}
+.bn-bar{position:relative;height:8px;border-radius:99px;background:#241f38;overflow:hidden}
+.bn-bar-fill{position:absolute;inset:0 auto 0 0;width:0;border-radius:99px;background:linear-gradient(90deg,#8a7ee0,#a89bf0);transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.bn-bar.is-live .bn-bar-fill::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.28),transparent);transform:translateX(-100%);animation:bn-sheen 1.6s ease-in-out infinite}
+.bn-bar.is-done .bn-bar-fill{background:#7ee08a}
+.bn-bar.is-warn .bn-bar-fill{background:#e0c87e}
+@keyframes bn-sheen{to{transform:translateX(100%)}}
+@media (prefers-reduced-motion:reduce){.bn-bar-fill{transition:none}.bn-bar.is-live .bn-bar-fill::after{animation:none}}
+.bn-dialog{background:#151122;color:#ece8f7;border:1px solid #2d2645;border-radius:16px;padding:0;width:min(1180px,calc(100vw - 32px));max-height:calc(100dvh - 32px);box-shadow:0 24px 64px rgba(0,0,0,.6)}
+.bn-dialog[open]{display:flex;flex-direction:column}
+.bn-dialog::backdrop{background:rgba(8,6,16,.62);backdrop-filter:blur(3px)}
+.bn-dialog--wide{width:min(1240px,calc(100vw - 32px))}
+.bn-dlg-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:18px 22px 12px}
+.bn-dlg-head h2{margin:0;font-size:17px}
+.bn-dlg-sub{color:#9b94b3;font-size:12.5px;margin-top:4px;font-variant-numeric:tabular-nums}
+.bn-icon-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;border:1px solid transparent;background:transparent;color:#b4addc;cursor:pointer;flex:none}
+.bn-icon-btn:hover{background:#1c1730;border-color:#2d2645;color:#ece8f7}
+.bn-icon-btn:focus-visible,.bn-tile:focus-within{outline:2px solid #8a7ee0;outline-offset:2px}
+.bn-icon-btn .bn-ico{width:18px;height:18px}
+.bn-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:0 22px 14px;border-bottom:1px solid #241e36}
+.bn-toolbar .range-tabs{margin:0}
+.bn-input{background:#1a1530;color:#ece8f7;border:1px solid #2d2645;border-radius:9px;padding:9px 12px;font:inherit;font-size:13px;min-width:220px;flex:0 1 260px;outline:none}
+.bn-input:focus{border-color:#8a7ee0}
+.bn-check{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:#cdc7e2;cursor:pointer;min-height:36px;user-select:none}
+.bn-check input{accent-color:#8a7ee0;width:16px;height:16px;cursor:pointer}
+.bn-spacer{flex:1}
+.bn-dialog [hidden]{display:none!important}
+/* max-content rows: in a height-capped scroll box, auto rows shrink
+   overflow:hidden tiles to fit instead of letting the box scroll. */
+.bn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));grid-auto-rows:max-content;align-content:start;gap:14px;padding:16px 22px;overflow:auto;min-height:200px;flex:1 1 auto}
+.bn-empty{grid-column:1/-1;color:#8d86a8;font-size:13px;text-align:center;padding:40px 0}
+.bn-tile{position:relative;display:flex;flex-direction:column;background:#12101e;border:1px solid #241e36;border-radius:12px;overflow:hidden;transition:border-color .15s,background .15s}
+.bn-tile:hover{border-color:#3a3160}
+.bn-tile.is-selected{border-color:#8a7ee0;background:#18132b}
+.bn-thumb{position:relative;display:block;aspect-ratio:16/10;background:#0e0c18;cursor:pointer}
+.bn-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.bn-noimg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#6f6890;font-size:12px;background:repeating-linear-gradient(135deg,#12101e 0 10px,#151225 10px 20px)}
+.bn-thumb input{position:absolute;top:8px;left:8px;width:20px;height:20px;margin:0;accent-color:#8a7ee0;cursor:pointer;z-index:1}
+.bn-thumb::before{content:"";position:absolute;top:4px;left:4px;width:28px;height:28px;border-radius:8px;background:rgba(10,8,20,.55)}
+.bn-tile-job{position:absolute;right:8px;top:8px}
+.bn-tile-meta{padding:10px 12px 4px;min-width:0}
+.bn-tile-name{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bn-tile-id{font-size:11.5px;color:#8d86a8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:ui-monospace,Consolas,monospace}
+.bn-tile-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.bn-tile-tags .badge{background:#1f1a33;color:#b4addc}
+.bn-tile-tags .badge.accent{background:rgba(138,126,224,.16);color:#b9b0f5}
+.bn-tile-tags .badge.warn{background:rgba(224,200,126,.12);color:#e0c87e}
+.bn-tile-actions{padding:8px 12px 12px;margin-top:auto}
+.bn-tile-actions .btn{width:100%;min-height:36px}
+.bn-dlg-foot{display:flex;align-items:center;gap:10px;padding:14px 22px;border-top:1px solid #241e36;flex-wrap:wrap}
+.bn-foot-note{flex:1;min-width:180px;font-size:13px;color:#9b94b3}
+.bn-foot-note strong{color:#ece8f7}
+.bn-framer-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:0 22px 12px}
+.bn-framer-bar .range-tabs{margin:0}
+.range-btn:disabled{opacity:.4;cursor:not-allowed}
+.bn-stage-wrap{padding:0 22px;display:flex;justify-content:center}
+.bn-stage{position:relative;width:100%;max-width:min(1120px,calc((100dvh - 290px) * 1.6));aspect-ratio:16/10;border-radius:10px;overflow:hidden;background:#07060c;box-shadow:0 0 0 1px #2d2645}
+.bn-stage iframe{position:absolute;left:0;top:0;width:1120px;height:700px;border:0;transform-origin:0 0;background:#000}
+.bn-thirds{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,transparent calc(33.333% - .5px),rgba(255,255,255,.28) calc(33.333% - .5px) calc(33.333% + .5px),transparent calc(33.333% + .5px) calc(66.666% - .5px),rgba(255,255,255,.28) calc(66.666% - .5px) calc(66.666% + .5px),transparent calc(66.666% + .5px)),linear-gradient(180deg,transparent calc(33.333% - .5px),rgba(255,255,255,.28) calc(33.333% - .5px) calc(33.333% + .5px),transparent calc(33.333% + .5px) calc(66.666% - .5px),rgba(255,255,255,.28) calc(66.666% - .5px) calc(66.666% + .5px),transparent calc(66.666% + .5px))}
+.bn-thirds[hidden]{display:none}
+.bn-stage-msg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(12,10,22,.82);border:1px solid #2d2645;color:#cdc7e2;font-size:13px;padding:9px 14px;border-radius:9px;pointer-events:none;max-width:80%;text-align:center}
+.bn-stage-msg[hidden]{display:none}
+.bn-stage.is-pinned{box-shadow:0 0 0 2px #8a7ee0}
+.bn-help{color:#8d86a8;font-size:12.5px;line-height:1.55;margin:10px 22px 0;max-width:90ch}
+@media (max-width:700px){.bn-dlg-head,.bn-toolbar,.bn-grid,.bn-dlg-foot,.bn-framer-bar,.bn-stage-wrap{padding-left:14px;padding-right:14px}.bn-input{flex:1 1 100%}.bn-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}}
+''';
+
   /// Control panel tab: "Render missing banners" / "Re-render all" POST to
   /// /admin/benchmark-banners/render and then poll
   /// /admin/benchmark-banners/status every 3s while the job runs, one row
-  /// per scene with a thumbnail of each banner as it lands. Like the model
-  /// refresh, the job outlives the request, so a reload mid-render picks the
-  /// same poll back up.
+  /// per scene with a thumbnail of each banner as it lands, under a
+  /// progress bar whose time left is estimated from the scenes done so far.
+  /// Like the model refresh, the job outlives the request, so a reload
+  /// mid-render picks the same poll back up.
+  ///
+  /// "Browse & pick…" opens the catalog of every scene to select some and
+  /// re-render just those; each tile's "Frame" opens the framing editor,
+  /// which loads the scene into a sandboxed iframe at banner size and
+  /// talks to the shot control inside it over postMessage.
   static const _adminBannersScript = r'''
 (function () {
-  const missingBtn = document.getElementById('bannersMissingBtn');
-  const allBtn = document.getElementById('bannersAllBtn');
-  const stopBtn = document.getElementById('bannersStopBtn');
-  const summary = document.getElementById('bannersSummary');
-  const logBox = document.getElementById('bannersLog');
-  const rows = document.getElementById('bannersRows');
+  const $ = (id) => document.getElementById(id);
+  const missingBtn = $('bannersMissingBtn');
+  const allBtn = $('bannersAllBtn');
+  const stopBtn = $('bannersStopBtn');
+  const catalogBtn = $('bannersCatalogBtn');
+  const summary = $('bannersSummary');
+  const logBox = $('bannersLog');
+  const rows = $('bannersRows');
+  const progress = $('bannersProgress');
+  const bar = $('bannersBar');
+  const barFill = $('bannersBarFill');
+  const progressLabel = $('bannersProgressLabel');
+  const progressEta = $('bannersProgressEta');
   if (!missingBtn || !allBtn || !stopBtn || !summary || !logBox || !rows) return;
 
   function esc(v) {
     return String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
     })[c]);
+  }
+
+  function json(url, init) {
+    return fetch(url, init).then((r) => r.json().catch(() => ({}))
+      .then((body) => ({ ok: r.ok, status: r.status, body })));
+  }
+
+  function duration(ms) {
+    const s = Math.max(0, Math.round(ms / 1000));
+    if (s < 60) return s + 's';
+    const m = Math.round(s / 60);
+    if (m < 60) return m + ' min';
+    return Math.floor(m / 60) + ' h ' + (m % 60) + ' min';
   }
 
   const BADGE = {
@@ -8952,8 +9259,61 @@ window.lumaAskReason = function (form, message) {
   };
 
   let timer = null;
+  let ticker = null;
+  let last = null;
+
+  // ---- Progress bar --------------------------------------------------------
+
+  // Finished scenes plus a share of the one on screen, that share guessed
+  // from how long finished scenes took. Never reaches the end on a guess.
+  function drawProgress() {
+    const data = last;
+    const items = (data && data.items) || [];
+    if (!items.length) {
+      progress.hidden = true;
+      return;
+    }
+    progress.hidden = false;
+    const now = Date.now();
+    const total = items.length;
+    const finished = items.filter((i) => ['ok', 'failed', 'skipped'].includes(i.state)).length;
+    const took = items
+      .filter((i) => i.startedAtMs && i.finishedAtMs && i.state !== 'skipped')
+      .map((i) => i.finishedAtMs - i.startedAtMs);
+    const avg = took.length ? took.reduce((a, b) => a + b, 0) / took.length : 0;
+    const current = items.find((i) => i.state === 'rendering');
+    const elapsed = current && current.startedAtMs ? now - current.startedAtMs : 0;
+    const share = current && avg ? Math.min(0.95, elapsed / avg) : 0;
+    const running = !!data.running;
+    const pct = running
+      ? Math.min(99, ((finished + share) / total) * 100)
+      : (finished / total) * 100;
+    barFill.style.width = pct.toFixed(1) + '%';
+    bar.setAttribute('aria-valuenow', String(Math.round(pct)));
+    const failed = items.filter((i) => i.state === 'failed').length;
+    bar.classList.toggle('is-live', running);
+    bar.classList.toggle('is-done', !running && !failed && !data.stopped && !data.error);
+    bar.classList.toggle('is-warn', !running && (failed > 0 || !!data.stopped || !!data.error));
+    const queued = (data.queued || []).length;
+    if (running) {
+      progressLabel.textContent = 'Scene ' + Math.min(finished + 1, total) + ' of ' + total
+        + (current ? ' · ' + current.id : '')
+        + (queued ? ' · ' + queued + ' more queued' : '');
+      progressEta.textContent = avg
+        ? 'about ' + duration(Math.max(0, avg * (total - finished) - elapsed)) + ' left'
+        : (current ? 'first scene · ' + duration(elapsed) + ' so far' : 'starting…');
+    } else {
+      progressLabel.textContent = finished + ' of ' + total + ' scenes finished'
+        + (failed ? ' · ' + failed + ' failed' : '');
+      progressEta.textContent = data.startedAtMs && data.finishedAtMs
+        ? 'took ' + duration(data.finishedAtMs - data.startedAtMs) : '';
+    }
+  }
+
+  // ---- Job status ----------------------------------------------------------
 
   function render(data) {
+    last = data;
     const running = !!data.running;
     const items = data.items || [];
     missingBtn.disabled = running || data.missingCount === 0;
@@ -8964,15 +9324,12 @@ window.lumaAskReason = function (form, message) {
 
     const done = items.filter((i) => i.state === 'ok').length;
     const failed = items.filter((i) => i.state === 'failed').length;
-    const finished = items.filter((i) => i.state === 'ok' || i.state === 'failed').length;
     let text = '<strong>' + data.sceneCount + '</strong> scenes · '
       + (data.missingCount === 0 ? 'every one has a banner'
         : data.missingCount + ' without a banner');
     if (running) {
-      const current = items.find((i) => i.state === 'rendering');
-      text += ' — <strong>rendering ' + Math.min(finished + 1, items.length)
-        + ' of ' + items.length + '</strong>'
-        + (current ? ' · ' + esc(current.id) : '');
+      text += ' — <strong>rendering</strong>'
+        + (data.mode === 'selected' ? ' picked scenes' : data.mode === 'all' ? ' all' : ' missing');
     } else if (data.error) {
       text += ' — <span class="badge err">failed</span> ' + esc(data.error);
     } else if (data.finishedAtMs && items.length) {
@@ -8982,15 +9339,18 @@ window.lumaAskReason = function (form, message) {
         + ' <span class="muted">' + new Date(data.finishedAtMs).toLocaleString() + '</span>';
     }
     summary.innerHTML = text;
+    drawProgress();
+    clearInterval(ticker);
+    if (running) ticker = setInterval(drawProgress, 1000);
 
     logBox.style.display = items.length ? 'block' : 'none';
-    const stamp = data.finishedAtMs || Date.now();
     rows.innerHTML = items.map((i) => {
       const b = BADGE[i.state] || ['', i.state];
+      const stamp = i.finishedAtMs || data.finishedAtMs || 0;
       const img = i.state === 'ok'
         ? '<a href="/admin/benchmark-banners/image/' + encodeURIComponent(i.id)
           + '?v=' + stamp + '" target="_blank" rel="noopener">'
-          + '<img alt="" style="width:96px;height:60px;object-fit:cover;'
+          + '<img alt="Banner for ' + esc(i.id) + '" style="width:96px;height:60px;object-fit:cover;'
           + 'border-radius:6px;display:block" src="/admin/benchmark-banners/image/'
           + encodeURIComponent(i.id) + '?v=' + stamp + '"></a>'
         : '';
@@ -8999,42 +9359,47 @@ window.lumaAskReason = function (form, message) {
         + '<td>' + img + '</td>'
         + '<td class="muted" style="font-size:12px">' + esc(i.detail || '—') + '</td></tr>';
     }).join('');
-    return running;
+    catalog.onStatus(data);
+    return running || (data.queued || []).length > 0;
   }
 
   function load() {
-    fetch('/admin/benchmark-banners/status')
-      .then((r) => r.json())
-      .then((data) => {
+    json('/admin/benchmark-banners/status')
+      .then(({ body }) => {
         clearTimeout(timer);
-        if (render(data)) timer = setTimeout(load, 3000);
+        if (render(body)) timer = setTimeout(load, 3000);
       })
       .catch(() => {
         summary.textContent = 'Could not read the banner status.';
       });
   }
 
-  function start(mode) {
+  function start(mode, ids) {
     missingBtn.disabled = true;
     allBtn.disabled = true;
-    fetch('/admin/benchmark-banners/render?mode=' + mode, { method: 'POST' })
-      .then((r) => r.json().then((body) => ({ ok: r.ok, body })))
+    const init = { method: 'POST' };
+    if (ids) {
+      init.headers = { 'Content-Type': 'application/json' };
+      init.body = JSON.stringify({ ids });
+    }
+    return json('/admin/benchmark-banners/render?mode=' + mode, init)
       .then(({ ok, body }) => {
-        if (!ok || body.started === false) {
-          const msg = body.message
-            || 'Could not start the render.';
+        if (!ok || (body.started === false && !body.queued)) {
+          const msg = body.message || 'Could not start the render.';
           summary.innerHTML = '<span class="badge ' + (ok ? 'ok' : 'err') + '">'
             + (ok ? 'nothing to do' : 'failed') + '</span> ' + esc(msg);
           missingBtn.disabled = false;
           allBtn.disabled = false;
-          return;
+          return { ok: false, message: msg };
         }
         setTimeout(load, 500);
+        return { ok: true, queued: !!body.queued, count: body.count };
       })
       .catch(() => {
         missingBtn.disabled = false;
         allBtn.disabled = false;
         summary.textContent = 'Could not start the render.';
+        return { ok: false, message: 'Could not start the render.' };
       });
   }
 
@@ -9048,6 +9413,448 @@ window.lumaAskReason = function (form, message) {
     fetch('/admin/benchmark-banners/stop', { method: 'POST' })
       .finally(() => { stopBtn.disabled = false; setTimeout(load, 800); });
   });
+
+  // ---- Dialog plumbing -----------------------------------------------------
+
+  function wireClose(dialog) {
+    // Out of the tab panel: a dialog under a display:none ancestor opens
+    // with no box at all, and the scene inside it gets a 0×0 viewport.
+    document.body.appendChild(dialog);
+    dialog.querySelectorAll('[data-close]').forEach((b) =>
+      b.addEventListener('click', () => dialog.close()));
+    // A click on the backdrop lands on the dialog element itself.
+    dialog.addEventListener('mousedown', (e) => {
+      if (e.target !== dialog) return;
+      const r = dialog.getBoundingClientRect();
+      if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) {
+        dialog.close();
+      }
+    });
+  }
+
+  // ---- Catalog -------------------------------------------------------------
+
+  const catalog = (function () {
+    const dlg = $('bnCatalog');
+    if (!dlg || !catalogBtn || typeof dlg.showModal !== 'function') {
+      if (catalogBtn) catalogBtn.hidden = true;
+      return { onStatus() {}, updateScene() {}, setNote() {} };
+    }
+    const grid = $('bnGrid');
+    const search = $('bnSearch');
+    const kindsBox = $('bnKinds');
+    const missingOnly = $('bnMissingOnly');
+    const framedOnly = $('bnFramedOnly');
+    const selCount = $('bnSelCount');
+    const renderSel = $('bnRenderSelected');
+    const countLine = $('bnCatalogCount');
+    const KIND_LABEL = { pagoda: 'Pagoda', engine: 'Engine', pc: 'PC', cathedral: 'Cathedral' };
+    let scenes = [];
+    let kind = 'all';
+    const selected = new Set();
+    let jobState = {};
+    let note = '';
+    wireClose(dlg);
+
+    function shown() {
+      const q = search.value.trim().toLowerCase();
+      return scenes.filter((s) => (kind === 'all' || s.kind === kind)
+        && (!missingOnly.checked || !s.hasPreview)
+        && (!framedOnly.checked || s.hasFraming)
+        && (!q || s.id.includes(q) || String(s.model).toLowerCase().includes(q)));
+    }
+
+    function thumb(s) {
+      return s.hasPreview
+        ? '<img loading="lazy" decoding="async" alt="" src="/admin/benchmark-banners/image/'
+          + encodeURIComponent(s.id) + '?v=' + s.previewAtMs + '">'
+        : '<span class="bn-noimg">No banner yet</span>';
+    }
+
+    function jobBadge(id) {
+      const st = jobState[id];
+      if (!st || st === 'ok') return '';
+      const b = BADGE[st] || ['', st];
+      return '<span class="badge ' + b[0] + '">' + b[1] + '</span>';
+    }
+
+    function tile(s) {
+      const on = selected.has(s.id);
+      const tags = '<span class="badge">' + esc(KIND_LABEL[s.kind] || s.kind) + '</span>'
+        + (s.hasFraming ? '<span class="badge accent">hand-framed</span>' : '')
+        + (s.hasPreview ? '' : '<span class="badge warn">missing</span>');
+      const frame = s.framable
+        ? '<button type="button" class="btn btn-ghost btn-sm" data-frame="' + esc(s.id) + '">'
+          + '<svg class="bn-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/><circle cx="12" cy="12" r="3"/></svg>'
+          + (s.hasFraming ? 'Edit framing' : 'Set framing') + '</button>'
+        : '<button type="button" class="btn btn-ghost btn-sm" disabled '
+          + 'title="3D model files have no camera to frame">No framing (.glb)</button>';
+      return '<div class="bn-tile' + (on ? ' is-selected' : '') + '" data-id="' + esc(s.id) + '">'
+        + '<label class="bn-thumb"><input type="checkbox" data-pick="' + esc(s.id) + '"'
+        + (on ? ' checked' : '') + ' aria-label="Select ' + esc(s.model) + '">'
+        + thumb(s) + '<span class="bn-tile-job">' + jobBadge(s.id) + '</span></label>'
+        + '<div class="bn-tile-meta"><div class="bn-tile-name" title="' + esc(s.model) + '">'
+        + esc(s.model) + '</div><div class="bn-tile-id">' + esc(s.id) + '</div>'
+        + '<div class="bn-tile-tags">' + tags + '</div></div>'
+        + '<div class="bn-tile-actions">' + frame + '</div></div>';
+    }
+
+    function drawGrid() {
+      const list = shown();
+      grid.innerHTML = list.length ? list.map(tile).join('')
+        : '<div class="bn-empty">No scenes match these filters.</div>';
+      drawFoot();
+    }
+
+    function drawFoot() {
+      const n = selected.size;
+      selCount.innerHTML = note || (n
+        ? '<strong>' + n + '</strong> scene' + (n === 1 ? '' : 's') + ' selected'
+        : 'Nothing selected — tick scenes to re-render them');
+      renderSel.disabled = n === 0;
+      renderSel.textContent = n ? 'Re-render ' + n + ' selected' : 'Re-render selected';
+      const missing = scenes.filter((s) => !s.hasPreview).length;
+      const framed = scenes.filter((s) => s.hasFraming).length;
+      countLine.textContent = scenes.length + ' scenes · ' + missing + ' without a banner · '
+        + framed + ' hand-framed';
+    }
+
+    function drawKinds() {
+      const kinds = ['all', ...new Set(scenes.map((s) => s.kind))];
+      kindsBox.innerHTML = kinds.map((k) => '<button type="button" class="range-btn'
+        + (k === kind ? ' active' : '') + '" data-kind="' + esc(k) + '" aria-pressed="'
+        + (k === kind) + '">' + esc(k === 'all' ? 'All' : (KIND_LABEL[k] || k)) + '</button>').join('');
+    }
+
+    function fetchCatalog() {
+      return json('/admin/benchmark-banners/catalog').then(({ ok, body }) => {
+        if (!ok) throw new Error();
+        scenes = body.scenes || [];
+        for (const id of [...selected]) {
+          if (!scenes.some((s) => s.id === id)) selected.delete(id);
+        }
+        drawKinds();
+        drawGrid();
+      }).catch(() => {
+        grid.innerHTML = '<div class="bn-empty">Could not load the scenes.</div>';
+      });
+    }
+
+    function patchTile(id) {
+      const el = grid.querySelector('.bn-tile[data-id="' + CSS.escape(id) + '"]');
+      const s = scenes.find((x) => x.id === id);
+      if (!el || !s) return;
+      const focused = el.contains(document.activeElement);
+      const wrap = document.createElement('div');
+      wrap.innerHTML = tile(s);
+      el.replaceWith(wrap.firstChild);
+      if (focused) {
+        const again = grid.querySelector('.bn-tile[data-id="' + CSS.escape(id) + '"] input');
+        if (again) again.focus();
+      }
+    }
+
+    grid.addEventListener('change', (e) => {
+      const id = e.target && e.target.getAttribute('data-pick');
+      if (!id) return;
+      if (e.target.checked) selected.add(id); else selected.delete(id);
+      e.target.closest('.bn-tile').classList.toggle('is-selected', e.target.checked);
+      note = '';
+      drawFoot();
+    });
+    grid.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-frame]');
+      if (btn) framer.open(scenes.find((s) => s.id === btn.getAttribute('data-frame')));
+    });
+    kindsBox.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-kind]');
+      if (!b) return;
+      kind = b.getAttribute('data-kind');
+      drawKinds();
+      drawGrid();
+    });
+    let searchTimer = null;
+    search.addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(drawGrid, 120);
+    });
+    missingOnly.addEventListener('change', drawGrid);
+    framedOnly.addEventListener('change', drawGrid);
+    $('bnSelectShown').addEventListener('click', () => {
+      shown().forEach((s) => selected.add(s.id));
+      note = '';
+      drawGrid();
+    });
+    $('bnClear').addEventListener('click', () => {
+      selected.clear();
+      note = '';
+      drawGrid();
+    });
+    renderSel.addEventListener('click', () => {
+      const ids = scenes.filter((s) => selected.has(s.id)).map((s) => s.id);
+      if (!ids.length) return;
+      renderSel.disabled = true;
+      start('selected', ids).then((r) => {
+        if (!r.ok) {
+          note = '<span class="badge err">failed</span> ' + esc(r.message);
+        } else {
+          note = r.queued
+            ? '<span class="badge warn">queued</span> ' + ids.length
+              + ' scene(s) will render after the current job.'
+            : '<span class="badge ok">started</span> Rendering ' + ids.length
+              + ' scene(s). Progress shows on the tiles and in the card.';
+          ids.forEach((id) => { jobState[id] = 'queued'; });
+          selected.clear();
+          drawGrid();
+        }
+        drawFoot();
+      });
+    });
+    catalogBtn.addEventListener('click', () => {
+      note = '';
+      dlg.showModal();
+      fetchCatalog().then(() => search.focus());
+    });
+
+    return {
+      // Tiles follow the job: a badge while queued or rendering, and a
+      // fresh thumbnail the moment a scene's banner lands.
+      onStatus(data) {
+        const next = {};
+        for (const i of data.items || []) next[i.id] = i.state;
+        for (const id of data.queued || []) next[id] = next[id] === 'rendering' ? 'rendering' : 'queued';
+        const changed = new Set([...Object.keys(next), ...Object.keys(jobState)]
+          .filter((id) => next[id] !== jobState[id]));
+        jobState = next;
+        if (!dlg.open || !changed.size) return;
+        for (const i of data.items || []) {
+          if (!changed.has(i.id) || i.state !== 'ok') continue;
+          const s = scenes.find((x) => x.id === i.id);
+          if (s) {
+            s.hasPreview = true;
+            s.previewAtMs = i.finishedAtMs || Date.now();
+          }
+        }
+        changed.forEach(patchTile);
+        drawFoot();
+      },
+      updateScene(id, patch) {
+        const s = scenes.find((x) => x.id === id);
+        if (!s) return;
+        Object.assign(s, patch);
+        patchTile(id);
+        drawFoot();
+      },
+      setNote(html) {
+        note = html;
+        drawFoot();
+      },
+    };
+  })();
+
+  // ---- Framing editor ------------------------------------------------------
+
+  const framer = (function () {
+    const dlg = $('bnFramer');
+    const frame = $('bnSceneFrame');
+    if (!dlg || !frame) return { open() {} };
+    const stage = $('bnStage');
+    const stageMsg = $('bnStageMsg');
+    const title = $('bnFramerTitle');
+    const sub = $('bnFramerSub');
+    const status = $('bnFrameStatus');
+    const saveBtn = $('bnFrameSave');
+    const resetBtn = $('bnFrameReset');
+    const modes = $('bnViewModes');
+    const thirds = $('bnThirds');
+    const thirdsGrid = $('bnThirdsGrid');
+    let scene = null;
+    let saved = null;
+    let mode = 'live';
+    let ready = false;
+    let pingTimer = null;
+    let seq = 0;
+    const waiting = new Map();
+    wireClose(dlg);
+
+    window.addEventListener('message', (e) => {
+      if (e.source !== frame.contentWindow) return;
+      const m = e.data;
+      if (!m || m.lumaShot !== 'reply' || !waiting.has(m.id)) return;
+      waiting.get(m.id)(m);
+      waiting.delete(m.id);
+    });
+
+    function ask(type, extra) {
+      return new Promise((resolve) => {
+        if (!frame.contentWindow) return resolve({ ok: false, reason: 'The scene is not loaded.' });
+        const id = ++seq;
+        waiting.set(id, resolve);
+        // The scene lives in an opaque origin, so there is no origin to
+        // target; it answers with its pose and nothing else.
+        frame.contentWindow.postMessage(Object.assign({ lumaShot: type, id }, extra || {}), '*');
+        setTimeout(() => {
+          if (waiting.has(id)) {
+            waiting.delete(id);
+            resolve({ ok: false, reason: 'The scene did not answer.' });
+          }
+        }, 4000);
+      });
+    }
+
+    // The iframe is always 1120×700, the banner's own size, scaled down to
+    // fit: what is in the frame is exactly what the banner will show.
+    function fit() {
+      const k = stage.clientWidth / 1120;
+      if (k > 0) frame.style.transform = 'scale(' + k + ')';
+    }
+    if (typeof ResizeObserver === 'function') new ResizeObserver(fit).observe(stage);
+    window.addEventListener('resize', fit);
+
+    function setStatus(html) {
+      status.innerHTML = html || '';
+    }
+
+    function drawModes() {
+      modes.querySelectorAll('[data-mode]').forEach((b) => {
+        const m = b.getAttribute('data-mode');
+        b.classList.toggle('active', m === mode);
+        b.setAttribute('aria-pressed', String(m === mode));
+        b.disabled = !ready || (m === 'saved' && !saved);
+      });
+      stage.classList.toggle('is-pinned', mode !== 'live');
+      saveBtn.disabled = !ready || mode !== 'live';
+      saveBtn.title = mode !== 'live' ? 'Switch to "Your camera" to save what you framed' : '';
+      resetBtn.hidden = !saved;
+    }
+
+    function setMode(next) {
+      if (!ready) return;
+      const req = next === 'live' ? ask('release')
+        : next === 'auto' ? ask('preview')
+          : ask('preview', { pose: saved });
+      req.then((r) => {
+        if (!r.ok) {
+          setStatus('<span class="badge err">could not switch</span> ' + esc(r.reason || ''));
+          return;
+        }
+        mode = next;
+        drawModes();
+        setStatus(next === 'live'
+          ? 'Your camera — move it, then save.'
+          : next === 'auto'
+            ? 'Showing the automatic framing the renderer would use' + (r.camera ? ' (' + esc(r.camera) + ')' : '') + '.'
+            : 'Showing the saved framing.');
+      });
+    }
+
+    function ping() {
+      clearTimeout(pingTimer);
+      ask('ping').then((r) => {
+        if (!dlg.open) return;
+        if (r.ok) {
+          ready = true;
+          stageMsg.hidden = true;
+          drawModes();
+          setStatus('Your camera — move it, then save.');
+        } else {
+          pingTimer = setTimeout(ping, 800);
+        }
+      });
+    }
+
+    function open(s) {
+      if (!s) return;
+      scene = s;
+      saved = null;
+      mode = 'live';
+      ready = false;
+      title.textContent = 'Frame ' + s.model;
+      sub.textContent = s.id;
+      stageMsg.hidden = false;
+      stageMsg.textContent = 'Loading scene… (click through any start screen once it appears)';
+      setStatus('');
+      drawModes();
+      dlg.showModal();
+      fit();
+      frame.src = '/admin/benchmark-banners/scene/' + encodeURIComponent(s.id);
+      json('/admin/benchmark-banners/framing/' + encodeURIComponent(s.id))
+        .then(({ body }) => { saved = body.framing || null; drawModes(); });
+      frame.onload = () => {
+        fit();
+        stageMsg.textContent = 'Waiting for the scene to draw…';
+        setTimeout(ping, 300);
+      };
+    }
+
+    dlg.addEventListener('close', () => {
+      clearTimeout(pingTimer);
+      waiting.clear();
+      // Stops the scene's WebGL loop instead of leaving it running unseen.
+      frame.onload = null;
+      frame.src = 'about:blank';
+    });
+
+    thirds.addEventListener('change', () => { thirdsGrid.hidden = !thirds.checked; });
+    modes.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-mode]');
+      if (b && !b.disabled) setMode(b.getAttribute('data-mode'));
+    });
+
+    saveBtn.addEventListener('click', () => {
+      if (!scene || !ready) return;
+      saveBtn.disabled = true;
+      setStatus('Saving…');
+      ask('capture').then((r) => {
+        if (!r.ok) {
+          drawModes();
+          setStatus('<span class="badge err">no camera</span> ' + esc(r.reason || ''));
+          return null;
+        }
+        return json('/admin/benchmark-banners/framing/' + encodeURIComponent(scene.id), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(r.pose),
+        });
+      }).then((res) => {
+        if (!res) return;
+        if (!res.ok) {
+          drawModes();
+          setStatus('<span class="badge err">not saved</span> '
+            + esc((res.body && res.body.message) || 'The server refused the framing.'));
+          return;
+        }
+        const how = res.body.render;
+        catalog.updateScene(scene.id, { hasFraming: true });
+        catalog.setNote(how === 'failed'
+          ? '<span class="badge err">saved, not rendered</span> ' + esc(res.body.message || '')
+          : '<span class="badge ok">framing saved</span> <strong>' + esc(scene.model) + '</strong> '
+            + (how === 'queued' ? 'will re-render after the current job.' : 'is re-rendering now.'));
+        dlg.close();
+        load();
+      });
+    });
+
+    resetBtn.addEventListener('click', () => {
+      if (!scene || !confirm('Forget the hand-set framing of ' + scene.model
+        + ' and go back to automatic framing?')) return;
+      json('/admin/benchmark-banners/framing/' + encodeURIComponent(scene.id), { method: 'DELETE' })
+        .then(({ ok }) => {
+          if (!ok) {
+            setStatus('<span class="badge err">failed</span> Could not reset the framing.');
+            return;
+          }
+          const s = scene;
+          catalog.updateScene(s.id, { hasFraming: false });
+          dlg.close();
+          if (confirm('Re-render ' + s.model + ' with automatic framing now?')) {
+            start('selected', [s.id]);
+          }
+        });
+    });
+
+    return { open };
+  })();
 
   load();
 })();
