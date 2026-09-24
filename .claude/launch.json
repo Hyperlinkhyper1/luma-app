@@ -81,6 +81,16 @@
       ],
       "port": 8127,
       "autoPort": true
+    },
+    {
+      "name": "luma-server-local",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": [
+        "-NoProfile",
+        "-Command",
+        "Set-Location server; $env:LUMA_PORT=\"8131\"; $env:LUMA_DATA_DIR=\"$env:TEMP/luma-server-local-$(Get-Random)\"; $env:LUMA_ADMIN_KEY=\"local-admin-key\"; dart run bin/luma_server.dart"
+      ],
+      "port": 8131
     }
   ]
 }

@@ -1,7 +1,11 @@
 [Unit]
 Description=luma-sync deploy watcher (runs docker compose rebuilds from the host, outside the container)
 After=docker.service
-Requires=docker.service
+# Wants, not Requires: with Requires, apt upgrading Docker during a
+# "System updates" run restarts docker.service, which restarts this unit and
+# kills everything in it — apt/dpkg mid-install included — before the
+# server restart step is ever reached.
+Wants=docker.service
 
 [Service]
 Type=simple
