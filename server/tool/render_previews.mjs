@@ -232,7 +232,15 @@ async function findDaylight(page) {
     : `daylight not reached, best effort at ${mean.toFixed(2)} (cycle ${lo.toFixed(2)}–${hi.toFixed(2)})`;
 }
 
-async function shootPagoda(page) {
+// Pins the camera to a hand-set framing and lets a few frames draw it.
+async function applyFraming(page, framing) {
+  const used = await page.evaluate((f) => window.__lumaShot.useFraming(f), framing);
+  if (!used.ok) throw new Error(`saved framing could not be applied: ${used.reason}`);
+  await page.evaluate(() => window.__lumaShot.waitFrames(3));
+  return used;
+}
+
+async function shootPagoda(page, framing) {
   // Hook shape varies per scene: voxelCount is a plain number in most
   // scenes, a function in a few older ones.
   await page
@@ -256,15 +264,22 @@ async function shootPagoda(page) {
   await warp(page, true, 600);
   await sleep(3000);
   await warp(page, false);
-  const framed = await page.evaluate(() => window.__lumaShot.frame());
-  console.log(`  framing: ${framed.ok ? `${framed.camera}, distance ${framed.distance}, box ${framed.box}` : framed.reason}`);
-  console.log(`  ${await findDaylight(page)}`);
-  // Refit on the finished scene (same side, same angle) — some gardens
-  // only fade in or finish building by now — and let a few real frames
-  // draw it.
-  const refit = await page.evaluate(() => window.__lumaShot.frame());
-  if (!framed.ok) {
-    console.log(`  reframing: ${refit.ok ? `${refit.camera}, distance ${refit.distance}, box ${refit.box}` : refit.reason}`);
+  if (framing) {
+    // The operator's own shot: no fitting, no refit, just daylight.
+    const used = await applyFraming(page, framing);
+    console.log(`  framing: ${used.camera}`);
+    console.log(`  ${await findDaylight(page)}`);
+  } else {
+    const framed = await page.evaluate(() => window.__lumaShot.frame());
+    console.log(`  framing: ${framed.ok ? `${framed.camera}, distance ${framed.distance}, box ${framed.box}` : framed.reason}`);
+    console.log(`  ${await findDaylight(page)}`);
+    // Refit on the finished scene (same side, same angle) — some gardens
+    // only fade in or finish building by now — and let a few real frames
+    // draw it.
+    const refit = await page.evaluate(() => window.__lumaShot.frame());
+    if (!framed.ok) {
+      console.log(`  reframing: ${refit.ok ? `${refit.camera}, distance ${refit.distance}, box ${refit.box}` : refit.reason}`);
+    }
   }
   await page.evaluate(() => window.__lumaShot.waitFrames(3));
   // Some scenes fill their HUD counters on a frame timer — wait for real
@@ -359,6 +374,21 @@ async function main() {
     ].filter(Boolean);
     return candidates.find((f) => fs.existsSync(f)) ?? null;
   };
+  // A hand-set camera from the dashboard's framing editor, overlaid the
+  // same way as scenes.
+  const framingOf = (id) => {
+    for (const dir of [override, root].filter(Boolean)) {
+      const file = path.join(dir, 'framing', `${id}.json`);
+      if (!fs.existsSync(file)) continue;
+      try {
+        const f = JSON.parse(fs.readFileSync(file, 'utf8'));
+        if (['px', 'py', 'pz', 'qx', 'qy', 'qz', 'qw'].every((k) => Number.isFinite(f[k]))) return f;
+      } catch {
+        // Unreadable: frame automatically instead.
+      }
+    }
+    return null;
+  };
   const ids =
     only.length > 0
       ? only
@@ -415,12 +445,19 @@ async function main() {
       try {
         page = await browser.newPage();
         await page.setViewport({ width: W, height: H, deviceScaleFactor: 1 });
+        const framing = framingOf(id);
+        // Engine and PC scenes keep their own clock; with a saved framing
+        // they get just the camera hook.
         if (kind === 'pagoda') await page.evaluateOnNewDocument(installShotControl);
+        else if (framing) await page.evaluateOnNewDocument(installShotControl, { clock: false });
         const url = (process.platform === 'win32' ? 'file:///' : 'file://') + path.resolve(file).replace(/\\/g, '/');
         await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
-        if (kind === 'pagoda') await shootPagoda(page);
-        else if (kind === 'engine') await shootEngine(page);
-        else await shootPc(page);
+        if (kind === 'pagoda') await shootPagoda(page, framing);
+        else {
+          if (kind === 'engine') await shootEngine(page);
+          else await shootPc(page);
+          if (framing) console.log(`  framing: ${(await applyFraming(page, framing)).camera}`);
+        }
         const png = await page.screenshot({ type: 'png' });
         const { spread } = lumaStats(png);
         if (spread < 0.02) throw new Error('blank frame (solid colour), keeping the old banner');

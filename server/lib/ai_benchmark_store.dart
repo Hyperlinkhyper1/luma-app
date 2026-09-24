@@ -142,6 +142,98 @@ class AiBenchmarkStore {
     ];
   }
 
+  /// Every servable scene for the dashboard's banner catalog: roster
+  /// metadata, whether it has a banner (and when that was written, so the
+  /// thumbnail can be cache-busted) and whether a hand-set framing exists.
+  /// Like [previewCoverage] it hashes nothing.
+  Future<List<Map<String, dynamic>>> bannerCatalog() async {
+    final roster = await _readRoster();
+    final byId = {for (final item in roster.benchmarks) item.id: item};
+    final out = <Map<String, dynamic>>[];
+    for (final c in await previewCoverage()) {
+      final item = byId[c.id];
+      final preview = c.hasPreview ? await _previewFile('${c.id}.png') : null;
+      out.add({
+        'id': c.id,
+        'kind': item?.kind ?? _kindOf(c.id),
+        'model': item?.model ?? _prettyId(c.id),
+        'hasPreview': c.hasPreview,
+        'previewAtMs': preview == null
+            ? 0
+            : (await preview.stat()).modified.millisecondsSinceEpoch,
+        'hasFraming': await _framingFile(c.id) != null,
+        'framable': _extOf(c.id) == 'html',
+      });
+    }
+    return out;
+  }
+
+  /// A scene's hand-set banner camera (see `server/tool/shot_control.mjs`),
+  /// or null when its banner is framed automatically. Saved in the data
+  /// directory's `framing/` and read with the seed's `framing/` beneath it,
+  /// like every other benchmark file.
+  Future<Map<String, dynamic>?> readFraming(String id) async {
+    if (!_validId(id)) return null;
+    final file = await _framingFile(id);
+    if (file == null) return null;
+    try {
+      final decoded = jsonDecode(await file.readAsString());
+      return decoded is Map<String, dynamic> ? decoded : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Keeps only the numeric pose fields the renderer reads, so the file can
+  /// never carry anything else.
+  static Map<String, dynamic>? cleanFraming(Object? raw) {
+    if (raw is! Map) return null;
+    const required = ['px', 'py', 'pz', 'qx', 'qy', 'qz', 'qw'];
+    const optional = ['fov', 'zoom'];
+    final out = <String, dynamic>{};
+    for (final k in [...required, ...optional]) {
+      final v = raw[k];
+      if (v is num && v.isFinite) {
+        out[k] = v.toDouble();
+      } else if (required.contains(k)) {
+        return null;
+      }
+    }
+    return out;
+  }
+
+  Future<bool> writeFraming(String id, Map<String, dynamic> pose) async {
+    if (!_validId(id) || _extOf(id) != 'html') return false;
+    final dir = Directory('$_dir/framing');
+    await dir.create(recursive: true);
+    final target = File('${dir.path}/$id.json');
+    final tmp = File('${target.path}.tmp');
+    await tmp.writeAsString(jsonEncode({
+      ...pose,
+      'savedAtMs': DateTime.now().millisecondsSinceEpoch,
+    }));
+    await tmp.rename(target.path);
+    return true;
+  }
+
+  /// Drops the data directory's framing; a checked-in seed framing, if any,
+  /// shows through again.
+  Future<bool> deleteFraming(String id) async {
+    if (!_validId(id)) return false;
+    final file = File('$_dir/framing/$id.json');
+    if (!await file.exists()) return false;
+    await file.delete();
+    return true;
+  }
+
+  Future<File?> _framingFile(String id) async {
+    final override = File('$_dir/framing/$id.json');
+    if (await override.exists()) return override;
+    final seed = _seedDir == null ? null : File('$_seedDir/framing/$id.json');
+    if (seed != null && await seed.exists()) return seed;
+    return null;
+  }
+
   /// The read-only seed directory under the data-directory overrides, if any.
   String? get seedDir => _seedDir;
 
@@ -227,7 +319,8 @@ class AiBenchmarkStore {
   Future<File?> _sceneFile(String id) async {
     final override = File('$_dir/$id.${_extOf(id)}');
     if (await override.exists()) return override;
-    final seed = _seedDir == null ? null : File('$_seedDir/scenes/$id.${_extOf(id)}');
+    final seed =
+        _seedDir == null ? null : File('$_seedDir/scenes/$id.${_extOf(id)}');
     if (seed != null && await seed.exists()) return seed;
     return null;
   }
@@ -261,8 +354,7 @@ class AiBenchmarkStore {
     return ids.toList()..sort();
   }
 
-  Future<AiBenchmarkEntry> _describe(
-      _RosterItem item, File scene) async {
+  Future<AiBenchmarkEntry> _describe(_RosterItem item, File scene) async {
     final stat = await scene.stat();
     final bytes = await scene.readAsBytes();
     final preview = await _previewFile('${item.id}.png');
@@ -300,7 +392,8 @@ class AiBenchmarkStore {
   String _etagFor(FileStat stat, List<int> bytes) =>
       '"${stat.size}-${stat.modified.millisecondsSinceEpoch}"';
 
-  static String _extOf(String id) => id.startsWith('cathedral_') ? 'glb' : 'html';
+  static String _extOf(String id) =>
+      id.startsWith('cathedral_') ? 'glb' : 'html';
 
   static String _kindOf(String id) {
     if (id.startsWith('engine_')) return 'engine';
@@ -391,16 +484,17 @@ class _Roster {
                   : e['kind'] == 'cathedral'
                       ? 'cathedral'
                       : e['kind'] == 'pc'
-                      ? 'pc'
-                      : 'pagoda',
+                          ? 'pc'
+                          : 'pagoda',
               model: e['model'] as String? ?? (e['id'] as String),
               description: e['description'] as String? ?? '',
             ),
       ],
       fallbacks: {
-        for (final e in (decoded['fallbackPreviews'] as Map? ?? const {})
-            .entries)
-          if (e.key is String && e.value is String) e.key as String: e.value as String,
+        for (final e
+            in (decoded['fallbackPreviews'] as Map? ?? const {}).entries)
+          if (e.key is String && e.value is String)
+            e.key as String: e.value as String,
       },
     );
   }
