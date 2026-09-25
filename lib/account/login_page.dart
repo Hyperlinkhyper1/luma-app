@@ -214,11 +214,27 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
       if (_mode == 0) {
-        await widget.sync.signIn(
-          serverUrl: _server.text,
-          email: email,
-          password: _password.text,
-        );
+        try {
+          await widget.sync.signIn(
+            serverUrl: _server.text,
+            email: email,
+            password: _password.text,
+          );
+        } on SyncApiException catch (e) {
+          if (e.code != 'account_pending_approval') rethrow;
+          final emailed = await widget.sync.beginEmailVerification(
+            serverUrl: _server.text,
+            email: email,
+          );
+          if (!emailed) rethrow;
+          if (!mounted) return;
+          setState(() {
+            _step = _Step.code;
+            _code.clear();
+            _info = 'Your email is not verified yet. We sent you a new code.';
+          });
+          return;
+        }
         _finish();
         return;
       }

@@ -313,6 +313,59 @@ void main() {
     });
   });
 
+  group('admin account delete', () {
+    test('wipes the account, its blobs and its sessions', () async {
+      final token = await register('purge@example.com', 'old-password-1');
+      final userId = store.userIdByEmail['purge@example.com']!;
+      final put = await handler(Request(
+        'PUT',
+        Uri.parse('http://localhost/api/v1/sync/notes'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'X-Base-Version': '0',
+          'Content-Type': 'application/octet-stream',
+        },
+        body: List.filled(64, 1),
+      ));
+      expect(put.statusCode, 200);
+
+      final result = await call('POST', '/admin/account/delete',
+          form: 'email=purge%40example.com', admin: true);
+      expect(result['httpStatus'], 200);
+
+      expect(store.usersById.containsKey(userId), isFalse);
+      expect(store.userIdByEmail.containsKey('purge@example.com'), isFalse);
+      expect(Directory('${dir.path}/blobs/$userId').existsSync(), isFalse);
+      expect((await call('GET', '/api/v1/account', token: token))['httpStatus'],
+          401);
+      expect((await login('purge@example.com', 'old-password-1'))['httpStatus'],
+          401);
+    });
+
+    test('closes an open deletion request instead of leaving it dangling',
+        () async {
+      final token = await register('purge2@example.com', 'old-password-1');
+      await call('POST', '/api/v1/account/deletion-request',
+          token: token, json: {'reason': 'Bye.'});
+      await call('POST', '/admin/account/delete',
+          form: 'email=purge2%40example.com', admin: true);
+      final inbox = await call('GET', '/admin/deletion-requests', admin: true);
+      expect(((inbox['requests'] as List).single as Map)['status'], 'accepted');
+    });
+
+    test('an unknown email is a 404 and needs the admin key', () async {
+      expect(
+          (await call('POST', '/admin/account/delete',
+                  form: 'email=nobody%40example.com', admin: true))['httpStatus'],
+          404);
+      await register('safe@example.com', 'old-password-1');
+      final denied = await call('POST', '/admin/account/delete',
+          form: 'email=safe%40example.com');
+      expect(denied['httpStatus'], isNot(200));
+      expect(store.userIdByEmail.containsKey('safe@example.com'), isTrue);
+    });
+  });
+
   group('ip bans', () {
     test('banning an account blocks the API but never the dashboard', () async {
       await register('spam@example.com', 'old-password-1');

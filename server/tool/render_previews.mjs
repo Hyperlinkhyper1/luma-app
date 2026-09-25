@@ -358,17 +358,48 @@ function cathedralViewerHtml(base64Glb) {
   html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#11101a}
   model-viewer{display:block;width:100%;height:100%;--poster-color:transparent}
 </style>
-<script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js"
+  onerror="window.__lumaModelViewerScriptError='Could not load the model-viewer library from jsDelivr.'"></script>
 </head><body>
 <model-viewer id="model" camera-controls auto-rotate interaction-prompt="none"
   camera-orbit="35deg 70deg auto" shadow-intensity="1" environment-image="neutral"
   exposure="1" touch-action="pan-y"></model-viewer>
 <script>
+  window.__lumaGlbError = null;
+  const model=document.getElementById('model');
+  model.addEventListener('error', event => {
+    const detail=event.detail || {};
+    window.__lumaGlbError=detail.type || detail.message || 'model-viewer rejected the GLB';
+  });
   const binary=atob('${base64Glb}'),bytes=new Uint8Array(binary.length);
   for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
-  document.getElementById('model').src=URL.createObjectURL(
-    new Blob([bytes],{type:'model/gltf-binary'}));
+  model.src=URL.createObjectURL(new Blob([bytes],{type:'model/gltf-binary'}));
 </script></body></html>`;
+}
+
+function validateGlb(bytes, id) {
+  if (bytes.length < 20 || bytes.toString('ascii', 0, 4) !== 'glTF') {
+    throw new Error(`invalid GLB for ${id}: missing glTF header`);
+  }
+  if (bytes.readUInt32LE(4) !== 2) {
+    throw new Error(`invalid GLB for ${id}: expected glTF version 2`);
+  }
+  const declaredLength = bytes.readUInt32LE(8);
+  if (declaredLength !== bytes.length) {
+    throw new Error(`invalid GLB for ${id}: header declares ${declaredLength} bytes, file has ${bytes.length}`);
+  }
+  if (bytes.readUInt32LE(16) !== 0x4e4f534a) {
+    throw new Error(`invalid GLB for ${id}: first chunk is not JSON`);
+  }
+  const jsonLength = bytes.readUInt32LE(12);
+  if (jsonLength > bytes.length - 20) {
+    throw new Error(`invalid GLB for ${id}: JSON chunk exceeds the file size`);
+  }
+  try {
+    JSON.parse(bytes.toString('utf8', 20, 20 + jsonLength).trim());
+  } catch {
+    throw new Error(`invalid GLB for ${id}: malformed JSON chunk`);
+  }
 }
 
 async function main() {
@@ -475,12 +506,20 @@ async function main() {
         else if (framing) await page.evaluateOnNewDocument(installShotControl, { clock: false });
         if (kind === 'cathedral') {
           const glb = await fs.promises.readFile(file);
+          validateGlb(glb, id);
           await page.setContent(cathedralViewerHtml(glb.toString('base64')),
             { waitUntil: 'domcontentloaded', timeout: 120000 });
-          await page.waitForFunction(
-            `(() => { const m = document.querySelector('#model'); return !!m && m.loaded; })()`,
+          const modelLoad = await page.waitForFunction(
+            `(() => {
+              const m = document.querySelector('#model');
+              if (window.__lumaModelViewerScriptError) return { error: window.__lumaModelViewerScriptError };
+              if (window.__lumaGlbError) return { error: 'GLB load failed: ' + window.__lumaGlbError };
+              return m && m.loaded ? { loaded: true } : false;
+            })()`,
             { timeout: 120000, polling: 250 },
           );
+          const loadResult = await modelLoad.jsonValue();
+          if (loadResult.error) throw new Error(loadResult.error);
           await sleep(4000);
         } else {
           const url = (process.platform === 'win32' ? 'file:///' : 'file://') + path.resolve(file).replace(/\\/g, '/');

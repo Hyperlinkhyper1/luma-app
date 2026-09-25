@@ -252,6 +252,121 @@ Future<SecretAnswer?> promptSecret(
   );
 }
 
+/// What the user filled in to connect to a luma device found on the network.
+typedef QuickConnectAnswer = ({int port, String secret, bool save});
+
+/// Connects to a device picked from the network list: the address is already
+/// known, the port is filled in from the advertisement but can be changed,
+/// and the pairing password has to be typed — discovery never supplies it.
+Future<QuickConnectAnswer?> promptQuickConnect(
+  BuildContext context, {
+  required String deviceName,
+  required String address,
+  required int port,
+}) {
+  final portController = TextEditingController(text: '$port');
+  final secretController = TextEditingController();
+  var obscure = true;
+  var save = false;
+  String? error;
+
+  return _showLumaDialog<QuickConnectAnswer>(
+    context,
+    title: 'Connect to $deviceName',
+    icon: Icons.devices_rounded,
+    body: (context, close) {
+      final luma = context.luma;
+      return StatefulBuilder(
+        builder: (context, setState) {
+          void submit() {
+            final typedPort = int.tryParse(portController.text.trim());
+            if (typedPort == null || typedPort < 1 || typedPort > 65535) {
+              setState(() => error = 'Port must be a number between 1 and 65535.');
+              return;
+            }
+            if (secretController.text.trim().isEmpty) {
+              setState(() => error = 'Type the pairing password shown on '
+                  '$deviceName.');
+              return;
+            }
+            close((port: typedPort, secret: secretController.text, save: save));
+          }
+
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Found on this network at $address. Type the port and pairing '
+                'password shown on its Host tab or This device screen.',
+                style: TextStyle(color: luma.textSecondary, fontSize: 13),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: portController,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                style: TextStyle(color: luma.textPrimary, fontSize: 14),
+                decoration: const InputDecoration(labelText: 'Port'),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: secretController,
+                autofocus: true,
+                obscureText: obscure,
+                autocorrect: false,
+                enableSuggestions: false,
+                onSubmitted: (_) => submit(),
+                style: TextStyle(color: luma.textPrimary, fontSize: 14),
+                decoration: InputDecoration(
+                  labelText: 'Pairing password',
+                  suffixIcon: IconButton(
+                    tooltip: obscure ? 'Show' : 'Hide',
+                    icon: Icon(
+                      obscure
+                          ? Icons.visibility_rounded
+                          : Icons.visibility_off_rounded,
+                      size: 18,
+                    ),
+                    onPressed: () => setState(() => obscure = !obscure),
+                  ),
+                ),
+              ),
+              if (error != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  error!,
+                  style: TextStyle(color: luma.danger, fontSize: 12),
+                ),
+              ],
+              const SizedBox(height: 6),
+              _CheckRow(
+                value: save,
+                label: 'Remember the password for this device',
+                subtitle: 'Encrypted on this device. Never uploaded anywhere.',
+                onChanged: (value) => setState(() => save = value),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  LumaGhostButton(label: 'Cancel', onTap: () => close(null)),
+                  const SizedBox(width: 10),
+                  LumaPrimaryButton(
+                    label: 'Connect',
+                    icon: Icons.link_rounded,
+                    onTap: submit,
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+
 /// One-line text prompt — new folder names, renames.
 Future<String?> promptText(
   BuildContext context, {

@@ -155,6 +155,10 @@ abstract class SftpSession implements TransferBackend {
   /// other end dropped us.
   Future<void> get done;
 
+  /// Why the other end dropped us, when the transport knows. Null after a
+  /// close we asked for, and for transports that cannot tell.
+  String? get closeReason => null;
+
   /// Opens a connection for [site], picking the transport the site is set to.
   ///
   /// [secret] is the password, the private key's passphrase, or — for a luma
@@ -167,6 +171,7 @@ abstract class SftpSession implements TransferBackend {
     String? secret,
     required Future<bool> Function(SftpHostKeyPrompt prompt) onHostKey,
     Duration timeout = const Duration(seconds: 20),
+    void Function(String hostName)? onWaitingForApproval,
   }) {
     switch (site.transport) {
       case SftpTransport.ssh:
@@ -181,6 +186,7 @@ abstract class SftpSession implements TransferBackend {
           site: site,
           secret: secret,
           timeout: timeout,
+          onWaitingForApproval: onWaitingForApproval,
         );
     }
   }

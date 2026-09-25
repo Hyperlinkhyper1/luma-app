@@ -17,9 +17,9 @@ import 'host_server.dart';
 /// connect to, and shows the address and pairing password they need.
 ///
 /// The hosting itself lives in [SftpHostServer]; this is only its face. The
-/// server is owned by the page, not by this widget, so a rebuild never
-/// restarts a listener and switching to another tab — or another plugin —
-/// does not drop a transfer that is in flight.
+/// server belongs to the app (see `SftpHostScope`), not to this widget or
+/// the page, so a rebuild never restarts a listener and switching to another
+/// tab — or another plugin — does not drop a transfer that is in flight.
 class SftpHostPanel extends StatefulWidget {
   const SftpHostPanel({
     super.key,

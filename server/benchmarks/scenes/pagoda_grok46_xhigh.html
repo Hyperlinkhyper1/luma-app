@@ -10,10 +10,11 @@
 {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/examples/":"https://unpkg.com/three@0.160.0/examples/"}}
 </script>
 <script src="https://unpkg.com/@babel/standalone@7.28.3/babel.min.js"></script>
+<script>Babel.registerPreset('ts-all',{presets:[[Babel.availablePresets.typescript,{allExtensions:true}]]});</script>
 </head>
 <body>
 <div id="stage"></div>
-<script type="text/babel" data-type="module" data-presets="typescript">// @ts-nocheck
+<script type="text/babel" data-type="module" data-presets="ts-all">// @ts-nocheck
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
@@ -1476,16 +1477,7 @@ export function mountPagoda(container: HTMLElement): () => void {
   };
 }
 
-declare global {
-  interface Window {
-    __VOXEL__: {
-      voxelCount: number;
-      fps: number;
-      pagodaFloors: number;
-      timeOfDay: number;
-    };
-  }
-}
+
 mountPagoda(document.getElementById("stage")!);
 </script>
 </body>

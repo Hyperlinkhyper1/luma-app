@@ -75,12 +75,23 @@ class LumaHostSession extends SftpSession {
   @override
   Future<void> get done => _closed.future;
 
+  String? _closeReason;
+
+  @override
+  String? get closeReason => _closeReason;
+
   /// Opens a connection to the luma device described by [site], with [secret]
   /// as the pairing password shown on that device's screen.
+  ///
+  /// When the host has to ask its user first, [onWaitingForApproval] is called
+  /// with the host's name, and the returned future only completes once the
+  /// person there presses Allow — a device is never handed back as connected
+  /// while it is still waiting to be let in.
   static Future<SftpSession> connect({
     required SftpSite site,
     String? secret,
     Duration timeout = const Duration(seconds: 20),
+    void Function(String hostName)? onWaitingForApproval,
   }) async {
     final host = site.host.trim();
     if (host.isEmpty) {
@@ -158,6 +169,7 @@ class LumaHostSession extends SftpSession {
       return completer.future;
     }
 
+    HostSecureChannel? channel;
     try {
       final result = await HostHandshake.connectAsClient(
         password: password,
@@ -174,6 +186,15 @@ class LumaHostSession extends SftpSession {
           await socket.flush();
         },
       ).timeout(kHostHandshakeTimeout);
+      channel = result.channel;
+
+      // The first sealed records say whether this device is in. Until the
+      // host says so, nothing else will be answered.
+      await _awaitAdmission(
+        channel: result.channel,
+        nextFrame: nextFrame,
+        onWaiting: () => onWaitingForApproval?.call(result.hello.hostName),
+      ).timeout(kHostApprovalTimeout + const Duration(seconds: 15));
 
       final session = LumaHostSession._(
         socket,
@@ -204,12 +225,42 @@ class LumaHostSession extends SftpSession {
       await subscription.cancel();
       socket.destroy();
       throw SftpConnectionException(
-        'That device did not answer in time. Make sure it is still hosting.',
+        channel == null
+            ? 'That device did not answer in time. Make sure it is still '
+                'hosting.'
+            : 'Nobody allowed this device in on the other end in time. Ask '
+                'them to press Allow, then connect again.',
       );
+    } on SftpConnectionException {
+      await subscription.cancel();
+      socket.destroy();
+      rethrow;
     } catch (e) {
       await subscription.cancel();
       socket.destroy();
       throw SftpConnectionException('Could not connect to that device.\n$e');
+    }
+  }
+
+  static Future<void> _awaitAdmission({
+    required HostSecureChannel channel,
+    required Future<Uint8List> Function() nextFrame,
+    required void Function() onWaiting,
+  }) async {
+    while (true) {
+      final frame = decodeFrame(await channel.open(await nextFrame()));
+      final message = frame.control;
+      if (message == null) {
+        throw const HostProtocolException('Expected to be let in first.');
+      }
+      if (message[kWaitKey] == true) {
+        onWaiting();
+        continue;
+      }
+      if (message[kAdmitKey] == true) return;
+      throw SftpConnectionException(
+        message['e']?.toString() ?? 'That device did not let this one in.',
+      );
     }
   }
 
@@ -258,7 +309,20 @@ class LumaHostSession extends SftpSession {
     if (_isClosed) return;
     final frame = decodeFrame(await _channel.open(body));
     if (!frame.isControl) {
-      await _downloads[frame.chunkId]?.write(frame.chunk!);
+      final download = _downloads[frame.chunkId];
+      if (download == null) return;
+      try {
+        await download.write(frame.chunk!);
+      } catch (e) {
+        // A full disk or a locked destination ends this download, not the
+        // whole connection. The host is told to stop sending it.
+        download.fail('The file could not be saved here: $e');
+        unawaited(
+          _send(
+            encodeControlFrame(hostRequest(frame.chunkId!, HostOp.readStop)),
+          ).catchError((_) {}),
+        );
+      }
       return;
     }
 
@@ -338,6 +402,11 @@ class LumaHostSession extends SftpSession {
   void _tearDown(Object error) {
     if (_isClosed) return;
     _isClosed = true;
+    _closeReason = error is SftpConnectionException
+        ? error.message
+        : error is HostProtocolException
+            ? error.message
+            : '$error';
     for (final completer in _pending.values) {
       if (!completer.isCompleted) completer.completeError(error);
     }
@@ -547,6 +616,12 @@ class LumaHostSession extends SftpSession {
       download.cancel();
     }
     _downloads.clear();
+    // Anything still waiting on a reply would otherwise wait forever.
+    final closed = SftpConnectionException('The connection was closed.');
+    for (final completer in _pending.values) {
+      if (!completer.isCompleted) completer.completeError(closed);
+    }
+    _pending.clear();
     if (!_closed.isCompleted) _closed.complete();
     _socket.destroy();
   }

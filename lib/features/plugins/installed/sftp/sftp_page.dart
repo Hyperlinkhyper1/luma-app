@@ -11,7 +11,9 @@ import '../../../../app/widgets.dart';
 import '../../../../p2p/peer_sync_scope.dart';
 import '../../../../settings/settings_scope.dart';
 import '../../../../theme/luma_theme.dart';
+import 'host/host_discovery.dart';
 import 'host/host_panel.dart';
+import 'host/host_scope.dart';
 import 'host/host_server.dart';
 import 'host/this_device_page.dart';
 import 'share/device_share_scope.dart';
@@ -47,6 +49,14 @@ class _SftpPageState extends State<SftpPage> {
   SftpSession? _session;
   String? _connectingSiteId;
   String? _connectionError;
+
+  /// What a connection in progress is waiting on, shown above the sites.
+  String? _connectionStatus;
+
+  /// Finds luma devices hosting on this network, so connecting to one is a
+  /// tap and a password rather than typing its address.
+  final _browser = HostBrowser();
+  String? _connectingNearbyId;
   StreamSubscription<void>? _sessionWatch;
 
   String _localPath = '';
@@ -65,10 +75,13 @@ class _SftpPageState extends State<SftpPage> {
   int _phoneTab = 0;
   Timer? _refreshDebounce;
 
-  /// Owned here rather than by the Host tab's widget so that switching tabs
-  /// never tears a listener down mid-transfer. It is stopped in [dispose], so
-  /// leaving the plugin stops hosting.
-  final _host = SftpHostServer();
+  /// The app's host server from [SftpHostScope], so hosting outlives this
+  /// page: the shell disposes a plugin's page as soon as another one opens.
+  /// Only a page pumped without the scope (the widget tests) makes its own,
+  /// and only that one is stopped with the page.
+  late SftpHostServer _host;
+  bool _ownsHost = false;
+  bool _hostBound = false;
 
   /// 0 = Servers (SFTP), 1 = My devices (the shared folder), 2 = Host.
   int _mode = 0;
@@ -79,11 +92,23 @@ class _SftpPageState extends State<SftpPage> {
   void initState() {
     super.initState();
     _store.addListener(_onStoreChanged);
+    _queue.onItemComplete = _onTransferComplete;
+    _browser.addListener(_onStoreChanged);
+    unawaited(_browser.start());
+    _bootstrapLocalPane();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_hostBound) return;
+    _hostBound = true;
+    final shared = SftpHostScope.maybeOf(context);
+    _ownsHost = shared == null;
+    _host = shared ?? SftpHostServer();
     // The connection bar shows a dot while hosting, so it has to rebuild when
     // the listener starts or stops.
     _host.addListener(_onStoreChanged);
-    _queue.onItemComplete = _onTransferComplete;
-    _bootstrapLocalPane();
   }
 
   @override
@@ -92,9 +117,11 @@ class _SftpPageState extends State<SftpPage> {
     _sessionWatch?.cancel();
     _store.removeListener(_onStoreChanged);
     _host.removeListener(_onStoreChanged);
+    _browser.removeListener(_onStoreChanged);
+    _browser.dispose();
     _queue.dispose();
     _session?.close();
-    _host.dispose();
+    if (_ownsHost) _host.dispose();
     super.dispose();
   }
 
@@ -213,15 +240,23 @@ class _SftpPageState extends State<SftpPage> {
 
   // ----------------------------------------------------------- connecting
 
-  Future<void> _connect(SftpSite site) async {
+  /// Connects to [site]. [initialSecret] is a password the user already typed
+  /// for this attempt (the network quick-connect asks for it up front), used
+  /// instead of the saved one or a prompt.
+  Future<void> _connect(
+    SftpSite site, {
+    String? initialSecret,
+    bool? initialSave,
+  }) async {
     if (_connectingSiteId != null) return;
     setState(() {
       _connectingSiteId = site.id;
       _connectionError = null;
+      _connectionStatus = null;
     });
 
-    var secret = await _store.secretFor(site);
-    var promptedSave = site.saveSecret;
+    var secret = initialSecret ?? await _store.secretFor(site);
+    var promptedSave = initialSave ?? site.saveSecret;
 
     // Password sites always need something; key sites only when the key file
     // turns out to be passphrase-protected, which connect() reports back.
@@ -255,11 +290,19 @@ class _SftpPageState extends State<SftpPage> {
             if (!mounted) return false;
             return showHostKeyDialog(context, prompt);
           },
+          onWaitingForApproval: (hostName) {
+            if (!mounted) return;
+            setState(() {
+              _connectionStatus =
+                  'Waiting for someone on $hostName to allow this device…';
+            });
+          },
         );
         await _onConnected(session, site, secret, promptedSave);
         return;
       } on SftpConnectionException catch (e) {
         if (!mounted) return;
+        setState(() => _connectionStatus = null);
         if (!e.isAuthFailure || attempt > 0) {
           setState(() {
             _connectingSiteId = null;
@@ -289,12 +332,66 @@ class _SftpPageState extends State<SftpPage> {
         if (!mounted) return;
         setState(() {
           _connectingSiteId = null;
+          _connectionStatus = null;
           _connectionError = _describe(e);
         });
         return;
       }
     }
   }
+
+  /// Connects to a device picked from "On this network". A device already
+  /// saved under the same address is reused — its port updated if the host
+  /// came back on a different one — so connecting twice never piles up
+  /// duplicate sites. The site is only saved once the connection succeeds.
+  Future<void> _quickConnect(DiscoveredHost host) async {
+    if (_connectingSiteId != null || _connectingNearbyId != null) return;
+    final answer = await promptQuickConnect(
+      context,
+      deviceName: host.deviceName,
+      address: host.address,
+      port: host.port,
+    );
+    if (answer == null || !mounted) return;
+
+    SftpSite? existing;
+    for (final site in _store.sites) {
+      if (site.isLumaHost && site.host.trim() == host.address) {
+        existing = site;
+        break;
+      }
+    }
+    final site = (existing ??
+            SftpSite(
+              id: newSftpSiteId(),
+              name: host.deviceName,
+              host: host.address,
+              port: answer.port,
+              username: '',
+              transport: SftpTransport.lumaHost,
+            ))
+        .copyWith(port: answer.port);
+
+    setState(() => _connectingNearbyId = host.id);
+    try {
+      await _connect(site, initialSecret: answer.secret, initialSave: answer.save);
+    } finally {
+      if (mounted) setState(() => _connectingNearbyId = null);
+    }
+  }
+
+  /// Hosts on the network that are not already a saved site at the same
+  /// address and port — those are connected to from their own card.
+  List<DiscoveredHost> get _nearbyUnsaved => [
+        for (final host in _browser.hosts)
+          if (!_store.sites.any(
+            (s) =>
+                s.isLumaHost &&
+                s.host.trim() == host.address &&
+                s.port == host.port,
+          ))
+            host,
+      ];
 
   Future<void> _onConnected(
     SftpSession session,
@@ -317,7 +414,7 @@ class _SftpPageState extends State<SftpPage> {
         : site.localDirectory.trim();
 
     _sessionWatch?.cancel();
-    _sessionWatch = session.done.asStream().listen((_) => _onDropped());
+    _sessionWatch = session.done.asStream().listen((_) => _onDropped(session));
 
     if (!mounted) {
       session.close();
@@ -326,6 +423,7 @@ class _SftpPageState extends State<SftpPage> {
     setState(() {
       _session = session;
       _connectingSiteId = null;
+      _connectionStatus = null;
       _connectionError = null;
       _remotePath = RemotePath.normalize(remote);
       _remoteSelection.clear();
@@ -339,14 +437,17 @@ class _SftpPageState extends State<SftpPage> {
     await Future.wait([_loadRemote(), _loadLocal()]);
   }
 
-  void _onDropped() {
-    if (!mounted || _session == null) return;
+  void _onDropped(SftpSession session) {
+    if (!mounted || !identical(_session, session)) return;
     _queue.bind(null);
+    final reason = session.closeReason;
     setState(() {
       _session = null;
       _remoteEntries = const [];
       _remoteSelection.clear();
-      _connectionError = 'The connection to the server closed.';
+      _connectionError = reason == null || reason.isEmpty
+          ? 'The connection to the server closed.'
+          : 'The connection closed: $reason';
       _phoneTab = 0;
     });
   }
@@ -961,6 +1062,12 @@ class _SftpPageState extends State<SftpPage> {
                           loading: !_store.loaded,
                           connectingSiteId: _connectingSiteId,
                           error: _connectionError,
+                          status: _connectionStatus,
+                          nearby: _nearbyUnsaved,
+                          discoveryAvailable: _browser.available,
+                          connectingNearbyId: _connectingNearbyId,
+                          onQuickConnect: (host) =>
+                              unawaited(_quickConnect(host)),
                           onConnect: _connect,
                           onEdit: _editSite,
                           onDelete: _deleteSite,
