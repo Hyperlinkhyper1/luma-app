@@ -9506,8 +9506,8 @@ window.lumaAskReason = function (form, message) {
         ? '<button type="button" class="btn btn-ghost btn-sm" data-frame="' + esc(s.id) + '">'
           + '<svg class="bn-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/><circle cx="12" cy="12" r="3"/></svg>'
           + (s.hasFraming ? 'Edit framing' : 'Set framing') + '</button>'
-        : '<button type="button" class="btn btn-ghost btn-sm" disabled '
-          + 'title="3D model files have no camera to frame">No framing (.glb)</button>';
+        : '<button type="button" class="btn btn-ghost btn-sm" data-render-banner="' + esc(s.id) + '">'
+          + (s.hasPreview ? 'Re-render banner' : 'Make banner') + '</button>';
       return '<div class="bn-tile' + (on ? ' is-selected' : '') + '" data-id="' + esc(s.id) + '">'
         + '<label class="bn-thumb"><input type="checkbox" data-pick="' + esc(s.id) + '"'
         + (on ? ' checked' : '') + ' aria-label="Select ' + esc(s.model) + '">'
@@ -9584,6 +9584,12 @@ window.lumaAskReason = function (form, message) {
     grid.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-frame]');
       if (btn) framer.open(scenes.find((s) => s.id === btn.getAttribute('data-frame')));
+      const renderBtn = e.target.closest('[data-render-banner]');
+      if (renderBtn) {
+        renderBtn.disabled = true;
+        start('selected', [renderBtn.getAttribute('data-render-banner')])
+          .then((result) => { if (!result.ok) renderBtn.disabled = false; });
+      }
     });
     kindsBox.addEventListener('click', (e) => {
       const b = e.target.closest('[data-kind]');

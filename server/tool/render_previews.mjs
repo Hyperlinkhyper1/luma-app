@@ -21,9 +21,10 @@ const execFileAsync = promisify(execFile);
 //
 // Without --ids it renders only scenes that have no banner yet; --ids a,b,c
 // renders exactly those, replacing what is there. --override <dir> is checked
-// for <id>.html (and manifest.json) before --root, mirroring the server's
-// data-directory overlay.
+// for the scene file (<id>.html or <id>.glb) and manifest.json before --root,
+// mirroring the server's data-directory overlay.
 //
+// Cathedral GLBs are shown with model-viewer and its fitted default camera.
 // Pagoda banners are all shot the same way however the scene was written:
 // fast-forwarded to its brightest time of day, frozen there, and framed as
 // the whole garden from an elevated three-quarter angle (see
@@ -350,6 +351,26 @@ function readManifest(dirs) {
   return { benchmarks: [] };
 }
 
+function cathedralViewerHtml(base64Glb) {
+  return `<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#11101a}
+  model-viewer{display:block;width:100%;height:100%;--poster-color:transparent}
+</style>
+<script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
+</head><body>
+<model-viewer id="model" camera-controls auto-rotate interaction-prompt="none"
+  camera-orbit="35deg 70deg auto" shadow-intensity="1" environment-image="neutral"
+  exposure="1" touch-action="pan-y"></model-viewer>
+<script>
+  const binary=atob('${base64Glb}'),bytes=new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+  document.getElementById('model').src=URL.createObjectURL(
+    new Blob([bytes],{type:'model/gltf-binary'}));
+</script></body></html>`;
+}
+
 async function main() {
   // Lowest scheduling priority, inherited by the browser it launches: a
   // banner render must never slow down the server or the desktop it runs on.
@@ -366,11 +387,13 @@ async function main() {
   const manifest = readManifest([override, root].filter(Boolean));
   const kindOf = (id) =>
     manifest.benchmarks.find((x) => x.id === id)?.kind ??
-    (id.startsWith('engine_') ? 'engine' : id.startsWith('pc_') ? 'pc' : 'pagoda');
+    (id.startsWith('engine_') ? 'engine' : id.startsWith('pc_') ? 'pc' :
+      id.startsWith('cathedral_') ? 'cathedral' : 'pagoda');
+  const sceneExtension = (id) => (kindOf(id) === 'cathedral' ? 'glb' : 'html');
   const sceneFile = (id) => {
     const candidates = [
-      override && path.join(override, `${id}.html`),
-      path.join(root, 'scenes', `${id}.html`),
+      override && path.join(override, `${id}.${sceneExtension(id)}`),
+      path.join(root, 'scenes', `${id}.${sceneExtension(id)}`),
     ].filter(Boolean);
     return candidates.find((f) => fs.existsSync(f)) ?? null;
   };
@@ -450,10 +473,21 @@ async function main() {
         // they get just the camera hook.
         if (kind === 'pagoda') await page.evaluateOnNewDocument(installShotControl);
         else if (framing) await page.evaluateOnNewDocument(installShotControl, { clock: false });
-        const url = (process.platform === 'win32' ? 'file:///' : 'file://') + path.resolve(file).replace(/\\/g, '/');
-        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
+        if (kind === 'cathedral') {
+          const glb = await fs.promises.readFile(file);
+          await page.setContent(cathedralViewerHtml(glb.toString('base64')),
+            { waitUntil: 'domcontentloaded', timeout: 120000 });
+          await page.waitForFunction(
+            `(() => { const m = document.querySelector('#model'); return !!m && m.loaded; })()`,
+            { timeout: 120000, polling: 250 },
+          );
+          await sleep(4000);
+        } else {
+          const url = (process.platform === 'win32' ? 'file:///' : 'file://') + path.resolve(file).replace(/\\/g, '/');
+          await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
+        }
         if (kind === 'pagoda') await shootPagoda(page, framing);
-        else {
+        else if (kind !== 'cathedral') {
           if (kind === 'engine') await shootEngine(page);
           else await shootPc(page);
           if (framing) console.log(`  framing: ${(await applyFraming(page, framing)).camera}`);

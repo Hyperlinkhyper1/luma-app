@@ -19,10 +19,10 @@ import 'providers/mistral_proxy_client.dart';
 /// internally looping through any tool calls the model requests.
 ///
 /// Normally this runs against the user's own locally-stored API key for that
-/// provider. For Mistral/"Luma", when no personal key is saved but the
-/// device is signed into a sync server with an operator-configured key, it
-/// instead routes through that server's proxy (see [MistralProxyClient]) —
-/// the real Mistral key never reaches this device.
+/// provider. The on-device Qwen provider needs no account or API key. For
+/// Mistral/"Luma", when no personal key is saved but the device is signed
+/// into a sync server with an operator-configured key, it instead routes
+/// through that server's proxy (see [MistralProxyClient]).
 class ChatController extends ChangeNotifier {
   ChatController({
     required ChatRepository repository,
@@ -32,13 +32,13 @@ class ChatController extends ChangeNotifier {
     required SettingsController settings,
     SyncService? syncService,
     AiUsageRepository? aiUsage,
-  })  : _repository = repository,
-        _keyStore = keyStore,
-        _agentStore = agentStore,
-        _tools = tools,
-        _settings = settings,
-        _syncService = syncService,
-        _aiUsage = aiUsage;
+  }) : _repository = repository,
+       _keyStore = keyStore,
+       _agentStore = agentStore,
+       _tools = tools,
+       _settings = settings,
+       _syncService = syncService,
+       _aiUsage = aiUsage;
 
   final ChatRepository _repository;
   final AiKeyStore _keyStore;
@@ -75,7 +75,10 @@ class ChatController extends ChangeNotifier {
     if (_sending) return;
 
     final providerId = _settings.aiProviderId;
-    var apiKey = await _keyStore.readKey(providerId);
+    final usingLocalModel = providerId == AiProviderId.local.name;
+    var apiKey = usingLocalModel
+        ? 'local'
+        : await _keyStore.readKey(providerId);
     AiClient client = aiProviderById(providerId).client;
 
     final sync = _syncService;
@@ -102,15 +105,18 @@ class ChatController extends ChangeNotifier {
 
     if (apiKey == null) {
       final provider = aiProviderById(providerId);
-      await _repository.addMessage(conversationId, 'error',
-          'No ${provider.displayName} API key saved yet — add one in Settings.');
+      await _repository.addMessage(
+        conversationId,
+        'error',
+        'No ${provider.displayName} API key saved yet — add one in Settings.',
+      );
       return;
     }
 
     // Server-proxied chats are metered server-side (token budgets for Luma
     // AI, a daily message count for Luma Support), so the local per-device
     // guard only applies when spending the user's own key.
-    if (!usingServerKey && !_settings.canSendAiMessage) {
+    if (!usingServerKey && !usingLocalModel && !_settings.canSendAiMessage) {
       await _repository.addMessage(
         conversationId,
         'error',
@@ -130,14 +136,14 @@ class ChatController extends ChangeNotifier {
       final agentId = await _agentStore.activeAgentId(providerId);
 
       final result = await client.chat(
-            apiKey: apiKey,
-            history: turns,
-            systemPrompt: _systemPrompt,
-            tools: _tools.schemas,
-            executeTool: _tools.execute,
-            metadataFor: AiToolRegistry.metadataFor,
-            agentId: agentId,
-          );
+        apiKey: apiKey,
+        history: turns,
+        systemPrompt: _systemPrompt,
+        tools: _tools.schemas,
+        executeTool: _tools.execute,
+        metadataFor: AiToolRegistry.metadataFor,
+        agentId: agentId,
+      );
 
       await _repository.addMessage(
         conversationId,
@@ -145,9 +151,10 @@ class ChatController extends ChangeNotifier {
         result.text,
         metadataJson: result.metadataJson,
       );
-      if (!usingServerKey) _settings.recordAiCall();
+      if (!usingServerKey && !usingLocalModel) _settings.recordAiCall();
       _settings.recordModelUsage(
-          modelUsageKeyFor(providerId, mode: googleMode));
+        modelUsageKeyFor(providerId, mode: googleMode),
+      );
       final usage = result.usage;
       if (usage != null) {
         await _aiUsage?.recordLumaCall(
@@ -161,7 +168,10 @@ class ChatController extends ChangeNotifier {
       await _repository.addMessage(conversationId, 'error', e.message);
     } catch (e) {
       await _repository.addMessage(
-          conversationId, 'error', 'Something went wrong: $e');
+        conversationId,
+        'error',
+        'Something went wrong: $e',
+      );
     } finally {
       _sending = false;
       notifyListeners();
@@ -169,21 +179,26 @@ class ChatController extends ChangeNotifier {
   }
 
   Future<void> _maybeTitleConversation(
-      int conversationId, String firstUserText) async {
+    int conversationId,
+    String firstUserText,
+  ) async {
     final existing = await _repository.loadMessages(conversationId);
     // Only the just-added user message present means this is conversation's
     // first turn — derive a short title from it.
     if (existing.length != 1) return;
     final trimmed = firstUserText.trim();
-    final title =
-        trimmed.length <= 40 ? trimmed : '${trimmed.substring(0, 40)}…';
+    final title = trimmed.length <= 40
+        ? trimmed
+        : '${trimmed.substring(0, 40)}…';
     if (title.isNotEmpty) {
       await _repository.renameConversation(conversationId, title);
     }
   }
 
   List<AiTurn> _toTurns(List<ChatMessageRecord> history) {
-    final turns = history.where((m) => m.role == 'user' || m.role == 'assistant');
+    final turns = history.where(
+      (m) => m.role == 'user' || m.role == 'assistant',
+    );
     final tail = turns.length > _maxHistoryTurns
         ? turns.skip(turns.length - _maxHistoryTurns)
         : turns;

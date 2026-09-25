@@ -11,7 +11,7 @@ demand and caches them on disk.
 ```
 server/benchmarks/
   manifest.json        the roster: id, test kind, model name, description
-  scenes/              one self-contained HTML file per scene (<id>.html)
+  scenes/              one self-contained HTML or GLB file per scene
   previews/            optional PNG thumbnail per scene (<id>.png), plus one
                        generic tile artwork per test kind
                        (<kind>-preview.png) shown while a scene has none —
