@@ -101,6 +101,29 @@ String generatePairingPassword() {
   return groups.join('-');
 }
 
+/// The form of [password] that actually goes into the key derivation, applied
+/// identically on both devices.
+///
+/// A generated password is read off one screen and typed into another, often
+/// in lower case, with spaces instead of dashes, or with a stray space picked
+/// up by a paste. Any of those used to fail as a wrong password — and after a
+/// few tries, lock the device out. So surrounding whitespace is always
+/// dropped, and anything that is a generated password once case and
+/// separators are ignored is put back into its canonical `ABCD-EFGH-…` form.
+/// A password the user chose themselves is otherwise left exactly as typed.
+String normalizePairingPassword(String password) {
+  final trimmed = password.trim();
+  final bare = trimmed.replaceAll(RegExp(r'[\s\-_.]'), '').toUpperCase();
+  if (bare.length != 20) return trimmed;
+  for (var i = 0; i < bare.length; i++) {
+    if (!_passwordAlphabet.contains(bare[i])) return trimmed;
+  }
+  final groups = <String>[
+    for (var i = 0; i < bare.length; i += 4) bare.substring(i, i + 4),
+  ];
+  return groups.join('-');
+}
+
 /// How much protection a user-chosen password offers, for the warning under
 /// the field. Generated passwords always land on [PasswordStrength.strong].
 enum PasswordStrength { tooShort, weak, fair, strong }
@@ -341,6 +364,13 @@ class HostHandshake {
     required Future<void> Function(Map<String, dynamic> message) writeControl,
   }) async {
     final helloJson = await readControl();
+    // A host that will not talk to this device at all — too many wrong
+    // passwords from here, or already full — says so in place of a hello.
+    if (helloJson['ok'] == false) {
+      throw HostAuthException(
+        helloJson['e']?.toString() ?? 'That device refused the connection.',
+      );
+    }
     final hello = HostHello.fromJson(helloJson);
     if (hello.version != kHostProtocolVersion) {
       throw const HostAuthException(
@@ -414,7 +444,8 @@ class HostHandshake {
           SimplePublicKey(remotePublicKey, type: KeyPairType.x25519),
     );
     final sharedBytes = Uint8List.fromList(await shared.extractBytes());
-    final passwordKey = await derivePasswordKey(password, salt);
+    final passwordKey =
+        await derivePasswordKey(normalizePairingPassword(password), salt);
 
     final ikm = Uint8List(sharedBytes.length + passwordKey.length)
       ..setAll(0, sharedBytes)

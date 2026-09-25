@@ -636,6 +636,35 @@ class SyncService extends ChangeNotifier {
     }
   }
 
+  /// Called when sign-in is refused because the account is not verified yet
+  /// (for example it was registered on another device, or before an app
+  /// restart lost the pending state). Records the account as pending and asks
+  /// the server for a fresh code. Returns true when a code was emailed, so
+  /// the UI can move to code entry; false means the operator approves by hand.
+  Future<bool> beginEmailVerification({
+    required String serverUrl,
+    required String email,
+  }) async {
+    final s = _state ?? (_state = await SyncStateStore.load());
+    final api = SyncApi(serverUrl);
+    try {
+      final normalizedEmail = email.trim().toLowerCase();
+      final result = await api.requestVerificationCode(normalizedEmail);
+      s
+        ..serverUrl = api.baseUrl
+        ..pendingApprovalEmail = normalizedEmail
+        ..pendingApprovalMode = (result.emailed
+                ? ServerApprovalMode.email
+                : ServerApprovalMode.manual)
+            .name;
+      await s.save();
+      notifyListeners();
+      return result.emailed;
+    } finally {
+      api.close();
+    }
+  }
+
   /// Submits the 6-digit code emailed for the account this device is
   /// waiting on. Only confirms the code server-side — it does NOT sign
   /// anything in, since that needs the password again; call [signIn]
