@@ -10,15 +10,15 @@ import '../../theme/luma_theme.dart';
 import '../plugins/installed/ai_usage/ai_usage_scope.dart';
 import 'ai_agent_store.dart';
 import 'ai_key_store.dart';
+import 'local_model_store.dart';
 import 'providers/ai_client.dart';
 import 'providers/ai_providers.dart';
 import 'providers/ai_usage.dart';
 import 'providers/google_client.dart';
 import 'providers/mistral_proxy_client.dart';
 
-/// The "AI Assistant" settings block: pick a provider and enter/replace/clear
-/// its API key. Collapsed by default (see [LumaCollapsibleSection]) — this
-/// is a secondary block, not a primary setting.
+/// The "AI Assistant" settings block: choose a hosted provider or manage the
+/// optional on-device model. Collapsed by default in [LumaCollapsibleSection].
 class AiSettingsSection extends StatelessWidget {
   const AiSettingsSection({super.key});
 
@@ -34,10 +34,13 @@ class AiSettingsSection extends StatelessWidget {
           const SizedBox(height: 12),
           // Re-mounts the key-management body whenever the provider changes,
           // so its per-provider loaded state (masked key, etc.) is fresh.
-          _AiKeyBody(
-            key: ValueKey(settings.aiProviderId),
-            providerId: settings.aiProviderId,
-          ),
+          if (settings.aiProviderId == AiProviderId.local.name)
+            const _LocalModelBody()
+          else
+            _AiKeyBody(
+              key: ValueKey(settings.aiProviderId),
+              providerId: settings.aiProviderId,
+            ),
           // Hosted agent profiles (e.g. Mistral's Agents API `agent_id`) are
           // currently only supported for the "Luma"/Mistral provider — see
           // AiProviderInfo.client.agentsBaseUrl.
@@ -56,6 +59,123 @@ class AiSettingsSection extends StatelessWidget {
   }
 }
 
+class _LocalModelBody extends StatefulWidget {
+  const _LocalModelBody();
+
+  @override
+  State<_LocalModelBody> createState() => _LocalModelBodyState();
+}
+
+class _LocalModelBodyState extends State<_LocalModelBody> {
+  final _store = LocalModelStore.instance;
+  bool _installed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshInstalled();
+  }
+
+  Future<void> _refreshInstalled() async {
+    final installed = await _store.isInstalled;
+    if (mounted) setState(() => _installed = installed);
+  }
+
+  Future<void> _download() async {
+    await _store.download();
+    await _refreshInstalled();
+  }
+
+  Future<void> _remove() async {
+    await _store.remove();
+    await _refreshInstalled();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return ListenableBuilder(
+      listenable: _store,
+      builder: (context, _) => LumaCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.phone_android_rounded, size: 17, color: luma.accent),
+                const SizedBox(width: 8),
+                Text(
+                  'Qwen3.5-0.8B · on-device',
+                  style: TextStyle(
+                    color: luma.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Download the ${LocalModelStore.modelSizeLabel} model once to use the Assistant offline. Prompts run on this device; online actions such as plugin downloads and market prices still need internet. Qwen is provided under Apache-2.0.',
+              style: TextStyle(
+                color: luma.textMuted,
+                fontSize: 11.5,
+                height: 1.4,
+              ),
+            ),
+            if (_store.isDownloading) ...[
+              const SizedBox(height: 14),
+              LinearProgressIndicator(value: _store.progress),
+              const SizedBox(height: 5),
+              Text(
+                _store.progress == null
+                    ? 'Downloading model…'
+                    : 'Downloading model… ${(_store.progress! * 100).toStringAsFixed(0)}%',
+                style: TextStyle(color: luma.textMuted, fontSize: 11),
+              ),
+            ] else if (_store.error != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                'Download failed: ${_store.error}',
+                style: TextStyle(color: luma.danger, fontSize: 11.5),
+              ),
+            ],
+            const SizedBox(height: 12),
+            if (_installed)
+              Row(
+                children: [
+                  Icon(
+                    Icons.check_circle_rounded,
+                    size: 16,
+                    color: luma.accent,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Model downloaded and ready',
+                      style: TextStyle(color: luma.textPrimary, fontSize: 12),
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: _remove,
+                    icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                    label: const Text('Remove'),
+                  ),
+                ],
+              )
+            else
+              FilledButton.icon(
+                onPressed: _store.isDownloading ? null : _download,
+                icon: const Icon(Icons.download_rounded, size: 18),
+                label: const Text('Download model'),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Which model has been used the most, across every provider — a simple
 /// lifetime message count for the 1x-weight models (Luma Assistant,
 /// Anthropic, OpenAI), and for Luma AI's three Gemini tiers a count scaled
@@ -69,12 +189,15 @@ class _ModelUsageSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
 
-    final rows = kModelUsageEntries
-        .map((e) => (entry: e, count: usage[e.key] ?? 0))
-        .where((r) => r.count > 0)
-        .toList()
-      ..sort((a, b) =>
-          (b.count * b.entry.weight).compareTo(a.count * a.entry.weight));
+    final rows =
+        kModelUsageEntries
+            .map((e) => (entry: e, count: usage[e.key] ?? 0))
+            .where((r) => r.count > 0)
+            .toList()
+          ..sort(
+            (a, b) =>
+                (b.count * b.entry.weight).compareTo(a.count * a.entry.weight),
+          );
     final maxScore = rows.isEmpty
         ? 1
         : rows.map((r) => r.count * r.entry.weight).reduce(math.max);
@@ -102,7 +225,11 @@ class _ModelUsageSection extends StatelessWidget {
             'Which model you\'ve sent the most to. Luma AI\'s smarter tiers '
             'cost more per message, so they\'re weighted accordingly '
             '(Nebula ×5, Pulsar ×20) rather than counted flat.',
-            style: TextStyle(color: luma.textMuted, fontSize: 11.5, height: 1.4),
+            style: TextStyle(
+              color: luma.textMuted,
+              fontSize: 11.5,
+              height: 1.4,
+            ),
           ),
           const SizedBox(height: 14),
           if (rows.isEmpty)
@@ -183,7 +310,8 @@ class _UsageRow extends StatelessWidget {
             minHeight: 6,
             backgroundColor: luma.border,
             valueColor: AlwaysStoppedAnimation(
-                top ? luma.accent : luma.accent.withValues(alpha: 0.55)),
+              top ? luma.accent : luma.accent.withValues(alpha: 0.55),
+            ),
           ),
         ),
       ],
@@ -244,8 +372,11 @@ class _ProviderChip extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(provider.icon,
-                  size: 16, color: selected ? luma.accent : luma.textSecondary),
+              Icon(
+                provider.icon,
+                size: 16,
+                color: selected ? luma.accent : luma.textSecondary,
+              ),
               const SizedBox(width: 8),
               Text(
                 provider.displayName,
@@ -398,8 +529,10 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(color: luma.border),
         ),
-        title: Text('Remove API key?',
-            style: TextStyle(color: luma.textPrimary)),
+        title: Text(
+          'Remove API key?',
+          style: TextStyle(color: luma.textPrimary),
+        ),
         content: Text(
           'You won\'t be able to chat with ${_provider.displayName} until '
           'you add another key.',
@@ -430,7 +563,9 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
 
   void _showSnack(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -447,11 +582,14 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
                 children: [
                   Icon(Icons.key_rounded, size: 16, color: luma.accent),
                   const SizedBox(width: 8),
-                  Text(_savedMasked!,
-                      style: TextStyle(
-                          color: luma.textPrimary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600)),
+                  Text(
+                    _savedMasked!,
+                    style: TextStyle(
+                      color: luma.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
@@ -460,11 +598,14 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
                 children: [
                   Icon(Icons.cloud_done_rounded, size: 16, color: luma.accent),
                   const SizedBox(width: 8),
-                  Text('Shared key available from your sync server',
-                      style: TextStyle(
-                          color: luma.textPrimary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600)),
+                  Text(
+                    'Shared key available from your sync server',
+                    style: TextStyle(
+                      color: luma.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
@@ -478,13 +619,15 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
                 hintText: _savedMasked != null
                     ? 'Enter a new key to replace it'
                     : _fromServer
-                        ? 'Enter your own key to override the shared one'
-                        : _provider.keyHint,
+                    ? 'Enter your own key to override the shared one'
+                    : _provider.keyHint,
                 hintStyle: TextStyle(color: luma.textMuted),
                 filled: true,
                 fillColor: luma.background,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide: BorderSide(color: luma.border),
@@ -536,15 +679,19 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
             Text(
               _fromServer
                   ? 'Your sync server\'s admin has configured a shared '
-                      '${_provider.displayName} key, so you don\'t need one — '
-                      'chats are relayed through your sync server, which '
-                      'holds the key; it\'s never sent to this device. Enter '
-                      'your own key above to bypass the server and talk to '
-                      '${_provider.displayName} directly instead.'
+                        '${_provider.displayName} key, so you don\'t need one — '
+                        'chats are relayed through your sync server, which '
+                        'holds the key; it\'s never sent to this device. Enter '
+                        'your own key above to bypass the server and talk to '
+                        '${_provider.displayName} directly instead.'
                   : 'Stored locally on this device only, encrypted at rest. '
-                      'Sent directly to ${_provider.displayName} when you '
-                      'chat — never to any luma server.',
-              style: TextStyle(color: luma.textMuted, fontSize: 11.5, height: 1.4),
+                        'Sent directly to ${_provider.displayName} when you '
+                        'chat — never to any luma server.',
+              style: TextStyle(
+                color: luma.textMuted,
+                fontSize: 11.5,
+                height: 1.4,
+              ),
             ),
           ],
         ),
@@ -597,7 +744,10 @@ class _AgentProfilesSectionState extends State<_AgentProfilesSection> {
     if (name.isEmpty || agentId.isEmpty) return;
     setState(() => _adding = true);
     final store = await AiAgentStore.load();
-    await store.addProfile(widget.providerId, AgentProfile(name: name, agentId: agentId));
+    await store.addProfile(
+      widget.providerId,
+      AgentProfile(name: name, agentId: agentId),
+    );
     await store.setActiveAgentId(widget.providerId, agentId);
     _nameController.clear();
     _idController.clear();
@@ -645,7 +795,11 @@ class _AgentProfilesSectionState extends State<_AgentProfilesSection> {
             Text(
               'Optional: point the assistant at a specific agent you\'ve '
               "configured on Mistral's platform instead of the default model.",
-              style: TextStyle(color: luma.textMuted, fontSize: 11.5, height: 1.4),
+              style: TextStyle(
+                color: luma.textMuted,
+                fontSize: 11.5,
+                height: 1.4,
+              ),
             ),
             const SizedBox(height: 12),
             _AgentOptionRow(
@@ -731,7 +885,9 @@ class _AgentOptionRow extends StatelessWidget {
           child: Row(
             children: [
               Icon(
-                selected ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded,
+                selected
+                    ? Icons.radio_button_checked_rounded
+                    : Icons.radio_button_unchecked_rounded,
                 size: 16,
                 color: selected ? luma.accent : luma.textMuted,
               ),
@@ -740,23 +896,31 @@ class _AgentOptionRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(label,
-                        style: TextStyle(
-                            color: luma.textPrimary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600)),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        color: luma.textPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     if (subtitle != null)
-                      Text(subtitle!,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: luma.textMuted, fontSize: 11)),
+                      Text(
+                        subtitle!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: luma.textMuted, fontSize: 11),
+                      ),
                   ],
                 ),
               ),
               if (onDelete != null)
                 IconButton(
-                  icon: Icon(Icons.delete_outline_rounded,
-                      size: 18, color: luma.textMuted),
+                  icon: Icon(
+                    Icons.delete_outline_rounded,
+                    size: 18,
+                    color: luma.textMuted,
+                  ),
                   onPressed: onDelete,
                 ),
             ],
@@ -767,11 +931,14 @@ class _AgentOptionRow extends StatelessWidget {
   }
 }
 
-InputDecoration _agentFieldDecoration(LumaPalette luma, {required String hint}) {
+InputDecoration _agentFieldDecoration(
+  LumaPalette luma, {
+  required String hint,
+}) {
   OutlineInputBorder border(Color c) => OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: c),
-      );
+    borderRadius: BorderRadius.circular(10),
+    borderSide: BorderSide(color: c),
+  );
   return InputDecoration(
     isDense: true,
     hintText: hint,

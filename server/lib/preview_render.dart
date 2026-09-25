@@ -86,9 +86,10 @@ class PreviewRenderStatus {
 /// Renders the PNG banners of AI benchmark scenes, driven from the admin
 /// dashboard's Control panel ("Render missing banners" / "Re-render all").
 ///
-/// Operators add scenes by dropping HTML files into `<dataDir>/ai_benchmarks/`
-/// (see `server/benchmarks/README.md`). A scene without a banner shows the
-/// kind's generic artwork in every client until one is rendered.
+/// Operators add scenes by dropping HTML or GLB files into
+/// `<dataDir>/ai_benchmarks/` (see `server/benchmarks/README.md`). A scene
+/// without a banner shows the kind's generic artwork in every client until
+/// one is rendered.
 ///
 /// Rendering needs node plus a headless Chromium (the Docker image carries
 /// both, see the Dockerfile; `LUMA_CHROMIUM_BIN` / `LUMA_NODE_BIN` /

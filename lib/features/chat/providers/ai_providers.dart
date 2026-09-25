@@ -5,8 +5,9 @@ import 'anthropic_client.dart';
 import 'google_client.dart';
 import 'mistral_client.dart';
 import 'openai_client.dart';
+import 'local_qwen_client.dart';
 
-enum AiProviderId { anthropic, openai, mistral, google }
+enum AiProviderId { anthropic, openai, mistral, google, local }
 
 /// One selectable AI provider in Settings: its display identity plus the
 /// [AiClient] that actually talks to it.
@@ -64,9 +65,16 @@ final List<AiProviderInfo> kAiProviders = [
     keyHint: 'AIza...',
     client: GoogleClient(),
   ),
+  AiProviderInfo(
+    id: AiProviderId.local,
+    displayName: 'On-device Qwen',
+    icon: Icons.phone_android_rounded,
+    keyHint: '',
+    client: LocalQwenClient(),
+  ),
 ];
 
 AiProviderInfo aiProviderById(String id) => kAiProviders.firstWhere(
-      (p) => p.id.name == id,
-      orElse: () => kAiProviders.first,
-    );
+  (p) => p.id.name == id,
+  orElse: () => kAiProviders.first,
+);

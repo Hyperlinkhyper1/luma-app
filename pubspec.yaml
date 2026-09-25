@@ -95,6 +95,7 @@ dependencies:
   # straight from this device to the user's own server.
   dartssh2: ^2.13.0
   flutter_secure_storage: ^10.3.2
+  llm_llamacpp: ^0.7.0
 
 dev_dependencies:
   flutter_test:

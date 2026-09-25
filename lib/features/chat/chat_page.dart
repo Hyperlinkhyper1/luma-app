@@ -15,6 +15,7 @@ import '../plugins/installed/steam_tools/cs2_market_scope.dart';
 import '../notes/notes_repository.dart';
 import 'ai_agent_store.dart';
 import 'ai_key_store.dart';
+import 'local_model_store.dart';
 import 'ai_tools.dart';
 import 'chat_controller.dart';
 import 'chat_scope.dart';
@@ -27,10 +28,9 @@ import 'widgets/chat_message_list.dart';
 
 const _wideBreakpoint = 760.0;
 
-/// The AI Assistant tab: a chat UI backed by the user's own API key for
-/// whichever provider is selected in Settings (stored locally, see
-/// [AiKeyStore]) with tool use for actions like installing a plugin or
-/// generating a QR code on the user's behalf.
+/// The AI Assistant tab: chats with the selected hosted provider or the
+/// optional local model, with tool use for actions like installing a plugin
+/// or generating a QR code on the user's behalf.
 class ChatPage extends StatefulWidget {
   const ChatPage({
     super.key,
@@ -83,7 +83,8 @@ class _ChatPageState extends State<ChatPage> {
     return ListenableBuilder(
       listenable: syncService,
       builder: (context, _) {
-        if (!syncService.p2pReady) {
+        if (!syncService.p2pReady &&
+            SettingsScope.of(context).aiProviderId != AiProviderId.local.name) {
           return _NoAccountState(syncService: syncService);
         }
         return FutureBuilder<(AiKeyStore, AiAgentStore)>(
@@ -183,6 +184,9 @@ class _ChatBodyState extends State<_ChatBody> {
   /// Luma AI/Google) the sync server has an operator-configured key that
   /// chats will be proxied through — see [ChatController].
   Future<bool> _checkKeyAvailable() async {
+    if (_providerId == AiProviderId.local.name) {
+      return LocalModelStore.instance.isInstalled;
+    }
     if (await widget.keyStore.readKey(_providerId) != null) return true;
     if (_providerId == AiProviderId.mistral.name) {
       return widget.syncService.mistralKeyConfiguredOnServer();
@@ -198,12 +202,18 @@ class _ChatBodyState extends State<_ChatBody> {
   void initState() {
     super.initState();
     widget.settings.addListener(_onSettingsChanged);
+    LocalModelStore.instance.addListener(_onLocalModelChanged);
   }
 
   @override
   void dispose() {
     widget.settings.removeListener(_onSettingsChanged);
+    LocalModelStore.instance.removeListener(_onLocalModelChanged);
     super.dispose();
+  }
+
+  void _onLocalModelChanged() {
+    if (_providerId == AiProviderId.local.name) _recheckKey();
   }
 
   void _onSettingsChanged() {
@@ -236,6 +246,7 @@ class _ChatBodyState extends State<_ChatBody> {
         if (snap.data != true) {
           return _NoKeyState(
             settings: widget.settings,
+            localModel: _providerId == AiProviderId.local.name,
             onOpenSettings: widget.onOpenSettings,
             onRecheck: _recheckKey,
           );
@@ -315,10 +326,12 @@ class _ChatLayout extends StatelessWidget {
                         ),
                       ),
                     ),
-                    Expanded(child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: thread,
-                    )),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: thread,
+                      ),
+                    ),
                   ],
                 );
         }
@@ -396,10 +409,12 @@ class _ConversationList extends StatelessWidget {
                       cursor: SystemMouseCursors.click,
                       child: GestureDetector(
                         onTap: () => onSelect(c.id),
-                        onLongPress: () =>
-                            _showContextMenu(context, null, c),
+                        onLongPress: () => _showContextMenu(context, null, c),
                         onSecondaryTapDown: (details) => _showContextMenu(
-                            context, details.globalPosition, c),
+                          context,
+                          details.globalPosition,
+                          c,
+                        ),
                         child: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
@@ -415,8 +430,11 @@ class _ConversationList extends StatelessWidget {
                               Row(
                                 children: [
                                   if (c.pinned) ...[
-                                    Icon(Icons.push_pin_rounded,
-                                        size: 12, color: luma.accent),
+                                    Icon(
+                                      Icons.push_pin_rounded,
+                                      size: 12,
+                                      color: luma.accent,
+                                    ),
                                     const SizedBox(width: 4),
                                   ],
                                   Expanded(
@@ -436,8 +454,10 @@ class _ConversationList extends StatelessWidget {
                               const SizedBox(height: 2),
                               Text(
                                 _relative(c.updatedAt),
-                                style:
-                                    TextStyle(color: luma.textMuted, fontSize: 11),
+                                style: TextStyle(
+                                  color: luma.textMuted,
+                                  fontSize: 11,
+                                ),
                               ),
                             ],
                           ),
@@ -482,10 +502,7 @@ class _ConversationList extends StatelessWidget {
       ),
       items: [
         const PopupMenuItem(value: 'rename', child: Text('Rename')),
-        PopupMenuItem(
-          value: 'pin',
-          child: Text(c.pinned ? 'Unpin' : 'Pin'),
-        ),
+        PopupMenuItem(value: 'pin', child: Text(c.pinned ? 'Unpin' : 'Pin')),
         PopupMenuItem(
           value: 'delete',
           child: Text('Delete', style: TextStyle(color: luma.danger)),
@@ -516,8 +533,10 @@ class _ConversationList extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(color: luma.border),
         ),
-        title: Text('Rename conversation',
-            style: TextStyle(color: luma.textPrimary)),
+        title: Text(
+          'Rename conversation',
+          style: TextStyle(color: luma.textPrimary),
+        ),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -526,8 +545,10 @@ class _ConversationList extends StatelessWidget {
             isDense: true,
             filled: true,
             fillColor: luma.background,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(color: luma.border),
@@ -576,8 +597,10 @@ class _ConversationList extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(color: luma.border),
         ),
-        title: Text('Delete "${c.title}"?',
-            style: TextStyle(color: luma.textPrimary)),
+        title: Text(
+          'Delete "${c.title}"?',
+          style: TextStyle(color: luma.textPrimary),
+        ),
         content: Text(
           'This removes the conversation and its messages.',
           style: TextStyle(color: luma.textSecondary),
@@ -685,6 +708,7 @@ class _ChatComposerState extends State<_ChatComposer> {
     super.initState();
     widget.controller.addListener(_onControllerChanged);
     widget.settings.addListener(_refreshUsage);
+    LocalModelStore.instance.addListener(_refreshUsage);
     _refreshUsage();
   }
 
@@ -692,6 +716,7 @@ class _ChatComposerState extends State<_ChatComposer> {
   void dispose() {
     widget.controller.removeListener(_onControllerChanged);
     widget.settings.removeListener(_refreshUsage);
+    LocalModelStore.instance.removeListener(_refreshUsage);
     super.dispose();
   }
 
@@ -705,6 +730,17 @@ class _ChatComposerState extends State<_ChatComposer> {
   Future<void> _refreshUsage() async {
     final settings = widget.settings;
     final providerId = settings.aiProviderId;
+    if (providerId == AiProviderId.local.name) {
+      final installed = await LocalModelStore.instance.isInstalled;
+      if (!mounted) return;
+      setState(() {
+        _caption = installed
+            ? 'On-device model · no daily limit'
+            : 'Download Qwen3.5-0.8B in Settings to use it';
+        _blocked = !installed;
+      });
+      return;
+    }
     final localKey = await widget.keyStore.readKey(providerId);
 
     String caption;
@@ -775,8 +811,12 @@ class _ModelChoice {
 final List<_ModelChoice> _lumaModels = [
   for (final mode in AiMode.values)
     _ModelChoice(
-        'Luma ${mode.displayName}', AiProviderId.google.name, mode.name),
+      'Luma ${mode.displayName}',
+      AiProviderId.google.name,
+      mode.name,
+    ),
   _ModelChoice('Luma Assistant 1.0', AiProviderId.mistral.name),
+  _ModelChoice('On-device Qwen3.5-0.8B', AiProviderId.local.name),
 ];
 
 final List<_ModelChoice> _apiKeyModels = [
@@ -793,11 +833,10 @@ class _ModelSelector extends StatelessWidget {
   const _ModelSelector({required this.settings});
   final SettingsController settings;
 
-  _ModelChoice get _active =>
-      [..._lumaModels, ..._apiKeyModels].firstWhere(
-        (c) => c.isActive(settings),
-        orElse: () => _lumaModels.first,
-      );
+  _ModelChoice get _active => [
+    ..._lumaModels,
+    ..._apiKeyModels,
+  ].firstWhere((c) => c.isActive(settings), orElse: () => _lumaModels.first);
 
   Future<void> _openMenu(BuildContext context) async {
     final luma = context.luma;
@@ -813,20 +852,26 @@ class _ModelSelector extends StatelessWidget {
     final position = RelativeRect.fromRect(
       Rect.fromPoints(
         button.localToGlobal(Offset.zero, ancestor: overlay),
-        button.localToGlobal(button.size.bottomRight(Offset.zero),
-            ancestor: overlay),
+        button.localToGlobal(
+          button.size.bottomRight(Offset.zero),
+          ancestor: overlay,
+        ),
       ),
       Offset.zero & overlay.size,
     );
 
     PopupMenuItem<_ModelChoice> item(_ModelChoice choice) {
       final selected = choice.isActive(settings);
-      final usageKey = modelUsageKeyFor(choice.providerId,
-          mode: choice.mode == null ? null : aiModeById(choice.mode!));
+      final usageKey = modelUsageKeyFor(
+        choice.providerId,
+        mode: choice.mode == null ? null : aiModeById(choice.mode!),
+      );
       final count = settings.modelUsage[usageKey] ?? 0;
       final weight = kModelUsageEntries
-          .firstWhere((e) => e.key == usageKey,
-              orElse: () => const ModelUsageEntry('', '', 1))
+          .firstWhere(
+            (e) => e.key == usageKey,
+            orElse: () => const ModelUsageEntry('', '', 1),
+          )
           .weight;
       final usageLabel = count == 0
           ? 'Unused'
@@ -846,8 +891,10 @@ class _ModelSelector extends StatelessWidget {
                 ),
               ),
             ),
-            Text(usageLabel,
-                style: TextStyle(color: luma.textMuted, fontSize: 10.5)),
+            Text(
+              usageLabel,
+              style: TextStyle(color: luma.textMuted, fontSize: 10.5),
+            ),
             const SizedBox(width: 8),
             SizedBox(
               width: 16,
@@ -923,8 +970,7 @@ class _ModelSelector extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 3),
-              Icon(Icons.expand_less_rounded,
-                  size: 13, color: luma.textMuted),
+              Icon(Icons.expand_less_rounded, size: 13, color: luma.textMuted),
             ],
           ),
         ),
@@ -955,11 +1001,13 @@ class _LoadError extends StatelessWidget {
 class _NoKeyState extends StatelessWidget {
   const _NoKeyState({
     required this.settings,
+    required this.localModel,
     required this.onOpenSettings,
     required this.onRecheck,
   });
 
   final SettingsController settings;
+  final bool localModel;
   final VoidCallback onOpenSettings;
   final VoidCallback onRecheck;
 
@@ -968,10 +1016,13 @@ class _NoKeyState extends StatelessWidget {
     return Center(
       child: LumaEmptyState(
         icon: Icons.smart_toy_rounded,
-        title: 'This model isn\'t available yet',
-        subtitle:
-            'Add your own API key in Settings to use it — stored locally on '
-            'this device only — or switch to another model below.',
+        title: localModel
+            ? 'Download the on-device model'
+            : 'This model isn\'t available yet',
+        subtitle: localModel
+            ? 'Download Qwen3.5-0.8B in Assistant settings to use it offline.'
+            : 'Add your own API key in Settings to use it — stored locally on '
+                  'this device only — or switch to another model below.',
         action: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -985,7 +1036,7 @@ class _NoKeyState extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 LumaGhostButton(
-                  label: 'I added a key',
+                  label: localModel ? 'Check again' : 'I added a key',
                   icon: Icons.refresh_rounded,
                   onTap: onRecheck,
                 ),
