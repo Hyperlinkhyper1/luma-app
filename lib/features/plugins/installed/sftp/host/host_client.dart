@@ -62,6 +62,9 @@ class LumaHostSession extends SftpSession {
   String get homeDirectory => RemotePath.separator;
 
   final _pending = <int, Completer<Map<String, dynamic>>>{};
+
+  /// Listing batches that arrived ahead of their request's reply.
+  final _listParts = <int, List<Object?>>{};
   final _downloads = <int, _Download>{};
   final _closed = Completer<void>();
 
@@ -330,6 +333,11 @@ class LumaHostSession extends SftpSession {
     final id = (message['i'] as num?)?.toInt() ?? 0;
 
     final event = message['ev']?.toString();
+    if (event == kEventListPart) {
+      final batch = message['es'];
+      if (batch is List) _listParts.putIfAbsent(id, () => []).addAll(batch);
+      return;
+    }
     if (event != null) {
       final download = _downloads[id];
       if (event == kEventEof) {
@@ -424,13 +432,20 @@ class LumaHostSession extends SftpSession {
   @override
   Future<List<SftpEntry>> list(String path) async {
     final normalized = RemotePath.normalize(path);
-    final reply = await _request(HostOp.list, {'p': normalized});
+    final id = _nextId++;
+    final Map<String, dynamic> reply;
+    List<Object?> earlier;
+    try {
+      reply = await _requestWithId(id, HostOp.list, {'p': normalized});
+    } finally {
+      earlier = _listParts.remove(id) ?? const [];
+    }
     final raw = reply['es'];
     if (raw is! List) {
       throw SftpConnectionException('That device sent a folder we could not read.');
     }
     final entries = <SftpEntry>[];
-    for (final item in raw) {
+    for (final item in [...earlier, ...raw]) {
       if (item is! Map<String, dynamic>) continue;
       entries.add(_toEntry(HostEntry.fromJson(item), normalized));
     }

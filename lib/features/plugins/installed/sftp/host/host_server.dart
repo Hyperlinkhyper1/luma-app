@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -679,7 +680,22 @@ class _HostConnection {
       ));
       return;
     }
-    await _reply(hostOk(id, {'es': entries}));
+    // A big folder (a phone's camera roll runs to thousands of entries) is
+    // sent in batches: one frame holding all of it would exceed what the
+    // other end accepts, and it would drop the connection.
+    var batch = <Map<String, dynamic>>[];
+    var batchBytes = 0;
+    for (final entry in entries) {
+      final size = utf8.encode(jsonEncode(entry)).length + 1;
+      if (batch.isNotEmpty && batchBytes + size > kListBatchBytes) {
+        await _reply({'i': id, 'ev': kEventListPart, 'es': batch});
+        batch = <Map<String, dynamic>>[];
+        batchBytes = 0;
+      }
+      batch.add(entry);
+      batchBytes += size;
+    }
+    await _reply(hostOk(id, {'es': batch}));
   }
 
   Future<void> _opStat(int id, Map<String, dynamic> message) async {

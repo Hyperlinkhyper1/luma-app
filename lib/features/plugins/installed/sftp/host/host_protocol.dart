@@ -34,7 +34,10 @@ import 'dart:typed_data';
 /// 2: the host always sends a sealed admission record (see [kAdmitKey])
 /// before serving anything, so a client is only "connected" once it has
 /// actually been let in.
-const int kHostProtocolVersion = 2;
+/// 3: a directory listing may arrive as several [kEventListPart] records
+/// before its reply. A version-2 client would silently show only the last
+/// batch of a large folder, so the two must not mix.
+const int kHostProtocolVersion = 3;
 
 /// The port the host listens on unless the user picks another.
 const int kDefaultHostPort = 7420;
@@ -115,6 +118,15 @@ enum HostOp {
 /// the end of a download stream, or the reason one stopped early.
 const String kEventEof = 'eof';
 const String kEventError = 'err';
+
+/// One batch of a directory listing too large for a single frame, carried in
+/// `es`. The reply that ends the request carries the last batch.
+const String kEventListPart = 'ls';
+
+/// Roughly how much JSON one listing record may carry before the rest goes
+/// into the next one — well under [kMaxHostFrameBytes], which a folder of a
+/// few thousand photos otherwise blew straight through.
+const int kListBatchBytes = 128 * 1024;
 
 /// One directory entry as it travels over the wire. Field names are short
 /// because a large directory sends thousands of them.
