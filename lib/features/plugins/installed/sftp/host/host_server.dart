@@ -9,6 +9,7 @@ import 'host_crypto.dart';
 import 'host_discovery.dart';
 import 'host_jail.dart';
 import 'host_protocol.dart';
+import 'storage_access.dart';
 
 /// Whether the host is listening, and why not when it isn't.
 enum HostStatus { stopped, starting, running, failed }
@@ -662,6 +663,21 @@ class _HostConnection {
         // A file that vanished or cannot be stat'd mid-listing is skipped
         // rather than failing the whole directory.
       }
+    }
+    // Android's scoped storage returns an empty listing — not an error — for
+    // a folder full of other apps' files when luma lacks file access. Say so,
+    // or the other device just shows "This folder is empty".
+    if (entries.isEmpty &&
+        HostStorageAccess.isSharedStoragePath(path) &&
+        !await HostStorageAccess.granted()) {
+      await _reply(hostError(
+        id,
+        'This folder may not be empty: luma on the other device is not '
+        'allowed to see files other apps made. On that device, allow "All '
+        'files access" for luma (the Host tab or This device screen has a '
+        'button for it), then refresh.',
+      ));
+      return;
     }
     await _reply(hostOk(id, {'es': entries}));
   }
