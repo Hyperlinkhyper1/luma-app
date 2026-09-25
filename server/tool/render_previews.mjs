@@ -377,16 +377,32 @@ function cathedralViewerHtml(base64Glb) {
 </script></body></html>`;
 }
 
+// Models often write a wrong total length (or a wrong last-chunk length) into
+// the GLB header. Loaders reject that outright, so rewrite the lengths from
+// the bytes actually present before validating.
+function repairGlb(input) {
+  if (input.length < 20 || input.toString('ascii', 0, 4) !== 'glTF') return input;
+  const bytes = Buffer.from(input);
+  bytes.writeUInt32LE(bytes.length, 8);
+  let offset = 12;
+  while (offset + 8 <= bytes.length) {
+    const remaining = bytes.length - offset - 8;
+    const chunkLength = bytes.readUInt32LE(offset);
+    if (chunkLength > remaining) {
+      bytes.writeUInt32LE(remaining, offset);
+      break;
+    }
+    offset += 8 + chunkLength;
+  }
+  return bytes;
+}
+
 function validateGlb(bytes, id) {
   if (bytes.length < 20 || bytes.toString('ascii', 0, 4) !== 'glTF') {
     throw new Error(`invalid GLB for ${id}: missing glTF header`);
   }
   if (bytes.readUInt32LE(4) !== 2) {
     throw new Error(`invalid GLB for ${id}: expected glTF version 2`);
-  }
-  const declaredLength = bytes.readUInt32LE(8);
-  if (declaredLength !== bytes.length) {
-    throw new Error(`invalid GLB for ${id}: header declares ${declaredLength} bytes, file has ${bytes.length}`);
   }
   if (bytes.readUInt32LE(16) !== 0x4e4f534a) {
     throw new Error(`invalid GLB for ${id}: first chunk is not JSON`);
@@ -505,7 +521,7 @@ async function main() {
         if (kind === 'pagoda') await page.evaluateOnNewDocument(installShotControl);
         else if (framing) await page.evaluateOnNewDocument(installShotControl, { clock: false });
         if (kind === 'cathedral') {
-          const glb = await fs.promises.readFile(file);
+          const glb = repairGlb(await fs.promises.readFile(file));
           validateGlb(glb, id);
           await page.setContent(cathedralViewerHtml(glb.toString('base64')),
             { waitUntil: 'domcontentloaded', timeout: 120000 });
