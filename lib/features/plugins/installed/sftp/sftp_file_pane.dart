@@ -1,4 +1,7 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../../theme/luma_theme.dart';
 import 'sftp_paths.dart';
@@ -66,6 +69,7 @@ class SftpFilePane extends StatelessWidget {
     required this.onToggleSelect,
     required this.onContextMenu,
     required this.onDropped,
+    this.onSelectRange,
     this.subtitle,
     this.emptyMessage = 'This folder is empty.',
     this.compact = false,
@@ -98,6 +102,12 @@ class SftpFilePane extends StatelessWidget {
 
   final ValueChanged<PaneEntry> onToggleSelect;
 
+  /// Shift+click, the way Windows Explorer does it: every row from the last
+  /// plainly clicked one (the anchor) to this one. [additive] is true with
+  /// Ctrl held too, which adds the range instead of replacing the selection.
+  final void Function(List<PaneEntry> range, {required bool additive})?
+  onSelectRange;
+
   /// Right-click on desktop, long-press on touch.
   final void Function(PaneEntry entry, Offset globalPosition) onContextMenu;
 
@@ -105,7 +115,7 @@ class SftpFilePane extends StatelessWidget {
   /// the folder they landed on, which is this pane's own path unless the drop
   /// happened on a directory row.
   final void Function(PaneDragPayload payload, String targetDirectory)
-      onDropped;
+  onDropped;
 
   /// Shown in place of the list when there is nothing in the folder.
   final String emptyMessage;
@@ -153,23 +163,27 @@ class SftpFilePane extends StatelessWidget {
   Widget _buildBody(BuildContext context, LumaPalette luma) {
     final list = entries.isEmpty && !loading
         ? _PaneEmpty(message: error == null ? emptyMessage : 'Nothing to show.')
-        : ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            itemCount: entries.length,
-            itemBuilder: (context, index) {
-              final entry = entries[index];
-              return _EntryRow(
-                entry: entry,
-                side: side,
-                selected: selection.contains(entry.path),
-                compact: compact,
-                selectionForDrag: _dragEntries(entry),
-                onOpen: () => onOpen(entry),
-                onToggleSelect: () => onToggleSelect(entry),
-                onContextMenu: (position) => onContextMenu(entry, position),
-                onDroppedOnFolder: (payload) => onDropped(payload, entry.path),
-              );
-            },
+        : _SelectionAnchor(
+            path: path,
+            builder: (context, anchor) => ListView.builder(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              itemCount: entries.length,
+              itemBuilder: (context, index) {
+                final entry = entries[index];
+                return _EntryRow(
+                  entry: entry,
+                  side: side,
+                  selected: selection.contains(entry.path),
+                  compact: compact,
+                  selectionForDrag: _dragEntries(entry),
+                  onOpen: () => onOpen(entry),
+                  onToggleSelect: () => _select(entry, anchor),
+                  onContextMenu: (position) => onContextMenu(entry, position),
+                  onDroppedOnFolder: (payload) =>
+                      onDropped(payload, entry.path),
+                );
+              },
+            ),
           );
 
     // The whole body is a drop target for the other pane, so dropping
@@ -220,6 +234,30 @@ class SftpFilePane extends StatelessWidget {
         );
       },
     );
+  }
+
+  /// A click on a row's select box, or on a file row: a plain one toggles the
+  /// row and makes it the anchor; with Shift held it selects the range from
+  /// the anchor, which stays put so the range can be redrawn.
+  void _select(PaneEntry entry, _Anchor anchor) {
+    final keyboard = HardwareKeyboard.instance;
+    final end = entries.indexOf(entry);
+    final start = anchor.path == null
+        ? -1
+        : entries.indexWhere((e) => e.path == anchor.path);
+    final rangeSelect = onSelectRange;
+    if (keyboard.isShiftPressed &&
+        rangeSelect != null &&
+        start >= 0 &&
+        end >= 0) {
+      rangeSelect(
+        entries.sublist(math.min(start, end), math.max(start, end) + 1),
+        additive: keyboard.isControlPressed || keyboard.isMetaPressed,
+      );
+      return;
+    }
+    anchor.path = entry.path;
+    onToggleSelect(entry);
   }
 
   /// Dragging a row that is part of the selection moves the whole selection;
@@ -545,7 +583,12 @@ class _EntryRowState extends State<_EntryRow> {
         // which is 300ms of dead air on the two most common actions. Folders
         // open on a tap, files select on a tap, and "Open" is in the context
         // menu for the files where it means something.
-        onTap: entry.isDirectory ? widget.onOpen : widget.onToggleSelect,
+        // With Shift held a folder joins a range selection instead of opening,
+        // as it would in Explorer. Read at tap time, not build time.
+        onTap: () =>
+            entry.isDirectory && !HardwareKeyboard.instance.isShiftPressed
+            ? widget.onOpen()
+            : widget.onToggleSelect(),
         onLongPressStart: (details) =>
             widget.onContextMenu(details.globalPosition),
         onSecondaryTapDown: (details) =>
@@ -583,8 +626,9 @@ class _EntryRowState extends State<_EntryRow> {
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 13,
-                    fontWeight:
-                        entry.isDirectory ? FontWeight.w600 : FontWeight.w500,
+                    fontWeight: entry.isDirectory
+                        ? FontWeight.w600
+                        : FontWeight.w500,
                     fontStyle: entry.isLink ? FontStyle.italic : null,
                   ),
                 ),
@@ -658,8 +702,7 @@ class _EntryRowState extends State<_EntryRow> {
     // subfolder without opening it first.
     return DragTarget<PaneDragPayload>(
       onWillAcceptWithDetails: (details) => details.data.side != widget.side,
-      onAcceptWithDetails: (details) =>
-          widget.onDroppedOnFolder(details.data),
+      onAcceptWithDetails: (details) => widget.onDroppedOnFolder(details.data),
       builder: (context, candidate, rejected) {
         if (candidate.isEmpty) return draggable;
         return Container(
@@ -685,20 +728,46 @@ class _EntryRowState extends State<_EntryRow> {
   static IconData _iconFor(PaneEntry entry) {
     if (entry.isDirectory) return Icons.folder_rounded;
     final dot = entry.name.lastIndexOf('.');
-    final extension =
-        dot <= 0 ? '' : entry.name.substring(dot + 1).toLowerCase();
+    final extension = dot <= 0
+        ? ''
+        : entry.name.substring(dot + 1).toLowerCase();
     return switch (extension) {
-      'png' || 'jpg' || 'jpeg' || 'gif' || 'webp' || 'bmp' || 'svg' =>
-        Icons.image_rounded,
+      'png' ||
+      'jpg' ||
+      'jpeg' ||
+      'gif' ||
+      'webp' ||
+      'bmp' ||
+      'svg' => Icons.image_rounded,
       'mp4' || 'mkv' || 'mov' || 'avi' || 'webm' => Icons.movie_rounded,
       'mp3' || 'wav' || 'flac' || 'ogg' || 'm4a' => Icons.audiotrack_rounded,
-      'zip' || 'gz' || 'tar' || 'rar' || '7z' || 'xz' => Icons.folder_zip_rounded,
+      'zip' ||
+      'gz' ||
+      'tar' ||
+      'rar' ||
+      '7z' ||
+      'xz' => Icons.folder_zip_rounded,
       'pdf' => Icons.picture_as_pdf_rounded,
-      'json' || 'yaml' || 'yml' || 'toml' || 'ini' || 'conf' || 'env' =>
-        Icons.settings_rounded,
-      'dart' || 'js' || 'ts' || 'py' || 'go' || 'rs' || 'java' || 'c' ||
-      'cpp' || 'h' || 'sh' || 'php' || 'rb' =>
-        Icons.code_rounded,
+      'json' ||
+      'yaml' ||
+      'yml' ||
+      'toml' ||
+      'ini' ||
+      'conf' ||
+      'env' => Icons.settings_rounded,
+      'dart' ||
+      'js' ||
+      'ts' ||
+      'py' ||
+      'go' ||
+      'rs' ||
+      'java' ||
+      'c' ||
+      'cpp' ||
+      'h' ||
+      'sh' ||
+      'php' ||
+      'rb' => Icons.code_rounded,
       'md' || 'txt' || 'log' || 'csv' => Icons.description_rounded,
       _ => Icons.insert_drive_file_rounded,
     };
@@ -796,4 +865,36 @@ class _DragFeedback extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The row a Shift+click range starts from. A plain holder so setting it
+/// never rebuilds the list.
+class _Anchor {
+  String? path;
+}
+
+/// Keeps the pane's range anchor alive across rebuilds, and drops it when the
+/// pane moves to another folder — an anchor from the last folder would
+/// otherwise select a range against rows that are no longer there.
+class _SelectionAnchor extends StatefulWidget {
+  const _SelectionAnchor({required this.path, required this.builder});
+
+  final String path;
+  final Widget Function(BuildContext context, _Anchor anchor) builder;
+
+  @override
+  State<_SelectionAnchor> createState() => _SelectionAnchorState();
+}
+
+class _SelectionAnchorState extends State<_SelectionAnchor> {
+  final _anchor = _Anchor();
+
+  @override
+  void didUpdateWidget(_SelectionAnchor oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.path != widget.path) _anchor.path = null;
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context, _anchor);
 }
