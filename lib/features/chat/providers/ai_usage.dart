@@ -26,6 +26,7 @@ const List<ModelUsageEntry> kModelUsageEntries = [
   ModelUsageEntry('google:smarter', 'Luma Nebula 1.0', 5),
   ModelUsageEntry('google:smartest', 'Luma Pulsar 1.0', 20),
   ModelUsageEntry('mistral', 'Luma Assistant 1.0', 1),
+  ModelUsageEntry('local', 'Qwen3.5-0.8B (on-device)', 1),
   ModelUsageEntry('anthropic', 'Anthropic Claude', 1),
   ModelUsageEntry('openai', 'OpenAI', 1),
 ];

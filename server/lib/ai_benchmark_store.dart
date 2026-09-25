@@ -4,11 +4,11 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 
 /// One interactive benchmark scene the app can download, e.g. a model's
-/// independent implementation of the Pagoda or Engine test.
+/// independent implementation of the Pagoda, Engine, or Cathedral test.
 ///
 /// The roster (id, kind, display name, description) lives in a `manifest.json`
-/// next to the scenes; the heavy blobs — one self-contained HTML file per
-/// scene plus optional PNG previews — live beside it. All three used to ship
+/// next to the scenes; the heavy blobs — one HTML or GLB file per scene plus
+/// optional PNG previews — live beside it. All three used to ship
 /// inside the app bundle (`assets/tests/`), where ~6 MB of scenes made every
 /// download bigger for data most installs never open. They now live on the
 /// server and the app fetches them on demand, caching them on disk.
