@@ -607,7 +607,11 @@ class Api {
           _requireAdmin(_updateCheck.requestCheck))
       ..get('/admin/system/check-updates/status',
           _requireAdmin(_updateCheck.checkStatus))
-      ..get('/admin/website', _requireAdmin(_adminWebsiteIndex))
+      ..post('/admin/system/reboot',
+          _requireAdmin(_updateCheck.requestReboot))
+      ..get('/admin/system/reboot/status',
+          _requireAdmin(_updateCheck.rebootStatus))
+      ..get('/admin/website',_requireAdmin(_adminWebsiteIndex))
       ..post('/admin/website/build', _requireAdmin(_adminWebsiteBuild))
       ..get('/admin/website/build/status',
           _requireAdmin(_adminWebsiteBuildStatus))
@@ -8613,6 +8617,20 @@ syncToolbar();
         '<div id="updateCheckStatus" class="maint-status"></div>'
         '<pre id="updateCheckLog" class="log maint-out" style="display:none"></pre>'
         '</div>'
+        '<div class="card">'
+        '<h2>Reboot server</h2>'
+        '<div class="maint-desc">Reboots the whole host machine — needed '
+        'for kernel and driver updates to take effect. Docker, the server, '
+        'the wiki and the deploy watcher all start again on their own. '
+        '<strong>Everything is offline until it has booted, usually a '
+        'minute or two.</strong></div>'
+        '<div class="maint-actions">'
+        '<button id="rebootBtn" type="button" class="btn btn-primary">'
+        'Reboot server</button>'
+        '</div>'
+        '<div id="rebootStatus" class="maint-status"></div>'
+        '<pre id="rebootLog" class="log maint-out" style="display:none"></pre>'
+        '</div>'
         '</div>'
         '</div>'
         '<script>$_adminMenuScript</script>'
@@ -8623,6 +8641,7 @@ syncToolbar();
         '<script>$_adminBannersScript</script>'
         '<script>${DeployConsole.deployScript}</script>'
         '<script>${UpdateCheckConsole.updateCheckScript}</script>'
+        '<script>${UpdateCheckConsole.rebootScript}</script>'
         '</body></html>';
 
     return Response(200,

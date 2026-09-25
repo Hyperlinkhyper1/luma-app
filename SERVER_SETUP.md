@@ -258,6 +258,35 @@ nothing. If it reports that, check it:
 systemctl status luma-deploy-watcher
 ```
 
+#### System updates and rebooting from the dashboard
+
+The dashboard's "System updates" and "Reboot server" buttons run through the
+same watcher, which calls `sudo -n` (never prompts). Without a sudoers rule
+those calls fail — updates are listed but not installed, and the reboot
+reports FAILED. Allow exactly the commands the watcher needs, and nothing
+else (replace `hyperlinkhyper` with the user in `luma-deploy-watcher.service`):
+
+```bash
+sudo tee /etc/sudoers.d/luma-deploy-watcher >/dev/null <<'EOF'
+Defaults!/usr/bin/apt-get env_keep += "DEBIAN_FRONTEND"
+hyperlinkhyper ALL=(root) NOPASSWD: /usr/bin/apt-get, /usr/bin/ubuntu-drivers, /usr/bin/systemctl reboot
+EOF
+sudo chmod 440 /etc/sudoers.d/luma-deploy-watcher
+sudo visudo -c
+```
+
+After a reboot everything comes back on its own as long as Docker and the
+watcher are enabled at boot (the containers already carry
+`restart: unless-stopped`). Check once with:
+
+```bash
+systemctl is-enabled docker luma-deploy-watcher
+```
+
+Both should print `enabled`. A disk-encryption passphrase prompt at boot
+would stop the machine before any of this starts — the dashboard gives up
+waiting after ten minutes and says so.
+
 The checkout at `LUMA_REPO_PATH` is a deploy target, not a workspace: the
 watcher updates it with `git fetch` + `git reset --hard origin/<branch>`.
 Local edits to tracked files (a hand-tweaked `server/docker-compose.yml`,
