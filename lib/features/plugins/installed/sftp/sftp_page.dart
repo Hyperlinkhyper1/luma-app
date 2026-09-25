@@ -1261,6 +1261,10 @@ class _SftpPageState extends State<SftpPage> {
         onNewFolder: () => _newFolder(PaneSide.local),
         onNavigate: _navigateLocal,
         onOpen: _openLocal,
+        onSelectRange: (range, {required additive}) => setState(() {
+          if (!additive) _localSelection.clear();
+          _localSelection.addAll(range.map((e) => e.path));
+        }),
         onToggleSelect: (entry) => setState(() {
           if (!_localSelection.remove(entry.path)) {
             _localSelection.add(entry.path);
@@ -1290,6 +1294,10 @@ class _SftpPageState extends State<SftpPage> {
         onNewFolder: () => _newFolder(PaneSide.remote),
         onNavigate: _navigateRemote,
         onOpen: _openRemote,
+        onSelectRange: (range, {required additive}) => setState(() {
+          if (!additive) _remoteSelection.clear();
+          _remoteSelection.addAll(range.map((e) => e.path));
+        }),
         onToggleSelect: (entry) => setState(() {
           if (!_remoteSelection.remove(entry.path)) {
             _remoteSelection.add(entry.path);
