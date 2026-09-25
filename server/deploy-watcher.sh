@@ -49,6 +49,17 @@ UPDATE_LOG_FILE="$DATA_DIR/update-check.log"
 UPDATE_LOCK_FILE="$DATA_DIR/update-check.lock"
 UPDATE_DONE_FILE="$DATA_DIR/update-check.done"
 
+# "Reboot server" button (UpdateCheckConsole.requestReboot). The container
+# drops reboot.request; this script reboots the host with
+# `sudo -n systemctl reboot` and writes what happened to reboot.log. Docker
+# and this service are both enabled at boot, and the containers carry
+# `restart: unless-stopped`, so everything comes back on its own.
+# reboot-required mirrors the host's /var/run/reboot-required, which the
+# container can't see, so the dashboard can say when a reboot is due.
+REBOOT_REQUEST_FILE="$DATA_DIR/reboot.request"
+REBOOT_LOG_FILE="$DATA_DIR/reboot.log"
+REBOOT_REQUIRED_FILE="$DATA_DIR/reboot-required"
+
 # Read LUMA_REPO_PATH from server/.env rather than hardcoding it, so this
 # can never drift from the same value the container's gate check
 # (Api._adminDeploy, via config.repoPathConfigured) is enforcing.
@@ -183,8 +194,11 @@ check_updates() {
 
   step "Installing package upgrades"
   if command -v sudo >/dev/null 2>&1; then
-    sudo -n env DEBIAN_FRONTEND=noninteractive apt-get upgrade -y 2>&1 || echo "apt-get upgrade needs passwordless sudo or failed — continuing."
-    sudo -n env DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y 2>&1 || true
+    # Not `sudo env DEBIAN_FRONTEND=… apt-get`: a sudoers rule allowing
+    # /usr/bin/env allows every command. The sudoers file in
+    # SERVER_SETUP.md keeps DEBIAN_FRONTEND across sudo for apt-get instead.
+    DEBIAN_FRONTEND=noninteractive sudo -n apt-get upgrade -y 2>&1 || echo "apt-get upgrade needs passwordless sudo or failed — continuing."
+    DEBIAN_FRONTEND=noninteractive sudo -n apt-get dist-upgrade -y 2>&1 || true
   else
     env DEBIAN_FRONTEND=noninteractive apt-get upgrade -y 2>&1 || true
     env DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y 2>&1 || true
@@ -279,6 +293,25 @@ check_updates() {
   echo "==> System update and restart complete."
 }
 
+sync_reboot_required() {
+  if [ -f /var/run/reboot-required ]; then
+    cat /var/run/reboot-required.pkgs 2>/dev/null > "$REBOOT_REQUIRED_FILE" ||
+      : > "$REBOOT_REQUIRED_FILE"
+  else
+    rm -f "$REBOOT_REQUIRED_FILE"
+  fi
+}
+
+reboot_host() {
+  echo "==> Reboot requested from the admin dashboard ($(date -Is))"
+  if sudo -n systemctl reboot 2>&1; then
+    echo "==> Rebooting now."
+  else
+    echo "==> Reboot FAILED: this user needs passwordless sudo for systemctl reboot."
+    echo "See 'System updates and rebooting from the dashboard' in SERVER_SETUP.md."
+  fi
+}
+
 # systemd restarts this script on failure; a stale lock left behind by a
 # killed run would otherwise make the button answer "a deploy is already in
 # progress" until it aged out.
@@ -292,6 +325,7 @@ while true; do
   # instead of the deploy just quietly never happening.
   if [ "$beat" -le 0 ]; then
     : 2>/dev/null > "$HEARTBEAT_FILE" || true
+    sync_reboot_required
     beat=5
   fi
   beat=$((beat - 1))
@@ -304,7 +338,8 @@ while true; do
   # reported "server and wiki restarted". Swap onto the current file before
   # claiming any request, so a request is always handled by the script on
   # disk.
-  if { [ -f "$REQUEST_FILE" ] || [ -f "$UPDATE_REQUEST_FILE" ]; } &&
+  if { [ -f "$REQUEST_FILE" ] || [ -f "$UPDATE_REQUEST_FILE" ] ||
+       [ -f "$REBOOT_REQUEST_FILE" ]; } &&
      [ "$(script_hash)" != "$SELF_HASH" ]; then
     echo "[deploy-watcher] script changed on disk — reloading before handling the request." >&2
     exec "$SCRIPT_DIR/deploy-watcher.sh"
@@ -354,6 +389,20 @@ while true; do
     date -Is > "$UPDATE_DONE_FILE"
     rm -f "$UPDATE_LOCK_FILE"
     beat=0
+  fi
+
+  # Checked last, so a reboot asked for while a deploy or update was running
+  # waits for it to finish. A request older than two minutes is dropped
+  # rather than acted on: one left over from a time the watcher was down
+  # would otherwise reboot the machine long after anyone expected it.
+  if [ -f "$REBOOT_REQUEST_FILE" ]; then
+    fresh="$(find "$REBOOT_REQUEST_FILE" -mmin -2 2>/dev/null)"
+    rm -f "$REBOOT_REQUEST_FILE"
+    if [ -n "$fresh" ]; then
+      reboot_host > "$REBOOT_LOG_FILE" 2>&1
+    else
+      echo "==> Ignored a reboot request older than two minutes ($(date -Is))." > "$REBOOT_LOG_FILE"
+    fi
   fi
   sleep 2
 done

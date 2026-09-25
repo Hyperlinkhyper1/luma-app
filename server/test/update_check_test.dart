@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:luma_sync_server/update_check.dart';
@@ -49,6 +50,54 @@ void main() {
 
     final restarted = console(DateTime.now().add(const Duration(seconds: 1)));
     expect((await restarted.status()).phase, UpdateCheckPhase.done);
+  });
+
+  group('reboot', () {
+    final post = Request('POST', Uri.parse('http://x/'));
+    final rebootRequest = () => File('${dir.path}/reboot.request');
+
+    Future<void> watcherAlive() =>
+        File('${dir.path}/deploy.watcher').writeAsString('');
+
+    test('is refused when no watcher is alive to act on it', () async {
+      final response = await console(DateTime.now()).requestReboot(post);
+
+      expect(response.statusCode, 409);
+      expect(await rebootRequest().exists(), isFalse);
+    });
+
+    test('is refused while a system update is installing', () async {
+      await watcherAlive();
+      await File('${dir.path}/update-check.lock').writeAsString('');
+
+      final response = await console(DateTime.now()).requestReboot(post);
+
+      expect(response.statusCode, 409);
+      expect(await rebootRequest().exists(), isFalse);
+    });
+
+    test('drops the request and clears the previous run\'s log', () async {
+      await watcherAlive();
+      await File('${dir.path}/reboot.log').writeAsString('==> Reboot FAILED');
+
+      final response = await console(DateTime.now()).requestReboot(post);
+
+      expect(response.statusCode, 200);
+      expect(await rebootRequest().exists(), isTrue);
+      expect(await File('${dir.path}/reboot.log').exists(), isFalse);
+    });
+
+    test('status passes on the host\'s reboot-required packages', () async {
+      await File('${dir.path}/reboot-required')
+          .writeAsString('linux-image-generic\n');
+
+      final response = await console(DateTime.now())
+          .rebootStatus(Request('GET', Uri.parse('http://x/')));
+      final body = jsonDecode(await response.readAsString());
+
+      expect(body['rebootRequired'], isTrue);
+      expect(body['rebootPackages'], 'linux-image-generic');
+    });
   });
 
   test('a result from before the requested-at marker existed stays done',
