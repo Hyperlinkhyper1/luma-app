@@ -2,11 +2,15 @@ package com.example.luma
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.net.Uri
 import android.net.wifi.WifiManager
 import android.os.Build
+import android.os.Environment
+import android.provider.Settings
 import android.telephony.TelephonyCallback
 import android.telephony.TelephonyDisplayInfo
 import android.telephony.TelephonyManager
@@ -18,6 +22,10 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
 
     private var pendingPermission: MethodChannel.Result? = null
+
+    /** Waiting on the user in the system "All files access" screen, or in
+     *  the legacy storage permission dialog on Android 10 and older. */
+    private var pendingStorage: MethodChannel.Result? = null
     private var displayOverride = 0
     private var displayInfoCallback: Any? = null
 
@@ -25,7 +33,73 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler(::handleCall)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, STORAGE_CHANNEL)
+            .setMethodCallHandler(::handleStorageCall)
         startDisplayInfoListener()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // The All files access screen gives no result callback; coming back
+        // from it is the answer.
+        val result = pendingStorage ?: return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            pendingStorage = null
+            result.success(hasStorageAccess())
+        }
+    }
+
+    private fun handleStorageCall(call: MethodCall, result: MethodChannel.Result) {
+        when (call.method) {
+            "hasAccess" -> result.success(hasStorageAccess())
+            "requestAccess" -> requestStorageAccess(result)
+            else -> result.notImplemented()
+        }
+    }
+
+    private fun hasStorageAccess(): Boolean =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Environment.isExternalStorageManager()
+        } else {
+            legacyStoragePermissions().all {
+                checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED
+            }
+        }
+
+    private fun legacyStoragePermissions() = arrayOf(
+        Manifest.permission.READ_EXTERNAL_STORAGE,
+        Manifest.permission.WRITE_EXTERNAL_STORAGE,
+    )
+
+    private fun requestStorageAccess(result: MethodChannel.Result) {
+        if (hasStorageAccess()) {
+            result.success(true)
+            return
+        }
+        if (pendingStorage != null) {
+            result.success(false)
+            return
+        }
+        pendingStorage = result
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val appScreen = Intent(
+                Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                Uri.parse("package:$packageName"),
+            )
+            try {
+                startActivity(appScreen)
+            } catch (_: Exception) {
+                // Some builds only offer the list of all apps.
+                try {
+                    startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+                } catch (_: Exception) {
+                    pendingStorage = null
+                    result.success(false)
+                }
+            }
+        } else {
+            requestPermissions(legacyStoragePermissions(), STORAGE_REQUEST_CODE)
+        }
     }
 
     override fun onDestroy() {
@@ -186,6 +260,12 @@ class MainActivity : FlutterActivity() {
         grantResults: IntArray,
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == STORAGE_REQUEST_CODE) {
+            val storage = pendingStorage
+            pendingStorage = null
+            storage?.success(hasStorageAccess())
+            return
+        }
         if (requestCode != PERMISSION_REQUEST_CODE) return
         val result = pendingPermission
         pendingPermission = null
@@ -203,6 +283,8 @@ class MainActivity : FlutterActivity() {
     private companion object {
         const val CHANNEL = "luma/network_details"
         const val PERMISSION_REQUEST_CODE = 4711
+        const val STORAGE_REQUEST_CODE = 4712
+        const val STORAGE_CHANNEL = "luma/storage_access"
         const val UNKNOWN_SSID = "<unknown ssid>"
     }
 }

@@ -12,6 +12,120 @@ import '../../../../../app/widgets.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../sftp_paths.dart';
 import 'host_server.dart';
+import 'storage_access.dart';
+
+/// Shown while hosting when Android is hiding shared storage from luma.
+///
+/// Without "All files access", a shared folder such as DCIM/Camera lists as
+/// empty on the device browsing it even though this device's own file manager
+/// shows everything. Checks again whenever luma comes back to the foreground,
+/// since the grant is given on a system screen, and hides itself once granted
+/// (or on any platform without the restriction).
+class HostStorageAccessCard extends StatefulWidget {
+  const HostStorageAccessCard({super.key, required this.directory});
+
+  /// The folder being shared. Nothing is shown for one inside luma's own
+  /// storage, which is readable without the grant.
+  final String? directory;
+
+  @override
+  State<HostStorageAccessCard> createState() => _HostStorageAccessCardState();
+}
+
+class _HostStorageAccessCardState extends State<HostStorageAccessCard>
+    with WidgetsBindingObserver {
+  bool? _granted;
+  bool _asking = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(_check());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) unawaited(_check());
+  }
+
+  Future<void> _check() async {
+    final granted = await HostStorageAccess.granted();
+    if (mounted) setState(() => _granted = granted);
+  }
+
+  Future<void> _request() async {
+    setState(() => _asking = true);
+    final granted = await HostStorageAccess.request();
+    if (!mounted) return;
+    setState(() {
+      _asking = false;
+      _granted = granted;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final directory = widget.directory;
+    if (_granted != false ||
+        directory == null ||
+        !HostStorageAccess.isSharedStoragePath(directory)) {
+      return const SizedBox.shrink();
+    }
+    final luma = context.luma;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: luma.danger.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: luma.danger.withValues(alpha: 0.4)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.folder_off_rounded, size: 18, color: luma.danger),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Other devices can\'t see your files yet',
+                    style: TextStyle(
+                      color: luma.textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Android hides photos and files made by other apps until luma '
+              'has "All files access". Until then this folder looks empty '
+              'from the other device.',
+              style: TextStyle(color: luma.textSecondary, fontSize: 12),
+            ),
+            const SizedBox(height: 12),
+            LumaPrimaryButton(
+              label: _asking ? 'Waiting for Settings…' : 'Allow file access',
+              icon: Icons.lock_open_rounded,
+              onTap: _asking ? null : () => unawaited(_request()),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 /// One labelled value with a copy button: address, port, pairing password.
 class HostCopyRow extends StatelessWidget {
