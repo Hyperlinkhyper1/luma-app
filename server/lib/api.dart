@@ -572,6 +572,7 @@ class Api {
           _requireAdmin(_adminCancelPasswordReset))
       ..post('/admin/access/revoke', _requireAdmin(_adminRevokeAccess))
       ..post('/admin/access/restore', _requireAdmin(_adminRestoreAccess))
+      ..post('/admin/account/delete', _requireAdmin(_adminDeleteAccount))
       ..post('/admin/ip-ban', _requireAdmin(_adminBanIp))
       ..post('/admin/ip-unban', _requireAdmin(_adminUnbanIp))
       ..get('/admin/ip-bans', _requireAdmin(_adminIpBans))
@@ -4911,6 +4912,38 @@ class Api {
     });
   }
 
+  /// Permanently deletes one account — the "Delete account" action on the
+  /// Users tab. Runs the same teardown as the self-service delete and as
+  /// accepting a deletion request, so identity, sessions, OAuth links and
+  /// every blob go. Any open deletion request for the account is closed as
+  /// accepted so the Inbox does not keep offering it.
+  Future<Response> _adminDeleteAccount(Request request) async {
+    final email = await _adminFormEmail(request);
+    if (email == null) {
+      return errorResponse(400, 'bad_request', 'email is required.');
+    }
+    return store.lock.synchronized(() async {
+      final userId = store.userIdByEmail[email];
+      final user = userId == null ? null : store.usersById[userId];
+      if (user == null) {
+        return errorResponse(404, 'not_found', 'No account with that email.');
+      }
+      var touchedRequests = false;
+      for (final r in store.deletionRequestsById.values) {
+        if (r.userId == user.id && r.isPending) {
+          r.status = DeletionRequest.statusAccepted;
+          r.decidedAtMs = DateTime.now().millisecondsSinceEpoch;
+          touchedRequests = true;
+        }
+      }
+      await _tearDownAccount(user);
+      if (touchedRequests) await store.saveDeletionRequests();
+      await store.logActivity(
+          'admin_account_deleted', '$email was deleted by an admin');
+      return _adminFormResponse(request, '/admin');
+    });
+  }
+
   // ---- Handlers: IP bans ---------------------------------------------------
 
   /// Blocks an account's known addresses, or one address given directly.
@@ -8183,6 +8216,12 @@ syncToolbar();
           item('/admin/ip-unban', 'Lift IP ban (${bannedIps.length})',
               confirm: 'Unblock the ${bannedIps.length} address'
                   '${bannedIps.length == 1 ? '' : 'es'} banned for $safeEmail?'),
+        '<div class="menu-sep"></div>',
+        item('/admin/account/delete', 'Delete account',
+            confirm: 'Permanently delete $safeEmail?\\n\\nThe account, its '
+                'sessions and every synced snapshot are erased from the '
+                'server. This cannot be undone.',
+            danger: true),
       ];
 
       final action = '<div class="menu">'
@@ -8251,6 +8290,7 @@ syncToolbar();
       'account_verified': 'Verified',
       'login': 'Login',
       'account_deleted': 'Account deleted',
+      'admin_account_deleted': 'Deleted by admin',
       'admin_verified': 'Admin verified',
       'admin_revoked': 'Admin revoked',
       'plan_granted': 'Plan granted',

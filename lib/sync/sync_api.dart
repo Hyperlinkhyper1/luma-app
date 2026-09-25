@@ -557,6 +557,19 @@ class SyncApi {
             'new code.';
   }
 
+  /// Like [resendVerification], but also reports whether the server sent a
+  /// code (email approval) rather than deferring to its operator.
+  Future<({String message, bool emailed})> requestVerificationCode(
+    String email,
+  ) async {
+    final body = await _postJson('/auth/resend-verification', {'email': email});
+    return (
+      message: body['message'] as String? ??
+          'If that email has an unverified account, we just sent a new code.',
+      emailed: body['status'] == 'pending_verification',
+    );
+  }
+
   /// Submits the 6-digit code emailed to [email] for the pending account
   /// [register] created. Throws [SyncApiException] if the code is wrong,
   /// expired, or the account has made too many bad attempts — the caller

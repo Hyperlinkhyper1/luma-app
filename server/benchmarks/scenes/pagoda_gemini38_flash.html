@@ -12,6 +12,7 @@
 {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/examples/":"https://unpkg.com/three@0.160.0/examples/"}}
 </script>
 <script src="https://unpkg.com/@babel/standalone@7.28.3/babel.min.js"></script>
+<script>Babel.registerPreset('ts-all',{presets:[[Babel.availablePresets.typescript,{allExtensions:true}]]});</script>
 </head>
 <body>
 <div id="stage"></div>
@@ -24,7 +25,7 @@
   <div class="controls"><button id="lanterns">Toggle lanterns</button><button id="doors">Toggle pagoda doors</button><button id="reset">Reset camera</button></div>
 </div>
 <div class="credit">GEMINI 3.8 FLASH · INDEPENDENT VOXEL SCENE</div>
-<script type="text/babel" data-type="module" data-presets="typescript">import * as THREE from 'three';
+<script type="text/babel" data-type="module" data-presets="ts-all">import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 export interface VoxelGlobalState {
@@ -34,11 +35,7 @@ export interface VoxelGlobalState {
   timeOfDay: number; // 0..1 (0 = midnight, 0.25 = dawn, 0.5 = noon, 0.75 = dusk)
 }
 
-declare global {
-  interface Window {
-    __VOXEL__: VoxelGlobalState;
-  }
-}
+
 
 export interface SceneHUDState {
   voxelCount: number;

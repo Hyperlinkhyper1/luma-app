@@ -37,6 +37,7 @@
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_luma-sync._tcp</string>
+		<string>_luma-host._tcp</string>
 	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>

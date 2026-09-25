@@ -24,12 +24,17 @@
 ///   the client streams them for an upload.
 library;
 
+import 'dart:collection';
 import 'dart:convert';
 import 'dart:typed_data';
 
 /// Bumped when a change would make two versions misunderstand each other.
 /// The host refuses a client that does not match.
-const int kHostProtocolVersion = 1;
+///
+/// 2: the host always sends a sealed admission record (see [kAdmitKey])
+/// before serving anything, so a client is only "connected" once it has
+/// actually been let in.
+const int kHostProtocolVersion = 2;
 
 /// The port the host listens on unless the user picks another.
 const int kDefaultHostPort = 7420;
@@ -46,6 +51,18 @@ const int kMaxHostFrameBytes = kHostChunkBytes + 64 * 1024;
 
 /// How long a connection may sit in the handshake before it is dropped.
 const Duration kHostHandshakeTimeout = Duration(seconds: 15);
+
+/// How long a device may wait for the person at the host to press Allow.
+/// Both ends enforce it, so neither is left holding a socket for a prompt
+/// nobody is looking at.
+const Duration kHostApprovalTimeout = Duration(minutes: 2);
+
+/// The first sealed record after the handshake answers whether the client is
+/// in: `{'admit': true}`, or `{'admit': false, 'e': reason}`. While the host
+/// is waiting on its user it sends `{'wait': true}` first, so the client can
+/// say what it is waiting for instead of looking connected and stuck.
+const String kAdmitKey = 'admit';
+const String kWaitKey = 'wait';
 
 enum HostFrameKind {
   control(0x01),
@@ -257,37 +274,76 @@ int _readUint32(Uint8List bytes, int offset) =>
 /// Kept separate from the socket so the framing can be tested directly, and
 /// so both ends use exactly the same reader. It refuses a frame larger than
 /// [kMaxHostFrameBytes] before allocating anything for it.
+///
+/// Incoming reads are only queued until a whole frame is there, then copied
+/// once. Over a real network a 256 KiB chunk arrives as dozens of small
+/// reads, and re-merging everything buffered on every one of them made the
+/// cost of a frame grow with the square of its size.
 class HostFrameReader {
-  final _buffer = BytesBuilder(copy: false);
-  Uint8List _pending = Uint8List(0);
+  final Queue<Uint8List> _parts = Queue();
+  int _buffered = 0;
+
+  /// Bytes already consumed from the front of `_parts.first`.
+  int _headOffset = 0;
 
   /// Feeds [data] in and returns every complete frame it completed.
   List<Uint8List> add(List<int> data) {
-    _buffer.add(data);
-    if (_buffer.isNotEmpty) {
-      final merged = Uint8List(_pending.length + _buffer.length)
-        ..setAll(0, _pending)
-        ..setAll(_pending.length, _buffer.takeBytes());
-      _pending = merged;
+    if (data.isNotEmpty) {
+      _parts.add(data is Uint8List ? data : Uint8List.fromList(data));
+      _buffered += data.length;
     }
 
     final frames = <Uint8List>[];
-    var offset = 0;
-    while (_pending.length - offset >= 4) {
-      final length = _readUint32(_pending, offset);
-      if (length < 0 || length > kMaxHostFrameBytes) {
+    while (_buffered >= 4) {
+      final length = _peekLength();
+      if (length > kMaxHostFrameBytes) {
         throw HostProtocolException(
           'Frame of $length bytes is larger than this connection allows.',
         );
       }
-      if (_pending.length - offset - 4 < length) break;
-      frames.add(Uint8List.sublistView(_pending, offset + 4, offset + 4 + length));
-      offset += 4 + length;
-    }
-    if (offset > 0) {
-      _pending = Uint8List.fromList(Uint8List.sublistView(_pending, offset));
+      if (_buffered - 4 < length) break;
+      _take(4);
+      frames.add(_take(length));
     }
     return frames;
+  }
+
+  int _peekLength() {
+    final header = Uint8List(4);
+    var filled = 0;
+    var skip = _headOffset;
+    for (final part in _parts) {
+      for (var i = skip; i < part.length && filled < 4; i++) {
+        header[filled++] = part[i];
+      }
+      skip = 0;
+      if (filled == 4) break;
+    }
+    return _readUint32(header, 0);
+  }
+
+  /// Removes [count] bytes from the front of the buffer and returns them as
+  /// one contiguous list the caller owns.
+  Uint8List _take(int count) {
+    final out = Uint8List(count);
+    var filled = 0;
+    while (filled < count) {
+      final part = _parts.first;
+      final available = part.length - _headOffset;
+      final wanted = count - filled;
+      if (available <= wanted) {
+        out.setRange(filled, filled + available, part, _headOffset);
+        filled += available;
+        _parts.removeFirst();
+        _headOffset = 0;
+      } else {
+        out.setRange(filled, count, part, _headOffset);
+        _headOffset += wanted;
+        filled = count;
+      }
+    }
+    _buffered -= count;
+    return out;
   }
 }
 

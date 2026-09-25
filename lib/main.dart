@@ -109,6 +109,8 @@ import 'features/plugins/installed/gallery/gallery_scope.dart';
 import 'features/plugins/installed/sftp/share/device_share_repository.dart';
 import 'features/plugins/installed/sftp/share/device_share_scope.dart';
 import 'features/plugins/installed/sftp/share/shared_folder.dart';
+import 'features/plugins/installed/sftp/host/host_scope.dart';
+import 'features/plugins/installed/sftp/host/host_server.dart';
 import 'features/plugins/plugin_catalog_service.dart';
 import 'features/plugins/plugin_repository.dart';
 import 'features/plugins/plugin_scope.dart';
@@ -497,9 +499,16 @@ class _LumaAppState extends State<LumaApp> {
   DeviceShareRepository? _deviceShare;
   bool _startingDeviceShare = false;
 
+  // The SFTP plugin's Host tab listener. Owned here because the shell only
+  // builds the plugin on screen: kept in the page, hosting ended the moment
+  // the user opened anything else. Idle until the user presses Start.
+  final SftpHostServer _sftpHost = SftpHostServer();
+
   Future<void> _syncDeviceShareWithPlan() async {
     final isNova = planById(widget.settings.selectedPlanId).id == 'nova';
     if (!isNova) {
+      // Hosting is part of the same Nova plugin.
+      if (_sftpHost.status != HostStatus.stopped) unawaited(_sftpHost.stop());
       final existing = _deviceShare;
       if (existing == null) return;
       _peerSync.detachShareDelegate(existing);
@@ -574,8 +583,8 @@ class _LumaAppState extends State<LumaApp> {
   Future<void> _syncAiUsageOnOpen(Future<void> syncInit) async {
     try {
       await syncInit;
-      _aiUsageSyncAvailable = _sync.serverReady &&
-          _sync.isEnabled(kAiUsageSyncCollectionId);
+      _aiUsageSyncAvailable =
+          _sync.serverReady && _sync.isEnabled(kAiUsageSyncCollectionId);
       _sync.addListener(_onSyncStateChanged);
       await Future<void>.delayed(const Duration(seconds: 5));
       if (!mounted) return;
@@ -664,6 +673,7 @@ class _LumaAppState extends State<LumaApp> {
     _sync.removeListener(_onSyncStateChanged);
     widget.settings.removeListener(_onSettingsChanged);
     _deviceShare?.dispose();
+    _sftpHost.dispose();
     _peerSync.dispose();
     _cloudFiles.dispose();
     _familyRepository.dispose();
@@ -739,145 +749,147 @@ class _LumaAppState extends State<LumaApp> {
             controller: _peerSync,
             child: DeviceShareScope(
               repository: _deviceShare,
-              child: CloudFilesScope(
-                controller: _cloudFiles,
-                child: FamilyScope(
-                  repository: _familyRepository,
-                  child: SecureChatScope(
-                    repository: _secureChatRepository,
-                    child: SettingsScope(
-                      controller: widget.settings,
-                      child: HomeScope(
-                        repository: _homeRepository,
-                        child: FinanceScope(
-                          repository: _repository,
-                          cs2Market: _cs2MarketRepository,
-                          child: PasswordScope(
-                            repository: _passwordRepository,
-                            child: PluginScope(
-                              repository: _pluginRepository,
-                              child: QrCodeScope(
-                                repository: _qrCodeRepository,
-                                child: CardWalletScope(
-                                  repository: _cardWalletRepository,
-                                  child: ErrandsScope(
-                                    repository: _errandsRepository,
-                                    child: ChatScope(
-                                      repository: _chatRepository,
-                                      child: BulletinBoardScope(
-                                        repository: _bulletinBoardRepository,
-                                        child: PriceTrackerScope(
-                                          repository: _priceTrackerRepository,
-                                          child: CalendarScope(
-                                            repository: _calendarRepository,
-                                            child: DataManagementScope(
-                                              repository:
-                                                  _dataManagementRepository,
-                                              child: ServerTycoonScope(
+              child: SftpHostScope(
+                server: _sftpHost,
+                child: CloudFilesScope(
+                  controller: _cloudFiles,
+                  child: FamilyScope(
+                    repository: _familyRepository,
+                    child: SecureChatScope(
+                      repository: _secureChatRepository,
+                      child: SettingsScope(
+                        controller: widget.settings,
+                        child: HomeScope(
+                          repository: _homeRepository,
+                          child: FinanceScope(
+                            repository: _repository,
+                            cs2Market: _cs2MarketRepository,
+                            child: PasswordScope(
+                              repository: _passwordRepository,
+                              child: PluginScope(
+                                repository: _pluginRepository,
+                                child: QrCodeScope(
+                                  repository: _qrCodeRepository,
+                                  child: CardWalletScope(
+                                    repository: _cardWalletRepository,
+                                    child: ErrandsScope(
+                                      repository: _errandsRepository,
+                                      child: ChatScope(
+                                        repository: _chatRepository,
+                                        child: BulletinBoardScope(
+                                          repository: _bulletinBoardRepository,
+                                          child: PriceTrackerScope(
+                                            repository: _priceTrackerRepository,
+                                            child: CalendarScope(
+                                              repository: _calendarRepository,
+                                              child: DataManagementScope(
                                                 repository:
-                                                    _serverTycoonRepository,
-                                                child: AirlineTycoonScope(
+                                                    _dataManagementRepository,
+                                                child: ServerTycoonScope(
                                                   repository:
-                                                      _airlineTycoonRepository,
-                                                  child: MoodJournalScope(
+                                                      _serverTycoonRepository,
+                                                  child: AirlineTycoonScope(
                                                     repository:
-                                                        _moodJournalRepository,
-                                                    child: AiCatalogScope(
+                                                        _airlineTycoonRepository,
+                                                    child: MoodJournalScope(
                                                       repository:
-                                                          _aiCatalogRepository,
-                                                      child: AiBenchmarkScope(
+                                                          _moodJournalRepository,
+                                                      child: AiCatalogScope(
                                                         repository:
-                                                            _aiBenchmarkRepository,
-                                                        child: SteamScope(
+                                                            _aiCatalogRepository,
+                                                        child: AiBenchmarkScope(
                                                           repository:
-                                                              _steamRepository,
-                                                          child: Cs2MarketScope(
+                                                              _aiBenchmarkRepository,
+                                                          child: SteamScope(
                                                             repository:
-                                                                _cs2MarketRepository,
-                                                            child: AiUsageScope(
+                                                                _steamRepository,
+                                                            child: Cs2MarketScope(
                                                               repository:
-                                                                  _aiUsageRepository,
-                                                              child: AiWorkbenchScope(
+                                                                  _cs2MarketRepository,
+                                                              child: AiUsageScope(
                                                                 repository:
-                                                                    _aiWorkbenchRepository,
-                                                                child: SchoolScope(
+                                                                    _aiUsageRepository,
+                                                                child: AiWorkbenchScope(
                                                                   repository:
-                                                                      _schoolRepository,
-                                                                  child: MindMapScope(
+                                                                      _aiWorkbenchRepository,
+                                                                  child: SchoolScope(
                                                                     repository:
-                                                                        _mindMapRepository,
-                                                                    child: AutoClickerScope(
+                                                                        _schoolRepository,
+                                                                    child: MindMapScope(
                                                                       repository:
-                                                                          _autoClickerRepository,
-                                                                      child: UsageScope(
+                                                                          _mindMapRepository,
+                                                                      child: AutoClickerScope(
                                                                         repository:
-                                                                            _usageRepository,
-                                                                        child: WifiSpeedTestScope(
+                                                                            _autoClickerRepository,
+                                                                        child: UsageScope(
                                                                           repository:
-                                                                              _wifiSpeedTestRepository,
-                                                                          child: GroceriesScope(
+                                                                              _usageRepository,
+                                                                          child: WifiSpeedTestScope(
                                                                             repository:
-                                                                                _groceriesRepository,
-                                                                            child: GroceriesApiScope(
-                                                                              api: _groceriesApi,
-                                                                              child: RecipeBookScope(
-                                                                                controller: _recipeBookController,
-                                                                                child: MinecraftLauncherScope(
-                                                                                  repository: _minecraftRepository,
-                                                                                  child: GalleryScope(
-                                                                                    repository: _galleryRepository,
-                                                                                    child: DeviceHealthScope(
-                                                                                      repository: _deviceHealthRepository,
-                                                                                      child: AccountOverviewScope(
-                                                                                        repository: _accountOverviewRepository,
-                                                                                        child: McContentScope(
-                                                                                          repository: _mcContentRepository,
-                                                                                          child: YoutubeScope(
-                                                                                            repository: _youtubeRepository,
-                                                                                            child: WhiteboardScope(
-                                                                                              repository: _whiteboardRepository,
-                                                                                              child: ListenableBuilder(
-                                                                                                listenable: widget.settings,
-                                                                                                builder:
-                                                                                                    (
-                                                                                                      context,
-                                                                                                      _,
-                                                                                                    ) {
-                                                                                                      final s = widget.settings;
-                                                                                                      return MaterialApp(
-                                                                                                        title: 'luma',
-                                                                                                        debugShowCheckedModeBanner: false,
-                                                                                                        theme: LumaTheme.from(
-                                                                                                          Brightness.light,
-                                                                                                          s.accentSeed,
-                                                                                                          s.themeStyle,
-                                                                                                        ),
-                                                                                                        darkTheme: LumaTheme.from(
-                                                                                                          Brightness.dark,
-                                                                                                          s.accentSeed,
-                                                                                                          s.themeStyle,
-                                                                                                        ),
-                                                                                                        themeMode: s.themeMode,
-                                                                                                        locale: localeForLanguage(
-                                                                                                          s.appLanguage,
-                                                                                                        ),
-                                                                                                        supportedLocales: L.supportedLocales,
-                                                                                                        localizationsDelegates: [
-                                                                                                          L.delegate,
-                                                                                                          GlobalMaterialLocalizations.delegate,
-                                                                                                          GlobalWidgetsLocalizations.delegate,
-                                                                                                          GlobalCupertinoLocalizations.delegate,
-                                                                                                        ],
-                                                                                                        home: _BootGate(
-                                                                                                          bootstrap: _bootstrap,
-                                                                                                          accent: LumaTheme.accentFor(
+                                                                                _wifiSpeedTestRepository,
+                                                                            child: GroceriesScope(
+                                                                              repository: _groceriesRepository,
+                                                                              child: GroceriesApiScope(
+                                                                                api: _groceriesApi,
+                                                                                child: RecipeBookScope(
+                                                                                  controller: _recipeBookController,
+                                                                                  child: MinecraftLauncherScope(
+                                                                                    repository: _minecraftRepository,
+                                                                                    child: GalleryScope(
+                                                                                      repository: _galleryRepository,
+                                                                                      child: DeviceHealthScope(
+                                                                                        repository: _deviceHealthRepository,
+                                                                                        child: AccountOverviewScope(
+                                                                                          repository: _accountOverviewRepository,
+                                                                                          child: McContentScope(
+                                                                                            repository: _mcContentRepository,
+                                                                                            child: YoutubeScope(
+                                                                                              repository: _youtubeRepository,
+                                                                                              child: WhiteboardScope(
+                                                                                                repository: _whiteboardRepository,
+                                                                                                child: ListenableBuilder(
+                                                                                                  listenable: widget.settings,
+                                                                                                  builder:
+                                                                                                      (
+                                                                                                        context,
+                                                                                                        _,
+                                                                                                      ) {
+                                                                                                        final s = widget.settings;
+                                                                                                        return MaterialApp(
+                                                                                                          title: 'luma',
+                                                                                                          debugShowCheckedModeBanner: false,
+                                                                                                          theme: LumaTheme.from(
+                                                                                                            Brightness.light,
+                                                                                                            s.accentSeed,
+                                                                                                            s.themeStyle,
+                                                                                                          ),
+                                                                                                          darkTheme: LumaTheme.from(
                                                                                                             Brightness.dark,
                                                                                                             s.accentSeed,
                                                                                                             s.themeStyle,
                                                                                                           ),
-                                                                                                        ),
-                                                                                                      );
-                                                                                                    },
+                                                                                                          themeMode: s.themeMode,
+                                                                                                          locale: localeForLanguage(
+                                                                                                            s.appLanguage,
+                                                                                                          ),
+                                                                                                          supportedLocales: L.supportedLocales,
+                                                                                                          localizationsDelegates: [
+                                                                                                            L.delegate,
+                                                                                                            GlobalMaterialLocalizations.delegate,
+                                                                                                            GlobalWidgetsLocalizations.delegate,
+                                                                                                            GlobalCupertinoLocalizations.delegate,
+                                                                                                          ],
+                                                                                                          home: _BootGate(
+                                                                                                            bootstrap: _bootstrap,
+                                                                                                            accent: LumaTheme.accentFor(
+                                                                                                              Brightness.dark,
+                                                                                                              s.accentSeed,
+                                                                                                              s.themeStyle,
+                                                                                                            ),
+                                                                                                          ),
+                                                                                                        );
+                                                                                                      },
+                                                                                                ),
                                                                                               ),
                                                                                             ),
                                                                                           ),

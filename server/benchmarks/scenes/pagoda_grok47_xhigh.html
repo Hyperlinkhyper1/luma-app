@@ -9,10 +9,11 @@
 </script>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/@babel/standalone@7.28.3/babel.min.js"></script>
+<script>Babel.registerPreset('ts-all',{presets:[[Babel.availablePresets.typescript,{allExtensions:true,isTSX:true}]]});</script>
 </head>
 <body>
 <div id="root"></div>
-<script type="text/babel" data-type="module" data-presets="typescript,react">import React, { useEffect, useRef } from "react";
+<script type="text/babel" data-type="module" data-presets="ts-all,react">import React, { useEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -23,16 +24,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
  * Independent voxel diorama — Three.js r160, InstancedMesh, OrbitControls.
  */
 
-declare global {
-  interface Window {
-    __VOXEL__?: {
-      voxelCount: number;
-      fps: number;
-      pagodaFloors: number;
-      timeOfDay: number;
-    };
-  }
-}
+
 
 const VOX = 0.5;
 const N = 64;

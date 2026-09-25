@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 
 import '../sftp_paths.dart';
 import 'host_crypto.dart';
+import 'host_discovery.dart';
 import 'host_jail.dart';
 import 'host_protocol.dart';
 
@@ -61,11 +62,12 @@ class HostClient {
 /// so none of it goes near `GatedServerClient` — the socket is between the two
 /// devices and nothing else.
 ///
-/// The listener is owned by the SFTP page's state, which the app shell keeps
-/// alive in its `IndexedStack`. Hosting therefore survives navigating to
-/// another plugin — which is the point, since a transfer should not die
-/// because the user looked at something else — and ends when the user presses
-/// Stop or the app shuts the page down.
+/// The Host tab's listener is created in `main.dart` and handed down by
+/// `SftpHostScope`, not owned by the page: the shell only builds the plugin on
+/// screen, so a page-owned server died whenever the user opened anything
+/// else. Hosting therefore survives navigating away — a transfer should not
+/// die because the user looked at something else — and ends when the user
+/// presses Stop, the plan drops below Nova, or luma closes.
 class SftpHostServer extends ChangeNotifier {
   SftpHostServer();
 
@@ -83,6 +85,11 @@ class SftpHostServer extends ChangeNotifier {
 
   ServerSocket? _socket;
   HostJail? _jail;
+
+  /// Announces the listener on the local network so another luma device can
+  /// pick this one from a list instead of typing its address. The pairing
+  /// password is still required; the port is advertised but stays editable.
+  final HostAdvertiser _advertiser = HostAdvertiser();
 
   HostStatus _status = HostStatus.stopped;
   String? _error;
@@ -206,6 +213,13 @@ class SftpHostServer extends ChangeNotifier {
       _socket = socket;
       _port = socket.port;
       _status = HostStatus.running;
+      unawaited(
+        _deviceNameOrDefault().then((name) async {
+          // Hosting may have stopped while the name was looked up.
+          if (!identical(_socket, socket) || _disposed) return;
+          await _advertiser.start(port: socket.port, deviceName: name);
+        }),
+      );
       socket.listen(
         _accept,
         onError: (Object e) {
@@ -233,6 +247,7 @@ class SftpHostServer extends ChangeNotifier {
     _socket = null;
     _jail = null;
     _pending.clear();
+    await _advertiser.stop();
     for (final connection in _connections.toList()) {
       await connection.close();
     }
@@ -288,13 +303,24 @@ class SftpHostServer extends ChangeNotifier {
     final address = socket.remoteAddress.address;
 
     if (_isLockedOut(address)) {
-      // Closed without a word: an address that is guessing gets no signal
-      // about whether the host is even still there.
-      socket.destroy();
+      // Said out loud rather than closed silently: a silent close read, on
+      // the other device, as "connected, then dropped" — and kept doing so
+      // with the right password until the lockout ran out. Guessing is no
+      // easier for being told to stop.
+      await _refuse(
+        socket,
+        'Too many wrong pairing passwords came from this device, so that '
+        'device is ignoring it for a few minutes. Wait, or show a new '
+        'pairing password on it and use that.',
+      );
       return;
     }
     if (_connections.length >= maxClients) {
-      socket.destroy();
+      await _refuse(
+        socket,
+        'That device already has $maxClients devices connected. Disconnect '
+        'one there and try again.',
+      );
       return;
     }
 
@@ -328,6 +354,18 @@ class SftpHostServer extends ChangeNotifier {
     }
   }
 
+  /// Turns [socket] away with [message] in place of a hello, then closes it.
+  static Future<void> _refuse(Socket socket, String message) async {
+    try {
+      socket.add(frameBytes(encodeControlFrame({'ok': false, 'e': message})));
+      await socket.flush().timeout(const Duration(seconds: 2));
+      await socket.close().timeout(const Duration(seconds: 2));
+    } catch (_) {
+      // The device may already have gone; it is being dropped either way.
+    }
+    socket.destroy();
+  }
+
   bool _isLockedOut(String address) {
     final record = _failures[address];
     if (record == null) return false;
@@ -349,6 +387,8 @@ class SftpHostServer extends ChangeNotifier {
   }
 
   void _clearFailures(String address) => _failures.remove(address);
+
+  static Future<String> _deviceNameOrDefault() => _HostConnection._deviceName();
 
   /// Parks [connection] until the user answers. Returns false when they say
   /// no, or when hosting stops while it waits.
@@ -450,16 +490,27 @@ class _HostConnection {
     try {
       await _handshake().timeout(kHostHandshakeTimeout);
       if (server.requireApproval) {
-        final allowed = await server._awaitApproval(this);
+        // Tell the device it is waiting on a person, so it does not look
+        // connected and then sit there with a listing that never loads.
+        await _sendSealed(encodeControlFrame({'i': 0, kWaitKey: true}));
+        final allowed = await server
+            ._awaitApproval(this)
+            .timeout(kHostApprovalTimeout, onTimeout: () => false);
         if (!allowed) {
-          await _send(encodeControlFrame({
+          // Sealed like everything else after the handshake. Sent in the
+          // clear, the client could not open it and reported a tampered
+          // frame instead of the refusal.
+          await _sendSealed(encodeControlFrame({
             'i': 0,
-            'ok': false,
-            'e': 'The other device did not allow this connection.',
+            kAdmitKey: false,
+            'e': _fatal == null
+                ? 'The other device did not allow this connection.'
+                : 'The connection closed while waiting to be allowed in.',
           }));
           return;
         }
       }
+      await _sendSealed(encodeControlFrame({'i': 0, kAdmitKey: true}));
       server._touched();
       await _serve();
     } on TimeoutException {
@@ -494,7 +545,7 @@ class _HostConnection {
       hello: hello,
       hostPrivateSeed: seed,
       readControl: _readPlainControl,
-      writeControl: (message) => _send(encodeControlFrame(message)),
+      writeControl: (message) => _sendPlain(encodeControlFrame(message)),
     );
 
     _channel = result.channel;
@@ -875,23 +926,35 @@ class _HostConnection {
     final waiting = _waiting;
     _waiting = null;
     if (waiting != null && !waiting.isCompleted) waiting.completeError(error);
+    // A device that hangs up while the host is still asking about it must
+    // not leave the Allow prompt on screen for a connection that is gone.
+    settleApproval(false);
   }
 
   Future<void> _reply(Map<String, dynamic> message) =>
       _sendSealed(encodeControlFrame(message));
 
-  Future<void> _sendSealed(Uint8List plain) async {
+  /// Seals [plain] and sends it. The seal happens *inside* the send chain:
+  /// sealing takes the next nonce, and the peer opens records strictly in
+  /// counter order, so a record sealed first must also leave first. Sealing
+  /// before joining the chain let two replies finish sealing in one order and
+  /// hit the wire in the other, which the client can only treat as tampering.
+  Future<void> _sendSealed(Uint8List plain) {
     final channel = _channel;
-    if (channel == null || _closed) return;
-    await _send(await channel.seal(plain));
+    if (channel == null || _closed) return Future.value();
+    return _send(() => channel.seal(plain));
   }
 
   /// Serialised so two frames never interleave on the wire and the nonce
   /// counter advances in the same order the bytes leave.
-  Future<void> _send(Uint8List body) {
+  Future<void> _sendPlain(Uint8List body) => _send(() async => body);
+
+  Future<void> _send(Future<Uint8List> Function() build) {
     final next = _sendChain.then((_) async {
       if (_closed) return;
       try {
+        final body = await build();
+        if (_closed) return;
         socket.add(frameBytes(body));
         client.bytesSent += body.length;
         // Waiting for the buffer to drain is what stops a download from

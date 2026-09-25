@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/widgets.dart';
 import '../../../../theme/luma_theme.dart';
+import 'host/host_discovery.dart';
 import 'host/host_protocol.dart';
 import 'sftp_dialogs.dart';
 import 'sftp_site.dart';
@@ -25,6 +26,11 @@ class SftpSiteManagerView extends StatelessWidget {
     required this.onNew,
     required this.onThisDevice,
     this.error,
+    this.status,
+    this.nearby = const [],
+    this.discoveryAvailable = false,
+    this.connectingNearbyId,
+    this.onQuickConnect,
   });
 
   final List<SftpSite> sites;
@@ -44,6 +50,23 @@ class SftpSiteManagerView extends StatelessWidget {
 
   final String? error;
 
+  /// What an in-progress connection is waiting on, when that is worth saying
+  /// — the other device's user pressing Allow, most of all.
+  final String? status;
+
+  /// luma devices hosting on this network right now, minus the ones already
+  /// saved as sites.
+  final List<DiscoveredHost> nearby;
+
+  /// Whether this platform can look for them at all. When it cannot, the
+  /// section is left out rather than promising devices that never appear.
+  final bool discoveryAvailable;
+
+  /// The nearby device being connected to, so its card can show a spinner.
+  final String? connectingNearbyId;
+
+  final ValueChanged<DiscoveredHost>? onQuickConnect;
+
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
@@ -60,6 +83,23 @@ class SftpSiteManagerView extends StatelessWidget {
               if (error != null) ...[
                 _ErrorCard(message: error!),
                 const SizedBox(height: 14),
+              ],
+              if (status != null) ...[
+                _ErrorCard(
+                  message: status!,
+                  icon: Icons.hourglass_top_rounded,
+                  tone: luma.accent,
+                ),
+                const SizedBox(height: 14),
+              ],
+              if (discoveryAvailable && onQuickConnect != null) ...[
+                _NearbySection(
+                  hosts: nearby,
+                  connectingId: connectingNearbyId,
+                  busy: connectingSiteId != null || connectingNearbyId != null,
+                  onConnect: onQuickConnect!,
+                ),
+                const SizedBox(height: 18),
               ],
               if (loading)
                 const Padding(
@@ -101,6 +141,169 @@ class SftpSiteManagerView extends StatelessWidget {
                 ],
               const SizedBox(height: 8),
               _PrivacyNote(luma: luma),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// "On this network": luma devices that are hosting right now, one tap from
+/// connecting. Only the address and port come from the network — the pairing
+/// password is still typed, so being listed grants nothing.
+class _NearbySection extends StatelessWidget {
+  const _NearbySection({
+    required this.hosts,
+    required this.connectingId,
+    required this.busy,
+    required this.onConnect,
+  });
+
+  final List<DiscoveredHost> hosts;
+  final String? connectingId;
+  final bool busy;
+  final ValueChanged<DiscoveredHost> onConnect;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.wifi_tethering_rounded, size: 16, color: luma.accent),
+            const SizedBox(width: 8),
+            Text(
+              'On this network',
+              style: TextStyle(
+                color: luma.textPrimary,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        if (hosts.isEmpty)
+          Text(
+            'No luma device on this network is hosting right now. Open the '
+            'Host tab or This device on the other one and it shows up here.',
+            style: TextStyle(color: luma.textMuted, fontSize: 12, height: 1.4),
+          )
+        else
+          for (final host in hosts) ...[
+            _NearbyCard(
+              host: host,
+              connecting: connectingId == host.id,
+              busy: busy,
+              onConnect: () => onConnect(host),
+            ),
+            const SizedBox(height: 8),
+          ],
+      ],
+    );
+  }
+}
+
+class _NearbyCard extends StatefulWidget {
+  const _NearbyCard({
+    required this.host,
+    required this.connecting,
+    required this.busy,
+    required this.onConnect,
+  });
+
+  final DiscoveredHost host;
+  final bool connecting;
+  final bool busy;
+  final VoidCallback onConnect;
+
+  @override
+  State<_NearbyCard> createState() => _NearbyCardState();
+}
+
+class _NearbyCardState extends State<_NearbyCard> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final host = widget.host;
+    final enabled = !widget.busy && host.compatible;
+    return MouseRegion(
+      cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: GestureDetector(
+        onTap: enabled ? widget.onConnect : null,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: _hovering && enabled ? luma.surfaceHover : luma.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: _hovering && enabled ? luma.accent : luma.border,
+            ),
+          ),
+          child: Row(
+            children: [
+              LumaIconBadge(
+                icon: Icons.devices_rounded,
+                color: luma.accent,
+                size: 38,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      host.deviceName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: luma.textPrimary,
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      host.compatible
+                          ? '${host.address}:${host.port}'
+                          : '${host.address} · runs a different version of '
+                              'luma — update both to connect',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: host.compatible
+                            ? luma.textSecondary
+                            : luma.textMuted,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              if (widget.connecting)
+                const SizedBox(
+                  width: 34,
+                  height: 34,
+                  child: Padding(
+                    padding: EdgeInsets.all(8),
+                    child: CircularProgressIndicator(strokeWidth: 2.2),
+                  ),
+                )
+              else
+                LumaGhostButton(
+                  label: 'Connect',
+                  icon: Icons.link_rounded,
+                  onTap: enabled ? widget.onConnect : null,
+                ),
             ],
           ),
         ),
@@ -195,24 +398,34 @@ class _Header extends StatelessWidget {
 }
 
 class _ErrorCard extends StatelessWidget {
-  const _ErrorCard({required this.message});
+  const _ErrorCard({
+    required this.message,
+    this.icon = Icons.error_outline_rounded,
+    this.tone,
+  });
 
   final String message;
+  final IconData icon;
+
+  /// Defaults to the danger colour; a status that is not a failure passes
+  /// its own.
+  final Color? tone;
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final color = tone ?? luma.danger;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: luma.danger.withValues(alpha: 0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: luma.danger.withValues(alpha: 0.4)),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.error_outline_rounded, size: 18, color: luma.danger),
+          Icon(icon, size: 18, color: color),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

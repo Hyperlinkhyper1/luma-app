@@ -223,7 +223,7 @@ function makeKoi() {
 
 function animateKoi(koi, dt, speed) {
   if (!state.powered) return;
-  const progress = koi.userData.progress || 0;
+  let progress = koi.userData.progress || 0;
   progress += dt * speed;
   koi.userData.progress = progress % 1;
   const t = progress;
@@ -289,7 +289,7 @@ function createVoxelGroup(worldSize = 64) {
   let voxelCount = 0;
 
   function registerMaterial(color, emissive, emissiveIntensity) {
-    const key = `${color.toString(16)}|${emissive?.getHexString()}||${emissiveIntensity ?? 0}`;
+    const key = `${color.toString(16)}|${emissive == null ? "" : new THREE.Color(emissive).getHexString()}||${emissiveIntensity ?? 0}`;
     let m = matMap.get(key);
     if (!m) {
       m = new THREE.MeshStandardMaterial({
@@ -793,6 +793,7 @@ function createVoxelGroup(worldSize = 64) {
     voxelCount++;
   }
   group.add(fallGroup);
+  group.userData.fallGroup = fallGroup;
 
   // ---- Floating islands (flying island + others) ----
   const islandMat = registerMaterial(0x606C38, null, 0);
@@ -898,6 +899,7 @@ const allMeshes = pagodaResult.group.children;
 // Light shading per material index (voxel AO-ish)
 for (let i = 0; i < allMeshes.length; i++) {
   const mesh = allMeshes[i];
+  if (!mesh.isMesh || !mesh.material || !mesh.material.color) continue;
   const idx = Math.floor(i % 9);
   const light = 0.7 + 0.3 * Math.sin(i * 0.7);
   mesh.material = new THREE.MeshStandardMaterial({
@@ -1152,7 +1154,7 @@ function updateScene(time) {
   animateKoi(koi2, 0.016, 0.9);
 
   // Waterfall
-  for (const m of fallGroup.children) {
+  for (const m of pagodaResult.group.userData.fallGroup.children) {
     m.position.y += 0.001;
     if (m.position.y > 7) m.position.y = 1.0;
   }
@@ -1160,7 +1162,7 @@ function updateScene(time) {
   // Ramps / floating islands
   if (state.flyingIslandToggle) {
     const rot = time * 0.1;
-    for (const m of group.children) {
+    for (const m of pagodaResult.group.children) {
       if (m.userData?.floating) {
         m.rotation.y = rot;
         m.position.x = Math.sin(rot) * 1.5;
@@ -1184,9 +1186,9 @@ function updateScene(time) {
 
   // Petal fall
   for (const p of petals) {
-    p.position.y += p.userData.vy;
-    p.position.z += p.userData.vz;
-    p.rotation += p.userData.rotSpeed * 0.016;
+    p.position.y += p.userData.vy * 0.016;
+    p.position.z += p.userData.vz * 0.016;
+    p.rotation.y += p.userData.rotSpeed * 0.016;
     p.material.opacity = p.userData.opacity * (1 - p.userData.life * 0.5);
   }
 
@@ -1200,8 +1202,8 @@ function updateScene(time) {
   }
   voxelCountEl.textContent = allMeshes.length;
   floorCountEl.textContent = 5; // pagoda floors
-  const hour = ((t * 24) % 24);
-  timeTextEl.textContent = hour < 6 ? 'Night' : (hour < 9 ? 'Dawn' : (hour < 15 ? 'Day' : (hour < 18 ? 'Dusk' : 'Night')));
+  const clockHour = ((t * 24) % 24);
+  timeTextEl.textContent = clockHour < 6 ? 'Night' : (clockHour < 9 ? 'Dawn' : (clockHour < 15 ? 'Day' : (clockHour < 18 ? 'Dusk' : 'Night')));
 }
 
 // ───────────────────────────── INTERACTION ─────────────────────────────
