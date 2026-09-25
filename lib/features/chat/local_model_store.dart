@@ -15,6 +15,11 @@ class LocalModelStore extends ChangeNotifier {
   static const modelSizeLabel = '563 MB';
   static const _minimumModelBytes = 500 * 1024 * 1024;
 
+  /// False on iOS: llama.cpp is not bundled there (the upstream iOS build is
+  /// unusable — see third_party/llm_llamacpp/LUMA_PATCH.md), so the model
+  /// could be downloaded but never run.
+  static bool get supported => !Platform.isIOS;
+
   final LlamaCppRepository _repository = LlamaCppRepository();
   bool _downloading = false;
   double? _progress;
@@ -43,10 +48,10 @@ class LocalModelStore extends ChangeNotifier {
     return path;
   }
 
-  Future<bool> get isInstalled async => await modelPath() != null;
+  Future<bool> get isInstalled async => supported && await modelPath() != null;
 
   Future<void> download() async {
-    if (_downloading || await isInstalled) return;
+    if (!supported || _downloading || await isInstalled) return;
     _downloading = true;
     _progress = 0;
     _error = null;

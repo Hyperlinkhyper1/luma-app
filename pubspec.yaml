@@ -116,6 +116,9 @@ dev_dependencies:
 dependency_overrides:
   flutter_inappwebview_windows:
     path: third_party/flutter_inappwebview_windows_stub
+  # iOS prebuilts upstream are unusable; see third_party/llm_llamacpp/LUMA_PATCH.md.
+  llm_llamacpp:
+    path: third_party/llm_llamacpp
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

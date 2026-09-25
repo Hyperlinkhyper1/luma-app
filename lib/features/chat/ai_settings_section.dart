@@ -34,8 +34,15 @@ class AiSettingsSection extends StatelessWidget {
           const SizedBox(height: 12),
           // Re-mounts the key-management body whenever the provider changes,
           // so its per-provider loaded state (masked key, etc.) is fresh.
-          if (settings.aiProviderId == AiProviderId.local.name)
+          if (settings.aiProviderId == AiProviderId.local.name &&
+              LocalModelStore.supported)
             const _LocalModelBody()
+          else if (settings.aiProviderId == AiProviderId.local.name)
+            Text(
+              'The on-device model is not available on iOS. Pick another '
+              'model above.',
+              style: TextStyle(color: context.luma.textMuted, fontSize: 12),
+            )
           else
             _AiKeyBody(
               key: ValueKey(settings.aiProviderId),
@@ -331,12 +338,13 @@ class _ProviderPicker extends StatelessWidget {
       runSpacing: 8,
       children: [
         for (final provider in kAiProviders)
-          _ProviderChip(
-            provider: provider,
-            selected: provider.id.name == settings.aiProviderId,
-            onTap: () => settings.setAiProviderId(provider.id.name),
-            luma: luma,
-          ),
+          if (provider.id != AiProviderId.local || LocalModelStore.supported)
+            _ProviderChip(
+              provider: provider,
+              selected: provider.id.name == settings.aiProviderId,
+              onTap: () => settings.setAiProviderId(provider.id.name),
+              luma: luma,
+            ),
       ],
     );
   }
