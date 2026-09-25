@@ -196,6 +196,7 @@ class _SftpHostPanelState extends State<SftpHostPanel> {
                   compact: widget.compact,
                 ),
                 const SizedBox(height: 12),
+                HostStorageAccessCard(directory: server.directory?.path),
                 if (server.pendingApproval != null) ...[
                   HostApprovalCard(
                     client: server.pendingApproval!,

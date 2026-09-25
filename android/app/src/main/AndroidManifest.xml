@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <!-- Lets the app hand a downloaded APK straight to the system installer
          (see lib/app/update/) instead of the user having to dig it out of
          Downloads and enable "install from this source" manually each time. -->
@@ -48,6 +49,21 @@
         android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
     <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION" />
 
+    <!-- Lets the SFTP plugin's Host tab / This device screen share folders in
+         shared storage (DCIM, Download, …) with another luma device. Scoped
+         storage otherwise hides every file another app created, so a shared
+         Camera folder listed as empty. Only requested when the user presses
+         "Allow file access" while hosting; luma is sideloaded, not on Play,
+         so the Play policy on this permission does not apply. Android 10 and
+         older use the legacy read/write grant (plus
+         requestLegacyExternalStorage for 10). -->
+    <uses-permission
+        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
+
     <!-- Scan a card's barcode / QR with the camera in the Card Wallet plugin.
          not-required so the app still installs on devices without a camera. -->
     <uses-permission android:name="android.permission.CAMERA" />
@@ -59,6 +75,7 @@
         android:label="luma"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon"
+        android:requestLegacyExternalStorage="true"
         android:networkSecurityConfig="@xml/network_security_config">
         <activity
             android:name=".MainActivity"

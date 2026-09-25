@@ -287,6 +287,7 @@ class _SftpThisDevicePageState extends State<SftpThisDevicePage>
                   onRotate: _server.isRunning ? _rotatePassword : null,
                 ),
                 const SizedBox(height: 12),
+                HostStorageAccessCard(directory: _directory?.path),
                 if (_server.pendingApproval != null) ...[
                   HostApprovalCard(
                     client: _server.pendingApproval!,
