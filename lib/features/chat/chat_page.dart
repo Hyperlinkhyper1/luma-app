@@ -736,7 +736,9 @@ class _ChatComposerState extends State<_ChatComposer> {
       setState(() {
         _caption = installed
             ? 'On-device model · no daily limit'
-            : 'Download Qwen3.5-0.8B in Settings to use it';
+            : LocalModelStore.supported
+            ? 'Download Qwen3.5-0.8B in Settings to use it'
+            : 'The on-device model is not available on iOS';
         _blocked = !installed;
       });
       return;
@@ -816,7 +818,8 @@ final List<_ModelChoice> _lumaModels = [
       mode.name,
     ),
   _ModelChoice('Luma Assistant 1.0', AiProviderId.mistral.name),
-  _ModelChoice('On-device Qwen3.5-0.8B', AiProviderId.local.name),
+  if (LocalModelStore.supported)
+    _ModelChoice('On-device Qwen3.5-0.8B', AiProviderId.local.name),
 ];
 
 final List<_ModelChoice> _apiKeyModels = [
