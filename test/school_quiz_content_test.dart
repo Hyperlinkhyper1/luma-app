@@ -2,6 +2,40 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/features/plugins/installed/school/logic/quiz_bank.dart';
 
 void main() {
+  test(
+    'language and reading each have at least 500 IEP practice questions',
+    () {
+      for (final id in ['taalverzorging', 'lezen']) {
+        expect(QuizBank.byId(id)!.questions.length, greaterThanOrEqualTo(500));
+      }
+      final reading = QuizBank.byId('lezen')!.questions;
+      expect(
+        reading.map((q) => q.passage).toSet().length,
+        greaterThanOrEqualTo(40),
+      );
+      expect(reading.every((q) => q.passage?.isNotEmpty ?? false), isTrue);
+    },
+  );
+
+  test('a long math test uses different question structures', () {
+    final math = QuizBank.byId('rekenen')!;
+    for (final seed in [1, 3, 42]) {
+      final questions = buildTest(math, count: 50, seed: seed);
+      expect(questions.map((q) => q.family ?? q.id).toSet().length, 50);
+    }
+  });
+
+  test('practice tests spread question structures in every other subject', () {
+    for (final subject in QuizBank.subjects.where((s) => s.id != 'lezen')) {
+      final questions = buildTest(subject, count: 20, seed: 17);
+      expect(
+        questions.map((q) => q.familyKey).toSet().length,
+        greaterThanOrEqualTo(15),
+        reason: subject.name,
+      );
+    }
+  });
+
   test('all IEP items have explanations and valid open answers', () {
     for (final s in QuizBank.doorstroomSubjects) {
       for (final q in s.questions) {

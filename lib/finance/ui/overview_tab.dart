@@ -701,8 +701,14 @@ class _ReviewRow extends StatelessWidget {
           children: [
             Icon(icon, size: 16, color: color),
             const SizedBox(width: 8),
-            Text(name, style: TextStyle(color: luma.textPrimary, fontSize: 13)),
-            const Spacer(),
+            Expanded(
+              child: Text(
+                name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: luma.textPrimary, fontSize: 13),
+              ),
+            ),
             Text(
               formatCents(amountCents),
               style: TextStyle(

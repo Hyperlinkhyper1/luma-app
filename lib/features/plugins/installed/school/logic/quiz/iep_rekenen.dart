@@ -2,6 +2,7 @@ import 'dart:math';
 
 import '../quiz_bank.dart';
 import 'gen.dart';
+import 'rekenen_extra.dart';
 
 /// Independently authored practice. Every variation uses the same checked
 /// calculation and plausible, numerically distinct distractors.
@@ -40,6 +41,7 @@ List<QuizQuestion> buildIepRekenen() {
         explanation: why,
         table: table,
         bars: bars,
+        family: family,
       ),
     );
   }
@@ -359,6 +361,23 @@ List<QuizQuestion> buildIepRekenen() {
           ['1', '14'],
           ['2', '18'],
         ],
+      ),
+    );
+  }
+  for (final q in buildRekenenExtra()) {
+    out.add(
+      QuizQuestion(
+        id: 'iep-r-${q.id}',
+        topic: q.topic,
+        prompt: q.prompt,
+        options: q.options,
+        answerIndex: q.answerIndex,
+        explanation:
+            q.explanation ??
+            'Het juiste antwoord is ${q.answer}. Reken de stappen na met de gegevens in de opgave.',
+        family: q.prompt
+            .replaceAll(RegExp(r'\d+(?:[.,:]\d+)*'), '#')
+            .replaceAll(RegExp(r'\s+'), ' '),
       ),
     );
   }

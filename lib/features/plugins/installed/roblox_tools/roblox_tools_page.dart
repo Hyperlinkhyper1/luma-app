@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/widgets.dart';
 import '../../../../theme/luma_theme.dart';
 import 'mafia/mafia_role_counter_tab.dart';
 
@@ -43,6 +44,30 @@ class _RobloxToolsPageState extends State<RobloxToolsPage> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    if (context.isPhoneWidth) {
+      return Column(
+        children: [
+          if (RobloxToolsSection.values.length > 1)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+              child: LumaSegmentedTabs(
+                tabs: [for (final section in RobloxToolsSection.values) section.label],
+                selectedIndex: _section.index,
+                scrollable: true,
+                onSelect: (index) => setState(
+                  () => _section = RobloxToolsSection.values[index],
+                ),
+              ),
+            ),
+          Expanded(
+            child: IndexedStack(
+              index: _section.index,
+              children: const [MafiaRoleCounterTab()],
+            ),
+          ),
+        ],
+      );
+    }
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

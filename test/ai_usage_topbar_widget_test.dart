@@ -161,5 +161,7 @@ void main() {
       moreOrLessEquals(gearRect.left, epsilon: 0.5),
       reason: 'the rescan button sits immediately left of the settings button',
     );
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
   });
 }

@@ -15,10 +15,18 @@ en een vraag waarbij twee antwoorden gekozen worden. Leesteksten bevatten
 meerdere alinea's met samenhangende vragen. De toetsgenerator beperkt het
 aantal teksten en houdt vragen bij dezelfde tekst bij elkaar.
 
-Rekenen bevat 324 opgaven, waaronder getalvarianten van 27 opgavevormen.
-Taalverzorging bevat 83 opgaven; lezen bevat 65 vragen bij acht teksten.
-Meer varianten betekenen niet evenveel verschillende vaardigheden.
-De oude algemene quizbanken worden niet meer gebruikt voor deze drie vakken.
+Rekenen bevat 1069 opgaven uit de eerdere IEP-bank en aanvullende groep-8-opgaven,
+met 117 herkenbare vraagstructuren. De toetsselectie spreidt die structuren:
+een toets van 50 rekenvragen gebruikt 50 verschillende vormen. Taalverzorging
+bevat 721 opgaven over spelling, werkwoordsvormen en leestekens. Lezen bevat
+523 vragen bij 83 teksten, tabellen en andere leesbronnen. Daarvan zijn 36
+nieuwe doorlopende teksten met vragen over begrip, tekstdoel, woordbetekenis
+en gerichte informatie. De leesvragen blijven per tekst gegroepeerd en de
+selectie verdeelt de vier leesonderdelen gelijkmatig.
+
+Een grotere bank betekent niet evenveel verschillende vaardigheden. De
+aanvullende opgaven zijn oefenmateriaal voor groep 8; de IEP-vraagvormen zijn
+een voorbeeld, geen kopie van officiële opgaven.
 De vier andere schoolvakken staan apart als extra oefening.
 
 Uitleg verschijnt pas na het nakijken. Getallen worden op waarde nagekeken;

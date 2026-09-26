@@ -11,9 +11,18 @@ import 'lookups.dart';
 import 'pot_detail_page.dart';
 
 const _potColors = <int>[
-  0xFF7C5AD9, 0xFF4CAF50, 0xFF2196F3, 0xFFFF9800,
-  0xFFE91E63, 0xFF009688, 0xFFFFC107, 0xFF9C27B0,
-  0xFF00BCD4, 0xFFF44336, 0xFF3F51B5, 0xFF607D8B,
+  0xFF7C5AD9,
+  0xFF4CAF50,
+  0xFF2196F3,
+  0xFFFF9800,
+  0xFFE91E63,
+  0xFF009688,
+  0xFFFFC107,
+  0xFF9C27B0,
+  0xFF00BCD4,
+  0xFFF44336,
+  0xFF3F51B5,
+  0xFF607D8B,
 ];
 
 final _potIcons = <int>[
@@ -54,14 +63,19 @@ class PotsTab extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Row(
+                    Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 12,
+                      runSpacing: 8,
                       children: [
                         Text(
                           'Available to allocate: ${formatCents(balances.mainCents)}',
                           style: TextStyle(
-                              color: context.luma.textSecondary, fontSize: 13),
+                            color: context.luma.textSecondary,
+                            fontSize: 13,
+                          ),
                         ),
-                        const Spacer(),
                         LumaPrimaryButton(
                           label: 'New pot',
                           icon: Icons.add_rounded,
@@ -80,20 +94,28 @@ class PotsTab extends StatelessWidget {
                             )
                           : ListView(
                               children: [
-                                Wrap(
-                                  spacing: 14,
-                                  runSpacing: 14,
-                                  children: [
-                                    for (final pot in pots)
-                                      _PotCard(
-                                        pot: pot,
-                                        balanceCents: balances.balanceForPot(pot.id),
-                                        repo: repo,
-                                        allTxns: txns,
-                                        categories: categories,
-                                        merchants: merchants,
-                                      ),
-                                  ],
+                                LayoutBuilder(
+                                  builder: (context, constraints) => Wrap(
+                                    spacing: 14,
+                                    runSpacing: 14,
+                                    children: [
+                                      for (final pot in pots)
+                                        SizedBox(
+                                          width: constraints.maxWidth < 260
+                                              ? constraints.maxWidth
+                                              : 260,
+                                          child: _PotCard(
+                                            pot: pot,
+                                            balanceCents: balances
+                                                .balanceForPot(pot.id),
+                                            repo: repo,
+                                            allTxns: txns,
+                                            categories: categories,
+                                            merchants: merchants,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
@@ -139,7 +161,6 @@ class _PotCard extends StatelessWidget {
           merchants: merchants,
         ),
         child: Container(
-          width: 260,
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             color: luma.surface,
@@ -169,8 +190,11 @@ class _PotCard extends StatelessWidget {
                     ),
                   ),
                   PopupMenuButton<String>(
-                    icon: Icon(Icons.more_vert_rounded,
-                        size: 18, color: luma.textMuted),
+                    icon: Icon(
+                      Icons.more_vert_rounded,
+                      size: 18,
+                      color: luma.textMuted,
+                    ),
                     color: luma.surface,
                     onSelected: (v) {
                       switch (v) {
@@ -185,16 +209,22 @@ class _PotCard extends StatelessWidget {
                     itemBuilder: (context) => [
                       _menuItem('add', Icons.add_rounded, 'Add money', luma),
                       _menuItem('edit', Icons.edit_rounded, 'Edit', luma),
-                      _menuItem('delete', Icons.delete_outline_rounded, 'Delete',
-                          luma,
-                          danger: true),
+                      _menuItem(
+                        'delete',
+                        Icons.delete_outline_rounded,
+                        'Delete',
+                        luma,
+                        danger: true,
+                      ),
                     ],
                   ),
                 ],
               ),
               const SizedBox(height: 16),
-              Text('Balance',
-                  style: TextStyle(color: luma.textMuted, fontSize: 12)),
+              Text(
+                'Balance',
+                style: TextStyle(color: luma.textMuted, fontSize: 12),
+              ),
               const SizedBox(height: 2),
               Text(
                 formatCents(balanceCents),
@@ -213,8 +243,12 @@ class _PotCard extends StatelessWidget {
 }
 
 PopupMenuItem<String> _menuItem(
-    String value, IconData icon, String label, LumaPalette luma,
-    {bool danger = false}) {
+  String value,
+  IconData icon,
+  String label,
+  LumaPalette luma, {
+  bool danger = false,
+}) {
   return PopupMenuItem<String>(
     value: value,
     child: Row(
@@ -228,14 +262,19 @@ PopupMenuItem<String> _menuItem(
 }
 
 Future<void> _confirmDelete(
-    BuildContext context, FinanceRepository repo, Pot pot) async {
+  BuildContext context,
+  FinanceRepository repo,
+  Pot pot,
+) async {
   final luma = context.luma;
   final ok = await showDialog<bool>(
     context: context,
     builder: (_) => AlertDialog(
       backgroundColor: luma.surface,
-      title: Text('Delete "${pot.name}"?',
-          style: TextStyle(color: luma.textPrimary)),
+      title: Text(
+        'Delete "${pot.name}"?',
+        style: TextStyle(color: luma.textPrimary),
+      ),
       content: Text(
         'Entries assigned to this pot will move back to your main balance.',
         style: TextStyle(color: luma.textSecondary),
@@ -256,15 +295,20 @@ Future<void> _confirmDelete(
 }
 
 Future<void> _openAddMoney(
-    BuildContext context, FinanceRepository repo, Pot pot) {
+  BuildContext context,
+  FinanceRepository repo,
+  Pot pot,
+) {
   final controller = TextEditingController();
   final luma = context.luma;
   return showDialog<void>(
     context: context,
     builder: (dialogContext) => AlertDialog(
       backgroundColor: luma.surface,
-      title: Text('Add money to "${pot.name}"',
-          style: TextStyle(color: luma.textPrimary, fontSize: 17)),
+      title: Text(
+        'Add money to "${pot.name}"',
+        style: TextStyle(color: luma.textPrimary, fontSize: 17),
+      ),
       content: TextField(
         controller: controller,
         autofocus: true,
@@ -297,8 +341,11 @@ Future<void> _openAddMoney(
   );
 }
 
-Future<void> _openEditor(BuildContext context, FinanceRepository repo,
-    {Pot? pot}) {
+Future<void> _openEditor(
+  BuildContext context,
+  FinanceRepository repo, {
+  Pot? pot,
+}) {
   return showDialog<void>(
     context: context,
     builder: (_) => Dialog(
@@ -322,8 +369,9 @@ class _PotEditor extends StatefulWidget {
 }
 
 class _PotEditorState extends State<_PotEditor> {
-  late final TextEditingController _name =
-      TextEditingController(text: widget.pot?.name ?? '');
+  late final TextEditingController _name = TextEditingController(
+    text: widget.pot?.name ?? '',
+  );
   late int _color = widget.pot?.colorValue ?? _potColors.first;
   late int _icon = widget.pot?.iconCodepoint ?? _potIcons.first;
 
@@ -344,7 +392,11 @@ class _PotEditorState extends State<_PotEditor> {
       );
     } else {
       await widget.repo.updatePot(
-        widget.pot!.copyWith(name: name, colorValue: _color, iconCodepoint: _icon),
+        widget.pot!.copyWith(
+          name: name,
+          colorValue: _color,
+          iconCodepoint: _icon,
+        ),
       );
     }
     if (mounted) Navigator.pop(context);
@@ -359,11 +411,14 @@ class _PotEditorState extends State<_PotEditor> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(widget.pot == null ? 'New pot' : 'Edit pot',
-              style: TextStyle(
-                  color: luma.textPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700)),
+          Text(
+            widget.pot == null ? 'New pot' : 'Edit pot',
+            style: TextStyle(
+              color: luma.textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 16),
           TextField(
             controller: _name,
@@ -385,7 +440,10 @@ class _PotEditorState extends State<_PotEditor> {
             ),
           ),
           const SizedBox(height: 18),
-          Text('Color', style: TextStyle(color: luma.textSecondary, fontSize: 12)),
+          Text(
+            'Color',
+            style: TextStyle(color: luma.textSecondary, fontSize: 12),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 10,
@@ -401,7 +459,9 @@ class _PotEditorState extends State<_PotEditor> {
                       color: Color(c),
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: _color == c ? luma.textPrimary : Colors.transparent,
+                        color: _color == c
+                            ? luma.textPrimary
+                            : Colors.transparent,
                         width: 2,
                       ),
                     ),
@@ -410,7 +470,10 @@ class _PotEditorState extends State<_PotEditor> {
             ],
           ),
           const SizedBox(height: 18),
-          Text('Icon', style: TextStyle(color: luma.textSecondary, fontSize: 12)),
+          Text(
+            'Icon',
+            style: TextStyle(color: luma.textSecondary, fontSize: 12),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 10,
@@ -429,9 +492,11 @@ class _PotEditorState extends State<_PotEditor> {
                         color: _icon == ic ? luma.accent : luma.border,
                       ),
                     ),
-                    child: Icon(materialIcon(ic),
-                        size: 20,
-                        color: _icon == ic ? luma.accent : luma.textSecondary),
+                    child: Icon(
+                      materialIcon(ic),
+                      size: 20,
+                      color: _icon == ic ? luma.accent : luma.textSecondary,
+                    ),
                   ),
                 ),
             ],
