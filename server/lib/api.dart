@@ -2309,7 +2309,27 @@ class Api {
         await offline.put(user.id, existing);
       }
     }
-    return jsonResponse(200, _cs2OfflineJson(existing));
+    // Every signed-in device asks for this after each 10-second sync tick,
+    // but it only changes on a scheduled check or a device's push. The price
+    // history alone runs to hundreds of kilobytes, so a device that is
+    // already current gets a 304 instead of the whole snapshot again.
+    final body = jsonEncode(_cs2OfflineJson(existing));
+    final etag = '"${c.sha256.convert(utf8.encode(body))}"';
+    // Cloudflare weakens a strong ETag when it compresses the response, so
+    // the device may echo it back as W/"...".
+    final known = request.headers['if-none-match']?.replaceFirst('W/', '');
+    if (known == etag) {
+      return Response.notModified(headers: {'ETag': etag});
+    }
+    return Response(
+      200,
+      body: body,
+      headers: {
+        'Content-Type': 'application/json',
+        'ETag': etag,
+        'Cache-Control': 'no-cache',
+      },
+    );
   }
 
   Future<Response> _cs2OfflinePut(Request request, StoredUser user) async {

@@ -559,7 +559,9 @@ class _LumaAppState extends State<LumaApp> {
     StorageGuardService.instance = _storageGuard;
     widget.settings.addListener(_onSettingsChanged);
     _storageGuard.refresh();
-    unawaited(_pluginRepository.ensureEngineStudyInstalled());
+    // Remove the temporary navigation entry used while wiring the bundled
+    // engine scenes; they now live under AI Usage → Tests → Engine Test.
+    unawaited(_pluginRepository.uninstall('engine-study'));
     final syncInit = _sync.init();
     unawaited(_syncAiUsageOnOpen(syncInit));
     _peerSync.init();
