@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GPT 6 Sol (Low) — Pagoda Test</title>
+<script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#1a1626;font-family:'Segoe UI',system-ui,sans-serif}
+  #c{display:block;width:100%;height:100%}
+  #hud{position:fixed;top:16px;left:16px;color:#f5e9d6;background:rgba(18,14,28,.62);
+    border:1px solid rgba(232,184,109,.35);border-radius:12px;padding:12px 16px;
+    backdrop-filter:blur(6px);user-select:none;z-index:10;min-width:212px}
+  #hud .t{font-size:17px;font-weight:800;letter-spacing:.22em;color:#e8b86d}
+  #hud .s{font-size:12.5px;margin-top:5px;color:#ffe5ec;opacity:.92;font-variant-numeric:tabular-nums}
+  #hud .k{font-size:11px;margin-top:7px;color:#7ed6df;opacity:.9}
+  #hud .row{display:flex;align-items:center;gap:8px;margin-top:9px}
+  #hud .row span{font-size:12px}
+  #hud input[type=range]{width:118px;accent-color:#e8b86d}
+  #hud button{background:rgba(232,184,109,.16);color:#e8b86d;border:1px solid rgba(232,184,109,.4);
+    border-radius:7px;font-size:11px;padding:2px 9px;cursor:pointer}
+  #hud button:hover{background:rgba(232,184,109,.3)}
+  #sig{position:fixed;right:14px;bottom:12px;font-size:10.5px;letter-spacing:.14em;color:rgba(245,233,214,.55);z-index:10}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud">
+  <div class="t">VOXEL GARDEN</div>
+  <div class="s" id="stat">… voxels | 60 FPS</div>
+  <div class="k">Click lanterns · click pagoda floors</div>
+  <div class="row"><span>☀☾</span><input id="time" type="range" min="0" max="1000" value="330"><button id="pause">❚❚</button></div>
+</div>
+<div id="sig">SPRING FESTIVAL AT THE FIVE-STORY PAGODA · GPT 6 SOL (LOW)</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ============ helpers ============ */
+const C = {
+  verm:0xC73E1D, vermD:0x9E2F14, gold:0xE8B86D, goldD:0xC79650, teak:0x4A2C1A, teakD:0x33200F,
+  jade:0x2D6A4F, jadeL:0x40916C, sak:0xFFB7C5, sakD:0xFF8FAB, sakL:0xFFE5EC,
+  stone:0x9AA0A6, stoneD:0x6E7379, wet:0x7A8A85, pond:0x7ED6DF, moss:0x606C38, mossL:0x74824B,
+  bamboo:0x8FA63E, wax:0xFFF3D9, ink:0x241C2C, water:0x8fd8e4, pine:0x2D6A4F, red:0xB23A22
+};
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const lerp=(a,b,t)=>a+(b-a)*t;
+const smooth=t=>t*t*(3-2*t);
+function mulberry32(a){return function(){a|=0;a=(a+0x6D2B79F5)|0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};}
+const rnd=mulberry32(20260926);
+const rr=(a,b)=>a+(b-a)*rnd();
+const ri=(a,b)=>Math.floor(rr(a,b+1));
+function vnoise(s){let h=Math.sin(s*127.1+311.7)*43758.5453;return h-Math.floor(h);}
+function snoise(x,z){ // smooth value noise, cell size 1
+  const xi=Math.floor(x), zi=Math.floor(z), xf=x-xi, zf=z-zi;
+  const a=vnoise(xi*57+zi*91), b=vnoise((xi+1)*57+zi*91), c=vnoise(xi*57+(zi+1)*91), d=vnoise((xi+1)*57+(zi+1)*91);
+  const u=smooth(xf), v=smooth(zf);
+  return lerp(lerp(a,b,u),lerp(c,d,u),v);
+}
+const hx=c=>c.toString(16).padStart(6,'0');
+const colKey=(c,e=0,g=0)=>c+':'+e+':'+g;
+
+/* ============ renderer ============ */
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.06;
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+
+const scene=new THREE.Scene();
+const sunLight=new THREE.DirectionalLight(0xffffff,3.0);
+sunLight.castShadow=true;
+sunLight.shadow.mapSize.set(2048,2048);
+sunLight.shadow.camera.near=5;
+sunLight.shadow.camera.far=220;
+sunLight.shadow.camera.left=-42; sunLight.shadow.camera.right=42;
+sunLight.shadow.camera.top=46;   sunLight.shadow.camera.bottom=-16;
+sunLight.shadow.bias=-0.0006;
+scene.add(sunLight,sunLight.target);
+const hemi=new THREE.HemisphereLight(0xbfd8ff,0x4a4436,0.75);
+scene.add(hemi);
+/* ============ voxel engine: BoxGeometry + InstancedMesh, grouped by color ============ */
+const world=new Map();               // static world: "x,y,z" -> {c,e,g}
+const animatedWorld=new Map();       // animated groups register their cells here (for AO of neighbors)
+const cellKey=(x,y,z)=>x+','+y+','+z;
+function V(x,y,z,c,e=0,g=0){ const xi=Math.round(x),yi=Math.round(y),zi=Math.round(z); world.set(cellKey(xi,yi,zi),{c,e,g}); }
+function Vsoft(x,y,z,c,e=0,g=0){ const k=cellKey(Math.round(x),Math.round(y),Math.round(z)); if(!world.has(k)) world.set(k,{c,e,g}); }
+
+const boxGeo=new THREE.BoxGeometry(1,1,1);
+const baked=[]; let voxelTotal=0;
+const emissiveMats={}; // key -> material, kept for day/night emissive modulation
+function mkMat(c,e,g){
+  const key=colKey(c,e,g);
+  if(emissiveMats[key]) return emissiveMats[key];
+  const m=new THREE.MeshStandardMaterial({color:0xffffff,roughness:g===1?0.42:0.92,metalness:g===1?0.55:0.02});
+  if(e){m.emissive=new THREE.Color(c);m.emissiveIntensity=0.7;m.userData.baseE=0.7;}
+  if(g){m.metalness=0.62;m.roughness=0.3;}
+  return emissiveMats[key]=m;
+}
+// bake `map` (cells) -> array of InstancedMesh (one per color key), with AO tint
+function bakeMap(map, opts={}){
+  const groups=new Map();
+  for(const [k,cell] of map){
+    const gk=colKey(cell.c,cell.e,cell.g);
+    let arr=groups.get(gk); if(!arr) groups.set(gk,arr=[]);
+    arr.push([+k.split(',')[0],+k.split(',')[1],+k.split(',')[2],cell]);
+  }
+  const meshes=[];
+  for(const [gk,list] of groups){
+    const [c,e,g]=gk.split(':').map(Number);
+    const im=new THREE.InstancedMesh(boxGeo,mkMat(c,e,g),list.length);
+    im.castShadow=!!opts.cast; im.receiveShadow=true;
+    const m4=new THREE.Matrix4(), cc=new THREE.Color();
+    list.forEach((it,i)=>{
+      const [x,y,zi,cell]=it;
+      m4.makeTranslation(x,y,zi); im.setMatrixAt(i,m4);
+      // ambient occlusion from neighbour occupancy + gentle height ambient + jitter
+      let n=0;
+      if(world.has(cellKey(x,y+1,zi))||animatedWorld.has(cellKey(x,y+1,zi)))n++;
+      if(world.has(cellKey(x,y-1,zi))||animatedWorld.has(cellKey(x,y-1,zi)))n++;
+      for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]])
+        if(world.has(cellKey(x+dx,y,zi+dz))||animatedWorld.has(cellKey(x+dx,y,zi+dz)))n++;
+      let s=clamp(1-n*0.075+y*0.004+(rnd()-0.5)*0.055,0.52,1.12);
+      cc.setHex(c).multiplyScalar(s);
+      im.setColorAt(i,cc);
+    });
+    im.instanceMatrix.needsUpdate=true; im.instanceColor.needsUpdate=true;
+    im.frustumCulled=false;
+    scene.add(im); baked.push(im); voxelTotal+=list.length;
+    meshes.push(im);
+  }
+  return meshes;
+}
+// Animated bucket: cells rendered as a static InstancedMesh parented to a moving Group.
+function bakeBucket(cells,group,cast=true){
+  const map=new Map(); for(const [k,v] of cells){ map.set(k,v); animatedWorld.set(k,v); }
+  // local coords: subtract group origin so animation pivots correctly
+  const gk=new Map();
+  for(const [k,v] of map){ const [x,y,z]=k.split(',').map(Number);
+    const lk=cellKey(x-group.position.x,y-group.position.y,z-group.position.z);
+    let a=gk.get(v.c); if(!a)gk.set(v.c,a=[]); a.push([lk,v]); }
+  const m4=new THREE.Matrix4(), cc=new THREE.Color();
+  for(const [c,list] of gk){
+    const im=new THREE.InstancedMesh(boxGeo,mkMat(c,0,0),list.length);
+    im.castShadow=cast; im.receiveShadow=true; im.frustumCulled=false;
+    list.forEach(([k],i)=>{ const [x,y,z]=k.split(',').map(Number); m4.makeTranslation(x,y,z); im.setMatrixAt(i,m4);
+      let n=0; for(const [dx,dy,dz] of [[0,1,0],[0,-1,0],[1,0,0],[-1,0,0],[0,0,1],[0,0,-1]])
+        if(map.has(cellKey(x+dx,y+dy,z+dz)))n++;
+      cc.setHex(c).multiplyScalar(clamp(1-n*0.08+(rnd()-0.5)*0.05,0.55,1.05)); im.setColorAt(i,cc); });
+    im.instanceMatrix.needsUpdate=true; im.instanceColor.needsUpdate=true;
+    group.add(im); voxelTotal+=list.length;
+  }
+}
+function bucketSet(){ return {m:new Map(), set(x,y,z,c){this.m.set(cellKey(Math.round(x),Math.round(y),Math.round(z)),{c,0:0,1:0,c});}, add:0 }; }
+function newBucket(){ const m=new Map(); return {m, set(x,y,z,c){ m.set(cellKey(Math.round(x),Math.round(y),Math.round(z)),{c}); } }; }
+
+/* ============ terrain ============ */
+const POND={x:16,z:10,r:9.5};
+const pondD=(x,z)=>Math.hypot(x-POND.x,z-POND.z);
+const creek=(x,z)=>Math.abs(x-15)<=2&&z>=19&&z<=24;
+const inCliff=(x,z)=>x>=25&&x<=30&&z>=-2&&z<=14;
+const notch=(x,z)=>x>=25&&x<=27&&z>=7&&z<=10;
+function keepCell(x,z){const e=31-Math.max(Math.abs(x),Math.abs(z));
+  return e>=4||snoise((x+64)*0.08,(z+64)*0.08)>0.16+(4-e)*0.24;}
+const PATHPTS=[[0,31],[5,24],[-5,16],[5,8],[0,6]];
+function segD(px,pz,ax,az,bx,bz){const dx=bx-ax,dz=bz-az,l2=dx*dx+dz*dz||1;
+  const t=clamp(((px-ax)*dx+(pz-az)*dz)/l2,0,1);return Math.hypot(px-(ax+t*dx),pz-(az+t*dz));}
+const onPath=(x,z)=>{for(let i=0;i<PATHPTS.length-1;i++)
+  if(segD(x,z,PATHPTS[i][0],PATHPTS[i][1],PATHPTS[i+1][0],PATHPTS[i+1][1])<1.4)return true;
+  return Math.abs(x)<=2&&z>=6&&z<=10;};
+const kept=new Set();
+for(let x=-31;x<=31;x++)for(let z=-31;z<=31;z++)if(keepCell(x,z))kept.add(x+','+z);
+for(let x=-31;x<=31;x++)for(let z=-31;z<=31;z++){
+  if(!kept.has(x+','+z))continue;
+  const d=pondD(x,z);
+  let top=0;
+  const bump=!onPath(x,z)&&d>10.8&&!inCliff(x,z)&&!creek(x,z)&&snoise((x+31)*0.11,(z+31)*0.11)>0.78;
+  if(bump)top=1;
+  if(inCliff(x,z)&&!notch(x,z)&&d>=9.5)top=4+Math.round(snoise(x*0.23,z*0.21)*3.4);
+  if(d<POND.r)top=(d<4.6?-4:-3)+Math.round(snoise((x+31)*0.3,(z+31)*0.3));
+  if(creek(x,z))top=-2;
+  for(let y=Math.min(top,0);y<=top;y++){
+    let c;
+    if(y===top){
+      if(d<POND.r-0.9||(creek(x,z)&&z<24))c=(d<5?C.moss:C.wet);
+      else if(d<POND.r)c=C.stone;                       // shore ring
+      else if(inCliff(x,z))c=((x+z)%2)?C.stone:C.stoneD;
+      else if(creek(x,z))c=C.wet;
+      else if(onPath(x,z))c=C.stone;
+      else c=snoise(x*0.5,z*0.5)>0.5?C.mossL:C.moss;
+    } else c=inCliff(x,z)?C.stoneD:C.teakD;
+    V(x,y,z,c);
+  }
+  let edge=false;for(const[dx,dz]of[[1,0],[-1,0],[0,1],[0,-1]])if(!kept.has((x+dx)+','+(z+dz)))edge=true;
+  if(edge){const dep=3+Math.floor(snoise(x*0.37,z*0.41)*3);   // organic floating-rim skirt
+    for(let y=-1;y>=-dep;y--)V(x,y,z,(y+x)%2?C.stoneD:C.teakD);}
+}
+// creek spillway: stones where the brook spills onto the moss
+for(let x=13;x<=17;x++)for(let z=24;z<=27;z++){
+  V(x,0,z,((x+z)%2)?C.stone:C.stoneD);
+  if((x===14&&z===25)||(x===16&&z===24)||(x===17&&z===26))V(x,1,z,C.stoneD);
+}
+/* ============ arched wooden bridge over the creek ============ */
+for(let x=11;x<=19;x++){
+  const t=(x-11)/8, y=1+Math.round(2.4*Math.sin(Math.PI*clamp(t,0.02,0.98)));
+  for(let z=20;z<=23;z++){V(x,y,z,C.teak);V(x,y-1,z,C.teakD);
+    if((z===20||z===23)&&(x%2===1))V(x,y+1,z,C.teak);}   // guard posts
+  if(x===11||x===19){for(let z=20;z<=23;z++)V(x,y+1,z,C.verm);V(x,y+2,21,C.gold,0,1);V(x,y+2,22,C.gold,0,1);}
+}
+//#NEXT#
+/* ============ five-story pagoda (focus, ~28m) ============ */
+const floors=[];
+const FHW=[7,6,5,4,3];                     // floor half-widths, progressively smaller
+for(let f=0;f<5;f++)floors.push({f,open:false,doors:[]});
+// stone plinth with steps on the south face
+for(let x=-9;x<=9;x++)for(let z=-9;z<=9;z++){
+  V(x,0,z,(Math.abs(x)===9||Math.abs(z)===9)?C.stoneD:C.stone);
+  if(Math.abs(x)<=8&&Math.abs(z)<=8&&((x+z)%7===0))V(x,0,z,C.stoneD);
+}
+V(0,1,10,C.stone);V(1,1,10,C.stone);V(-1,1,10,C.stone);
+V(0,1,11,C.stone);V(1,1,11,C.stone);V(-1,1,11,C.stone);
+// corner gold ornaments on the plinth
+for(const sx of[-1,1])for(const sz of[-1,1]){V(sx*9,1,sz*9,C.gold,0,1);}
+function buildFloor(f){
+  const hw=FHW[f], y0=2+f*5, top=y0+3;
+  // interior floor + illuminated shrine core
+  for(let x=-hw+1;x<=hw-1;x++)for(let z=-hw+1;z<=hw-1;z++)
+    Vsoft(x,y0-1,z,f===0?C.teakD:C.teakD);
+  for(let y=y0;y<top;y++){
+    V(0,y,0,C.gold,1,0);V(1,y,0,C.gold,1,0);V(-1,y,0,C.gold,1,0);V(0,y,1,C.gold,1,0);V(0,y,-1,C.gold,1,0);
+  }
+  for(let y=y0;y<top;y++){
+    for(let x=-hw;x<=hw;x++)for(let z=-hw;z<=hw;z++){
+      const edge=(Math.abs(x)===hw||Math.abs(z)===hw);
+      if(!edge){continue;}
+      const col=(Math.abs(x)===hw&&Math.abs(z)===hw)||((Math.abs(x)===hw&&z%2===0)||(Math.abs(z)===hw&&x%2===0));
+      const doorway=(z===hw&&Math.abs(x)<=1);
+      if(doorway)continue;                     // open bay; doors animate here
+      if(col)V(x,y,z,C.verm);
+      else if(y===y0)V(x,y,z,C.teak);
+      else if(y===y0+1&&((x+z+f*3)%3===0))V(x,y,z,C.teakD);
+      else V(x,y,z,C.vermD);
+    }
+  }
+  // gold window lattice band
+  for(let x=-hw+2;x<=hw-2;x+=2){V(x,y0+2,hw,C.gold,0,1);V(x,y0+2,-hw,C.gold,0,1);}
+  for(let z=-hw+2;z<=hw-2;z+=2){V(hw,y0+2,z,C.gold,0,1);V(-hw,y0+2,z,C.gold,0,1);}
+  // stepped roof with upturned corners (two stacked rings + corner lifts)
+  const r1=y0+3,hw1=hw+2,r2=y0+4,hw2=hw+1;
+  for(let x=-hw1;x<=hw1;x++)for(let z=-hw1;z<=hw1;z++){
+    const e=(Math.abs(x)===hw1||Math.abs(z)===hw1);
+    if(e)V(x,r1,z,C.jade);
+  }
+  for(let x=-hw2;x<=hw2;x++)for(let z=-hw2;z<=hw2;z++)V(x,r2,z,C.jadeL);
+  // corner upturns (both tiers, all 4 diagonal directions)
+  for(const sx of[-1,1])for(const sz of[-1,1]){
+    V(sx*hw1,r1+1,sz*hw1,C.jade);V(sx*(hw1-1),r1+1,sz*hw1,C.jadeL);V(sx*hw1,r1+1,sz*(hw1-1),C.jadeL);
+    V(sx*(hw1+1),r1+1,sz*hw1,C.gold,0,1);V(sx*hw1,r1+1,sz*(hw1+1),C.gold,0,1);
+    V(sx*hw2,r2+1,sz*hw2,C.jadeL);V(sx*hw2,r2+2,sz*hw2,C.gold,0,1);
+  }
+  // gold ridge cap
+  for(let x=-hw2+1;x<=hw2-1;x++)V(x,r2+1,0,C.gold,0,1);
+  // balcony railing on upper floors
+  if(f>0){const ry=y0-1;
+    for(let x=-hw;x<=hw;x++){V(x,ry,hw,C.teak);V(x,ry,-hw,C.teak);}
+    for(let z=-hw+1;z<hw;z++){V(hw,ry,z,C.teak);V(-hw,ry,z,C.teak);}
+    for(let x=-hw;x<=hw;x+=2)V(x,ry+1,hw,C.gold,0,1);
+  }
+  // animated doors: two panels hinged on the south bay
+  const F=floors[f];
+  for(const sx of[-1,1]){
+    const g=new THREE.Group();
+    g.position.set(sx*1.5,y0+0.5-0.5,hw+0.56);          // hinge at bay edge
+    const cells=newBucket();
+    for(let dy=0;dy<3;dy++){for(let dz=0;dz<2;dz++)cells.set(sx*(-(dz)+0.42)*1,dy,-Math.abs(dz)*0+0.0,g===null?0:0);}
+    // simple 2-voxel-wide panel: build in local space with pivot at x=0
+    const panel=new THREE.Group();
+    const pmat=new THREE.MeshStandardMaterial({color:new THREE.Color(C.teak),roughness:0.85});
+    const bar=new THREE.Mesh(new THREE.BoxGeometry(1.1,2.9,0.14),pmat);
+    bar.position.set(-sx*0.55,1.0,0);bar.castShadow=true;panel.add(bar);
+    const trim=new THREE.Mesh(new THREE.BoxGeometry(1.1,0.28,0.17),new THREE.MeshStandardMaterial({color:new THREE.Color(C.gold),metalness:0.6,roughness:0.3}));
+    trim.position.set(-sx*0.55,1.9,0.01);panel.add(trim);
+    const kn=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.16,0.22),new THREE.MeshStandardMaterial({color:new THREE.Color(C.gold),metalness:0.7,roughness:0.25}));
+    kn.position.set(-sx*1.0,1.1,0.02);panel.add(kn);
+    g.add(panel);scene.add(g);
+    F.doors.push({g,dir:sx,open:false,a:0,target:0});
+  }
+  // invisible click target for the whole floor body
+/* ============ torii gate ============ */
+for(const sx of[-1,1]){for(let y=0;y<=5;y++)V(sx*4,y,29,C.verm);V(sx*4,6,29,C.verm);V(sx*5,7,29,C.verm);}
+for(let x=-5;x<=5;x++){V(x,6,29,C.teakD);V(x,7,29,C.verm);}
+V(-6,7,29,C.verm);V(6,7,29,C.verm);V(-6,8,29,C.verm);V(6,8,29,C.verm);
+for(let x=-3;x<=3;x++)V(x,4,29,C.teakD);
+V(0,5,29,C.gold,0,1);
+/* ============ stone lanterns (4, clickable, point lights) ============ */
+const LANT=[[6,19],[-6,22],[9,26],[-9,27]];
+const lanterns=[];
+function buildLantern(lx,lz){
+  for(let x=lx-1;x<=lx+1;x++)for(let z=lz-1;z<=lz+1;z++)V(x,0,z,C.stoneD);
+  for(let x=lx;x<=lx;x++)for(let z=lz;z<=lz;z++)V(x,1,z,C.stone);
+  V(lx,2,lz,C.stone);V(lx,3,lz,C.stone);
+  for(let x=lx-1;x<=lx+1;x++)for(let z=lz-1;z<=lz+1;z++)V(x,4,z,(x===lx||z===lz)?C.stone:C.wax,!(x===lx||z===lz)?1:0,0);
+  V(lx,5,lz,C.stone);
+  for(let x=lx-1;x<=lx+1;x++)for(let z=lz-1;z<=lz+1;z++)V(x,6,z,C.stoneD);
+  V(lx,7,lz,C.stoneD);
+  const glow=new THREE.Mesh(new THREE.BoxGeometry(2.3,1.1,2.3),
+    new THREE.MeshBasicMaterial({color:new THREE.Color(0xffdf9e),transparent:true,opacity:0,depthWrite:false}));
+  glow.position.set(lx,4.6,lz);scene.add(glow);
+  const light=new THREE.PointLight(0xffb45e,0,17,2);
+  light.position.set(lx,4.9,lz);scene.add(light);
+  const hit=new THREE.Mesh(new THREE.BoxGeometry(2.6,6,2.6),new THREE.MeshBasicMaterial({visible:false}));
+  hit.position.set(lx,3,lz);scene.add(hit);
+  const L={lx,lz,light,glow,on:false,user:null,phase:rnd()*9,hit};
+  hit.userData.lantern=L;lanterns.push(L);
+}
+for(const[lx,lz]of LANT)buildLantern(lx,lz);
+/* ============ bamboo fence ============ */
+const fenceSegs=[[-31,18,-10,18],[18,18,28,18],[-24,-12,-24,16],[24,2,24,14],[-14,31,-14,21],[2,31,10,31]];
+function fenceOn(x,z){for(const[a,b,c,d]of fenceSegs)
+  if((a===c&&z===a&&x>=Math.min(b,d)&&x<=Math.max(b,d))||(b===d&&x===b&&z>=Math.min(a,c)&&z<=Math.max(a,c)))return true;
+  return false;}
+for(let x=-31;x<=31;x++)for(let z=-31;z<=31;z++){
+  if(!fenceOn(x,z)||!kept.has(x+','+z))continue;
+  const t=(x*7+z*13);
+  if(((x+z)&1)===0){V(x,1,z,C.bamboo);V(x,2,z,C.bamboo);V(x,3,z,C.teak);}
+  V(x,2,z,(t%3===0)?C.bamboo:C.teak);
+}
+/* ============ trees: 3 sakura, 2 pine, 2 maple, 1 willow ============ */
+const TREES=[
+  {x:-9,z:24,t:'sakura'},{x:20,z:22,t:'sakura'},{x:-19,z:-4,t:'sakura'},
+  {x:-20,z:22,t:'pine'},{x:23,z:-8,t:'pine'},{x:-24,z:4,t:'maple'},{x:24,z:26,t:'maple'},
+  {x:8,z:1,t:'willow'}
+];
+const treeGroups=[];
+function blob(b,cx,cy,cz,rx,ry,rz,c){
+  for(let x=Math.ceil(cx-rx);x<=Math.floor(cx+rx);x++)
+  for(let y=Math.ceil(cy-ry);y<=Math.floor(cy+ry);y++)
+  for(let z=Math.ceil(cz-rz);z<=Math.floor(cz+rz);z++){
+    const d=((x-cx)/rx)**2+((y-cy)/ry)**2+((z-cz)/rz)**2;
+    if(d<=1.05&&(d>0.55||rnd()>0.25))b.set(x,y,z,(rnd()<0.28)?C.sakL:c);
+  }
+}
+function buildTree(cfg){
+  const g=new THREE.Group();
+  g.position.set(cfg.x+0.5,0.5,cfg.z+0.5);
+  const b=newBucket();
+  const trunk=c=>{for(let y=0;y<=6;y++)b.set(0,y,0,c);};
+  if(cfg.t==='sakura'){
+    for(let y=0;y<=5;y++)b.set(Math.round(y/3),y,0,C.teak);
+    for(const[dx,dz]of[[2,1],[-2,1],[1,-2]]){b.set(dx,5,dz,C.teak);b.set(dx+Math.sign(dx),6,dz+Math.sign(dz),C.teak);}
+    blob(b,0,8,0,3.4,2.2,3.4,C.sak);blob(b,2.5,6.6,1,1.8,1.3,1.8,C.sakD);blob(b,-2,7,1.5,1.7,1.2,1.6,C.sakL);
+  } else if(cfg.t==='pine'){
+    for(let y=0;y<=7;y++)b.set(0,y,0,C.teak);b.set(1,5,0,C.teak);
+    blob(b,0,8,0,3.2,1.1,3.2,C.pine);blob(b,0,9.8,0,2.2,1.0,2.2,C.pine);blob(b,1,6,1,2.0,0.8,2.0,C.jadeL);blob(b,0,11,0,1.2,0.8,1.2,C.pine);
+  } else if(cfg.t==='maple'){
+    for(let y=0;y<=5;y++)b.set(0,y,0,C.teak);
+    blob(b,0,7,0,3.0,2.0,3.0,C.red);blob(b,1.6,8.4,0.8,1.6,1.2,1.6,C.verm);blob(b,-1.4,6.4,-1.2,1.5,1.1,1.5,C.goldD);
+  } else {
+    for(let y=0;y<=4;y++)b.set(0,y,0,C.teak);
+    for(let a=0;a<6.28;a+=0.5){const px=Math.round(Math.cos(a)*2.6),pz=Math.round(Math.sin(a)*2.6);
+      b.set(px,5,pz,C.jadeL);for(let d=0;d<4;d++)b.set(px,4-d,pz,(d%2)?C.jade:C.moss);}
+    blob(b,0,5.4,0,2.8,1.0,2.8,C.jadeL);
+  }
+  bakeBucket(b.m,g,true);
+  scene.add(g);
+  treeGroups.push({g,ph:rnd()*9,amp:cfg.t==='willow'?0.028:0.014});
+}
+for(const t of TREES)buildTree(t);
+/* ============ 40 flowers ============ */
+let flowers=0;
+while(flowers<40){
+  const x=ri(-26,26),z=ri(-24,30);
+  if(!kept.has(x+','+z)||onPath(x,z)||pondD(x,z)<10.5||Math.hypot(x,z)<12||fenceOn(x,z))continue;
+  const fc=[C.sak,C.sakD,C.gold,0xFFE5EC,C.verm][ri(0,4)];
+  V(x,1,z,fc);V(x,0,z,C.mossL);flowers++;
+}
+//#NEXT#
+
+  const hit=new THREE.Mesh(new THREE.BoxGeometry(hw*2+1,4,hw*2+1),
+    new THREE.MeshBasicMaterial({visible:false}));
+  hit.position.set(0,y0+1.5,0);scene.add(hit);
+  F.hit=hit;
+}
+for(let f=0;f<5;f++)buildFloor(f);
+// central pillar above the top floor + gold finial (sorin)
+const topY=2+5*5+6;
+for(let y=2; y<topY;y++)V(0,y,2,C.teakD);              // hidden core spine inside shaft region only
+for(let x=-8;x<=8;x++)V(x,0,10,C.stone);
+for(let y=27;y<31;y++)V(0,y,0,C.gold,0,1);
+V(1,28,0,C.gold,0,1);V(-1,28,0,C.gold,0,1);V(0,28,1,C.gold,0,1);V(0,28,-1,C.gold,0,1);
+V(1,30,0,C.gold,0,1);V(-1,30,0,C.gold,0,1);V(0,30,1,C.gold,0,1);V(0,30,-1,C.gold,0,1);
+V(0,32,0,C.gold,1,1);V(0,33,0,C.gold,1,1);
+//#NEXT#
+
+
