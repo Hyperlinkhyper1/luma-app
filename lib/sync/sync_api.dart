@@ -726,12 +726,25 @@ class SyncApi {
   /// Gets the server-maintained CS2 market snapshot used by Orbit/Nova
   /// offline saving. Unlike ordinary encrypted collections, the server must
   /// read the market hash names to perform the scheduled Steam checks.
-  Future<Map<String, dynamic>> cs2OfflineSnapshot() async {
+  ///
+  /// Asked for after every sync tick, so it revalidates with the last ETag
+  /// and returns null when the snapshot hasn't changed since this client
+  /// last received it.
+  Future<Map<String, dynamic>?> cs2OfflineSnapshot() async {
+    final known = _cs2OfflineEtag;
     final response = await _client
-        .get(_uri('/steam/cs2/offline'), headers: _authHeaders)
+        .get(
+          _uri('/steam/cs2/offline'),
+          headers: {..._authHeaders, 'If-None-Match': ?known},
+        )
         .timeout(_jsonTimeout);
-    return _decodeOrThrow(response);
+    if (response.statusCode == 304) return null;
+    final body = _decodeOrThrow(response);
+    _cs2OfflineEtag = response.headers['etag'];
+    return body;
   }
+
+  String? _cs2OfflineEtag;
 
   Future<Map<String, dynamic>> putCs2OfflineSnapshot(
     Map<String, dynamic> snapshot,
@@ -841,10 +854,23 @@ class SyncApi {
       response.statusCode,
       decoded?['error'] as String? ?? 'http_${response.statusCode}',
       decoded?['message'] as String? ??
-          'Server error (${response.statusCode}).',
+          (_isUnreachableOrigin(response.statusCode)
+              ? 'Couldn\'t reach the luma server (${response.statusCode}). '
+                  'It may be restarting — try again in a minute.'
+              : 'Server error (${response.statusCode}).'),
       extra: decoded,
     );
   }
+
+  /// Statuses the proxy in front of the server (Caddy, Cloudflare) answers
+  /// with when the luma server itself never saw the request. The server
+  /// never sends these, so they always mean "down or unreachable", not a
+  /// problem with what was asked.
+  static bool _isUnreachableOrigin(int status) =>
+      status == 502 ||
+      status == 503 ||
+      status == 504 ||
+      (status >= 520 && status <= 530);
 
   void close() => _client.close();
 }

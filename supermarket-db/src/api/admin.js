@@ -1,10 +1,18 @@
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const express = require('express');
 
 const config = require('../config/env');
 const { getPool } = require('../database/connection');
 const { SyncLog } = require('../models');
 const syncService = require('../services/syncService');
+
+// The api can't rebuild its own container — docker compose would be killed
+// along with it halfway through. Instead it drops a request file into this
+// host-mounted directory, and a watcher on the host runs host/deploy.sh,
+// which writes status.json and last.log back here.
+const DEPLOY_DIR = path.resolve(__dirname, '..', '..', 'deploy');
 
 // Constant-time key check (hash both sides so lengths always match).
 function keyMatches(provided) {
@@ -55,6 +63,7 @@ async function collectStatus() {
     perMarket: perMarket.map((r) => ({ slug: r.slug, name: r.name, total: Number(r.total) })),
     markets: syncService.slugs,
     running: logs.some((l) => l.status === 'running'),
+    deploy: readDeployStatus(),
     syncs: logs.map((l) => ({
       id: l.id,
       market: l.supermarket_slug,
@@ -69,6 +78,30 @@ async function collectStatus() {
       error: l.error_message,
     })),
   };
+}
+
+function readDeployStatus() {
+  // The directory only exists inside the container when it's mounted (it's
+  // in .dockerignore), so its absence means rebuilds aren't set up here.
+  if (!fs.existsSync(DEPLOY_DIR)) return { available: false };
+  let requestedAt = null;
+  try {
+    requestedAt = fs.statSync(path.join(DEPLOY_DIR, 'request')).mtime.toISOString();
+  } catch (_) {}
+  let last = null;
+  try {
+    last = JSON.parse(fs.readFileSync(path.join(DEPLOY_DIR, 'status.json'), 'utf8'));
+  } catch (_) {}
+  let log = '';
+  try {
+    log = fs.readFileSync(path.join(DEPLOY_DIR, 'last.log'), 'utf8')
+      .split('\n').slice(-40).join('\n').trim();
+  } catch (_) {}
+  return { available: true, requestedAt, last, log };
+}
+
+function requestDeploy() {
+  fs.writeFileSync(path.join(DEPLOY_DIR, 'request'), `${new Date().toISOString()}\n`);
 }
 
 function startSync(market) {

@@ -12,12 +12,16 @@ const BASE_URL = 'https://api.ah.nl';
 // easy flag for Akamai on IPs it's already suspicious of.
 const USER_AGENT = 'Appie/8.22.3 Model/phone Android/12-API31';
 
-let cachedToken = null;
-let cachedTokenExpiresAt = 0;
+// One anonymous AH "member" per process. Access tokens are rotated with the
+// refresh token rather than by minting a new anonymous member each time:
+// every mint registers another member, and once enough of them pile up from
+// one IP AH answers every fresh token with a 400 "member not active".
+let session = null;
 let inFlightToken = null;
 
 // AH advertises a week-long expiry for anonymous tokens but invalidates them
-// server-side long before that, so cap how long we trust one.
+// server-side long before that, so cap how long we trust one. Rotating is a
+// refresh of the same member, so doing it often is cheap.
 const MAX_TOKEN_AGE_MS = 30 * 60 * 1000;
 
 // A rejected token is usually AH shedding load rather than a permanently dead
@@ -37,37 +41,60 @@ function isAuthFailure(status, body) {
   return /invalid_grant|invalid_token|member not active/i.test(body);
 }
 
-async function getAccessToken({ forceRefresh = false } = {}) {
-  if (!forceRefresh && cachedToken && Date.now() < cachedTokenExpiresAt) {
-    return cachedToken;
+// "member not active" means the anonymous member behind the token is gone,
+// so its refresh token is worthless too — only a new member helps.
+function isDeadMember(body) {
+  return /member not active/i.test(body);
+}
+
+async function getAccessToken({ forceRefresh = false, newMember = false } = {}) {
+  if (newMember) session = null;
+  if (!forceRefresh && session && Date.now() < session.expiresAt) {
+    return session.accessToken;
   }
   // Share one refresh between concurrent callers — otherwise every in-flight
   // request mints its own token, the last one to land wins the cache, and the
   // rest carry on with a token that has already been superseded.
   if (!inFlightToken) {
-    inFlightToken = requestAnonymousToken().finally(() => {
+    inFlightToken = renewToken().finally(() => {
       inFlightToken = null;
     });
   }
   return inFlightToken;
 }
 
-async function requestAnonymousToken() {
-  const response = await fetch(`${BASE_URL}/mobile-auth/v1/auth/token/anonymous`, {
+async function renewToken() {
+  if (session?.refreshToken) {
+    try {
+      return await requestToken('/mobile-auth/v1/auth/token/refresh', {
+        clientId: 'appie',
+        refreshToken: session.refreshToken,
+      });
+    } catch (error) {
+      console.warn(`AH token refresh failed, registering a new anonymous member: ${error.message}`);
+    }
+  }
+  return requestToken('/mobile-auth/v1/auth/token/anonymous', { clientId: 'appie' });
+}
+
+async function requestToken(path, payload) {
+  const response = await fetch(`${BASE_URL}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'User-Agent': USER_AGENT },
-    body: JSON.stringify({ clientId: 'appie' }),
+    body: JSON.stringify(payload),
   });
   if (!response.ok) {
     const body = await response.text().catch(() => '');
     throw new Error(`AH auth failed: HTTP ${response.status} ${body.slice(0, 300)}`);
   }
   const data = await response.json();
-  cachedToken = data.access_token;
-  // Refresh a little early so we never call the API with an expired token.
-  cachedTokenExpiresAt =
-    Date.now() + Math.min((data.expires_in - 60) * 1000, MAX_TOKEN_AGE_MS);
-  return cachedToken;
+  session = {
+    accessToken: data.access_token,
+    refreshToken: data.refresh_token || session?.refreshToken || null,
+    // Refresh a little early so we never call the API with an expired token.
+    expiresAt: Date.now() + Math.min((data.expires_in - 60) * 1000, MAX_TOKEN_AGE_MS),
+  };
+  return session.accessToken;
 }
 
 async function authedGet(path, params = {}, { _attempt = 0 } = {}) {
@@ -93,7 +120,7 @@ async function authedGet(path, params = {}, { _attempt = 0 } = {}) {
       // full-catalog sync). Let the pressure ease, get a fresh one and try
       // again rather than failing the whole sync.
       await sleep(AUTH_RETRY_DELAYS_MS[_attempt]);
-      await getAccessToken({ forceRefresh: true });
+      await getAccessToken({ forceRefresh: true, newMember: isDeadMember(body) });
       return authedGet(path, params, { _attempt: _attempt + 1 });
     }
     throw new Error(`AH request failed: HTTP ${response.status} for ${path} ${body.slice(0, 300)}`);
