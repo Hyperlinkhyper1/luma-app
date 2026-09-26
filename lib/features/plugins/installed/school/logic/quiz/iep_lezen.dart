@@ -1,6 +1,8 @@
 import 'dart:math';
 
 import '../quiz_bank.dart';
+import 'iep_lezen_more.dart';
+import 'lezen_extra.dart';
 
 const _begrijpen = 'Begrijpen en interpreteren';
 const _samenvatten = 'Samenvatten';
@@ -772,6 +774,22 @@ Meester Farid''',
     ],
   );
   final text = out.last.passage!;
+  for (final q in buildLezenExtra().where((q) => q.passage != null)) {
+    out.add(
+      QuizQuestion(
+        id: 'iep-l-${q.id}',
+        topic: q.topic,
+        passage: q.passage,
+        prompt: q.prompt,
+        options: q.options,
+        answerIndex: q.answerIndex,
+        explanation:
+            q.explanation ??
+            'Het antwoord volgt uit de informatie in de tekst.',
+      ),
+    );
+  }
+  out.addAll(buildIepLezenMore());
   const options = [
     'Het doek geeft direct schaduw.',
     'Het doek kan worden weggehaald.',

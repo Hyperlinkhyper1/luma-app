@@ -50,8 +50,11 @@ class LumaCard extends StatelessWidget {
     final coffee = decor.style == LumaDecor.coffee.style;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      padding: padding ??
-          (coffee
+      padding:
+          padding ??
+          (context.isPhoneWidth
+              ? const EdgeInsets.all(14)
+              : coffee
               ? const EdgeInsets.fromLTRB(22, 20, 22, 22)
               : const EdgeInsets.all(20)),
       decoration: BoxDecoration(
@@ -134,8 +137,8 @@ class _LumaPrimaryButtonState extends State<LumaPrimaryButton> {
             color: !enabled
                 ? luma.accent.withValues(alpha: 0.4)
                 : (!coffee
-                    ? (_hovering ? luma.accentHover : luma.accent)
-                    : null),
+                      ? (_hovering ? luma.accentHover : luma.accent)
+                      : null),
             gradient: enabled && coffee
                 ? LinearGradient(
                     begin: Alignment.topLeft,
@@ -236,10 +239,10 @@ class _LumaGhostButtonState extends State<LumaGhostButton> {
             color: !enabled
                 ? luma.surfaceHover.withValues(alpha: 0.38)
                 : _hovering
-                    ? luma.surfaceHover
-                    : coffee
-                        ? luma.surface.withValues(alpha: 0.38)
-                        : Colors.transparent,
+                ? luma.surfaceHover
+                : coffee
+                ? luma.surface.withValues(alpha: 0.38)
+                : Colors.transparent,
             borderRadius: decor.buttonBorderRadius,
             border: Border.all(
               color: coffee
@@ -373,6 +376,8 @@ class _PillState extends State<_Pill> {
           ),
           child: Text(
             widget.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: selected ? luma.accent : luma.textSecondary,
               fontSize: 14,
@@ -404,8 +409,9 @@ class LumaIconBadge extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.16),
-        borderRadius:
-            BorderRadius.circular(size * context.lumaDecor.badgeRadiusFactor),
+        borderRadius: BorderRadius.circular(
+          size * context.lumaDecor.badgeRadiusFactor,
+        ),
       ),
       child: Icon(icon, color: color, size: size * 0.55),
     );
@@ -515,38 +521,43 @@ class LumaEmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: luma.accentSubtle,
-              borderRadius:
-                  BorderRadius.circular(56 * context.lumaDecor.badgeRadiusFactor),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: luma.accentSubtle,
+                borderRadius: BorderRadius.circular(
+                  56 * context.lumaDecor.badgeRadiusFactor,
+                ),
+              ),
+              child: Icon(icon, color: luma.accent, size: 28),
             ),
-            child: Icon(icon, color: luma.accent, size: 28),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            title,
-            style: TextStyle(
-              color: luma.textPrimary,
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          if (subtitle != null) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: 16),
             Text(
-              subtitle!,
+              title,
               textAlign: TextAlign.center,
-              style: TextStyle(color: luma.textMuted, fontSize: 13),
+              style: TextStyle(
+                color: luma.textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
             ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                subtitle!,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: luma.textMuted, fontSize: 13),
+              ),
+            ],
+            if (action != null) ...[const SizedBox(height: 16), action!],
           ],
-          if (action != null) ...[const SizedBox(height: 16), action!],
-        ],
+        ),
       ),
     );
   }
@@ -588,5 +599,5 @@ double lumaDialogWidth(BuildContext context, double preferred) {
   const chrome = 128.0;
   final available = MediaQuery.sizeOf(context).width - chrome;
   if (available >= preferred) return preferred;
-  return available < 200 ? 200 : available;
+  return available < 0 ? 0 : available;
 }

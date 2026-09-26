@@ -85,6 +85,8 @@ IconData pluginIconFor(String? name) {
       return Icons.account_circle_rounded;
     case 'flight':
       return Icons.flight_rounded;
+    case 'precision_manufacturing':
+      return Icons.precision_manufacturing_rounded;
     case 'draw':
       return Icons.draw_rounded;
     default:

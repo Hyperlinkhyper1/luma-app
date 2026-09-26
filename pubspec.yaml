@@ -141,6 +141,7 @@ flutter:
     - assets/tests/pagoda_step5.html
     - assets/images/vendors/
     - assets/space_colony/
+    - assets/engine_study/
     - assets/city_planner/
     - assets/subway_builder/
     - assets/subway_builder/vendor/

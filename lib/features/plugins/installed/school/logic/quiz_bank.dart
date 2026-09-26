@@ -56,6 +56,7 @@ class QuizQuestion {
     this.correctIndices = const [],
     this.table,
     this.bars,
+    this.family,
   });
 
   /// Stable identifier, unique across the whole bank.
@@ -85,6 +86,16 @@ class QuizQuestion {
   final List<int> correctIndices;
   final QuizTable? table;
   final QuizBars? bars;
+
+  /// Questions with the same underlying task can be spread across attempts.
+  final String? family;
+
+  String get familyKey =>
+      family ??
+      prompt
+          .replaceAll(RegExp(r'"[^"]+"'), '"…"')
+          .replaceAll(RegExp(r'\d+(?:[.,:]\d+)*'), '#')
+          .replaceAll(RegExp(r'\s+'), ' ');
 
   bool get isOpen => input == QuizInput.number || input == QuizInput.word;
 
@@ -275,7 +286,21 @@ List<QuizQuestion> buildTest(
   if (subject.id == 'lezen') {
     final passages = source.map((q) => q.passage).toSet().toList()
       ..shuffle(random);
-    final selected = passages.take((count / 8).ceil()).toSet();
+    final selected = <String?>{};
+    final topicCounts = <String, int>{};
+    final topicShare = count ~/ subject.topics.length;
+    for (final passage in passages) {
+      selected.add(passage);
+      for (final q in source.where((q) => q.passage == passage)) {
+        topicCounts[q.topic] = (topicCounts[q.topic] ?? 0) + 1;
+      }
+      if (selected.length >= (count / 4).ceil() &&
+          subject.topics.every(
+            (topic) => (topicCounts[topic] ?? 0) >= topicShare,
+          )) {
+        break;
+      }
+    }
     source = source.where((q) => selected.contains(q.passage)).toList();
   }
   for (final q in source) {
@@ -283,6 +308,25 @@ List<QuizQuestion> buildTest(
   }
   for (final pool in pools.values) {
     pool.shuffle(random);
+    if (subject.id != 'lezen') {
+      final families = <String, List<QuizQuestion>>{};
+      for (final q in pool) {
+        families.putIfAbsent(q.familyKey, () => []).add(q);
+      }
+      final order = families.keys.toList()..shuffle(random);
+      final varied = <QuizQuestion>[];
+      var index = 0;
+      while (varied.length < pool.length) {
+        for (final key in order) {
+          final family = families[key]!;
+          if (index < family.length) varied.add(family[index]);
+        }
+        index++;
+      }
+      pool
+        ..clear()
+        ..addAll(varied);
+    }
   }
 
   final topics = pools.keys.toList()..shuffle(random);

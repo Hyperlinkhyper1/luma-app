@@ -48,6 +48,7 @@ import '../features/plugins/installed/sftp/sftp_page.dart';
 import '../features/plugins/installed/airline_tycoon/airline_tycoon_page.dart';
 import '../features/plugins/installed/server_tycoon/server_tycoon_page.dart';
 import '../features/plugins/installed/space_colony/space_colony_page.dart';
+import '../features/plugins/installed/engine_study/engine_study_page.dart';
 import '../features/plugins/installed/subway_builder/subway_builder_page.dart';
 import '../features/plugins/installed/transport_tracker/transport_tracker_page.dart';
 import '../features/plugins/installed/usage/usage_page.dart';
@@ -706,6 +707,7 @@ class _AppShellState extends State<AppShell> {
     'server-tycoon' => const ServerTycoonPage(),
     'airline-tycoon' => const AirlineTycoonPage(),
     'space-colony' => const SpaceColonyPage(),
+    'engine-study' => const EngineStudyPage(),
     'subway-builder' => const SubwayBuilderPage(),
     'transport-tracker' => const TransportTrackerPage(),
     'city-planner' => const CityPlannerPage(),

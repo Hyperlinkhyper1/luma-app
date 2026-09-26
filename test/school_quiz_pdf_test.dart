@@ -26,12 +26,12 @@ void main() {
         'rekenen': 15,
       });
       expect(distributeQuizQuestions(subjects, 200), {
-        'lezen': 65,
-        'rekenen': 135,
+        'lezen': 100,
+        'rekenen': 100,
       });
       expect(() => distributeQuizQuestions([], 10), throwsArgumentError);
       expect(() => distributeQuizQuestions(subjects, 1), throwsArgumentError);
-      expect(() => distributeQuizQuestions(subjects, 500), throwsArgumentError);
+      expect(() => distributeQuizQuestions(subjects, 501), throwsArgumentError);
     },
   );
   test(
@@ -64,7 +64,9 @@ void main() {
         expect(counts, {'rekenen': 17, 'lezen': 12, 'taalverzorging': 9});
       }
       expect(
-        () => prepareQuizExport(counts: {'lezen': 66}),
+        () => prepareQuizExport(
+          counts: {'lezen': QuizBank.byId('lezen')!.questions.length + 1},
+        ),
         throwsArgumentError,
       );
       expect(

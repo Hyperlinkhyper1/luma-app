@@ -103,7 +103,7 @@ class _AutoClickerPageState extends State<AutoClickerPage> {
           title: Text('Press a new hotkey',
               style: TextStyle(color: luma.textPrimary, fontSize: 16)),
           content: SizedBox(
-            width: 260,
+            width: lumaDialogWidth(dialogContext, 260),
             child: HotKeyRecorder(
               initalHotKey: repo.hotKey,
               onHotKeyRecorded: (hotKey) => recorded = hotKey,

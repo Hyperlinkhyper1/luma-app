@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/widgets.dart';
 import '../../../../theme/luma_theme.dart';
 import 'ui/cs2_market_tab.dart';
 import 'ui/steam_price_tracker_tab.dart';
@@ -52,6 +53,30 @@ class _SteamToolsPageState extends State<SteamToolsPage> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    if (context.isPhoneWidth) {
+      return Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+            child: LumaSegmentedTabs(
+              tabs: [
+                for (final section in SteamToolsSection.values) section.label,
+              ],
+              selectedIndex: _section.index,
+              scrollable: true,
+              onSelect: (index) =>
+                  setState(() => _section = SteamToolsSection.values[index]),
+            ),
+          ),
+          Expanded(
+            child: IndexedStack(
+              index: _section.index,
+              children: const [SteamPriceTrackerTab(), Cs2MarketTab()],
+            ),
+          ),
+        ],
+      );
+    }
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -65,10 +90,7 @@ class _SteamToolsPageState extends State<SteamToolsPage> {
         Expanded(
           child: IndexedStack(
             index: _section.index,
-            children: const [
-              SteamPriceTrackerTab(),
-              Cs2MarketTab(),
-            ],
+            children: const [SteamPriceTrackerTab(), Cs2MarketTab()],
           ),
         ),
       ],
@@ -158,7 +180,11 @@ class _RailItem extends StatelessWidget {
           ),
         ),
         SizedBox(width: collapsed ? 17 : 13),
-        Icon(section.icon, size: 20, color: selected ? luma.accent : foreground),
+        Icon(
+          section.icon,
+          size: 20,
+          color: selected ? luma.accent : foreground,
+        ),
         if (!collapsed) ...[
           const SizedBox(width: 12),
           Expanded(
@@ -258,10 +284,7 @@ class _CollapseButton extends StatelessWidget {
                           'Collapse',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: luma.textMuted,
-                            fontSize: 12,
-                          ),
+                          style: TextStyle(color: luma.textMuted, fontSize: 12),
                         ),
                       ),
                       const SizedBox(width: 10),

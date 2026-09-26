@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import '../quiz_bank.dart';
+import 'taalverzorging_extra.dart';
 
 List<QuizQuestion> buildIepTaal() {
   final out = <QuizQuestion>[];
@@ -545,6 +546,21 @@ List<QuizQuestion> buildIepTaal() {
         'De winkel verkoopt ook ${q.$3}.',
       ],
       'Tussen ${q.$1} en ${q.$2} ontbreekt de komma van de opsomming.',
+    );
+  }
+  for (final q in buildTaalverzorgingExtra()) {
+    out.add(
+      QuizQuestion(
+        id: 'iep-t-${q.id}',
+        topic: q.topic,
+        prompt: q.prompt,
+        options: q.options,
+        answerIndex: q.answerIndex,
+        explanation: q.explanation ?? 'De juiste schrijfwijze is ${q.answer}.',
+        family: q.prompt
+            .replaceAll(RegExp(r'"[^"]+"'), '"…"')
+            .replaceAll(RegExp(r'\d+'), '#'),
+      ),
     );
   }
   return out;

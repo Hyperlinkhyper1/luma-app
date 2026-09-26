@@ -5,6 +5,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
+import '../file_times.dart';
 import '../sftp_paths.dart';
 import 'host_crypto.dart';
 import 'host_discovery.dart';
@@ -637,7 +638,7 @@ class _HostConnection {
         case HostOp.writeOpen:
           await _opWriteOpen(id, message);
         case HostOp.writeClose:
-          await _opWriteClose(id);
+          await _opWriteClose(id, message);
       }
     } on HostAccessDenied catch (e) {
       await _reply(hostError(id, e.message));
@@ -825,13 +826,19 @@ class _HostConnection {
       return;
     }
     final offset = (message['o'] as num?)?.toInt() ?? 0;
-    final total = await file.length();
+    final stat = await file.stat();
+    final total = stat.size;
     if (offset < 0 || offset > total) {
       await _reply(hostError(id, 'That file changed while it was being read.'));
       return;
     }
 
-    await _reply(hostOk(id, {'s': total}));
+    // The file's own dates travel with it, so the copy keeps when it was
+    // made instead of being stamped with the moment it arrived.
+    await _reply(hostOk(id, {
+      's': total,
+      't': FileTimes.fromStat(stat).toWire(),
+    }));
 
     final stream = _ReadStream();
     _reads[id] = stream;
@@ -913,7 +920,7 @@ class _HostConnection {
     }
   }
 
-  Future<void> _opWriteClose(int id) async {
+  Future<void> _opWriteClose(int id, Map<String, dynamic> message) async {
     final stream = _writes.remove(id);
     if (stream == null) {
       await _reply(hostError(id, 'That upload was not open.'));
@@ -933,6 +940,9 @@ class _HostConnection {
       await _reply(hostError(id, stream.error!));
       return;
     }
+    // The uploading device sends the original's dates with the close; stamp
+    // them on now that nothing else will write to the file.
+    await FileTimes.fromWire(message['t']).applyTo(File(stream.path));
     // Not counted here: _serve already adds every received frame, chunks
     // included, so adding the file's size again would double it.
     await _reply(hostOk(id, {'n': stream.written}));

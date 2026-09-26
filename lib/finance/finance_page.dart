@@ -19,7 +19,13 @@ class FinancePage extends StatefulWidget {
 class _FinancePageState extends State<FinancePage> {
   int _tab = 0;
 
-  static const _tabs = ['Overview', 'Transactions', 'Pots', 'Recurring', 'Stocks'];
+  static const _tabs = [
+    'Overview',
+    'Transactions',
+    'Pots',
+    'Recurring',
+    'Stocks',
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +38,7 @@ class _FinancePageState extends State<FinancePage> {
             tabs: _tabs,
             selectedIndex: _tab,
             onSelect: (i) => setState(() => _tab = i),
+            scrollable: context.isPhoneWidth,
           ),
         ),
         Expanded(

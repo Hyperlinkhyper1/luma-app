@@ -470,15 +470,62 @@ class _TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    if (context.isPhoneWidth) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          LumaSegmentedTabs(
+            tabs: [for (final p in AiUsageRangePreset.values) p.label],
+            selectedIndex: preset.index,
+            scrollable: true,
+            onSelect: (i) => onSelectPreset(AiUsageRangePreset.values[i]),
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: Tooltip(
+                  message: repo.remoteDevices.isEmpty ? '' : _devicesTooltip(),
+                  child: Text(
+                    _statusLabel(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: luma.textMuted, fontSize: 12),
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Rescan local AI usage logs',
+                icon: repo.scanning
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(Icons.refresh_rounded, color: luma.textSecondary),
+                onPressed: repo.scanning ? null : repo.rescan,
+              ),
+              IconButton(
+                tooltip: 'Usage display settings',
+                icon: Icon(Icons.settings_rounded, color: luma.textSecondary),
+                onPressed: onOpenSettings,
+              ),
+            ],
+          ),
+        ],
+      );
+    }
     return Row(
       children: [
-        LumaSegmentedTabs(
-          tabs: [for (final p in AiUsageRangePreset.values) p.label],
-          selectedIndex: preset.index,
-          onSelect: (i) => onSelectPreset(AiUsageRangePreset.values[i]),
+        Expanded(
+          flex: 3,
+          child: LumaSegmentedTabs(
+            tabs: [for (final p in AiUsageRangePreset.values) p.label],
+            selectedIndex: preset.index,
+            onSelect: (i) => onSelectPreset(AiUsageRangePreset.values[i]),
+          ),
         ),
         const SizedBox(width: 12),
-        Flexible(
+        Expanded(
           child: Tooltip(
             message: repo.remoteDevices.isEmpty ? '' : _devicesTooltip(),
             child: Text(
@@ -489,7 +536,6 @@ class _TopBar extends StatelessWidget {
             ),
           ),
         ),
-        const Spacer(),
         IconButton(
           tooltip: 'Rescan local AI usage logs',
           icon: repo.scanning
@@ -546,6 +592,7 @@ class _SourceFilterBar extends StatelessWidget {
       ],
       selectedIndex: _options.indexOf(selected),
       onSelect: (i) => onSelect(_options[i]),
+      scrollable: context.isPhoneWidth,
     );
   }
 }
@@ -2278,4 +2325,3 @@ class _ContributionHeatmap extends StatelessWidget {
 }
 
 // ─── Formatting helpers ──────────────────────────────────────────────────────
-

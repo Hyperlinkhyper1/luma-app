@@ -145,6 +145,54 @@ class _TopBar extends StatelessWidget {
     final statusColor =
         repo.paused ? luma.textMuted : (current != null ? luma.success : luma.textMuted);
 
+    if (context.isPhoneWidth) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          LumaSegmentedTabs(
+            tabs: [for (final p in UsageRangePreset.values) p.label],
+            selectedIndex: preset.index,
+            scrollable: true,
+            onSelect: (i) => onSelectPreset(UsageRangePreset.values[i]),
+          ),
+          Row(
+            children: [
+              if (preset == UsageRangePreset.custom && customRange != null)
+                Expanded(
+                  child: Text(
+                    '${DateFormat('MMM d, y').format(customRange!.start)} '
+                    '– ${DateFormat('MMM d, y').format(customRange!.end)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: luma.textMuted, fontSize: 12),
+                  ),
+                )
+              else
+                const Spacer(),
+              Icon(Icons.circle, size: 8, color: statusColor),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  statusLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: luma.textSecondary, fontSize: 12),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Usage settings',
+                icon: Icon(Icons.tune_rounded, color: luma.textSecondary),
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  barrierColor: Colors.black.withValues(alpha: 0.5),
+                  builder: (_) => _UsageSettingsDialog(repo: repo),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
     return Row(
       children: [
         Flexible(

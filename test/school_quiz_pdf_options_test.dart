@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:luma/features/plugins/installed/school/logic/quiz_bank.dart';
 import 'package:luma/features/plugins/installed/school/ui/quiz_pdf_options.dart';
 import 'package:luma/features/plugins/installed/school/ui/tests_tab.dart';
 import 'package:luma/theme/luma_theme.dart';
@@ -74,7 +75,7 @@ void main() {
     await tester.ensureVisible(find.byKey(const ValueKey('pdf-count-rekenen')));
     await tester.enterText(
       find.byKey(const ValueKey('pdf-count-rekenen')),
-      '999',
+      '${QuizBank.byId('rekenen')!.questions.length + 1}',
     );
     await tester.pump();
     expect(find.textContaining('Kies voor Rekenen tussen'), findsOneWidget);

@@ -49,7 +49,9 @@ class _WindowTitleBarState extends State<WindowTitleBar> {
     super.initState();
     if (widget.showWindowControls) {
       windowIsMaximized().then(_setMaximized);
-      _sub = windowEvents.listen((_) => windowIsMaximized().then(_setMaximized));
+      _sub = windowEvents.listen(
+        (_) => windowIsMaximized().then(_setMaximized),
+      );
     }
   }
 
@@ -66,24 +68,27 @@ class _WindowTitleBarState extends State<WindowTitleBar> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final compact = MediaQuery.sizeOf(context).width < 400;
 
     final content = Row(
       children: [
         const SizedBox(width: 16),
-        const _BrandBadge(),
-        const SizedBox(width: 11),
-        Text(
-          'luma',
-          style: TextStyle(
-            color: luma.textPrimary,
-            fontSize: 15,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.2,
+        if (!compact) ...[
+          const _BrandBadge(),
+          const SizedBox(width: 11),
+          Text(
+            'luma',
+            style: TextStyle(
+              color: luma.textPrimary,
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.2,
+            ),
           ),
-        ),
-        const SizedBox(width: 16),
-        Container(width: 1, height: 18, color: luma.border),
-        const SizedBox(width: 16),
+          const SizedBox(width: 16),
+          Container(width: 1, height: 18, color: luma.border),
+          const SizedBox(width: 16),
+        ],
         Flexible(
           child: Text(
             widget.title,

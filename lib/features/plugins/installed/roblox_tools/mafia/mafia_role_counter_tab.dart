@@ -126,15 +126,16 @@ class _MafiaRoleCounterTabState extends State<MafiaRoleCounterTab> {
               children: [
                 Row(
                   children: [
-                    Text(
-                      'Players in lobby',
-                      style: TextStyle(
-                        color: luma.textSecondary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                    Expanded(
+                      child: Text(
+                        'Players in lobby',
+                        style: TextStyle(
+                          color: luma.textSecondary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                    const Spacer(),
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 6),
@@ -267,12 +268,16 @@ class _FactionSection extends StatelessWidget {
                 decoration: BoxDecoration(color: color, shape: BoxShape.circle),
               ),
               const SizedBox(width: 8),
-              Text(
-                faction.label,
-                style: TextStyle(
-                  color: luma.textPrimary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
+              Flexible(
+                child: Text(
+                  faction.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: luma.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -292,13 +297,22 @@ class _FactionSection extends StatelessWidget {
                       fontWeight: FontWeight.w600),
                 ),
               ),
-              const Spacer(),
-              Text(
-                faction.winCondition,
-                style: TextStyle(color: luma.textMuted, fontSize: 11),
-              ),
+              if (!context.isPhoneWidth) ...[
+                const Spacer(),
+                Text(
+                  faction.winCondition,
+                  style: TextStyle(color: luma.textMuted, fontSize: 11),
+                ),
+              ],
             ],
           ),
+          if (context.isPhoneWidth) ...[
+            const SizedBox(height: 4),
+            Text(
+              faction.winCondition,
+              style: TextStyle(color: luma.textMuted, fontSize: 11),
+            ),
+          ],
           const SizedBox(height: 12),
           for (final entry in entries) ...[
             for (var i = 0; i < entry.value; i++) ...[

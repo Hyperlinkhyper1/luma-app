@@ -197,10 +197,34 @@ class _AccountOverviewPageState extends State<AccountOverviewPage> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // On a phone an expanded rail would eat more than half the width, so
-        // it collapses to icons on its own and the manual toggle steps aside
-        // rather than offering a choice that never helps.
+        // A sidebar would leave too little room for the section body on a
+        // phone, so its destinations move into a horizontal strip.
         final compact = constraints.maxWidth < 640;
+        if (compact) {
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+                child: LumaSegmentedTabs(
+                  tabs: [
+                    for (final section in AccountSection.values)
+                      '${section.service.label} · ${section.label}',
+                  ],
+                  selectedIndex: _section.index,
+                  scrollable: true,
+                  onSelect: (index) =>
+                      _selectSection(AccountSection.values[index]),
+                ),
+              ),
+              Expanded(
+                child: _SectionBody(
+                  section: _section,
+                  onOpenSection: _openSection,
+                ),
+              ),
+            ],
+          );
+        }
         return Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -291,7 +315,10 @@ class _SectionBody extends StatelessWidget {
           child: SizedBox(
             width: 24,
             height: 24,
-            child: CircularProgressIndicator(strokeWidth: 2, color: luma.accent),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: luma.accent,
+            ),
           ),
         );
       }
@@ -360,9 +387,7 @@ class _SectionBody extends StatelessWidget {
         if (repository.warnings.isNotEmpty && !repository.refreshing)
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-            child: AccountNotice(
-              message: repository.warnings.join('\n'),
-            ),
+            child: AccountNotice(message: repository.warnings.join('\n')),
           ),
         Expanded(
           // The sections are kept alive rather than rebuilt on every switch:
@@ -437,6 +462,8 @@ class _SectionHeader extends StatelessWidget {
               children: [
                 Text(
                   section.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 16,
@@ -454,7 +481,7 @@ class _SectionHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          if (chip.isNotEmpty)
+          if (chip.isNotEmpty && !context.isPhoneWidth)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
@@ -520,7 +547,10 @@ class _RefreshBar extends StatelessWidget {
           SizedBox(
             width: 13,
             height: 13,
-            child: CircularProgressIndicator(strokeWidth: 2, color: luma.accent),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: luma.accent,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -566,12 +596,17 @@ class _YoutubeRefreshBar extends StatelessWidget {
           SizedBox(
             width: 13,
             height: 13,
-            child: CircularProgressIndicator(strokeWidth: 2, color: luma.accent),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: luma.accent,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              stage == YoutubeLoadStage.idle ? 'Refreshing…' : '${stage.label}…',
+              stage == YoutubeLoadStage.idle
+                  ? 'Refreshing…'
+                  : '${stage.label}…',
               style: TextStyle(
                 color: luma.textSecondary,
                 fontSize: 12,
@@ -611,7 +646,8 @@ class _ConnectPrompt extends StatelessWidget {
               LumaEmptyState(
                 icon: Icons.hub_rounded,
                 title: 'Connect your GitHub account',
-                subtitle: 'See your commits, stars, downloads, repositories, '
+                subtitle:
+                    'See your commits, stars, downloads, repositories, '
                     'issues and workflow runs in one place — plus your '
                     'Copilot, storage and compute allowances.',
                 action: LumaPrimaryButton(
@@ -675,7 +711,8 @@ class _YoutubeConnectPrompt extends StatelessWidget {
               LumaEmptyState(
                 icon: Icons.smart_display_rounded,
                 title: 'Connect your YouTube channel',
-                subtitle: 'See your subscribers, views, recent uploads and '
+                subtitle:
+                    'See your subscribers, views, recent uploads and '
                     'deep analytics — watch time, traffic sources and '
                     'subscriber trends — in one place.',
                 action: LumaPrimaryButton(
@@ -826,8 +863,8 @@ class _SectionRail extends StatelessWidget {
                                 // and carries the prompt; the rest read as
                                 // unavailable until there is something
                                 // behind them.
-                                enabled: (connectedServices[service] ??
-                                        false) ||
+                                enabled:
+                                    (connectedServices[service] ?? false) ||
                                     section == _firstSectionOf(service),
                                 onTap: () => onSelect(section),
                               ),
@@ -875,12 +912,12 @@ class _ServiceHeading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final line =
-        connected ? (subtitle ?? 'Connected') : 'Not set up';
+    final line = connected ? (subtitle ?? 'Connected') : 'Not set up';
 
     final content = Row(
-      mainAxisAlignment:
-          collapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
+      mainAxisAlignment: collapsed
+          ? MainAxisAlignment.center
+          : MainAxisAlignment.start,
       children: [
         Container(
           width: 30,
@@ -925,10 +962,7 @@ class _ServiceHeading extends StatelessWidget {
                         line,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: luma.textMuted,
-                          fontSize: 10.5,
-                        ),
+                        style: TextStyle(color: luma.textMuted, fontSize: 10.5),
                       ),
                     ),
                   ],
@@ -951,7 +985,10 @@ class _ServiceHeading extends StatelessWidget {
     );
 
     final padded = Padding(
-      padding: EdgeInsets.symmetric(horizontal: collapsed ? 8 : 12, vertical: 8),
+      padding: EdgeInsets.symmetric(
+        horizontal: collapsed ? 8 : 12,
+        vertical: 8,
+      ),
       child: content,
     );
 
@@ -1012,7 +1049,11 @@ class _RailItem extends StatelessWidget {
           ),
         ),
         SizedBox(width: collapsed ? 17 : 13),
-        Icon(section.icon, size: 20, color: selected ? luma.accent : foreground),
+        Icon(
+          section.icon,
+          size: 20,
+          color: selected ? luma.accent : foreground,
+        ),
         if (!collapsed) ...[
           const SizedBox(width: 12),
           Expanded(
@@ -1090,7 +1131,11 @@ class _MoreServicesHint extends StatelessWidget {
         padding: const EdgeInsets.only(bottom: 8),
         child: Tooltip(
           message: 'More services coming',
-          child: Icon(Icons.more_horiz_rounded, size: 18, color: luma.textMuted),
+          child: Icon(
+            Icons.more_horiz_rounded,
+            size: 18,
+            color: luma.textMuted,
+          ),
         ),
       );
     }
@@ -1157,10 +1202,7 @@ class _CollapseButton extends StatelessWidget {
                           'Collapse',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: luma.textMuted,
-                            fontSize: 12,
-                          ),
+                          style: TextStyle(color: luma.textMuted, fontSize: 12),
                         ),
                       ),
                       const SizedBox(width: 10),

@@ -3,6 +3,7 @@ import 'dart:collection';
 import 'dart:io';
 import 'dart:typed_data';
 
+import '../file_times.dart';
 import '../sftp_paths.dart';
 import '../sftp_session.dart';
 import '../sftp_site.dart';
@@ -581,8 +582,14 @@ class LumaHostSession extends SftpSession {
     });
 
     var failed = true;
+    var times = const FileTimes();
     try {
-      await _requestWithId(id, HostOp.readOpen, {'p': normalized, 'o': 0});
+      final opened = await _requestWithId(
+        id,
+        HostOp.readOpen,
+        {'p': normalized, 'o': 0},
+      );
+      times = FileTimes.fromWire(opened['t']);
       if (cancelToken?.isCancelled ?? false) throw const TransferCancelled();
       await download.done;
       failed = false;
@@ -603,6 +610,9 @@ class LumaHostSession extends SftpSession {
       }
     }
     if (cancelToken?.isCancelled ?? false) throw const TransferCancelled();
+    // After the sink is closed: closing it would otherwise bump the modified
+    // time straight back to now.
+    await times.applyTo(destination);
   }
 
   @override
@@ -658,7 +668,9 @@ class LumaHostSession extends SftpSession {
       throw const TransferCancelled();
     }
 
-    await _requestWithId(id, HostOp.writeClose);
+    await _requestWithId(id, HostOp.writeClose, {
+      't': (await FileTimes.of(source)).toWire(),
+    });
   }
 
   @override

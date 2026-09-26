@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/widgets.dart';
 import '../../../../theme/luma_theme.dart';
 import 'ai_usage_page.dart';
 import 'ai_agent_builder_tab.dart';
@@ -88,6 +89,42 @@ class _AiUsagePageState extends State<AiUsagePage> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final sections = IndexedStack(
+      index: _section.index,
+      children: [
+        const AiUsageDashboardTab(),
+        const AiLeaderboardTab(),
+        const OpenSourceTab(),
+        const AiMarkdownLibraryTab(),
+        const AiAgentBuilderTab(),
+        TestsTab(key: ValueKey(_testsVisit)),
+        const AssetsTab(),
+      ],
+    );
+    if (context.isPhoneWidth) {
+      return Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+            child: LumaSegmentedTabs(
+              tabs: [
+                for (final section in AiUsageSection.values) section.label,
+              ],
+              selectedIndex: _section.index,
+              scrollable: true,
+              onSelect: (index) => setState(() {
+                final section = AiUsageSection.values[index];
+                if (section == AiUsageSection.tests && section != _section) {
+                  _testsVisit++;
+                }
+                _section = section;
+              }),
+            ),
+          ),
+          Expanded(child: sections),
+        ],
+      );
+    }
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -101,21 +138,7 @@ class _AiUsagePageState extends State<AiUsagePage> {
           onToggleCollapsed: () => setState(() => _collapsed = !_collapsed),
         ),
         Container(width: 1, color: luma.border),
-        Expanded(
-          // Children must stay in [AiUsageSection] declaration order.
-          child: IndexedStack(
-            index: _section.index,
-            children: [
-              const AiUsageDashboardTab(),
-              const AiLeaderboardTab(),
-              const OpenSourceTab(),
-              const AiMarkdownLibraryTab(),
-              const AiAgentBuilderTab(),
-              TestsTab(key: ValueKey(_testsVisit)),
-              const AssetsTab(),
-            ],
-          ),
-        ),
+        Expanded(child: sections),
       ],
     );
   }
