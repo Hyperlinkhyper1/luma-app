@@ -481,8 +481,13 @@ class _HostConnection {
 
   bool get _readOnly => server.access == HostAccess.readOnly;
 
+  /// The socket subscription, paused while more records are waiting to be
+  /// handled than [kHostPipelineDepth] allows — TCP then slows the sender
+  /// down instead of this device buffering an upload in memory.
+  StreamSubscription<Uint8List>? _subscription;
+
   Future<void> run() async {
-    final subscription = socket.listen(
+    final subscription = _subscription = socket.listen(
       _onData,
       onError: (Object e) => _fail(e),
       onDone: () => _fail(const HostProtocolException('The device hung up.')),
@@ -571,12 +576,25 @@ class _HostConnection {
   /// The main loop once the channel is up: one frame at a time, each
   /// dispatched without blocking the next.
   Future<void> _serve() async {
-    while (!_closed) {
-      final body = await _nextFrame();
-      final channel = _channel!;
-      final plain = await channel.open(body);
+    final channel = _channel!;
+    // Records are opened several at a time — each takes its counter in
+    // arrival order when open() is called — and handled strictly in order.
+    final opening = Queue<Future<Uint8List>>();
+    void startOpening(Uint8List body) {
       client.bytesReceived += body.length;
-      final frame = decodeFrame(plain);
+      opening.add(channel.open(body)..ignore());
+    }
+
+    while (!_closed) {
+      while (_frames.isNotEmpty && opening.length < kHostPipelineDepth) {
+        startOpening(_frames.removeFirst());
+      }
+      _resumeIfDrained();
+      if (opening.isEmpty) {
+        startOpening(await _nextFrame());
+        continue;
+      }
+      final frame = decodeFrame(await opening.removeFirst());
 
       if (frame.isControl) {
         // Requests are handled off the loop so a slow one (a large directory,
@@ -639,30 +657,21 @@ class _HostConnection {
       await _reply(hostError(id, 'That folder is no longer there.'));
       return;
     }
+    final entities = await directory.list(followLinks: false).toList();
     final entries = <Map<String, dynamic>>[];
-    await for (final entity in directory.list(followLinks: false)) {
-      final name = entity.path.split(RegExp(r'[\\/]')).last;
-      if (name.isEmpty) continue;
-      try {
-        // The listing is taken with followLinks: false, so a link arrives as
-        // a Link entity. stat() below follows it — which is what tells us
-        // whether it points at a directory — but the entity type is the only
-        // thing that says it was a link at all.
-        final isLink = entity is Link;
-        final stat = await entity.stat();
-        entries.add(
-          HostEntry(
-            name: name,
-            isDirectory: stat.type == FileSystemEntityType.directory,
-            isLink: isLink,
-            size: stat.size < 0 ? 0 : stat.size,
-            modifiedMs: stat.modified.millisecondsSinceEpoch,
-            mode: Platform.isWindows ? null : stat.mode & 0x1ff,
-          ).toJson(),
-        );
-      } catch (_) {
-        // A file that vanished or cannot be stat'd mid-listing is skipped
-        // rather than failing the whole directory.
+    // Stat'd in parallel batches rather than one await at a time: on a
+    // phone's shared storage each stat is a trip through Android's FUSE
+    // layer, and a camera roll has thousands of them.
+    const statBatch = 64;
+    for (var start = 0; start < entities.length; start += statBatch) {
+      final end = start + statBatch < entities.length
+          ? start + statBatch
+          : entities.length;
+      final described = await Future.wait(
+        entities.sublist(start, end).map(_describeEntity),
+      );
+      for (final entry in described) {
+        if (entry != null) entries.add(entry);
       }
     }
     // Android's scoped storage returns an empty listing — not an error — for
@@ -696,6 +705,34 @@ class _HostConnection {
       batchBytes += size;
     }
     await _reply(hostOk(id, {'es': batch}));
+  }
+
+  /// One listing row, or null for an entry that vanished or cannot be stat'd
+  /// mid-listing — skipped rather than failing the whole directory.
+  static Future<Map<String, dynamic>?> _describeEntity(
+    FileSystemEntity entity,
+  ) async {
+    final name = entity.path.split(RegExp(r'[\\/]')).last;
+    if (name.isEmpty) return null;
+    try {
+      // The listing is taken with followLinks: false, so a link arrives as a
+      // Link entity. stat() below follows it — which is what tells us whether
+      // it points at a directory — but the entity type is the only thing that
+      // says it was a link at all.
+      final isLink = entity is Link;
+      final stat = await entity.stat();
+      if (stat.type == FileSystemEntityType.notFound) return null;
+      return HostEntry(
+        name: name,
+        isDirectory: stat.type == FileSystemEntityType.directory,
+        isLink: isLink,
+        size: stat.size < 0 ? 0 : stat.size,
+        modifiedMs: stat.modified.millisecondsSinceEpoch,
+        mode: Platform.isWindows ? null : stat.mode & 0x1ff,
+      ).toJson();
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _opStat(int id, Map<String, dynamic> message) async {
@@ -811,6 +848,7 @@ class _HostConnection {
     _ReadStream stream,
   ) async {
     RandomAccessFile? handle;
+    final inFlight = Queue<Future<void>>();
     try {
       handle = await file.open();
       await handle.setPosition(offset);
@@ -821,9 +859,16 @@ class _HostConnection {
             : kHostChunkBytes;
         final bytes = await handle.read(take);
         if (bytes.isEmpty) break;
-        await _sendSealed(encodeChunkFrame(id, bytes));
+        // Keep several chunks in flight: the next one is read from disk and
+        // sealed while earlier ones are still going out. Waiting on the
+        // oldest once the window is full is what keeps memory flat.
+        inFlight.add(_sendSealed(encodeChunkFrame(id, bytes)));
+        if (inFlight.length >= kHostPipelineDepth) {
+          await inFlight.removeFirst();
+        }
         position += bytes.length;
       }
+      await Future.wait(inFlight);
       if (!stream.cancelled && !_closed) {
         await _reply(hostEvent(id, kEventEof));
       }
@@ -931,6 +976,7 @@ class _HostConnection {
 
   Future<Uint8List> _nextFrame() {
     if (_fatal != null) return Future.error(_fatal!);
+    _resumeIfDrained();
     if (_frames.isNotEmpty) return Future.value(_frames.removeFirst());
     final completer = Completer<Uint8List>();
     _waiting = completer;
@@ -948,8 +994,23 @@ class _HostConnection {
           _frames.add(frame);
         }
       }
+      if (_frames.length >= kHostPipelineDepth * 2) {
+        final subscription = _subscription;
+        if (subscription != null && !subscription.isPaused) {
+          subscription.pause();
+        }
+      }
     } catch (e) {
       _fail(e);
+    }
+  }
+
+  void _resumeIfDrained() {
+    final subscription = _subscription;
+    if (subscription != null &&
+        subscription.isPaused &&
+        _frames.length < kHostPipelineDepth) {
+      subscription.resume();
     }
   }
 
@@ -974,7 +1035,11 @@ class _HostConnection {
   Future<void> _sendSealed(Uint8List plain) {
     final channel = _channel;
     if (channel == null || _closed) return Future.value();
-    return _send(() => channel.seal(plain));
+    // Started here, outside the chain, so several records can be sealing on
+    // the cipher pool at once. The nonce was fixed by seal() just now, in
+    // call order, and the chain below writes them out in that same order.
+    final sealed = channel.seal(plain)..ignore();
+    return _send(() => sealed);
   }
 
   /// Serialised so two frames never interleave on the wire and the nonce

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
 /// Thrown when the plugin catalog or a plugin's manifest can't be fetched.
@@ -99,24 +100,40 @@ class PluginManifest {
   );
 }
 
-/// Talks to the `plugins/` folder of the luma-app GitHub repo. The catalog
-/// lives outside the compiled app so it can change without shipping a new
-/// build — the marketplace page fetches it live, and downloading a plugin
-/// re-fetches its manifest to confirm it's reachable before installing it.
+/// Reads the published catalog and adds plugins bundled with this build that
+/// have not reached the published registry yet.
 class PluginCatalogService {
+  PluginCatalogService({Future<http.Response> Function(Uri)? get})
+    : _get = get ?? ((uri) => http.get(uri));
+
+  final Future<http.Response> Function(Uri) _get;
+
   static const _rawBase =
       'https://raw.githubusercontent.com/Hyperlinkhyper1/luma-app/master/plugins';
+  static const _smartHomeManifestAsset = 'plugins/smart-home/manifest.json';
 
   Future<List<PluginCatalogEntry>> fetchCatalog() async {
     final body = await _getJson('$_rawBase/registry.json');
     final list = (body['plugins'] as List).cast<Map<String, dynamic>>();
-    return list.map(PluginCatalogEntry.fromJson).toList(growable: false);
+    final smartHome = PluginCatalogEntry.fromJson(await _bundledSmartHome());
+    return [
+      smartHome,
+      ...list
+          .map(PluginCatalogEntry.fromJson)
+          .where((entry) => entry.id != smartHome.id),
+    ];
   }
 
   Future<PluginManifest> fetchManifest(String pluginId) async {
-    final body = await _getJson('$_rawBase/$pluginId/manifest.json');
+    final body = pluginId == 'smart-home'
+        ? await _bundledSmartHome()
+        : await _getJson('$_rawBase/$pluginId/manifest.json');
     return PluginManifest.fromJson(body);
   }
+
+  Future<Map<String, dynamic>> _bundledSmartHome() async =>
+      (jsonDecode(await rootBundle.loadString(_smartHomeManifestAsset)) as Map)
+          .cast<String, dynamic>();
 
   /// Resolves a screenshot filename (as listed in a manifest) to the raw
   /// GitHub URL it's served from.
@@ -126,7 +143,7 @@ class PluginCatalogService {
   Future<Map<String, dynamic>> _getJson(String url) async {
     final http.Response res;
     try {
-      res = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 12));
+      res = await _get(Uri.parse(url)).timeout(const Duration(seconds: 12));
     } catch (e) {
       throw PluginCatalogException(
         'Could not reach the plugin repo. Check your connection.\n($e)',

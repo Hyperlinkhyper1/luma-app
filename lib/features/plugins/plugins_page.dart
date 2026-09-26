@@ -13,9 +13,9 @@ enum _SortMode { relevance, nameAsc, nameDesc }
 enum _PriceFilter { all, free, paid }
 
 /// The Plugins marketplace: a Modrinth-style browser fetched live from the
-/// luma-app GitHub repo's `plugins/` folder. Nothing here is bundled in the
-/// app — a plugin only becomes usable (and gets its own nav rail icon) once
-/// the user downloads it.
+/// luma-app GitHub repo's `plugins/` folder. Newly compiled plugins may add
+/// bundled metadata until their registry entry is published. A plugin only
+/// gets its own nav rail icon once the user downloads it.
 class PluginsPage extends StatefulWidget {
   const PluginsPage({super.key, required this.onOpenPlugin});
 
