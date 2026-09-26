@@ -26,3 +26,24 @@ Future<SaveResult> saveConvertedFile({
   await file.writeAsBytes(bytes, flush: true);
   return SaveResult(saved: true, location: path, summary: 'Saved to $path');
 }
+
+/// Overwrites the picked source file with [bytes]. When the output format
+/// differs from the original's extension, the result takes the new extension
+/// next to it and the original is deleted.
+Future<SaveResult> replaceOriginalFile({
+  required Uint8List bytes,
+  required String originalPath,
+  required String extension,
+}) async {
+  final dot = originalPath.lastIndexOf('.');
+  final sep = originalPath.lastIndexOf(RegExp(r'[\/]'));
+  final stem = dot > sep + 1 ? originalPath.substring(0, dot) : originalPath;
+  final target = '$stem.$extension';
+  await File(target).writeAsBytes(bytes, flush: true);
+  if (target.toLowerCase() != originalPath.toLowerCase()) {
+    final original = File(originalPath);
+    if (await original.exists()) await original.delete();
+  }
+  return SaveResult(
+      saved: true, location: target, summary: 'Replaced original: $target');
+}

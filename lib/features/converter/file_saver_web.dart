@@ -30,3 +30,11 @@ Future<SaveResult> saveConvertedFile({
 
   return SaveResult(saved: true, summary: 'Downloaded $suggestedName');
 }
+
+Future<SaveResult> replaceOriginalFile({
+  required Uint8List bytes,
+  required String originalPath,
+  required String extension,
+}) {
+  throw UnsupportedError('Replacing files is not supported on the web.');
+}

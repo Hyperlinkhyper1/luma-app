@@ -247,6 +247,7 @@ void main() {
     }
     expect(isAutomaticSyncCollection('home_desktop'), true);
     expect(isAutomaticSyncCollection('home_phone'), true);
+    expect(isAutomaticSyncCollection('assistant_memory'), true);
     expect(isAutomaticSyncCollection('notes'), false);
   });
 

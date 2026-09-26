@@ -288,7 +288,8 @@ class _SignedInBody extends StatelessWidget {
                 ),
                 if (isAutomaticSyncCollection(collection.id))
                   Tooltip(
-                    message: 'Preferences and matching-device home layouts always sync — this '
+                    message: 'Preferences, assistant memory and matching-device '
+                        'home layouts always sync — this '
                         'can\'t be turned off.',
                     child: Row(
                       mainAxisSize: MainAxisSize.min,

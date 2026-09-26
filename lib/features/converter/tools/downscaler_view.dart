@@ -36,6 +36,7 @@ class DownscalerView extends StatefulWidget {
 class _DownscalerViewState extends State<DownscalerView> {
   Uint8List? _bytes;
   String? _name;
+  String? _path;
   int _originalSize = 0;
 
   ImageProbe? _probe;
@@ -94,6 +95,7 @@ class _DownscalerViewState extends State<DownscalerView> {
     setState(() {
       _bytes = bytes;
       _name = file.name;
+      _path = kIsWeb ? null : file.path;
       _originalSize = file.size;
       _params = const DownscaleParams();
       _probe = null;
@@ -288,10 +290,12 @@ class _DownscalerViewState extends State<DownscalerView> {
     }
   }
 
-  Future<void> _apply() async {
+  Future<void> _apply({bool replace = false}) async {
     final bytes = _bytes;
     final name = _name;
     if (bytes == null || name == null) return;
+    final path = _path;
+    if (replace && path == null) return;
     setState(() {
       _applying = true;
       _error = null;
@@ -301,12 +305,15 @@ class _DownscalerViewState extends State<DownscalerView> {
       final out = await _renderBytes(bytes, _params);
       final ext = _params.toWebp ? 'webp' : 'png';
       final mime = _params.toWebp ? 'image/webp' : 'image/png';
-      final save = await saveConvertedFile(
-        bytes: out,
-        suggestedName: '${_stripExtension(name)}-optimized.$ext',
-        mimeType: mime,
-        extensions: [ext],
-      );
+      final save = replace
+          ? await replaceOriginalFile(
+              bytes: out, originalPath: path!, extension: ext)
+          : await saveConvertedFile(
+              bytes: out,
+              suggestedName: '${_stripExtension(name)}-optimized.$ext',
+              mimeType: mime,
+              extensions: [ext],
+            );
       if (!mounted) return;
       setState(() {
         _applying = false;
@@ -325,6 +332,7 @@ class _DownscalerViewState extends State<DownscalerView> {
     setState(() {
       _bytes = null;
       _name = null;
+      _path = null;
       _originalSize = 0;
       _probe = null;
       _params = const DownscaleParams();
@@ -386,6 +394,9 @@ class _DownscalerViewState extends State<DownscalerView> {
             applying: _applying,
             outputLabel: _params.toWebp ? 'WEBP' : 'PNG',
             onApply: _anySelected ? _apply : null,
+            onReplace: _anySelected && _path != null
+                ? () => _apply(replace: true)
+                : null,
           ),
         ],
         if (_error != null) ...[
@@ -652,6 +663,7 @@ class _EstimateCard extends StatelessWidget {
     required this.applying,
     required this.outputLabel,
     required this.onApply,
+    this.onReplace,
   });
 
   final int originalSize;
@@ -661,6 +673,7 @@ class _EstimateCard extends StatelessWidget {
   final bool applying;
   final String outputLabel;
   final VoidCallback? onApply;
+  final VoidCallback? onReplace;
 
   @override
   Widget build(BuildContext context) {
@@ -741,6 +754,15 @@ class _EstimateCard extends StatelessWidget {
             loading: applying,
             onTap: onApply,
           ),
+          if (onReplace != null) ...[
+            const SizedBox(height: 10),
+            ConverterPrimaryButton(
+              label: 'Optimize & replace original',
+              icon: Icons.swap_horiz_rounded,
+              loading: false,
+              onTap: applying ? null : onReplace,
+            ),
+          ],
           if (!anySelected) ...[
             const SizedBox(height: 8),
             Center(

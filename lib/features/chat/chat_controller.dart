@@ -6,12 +6,15 @@ import '../plugins/installed/ai_usage/ai_usage_repository.dart';
 import 'ai_agent_store.dart';
 import 'ai_key_store.dart';
 import 'ai_tools.dart';
+import 'chat_usage.dart';
+import 'memory/assistant_memory_repository.dart';
 import 'data/chat_repository.dart';
 import 'providers/ai_client.dart';
 import 'providers/ai_modes.dart';
 import 'providers/ai_providers.dart';
 import 'providers/ai_usage.dart';
 import 'providers/google_client.dart';
+import 'providers/local_qwen_client.dart';
 import 'providers/mistral_proxy_client.dart';
 
 /// Orchestrates one chat turn: persists the user's message, calls whichever
@@ -32,13 +35,15 @@ class ChatController extends ChangeNotifier {
     required SettingsController settings,
     SyncService? syncService,
     AiUsageRepository? aiUsage,
+    AssistantMemoryRepository? memory,
   }) : _repository = repository,
        _keyStore = keyStore,
        _agentStore = agentStore,
        _tools = tools,
        _settings = settings,
        _syncService = syncService,
-       _aiUsage = aiUsage;
+       _aiUsage = aiUsage,
+       _memory = memory;
 
   final ChatRepository _repository;
   final AiKeyStore _keyStore;
@@ -49,6 +54,10 @@ class ChatController extends ChangeNotifier {
 
   /// Where each reply's token usage is logged for the AI Usage plugin.
   final AiUsageRepository? _aiUsage;
+
+  /// The user's profile, memory and reply language, folded into the system
+  /// prompt on every turn.
+  final AssistantMemoryRepository? _memory;
 
   static const _maxHistoryTurns = 20;
 
@@ -63,6 +72,11 @@ class ChatController extends ChangeNotifier {
       'never be guessed from market price; ask what they paid when absent. '
       'Do not say an event, note, dinner or tracked item was saved unless the '
       'corresponding tool reports success.';
+
+  String get _fullSystemPrompt {
+    final extra = _memory?.promptContext() ?? '';
+    return extra.isEmpty ? _systemPrompt : '$_systemPrompt\n\n$extra';
+  }
 
   bool _sending = false;
   bool get isSending => _sending;
@@ -138,7 +152,7 @@ class ChatController extends ChangeNotifier {
       final result = await client.chat(
         apiKey: apiKey,
         history: turns,
-        systemPrompt: _systemPrompt,
+        systemPrompt: _fullSystemPrompt,
         tools: _tools.schemas,
         executeTool: _tools.execute,
         metadataFor: AiToolRegistry.metadataFor,
@@ -149,7 +163,7 @@ class ChatController extends ChangeNotifier {
         conversationId,
         'assistant',
         result.text,
-        metadataJson: result.metadataJson,
+        metadataJson: chatMetadataWithUsage(result.metadataJson, result.usage),
       );
       if (!usingServerKey && !usingLocalModel) _settings.recordAiCall();
       _settings.recordModelUsage(
@@ -176,6 +190,16 @@ class ChatController extends ChangeNotifier {
       _sending = false;
       notifyListeners();
     }
+  }
+
+  /// Loads the on-device model and pre-evaluates the system prompt and tool
+  /// schemas while the user is still typing, when that model is selected.
+  void warmUpLocalModel() {
+    if (_settings.aiProviderId != AiProviderId.local.name) return;
+    LocalQwenClient.warmUp(
+      systemPrompt: _fullSystemPrompt,
+      tools: _tools.schemas,
+    );
   }
 
   Future<void> _maybeTitleConversation(

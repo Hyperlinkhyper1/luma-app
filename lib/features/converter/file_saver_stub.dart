@@ -12,3 +12,11 @@ Future<SaveResult> saveConvertedFile({
 }) {
   throw UnsupportedError('Saving files is not supported on this platform.');
 }
+
+Future<SaveResult> replaceOriginalFile({
+  required Uint8List bytes,
+  required String originalPath,
+  required String extension,
+}) {
+  throw UnsupportedError('Replacing files is not supported on this platform.');
+}

@@ -227,6 +227,7 @@ class ImageEditorView extends StatefulWidget {
 class _ImageEditorViewState extends State<ImageEditorView> {
   Uint8List? _bytes;
   String? _name;
+  String? _path;
   int _size = 0;
 
   _EditOps _ops = const _EditOps();
@@ -286,6 +287,7 @@ class _ImageEditorViewState extends State<ImageEditorView> {
     setState(() {
       _bytes = bytes;
       _name = file.name;
+      _path = kIsWeb ? null : file.path;
       _size = file.size;
       _ops = const _EditOps();
       _previewBytes = null;
@@ -434,10 +436,12 @@ class _ImageEditorViewState extends State<ImageEditorView> {
     return image.exif.isEmpty ? png : _injectPngExif(png, image.exif);
   }
 
-  Future<void> _save() async {
+  Future<void> _save({bool replace = false}) async {
     final bytes = _bytes;
     final name = _name;
     if (bytes == null || name == null) return;
+    final path = _path;
+    if (replace && path == null) return;
 
     setState(() {
       _saving = true;
@@ -456,12 +460,15 @@ class _ImageEditorViewState extends State<ImageEditorView> {
         _processImage,
         _ProcessArgs(bytes, _ops, null, metadata),
       );
-      final save = await saveConvertedFile(
-        bytes: processed,
-        suggestedName: '${ImageConvert.stripExtension(name)}_edited.png',
-        mimeType: 'image/png',
-        extensions: ['png'],
-      );
+      final save = replace
+          ? await replaceOriginalFile(
+              bytes: processed, originalPath: path!, extension: 'png')
+          : await saveConvertedFile(
+              bytes: processed,
+              suggestedName: '${ImageConvert.stripExtension(name)}_edited.png',
+              mimeType: 'image/png',
+              extensions: ['png'],
+            );
       if (!mounted) return;
       setState(() {
         _saving = false;
@@ -487,6 +494,7 @@ class _ImageEditorViewState extends State<ImageEditorView> {
     setState(() {
       _bytes = null;
       _name = null;
+      _path = null;
       _size = 0;
       _ops = const _EditOps();
       _previewBytes = null;
@@ -549,6 +557,17 @@ class _ImageEditorViewState extends State<ImageEditorView> {
             onFieldChanged: () => setState(() {}),
           ),
           const SizedBox(height: 20),
+          if (_path != null) ...[
+            ConverterPrimaryButton(
+              label: 'Save & replace original',
+              icon: Icons.swap_horiz_rounded,
+              loading: false,
+              onTap: _saving || (_ops.isIdentity && !_metadataDirty)
+                  ? null
+                  : () => _save(replace: true),
+            ),
+            const SizedBox(height: 12),
+          ],
           Row(
             children: [
               Expanded(

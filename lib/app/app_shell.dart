@@ -53,6 +53,7 @@ import '../features/plugins/installed/transport_tracker/transport_tracker_page.d
 import '../features/plugins/installed/usage/usage_page.dart';
 import '../features/plugins/installed/wifi_speed_test/wifi_speed_test_page.dart';
 import '../features/plugins/installed/smart_home/smart_home_page.dart';
+import '../features/plugins/installed/small_games/small_games_page.dart';
 import '../features/plugins/installed/worth_counter/worth_counter_page.dart';
 import '../features/plugins/installed/media_downloader/media_downloader_page.dart';
 import '../features/plugins/installed/recipe_book/recipe_book_page.dart';
@@ -722,6 +723,7 @@ class _AppShellState extends State<AppShell> {
     'usage' => const UsagePage(),
     'wifi-speed-test' => const WifiSpeedTestPage(),
     'smart-home' => const SmartHomePage(),
+    'small-games' => const SmallGamesPage(),
     'groceries-list' => const GroceriesPage(),
     'minecraft-launcher' => const MinecraftLauncherPage(),
     'secure-chat' => const SecureChatPage(),

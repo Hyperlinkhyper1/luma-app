@@ -16,4 +16,8 @@ class AiWorkbenchScope extends InheritedNotifier<AiWorkbenchRepository> {
     assert(scope != null, 'AiWorkbenchScope was not found in the widget tree');
     return scope!.notifier!;
   }
+
+  /// Null when the scope isn't above [context], e.g. in a widget test.
+  static AiWorkbenchRepository? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<AiWorkbenchScope>()?.notifier;
 }
