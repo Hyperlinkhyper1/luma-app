@@ -7,6 +7,7 @@ import 'package:dartssh2/dartssh2.dart';
 
 import 'host/host_client.dart';
 import 'sftp_known_hosts.dart';
+import 'file_times.dart';
 import 'sftp_paths.dart';
 import 'sftp_site.dart';
 
@@ -535,7 +536,13 @@ class SshSftpSession extends SftpSession {
     final sink = destination.openWrite();
     var written = 0;
     var cancelled = false;
+    SftpFileAttrs? attrs;
     try {
+      try {
+        attrs = await remote.stat();
+      } catch (_) {
+        // Some servers refuse fstat; the file still transfers, undated.
+      }
       await for (final chunk in remote.read()) {
         if (cancelToken?.isCancelled ?? false) {
           cancelled = true;
@@ -558,6 +565,18 @@ class SshSftpSession extends SftpSession {
       }
     }
     if (cancelled) throw const TransferCancelled();
+    // SFTP carries modified and accessed times (seconds), no creation time;
+    // FileTimes uses the modified time as the creation time on Windows.
+    final modify = attrs?.modifyTime;
+    final access = attrs?.accessTime;
+    await FileTimes(
+      modified: modify == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(modify * 1000),
+      accessed: access == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(access * 1000),
+    ).applyTo(destination);
   }
 
   /// Streams [source] up to [remotePath], creating it and truncating anything
@@ -592,6 +611,23 @@ class SshSftpSession extends SftpSession {
           await _sftp.remove(normalized);
         } catch (_) {}
       }
+    }
+    // Keep the original's dates on the server copy. SFTP sets both times
+    // together, so a missing one falls back to the other.
+    final times = await FileTimes.of(source);
+    final modified = times.modified;
+    if (modified == null) return;
+    final accessed = times.accessed ?? modified;
+    try {
+      await _sftp.setStat(
+        normalized,
+        SftpFileAttrs(
+          accessTime: accessed.millisecondsSinceEpoch ~/ 1000,
+          modifyTime: modified.millisecondsSinceEpoch ~/ 1000,
+        ),
+      );
+    } catch (_) {
+      // A server that will not take the dates still has the file.
     }
   }
 

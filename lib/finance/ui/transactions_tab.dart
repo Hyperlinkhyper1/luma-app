@@ -88,7 +88,8 @@ class _TransactionsBodyState extends State<_TransactionsBody> {
 
   void _shiftMonth(int delta) {
     setState(() {
-      final base = _month ?? DateTime(DateTime.now().year, DateTime.now().month);
+      final base =
+          _month ?? DateTime(DateTime.now().year, DateTime.now().month);
       _month = DateTime(base.year, base.month + delta);
     });
   }
@@ -183,23 +184,23 @@ class _TransactionsBodyState extends State<_TransactionsBody> {
           Expanded(
             child: filtered.isEmpty
                 ? (widget.txns.isEmpty
-                    ? LumaEmptyState(
-                        icon: Icons.receipt_long_rounded,
-                        title: 'Nothing here yet',
-                        subtitle:
-                            'Add what you spent or earned and it shows up here.',
-                      )
-                    : LumaEmptyState(
-                        icon: Icons.search_off_rounded,
-                        title: 'No matching entries',
-                        subtitle:
-                            'Try a different search or clear the filters.',
-                        action: LumaGhostButton(
-                          label: 'Clear filters',
-                          icon: Icons.filter_alt_off_rounded,
-                          onTap: _clearFilters,
-                        ),
-                      ))
+                      ? LumaEmptyState(
+                          icon: Icons.receipt_long_rounded,
+                          title: 'Nothing here yet',
+                          subtitle:
+                              'Add what you spent or earned and it shows up here.',
+                        )
+                      : LumaEmptyState(
+                          icon: Icons.search_off_rounded,
+                          title: 'No matching entries',
+                          subtitle:
+                              'Try a different search or clear the filters.',
+                          action: LumaGhostButton(
+                            label: 'Clear filters',
+                            icon: Icons.filter_alt_off_rounded,
+                            onTap: _clearFilters,
+                          ),
+                        ))
                 : _GroupedTxnList(
                     txns: filtered,
                     catById: catById,
@@ -241,13 +242,19 @@ class _TransactionsBodyState extends State<_TransactionsBody> {
           isDense: true,
           hintText: 'Search notes, companies, categories…',
           hintStyle: TextStyle(color: luma.textMuted, fontSize: 14),
-          prefixIcon:
-              Icon(Icons.search_rounded, size: 18, color: luma.textMuted),
+          prefixIcon: Icon(
+            Icons.search_rounded,
+            size: 18,
+            color: luma.textMuted,
+          ),
           suffixIcon: _query.isEmpty
               ? null
               : IconButton(
-                  icon: Icon(Icons.close_rounded,
-                      size: 16, color: luma.textMuted),
+                  icon: Icon(
+                    Icons.close_rounded,
+                    size: 16,
+                    color: luma.textMuted,
+                  ),
                   onPressed: () => setState(() {
                     _searchController.clear();
                     _query = '';
@@ -255,8 +262,10 @@ class _TransactionsBodyState extends State<_TransactionsBody> {
                 ),
           filled: true,
           fillColor: luma.surface,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 12,
+          ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(color: luma.border),
@@ -295,10 +304,10 @@ class _TransactionsBodyState extends State<_TransactionsBody> {
           label: _categoryId == null
               ? 'Category'
               : (widget.categories
-                      .where((c) => c.id == _categoryId)
-                      .map((c) => c.name)
-                      .firstOrNull ??
-                  'Category'),
+                        .where((c) => c.id == _categoryId)
+                        .map((c) => c.name)
+                        .firstOrNull ??
+                    'Category'),
           active: _categoryId != null,
           items: [
             const _PickerItem<int?>(value: null, label: 'All categories'),
@@ -317,10 +326,10 @@ class _TransactionsBodyState extends State<_TransactionsBody> {
           label: _potId == null
               ? 'Pot'
               : (widget.pots
-                      .where((p) => p.id == _potId)
-                      .map((p) => p.name)
-                      .firstOrNull ??
-                  'Pot'),
+                        .where((p) => p.id == _potId)
+                        .map((p) => p.name)
+                        .firstOrNull ??
+                    'Pot'),
           active: _potId != null,
           items: [
             const _PickerItem<int?>(value: null, label: 'All pots'),
@@ -436,17 +445,20 @@ class _KindFilterChip extends StatelessWidget {
       items: const [
         _PickerItem<TxnKind?>(value: null, label: 'All types'),
         _PickerItem<TxnKind?>(
-            value: TxnKind.expense,
-            label: 'Expenses',
-            icon: Icons.north_east_rounded),
+          value: TxnKind.expense,
+          label: 'Expenses',
+          icon: Icons.north_east_rounded,
+        ),
         _PickerItem<TxnKind?>(
-            value: TxnKind.income,
-            label: 'Income',
-            icon: Icons.south_west_rounded),
+          value: TxnKind.income,
+          label: 'Income',
+          icon: Icons.south_west_rounded,
+        ),
         _PickerItem<TxnKind?>(
-            value: TxnKind.allocation,
-            label: 'Allocations',
-            icon: Icons.savings_rounded),
+          value: TxnKind.allocation,
+          label: 'Allocations',
+          icon: Icons.savings_rounded,
+        ),
       ],
       onSelected: onChanged,
     );
@@ -497,12 +509,17 @@ class _PickerChip<T> extends StatelessWidget {
             child: Row(
               children: [
                 if (items[i].icon != null) ...[
-                  Icon(items[i].icon,
-                      size: 16, color: items[i].iconColor ?? luma.textSecondary),
+                  Icon(
+                    items[i].icon,
+                    size: 16,
+                    color: items[i].iconColor ?? luma.textSecondary,
+                  ),
                   const SizedBox(width: 8),
                 ],
-                Text(items[i].label,
-                    style: TextStyle(color: luma.textPrimary, fontSize: 13)),
+                Text(
+                  items[i].label,
+                  style: TextStyle(color: luma.textPrimary, fontSize: 13),
+                ),
               ],
             ),
           ),
@@ -569,8 +586,11 @@ class _ChipBody extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 4),
-          Icon(Icons.expand_more_rounded,
-              size: 15, color: active ? luma.accent : luma.textMuted),
+          Icon(
+            Icons.expand_more_rounded,
+            size: 15,
+            color: active ? luma.accent : luma.textMuted,
+          ),
         ],
       ),
     );
@@ -595,17 +615,17 @@ class _SummaryBar extends StatelessWidget {
     final net = incomeCents - expenseCents;
     return LumaCard(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-      child: Row(
+      child: Wrap(
+        spacing: 16,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           Text(
             '$entryCount ${entryCount == 1 ? 'entry' : 'entries'}',
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
-          const Spacer(),
           _SummaryStat(label: 'In', cents: incomeCents, color: luma.success),
-          const SizedBox(width: 20),
           _SummaryStat(label: 'Out', cents: -expenseCents, color: luma.danger),
-          const SizedBox(width: 20),
           _SummaryStat(
             label: 'Net',
             cents: net,
@@ -949,8 +969,18 @@ class _RowMenu extends StatelessWidget {
 
 String _monthName(int month) {
   const months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
   return months[month - 1];
 }

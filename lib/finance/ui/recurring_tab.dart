@@ -87,14 +87,18 @@ class _RecurringBody extends StatelessWidget {
             _BillsDueSoonCard(bills: dueBills),
             const SizedBox(height: 20),
           ],
-          Row(
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 8,
             children: [
               _SectionHeader('Fixed costs & income'),
-              const Spacer(),
               LumaPrimaryButton(
                 label: 'Add',
                 icon: Icons.add_rounded,
-                onTap: () => _openRecurringEditor(context, repo, pots, categories),
+                onTap: () =>
+                    _openRecurringEditor(context, repo, pots, categories),
               ),
             ],
           ),
@@ -107,26 +111,30 @@ class _RecurringBody extends StatelessWidget {
               ),
             )
           else
-            ...rules.map((r) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: _RecurringRow(
-                    rule: r,
-                    onDelete: () => repo.deleteRecurring(r.id),
-                  ),
-                )),
+            ...rules.map(
+              (r) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _RecurringRow(
+                  rule: r,
+                  onDelete: () => repo.deleteRecurring(r.id),
+                ),
+              ),
+            ),
           const SizedBox(height: 28),
-          Row(
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 8,
             children: [
               _SectionHeader('Automatic distribution'),
-              const Spacer(),
               LumaPrimaryButton(
                 label: 'Add',
                 icon: Icons.add_rounded,
                 onTap: pots.isEmpty
                     ? () => ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('Create a pot first.')),
-                        )
+                        const SnackBar(content: Text('Create a pot first.')),
+                      )
                     : () => _openAllocationEditor(context, repo, pots),
               ),
             ],
@@ -145,14 +153,16 @@ class _RecurringBody extends StatelessWidget {
               ),
             )
           else
-            ...allocations.map((a) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: _AllocationRow(
-                    rule: a,
-                    pot: potById[a.potId],
-                    onDelete: () => repo.deleteAllocationRule(a.id),
-                  ),
-                )),
+            ...allocations.map(
+              (a) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _AllocationRow(
+                  rule: a,
+                  pot: potById[a.potId],
+                  onDelete: () => repo.deleteAllocationRule(a.id),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -182,17 +192,21 @@ class _BillsDueSoonCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.notifications_active_rounded,
-                  size: 18, color: luma.danger),
+              Icon(
+                Icons.notifications_active_rounded,
+                size: 18,
+                color: luma.danger,
+              ),
               const SizedBox(width: 8),
               Text(
                 bills.length == 1
                     ? '1 bill due soon'
                     : '${bills.length} bills due soon',
                 style: TextStyle(
-                    color: luma.textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700),
+                  color: luma.textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
@@ -203,15 +217,19 @@ class _BillsDueSoonCard extends StatelessWidget {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(bill.name,
-                        style: TextStyle(
-                            color: luma.textSecondary, fontSize: 13)),
+                    child: Text(
+                      bill.name,
+                      style: TextStyle(color: luma.textSecondary, fontSize: 13),
+                    ),
                   ),
-                  Text(_dueLabel(bill.nextDue),
-                      style: TextStyle(
-                          color: luma.danger,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600)),
+                  Text(
+                    _dueLabel(bill.nextDue),
+                    style: TextStyle(
+                      color: luma.danger,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -223,9 +241,11 @@ class _BillsDueSoonCard extends StatelessWidget {
 
 String _dueLabel(DateTime due) {
   final today = DateTime.now();
-  final days = DateTime(due.year, due.month, due.day)
-      .difference(DateTime(today.year, today.month, today.day))
-      .inDays;
+  final days = DateTime(
+    due.year,
+    due.month,
+    due.day,
+  ).difference(DateTime(today.year, today.month, today.day)).inDays;
   if (days < 0) return 'Overdue';
   if (days == 0) return 'Due today';
   if (days == 1) return 'Due tomorrow';
@@ -261,9 +281,13 @@ class _RecurringRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(rule.name,
-                    style: TextStyle(
-                        color: luma.textPrimary, fontWeight: FontWeight.w600)),
+                Text(
+                  rule.name,
+                  style: TextStyle(
+                    color: luma.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 2),
                 Text(
                   '${rule.cadence == Cadence.weekly ? 'Weekly' : 'Monthly'}'
@@ -279,8 +303,11 @@ class _RecurringRow extends StatelessWidget {
             style: TextStyle(color: color, fontWeight: FontWeight.w700),
           ),
           IconButton(
-            icon: Icon(Icons.delete_outline_rounded,
-                size: 18, color: luma.textMuted),
+            icon: Icon(
+              Icons.delete_outline_rounded,
+              size: 18,
+              color: luma.textMuted,
+            ),
             onPressed: onDelete,
           ),
         ],
@@ -326,9 +353,13 @@ class _AllocationRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('To ${pot?.name ?? 'pot'}',
-                    style: TextStyle(
-                        color: luma.textPrimary, fontWeight: FontWeight.w600)),
+                Text(
+                  'To ${pot?.name ?? 'pot'}',
+                  style: TextStyle(
+                    color: luma.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 2),
                 Text(
                   '${rule.cadence == Cadence.weekly ? 'Weekly' : 'Monthly'} · next ${_shortDate(rule.nextDue)}',
@@ -337,11 +368,16 @@ class _AllocationRow extends StatelessWidget {
               ],
             ),
           ),
-          Text(amountText,
-              style: TextStyle(color: luma.accent, fontWeight: FontWeight.w700)),
+          Text(
+            amountText,
+            style: TextStyle(color: luma.accent, fontWeight: FontWeight.w700),
+          ),
           IconButton(
-            icon: Icon(Icons.delete_outline_rounded,
-                size: 18, color: luma.textMuted),
+            icon: Icon(
+              Icons.delete_outline_rounded,
+              size: 18,
+              color: luma.textMuted,
+            ),
             onPressed: onDelete,
           ),
         ],
@@ -355,19 +391,23 @@ class _SectionHeader extends StatelessWidget {
   final String text;
   @override
   Widget build(BuildContext context) => Text(
-        text,
-        style: TextStyle(
-          color: context.luma.textPrimary,
-          fontSize: 16,
-          fontWeight: FontWeight.w700,
-        ),
-      );
+    text,
+    style: TextStyle(
+      color: context.luma.textPrimary,
+      fontSize: 16,
+      fontWeight: FontWeight.w700,
+    ),
+  );
 }
 
 // ---- Editors ---------------------------------------------------------------
 
-Future<void> _openRecurringEditor(BuildContext context, FinanceRepository repo,
-    List<Pot> pots, List<Category> categories) {
+Future<void> _openRecurringEditor(
+  BuildContext context,
+  FinanceRepository repo,
+  List<Pot> pots,
+  List<Category> categories,
+) {
   return showDialog<void>(
     context: context,
     builder: (_) => Dialog(
@@ -432,17 +472,19 @@ class _RecurringEditorState extends State<_RecurringEditor> {
       }
       reminderDays = parsed;
     }
-    await widget.repo.createRecurring(RecurringRulesCompanion.insert(
-      name: name,
-      kind: _kind,
-      amountCents: cents,
-      cadence: _cadence,
-      nextDue: _firstDue,
-      potId: Value(_potId),
-      categoryId: Value(_kind == TxnKind.expense ? _categoryId : null),
-      isBill: Value(isBill),
-      reminderDaysBefore: Value(reminderDays),
-    ));
+    await widget.repo.createRecurring(
+      RecurringRulesCompanion.insert(
+        name: name,
+        kind: _kind,
+        amountCents: cents,
+        cadence: _cadence,
+        nextDue: _firstDue,
+        potId: Value(_potId),
+        categoryId: Value(_kind == TxnKind.expense ? _categoryId : null),
+        isBill: Value(isBill),
+        reminderDaysBefore: Value(reminderDays),
+      ),
+    );
     if (mounted) Navigator.pop(context);
   }
 
@@ -456,23 +498,33 @@ class _RecurringEditorState extends State<_RecurringEditor> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('New recurring entry',
-              style: TextStyle(
-                  color: luma.textPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700)),
+          Text(
+            'New recurring entry',
+            style: TextStyle(
+              color: luma.textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 16),
           LumaSegmentedTabs(
             tabs: const ['Fixed cost', 'Fixed income'],
             selectedIndex: isExpense ? 0 : 1,
-            onSelect: (i) =>
-                setState(() => _kind = i == 0 ? TxnKind.expense : TxnKind.income),
+            onSelect: (i) => setState(
+              () => _kind = i == 0 ? TxnKind.expense : TxnKind.income,
+            ),
           ),
           const SizedBox(height: 16),
           _editorField(luma, 'Name', _name, hint: 'e.g. Spotify'),
           const SizedBox(height: 12),
-          _editorField(luma, 'Amount', _amount,
-              hint: '0,00', prefix: '€ ', number: true),
+          _editorField(
+            luma,
+            'Amount',
+            _amount,
+            hint: '0,00',
+            prefix: '€ ',
+            number: true,
+          ),
           const SizedBox(height: 12),
           _label(luma, 'Repeats'),
           _CadenceToggle(
@@ -481,15 +533,16 @@ class _RecurringEditorState extends State<_RecurringEditor> {
           ),
           const SizedBox(height: 12),
           _label(luma, 'First due date'),
-          _DateRow(date: _firstDue, onChanged: (d) => setState(() => _firstDue = d)),
+          _DateRow(
+            date: _firstDue,
+            onChanged: (d) => setState(() => _firstDue = d),
+          ),
           const SizedBox(height: 12),
           _label(luma, 'Pot (optional)'),
           _SimpleDropdown<int?>(
             value: _potId,
             hintNull: isExpense ? 'From main balance' : 'To main balance',
-            items: {
-              for (final p in widget.pots) p.id: p.name,
-            },
+            items: {for (final p in widget.pots) p.id: p.name},
             onChanged: (v) => setState(() => _potId = v),
           ),
           if (isExpense) ...[
@@ -498,9 +551,7 @@ class _RecurringEditorState extends State<_RecurringEditor> {
             _SimpleDropdown<int?>(
               value: _categoryId,
               hintNull: 'No category',
-              items: {
-                for (final c in widget.categories) c.id: c.name,
-              },
+              items: {for (final c in widget.categories) c.id: c.name},
               onChanged: (v) => setState(() => _categoryId = v),
             ),
             const SizedBox(height: 8),
@@ -519,8 +570,10 @@ class _RecurringEditorState extends State<_RecurringEditor> {
                     Expanded(
                       child: Text(
                         'Treat as a bill/subscription — show it in "due soon"',
-                        style:
-                            TextStyle(color: luma.textSecondary, fontSize: 13),
+                        style: TextStyle(
+                          color: luma.textSecondary,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                   ],
@@ -529,9 +582,13 @@ class _RecurringEditorState extends State<_RecurringEditor> {
             ),
             if (_isBill) ...[
               const SizedBox(height: 8),
-              _editorField(luma, 'Remind me this many days before it\'s due',
-                  _reminderDays,
-                  hint: '7', number: true),
+              _editorField(
+                luma,
+                'Remind me this many days before it\'s due',
+                _reminderDays,
+                hint: '7',
+                number: true,
+              ),
             ],
           ],
           if (_error != null) ...[
@@ -547,7 +604,10 @@ class _RecurringEditorState extends State<_RecurringEditor> {
 }
 
 Future<void> _openAllocationEditor(
-    BuildContext context, FinanceRepository repo, List<Pot> pots) {
+  BuildContext context,
+  FinanceRepository repo,
+  List<Pot> pots,
+) {
   return showDialog<void>(
     context: context,
     builder: (_) => Dialog(
@@ -602,14 +662,16 @@ class _AllocationEditorState extends State<_AllocationEditor> {
       }
       percentBps = (pct * 100).round();
     }
-    await widget.repo.createAllocationRule(AllocationRulesCompanion.insert(
-      potId: _potId,
-      mode: _mode,
-      cadence: _cadence,
-      nextDue: _firstDue,
-      valueCents: Value(valueCents),
-      percentBps: Value(percentBps),
-    ));
+    await widget.repo.createAllocationRule(
+      AllocationRulesCompanion.insert(
+        potId: _potId,
+        mode: _mode,
+        cadence: _cadence,
+        nextDue: _firstDue,
+        valueCents: Value(valueCents),
+        percentBps: Value(percentBps),
+      ),
+    );
     if (mounted) Navigator.pop(context);
   }
 
@@ -622,11 +684,14 @@ class _AllocationEditorState extends State<_AllocationEditor> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('New distribution rule',
-              style: TextStyle(
-                  color: luma.textPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700)),
+          Text(
+            'New distribution rule',
+            style: TextStyle(
+              color: luma.textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 16),
           _label(luma, 'Pot'),
           _SimpleDropdown<int>(
@@ -639,8 +704,9 @@ class _AllocationEditorState extends State<_AllocationEditor> {
           LumaSegmentedTabs(
             tabs: const ['Fixed €', '% of balance'],
             selectedIndex: _mode == AllocMode.fixed ? 0 : 1,
-            onSelect: (i) =>
-                setState(() => _mode = i == 0 ? AllocMode.fixed : AllocMode.percent),
+            onSelect: (i) => setState(
+              () => _mode = i == 0 ? AllocMode.fixed : AllocMode.percent,
+            ),
           ),
           const SizedBox(height: 12),
           _editorField(
@@ -659,7 +725,10 @@ class _AllocationEditorState extends State<_AllocationEditor> {
           ),
           const SizedBox(height: 12),
           _label(luma, 'First run date'),
-          _DateRow(date: _firstDue, onChanged: (d) => setState(() => _firstDue = d)),
+          _DateRow(
+            date: _firstDue,
+            onChanged: (d) => setState(() => _firstDue = d),
+          ),
           if (_error != null) ...[
             const SizedBox(height: 12),
             Text(_error!, style: TextStyle(color: luma.danger, fontSize: 13)),
@@ -675,13 +744,16 @@ class _AllocationEditorState extends State<_AllocationEditor> {
 // ---- Small shared editor widgets ------------------------------------------
 
 Widget _label(LumaPalette luma, String text) => Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Text(text,
-          style: TextStyle(
-              color: luma.textSecondary,
-              fontSize: 12,
-              fontWeight: FontWeight.w600)),
-    );
+  padding: const EdgeInsets.only(bottom: 6),
+  child: Text(
+    text,
+    style: TextStyle(
+      color: luma.textSecondary,
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+    ),
+  ),
+);
 
 Widget _editorField(
   LumaPalette luma,
@@ -709,8 +781,10 @@ Widget _editorField(
           prefixStyle: TextStyle(color: luma.textSecondary),
           filled: true,
           fillColor: luma.background,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 12,
+          ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide(color: luma.border),
@@ -779,8 +853,11 @@ class _DateRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(Icons.calendar_today_rounded,
-                size: 16, color: luma.textSecondary),
+            Icon(
+              Icons.calendar_today_rounded,
+              size: 16,
+              color: luma.textSecondary,
+            ),
             const SizedBox(width: 10),
             Text(_shortDate(date), style: TextStyle(color: luma.textPrimary)),
           ],
@@ -826,8 +903,10 @@ class _SimpleDropdown<T> extends StatelessWidget {
             for (final entry in items.entries)
               DropdownMenuItem<T>(
                 value: entry.key,
-                child: Text(entry.value,
-                    style: TextStyle(color: luma.textPrimary)),
+                child: Text(
+                  entry.value,
+                  style: TextStyle(color: luma.textPrimary),
+                ),
               ),
           ],
           onChanged: onChanged,
@@ -839,8 +918,18 @@ class _SimpleDropdown<T> extends StatelessWidget {
 
 String _shortDate(DateTime d) {
   const months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
   return '${d.day} ${months[d.month - 1]}';
 }

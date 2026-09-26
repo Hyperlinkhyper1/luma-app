@@ -52,6 +52,24 @@ class PluginRepository {
         );
   }
 
+  /// Keeps the bundled engine study visible in navigation without treating it
+  /// as a marketplace download or contacting the server.
+  Future<void> ensureEngineStudyInstalled() async {
+    final existing = await (_db.select(_db.installedPlugins)
+          ..where((t) => t.pluginId.equals('engine-study')))
+        .getSingleOrNull();
+    if (existing != null) return;
+    await _db.into(_db.installedPlugins).insert(
+          InstalledPluginsCompanion.insert(
+            pluginId: 'engine-study',
+            name: 'Engine Study',
+            icon: const Value('precision_manufacturing'),
+            version: const Value('1.0.0'),
+            downloadCount: const Value(1),
+          ),
+        );
+  }
+
   Future<void> install(PluginCatalogEntry entry) async {
     final manifest = await _service.fetchManifest(entry.id);
     final existing = await (_db.select(_db.installedPlugins)
