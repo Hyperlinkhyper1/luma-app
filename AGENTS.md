@@ -21,6 +21,9 @@ lib/
   features/
     chat/                    The Assistant. providers/ holds one client per AI provider + the
                              Aurora/Nebula/Pulsar modes; keys live encrypted in ai_key_store.dart
+      account/               Sidebar account menu → Usage, Settings (Chat/Memory/User), Agents
+      memory/                Memory, user profile and chat prefs; the automatic, every-plan
+                             `assistant_memory` sync collection, fed into the system prompt
     converter/               File converter; platform-split via _io.dart / _stub.dart / _web.dart suffix pattern
       tools/                 One screen per tool; the hub tiles in converter_page.dart map to these
       schematic/             Minecraft block formats: a read/write NBT codec, block tables, and

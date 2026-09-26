@@ -391,6 +391,19 @@
       "tags": ["Productivity", "Utility"],
       "free": true,
       "version": "1.0.0"
+    },
+    {
+      "id": "small-games",
+      "name": "Small Games",
+      "version": "1.0.0",
+      "description": "Play BINGO with a draw cage and export unique printable cards as a PDF.",
+      "icon": "sports_esports",
+      "category": "Games",
+      "tags": [
+        "Games",
+        "BINGO"
+      ],
+      "free": true
     }
   ]
 }

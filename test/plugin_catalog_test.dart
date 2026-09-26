@@ -27,7 +27,11 @@ void main() {
       );
 
       final entries = await service.fetchCatalog();
-      expect(entries.map((entry) => entry.id), ['smart-home', 'calculator']);
+      expect(entries.map((entry) => entry.id), [
+        'smart-home',
+        'small-games',
+        'calculator',
+      ]);
     },
   );
 
@@ -51,8 +55,8 @@ void main() {
       );
 
       final entries = await service.fetchCatalog();
-      expect(entries.map((entry) => entry.id), ['smart-home']);
-      expect(entries.single.name, 'Smart Home');
+      expect(entries.map((entry) => entry.id), ['smart-home', 'small-games']);
+      expect(entries.first.name, 'Smart Home');
     },
   );
 
@@ -65,6 +69,8 @@ void main() {
 
       final manifest = await service.fetchManifest('smart-home');
       expect(manifest.name, 'Smart Home');
+      final games = await service.fetchManifest('small-games');
+      expect(games.name, 'Small Games');
     },
   );
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../app/widgets.dart';
 import '../../../../theme/luma_theme.dart';
 import 'ui/cs2_market_tab.dart';
+import 'ui/cs2_selling_calculator_tab.dart';
 import 'ui/steam_price_tracker_tab.dart';
 
 /// The plugin's sections, in sidebar order.
@@ -16,6 +17,11 @@ enum SteamToolsSection {
     icon: Icons.diamond_outlined,
     label: 'CS2 Market',
     blurb: 'Skins, priced and charted',
+  ),
+  sellingCalculator(
+    icon: Icons.calculate_outlined,
+    label: 'Selling Calculator',
+    blurb: 'Estimate CS2 sale proceeds',
   );
 
   const SteamToolsSection({
@@ -71,7 +77,11 @@ class _SteamToolsPageState extends State<SteamToolsPage> {
           Expanded(
             child: IndexedStack(
               index: _section.index,
-              children: const [SteamPriceTrackerTab(), Cs2MarketTab()],
+              children: const [
+                SteamPriceTrackerTab(),
+                Cs2MarketTab(),
+                Cs2SellingCalculatorTab(),
+              ],
             ),
           ),
         ],
@@ -90,7 +100,11 @@ class _SteamToolsPageState extends State<SteamToolsPage> {
         Expanded(
           child: IndexedStack(
             index: _section.index,
-            children: const [SteamPriceTrackerTab(), Cs2MarketTab()],
+            children: const [
+              SteamPriceTrackerTab(),
+              Cs2MarketTab(),
+              Cs2SellingCalculatorTab(),
+            ],
           ),
         ),
       ],

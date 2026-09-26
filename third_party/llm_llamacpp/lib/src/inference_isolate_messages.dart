@@ -50,3 +50,10 @@ class _IsolateResponse {
   final dynamic payload;
   final bool isComplete;
 }
+
+/// Asks the helper isolate to free its cached model and context (luma patch).
+class _ReleaseSessionMessage {
+  _ReleaseSessionMessage(this.done);
+
+  final SendPort done;
+}

@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:llm_llamacpp/llm_llamacpp.dart';
 
+import 'providers/local_qwen_client.dart';
+
 /// Manages the optional, device-local Assistant model.
 class LocalModelStore extends ChangeNotifier {
   LocalModelStore._();
@@ -93,6 +95,7 @@ class LocalModelStore extends ChangeNotifier {
   }
 
   Future<void> remove() async {
+    await LocalQwenClient.release();
     final path = await modelPath();
     if (path != null) await File(path).delete();
     notifyListeners();

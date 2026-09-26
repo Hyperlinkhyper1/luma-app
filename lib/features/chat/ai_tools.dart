@@ -6,6 +6,7 @@ import '../plugins/plugin_repository.dart';
 import '../plugins/installed/calendar/calendar_repository.dart';
 import '../plugins/installed/qr_code_generator/qr_code_repository.dart';
 import '../plugins/installed/steam_tools/cs2_market_repository.dart';
+import 'memory/assistant_memory_repository.dart';
 import 'providers/ai_client.dart';
 
 /// Actions the assistant can perform using the same repositories as Luma's UI.
@@ -17,7 +18,9 @@ class AiToolRegistry {
     required NotesRepository notesRepository,
     required Cs2MarketRepository cs2MarketRepository,
     required void Function(String destination) navigate,
-  })  : _pluginRepository = pluginRepository,
+    AssistantMemoryRepository? memory,
+  })  : _memory = memory,
+        _pluginRepository = pluginRepository,
         _qrCodeRepository = qrCodeRepository,
         _calendarRepository = calendarRepository,
         _notesRepository = notesRepository,
@@ -31,9 +34,26 @@ class AiToolRegistry {
   final Cs2MarketRepository _cs2MarketRepository;
   final void Function(String destination) _navigate;
 
+  /// Where the `remember` tool writes; the tool is only offered while
+  /// memory is switched on.
+  final AssistantMemoryRepository? _memory;
+
   static const _qrPluginId = 'qr-code-generator';
 
   List<AiToolDefinition> get schemas => [
+        if (_memory?.memoryEnabled ?? false)
+          const AiToolDefinition(
+            name: 'remember',
+            description: 'Save one lasting fact about the user to memory so it carries over to future chats. Use section "you" for who they are, "topics" for things like hardware, games, tastes or tools, and "areas" for ongoing projects. Reuse an existing page title when one fits. Never store secrets.',
+            parameters: {
+              'type': 'object', 'properties': {
+                'section': {'type': 'string', 'enum': ['you', 'topics', 'areas']},
+                'title': {'type': 'string', 'description': 'Short page title, e.g. "Hardware" or "Profile".'},
+                'fact': {'type': 'string', 'description': 'The fact, as one short sentence.'},
+                'description': {'type': 'string', 'description': 'One-line summary of the page, for a new page.'},
+              }, 'required': ['section', 'title', 'fact'],
+            },
+          ),
         const AiToolDefinition(
           name: 'install_plugin',
           description: 'Install a Luma plugin by its id.',
@@ -115,6 +135,15 @@ class AiToolRegistry {
   Future<Map<String, dynamic>> execute(String name, Map<String, dynamic> input) async {
     try {
       switch (name) {
+        case 'remember':
+          final memory = _memory;
+          if (memory == null || !memory.memoryEnabled) return {'status': 'error', 'message': 'Memory is switched off.'};
+          final section = MemorySection.values.asNameMap()[input['section']] ?? MemorySection.topics;
+          final title = (input['title'] as String?)?.trim() ?? '';
+          final fact = (input['fact'] as String?)?.trim() ?? '';
+          if (title.isEmpty || fact.isEmpty) return _missing(title.isEmpty ? 'title' : 'fact');
+          final entry = await memory.remember(section: section, title: title, fact: fact, description: input['description'] as String?);
+          return {'status': 'saved', 'title': entry.title, 'section': entry.section.name};
         case 'install_plugin':
           final id = input['plugin_id'] as String?;
           if (id == null || id.isEmpty) return _missing('plugin_id');

@@ -434,4 +434,438 @@ class LFr extends L {
   String planSuffix(String name) {
     return 'Formule $name';
   }
+
+  @override
+  String get assistantNewChat => 'Nouvelle discussion';
+
+  @override
+  String get assistantSearchChats => 'Rechercher';
+
+  @override
+  String get assistantStarred => 'Favoris';
+
+  @override
+  String get assistantRecents => 'Récents';
+
+  @override
+  String get assistantNoChats => 'Aucune discussion';
+
+  @override
+  String get assistantNoMatches => 'Aucun résultat';
+
+  @override
+  String get assistantGreetingMorning => 'Bonjour';
+
+  @override
+  String get assistantGreetingAfternoon => 'Bon après-midi';
+
+  @override
+  String get assistantGreetingEvening => 'Bonsoir';
+
+  @override
+  String assistantGreetingMorningName(String name) {
+    return 'Bonjour, $name';
+  }
+
+  @override
+  String assistantGreetingAfternoonName(String name) {
+    return 'Bon après-midi, $name';
+  }
+
+  @override
+  String assistantGreetingEveningName(String name) {
+    return 'Bonsoir, $name';
+  }
+
+  @override
+  String get assistantHowCanIHelp =>
+      'Comment puis-je vous aider aujourd\'hui ?';
+
+  @override
+  String get assistantReplyHint => 'Répondre à luma…';
+
+  @override
+  String get assistantOutOfMessages =>
+      'Vous n\'avez plus de messages pour l\'instant';
+
+  @override
+  String get assistantCopy => 'Copier';
+
+  @override
+  String get assistantCopied => 'Copié';
+
+  @override
+  String get assistantStar => 'Ajouter aux favoris';
+
+  @override
+  String get assistantUnstar => 'Retirer des favoris';
+
+  @override
+  String get assistantRename => 'Renommer';
+
+  @override
+  String get assistantDelete => 'Supprimer';
+
+  @override
+  String get assistantSuggestPlugin => 'Trouver un plugin';
+
+  @override
+  String get assistantSuggestQr => 'Créer un QR code';
+
+  @override
+  String get assistantSuggestWeek => 'Planifier ma semaine';
+
+  @override
+  String get assistantSuggestNote => 'Écrire une note';
+
+  @override
+  String get assistantSuggestPluginPrompt =>
+      'Quel plugin luma m\'aiderait avec ';
+
+  @override
+  String get assistantSuggestQrPrompt => 'Crée un QR code pour ';
+
+  @override
+  String get assistantSuggestWeekPrompt =>
+      'Qu\'y a-t-il dans mon agenda cette semaine ?';
+
+  @override
+  String get assistantSuggestNotePrompt => 'Enregistre une note qui dit ';
+
+  @override
+  String get assistantToggleSidebar => 'Afficher/masquer la barre latérale';
+
+  @override
+  String get assistantChats => 'Discussions';
+
+  @override
+  String get assistantUsage => 'Utilisation';
+
+  @override
+  String get assistantContextWindow => 'Fenêtre de contexte';
+
+  @override
+  String get assistantUsageLimits => 'Limites d\'utilisation';
+
+  @override
+  String get assistantFiveHourLimit => 'Limite sur 5 heures';
+
+  @override
+  String get assistantWeeklyLimit => 'Hebdomadaire';
+
+  @override
+  String get assistantDailyMessages => 'Aujourd\'hui';
+
+  @override
+  String assistantMessagesOf(int used, int limit) {
+    return '$used messages sur $limit';
+  }
+
+  @override
+  String get assistantLastReply => 'Dernière réponse';
+
+  @override
+  String assistantTokensInOut(String input, String output) {
+    return '$input en entrée · $output en sortie';
+  }
+
+  @override
+  String get assistantNoLimits =>
+      'Fonctionne sur cet appareil — aucune limite d\'utilisation';
+
+  @override
+  String get assistantUsageUnavailable =>
+      'Utilisation indisponible — vérifiez votre connexion';
+
+  @override
+  String get assistantDetailedBreakdown => 'Voir le détail';
+
+  @override
+  String get assistantNoRepliesYet =>
+      'Pas encore de réponse dans cette discussion';
+
+  @override
+  String get assistantMenuUsage => 'Utilisation';
+
+  @override
+  String get assistantMenuSettings => 'Paramètres';
+
+  @override
+  String get assistantMenuAgents => 'Agents';
+
+  @override
+  String get assistantYourUsage => 'Votre utilisation';
+
+  @override
+  String get assistantUsageHeadlinePlenty =>
+      'Encore de la marge. Discutez librement.';
+
+  @override
+  String get assistantUsageHeadlineOnTrack =>
+      'Tout va bien, il vous reste de la marge.';
+
+  @override
+  String get assistantUsageHeadlineClose =>
+      'Attention : vous approchez d\'une limite.';
+
+  @override
+  String get assistantUsageHeadlineOut =>
+      'Vous avez atteint une limite. Elle se libère au fil du temps.';
+
+  @override
+  String get assistantUsageLumaAi => 'Luma AI';
+
+  @override
+  String get assistantUsageLumaAiSubtitle =>
+      'Aurora, Nebula et Pulsar, via votre compte luma';
+
+  @override
+  String get assistantUsageCurrentSession => 'Session en cours';
+
+  @override
+  String get assistantUsageRollingFiveHours => 'Fenêtre glissante de 5 heures';
+
+  @override
+  String get assistantUsageThisWeek => 'Cette semaine';
+
+  @override
+  String get assistantUsageRollingWeek => 'Fenêtre glissante de 7 jours';
+
+  @override
+  String assistantUsagePercentUsed(int percent) {
+    return '$percent % utilisé';
+  }
+
+  @override
+  String get assistantUsageLumaSupport => 'Luma Support';
+
+  @override
+  String get assistantUsageResetsDaily => 'Réinitialisé à minuit';
+
+  @override
+  String get assistantUsageApiKeys => 'Vos clés API';
+
+  @override
+  String get assistantUsageApiKeysSubtitle =>
+      'Anthropic Claude et OpenAI avec votre propre clé, sur cet appareil';
+
+  @override
+  String get assistantUsageByModel => 'Messages par modèle';
+
+  @override
+  String get assistantUsageByModelSubtitle =>
+      'Depuis le début, sur cet appareil. ×5 et ×20 signalent les modèles plus lourds.';
+
+  @override
+  String assistantUsageMessageCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count messages',
+      one: '1 message',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get assistantUsageNoMessages => 'Pas encore de messages';
+
+  @override
+  String get assistantUsageStorage => 'Stockage';
+
+  @override
+  String get assistantUsageMemoryStorage => 'Mémoire de l\'assistant';
+
+  @override
+  String get assistantUsageMemoryStorageCaption =>
+      'Synchronisée avec votre compte sur toutes les offres et comptée dans le stockage serveur';
+
+  @override
+  String get assistantUsageServerStorage => 'Stockage serveur';
+
+  @override
+  String assistantUsageStorageOf(String used, String quota) {
+    return '$used sur $quota';
+  }
+
+  @override
+  String get assistantSettingsChat => 'Discussion';
+
+  @override
+  String get assistantSettingsMemory => 'Mémoire';
+
+  @override
+  String get assistantSettingsUser => 'Utilisateur';
+
+  @override
+  String get assistantSettingsLanguage => 'Langue des réponses';
+
+  @override
+  String get assistantSettingsLanguageHint =>
+      'La langue dans laquelle l\'assistant vous répond.';
+
+  @override
+  String get assistantSettingsLanguageAuto => 'Comme ma langue';
+
+  @override
+  String get assistantSettingsFont => 'Police';
+
+  @override
+  String get assistantSettingsFontHint =>
+      'La police des réponses de l\'assistant.';
+
+  @override
+  String get assistantFontSerif => 'Serif';
+
+  @override
+  String get assistantFontSans => 'Sans';
+
+  @override
+  String get assistantFontMono => 'Mono';
+
+  @override
+  String get assistantSettingsTextSize => 'Taille du texte';
+
+  @override
+  String get assistantSettingsTextSizeHint =>
+      'Taille du texte de la discussion.';
+
+  @override
+  String get assistantTextSmall => 'Petit';
+
+  @override
+  String get assistantTextMedium => 'Moyen';
+
+  @override
+  String get assistantTextLarge => 'Grand';
+
+  @override
+  String get assistantSettingsPreview => 'Aperçu';
+
+  @override
+  String get assistantSettingsPreviewText =>
+      'Voici à quoi ressembleront les réponses. **Gras**, *italique* et `code` suivent votre choix.';
+
+  @override
+  String get assistantMemoryUse => 'Utiliser la mémoire';
+
+  @override
+  String get assistantMemoryUseHint =>
+      'Laissez l\'assistant se souvenir de vous d\'une discussion à l\'autre et s\'en servir quand c\'est utile.';
+
+  @override
+  String assistantMemorySyncNote(String size) {
+    return 'Synchronisée avec votre compte sur toutes les offres · $size de stockage serveur';
+  }
+
+  @override
+  String get assistantMemoryAdd => 'Ajouter un souvenir';
+
+  @override
+  String get assistantMemoryEdit => 'Modifier le souvenir';
+
+  @override
+  String get assistantMemoryEmpty => 'Rien de mémorisé pour le moment';
+
+  @override
+  String get assistantMemoryEmptyHint =>
+      'Parlez de vous à l\'assistant dans une discussion, ou ajoutez un souvenir ici.';
+
+  @override
+  String get assistantMemoryYou => 'Vous';
+
+  @override
+  String get assistantMemoryTopics => 'Sujets';
+
+  @override
+  String get assistantMemoryAreas => 'Domaines';
+
+  @override
+  String assistantMemoryUpdated(String date) {
+    return 'Mis à jour le $date';
+  }
+
+  @override
+  String get assistantMemoryClear => 'Effacer toute la mémoire';
+
+  @override
+  String get assistantMemoryClearTitle => 'Effacer toute la mémoire ?';
+
+  @override
+  String get assistantMemoryClearBody =>
+      'L\'assistant oublie tout ce qu\'il avait retenu, sur tous vos appareils. Votre profil dans l\'onglet Utilisateur est conservé.';
+
+  @override
+  String get assistantMemoryTitle => 'Titre';
+
+  @override
+  String get assistantMemoryTitleHint => 'ex. Matériel';
+
+  @override
+  String get assistantMemoryDescription => 'Résumé';
+
+  @override
+  String get assistantMemoryDescriptionHint =>
+      'Une ligne, affichée dans la liste';
+
+  @override
+  String get assistantMemoryBody => 'À retenir';
+
+  @override
+  String get assistantMemoryBodyHint => 'Un fait par ligne';
+
+  @override
+  String get assistantProfileCallMe =>
+      'Comment l\'assistant doit-il vous appeler ?';
+
+  @override
+  String get assistantProfileCallMeHint => 'Votre prénom ou surnom';
+
+  @override
+  String get assistantProfileOccupation => 'Que faites-vous ?';
+
+  @override
+  String get assistantProfileOccupationHint =>
+      'ex. étudiant, développeur de jeux indépendant';
+
+  @override
+  String get assistantProfileSummary => 'À propos de vous';
+
+  @override
+  String get assistantProfileSummaryHint =>
+      'Quelques phrases que l\'assistant doit toujours connaître';
+
+  @override
+  String get assistantProfileInstructions =>
+      'Comment l\'assistant doit-il répondre ?';
+
+  @override
+  String get assistantProfileInstructionsHint =>
+      'ex. soyez bref, expliquez le code étape par étape';
+
+  @override
+  String get assistantProfileSave => 'Enregistrer';
+
+  @override
+  String get assistantProfileSaved => 'Enregistré';
+
+  @override
+  String get assistantAgentsComingSoon => 'Bientôt';
+
+  @override
+  String get assistantAgentsSubtitle =>
+      'Les agents que vous avez créés dans le plugin AI Usage. Les lancer depuis l\'assistant arrive bientôt.';
+
+  @override
+  String get assistantAgentsEmpty => 'Pas encore d\'agents';
+
+  @override
+  String get assistantAgentsEmptyHint =>
+      'Créez-en un dans l\'onglet Agents du plugin AI Usage et il apparaîtra ici.';
+
+  @override
+  String get assistantAgentsOpenBuilder => 'Ouvrir AI Usage';
+
+  @override
+  String get assistantAgentsNoDescription => 'Aucune description';
 }

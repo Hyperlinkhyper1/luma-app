@@ -1,95 +1,220 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../theme/luma_theme.dart';
+import '../memory/assistant_memory_repository.dart';
+import '../memory/assistant_memory_scope.dart';
 import '../data/chat_repository.dart';
+import 'chat_markdown.dart';
 
-/// Renders a single message: user/assistant bubbles, plus an inline QR image
-/// when the message carries `metadataJson: {"qrUrl": "..."}` from a
-/// `generate_qr_code` tool call.
-class ChatBubble extends StatelessWidget {
+/// Renders a single message the way the Claude app does: the user's turns
+/// sit in a soft bubble on the right, the assistant's are unboxed prose
+/// with a copy action underneath, and errors read as a quiet inline notice.
+/// An inline QR image is added when the message carries
+/// `metadataJson: {"qrUrl": "..."}` from a `generate_qr_code` tool call.
+class ChatBubble extends StatefulWidget {
   const ChatBubble({
     super.key,
     required this.message,
     required this.onOpenQrPlugin,
+    this.isLast = false,
   });
 
   final ChatMessageRecord message;
   final VoidCallback onOpenQrPlugin;
 
+  /// The newest assistant reply keeps its actions visible, as in Claude;
+  /// older ones show them on hover.
+  final bool isLast;
+
+  @override
+  State<ChatBubble> createState() => _ChatBubbleState();
+}
+
+class _ChatBubbleState extends State<ChatBubble> {
+  bool _hovering = false;
+  bool _copied = false;
+
+  Future<void> _copy() async {
+    await Clipboard.setData(ClipboardData(text: widget.message.content));
+    if (!mounted) return;
+    setState(() => _copied = true);
+    await Future<void>.delayed(const Duration(seconds: 2));
+    if (mounted) setState(() => _copied = false);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final role = widget.message.role;
+    final Widget body = switch (role) {
+      'user' => _userBubble(context),
+      'error' => _errorNotice(context),
+      _ => _assistantReply(context),
+    };
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: Padding(
+        padding: EdgeInsets.only(
+          top: role == 'user' ? 18 : 10,
+          bottom: role == 'user' ? 10 : 6,
+        ),
+        child: body,
+      ),
+    );
+  }
+
+  Widget _userBubble(BuildContext context) {
     final luma = context.luma;
-    final isUser = message.role == 'user';
-    final isError = message.role == 'error';
-
-    final Color bg;
-    final Color fg;
-    if (isError) {
-      bg = luma.danger.withValues(alpha: 0.14);
-      fg = luma.danger;
-    } else if (isUser) {
-      bg = luma.accent;
-      fg = luma.onAccent;
-    } else {
-      bg = luma.surface;
-      fg = luma.textPrimary;
-    }
-
-    final qrUrl = _qrUrlFrom(message.metadataJson);
-
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 520),
-        child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 6),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: BorderRadius.circular(14),
-            border: isUser || isError ? null : Border.all(color: luma.border),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                message.content,
-                style: TextStyle(color: fg, fontSize: 14, height: 1.4),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Align(
+          alignment: Alignment.centerRight,
+          child: LayoutBuilder(
+            builder: (context, constraints) => ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: constraints.maxWidth * 0.8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 11,
+                ),
+                decoration: BoxDecoration(
+                  color: luma.surfaceHover,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: SelectableText(
+                  widget.message.content,
+                  style: TextStyle(
+                    color: luma.textPrimary,
+                    fontSize:
+                        15 *
+                        (AssistantMemoryScope.maybeOf(
+                              context,
+                            )?.textSize.scale ??
+                            1),
+                    height: 1.5,
+                  ),
+                ),
               ),
-              if (qrUrl != null) ...[
-                const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: QrImageView(
-                    data: qrUrl,
-                    version: QrVersions.auto,
-                    size: 140,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                GestureDetector(
-                  onTap: onOpenQrPlugin,
-                  child: Text(
-                    'Open in QR Generator',
-                    style: TextStyle(
-                      color: isUser ? luma.onAccent : luma.accent,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                ),
-              ],
-            ],
+            ),
           ),
+        ),
+        _actions(context, visible: _hovering, alignEnd: true),
+      ],
+    );
+  }
+
+  Widget _assistantReply(BuildContext context) {
+    final luma = context.luma;
+    final qrUrl = _qrUrlFrom(widget.message.metadataJson);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ChatMarkdown(source: widget.message.content),
+        if (qrUrl != null) ...[
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: luma.border),
+            ),
+            child: QrImageView(
+              data: qrUrl,
+              version: QrVersions.auto,
+              size: 150,
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: widget.onOpenQrPlugin,
+            style: TextButton.styleFrom(
+              foregroundColor: luma.accent,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+            ),
+            icon: const Icon(Icons.open_in_new_rounded, size: 15),
+            label: const Text('Open in QR Generator'),
+          ),
+        ],
+        _actions(context, visible: widget.isLast || _hovering),
+      ],
+    );
+  }
+
+  Widget _errorNotice(BuildContext context) {
+    final luma = context.luma;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      decoration: BoxDecoration(
+        color: luma.danger.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: luma.danger.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(
+              Icons.error_outline_rounded,
+              size: 17,
+              color: luma.danger,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: SelectableText(
+              widget.message.content,
+              style: TextStyle(color: luma.danger, fontSize: 14, height: 1.45),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The small icon row under a message. It always takes up its space so
+  /// hovering doesn't shift the transcript; it just fades in.
+  Widget _actions(
+    BuildContext context, {
+    required bool visible,
+    bool alignEnd = false,
+  }) {
+    final luma = context.luma;
+    final t = L.of(context);
+    return AnimatedOpacity(
+      opacity: visible || _copied ? 1 : 0,
+      duration: const Duration(milliseconds: 120),
+      child: Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Row(
+          mainAxisAlignment: alignEnd
+              ? MainAxisAlignment.end
+              : MainAxisAlignment.start,
+          children: [
+            IconButton(
+              tooltip: _copied ? t.assistantCopied : t.assistantCopy,
+              onPressed: _copy,
+              visualDensity: VisualDensity.compact,
+              iconSize: 16,
+              color: luma.textMuted,
+              style: IconButton.styleFrom(
+                minimumSize: const Size(30, 30),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              icon: Icon(
+                _copied ? Icons.check_rounded : Icons.content_copy_rounded,
+              ),
+            ),
+          ],
         ),
       ),
     );

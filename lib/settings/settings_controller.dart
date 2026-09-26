@@ -355,6 +355,9 @@ class SettingsController extends ChangeNotifier {
   /// The accent seed to feed the theme, or null for the default lavender.
   Color? get accentSeed => kAccentPresets[_accentIndex].seed;
 
+  /// The daily cap [aiCallsRemainingToday] counts down from.
+  int get aiDailyCallLimit => _aiDailyCallLimit;
+
   /// How many AI assistant messages remain today, out of [_aiDailyCallLimit].
   /// Resets the counter as a side effect if the stored date has rolled over.
   int get aiCallsRemainingToday {
@@ -646,7 +649,12 @@ class SettingsController extends ChangeNotifier {
       aiCallsResetDate: data['aiCallsResetDate'] as String?,
       aiCheckerChecksToday: data['aiCheckerChecksToday'] as int? ?? 0,
       aiCheckerChecksResetDate: data['aiCheckerChecksResetDate'] as String?,
-      aiProviderId: data['aiProviderId'] as String? ?? 'anthropic',
+      // Luma Support (mistral) was retired from the pickers; land its
+      // former users on Luma AI rather than a provider they can't see.
+      aiProviderId: switch (data['aiProviderId'] as String? ?? 'anthropic') {
+        'mistral' => 'google',
+        final id => id,
+      },
       aiMode: data['aiMode'] as String? ?? 'normal',
       modelUsage: _parseModelUsage(data['modelUsage']),
       navOrder: _parseNavOrder(data['navOrder']),

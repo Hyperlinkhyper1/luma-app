@@ -111,28 +111,39 @@ class PluginCatalogService {
   static const _rawBase =
       'https://raw.githubusercontent.com/Hyperlinkhyper1/luma-app/master/plugins';
   static const _smartHomeManifestAsset = 'plugins/smart-home/manifest.json';
+  static const _smallGamesManifestAsset = 'plugins/small-games/manifest.json';
 
   Future<List<PluginCatalogEntry>> fetchCatalog() async {
     final body = await _getJson('$_rawBase/registry.json');
     final list = (body['plugins'] as List).cast<Map<String, dynamic>>();
     final smartHome = PluginCatalogEntry.fromJson(await _bundledSmartHome());
+    final smallGames = PluginCatalogEntry.fromJson(await _bundledSmallGames());
     return [
       smartHome,
+      smallGames,
       ...list
           .map(PluginCatalogEntry.fromJson)
-          .where((entry) => entry.id != smartHome.id),
+          .where(
+            (entry) => entry.id != smartHome.id && entry.id != smallGames.id,
+          ),
     ];
   }
 
   Future<PluginManifest> fetchManifest(String pluginId) async {
-    final body = pluginId == 'smart-home'
-        ? await _bundledSmartHome()
-        : await _getJson('$_rawBase/$pluginId/manifest.json');
+    final body = switch (pluginId) {
+      'smart-home' => await _bundledSmartHome(),
+      'small-games' => await _bundledSmallGames(),
+      _ => await _getJson('$_rawBase/$pluginId/manifest.json'),
+    };
     return PluginManifest.fromJson(body);
   }
 
   Future<Map<String, dynamic>> _bundledSmartHome() async =>
       (jsonDecode(await rootBundle.loadString(_smartHomeManifestAsset)) as Map)
+          .cast<String, dynamic>();
+
+  Future<Map<String, dynamic>> _bundledSmallGames() async =>
+      (jsonDecode(await rootBundle.loadString(_smallGamesManifestAsset)) as Map)
           .cast<String, dynamic>();
 
   /// Resolves a screenshot filename (as listed in a manifest) to the raw

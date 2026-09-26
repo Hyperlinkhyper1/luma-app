@@ -67,7 +67,7 @@ final List<AiProviderInfo> kAiProviders = [
   ),
   AiProviderInfo(
     id: AiProviderId.local,
-    displayName: 'On-device Qwen',
+    displayName: 'Luma Assistant (on-device Qwen)',
     icon: Icons.phone_android_rounded,
     keyHint: '',
     client: LocalQwenClient(),

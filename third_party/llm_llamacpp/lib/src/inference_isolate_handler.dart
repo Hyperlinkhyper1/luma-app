@@ -8,16 +8,32 @@ void _handleInferenceRequest(
 ) {
   ffi.Pointer<llama_adapter_lora>? loraAdapter;
 
-  try {
-    final modelParams = bindings.llama_model_default_params();
-    modelParams.n_gpu_layers = request.nGpuLayers;
+  // luma patch: reuse the model and context across requests (not with a
+  // LoRA adapter, which is applied per request). See
+  // cached_inference_session.dart.
+  final cacheable = request.loraPath == null;
+  final sessionKey = _sessionKey(request);
+  if (_cachedSession != null &&
+      (!cacheable || _cachedSession!.key != sessionKey)) {
+    _releaseCachedSession(bindings);
+  }
+  final cached = _cachedSession;
 
-    final modelPathPtr = request.modelPath.toNativeUtf8();
-    final model = bindings.llama_model_load_from_file(
-      modelPathPtr.cast(),
-      modelParams,
-    );
-    calloc.free(modelPathPtr);
+  try {
+    final ffi.Pointer<llama_model> model;
+    if (cached != null) {
+      model = cached.model;
+    } else {
+      final modelParams = bindings.llama_model_default_params();
+      modelParams.n_gpu_layers = request.nGpuLayers;
+
+      final modelPathPtr = request.modelPath.toNativeUtf8();
+      model = bindings.llama_model_load_from_file(
+        modelPathPtr.cast(),
+        modelParams,
+      );
+      calloc.free(modelPathPtr);
+    }
 
     if (model.address == 0) {
       mainSendPort.send(
@@ -77,15 +93,22 @@ void _handleInferenceRequest(
       );
     }
 
-    final ctxParams = bindings.llama_context_default_params();
-    ctxParams.n_ctx = request.contextSize;
-    ctxParams.n_batch = request.batchSize;
-    if (request.threads != null) {
-      ctxParams.n_threads = request.threads!;
-      ctxParams.n_threads_batch = request.threads!;
+    final ffi.Pointer<llama_context> ctx;
+    if (cached != null) {
+      ctx = cached.ctx;
+    } else {
+      final ctxParams = bindings.llama_context_default_params();
+      ctxParams.n_ctx = request.contextSize;
+      ctxParams.n_batch = request.batchSize;
+      if (request.threads != null) {
+        ctxParams.n_threads = request.threads!;
+        ctxParams.n_threads_batch = request.threads!;
+      }
+      ctx = bindings.llama_init_from_model(model, ctxParams);
+      if (ctx.address != 0 && cacheable) {
+        _cachedSession = _CachedSession(sessionKey, model, ctx);
+      }
     }
-
-    final ctx = bindings.llama_init_from_model(model, ctxParams);
     if (ctx.address == 0) {
       if (loraAdapter != null) {
         bindings.llama_adapter_lora_free(loraAdapter);
@@ -150,6 +173,17 @@ void _handleInferenceRequest(
         );
       } else {
         prompt = request.prompt;
+      }
+
+      // luma patch: open the assistant turn with an empty think block — the
+      // same thing Qwen's Jinja template emits for `enable_thinking=false`,
+      // which llama_chat_apply_template (not a Jinja interpreter) can't pass.
+      // Without it Qwen3.5 spends part of every reply's budget reasoning.
+      if (request.messages != null &&
+          request.messages!.isNotEmpty &&
+          (modelTemplateStr?.contains('<think>') ?? false) &&
+          prompt.endsWith('<|im_start|>assistant\n')) {
+        prompt = '$prompt<think>\n\n</think>\n\n';
       }
 
       // llama_chat_apply_template is NOT a Jinja interpreter; if the model's
@@ -291,13 +325,40 @@ void _handleInferenceRequest(
         print('[inference_isolate_handler] Could not preview tokens: $e');
       }
 
-      final batch = bindings.llama_batch_get_one(tokensPtr, nTokens);
-      if (bindings.llama_decode(ctx, batch) != 0) {
+      final session = _cachedSession;
+      final String? decodeError;
+      if (session != null && session.ctx == ctx) {
+        final boundary = shouldManuallyPrependBos
+            ? 0
+            : _conversationPrefixLength(
+                bindings,
+                vocab,
+                prompt,
+                tokenizerAddSpecial,
+                tokensPtr,
+                nTokens,
+              );
+        final (evaluated, error) = session.decodePrompt(
+          bindings,
+          tokensPtr,
+          nTokens,
+          boundary,
+        );
+        decodeError = error;
+        // ignore: avoid_print
+        print(
+          '[inference_isolate_handler] Evaluated $evaluated of $nTokens '
+          'prompt tokens (rest restored from the cached prefix)',
+        );
+      } else {
+        decodeError = decodePromptInBatches(bindings, ctx, tokensPtr, nTokens);
+      }
+      if (decodeError != null) {
         calloc.free(tokensPtr);
         mainSendPort.send(
           _IsolateResponse(
             requestId: request.requestId,
-            payload: InferenceError('Failed to evaluate prompt'),
+            payload: InferenceError(decodeError),
             isComplete: true,
           ),
         );
@@ -351,10 +412,14 @@ void _handleInferenceRequest(
         clearContextLoraAdapters(bindings, ctx);
         bindings.llama_adapter_lora_free(loraAdapter);
       }
-      bindings.llama_free(ctx);
-      bindings.llama_model_free(model);
+      if (_cachedSession?.ctx != ctx) {
+        bindings.llama_free(ctx);
+        bindings.llama_model_free(model);
+      }
     }
   } catch (e) {
+    // Don't carry a context of unknown state into the next request.
+    _releaseCachedSession(bindings);
     mainSendPort.send(
       _IsolateResponse(
         requestId: request.requestId,

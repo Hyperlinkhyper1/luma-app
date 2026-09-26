@@ -9,11 +9,13 @@ import 'package:llm_llamacpp/src/bindings/llama_bindings.dart';
 import 'package:llm_llamacpp/src/generation_options.dart';
 import 'package:llm_llamacpp/src/isolate_messages.dart';
 import 'package:llm_llamacpp/src/lora_context_adapters.dart';
+import 'package:llm_llamacpp/src/prompt_decoder.dart';
 import 'package:llm_llamacpp/src/stop_token_resolver.dart';
 import 'package:llm_llamacpp/src/streaming_utf8_decoder.dart';
 import 'package:llm_llamacpp/src/tool_calls/tool_call_syntax.dart';
 import 'package:llm_llamacpp/src/tool_definition_injector.dart';
 
+part 'cached_inference_session.dart';
 part 'native_template_applier.dart';
 part 'tool_format_probe.dart';
 part 'inference_isolate_handler.dart';
@@ -153,6 +155,18 @@ class PersistentInferenceIsolate {
     }
   }
 
+  /// Frees the model and context the helper isolate keeps loaded between
+  /// requests (luma patch). Call before deleting or replacing a model file:
+  /// Windows refuses to delete a file that is still memory-mapped.
+  Future<void> releaseCachedSession() async {
+    final port = _helperSendPort;
+    if (port == null) return;
+    final done = ReceivePort();
+    port.send(_ReleaseSessionMessage(done.sendPort));
+    await done.first;
+    done.close();
+  }
+
   /// Shutdown the persistent isolate.
   void dispose() {
     _helperIsolate?.kill();
@@ -203,6 +217,9 @@ void _isolateMain(SendPort mainSendPort) {
   receivePort.listen((message) {
     if (message is _InferenceRequestMessage) {
       _handleInferenceRequest(message, mainSendPort, lib, bindings);
+    } else if (message is _ReleaseSessionMessage) {
+      _releaseCachedSession(bindings);
+      message.done.send(null);
     }
   });
 

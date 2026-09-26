@@ -80,6 +80,9 @@ export 'package:llm_core/llm_core.dart';
 export 'src/llamacpp_chat_repository.dart';
 export 'src/llamacpp_repository.dart';
 
+// luma patch: lets the app free the model kept loaded between requests.
+export 'src/persistent_inference_isolate.dart' show PersistentInferenceIsolate;
+
 // Model management
 export 'src/llamacpp_model.dart' show LlamaCppModel, ModelLoadOptions;
 

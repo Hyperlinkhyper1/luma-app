@@ -112,7 +112,7 @@ class _LocalModelBodyState extends State<_LocalModelBody> {
                 Icon(Icons.phone_android_rounded, size: 17, color: luma.accent),
                 const SizedBox(width: 8),
                 Text(
-                  'Qwen3.5-0.8B · on-device',
+                  'Luma Assistant · Qwen3.5-0.8B on-device',
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 13,
@@ -338,7 +338,8 @@ class _ProviderPicker extends StatelessWidget {
       runSpacing: 8,
       children: [
         for (final provider in kAiProviders)
-          if (provider.id != AiProviderId.local || LocalModelStore.supported)
+          if (provider.id != AiProviderId.mistral &&
+              (provider.id != AiProviderId.local || LocalModelStore.supported))
             _ProviderChip(
               provider: provider,
               selected: provider.id.name == settings.aiProviderId,

@@ -6,6 +6,7 @@ import 'package:llm_llamacpp/src/backend_initializer.dart';
 import 'package:llm_llamacpp/src/bindings/llama_bindings.dart';
 import 'package:llm_llamacpp/src/isolate_messages.dart';
 import 'package:llm_llamacpp/src/lora_context_adapters.dart';
+import 'package:llm_llamacpp/src/prompt_decoder.dart';
 import 'package:llm_llamacpp/src/streaming_utf8_decoder.dart';
 
 /// Runs inference in an isolate.
@@ -150,10 +151,15 @@ void runInference(InferenceRequest request) {
       }
 
       // Evaluate prompt using batch
-      var batch = bindings.llama_batch_get_one(tokensPtr, nTokens);
-      if (bindings.llama_decode(ctx, batch) != 0) {
+      final decodeError = decodePromptInBatches(
+        bindings,
+        ctx,
+        tokensPtr,
+        nTokens,
+      );
+      if (decodeError != null) {
         calloc.free(tokensPtr);
-        request.sendPort.send(InferenceError('Failed to evaluate prompt'));
+        request.sendPort.send(InferenceError(decodeError));
         return;
       }
 
@@ -286,7 +292,7 @@ void runInference(InferenceRequest request) {
 
         // Decode the new token
         newTokenPtr[0] = newToken;
-        batch = bindings.llama_batch_get_one(newTokenPtr, 1);
+        final batch = bindings.llama_batch_get_one(newTokenPtr, 1);
         if (bindings.llama_decode(ctx, batch) != 0) {
           break;
         }

@@ -200,7 +200,14 @@ class LlamaCppChatRepository extends LLMChatRepository {
       tools: tools,
       extra: extra,
       options: options,
-      generationOptions: const GenerationOptions(),
+      // luma patch: upstream passed `const GenerationOptions()` here, so the
+      // caller's output cap and sampling settings were silently ignored.
+      generationOptions: GenerationOptions(
+        temperature: options?.temperature ?? 0.7,
+        topP: options?.topP ?? 0.9,
+        topK: options?.topK ?? 40,
+        maxTokens: options?.maxOutputTokens ?? 2048,
+      ),
     );
   }
 
