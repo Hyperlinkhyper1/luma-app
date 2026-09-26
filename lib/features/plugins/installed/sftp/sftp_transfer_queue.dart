@@ -362,12 +362,22 @@ class SftpTransferQueue extends ChangeNotifier {
     }
   }
 
+  /// Progress arrives per 256 KiB chunk — hundreds of times a second on a
+  /// fast link — and every notification rebuilds the queue panel and walks
+  /// the whole list for its totals. A tenth of a second is as smooth as a
+  /// progress bar needs to be; state changes still notify at once.
+  static const _progressInterval = Duration(milliseconds: 100);
+  DateTime _lastProgressNotify = DateTime.fromMillisecondsSinceEpoch(0);
+
   void _onProgress(TransferItem item, int bytes) {
     // Progress callbacks arrive per chunk; never let a late one walk the
     // number backwards or past the total.
     item.transferredBytes = item.totalBytes > 0
         ? min(max(item.transferredBytes, bytes), item.totalBytes)
         : max(item.transferredBytes, bytes);
+    final now = DateTime.now();
+    if (now.difference(_lastProgressNotify) < _progressInterval) return;
+    _lastProgressNotify = now;
     _notify();
   }
 

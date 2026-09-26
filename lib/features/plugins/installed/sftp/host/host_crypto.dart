@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:crypto/crypto.dart' as pc;
 import 'package:cryptography/cryptography.dart';
 
+import 'host_cipher_pool.dart';
 import 'host_protocol.dart';
 
 /// The security layer under the hosting protocol.
@@ -39,7 +40,8 @@ import 'host_protocol.dart';
 /// ## What that buys
 ///
 /// * **Confidentiality.** Every frame after the handshake is sealed with
-///   AES-256-GCM under a key that only exists on the two devices. Someone
+///   ChaCha20-Poly1305 (see [HostCipherPool] for why not AES-GCM) under a key
+///   that only exists on the two devices. Someone
 ///   recording the network sees file sizes and timing, never content or
 ///   names.
 /// * **No impersonation.** The proofs are over the transcript, which includes
@@ -66,11 +68,12 @@ class HostCrypto {
   const HostCrypto._();
 
   static final _x25519 = X25519();
-  static final _aes = AesGcm.with256bits();
 
   /// Bound into the key derivation, so keys from this protocol can never
-  /// collide with keys derived for anything else in the app.
-  static const _label = 'luma-sftp-host v1';
+  /// collide with keys derived for anything else in the app. Changed with the
+  /// record cipher, so keys made for the AES-GCM channel are never reused
+  /// under ChaCha20-Poly1305.
+  static const _label = 'luma-sftp-host v2 chacha20-poly1305';
 
   static const _pbkdf2Iterations = 120000;
   static const saltLength = 16;
@@ -174,8 +177,8 @@ class HostSecureChannel {
     this._receiveNoncePrefix,
   );
 
-  final SecretKey _sendKey;
-  final SecretKey _receiveKey;
+  final Uint8List _sendKey;
+  final Uint8List _receiveKey;
   final Uint8List _sendNoncePrefix;
   final Uint8List _receiveNoncePrefix;
 
@@ -184,41 +187,32 @@ class HostSecureChannel {
 
   /// Seals one record. The nonce is derived from the counter rather than
   /// transmitted, so the peer has no influence over it.
-  Future<Uint8List> seal(Uint8List plaintext) async {
-    final box = await HostCrypto._aes.encrypt(
-      plaintext,
-      secretKey: _sendKey,
-      nonce: _nonce(_sendNoncePrefix, _sendCounter++),
-    );
-    final out = Uint8List(box.cipherText.length + 16)
-      ..setAll(0, box.cipherText)
-      ..setAll(box.cipherText.length, box.mac.bytes);
-    return out;
-  }
+  ///
+  /// The counter is taken *synchronously*, when this is called — not when the
+  /// work finishes. So a caller may start several seals back to back and let
+  /// them run in parallel on [HostCipherPool], as long as it puts the results
+  /// on the wire in the order it called this. Every sender here does.
+  Future<Uint8List> seal(Uint8List plaintext) => HostCipherPool.instance.seal(
+        _sendKey,
+        _nonce(_sendNoncePrefix, _sendCounter++),
+        plaintext,
+      );
 
-  /// Opens one record, in the order it was sealed.
+  /// Opens one record. Like [seal], the counter is taken when this is called,
+  /// so records must be passed in arrival order — but their opening may
+  /// overlap.
   ///
   /// Any failure — a tampered byte, a dropped frame, a replayed one — throws,
   /// and callers treat that as fatal to the connection rather than skipping
   /// the record. Continuing after a failed open would let a peer resynchronise
   /// the counter and replay traffic.
   Future<Uint8List> open(Uint8List record) async {
-    if (record.length < 16) {
+    if (record.length < HostCipherPool.macLength) {
       throw const HostProtocolException('Record too short to be authentic.');
     }
-    final cipherText = Uint8List.sublistView(record, 0, record.length - 16);
-    final mac = Uint8List.sublistView(record, record.length - 16);
+    final nonce = _nonce(_receiveNoncePrefix, _receiveCounter++);
     try {
-      final clear = await HostCrypto._aes.decrypt(
-        SecretBox(
-          cipherText,
-          nonce: _nonce(_receiveNoncePrefix, _receiveCounter),
-          mac: Mac(mac),
-        ),
-        secretKey: _receiveKey,
-      );
-      _receiveCounter++;
-      return Uint8List.fromList(clear);
+      return await HostCipherPool.instance.open(_receiveKey, nonce, record);
     } catch (_) {
       throw const HostProtocolException(
         'A frame failed its authenticity check; the connection was closed.',
@@ -346,8 +340,8 @@ class HostHandshake {
 
     return (
       channel: HostSecureChannel._(
-        SecretKey(keys.serverToClient),
-        SecretKey(keys.clientToServer),
+        keys.serverToClient,
+        keys.clientToServer,
         keys.serverNoncePrefix,
         keys.clientNoncePrefix,
       ),
@@ -420,8 +414,8 @@ class HostHandshake {
 
     return (
       channel: HostSecureChannel._(
-        SecretKey(keys.clientToServer),
-        SecretKey(keys.serverToClient),
+        keys.clientToServer,
+        keys.serverToClient,
         keys.clientNoncePrefix,
         keys.serverNoncePrefix,
       ),

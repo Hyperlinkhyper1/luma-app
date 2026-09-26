@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -298,19 +299,44 @@ class LumaHostSession extends SftpSession {
       );
   }
 
-  /// Frames are decrypted strictly in arrival order — the record counter has
-  /// no room for gaps — so each one is chained onto the last.
+  /// Frames are handled strictly in arrival order — the record counter has no
+  /// room for gaps — so each one is chained onto the last. Opening them is
+  /// not: each open() takes its counter the moment the frame arrives, so the
+  /// decryption of several frames runs in parallel on the cipher pool while
+  /// the chain still consumes the results in order.
   Future<void> _frameChain = Future.value();
 
+  /// Frames received but not yet handled. Past [kHostPipelineDepth] twice
+  /// over the socket is paused, so TCP slows the host down instead of a fast
+  /// download piling up in memory ahead of a slow disk.
+  int _unhandled = 0;
+
   void _onFrame(Uint8List body) {
-    _frameChain = _frameChain.then((_) => _handleFrame(body)).catchError(
-      (Object e) => _tearDown(e),
-    );
+    if (_isClosed) return;
+    final opened = _channel.open(body)..ignore();
+    _unhandled++;
+    if (_unhandled >= kHostPipelineDepth * 2 && !_subscription.isPaused) {
+      _subscription.pause();
+    }
+    _frameChain = _frameChain
+        .then((_) async {
+          try {
+            await _handleFrame(await opened);
+          } finally {
+            _unhandled--;
+            if (_unhandled < kHostPipelineDepth && _subscription.isPaused) {
+              _subscription.resume();
+            }
+          }
+        })
+        .catchError((Object e) {
+          _tearDown(e);
+        });
   }
 
-  Future<void> _handleFrame(Uint8List body) async {
+  Future<void> _handleFrame(Uint8List plain) async {
     if (_isClosed) return;
-    final frame = decodeFrame(await _channel.open(body));
+    final frame = decodeFrame(plain);
     if (!frame.isControl) {
       final download = _downloads[frame.chunkId];
       if (download == null) return;
@@ -398,9 +424,15 @@ class LumaHostSession extends SftpSession {
   /// Sends without waiting for a reply — chunks, and the stop that ends a
   /// download early.
   Future<void> _send(Uint8List plain) {
+    // Sealing starts now, off the chain, so several records can be sealing
+    // at once; seal() fixed this record's nonce in call order, and the chain
+    // writes them in that same order.
+    final sealed = _isClosed ? null : (_channel.seal(plain)..ignore());
     final next = _sendChain.then((_) async {
+      if (_isClosed || sealed == null) return;
+      final body = await sealed;
       if (_isClosed) return;
-      _socket.add(frameBytes(await _channel.seal(plain)));
+      _socket.add(frameBytes(body));
       await _socket.flush();
     });
     _sendChain = next.catchError((_) {});
@@ -587,25 +619,31 @@ class LumaHostSession extends SftpSession {
 
     var sent = 0;
     var cancelled = false;
+    final inFlight = Queue<Future<void>>();
+    RandomAccessFile? handle;
     try {
-      await for (final chunk in source.openRead()) {
+      // Read in full protocol chunks (openRead() hands out 64 KiB, four times
+      // the frames for the same file) and keep several in flight, so the
+      // disk, the cipher and the network overlap instead of taking turns.
+      handle = await source.open();
+      while (true) {
         if (cancelToken?.isCancelled ?? false) {
           cancelled = true;
           break;
         }
-        // openRead() hands out whatever size it likes; the protocol caps a
-        // frame, so anything larger is split here rather than rejected there.
-        for (var offset = 0; offset < chunk.length; offset += kHostChunkBytes) {
-          final end = (offset + kHostChunkBytes < chunk.length)
-              ? offset + kHostChunkBytes
-              : chunk.length;
-          await _send(encodeChunkFrame(id, chunk.sublist(offset, end)));
-          sent += end - offset;
-          onProgress?.call(sent);
+        final bytes = await handle.read(kHostChunkBytes);
+        if (bytes.isEmpty) break;
+        inFlight.add(_send(encodeChunkFrame(id, bytes)));
+        if (inFlight.length >= kHostPipelineDepth) {
+          await inFlight.removeFirst();
         }
+        sent += bytes.length;
+        onProgress?.call(sent);
       }
+      await Future.wait(inFlight);
     } finally {
       cancelToken?.attach(null);
+      await handle?.close();
     }
 
     if (cancelled) {

@@ -52,6 +52,7 @@ import '../features/plugins/installed/subway_builder/subway_builder_page.dart';
 import '../features/plugins/installed/transport_tracker/transport_tracker_page.dart';
 import '../features/plugins/installed/usage/usage_page.dart';
 import '../features/plugins/installed/wifi_speed_test/wifi_speed_test_page.dart';
+import '../features/plugins/installed/smart_home/smart_home_page.dart';
 import '../features/plugins/installed/worth_counter/worth_counter_page.dart';
 import '../features/plugins/installed/media_downloader/media_downloader_page.dart';
 import '../features/plugins/installed/recipe_book/recipe_book_page.dart';
@@ -454,16 +455,26 @@ class _AppShellState extends State<AppShell> {
                         onOpenPlugin: _selectPlugin,
                         onNavigate: (destination) {
                           switch (destination.toLowerCase()) {
-                            case 'home': _selectFixed(0);
-                            case 'converter': _selectFixed(1);
-                            case 'finance': _selectFixed(2);
-                            case 'passwords': _selectFixed(3);
-                            case 'notes': _selectFixed(4);
-                            case 'assistant': _selectFixed(5);
-                            case 'plugins': _selectFixed(6);
-                            case 'settings': _selectFixed(NavRail.settingsIndex);
-                            case 'account': _selectFixed(NavRail.accountIndex);
-                            default: _selectPlugin(destination);
+                            case 'home':
+                              _selectFixed(0);
+                            case 'converter':
+                              _selectFixed(1);
+                            case 'finance':
+                              _selectFixed(2);
+                            case 'passwords':
+                              _selectFixed(3);
+                            case 'notes':
+                              _selectFixed(4);
+                            case 'assistant':
+                              _selectFixed(5);
+                            case 'plugins':
+                              _selectFixed(6);
+                            case 'settings':
+                              _selectFixed(NavRail.settingsIndex);
+                            case 'account':
+                              _selectFixed(NavRail.accountIndex);
+                            default:
+                              _selectPlugin(destination);
                           }
                         },
                       ),
@@ -710,6 +721,7 @@ class _AppShellState extends State<AppShell> {
     'auto-clicker' => const AutoClickerPage(),
     'usage' => const UsagePage(),
     'wifi-speed-test' => const WifiSpeedTestPage(),
+    'smart-home' => const SmartHomePage(),
     'groceries-list' => const GroceriesPage(),
     'minecraft-launcher' => const MinecraftLauncherPage(),
     'secure-chat' => const SecureChatPage(),

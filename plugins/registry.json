@@ -373,6 +373,16 @@
       "version": "1.0.0"
     },
     {
+      "id": "smart-home",
+      "name": "Smart Home",
+      "description": "Pair with an IKEA DIRIGERA hub to control your lamps, then save groups with their own brightness and color as one-tap presets.",
+      "icon": "lightbulb",
+      "category": "Utility",
+      "tags": ["Utility", "Home"],
+      "free": true,
+      "version": "1.0.0"
+    },
+    {
       "id": "whiteboard",
       "name": "Whiteboard",
       "description": "An endless sheet to draw on. Pen, highlighter, shapes, arrows, sticky notes and text, with seven inks, one-key tool shortcuts and full undo. Erase whole strokes with a sweep, pan and zoom the sheet, and export any board as a PNG cropped to exactly what you drew.",
