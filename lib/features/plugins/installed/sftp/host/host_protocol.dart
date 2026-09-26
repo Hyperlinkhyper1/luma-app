@@ -7,14 +7,14 @@
 /// What is here instead is a much smaller protocol that does the same job for
 /// luma-to-luma transfers, with the security properties written down in
 /// [host_crypto.dart]: an authenticated key exchange bound to the host's
-/// pairing password, then AES-256-GCM on every byte that follows.
+/// pairing password, then ChaCha20-Poly1305 on every byte that follows.
 ///
 /// ## Framing
 ///
 /// Every frame is a 4-byte big-endian length followed by that many bytes.
 /// During the handshake those bytes are plaintext JSON (they carry nothing
 /// but public ephemeral keys, a salt, and proofs). Afterwards every frame
-/// body is an AES-GCM sealed record; see [HostSecureChannel].
+/// body is a ChaCha20-Poly1305 sealed record; see [HostSecureChannel].
 ///
 /// A decrypted record is one byte of [HostFrameKind] followed by its body:
 ///
@@ -37,7 +37,9 @@ import 'dart:typed_data';
 /// 3: a directory listing may arrive as several [kEventListPart] records
 /// before its reply. A version-2 client would silently show only the last
 /// batch of a large folder, so the two must not mix.
-const int kHostProtocolVersion = 3;
+/// 4: records are sealed with ChaCha20-Poly1305 instead of AES-256-GCM, about
+/// three times faster in pure Dart (see `HostCipherPool`).
+const int kHostProtocolVersion = 4;
 
 /// The port the host listens on unless the user picks another.
 const int kDefaultHostPort = 7420;
@@ -46,6 +48,12 @@ const int kDefaultHostPort = 7420;
 /// the per-frame overhead disappears, small enough that progress moves
 /// visibly and a cancel is acted on promptly.
 const int kHostChunkBytes = 256 * 1024;
+
+/// How many records a sender keeps in flight, and a receiver decrypts at
+/// once. Enough for every cipher worker to be busy and for the disk, the
+/// cipher and the network to overlap instead of taking turns; small enough
+/// (2 MiB of chunks) that memory stays flat whatever the file size.
+const int kHostPipelineDepth = 8;
 
 /// Hard ceiling on a single frame. A peer that announces more than this is
 /// dropped without allocating for it, so a hostile or broken sender cannot

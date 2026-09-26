@@ -1,0 +1,11 @@
+{
+  "id": "smart-home",
+  "name": "Smart Home",
+  "version": "1.0.0",
+  "description": "Control IKEA smart lamps and save one-tap lighting presets through a DIRIGERA hub on your home network.",
+  "icon": "lightbulb",
+  "category": "Utility",
+  "tags": ["Utility", "Home"],
+  "free": true,
+  "details": "Luma finds IKEA DIRIGERA hubs on your home network. Select your hub and press its action button to pair. You can enter its local IP address if discovery does not find it. After pairing, luma lists only your lamps and lets you switch them on or off. Lamps that support dimming, white temperature or color show those controls too.\n\nCreate presets by choosing lamps and setting each lamp's brightness and color. Your presets appear at the top of Smart Home, where one tap turns on the selected lamps with their saved settings. Presets stay saved on this device even when you disconnect the hub.\n\nThe connection stays on your home network. The hub token and its certificate fingerprint are stored in this device's secure credential store. This first version supports DIRIGERA only; the older TRÅDFRI gateway is not supported."
+}
