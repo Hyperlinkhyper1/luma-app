@@ -8,6 +8,7 @@ import '../finance_repository.dart';
 import '../finance_scope.dart';
 import '../logic/money.dart';
 import 'lookups.dart';
+import 'subscription_suggestions.dart';
 
 class RecurringTab extends StatelessWidget {
   const RecurringTab({super.key});
@@ -87,6 +88,7 @@ class _RecurringBody extends StatelessWidget {
             _BillsDueSoonCard(bills: dueBills),
             const SizedBox(height: 20),
           ],
+          SubscriptionSuggestions(repo: repo, rules: rules),
           Wrap(
             alignment: WrapAlignment.spaceBetween,
             crossAxisAlignment: WrapCrossAlignment.center,

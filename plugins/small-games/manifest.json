@@ -1,11 +1,11 @@
 {
   "id": "small-games",
   "name": "Small Games",
-  "version": "1.0.0",
-  "description": "Play BINGO with a draw cage and export unique printable cards as a PDF.",
+  "version": "1.1.0",
+  "description": "Play BINGO, Poker, Blackjack, and Patience.",
   "icon": "sports_esports",
   "category": "Games",
-  "tags": ["Games", "BINGO"],
+  "tags": ["Games", "BINGO", "Card Games"],
   "free": true,
-  "details": "Choose BINGO from the Small Games screen. Draw balls from 1 to 75 without repeats, track every called number, and start a new game when needed. Generate a chosen number of unique standard 5×5 BINGO cards with a free center and export them together in one printable PDF, arranged four per page in a 2×2 grid. The last page can contain fewer cards."
+  "details": "Choose BINGO to draw numbers and export printable cards in a four-per-page PDF. Or enter Card Games, take a seat at a green casino table, and play five-card draw Poker against the dealer, Blackjack, or Klondike Patience."
 }

@@ -632,6 +632,21 @@ class LFr extends L {
   String get assistantUsageRollingWeek => 'Fenêtre glissante de 7 jours';
 
   @override
+  String get assistantUsageLumaAssistant => 'Luma Assistant';
+
+  @override
+  String get assistantUsageLumaAssistantSubtitle =>
+      'Modèle Qwen sur l’appareil';
+
+  @override
+  String get assistantUsageWebSearch => 'Recherches Web';
+
+  @override
+  String assistantUsageCountOf(int used, int limit) {
+    return '$used sur $limit';
+  }
+
+  @override
   String assistantUsagePercentUsed(int percent) {
     return '$percent % utilisé';
   }

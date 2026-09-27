@@ -629,6 +629,20 @@ class LNl extends L {
   String get assistantUsageRollingWeek => 'Voortschrijdend venster van 7 dagen';
 
   @override
+  String get assistantUsageLumaAssistant => 'Luma Assistant';
+
+  @override
+  String get assistantUsageLumaAssistantSubtitle => 'Qwen-model op je apparaat';
+
+  @override
+  String get assistantUsageWebSearch => 'Zoekopdrachten op het web';
+
+  @override
+  String assistantUsageCountOf(int used, int limit) {
+    return '$used van $limit';
+  }
+
+  @override
   String assistantUsagePercentUsed(int percent) {
     return '$percent% gebruikt';
   }

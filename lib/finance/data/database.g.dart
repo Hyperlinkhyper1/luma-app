@@ -57,8 +57,24 @@ class $CategoriesTable extends Categories
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _monthlyBudgetCentsMeta =
+      const VerificationMeta('monthlyBudgetCents');
   @override
-  List<GeneratedColumn> get $columns => [id, name, colorValue, iconCodepoint];
+  late final GeneratedColumn<int> monthlyBudgetCents = GeneratedColumn<int>(
+    'monthly_budget_cents',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    colorValue,
+    iconCodepoint,
+    monthlyBudgetCents,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -101,6 +117,15 @@ class $CategoriesTable extends Categories
     } else if (isInserting) {
       context.missing(_iconCodepointMeta);
     }
+    if (data.containsKey('monthly_budget_cents')) {
+      context.handle(
+        _monthlyBudgetCentsMeta,
+        monthlyBudgetCents.isAcceptableOrUnknown(
+          data['monthly_budget_cents']!,
+          _monthlyBudgetCentsMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -126,6 +151,10 @@ class $CategoriesTable extends Categories
         DriftSqlType.int,
         data['${effectivePrefix}icon_codepoint'],
       )!,
+      monthlyBudgetCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}monthly_budget_cents'],
+      ),
     );
   }
 
@@ -140,11 +169,15 @@ class Category extends DataClass implements Insertable<Category> {
   final String name;
   final int colorValue;
   final int iconCodepoint;
+
+  /// Monthly spending limit for this category, or null for no budget.
+  final int? monthlyBudgetCents;
   const Category({
     required this.id,
     required this.name,
     required this.colorValue,
     required this.iconCodepoint,
+    this.monthlyBudgetCents,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -153,6 +186,9 @@ class Category extends DataClass implements Insertable<Category> {
     map['name'] = Variable<String>(name);
     map['color_value'] = Variable<int>(colorValue);
     map['icon_codepoint'] = Variable<int>(iconCodepoint);
+    if (!nullToAbsent || monthlyBudgetCents != null) {
+      map['monthly_budget_cents'] = Variable<int>(monthlyBudgetCents);
+    }
     return map;
   }
 
@@ -162,6 +198,9 @@ class Category extends DataClass implements Insertable<Category> {
       name: Value(name),
       colorValue: Value(colorValue),
       iconCodepoint: Value(iconCodepoint),
+      monthlyBudgetCents: monthlyBudgetCents == null && nullToAbsent
+          ? const Value.absent()
+          : Value(monthlyBudgetCents),
     );
   }
 
@@ -175,6 +214,7 @@ class Category extends DataClass implements Insertable<Category> {
       name: serializer.fromJson<String>(json['name']),
       colorValue: serializer.fromJson<int>(json['colorValue']),
       iconCodepoint: serializer.fromJson<int>(json['iconCodepoint']),
+      monthlyBudgetCents: serializer.fromJson<int?>(json['monthlyBudgetCents']),
     );
   }
   @override
@@ -185,6 +225,7 @@ class Category extends DataClass implements Insertable<Category> {
       'name': serializer.toJson<String>(name),
       'colorValue': serializer.toJson<int>(colorValue),
       'iconCodepoint': serializer.toJson<int>(iconCodepoint),
+      'monthlyBudgetCents': serializer.toJson<int?>(monthlyBudgetCents),
     };
   }
 
@@ -193,11 +234,15 @@ class Category extends DataClass implements Insertable<Category> {
     String? name,
     int? colorValue,
     int? iconCodepoint,
+    Value<int?> monthlyBudgetCents = const Value.absent(),
   }) => Category(
     id: id ?? this.id,
     name: name ?? this.name,
     colorValue: colorValue ?? this.colorValue,
     iconCodepoint: iconCodepoint ?? this.iconCodepoint,
+    monthlyBudgetCents: monthlyBudgetCents.present
+        ? monthlyBudgetCents.value
+        : this.monthlyBudgetCents,
   );
   Category copyWithCompanion(CategoriesCompanion data) {
     return Category(
@@ -209,6 +254,9 @@ class Category extends DataClass implements Insertable<Category> {
       iconCodepoint: data.iconCodepoint.present
           ? data.iconCodepoint.value
           : this.iconCodepoint,
+      monthlyBudgetCents: data.monthlyBudgetCents.present
+          ? data.monthlyBudgetCents.value
+          : this.monthlyBudgetCents,
     );
   }
 
@@ -218,13 +266,15 @@ class Category extends DataClass implements Insertable<Category> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('colorValue: $colorValue, ')
-          ..write('iconCodepoint: $iconCodepoint')
+          ..write('iconCodepoint: $iconCodepoint, ')
+          ..write('monthlyBudgetCents: $monthlyBudgetCents')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, colorValue, iconCodepoint);
+  int get hashCode =>
+      Object.hash(id, name, colorValue, iconCodepoint, monthlyBudgetCents);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -232,7 +282,8 @@ class Category extends DataClass implements Insertable<Category> {
           other.id == this.id &&
           other.name == this.name &&
           other.colorValue == this.colorValue &&
-          other.iconCodepoint == this.iconCodepoint);
+          other.iconCodepoint == this.iconCodepoint &&
+          other.monthlyBudgetCents == this.monthlyBudgetCents);
 }
 
 class CategoriesCompanion extends UpdateCompanion<Category> {
@@ -240,17 +291,20 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
   final Value<String> name;
   final Value<int> colorValue;
   final Value<int> iconCodepoint;
+  final Value<int?> monthlyBudgetCents;
   const CategoriesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.colorValue = const Value.absent(),
     this.iconCodepoint = const Value.absent(),
+    this.monthlyBudgetCents = const Value.absent(),
   });
   CategoriesCompanion.insert({
     this.id = const Value.absent(),
     required String name,
     required int colorValue,
     required int iconCodepoint,
+    this.monthlyBudgetCents = const Value.absent(),
   }) : name = Value(name),
        colorValue = Value(colorValue),
        iconCodepoint = Value(iconCodepoint);
@@ -259,12 +313,15 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Expression<String>? name,
     Expression<int>? colorValue,
     Expression<int>? iconCodepoint,
+    Expression<int>? monthlyBudgetCents,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (colorValue != null) 'color_value': colorValue,
       if (iconCodepoint != null) 'icon_codepoint': iconCodepoint,
+      if (monthlyBudgetCents != null)
+        'monthly_budget_cents': monthlyBudgetCents,
     });
   }
 
@@ -273,12 +330,14 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Value<String>? name,
     Value<int>? colorValue,
     Value<int>? iconCodepoint,
+    Value<int?>? monthlyBudgetCents,
   }) {
     return CategoriesCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
       colorValue: colorValue ?? this.colorValue,
       iconCodepoint: iconCodepoint ?? this.iconCodepoint,
+      monthlyBudgetCents: monthlyBudgetCents ?? this.monthlyBudgetCents,
     );
   }
 
@@ -297,6 +356,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     if (iconCodepoint.present) {
       map['icon_codepoint'] = Variable<int>(iconCodepoint.value);
     }
+    if (monthlyBudgetCents.present) {
+      map['monthly_budget_cents'] = Variable<int>(monthlyBudgetCents.value);
+    }
     return map;
   }
 
@@ -306,7 +368,8 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('colorValue: $colorValue, ')
-          ..write('iconCodepoint: $iconCodepoint')
+          ..write('iconCodepoint: $iconCodepoint, ')
+          ..write('monthlyBudgetCents: $monthlyBudgetCents')
           ..write(')'))
         .toString();
   }
@@ -644,6 +707,28 @@ class $PotsTable extends Pots with TableInfo<$PotsTable, Pot> {
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _goalCentsMeta = const VerificationMeta(
+    'goalCents',
+  );
+  @override
+  late final GeneratedColumn<int> goalCents = GeneratedColumn<int>(
+    'goal_cents',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _goalDateMeta = const VerificationMeta(
+    'goalDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> goalDate = GeneratedColumn<DateTime>(
+    'goal_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -651,6 +736,8 @@ class $PotsTable extends Pots with TableInfo<$PotsTable, Pot> {
     colorValue,
     iconCodepoint,
     sortOrder,
+    goalCents,
+    goalDate,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -700,6 +787,18 @@ class $PotsTable extends Pots with TableInfo<$PotsTable, Pot> {
         sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
       );
     }
+    if (data.containsKey('goal_cents')) {
+      context.handle(
+        _goalCentsMeta,
+        goalCents.isAcceptableOrUnknown(data['goal_cents']!, _goalCentsMeta),
+      );
+    }
+    if (data.containsKey('goal_date')) {
+      context.handle(
+        _goalDateMeta,
+        goalDate.isAcceptableOrUnknown(data['goal_date']!, _goalDateMeta),
+      );
+    }
     return context;
   }
 
@@ -729,6 +828,14 @@ class $PotsTable extends Pots with TableInfo<$PotsTable, Pot> {
         DriftSqlType.int,
         data['${effectivePrefix}sort_order'],
       )!,
+      goalCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}goal_cents'],
+      ),
+      goalDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}goal_date'],
+      ),
     );
   }
 
@@ -744,12 +851,20 @@ class Pot extends DataClass implements Insertable<Pot> {
   final int colorValue;
   final int iconCodepoint;
   final int sortOrder;
+
+  /// Savings target for this pot, or null when it has no goal.
+  final int? goalCents;
+
+  /// Optional date the goal should be reached by.
+  final DateTime? goalDate;
   const Pot({
     required this.id,
     required this.name,
     required this.colorValue,
     required this.iconCodepoint,
     required this.sortOrder,
+    this.goalCents,
+    this.goalDate,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -759,6 +874,12 @@ class Pot extends DataClass implements Insertable<Pot> {
     map['color_value'] = Variable<int>(colorValue);
     map['icon_codepoint'] = Variable<int>(iconCodepoint);
     map['sort_order'] = Variable<int>(sortOrder);
+    if (!nullToAbsent || goalCents != null) {
+      map['goal_cents'] = Variable<int>(goalCents);
+    }
+    if (!nullToAbsent || goalDate != null) {
+      map['goal_date'] = Variable<DateTime>(goalDate);
+    }
     return map;
   }
 
@@ -769,6 +890,12 @@ class Pot extends DataClass implements Insertable<Pot> {
       colorValue: Value(colorValue),
       iconCodepoint: Value(iconCodepoint),
       sortOrder: Value(sortOrder),
+      goalCents: goalCents == null && nullToAbsent
+          ? const Value.absent()
+          : Value(goalCents),
+      goalDate: goalDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(goalDate),
     );
   }
 
@@ -783,6 +910,8 @@ class Pot extends DataClass implements Insertable<Pot> {
       colorValue: serializer.fromJson<int>(json['colorValue']),
       iconCodepoint: serializer.fromJson<int>(json['iconCodepoint']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      goalCents: serializer.fromJson<int?>(json['goalCents']),
+      goalDate: serializer.fromJson<DateTime?>(json['goalDate']),
     );
   }
   @override
@@ -794,6 +923,8 @@ class Pot extends DataClass implements Insertable<Pot> {
       'colorValue': serializer.toJson<int>(colorValue),
       'iconCodepoint': serializer.toJson<int>(iconCodepoint),
       'sortOrder': serializer.toJson<int>(sortOrder),
+      'goalCents': serializer.toJson<int?>(goalCents),
+      'goalDate': serializer.toJson<DateTime?>(goalDate),
     };
   }
 
@@ -803,12 +934,16 @@ class Pot extends DataClass implements Insertable<Pot> {
     int? colorValue,
     int? iconCodepoint,
     int? sortOrder,
+    Value<int?> goalCents = const Value.absent(),
+    Value<DateTime?> goalDate = const Value.absent(),
   }) => Pot(
     id: id ?? this.id,
     name: name ?? this.name,
     colorValue: colorValue ?? this.colorValue,
     iconCodepoint: iconCodepoint ?? this.iconCodepoint,
     sortOrder: sortOrder ?? this.sortOrder,
+    goalCents: goalCents.present ? goalCents.value : this.goalCents,
+    goalDate: goalDate.present ? goalDate.value : this.goalDate,
   );
   Pot copyWithCompanion(PotsCompanion data) {
     return Pot(
@@ -821,6 +956,8 @@ class Pot extends DataClass implements Insertable<Pot> {
           ? data.iconCodepoint.value
           : this.iconCodepoint,
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      goalCents: data.goalCents.present ? data.goalCents.value : this.goalCents,
+      goalDate: data.goalDate.present ? data.goalDate.value : this.goalDate,
     );
   }
 
@@ -831,14 +968,23 @@ class Pot extends DataClass implements Insertable<Pot> {
           ..write('name: $name, ')
           ..write('colorValue: $colorValue, ')
           ..write('iconCodepoint: $iconCodepoint, ')
-          ..write('sortOrder: $sortOrder')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('goalCents: $goalCents, ')
+          ..write('goalDate: $goalDate')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, name, colorValue, iconCodepoint, sortOrder);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    colorValue,
+    iconCodepoint,
+    sortOrder,
+    goalCents,
+    goalDate,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -847,7 +993,9 @@ class Pot extends DataClass implements Insertable<Pot> {
           other.name == this.name &&
           other.colorValue == this.colorValue &&
           other.iconCodepoint == this.iconCodepoint &&
-          other.sortOrder == this.sortOrder);
+          other.sortOrder == this.sortOrder &&
+          other.goalCents == this.goalCents &&
+          other.goalDate == this.goalDate);
 }
 
 class PotsCompanion extends UpdateCompanion<Pot> {
@@ -856,12 +1004,16 @@ class PotsCompanion extends UpdateCompanion<Pot> {
   final Value<int> colorValue;
   final Value<int> iconCodepoint;
   final Value<int> sortOrder;
+  final Value<int?> goalCents;
+  final Value<DateTime?> goalDate;
   const PotsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.colorValue = const Value.absent(),
     this.iconCodepoint = const Value.absent(),
     this.sortOrder = const Value.absent(),
+    this.goalCents = const Value.absent(),
+    this.goalDate = const Value.absent(),
   });
   PotsCompanion.insert({
     this.id = const Value.absent(),
@@ -869,6 +1021,8 @@ class PotsCompanion extends UpdateCompanion<Pot> {
     required int colorValue,
     required int iconCodepoint,
     this.sortOrder = const Value.absent(),
+    this.goalCents = const Value.absent(),
+    this.goalDate = const Value.absent(),
   }) : name = Value(name),
        colorValue = Value(colorValue),
        iconCodepoint = Value(iconCodepoint);
@@ -878,6 +1032,8 @@ class PotsCompanion extends UpdateCompanion<Pot> {
     Expression<int>? colorValue,
     Expression<int>? iconCodepoint,
     Expression<int>? sortOrder,
+    Expression<int>? goalCents,
+    Expression<DateTime>? goalDate,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -885,6 +1041,8 @@ class PotsCompanion extends UpdateCompanion<Pot> {
       if (colorValue != null) 'color_value': colorValue,
       if (iconCodepoint != null) 'icon_codepoint': iconCodepoint,
       if (sortOrder != null) 'sort_order': sortOrder,
+      if (goalCents != null) 'goal_cents': goalCents,
+      if (goalDate != null) 'goal_date': goalDate,
     });
   }
 
@@ -894,6 +1052,8 @@ class PotsCompanion extends UpdateCompanion<Pot> {
     Value<int>? colorValue,
     Value<int>? iconCodepoint,
     Value<int>? sortOrder,
+    Value<int?>? goalCents,
+    Value<DateTime?>? goalDate,
   }) {
     return PotsCompanion(
       id: id ?? this.id,
@@ -901,6 +1061,8 @@ class PotsCompanion extends UpdateCompanion<Pot> {
       colorValue: colorValue ?? this.colorValue,
       iconCodepoint: iconCodepoint ?? this.iconCodepoint,
       sortOrder: sortOrder ?? this.sortOrder,
+      goalCents: goalCents ?? this.goalCents,
+      goalDate: goalDate ?? this.goalDate,
     );
   }
 
@@ -922,6 +1084,12 @@ class PotsCompanion extends UpdateCompanion<Pot> {
     if (sortOrder.present) {
       map['sort_order'] = Variable<int>(sortOrder.value);
     }
+    if (goalCents.present) {
+      map['goal_cents'] = Variable<int>(goalCents.value);
+    }
+    if (goalDate.present) {
+      map['goal_date'] = Variable<DateTime>(goalDate.value);
+    }
     return map;
   }
 
@@ -932,7 +1100,9 @@ class PotsCompanion extends UpdateCompanion<Pot> {
           ..write('name: $name, ')
           ..write('colorValue: $colorValue, ')
           ..write('iconCodepoint: $iconCodepoint, ')
-          ..write('sortOrder: $sortOrder')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('goalCents: $goalCents, ')
+          ..write('goalDate: $goalDate')
           ..write(')'))
         .toString();
   }
@@ -2943,6 +3113,28 @@ class $HoldingsTable extends Holdings with TableInfo<$HoldingsTable, Holding> {
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _currencyMeta = const VerificationMeta(
+    'currency',
+  );
+  @override
+  late final GeneratedColumn<String> currency = GeneratedColumn<String>(
+    'currency',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _eurPerUnitMeta = const VerificationMeta(
+    'eurPerUnit',
+  );
+  @override
+  late final GeneratedColumn<double> eurPerUnit = GeneratedColumn<double>(
+    'eur_per_unit',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2952,6 +3144,8 @@ class $HoldingsTable extends Holdings with TableInfo<$HoldingsTable, Holding> {
     avgCostCents,
     lastPriceCents,
     lastPriceAt,
+    currency,
+    eurPerUnit,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3021,6 +3215,21 @@ class $HoldingsTable extends Holdings with TableInfo<$HoldingsTable, Holding> {
         ),
       );
     }
+    if (data.containsKey('currency')) {
+      context.handle(
+        _currencyMeta,
+        currency.isAcceptableOrUnknown(data['currency']!, _currencyMeta),
+      );
+    }
+    if (data.containsKey('eur_per_unit')) {
+      context.handle(
+        _eurPerUnitMeta,
+        eurPerUnit.isAcceptableOrUnknown(
+          data['eur_per_unit']!,
+          _eurPerUnitMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -3058,6 +3267,14 @@ class $HoldingsTable extends Holdings with TableInfo<$HoldingsTable, Holding> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}last_price_at'],
       ),
+      currency: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}currency'],
+      ),
+      eurPerUnit: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}eur_per_unit'],
+      ),
     );
   }
 
@@ -3075,6 +3292,15 @@ class Holding extends DataClass implements Insertable<Holding> {
   final int avgCostCents;
   final int? lastPriceCents;
   final DateTime? lastPriceAt;
+
+  /// Currency the quote is priced in, as the quote source reports it
+  /// ("USD", "GBp" for pence). Null means it was never reported and the
+  /// holding is treated as EUR.
+  final String? currency;
+
+  /// Euros per one unit of [currency] at the last price update, so values
+  /// convert without a network call. Null when no rate could be fetched.
+  final double? eurPerUnit;
   const Holding({
     required this.id,
     required this.ticker,
@@ -3083,6 +3309,8 @@ class Holding extends DataClass implements Insertable<Holding> {
     required this.avgCostCents,
     this.lastPriceCents,
     this.lastPriceAt,
+    this.currency,
+    this.eurPerUnit,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3097,6 +3325,12 @@ class Holding extends DataClass implements Insertable<Holding> {
     }
     if (!nullToAbsent || lastPriceAt != null) {
       map['last_price_at'] = Variable<DateTime>(lastPriceAt);
+    }
+    if (!nullToAbsent || currency != null) {
+      map['currency'] = Variable<String>(currency);
+    }
+    if (!nullToAbsent || eurPerUnit != null) {
+      map['eur_per_unit'] = Variable<double>(eurPerUnit);
     }
     return map;
   }
@@ -3114,6 +3348,12 @@ class Holding extends DataClass implements Insertable<Holding> {
       lastPriceAt: lastPriceAt == null && nullToAbsent
           ? const Value.absent()
           : Value(lastPriceAt),
+      currency: currency == null && nullToAbsent
+          ? const Value.absent()
+          : Value(currency),
+      eurPerUnit: eurPerUnit == null && nullToAbsent
+          ? const Value.absent()
+          : Value(eurPerUnit),
     );
   }
 
@@ -3130,6 +3370,8 @@ class Holding extends DataClass implements Insertable<Holding> {
       avgCostCents: serializer.fromJson<int>(json['avgCostCents']),
       lastPriceCents: serializer.fromJson<int?>(json['lastPriceCents']),
       lastPriceAt: serializer.fromJson<DateTime?>(json['lastPriceAt']),
+      currency: serializer.fromJson<String?>(json['currency']),
+      eurPerUnit: serializer.fromJson<double?>(json['eurPerUnit']),
     );
   }
   @override
@@ -3143,6 +3385,8 @@ class Holding extends DataClass implements Insertable<Holding> {
       'avgCostCents': serializer.toJson<int>(avgCostCents),
       'lastPriceCents': serializer.toJson<int?>(lastPriceCents),
       'lastPriceAt': serializer.toJson<DateTime?>(lastPriceAt),
+      'currency': serializer.toJson<String?>(currency),
+      'eurPerUnit': serializer.toJson<double?>(eurPerUnit),
     };
   }
 
@@ -3154,6 +3398,8 @@ class Holding extends DataClass implements Insertable<Holding> {
     int? avgCostCents,
     Value<int?> lastPriceCents = const Value.absent(),
     Value<DateTime?> lastPriceAt = const Value.absent(),
+    Value<String?> currency = const Value.absent(),
+    Value<double?> eurPerUnit = const Value.absent(),
   }) => Holding(
     id: id ?? this.id,
     ticker: ticker ?? this.ticker,
@@ -3164,6 +3410,8 @@ class Holding extends DataClass implements Insertable<Holding> {
         ? lastPriceCents.value
         : this.lastPriceCents,
     lastPriceAt: lastPriceAt.present ? lastPriceAt.value : this.lastPriceAt,
+    currency: currency.present ? currency.value : this.currency,
+    eurPerUnit: eurPerUnit.present ? eurPerUnit.value : this.eurPerUnit,
   );
   Holding copyWithCompanion(HoldingsCompanion data) {
     return Holding(
@@ -3180,6 +3428,10 @@ class Holding extends DataClass implements Insertable<Holding> {
       lastPriceAt: data.lastPriceAt.present
           ? data.lastPriceAt.value
           : this.lastPriceAt,
+      currency: data.currency.present ? data.currency.value : this.currency,
+      eurPerUnit: data.eurPerUnit.present
+          ? data.eurPerUnit.value
+          : this.eurPerUnit,
     );
   }
 
@@ -3192,7 +3444,9 @@ class Holding extends DataClass implements Insertable<Holding> {
           ..write('shares: $shares, ')
           ..write('avgCostCents: $avgCostCents, ')
           ..write('lastPriceCents: $lastPriceCents, ')
-          ..write('lastPriceAt: $lastPriceAt')
+          ..write('lastPriceAt: $lastPriceAt, ')
+          ..write('currency: $currency, ')
+          ..write('eurPerUnit: $eurPerUnit')
           ..write(')'))
         .toString();
   }
@@ -3206,6 +3460,8 @@ class Holding extends DataClass implements Insertable<Holding> {
     avgCostCents,
     lastPriceCents,
     lastPriceAt,
+    currency,
+    eurPerUnit,
   );
   @override
   bool operator ==(Object other) =>
@@ -3217,7 +3473,9 @@ class Holding extends DataClass implements Insertable<Holding> {
           other.shares == this.shares &&
           other.avgCostCents == this.avgCostCents &&
           other.lastPriceCents == this.lastPriceCents &&
-          other.lastPriceAt == this.lastPriceAt);
+          other.lastPriceAt == this.lastPriceAt &&
+          other.currency == this.currency &&
+          other.eurPerUnit == this.eurPerUnit);
 }
 
 class HoldingsCompanion extends UpdateCompanion<Holding> {
@@ -3228,6 +3486,8 @@ class HoldingsCompanion extends UpdateCompanion<Holding> {
   final Value<int> avgCostCents;
   final Value<int?> lastPriceCents;
   final Value<DateTime?> lastPriceAt;
+  final Value<String?> currency;
+  final Value<double?> eurPerUnit;
   const HoldingsCompanion({
     this.id = const Value.absent(),
     this.ticker = const Value.absent(),
@@ -3236,6 +3496,8 @@ class HoldingsCompanion extends UpdateCompanion<Holding> {
     this.avgCostCents = const Value.absent(),
     this.lastPriceCents = const Value.absent(),
     this.lastPriceAt = const Value.absent(),
+    this.currency = const Value.absent(),
+    this.eurPerUnit = const Value.absent(),
   });
   HoldingsCompanion.insert({
     this.id = const Value.absent(),
@@ -3245,6 +3507,8 @@ class HoldingsCompanion extends UpdateCompanion<Holding> {
     required int avgCostCents,
     this.lastPriceCents = const Value.absent(),
     this.lastPriceAt = const Value.absent(),
+    this.currency = const Value.absent(),
+    this.eurPerUnit = const Value.absent(),
   }) : ticker = Value(ticker),
        name = Value(name),
        shares = Value(shares),
@@ -3257,6 +3521,8 @@ class HoldingsCompanion extends UpdateCompanion<Holding> {
     Expression<int>? avgCostCents,
     Expression<int>? lastPriceCents,
     Expression<DateTime>? lastPriceAt,
+    Expression<String>? currency,
+    Expression<double>? eurPerUnit,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3266,6 +3532,8 @@ class HoldingsCompanion extends UpdateCompanion<Holding> {
       if (avgCostCents != null) 'avg_cost_cents': avgCostCents,
       if (lastPriceCents != null) 'last_price_cents': lastPriceCents,
       if (lastPriceAt != null) 'last_price_at': lastPriceAt,
+      if (currency != null) 'currency': currency,
+      if (eurPerUnit != null) 'eur_per_unit': eurPerUnit,
     });
   }
 
@@ -3277,6 +3545,8 @@ class HoldingsCompanion extends UpdateCompanion<Holding> {
     Value<int>? avgCostCents,
     Value<int?>? lastPriceCents,
     Value<DateTime?>? lastPriceAt,
+    Value<String?>? currency,
+    Value<double?>? eurPerUnit,
   }) {
     return HoldingsCompanion(
       id: id ?? this.id,
@@ -3286,6 +3556,8 @@ class HoldingsCompanion extends UpdateCompanion<Holding> {
       avgCostCents: avgCostCents ?? this.avgCostCents,
       lastPriceCents: lastPriceCents ?? this.lastPriceCents,
       lastPriceAt: lastPriceAt ?? this.lastPriceAt,
+      currency: currency ?? this.currency,
+      eurPerUnit: eurPerUnit ?? this.eurPerUnit,
     );
   }
 
@@ -3313,6 +3585,12 @@ class HoldingsCompanion extends UpdateCompanion<Holding> {
     if (lastPriceAt.present) {
       map['last_price_at'] = Variable<DateTime>(lastPriceAt.value);
     }
+    if (currency.present) {
+      map['currency'] = Variable<String>(currency.value);
+    }
+    if (eurPerUnit.present) {
+      map['eur_per_unit'] = Variable<double>(eurPerUnit.value);
+    }
     return map;
   }
 
@@ -3325,7 +3603,9 @@ class HoldingsCompanion extends UpdateCompanion<Holding> {
           ..write('shares: $shares, ')
           ..write('avgCostCents: $avgCostCents, ')
           ..write('lastPriceCents: $lastPriceCents, ')
-          ..write('lastPriceAt: $lastPriceAt')
+          ..write('lastPriceAt: $lastPriceAt, ')
+          ..write('currency: $currency, ')
+          ..write('eurPerUnit: $eurPerUnit')
           ..write(')'))
         .toString();
   }
@@ -4092,6 +4372,1418 @@ class BalanceSnapshotsCompanion extends UpdateCompanion<BalanceSnapshot> {
   }
 }
 
+class $DividendsTable extends Dividends
+    with TableInfo<$DividendsTable, Dividend> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DividendsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _holdingIdMeta = const VerificationMeta(
+    'holdingId',
+  );
+  @override
+  late final GeneratedColumn<int> holdingId = GeneratedColumn<int>(
+    'holding_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES holdings (id)',
+    ),
+  );
+  static const VerificationMeta _tickerMeta = const VerificationMeta('ticker');
+  @override
+  late final GeneratedColumn<String> ticker = GeneratedColumn<String>(
+    'ticker',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 20,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _amountCentsMeta = const VerificationMeta(
+    'amountCents',
+  );
+  @override
+  late final GeneratedColumn<int> amountCents = GeneratedColumn<int>(
+    'amount_cents',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
+    'date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _transactionIdMeta = const VerificationMeta(
+    'transactionId',
+  );
+  @override
+  late final GeneratedColumn<int> transactionId = GeneratedColumn<int>(
+    'transaction_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES finance_transactions (id)',
+    ),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    holdingId,
+    ticker,
+    amountCents,
+    date,
+    note,
+    transactionId,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'dividends';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Dividend> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('holding_id')) {
+      context.handle(
+        _holdingIdMeta,
+        holdingId.isAcceptableOrUnknown(data['holding_id']!, _holdingIdMeta),
+      );
+    }
+    if (data.containsKey('ticker')) {
+      context.handle(
+        _tickerMeta,
+        ticker.isAcceptableOrUnknown(data['ticker']!, _tickerMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_tickerMeta);
+    }
+    if (data.containsKey('amount_cents')) {
+      context.handle(
+        _amountCentsMeta,
+        amountCents.isAcceptableOrUnknown(
+          data['amount_cents']!,
+          _amountCentsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_amountCentsMeta);
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+        _dateMeta,
+        date.isAcceptableOrUnknown(data['date']!, _dateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
+    if (data.containsKey('transaction_id')) {
+      context.handle(
+        _transactionIdMeta,
+        transactionId.isAcceptableOrUnknown(
+          data['transaction_id']!,
+          _transactionIdMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Dividend map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Dividend(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      holdingId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}holding_id'],
+      ),
+      ticker: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}ticker'],
+      )!,
+      amountCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount_cents'],
+      )!,
+      date: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}date'],
+      )!,
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
+      transactionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}transaction_id'],
+      ),
+    );
+  }
+
+  @override
+  $DividendsTable createAlias(String alias) {
+    return $DividendsTable(attachedDatabase, alias);
+  }
+}
+
+class Dividend extends DataClass implements Insertable<Dividend> {
+  final int id;
+  final int? holdingId;
+
+  /// Kept alongside [holdingId] so the history still reads after the
+  /// holding itself is sold and deleted.
+  final String ticker;
+  final int amountCents;
+  final DateTime date;
+  final String? note;
+
+  /// The income entry booked for this dividend, if it was added to the
+  /// main balance, so deleting the dividend can remove it too.
+  final int? transactionId;
+  const Dividend({
+    required this.id,
+    this.holdingId,
+    required this.ticker,
+    required this.amountCents,
+    required this.date,
+    this.note,
+    this.transactionId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    if (!nullToAbsent || holdingId != null) {
+      map['holding_id'] = Variable<int>(holdingId);
+    }
+    map['ticker'] = Variable<String>(ticker);
+    map['amount_cents'] = Variable<int>(amountCents);
+    map['date'] = Variable<DateTime>(date);
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    if (!nullToAbsent || transactionId != null) {
+      map['transaction_id'] = Variable<int>(transactionId);
+    }
+    return map;
+  }
+
+  DividendsCompanion toCompanion(bool nullToAbsent) {
+    return DividendsCompanion(
+      id: Value(id),
+      holdingId: holdingId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(holdingId),
+      ticker: Value(ticker),
+      amountCents: Value(amountCents),
+      date: Value(date),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      transactionId: transactionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(transactionId),
+    );
+  }
+
+  factory Dividend.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Dividend(
+      id: serializer.fromJson<int>(json['id']),
+      holdingId: serializer.fromJson<int?>(json['holdingId']),
+      ticker: serializer.fromJson<String>(json['ticker']),
+      amountCents: serializer.fromJson<int>(json['amountCents']),
+      date: serializer.fromJson<DateTime>(json['date']),
+      note: serializer.fromJson<String?>(json['note']),
+      transactionId: serializer.fromJson<int?>(json['transactionId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'holdingId': serializer.toJson<int?>(holdingId),
+      'ticker': serializer.toJson<String>(ticker),
+      'amountCents': serializer.toJson<int>(amountCents),
+      'date': serializer.toJson<DateTime>(date),
+      'note': serializer.toJson<String?>(note),
+      'transactionId': serializer.toJson<int?>(transactionId),
+    };
+  }
+
+  Dividend copyWith({
+    int? id,
+    Value<int?> holdingId = const Value.absent(),
+    String? ticker,
+    int? amountCents,
+    DateTime? date,
+    Value<String?> note = const Value.absent(),
+    Value<int?> transactionId = const Value.absent(),
+  }) => Dividend(
+    id: id ?? this.id,
+    holdingId: holdingId.present ? holdingId.value : this.holdingId,
+    ticker: ticker ?? this.ticker,
+    amountCents: amountCents ?? this.amountCents,
+    date: date ?? this.date,
+    note: note.present ? note.value : this.note,
+    transactionId: transactionId.present
+        ? transactionId.value
+        : this.transactionId,
+  );
+  Dividend copyWithCompanion(DividendsCompanion data) {
+    return Dividend(
+      id: data.id.present ? data.id.value : this.id,
+      holdingId: data.holdingId.present ? data.holdingId.value : this.holdingId,
+      ticker: data.ticker.present ? data.ticker.value : this.ticker,
+      amountCents: data.amountCents.present
+          ? data.amountCents.value
+          : this.amountCents,
+      date: data.date.present ? data.date.value : this.date,
+      note: data.note.present ? data.note.value : this.note,
+      transactionId: data.transactionId.present
+          ? data.transactionId.value
+          : this.transactionId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Dividend(')
+          ..write('id: $id, ')
+          ..write('holdingId: $holdingId, ')
+          ..write('ticker: $ticker, ')
+          ..write('amountCents: $amountCents, ')
+          ..write('date: $date, ')
+          ..write('note: $note, ')
+          ..write('transactionId: $transactionId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    holdingId,
+    ticker,
+    amountCents,
+    date,
+    note,
+    transactionId,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Dividend &&
+          other.id == this.id &&
+          other.holdingId == this.holdingId &&
+          other.ticker == this.ticker &&
+          other.amountCents == this.amountCents &&
+          other.date == this.date &&
+          other.note == this.note &&
+          other.transactionId == this.transactionId);
+}
+
+class DividendsCompanion extends UpdateCompanion<Dividend> {
+  final Value<int> id;
+  final Value<int?> holdingId;
+  final Value<String> ticker;
+  final Value<int> amountCents;
+  final Value<DateTime> date;
+  final Value<String?> note;
+  final Value<int?> transactionId;
+  const DividendsCompanion({
+    this.id = const Value.absent(),
+    this.holdingId = const Value.absent(),
+    this.ticker = const Value.absent(),
+    this.amountCents = const Value.absent(),
+    this.date = const Value.absent(),
+    this.note = const Value.absent(),
+    this.transactionId = const Value.absent(),
+  });
+  DividendsCompanion.insert({
+    this.id = const Value.absent(),
+    this.holdingId = const Value.absent(),
+    required String ticker,
+    required int amountCents,
+    required DateTime date,
+    this.note = const Value.absent(),
+    this.transactionId = const Value.absent(),
+  }) : ticker = Value(ticker),
+       amountCents = Value(amountCents),
+       date = Value(date);
+  static Insertable<Dividend> custom({
+    Expression<int>? id,
+    Expression<int>? holdingId,
+    Expression<String>? ticker,
+    Expression<int>? amountCents,
+    Expression<DateTime>? date,
+    Expression<String>? note,
+    Expression<int>? transactionId,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (holdingId != null) 'holding_id': holdingId,
+      if (ticker != null) 'ticker': ticker,
+      if (amountCents != null) 'amount_cents': amountCents,
+      if (date != null) 'date': date,
+      if (note != null) 'note': note,
+      if (transactionId != null) 'transaction_id': transactionId,
+    });
+  }
+
+  DividendsCompanion copyWith({
+    Value<int>? id,
+    Value<int?>? holdingId,
+    Value<String>? ticker,
+    Value<int>? amountCents,
+    Value<DateTime>? date,
+    Value<String?>? note,
+    Value<int?>? transactionId,
+  }) {
+    return DividendsCompanion(
+      id: id ?? this.id,
+      holdingId: holdingId ?? this.holdingId,
+      ticker: ticker ?? this.ticker,
+      amountCents: amountCents ?? this.amountCents,
+      date: date ?? this.date,
+      note: note ?? this.note,
+      transactionId: transactionId ?? this.transactionId,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (holdingId.present) {
+      map['holding_id'] = Variable<int>(holdingId.value);
+    }
+    if (ticker.present) {
+      map['ticker'] = Variable<String>(ticker.value);
+    }
+    if (amountCents.present) {
+      map['amount_cents'] = Variable<int>(amountCents.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<DateTime>(date.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (transactionId.present) {
+      map['transaction_id'] = Variable<int>(transactionId.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DividendsCompanion(')
+          ..write('id: $id, ')
+          ..write('holdingId: $holdingId, ')
+          ..write('ticker: $ticker, ')
+          ..write('amountCents: $amountCents, ')
+          ..write('date: $date, ')
+          ..write('note: $note, ')
+          ..write('transactionId: $transactionId')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DebtsTable extends Debts with TableInfo<$DebtsTable, Debt> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DebtsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 80,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<DebtDirection, String> direction =
+      GeneratedColumn<String>(
+        'direction',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<DebtDirection>($DebtsTable.$converterdirection);
+  static const VerificationMeta _principalCentsMeta = const VerificationMeta(
+    'principalCents',
+  );
+  @override
+  late final GeneratedColumn<int> principalCents = GeneratedColumn<int>(
+    'principal_cents',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _interestBpsMeta = const VerificationMeta(
+    'interestBps',
+  );
+  @override
+  late final GeneratedColumn<int> interestBps = GeneratedColumn<int>(
+    'interest_bps',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _monthlyPaymentCentsMeta =
+      const VerificationMeta('monthlyPaymentCents');
+  @override
+  late final GeneratedColumn<int> monthlyPaymentCents = GeneratedColumn<int>(
+    'monthly_payment_cents',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _startDateMeta = const VerificationMeta(
+    'startDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startDate = GeneratedColumn<DateTime>(
+    'start_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    direction,
+    principalCents,
+    interestBps,
+    monthlyPaymentCents,
+    startDate,
+    note,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'debts';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Debt> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('principal_cents')) {
+      context.handle(
+        _principalCentsMeta,
+        principalCents.isAcceptableOrUnknown(
+          data['principal_cents']!,
+          _principalCentsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_principalCentsMeta);
+    }
+    if (data.containsKey('interest_bps')) {
+      context.handle(
+        _interestBpsMeta,
+        interestBps.isAcceptableOrUnknown(
+          data['interest_bps']!,
+          _interestBpsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('monthly_payment_cents')) {
+      context.handle(
+        _monthlyPaymentCentsMeta,
+        monthlyPaymentCents.isAcceptableOrUnknown(
+          data['monthly_payment_cents']!,
+          _monthlyPaymentCentsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('start_date')) {
+      context.handle(
+        _startDateMeta,
+        startDate.isAcceptableOrUnknown(data['start_date']!, _startDateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_startDateMeta);
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Debt map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Debt(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      direction: $DebtsTable.$converterdirection.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}direction'],
+        )!,
+      ),
+      principalCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}principal_cents'],
+      )!,
+      interestBps: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}interest_bps'],
+      )!,
+      monthlyPaymentCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}monthly_payment_cents'],
+      )!,
+      startDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}start_date'],
+      )!,
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
+    );
+  }
+
+  @override
+  $DebtsTable createAlias(String alias) {
+    return $DebtsTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<DebtDirection, String, String> $converterdirection =
+      const EnumNameConverter<DebtDirection>(DebtDirection.values);
+}
+
+class Debt extends DataClass implements Insertable<Debt> {
+  final int id;
+  final String name;
+  final DebtDirection direction;
+  final int principalCents;
+
+  /// Yearly interest in basis points (4.5% = 450). Only used to project the
+  /// payoff date; the balance itself is corrected with adjustments.
+  final int interestBps;
+  final int monthlyPaymentCents;
+  final DateTime startDate;
+  final String? note;
+  const Debt({
+    required this.id,
+    required this.name,
+    required this.direction,
+    required this.principalCents,
+    required this.interestBps,
+    required this.monthlyPaymentCents,
+    required this.startDate,
+    this.note,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    {
+      map['direction'] = Variable<String>(
+        $DebtsTable.$converterdirection.toSql(direction),
+      );
+    }
+    map['principal_cents'] = Variable<int>(principalCents);
+    map['interest_bps'] = Variable<int>(interestBps);
+    map['monthly_payment_cents'] = Variable<int>(monthlyPaymentCents);
+    map['start_date'] = Variable<DateTime>(startDate);
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    return map;
+  }
+
+  DebtsCompanion toCompanion(bool nullToAbsent) {
+    return DebtsCompanion(
+      id: Value(id),
+      name: Value(name),
+      direction: Value(direction),
+      principalCents: Value(principalCents),
+      interestBps: Value(interestBps),
+      monthlyPaymentCents: Value(monthlyPaymentCents),
+      startDate: Value(startDate),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+    );
+  }
+
+  factory Debt.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Debt(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      direction: $DebtsTable.$converterdirection.fromJson(
+        serializer.fromJson<String>(json['direction']),
+      ),
+      principalCents: serializer.fromJson<int>(json['principalCents']),
+      interestBps: serializer.fromJson<int>(json['interestBps']),
+      monthlyPaymentCents: serializer.fromJson<int>(
+        json['monthlyPaymentCents'],
+      ),
+      startDate: serializer.fromJson<DateTime>(json['startDate']),
+      note: serializer.fromJson<String?>(json['note']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'direction': serializer.toJson<String>(
+        $DebtsTable.$converterdirection.toJson(direction),
+      ),
+      'principalCents': serializer.toJson<int>(principalCents),
+      'interestBps': serializer.toJson<int>(interestBps),
+      'monthlyPaymentCents': serializer.toJson<int>(monthlyPaymentCents),
+      'startDate': serializer.toJson<DateTime>(startDate),
+      'note': serializer.toJson<String?>(note),
+    };
+  }
+
+  Debt copyWith({
+    int? id,
+    String? name,
+    DebtDirection? direction,
+    int? principalCents,
+    int? interestBps,
+    int? monthlyPaymentCents,
+    DateTime? startDate,
+    Value<String?> note = const Value.absent(),
+  }) => Debt(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    direction: direction ?? this.direction,
+    principalCents: principalCents ?? this.principalCents,
+    interestBps: interestBps ?? this.interestBps,
+    monthlyPaymentCents: monthlyPaymentCents ?? this.monthlyPaymentCents,
+    startDate: startDate ?? this.startDate,
+    note: note.present ? note.value : this.note,
+  );
+  Debt copyWithCompanion(DebtsCompanion data) {
+    return Debt(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      direction: data.direction.present ? data.direction.value : this.direction,
+      principalCents: data.principalCents.present
+          ? data.principalCents.value
+          : this.principalCents,
+      interestBps: data.interestBps.present
+          ? data.interestBps.value
+          : this.interestBps,
+      monthlyPaymentCents: data.monthlyPaymentCents.present
+          ? data.monthlyPaymentCents.value
+          : this.monthlyPaymentCents,
+      startDate: data.startDate.present ? data.startDate.value : this.startDate,
+      note: data.note.present ? data.note.value : this.note,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Debt(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('direction: $direction, ')
+          ..write('principalCents: $principalCents, ')
+          ..write('interestBps: $interestBps, ')
+          ..write('monthlyPaymentCents: $monthlyPaymentCents, ')
+          ..write('startDate: $startDate, ')
+          ..write('note: $note')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    name,
+    direction,
+    principalCents,
+    interestBps,
+    monthlyPaymentCents,
+    startDate,
+    note,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Debt &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.direction == this.direction &&
+          other.principalCents == this.principalCents &&
+          other.interestBps == this.interestBps &&
+          other.monthlyPaymentCents == this.monthlyPaymentCents &&
+          other.startDate == this.startDate &&
+          other.note == this.note);
+}
+
+class DebtsCompanion extends UpdateCompanion<Debt> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<DebtDirection> direction;
+  final Value<int> principalCents;
+  final Value<int> interestBps;
+  final Value<int> monthlyPaymentCents;
+  final Value<DateTime> startDate;
+  final Value<String?> note;
+  const DebtsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.direction = const Value.absent(),
+    this.principalCents = const Value.absent(),
+    this.interestBps = const Value.absent(),
+    this.monthlyPaymentCents = const Value.absent(),
+    this.startDate = const Value.absent(),
+    this.note = const Value.absent(),
+  });
+  DebtsCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    required DebtDirection direction,
+    required int principalCents,
+    this.interestBps = const Value.absent(),
+    this.monthlyPaymentCents = const Value.absent(),
+    required DateTime startDate,
+    this.note = const Value.absent(),
+  }) : name = Value(name),
+       direction = Value(direction),
+       principalCents = Value(principalCents),
+       startDate = Value(startDate);
+  static Insertable<Debt> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<String>? direction,
+    Expression<int>? principalCents,
+    Expression<int>? interestBps,
+    Expression<int>? monthlyPaymentCents,
+    Expression<DateTime>? startDate,
+    Expression<String>? note,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (direction != null) 'direction': direction,
+      if (principalCents != null) 'principal_cents': principalCents,
+      if (interestBps != null) 'interest_bps': interestBps,
+      if (monthlyPaymentCents != null)
+        'monthly_payment_cents': monthlyPaymentCents,
+      if (startDate != null) 'start_date': startDate,
+      if (note != null) 'note': note,
+    });
+  }
+
+  DebtsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? name,
+    Value<DebtDirection>? direction,
+    Value<int>? principalCents,
+    Value<int>? interestBps,
+    Value<int>? monthlyPaymentCents,
+    Value<DateTime>? startDate,
+    Value<String?>? note,
+  }) {
+    return DebtsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      direction: direction ?? this.direction,
+      principalCents: principalCents ?? this.principalCents,
+      interestBps: interestBps ?? this.interestBps,
+      monthlyPaymentCents: monthlyPaymentCents ?? this.monthlyPaymentCents,
+      startDate: startDate ?? this.startDate,
+      note: note ?? this.note,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (direction.present) {
+      map['direction'] = Variable<String>(
+        $DebtsTable.$converterdirection.toSql(direction.value),
+      );
+    }
+    if (principalCents.present) {
+      map['principal_cents'] = Variable<int>(principalCents.value);
+    }
+    if (interestBps.present) {
+      map['interest_bps'] = Variable<int>(interestBps.value);
+    }
+    if (monthlyPaymentCents.present) {
+      map['monthly_payment_cents'] = Variable<int>(monthlyPaymentCents.value);
+    }
+    if (startDate.present) {
+      map['start_date'] = Variable<DateTime>(startDate.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DebtsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('direction: $direction, ')
+          ..write('principalCents: $principalCents, ')
+          ..write('interestBps: $interestBps, ')
+          ..write('monthlyPaymentCents: $monthlyPaymentCents, ')
+          ..write('startDate: $startDate, ')
+          ..write('note: $note')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DebtPaymentsTable extends DebtPayments
+    with TableInfo<$DebtPaymentsTable, DebtPayment> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DebtPaymentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _debtIdMeta = const VerificationMeta('debtId');
+  @override
+  late final GeneratedColumn<int> debtId = GeneratedColumn<int>(
+    'debt_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES debts (id)',
+    ),
+  );
+  static const VerificationMeta _amountCentsMeta = const VerificationMeta(
+    'amountCents',
+  );
+  @override
+  late final GeneratedColumn<int> amountCents = GeneratedColumn<int>(
+    'amount_cents',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
+    'date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _transactionIdMeta = const VerificationMeta(
+    'transactionId',
+  );
+  @override
+  late final GeneratedColumn<int> transactionId = GeneratedColumn<int>(
+    'transaction_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES finance_transactions (id)',
+    ),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    debtId,
+    amountCents,
+    date,
+    note,
+    transactionId,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'debt_payments';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DebtPayment> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('debt_id')) {
+      context.handle(
+        _debtIdMeta,
+        debtId.isAcceptableOrUnknown(data['debt_id']!, _debtIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_debtIdMeta);
+    }
+    if (data.containsKey('amount_cents')) {
+      context.handle(
+        _amountCentsMeta,
+        amountCents.isAcceptableOrUnknown(
+          data['amount_cents']!,
+          _amountCentsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_amountCentsMeta);
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+        _dateMeta,
+        date.isAcceptableOrUnknown(data['date']!, _dateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
+    if (data.containsKey('transaction_id')) {
+      context.handle(
+        _transactionIdMeta,
+        transactionId.isAcceptableOrUnknown(
+          data['transaction_id']!,
+          _transactionIdMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DebtPayment map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DebtPayment(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      debtId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}debt_id'],
+      )!,
+      amountCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount_cents'],
+      )!,
+      date: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}date'],
+      )!,
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
+      transactionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}transaction_id'],
+      ),
+    );
+  }
+
+  @override
+  $DebtPaymentsTable createAlias(String alias) {
+    return $DebtPaymentsTable(attachedDatabase, alias);
+  }
+}
+
+class DebtPayment extends DataClass implements Insertable<DebtPayment> {
+  final int id;
+  final int debtId;
+  final int amountCents;
+  final DateTime date;
+  final String? note;
+
+  /// The ledger entry booked for this payment, if any.
+  final int? transactionId;
+  const DebtPayment({
+    required this.id,
+    required this.debtId,
+    required this.amountCents,
+    required this.date,
+    this.note,
+    this.transactionId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['debt_id'] = Variable<int>(debtId);
+    map['amount_cents'] = Variable<int>(amountCents);
+    map['date'] = Variable<DateTime>(date);
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    if (!nullToAbsent || transactionId != null) {
+      map['transaction_id'] = Variable<int>(transactionId);
+    }
+    return map;
+  }
+
+  DebtPaymentsCompanion toCompanion(bool nullToAbsent) {
+    return DebtPaymentsCompanion(
+      id: Value(id),
+      debtId: Value(debtId),
+      amountCents: Value(amountCents),
+      date: Value(date),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      transactionId: transactionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(transactionId),
+    );
+  }
+
+  factory DebtPayment.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DebtPayment(
+      id: serializer.fromJson<int>(json['id']),
+      debtId: serializer.fromJson<int>(json['debtId']),
+      amountCents: serializer.fromJson<int>(json['amountCents']),
+      date: serializer.fromJson<DateTime>(json['date']),
+      note: serializer.fromJson<String?>(json['note']),
+      transactionId: serializer.fromJson<int?>(json['transactionId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'debtId': serializer.toJson<int>(debtId),
+      'amountCents': serializer.toJson<int>(amountCents),
+      'date': serializer.toJson<DateTime>(date),
+      'note': serializer.toJson<String?>(note),
+      'transactionId': serializer.toJson<int?>(transactionId),
+    };
+  }
+
+  DebtPayment copyWith({
+    int? id,
+    int? debtId,
+    int? amountCents,
+    DateTime? date,
+    Value<String?> note = const Value.absent(),
+    Value<int?> transactionId = const Value.absent(),
+  }) => DebtPayment(
+    id: id ?? this.id,
+    debtId: debtId ?? this.debtId,
+    amountCents: amountCents ?? this.amountCents,
+    date: date ?? this.date,
+    note: note.present ? note.value : this.note,
+    transactionId: transactionId.present
+        ? transactionId.value
+        : this.transactionId,
+  );
+  DebtPayment copyWithCompanion(DebtPaymentsCompanion data) {
+    return DebtPayment(
+      id: data.id.present ? data.id.value : this.id,
+      debtId: data.debtId.present ? data.debtId.value : this.debtId,
+      amountCents: data.amountCents.present
+          ? data.amountCents.value
+          : this.amountCents,
+      date: data.date.present ? data.date.value : this.date,
+      note: data.note.present ? data.note.value : this.note,
+      transactionId: data.transactionId.present
+          ? data.transactionId.value
+          : this.transactionId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DebtPayment(')
+          ..write('id: $id, ')
+          ..write('debtId: $debtId, ')
+          ..write('amountCents: $amountCents, ')
+          ..write('date: $date, ')
+          ..write('note: $note, ')
+          ..write('transactionId: $transactionId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, debtId, amountCents, date, note, transactionId);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DebtPayment &&
+          other.id == this.id &&
+          other.debtId == this.debtId &&
+          other.amountCents == this.amountCents &&
+          other.date == this.date &&
+          other.note == this.note &&
+          other.transactionId == this.transactionId);
+}
+
+class DebtPaymentsCompanion extends UpdateCompanion<DebtPayment> {
+  final Value<int> id;
+  final Value<int> debtId;
+  final Value<int> amountCents;
+  final Value<DateTime> date;
+  final Value<String?> note;
+  final Value<int?> transactionId;
+  const DebtPaymentsCompanion({
+    this.id = const Value.absent(),
+    this.debtId = const Value.absent(),
+    this.amountCents = const Value.absent(),
+    this.date = const Value.absent(),
+    this.note = const Value.absent(),
+    this.transactionId = const Value.absent(),
+  });
+  DebtPaymentsCompanion.insert({
+    this.id = const Value.absent(),
+    required int debtId,
+    required int amountCents,
+    required DateTime date,
+    this.note = const Value.absent(),
+    this.transactionId = const Value.absent(),
+  }) : debtId = Value(debtId),
+       amountCents = Value(amountCents),
+       date = Value(date);
+  static Insertable<DebtPayment> custom({
+    Expression<int>? id,
+    Expression<int>? debtId,
+    Expression<int>? amountCents,
+    Expression<DateTime>? date,
+    Expression<String>? note,
+    Expression<int>? transactionId,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (debtId != null) 'debt_id': debtId,
+      if (amountCents != null) 'amount_cents': amountCents,
+      if (date != null) 'date': date,
+      if (note != null) 'note': note,
+      if (transactionId != null) 'transaction_id': transactionId,
+    });
+  }
+
+  DebtPaymentsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? debtId,
+    Value<int>? amountCents,
+    Value<DateTime>? date,
+    Value<String?>? note,
+    Value<int?>? transactionId,
+  }) {
+    return DebtPaymentsCompanion(
+      id: id ?? this.id,
+      debtId: debtId ?? this.debtId,
+      amountCents: amountCents ?? this.amountCents,
+      date: date ?? this.date,
+      note: note ?? this.note,
+      transactionId: transactionId ?? this.transactionId,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (debtId.present) {
+      map['debt_id'] = Variable<int>(debtId.value);
+    }
+    if (amountCents.present) {
+      map['amount_cents'] = Variable<int>(amountCents.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<DateTime>(date.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (transactionId.present) {
+      map['transaction_id'] = Variable<int>(transactionId.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DebtPaymentsCompanion(')
+          ..write('id: $id, ')
+          ..write('debtId: $debtId, ')
+          ..write('amountCents: $amountCents, ')
+          ..write('date: $date, ')
+          ..write('note: $note, ')
+          ..write('transactionId: $transactionId')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4110,6 +5802,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $BalanceSnapshotsTable balanceSnapshots = $BalanceSnapshotsTable(
     this,
   );
+  late final $DividendsTable dividends = $DividendsTable(this);
+  late final $DebtsTable debts = $DebtsTable(this);
+  late final $DebtPaymentsTable debtPayments = $DebtPaymentsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4125,6 +5820,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     metaItems,
     overviewGraphs,
     balanceSnapshots,
+    dividends,
+    debts,
+    debtPayments,
   ];
 }
 
@@ -4134,6 +5832,7 @@ typedef $$CategoriesTableCreateCompanionBuilder =
       required String name,
       required int colorValue,
       required int iconCodepoint,
+      Value<int?> monthlyBudgetCents,
     });
 typedef $$CategoriesTableUpdateCompanionBuilder =
     CategoriesCompanion Function({
@@ -4141,6 +5840,7 @@ typedef $$CategoriesTableUpdateCompanionBuilder =
       Value<String> name,
       Value<int> colorValue,
       Value<int> iconCodepoint,
+      Value<int?> monthlyBudgetCents,
     });
 
 final class $$CategoriesTableReferences
@@ -4234,6 +5934,11 @@ class $$CategoriesTableFilterComposer
 
   ColumnFilters<int> get iconCodepoint => $composableBuilder(
     column: $table.iconCodepoint,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get monthlyBudgetCents => $composableBuilder(
+    column: $table.monthlyBudgetCents,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4341,6 +6046,11 @@ class $$CategoriesTableOrderingComposer
     column: $table.iconCodepoint,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get monthlyBudgetCents => $composableBuilder(
+    column: $table.monthlyBudgetCents,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CategoriesTableAnnotationComposer
@@ -4365,6 +6075,11 @@ class $$CategoriesTableAnnotationComposer
 
   GeneratedColumn<int> get iconCodepoint => $composableBuilder(
     column: $table.iconCodepoint,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get monthlyBudgetCents => $composableBuilder(
+    column: $table.monthlyBudgetCents,
     builder: (column) => column,
   );
 
@@ -4481,11 +6196,13 @@ class $$CategoriesTableTableManager
                 Value<String> name = const Value.absent(),
                 Value<int> colorValue = const Value.absent(),
                 Value<int> iconCodepoint = const Value.absent(),
+                Value<int?> monthlyBudgetCents = const Value.absent(),
               }) => CategoriesCompanion(
                 id: id,
                 name: name,
                 colorValue: colorValue,
                 iconCodepoint: iconCodepoint,
+                monthlyBudgetCents: monthlyBudgetCents,
               ),
           createCompanionCallback:
               ({
@@ -4493,11 +6210,13 @@ class $$CategoriesTableTableManager
                 required String name,
                 required int colorValue,
                 required int iconCodepoint,
+                Value<int?> monthlyBudgetCents = const Value.absent(),
               }) => CategoriesCompanion.insert(
                 id: id,
                 name: name,
                 colorValue: colorValue,
                 iconCodepoint: iconCodepoint,
+                monthlyBudgetCents: monthlyBudgetCents,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -5095,6 +6814,8 @@ typedef $$PotsTableCreateCompanionBuilder =
       required int colorValue,
       required int iconCodepoint,
       Value<int> sortOrder,
+      Value<int?> goalCents,
+      Value<DateTime?> goalDate,
     });
 typedef $$PotsTableUpdateCompanionBuilder =
     PotsCompanion Function({
@@ -5103,6 +6824,8 @@ typedef $$PotsTableUpdateCompanionBuilder =
       Value<int> colorValue,
       Value<int> iconCodepoint,
       Value<int> sortOrder,
+      Value<int?> goalCents,
+      Value<DateTime?> goalDate,
     });
 
 final class $$PotsTableReferences
@@ -5202,6 +6925,16 @@ class $$PotsTableFilterComposer extends Composer<_$AppDatabase, $PotsTable> {
 
   ColumnFilters<int> get sortOrder => $composableBuilder(
     column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get goalCents => $composableBuilder(
+    column: $table.goalCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get goalDate => $composableBuilder(
+    column: $table.goalDate,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5313,6 +7046,16 @@ class $$PotsTableOrderingComposer extends Composer<_$AppDatabase, $PotsTable> {
     column: $table.sortOrder,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get goalCents => $composableBuilder(
+    column: $table.goalCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get goalDate => $composableBuilder(
+    column: $table.goalDate,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$PotsTableAnnotationComposer
@@ -5342,6 +7085,12 @@ class $$PotsTableAnnotationComposer
 
   GeneratedColumn<int> get sortOrder =>
       $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<int> get goalCents =>
+      $composableBuilder(column: $table.goalCents, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get goalDate =>
+      $composableBuilder(column: $table.goalDate, builder: (column) => column);
 
   Expression<T> financeTransactionsRefs<T extends Object>(
     Expression<T> Function($$FinanceTransactionsTableAnnotationComposer a) f,
@@ -5457,12 +7206,16 @@ class $$PotsTableTableManager
                 Value<int> colorValue = const Value.absent(),
                 Value<int> iconCodepoint = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
+                Value<int?> goalCents = const Value.absent(),
+                Value<DateTime?> goalDate = const Value.absent(),
               }) => PotsCompanion(
                 id: id,
                 name: name,
                 colorValue: colorValue,
                 iconCodepoint: iconCodepoint,
                 sortOrder: sortOrder,
+                goalCents: goalCents,
+                goalDate: goalDate,
               ),
           createCompanionCallback:
               ({
@@ -5471,12 +7224,16 @@ class $$PotsTableTableManager
                 required int colorValue,
                 required int iconCodepoint,
                 Value<int> sortOrder = const Value.absent(),
+                Value<int?> goalCents = const Value.absent(),
+                Value<DateTime?> goalDate = const Value.absent(),
               }) => PotsCompanion.insert(
                 id: id,
                 name: name,
                 colorValue: colorValue,
                 iconCodepoint: iconCodepoint,
                 sortOrder: sortOrder,
+                goalCents: goalCents,
+                goalDate: goalDate,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -5674,6 +7431,42 @@ final class $$FinanceTransactionsTableReferences
       manager.$state.copyWith(prefetchedData: [item]),
     );
   }
+
+  static MultiTypedResultKey<$DividendsTable, List<Dividend>>
+  _dividendsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.dividends,
+    aliasName: 'finance_transactions__id__dividends__transaction_id',
+  );
+
+  $$DividendsTableProcessedTableManager get dividendsRefs {
+    final manager = $$DividendsTableTableManager(
+      $_db,
+      $_db.dividends,
+    ).filter((f) => f.transactionId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_dividendsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$DebtPaymentsTable, List<DebtPayment>>
+  _debtPaymentsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.debtPayments,
+    aliasName: 'finance_transactions__id__debt_payments__transaction_id',
+  );
+
+  $$DebtPaymentsTableProcessedTableManager get debtPaymentsRefs {
+    final manager = $$DebtPaymentsTableTableManager(
+      $_db,
+      $_db.debtPayments,
+    ).filter((f) => f.transactionId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_debtPaymentsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$FinanceTransactionsTableFilterComposer
@@ -5783,6 +7576,56 @@ class $$FinanceTransactionsTableFilterComposer
           ),
     );
     return composer;
+  }
+
+  Expression<bool> dividendsRefs(
+    Expression<bool> Function($$DividendsTableFilterComposer f) f,
+  ) {
+    final $$DividendsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.dividends,
+      getReferencedColumn: (t) => t.transactionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DividendsTableFilterComposer(
+            $db: $db,
+            $table: $db.dividends,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> debtPaymentsRefs(
+    Expression<bool> Function($$DebtPaymentsTableFilterComposer f) f,
+  ) {
+    final $$DebtPaymentsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.debtPayments,
+      getReferencedColumn: (t) => t.transactionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DebtPaymentsTableFilterComposer(
+            $db: $db,
+            $table: $db.debtPayments,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
   }
 }
 
@@ -5992,6 +7835,56 @@ class $$FinanceTransactionsTableAnnotationComposer
     );
     return composer;
   }
+
+  Expression<T> dividendsRefs<T extends Object>(
+    Expression<T> Function($$DividendsTableAnnotationComposer a) f,
+  ) {
+    final $$DividendsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.dividends,
+      getReferencedColumn: (t) => t.transactionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DividendsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.dividends,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> debtPaymentsRefs<T extends Object>(
+    Expression<T> Function($$DebtPaymentsTableAnnotationComposer a) f,
+  ) {
+    final $$DebtPaymentsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.debtPayments,
+      getReferencedColumn: (t) => t.transactionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DebtPaymentsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.debtPayments,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$FinanceTransactionsTableTableManager
@@ -6007,7 +7900,13 @@ class $$FinanceTransactionsTableTableManager
           $$FinanceTransactionsTableUpdateCompanionBuilder,
           (FinanceTransaction, $$FinanceTransactionsTableReferences),
           FinanceTransaction,
-          PrefetchHooks Function({bool potId, bool merchantId, bool categoryId})
+          PrefetchHooks Function({
+            bool potId,
+            bool merchantId,
+            bool categoryId,
+            bool dividendsRefs,
+            bool debtPaymentsRefs,
+          })
         > {
   $$FinanceTransactionsTableTableManager(
     _$AppDatabase db,
@@ -6081,10 +7980,19 @@ class $$FinanceTransactionsTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({potId = false, merchantId = false, categoryId = false}) {
+              ({
+                potId = false,
+                merchantId = false,
+                categoryId = false,
+                dividendsRefs = false,
+                debtPaymentsRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
-                  explicitlyWatchedTables: [],
+                  explicitlyWatchedTables: [
+                    if (dividendsRefs) db.dividends,
+                    if (debtPaymentsRefs) db.debtPayments,
+                  ],
                   addJoins:
                       <
                         T extends TableManagerState<
@@ -6150,7 +8058,50 @@ class $$FinanceTransactionsTableTableManager
                         return state;
                       },
                   getPrefetchedDataCallback: (items) async {
-                    return [];
+                    return [
+                      if (dividendsRefs)
+                        await $_getPrefetchedData<
+                          FinanceTransaction,
+                          $FinanceTransactionsTable,
+                          Dividend
+                        >(
+                          currentTable: table,
+                          referencedTable: $$FinanceTransactionsTableReferences
+                              ._dividendsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$FinanceTransactionsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).dividendsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.transactionId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (debtPaymentsRefs)
+                        await $_getPrefetchedData<
+                          FinanceTransaction,
+                          $FinanceTransactionsTable,
+                          DebtPayment
+                        >(
+                          currentTable: table,
+                          referencedTable: $$FinanceTransactionsTableReferences
+                              ._debtPaymentsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$FinanceTransactionsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).debtPaymentsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.transactionId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
                   },
                 );
               },
@@ -6170,7 +8121,13 @@ typedef $$FinanceTransactionsTableProcessedTableManager =
       $$FinanceTransactionsTableUpdateCompanionBuilder,
       (FinanceTransaction, $$FinanceTransactionsTableReferences),
       FinanceTransaction,
-      PrefetchHooks Function({bool potId, bool merchantId, bool categoryId})
+      PrefetchHooks Function({
+        bool potId,
+        bool merchantId,
+        bool categoryId,
+        bool dividendsRefs,
+        bool debtPaymentsRefs,
+      })
     >;
 typedef $$RecurringRulesTableCreateCompanionBuilder =
     RecurringRulesCompanion Function({
@@ -7241,6 +9198,8 @@ typedef $$HoldingsTableCreateCompanionBuilder =
       required int avgCostCents,
       Value<int?> lastPriceCents,
       Value<DateTime?> lastPriceAt,
+      Value<String?> currency,
+      Value<double?> eurPerUnit,
     });
 typedef $$HoldingsTableUpdateCompanionBuilder =
     HoldingsCompanion Function({
@@ -7251,7 +9210,32 @@ typedef $$HoldingsTableUpdateCompanionBuilder =
       Value<int> avgCostCents,
       Value<int?> lastPriceCents,
       Value<DateTime?> lastPriceAt,
+      Value<String?> currency,
+      Value<double?> eurPerUnit,
     });
+
+final class $$HoldingsTableReferences
+    extends BaseReferences<_$AppDatabase, $HoldingsTable, Holding> {
+  $$HoldingsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$DividendsTable, List<Dividend>>
+  _dividendsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.dividends,
+    aliasName: 'holdings__id__dividends__holding_id',
+  );
+
+  $$DividendsTableProcessedTableManager get dividendsRefs {
+    final manager = $$DividendsTableTableManager(
+      $_db,
+      $_db.dividends,
+    ).filter((f) => f.holdingId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_dividendsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
 
 class $$HoldingsTableFilterComposer
     extends Composer<_$AppDatabase, $HoldingsTable> {
@@ -7296,6 +9280,41 @@ class $$HoldingsTableFilterComposer
     column: $table.lastPriceAt,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnFilters<String> get currency => $composableBuilder(
+    column: $table.currency,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get eurPerUnit => $composableBuilder(
+    column: $table.eurPerUnit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> dividendsRefs(
+    Expression<bool> Function($$DividendsTableFilterComposer f) f,
+  ) {
+    final $$DividendsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.dividends,
+      getReferencedColumn: (t) => t.holdingId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DividendsTableFilterComposer(
+            $db: $db,
+            $table: $db.dividends,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$HoldingsTableOrderingComposer
@@ -7341,6 +9360,16 @@ class $$HoldingsTableOrderingComposer
     column: $table.lastPriceAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get currency => $composableBuilder(
+    column: $table.currency,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get eurPerUnit => $composableBuilder(
+    column: $table.eurPerUnit,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$HoldingsTableAnnotationComposer
@@ -7378,6 +9407,39 @@ class $$HoldingsTableAnnotationComposer
     column: $table.lastPriceAt,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get currency =>
+      $composableBuilder(column: $table.currency, builder: (column) => column);
+
+  GeneratedColumn<double> get eurPerUnit => $composableBuilder(
+    column: $table.eurPerUnit,
+    builder: (column) => column,
+  );
+
+  Expression<T> dividendsRefs<T extends Object>(
+    Expression<T> Function($$DividendsTableAnnotationComposer a) f,
+  ) {
+    final $$DividendsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.dividends,
+      getReferencedColumn: (t) => t.holdingId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DividendsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.dividends,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$HoldingsTableTableManager
@@ -7391,9 +9453,9 @@ class $$HoldingsTableTableManager
           $$HoldingsTableAnnotationComposer,
           $$HoldingsTableCreateCompanionBuilder,
           $$HoldingsTableUpdateCompanionBuilder,
-          (Holding, BaseReferences<_$AppDatabase, $HoldingsTable, Holding>),
+          (Holding, $$HoldingsTableReferences),
           Holding,
-          PrefetchHooks Function()
+          PrefetchHooks Function({bool dividendsRefs})
         > {
   $$HoldingsTableTableManager(_$AppDatabase db, $HoldingsTable table)
     : super(
@@ -7415,6 +9477,8 @@ class $$HoldingsTableTableManager
                 Value<int> avgCostCents = const Value.absent(),
                 Value<int?> lastPriceCents = const Value.absent(),
                 Value<DateTime?> lastPriceAt = const Value.absent(),
+                Value<String?> currency = const Value.absent(),
+                Value<double?> eurPerUnit = const Value.absent(),
               }) => HoldingsCompanion(
                 id: id,
                 ticker: ticker,
@@ -7423,6 +9487,8 @@ class $$HoldingsTableTableManager
                 avgCostCents: avgCostCents,
                 lastPriceCents: lastPriceCents,
                 lastPriceAt: lastPriceAt,
+                currency: currency,
+                eurPerUnit: eurPerUnit,
               ),
           createCompanionCallback:
               ({
@@ -7433,6 +9499,8 @@ class $$HoldingsTableTableManager
                 required int avgCostCents,
                 Value<int?> lastPriceCents = const Value.absent(),
                 Value<DateTime?> lastPriceAt = const Value.absent(),
+                Value<String?> currency = const Value.absent(),
+                Value<double?> eurPerUnit = const Value.absent(),
               }) => HoldingsCompanion.insert(
                 id: id,
                 ticker: ticker,
@@ -7441,11 +9509,46 @@ class $$HoldingsTableTableManager
                 avgCostCents: avgCostCents,
                 lastPriceCents: lastPriceCents,
                 lastPriceAt: lastPriceAt,
+                currency: currency,
+                eurPerUnit: eurPerUnit,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$HoldingsTableReferences(db, table, e),
+                ),
+              )
               .toList(),
-          prefetchHooksCallback: null,
+          prefetchHooksCallback: ({dividendsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (dividendsRefs) db.dividends],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (dividendsRefs)
+                    await $_getPrefetchedData<
+                      Holding,
+                      $HoldingsTable,
+                      Dividend
+                    >(
+                      currentTable: table,
+                      referencedTable: $$HoldingsTableReferences
+                          ._dividendsRefsTable(db),
+                      managerFromTypedResult: (p0) => $$HoldingsTableReferences(
+                        db,
+                        table,
+                        p0,
+                      ).dividendsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.holdingId == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
         ),
       );
 }
@@ -7460,9 +9563,9 @@ typedef $$HoldingsTableProcessedTableManager =
       $$HoldingsTableAnnotationComposer,
       $$HoldingsTableCreateCompanionBuilder,
       $$HoldingsTableUpdateCompanionBuilder,
-      (Holding, BaseReferences<_$AppDatabase, $HoldingsTable, Holding>),
+      (Holding, $$HoldingsTableReferences),
       Holding,
-      PrefetchHooks Function()
+      PrefetchHooks Function({bool dividendsRefs})
     >;
 typedef $$MetaItemsTableCreateCompanionBuilder =
     MetaItemsCompanion Function({
@@ -7940,6 +10043,1218 @@ typedef $$BalanceSnapshotsTableProcessedTableManager =
       BalanceSnapshot,
       PrefetchHooks Function()
     >;
+typedef $$DividendsTableCreateCompanionBuilder =
+    DividendsCompanion Function({
+      Value<int> id,
+      Value<int?> holdingId,
+      required String ticker,
+      required int amountCents,
+      required DateTime date,
+      Value<String?> note,
+      Value<int?> transactionId,
+    });
+typedef $$DividendsTableUpdateCompanionBuilder =
+    DividendsCompanion Function({
+      Value<int> id,
+      Value<int?> holdingId,
+      Value<String> ticker,
+      Value<int> amountCents,
+      Value<DateTime> date,
+      Value<String?> note,
+      Value<int?> transactionId,
+    });
+
+final class $$DividendsTableReferences
+    extends BaseReferences<_$AppDatabase, $DividendsTable, Dividend> {
+  $$DividendsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $HoldingsTable _holdingIdTable(_$AppDatabase db) =>
+      db.holdings.createAlias('dividends__holding_id__holdings__id');
+
+  $$HoldingsTableProcessedTableManager? get holdingId {
+    final $_column = $_itemColumn<int>('holding_id');
+    if ($_column == null) return null;
+    final manager = $$HoldingsTableTableManager(
+      $_db,
+      $_db.holdings,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_holdingIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $FinanceTransactionsTable _transactionIdTable(_$AppDatabase db) => db
+      .financeTransactions
+      .createAlias('dividends__transaction_id__finance_transactions__id');
+
+  $$FinanceTransactionsTableProcessedTableManager? get transactionId {
+    final $_column = $_itemColumn<int>('transaction_id');
+    if ($_column == null) return null;
+    final manager = $$FinanceTransactionsTableTableManager(
+      $_db,
+      $_db.financeTransactions,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_transactionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$DividendsTableFilterComposer
+    extends Composer<_$AppDatabase, $DividendsTable> {
+  $$DividendsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ticker => $composableBuilder(
+    column: $table.ticker,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get amountCents => $composableBuilder(
+    column: $table.amountCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$HoldingsTableFilterComposer get holdingId {
+    final $$HoldingsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.holdingId,
+      referencedTable: $db.holdings,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HoldingsTableFilterComposer(
+            $db: $db,
+            $table: $db.holdings,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$FinanceTransactionsTableFilterComposer get transactionId {
+    final $$FinanceTransactionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.transactionId,
+      referencedTable: $db.financeTransactions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FinanceTransactionsTableFilterComposer(
+            $db: $db,
+            $table: $db.financeTransactions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DividendsTableOrderingComposer
+    extends Composer<_$AppDatabase, $DividendsTable> {
+  $$DividendsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ticker => $composableBuilder(
+    column: $table.ticker,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get amountCents => $composableBuilder(
+    column: $table.amountCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$HoldingsTableOrderingComposer get holdingId {
+    final $$HoldingsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.holdingId,
+      referencedTable: $db.holdings,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HoldingsTableOrderingComposer(
+            $db: $db,
+            $table: $db.holdings,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$FinanceTransactionsTableOrderingComposer get transactionId {
+    final $$FinanceTransactionsTableOrderingComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.transactionId,
+          referencedTable: $db.financeTransactions,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$FinanceTransactionsTableOrderingComposer(
+                $db: $db,
+                $table: $db.financeTransactions,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+}
+
+class $$DividendsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DividendsTable> {
+  $$DividendsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get ticker =>
+      $composableBuilder(column: $table.ticker, builder: (column) => column);
+
+  GeneratedColumn<int> get amountCents => $composableBuilder(
+    column: $table.amountCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  $$HoldingsTableAnnotationComposer get holdingId {
+    final $$HoldingsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.holdingId,
+      referencedTable: $db.holdings,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HoldingsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.holdings,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$FinanceTransactionsTableAnnotationComposer get transactionId {
+    final $$FinanceTransactionsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.transactionId,
+          referencedTable: $db.financeTransactions,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$FinanceTransactionsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.financeTransactions,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+}
+
+class $$DividendsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DividendsTable,
+          Dividend,
+          $$DividendsTableFilterComposer,
+          $$DividendsTableOrderingComposer,
+          $$DividendsTableAnnotationComposer,
+          $$DividendsTableCreateCompanionBuilder,
+          $$DividendsTableUpdateCompanionBuilder,
+          (Dividend, $$DividendsTableReferences),
+          Dividend,
+          PrefetchHooks Function({bool holdingId, bool transactionId})
+        > {
+  $$DividendsTableTableManager(_$AppDatabase db, $DividendsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DividendsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DividendsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DividendsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int?> holdingId = const Value.absent(),
+                Value<String> ticker = const Value.absent(),
+                Value<int> amountCents = const Value.absent(),
+                Value<DateTime> date = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<int?> transactionId = const Value.absent(),
+              }) => DividendsCompanion(
+                id: id,
+                holdingId: holdingId,
+                ticker: ticker,
+                amountCents: amountCents,
+                date: date,
+                note: note,
+                transactionId: transactionId,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int?> holdingId = const Value.absent(),
+                required String ticker,
+                required int amountCents,
+                required DateTime date,
+                Value<String?> note = const Value.absent(),
+                Value<int?> transactionId = const Value.absent(),
+              }) => DividendsCompanion.insert(
+                id: id,
+                holdingId: holdingId,
+                ticker: ticker,
+                amountCents: amountCents,
+                date: date,
+                note: note,
+                transactionId: transactionId,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$DividendsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({holdingId = false, transactionId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (holdingId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.holdingId,
+                                referencedTable: $$DividendsTableReferences
+                                    ._holdingIdTable(db),
+                                referencedColumn: $$DividendsTableReferences
+                                    ._holdingIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+                    if (transactionId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.transactionId,
+                                referencedTable: $$DividendsTableReferences
+                                    ._transactionIdTable(db),
+                                referencedColumn: $$DividendsTableReferences
+                                    ._transactionIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$DividendsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DividendsTable,
+      Dividend,
+      $$DividendsTableFilterComposer,
+      $$DividendsTableOrderingComposer,
+      $$DividendsTableAnnotationComposer,
+      $$DividendsTableCreateCompanionBuilder,
+      $$DividendsTableUpdateCompanionBuilder,
+      (Dividend, $$DividendsTableReferences),
+      Dividend,
+      PrefetchHooks Function({bool holdingId, bool transactionId})
+    >;
+typedef $$DebtsTableCreateCompanionBuilder =
+    DebtsCompanion Function({
+      Value<int> id,
+      required String name,
+      required DebtDirection direction,
+      required int principalCents,
+      Value<int> interestBps,
+      Value<int> monthlyPaymentCents,
+      required DateTime startDate,
+      Value<String?> note,
+    });
+typedef $$DebtsTableUpdateCompanionBuilder =
+    DebtsCompanion Function({
+      Value<int> id,
+      Value<String> name,
+      Value<DebtDirection> direction,
+      Value<int> principalCents,
+      Value<int> interestBps,
+      Value<int> monthlyPaymentCents,
+      Value<DateTime> startDate,
+      Value<String?> note,
+    });
+
+final class $$DebtsTableReferences
+    extends BaseReferences<_$AppDatabase, $DebtsTable, Debt> {
+  $$DebtsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$DebtPaymentsTable, List<DebtPayment>>
+  _debtPaymentsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.debtPayments,
+    aliasName: 'debts__id__debt_payments__debt_id',
+  );
+
+  $$DebtPaymentsTableProcessedTableManager get debtPaymentsRefs {
+    final manager = $$DebtPaymentsTableTableManager(
+      $_db,
+      $_db.debtPayments,
+    ).filter((f) => f.debtId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_debtPaymentsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$DebtsTableFilterComposer extends Composer<_$AppDatabase, $DebtsTable> {
+  $$DebtsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<DebtDirection, DebtDirection, String>
+  get direction => $composableBuilder(
+    column: $table.direction,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<int> get principalCents => $composableBuilder(
+    column: $table.principalCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get interestBps => $composableBuilder(
+    column: $table.interestBps,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get monthlyPaymentCents => $composableBuilder(
+    column: $table.monthlyPaymentCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startDate => $composableBuilder(
+    column: $table.startDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> debtPaymentsRefs(
+    Expression<bool> Function($$DebtPaymentsTableFilterComposer f) f,
+  ) {
+    final $$DebtPaymentsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.debtPayments,
+      getReferencedColumn: (t) => t.debtId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DebtPaymentsTableFilterComposer(
+            $db: $db,
+            $table: $db.debtPayments,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$DebtsTableOrderingComposer
+    extends Composer<_$AppDatabase, $DebtsTable> {
+  $$DebtsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get direction => $composableBuilder(
+    column: $table.direction,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get principalCents => $composableBuilder(
+    column: $table.principalCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get interestBps => $composableBuilder(
+    column: $table.interestBps,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get monthlyPaymentCents => $composableBuilder(
+    column: $table.monthlyPaymentCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get startDate => $composableBuilder(
+    column: $table.startDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DebtsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DebtsTable> {
+  $$DebtsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<DebtDirection, String> get direction =>
+      $composableBuilder(column: $table.direction, builder: (column) => column);
+
+  GeneratedColumn<int> get principalCents => $composableBuilder(
+    column: $table.principalCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get interestBps => $composableBuilder(
+    column: $table.interestBps,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get monthlyPaymentCents => $composableBuilder(
+    column: $table.monthlyPaymentCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get startDate =>
+      $composableBuilder(column: $table.startDate, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  Expression<T> debtPaymentsRefs<T extends Object>(
+    Expression<T> Function($$DebtPaymentsTableAnnotationComposer a) f,
+  ) {
+    final $$DebtPaymentsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.debtPayments,
+      getReferencedColumn: (t) => t.debtId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DebtPaymentsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.debtPayments,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$DebtsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DebtsTable,
+          Debt,
+          $$DebtsTableFilterComposer,
+          $$DebtsTableOrderingComposer,
+          $$DebtsTableAnnotationComposer,
+          $$DebtsTableCreateCompanionBuilder,
+          $$DebtsTableUpdateCompanionBuilder,
+          (Debt, $$DebtsTableReferences),
+          Debt,
+          PrefetchHooks Function({bool debtPaymentsRefs})
+        > {
+  $$DebtsTableTableManager(_$AppDatabase db, $DebtsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DebtsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DebtsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DebtsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<DebtDirection> direction = const Value.absent(),
+                Value<int> principalCents = const Value.absent(),
+                Value<int> interestBps = const Value.absent(),
+                Value<int> monthlyPaymentCents = const Value.absent(),
+                Value<DateTime> startDate = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+              }) => DebtsCompanion(
+                id: id,
+                name: name,
+                direction: direction,
+                principalCents: principalCents,
+                interestBps: interestBps,
+                monthlyPaymentCents: monthlyPaymentCents,
+                startDate: startDate,
+                note: note,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String name,
+                required DebtDirection direction,
+                required int principalCents,
+                Value<int> interestBps = const Value.absent(),
+                Value<int> monthlyPaymentCents = const Value.absent(),
+                required DateTime startDate,
+                Value<String?> note = const Value.absent(),
+              }) => DebtsCompanion.insert(
+                id: id,
+                name: name,
+                direction: direction,
+                principalCents: principalCents,
+                interestBps: interestBps,
+                monthlyPaymentCents: monthlyPaymentCents,
+                startDate: startDate,
+                note: note,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) =>
+                    (e.readTable(table), $$DebtsTableReferences(db, table, e)),
+              )
+              .toList(),
+          prefetchHooksCallback: ({debtPaymentsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (debtPaymentsRefs) db.debtPayments],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (debtPaymentsRefs)
+                    await $_getPrefetchedData<Debt, $DebtsTable, DebtPayment>(
+                      currentTable: table,
+                      referencedTable: $$DebtsTableReferences
+                          ._debtPaymentsRefsTable(db),
+                      managerFromTypedResult: (p0) => $$DebtsTableReferences(
+                        db,
+                        table,
+                        p0,
+                      ).debtPaymentsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.debtId == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$DebtsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DebtsTable,
+      Debt,
+      $$DebtsTableFilterComposer,
+      $$DebtsTableOrderingComposer,
+      $$DebtsTableAnnotationComposer,
+      $$DebtsTableCreateCompanionBuilder,
+      $$DebtsTableUpdateCompanionBuilder,
+      (Debt, $$DebtsTableReferences),
+      Debt,
+      PrefetchHooks Function({bool debtPaymentsRefs})
+    >;
+typedef $$DebtPaymentsTableCreateCompanionBuilder =
+    DebtPaymentsCompanion Function({
+      Value<int> id,
+      required int debtId,
+      required int amountCents,
+      required DateTime date,
+      Value<String?> note,
+      Value<int?> transactionId,
+    });
+typedef $$DebtPaymentsTableUpdateCompanionBuilder =
+    DebtPaymentsCompanion Function({
+      Value<int> id,
+      Value<int> debtId,
+      Value<int> amountCents,
+      Value<DateTime> date,
+      Value<String?> note,
+      Value<int?> transactionId,
+    });
+
+final class $$DebtPaymentsTableReferences
+    extends BaseReferences<_$AppDatabase, $DebtPaymentsTable, DebtPayment> {
+  $$DebtPaymentsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $DebtsTable _debtIdTable(_$AppDatabase db) =>
+      db.debts.createAlias('debt_payments__debt_id__debts__id');
+
+  $$DebtsTableProcessedTableManager get debtId {
+    final $_column = $_itemColumn<int>('debt_id')!;
+
+    final manager = $$DebtsTableTableManager(
+      $_db,
+      $_db.debts,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_debtIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $FinanceTransactionsTable _transactionIdTable(_$AppDatabase db) => db
+      .financeTransactions
+      .createAlias('debt_payments__transaction_id__finance_transactions__id');
+
+  $$FinanceTransactionsTableProcessedTableManager? get transactionId {
+    final $_column = $_itemColumn<int>('transaction_id');
+    if ($_column == null) return null;
+    final manager = $$FinanceTransactionsTableTableManager(
+      $_db,
+      $_db.financeTransactions,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_transactionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$DebtPaymentsTableFilterComposer
+    extends Composer<_$AppDatabase, $DebtPaymentsTable> {
+  $$DebtPaymentsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get amountCents => $composableBuilder(
+    column: $table.amountCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$DebtsTableFilterComposer get debtId {
+    final $$DebtsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.debtId,
+      referencedTable: $db.debts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DebtsTableFilterComposer(
+            $db: $db,
+            $table: $db.debts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$FinanceTransactionsTableFilterComposer get transactionId {
+    final $$FinanceTransactionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.transactionId,
+      referencedTable: $db.financeTransactions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FinanceTransactionsTableFilterComposer(
+            $db: $db,
+            $table: $db.financeTransactions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DebtPaymentsTableOrderingComposer
+    extends Composer<_$AppDatabase, $DebtPaymentsTable> {
+  $$DebtPaymentsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get amountCents => $composableBuilder(
+    column: $table.amountCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$DebtsTableOrderingComposer get debtId {
+    final $$DebtsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.debtId,
+      referencedTable: $db.debts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DebtsTableOrderingComposer(
+            $db: $db,
+            $table: $db.debts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$FinanceTransactionsTableOrderingComposer get transactionId {
+    final $$FinanceTransactionsTableOrderingComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.transactionId,
+          referencedTable: $db.financeTransactions,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$FinanceTransactionsTableOrderingComposer(
+                $db: $db,
+                $table: $db.financeTransactions,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+}
+
+class $$DebtPaymentsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DebtPaymentsTable> {
+  $$DebtPaymentsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get amountCents => $composableBuilder(
+    column: $table.amountCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  $$DebtsTableAnnotationComposer get debtId {
+    final $$DebtsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.debtId,
+      referencedTable: $db.debts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DebtsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.debts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$FinanceTransactionsTableAnnotationComposer get transactionId {
+    final $$FinanceTransactionsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.transactionId,
+          referencedTable: $db.financeTransactions,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$FinanceTransactionsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.financeTransactions,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+}
+
+class $$DebtPaymentsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DebtPaymentsTable,
+          DebtPayment,
+          $$DebtPaymentsTableFilterComposer,
+          $$DebtPaymentsTableOrderingComposer,
+          $$DebtPaymentsTableAnnotationComposer,
+          $$DebtPaymentsTableCreateCompanionBuilder,
+          $$DebtPaymentsTableUpdateCompanionBuilder,
+          (DebtPayment, $$DebtPaymentsTableReferences),
+          DebtPayment,
+          PrefetchHooks Function({bool debtId, bool transactionId})
+        > {
+  $$DebtPaymentsTableTableManager(_$AppDatabase db, $DebtPaymentsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DebtPaymentsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DebtPaymentsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DebtPaymentsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> debtId = const Value.absent(),
+                Value<int> amountCents = const Value.absent(),
+                Value<DateTime> date = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<int?> transactionId = const Value.absent(),
+              }) => DebtPaymentsCompanion(
+                id: id,
+                debtId: debtId,
+                amountCents: amountCents,
+                date: date,
+                note: note,
+                transactionId: transactionId,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int debtId,
+                required int amountCents,
+                required DateTime date,
+                Value<String?> note = const Value.absent(),
+                Value<int?> transactionId = const Value.absent(),
+              }) => DebtPaymentsCompanion.insert(
+                id: id,
+                debtId: debtId,
+                amountCents: amountCents,
+                date: date,
+                note: note,
+                transactionId: transactionId,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$DebtPaymentsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({debtId = false, transactionId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (debtId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.debtId,
+                                referencedTable: $$DebtPaymentsTableReferences
+                                    ._debtIdTable(db),
+                                referencedColumn: $$DebtPaymentsTableReferences
+                                    ._debtIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+                    if (transactionId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.transactionId,
+                                referencedTable: $$DebtPaymentsTableReferences
+                                    ._transactionIdTable(db),
+                                referencedColumn: $$DebtPaymentsTableReferences
+                                    ._transactionIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$DebtPaymentsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DebtPaymentsTable,
+      DebtPayment,
+      $$DebtPaymentsTableFilterComposer,
+      $$DebtPaymentsTableOrderingComposer,
+      $$DebtPaymentsTableAnnotationComposer,
+      $$DebtPaymentsTableCreateCompanionBuilder,
+      $$DebtPaymentsTableUpdateCompanionBuilder,
+      (DebtPayment, $$DebtPaymentsTableReferences),
+      DebtPayment,
+      PrefetchHooks Function({bool debtId, bool transactionId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -7963,4 +11278,10 @@ class $AppDatabaseManager {
       $$OverviewGraphsTableTableManager(_db, _db.overviewGraphs);
   $$BalanceSnapshotsTableTableManager get balanceSnapshots =>
       $$BalanceSnapshotsTableTableManager(_db, _db.balanceSnapshots);
+  $$DividendsTableTableManager get dividends =>
+      $$DividendsTableTableManager(_db, _db.dividends);
+  $$DebtsTableTableManager get debts =>
+      $$DebtsTableTableManager(_db, _db.debts);
+  $$DebtPaymentsTableTableManager get debtPayments =>
+      $$DebtPaymentsTableTableManager(_db, _db.debtPayments);
 }

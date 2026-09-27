@@ -15,6 +15,7 @@ import 'luma_pet_panel.dart';
 import 'pet_repository.dart';
 import 'pet_scope.dart';
 import 'pet_search.dart';
+import 'pet_window_lifecycle.dart';
 import 'pet_window_protocol.dart';
 
 /// Boots the secondary Flutter engine used only by the desktop pet window.
@@ -22,16 +23,23 @@ Future<void> runPetWindow(
   WindowController controller,
   Map<String, dynamic> arguments,
 ) async {
+  var closing = false;
   await controller.setWindowMethodHandler((call) async {
     if (call.method != petWindowMethodClose) {
       throw MissingPluginException('Unknown pet window method ${call.method}');
     }
-    try {
-      await windowManager.setPreventClose(false);
-      await windowManager.destroy();
-    } catch (_) {
-      await controller.hide();
-    }
+    if (closing) return;
+    closing = true;
+    closePetWindowAfterReply(() async {
+      try {
+        await windowManager.setPreventClose(false);
+        await windowManager.destroy();
+      } catch (_) {
+        try {
+          await controller.hide();
+        } catch (_) {}
+      }
+    });
   });
 
   try {

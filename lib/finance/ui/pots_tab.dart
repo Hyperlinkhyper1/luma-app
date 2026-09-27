@@ -7,7 +7,10 @@ import '../finance_repository.dart';
 import '../finance_scope.dart';
 import '../logic/finance_logic.dart';
 import '../logic/money.dart';
+import '../logic/planning.dart';
+import 'finance_form.dart';
 import 'lookups.dart';
+import 'planning_cards.dart';
 import 'pot_detail_page.dart';
 
 const _potColors = <int>[
@@ -234,6 +237,15 @@ class _PotCard extends StatelessWidget {
                   fontWeight: FontWeight.w800,
                 ),
               ),
+              if (goalProgress(pot, balanceCents, DateTime.now())
+                  case final goal?) ...[
+                const SizedBox(height: 12),
+                PotGoalBar(
+                  progress: goal,
+                  color: Color(pot.colorValue),
+                  now: DateTime.now(),
+                ),
+              ],
             ],
           ),
         ),
@@ -374,23 +386,41 @@ class _PotEditorState extends State<_PotEditor> {
   );
   late int _color = widget.pot?.colorValue ?? _potColors.first;
   late int _icon = widget.pot?.iconCodepoint ?? _potIcons.first;
+  late final TextEditingController _goal = TextEditingController(
+    text: widget.pot?.goalCents == null
+        ? ''
+        : (widget.pot!.goalCents! / 100)
+              .toStringAsFixed(2)
+              .replaceAll('.', ','),
+  );
+  late DateTime? _goalDate = widget.pot?.goalDate;
+  String? _error;
 
   @override
   void dispose() {
     _name.dispose();
+    _goal.dispose();
     super.dispose();
   }
 
   Future<void> _save() async {
     final name = _name.text.trim();
     if (name.isEmpty) return;
+    final goalText = _goal.text.trim();
+    final goal = goalText.isEmpty ? null : parseToCents(goalText);
+    if (goalText.isNotEmpty && (goal == null || goal <= 0)) {
+      setState(() => _error = 'The goal has to be an amount above €0.');
+      return;
+    }
+    final int potId;
     if (widget.pot == null) {
-      await widget.repo.createPot(
+      potId = await widget.repo.createPot(
         name: name,
         colorValue: _color,
         iconCodepoint: _icon,
       );
     } else {
+      potId = widget.pot!.id;
       await widget.repo.updatePot(
         widget.pot!.copyWith(
           name: name,
@@ -399,13 +429,14 @@ class _PotEditorState extends State<_PotEditor> {
         ),
       );
     }
+    await widget.repo.setPotGoal(potId, goalCents: goal, goalDate: _goalDate);
     if (mounted) Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(22),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -501,6 +532,35 @@ class _PotEditorState extends State<_PotEditor> {
                 ),
             ],
           ),
+          const SizedBox(height: 18),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: FinanceField(
+                  label: 'Savings goal (optional)',
+                  controller: _goal,
+                  hint: 'No goal',
+                  prefix: '€ ',
+                  number: true,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FinanceDateField(
+                  label: 'Reach it by',
+                  date: _goalDate,
+                  placeholder: 'Any time',
+                  onChanged: (d) => setState(() => _goalDate = d),
+                  onClear: () => setState(() => _goalDate = null),
+                ),
+              ),
+            ],
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 10),
+            Text(_error!, style: TextStyle(color: luma.danger, fontSize: 13)),
+          ],
           const SizedBox(height: 22),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,

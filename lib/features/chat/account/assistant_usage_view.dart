@@ -60,6 +60,8 @@ class _AssistantUsageViewState extends State<AssistantUsageView> {
             status.weeklyPct / 100,
             if (status.supportLimit > 0)
               status.supportUsed / status.supportLimit,
+            if (status.webSearchLimit > 0)
+              status.webSearchUsed / status.webSearchLimit,
           ],
         ];
         final peak = fractions.fold<double>(0, (a, b) => b > a ? b : a);
@@ -128,6 +130,22 @@ class _AssistantUsageViewState extends State<AssistantUsageView> {
                     trailing: t.assistantMessagesOf(
                       status.supportUsed,
                       status.supportLimit,
+                    ),
+                  ),
+                ],
+              ),
+            if (status != null && status.webSearchLimit > 0)
+              _Group(
+                title: t.assistantUsageLumaAssistant,
+                subtitle: t.assistantUsageLumaAssistantSubtitle,
+                children: [
+                  _UsageRow(
+                    label: t.assistantUsageWebSearch,
+                    caption: t.assistantUsageRollingWeek,
+                    fraction: status.webSearchUsed / status.webSearchLimit,
+                    trailing: t.assistantUsageCountOf(
+                      status.webSearchUsed,
+                      status.webSearchLimit,
                     ),
                   ),
                 ],

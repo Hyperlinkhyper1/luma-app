@@ -42,6 +42,7 @@ import '../features/plugins/installed/qr_code_generator/qr_code_generator_page.d
 import '../features/plugins/installed/machine_learning/machine_learning_page.dart';
 import '../features/plugins/installed/mind_map/mind_map_page.dart';
 import '../features/plugins/installed/whiteboard/whiteboard_page.dart';
+import '../features/plugins/installed/free_sketch/free_sketch_page.dart';
 import '../features/plugins/installed/school/school_page.dart';
 import '../features/plugins/installed/secure_chat/secure_chat_page.dart';
 import '../features/plugins/installed/sftp/sftp_page.dart';
@@ -68,6 +69,7 @@ import '../pet/pet_repository.dart';
 import '../pet/pet_scope.dart';
 import '../pet/pet_search.dart';
 import '../pet/pet_summon_button.dart';
+import '../pet/pet_window_lifecycle.dart';
 import '../pet/pet_window_protocol.dart';
 import 'server_account_gate.dart';
 import '../settings/settings_controller.dart';
@@ -149,7 +151,7 @@ class _AppShellState extends State<AppShell> {
     }
     final window = _petWindow;
     if (window != null) {
-      unawaited(window.invokeMethod<void>(petWindowMethodClose));
+      unawaited(_closePetWindowController(window));
     }
     super.dispose();
   }
@@ -213,6 +215,10 @@ class _AppShellState extends State<AppShell> {
     final window = _petWindow;
     _petWindow = null;
     if (window == null) return;
+    await _closePetWindowController(window);
+  }
+
+  Future<void> _closePetWindowController(WindowController window) async {
     try {
       await window.invokeMethod<void>(petWindowMethodClose);
     } catch (_) {}
@@ -243,8 +249,19 @@ class _AppShellState extends State<AppShell> {
         }
         await windowShow();
       case petMethodDismiss:
-        if (call.arguments == true) await windowShow();
-        await pet.close(navigating: call.arguments == true);
+        final window = _petWindow;
+        await dismissPetWindowFromChild(
+          detachWindow: () {
+            if (identical(_petWindow, window)) _petWindow = null;
+          },
+          dismissPet: () async {
+            if (call.arguments == true) await windowShow();
+            await pet.close(navigating: call.arguments == true);
+          },
+          closeWindow: () async {
+            if (window != null) await _closePetWindowController(window);
+          },
+        );
       case petMethodAutoClicker:
         return _handleAutoClickerCommand(
           Map<String, dynamic>.from(call.arguments as Map? ?? const {}),
@@ -718,6 +735,7 @@ class _AppShellState extends State<AppShell> {
     'school' => const SchoolPage(),
     'mind-map' => const MindMapPage(),
     'whiteboard' => const WhiteboardPage(),
+    'free-sketch' => const FreeSketchPage(),
     'machine-learning' => const MachineLearningPage(),
     'auto-clicker' => const AutoClickerPage(),
     'usage' => const UsagePage(),

@@ -15,12 +15,18 @@ enum Cadence { weekly, monthly }
 /// How an allocation rule computes its amount.
 enum AllocMode { fixed, percent }
 
+/// Which way a debt runs: money the user owes, or money owed to the user.
+enum DebtDirection { owe, owed }
+
 /// Spending tags (groceries, clothing, ...). Carried by merchants and entries.
 class Categories extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text().withLength(min: 1, max: 60)();
   IntColumn get colorValue => integer()();
   IntColumn get iconCodepoint => integer()();
+
+  /// Monthly spending limit for this category, or null for no budget.
+  IntColumn get monthlyBudgetCents => integer().nullable()();
 }
 
 /// Known companies/shops the user spends money at.
@@ -38,6 +44,12 @@ class Pots extends Table {
   IntColumn get colorValue => integer()();
   IntColumn get iconCodepoint => integer()();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+
+  /// Savings target for this pot, or null when it has no goal.
+  IntColumn get goalCents => integer().nullable()();
+
+  /// Optional date the goal should be reached by.
+  DateTimeColumn get goalDate => dateTime().nullable()();
 }
 
 /// Every movement of money. Amount is a positive magnitude in cents; [kind]
@@ -100,6 +112,64 @@ class Holdings extends Table {
   IntColumn get avgCostCents => integer()();
   IntColumn get lastPriceCents => integer().nullable()();
   DateTimeColumn get lastPriceAt => dateTime().nullable()();
+
+  /// Currency the quote is priced in, as the quote source reports it
+  /// ("USD", "GBp" for pence). Null means it was never reported and the
+  /// holding is treated as EUR.
+  TextColumn get currency => text().nullable()();
+
+  /// Euros per one unit of [currency] at the last price update, so values
+  /// convert without a network call. Null when no rate could be fetched.
+  RealColumn get eurPerUnit => real().nullable()();
+}
+
+/// A dividend payout received for a holding, in euros.
+class Dividends extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get holdingId => integer().nullable().references(Holdings, #id)();
+
+  /// Kept alongside [holdingId] so the history still reads after the
+  /// holding itself is sold and deleted.
+  TextColumn get ticker => text().withLength(min: 1, max: 20)();
+  IntColumn get amountCents => integer()();
+  DateTimeColumn get date => dateTime()();
+  TextColumn get note => text().nullable()();
+
+  /// The income entry booked for this dividend, if it was added to the
+  /// main balance, so deleting the dividend can remove it too.
+  IntColumn get transactionId =>
+      integer().nullable().references(FinanceTransactions, #id)();
+}
+
+/// A loan or IOU. Its outstanding balance is [principalCents] minus the sum
+/// of its [DebtPayments].
+class Debts extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text().withLength(min: 1, max: 80)();
+  TextColumn get direction => textEnum<DebtDirection>()();
+  IntColumn get principalCents => integer()();
+
+  /// Yearly interest in basis points (4.5% = 450). Only used to project the
+  /// payoff date; the balance itself is corrected with adjustments.
+  IntColumn get interestBps => integer().withDefault(const Constant(0))();
+  IntColumn get monthlyPaymentCents =>
+      integer().withDefault(const Constant(0))();
+  DateTimeColumn get startDate => dateTime()();
+  TextColumn get note => text().nullable()();
+}
+
+/// A repayment against a [Debts] row. Positive amounts pay the balance down;
+/// a balance adjustment may be negative (interest added, extra borrowing).
+class DebtPayments extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get debtId => integer().references(Debts, #id)();
+  IntColumn get amountCents => integer()();
+  DateTimeColumn get date => dateTime()();
+  TextColumn get note => text().nullable()();
+
+  /// The ledger entry booked for this payment, if any.
+  IntColumn get transactionId =>
+      integer().nullable().references(FinanceTransactions, #id)();
 }
 
 /// Simple key/value store for app-level state (e.g. last distribution run).
@@ -147,6 +217,9 @@ class OverviewGraphs extends Table {
     MetaItems,
     OverviewGraphs,
     BalanceSnapshots,
+    Dividends,
+    Debts,
+    DebtPayments,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -163,7 +236,7 @@ class AppDatabase extends _$AppDatabase {
             ));
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -183,6 +256,16 @@ class AppDatabase extends _$AppDatabase {
           if (from < 4) {
             await m.addColumn(
                 recurringRules, recurringRules.reminderDaysBefore);
+          }
+          if (from < 5) {
+            await m.addColumn(categories, categories.monthlyBudgetCents);
+            await m.addColumn(pots, pots.goalCents);
+            await m.addColumn(pots, pots.goalDate);
+            await m.addColumn(holdings, holdings.currency);
+            await m.addColumn(holdings, holdings.eurPerUnit);
+            await m.createTable(dividends);
+            await m.createTable(debts);
+            await m.createTable(debtPayments);
           }
         },
       );

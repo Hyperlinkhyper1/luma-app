@@ -221,6 +221,16 @@
   "assistantUsageRollingFiveHours": "Fenêtre glissante de 5 heures",
   "assistantUsageThisWeek": "Cette semaine",
   "assistantUsageRollingWeek": "Fenêtre glissante de 7 jours",
+  "assistantUsageLumaAssistant": "Luma Assistant",
+  "assistantUsageLumaAssistantSubtitle": "Modèle Qwen sur l’appareil",
+  "assistantUsageWebSearch": "Recherches Web",
+  "assistantUsageCountOf": "{used} sur {limit}",
+  "@assistantUsageCountOf": {
+    "placeholders": {
+      "used": { "type": "int" },
+      "limit": { "type": "int" }
+    }
+  },
   "assistantUsagePercentUsed": "{percent} % utilisé",
   "assistantUsageLumaSupport": "Luma Support",
   "assistantUsageResetsDaily": "Réinitialisé à minuit",

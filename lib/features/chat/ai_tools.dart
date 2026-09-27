@@ -1,11 +1,13 @@
 import 'dart:convert';
 
+import '../../finance/finance_repository.dart';
 import '../notes/notes_repository.dart';
 import '../plugins/plugin_catalog_service.dart';
 import '../plugins/plugin_repository.dart';
 import '../plugins/installed/calendar/calendar_repository.dart';
 import '../plugins/installed/qr_code_generator/qr_code_repository.dart';
 import '../plugins/installed/steam_tools/cs2_market_repository.dart';
+import 'finance_ai_tools.dart';
 import 'memory/assistant_memory_repository.dart';
 import 'providers/ai_client.dart';
 import 'web_search_client.dart';
@@ -18,6 +20,7 @@ class AiToolRegistry {
     required CalendarRepository calendarRepository,
     required NotesRepository notesRepository,
     required Cs2MarketRepository cs2MarketRepository,
+    required FinanceRepository financeRepository,
     required void Function(String destination) navigate,
     AssistantMemoryRepository? memory,
     this.webSearch,
@@ -27,6 +30,7 @@ class AiToolRegistry {
         _calendarRepository = calendarRepository,
         _notesRepository = notesRepository,
         _cs2MarketRepository = cs2MarketRepository,
+        _financeTools = FinanceAiTools(financeRepository),
         _navigate = navigate;
 
   final PluginRepository _pluginRepository;
@@ -34,6 +38,7 @@ class AiToolRegistry {
   final CalendarRepository _calendarRepository;
   final NotesRepository _notesRepository;
   final Cs2MarketRepository _cs2MarketRepository;
+  final FinanceAiTools _financeTools;
   final void Function(String destination) _navigate;
 
   /// Where the `remember` tool writes; the tool is only offered while
@@ -43,8 +48,15 @@ class AiToolRegistry {
 
   static const _qrPluginId = 'qr-code-generator';
 
-  List<AiToolDefinition> get schemas => [
-        if (webSearch?.available ?? false)
+  List<AiToolDefinition> get schemas => _schemas(includeWebSearch: false);
+
+  /// Tools available to the on-device Luma Assistant, including web search.
+  List<AiToolDefinition> get localAssistantSchemas =>
+      _schemas(includeWebSearch: true);
+
+  List<AiToolDefinition> _schemas({required bool includeWebSearch}) => [
+        ...FinanceAiTools.schemas,
+        if (includeWebSearch && (webSearch?.available ?? false))
           const AiToolDefinition(
             name: 'web_search',
             description: 'Search the web for current or uncertain facts. Use the returned titles, URLs and snippets as sources; cite URLs in the answer and say when results are insufficient.',
@@ -143,6 +155,9 @@ class AiToolRegistry {
 
   Future<Map<String, dynamic>> execute(String name, Map<String, dynamic> input) async {
     try {
+      if (FinanceAiTools.names.contains(name)) {
+        return await _financeTools.execute(name, input);
+      }
       switch (name) {
         case 'web_search':
           final query = (input['query'] as String? ?? '').trim();

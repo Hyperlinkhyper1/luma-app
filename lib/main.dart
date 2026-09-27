@@ -91,6 +91,8 @@ import 'features/plugins/installed/whiteboard/data/whiteboard_database.dart'
     show WhiteboardDatabase;
 import 'features/plugins/installed/whiteboard/whiteboard_repository.dart';
 import 'features/plugins/installed/whiteboard/whiteboard_scope.dart';
+import 'features/plugins/installed/free_sketch/free_sketch_repository.dart';
+import 'features/plugins/installed/free_sketch/free_sketch_scope.dart';
 import 'features/plugins/installed/usage/data/usage_database.dart';
 import 'features/plugins/installed/usage/usage_repository.dart';
 import 'features/plugins/installed/usage/usage_scope.dart';
@@ -266,6 +268,10 @@ class _LumaAppState extends State<LumaApp> {
   late final WhiteboardRepository _whiteboardRepository = WhiteboardRepository(
     _whiteboardDb,
   );
+  // Free Sketch keeps its artwork as plain files — layer PNGs are far too
+  // large for a database row or a sync snapshot — so there is no DB here.
+  late final FreeSketchRepository _freeSketchRepository =
+      FreeSketchRepository();
   late final AutoClickerRepository _autoClickerRepository =
       AutoClickerRepository();
   late final UsageDatabase _usageDb = UsageDatabase();
@@ -872,7 +878,9 @@ class _LumaAppState extends State<LumaApp> {
                                                                                                 repository: _mcContentRepository,
                                                                                                 child: YoutubeScope(
                                                                                                   repository: _youtubeRepository,
-                                                                                                  child: WhiteboardScope(
+                                                                                                  child: FreeSketchScope(
+                                                                                                    repository: _freeSketchRepository,
+                                                                                                    child: WhiteboardScope(
                                                                                                     repository: _whiteboardRepository,
                                                                                                     child: ListenableBuilder(
                                                                                                       listenable: widget.settings,
@@ -916,6 +924,7 @@ class _LumaAppState extends State<LumaApp> {
                                                                                                               ),
                                                                                                             );
                                                                                                           },
+                                                                                                    ),
                                                                                                     ),
                                                                                                   ),
                                                                                                 ),

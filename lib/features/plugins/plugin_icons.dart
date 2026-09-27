@@ -87,6 +87,8 @@ IconData pluginIconFor(String? name) {
       return Icons.flight_rounded;
     case 'draw':
       return Icons.draw_rounded;
+    case 'brush':
+      return Icons.brush_rounded;
     default:
       return Icons.extension_rounded;
   }

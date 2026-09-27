@@ -57,9 +57,19 @@ class WebSearchClient {
           )
           .timeout(const Duration(seconds: 12));
       if (response.statusCode != 200) {
+        String? message;
+        try {
+          final body = jsonDecode(response.body);
+          if (body is Map && body['message'] is String) {
+            message = body['message'] as String;
+          }
+        } catch (_) {}
         return {
-          'status': 'unavailable',
-          'message': 'Web search is unavailable (${response.statusCode}).',
+          'status': response.statusCode == 429
+              ? 'limit_reached'
+              : 'unavailable',
+          'message':
+              message ?? 'Web search is unavailable (${response.statusCode}).',
         };
       }
       final data = jsonDecode(response.body);

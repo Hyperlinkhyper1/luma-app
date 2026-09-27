@@ -625,6 +625,20 @@ class LEn extends L {
   String get assistantUsageRollingWeek => 'Rolling 7-day window';
 
   @override
+  String get assistantUsageLumaAssistant => 'Luma Assistant';
+
+  @override
+  String get assistantUsageLumaAssistantSubtitle => 'On-device Qwen model';
+
+  @override
+  String get assistantUsageWebSearch => 'Web searches';
+
+  @override
+  String assistantUsageCountOf(int used, int limit) {
+    return '$used of $limit';
+  }
+
+  @override
   String assistantUsagePercentUsed(int percent) {
     return '$percent% used';
   }

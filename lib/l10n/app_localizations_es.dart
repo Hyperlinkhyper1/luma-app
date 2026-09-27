@@ -629,6 +629,21 @@ class LEs extends L {
   String get assistantUsageRollingWeek => 'Ventana móvil de 7 días';
 
   @override
+  String get assistantUsageLumaAssistant => 'Luma Assistant';
+
+  @override
+  String get assistantUsageLumaAssistantSubtitle =>
+      'Modelo Qwen en el dispositivo';
+
+  @override
+  String get assistantUsageWebSearch => 'Búsquedas web';
+
+  @override
+  String assistantUsageCountOf(int used, int limit) {
+    return '$used de $limit';
+  }
+
+  @override
   String assistantUsagePercentUsed(int percent) {
     return '$percent % usado';
   }
