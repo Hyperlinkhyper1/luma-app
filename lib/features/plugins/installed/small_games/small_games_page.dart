@@ -7,6 +7,7 @@ import '../../../../app/widgets.dart';
 import '../../../../theme/luma_theme.dart';
 import 'bingo_card.dart';
 import 'bingo_card_export.dart';
+import 'card_games_page.dart';
 
 class SmallGamesPage extends StatefulWidget {
   const SmallGamesPage({super.key});
@@ -17,10 +18,13 @@ class SmallGamesPage extends StatefulWidget {
 
 class _SmallGamesPageState extends State<SmallGamesPage> {
   bool _showBingo = false;
+  bool _showCardGames = false;
 
   @override
   Widget build(BuildContext context) => _showBingo
       ? BingoPage(onBack: () => setState(() => _showBingo = false))
+      : _showCardGames
+      ? CardGamesPage(onBack: () => setState(() => _showCardGames = false))
       : SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Center(
@@ -79,6 +83,52 @@ class _SmallGamesPageState extends State<SmallGamesPage> {
                           tooltip: 'Open BINGO',
                           icon: const Icon(Icons.arrow_forward_rounded),
                           onPressed: () => setState(() => _showBingo = true),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  LumaCard(
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            color: context.luma.accentSubtle,
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: Icon(
+                            Icons.style_rounded,
+                            color: context.luma.accent,
+                            size: 32,
+                          ),
+                        ),
+                        const SizedBox(width: 18),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Card Games',
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Take a seat at the casino table for Poker, Blackjack, or Patience.',
+                                style: TextStyle(
+                                  color: context.luma.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton.filledTonal(
+                          tooltip: 'Open Card Games',
+                          icon: const Icon(Icons.arrow_forward_rounded),
+                          onPressed: () =>
+                              setState(() => _showCardGames = true),
                         ),
                       ],
                     ),

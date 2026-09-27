@@ -248,6 +248,16 @@
   "assistantUsageRollingFiveHours": "Rolling 5-hour window",
   "assistantUsageThisWeek": "This week",
   "assistantUsageRollingWeek": "Rolling 7-day window",
+  "assistantUsageLumaAssistant": "Luma Assistant",
+  "assistantUsageLumaAssistantSubtitle": "On-device Qwen model",
+  "assistantUsageWebSearch": "Web searches",
+  "assistantUsageCountOf": "{used} of {limit}",
+  "@assistantUsageCountOf": {
+    "placeholders": {
+      "used": { "type": "int" },
+      "limit": { "type": "int" }
+    }
+  },
   "assistantUsagePercentUsed": "{percent}% used",
   "@assistantUsagePercentUsed": {
     "placeholders": {

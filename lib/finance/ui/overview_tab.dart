@@ -5,11 +5,14 @@ import '../../theme/luma_theme.dart';
 import '../data/database.dart';
 import '../finance_scope.dart';
 import '../logic/finance_logic.dart';
+import '../logic/holding_value.dart';
 import '../logic/money.dart';
+import '../logic/planning.dart';
 import '../../features/plugins/installed/steam_tools/cs2_market_scope.dart';
 import '../../settings/settings_scope.dart';
 import 'lookups.dart';
 import 'overview_graphs.dart';
+import 'planning_cards.dart';
 
 /// The total overview: net worth, this month's flows, pots, weekly spending
 /// review, investments and upcoming recurring entries.
@@ -31,36 +34,49 @@ class OverviewTab extends StatelessWidget {
                 Stream<int>.value(0),
             builder: (context, cs2Value) => StreamData<List<RecurringRule>>(
               stream: repo.watchRecurring(),
-              builder: (context, recurring) =>
-                  StreamData<List<FinanceTransaction>>(
-                    stream: repo.watchTransactions(),
-                    builder: (context, txns) => StreamData<List<OverviewGraph>>(
-                      stream: repo.watchOverviewGraphs(),
-                      builder: (context, graphs) =>
-                          StreamData<List<BalanceSnapshot>>(
-                            stream: repo.watchNetWorthHistory(),
-                            builder: (context, netWorthHistory) =>
-                                _OverviewBody(
-                                  pots: pots,
-                                  categories: categories,
-                                  holdings: holdings,
-                                  cs2Cents: cs2Value.data ?? 0,
-                                  includeCs2:
-                                      context
-                                          .dependOnInheritedWidgetOfExactType<
-                                            SettingsScope
-                                          >()
-                                          ?.notifier
-                                          ?.includeCs2InInvestments ??
-                                      true,
-                                  recurring: recurring,
-                                  txns: txns,
-                                  graphs: graphs,
-                                  netWorthHistory: netWorthHistory,
+              builder: (context, recurring) => StreamData<List<FinanceTransaction>>(
+                stream: repo.watchTransactions(),
+                builder: (context, txns) => StreamData<List<OverviewGraph>>(
+                  stream: repo.watchOverviewGraphs(),
+                  builder: (context, graphs) => StreamData<List<BalanceSnapshot>>(
+                    stream: repo.watchNetWorthHistory(),
+                    builder: (context, netWorthHistory) =>
+                        StreamData<List<AllocationRule>>(
+                          stream: repo.watchAllocationRules(),
+                          builder: (context, allocations) => StreamData<List<Debt>>(
+                            stream: repo.watchDebts(),
+                            builder: (context, debts) =>
+                                StreamData<List<DebtPayment>>(
+                                  stream: repo.watchDebtPayments(),
+                                  builder: (context, debtPayments) => _OverviewBody(
+                                    allocations: allocations,
+                                    debtsNetCents: debtsNetCents(
+                                      debts,
+                                      debtPayments,
+                                    ),
+                                    pots: pots,
+                                    categories: categories,
+                                    holdings: holdings,
+                                    cs2Cents: cs2Value.data ?? 0,
+                                    includeCs2:
+                                        context
+                                            .dependOnInheritedWidgetOfExactType<
+                                              SettingsScope
+                                            >()
+                                            ?.notifier
+                                            ?.includeCs2InInvestments ??
+                                        true,
+                                    recurring: recurring,
+                                    txns: txns,
+                                    graphs: graphs,
+                                    netWorthHistory: netWorthHistory,
+                                  ),
                                 ),
                           ),
-                    ),
+                        ),
                   ),
+                ),
+              ),
             ),
           ),
         ),
@@ -71,6 +87,8 @@ class OverviewTab extends StatelessWidget {
 
 class _OverviewBody extends StatefulWidget {
   const _OverviewBody({
+    required this.allocations,
+    required this.debtsNetCents,
     required this.pots,
     required this.categories,
     required this.holdings,
@@ -91,6 +109,10 @@ class _OverviewBody extends StatefulWidget {
   final List<FinanceTransaction> txns;
   final List<OverviewGraph> graphs;
   final List<BalanceSnapshot> netWorthHistory;
+  final List<AllocationRule> allocations;
+
+  /// Owed to the user minus owed by the user.
+  final int debtsNetCents;
 
   @override
   State<_OverviewBody> createState() => _OverviewBodyState();
@@ -115,12 +137,9 @@ class _OverviewBodyState extends State<_OverviewBody> {
       if (t.kind == TxnKind.expense) monthExpense += t.amountCents;
     }
 
-    final portfolio = widget.holdings.fold<int>(0, (sum, h) {
-      final price = h.lastPriceCents ?? h.avgCostCents;
-      return sum + (price * h.shares).round();
-    });
+    final portfolio = portfolioEurCents(widget.holdings);
     final investments = portfolio + (widget.includeCs2 ? widget.cs2Cents : 0);
-    final netWorth = balances.totalCents + investments;
+    final netWorth = balances.totalCents + investments + widget.debtsNetCents;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 40),
@@ -132,6 +151,7 @@ class _OverviewBodyState extends State<_OverviewBody> {
             availableCents: balances.mainCents,
             potsCents: balances.potsTotalCents,
             investmentsCents: investments,
+            debtsCents: widget.debtsNetCents,
           ),
           const SizedBox(height: 16),
           Row(
@@ -154,6 +174,24 @@ class _OverviewBodyState extends State<_OverviewBody> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 24),
+          _SectionTitle('Cash-flow forecast'),
+          const SizedBox(height: 12),
+          CashFlowForecastCard(
+            mainCents: balances.mainCents,
+            recurring: widget.recurring,
+            allocations: widget.allocations,
+            now: now,
+          ),
+          const SizedBox(height: 24),
+          _SectionTitle('Budgets'),
+          const SizedBox(height: 12),
+          BudgetsCard(
+            repo: FinanceScope.of(context),
+            categories: widget.categories,
+            txns: widget.txns,
+            now: now,
           ),
           const SizedBox(height: 24),
           Row(
@@ -202,6 +240,7 @@ class _OverviewBodyState extends State<_OverviewBody> {
                   _PotChip(
                     pot: pot,
                     balanceCents: balances.balanceForPot(pot.id),
+                    now: now,
                   ),
               ],
             ),
@@ -399,11 +438,13 @@ class _HeroCard extends StatelessWidget {
     required this.availableCents,
     required this.potsCents,
     required this.investmentsCents,
+    required this.debtsCents,
   });
   final int netWorthCents;
   final int availableCents;
   final int potsCents;
   final int investmentsCents;
+  final int debtsCents;
 
   @override
   Widget build(BuildContext context) {
@@ -447,6 +488,13 @@ class _HeroCard extends StatelessWidget {
               _HeroStat(label: 'In pots', cents: potsCents),
               _HeroDivider(),
               _HeroStat(label: 'Investments', cents: investmentsCents),
+              if (debtsCents != 0) ...[
+                _HeroDivider(),
+                _HeroStat(
+                  label: debtsCents < 0 ? 'Debts' : 'Owed to you',
+                  cents: debtsCents,
+                ),
+              ],
             ],
           ),
         ],
@@ -467,14 +515,24 @@ class _HeroStat extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(color: luma.textMuted, fontSize: 12)),
-          const SizedBox(height: 4),
           Text(
-            formatCents(cents),
-            style: TextStyle(
-              color: luma.textPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: luma.textMuted, fontSize: 12),
+          ),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              formatCents(cents),
+              maxLines: 1,
+              style: TextStyle(
+                color: luma.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -543,13 +601,19 @@ class _StatCard extends StatelessWidget {
 }
 
 class _PotChip extends StatelessWidget {
-  const _PotChip({required this.pot, required this.balanceCents});
+  const _PotChip({
+    required this.pot,
+    required this.balanceCents,
+    required this.now,
+  });
   final Pot pot;
   final int balanceCents;
+  final DateTime now;
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final goal = goalProgress(pot, balanceCents, now);
     return Container(
       width: 200,
       padding: const EdgeInsets.all(16),
@@ -591,6 +655,15 @@ class _PotChip extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
+          if (goal != null) ...[
+            const SizedBox(height: 8),
+            PotGoalBar(
+              progress: goal,
+              color: Color(pot.colorValue),
+              now: now,
+              compact: true,
+            ),
+          ],
         ],
       ),
     );
@@ -644,9 +717,13 @@ class _WeeklyReview extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Spent this week',
-                style: TextStyle(color: luma.textSecondary, fontSize: 13),
+              Expanded(
+                child: Text(
+                  'Spent this week',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: luma.textSecondary, fontSize: 13),
+                ),
               ),
               Text(
                 formatCents(total),
@@ -744,9 +821,8 @@ class _InvestmentsSummary extends StatelessWidget {
     var value = 0;
     var cost = 0;
     for (final h in holdings) {
-      final price = h.lastPriceCents ?? h.avgCostCents;
-      value += (price * h.shares).round();
-      cost += (h.avgCostCents * h.shares).round();
+      value += h.valueEurCents;
+      cost += h.costEurCents;
     }
     final gain = value - cost;
     final gainColor = gain >= 0 ? luma.success : luma.danger;

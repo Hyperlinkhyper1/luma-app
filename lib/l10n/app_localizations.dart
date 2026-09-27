@@ -1261,6 +1261,30 @@ abstract class L {
   /// **'Rolling 7-day window'**
   String get assistantUsageRollingWeek;
 
+  /// No description provided for @assistantUsageLumaAssistant.
+  ///
+  /// In en, this message translates to:
+  /// **'Luma Assistant'**
+  String get assistantUsageLumaAssistant;
+
+  /// No description provided for @assistantUsageLumaAssistantSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'On-device Qwen model'**
+  String get assistantUsageLumaAssistantSubtitle;
+
+  /// No description provided for @assistantUsageWebSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Web searches'**
+  String get assistantUsageWebSearch;
+
+  /// No description provided for @assistantUsageCountOf.
+  ///
+  /// In en, this message translates to:
+  /// **'{used} of {limit}'**
+  String assistantUsageCountOf(int used, int limit);
+
   /// No description provided for @assistantUsagePercentUsed.
   ///
   /// In en, this message translates to:

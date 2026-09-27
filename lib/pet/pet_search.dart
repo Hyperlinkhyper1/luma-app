@@ -36,8 +36,7 @@ class PetTarget {
   /// "money" finds Finance and "todo" finds Errands.
   final List<String> keywords;
 
-  /// Opens the target. The panel closes itself first, so this runs against a
-  /// shell that is already back to its normal size.
+  /// Opens the target. The panel dismisses itself after this completes.
   final FutureOr<void> Function() open;
 
   /// A purpose-built view that stays inside the small pet window. Most

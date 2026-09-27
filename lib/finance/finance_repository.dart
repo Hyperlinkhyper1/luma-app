@@ -1,8 +1,13 @@
-﻿import 'package:drift/drift.dart';
+﻿import 'dart:convert';
+
+import 'package:drift/drift.dart';
 
 import '../storage/storage_guard.dart';
 import 'data/database.dart';
 import 'logic/finance_logic.dart';
+import 'logic/holding_value.dart';
+import 'logic/insights.dart';
+import 'logic/planning.dart';
 
 /// Application-facing API over the drift database: reactive reads, commands,
 /// and the engine that applies due recurring rules and allocations.
@@ -65,6 +70,26 @@ class FinanceRepository {
       (db.select(db.overviewGraphs)..orderBy([(g) => OrderingTerm(expression: g.sortOrder)]))
           .watch();
 
+  Stream<List<Debt>> watchDebts() =>
+      (db.select(db.debts)..orderBy([(d) => OrderingTerm(expression: d.name)]))
+          .watch();
+
+  Stream<List<DebtPayment>> watchDebtPayments() =>
+      (db.select(db.debtPayments)
+            ..orderBy([
+              (p) => OrderingTerm.desc(p.date),
+              (p) => OrderingTerm.desc(p.id),
+            ]))
+          .watch();
+
+  Stream<List<Dividend>> watchDividends() =>
+      (db.select(db.dividends)
+            ..orderBy([
+              (d) => OrderingTerm.desc(d.date),
+              (d) => OrderingTerm.desc(d.id),
+            ]))
+          .watch();
+
   Future<List<Category>> allCategories() => db.select(db.categories).get();
   Future<List<Merchant>> allMerchants() =>
       (db.select(db.merchants)..orderBy([(m) => OrderingTerm(expression: m.name)]))
@@ -121,8 +146,17 @@ class FinanceRepository {
         ),
       );
 
-  Future<void> deleteTransaction(int id) =>
-      (db.delete(db.financeTransactions)..where((t) => t.id.equals(id))).go();
+  /// Deletes a ledger entry, unlinking any dividend or debt payment that
+  /// booked it (the dividend or payment itself stays on record).
+  Future<void> deleteTransaction(int id) => db.transaction(() async {
+        await (db.update(db.dividends)..where((d) => d.transactionId.equals(id)))
+            .write(const DividendsCompanion(transactionId: Value(null)));
+        await (db.update(db.debtPayments)
+              ..where((p) => p.transactionId.equals(id)))
+            .write(const DebtPaymentsCompanion(transactionId: Value(null)));
+        await (db.delete(db.financeTransactions)..where((t) => t.id.equals(id)))
+            .go();
+      });
 
   // ---- Pots -----------------------------------------------------------------
 
@@ -144,6 +178,31 @@ class FinanceRepository {
   }
 
   Future<void> updatePot(Pot pot) => db.update(db.pots).replace(pot);
+
+  /// Sets or clears (null [goalCents]) a pot's savings goal.
+  Future<void> setPotGoal(int potId, {int? goalCents, DateTime? goalDate}) =>
+      (db.update(db.pots)..where((p) => p.id.equals(potId))).write(
+        PotsCompanion(
+          goalCents: Value(goalCents),
+          goalDate: Value(goalCents == null ? null : goalDate),
+        ),
+      );
+
+  // ---- Budgets --------------------------------------------------------------
+
+  /// Sets or clears (null) the monthly budgets of several categories at once.
+  Future<void> setCategoryBudgets(Map<int, int?> budgetByCategory) =>
+      db.batch((b) {
+        budgetByCategory.forEach((id, cents) {
+          b.update(
+            db.categories,
+            CategoriesCompanion(
+              monthlyBudgetCents: Value(cents == null || cents <= 0 ? null : cents),
+            ),
+            where: (c) => c.id.equals(id),
+          );
+        });
+      });
 
   /// Deletes a pot, detaching its transactions and removing its allocation
   /// rules. Detached expenses fall back to the main balance.
@@ -197,15 +256,194 @@ class FinanceRepository {
     return id;
   }
 
-  Future<void> deleteHolding(int id) =>
-      (db.delete(db.holdings)..where((h) => h.id.equals(id))).go();
-  Future<void> updateHoldingPrice(int id, int priceCents) =>
+  /// Deletes a holding. Its dividends stay in the history under their
+  /// ticker, just no longer linked to a position.
+  Future<void> deleteHolding(int id) async {
+    await (db.update(db.dividends)..where((d) => d.holdingId.equals(id)))
+        .write(const DividendsCompanion(holdingId: Value(null)));
+    await (db.delete(db.holdings)..where((h) => h.id.equals(id))).go();
+  }
+
+  /// Stores a fresh quote. [currency] and [eurPerUnit] are only overwritten
+  /// when given, so a price from a source that doesn't report its currency
+  /// keeps the holding's last known one — and a failed rate lookup keeps
+  /// the last good rate rather than silently treating a dollar as a euro.
+  Future<void> updateHoldingPrice(
+    int id,
+    int priceCents, {
+    String? currency,
+    double? eurPerUnit,
+  }) =>
       (db.update(db.holdings)..where((h) => h.id.equals(id))).write(
         HoldingsCompanion(
           lastPriceCents: Value(priceCents),
           lastPriceAt: Value(DateTime.now()),
+          currency: currency == null ? const Value.absent() : Value(currency),
+          eurPerUnit:
+              eurPerUnit == null ? const Value.absent() : Value(eurPerUnit),
         ),
       );
+
+  // ---- Dividends ------------------------------------------------------------
+
+  /// Logs a dividend of [amountCents] euros. With [bookAsIncome] it is also
+  /// added to the main balance as an income entry.
+  Future<int> addDividend({
+    required Holding holding,
+    required int amountCents,
+    required DateTime date,
+    String? note,
+    bool bookAsIncome = true,
+  }) async {
+    int? txnId;
+    if (bookAsIncome) {
+      txnId = await addTransaction(
+        kind: TxnKind.income,
+        amountCents: amountCents,
+        date: date,
+        note: 'Dividend ${holding.ticker}',
+      );
+    }
+    final id = await db.into(db.dividends).insert(DividendsCompanion.insert(
+          holdingId: Value(holding.id),
+          ticker: holding.ticker,
+          amountCents: amountCents,
+          date: date,
+          note: Value(note),
+          transactionId: Value(txnId),
+        ));
+    StorageGuard.instance.scheduleRefresh();
+    return id;
+  }
+
+  /// Deletes a dividend and the income entry it booked, if any.
+  Future<void> deleteDividend(Dividend dividend) => db.transaction(() async {
+        await (db.delete(db.dividends)..where((d) => d.id.equals(dividend.id)))
+            .go();
+        final txnId = dividend.transactionId;
+        if (txnId != null) await deleteTransaction(txnId);
+      });
+
+  // ---- Debts ----------------------------------------------------------------
+
+  Future<int> createDebt(DebtsCompanion debt) async {
+    final id = await db.into(db.debts).insert(debt);
+    StorageGuard.instance.scheduleRefresh();
+    return id;
+  }
+
+  Future<void> updateDebt(Debt debt) => db.update(db.debts).replace(debt);
+
+  /// Deletes a debt and its payment history. Ledger entries the payments
+  /// booked are kept: that money really did leave or reach the main balance.
+  Future<void> deleteDebt(int id) => db.transaction(() async {
+        await (db.delete(db.debtPayments)..where((p) => p.debtId.equals(id)))
+            .go();
+        await (db.delete(db.debts)..where((d) => d.id.equals(id))).go();
+      });
+
+  /// Records a payment on [debt]. With [bookInLedger], a debt the user owes
+  /// books an expense from the main balance and a debt owed to the user
+  /// books an income, so net worth doesn't move twice.
+  Future<int> addDebtPayment({
+    required Debt debt,
+    required int amountCents,
+    required DateTime date,
+    String? note,
+    bool bookInLedger = true,
+  }) async {
+    int? txnId;
+    if (bookInLedger && amountCents > 0) {
+      final owe = debt.direction == DebtDirection.owe;
+      txnId = await addTransaction(
+        kind: owe ? TxnKind.expense : TxnKind.income,
+        amountCents: amountCents,
+        date: date,
+        note: owe ? 'Repayment: ${debt.name}' : 'Repaid to me: ${debt.name}',
+      );
+    }
+    final id = await db.into(db.debtPayments).insert(DebtPaymentsCompanion.insert(
+          debtId: debt.id,
+          amountCents: amountCents,
+          date: date,
+          note: Value(note),
+          transactionId: Value(txnId),
+        ));
+    StorageGuard.instance.scheduleRefresh();
+    return id;
+  }
+
+  /// Corrects [debt]'s outstanding balance to [targetCents] (e.g. from a
+  /// lender's statement, after interest) without touching the ledger.
+  Future<void> adjustDebtBalance(Debt debt, int targetCents) async {
+    final payments = await (db.select(db.debtPayments)
+          ..where((p) => p.debtId.equals(debt.id)))
+        .get();
+    final current = debtBalanceCents(debt, payments);
+    if (current == targetCents) return;
+    await addDebtPayment(
+      debt: debt,
+      amountCents: current - targetCents,
+      date: DateTime.now(),
+      note: 'Balance adjustment',
+      bookInLedger: false,
+    );
+  }
+
+  /// Deletes a payment and the ledger entry it booked, if any.
+  Future<void> deleteDebtPayment(DebtPayment payment) =>
+      db.transaction(() async {
+        await (db.delete(db.debtPayments)..where((p) => p.id.equals(payment.id)))
+            .go();
+        final txnId = payment.transactionId;
+        if (txnId != null) await deleteTransaction(txnId);
+      });
+
+  // ---- Subscription detector ------------------------------------------------
+
+  static const _dismissedSubscriptionsKey = 'dismissed_subscriptions';
+
+  Stream<Set<String>> watchDismissedSubscriptions() =>
+      (db.select(db.metaItems)
+            ..where((m) => m.key.equals(_dismissedSubscriptionsKey)))
+          .watchSingleOrNull()
+          .map((row) => _decodeKeys(row?.value));
+
+  /// Hides a detected subscription for good.
+  Future<void> dismissSubscription(String key) async {
+    final row = await (db.select(db.metaItems)
+          ..where((m) => m.key.equals(_dismissedSubscriptionsKey)))
+        .getSingleOrNull();
+    final keys = _decodeKeys(row?.value)..add(key);
+    await db.into(db.metaItems).insertOnConflictUpdate(MetaItemsCompanion.insert(
+          key: _dismissedSubscriptionsKey,
+          value: jsonEncode(keys.toList()..sort()),
+        ));
+  }
+
+  /// Turns a detected subscription into a tracked bill whose next charge is
+  /// one period after the last one seen.
+  Future<int> trackSubscription(SubscriptionCandidate c) => createRecurring(
+        RecurringRulesCompanion.insert(
+          name: c.name,
+          kind: TxnKind.expense,
+          amountCents: c.amountCents,
+          cadence: c.cadence,
+          nextDue: c.nextDue,
+          merchantId: Value(c.merchantId),
+          categoryId: Value(c.categoryId),
+          isBill: const Value(true),
+        ),
+      );
+
+  static Set<String> _decodeKeys(String? json) {
+    if (json == null) return <String>{};
+    try {
+      return (jsonDecode(json) as List).cast<String>().toSet();
+    } catch (_) {
+      return <String>{};
+    }
+  }
 
   // ---- Overview Graphs ------------------------------------------------------
 
@@ -245,17 +483,18 @@ class FinanceRepository {
   }
 
   /// Cash net worth (main + pots) plus the market value of every holding
-  /// (falling back to cost basis for holdings with no live price yet) â€”
-  /// the same total the net-worth chart tracks over time.
+  /// (falling back to cost basis for holdings with no live price yet), in
+  /// euros, plus money owed to the user minus money the user owes — the
+  /// same total the net-worth chart tracks over time.
   Future<int> currentNetWorthCents() async {
     final txns = await db.select(db.financeTransactions).get();
     final cash = computeBalances(txns).totalCents;
-    final holdings = await db.select(db.holdings).get();
-    final invested = holdings.fold<int>(
-        0,
-        (sum, h) =>
-            sum + ((h.lastPriceCents ?? h.avgCostCents) * h.shares).round());
-    return cash + invested;
+    final invested = portfolioEurCents(await db.select(db.holdings).get());
+    final debts = debtsNetCents(
+      await db.select(db.debts).get(),
+      await db.select(db.debtPayments).get(),
+    );
+    return cash + invested + debts;
   }
 
   /// Records today's net worth in [BalanceSnapshots] if it hasn't been

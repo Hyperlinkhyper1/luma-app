@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../finance/data/database.dart';
 import '../../finance/finance_scope.dart';
 import '../../finance/logic/finance_logic.dart';
+import '../../finance/logic/holding_value.dart';
 import '../../finance/logic/money.dart';
 import '../../l10n/app_localizations.dart';
 import '../plugins/installed/steam_tools/cs2_market_scope.dart';
@@ -69,11 +70,8 @@ class _HomeGreetingState extends State<HomeGreeting> {
           }
           final txns = transactions.data ?? const <FinanceTransaction>[];
           final balances = computeBalances(txns);
-          final portfolio = (holdings.data ?? const <Holding>[]).fold<int>(
-            0,
-            (sum, h) =>
-                sum + ((h.lastPriceCents ?? h.avgCostCents) * h.shares).round(),
-          );
+          final portfolio =
+              portfolioEurCents(holdings.data ?? const <Holding>[]);
           final investmentTotal = portfolio + ((context.dependOnInheritedWidgetOfExactType<SettingsScope>()?.notifier?.includeCs2InInvestments ?? true) ? (cs2Value.data ?? 0) : 0);
           final now = DateTime.now();
           final monthly = txns.where(

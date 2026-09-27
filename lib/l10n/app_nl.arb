@@ -221,6 +221,16 @@
   "assistantUsageRollingFiveHours": "Voortschrijdend venster van 5 uur",
   "assistantUsageThisWeek": "Deze week",
   "assistantUsageRollingWeek": "Voortschrijdend venster van 7 dagen",
+  "assistantUsageLumaAssistant": "Luma Assistant",
+  "assistantUsageLumaAssistantSubtitle": "Qwen-model op je apparaat",
+  "assistantUsageWebSearch": "Zoekopdrachten op het web",
+  "assistantUsageCountOf": "{used} van {limit}",
+  "@assistantUsageCountOf": {
+    "placeholders": {
+      "used": { "type": "int" },
+      "limit": { "type": "int" }
+    }
+  },
   "assistantUsagePercentUsed": "{percent}% gebruikt",
   "assistantUsageLumaSupport": "Luma Support",
   "assistantUsageResetsDaily": "Wordt om middernacht gereset",

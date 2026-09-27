@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../account/plan.dart';
 import '../../app/widgets.dart';
+import '../../finance/finance_scope.dart';
 import '../../l10n/app_localizations.dart';
 import '../../settings/settings_controller.dart';
 import '../../settings/settings_scope.dart';
@@ -84,6 +85,7 @@ class _ChatPageState extends State<ChatPage> {
         calendarRepository: CalendarScope.of(context),
         notesRepository: NotesRepository(),
         cs2MarketRepository: Cs2MarketScope.of(context),
+        financeRepository: FinanceScope.of(context),
         navigate: widget.onNavigate,
         memory: memory,
         webSearch: WebSearchClient(syncService: SyncScope.of(context)),

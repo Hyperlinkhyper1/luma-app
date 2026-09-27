@@ -151,13 +151,24 @@ class ChatController extends ChangeNotifier {
       final history = await _repository.loadMessages(conversationId);
       final turns = _toTurns(history);
       final agentId = await _agentStore.activeAgentId(providerId);
+      final toolSchemas = usingLocalModel
+          ? _tools.localAssistantSchemas
+          : _tools.schemas;
 
       final result = await client.chat(
         apiKey: apiKey,
         history: turns,
         systemPrompt: _fullSystemPrompt,
-        tools: _tools.schemas,
-        executeTool: _tools.execute,
+        tools: toolSchemas,
+        executeTool: (name, input) async {
+          if (name == 'web_search' && !usingLocalModel) {
+            return {
+              'status': 'unavailable',
+              'message': 'Web search is only available in Luma Assistant.',
+            };
+          }
+          return _tools.execute(name, input);
+        },
         metadataFor: AiToolRegistry.metadataFor,
         agentId: agentId,
       );
@@ -201,7 +212,7 @@ class ChatController extends ChangeNotifier {
     if (_settings.aiProviderId != AiProviderId.local.name) return;
     LocalQwenClient.warmUp(
       systemPrompt: _fullSystemPrompt,
-      tools: _tools.schemas,
+      tools: _tools.localAssistantSchemas,
     );
   }
 

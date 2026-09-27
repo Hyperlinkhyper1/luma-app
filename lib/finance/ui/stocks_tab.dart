@@ -9,8 +9,11 @@ import '../../theme/luma_theme.dart';
 import '../data/database.dart';
 import '../finance_repository.dart';
 import '../finance_scope.dart';
+import '../fx_service.dart';
+import '../logic/holding_value.dart';
 import '../logic/money.dart';
 import '../stock_service.dart';
+import 'finance_form.dart';
 
 class StocksTab extends StatefulWidget {
   const StocksTab({super.key});
@@ -24,6 +27,16 @@ class StocksTab extends StatefulWidget {
 /// the last time "Refresh prices" was pressed, while the chart — which always
 /// fetches fresh — shows today's, so the two disagree.
 const _maxPriceAge = Duration(minutes: 15);
+
+/// Saves a fetched quote with its currency and today's euro rate. A failed
+/// rate lookup passes null, which keeps the holding's last good rate.
+Future<void> _storeQuote(
+    FinanceRepository repo, int holdingId, StockQuote quote) async {
+  final currency = quote.currency;
+  final rate = currency == null ? null : await FxService.eurPerUnit(currency);
+  await repo.updateHoldingPrice(holdingId, quote.priceCents,
+      currency: currency, eurPerUnit: rate);
+}
 
 class _CachedSeries {
   const _CachedSeries(this.points, this.fetchedAt);
@@ -144,7 +157,7 @@ class _StocksTabState extends State<StocksTab> {
       for (final h in stale) {
         final quote = await StockService.fetchQuote(h.ticker);
         if (quote == null) continue;
-        await repo.updateHoldingPrice(h.id, quote.priceCents);
+        await _storeQuote(repo, h.id, quote);
       }
     } finally {
       _autoRefreshing = false;
@@ -171,7 +184,10 @@ class _StocksTabState extends State<StocksTab> {
         final series = seriesByHolding[h.id];
         if (series == null || series.isEmpty) continue;
         final priceCents = _priceAtOrBefore(series, t) ?? series.first.priceCents;
-        sum += h.shares * priceCents / 100.0;
+        // Today's rate across the whole range: the line shows how the
+        // holdings moved, not how the currency did.
+        final rate = h.isEuro ? 1.0 : (h.eurPerUnit ?? 1.0);
+        sum += h.shares * priceCents * rate / 100.0;
       }
       values.add(sum);
     }
@@ -193,7 +209,7 @@ class _StocksTabState extends State<StocksTab> {
     for (final h in holdings) {
       final quote = await StockService.fetchQuote(h.ticker);
       if (quote != null) {
-        await repo.updateHoldingPrice(h.id, quote.priceCents);
+        await _storeQuote(repo, h.id, quote);
       } else {
         failed++;
       }
@@ -217,7 +233,9 @@ class _StocksTabState extends State<StocksTab> {
   @override
   Widget build(BuildContext context) {
     final repo = FinanceScope.of(context);
-    return StreamData<List<Holding>>(
+    return StreamData<List<Dividend>>(
+      stream: repo.watchDividends(),
+      builder: (context, dividends) => StreamData<List<Holding>>(
       stream: repo.watchHoldings(),
       builder: (context, holdings) {
         // If the selected holding was deleted, fall back to the aggregate.
@@ -235,9 +253,8 @@ class _StocksTabState extends State<StocksTab> {
         var cost = 0;
         DateTime? asOf;
         for (final h in holdings) {
-          final price = h.lastPriceCents ?? h.avgCostCents;
-          value += (price * h.shares).round();
-          cost += (h.avgCostCents * h.shares).round();
+          value += h.valueEurCents;
+          cost += h.costEurCents;
           final at = h.lastPriceAt;
           // The total is only as current as its oldest price.
           if (h.lastPriceCents != null &&
@@ -269,15 +286,15 @@ class _StocksTabState extends State<StocksTab> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
+                        Wrap(
+                          spacing: 10,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             Text('Portfolio ${formatCents(value)}',
                                 style: TextStyle(
                                     color: luma.textPrimary,
                                     fontSize: 15,
                                     fontWeight: FontWeight.w700)),
-                            const SizedBox(width: 10),
                             Text(formatSignedCents(gain),
                                 style: TextStyle(
                                     color:
@@ -290,6 +307,12 @@ class _StocksTabState extends State<StocksTab> {
                           style:
                               TextStyle(color: luma.textMuted, fontSize: 11),
                         ),
+                        if (holdings.any((h) => h.missingFxRate))
+                          Text(
+                            'Some foreign prices aren\'t converted to euros yet',
+                            style:
+                                TextStyle(color: luma.warning, fontSize: 11),
+                          ),
                       ],
                     ),
                   Wrap(
@@ -297,6 +320,16 @@ class _StocksTabState extends State<StocksTab> {
                     runSpacing: 8,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
+                      if (holdings.isNotEmpty || dividends.isNotEmpty)
+                        LumaGhostButton(
+                          label: 'Dividends ${formatCents(_thisYear(dividends))}',
+                          icon: Icons.payments_rounded,
+                          onTap: () => showFinanceDialog<void>(
+                            context,
+                            _DividendHistory(repo: repo, dividends: dividends),
+                            maxWidth: 480,
+                          ),
+                        ),
                       if (holdings.isNotEmpty)
                         LumaGhostButton(
                           label: _refreshing ? 'Refreshing…' : 'Refresh prices',
@@ -335,7 +368,21 @@ class _StocksTabState extends State<StocksTab> {
                               _selectedHoldingId =
                                   _selectedHoldingId == h.id ? null : h.id;
                             }),
-                            onDelete: () => repo.deleteHolding(h.id),
+                            dividendCents: dividends
+                                .where((d) => d.holdingId == h.id)
+                                .fold(0, (s, d) => s + d.amountCents),
+                            onDividend: () => showFinanceDialog<void>(
+                              context,
+                              _DividendEditor(repo: repo, holding: h),
+                            ),
+                            onDelete: () async {
+                              final ok = await confirmFinanceDelete(
+                                context,
+                                'Remove ${h.ticker}?',
+                                'Its dividend history is kept.',
+                              );
+                              if (ok) await repo.deleteHolding(h.id);
+                            },
                           );
                         },
                       ),
@@ -359,8 +406,16 @@ class _StocksTabState extends State<StocksTab> {
           ),
         );
       },
+      ),
     );
   }
+}
+
+int _thisYear(List<Dividend> dividends) {
+  final year = DateTime.now().year;
+  return dividends
+      .where((d) => d.date.year == year)
+      .fold(0, (s, d) => s + d.amountCents);
 }
 
 class _ChartCard extends StatelessWidget {
@@ -559,20 +614,29 @@ class _HoldingRow extends StatelessWidget {
     required this.selected,
     required this.onTap,
     required this.onDelete,
+    required this.onDividend,
+    required this.dividendCents,
   });
   final Holding holding;
   final bool selected;
   final VoidCallback onTap;
   final VoidCallback onDelete;
+  final VoidCallback onDividend;
+
+  /// Every dividend logged for this holding, in euros.
+  final int dividendCents;
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
     final price = holding.lastPriceCents ?? holding.avgCostCents;
-    final value = (price * holding.shares).round();
-    final cost = (holding.avgCostCents * holding.shares).round();
-    final gain = value - cost;
+    final value = holding.valueEurCents;
+    final gain = value - holding.costEurCents;
     final hasLive = holding.lastPriceCents != null;
+    final priceLabel = holding.isEuro
+        ? formatCents(price)
+        : '${_plain.format(price / 100)} ${holding.currency}';
+    final fxNote = holding.missingFxRate ? ' · no FX rate' : '';
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -618,9 +682,18 @@ class _HoldingRow extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${_trimShares(holding.shares)} @ ${formatCents(price)}${hasLive ? '' : ' (cost)'}',
-                      style: TextStyle(color: luma.textMuted, fontSize: 12),
+                      '${_trimShares(holding.shares)} @ $priceLabel${hasLive ? '' : ' (cost)'}$fxNote',
+                      style: TextStyle(
+                          color: holding.missingFxRate
+                              ? luma.warning
+                              : luma.textMuted,
+                          fontSize: 12),
                     ),
+                    if (dividendCents > 0)
+                      Text(
+                        'Dividends ${formatCents(dividendCents)}',
+                        style: TextStyle(color: luma.success, fontSize: 11),
+                      ),
                   ],
                 ),
               ),
@@ -637,10 +710,32 @@ class _HoldingRow extends StatelessWidget {
                           fontSize: 12)),
                 ],
               ),
-              IconButton(
-                icon: Icon(Icons.delete_outline_rounded,
+              PopupMenuButton<String>(
+                icon: Icon(Icons.more_vert_rounded,
                     size: 18, color: luma.textMuted),
-                onPressed: onDelete,
+                color: luma.surface,
+                onSelected: (v) => v == 'dividend' ? onDividend() : onDelete(),
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'dividend',
+                    child: Row(children: [
+                      Icon(Icons.payments_rounded,
+                          size: 18, color: luma.textSecondary),
+                      const SizedBox(width: 8),
+                      Text('Log dividend',
+                          style: TextStyle(color: luma.textPrimary)),
+                    ]),
+                  ),
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: Row(children: [
+                      Icon(Icons.delete_outline_rounded,
+                          size: 18, color: luma.danger),
+                      const SizedBox(width: 8),
+                      Text('Delete', style: TextStyle(color: luma.textPrimary)),
+                    ]),
+                  ),
+                ],
               ),
             ],
           ),
@@ -704,6 +799,8 @@ class _HoldingEditorState extends State<_HoldingEditor> {
     final name = _name.text.trim().isNotEmpty
         ? _name.text.trim()
         : (quote?.name ?? ticker.toUpperCase());
+    final currency = quote?.currency;
+    final rate = currency == null ? null : await FxService.eurPerUnit(currency);
 
     await widget.repo.upsertHolding(HoldingsCompanion.insert(
       ticker: ticker.toUpperCase(),
@@ -712,6 +809,8 @@ class _HoldingEditorState extends State<_HoldingEditor> {
       avgCostCents: avgCost,
       lastPriceCents: Value(quote?.priceCents),
       lastPriceAt: Value(quote != null ? DateTime.now() : null),
+      currency: Value(currency),
+      eurPerUnit: Value(rate),
     ));
     if (mounted) Navigator.pop(context);
   }
@@ -737,8 +836,9 @@ class _HoldingEditorState extends State<_HoldingEditor> {
           const SizedBox(height: 12),
           _field(luma, 'Shares', _shares, hint: 'e.g. 10', number: true),
           const SizedBox(height: 12),
-          _field(luma, 'Average cost per share', _avgCost,
-              hint: '0,00', prefix: '€ ', number: true),
+          _field(luma, 'Average cost per share, in the stock\'s own currency',
+              _avgCost,
+              hint: '0,00', number: true),
           if (_error != null) ...[
             const SizedBox(height: 12),
             Text(_error!, style: TextStyle(color: luma.danger, fontSize: 13)),
@@ -825,6 +925,162 @@ String _asOfLabel(DateTime? asOf, {required bool refreshing}) {
       ? DateFormat('HH:mm').format(asOf)
       : DateFormat('d MMM, HH:mm').format(asOf);
   return 'Prices as of $stamp';
+}
+
+final _plain = NumberFormat.decimalPatternDigits(locale: 'nl_NL', decimalDigits: 2);
+
+class _DividendEditor extends StatefulWidget {
+  const _DividendEditor({required this.repo, required this.holding});
+  final FinanceRepository repo;
+  final Holding holding;
+
+  @override
+  State<_DividendEditor> createState() => _DividendEditorState();
+}
+
+class _DividendEditorState extends State<_DividendEditor> {
+  final _amount = TextEditingController();
+  final _note = TextEditingController();
+  DateTime _date = DateTime.now();
+  bool _book = true;
+  String? _error;
+
+  @override
+  void dispose() {
+    _amount.dispose();
+    _note.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final cents = parseToCents(_amount.text);
+    if (cents == null || cents <= 0) {
+      setState(() => _error = 'Enter the amount you received.');
+      return;
+    }
+    await widget.repo.addDividend(
+      holding: widget.holding,
+      amountCents: cents,
+      date: _date,
+      note: _note.text.trim().isEmpty ? null : _note.text.trim(),
+      bookAsIncome: _book,
+    );
+    if (mounted) Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FinanceDialogScaffold(
+      title: 'Dividend from ${widget.holding.ticker}',
+      confirmLabel: 'Log',
+      onConfirm: _save,
+      error: _error,
+      children: [
+        FinanceField(
+          label: 'Received (after tax, in euros)',
+          controller: _amount,
+          autofocus: true,
+          hint: '0,00',
+          prefix: '€ ',
+          number: true,
+        ),
+        const SizedBox(height: 12),
+        FinanceDateField(
+          label: 'Paid on',
+          date: _date,
+          onChanged: (d) => setState(() => _date = d),
+        ),
+        const SizedBox(height: 12),
+        FinanceField(label: 'Note (optional)', controller: _note),
+        const SizedBox(height: 8),
+        FinanceCheckRow(
+          value: _book,
+          onChanged: (v) => setState(() => _book = v),
+          label: 'Also add it to my main balance as income',
+        ),
+      ],
+    );
+  }
+}
+
+class _DividendHistory extends StatelessWidget {
+  const _DividendHistory({required this.repo, required this.dividends});
+  final FinanceRepository repo;
+  final List<Dividend> dividends;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final total = dividends.fold<int>(0, (s, d) => s + d.amountCents);
+    return Padding(
+      padding: const EdgeInsets.all(22),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Dividends',
+              style: TextStyle(
+                  color: luma.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          Text(
+            '${formatCents(_thisYear(dividends))} this year · ${formatCents(total)} all time',
+            style: TextStyle(color: luma.textSecondary, fontSize: 13),
+          ),
+          const SizedBox(height: 12),
+          if (dividends.isEmpty)
+            Text('Log one from a holding\'s ⋮ menu.',
+                style: TextStyle(color: luma.textMuted, fontSize: 13))
+          else
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final d in dividends)
+                    ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(d.ticker,
+                          style: TextStyle(
+                              color: luma.textPrimary,
+                              fontWeight: FontWeight.w600)),
+                      subtitle: Text(
+                        [longDate(d.date), ?d.note].join(' · '),
+                        style: TextStyle(color: luma.textMuted),
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(formatCents(d.amountCents),
+                              style: TextStyle(
+                                  color: luma.success,
+                                  fontWeight: FontWeight.w600)),
+                          IconButton(
+                            tooltip: 'Delete',
+                            icon: Icon(Icons.delete_outline_rounded,
+                                size: 18, color: luma.textMuted),
+                            onPressed: () async {
+                              await repo.deleteDividend(d);
+                              if (context.mounted) Navigator.pop(context);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: LumaGhostButton(
+                label: 'Close', onTap: () => Navigator.pop(context)),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 String _trimShares(double shares) {

@@ -4,6 +4,7 @@ import '../../app/widgets.dart';
 import '../../finance/data/database.dart';
 import '../../finance/finance_scope.dart';
 import '../../finance/logic/finance_logic.dart';
+import '../../finance/logic/holding_value.dart';
 import '../../finance/logic/money.dart';
 import '../../l10n/app_localizations.dart';
 import '../plugins/installed/steam_tools/cs2_market_scope.dart';
@@ -71,14 +72,7 @@ class HomeClassicMetric extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
           final cs2 = (context.dependOnInheritedWidgetOfExactType<SettingsScope>()?.notifier?.includeCs2InInvestments ?? true) ? (cs2Value.data ?? 0) : 0;
-          return amount(
-            snapshot.data!.fold<int>(
-              0,
-              (sum, h) =>
-                  sum +
-                  ((h.lastPriceCents ?? h.avgCostCents) * h.shares).round(),
-            ) + cs2,
-          );
+          return amount(portfolioEurCents(snapshot.data!) + cs2);
         },
       ));
     }

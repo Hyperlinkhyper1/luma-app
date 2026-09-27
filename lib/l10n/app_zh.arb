@@ -221,6 +221,16 @@
   "assistantUsageRollingFiveHours": "滚动 5 小时窗口",
   "assistantUsageThisWeek": "本周",
   "assistantUsageRollingWeek": "滚动 7 天窗口",
+  "assistantUsageLumaAssistant": "Luma Assistant",
+  "assistantUsageLumaAssistantSubtitle": "设备端 Qwen 模型",
+  "assistantUsageWebSearch": "网页搜索",
+  "assistantUsageCountOf": "已用 {used} / {limit}",
+  "@assistantUsageCountOf": {
+    "placeholders": {
+      "used": { "type": "int" },
+      "limit": { "type": "int" }
+    }
+  },
   "assistantUsagePercentUsed": "已用 {percent}%",
   "assistantUsageLumaSupport": "Luma Support",
   "assistantUsageResetsDaily": "午夜重置",

@@ -2190,6 +2190,8 @@ class Api {
             kAiTokensWeek),
         'supportUsed': aiUsage.supportMessagesUsed(user.id),
         'supportLimit': kSupportMessagesPerDay,
+        'webSearchUsed': aiUsage.webSearchesUsed(user.id),
+        'webSearchLimit': webSearchWeeklyLimitForPlan(user.planId),
       },
     });
   }
@@ -2508,6 +2510,14 @@ class Api {
     final query = body['query'];
     if (query is! String || query.trim().isEmpty || query.length > 200) {
       return errorResponse(400, 'bad_request', 'query must contain 1-200 characters.');
+    }
+    final limit = webSearchWeeklyLimitForPlan(user.planId);
+    if (!await aiUsage.consumeWebSearch(user.id, limit)) {
+      return errorResponse(
+        429,
+        'usage_limit',
+        "You've used all $limit web searches for this rolling week.",
+      );
     }
     final search = WebSearch(base);
     try {

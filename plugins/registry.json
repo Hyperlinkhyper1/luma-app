@@ -393,15 +393,26 @@
       "version": "1.0.0"
     },
     {
+      "id": "free-sketch",
+      "name": "Free Sketch",
+      "description": "A full painting studio. 37 pressure-sensitive brushes — pencils, charcoal, inks, oils, watercolours that glaze, markers, airbrushes, smudge and blur — on layers with blend modes, clipping masks and alpha lock. Symmetry, selections, transform, fill, gradients and shapes, and export to PNG, JPEG, Photoshop PSD or OpenRaster.",
+      "icon": "brush",
+      "category": "Creativity",
+      "tags": ["Creativity", "Drawing", "Art"],
+      "free": true,
+      "version": "1.0.0"
+    },
+    {
       "id": "small-games",
       "name": "Small Games",
-      "version": "1.0.0",
-      "description": "Play BINGO with a draw cage and export unique printable cards as a PDF.",
+      "version": "1.1.0",
+      "description": "Play BINGO, Poker, Blackjack, and Patience.",
       "icon": "sports_esports",
       "category": "Games",
       "tags": [
         "Games",
-        "BINGO"
+        "BINGO",
+        "Card Games"
       ],
       "free": true
     }

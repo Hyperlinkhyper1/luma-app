@@ -653,10 +653,11 @@ class SyncService extends ChangeNotifier {
       s
         ..serverUrl = api.baseUrl
         ..pendingApprovalEmail = normalizedEmail
-        ..pendingApprovalMode = (result.emailed
-                ? ServerApprovalMode.email
-                : ServerApprovalMode.manual)
-            .name;
+        ..pendingApprovalMode =
+            (result.emailed
+                    ? ServerApprovalMode.email
+                    : ServerApprovalMode.manual)
+                .name;
       await s.save();
       notifyListeners();
       return result.emailed;
@@ -1699,6 +1700,8 @@ class AiServerStatus {
     required this.weeklyPct,
     required this.supportUsed,
     required this.supportLimit,
+    required this.webSearchUsed,
+    required this.webSearchLimit,
   });
 
   /// Whether the operator configured a shared Luma Support (Mistral) key.
@@ -1717,6 +1720,10 @@ class AiServerStatus {
   final int supportUsed;
   final int supportLimit;
 
+  /// Searches used this rolling week by the on-device Luma Assistant.
+  final int webSearchUsed;
+  final int webSearchLimit;
+
   int get supportRemaining =>
       (supportLimit - supportUsed).clamp(0, supportLimit);
 
@@ -1730,6 +1737,8 @@ class AiServerStatus {
       weeklyPct: intOf(usage['weeklyPct']),
       supportUsed: intOf(usage['supportUsed']),
       supportLimit: intOf(usage['supportLimit'], 15),
+      webSearchUsed: intOf(usage['webSearchUsed']),
+      webSearchLimit: intOf(usage['webSearchLimit']),
     );
   }
 }

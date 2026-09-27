@@ -605,6 +605,20 @@ class LZh extends L {
   String get assistantUsageRollingWeek => '滚动 7 天窗口';
 
   @override
+  String get assistantUsageLumaAssistant => 'Luma Assistant';
+
+  @override
+  String get assistantUsageLumaAssistantSubtitle => '设备端 Qwen 模型';
+
+  @override
+  String get assistantUsageWebSearch => '网页搜索';
+
+  @override
+  String assistantUsageCountOf(int used, int limit) {
+    return '已用 $used / $limit';
+  }
+
+  @override
   String assistantUsagePercentUsed(int percent) {
     return '已用 $percent%';
   }

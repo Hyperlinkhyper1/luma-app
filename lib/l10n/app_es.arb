@@ -221,6 +221,16 @@
   "assistantUsageRollingFiveHours": "Ventana móvil de 5 horas",
   "assistantUsageThisWeek": "Esta semana",
   "assistantUsageRollingWeek": "Ventana móvil de 7 días",
+  "assistantUsageLumaAssistant": "Luma Assistant",
+  "assistantUsageLumaAssistantSubtitle": "Modelo Qwen en el dispositivo",
+  "assistantUsageWebSearch": "Búsquedas web",
+  "assistantUsageCountOf": "{used} de {limit}",
+  "@assistantUsageCountOf": {
+    "placeholders": {
+      "used": { "type": "int" },
+      "limit": { "type": "int" }
+    }
+  },
   "assistantUsagePercentUsed": "{percent} % usado",
   "assistantUsageLumaSupport": "Luma Support",
   "assistantUsageResetsDaily": "Se reinicia a medianoche",

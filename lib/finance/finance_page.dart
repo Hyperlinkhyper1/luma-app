@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 
 import '../app/widgets.dart';
+import 'ui/debts_tab.dart';
 import 'ui/overview_tab.dart';
 import 'ui/pots_tab.dart';
 import 'ui/recurring_tab.dart';
+import 'ui/reports_tab.dart';
 import 'ui/stocks_tab.dart';
 import 'ui/transactions_tab.dart';
 
 /// Root of the Finance destination: a segmented sub-navigation over the
-/// overview, transactions, pots, recurring and stocks screens.
+/// overview, transactions, pots, recurring, debts, stocks and reports
+/// screens.
 class FinancePage extends StatefulWidget {
   const FinancePage({super.key});
 
@@ -24,7 +27,9 @@ class _FinancePageState extends State<FinancePage> {
     'Transactions',
     'Pots',
     'Recurring',
+    'Debts',
     'Stocks',
+    'Reports',
   ];
 
   @override
@@ -49,7 +54,9 @@ class _FinancePageState extends State<FinancePage> {
               TransactionsTab(),
               PotsTab(),
               RecurringTab(),
+              DebtsTab(),
               StocksTab(),
+              ReportsTab(),
             ],
           ),
         ),
