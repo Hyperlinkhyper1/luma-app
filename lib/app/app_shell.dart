@@ -122,6 +122,7 @@ class _AppShellState extends State<AppShell> {
   PetRepository? _petRepository;
   AutoClickerRepository? _autoClickerRepository;
   WindowController? _petWindow;
+  bool _petWindowVisible = false;
   List<PetTarget> _latestPetTargets = const [];
   bool _openingPetWindow = false;
   bool _petWindowFailed = false;
@@ -170,58 +171,80 @@ class _AppShellState extends State<AppShell> {
     final pet = _petRepository;
     if (pet == null ||
         !pet.visible ||
-        _petWindow != null ||
+        _petWindowVisible ||
         _openingPetWindow ||
         _latestPetTargets.isEmpty) {
       return;
     }
     _openingPetWindow = true;
     try {
-      final settings = SettingsScope.of(context);
-      final locale = Localizations.localeOf(context);
-      final brightness = Theme.of(context).brightness;
+      final snapshot = _petWindowSnapshot(pet);
+      final existing = _petWindow;
+      if (existing != null) {
+        await existing.invokeMethod<void>(petWindowMethodShow, snapshot);
+        if (!mounted || !pet.visible) {
+          await _closePetWindowController(existing);
+          return;
+        }
+        _petWindowVisible = true;
+        if (_petWindowFailed) setState(() => _petWindowFailed = false);
+        return;
+      }
       final controller = await WindowController.create(
         WindowConfiguration(
           hiddenAtLaunch: true,
           arguments: jsonEncode({
             'kind': petWindowKind,
-            'name': pet.name,
-            'pats': pet.pats,
-            'recentIds': pet.recentIds,
-            'locale': locale.languageCode,
-            'brightness': brightness.name,
-            'accent': settings.accentSeed?.toARGB32(),
-            'targets': [
-              for (final target in _latestPetTargets) _targetJson(target),
-            ],
-            'autoClicker': _autoClickerSnapshot(),
+            ...snapshot,
           }),
         ),
       );
+      _petWindow = controller;
       if (!mounted || !pet.visible) {
-        await controller.invokeMethod<void>(petWindowMethodClose);
+        await _closePetWindowController(controller);
         return;
       }
-      _petWindow = controller;
+      _petWindowVisible = true;
       if (_petWindowFailed && mounted) setState(() => _petWindowFailed = false);
     } catch (_) {
+      _petWindow = null;
+      _petWindowVisible = false;
       if (mounted) setState(() => _petWindowFailed = true);
     } finally {
       _openingPetWindow = false;
     }
   }
 
+  Map<String, dynamic> _petWindowSnapshot(PetRepository pet) {
+    final settings = SettingsScope.of(context);
+    final locale = Localizations.localeOf(context);
+    final brightness = Theme.of(context).brightness;
+    return {
+      'name': pet.name,
+      'pats': pet.pats,
+      'recentIds': pet.recentIds,
+      'locale': locale.languageCode,
+      'brightness': brightness.name,
+      'accent': settings.accentSeed?.toARGB32(),
+      'targets': [for (final target in _latestPetTargets) _targetJson(target)],
+      'autoClicker': _autoClickerSnapshot(),
+    };
+  }
+
   Future<void> _closePetWindow() async {
+    if (!_petWindowVisible) return;
+    _petWindowVisible = false;
     final window = _petWindow;
-    _petWindow = null;
     if (window == null) return;
     await _closePetWindowController(window);
   }
 
   Future<void> _closePetWindowController(WindowController window) async {
     try {
-      await window.invokeMethod<void>(petWindowMethodClose);
-    } catch (_) {}
+      await window.hide();
+    } catch (_) {
+      if (identical(_petWindow, window)) _petWindow = null;
+    }
   }
 
   Map<String, dynamic> _targetJson(PetTarget target) => {
@@ -251,14 +274,12 @@ class _AppShellState extends State<AppShell> {
       case petMethodDismiss:
         final window = _petWindow;
         await dismissPetWindowFromChild(
-          detachWindow: () {
-            if (identical(_petWindow, window)) _petWindow = null;
-          },
+          markHidden: () => _petWindowVisible = false,
           dismissPet: () async {
             if (call.arguments == true) await windowShow();
             await pet.close(navigating: call.arguments == true);
           },
-          closeWindow: () async {
+          hideWindow: () async {
             if (window != null) await _closePetWindowController(window);
           },
         );
@@ -421,7 +442,7 @@ class _AppShellState extends State<AppShell> {
         _latestPetTargets = _petTargets(t, installed);
         if (pet.visible &&
             hasCustomTitleBar &&
-            _petWindow == null &&
+            !_petWindowVisible &&
             !_openingPetWindow) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) unawaited(_openPetWindow());

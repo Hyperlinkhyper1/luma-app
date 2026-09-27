@@ -144,6 +144,14 @@ class _Entry {
 /// one layer's worth. Old steps are dropped once the history holds more than
 /// [memoryBudget] bytes of images the current state no longer uses, and an
 /// image is disposed the moment no state can reach it any more.
+///
+/// With a [baker], every image that enters the document is re-rendered in
+/// the background into a standalone image and swapped in for the original.
+/// Edits produce their pixels with `toImageSync`, and on the Skia renderer
+/// such an image keeps the recording it came from — including the previous
+/// version of the layer — alive for as long as it exists. Without the swap
+/// every stroke would pin every earlier version of its layer in GPU memory,
+/// whatever history says, until the engine runs out and crashes.
 class SketchDocument extends ChangeNotifier {
   SketchDocument({
     required this.width,
@@ -151,9 +159,13 @@ class SketchDocument extends ChangeNotifier {
     required SketchSnapshot initial,
     this.maxHistory = 100,
     int? memoryBudget,
+    this.baker,
+    this.onImageReplaced,
   })  : _state = initial,
         memoryBudget = memoryBudget ?? 900 * 1024 * 1024 {
     _known.addAll(initial.images);
+    // Loaded layers come straight from a decoder and reference nothing.
+    _flat.addAll(initial.images);
     for (final layer in initial.layers) {
       if (layer.id >= _nextLayerId) _nextLayerId = layer.id + 1;
     }
@@ -185,6 +197,9 @@ class SketchDocument extends ChangeNotifier {
   final _undo = <_Entry>[];
   final _redo = <_Entry>[];
   final _known = HashSet<ui.Image>.identity();
+  final _flat = HashSet<ui.Image>.identity();
+  final _replaced = Expando<ui.Image>();
+  bool _baking = false;
   int _revision = 0;
   int _nextLayerId = 1;
   bool _disposed = false;
@@ -205,6 +220,20 @@ class SketchDocument extends ChangeNotifier {
   int get undoDepth => _undo.length;
 
   int get bytesPerLayer => width * height * 4;
+
+  /// Renders an image into a standalone copy; see the class comment.
+  final Future<ui.Image> Function(ui.Image image)? baker;
+
+  /// Told when a baked copy replaces an image, so identity-keyed caches
+  /// (autosave's record of what it wrote) can follow along.
+  void Function(ui.Image old, ui.Image fresh)? onImageReplaced;
+
+  /// Completes when no background bake is running; for tests.
+  Future<void> get settled async {
+    while (_baking) {
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+    }
+  }
 
   int takeLayerId() => _nextLayerId++;
 
@@ -227,7 +256,9 @@ class SketchDocument extends ChangeNotifier {
   /// of [preview]s into a single undo.
   void commitFrom(SketchSnapshot before, String label) {
     if (identical(before, _state)) return;
-    _undo.add(_Entry(before, label));
+    // [before] was captured by the caller before a drag began; a bake may
+    // have swapped (and released) one of its images since.
+    _undo.add(_Entry(_remap(before), label));
     _redo.clear();
     _changed();
   }
@@ -261,6 +292,82 @@ class SketchDocument extends ChangeNotifier {
     _revision++;
     _collect();
     if (!_disposed) notifyListeners();
+    _bakeNext();
+  }
+
+  SketchSnapshot _remap(SketchSnapshot snapshot) {
+    ui.Image? follow(ui.Image? image) {
+      var current = image;
+      while (current != null) {
+        final next = _replaced[current];
+        if (next == null) break;
+        current = next;
+      }
+      return current;
+    }
+
+    if (!snapshot.images.any((image) => _replaced[image] != null)) return snapshot;
+    return snapshot.copyWith(layers: [
+      for (final layer in snapshot.layers)
+        if (layer.image case final image? when _replaced[image] != null)
+          layer.copyWith(image: follow(image))
+        else
+          layer,
+    ]);
+  }
+
+  void _bakeNext() {
+    final bake = baker;
+    if (bake == null || _baking || _disposed) return;
+    ui.Image? target;
+    for (final snapshot in [_state, for (final e in _redo.reversed) e.snapshot, for (final e in _undo.reversed) e.snapshot]) {
+      for (final image in snapshot.images) {
+        if (!_flat.contains(image)) {
+          target = image;
+          break;
+        }
+      }
+      if (target != null) break;
+    }
+    if (target == null) return;
+    final source = target;
+    _baking = true;
+    bake(source).then(
+      (fresh) {
+        _baking = false;
+        if (_disposed || !_known.contains(source)) {
+          fresh.dispose();
+        } else {
+          _swap(source, fresh);
+        }
+        _bakeNext();
+      },
+      onError: (Object _) {
+        // Leave it as it is; better an unflattened image than none.
+        _baking = false;
+        _flat.add(source);
+        _bakeNext();
+      },
+    );
+  }
+
+  void _swap(ui.Image old, ui.Image fresh) {
+    _replaced[old] = fresh;
+    _state = _remap(_state);
+    for (final list in [_undo, _redo]) {
+      for (var i = 0; i < list.length; i++) {
+        list[i] = _Entry(_remap(list[i].snapshot), list[i].label);
+      }
+    }
+    _known
+      ..remove(old)
+      ..add(fresh);
+    _flat.add(fresh);
+    old.dispose();
+    onImageReplaced?.call(old, fresh);
+    // Same pixels, so no revision bump and no autosave; listeners still
+    // rebuild so nothing keeps drawing the released handle.
+    notifyListeners();
   }
 
   void _collect() {
@@ -290,6 +397,7 @@ class SketchDocument extends ChangeNotifier {
     for (final image in dead) {
       image.dispose();
       _known.remove(image);
+      _flat.remove(image);
     }
   }
 

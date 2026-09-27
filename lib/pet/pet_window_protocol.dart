@@ -16,4 +16,4 @@ const String petMethodOpenTarget = 'openTarget';
 const String petMethodDismiss = 'dismiss';
 const String petMethodAutoClicker = 'autoClicker';
 
-const String petWindowMethodClose = 'window_close';
+const String petWindowMethodShow = 'window_show';

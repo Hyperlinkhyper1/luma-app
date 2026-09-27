@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -9,21 +10,33 @@ import 'dab_renderer.dart';
 import 'sketch_document.dart';
 import 'stroke_engine.dart';
 import 'symmetry.dart';
-import 'tiled_surface.dart';
 
 enum StrokeMode { paint, erase, smudge, blur }
 
+/// A smudge or blur dab: where it lands, and where it takes its pixels from.
+class _Op {
+  const _Op(this.dab, this.source);
+  final Dab dab;
+  final Offset source;
+}
+
 /// One stroke in progress, from pen-down to commit.
 ///
-/// Paint and erase strokes accumulate their dabs in a separate buffer and
-/// only meet the layer when it is drawn — with the brush's opacity as a cap,
-/// its blend mode, and the paper grain pressed through. That is what lets a
-/// low-flow brush build up inside a stroke without ever passing the stroke's
-/// opacity, and it is the same code that produces the committed pixels, so
-/// what shows while drawing is what lands.
+/// Paint and erase strokes accumulate their dabs in a buffer of their own and
+/// only meet the layer when drawn — with the brush's opacity as a cap, its
+/// blend mode and the paper grain. That lets a low-flow brush build up inside
+/// a stroke without passing the stroke's opacity, and it is the same code
+/// that produces the committed pixels, so what shows while drawing lands.
 ///
-/// Smudge and blur have to read the layer, so they work on a tiled copy of
-/// it instead.
+/// **Why nothing here uses `toImageSync`.** On the Skia renderer (Windows) a
+/// `toImageSync` image keeps the whole recording it was made from alive for
+/// as long as it lives — including every image drawn into that recording.
+/// Re-rendering a buffer from last frame's buffer every frame therefore
+/// builds a chain in which no frame's texture is ever freed, and GPU memory
+/// grows until the engine crashes. Instead the stroke is kept as a list of
+/// dabs drawn as vectors, and every so often the list is flattened into
+/// [_baked] with the asynchronous `Picture.toImage`, whose result references
+/// nothing. Smudge and blur read only from [_baked] for the same reason.
 class StrokeSession {
   StrokeSession({
     required this.layer,
@@ -43,11 +56,9 @@ class StrokeSession {
           pressureGamma: pressureGamma,
           seed: seed,
         ),
-        surface = TiledSurface(
-          width: width,
-          height: height,
-          base: mode == StrokeMode.smudge || mode == StrokeMode.blur ? layer.image : null,
-        );
+        _base = layer.image?.clone() {
+    if (_readsLayer) _baked = _base?.clone();
+  }
 
   final SketchLayer layer;
   final int width;
@@ -58,21 +69,37 @@ class StrokeSession {
   final SymmetrySettings symmetry;
   final Path? selection;
   final StrokeEngine engine;
-  final TiledSurface surface;
 
-  final _pending = <Dab>[];
-  ui.Image? _carry;
+  /// This session's own handle on the layer's pixels, so the document can
+  /// swap or release its copy while the stroke is still going.
+  final ui.Image? _base;
+
+  /// Everything flattened so far: the stroke buffer for paint and erase, the
+  /// working copy of the layer for smudge and blur.
+  ui.Image? _baked;
+
+  final _dabs = <Dab>[];
+  final _ops = <_Op>[];
+  final _trail = <Dab>[];
+  Future<void>? _bake;
+  DateTime _lastBake = DateTime.now();
   bool _finished = false;
+  bool _disposed = false;
   bool _touched = false;
+
+  bool get _readsLayer => mode == StrokeMode.smudge || mode == StrokeMode.blur;
 
   Size get _size => Size(width.toDouble(), height.toDouble());
   Rect get bounds => Offset.zero & _size;
 
-  bool get needsFlush => _pending.isNotEmpty;
+  bool get needsFlush => _dabs.isNotEmpty || _ops.isNotEmpty;
 
   /// Whether any dab has landed — a stroke that never did is dropped rather
   /// than recorded as an empty undo step.
-  bool get touched => _touched || _pending.isNotEmpty || engine.provisional.isNotEmpty;
+  bool get touched => _touched || _dabs.isNotEmpty || _ops.isNotEmpty || engine.provisional.isNotEmpty;
+
+  /// Completes once no flatten is in flight; for tests.
+  Future<void> get settled => _bake ?? Future<void>.value();
 
   void add(StrokeInput input) => _queue(engine.add(input));
 
@@ -80,40 +107,104 @@ class StrokeSession {
 
   void finish() {
     if (_finished) return;
-    _finished = true;
     _queue(engine.finish());
-    flush();
+    _finished = true;
   }
 
   void _queue(List<Dab> dabs) {
     if (dabs.isEmpty) return;
-    _pending.addAll(symmetry.expand(dabs, _size));
+    _touched = true;
+    final expanded = symmetry.expand(dabs, _size);
+    if (!_readsLayer) {
+      _dabs.addAll(expanded);
+      return;
+    }
+    // Each smudge dab copies what sat half a brush behind it; symmetric
+    // copies take their source through the same mirror.
+    for (final dab in dabs) {
+      _trail.add(dab);
+      final lag = dab.size * 0.5;
+      var source = _trail.first.center;
+      for (var i = _trail.length - 1; i >= 0; i--) {
+        if (dab.distance - _trail[i].distance >= lag) {
+          source = _trail[i].center;
+          break;
+        }
+      }
+      while (_trail.length > 2 && dab.distance - _trail[1].distance > lag) {
+        _trail.removeAt(0);
+      }
+      // expand() emits copies in a fixed order, so expanding the source
+      // point the same way pairs every copy with its mirrored source.
+      final copies = symmetry.expand([dab], _size);
+      final sources = symmetry.expand([dab.copyWith(center: source)], _size);
+      for (var i = 0; i < copies.length; i++) {
+        _ops.add(_Op(copies[i], sources[i].center));
+      }
+    }
   }
 
-  List<Dab> get _provisional =>
-      mode == StrokeMode.paint || mode == StrokeMode.erase
-          ? symmetry.expand(engine.provisional, _size)
-          : const [];
+  List<Dab> get _provisional => _readsLayer ? const [] : symmetry.expand(engine.provisional, _size);
 
-  /// Rasterises everything queued since the last flush. Called once per
-  /// frame, not once per pointer event.
+  /// Called once per frame. Starts a flatten when enough has piled up and
+  /// none is already running.
   void flush() {
-    if (_pending.isEmpty) return;
-    final dabs = List<Dab>.of(_pending);
-    _pending.clear();
-    _touched = true;
-    switch (mode) {
-      case StrokeMode.paint:
-      case StrokeMode.erase:
-        surface.paintItems<Dab>(dabs, (dab) => dab.bounds, (canvas, items) {
-          renderer.paintAll(canvas, items, brush);
-        });
-      case StrokeMode.smudge:
-        _smudge(dabs);
-      case StrokeMode.blur:
-        _blur(dabs);
+    if (_disposed || _bake != null) return;
+    final pending = _readsLayer ? _ops.length : _dabs.length;
+    if (pending == 0) return;
+    final age = DateTime.now().difference(_lastBake).inMilliseconds;
+    // Smudge reads from the flattened copy, so it wants a fresh one every
+    // frame; paint only needs flattening to keep per-frame drawing cheap.
+    if (!_readsLayer && pending < 160 && age < 200) return;
+    _startBake();
+  }
+
+  void _startBake() {
+    final count = _readsLayer ? _ops.length : _dabs.length;
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder, bounds);
+    _drawBuffer(canvas, count);
+    final picture = recorder.endRecording();
+    _lastBake = DateTime.now();
+    _bake = picture.toImage(width, height).then((image) {
+      picture.dispose();
+      if (_disposed) {
+        image.dispose();
+        return;
+      }
+      final old = _baked;
+      _baked = image;
+      old?.dispose();
+      if (_readsLayer) {
+        _ops.removeRange(0, count);
+      } else {
+        _dabs.removeRange(0, count);
+      }
+    }).whenComplete(() {
+      _bake = null;
+    });
+  }
+
+  /// The flattened buffer plus the first [count] pending dabs (all of them
+  /// when null).
+  void _drawBuffer(Canvas canvas, [int? count, FilterQuality quality = FilterQuality.low]) {
+    final baked = _baked;
+    if (baked != null) canvas.drawImage(baked, Offset.zero, Paint()..filterQuality = quality);
+    if (_readsLayer) {
+      final ops = count == null ? _ops : _ops.take(count);
+      if (baked == null) return;
+      final clip = selection;
+      if (clip != null) {
+        canvas.save();
+        canvas.clipPath(clip);
+      }
+      for (final op in ops) {
+        mode == StrokeMode.smudge ? _smudgeOp(canvas, op, baked) : _blurOp(canvas, op, baked);
+      }
+      if (clip != null) canvas.restore();
+    } else {
+      renderer.paintAll(canvas, count == null ? _dabs : _dabs.take(count), brush);
     }
-    surface.endBatch();
   }
 
   BlendMode get _strokeBlend {
@@ -128,13 +219,18 @@ class StrokeSession {
 
   /// Draws the layer as it looks with this stroke applied, at the origin.
   void paintLayer(Canvas canvas, {FilterQuality quality = FilterQuality.low}) {
-    if (mode == StrokeMode.smudge || mode == StrokeMode.blur) {
-      surface.draw(canvas, quality: quality);
+    if (_readsLayer) {
+      if (_baked == null) {
+        final base = _base;
+        if (base != null) canvas.drawImage(base, Offset.zero, Paint()..filterQuality = quality);
+        return;
+      }
+      _drawBuffer(canvas, null, quality);
       return;
     }
-    final image = layer.image;
-    if (image != null) {
-      canvas.drawImage(image, Offset.zero, Paint()..filterQuality = quality);
+    final base = _base;
+    if (base != null) {
+      canvas.drawImage(base, Offset.zero, Paint()..filterQuality = quality);
     }
     canvas.save();
     final clip = selection;
@@ -157,7 +253,7 @@ class StrokeSession {
   }
 
   void _strokeContent(Canvas canvas, FilterQuality quality) {
-    surface.draw(canvas, quality: quality);
+    _drawBuffer(canvas, null, quality);
     renderer.paintAll(canvas, _provisional, brush);
   }
 
@@ -165,9 +261,9 @@ class StrokeSession {
   /// than each dab — per-dab rings read as a string of bubbles.
   ///
   /// The stroke is drawn twice: a lighter body, then an edge layer made of
-  /// the stroke minus a blurred, alpha-boosted copy of itself. Deep inside
-  /// the wash the blurred copy is as dense as the stroke and cancels it; at
-  /// the outline it is thinner, so the stroke survives there and pools.
+  /// the stroke minus a blurred copy of itself. Deep inside the wash the
+  /// blurred copy is as dense as the stroke and cancels it; at the outline it
+  /// is thinner, so the stroke survives there and pools.
   void _wetStroke(Canvas canvas, FilterQuality quality, double wet) {
     canvas.saveLayer(bounds, Paint()..color = Color.fromRGBO(0, 0, 0, 1 - 0.5 * wet));
     _strokeContent(canvas, quality);
@@ -215,11 +311,13 @@ class StrokeSession {
   }
 
   /// The layer's new pixels. Only valid after [finish].
+  ///
+  /// This one does use `toImageSync` — the document needs the pixels now —
+  /// but what it records only references [_baked] and the layer, both plain
+  /// images, and the document flattens the result again in the background.
   ui.Image? commit() {
     assert(_finished, 'commit() before finish()');
-    if (mode == StrokeMode.smudge || mode == StrokeMode.blur) {
-      return surface.flatten();
-    }
+    if (_readsLayer && _baked == null) return null;
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder, bounds);
     paintLayer(canvas);
@@ -229,145 +327,74 @@ class StrokeSession {
     return image;
   }
 
-  // -------------------------------------------------------------- smudge
-
-  /// Each dab lays down the paint it is carrying, then picks up a little of
-  /// what is under it. Pick-ups read the surface as it was at the start of
-  /// this frame; within one frame the carried paint already holds what the
-  /// previous dab deposited, so the difference does not show.
-  void _smudge(List<Dab> dabs) {
-    final persistence = brush.strength.clamp(0.05, 0.98);
-    final deposits = <(Dab, ui.Image, Rect)>[];
-    for (final dab in dabs) {
-      final rect = _dabRect(dab);
-      final picked = _capture(rect);
-      final carry = _carry;
-      if (carry == null) {
-        _carry = picked;
-        continue;
-      }
-      deposits.add((dab, carry, rect));
-      _carry = _mix(carry, picked, rect, persistence);
-      picked.dispose();
-    }
-    if (deposits.isEmpty) return;
-    final amount = 0.5 + 0.5 * persistence;
-    _deposit(deposits, amount, replace: false);
-    for (final (_, image, _) in deposits) {
-      image.dispose();
-    }
-  }
-
-  void _blur(List<Dab> dabs) {
-    final deposits = <(Dab, ui.Image, Rect)>[];
-    for (final dab in dabs) {
-      final rect = _dabRect(dab);
-      final sigma = math.max(0.6, dab.size * 0.08);
-      deposits.add((dab, _capture(rect, blurSigma: sigma), rect));
-    }
-    _deposit(deposits, brush.strength.clamp(0.05, 1.0), replace: true);
-    for (final (_, image, _) in deposits) {
-      image.dispose();
-    }
-  }
-
-  /// Lays each dab's image down through the tip, weighted by
-  /// `tip alpha × amount`.
-  ///
-  /// With [replace] the old pixels are first faded by that weight
-  /// (`dstOut`) and the image added back at the same weight (`plus`) — a true
-  /// blend, which blur needs so a soft edge can actually lose alpha. Without
-  /// it the image goes on with `srcOver`, which never lowers alpha: smudge
-  /// starting on empty canvas then picks paint up as it goes rather than
-  /// dragging a trail of transparency through everything it touches.
-  ///
-  /// The tip is drawn into the layer first and the image masked to it with
-  /// `srcIn`; masking the other way round (`dstIn` with the tip) leaves the
-  /// image's corners outside the tip untouched.
-  void _deposit(List<(Dab, ui.Image, Rect)> deposits, double amount, {required bool replace}) {
-    surface.paintItems<(Dab, ui.Image, Rect)>(deposits, (d) => d.$3, (canvas, items) {
-      final clip = selection;
-      if (clip != null) {
-        canvas.save();
-        canvas.clipPath(clip);
-      }
-      for (final (dab, image, rect) in items) {
-        final m = (dab.alpha * amount).clamp(0.0, 1.0);
-        if (m <= 0) continue;
-        if (replace) renderer.mask(canvas, dab, brush, m, BlendMode.dstOut);
-        canvas.saveLayer(rect, Paint()..blendMode = replace ? BlendMode.plus : BlendMode.srcOver);
-        renderer.mask(canvas, dab, brush, m, BlendMode.srcOver);
-        canvas.drawImageRect(
-          image,
-          Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
-          rect,
-          Paint()
-            ..blendMode = BlendMode.srcIn
-            ..filterQuality = FilterQuality.low,
-        );
-        canvas.restore();
-      }
-      if (clip != null) canvas.restore();
-    });
-  }
+  // ------------------------------------------------------------ smudge, blur
 
   Rect _dabRect(Dab dab) {
     final side = math.max(2.0, dab.size.ceilToDouble() + 2);
     return Rect.fromCenter(center: dab.center, width: side, height: side);
   }
 
-  ui.Image _capture(Rect rect, {double? blurSigma}) {
-    final w = math.max(1, rect.width.round());
-    final h = math.max(1, rect.height.round());
-    final recorder = ui.PictureRecorder();
-    final canvas = Canvas(recorder, Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble()));
-    canvas.translate(-rect.left, -rect.top);
-    if (blurSigma != null) {
-      canvas.saveLayer(
-        rect.inflate(blurSigma * 3),
-        Paint()..imageFilter = ui.ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
-      );
-      surface.draw(canvas);
-      canvas.restore();
-    } else {
-      surface.draw(canvas);
-    }
-    final picture = recorder.endRecording();
-    final image = picture.toImageSync(w, h);
-    picture.dispose();
-    return image;
+  /// Per-dab deposit. About `1 / spacing` dabs overlap any one spot, and each
+  /// reads the same flattened copy, so the per-dab share is chosen for the
+  /// overlaps to add up to the intended total rather than to near-opaque —
+  /// otherwise the first colour touched is dragged the whole stroke long.
+  double get _amount {
+    final total = mode == StrokeMode.smudge
+        ? 0.3 + 0.45 * brush.strength.clamp(0.05, 0.98)
+        : brush.strength.clamp(0.05, 1.0);
+    final overlaps = brush.spacing.clamp(0.02, 1.0);
+    return 1 - math.pow(1 - total.clamp(0.0, 0.99), overlaps).toDouble();
   }
 
-  /// `carry × persistence + picked × (1 − persistence)`, premultiplied, so
-  /// transparency is carried along like any colour.
-  ui.Image _mix(ui.Image carry, ui.Image picked, Rect rect, double persistence) {
-    final w = picked.width;
-    final h = picked.height;
-    final dst = Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble());
-    final recorder = ui.PictureRecorder();
-    final canvas = Canvas(recorder, dst);
+  /// Paint from half a brush behind is laid over this spot through the tip.
+  /// `srcOver`, never a replace: dragging from empty canvas into paint
+  /// should pick paint up, not smear transparency through it.
+  void _smudgeOp(Canvas canvas, _Op op, ui.Image source) {
+    final dab = op.dab;
+    final m = (dab.alpha * _amount).clamp(0.0, 1.0);
+    if (m <= 0) return;
+    final rect = _dabRect(dab);
+    final from = rect.shift(op.source - dab.center);
+    canvas.saveLayer(rect, Paint());
+    renderer.mask(canvas, dab, brush, m, BlendMode.srcOver);
     canvas.drawImageRect(
-      carry,
-      Rect.fromLTWH(0, 0, carry.width.toDouble(), carry.height.toDouble()),
-      dst,
-      Paint()..color = Color.fromRGBO(0, 0, 0, persistence),
-    );
-    canvas.drawImage(
-      picked,
-      Offset.zero,
+      source,
+      from,
+      rect,
       Paint()
-        ..blendMode = BlendMode.plus
-        ..color = Color.fromRGBO(0, 0, 0, 1 - persistence),
+        ..blendMode = BlendMode.srcIn
+        ..filterQuality = FilterQuality.low,
     );
-    final picture = recorder.endRecording();
-    final image = picture.toImageSync(w, h);
-    picture.dispose();
-    return image;
+    canvas.restore();
+  }
+
+  /// A true blend towards the blurred pixels (fade the old by the tip, then
+  /// add the blurred at the same weight), so a soft edge can actually lose
+  /// alpha instead of only ever gaining it.
+  void _blurOp(Canvas canvas, _Op op, ui.Image source) {
+    final dab = op.dab;
+    final m = (dab.alpha * _amount).clamp(0.0, 1.0);
+    if (m <= 0) return;
+    final rect = _dabRect(dab);
+    final sigma = math.max(0.6, dab.size * 0.08);
+    renderer.mask(canvas, dab, brush, m, BlendMode.dstOut);
+    canvas.saveLayer(rect, Paint()..blendMode = BlendMode.plus);
+    renderer.mask(canvas, dab, brush, m, BlendMode.srcOver);
+    canvas.saveLayer(
+      rect.inflate(sigma * 3),
+      Paint()
+        ..blendMode = BlendMode.srcIn
+        ..imageFilter = ui.ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+    );
+    canvas.drawImage(source, Offset.zero, Paint());
+    canvas.restore();
+    canvas.restore();
   }
 
   void dispose() {
-    _carry?.dispose();
-    _carry = null;
-    surface.dispose();
+    _disposed = true;
+    _baked?.dispose();
+    _baked = null;
+    _base?.dispose();
   }
 }

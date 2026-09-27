@@ -23,6 +23,7 @@ import 'package:luma/features/plugins/installed/free_sketch/io/sketch_export.dar
 import 'package:luma/features/plugins/installed/free_sketch/model/brush.dart';
 import 'package:luma/features/plugins/installed/free_sketch/model/sketch_blend.dart';
 import 'package:luma/features/plugins/installed/free_sketch/model/sketch_meta.dart';
+import 'package:luma/features/plugins/installed/free_sketch/ui/studio_controller.dart';
 import 'package:luma/storage/storage_guard.dart';
 
 /// A brush with every source of randomness and lag switched off, so dab
@@ -441,6 +442,41 @@ void main() {
       doc.dispose();
     });
 
+    test('edits are re-flattened in the background and swapped in everywhere', () async {
+      final doc = SketchDocument(
+        width: 8,
+        height: 8,
+        baker: StudioController.bake,
+        initial: const SketchSnapshot(
+          layers: [SketchLayer(id: 1, name: 'L')],
+          activeLayerId: 1,
+          background: Colors.white,
+        ),
+      );
+      final swaps = <(ui.Image, ui.Image)>[];
+      doc.onImageReplaced = (old, fresh) => swaps.add((old, fresh));
+      final first = _solid(8, 8, const Color(0xFFFF0000));
+      doc.commit(doc.state.replaceLayer(doc.state.active.copyWith(image: first)), 'one');
+      final before = doc.state;
+      await doc.settled;
+
+      expect(swaps.single.$1, same(first));
+      expect(first.debugDisposed, isTrue, reason: 'the chained original is released');
+      final flat = doc.state.active.image!;
+      expect(flat, same(swaps.single.$2));
+      expect(await _pixel(flat, 3, 3), [255, 0, 0, 255]);
+      final revision = doc.revision;
+
+      // A snapshot taken before the swap (an opacity drag) is remapped when
+      // it lands in history, so undo never draws a released image.
+      doc.preview(doc.state.replaceLayer(doc.state.active.copyWith(opacity: 0.5)));
+      doc.commitFrom(before, 'Layer opacity');
+      doc.undo();
+      expect(doc.state.active.image, same(flat));
+      expect(doc.revision, greaterThan(revision));
+      doc.dispose();
+    });
+
     test('a run of previews collapses into one undo step', () {
       final doc = SketchDocument.blank(width: 4, height: 4);
       final before = doc.state;
@@ -526,7 +562,17 @@ void main() {
       final base = r.endRecording().toImageSync(40, 20);
       final layer = SketchLayer(id: 1, name: 'L', image: base);
       final smudger = BrushLibrary.byId('smudge').copyWithParam(BrushParam.size, 10).copyWithParam(BrushParam.streamline, 0);
-      final out = run(session(layer, StrokeMode.smudge, brush: smudger), const Offset(6, 10), const Offset(34, 10));
+      // In the app the canvas flattens the smudge every frame; do the same
+      // between moves, since each dab reads from the last flattened copy.
+      final s = session(layer, StrokeMode.smudge, brush: smudger);
+      for (final input in _line(const Offset(6, 10), const Offset(34, 10), steps: 30)) {
+        s.add(input);
+        s.flush();
+        await s.settled;
+      }
+      s.finish();
+      final out = s.commit()!;
+      s.dispose();
       final dragged = await _pixel(out, 26, 10);
       expect(dragged[0], greaterThan(60), reason: 'red carried into the blue');
       expect(dragged[3], 255);

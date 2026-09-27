@@ -9,6 +9,9 @@ import 'package:luma/features/plugins/installed/account_overview/mc_content_scop
 import 'package:luma/features/plugins/installed/account_overview/github_models.dart';
 import 'package:luma/features/plugins/installed/account_overview/youtube_repository.dart';
 import 'package:luma/features/plugins/installed/account_overview/youtube_scope.dart';
+import 'package:luma/features/plugins/installed/account_overview/spotify_models.dart';
+import 'package:luma/features/plugins/installed/account_overview/spotify_repository.dart';
+import 'package:luma/features/plugins/installed/account_overview/spotify_scope.dart';
 import 'package:luma/theme/luma_theme.dart';
 
 /// The plugin under its scope, the way `main.dart` nests it.
@@ -34,7 +37,10 @@ Widget _app(
             repository: mc,
             child: YoutubeScope(
               repository: youtube,
-              child: const Scaffold(body: AccountOverviewPage()),
+              child: SpotifyScope(
+                repository: _spotify,
+                child: const Scaffold(body: AccountOverviewPage()),
+              ),
             ),
           ),
         ),
@@ -55,12 +61,14 @@ Future<void> _pumpApp(
   await tester.runAsync(() => repository.load());
   await tester.runAsync(() => _mc.load());
   await tester.runAsync(() => _youtube.load());
+  await tester.runAsync(() => _spotify.load());
   await tester.pumpWidget(_app(repository, _mc, _youtube, size: size));
   await tester.pumpAndSettle();
 }
 
 late McContentRepository _mc;
 late YoutubeRepository _youtube;
+late SpotifyRepository _spotify;
 
 /// Pumps a repository that was seeded rather than loaded.
 ///
@@ -73,6 +81,7 @@ Future<void> _pumpSeeded(
 ) async {
   await tester.runAsync(() => _mc.load());
   await tester.runAsync(() => _youtube.load());
+  await tester.runAsync(() => _spotify.load());
   await tester.pumpWidget(_app(repository, _mc, _youtube));
   await tester.pumpAndSettle();
 }
@@ -84,11 +93,13 @@ void main() {
     repository = AccountOverviewRepository();
     _mc = McContentRepository();
     _youtube = YoutubeRepository();
+    _spotify = SpotifyRepository();
   });
   tearDown(() {
     repository.dispose();
     _mc.dispose();
     _youtube.dispose();
+    _spotify.dispose();
   });
 
   testWidgets('shows every section in the sidebar', (tester) async {
@@ -108,6 +119,40 @@ void main() {
         reason: '${section.label} should be reachable from the rail',
       );
     }
+  });
+
+  testWidgets('Spotify stats work without a GitHub connection', (tester) async {
+    _spotify.seedForTest(SpotifySnapshot(
+      displayName: 'Music Fan',
+      profileUrl: null,
+      followers: 12,
+      topArtists: const [SpotifyItem(name: 'Test Artist', subtitle: 'Indie')],
+      topTracks: const [SpotifyItem(name: 'Test Track', subtitle: 'Test Artist')],
+      recentTracks: const [],
+      savedTracks: 42,
+      playlists: 3,
+      fetchedAt: DateTime.now(),
+      timeRange: 'medium_term',
+    ));
+    await _pumpApp(tester, repository);
+
+    await tester.tap(find.text('Spotify'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Stats').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Test Artist'), findsWidgets);
+    expect(find.text('Saved tracks'), findsOneWidget);
+    expect(find.text('42'), findsOneWidget);
+    expect(find.text('Tracked minutes'), findsOneWidget);
+    expect(find.text('0 min'), findsOneWidget);
+    expect(find.text('Last 6 months'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Test Track'),
+      150,
+      scrollable: find.byType(Scrollable).last,
+    );
+    expect(find.text('Test Track'), findsOneWidget);
   });
 
   testWidgets('asks for a token before showing any account data',

@@ -1,37 +1,34 @@
-import 'dart:async';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/pet/pet_window_lifecycle.dart';
 
 void main() {
-  test('child dismissal releases both channel replies before closing', () async {
-    var attached = true;
-    var closed = false;
-    final dismissalFinished = Completer<void>();
+  test('child dismissal marks hidden before updating state', () async {
+    var visible = true;
+    var hidden = false;
 
-    final dismissal = dismissPetWindowFromChild(
-      detachWindow: () => attached = false,
+    await dismissPetWindowFromChild(
+      markHidden: () => visible = false,
       dismissPet: () async {
-        expect(attached, isFalse);
-        dismissalFinished.complete();
+        expect(visible, isFalse);
+        expect(hidden, isFalse);
       },
-      closeWindow: () async => closed = true,
+      hideWindow: () async => hidden = true,
     );
 
-    await dismissalFinished.future;
-    await dismissal;
-    expect(closed, isFalse);
-
-    await Future<void>.delayed(Duration.zero);
-    expect(closed, isTrue);
+    expect(hidden, isTrue);
   });
 
-  test('a close request replies before destroying its own engine', () async {
-    var destroyed = false;
-    closePetWindowAfterReply(() async => destroyed = true);
-    expect(destroyed, isFalse);
+  test('child window hides even when its state update throws', () async {
+    var hidden = false;
 
-    await Future<void>.delayed(Duration.zero);
-    expect(destroyed, isTrue);
+    await expectLater(
+      dismissPetWindowFromChild(
+        markHidden: () {},
+        dismissPet: () async => throw StateError('dismiss failed'),
+        hideWindow: () async => hidden = true,
+      ),
+      throwsStateError,
+    );
+    expect(hidden, isTrue);
   });
 }

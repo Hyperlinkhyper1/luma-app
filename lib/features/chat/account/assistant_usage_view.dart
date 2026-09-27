@@ -15,10 +15,10 @@ import 'assistant_panels.dart';
 
 const _aiUsagePluginId = 'ai-usage';
 
-/// "Your usage", after the Claude app: the plan, a one-line verdict, and a
-/// bar per limit — the Luma AI 5-hour and weekly budgets from the sync
-/// server, Luma Support's daily messages, the daily cap on the user's own
-/// API keys — then messages per model and the storage memory takes up.
+/// "Your usage", after the Claude app: the plan, a one-line verdict, the
+/// Luma AI 5-hour and weekly budgets from the sync server, then the smaller
+/// limits (Luma Support, web search, the user's own API keys) as plain rows,
+/// and finally messages per model and the storage memory takes up.
 class AssistantUsageView extends StatefulWidget {
   const AssistantUsageView({super.key, required this.onOpenPlugin});
 
@@ -74,7 +74,7 @@ class _AssistantUsageViewState extends State<AssistantUsageView> {
             : t.assistantUsageHeadlinePlenty;
 
         return ListView(
-          padding: const EdgeInsets.fromLTRB(28, 26, 28, 32),
+          padding: const EdgeInsets.fromLTRB(32, 28, 32, 40),
           children: [
             AssistantPanelTitle(
               t.assistantYourUsage,
@@ -83,116 +83,15 @@ class _AssistantUsageViewState extends State<AssistantUsageView> {
                 style: TextStyle(color: luma.textMuted, fontSize: 14),
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 18),
             Text(
               headline,
               style: TextStyle(
                 color: luma.textPrimary,
                 fontSize: 24,
                 fontWeight: FontWeight.w600,
-                height: 1.25,
+                height: 1.3,
               ),
-            ),
-            const SizedBox(height: 18),
-            Divider(height: 1, color: luma.border),
-            _Group(
-              title: t.assistantUsageLumaAi,
-              subtitle: t.assistantUsageLumaAiSubtitle,
-              children: loading
-                  ? const [_Loading()]
-                  : status == null
-                  ? [_Note(t.assistantUsageUnavailable)]
-                  : [
-                      _UsageRow(
-                        label: t.assistantUsageCurrentSession,
-                        caption: t.assistantUsageRollingFiveHours,
-                        fraction: status.fiveHourPct / 100,
-                        trailing: t.assistantUsagePercentUsed(
-                          status.fiveHourPct,
-                        ),
-                      ),
-                      _UsageRow(
-                        label: t.assistantUsageThisWeek,
-                        caption: t.assistantUsageRollingWeek,
-                        fraction: status.weeklyPct / 100,
-                        trailing: t.assistantUsagePercentUsed(status.weeklyPct),
-                      ),
-                    ],
-            ),
-            if (status != null && status.supportLimit > 0)
-              _Group(
-                title: t.assistantUsageLumaSupport,
-                children: [
-                  _UsageRow(
-                    label: t.assistantDailyMessages,
-                    caption: t.assistantUsageResetsDaily,
-                    fraction: status.supportUsed / status.supportLimit,
-                    trailing: t.assistantMessagesOf(
-                      status.supportUsed,
-                      status.supportLimit,
-                    ),
-                  ),
-                ],
-              ),
-            if (status != null && status.webSearchLimit > 0)
-              _Group(
-                title: t.assistantUsageLumaAssistant,
-                subtitle: t.assistantUsageLumaAssistantSubtitle,
-                children: [
-                  _UsageRow(
-                    label: t.assistantUsageWebSearch,
-                    caption: t.assistantUsageRollingWeek,
-                    fraction: status.webSearchUsed / status.webSearchLimit,
-                    trailing: t.assistantUsageCountOf(
-                      status.webSearchUsed,
-                      status.webSearchLimit,
-                    ),
-                  ),
-                ],
-              ),
-            _Group(
-              title: t.assistantUsageApiKeys,
-              subtitle: t.assistantUsageApiKeysSubtitle,
-              children: [
-                _UsageRow(
-                  label: t.assistantDailyMessages,
-                  caption: t.assistantUsageResetsDaily,
-                  fraction: keyUsed / keyLimit,
-                  trailing: t.assistantMessagesOf(keyUsed, keyLimit),
-                ),
-              ],
-            ),
-            _Group(
-              title: t.assistantUsageByModel,
-              subtitle: t.assistantUsageByModelSubtitle,
-              children: [_ModelBreakdown(usage: settings.modelUsage)],
-            ),
-            _Group(
-              title: t.assistantUsageStorage,
-              children: [
-                _StorageRow(
-                  label: t.assistantUsageMemoryStorage,
-                  caption: t.assistantUsageMemoryStorageCaption,
-                  value: formatStorageBytes(memory?.approximateBytes ?? 0),
-                ),
-                if (sync.account case final account?)
-                  _UsageRow(
-                    label: t.assistantUsageServerStorage,
-                    caption: t.assistantUsageStorageOf(
-                      formatStorageBytes(account.usedBytes),
-                      formatStorageBytes(account.quotaBytes),
-                    ),
-                    fraction: account.quotaBytes == 0
-                        ? 0
-                        : account.usedBytes / account.quotaBytes,
-                    trailing: t.assistantUsagePercentUsed(
-                      account.quotaBytes == 0
-                          ? 0
-                          : (account.usedBytes * 100 / account.quotaBytes)
-                                .round(),
-                    ),
-                  ),
-              ],
             ),
             StreamBuilder<List<InstalledPluginRecord>>(
               stream: PluginScope.of(context).watchInstalled(),
@@ -202,7 +101,7 @@ class _AssistantUsageViewState extends State<AssistantUsageView> {
                 );
                 if (!hasPlugin) return const SizedBox.shrink();
                 return Padding(
-                  padding: const EdgeInsets.only(top: 24),
+                  padding: const EdgeInsets.only(top: 18),
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: LumaGhostButton(
@@ -214,6 +113,94 @@ class _AssistantUsageViewState extends State<AssistantUsageView> {
                 );
               },
             ),
+            const SizedBox(height: 20),
+            Divider(height: 1, color: luma.border),
+            const SizedBox(height: 8),
+            if (loading)
+              const _Loading()
+            else if (status == null)
+              _Note(t.assistantUsageUnavailable)
+            else ...[
+              _UsageRow(
+                label: t.assistantUsageCurrentSession,
+                caption: t.assistantUsageRollingFiveHours,
+                help: t.assistantUsageLumaAiSubtitle,
+                fraction: status.fiveHourPct / 100,
+                trailing: t.assistantUsagePercentUsed(status.fiveHourPct),
+              ),
+              _UsageRow(
+                label: t.assistantUsageThisWeek,
+                caption: t.assistantUsageRollingWeek,
+                fraction: status.weeklyPct / 100,
+                trailing: t.assistantUsagePercentUsed(status.weeklyPct),
+              ),
+            ],
+            const SizedBox(height: 20),
+            Divider(height: 1, color: luma.border),
+            const SizedBox(height: 8),
+            if (status != null && status.supportLimit > 0)
+              _UsageRow(
+                label: t.assistantUsageLumaSupport,
+                caption: t.assistantUsageResetsDaily,
+                fraction: status.supportUsed / status.supportLimit,
+                trailing: t.assistantMessagesOf(
+                  status.supportUsed,
+                  status.supportLimit,
+                ),
+              ),
+            if (status != null && status.webSearchLimit > 0)
+              _UsageRow(
+                label: t.assistantUsageWebSearch,
+                caption: t.assistantUsageRollingWeek,
+                help: t.assistantUsageLumaAssistantSubtitle,
+                fraction: status.webSearchUsed / status.webSearchLimit,
+                trailing: t.assistantUsageCountOf(
+                  status.webSearchUsed,
+                  status.webSearchLimit,
+                ),
+              ),
+            _UsageRow(
+              label: t.assistantUsageApiKeys,
+              caption: t.assistantUsageResetsDaily,
+              help: t.assistantUsageApiKeysSubtitle,
+              fraction: keyUsed / keyLimit,
+              trailing: t.assistantMessagesOf(keyUsed, keyLimit),
+            ),
+            _Section(
+              title: t.assistantUsageByModel,
+              subtitle: t.assistantUsageByModelSubtitle,
+              child: _ModelBreakdown(usage: settings.modelUsage),
+            ),
+            _Section(
+              title: t.assistantUsageStorage,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _StorageRow(
+                    label: t.assistantUsageMemoryStorage,
+                    caption: t.assistantUsageMemoryStorageCaption,
+                    value: formatStorageBytes(memory?.approximateBytes ?? 0),
+                  ),
+                  if (sync.account case final account?)
+                    _UsageRow(
+                      label: t.assistantUsageServerStorage,
+                      caption: t.assistantUsageStorageOf(
+                        formatStorageBytes(account.usedBytes),
+                        formatStorageBytes(account.quotaBytes),
+                      ),
+                      fraction: account.quotaBytes == 0
+                          ? 0
+                          : account.usedBytes / account.quotaBytes,
+                      trailing: t.assistantUsagePercentUsed(
+                        account.quotaBytes == 0
+                            ? 0
+                            : (account.usedBytes * 100 / account.quotaBytes)
+                                  .round(),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ],
         );
       },
@@ -221,18 +208,20 @@ class _AssistantUsageViewState extends State<AssistantUsageView> {
   }
 }
 
-class _Group extends StatelessWidget {
-  const _Group({required this.title, this.subtitle, required this.children});
+/// A secondary block below the limits: a title, an optional muted line of
+/// explanation, then its content, set apart by whitespace rather than boxes.
+class _Section extends StatelessWidget {
+  const _Section({required this.title, this.subtitle, required this.child});
 
   final String title;
   final String? subtitle;
-  final List<Widget> children;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
     return Padding(
-      padding: const EdgeInsets.only(top: 24),
+      padding: const EdgeInsets.only(top: 36),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -240,80 +229,112 @@ class _Group extends StatelessWidget {
             title,
             style: TextStyle(
               color: luma.textPrimary,
-              fontSize: 15,
+              fontSize: 16,
               fontWeight: FontWeight.w600,
             ),
           ),
           if (subtitle != null) ...[
-            const SizedBox(height: 3),
+            const SizedBox(height: 6),
             Text(
               subtitle!,
-              style: TextStyle(color: luma.textMuted, fontSize: 12.5),
+              style: TextStyle(
+                color: luma.textSecondary,
+                fontSize: 13.5,
+                height: 1.4,
+              ),
             ),
           ],
-          const SizedBox(height: 8),
-          ...children,
+          const SizedBox(height: 12),
+          child,
         ],
       ),
     );
   }
 }
 
-/// One limit: its name and reset rule on the left, the bar in the middle
-/// and "30% used" on the right — stacked on narrow screens.
+/// One limit, after Claude's: its name and reset rule on the left, a thin
+/// bar in the middle and "30% used" on the right — stacked on narrow screens.
+/// [help] adds a "?" whose tooltip says what the limit covers.
 class _UsageRow extends StatelessWidget {
   const _UsageRow({
     required this.label,
     required this.caption,
     required this.fraction,
     required this.trailing,
+    this.help,
   });
 
   final String label;
   final String caption;
   final double fraction;
   final String trailing;
+  final String? help;
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
     final value = fraction.clamp(0.0, 1.0);
+    final color = value >= 0.9
+        ? luma.danger
+        : value >= 0.75
+        ? luma.warning
+        : luma.accent;
     final bar = ClipRRect(
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: BorderRadius.circular(2),
       child: LinearProgressIndicator(
         value: value,
-        minHeight: 6,
-        backgroundColor: luma.accentSubtle,
-        color: value >= 1
-            ? luma.danger
-            : value >= 0.8
-            ? luma.warning
-            : luma.accent,
+        minHeight: 4,
+        backgroundColor: value == 0
+            ? luma.border
+            : color.withValues(alpha: 0.16),
+        color: color,
       ),
     );
     final labels = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: luma.textPrimary,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: luma.textPrimary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            if (help != null) ...[
+              const SizedBox(width: 6),
+              Tooltip(
+                message: help!,
+                child: Icon(
+                  Icons.help_outline_rounded,
+                  size: 15,
+                  color: luma.textMuted,
+                ),
+              ),
+            ],
+          ],
         ),
-        const SizedBox(height: 3),
-        Text(caption, style: TextStyle(color: luma.textMuted, fontSize: 12.5)),
+        const SizedBox(height: 4),
+        Text(caption, style: TextStyle(color: luma.textMuted, fontSize: 13)),
       ],
     );
     final trailingText = Text(
       trailing,
       textAlign: TextAlign.right,
-      style: TextStyle(color: luma.textSecondary, fontSize: 13),
+      style: TextStyle(
+        color: value >= 0.9 ? luma.danger : luma.textSecondary,
+        fontSize: 14,
+        fontFeatures: const [FontFeature.tabularFigures()],
+      ),
     );
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       child: LayoutBuilder(
         builder: (context, constraints) {
           if (constraints.maxWidth < 560) {
@@ -321,23 +342,25 @@ class _UsageRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(child: labels),
+                    const SizedBox(width: 12),
                     trailingText,
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 bar,
               ],
             );
           }
           return Row(
             children: [
-              SizedBox(width: 240, child: labels),
-              const SizedBox(width: 20),
+              SizedBox(width: 260, child: labels),
+              const SizedBox(width: 24),
               Expanded(child: bar),
-              const SizedBox(width: 20),
-              SizedBox(width: 130, child: trailingText),
+              const SizedBox(width: 24),
+              SizedBox(width: 140, child: trailingText),
             ],
           );
         },
@@ -361,7 +384,7 @@ class _StorageRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         children: [
           Expanded(
@@ -372,14 +395,14 @@ class _StorageRow extends StatelessWidget {
                   label,
                   style: TextStyle(
                     color: luma.textPrimary,
-                    fontSize: 14,
+                    fontSize: 15,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 4),
                 Text(
                   caption,
-                  style: TextStyle(color: luma.textMuted, fontSize: 12.5),
+                  style: TextStyle(color: luma.textMuted, fontSize: 13),
                 ),
               ],
             ),
@@ -387,7 +410,11 @@ class _StorageRow extends StatelessWidget {
           const SizedBox(width: 16),
           Text(
             value,
-            style: TextStyle(color: luma.textSecondary, fontSize: 13),
+            style: TextStyle(
+              color: luma.textPrimary,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -395,7 +422,8 @@ class _StorageRow extends StatelessWidget {
   }
 }
 
-/// Lifetime messages per model, with each model's relative cost weight.
+/// Lifetime messages per model in one outlined card, heaviest first, with a
+/// small "×5" tag on the models that cost more of the budget.
 class _ModelBreakdown extends StatelessWidget {
   const _ModelBreakdown({required this.usage});
 
@@ -410,50 +438,63 @@ class _ModelBreakdown extends StatelessWidget {
         if ((usage[e.key] ?? 0) > 0) (e, usage[e.key]!),
     ]..sort((a, b) => b.$2.compareTo(a.$2));
     if (used.isEmpty) return _Note(t.assistantUsageNoMessages);
-    final max = used.first.$2;
-    return Column(
-      children: [
-        for (final (entry, count) in used)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 7),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 200,
-                  child: Text(
-                    entry.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: luma.textPrimary, fontSize: 13.5),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: count / max,
-                      minHeight: 6,
-                      backgroundColor: luma.accentSubtle,
-                      color: luma.accent,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border.all(color: luma.border),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          for (final (i, (entry, count)) in used.indexed) ...[
+            if (i > 0) Divider(height: 1, color: luma.border),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      entry.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: luma.textPrimary, fontSize: 14),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                SizedBox(
-                  width: 110,
-                  child: Text(
-                    entry.weight > 1
-                        ? '${t.assistantUsageMessageCount(count)} · ×${entry.weight}'
-                        : t.assistantUsageMessageCount(count),
-                    textAlign: TextAlign.right,
-                    style: TextStyle(color: luma.textSecondary, fontSize: 12.5),
+                  if (entry.weight > 1) ...[
+                    const SizedBox(width: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: luma.surfaceHover,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '×${entry.weight}',
+                        style: TextStyle(
+                          color: luma.textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(width: 16),
+                  Text(
+                    t.assistantUsageMessageCount(count),
+                    style: TextStyle(
+                      color: luma.textSecondary,
+                      fontSize: 13.5,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-      ],
+          ],
+        ],
+      ),
     );
   }
 }
@@ -464,10 +505,10 @@ class _Note extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8),
+    padding: const EdgeInsets.symmetric(vertical: 12),
     child: Text(
       text,
-      style: TextStyle(color: context.luma.textMuted, fontSize: 13),
+      style: TextStyle(color: context.luma.textMuted, fontSize: 13.5),
     ),
   );
 }
@@ -477,7 +518,7 @@ class _Loading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const Padding(
-    padding: EdgeInsets.symmetric(vertical: 12),
+    padding: EdgeInsets.symmetric(vertical: 16),
     child: Align(
       alignment: Alignment.centerLeft,
       child: SizedBox(

@@ -14,12 +14,15 @@ import 'ui/github_overview_tab.dart';
 import 'ui/github_repositories_tab.dart';
 import 'ui/github_usage_tab.dart';
 import 'ui/mc_content_tab.dart';
+import 'ui/spotify_connect_dialog.dart';
+import 'ui/spotify_tab.dart';
 import 'ui/youtube_analytics_tab.dart';
 import 'ui/youtube_connect_dialog.dart';
 import 'ui/youtube_overview_tab.dart';
 import 'ui/youtube_videos_tab.dart';
 import 'youtube_repository.dart';
 import 'youtube_scope.dart';
+import 'spotify_scope.dart';
 
 /// A service the sidebar groups its sections under.
 ///
@@ -29,7 +32,8 @@ import 'youtube_scope.dart';
 enum AccountService {
   github('GitHub', Icons.hub_rounded),
   minecraft('Minecraft', Icons.widgets_rounded),
-  youtube('YouTube', Icons.smart_display_rounded);
+  youtube('YouTube', Icons.smart_display_rounded),
+  spotify('Spotify', Icons.music_note_rounded);
 
   const AccountService(this.label, this.icon);
 
@@ -101,6 +105,13 @@ enum AccountSection {
     icon: Icons.insights_rounded,
     label: 'Analytics',
     blurb: 'Watch time, traffic, subscribers',
+  ),
+  spotifyStats(
+    service: AccountService.spotify,
+    id: 'spotify-stats',
+    icon: Icons.insights_rounded,
+    label: 'Stats',
+    blurb: 'Top music, recent plays, library',
   );
 
   const AccountSection({
@@ -165,6 +176,7 @@ class _AccountOverviewPageState extends State<AccountOverviewPage> {
     if (_started) return;
     _started = true;
     AccountOverviewScope.of(context).load();
+    SpotifyScope.of(context).load();
   }
 
   void _openSection(String id) {
@@ -194,6 +206,7 @@ class _AccountOverviewPageState extends State<AccountOverviewPage> {
 
     final mc = McContentScope.of(context);
     final youtube = YoutubeScope.of(context);
+    final spotify = SpotifyScope.of(context);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -239,11 +252,13 @@ class _AccountOverviewPageState extends State<AccountOverviewPage> {
                 AccountService.github: repository.connected,
                 AccountService.minecraft: mc.configured,
                 AccountService.youtube: youtube.connected,
+                AccountService.spotify: spotify.connected,
               },
               subtitles: {
                 AccountService.github: repository.credentials?.login,
                 AccountService.minecraft: _mcSubtitle(mc),
                 AccountService.youtube: youtube.credentials?.channelTitle,
+                AccountService.spotify: spotify.credentials?.displayName,
               },
               expandedService: _expandedService,
               onSelect: _selectSection,
@@ -357,6 +372,16 @@ class _SectionBody extends StatelessWidget {
       );
     }
 
+    if (section.service == AccountService.spotify) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SectionHeader(section: section),
+          const Expanded(child: SpotifyTab()),
+        ],
+      );
+    }
+
     if (!repository.loaded) {
       return Center(
         child: SizedBox(
@@ -444,6 +469,12 @@ class _SectionHeader extends StatelessWidget {
       refreshing = youtube.refreshing;
       onRefresh = refreshing ? null : youtube.unawaitedRefresh;
       onSettings = () => showYoutubeConnectDialog(context);
+    } else if (service == AccountService.spotify) {
+      final spotify = SpotifyScope.of(context);
+      chip = spotify.credentials?.displayName ?? '';
+      refreshing = spotify.loading;
+      onRefresh = refreshing ? null : spotify.unawaitedRefresh;
+      onSettings = () => showSpotifyConnectDialog(context);
     }
     final hasActions = onSettings != null;
 
