@@ -24,6 +24,7 @@ import 'ai_agent_store.dart';
 import 'ai_key_store.dart';
 import 'local_model_store.dart';
 import 'ai_tools.dart';
+import 'web_search_client.dart';
 import 'chat_controller.dart';
 import 'chat_scope.dart';
 import 'chat_usage.dart';
@@ -85,6 +86,7 @@ class _ChatPageState extends State<ChatPage> {
         cs2MarketRepository: Cs2MarketScope.of(context),
         navigate: widget.onNavigate,
         memory: memory,
+        webSearch: WebSearchClient(syncService: SyncScope.of(context)),
       ),
       settings: SettingsScope.of(context),
       syncService: SyncScope.of(context),

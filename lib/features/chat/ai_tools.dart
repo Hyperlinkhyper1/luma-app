@@ -8,6 +8,7 @@ import '../plugins/installed/qr_code_generator/qr_code_repository.dart';
 import '../plugins/installed/steam_tools/cs2_market_repository.dart';
 import 'memory/assistant_memory_repository.dart';
 import 'providers/ai_client.dart';
+import 'web_search_client.dart';
 
 /// Actions the assistant can perform using the same repositories as Luma's UI.
 class AiToolRegistry {
@@ -19,6 +20,7 @@ class AiToolRegistry {
     required Cs2MarketRepository cs2MarketRepository,
     required void Function(String destination) navigate,
     AssistantMemoryRepository? memory,
+    this.webSearch,
   })  : _memory = memory,
         _pluginRepository = pluginRepository,
         _qrCodeRepository = qrCodeRepository,
@@ -37,10 +39,17 @@ class AiToolRegistry {
   /// Where the `remember` tool writes; the tool is only offered while
   /// memory is switched on.
   final AssistantMemoryRepository? _memory;
+  final WebSearchClient? webSearch;
 
   static const _qrPluginId = 'qr-code-generator';
 
   List<AiToolDefinition> get schemas => [
+        if (webSearch?.available ?? false)
+          const AiToolDefinition(
+            name: 'web_search',
+            description: 'Search the web for current or uncertain facts. Use the returned titles, URLs and snippets as sources; cite URLs in the answer and say when results are insufficient.',
+            parameters: {'type': 'object', 'properties': {'query': {'type': 'string', 'description': 'A short web search query.'}}, 'required': ['query']},
+          ),
         if (_memory?.memoryEnabled ?? false)
           const AiToolDefinition(
             name: 'remember',
@@ -135,6 +144,11 @@ class AiToolRegistry {
   Future<Map<String, dynamic>> execute(String name, Map<String, dynamic> input) async {
     try {
       switch (name) {
+        case 'web_search':
+          final query = (input['query'] as String? ?? '').trim();
+          if (query.isEmpty) return _missing('query');
+          return await webSearch?.search(query) ??
+              {'status': 'unavailable', 'message': 'Web search needs an approved Luma account.'};
         case 'remember':
           final memory = _memory;
           if (memory == null || !memory.memoryEnabled) return {'status': 'error', 'message': 'Memory is switched off.'};

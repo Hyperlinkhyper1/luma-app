@@ -26,6 +26,7 @@ import 'store.dart';
 import 'subway_relay.dart';
 import 'subway_store.dart';
 import 'util.dart';
+import 'web_search.dart';
 
 /// How a newly registered account becomes usable.
 enum ApprovalMode {
@@ -77,6 +78,7 @@ class ServerConfig {
     required this.wikiDir,
     required this.publicUrl,
     required this.oauthProviders,
+    this.searxngUrl,
   });
 
   final int port;
@@ -86,6 +88,7 @@ class ServerConfig {
   final Duration tokenTtl;
   final String corsOrigin;
   final bool trustProxy;
+  final String? searxngUrl;
 
   /// How long an email-verification code stays valid.
   final Duration verificationTtl;
@@ -228,6 +231,7 @@ class ServerConfig {
       tokenTtl: Duration(days: intOf('LUMA_TOKEN_TTL_DAYS', 90)),
       corsOrigin: env['LUMA_CORS_ORIGIN'] ?? '*',
       trustProxy: env['LUMA_TRUST_PROXY'] == 'true',
+      searxngUrl: env['LUMA_SEARXNG_URL'],
       verificationTtl:
           Duration(minutes: intOf('LUMA_VERIFICATION_CODE_TTL_MINUTES', 10)),
       maxVerificationEmailsPerHour:
@@ -350,6 +354,8 @@ class Api {
             RateLimiter(maxRequests: 10, window: const Duration(hours: 1)),
         _aiChatLimiter =
             RateLimiter(maxRequests: 20, window: const Duration(minutes: 1)),
+        _searchLimiter =
+            RateLimiter(maxRequests: 20, window: const Duration(minutes: 1)),
         _itadLimiter =
             RateLimiter(maxRequests: 60, window: const Duration(minutes: 1)),
         _syncWriteLimiter =
@@ -422,6 +428,7 @@ class Api {
   /// small JSON calls but far too generous for endpoints that burn upstream
   /// AI quota, accept multi-megabyte bodies, or hold a socket open.
   final RateLimiter _aiChatLimiter;
+  final RateLimiter _searchLimiter;
   final RateLimiter _itadLimiter;
   final RateLimiter _syncWriteLimiter;
   final RateLimiter _uploadLimiter;
@@ -480,6 +487,7 @@ class Api {
       ..get('/api/v1/ai/status', _requireAuth(_aiStatus))
       ..post('/api/v1/ai/mistral/chat', _requireAuth(_mistralChatProxy))
       ..post('/api/v1/ai/google/chat', _requireAuth(_googleChatProxy))
+      ..post('/api/v1/ai/web-search', _requireAuth(_webSearch))
       ..get('/api/v1/steam/itad/status', _requireAuth(_itadStatus))
       ..get('/api/v1/steam/itad/lookup', _requireAuth(_itadLookupProxy))
       ..get('/api/v1/steam/itad/history', _requireAuth(_itadHistoryProxy))
@@ -729,6 +737,9 @@ class Api {
     }
     if (path.startsWith('api/v1/ai/') && path.endsWith('/chat')) {
       return ('ai', _aiChatLimiter);
+    }
+    if (path == 'api/v1/ai/web-search') {
+      return ('search', _searchLimiter);
     }
     if (path.startsWith('api/v1/steam/itad/')) {
       return ('itad', _itadLimiter);
@@ -2475,6 +2486,37 @@ class Api {
     return values.length <= maxPoints
         ? values
         : values.sublist(values.length - maxPoints);
+  }
+
+  /// Sends one validated query to the operator's private SearXNG service.
+  Future<Response> _webSearch(Request request, StoredUser user) async {
+    final configured = config.searxngUrl?.trim() ?? '';
+    final base = Uri.tryParse(configured);
+    if (base == null ||
+        !base.hasAuthority ||
+        (base.scheme != 'http' && base.scheme != 'https') ||
+        base.hasQuery ||
+        base.hasFragment) {
+      return errorResponse(503, 'not_configured', 'Web search is not configured on this server.');
+    }
+    Map<String, dynamic> body;
+    try {
+      body = await _readJson(request);
+    } on FormatException {
+      return errorResponse(400, 'bad_request', 'Malformed search request.');
+    }
+    final query = body['query'];
+    if (query is! String || query.trim().isEmpty || query.length > 200) {
+      return errorResponse(400, 'bad_request', 'query must contain 1-200 characters.');
+    }
+    final search = WebSearch(base);
+    try {
+      return jsonResponse(200, {'results': await search.search(query.trim())});
+    } catch (_) {
+      return errorResponse(502, 'upstream_error', 'Web search is temporarily unavailable.');
+    } finally {
+      search.close();
+    }
   }
 
   /// A Steam app id has no meaning to IsThereAnyDeal — it identifies games by
