@@ -1,22 +1,14 @@
-import 'dart:async';
-
 Future<void> dismissPetWindowFromChild({
-  required void Function() detachWindow,
+  required void Function() markHidden,
   required Future<void> Function() dismissPet,
-  required Future<void> Function() closeWindow,
+  required Future<void> Function() hideWindow,
 }) async {
-  // The repository notifies the shell synchronously when it is dismissed.
-  // Detach first so that notification cannot close the child engine mid-call.
-  detachWindow();
+  // Keep the controller for the next summon, but prevent the repository's
+  // synchronous notification from issuing a second hide request.
+  markHidden();
   try {
     await dismissPet();
   } finally {
-    closePetWindowAfterReply(closeWindow);
+    await hideWindow();
   }
-}
-
-void closePetWindowAfterReply(Future<void> Function() closeWindow) {
-  // Method-channel replies run in microtasks. A timer lets that reply leave
-  // the engine before its window and messenger are destroyed.
-  Timer.run(() => unawaited(closeWindow()));
 }

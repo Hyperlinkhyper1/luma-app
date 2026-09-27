@@ -46,6 +46,8 @@ import 'features/plugins/installed/account_overview/mc_content_repository.dart';
 import 'features/plugins/installed/account_overview/mc_content_scope.dart';
 import 'features/plugins/installed/account_overview/youtube_repository.dart';
 import 'features/plugins/installed/account_overview/youtube_scope.dart';
+import 'features/plugins/installed/account_overview/spotify_repository.dart';
+import 'features/plugins/installed/account_overview/spotify_scope.dart';
 import 'features/plugins/installed/data_management/data/data_management_database.dart';
 import 'features/plugins/installed/data_management/data_management_repository.dart';
 import 'features/plugins/installed/airline_tycoon/airline_tycoon_repository.dart';
@@ -321,6 +323,7 @@ class _LumaAppState extends State<LumaApp> {
   // that have nothing to do with GitHub's pasted PAT or Minecraft's
   // per-platform keys, so a revoked Google grant can't take either down.
   late final YoutubeRepository _youtubeRepository = YoutubeRepository();
+  late final SpotifyRepository _spotifyRepository = SpotifyRepository();
 
   // Informational local-storage usage reporter (no cap) — see
   // StorageGuardService.
@@ -740,6 +743,7 @@ class _LumaAppState extends State<LumaApp> {
     _accountOverviewRepository.dispose();
     _mcContentRepository.dispose();
     _youtubeRepository.dispose();
+    _spotifyRepository.dispose();
     super.dispose();
   }
 
@@ -878,7 +882,9 @@ class _LumaAppState extends State<LumaApp> {
                                                                                                 repository: _mcContentRepository,
                                                                                                 child: YoutubeScope(
                                                                                                   repository: _youtubeRepository,
-                                                                                                  child: FreeSketchScope(
+                                                                                                  child: SpotifyScope(
+                                                                                                    repository: _spotifyRepository,
+                                                                                                    child: FreeSketchScope(
                                                                                                     repository: _freeSketchRepository,
                                                                                                     child: WhiteboardScope(
                                                                                                     repository: _whiteboardRepository,
@@ -927,6 +933,7 @@ class _LumaAppState extends State<LumaApp> {
                                                                                                     ),
                                                                                                     ),
                                                                                                   ),
+                                                                                                ),
                                                                                                 ),
                                                                                               ),
                                                                                             ),

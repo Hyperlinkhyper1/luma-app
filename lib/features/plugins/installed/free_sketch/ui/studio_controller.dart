@@ -53,6 +53,11 @@ class StudioController extends ChangeNotifier {
     }
     _savedRevision = document.revision;
     document.addListener(_onDocumentChanged);
+    document.onImageReplaced = (old, fresh) {
+      for (final entry in _savedImages.entries.toList()) {
+        if (identical(entry.value, old)) _savedImages[entry.key] = fresh;
+      }
+    };
   }
 
   static Future<StudioController> open(FreeSketchRepository repository, String id) async {
@@ -81,6 +86,7 @@ class StudioController extends ChangeNotifier {
       width: meta.width,
       height: meta.height,
       memoryBudget: SketchLimits.historyBytes,
+      baker: bake,
       initial: SketchSnapshot(
         layers: layers,
         activeLayerId: activeId,
@@ -95,6 +101,20 @@ class StudioController extends ChangeNotifier {
       textures: textures,
       prefs: prefs,
     );
+  }
+
+  /// A standalone copy of [image]: rendered through the asynchronous
+  /// `Picture.toImage`, whose result — unlike a `toImageSync` image — keeps
+  /// no reference to what it was drawn from. See [SketchDocument].
+  static Future<ui.Image> bake(ui.Image image) async {
+    final recorder = ui.PictureRecorder();
+    Canvas(recorder).drawImage(image, Offset.zero, Paint());
+    final picture = recorder.endRecording();
+    try {
+      return await picture.toImage(image.width, image.height);
+    } finally {
+      picture.dispose();
+    }
   }
 
   /// The pixel size of an encoded image, read from its header.
@@ -703,10 +723,20 @@ class StudioController extends ChangeNotifier {
     }
     final clip = state.selection;
     _clipboard?.dispose();
-    _clipboard = _record((canvas) {
+    final copied = _record((canvas) {
       if (clip != null) canvas.clipPath(clip);
       canvas.drawImage(image, Offset.zero, Paint());
     });
+    _clipboard = copied;
+    // Flatten it so the clipboard does not pin the layer it was cut from.
+    unawaited(bake(copied).then((flat) {
+      if (identical(_clipboard, copied) && !_disposed) {
+        _clipboard = flat;
+        copied.dispose();
+      } else {
+        flat.dispose();
+      }
+    }));
     onMessage?.call(clip == null ? 'Layer copied.' : 'Selection copied.');
     notifyListeners();
   }

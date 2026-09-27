@@ -15,7 +15,6 @@ import 'luma_pet_panel.dart';
 import 'pet_repository.dart';
 import 'pet_scope.dart';
 import 'pet_search.dart';
-import 'pet_window_lifecycle.dart';
 import 'pet_window_protocol.dart';
 
 /// Boots the secondary Flutter engine used only by the desktop pet window.
@@ -23,23 +22,21 @@ Future<void> runPetWindow(
   WindowController controller,
   Map<String, dynamic> arguments,
 ) async {
-  var closing = false;
+  final snapshot = ValueNotifier<(int, Map<String, dynamic>)>((0, arguments));
   await controller.setWindowMethodHandler((call) async {
-    if (call.method != petWindowMethodClose) {
-      throw MissingPluginException('Unknown pet window method ${call.method}');
-    }
-    if (closing) return;
-    closing = true;
-    closePetWindowAfterReply(() async {
-      try {
-        await windowManager.setPreventClose(false);
-        await windowManager.destroy();
-      } catch (_) {
+    switch (call.method) {
+      case petWindowMethodShow:
+        snapshot.value = (
+          snapshot.value.$1 + 1,
+          Map<String, dynamic>.from(call.arguments as Map),
+        );
+        await controller.show();
         try {
-          await controller.hide();
+          await windowManager.focus();
         } catch (_) {}
-      }
-    });
+      default:
+        throw MissingPluginException('Unknown pet window method ${call.method}');
+    }
   });
 
   try {
@@ -50,7 +47,15 @@ Future<void> runPetWindow(
     // through desktop_multi_window rather than leaving it invisible.
     await controller.show();
   }
-  runApp(_PetWindowApp(arguments: arguments));
+  runApp(
+    ValueListenableBuilder<(int, Map<String, dynamic>)>(
+      valueListenable: snapshot,
+      builder: (_, value, _) => _PetWindowApp(
+        key: ValueKey(value.$1),
+        arguments: value.$2,
+      ),
+    ),
+  );
 }
 
 Future<void> _setUpPetWindow() async {
@@ -101,7 +106,7 @@ class _PetWindowRepository extends PetRepository {
 }
 
 class _PetWindowApp extends StatefulWidget {
-  const _PetWindowApp({required this.arguments});
+  const _PetWindowApp({super.key, required this.arguments});
 
   final Map<String, dynamic> arguments;
 

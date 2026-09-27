@@ -11,6 +11,8 @@ import 'package:luma/features/plugins/installed/account_overview/mc_history.dart
 import 'package:luma/features/plugins/installed/account_overview/mc_models.dart';
 import 'package:luma/features/plugins/installed/account_overview/youtube_repository.dart';
 import 'package:luma/features/plugins/installed/account_overview/youtube_scope.dart';
+import 'package:luma/features/plugins/installed/account_overview/spotify_repository.dart';
+import 'package:luma/features/plugins/installed/account_overview/spotify_scope.dart';
 import 'package:luma/theme/luma_theme.dart';
 
 /// The plugin under every scope, the way `main.dart` nests them — the shell
@@ -29,7 +31,10 @@ Widget _app(
           repository: mc,
           child: YoutubeScope(
             repository: youtube,
-            child: const Scaffold(body: AccountOverviewPage()),
+            child: SpotifyScope(
+              repository: _spotify,
+              child: const Scaffold(body: AccountOverviewPage()),
+            ),
           ),
         ),
       ),
@@ -137,13 +142,22 @@ Future<void> _pump(
   await tester.runAsync(() => github.load());
   await tester.runAsync(() => mc.load());
   await tester.runAsync(() => _youtube.load());
+  await tester.runAsync(() => _spotify.load());
   await tester.pumpWidget(_app(github, mc, _youtube));
   await tester.pumpAndSettle();
 }
 
 late YoutubeRepository _youtube;
+late SpotifyRepository _spotify;
 
 Future<void> _openMcContent(WidgetTester tester) async {
+  if (find.byType(LumaSegmentedTabs).evaluate().isNotEmpty) {
+    final tab = find.text('Minecraft · MC Content');
+    await tester.ensureVisible(tab);
+    await tester.tap(tab);
+    await tester.pumpAndSettle();
+    return;
+  }
   // The rail is an accordion — only the currently-selected service's
   // sections are in the tree — so Minecraft's heading needs a tap first
   // whenever GitHub (the default selection) is the one currently expanded.
@@ -191,11 +205,13 @@ void main() {
     github = AccountOverviewRepository();
     mc = McContentRepository();
     _youtube = YoutubeRepository();
+    _spotify = SpotifyRepository();
   });
   tearDown(() {
     github.dispose();
     mc.dispose();
     _youtube.dispose();
+    _spotify.dispose();
   });
 
   testWidgets('the sidebar groups GitHub and Minecraft separately',
