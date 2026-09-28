@@ -225,8 +225,8 @@ class _LicenseDetails extends StatelessWidget {
                     ? 16
                     : 8,
                 start: paragraph.indent == LicenseParagraph.centeredIndent
-                    ? 0
-                    : 16 * paragraph.indent,
+                    ? 0.0
+                    : 16.0 * paragraph.indent,
               ),
               child: Text(
                 paragraph.text,
