@@ -21,7 +21,6 @@ import '../plugins/installed/calendar/calendar_scope.dart';
 import '../plugins/installed/steam_tools/cs2_market_scope.dart';
 import '../notes/notes_repository.dart';
 import 'account/assistant_panels.dart';
-import 'ai_agent_store.dart';
 import 'ai_key_store.dart';
 import 'local_model_store.dart';
 import 'ai_tools.dart';
@@ -63,22 +62,19 @@ class ChatPage extends StatefulWidget {
 }
 
 class _ChatPageState extends State<ChatPage> {
-  late final Future<(AiKeyStore, AiAgentStore)> _storesFuture = _loadStores();
+  late final Future<AiKeyStore> _storesFuture = _loadKeyStore();
   ChatController? _controller;
   int? _activeConversationId;
 
-  static Future<(AiKeyStore, AiAgentStore)> _loadStores() async {
-    final keyStore = await AiKeyStore.load();
-    final agentStore = await AiAgentStore.load();
-    return (keyStore, agentStore);
+  static Future<AiKeyStore> _loadKeyStore() {
+    return AiKeyStore.load();
   }
 
-  ChatController _controllerFor(AiKeyStore keyStore, AiAgentStore agentStore) {
+  ChatController _controllerFor(AiKeyStore keyStore) {
     final memory = AssistantMemoryScope.maybeOf(context);
     return _controller ??= ChatController(
       repository: ChatScope.of(context),
       keyStore: keyStore,
-      agentStore: agentStore,
       tools: AiToolRegistry(
         pluginRepository: PluginScope.of(context),
         qrCodeRepository: QrCodeScope.of(context),
@@ -107,7 +103,7 @@ class _ChatPageState extends State<ChatPage> {
             SettingsScope.of(context).aiProviderId != AiProviderId.local.name) {
           return _NoAccountState(syncService: syncService);
         }
-        return FutureBuilder<(AiKeyStore, AiAgentStore)>(
+        return FutureBuilder<AiKeyStore>(
           future: _storesFuture,
           builder: (context, snap) {
             if (snap.hasError) {
@@ -122,8 +118,8 @@ class _ChatPageState extends State<ChatPage> {
                 ),
               );
             }
-            final (keyStore, agentStore) = snap.data!;
-            final controller = _controllerFor(keyStore, agentStore);
+            final keyStore = snap.data!;
+            final controller = _controllerFor(keyStore);
             return _ChatBody(
               controller: controller,
               keyStore: keyStore,

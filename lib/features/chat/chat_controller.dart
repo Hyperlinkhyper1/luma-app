@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import '../../settings/settings_controller.dart';
 import '../../sync/sync_service.dart';
 import '../plugins/installed/ai_usage/ai_usage_repository.dart';
-import 'ai_agent_store.dart';
 import 'ai_key_store.dart';
 import 'ai_tools.dart';
 import 'chat_usage.dart';
@@ -30,7 +29,6 @@ class ChatController extends ChangeNotifier {
   ChatController({
     required ChatRepository repository,
     required AiKeyStore keyStore,
-    required AiAgentStore agentStore,
     required AiToolRegistry tools,
     required SettingsController settings,
     SyncService? syncService,
@@ -38,7 +36,6 @@ class ChatController extends ChangeNotifier {
     AssistantMemoryRepository? memory,
   }) : _repository = repository,
        _keyStore = keyStore,
-       _agentStore = agentStore,
        _tools = tools,
        _settings = settings,
        _syncService = syncService,
@@ -47,7 +44,6 @@ class ChatController extends ChangeNotifier {
 
   final ChatRepository _repository;
   final AiKeyStore _keyStore;
-  final AiAgentStore _agentStore;
   final AiToolRegistry _tools;
   final SettingsController _settings;
   final SyncService? _syncService;
@@ -139,7 +135,6 @@ class ChatController extends ChangeNotifier {
 
       final history = await _repository.loadMessages(conversationId);
       final turns = _toTurns(history);
-      final agentId = await _agentStore.activeAgentId(providerId);
       final toolSchemas = usingLocalModel
           ? _tools.localAssistantSchemas
           : _tools.schemas;
@@ -159,7 +154,6 @@ class ChatController extends ChangeNotifier {
           return _tools.execute(name, input);
         },
         metadataFor: AiToolRegistry.metadataFor,
-        agentId: agentId,
       );
 
       await _repository.addMessage(

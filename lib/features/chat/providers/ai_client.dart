@@ -140,10 +140,5 @@ abstract class AiClient {
     required List<AiToolDefinition> tools,
     required AiToolExecutor executeTool,
     required AiToolMetadata metadataFor,
-
-    /// A hosted agent id (e.g. Mistral's Agents API `agent_id`) to run
-    /// against instead of the client's default model. Ignored by clients
-    /// that don't support hosted agents.
-    String? agentId,
   });
 }

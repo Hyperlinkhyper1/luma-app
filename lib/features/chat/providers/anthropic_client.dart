@@ -36,7 +36,6 @@ class AnthropicClient implements AiClient {
     required List<AiToolDefinition> tools,
     required AiToolExecutor executeTool,
     required AiToolMetadata metadataFor,
-    String? agentId, // Not supported by Anthropic — ignored.
   }) async {
     final messages = <Map<String, dynamic>>[
       for (final t in history)
