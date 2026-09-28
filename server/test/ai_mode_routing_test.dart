@@ -43,6 +43,13 @@ void main() {
         'gemini-flash-lite-latest');
   });
 
+  test('mistral is a usable upstream for the modes too', () {
+    final routes = AiModeRoutingStore(dir.path);
+    final route = routes.resolve('normal', {AiUpstream.mistral})!;
+    expect(route.upstream, AiUpstream.mistral);
+    expect(route.model, 'mistral-small-latest');
+  });
+
   test('model ids are validated', () {
     expect(isValidAiModelId('openai/gpt-5.1:free'), isTrue);
     expect(isValidAiModelId('bad id'), isFalse);

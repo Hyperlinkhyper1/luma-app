@@ -433,4 +433,722 @@ class LEn extends L {
   String planSuffix(String name) {
     return '$name plan';
   }
+
+  @override
+  String get assistantNewChat => 'New chat';
+
+  @override
+  String get assistantSearchChats => 'Search chats';
+
+  @override
+  String get assistantStarred => 'Starred';
+
+  @override
+  String get assistantRecents => 'Recents';
+
+  @override
+  String get assistantNoChats => 'No chats yet';
+
+  @override
+  String get assistantNoMatches => 'No chats match';
+
+  @override
+  String get assistantGreetingMorning => 'Good morning';
+
+  @override
+  String get assistantGreetingAfternoon => 'Good afternoon';
+
+  @override
+  String get assistantGreetingEvening => 'Good evening';
+
+  @override
+  String assistantGreetingMorningName(String name) {
+    return 'Good morning, $name';
+  }
+
+  @override
+  String assistantGreetingAfternoonName(String name) {
+    return 'Good afternoon, $name';
+  }
+
+  @override
+  String assistantGreetingEveningName(String name) {
+    return 'Good evening, $name';
+  }
+
+  @override
+  String get assistantHowCanIHelp => 'How can I help you today?';
+
+  @override
+  String get assistantReplyHint => 'Reply to luma…';
+
+  @override
+  String get assistantOutOfMessages => 'You\'re out of messages for now';
+
+  @override
+  String get assistantCopy => 'Copy';
+
+  @override
+  String get assistantCopied => 'Copied';
+
+  @override
+  String get assistantStar => 'Star';
+
+  @override
+  String get assistantUnstar => 'Unstar';
+
+  @override
+  String get assistantRename => 'Rename';
+
+  @override
+  String get assistantDelete => 'Delete';
+
+  @override
+  String get assistantSuggestPlugin => 'Find a plugin';
+
+  @override
+  String get assistantSuggestQr => 'Make a QR code';
+
+  @override
+  String get assistantSuggestWeek => 'Plan my week';
+
+  @override
+  String get assistantSuggestNote => 'Write a note';
+
+  @override
+  String get assistantSuggestPluginPrompt =>
+      'Which luma plugin would help me with ';
+
+  @override
+  String get assistantSuggestQrPrompt => 'Make a QR code for ';
+
+  @override
+  String get assistantSuggestWeekPrompt => 'What\'s on my calendar this week?';
+
+  @override
+  String get assistantSuggestNotePrompt => 'Save a note that says ';
+
+  @override
+  String get assistantToggleSidebar => 'Toggle sidebar';
+
+  @override
+  String get assistantChats => 'Chats';
+
+  @override
+  String get assistantUsage => 'Usage';
+
+  @override
+  String get assistantContextWindow => 'Context window';
+
+  @override
+  String get assistantUsageLimits => 'Usage limits';
+
+  @override
+  String get assistantFiveHourLimit => '5-hour limit';
+
+  @override
+  String get assistantWeeklyLimit => 'Weekly';
+
+  @override
+  String get assistantDailyMessages => 'Today';
+
+  @override
+  String assistantMessagesOf(int used, int limit) {
+    return '$used of $limit messages';
+  }
+
+  @override
+  String get assistantLastReply => 'Last reply';
+
+  @override
+  String assistantTokensInOut(String input, String output) {
+    return '$input in · $output out';
+  }
+
+  @override
+  String get assistantNoLimits => 'Runs on this device — no usage limits';
+
+  @override
+  String get assistantUsageUnavailable =>
+      'Usage unavailable — check your connection';
+
+  @override
+  String get assistantDetailedBreakdown => 'See detailed breakdown';
+
+  @override
+  String get assistantNoRepliesYet => 'No replies in this chat yet';
+
+  @override
+  String get assistantMenuUsage => 'Usage';
+
+  @override
+  String get assistantMenuSettings => 'Settings';
+
+  @override
+  String get assistantMenuAgents => 'Agents';
+
+  @override
+  String get assistantYourUsage => 'Your usage';
+
+  @override
+  String get assistantUsageHeadlinePlenty => 'Plenty of room left. Chat away.';
+
+  @override
+  String get assistantUsageHeadlineOnTrack =>
+      'You\'re on track, with room to spare.';
+
+  @override
+  String get assistantUsageHeadlineClose =>
+      'Heads up. You\'re close to a limit.';
+
+  @override
+  String get assistantUsageHeadlineOut =>
+      'You\'ve hit a limit. It frees up again as the window rolls on.';
+
+  @override
+  String get assistantUsageLumaAi => 'Luma AI';
+
+  @override
+  String get assistantUsageLumaAiSubtitle =>
+      'Aurora, Nebula and Pulsar, through your luma account';
+
+  @override
+  String get assistantUsageCurrentSession => 'Current session';
+
+  @override
+  String get assistantUsageRollingFiveHours => 'Rolling 5-hour window';
+
+  @override
+  String get assistantUsageThisWeek => 'This week';
+
+  @override
+  String get assistantUsageRollingWeek => 'Rolling 7-day window';
+
+  @override
+  String get assistantUsageLumaAssistant => 'Luma Assistant';
+
+  @override
+  String get assistantUsageLumaAssistantSubtitle => 'On-device Qwen model';
+
+  @override
+  String get assistantUsageWebSearch => 'Web searches';
+
+  @override
+  String assistantUsageCountOf(int used, int limit) {
+    return '$used of $limit';
+  }
+
+  @override
+  String assistantUsagePercentUsed(int percent) {
+    return '$percent% used';
+  }
+
+  @override
+  String get assistantUsageLumaSupport => 'Luma Support';
+
+  @override
+  String get assistantUsageResetsDaily => 'Resets at midnight';
+
+  @override
+  String get assistantUsageApiKeys => 'Your API keys';
+
+  @override
+  String get assistantUsageApiKeysSubtitle =>
+      'Anthropic Claude and OpenAI with your own key, on this device';
+
+  @override
+  String get assistantUsageByModel => 'Messages by model';
+
+  @override
+  String get assistantUsageByModelSubtitle =>
+      'All time on this device. ×5 and ×20 mark the heavier models.';
+
+  @override
+  String assistantUsageMessageCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count messages',
+      one: '1 message',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get assistantUsageNoMessages => 'No messages yet';
+
+  @override
+  String get assistantUsageStorage => 'Storage';
+
+  @override
+  String get assistantUsageMemoryStorage => 'Assistant memory';
+
+  @override
+  String get assistantUsageMemoryStorageCaption =>
+      'Syncs with your account on every plan and counts toward server storage';
+
+  @override
+  String get assistantUsageServerStorage => 'Server storage';
+
+  @override
+  String assistantUsageStorageOf(String used, String quota) {
+    return '$used of $quota';
+  }
+
+  @override
+  String get assistantSettingsChat => 'Chat';
+
+  @override
+  String get assistantSettingsMemory => 'Memory';
+
+  @override
+  String get assistantSettingsUser => 'User';
+
+  @override
+  String get assistantSettingsLanguage => 'Response language';
+
+  @override
+  String get assistantSettingsLanguageHint =>
+      'The language the assistant answers you in.';
+
+  @override
+  String get assistantSettingsLanguageAuto => 'Match my language';
+
+  @override
+  String get assistantSettingsFont => 'Font';
+
+  @override
+  String get assistantSettingsFontHint =>
+      'The typeface the assistant\'s replies are set in.';
+
+  @override
+  String get assistantFontSerif => 'Serif';
+
+  @override
+  String get assistantFontSans => 'Sans';
+
+  @override
+  String get assistantFontMono => 'Mono';
+
+  @override
+  String get assistantSettingsTextSize => 'Text size';
+
+  @override
+  String get assistantSettingsTextSizeHint => 'Size of the conversation text.';
+
+  @override
+  String get assistantTextSmall => 'Small';
+
+  @override
+  String get assistantTextMedium => 'Medium';
+
+  @override
+  String get assistantTextLarge => 'Large';
+
+  @override
+  String get assistantSettingsPreview => 'Preview';
+
+  @override
+  String get assistantSettingsPreviewText =>
+      'Here\'s how replies will look. **Bold**, *italic* and `code` all follow your choice.';
+
+  @override
+  String get assistantMemoryUse => 'Use memory';
+
+  @override
+  String get assistantMemoryUseHint =>
+      'Let the assistant remember things about you across chats, and bring them up when they help.';
+
+  @override
+  String assistantMemorySyncNote(String size) {
+    return 'Synced to your account on every plan · $size of server storage';
+  }
+
+  @override
+  String get assistantMemoryAdd => 'Add memory';
+
+  @override
+  String get assistantMemoryEdit => 'Edit memory';
+
+  @override
+  String get assistantMemoryEmpty => 'Nothing remembered yet';
+
+  @override
+  String get assistantMemoryEmptyHint =>
+      'Tell the assistant about yourself in a chat, or add a memory here.';
+
+  @override
+  String get assistantMemoryYou => 'You';
+
+  @override
+  String get assistantMemoryTopics => 'Topics';
+
+  @override
+  String get assistantMemoryAreas => 'Areas';
+
+  @override
+  String assistantMemoryUpdated(String date) {
+    return 'Updated $date';
+  }
+
+  @override
+  String get assistantMemoryClear => 'Delete all memory';
+
+  @override
+  String get assistantMemoryClearTitle => 'Delete all memory?';
+
+  @override
+  String get assistantMemoryClearBody =>
+      'The assistant forgets everything it remembered, on every device. Your profile on the User tab stays.';
+
+  @override
+  String get assistantMemoryTitle => 'Title';
+
+  @override
+  String get assistantMemoryTitleHint => 'e.g. Hardware';
+
+  @override
+  String get assistantMemoryDescription => 'Summary';
+
+  @override
+  String get assistantMemoryDescriptionHint => 'One line, shown in the list';
+
+  @override
+  String get assistantMemoryBody => 'What to remember';
+
+  @override
+  String get assistantMemoryBodyHint => 'One fact per line';
+
+  @override
+  String get assistantProfileCallMe => 'What should the assistant call you?';
+
+  @override
+  String get assistantProfileCallMeHint => 'Your name or nickname';
+
+  @override
+  String get assistantProfileOccupation => 'What do you do?';
+
+  @override
+  String get assistantProfileOccupationHint =>
+      'e.g. student, indie game developer';
+
+  @override
+  String get assistantProfileSummary => 'About you';
+
+  @override
+  String get assistantProfileSummaryHint =>
+      'A few sentences the assistant should always know';
+
+  @override
+  String get assistantProfileInstructions =>
+      'How should the assistant respond?';
+
+  @override
+  String get assistantProfileInstructionsHint =>
+      'e.g. keep it short, explain code step by step';
+
+  @override
+  String get assistantProfileSave => 'Save';
+
+  @override
+  String get assistantProfileSaved => 'Saved';
+
+  @override
+  String get assistantAgentsComingSoon => 'Coming soon';
+
+  @override
+  String get assistantAgentsSubtitle =>
+      'Agents you\'ve built in the AI Usage plugin. Running them from the assistant is coming soon.';
+
+  @override
+  String get assistantAgentsEmpty => 'No agents yet';
+
+  @override
+  String get assistantAgentsEmptyHint =>
+      'Build one in the AI Usage plugin\'s Agents tab and it shows up here.';
+
+  @override
+  String get assistantAgentsOpenBuilder => 'Open AI Usage';
+
+  @override
+  String get assistantAgentsNoDescription => 'No description';
+
+  @override
+  String get textLibraryBack => 'Back';
+
+  @override
+  String get textLibraryBodyHint => 'Write your text…';
+
+  @override
+  String get textLibraryBold => 'Bold';
+
+  @override
+  String get textLibraryCancel => 'Cancel';
+
+  @override
+  String get textLibraryClearFormatting => 'Clear formatting';
+
+  @override
+  String get textLibraryColor => 'Color';
+
+  @override
+  String get textLibraryCover => 'Cover';
+
+  @override
+  String get textLibraryCreate => 'Create';
+
+  @override
+  String get textLibraryDefaultInk => 'Default ink';
+
+  @override
+  String get textLibraryDelete => 'Delete';
+
+  @override
+  String textLibraryDeleteSubjectTitle(String name) {
+    return 'Delete subject \"$name\"?';
+  }
+
+  @override
+  String textLibraryDeleteSubjectBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count texts',
+      one: 'one text',
+      zero: 'no texts',
+    );
+    return 'Delete this subject and its $_temp0?';
+  }
+
+  @override
+  String get textLibraryDeleteTextBody =>
+      'This text will be permanently deleted.';
+
+  @override
+  String textLibraryDeleteTextTitle(String title) {
+    return 'Delete \"$title\"?';
+  }
+
+  @override
+  String textLibraryEdited(String date) {
+    return 'Edited $date';
+  }
+
+  @override
+  String get textLibraryInk => 'Ink';
+
+  @override
+  String get textLibraryItalic => 'Italic';
+
+  @override
+  String get textLibraryMcAdvancement => 'Advancement';
+
+  @override
+  String textLibraryMcBooks(String count) {
+    return '$count books';
+  }
+
+  @override
+  String get textLibraryMcBuild => 'Build';
+
+  @override
+  String get textLibraryMcBuiltIn => 'Built-in';
+
+  @override
+  String get textLibraryMcBurn => 'Burn';
+
+  @override
+  String get textLibraryMcBurnConfirm =>
+      'Burn this book? This cannot be undone.';
+
+  @override
+  String get textLibraryMcChooseSlot => 'Choose a shelf slot';
+
+  @override
+  String get textLibraryMcDone => 'Done';
+
+  @override
+  String get textLibraryMcDownload => 'Download Minecraft assets';
+
+  @override
+  String get textLibraryMcDownloadFailed =>
+      'Could not download Minecraft assets.';
+
+  @override
+  String get textLibraryMcDownloadNote =>
+      'Minecraft assets are downloaded from Mojang and cached on this device.';
+
+  @override
+  String get textLibraryMcEmptyHall =>
+      'Your hall is empty. Create a subject to begin.';
+
+  @override
+  String get textLibraryMcEmptySlot => 'Empty slot';
+
+  @override
+  String get textLibraryMcFailedAndroid =>
+      'Could not open the Minecraft library on Android.';
+
+  @override
+  String get textLibraryMcFailedWindows =>
+      'Could not open the Minecraft library on Windows.';
+
+  @override
+  String get textLibraryMcFirstBook => 'Write your first book';
+
+  @override
+  String get textLibraryMcFirstCase => 'Create your first case';
+
+  @override
+  String get textLibraryMcLoading => 'Loading Minecraft library…';
+
+  @override
+  String get textLibraryMcLost => 'The Minecraft library connection was lost.';
+
+  @override
+  String get textLibraryMcMoveHint => 'Move this book to another shelf.';
+
+  @override
+  String get textLibraryMcNewCase => 'New case';
+
+  @override
+  String get textLibraryMcNewCaseTitle => 'Create a case';
+
+  @override
+  String textLibraryMcPage(String page, String total) {
+    return 'Page $page of $total';
+  }
+
+  @override
+  String get textLibraryMcQuality => 'Render quality';
+
+  @override
+  String get textLibraryMcQualityHigh => 'High';
+
+  @override
+  String get textLibraryMcQualityLow => 'Low';
+
+  @override
+  String get textLibraryMcRetry => 'Retry';
+
+  @override
+  String get textLibraryMcSaveFailed => 'Could not save the book.';
+
+  @override
+  String get textLibraryMcSettings => 'Hall settings';
+
+  @override
+  String textLibraryMcShelfPage(String page, String total) {
+    return 'Shelf page $page of $total';
+  }
+
+  @override
+  String get textLibraryMcSign => 'Sign book';
+
+  @override
+  String get textLibraryMcSignAndShelve => 'Sign and shelve';
+
+  @override
+  String get textLibraryMcSignTitle => 'Sign this book?';
+
+  @override
+  String get textLibraryMcUntitled => 'Untitled';
+
+  @override
+  String textLibraryMcVanilla(String version) {
+    return 'Minecraft $version';
+  }
+
+  @override
+  String get textLibraryMcWriteHint => 'Write your book here…';
+
+  @override
+  String get textLibraryModeClassic => 'Classic';
+
+  @override
+  String get textLibraryModeMinecraft => 'Minecraft hall';
+
+  @override
+  String get textLibraryMoveTo => 'Move to';
+
+  @override
+  String get textLibraryMoveToTitle => 'Move text to a subject';
+
+  @override
+  String get textLibraryNewSubject => 'New subject';
+
+  @override
+  String get textLibraryNewText => 'New text';
+
+  @override
+  String textLibraryNoMatches(String query) {
+    return 'No texts match \"$query\"';
+  }
+
+  @override
+  String get textLibraryNoSubjects => 'No subjects yet';
+
+  @override
+  String get textLibraryNoSubjectsSub =>
+      'Create a subject to organize your texts.';
+
+  @override
+  String get textLibraryNoTexts => 'No texts yet';
+
+  @override
+  String get textLibraryNoTextsSub =>
+      'Add a text to this subject to get started.';
+
+  @override
+  String get textLibraryRename => 'Rename';
+
+  @override
+  String get textLibraryRenameSubject => 'Rename subject';
+
+  @override
+  String get textLibrarySave => 'Save';
+
+  @override
+  String get textLibrarySaved => 'Saved';
+
+  @override
+  String get textLibrarySaving => 'Saving…';
+
+  @override
+  String get textLibrarySearchHint => 'Search texts';
+
+  @override
+  String get textLibrarySpineHint => 'A short label shown on the book spine';
+
+  @override
+  String get textLibrarySpineLabel => 'Spine label';
+
+  @override
+  String get textLibraryStrike => 'Strikethrough';
+
+  @override
+  String get textLibrarySubjectNameHint => 'Subject name';
+
+  @override
+  String get textLibrarySubjectNameRequired => 'Enter a subject name.';
+
+  @override
+  String get textLibrarySubjects => 'Subjects';
+
+  @override
+  String textLibraryTextCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count texts',
+      one: '1 text',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get textLibraryTitleHint => 'Title';
+
+  @override
+  String get textLibraryUnderline => 'Underline';
 }

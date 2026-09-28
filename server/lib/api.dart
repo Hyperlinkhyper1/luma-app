@@ -153,15 +153,20 @@ class ServerConfig {
   bool get openRouterKeyConfigured =>
       openRouterApiKey != null && openRouterApiKey!.isNotEmpty;
 
-  /// The upstreams the Luma AI modes can currently be served by.
+  /// The upstreams the Luma AI modes can currently be served by. Mistral
+  /// counts here too — the same LUMA_MISTRAL_API_KEY that powers the
+  /// separate "Luma Support" chat (Api._mistralChatProxy) can also serve
+  /// Aurora/Nebula/Pulsar if the operator routes a mode to it.
   Set<AiUpstream> get configuredAiUpstreams => {
         if (googleKeyConfigured) AiUpstream.google,
         if (openRouterKeyConfigured) AiUpstream.openrouter,
+        if (mistralKeyConfigured) AiUpstream.mistral,
       };
 
   String? aiUpstreamKey(AiUpstream upstream) => switch (upstream) {
         AiUpstream.google => googleApiKey,
         AiUpstream.openrouter => openRouterApiKey,
+        AiUpstream.mistral => mistralApiKey,
       };
 
   /// An IsThereAnyDeal key configured once by the operator, so individual
@@ -2257,28 +2262,59 @@ class Api {
 
   /// Sends one chat-completion body to [route]'s upstream with the
   /// operator's key for it. Returns the status and the raw response body.
+  /// Retries once on a 429 — see [_postJsonWithRetry].
   Future<(int, String)> _callAiUpstream(
-      AiModeRoute route, Map<String, dynamic> upstreamBody) async {
-    final httpClient = HttpClient();
-    try {
-      final upstreamRequest =
-          await httpClient.postUrl(Uri.parse(route.upstream.endpoint));
-      upstreamRequest.headers.set(HttpHeaders.authorizationHeader,
-          'Bearer ${config.aiUpstreamKey(route.upstream)}');
-      if (route.upstream == AiUpstream.openrouter) {
-        upstreamRequest.headers
-          ..set('HTTP-Referer', config.publicUrl)
-          ..set('X-Title', 'luma');
+      AiModeRoute route, Map<String, dynamic> upstreamBody) {
+    return _postJsonWithRetry(
+      Uri.parse(route.upstream.endpoint),
+      {
+        HttpHeaders.authorizationHeader:
+            'Bearer ${config.aiUpstreamKey(route.upstream)}',
+        if (route.upstream == AiUpstream.openrouter) ...{
+          'HTTP-Referer': config.publicUrl,
+          'X-Title': 'luma',
+        },
+      },
+      jsonEncode(upstreamBody),
+    );
+  }
+
+  /// Shared POST-JSON-with-retry for the AI proxies (Mistral, Google,
+  /// OpenRouter). Every one of them is fronted by a free or low-tier key
+  /// with a tight per-second rate limit, and a single chat turn can fire
+  /// several upstream calls back-to-back when the model uses tools — so a
+  /// plain pass-through surfaced 429s to users far more than the account's
+  /// real capacity warranted. One retry, honouring the provider's own
+  /// `Retry-After` when it sends one (Mistral does) and falling back to a
+  /// short fixed wait otherwise, absorbs that without stacking enough delay
+  /// to trip the client's own 30s request timeout.
+  Future<(int, String)> _postJsonWithRetry(
+      Uri url, Map<String, String> headers, String body,
+      {Duration timeout = const Duration(seconds: 60)}) async {
+    for (var attempt = 0; ; attempt++) {
+      final httpClient = HttpClient();
+      int status;
+      String responseBody;
+      String? retryAfter;
+      try {
+        final upstreamRequest = await httpClient.postUrl(url);
+        headers.forEach(upstreamRequest.headers.set);
+        upstreamRequest.headers.contentType = ContentType.json;
+        upstreamRequest.write(body);
+        final upstreamResponse =
+            await upstreamRequest.close().timeout(timeout);
+        status = upstreamResponse.statusCode;
+        responseBody = await upstreamResponse.transform(utf8.decoder).join();
+        retryAfter = upstreamResponse.headers.value('retry-after');
+      } finally {
+        httpClient.close();
       }
-      upstreamRequest.headers.contentType = ContentType.json;
-      upstreamRequest.write(jsonEncode(upstreamBody));
-      final upstreamResponse =
-          await upstreamRequest.close().timeout(const Duration(seconds: 60));
-      final responseBody =
-          await upstreamResponse.transform(utf8.decoder).join();
-      return (upstreamResponse.statusCode, responseBody);
-    } finally {
-      httpClient.close();
+      if (status != 429 || attempt >= 1) return (status, responseBody);
+      final waitSeconds = int.tryParse(retryAfter ?? '');
+      await Future<void>.delayed(Duration(
+          seconds: waitSeconds != null && waitSeconds > 0
+              ? waitSeconds.clamp(1, 5)
+              : 2));
     }
   }
 
@@ -2839,26 +2875,20 @@ class Api {
         ? 'https://api.mistral.ai/v1/agents/completions'
         : 'https://api.mistral.ai/v1/chat/completions';
 
-    final httpClient = HttpClient();
     try {
-      final upstreamRequest = await httpClient.postUrl(Uri.parse(url));
-      upstreamRequest.headers.set(
-          HttpHeaders.authorizationHeader, 'Bearer ${config.mistralApiKey}');
-      upstreamRequest.headers.contentType = ContentType.json;
-      upstreamRequest.write(jsonEncode(upstreamBody));
-      final upstreamResponse =
-          await upstreamRequest.close().timeout(const Duration(seconds: 30));
-      final responseBody =
-          await upstreamResponse.transform(utf8.decoder).join();
-      if (upstreamResponse.statusCode == 200 && isNewUserTurn) {
+      final (status, responseBody) = await _postJsonWithRetry(
+        Uri.parse(url),
+        {HttpHeaders.authorizationHeader: 'Bearer ${config.mistralApiKey}'},
+        jsonEncode(upstreamBody),
+        timeout: const Duration(seconds: 30),
+      );
+      if (status == 200 && isNewUserTurn) {
         await aiUsage.recordSupportMessage(user.id);
       }
-      return Response(upstreamResponse.statusCode,
+      return Response(status,
           body: responseBody, headers: {'Content-Type': 'application/json'});
     } catch (e) {
       return errorResponse(502, 'upstream_error', 'Could not reach Mistral.');
-    } finally {
-      httpClient.close();
     }
   }
 
@@ -8916,7 +8946,8 @@ syncToolbar();
   /// The Assistant tab: one row per Luma AI mode choosing the upstream (by
   /// whose key it is paid for), the model id and an optional reasoning
   /// override. Model suggestions come from the leaderboard catalogue for
-  /// OpenRouter, whose ids it already uses, and a short list for Google.
+  /// OpenRouter, whose ids it already uses, and a short list for Google and
+  /// Mistral.
   String _adminAssistantPanel() {
     final configured = config.configuredAiUpstreams;
     String esc(String s) => _htmlEscape(s);
@@ -8935,6 +8966,12 @@ syncToolbar();
             '${price(m.inputPricePerM)} in / ${price(m.outputPricePerM)} out per M'
             '</option>')
         .join();
+    final mistralOptions = {
+      ...kDefaultAiModeModels[AiUpstream.mistral]!.values,
+      'mistral-large-latest',
+      'codestral-latest',
+      'open-mixtral-8x22b',
+    }.map((m) => '<option value="${esc(m)}">').join();
 
     final rows = kAiModeNames.entries.map((e) {
       final mode = e.key;
@@ -8982,13 +9019,15 @@ syncToolbar();
           '</tr>';
     }).join();
 
+    const upstreamEnvVar = {
+      AiUpstream.google: 'LUMA_GOOGLE_API_KEY',
+      AiUpstream.openrouter: 'LUMA_OPENROUTER_API_KEY',
+      AiUpstream.mistral: 'LUMA_MISTRAL_API_KEY',
+    };
     final keyLine = AiUpstream.values.map((u) {
       final ok = configured.contains(u);
-      final env = u == AiUpstream.google
-          ? 'LUMA_GOOGLE_API_KEY'
-          : 'LUMA_OPENROUTER_API_KEY';
       return '<span class="badge ${ok ? 'ok' : 'err'}">${esc(u.label)}: '
-          '${ok ? 'key set' : 'no $env'}</span>';
+          '${ok ? 'key set' : 'no ${upstreamEnvVar[u]}'}</span>';
     }).join(' ');
 
     return '<div class="tab-panel" id="panel-assistant">'
@@ -9009,7 +9048,7 @@ syncToolbar();
         'Luma AI mode in the Assistant. Changes apply to the next message, '
         'no app update needed. Leave a model blank to use the default shown '
         'in grey. Usage limits are the same whichever model you pick, so '
-        'mind the per-token price on OpenRouter.</div>'
+        'mind the per-token price on OpenRouter and Mistral.</div>'
         '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'
         '$keyLine</div>'
         '<form method="post" action="/admin/ai-routes" class="ai-routes">'
@@ -9025,6 +9064,7 @@ syncToolbar();
         '</form>'
         '<datalist id="ai-dl-google">$googleOptions</datalist>'
         '<datalist id="ai-dl-openrouter">$openRouterOptions</datalist>'
+        '<datalist id="ai-dl-mistral">$mistralOptions</datalist>'
         '${aiCatalog.modelCount == 0 ? '<div class="muted" style="font-size:12px;margin-top:10px">No OpenRouter suggestions yet — press "Refresh model data" on the Maintenance tab to load the model list.</div>' : ''}'
         '</div>'
         '</div>';

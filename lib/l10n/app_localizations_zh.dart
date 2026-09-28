@@ -418,4 +418,703 @@ class LZh extends L {
   String planSuffix(String name) {
     return '$name 套餐';
   }
+
+  @override
+  String get assistantNewChat => '新对话';
+
+  @override
+  String get assistantSearchChats => '搜索对话';
+
+  @override
+  String get assistantStarred => '已加星标';
+
+  @override
+  String get assistantRecents => '最近';
+
+  @override
+  String get assistantNoChats => '还没有对话';
+
+  @override
+  String get assistantNoMatches => '没有匹配的对话';
+
+  @override
+  String get assistantGreetingMorning => '早上好';
+
+  @override
+  String get assistantGreetingAfternoon => '下午好';
+
+  @override
+  String get assistantGreetingEvening => '晚上好';
+
+  @override
+  String assistantGreetingMorningName(String name) {
+    return '早上好，$name';
+  }
+
+  @override
+  String assistantGreetingAfternoonName(String name) {
+    return '下午好，$name';
+  }
+
+  @override
+  String assistantGreetingEveningName(String name) {
+    return '晚上好，$name';
+  }
+
+  @override
+  String get assistantHowCanIHelp => '今天有什么可以帮你？';
+
+  @override
+  String get assistantReplyHint => '回复 luma…';
+
+  @override
+  String get assistantOutOfMessages => '你的消息次数暂时用完了';
+
+  @override
+  String get assistantCopy => '复制';
+
+  @override
+  String get assistantCopied => '已复制';
+
+  @override
+  String get assistantStar => '加星标';
+
+  @override
+  String get assistantUnstar => '取消星标';
+
+  @override
+  String get assistantRename => '重命名';
+
+  @override
+  String get assistantDelete => '删除';
+
+  @override
+  String get assistantSuggestPlugin => '查找插件';
+
+  @override
+  String get assistantSuggestQr => '生成二维码';
+
+  @override
+  String get assistantSuggestWeek => '规划我的一周';
+
+  @override
+  String get assistantSuggestNote => '写一条笔记';
+
+  @override
+  String get assistantSuggestPluginPrompt => '哪个 luma 插件能帮我';
+
+  @override
+  String get assistantSuggestQrPrompt => '为以下内容生成二维码：';
+
+  @override
+  String get assistantSuggestWeekPrompt => '我这周的日程有哪些？';
+
+  @override
+  String get assistantSuggestNotePrompt => '保存一条笔记，内容是：';
+
+  @override
+  String get assistantToggleSidebar => '切换侧边栏';
+
+  @override
+  String get assistantChats => '对话';
+
+  @override
+  String get assistantUsage => '用量';
+
+  @override
+  String get assistantContextWindow => '上下文窗口';
+
+  @override
+  String get assistantUsageLimits => '用量限制';
+
+  @override
+  String get assistantFiveHourLimit => '5 小时限额';
+
+  @override
+  String get assistantWeeklyLimit => '每周';
+
+  @override
+  String get assistantDailyMessages => '今天';
+
+  @override
+  String assistantMessagesOf(int used, int limit) {
+    return '已用 $used / $limit 条消息';
+  }
+
+  @override
+  String get assistantLastReply => '上一条回复';
+
+  @override
+  String assistantTokensInOut(String input, String output) {
+    return '输入 $input · 输出 $output';
+  }
+
+  @override
+  String get assistantNoLimits => '在本设备上运行 — 无用量限制';
+
+  @override
+  String get assistantUsageUnavailable => '无法获取用量 — 请检查网络连接';
+
+  @override
+  String get assistantDetailedBreakdown => '查看详细明细';
+
+  @override
+  String get assistantNoRepliesYet => '此对话还没有回复';
+
+  @override
+  String get assistantMenuUsage => '用量';
+
+  @override
+  String get assistantMenuSettings => '设置';
+
+  @override
+  String get assistantMenuAgents => '智能体';
+
+  @override
+  String get assistantYourUsage => '你的用量';
+
+  @override
+  String get assistantUsageHeadlinePlenty => '还有充足额度，尽情聊吧。';
+
+  @override
+  String get assistantUsageHeadlineOnTrack => '进度正常，还有余量。';
+
+  @override
+  String get assistantUsageHeadlineClose => '注意：你快要达到上限了。';
+
+  @override
+  String get assistantUsageHeadlineOut => '你已达到上限，时间窗口滚动后会重新释放。';
+
+  @override
+  String get assistantUsageLumaAi => 'Luma AI';
+
+  @override
+  String get assistantUsageLumaAiSubtitle =>
+      '通过你的 luma 账户使用 Aurora、Nebula 和 Pulsar';
+
+  @override
+  String get assistantUsageCurrentSession => '当前会话';
+
+  @override
+  String get assistantUsageRollingFiveHours => '滚动 5 小时窗口';
+
+  @override
+  String get assistantUsageThisWeek => '本周';
+
+  @override
+  String get assistantUsageRollingWeek => '滚动 7 天窗口';
+
+  @override
+  String get assistantUsageLumaAssistant => 'Luma Assistant';
+
+  @override
+  String get assistantUsageLumaAssistantSubtitle => '设备端 Qwen 模型';
+
+  @override
+  String get assistantUsageWebSearch => '网页搜索';
+
+  @override
+  String assistantUsageCountOf(int used, int limit) {
+    return '已用 $used / $limit';
+  }
+
+  @override
+  String assistantUsagePercentUsed(int percent) {
+    return '已用 $percent%';
+  }
+
+  @override
+  String get assistantUsageLumaSupport => 'Luma Support';
+
+  @override
+  String get assistantUsageResetsDaily => '午夜重置';
+
+  @override
+  String get assistantUsageApiKeys => '你的 API 密钥';
+
+  @override
+  String get assistantUsageApiKeysSubtitle =>
+      '在此设备上用你自己的密钥使用 Anthropic Claude 和 OpenAI';
+
+  @override
+  String get assistantUsageByModel => '按模型统计的消息';
+
+  @override
+  String get assistantUsageByModelSubtitle => '此设备上的累计数据。×5 和 ×20 表示更重的模型。';
+
+  @override
+  String assistantUsageMessageCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 条消息',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get assistantUsageNoMessages => '还没有消息';
+
+  @override
+  String get assistantUsageStorage => '存储';
+
+  @override
+  String get assistantUsageMemoryStorage => '助手记忆';
+
+  @override
+  String get assistantUsageMemoryStorageCaption => '在所有套餐中随账户同步，并计入服务器存储';
+
+  @override
+  String get assistantUsageServerStorage => '服务器存储';
+
+  @override
+  String assistantUsageStorageOf(String used, String quota) {
+    return '$used / $quota';
+  }
+
+  @override
+  String get assistantSettingsChat => '聊天';
+
+  @override
+  String get assistantSettingsMemory => '记忆';
+
+  @override
+  String get assistantSettingsUser => '用户';
+
+  @override
+  String get assistantSettingsLanguage => '回复语言';
+
+  @override
+  String get assistantSettingsLanguageHint => '助手回复你时使用的语言。';
+
+  @override
+  String get assistantSettingsLanguageAuto => '跟随我的语言';
+
+  @override
+  String get assistantSettingsFont => '字体';
+
+  @override
+  String get assistantSettingsFontHint => '助手回复所用的字体。';
+
+  @override
+  String get assistantFontSerif => '衬线';
+
+  @override
+  String get assistantFontSans => '无衬线';
+
+  @override
+  String get assistantFontMono => '等宽';
+
+  @override
+  String get assistantSettingsTextSize => '文字大小';
+
+  @override
+  String get assistantSettingsTextSizeHint => '对话文字的大小。';
+
+  @override
+  String get assistantTextSmall => '小';
+
+  @override
+  String get assistantTextMedium => '中';
+
+  @override
+  String get assistantTextLarge => '大';
+
+  @override
+  String get assistantSettingsPreview => '预览';
+
+  @override
+  String get assistantSettingsPreviewText =>
+      '回复会像这样显示。**粗体**、*斜体* 和 `代码` 都会跟随你的选择。';
+
+  @override
+  String get assistantMemoryUse => '使用记忆';
+
+  @override
+  String get assistantMemoryUseHint => '让助手在不同对话之间记住关于你的信息，并在有帮助时使用。';
+
+  @override
+  String assistantMemorySyncNote(String size) {
+    return '在所有套餐中同步到你的账户 · 占用 $size 服务器存储';
+  }
+
+  @override
+  String get assistantMemoryAdd => '添加记忆';
+
+  @override
+  String get assistantMemoryEdit => '编辑记忆';
+
+  @override
+  String get assistantMemoryEmpty => '还没有任何记忆';
+
+  @override
+  String get assistantMemoryEmptyHint => '在对话中向助手介绍你自己，或在这里添加记忆。';
+
+  @override
+  String get assistantMemoryYou => '你';
+
+  @override
+  String get assistantMemoryTopics => '主题';
+
+  @override
+  String get assistantMemoryAreas => '领域';
+
+  @override
+  String assistantMemoryUpdated(String date) {
+    return '更新于 $date';
+  }
+
+  @override
+  String get assistantMemoryClear => '删除所有记忆';
+
+  @override
+  String get assistantMemoryClearTitle => '删除所有记忆？';
+
+  @override
+  String get assistantMemoryClearBody => '助手会在所有设备上忘记它记住的一切。“用户”标签中的个人资料会保留。';
+
+  @override
+  String get assistantMemoryTitle => '标题';
+
+  @override
+  String get assistantMemoryTitleHint => '例如：硬件';
+
+  @override
+  String get assistantMemoryDescription => '摘要';
+
+  @override
+  String get assistantMemoryDescriptionHint => '一行，显示在列表中';
+
+  @override
+  String get assistantMemoryBody => '要记住的内容';
+
+  @override
+  String get assistantMemoryBodyHint => '每行一条';
+
+  @override
+  String get assistantProfileCallMe => '助手应该怎么称呼你？';
+
+  @override
+  String get assistantProfileCallMeHint => '你的名字或昵称';
+
+  @override
+  String get assistantProfileOccupation => '你是做什么的？';
+
+  @override
+  String get assistantProfileOccupationHint => '例如：学生、独立游戏开发者';
+
+  @override
+  String get assistantProfileSummary => '关于你';
+
+  @override
+  String get assistantProfileSummaryHint => '助手应始终了解的几句话';
+
+  @override
+  String get assistantProfileInstructions => '助手应该如何回复？';
+
+  @override
+  String get assistantProfileInstructionsHint => '例如：简短一些，逐步解释代码';
+
+  @override
+  String get assistantProfileSave => '保存';
+
+  @override
+  String get assistantProfileSaved => '已保存';
+
+  @override
+  String get assistantAgentsComingSoon => '即将推出';
+
+  @override
+  String get assistantAgentsSubtitle => '你在 AI Usage 插件中创建的智能体。即将支持从助手中运行它们。';
+
+  @override
+  String get assistantAgentsEmpty => '还没有智能体';
+
+  @override
+  String get assistantAgentsEmptyHint => '在 AI Usage 插件的“智能体”标签中创建一个，它就会显示在这里。';
+
+  @override
+  String get assistantAgentsOpenBuilder => '打开 AI Usage';
+
+  @override
+  String get assistantAgentsNoDescription => '无描述';
+
+  @override
+  String get textLibraryBack => 'Back';
+
+  @override
+  String get textLibraryBodyHint => 'Write your text…';
+
+  @override
+  String get textLibraryBold => 'Bold';
+
+  @override
+  String get textLibraryCancel => 'Cancel';
+
+  @override
+  String get textLibraryClearFormatting => 'Clear formatting';
+
+  @override
+  String get textLibraryColor => 'Color';
+
+  @override
+  String get textLibraryCover => 'Cover';
+
+  @override
+  String get textLibraryCreate => 'Create';
+
+  @override
+  String get textLibraryDefaultInk => 'Default ink';
+
+  @override
+  String get textLibraryDelete => 'Delete';
+
+  @override
+  String textLibraryDeleteSubjectTitle(String name) {
+    return 'Delete subject \"$name\"?';
+  }
+
+  @override
+  String textLibraryDeleteSubjectBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count texts',
+      one: 'one text',
+      zero: 'no texts',
+    );
+    return 'Delete this subject and its $_temp0?';
+  }
+
+  @override
+  String get textLibraryDeleteTextBody =>
+      'This text will be permanently deleted.';
+
+  @override
+  String textLibraryDeleteTextTitle(String title) {
+    return 'Delete \"$title\"?';
+  }
+
+  @override
+  String textLibraryEdited(String date) {
+    return 'Edited $date';
+  }
+
+  @override
+  String get textLibraryInk => 'Ink';
+
+  @override
+  String get textLibraryItalic => 'Italic';
+
+  @override
+  String get textLibraryMcAdvancement => 'Advancement';
+
+  @override
+  String textLibraryMcBooks(String count) {
+    return '$count books';
+  }
+
+  @override
+  String get textLibraryMcBuild => 'Build';
+
+  @override
+  String get textLibraryMcBuiltIn => 'Built-in';
+
+  @override
+  String get textLibraryMcBurn => 'Burn';
+
+  @override
+  String get textLibraryMcBurnConfirm =>
+      'Burn this book? This cannot be undone.';
+
+  @override
+  String get textLibraryMcChooseSlot => 'Choose a shelf slot';
+
+  @override
+  String get textLibraryMcDone => 'Done';
+
+  @override
+  String get textLibraryMcDownload => 'Download Minecraft assets';
+
+  @override
+  String get textLibraryMcDownloadFailed =>
+      'Could not download Minecraft assets.';
+
+  @override
+  String get textLibraryMcDownloadNote =>
+      'Minecraft assets are downloaded from Mojang and cached on this device.';
+
+  @override
+  String get textLibraryMcEmptyHall =>
+      'Your hall is empty. Create a subject to begin.';
+
+  @override
+  String get textLibraryMcEmptySlot => 'Empty slot';
+
+  @override
+  String get textLibraryMcFailedAndroid =>
+      'Could not open the Minecraft library on Android.';
+
+  @override
+  String get textLibraryMcFailedWindows =>
+      'Could not open the Minecraft library on Windows.';
+
+  @override
+  String get textLibraryMcFirstBook => 'Write your first book';
+
+  @override
+  String get textLibraryMcFirstCase => 'Create your first case';
+
+  @override
+  String get textLibraryMcLoading => 'Loading Minecraft library…';
+
+  @override
+  String get textLibraryMcLost => 'The Minecraft library connection was lost.';
+
+  @override
+  String get textLibraryMcMoveHint => 'Move this book to another shelf.';
+
+  @override
+  String get textLibraryMcNewCase => 'New case';
+
+  @override
+  String get textLibraryMcNewCaseTitle => 'Create a case';
+
+  @override
+  String textLibraryMcPage(String page, String total) {
+    return 'Page $page of $total';
+  }
+
+  @override
+  String get textLibraryMcQuality => 'Render quality';
+
+  @override
+  String get textLibraryMcQualityHigh => 'High';
+
+  @override
+  String get textLibraryMcQualityLow => 'Low';
+
+  @override
+  String get textLibraryMcRetry => 'Retry';
+
+  @override
+  String get textLibraryMcSaveFailed => 'Could not save the book.';
+
+  @override
+  String get textLibraryMcSettings => 'Hall settings';
+
+  @override
+  String textLibraryMcShelfPage(String page, String total) {
+    return 'Shelf page $page of $total';
+  }
+
+  @override
+  String get textLibraryMcSign => 'Sign book';
+
+  @override
+  String get textLibraryMcSignAndShelve => 'Sign and shelve';
+
+  @override
+  String get textLibraryMcSignTitle => 'Sign this book?';
+
+  @override
+  String get textLibraryMcUntitled => 'Untitled';
+
+  @override
+  String textLibraryMcVanilla(String version) {
+    return 'Minecraft $version';
+  }
+
+  @override
+  String get textLibraryMcWriteHint => 'Write your book here…';
+
+  @override
+  String get textLibraryModeClassic => 'Classic';
+
+  @override
+  String get textLibraryModeMinecraft => 'Minecraft hall';
+
+  @override
+  String get textLibraryMoveTo => 'Move to';
+
+  @override
+  String get textLibraryMoveToTitle => 'Move text to a subject';
+
+  @override
+  String get textLibraryNewSubject => 'New subject';
+
+  @override
+  String get textLibraryNewText => 'New text';
+
+  @override
+  String textLibraryNoMatches(String query) {
+    return 'No texts match \"$query\"';
+  }
+
+  @override
+  String get textLibraryNoSubjects => 'No subjects yet';
+
+  @override
+  String get textLibraryNoSubjectsSub =>
+      'Create a subject to organize your texts.';
+
+  @override
+  String get textLibraryNoTexts => 'No texts yet';
+
+  @override
+  String get textLibraryNoTextsSub =>
+      'Add a text to this subject to get started.';
+
+  @override
+  String get textLibraryRename => 'Rename';
+
+  @override
+  String get textLibraryRenameSubject => 'Rename subject';
+
+  @override
+  String get textLibrarySave => 'Save';
+
+  @override
+  String get textLibrarySaved => 'Saved';
+
+  @override
+  String get textLibrarySaving => 'Saving…';
+
+  @override
+  String get textLibrarySearchHint => 'Search texts';
+
+  @override
+  String get textLibrarySpineHint => 'A short label shown on the book spine';
+
+  @override
+  String get textLibrarySpineLabel => 'Spine label';
+
+  @override
+  String get textLibraryStrike => 'Strikethrough';
+
+  @override
+  String get textLibrarySubjectNameHint => 'Subject name';
+
+  @override
+  String get textLibrarySubjectNameRequired => 'Enter a subject name.';
+
+  @override
+  String get textLibrarySubjects => 'Subjects';
+
+  @override
+  String textLibraryTextCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count texts',
+      one: '1 text',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get textLibraryTitleHint => 'Title';
+
+  @override
+  String get textLibraryUnderline => 'Underline';
 }

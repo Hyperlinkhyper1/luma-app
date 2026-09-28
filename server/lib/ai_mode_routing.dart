@@ -8,7 +8,8 @@ import 'util.dart';
 enum AiUpstream {
   google('Google AI Studio',
       'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'),
-  openrouter('OpenRouter', 'https://openrouter.ai/api/v1/chat/completions');
+  openrouter('OpenRouter', 'https://openrouter.ai/api/v1/chat/completions'),
+  mistral('Mistral', 'https://api.mistral.ai/v1/chat/completions');
 
   const AiUpstream(this.label, this.endpoint);
 
@@ -87,6 +88,11 @@ const kDefaultAiModeModels = {
     'normal': 'google/gemini-2.5-flash-lite',
     'smarter': 'google/gemini-2.5-flash',
     'smartest': 'google/gemini-2.5-flash',
+  },
+  AiUpstream.mistral: {
+    'normal': 'mistral-small-latest',
+    'smarter': 'mistral-medium-latest',
+    'smartest': 'magistral-medium-latest',
   },
 };
 
