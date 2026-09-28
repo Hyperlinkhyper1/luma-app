@@ -222,6 +222,16 @@
       "version": "1.0.0"
     },
     {
+      "id": "text-library",
+      "name": "Text Library",
+      "description": "Subjects full of texts, notes and summaries — or a cosy Minecraft library where every subject is a bookcase.",
+      "icon": "auto_stories",
+      "category": "Productivity",
+      "tags": ["Productivity", "Writing"],
+      "free": true,
+      "version": "1.0.0"
+    },
+    {
       "id": "usage",
       "name": "Usage",
       "description": "See exactly how you spend your time on your PC. Tracks the app in the foreground throughout the day so you can look back and realize '55 minutes in Chrome, 12 in Spotify'. Filter by day, week, or month and view it as pie and bar charts.",

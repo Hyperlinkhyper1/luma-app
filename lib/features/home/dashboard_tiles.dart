@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../app/nav_rail.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/luma_theme.dart';
 import '../../finance/finance_scope.dart';
 import '../../finance/logic/finance_logic.dart';
@@ -43,6 +44,32 @@ class DashboardTileDefinition {
   final IconData icon;
   final int defaultWidth;
   final int defaultHeight;
+
+  String localizedTitle(BuildContext context) {
+    final t = L.of(context);
+    return switch (kind) {
+      'income' => t.homeIncomeMonth,
+      'spending' => t.homeSpentMonth,
+      'pots' => t.homeInPots,
+      'investments' => t.homeInvestments,
+      'shortcut' => t.homeTileShortcut,
+      'recent_activity' => t.homeTileRecentActivity,
+      'finance' => t.homeTileFinanceOverview,
+      'note' => t.homeTilePinnedNote,
+      'plugin' => t.homeTilePluginShortcut,
+      'minecraft' => t.homeTileMinecraftInstance,
+      'errands' => t.homeTileErrands,
+      'stocks' => t.homeTileStockChart,
+      'github_graph' => t.homeTileGithubActivity,
+      'github_issues' => t.homeTileGithubIssues,
+      'ai_usage' => t.homeTileAiUsage,
+      'calculator' => t.homeTileCalculator,
+      'clock' => t.homeTileClockDate,
+      'timer' => t.homeTileFocusTimer,
+      'quick_links' => t.homeTileQuickActions,
+      _ => title,
+    };
+  }
 }
 
 const dashboardTileDefinitions = [

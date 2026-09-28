@@ -89,6 +89,9 @@ import 'features/plugins/installed/whiteboard/data/whiteboard_database.dart'
     show WhiteboardDatabase;
 import 'features/plugins/installed/whiteboard/whiteboard_repository.dart';
 import 'features/plugins/installed/whiteboard/whiteboard_scope.dart';
+import 'features/plugins/installed/text_library/data/text_library_database.dart';
+import 'features/plugins/installed/text_library/text_library_repository.dart';
+import 'features/plugins/installed/text_library/text_library_scope.dart';
 import 'features/plugins/installed/usage/data/usage_database.dart';
 import 'features/plugins/installed/usage/usage_repository.dart';
 import 'features/plugins/installed/usage/usage_scope.dart';
@@ -258,6 +261,9 @@ class _LumaAppState extends State<LumaApp> {
   late final WhiteboardRepository _whiteboardRepository = WhiteboardRepository(
     _whiteboardDb,
   );
+  late final TextLibraryDatabase _textLibraryDb = TextLibraryDatabase();
+  late final TextLibraryRepository _textLibraryRepository =
+      TextLibraryRepository(_textLibraryDb);
   late final AutoClickerRepository _autoClickerRepository =
       AutoClickerRepository();
   late final UsageDatabase _usageDb = UsageDatabase();
@@ -687,6 +693,7 @@ class _LumaAppState extends State<LumaApp> {
     _schoolDb.close();
     _mindMapDb.close();
     _whiteboardDb.close();
+    _textLibraryDb.close();
     _minecraftDb.close();
     _serverTycoonRepository.dispose();
     _airlineTycoonRepository.dispose();
@@ -868,12 +875,16 @@ class _LumaAppState extends State<LumaApp> {
                                                                                                           GlobalWidgetsLocalizations.delegate,
                                                                                                           GlobalCupertinoLocalizations.delegate,
                                                                                                         ],
-                                                                                                        home: _BootGate(
-                                                                                                          bootstrap: _bootstrap,
-                                                                                                          accent: LumaTheme.accentFor(
-                                                                                                            Brightness.dark,
-                                                                                                            s.accentSeed,
-                                                                                                            s.themeStyle,
+                                                                                                        home: TextLibraryScope(
+                                                                                                          repository:
+                                                                                                              _textLibraryRepository,
+                                                                                                          child: _BootGate(
+                                                                                                            bootstrap: _bootstrap,
+                                                                                                            accent: LumaTheme.accentFor(
+                                                                                                              Brightness.dark,
+                                                                                                              s.accentSeed,
+                                                                                                              s.themeStyle,
+                                                                                                            ),
                                                                                                           ),
                                                                                                         ),
                                                                                                       );

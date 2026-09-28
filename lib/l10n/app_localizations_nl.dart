@@ -261,6 +261,130 @@ class LNl extends L {
   String get homeAllocation => 'Verdeeld';
 
   @override
+  String homeSaveFailed(String error) {
+    return 'Je startpagina kon niet worden opgeslagen: $error';
+  }
+
+  @override
+  String get homeAddSheetTitle => 'Maak ruimte voor wat belangrijk is';
+
+  @override
+  String get homeEditLayout => 'Indeling bewerken';
+
+  @override
+  String get homeEditingTitle => 'Maak het je gemakkelijk';
+
+  @override
+  String get homePhoneLayout => 'Telefoonindeling';
+
+  @override
+  String get homeDesktopLayout => 'Indeling voor desktop en laptop';
+
+  @override
+  String get homeResetDashboard => 'Oorspronkelijk dashboard herstellen';
+
+  @override
+  String get homeAddTile => 'Tegel toevoegen';
+
+  @override
+  String get homeSaveLayout => 'Indeling opslaan';
+
+  @override
+  String get homeEdit => 'Startpagina bewerken';
+
+  @override
+  String get homeDragHint =>
+      'Sleep een tegel aan de titel. Sleep de onderste hoek om de grootte te wijzigen. Tegels klikken op hun plaats; overlappende tegels schuiven omlaag.';
+
+  @override
+  String get homeUnavailable => 'Niet beschikbaar';
+
+  @override
+  String get homeInspiration => 'Een beetje inspiratie';
+
+  @override
+  String get homeEditSummary => 'Samenvatting bewerken';
+
+  @override
+  String get homeCashBalance => 'Kassaldo';
+
+  @override
+  String get homeCustomText => 'Eigen tekst';
+
+  @override
+  String get homeSummaryTitle => 'Begroetingssamenvatting';
+
+  @override
+  String get homeSummaryDescription =>
+      'Je begroeting staat altijd bovenaan. Kies wat eronder verschijnt.';
+
+  @override
+  String get homeShowInGreeting => 'Tonen in begroeting';
+
+  @override
+  String get homeSummaryLabel => 'Label';
+
+  @override
+  String get homeSummaryLabelHint => 'Focus van vandaag';
+
+  @override
+  String get homeSummaryText => 'Tekst';
+
+  @override
+  String get homeSummaryTextHint => 'Maak tijd voor wat belangrijk is.';
+
+  @override
+  String get homeApply => 'Toepassen';
+
+  @override
+  String get commonCancel => 'Annuleren';
+
+  @override
+  String get homeTileShortcut => 'Appsnelkoppeling';
+
+  @override
+  String get homeTileRecentActivity => 'Recente activiteit';
+
+  @override
+  String get homeTileFinanceOverview => 'Financieel overzicht';
+
+  @override
+  String get homeTilePinnedNote => 'Vastgezette notitie';
+
+  @override
+  String get homeTilePluginShortcut => 'Pluginsnelkoppeling';
+
+  @override
+  String get homeTileMinecraftInstance => 'Minecraft-instantie';
+
+  @override
+  String get homeTileErrands => 'Terugkerende taken';
+
+  @override
+  String get homeTileStockChart => 'Aandelengrafiek';
+
+  @override
+  String get homeTileGithubActivity => 'GitHub-activiteit';
+
+  @override
+  String get homeTileGithubIssues => 'GitHub-issues';
+
+  @override
+  String get homeTileAiUsage => 'AI-gebruik';
+
+  @override
+  String get homeTileCalculator => 'Rekenmachine';
+
+  @override
+  String get homeTileClockDate => 'Klok en datum';
+
+  @override
+  String get homeTileFocusTimer => 'Focustimer';
+
+  @override
+  String get homeTileQuickActions => 'Snelle acties';
+
+  @override
   String get pinEnterNew => 'Bedenk een nieuwe PIN van 8 cijfers';
 
   @override
@@ -882,38 +1006,38 @@ class LNl extends L {
   String get assistantAgentsNoDescription => 'Geen beschrijving';
 
   @override
-  String get textLibraryBack => 'Back';
+  String get textLibraryBack => 'Terug';
 
   @override
-  String get textLibraryBodyHint => 'Write your text…';
+  String get textLibraryBodyHint => 'Schrijf je tekst…';
 
   @override
-  String get textLibraryBold => 'Bold';
+  String get textLibraryBold => 'Vet';
 
   @override
-  String get textLibraryCancel => 'Cancel';
+  String get textLibraryCancel => 'Annuleren';
 
   @override
-  String get textLibraryClearFormatting => 'Clear formatting';
+  String get textLibraryClearFormatting => 'Opmaak wissen';
 
   @override
-  String get textLibraryColor => 'Color';
+  String get textLibraryColor => 'Kleur';
 
   @override
-  String get textLibraryCover => 'Cover';
+  String get textLibraryCover => 'Omslag';
 
   @override
-  String get textLibraryCreate => 'Create';
+  String get textLibraryCreate => 'Maken';
 
   @override
-  String get textLibraryDefaultInk => 'Default ink';
+  String get textLibraryDefaultInk => 'Standaardinktkleur';
 
   @override
-  String get textLibraryDelete => 'Delete';
+  String get textLibraryDelete => 'Verwijderen';
 
   @override
   String textLibraryDeleteSubjectTitle(String name) {
-    return 'Delete subject \"$name\"?';
+    return 'Onderwerp ‘$name’ verwijderen?';
   }
 
   @override
@@ -921,146 +1045,148 @@ class LNl extends L {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count texts',
-      one: 'one text',
-      zero: 'no texts',
+      other: '$count teksten',
+      one: 'één tekst',
+      zero: 'geen teksten',
     );
-    return 'Delete this subject and its $_temp0?';
+    return 'Dit onderwerp en $_temp0 verwijderen?';
   }
 
   @override
   String get textLibraryDeleteTextBody =>
-      'This text will be permanently deleted.';
+      'Deze tekst wordt definitief verwijderd.';
 
   @override
   String textLibraryDeleteTextTitle(String title) {
-    return 'Delete \"$title\"?';
+    return '‘$title’ verwijderen?';
   }
 
   @override
   String textLibraryEdited(String date) {
-    return 'Edited $date';
+    return 'Bewerkt op $date';
   }
 
   @override
-  String get textLibraryInk => 'Ink';
+  String get textLibraryInk => 'Inkt';
 
   @override
-  String get textLibraryItalic => 'Italic';
+  String get textLibraryItalic => 'Cursief';
 
   @override
-  String get textLibraryMcAdvancement => 'Advancement';
+  String get textLibraryMcAdvancement => 'Prestatie';
 
   @override
   String textLibraryMcBooks(String count) {
-    return '$count books';
+    return '$count boeken';
   }
 
   @override
-  String get textLibraryMcBuild => 'Build';
+  String get textLibraryMcBuild => 'Bouwen';
 
   @override
-  String get textLibraryMcBuiltIn => 'Built-in';
+  String get textLibraryMcBuiltIn => 'Ingebouwd';
 
   @override
-  String get textLibraryMcBurn => 'Burn';
+  String get textLibraryMcBurn => 'Verbranden';
 
   @override
   String get textLibraryMcBurnConfirm =>
-      'Burn this book? This cannot be undone.';
+      'Dit boek verbranden? Dit kan niet ongedaan worden gemaakt.';
 
   @override
-  String get textLibraryMcChooseSlot => 'Choose a shelf slot';
+  String get textLibraryMcChooseSlot => 'Kies een plek in de boekenkast';
 
   @override
-  String get textLibraryMcDone => 'Done';
+  String get textLibraryMcDone => 'Klaar';
 
   @override
-  String get textLibraryMcDownload => 'Download Minecraft assets';
+  String get textLibraryMcDownload => 'Minecraft-bestanden downloaden';
 
   @override
   String get textLibraryMcDownloadFailed =>
-      'Could not download Minecraft assets.';
+      'Minecraft-bestanden konden niet worden gedownload.';
 
   @override
   String get textLibraryMcDownloadNote =>
-      'Minecraft assets are downloaded from Mojang and cached on this device.';
+      'Minecraft-bestanden worden gedownload van Mojang en op dit apparaat bewaard.';
 
   @override
   String get textLibraryMcEmptyHall =>
-      'Your hall is empty. Create a subject to begin.';
+      'Je hal is leeg. Maak een onderwerp om te beginnen.';
 
   @override
-  String get textLibraryMcEmptySlot => 'Empty slot';
+  String get textLibraryMcEmptySlot => 'Lege plek';
 
   @override
   String get textLibraryMcFailedAndroid =>
-      'Could not open the Minecraft library on Android.';
+      'De Minecraft-bibliotheek kon niet worden geopend op Android.';
 
   @override
   String get textLibraryMcFailedWindows =>
-      'Could not open the Minecraft library on Windows.';
+      'De Minecraft-bibliotheek kon niet worden geopend op Windows.';
 
   @override
-  String get textLibraryMcFirstBook => 'Write your first book';
+  String get textLibraryMcFirstBook => 'Schrijf je eerste boek';
 
   @override
-  String get textLibraryMcFirstCase => 'Create your first case';
+  String get textLibraryMcFirstCase => 'Maak je eerste vitrine';
 
   @override
-  String get textLibraryMcLoading => 'Loading Minecraft library…';
+  String get textLibraryMcLoading => 'Minecraft-bibliotheek laden…';
 
   @override
-  String get textLibraryMcLost => 'The Minecraft library connection was lost.';
+  String get textLibraryMcLost =>
+      'De verbinding met de Minecraft-bibliotheek is verbroken.';
 
   @override
-  String get textLibraryMcMoveHint => 'Move this book to another shelf.';
+  String get textLibraryMcMoveHint =>
+      'Verplaats dit boek naar een andere boekenkast.';
 
   @override
-  String get textLibraryMcNewCase => 'New case';
+  String get textLibraryMcNewCase => 'Nieuwe vitrine';
 
   @override
-  String get textLibraryMcNewCaseTitle => 'Create a case';
+  String get textLibraryMcNewCaseTitle => 'Vitrine maken';
 
   @override
   String textLibraryMcPage(String page, String total) {
-    return 'Page $page of $total';
+    return 'Pagina $page van $total';
   }
 
   @override
-  String get textLibraryMcQuality => 'Render quality';
+  String get textLibraryMcQuality => 'Weergavekwaliteit';
 
   @override
-  String get textLibraryMcQualityHigh => 'High';
+  String get textLibraryMcQualityHigh => 'Hoog';
 
   @override
-  String get textLibraryMcQualityLow => 'Low';
+  String get textLibraryMcQualityLow => 'Laag';
 
   @override
-  String get textLibraryMcRetry => 'Retry';
+  String get textLibraryMcRetry => 'Opnieuw proberen';
 
   @override
-  String get textLibraryMcSaveFailed => 'Could not save the book.';
+  String get textLibraryMcSaveFailed => 'Het boek kon niet worden opgeslagen.';
 
   @override
-  String get textLibraryMcSettings => 'Hall settings';
+  String get textLibraryMcSettings => 'Halinstellingen';
 
   @override
   String textLibraryMcShelfPage(String page, String total) {
-    return 'Shelf page $page of $total';
+    return 'Boekenkastpagina $page van $total';
   }
 
   @override
-  String get textLibraryMcSign => 'Sign book';
+  String get textLibraryMcSign => 'Boek ondertekenen';
 
   @override
-  String get textLibraryMcSignAndShelve => 'Sign and shelve';
+  String get textLibraryMcSignAndShelve => 'Ondertekenen en in de kast zetten';
 
   @override
-  String get textLibraryMcSignTitle => 'Sign this book?';
+  String get textLibraryMcSignTitle => 'Dit boek ondertekenen?';
 
   @override
-  String get textLibraryMcUntitled => 'Untitled';
+  String get textLibraryMcUntitled => 'Zonder titel';
 
   @override
   String textLibraryMcVanilla(String version) {
@@ -1068,95 +1194,95 @@ class LNl extends L {
   }
 
   @override
-  String get textLibraryMcWriteHint => 'Write your book here…';
+  String get textLibraryMcWriteHint => 'Schrijf je boek hier…';
 
   @override
-  String get textLibraryModeClassic => 'Classic';
+  String get textLibraryModeClassic => 'Klassiek';
 
   @override
-  String get textLibraryModeMinecraft => 'Minecraft hall';
+  String get textLibraryModeMinecraft => 'Minecraft-hal';
 
   @override
-  String get textLibraryMoveTo => 'Move to';
+  String get textLibraryMoveTo => 'Verplaatsen naar';
 
   @override
-  String get textLibraryMoveToTitle => 'Move text to a subject';
+  String get textLibraryMoveToTitle => 'Tekst naar een onderwerp verplaatsen';
 
   @override
-  String get textLibraryNewSubject => 'New subject';
+  String get textLibraryNewSubject => 'Nieuw onderwerp';
 
   @override
-  String get textLibraryNewText => 'New text';
+  String get textLibraryNewText => 'Nieuwe tekst';
 
   @override
   String textLibraryNoMatches(String query) {
-    return 'No texts match \"$query\"';
+    return 'Geen teksten gevonden voor ‘$query’';
   }
 
   @override
-  String get textLibraryNoSubjects => 'No subjects yet';
+  String get textLibraryNoSubjects => 'Nog geen onderwerpen';
 
   @override
   String get textLibraryNoSubjectsSub =>
-      'Create a subject to organize your texts.';
+      'Maak een onderwerp om je teksten te ordenen.';
 
   @override
-  String get textLibraryNoTexts => 'No texts yet';
+  String get textLibraryNoTexts => 'Nog geen teksten';
 
   @override
   String get textLibraryNoTextsSub =>
-      'Add a text to this subject to get started.';
+      'Voeg een tekst aan dit onderwerp toe om te beginnen.';
 
   @override
-  String get textLibraryRename => 'Rename';
+  String get textLibraryRename => 'Naam wijzigen';
 
   @override
-  String get textLibraryRenameSubject => 'Rename subject';
+  String get textLibraryRenameSubject => 'Onderwerp hernoemen';
 
   @override
-  String get textLibrarySave => 'Save';
+  String get textLibrarySave => 'Opslaan';
 
   @override
-  String get textLibrarySaved => 'Saved';
+  String get textLibrarySaved => 'Opgeslagen';
 
   @override
-  String get textLibrarySaving => 'Saving…';
+  String get textLibrarySaving => 'Opslaan…';
 
   @override
-  String get textLibrarySearchHint => 'Search texts';
+  String get textLibrarySearchHint => 'Teksten zoeken';
 
   @override
-  String get textLibrarySpineHint => 'A short label shown on the book spine';
+  String get textLibrarySpineHint => 'Een kort label op de rug van het boek';
 
   @override
-  String get textLibrarySpineLabel => 'Spine label';
+  String get textLibrarySpineLabel => 'Ruglabel';
 
   @override
-  String get textLibraryStrike => 'Strikethrough';
+  String get textLibraryStrike => 'Doorhalen';
 
   @override
-  String get textLibrarySubjectNameHint => 'Subject name';
+  String get textLibrarySubjectNameHint => 'Naam van onderwerp';
 
   @override
-  String get textLibrarySubjectNameRequired => 'Enter a subject name.';
+  String get textLibrarySubjectNameRequired => 'Voer een onderwerpnaam in.';
 
   @override
-  String get textLibrarySubjects => 'Subjects';
+  String get textLibrarySubjects => 'Onderwerpen';
 
   @override
   String textLibraryTextCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count texts',
-      one: '1 text',
+      other: '$count teksten',
+      one: '1 tekst',
     );
     return '$_temp0';
   }
 
   @override
-  String get textLibraryTitleHint => 'Title';
+  String get textLibraryTitleHint => 'Titel';
 
   @override
-  String get textLibraryUnderline => 'Underline';
+  String get textLibraryUnderline => 'Onderstrepen';
 }
