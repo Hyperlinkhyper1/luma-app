@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../../app/widgets.dart';
@@ -184,10 +182,7 @@ class _LocalModelBodyState extends State<_LocalModelBody> {
 }
 
 /// Which model has been used the most, across every provider — a simple
-/// lifetime message count for the 1x-weight models (Luma Assistant,
-/// Anthropic, OpenAI), and for Luma AI's three Gemini tiers a count scaled
-/// by [ModelUsageEntry.weight] so a handful of Pulsar replies (the
-/// expensive tier) don't look smaller than a pile of cheap Aurora ones.
+/// lifetime successful-message count for each model.
 class _ModelUsageSection extends StatelessWidget {
   const _ModelUsageSection({required this.usage});
   final Map<String, int> usage;
@@ -201,13 +196,10 @@ class _ModelUsageSection extends StatelessWidget {
             .map((e) => (entry: e, count: usage[e.key] ?? 0))
             .where((r) => r.count > 0)
             .toList()
-          ..sort(
-            (a, b) =>
-                (b.count * b.entry.weight).compareTo(a.count * a.entry.weight),
-          );
+          ..sort((a, b) => b.count.compareTo(a.count));
     final maxScore = rows.isEmpty
         ? 1
-        : rows.map((r) => r.count * r.entry.weight).reduce(math.max);
+        : rows.map((r) => r.count).reduce((a, b) => a > b ? a : b);
 
     return LumaCard(
       child: Column(
@@ -229,9 +221,7 @@ class _ModelUsageSection extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Which model you\'ve sent the most to. Luma AI\'s smarter tiers '
-            'cost more per message, so they\'re weighted accordingly '
-            '(Nebula ×5, Pulsar ×20) rather than counted flat.',
+            'Successful messages sent with each model on this device.',
             style: TextStyle(
               color: luma.textMuted,
               fontSize: 11.5,
@@ -252,8 +242,7 @@ class _ModelUsageSection extends StatelessWidget {
                   _UsageRow(
                     label: r.entry.label,
                     count: r.count,
-                    weight: r.entry.weight,
-                    fraction: (r.count * r.entry.weight) / maxScore,
+                    fraction: r.count / maxScore,
                     top: r == rows.first,
                   ),
                   if (r != rows.last) const SizedBox(height: 10),
@@ -270,14 +259,12 @@ class _UsageRow extends StatelessWidget {
   const _UsageRow({
     required this.label,
     required this.count,
-    required this.weight,
     required this.fraction,
     required this.top,
   });
 
   final String label;
   final int count;
-  final int weight;
   final double fraction;
   final bool top;
 
@@ -304,7 +291,7 @@ class _UsageRow extends StatelessWidget {
             ),
             const Spacer(),
             Text(
-              weight > 1 ? '$messages · ×$weight' : messages,
+              messages,
               style: TextStyle(color: luma.textMuted, fontSize: 11.5),
             ),
           ],

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/features/chat/chat_usage.dart';
@@ -47,8 +48,64 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pump();
     expect(sent, ['hello']);
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      isEmpty,
+    );
     expect(find.text('usage caption'), findsOneWidget);
     expect(find.text('Model'), findsOneWidget);
+  });
+
+  testWidgets(
+    'desktop text-input send action submits and clears the composer',
+    (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      final sent = <String>[];
+      await tester.pumpWidget(
+        _host(
+          ChatInputBar(
+            onSend: sent.add,
+            sending: false,
+            enabled: true,
+            caption: '',
+            modelSelector: const SizedBox(),
+          ),
+        ),
+      );
+      await tester.enterText(find.byType(TextField), 'from keyboard');
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).textInputAction,
+        TextInputAction.send,
+      );
+      await tester.testTextInput.receiveAction(TextInputAction.send);
+      await tester.pump();
+      expect(sent, ['from keyboard']);
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        isEmpty,
+      );
+      debugDefaultTargetPlatformOverride = null;
+    },
+  );
+
+  testWidgets('send button clears the composer after submitting', (
+    tester,
+  ) async {
+    final sent = <String>[];
+    await tester.pumpWidget(_host(ChatInputBar(
+      onSend: sent.add,
+      sending: false,
+      enabled: true,
+      caption: '',
+      modelSelector: const SizedBox(),
+    )));
+    await tester.enterText(find.byType(TextField), 'send with button');
+    await tester.pump();
+    await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
+    await tester.pump();
+    expect(sent, ['send with button']);
+    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        isEmpty);
   });
 
   testWidgets('blocked composer shows the out-of-messages hint', (

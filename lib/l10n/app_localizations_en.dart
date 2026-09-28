@@ -654,14 +654,17 @@ class LEn extends L {
 
   @override
   String get assistantUsageApiKeysSubtitle =>
-      'Anthropic Claude and OpenAI with your own key, on this device';
+      'Your own API keys; provider credits and limits still apply';
+
+  @override
+  String get assistantUsageUnlimited => 'Unlimited in Luma';
 
   @override
   String get assistantUsageByModel => 'Messages by model';
 
   @override
   String get assistantUsageByModelSubtitle =>
-      'All time on this device. ×5 and ×20 mark the heavier models.';
+      'Successful messages on this device, counted per model.';
 
   @override
   String assistantUsageMessageCount(int count) {

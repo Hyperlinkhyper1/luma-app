@@ -659,14 +659,17 @@ class LEs extends L {
 
   @override
   String get assistantUsageApiKeysSubtitle =>
-      'Anthropic Claude y OpenAI con tu propia clave, en este dispositivo';
+      'Tus propias claves API; se aplican los créditos y límites del proveedor';
+
+  @override
+  String get assistantUsageUnlimited => 'Ilimitado en Luma';
 
   @override
   String get assistantUsageByModel => 'Mensajes por modelo';
 
   @override
   String get assistantUsageByModelSubtitle =>
-      'Desde siempre, en este dispositivo. ×5 y ×20 marcan los modelos más pesados.';
+      'Mensajes completados en este dispositivo, contados por modelo.';
 
   @override
   String assistantUsageMessageCount(int count) {

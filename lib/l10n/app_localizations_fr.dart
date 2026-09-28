@@ -662,14 +662,17 @@ class LFr extends L {
 
   @override
   String get assistantUsageApiKeysSubtitle =>
-      'Anthropic Claude et OpenAI avec votre propre clé, sur cet appareil';
+      'Vos propres clés API ; les crédits et limites du fournisseur s\'appliquent';
+
+  @override
+  String get assistantUsageUnlimited => 'Illimité dans Luma';
 
   @override
   String get assistantUsageByModel => 'Messages par modèle';
 
   @override
   String get assistantUsageByModelSubtitle =>
-      'Depuis le début, sur cet appareil. ×5 et ×20 signalent les modèles plus lourds.';
+      'Messages réussis sur cet appareil, comptés par modèle.';
 
   @override
   String assistantUsageMessageCount(int count) {

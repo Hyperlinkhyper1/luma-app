@@ -1702,6 +1702,7 @@ class AiServerStatus {
     required this.supportLimit,
     required this.webSearchUsed,
     required this.webSearchLimit,
+    this.modes = const {},
   });
 
   /// Whether the operator configured a shared Luma Support (Mistral) key.
@@ -1723,6 +1724,11 @@ class AiServerStatus {
   /// Searches used this rolling week by the on-device Luma Assistant.
   final int webSearchUsed;
   final int webSearchLimit;
+  final Map<String, AiModeUsage> modes;
+
+  AiModeUsage usageFor(String mode) =>
+      modes[mode] ??
+      AiModeUsage(fiveHourPct: fiveHourPct, weeklyPct: weeklyPct);
 
   int get supportRemaining =>
       (supportLimit - supportUsed).clamp(0, supportLimit);
@@ -1739,6 +1745,42 @@ class AiServerStatus {
       supportLimit: intOf(usage['supportLimit'], 15),
       webSearchUsed: intOf(usage['webSearchUsed']),
       webSearchLimit: intOf(usage['webSearchLimit']),
+      modes: {
+        if (usage['modes'] case final Map rawModes)
+          for (final entry in rawModes.entries)
+            if (entry.key is String && entry.value is Map)
+              entry.key as String: AiModeUsage.fromJson(entry.value as Map),
+      },
+    );
+  }
+}
+
+class AiModeUsage {
+  const AiModeUsage({
+    required this.fiveHourPct,
+    required this.weeklyPct,
+    this.fiveHourUsed = 0,
+    this.fiveHourLimit = 0,
+    this.weeklyUsed = 0,
+    this.weeklyLimit = 0,
+  });
+
+  final int fiveHourPct;
+  final int weeklyPct;
+  final int fiveHourUsed;
+  final int fiveHourLimit;
+  final int weeklyUsed;
+  final int weeklyLimit;
+
+  factory AiModeUsage.fromJson(Map json) {
+    int value(String key) => json[key] is num ? (json[key] as num).toInt() : 0;
+    return AiModeUsage(
+      fiveHourPct: value('fiveHourPct'),
+      weeklyPct: value('weeklyPct'),
+      fiveHourUsed: value('fiveHourUsed'),
+      fiveHourLimit: value('fiveHourLimit'),
+      weeklyUsed: value('weeklyUsed'),
+      weeklyLimit: value('weeklyLimit'),
     );
   }
 }

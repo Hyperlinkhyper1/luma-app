@@ -280,9 +280,10 @@
   "assistantUsageLumaSupport": "Luma Support",
   "assistantUsageResetsDaily": "Resets at midnight",
   "assistantUsageApiKeys": "Your API keys",
-  "assistantUsageApiKeysSubtitle": "Anthropic Claude and OpenAI with your own key, on this device",
+  "assistantUsageApiKeysSubtitle": "Your own API keys; provider credits and limits still apply",
+  "assistantUsageUnlimited": "Unlimited in Luma",
   "assistantUsageByModel": "Messages by model",
-  "assistantUsageByModelSubtitle": "All time on this device. ×5 and ×20 mark the heavier models.",
+  "assistantUsageByModelSubtitle": "Successful messages on this device, counted per model.",
   "assistantUsageMessageCount": "{count, plural, =1{1 message} other{{count} messages}}",
   "@assistantUsageMessageCount": {
     "placeholders": {

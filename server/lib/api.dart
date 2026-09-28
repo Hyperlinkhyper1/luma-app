@@ -137,8 +137,8 @@ class ServerConfig {
   /// A Google AI Studio key configured once by the operator, powering the
   /// app's "Luma AI" modes (Aurora/Nebula/Pulsar → Gemini models). Same
   /// deal as [mistralApiKey]: used only server-side by Api._googleChatProxy,
-  /// never sent to clients. Usage is token-metered per user — see
-  /// [kAiTokens5h] / [kAiTokensWeek].
+  /// never sent to clients. Usage is token-metered per user and mode — see
+  /// [aiTokenBudget].
   final String? googleApiKey;
 
   bool get googleKeyConfigured =>
@@ -313,13 +313,8 @@ const int _defaultClientIterations = 200000;
 
 const int _maxJsonBody = 64 * 1024;
 
-/// Rolling per-user token budgets for the shared Google key's "Luma AI"
-/// modes. Clients only ever see these as percentages (Api._aiStatus).
-const int kAiTokens5h = 7500;
-const int kAiTokensWeek = 40000;
-
 /// Luma Support (Mistral) messages per rolling day, counted separately
-/// from the token budgets above.
+/// from Luma AI token budgets.
 const int kSupportMessagesPerDay = 15;
 
 /// How long an emailed "forgot password" code stays valid.
@@ -2210,16 +2205,34 @@ class Api {
   Response _aiStatus(Request request, StoredUser user) {
     int pct(int used, int limit) =>
         ((used * 100) / limit).clamp(0, 100).round();
+    Map<String, int> modeUsage(String mode) {
+      final budget = aiTokenBudget(user.planId, mode);
+      final fiveHourUsed = aiUsage.tokensUsed(user.id,
+          const Duration(hours: 5), mode: mode);
+      final weeklyUsed = aiUsage.tokensUsed(user.id,
+          const Duration(days: 7), mode: mode);
+      return {
+        'fiveHourUsed': fiveHourUsed,
+        'fiveHourLimit': budget.fiveHour,
+        'fiveHourPct': pct(fiveHourUsed, budget.fiveHour),
+        'weeklyUsed': weeklyUsed,
+        'weeklyLimit': budget.weekly,
+        'weeklyPct': pct(weeklyUsed, budget.weekly),
+      };
+    }
+    final modes = {
+      for (final mode in kAiModeNames.keys)
+        if (mode != 'smartest' || user.planId == 'nova') mode: modeUsage(mode),
+    };
     return jsonResponse(200, {
       'mistralConfigured': config.mistralKeyConfigured,
       // Named for Google because shipped apps read it to show the Luma AI
       // modes; either upstream can serve them now.
       'googleConfigured': config.configuredAiUpstreams.isNotEmpty,
       'usage': {
-        'fiveHourPct': pct(
-            aiUsage.tokensUsed(user.id, const Duration(hours: 5)), kAiTokens5h),
-        'weeklyPct': pct(aiUsage.tokensUsed(user.id, const Duration(days: 7)),
-            kAiTokensWeek),
+        'fiveHourPct': modes['normal']!['fiveHourPct'],
+        'weeklyPct': modes['normal']!['weeklyPct'],
+        'modes': modes,
         'supportUsed': aiUsage.supportMessagesUsed(user.id),
         'supportLimit': kSupportMessagesPerDay,
         'webSearchUsed': aiUsage.webSearchesUsed(user.id),
@@ -2429,7 +2442,7 @@ class Api {
   /// (Google AI Studio or OpenRouter) and model the operator routed the
   /// requested mode to — same trust model as [_mistralChatProxy]: the keys
   /// never leave this server. Each user is token-metered against rolling
-  /// 5-hour and weekly budgets ([kAiTokens5h]/[kAiTokensWeek]) using the
+  /// per-mode 5-hour and weekly budgets using the
   /// exact `usage.total_tokens` the upstream reports per call.
   ///
   /// The path still says "google" because shipped apps call it by that
@@ -2449,18 +2462,22 @@ class Api {
       return errorResponse(400, 'bad_request', 'messages is required.');
     }
     final mode = body['model'] is String ? body['model'] as String : 'normal';
+    final meteredMode = kAiModeNames.containsKey(mode) ? mode : 'normal';
     if (mode == 'smartest' && user.planId != 'nova') {
       return errorResponse(
           403, 'plan_required', 'Pulsar requires a Nova (\$5/month) plan.');
     }
-    if (aiUsage.tokensUsed(user.id, const Duration(hours: 5)) >= kAiTokens5h) {
+    final budget = aiTokenBudget(user.planId, meteredMode);
+    if (aiUsage.tokensUsed(user.id, const Duration(hours: 5),
+            mode: meteredMode) >= budget.fiveHour) {
       return errorResponse(
           429,
           'usage_limit',
           "You've hit your assistant usage limit for now — it frees up again "
               'over the next few hours.');
     }
-    if (aiUsage.tokensUsed(user.id, const Duration(days: 7)) >= kAiTokensWeek) {
+    if (aiUsage.tokensUsed(user.id, const Duration(days: 7),
+            mode: meteredMode) >= budget.weekly) {
       return errorResponse(
           429,
           'usage_limit',
@@ -2481,7 +2498,8 @@ class Api {
         } catch (_) {}
         // If the upstream somehow omits usage, charge a conservative flat
         // amount so metering can't be sidestepped by malformed responses.
-        await aiUsage.recordTokens(user.id, tokens > 0 ? tokens : 500);
+        await aiUsage.recordTokens(user.id, tokens > 0 ? tokens : 500,
+            mode: meteredMode);
       }
       return Response(status,
           body: responseBody, headers: {'Content-Type': 'application/json'});

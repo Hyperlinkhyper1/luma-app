@@ -1603,31 +1603,24 @@ class _ChatComposerState extends State<_ChatComposer> {
         note = t.assistantUsageUnavailable;
         blocked = false;
       } else {
+        final modeUsage = status.usageFor(settings.aiMode);
         limits = [
           ChatUsageLimit(
             label: t.assistantFiveHourLimit,
-            detail: '${status.fiveHourPct}%',
-            fraction: status.fiveHourPct / 100,
+            detail: '${modeUsage.fiveHourPct}%',
+            fraction: modeUsage.fiveHourPct / 100,
           ),
           ChatUsageLimit(
             label: t.assistantWeeklyLimit,
-            detail: '${status.weeklyPct}%',
-            fraction: status.weeklyPct / 100,
+            detail: '${modeUsage.weeklyPct}%',
+            fraction: modeUsage.weeklyPct / 100,
           ),
         ];
-        blocked = status.fiveHourPct >= 100 || status.weeklyPct >= 100;
+        blocked = modeUsage.fiveHourPct >= 100 || modeUsage.weeklyPct >= 100;
       }
     } else {
-      final limit = settings.aiDailyCallLimit;
-      final used = limit - settings.aiCallsRemainingToday;
-      limits = [
-        ChatUsageLimit(
-          label: t.assistantDailyMessages,
-          detail: t.assistantMessagesOf(used, limit),
-          fraction: used / limit,
-        ),
-      ];
-      blocked = used >= limit;
+      note = t.assistantUsageUnlimited;
+      blocked = false;
     }
 
     if (!mounted) return;
@@ -1721,13 +1714,11 @@ class _ModelSelector extends StatelessWidget {
   const _ModelSelector({required this.settings});
   final SettingsController settings;
 
-  _ModelChoice get _active => [
-    ..._lumaModelsFor(settings),
-    ..._apiKeyModels,
-  ].firstWhere(
-    (c) => c.isActive(settings),
-    orElse: () => _lumaModelsFor(settings).first,
-  );
+  _ModelChoice get _active =>
+      [..._lumaModelsFor(settings), ..._apiKeyModels].firstWhere(
+        (c) => c.isActive(settings),
+        orElse: () => _lumaModelsFor(settings).first,
+      );
 
   Future<void> _openMenu(BuildContext context) async {
     final luma = context.luma;
@@ -1758,15 +1749,9 @@ class _ModelSelector extends StatelessWidget {
         mode: choice.mode == null ? null : aiModeById(choice.mode!),
       );
       final count = settings.modelUsage[usageKey] ?? 0;
-      final weight = kModelUsageEntries
-          .firstWhere(
-            (e) => e.key == usageKey,
-            orElse: () => const ModelUsageEntry('', '', 1),
-          )
-          .weight;
       final usageLabel = count == 0
           ? 'Unused'
-          : '$count msg${count == 1 ? '' : 's'}${weight > 1 ? ' ·×$weight' : ''}';
+          : '$count msg${count == 1 ? '' : 's'}';
       return PopupMenuItem<_ModelChoice>(
         value: choice,
         height: 40,

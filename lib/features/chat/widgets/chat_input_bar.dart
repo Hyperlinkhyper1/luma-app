@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../../theme/luma_theme.dart';
@@ -156,7 +157,12 @@ class _ChatInputBarState extends State<ChatInputBar> {
                     minLines: widget.minLines,
                     maxLines: 10,
                     keyboardType: TextInputType.multiline,
-                    textInputAction: TextInputAction.newline,
+                    textInputAction: switch (defaultTargetPlatform) {
+                      TargetPlatform.android ||
+                      TargetPlatform.iOS => TextInputAction.newline,
+                      _ => TextInputAction.send,
+                    },
+                    onSubmitted: (_) => _submit(),
                     cursorColor: luma.accent,
                     style: TextStyle(
                       color: luma.textPrimary,

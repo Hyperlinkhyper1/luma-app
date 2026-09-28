@@ -1312,8 +1312,14 @@ abstract class L {
   /// No description provided for @assistantUsageApiKeysSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Anthropic Claude and OpenAI with your own key, on this device'**
+  /// **'Your own API keys; provider credits and limits still apply'**
   String get assistantUsageApiKeysSubtitle;
+
+  /// No description provided for @assistantUsageUnlimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlimited in Luma'**
+  String get assistantUsageUnlimited;
 
   /// No description provided for @assistantUsageByModel.
   ///
@@ -1324,7 +1330,7 @@ abstract class L {
   /// No description provided for @assistantUsageByModelSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'All time on this device. ×5 and ×20 mark the heavier models.'**
+  /// **'Successful messages on this device, counted per model.'**
   String get assistantUsageByModelSubtitle;
 
   /// No description provided for @assistantUsageMessageCount.
