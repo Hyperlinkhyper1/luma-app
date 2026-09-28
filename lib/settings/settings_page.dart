@@ -2,6 +2,7 @@ import '../security/password_hash.dart';
 import 'package:flutter/material.dart';
 
 import '../app/pin_dialog.dart';
+import '../app/luma_license_page.dart';
 
 import '../account/plan.dart';
 import '../account/plan_selection_page.dart';
@@ -178,7 +179,7 @@ class SettingsPage extends StatelessWidget {
                     LumaGhostButton(
                       label: t.settingsOpenSourceLicenses,
                       icon: Icons.description_outlined,
-                      onTap: () => showLicensePage(
+                      onTap: () => showLumaLicensePage(
                         context: context,
                         applicationName: 'luma',
                         applicationVersion: AppVersion.isReleaseBuild

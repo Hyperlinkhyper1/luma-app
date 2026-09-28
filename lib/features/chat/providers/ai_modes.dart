@@ -1,12 +1,19 @@
+import '../../../account/plan.dart';
+
 /// The user-facing "Luma AI" intelligence modes, powered by Google AI
 /// (Gemini) underneath. The branded names are the product identity — the
 /// user never sees a Gemini model name.
 enum AiMode {
   normal('Aurora 1.0', 'gemini-flash-lite-latest', null),
   smarter('Nebula 1.0', 'gemini-flash-latest', null),
-  smartest('Pulsar 1.0', 'gemini-flash-latest', 'high');
+  smartest('Pulsar 1.0', 'gemini-flash-latest', 'high', minPlanId: 'nova');
 
-  const AiMode(this.displayName, this.geminiModel, this.reasoningEffort);
+  const AiMode(
+    this.displayName,
+    this.geminiModel,
+    this.reasoningEffort, {
+    this.minPlanId,
+  });
 
   /// What the user sees in the mode picker.
   final String displayName;
@@ -36,6 +43,11 @@ enum AiMode {
   /// so it visibly reasons more before answering even on the same
   /// underlying Flash model as Nebula.
   final String? reasoningEffort;
+
+  /// Lowest Luma plan that can use this mode. Null means every plan can.
+  final String? minPlanId;
+
+  bool availableForPlan(String? planId) => planAtLeast(planId, minPlanId);
 }
 
 AiMode aiModeById(String id) => AiMode.values.firstWhere(

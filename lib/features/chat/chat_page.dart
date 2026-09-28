@@ -1694,8 +1694,10 @@ class _ModelChoice {
       (mode == null || settings.aiMode == mode);
 }
 
-final List<_ModelChoice> _lumaModels = [
-  for (final mode in AiMode.values)
+List<_ModelChoice> _lumaModelsFor(SettingsController settings) => [
+  for (final mode in AiMode.values.where(
+    (mode) => mode.availableForPlan(settings.selectedPlanId),
+  ))
     _ModelChoice(
       'Luma ${mode.displayName}',
       AiProviderId.google.name,
@@ -1720,9 +1722,12 @@ class _ModelSelector extends StatelessWidget {
   final SettingsController settings;
 
   _ModelChoice get _active => [
-    ..._lumaModels,
+    ..._lumaModelsFor(settings),
     ..._apiKeyModels,
-  ].firstWhere((c) => c.isActive(settings), orElse: () => _lumaModels.first);
+  ].firstWhere(
+    (c) => c.isActive(settings),
+    orElse: () => _lumaModelsFor(settings).first,
+  );
 
   Future<void> _openMenu(BuildContext context) async {
     final luma = context.luma;
@@ -1819,7 +1824,7 @@ class _ModelSelector extends StatelessWidget {
       ),
       items: [
         header('Models'),
-        ..._lumaModels.map(item),
+        ..._lumaModelsFor(settings).map(item),
         const PopupMenuDivider(height: 10),
         header('API key'),
         ..._apiKeyModels.map(item),

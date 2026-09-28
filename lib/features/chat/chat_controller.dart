@@ -104,7 +104,12 @@ class ChatController extends ChangeNotifier {
     AiMode? googleMode;
 
     if (providerId == AiProviderId.google.name) {
-      final mode = googleMode = aiModeById(_settings.aiMode);
+      final selectedMode = aiModeById(_settings.aiMode);
+      final mode = googleMode = selectedMode.availableForPlan(
+        _settings.selectedPlanId,
+      )
+          ? selectedMode
+          : AiMode.normal;
       if (apiKey != null) {
         client = GoogleClient(mode: mode);
       } else if (serverAvailable) {
