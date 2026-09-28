@@ -1,6 +1,5 @@
 {
   "@@locale": "en",
-
   "navHome": "Home",
   "navFileConverter": "File Converter",
   "navFinance": "Finance",
@@ -13,12 +12,10 @@
   "navConvert": "Convert",
   "navVault": "Vault",
   "navMore": "More",
-
   "shellPluginUnavailable": "This plugin isn't here",
   "shellStorageLimitMsg": "You're out of space. Clear a little out and we'll start saving and syncing again.",
   "shellStorageManage": "Clean up",
   "shellStorageDismiss": "Not now",
-
   "settingsAppearance": "Look & feel",
   "settingsAppearanceSub": "Make luma yours.",
   "settingsTheme": "Theme",
@@ -54,14 +51,12 @@
   "settingsSystem": "System",
   "settingsLight": "Light",
   "settingsDark": "Dark",
-
   "langEnglish": "English",
   "langDutch": "Nederlands",
   "langChinese": "中文",
   "langSpanish": "Español",
   "langFrench": "Français",
   "langSystemDefault": "System",
-
   "homeGreetingMorning": "Good morning",
   "homeGreetingAfternoon": "Hey there",
   "homeGreetingEvening": "Good evening",
@@ -85,21 +80,20 @@
   "homeIncome": "In",
   "homeExpense": "Out",
   "homeAllocation": "Split",
-
   "pinEnterNew": "Pick a new 8-digit PIN",
   "pinVerify": "Type it once more",
   "pinEnterDisable": "Type your PIN to turn it off",
   "pinNotMatch": "Those PINs don't match.",
   "pinIncorrect": "Nope, wrong PIN.",
-
   "aboutVersionRelease": "Version {version} · a small app that keeps your stuff with you",
   "@aboutVersionRelease": {
     "placeholders": {
-      "version": { "type": "String" }
+      "version": {
+        "type": "String"
+      }
     }
   },
   "aboutVersionDev": "Dev build · made with care on someone's laptop",
-
   "petSearchHint": "Search plugins and pages",
   "petMoodIdle": "What are we opening?",
   "petMoodCurious": "Ooh, let me look…",
@@ -120,7 +114,9 @@
   "petPatLabel": "Pat {name}",
   "@petPatLabel": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "petSettingsTitle": "luma pet",
@@ -133,7 +129,6 @@
   "petSettingsName": "Name",
   "petSettingsSummon": "Open the pet now",
   "petSettingsSummonHint": "Brings the panel up straight away — no keyboard shortcut needed.",
-
   "monthJan": "Jan",
   "monthFeb": "Feb",
   "monthMar": "Mar",
@@ -146,7 +141,6 @@
   "monthOct": "Oct",
   "monthNov": "Nov",
   "monthDec": "Dec",
-
   "weekdayMon": "Monday",
   "weekdayTue": "Tuesday",
   "weekdayWed": "Wednesday",
@@ -154,11 +148,386 @@
   "weekdayFri": "Friday",
   "weekdaySat": "Saturday",
   "weekdaySun": "Sunday",
-
   "planSuffix": "{name} plan",
   "@planSuffix": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
-  }
+  },
+  "assistantNewChat": "New chat",
+  "assistantSearchChats": "Search chats",
+  "assistantStarred": "Starred",
+  "assistantRecents": "Recents",
+  "assistantNoChats": "No chats yet",
+  "assistantNoMatches": "No chats match",
+  "assistantGreetingMorning": "Good morning",
+  "assistantGreetingAfternoon": "Good afternoon",
+  "assistantGreetingEvening": "Good evening",
+  "assistantGreetingMorningName": "Good morning, {name}",
+  "@assistantGreetingMorningName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantGreetingAfternoonName": "Good afternoon, {name}",
+  "@assistantGreetingAfternoonName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantGreetingEveningName": "Good evening, {name}",
+  "@assistantGreetingEveningName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantHowCanIHelp": "How can I help you today?",
+  "assistantReplyHint": "Reply to luma…",
+  "assistantOutOfMessages": "You're out of messages for now",
+  "assistantCopy": "Copy",
+  "assistantCopied": "Copied",
+  "assistantStar": "Star",
+  "assistantUnstar": "Unstar",
+  "assistantRename": "Rename",
+  "assistantDelete": "Delete",
+  "assistantSuggestPlugin": "Find a plugin",
+  "assistantSuggestQr": "Make a QR code",
+  "assistantSuggestWeek": "Plan my week",
+  "assistantSuggestNote": "Write a note",
+  "assistantSuggestPluginPrompt": "Which luma plugin would help me with ",
+  "assistantSuggestQrPrompt": "Make a QR code for ",
+  "assistantSuggestWeekPrompt": "What's on my calendar this week?",
+  "assistantSuggestNotePrompt": "Save a note that says ",
+  "assistantToggleSidebar": "Toggle sidebar",
+  "assistantChats": "Chats",
+  "assistantUsage": "Usage",
+  "assistantContextWindow": "Context window",
+  "assistantUsageLimits": "Usage limits",
+  "assistantFiveHourLimit": "5-hour limit",
+  "assistantWeeklyLimit": "Weekly",
+  "assistantDailyMessages": "Today",
+  "assistantMessagesOf": "{used} of {limit} messages",
+  "@assistantMessagesOf": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      },
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
+  "assistantLastReply": "Last reply",
+  "assistantTokensInOut": "{input} in · {output} out",
+  "@assistantTokensInOut": {
+    "placeholders": {
+      "input": {
+        "type": "String"
+      },
+      "output": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantNoLimits": "Runs on this device — no usage limits",
+  "assistantUsageUnavailable": "Usage unavailable — check your connection",
+  "assistantDetailedBreakdown": "See detailed breakdown",
+  "assistantNoRepliesYet": "No replies in this chat yet",
+  "assistantMenuUsage": "Usage",
+  "assistantMenuSettings": "Settings",
+  "assistantMenuAgents": "Agents",
+  "assistantYourUsage": "Your usage",
+  "assistantUsageHeadlinePlenty": "Plenty of room left. Chat away.",
+  "assistantUsageHeadlineOnTrack": "You're on track, with room to spare.",
+  "assistantUsageHeadlineClose": "Heads up. You're close to a limit.",
+  "assistantUsageHeadlineOut": "You've hit a limit. It frees up again as the window rolls on.",
+  "assistantUsageLumaAi": "Luma AI",
+  "assistantUsageLumaAiSubtitle": "Aurora, Nebula and Pulsar, through your luma account",
+  "assistantUsageCurrentSession": "Current session",
+  "assistantUsageRollingFiveHours": "Rolling 5-hour window",
+  "assistantUsageThisWeek": "This week",
+  "assistantUsageRollingWeek": "Rolling 7-day window",
+  "assistantUsageLumaAssistant": "Luma Assistant",
+  "assistantUsageLumaAssistantSubtitle": "On-device Qwen model",
+  "assistantUsageWebSearch": "Web searches",
+  "assistantUsageCountOf": "{used} of {limit}",
+  "@assistantUsageCountOf": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      },
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
+  "assistantUsagePercentUsed": "{percent}% used",
+  "@assistantUsagePercentUsed": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "assistantUsageLumaSupport": "Luma Support",
+  "assistantUsageResetsDaily": "Resets at midnight",
+  "assistantUsageApiKeys": "Your API keys",
+  "assistantUsageApiKeysSubtitle": "Anthropic Claude and OpenAI with your own key, on this device",
+  "assistantUsageByModel": "Messages by model",
+  "assistantUsageByModelSubtitle": "All time on this device. ×5 and ×20 mark the heavier models.",
+  "assistantUsageMessageCount": "{count, plural, =1{1 message} other{{count} messages}}",
+  "@assistantUsageMessageCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "assistantUsageNoMessages": "No messages yet",
+  "assistantUsageStorage": "Storage",
+  "assistantUsageMemoryStorage": "Assistant memory",
+  "assistantUsageMemoryStorageCaption": "Syncs with your account on every plan and counts toward server storage",
+  "assistantUsageServerStorage": "Server storage",
+  "assistantUsageStorageOf": "{used} of {quota}",
+  "@assistantUsageStorageOf": {
+    "placeholders": {
+      "used": {
+        "type": "String"
+      },
+      "quota": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantSettingsChat": "Chat",
+  "assistantSettingsMemory": "Memory",
+  "assistantSettingsUser": "User",
+  "assistantSettingsLanguage": "Response language",
+  "assistantSettingsLanguageHint": "The language the assistant answers you in.",
+  "assistantSettingsLanguageAuto": "Match my language",
+  "assistantSettingsFont": "Font",
+  "assistantSettingsFontHint": "The typeface the assistant's replies are set in.",
+  "assistantFontSerif": "Serif",
+  "assistantFontSans": "Sans",
+  "assistantFontMono": "Mono",
+  "assistantSettingsTextSize": "Text size",
+  "assistantSettingsTextSizeHint": "Size of the conversation text.",
+  "assistantTextSmall": "Small",
+  "assistantTextMedium": "Medium",
+  "assistantTextLarge": "Large",
+  "assistantSettingsPreview": "Preview",
+  "assistantSettingsPreviewText": "Here's how replies will look. **Bold**, *italic* and `code` all follow your choice.",
+  "assistantMemoryUse": "Use memory",
+  "assistantMemoryUseHint": "Let the assistant remember things about you across chats, and bring them up when they help.",
+  "assistantMemorySyncNote": "Synced to your account on every plan · {size} of server storage",
+  "@assistantMemorySyncNote": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantMemoryAdd": "Add memory",
+  "assistantMemoryEdit": "Edit memory",
+  "assistantMemoryEmpty": "Nothing remembered yet",
+  "assistantMemoryEmptyHint": "Tell the assistant about yourself in a chat, or add a memory here.",
+  "assistantMemoryYou": "You",
+  "assistantMemoryTopics": "Topics",
+  "assistantMemoryAreas": "Areas",
+  "assistantMemoryUpdated": "Updated {date}",
+  "@assistantMemoryUpdated": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantMemoryClear": "Delete all memory",
+  "assistantMemoryClearTitle": "Delete all memory?",
+  "assistantMemoryClearBody": "The assistant forgets everything it remembered, on every device. Your profile on the User tab stays.",
+  "assistantMemoryTitle": "Title",
+  "assistantMemoryTitleHint": "e.g. Hardware",
+  "assistantMemoryDescription": "Summary",
+  "assistantMemoryDescriptionHint": "One line, shown in the list",
+  "assistantMemoryBody": "What to remember",
+  "assistantMemoryBodyHint": "One fact per line",
+  "assistantProfileCallMe": "What should the assistant call you?",
+  "assistantProfileCallMeHint": "Your name or nickname",
+  "assistantProfileOccupation": "What do you do?",
+  "assistantProfileOccupationHint": "e.g. student, indie game developer",
+  "assistantProfileSummary": "About you",
+  "assistantProfileSummaryHint": "A few sentences the assistant should always know",
+  "assistantProfileInstructions": "How should the assistant respond?",
+  "assistantProfileInstructionsHint": "e.g. keep it short, explain code step by step",
+  "assistantProfileSave": "Save",
+  "assistantProfileSaved": "Saved",
+  "assistantAgentsComingSoon": "Coming soon",
+  "assistantAgentsSubtitle": "Agents you've built in the AI Usage plugin. Running them from the assistant is coming soon.",
+  "assistantAgentsEmpty": "No agents yet",
+  "assistantAgentsEmptyHint": "Build one in the AI Usage plugin's Agents tab and it shows up here.",
+  "assistantAgentsOpenBuilder": "Open AI Usage",
+  "assistantAgentsNoDescription": "No description",
+  "textLibraryBack": "Back",
+  "textLibraryBodyHint": "Write your text…",
+  "textLibraryBold": "Bold",
+  "textLibraryCancel": "Cancel",
+  "textLibraryClearFormatting": "Clear formatting",
+  "textLibraryColor": "Color",
+  "textLibraryCover": "Cover",
+  "textLibraryCreate": "Create",
+  "textLibraryDefaultInk": "Default ink",
+  "textLibraryDelete": "Delete",
+  "textLibraryDeleteSubjectTitle": "Delete subject \"{name}\"?",
+  "@textLibraryDeleteSubjectTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryDeleteSubjectBody": "Delete this subject and its {count, plural, =0{no texts} =1{one text} other{{count} texts}}?",
+  "@textLibraryDeleteSubjectBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "textLibraryDeleteTextBody": "This text will be permanently deleted.",
+  "textLibraryDeleteTextTitle": "Delete \"{title}\"?",
+  "@textLibraryDeleteTextTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryEdited": "Edited {date}",
+  "@textLibraryEdited": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryInk": "Ink",
+  "textLibraryItalic": "Italic",
+  "textLibraryMcAdvancement": "Advancement",
+  "textLibraryMcBooks": "{count} books",
+  "@textLibraryMcBooks": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryMcBuild": "Build",
+  "textLibraryMcBuiltIn": "Built-in",
+  "textLibraryMcBurn": "Burn",
+  "textLibraryMcBurnConfirm": "Burn this book? This cannot be undone.",
+  "textLibraryMcChooseSlot": "Choose a shelf slot",
+  "textLibraryMcDone": "Done",
+  "textLibraryMcDownload": "Download Minecraft assets",
+  "textLibraryMcDownloadFailed": "Could not download Minecraft assets.",
+  "textLibraryMcDownloadNote": "Minecraft assets are downloaded from Mojang and cached on this device.",
+  "textLibraryMcEmptyHall": "Your hall is empty. Create a subject to begin.",
+  "textLibraryMcEmptySlot": "Empty slot",
+  "textLibraryMcFailedAndroid": "Could not open the Minecraft library on Android.",
+  "textLibraryMcFailedWindows": "Could not open the Minecraft library on Windows.",
+  "textLibraryMcFirstBook": "Write your first book",
+  "textLibraryMcFirstCase": "Create your first case",
+  "textLibraryMcLoading": "Loading Minecraft library…",
+  "textLibraryMcLost": "The Minecraft library connection was lost.",
+  "textLibraryMcMoveHint": "Move this book to another shelf.",
+  "textLibraryMcNewCase": "New case",
+  "textLibraryMcNewCaseTitle": "Create a case",
+  "textLibraryMcPage": "Page {page} of {total}",
+  "@textLibraryMcPage": {
+    "placeholders": {
+      "page": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryMcQuality": "Render quality",
+  "textLibraryMcQualityHigh": "High",
+  "textLibraryMcQualityLow": "Low",
+  "textLibraryMcRetry": "Retry",
+  "textLibraryMcSaveFailed": "Could not save the book.",
+  "textLibraryMcSettings": "Hall settings",
+  "textLibraryMcShelfPage": "Shelf page {page} of {total}",
+  "@textLibraryMcShelfPage": {
+    "placeholders": {
+      "page": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryMcSign": "Sign book",
+  "textLibraryMcSignAndShelve": "Sign and shelve",
+  "textLibraryMcSignTitle": "Sign this book?",
+  "textLibraryMcUntitled": "Untitled",
+  "textLibraryMcVanilla": "Minecraft {version}",
+  "@textLibraryMcVanilla": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryMcWriteHint": "Write your book here…",
+  "textLibraryModeClassic": "Classic",
+  "textLibraryModeMinecraft": "Minecraft hall",
+  "textLibraryMoveTo": "Move to",
+  "textLibraryMoveToTitle": "Move text to a subject",
+  "textLibraryNewSubject": "New subject",
+  "textLibraryNewText": "New text",
+  "textLibraryNoMatches": "No texts match \"{query}\"",
+  "@textLibraryNoMatches": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryNoSubjects": "No subjects yet",
+  "textLibraryNoSubjectsSub": "Create a subject to organize your texts.",
+  "textLibraryNoTexts": "No texts yet",
+  "textLibraryNoTextsSub": "Add a text to this subject to get started.",
+  "textLibraryRename": "Rename",
+  "textLibraryRenameSubject": "Rename subject",
+  "textLibrarySave": "Save",
+  "textLibrarySaved": "Saved",
+  "textLibrarySaving": "Saving…",
+  "textLibrarySearchHint": "Search texts",
+  "textLibrarySpineHint": "A short label shown on the book spine",
+  "textLibrarySpineLabel": "Spine label",
+  "textLibraryStrike": "Strikethrough",
+  "textLibrarySubjectNameHint": "Subject name",
+  "textLibrarySubjectNameRequired": "Enter a subject name.",
+  "textLibrarySubjects": "Subjects",
+  "textLibraryTextCount": "{count, plural, =1{1 text} other{{count} texts}}",
+  "@textLibraryTextCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "textLibraryTitleHint": "Title",
+  "textLibraryUnderline": "Underline"
 }

@@ -912,6 +912,1260 @@ abstract class L {
   /// In en, this message translates to:
   /// **'{name} plan'**
   String planSuffix(String name);
+
+  /// No description provided for @assistantNewChat.
+  ///
+  /// In en, this message translates to:
+  /// **'New chat'**
+  String get assistantNewChat;
+
+  /// No description provided for @assistantSearchChats.
+  ///
+  /// In en, this message translates to:
+  /// **'Search chats'**
+  String get assistantSearchChats;
+
+  /// No description provided for @assistantStarred.
+  ///
+  /// In en, this message translates to:
+  /// **'Starred'**
+  String get assistantStarred;
+
+  /// No description provided for @assistantRecents.
+  ///
+  /// In en, this message translates to:
+  /// **'Recents'**
+  String get assistantRecents;
+
+  /// No description provided for @assistantNoChats.
+  ///
+  /// In en, this message translates to:
+  /// **'No chats yet'**
+  String get assistantNoChats;
+
+  /// No description provided for @assistantNoMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'No chats match'**
+  String get assistantNoMatches;
+
+  /// No description provided for @assistantGreetingMorning.
+  ///
+  /// In en, this message translates to:
+  /// **'Good morning'**
+  String get assistantGreetingMorning;
+
+  /// No description provided for @assistantGreetingAfternoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Good afternoon'**
+  String get assistantGreetingAfternoon;
+
+  /// No description provided for @assistantGreetingEvening.
+  ///
+  /// In en, this message translates to:
+  /// **'Good evening'**
+  String get assistantGreetingEvening;
+
+  /// No description provided for @assistantGreetingMorningName.
+  ///
+  /// In en, this message translates to:
+  /// **'Good morning, {name}'**
+  String assistantGreetingMorningName(String name);
+
+  /// No description provided for @assistantGreetingAfternoonName.
+  ///
+  /// In en, this message translates to:
+  /// **'Good afternoon, {name}'**
+  String assistantGreetingAfternoonName(String name);
+
+  /// No description provided for @assistantGreetingEveningName.
+  ///
+  /// In en, this message translates to:
+  /// **'Good evening, {name}'**
+  String assistantGreetingEveningName(String name);
+
+  /// No description provided for @assistantHowCanIHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'How can I help you today?'**
+  String get assistantHowCanIHelp;
+
+  /// No description provided for @assistantReplyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply to luma…'**
+  String get assistantReplyHint;
+
+  /// No description provided for @assistantOutOfMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re out of messages for now'**
+  String get assistantOutOfMessages;
+
+  /// No description provided for @assistantCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get assistantCopy;
+
+  /// No description provided for @assistantCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get assistantCopied;
+
+  /// No description provided for @assistantStar.
+  ///
+  /// In en, this message translates to:
+  /// **'Star'**
+  String get assistantStar;
+
+  /// No description provided for @assistantUnstar.
+  ///
+  /// In en, this message translates to:
+  /// **'Unstar'**
+  String get assistantUnstar;
+
+  /// No description provided for @assistantRename.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get assistantRename;
+
+  /// No description provided for @assistantDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get assistantDelete;
+
+  /// No description provided for @assistantSuggestPlugin.
+  ///
+  /// In en, this message translates to:
+  /// **'Find a plugin'**
+  String get assistantSuggestPlugin;
+
+  /// No description provided for @assistantSuggestQr.
+  ///
+  /// In en, this message translates to:
+  /// **'Make a QR code'**
+  String get assistantSuggestQr;
+
+  /// No description provided for @assistantSuggestWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan my week'**
+  String get assistantSuggestWeek;
+
+  /// No description provided for @assistantSuggestNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Write a note'**
+  String get assistantSuggestNote;
+
+  /// No description provided for @assistantSuggestPluginPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Which luma plugin would help me with '**
+  String get assistantSuggestPluginPrompt;
+
+  /// No description provided for @assistantSuggestQrPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Make a QR code for '**
+  String get assistantSuggestQrPrompt;
+
+  /// No description provided for @assistantSuggestWeekPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'What\'s on my calendar this week?'**
+  String get assistantSuggestWeekPrompt;
+
+  /// No description provided for @assistantSuggestNotePrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Save a note that says '**
+  String get assistantSuggestNotePrompt;
+
+  /// No description provided for @assistantToggleSidebar.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle sidebar'**
+  String get assistantToggleSidebar;
+
+  /// No description provided for @assistantChats.
+  ///
+  /// In en, this message translates to:
+  /// **'Chats'**
+  String get assistantChats;
+
+  /// No description provided for @assistantUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage'**
+  String get assistantUsage;
+
+  /// No description provided for @assistantContextWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Context window'**
+  String get assistantContextWindow;
+
+  /// No description provided for @assistantUsageLimits.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage limits'**
+  String get assistantUsageLimits;
+
+  /// No description provided for @assistantFiveHourLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'5-hour limit'**
+  String get assistantFiveHourLimit;
+
+  /// No description provided for @assistantWeeklyLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly'**
+  String get assistantWeeklyLimit;
+
+  /// No description provided for @assistantDailyMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get assistantDailyMessages;
+
+  /// No description provided for @assistantMessagesOf.
+  ///
+  /// In en, this message translates to:
+  /// **'{used} of {limit} messages'**
+  String assistantMessagesOf(int used, int limit);
+
+  /// No description provided for @assistantLastReply.
+  ///
+  /// In en, this message translates to:
+  /// **'Last reply'**
+  String get assistantLastReply;
+
+  /// No description provided for @assistantTokensInOut.
+  ///
+  /// In en, this message translates to:
+  /// **'{input} in · {output} out'**
+  String assistantTokensInOut(String input, String output);
+
+  /// No description provided for @assistantNoLimits.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs on this device — no usage limits'**
+  String get assistantNoLimits;
+
+  /// No description provided for @assistantUsageUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage unavailable — check your connection'**
+  String get assistantUsageUnavailable;
+
+  /// No description provided for @assistantDetailedBreakdown.
+  ///
+  /// In en, this message translates to:
+  /// **'See detailed breakdown'**
+  String get assistantDetailedBreakdown;
+
+  /// No description provided for @assistantNoRepliesYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No replies in this chat yet'**
+  String get assistantNoRepliesYet;
+
+  /// No description provided for @assistantMenuUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage'**
+  String get assistantMenuUsage;
+
+  /// No description provided for @assistantMenuSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get assistantMenuSettings;
+
+  /// No description provided for @assistantMenuAgents.
+  ///
+  /// In en, this message translates to:
+  /// **'Agents'**
+  String get assistantMenuAgents;
+
+  /// No description provided for @assistantYourUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'Your usage'**
+  String get assistantYourUsage;
+
+  /// No description provided for @assistantUsageHeadlinePlenty.
+  ///
+  /// In en, this message translates to:
+  /// **'Plenty of room left. Chat away.'**
+  String get assistantUsageHeadlinePlenty;
+
+  /// No description provided for @assistantUsageHeadlineOnTrack.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re on track, with room to spare.'**
+  String get assistantUsageHeadlineOnTrack;
+
+  /// No description provided for @assistantUsageHeadlineClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Heads up. You\'re close to a limit.'**
+  String get assistantUsageHeadlineClose;
+
+  /// No description provided for @assistantUsageHeadlineOut.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve hit a limit. It frees up again as the window rolls on.'**
+  String get assistantUsageHeadlineOut;
+
+  /// No description provided for @assistantUsageLumaAi.
+  ///
+  /// In en, this message translates to:
+  /// **'Luma AI'**
+  String get assistantUsageLumaAi;
+
+  /// No description provided for @assistantUsageLumaAiSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Aurora, Nebula and Pulsar, through your luma account'**
+  String get assistantUsageLumaAiSubtitle;
+
+  /// No description provided for @assistantUsageCurrentSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Current session'**
+  String get assistantUsageCurrentSession;
+
+  /// No description provided for @assistantUsageRollingFiveHours.
+  ///
+  /// In en, this message translates to:
+  /// **'Rolling 5-hour window'**
+  String get assistantUsageRollingFiveHours;
+
+  /// No description provided for @assistantUsageThisWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'This week'**
+  String get assistantUsageThisWeek;
+
+  /// No description provided for @assistantUsageRollingWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Rolling 7-day window'**
+  String get assistantUsageRollingWeek;
+
+  /// No description provided for @assistantUsageLumaAssistant.
+  ///
+  /// In en, this message translates to:
+  /// **'Luma Assistant'**
+  String get assistantUsageLumaAssistant;
+
+  /// No description provided for @assistantUsageLumaAssistantSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'On-device Qwen model'**
+  String get assistantUsageLumaAssistantSubtitle;
+
+  /// No description provided for @assistantUsageWebSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Web searches'**
+  String get assistantUsageWebSearch;
+
+  /// No description provided for @assistantUsageCountOf.
+  ///
+  /// In en, this message translates to:
+  /// **'{used} of {limit}'**
+  String assistantUsageCountOf(int used, int limit);
+
+  /// No description provided for @assistantUsagePercentUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}% used'**
+  String assistantUsagePercentUsed(int percent);
+
+  /// No description provided for @assistantUsageLumaSupport.
+  ///
+  /// In en, this message translates to:
+  /// **'Luma Support'**
+  String get assistantUsageLumaSupport;
+
+  /// No description provided for @assistantUsageResetsDaily.
+  ///
+  /// In en, this message translates to:
+  /// **'Resets at midnight'**
+  String get assistantUsageResetsDaily;
+
+  /// No description provided for @assistantUsageApiKeys.
+  ///
+  /// In en, this message translates to:
+  /// **'Your API keys'**
+  String get assistantUsageApiKeys;
+
+  /// No description provided for @assistantUsageApiKeysSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Anthropic Claude and OpenAI with your own key, on this device'**
+  String get assistantUsageApiKeysSubtitle;
+
+  /// No description provided for @assistantUsageByModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Messages by model'**
+  String get assistantUsageByModel;
+
+  /// No description provided for @assistantUsageByModelSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'All time on this device. ×5 and ×20 mark the heavier models.'**
+  String get assistantUsageByModelSubtitle;
+
+  /// No description provided for @assistantUsageMessageCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 message} other{{count} messages}}'**
+  String assistantUsageMessageCount(int count);
+
+  /// No description provided for @assistantUsageNoMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'No messages yet'**
+  String get assistantUsageNoMessages;
+
+  /// No description provided for @assistantUsageStorage.
+  ///
+  /// In en, this message translates to:
+  /// **'Storage'**
+  String get assistantUsageStorage;
+
+  /// No description provided for @assistantUsageMemoryStorage.
+  ///
+  /// In en, this message translates to:
+  /// **'Assistant memory'**
+  String get assistantUsageMemoryStorage;
+
+  /// No description provided for @assistantUsageMemoryStorageCaption.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncs with your account on every plan and counts toward server storage'**
+  String get assistantUsageMemoryStorageCaption;
+
+  /// No description provided for @assistantUsageServerStorage.
+  ///
+  /// In en, this message translates to:
+  /// **'Server storage'**
+  String get assistantUsageServerStorage;
+
+  /// No description provided for @assistantUsageStorageOf.
+  ///
+  /// In en, this message translates to:
+  /// **'{used} of {quota}'**
+  String assistantUsageStorageOf(String used, String quota);
+
+  /// No description provided for @assistantSettingsChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat'**
+  String get assistantSettingsChat;
+
+  /// No description provided for @assistantSettingsMemory.
+  ///
+  /// In en, this message translates to:
+  /// **'Memory'**
+  String get assistantSettingsMemory;
+
+  /// No description provided for @assistantSettingsUser.
+  ///
+  /// In en, this message translates to:
+  /// **'User'**
+  String get assistantSettingsUser;
+
+  /// No description provided for @assistantSettingsLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Response language'**
+  String get assistantSettingsLanguage;
+
+  /// No description provided for @assistantSettingsLanguageHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The language the assistant answers you in.'**
+  String get assistantSettingsLanguageHint;
+
+  /// No description provided for @assistantSettingsLanguageAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Match my language'**
+  String get assistantSettingsLanguageAuto;
+
+  /// No description provided for @assistantSettingsFont.
+  ///
+  /// In en, this message translates to:
+  /// **'Font'**
+  String get assistantSettingsFont;
+
+  /// No description provided for @assistantSettingsFontHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The typeface the assistant\'s replies are set in.'**
+  String get assistantSettingsFontHint;
+
+  /// No description provided for @assistantFontSerif.
+  ///
+  /// In en, this message translates to:
+  /// **'Serif'**
+  String get assistantFontSerif;
+
+  /// No description provided for @assistantFontSans.
+  ///
+  /// In en, this message translates to:
+  /// **'Sans'**
+  String get assistantFontSans;
+
+  /// No description provided for @assistantFontMono.
+  ///
+  /// In en, this message translates to:
+  /// **'Mono'**
+  String get assistantFontMono;
+
+  /// No description provided for @assistantSettingsTextSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Text size'**
+  String get assistantSettingsTextSize;
+
+  /// No description provided for @assistantSettingsTextSizeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Size of the conversation text.'**
+  String get assistantSettingsTextSizeHint;
+
+  /// No description provided for @assistantTextSmall.
+  ///
+  /// In en, this message translates to:
+  /// **'Small'**
+  String get assistantTextSmall;
+
+  /// No description provided for @assistantTextMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get assistantTextMedium;
+
+  /// No description provided for @assistantTextLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'Large'**
+  String get assistantTextLarge;
+
+  /// No description provided for @assistantSettingsPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get assistantSettingsPreview;
+
+  /// No description provided for @assistantSettingsPreviewText.
+  ///
+  /// In en, this message translates to:
+  /// **'Here\'s how replies will look. **Bold**, *italic* and `code` all follow your choice.'**
+  String get assistantSettingsPreviewText;
+
+  /// No description provided for @assistantMemoryUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Use memory'**
+  String get assistantMemoryUse;
+
+  /// No description provided for @assistantMemoryUseHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Let the assistant remember things about you across chats, and bring them up when they help.'**
+  String get assistantMemoryUseHint;
+
+  /// No description provided for @assistantMemorySyncNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Synced to your account on every plan · {size} of server storage'**
+  String assistantMemorySyncNote(String size);
+
+  /// No description provided for @assistantMemoryAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add memory'**
+  String get assistantMemoryAdd;
+
+  /// No description provided for @assistantMemoryEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit memory'**
+  String get assistantMemoryEdit;
+
+  /// No description provided for @assistantMemoryEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing remembered yet'**
+  String get assistantMemoryEmpty;
+
+  /// No description provided for @assistantMemoryEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tell the assistant about yourself in a chat, or add a memory here.'**
+  String get assistantMemoryEmptyHint;
+
+  /// No description provided for @assistantMemoryYou.
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get assistantMemoryYou;
+
+  /// No description provided for @assistantMemoryTopics.
+  ///
+  /// In en, this message translates to:
+  /// **'Topics'**
+  String get assistantMemoryTopics;
+
+  /// No description provided for @assistantMemoryAreas.
+  ///
+  /// In en, this message translates to:
+  /// **'Areas'**
+  String get assistantMemoryAreas;
+
+  /// No description provided for @assistantMemoryUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated {date}'**
+  String assistantMemoryUpdated(String date);
+
+  /// No description provided for @assistantMemoryClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete all memory'**
+  String get assistantMemoryClear;
+
+  /// No description provided for @assistantMemoryClearTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete all memory?'**
+  String get assistantMemoryClearTitle;
+
+  /// No description provided for @assistantMemoryClearBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The assistant forgets everything it remembered, on every device. Your profile on the User tab stays.'**
+  String get assistantMemoryClearBody;
+
+  /// No description provided for @assistantMemoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get assistantMemoryTitle;
+
+  /// No description provided for @assistantMemoryTitleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Hardware'**
+  String get assistantMemoryTitleHint;
+
+  /// No description provided for @assistantMemoryDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary'**
+  String get assistantMemoryDescription;
+
+  /// No description provided for @assistantMemoryDescriptionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'One line, shown in the list'**
+  String get assistantMemoryDescriptionHint;
+
+  /// No description provided for @assistantMemoryBody.
+  ///
+  /// In en, this message translates to:
+  /// **'What to remember'**
+  String get assistantMemoryBody;
+
+  /// No description provided for @assistantMemoryBodyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'One fact per line'**
+  String get assistantMemoryBodyHint;
+
+  /// No description provided for @assistantProfileCallMe.
+  ///
+  /// In en, this message translates to:
+  /// **'What should the assistant call you?'**
+  String get assistantProfileCallMe;
+
+  /// No description provided for @assistantProfileCallMeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Your name or nickname'**
+  String get assistantProfileCallMeHint;
+
+  /// No description provided for @assistantProfileOccupation.
+  ///
+  /// In en, this message translates to:
+  /// **'What do you do?'**
+  String get assistantProfileOccupation;
+
+  /// No description provided for @assistantProfileOccupationHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. student, indie game developer'**
+  String get assistantProfileOccupationHint;
+
+  /// No description provided for @assistantProfileSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'About you'**
+  String get assistantProfileSummary;
+
+  /// No description provided for @assistantProfileSummaryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A few sentences the assistant should always know'**
+  String get assistantProfileSummaryHint;
+
+  /// No description provided for @assistantProfileInstructions.
+  ///
+  /// In en, this message translates to:
+  /// **'How should the assistant respond?'**
+  String get assistantProfileInstructions;
+
+  /// No description provided for @assistantProfileInstructionsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. keep it short, explain code step by step'**
+  String get assistantProfileInstructionsHint;
+
+  /// No description provided for @assistantProfileSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get assistantProfileSave;
+
+  /// No description provided for @assistantProfileSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get assistantProfileSaved;
+
+  /// No description provided for @assistantAgentsComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Coming soon'**
+  String get assistantAgentsComingSoon;
+
+  /// No description provided for @assistantAgentsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Agents you\'ve built in the AI Usage plugin. Running them from the assistant is coming soon.'**
+  String get assistantAgentsSubtitle;
+
+  /// No description provided for @assistantAgentsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No agents yet'**
+  String get assistantAgentsEmpty;
+
+  /// No description provided for @assistantAgentsEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Build one in the AI Usage plugin\'s Agents tab and it shows up here.'**
+  String get assistantAgentsEmptyHint;
+
+  /// No description provided for @assistantAgentsOpenBuilder.
+  ///
+  /// In en, this message translates to:
+  /// **'Open AI Usage'**
+  String get assistantAgentsOpenBuilder;
+
+  /// No description provided for @assistantAgentsNoDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'No description'**
+  String get assistantAgentsNoDescription;
+
+  /// No description provided for @textLibraryBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get textLibraryBack;
+
+  /// No description provided for @textLibraryBodyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Write your text…'**
+  String get textLibraryBodyHint;
+
+  /// No description provided for @textLibraryBold.
+  ///
+  /// In en, this message translates to:
+  /// **'Bold'**
+  String get textLibraryBold;
+
+  /// No description provided for @textLibraryCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get textLibraryCancel;
+
+  /// No description provided for @textLibraryClearFormatting.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear formatting'**
+  String get textLibraryClearFormatting;
+
+  /// No description provided for @textLibraryColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Color'**
+  String get textLibraryColor;
+
+  /// No description provided for @textLibraryCover.
+  ///
+  /// In en, this message translates to:
+  /// **'Cover'**
+  String get textLibraryCover;
+
+  /// No description provided for @textLibraryCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get textLibraryCreate;
+
+  /// No description provided for @textLibraryDefaultInk.
+  ///
+  /// In en, this message translates to:
+  /// **'Default ink'**
+  String get textLibraryDefaultInk;
+
+  /// No description provided for @textLibraryDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get textLibraryDelete;
+
+  /// No description provided for @textLibraryDeleteSubjectTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete subject \"{name}\"?'**
+  String textLibraryDeleteSubjectTitle(String name);
+
+  /// No description provided for @textLibraryDeleteSubjectBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this subject and its {count, plural, =0{no texts} =1{one text} other{{count} texts}}?'**
+  String textLibraryDeleteSubjectBody(int count);
+
+  /// No description provided for @textLibraryDeleteTextBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This text will be permanently deleted.'**
+  String get textLibraryDeleteTextBody;
+
+  /// No description provided for @textLibraryDeleteTextTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete \"{title}\"?'**
+  String textLibraryDeleteTextTitle(String title);
+
+  /// No description provided for @textLibraryEdited.
+  ///
+  /// In en, this message translates to:
+  /// **'Edited {date}'**
+  String textLibraryEdited(String date);
+
+  /// No description provided for @textLibraryInk.
+  ///
+  /// In en, this message translates to:
+  /// **'Ink'**
+  String get textLibraryInk;
+
+  /// No description provided for @textLibraryItalic.
+  ///
+  /// In en, this message translates to:
+  /// **'Italic'**
+  String get textLibraryItalic;
+
+  /// No description provided for @textLibraryMcAdvancement.
+  ///
+  /// In en, this message translates to:
+  /// **'Advancement'**
+  String get textLibraryMcAdvancement;
+
+  /// No description provided for @textLibraryMcBooks.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} books'**
+  String textLibraryMcBooks(String count);
+
+  /// No description provided for @textLibraryMcBuild.
+  ///
+  /// In en, this message translates to:
+  /// **'Build'**
+  String get textLibraryMcBuild;
+
+  /// No description provided for @textLibraryMcBuiltIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Built-in'**
+  String get textLibraryMcBuiltIn;
+
+  /// No description provided for @textLibraryMcBurn.
+  ///
+  /// In en, this message translates to:
+  /// **'Burn'**
+  String get textLibraryMcBurn;
+
+  /// No description provided for @textLibraryMcBurnConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Burn this book? This cannot be undone.'**
+  String get textLibraryMcBurnConfirm;
+
+  /// No description provided for @textLibraryMcChooseSlot.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a shelf slot'**
+  String get textLibraryMcChooseSlot;
+
+  /// No description provided for @textLibraryMcDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get textLibraryMcDone;
+
+  /// No description provided for @textLibraryMcDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Download Minecraft assets'**
+  String get textLibraryMcDownload;
+
+  /// No description provided for @textLibraryMcDownloadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not download Minecraft assets.'**
+  String get textLibraryMcDownloadFailed;
+
+  /// No description provided for @textLibraryMcDownloadNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Minecraft assets are downloaded from Mojang and cached on this device.'**
+  String get textLibraryMcDownloadNote;
+
+  /// No description provided for @textLibraryMcEmptyHall.
+  ///
+  /// In en, this message translates to:
+  /// **'Your hall is empty. Create a subject to begin.'**
+  String get textLibraryMcEmptyHall;
+
+  /// No description provided for @textLibraryMcEmptySlot.
+  ///
+  /// In en, this message translates to:
+  /// **'Empty slot'**
+  String get textLibraryMcEmptySlot;
+
+  /// No description provided for @textLibraryMcFailedAndroid.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the Minecraft library on Android.'**
+  String get textLibraryMcFailedAndroid;
+
+  /// No description provided for @textLibraryMcFailedWindows.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the Minecraft library on Windows.'**
+  String get textLibraryMcFailedWindows;
+
+  /// No description provided for @textLibraryMcFirstBook.
+  ///
+  /// In en, this message translates to:
+  /// **'Write your first book'**
+  String get textLibraryMcFirstBook;
+
+  /// No description provided for @textLibraryMcFirstCase.
+  ///
+  /// In en, this message translates to:
+  /// **'Create your first case'**
+  String get textLibraryMcFirstCase;
+
+  /// No description provided for @textLibraryMcLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading Minecraft library…'**
+  String get textLibraryMcLoading;
+
+  /// No description provided for @textLibraryMcLost.
+  ///
+  /// In en, this message translates to:
+  /// **'The Minecraft library connection was lost.'**
+  String get textLibraryMcLost;
+
+  /// No description provided for @textLibraryMcMoveHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Move this book to another shelf.'**
+  String get textLibraryMcMoveHint;
+
+  /// No description provided for @textLibraryMcNewCase.
+  ///
+  /// In en, this message translates to:
+  /// **'New case'**
+  String get textLibraryMcNewCase;
+
+  /// No description provided for @textLibraryMcNewCaseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a case'**
+  String get textLibraryMcNewCaseTitle;
+
+  /// No description provided for @textLibraryMcPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Page {page} of {total}'**
+  String textLibraryMcPage(String page, String total);
+
+  /// No description provided for @textLibraryMcQuality.
+  ///
+  /// In en, this message translates to:
+  /// **'Render quality'**
+  String get textLibraryMcQuality;
+
+  /// No description provided for @textLibraryMcQualityHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get textLibraryMcQualityHigh;
+
+  /// No description provided for @textLibraryMcQualityLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get textLibraryMcQualityLow;
+
+  /// No description provided for @textLibraryMcRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get textLibraryMcRetry;
+
+  /// No description provided for @textLibraryMcSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save the book.'**
+  String get textLibraryMcSaveFailed;
+
+  /// No description provided for @textLibraryMcSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Hall settings'**
+  String get textLibraryMcSettings;
+
+  /// No description provided for @textLibraryMcShelfPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Shelf page {page} of {total}'**
+  String textLibraryMcShelfPage(String page, String total);
+
+  /// No description provided for @textLibraryMcSign.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign book'**
+  String get textLibraryMcSign;
+
+  /// No description provided for @textLibraryMcSignAndShelve.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign and shelve'**
+  String get textLibraryMcSignAndShelve;
+
+  /// No description provided for @textLibraryMcSignTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign this book?'**
+  String get textLibraryMcSignTitle;
+
+  /// No description provided for @textLibraryMcUntitled.
+  ///
+  /// In en, this message translates to:
+  /// **'Untitled'**
+  String get textLibraryMcUntitled;
+
+  /// No description provided for @textLibraryMcVanilla.
+  ///
+  /// In en, this message translates to:
+  /// **'Minecraft {version}'**
+  String textLibraryMcVanilla(String version);
+
+  /// No description provided for @textLibraryMcWriteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Write your book here…'**
+  String get textLibraryMcWriteHint;
+
+  /// No description provided for @textLibraryModeClassic.
+  ///
+  /// In en, this message translates to:
+  /// **'Classic'**
+  String get textLibraryModeClassic;
+
+  /// No description provided for @textLibraryModeMinecraft.
+  ///
+  /// In en, this message translates to:
+  /// **'Minecraft hall'**
+  String get textLibraryModeMinecraft;
+
+  /// No description provided for @textLibraryMoveTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to'**
+  String get textLibraryMoveTo;
+
+  /// No description provided for @textLibraryMoveToTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Move text to a subject'**
+  String get textLibraryMoveToTitle;
+
+  /// No description provided for @textLibraryNewSubject.
+  ///
+  /// In en, this message translates to:
+  /// **'New subject'**
+  String get textLibraryNewSubject;
+
+  /// No description provided for @textLibraryNewText.
+  ///
+  /// In en, this message translates to:
+  /// **'New text'**
+  String get textLibraryNewText;
+
+  /// No description provided for @textLibraryNoMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'No texts match \"{query}\"'**
+  String textLibraryNoMatches(String query);
+
+  /// No description provided for @textLibraryNoSubjects.
+  ///
+  /// In en, this message translates to:
+  /// **'No subjects yet'**
+  String get textLibraryNoSubjects;
+
+  /// No description provided for @textLibraryNoSubjectsSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a subject to organize your texts.'**
+  String get textLibraryNoSubjectsSub;
+
+  /// No description provided for @textLibraryNoTexts.
+  ///
+  /// In en, this message translates to:
+  /// **'No texts yet'**
+  String get textLibraryNoTexts;
+
+  /// No description provided for @textLibraryNoTextsSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a text to this subject to get started.'**
+  String get textLibraryNoTextsSub;
+
+  /// No description provided for @textLibraryRename.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get textLibraryRename;
+
+  /// No description provided for @textLibraryRenameSubject.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename subject'**
+  String get textLibraryRenameSubject;
+
+  /// No description provided for @textLibrarySave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get textLibrarySave;
+
+  /// No description provided for @textLibrarySaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get textLibrarySaved;
+
+  /// No description provided for @textLibrarySaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving…'**
+  String get textLibrarySaving;
+
+  /// No description provided for @textLibrarySearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search texts'**
+  String get textLibrarySearchHint;
+
+  /// No description provided for @textLibrarySpineHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A short label shown on the book spine'**
+  String get textLibrarySpineHint;
+
+  /// No description provided for @textLibrarySpineLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Spine label'**
+  String get textLibrarySpineLabel;
+
+  /// No description provided for @textLibraryStrike.
+  ///
+  /// In en, this message translates to:
+  /// **'Strikethrough'**
+  String get textLibraryStrike;
+
+  /// No description provided for @textLibrarySubjectNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Subject name'**
+  String get textLibrarySubjectNameHint;
+
+  /// No description provided for @textLibrarySubjectNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a subject name.'**
+  String get textLibrarySubjectNameRequired;
+
+  /// No description provided for @textLibrarySubjects.
+  ///
+  /// In en, this message translates to:
+  /// **'Subjects'**
+  String get textLibrarySubjects;
+
+  /// No description provided for @textLibraryTextCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 text} other{{count} texts}}'**
+  String textLibraryTextCount(int count);
+
+  /// No description provided for @textLibraryTitleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get textLibraryTitleHint;
+
+  /// No description provided for @textLibraryUnderline.
+  ///
+  /// In en, this message translates to:
+  /// **'Underline'**
+  String get textLibraryUnderline;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {
