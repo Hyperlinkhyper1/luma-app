@@ -100,14 +100,12 @@ class ChatController extends ChangeNotifier {
 
     final sync = _syncService;
     final serverAvailable = sync != null && sync.serverReady;
-    var usingServerKey = false;
     AiMode? googleMode;
 
     if (providerId == AiProviderId.google.name) {
       final selectedMode = aiModeById(_settings.aiMode);
-      final mode = googleMode = selectedMode.availableForPlan(
-        _settings.selectedPlanId,
-      )
+      final mode = googleMode =
+          selectedMode.availableForPlan(_settings.selectedPlanId)
           ? selectedMode
           : AiMode.normal;
       if (apiKey != null) {
@@ -115,14 +113,12 @@ class ChatController extends ChangeNotifier {
       } else if (serverAvailable) {
         client = GoogleProxyClient(serverUrl: sync.serverUrl!, mode: mode);
         apiKey = sync.authToken!;
-        usingServerKey = true;
       }
     } else if (providerId == AiProviderId.mistral.name &&
         apiKey == null &&
         serverAvailable) {
       client = MistralProxyClient(serverUrl: sync.serverUrl!);
       apiKey = sync.authToken!;
-      usingServerKey = true;
     }
 
     if (apiKey == null) {
@@ -131,18 +127,6 @@ class ChatController extends ChangeNotifier {
         conversationId,
         'error',
         'No ${provider.displayName} API key saved yet — add one in Settings.',
-      );
-      return;
-    }
-
-    // Server-proxied chats are metered server-side (token budgets for Luma
-    // AI, a daily message count for Luma Support), so the local per-device
-    // guard only applies when spending the user's own key.
-    if (!usingServerKey && !usingLocalModel && !_settings.canSendAiMessage) {
-      await _repository.addMessage(
-        conversationId,
-        'error',
-        "You've used all 10 assistant messages for today — more tomorrow.",
       );
       return;
     }
@@ -184,7 +168,6 @@ class ChatController extends ChangeNotifier {
         result.text,
         metadataJson: chatMetadataWithUsage(result.metadataJson, result.usage),
       );
-      if (!usingServerKey && !usingLocalModel) _settings.recordAiCall();
       _settings.recordModelUsage(
         modelUsageKeyFor(providerId, mode: googleMode),
       );

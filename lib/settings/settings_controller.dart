@@ -365,12 +365,9 @@ class SettingsController extends ChangeNotifier {
     return (_aiDailyCallLimit - _aiCallsToday).clamp(0, _aiDailyCallLimit);
   }
 
-  /// Whether another AI assistant message can be sent today. This is a
-  /// client-side spend guard on the user's own API key, not a security
-  /// boundary — there's no server to enforce it against.
+  /// BYOK calls have no Luma-side quota. Kept for older callers.
   bool get canSendAiMessage {
-    _rolloverAiCallsIfNeeded();
-    return _aiCallsToday < _aiDailyCallLimit;
+    return true;
   }
 
   /// Records that an AI assistant message was successfully sent. Call this

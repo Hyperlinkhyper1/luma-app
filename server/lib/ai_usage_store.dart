@@ -10,13 +10,30 @@ const Map<String, int> kWebSearchWeeklyLimits = {
 int webSearchWeeklyLimitForPlan(String? planId) =>
     kWebSearchWeeklyLimits[planId] ?? kWebSearchWeeklyLimits['core']!;
 
+class AiTokenBudget {
+  const AiTokenBudget(this.weekly);
+
+  final int weekly;
+  int get fiveHour => weekly * 15 ~/ 100;
+}
+
+/// Rolling token allowances for the shared Luma AI key. Pulsar is Nova-only.
+AiTokenBudget aiTokenBudget(String? planId, String mode) {
+  if (mode == 'smartest') return const AiTokenBudget(4000000);
+  final base = mode == 'smarter' ? 500000 : 750000;
+  final multiplier = switch (planId) {
+    'orbit' => 5,
+    'nova' => 15,
+    _ => 1,
+  };
+  return AiTokenBudget(base * multiplier);
+}
+
 /// Per-user AI usage bookkeeping for the shared, operator-funded keys:
 ///
 /// * Google ("Luma AI" modes) chats burn **tokens**, tracked as
-///   (timestamp, tokens) events so both rolling windows — 5 hours and 7
-///   days — can be summed exactly. Limits live in [kAiTokens5h] /
-///   [kAiTokensWeek]; the raw numbers are never sent to clients, only
-///   percentages (see Api._aiStatus).
+///   (timestamp, tokens, mode) events so both rolling windows — 5 hours and
+///   7 days — can be summed exactly for each mode.
 /// * Mistral ("Luma Support") chats burn **messages** — [kSupportMessagesPerDay]
 ///   per rolling day, counted separately from the token budget.
 /// * Web searches use each plan's rolling weekly allowance.
@@ -29,7 +46,7 @@ class AiUsageStore {
   final File _file;
   Future<void> _saveTail = Future.value();
 
-  /// userId -> {'tokens': [[ms, tokens], ...], 'support': [ms, ...],
+  /// userId -> {'tokens': [[ms, tokens, mode], ...], 'support': [ms, ...],
   ///             'webSearches': [ms, ...]}
   final Map<String, dynamic> _data;
 
@@ -54,14 +71,21 @@ class AiUsageStore {
   Map<String, dynamic> _entry(String userId) =>
       (_data[userId] as Map<String, dynamic>?) ?? {};
 
-  List<List<int>> _tokenEvents(String userId) {
+  List<(int, int, String)> _tokenEvents(String userId) {
     final raw = _entry(userId)['tokens'] as List? ?? const [];
-    final cutoff =
-        DateTime.now().subtract(_tokenWindow).millisecondsSinceEpoch;
+    final cutoff = DateTime.now().subtract(_tokenWindow).millisecondsSinceEpoch;
     return [
       for (final e in raw)
-        if (e is List && e.length == 2 && (e[0] as num).toInt() > cutoff)
-          [(e[0] as num).toInt(), (e[1] as num).toInt()],
+        if (e is List &&
+            e.length >= 2 &&
+            e[0] is num &&
+            e[1] is num &&
+            (e[0] as num).toInt() > cutoff)
+          (
+            (e[0] as num).toInt(),
+            (e[1] as num).toInt(),
+            e.length > 2 && e[2] is String ? e[2] as String : 'normal'
+          ),
     ];
   }
 
@@ -76,11 +100,11 @@ class AiUsageStore {
   }
 
   /// Total Google tokens this user consumed within the trailing [window].
-  int tokensUsed(String userId, Duration window) {
+  int tokensUsed(String userId, Duration window, {String? mode}) {
     final cutoff = DateTime.now().subtract(window).millisecondsSinceEpoch;
     var sum = 0;
     for (final e in _tokenEvents(userId)) {
-      if (e[0] > cutoff) sum += e[1];
+      if (e.$1 > cutoff && (mode == null || e.$3 == mode)) sum += e.$2;
     }
     return sum;
   }
@@ -116,12 +140,13 @@ class AiUsageStore {
     return true;
   }
 
-  Future<void> recordTokens(String userId, int tokens) async {
+  Future<void> recordTokens(String userId, int tokens,
+      {String mode = 'normal'}) async {
     if (tokens <= 0) return;
     final entry = Map<String, dynamic>.from(_entry(userId));
     entry['tokens'] = [
-      ..._tokenEvents(userId),
-      [DateTime.now().millisecondsSinceEpoch, tokens],
+      for (final e in _tokenEvents(userId)) [e.$1, e.$2, e.$3],
+      [DateTime.now().millisecondsSinceEpoch, tokens, mode],
     ];
     _data[userId] = entry;
     await _save();

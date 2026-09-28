@@ -72,6 +72,7 @@
 
     <application
         android:allowBackup="false"
+        android:extractNativeLibs="true"
         android:label="luma"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon"

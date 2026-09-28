@@ -634,13 +634,16 @@ class LZh extends L {
 
   @override
   String get assistantUsageApiKeysSubtitle =>
-      '在此设备上用你自己的密钥使用 Anthropic Claude 和 OpenAI';
+      '使用自己的 API 密钥；服务商的额度和限制仍然适用';
+
+  @override
+  String get assistantUsageUnlimited => 'Luma 内不限量';
 
   @override
   String get assistantUsageByModel => '按模型统计的消息';
 
   @override
-  String get assistantUsageByModelSubtitle => '此设备上的累计数据。×5 和 ×20 表示更重的模型。';
+  String get assistantUsageByModelSubtitle => '此设备上各模型成功发送的消息数。';
 
   @override
   String assistantUsageMessageCount(int count) {

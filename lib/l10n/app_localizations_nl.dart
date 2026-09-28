@@ -658,14 +658,17 @@ class LNl extends L {
 
   @override
   String get assistantUsageApiKeysSubtitle =>
-      'Anthropic Claude en OpenAI met je eigen sleutel, op dit apparaat';
+      'Je eigen API-sleutels; tegoed en limieten van de provider blijven gelden';
+
+  @override
+  String get assistantUsageUnlimited => 'Onbeperkt in Luma';
 
   @override
   String get assistantUsageByModel => 'Berichten per model';
 
   @override
   String get assistantUsageByModelSubtitle =>
-      'Sinds het begin, op dit apparaat. ×5 en ×20 markeren de zwaardere modellen.';
+      'Geslaagde berichten op dit apparaat, per model geteld.';
 
   @override
   String assistantUsageMessageCount(int count) {

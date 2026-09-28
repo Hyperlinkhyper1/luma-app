@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:llm_llamacpp/llm_llamacpp.dart';
+import 'package:crypto/crypto.dart';
 
 import 'providers/local_qwen_client.dart';
 
@@ -14,8 +15,12 @@ class LocalModelStore extends ChangeNotifier {
 
   static const modelRepository = 'ggml-org/Qwen3.5-0.8B-GGUF';
   static const modelFileName = 'Qwen3.5-0.8B-Q4_0.gguf';
+  static const _modelRevision = '9447f74101aeb4e93621884dfa36ee8effb8831b';
   static const modelSizeLabel = '563 MB';
   static const _minimumModelBytes = 500 * 1024 * 1024;
+  // SHA-256 published by ggml-org for this exact Q4_0 GGUF.
+  static const _modelSha256 =
+      '57d1997790d1744fba5b40a7317df71ea5e2acee28c47e78f0cce39c0703f8cf';
 
   /// False on iOS: llama.cpp is not bundled there (the upstream iOS build is
   /// unusable — see third_party/llm_llamacpp/LUMA_PATCH.md), so the model
@@ -28,6 +33,7 @@ class LocalModelStore extends ChangeNotifier {
   String? _error;
   DateTime _lastProgressNotification = DateTime.fromMillisecondsSinceEpoch(0);
   double _lastNotifiedProgress = -1;
+  Future<String?>? _modelPathCheck;
 
   bool get isDownloading => _downloading;
   double? get progress => _progress;
@@ -38,13 +44,25 @@ class LocalModelStore extends ChangeNotifier {
     return '${support.path}${Platform.pathSeparator}ai${Platform.pathSeparator}models';
   }
 
-  Future<String?> modelPath() async {
+  /// Share the one-time 563 MB integrity check across chat, settings and
+  /// warm-up callers. A new download or removal invalidates this result.
+  Future<String?> modelPath() => _modelPathCheck ??= _checkModelPath();
+
+  Future<String?> _checkModelPath() async {
     final path =
         '${await _modelDirectory()}${Platform.pathSeparator}$modelFileName';
     final file = File(path);
     if (!await file.exists()) return null;
-    if (await file.length() < _minimumModelBytes) {
+    final stat = await file.stat();
+    if (stat.size < _minimumModelBytes) {
       await file.delete();
+      return null;
+    }
+    final digest = await sha256.bind(file.openRead()).first;
+    if (digest.toString() != _modelSha256) {
+      await file.delete();
+      _error = 'The model file was incomplete or damaged. Download it again.';
+      notifyListeners();
       return null;
     }
     return path;
@@ -65,6 +83,7 @@ class LocalModelStore extends ChangeNotifier {
         modelRepository,
         modelFileName,
         directory,
+        revision: _modelRevision,
       )) {
         _progress = progress.totalBytes == 0 ? null : progress.progress;
         final now = DateTime.now();
@@ -79,6 +98,7 @@ class LocalModelStore extends ChangeNotifier {
           notifyListeners();
         }
       }
+      _modelPathCheck = null;
       if (await modelPath() == null) {
         throw StateError('The model download did not produce a valid file.');
       }
@@ -98,6 +118,7 @@ class LocalModelStore extends ChangeNotifier {
     await LocalQwenClient.release();
     final path = await modelPath();
     if (path != null) await File(path).delete();
+    _modelPathCheck = null;
     notifyListeners();
   }
 }

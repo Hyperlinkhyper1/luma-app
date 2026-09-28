@@ -9,15 +9,17 @@ import '../../../sync/sync_service.dart';
 import '../../../theme/luma_theme.dart';
 import '../../plugins/plugin_repository.dart';
 import '../../plugins/plugin_scope.dart';
+import '../chat_usage.dart';
 import '../memory/assistant_memory_scope.dart';
+import '../providers/ai_modes.dart';
 import '../providers/ai_usage.dart';
 import 'assistant_panels.dart';
 
 const _aiUsagePluginId = 'ai-usage';
 
 /// "Your usage", after the Claude app: the plan, a one-line verdict, the
-/// Luma AI 5-hour and weekly budgets from the sync server, then the smaller
-/// limits (Luma Support, web search, the user's own API keys) as plain rows,
+/// Luma AI 5-hour and weekly budgets from the sync server, then web search
+/// and the user's own API keys as plain rows,
 /// and finally messages per model and the storage memory takes up.
 class AssistantUsageView extends StatefulWidget {
   const AssistantUsageView({super.key, required this.onOpenPlugin});
@@ -45,21 +47,21 @@ class _AssistantUsageViewState extends State<AssistantUsageView> {
     final sync = SyncScope.of(context);
     final memory = AssistantMemoryScope.maybeOf(context);
     final plan = planById(settings.selectedPlanId);
-    final keyLimit = settings.aiDailyCallLimit;
-    final keyUsed = keyLimit - settings.aiCallsRemainingToday;
-
     return FutureBuilder<AiServerStatus?>(
       future: _status,
       builder: (context, snap) {
         final status = snap.data;
         final loading = snap.connectionState != ConnectionState.done;
         final fractions = [
-          keyUsed / keyLimit,
           if (status != null) ...[
-            status.fiveHourPct / 100,
-            status.weeklyPct / 100,
-            if (status.supportLimit > 0)
-              status.supportUsed / status.supportLimit,
+            for (final usage in status.modes.values) ...[
+              usage.fiveHourPct / 100,
+              usage.weeklyPct / 100,
+            ],
+            if (status.modes.isEmpty) ...[
+              status.fiveHourPct / 100,
+              status.weeklyPct / 100,
+            ],
             if (status.webSearchLimit > 0)
               status.webSearchUsed / status.webSearchLimit,
           ],
@@ -120,34 +122,40 @@ class _AssistantUsageViewState extends State<AssistantUsageView> {
               const _Loading()
             else if (status == null)
               _Note(t.assistantUsageUnavailable)
-            else ...[
-              _UsageRow(
-                label: t.assistantUsageCurrentSession,
-                caption: t.assistantUsageRollingFiveHours,
-                help: t.assistantUsageLumaAiSubtitle,
-                fraction: status.fiveHourPct / 100,
-                trailing: t.assistantUsagePercentUsed(status.fiveHourPct),
-              ),
-              _UsageRow(
-                label: t.assistantUsageThisWeek,
-                caption: t.assistantUsageRollingWeek,
-                fraction: status.weeklyPct / 100,
-                trailing: t.assistantUsagePercentUsed(status.weeklyPct),
-              ),
-            ],
+            else
+              for (final mode in AiMode.values.where(
+                (mode) => mode.availableForPlan(plan.id),
+              ))
+                _Section(
+                  title: 'Luma ${mode.displayName}',
+                  child: Column(
+                    children: [
+                      _UsageRow(
+                        label: t.assistantUsageCurrentSession,
+                        caption: t.assistantUsageRollingFiveHours,
+                        fraction: status.usageFor(mode.name).fiveHourPct / 100,
+                        trailing: _tokenUsageLabel(
+                          status.usageFor(mode.name).fiveHourUsed,
+                          status.usageFor(mode.name).fiveHourLimit,
+                          status.usageFor(mode.name).fiveHourPct,
+                        ),
+                      ),
+                      _UsageRow(
+                        label: t.assistantUsageThisWeek,
+                        caption: t.assistantUsageRollingWeek,
+                        fraction: status.usageFor(mode.name).weeklyPct / 100,
+                        trailing: _tokenUsageLabel(
+                          status.usageFor(mode.name).weeklyUsed,
+                          status.usageFor(mode.name).weeklyLimit,
+                          status.usageFor(mode.name).weeklyPct,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
             const SizedBox(height: 20),
             Divider(height: 1, color: luma.border),
             const SizedBox(height: 8),
-            if (status != null && status.supportLimit > 0)
-              _UsageRow(
-                label: t.assistantUsageLumaSupport,
-                caption: t.assistantUsageResetsDaily,
-                fraction: status.supportUsed / status.supportLimit,
-                trailing: t.assistantMessagesOf(
-                  status.supportUsed,
-                  status.supportLimit,
-                ),
-              ),
             if (status != null && status.webSearchLimit > 0)
               _UsageRow(
                 label: t.assistantUsageWebSearch,
@@ -161,10 +169,9 @@ class _AssistantUsageViewState extends State<AssistantUsageView> {
               ),
             _UsageRow(
               label: t.assistantUsageApiKeys,
-              caption: t.assistantUsageResetsDaily,
-              help: t.assistantUsageApiKeysSubtitle,
-              fraction: keyUsed / keyLimit,
-              trailing: t.assistantMessagesOf(keyUsed, keyLimit),
+              caption: t.assistantUsageApiKeysSubtitle,
+              fraction: 0,
+              trailing: t.assistantUsageUnlimited,
             ),
             _Section(
               title: t.assistantUsageByModel,
@@ -207,6 +214,10 @@ class _AssistantUsageViewState extends State<AssistantUsageView> {
     );
   }
 }
+
+String _tokenUsageLabel(int used, int limit, int percent) => limit > 0
+    ? '${compactTokens(used)} / ${compactTokens(limit)} · $percent%'
+    : '$percent%';
 
 /// A secondary block below the limits: a title, an optional muted line of
 /// explanation, then its content, set apart by whitespace rather than boxes.
@@ -459,27 +470,6 @@ class _ModelBreakdown extends StatelessWidget {
                       style: TextStyle(color: luma.textPrimary, fontSize: 14),
                     ),
                   ),
-                  if (entry.weight > 1) ...[
-                    const SizedBox(width: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 7,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: luma.surfaceHover,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        '×${entry.weight}',
-                        style: TextStyle(
-                          color: luma.textSecondary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
                   const SizedBox(width: 16),
                   Text(
                     t.assistantUsageMessageCount(count),
