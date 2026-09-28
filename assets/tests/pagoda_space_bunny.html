@@ -72,12 +72,12 @@
 
 <div class="hud" id="timebar">
   <div id="tlabel">DAYLIGHT CYCLE</div>
-  <input id="scrub" type="range" min="0" max="1000" value="280" />
+  <input id="scrub" type="range" min="0" max="1000" value="400" />
   <div class="row">
-    <button class="btn" data-t="0.22">DAWN</button>
-    <button class="btn" data-t="0.44">DAY</button>
-    <button class="btn" data-t="0.79">DUSK</button>
-    <button class="btn" data-t="0.98">NIGHT</button>
+    <button class="btn" data-t="0.02">DAWN</button>
+    <button class="btn" data-t="0.25">DAY</button>
+    <button class="btn" data-t="0.50">DUSK</button>
+    <button class="btn" data-t="0.75">NIGHT</button>
   </div>
   <div class="row">
     <button class="btn on" id="playBtn">PAUSE CYCLE</button>
@@ -161,7 +161,7 @@ const MAT_KEYS = [
   'jade', 'jadeLight', 'jadeDark', 'plaster', 'shoji', 'dark',
   'sakuraA', 'sakuraB', 'sakuraC', 'pine', 'pineDark', 'mapleA', 'mapleB',
   'willow', 'bamboo', 'bambooLight', 'red', 'water', 'white',
-  'cloud', 'glass0', 'glass1', 'glass2', 'glass3',
+  'cloud', 'glass0', 'glass1', 'glass2', 'glass3', 'glass4',
 ];
 const M = {
   stone:         { c: 0x9AA0A6, r: 0.93, m: 0.02 },
@@ -203,6 +203,7 @@ const M = {
   glass1:        { c: 0xFFE2B0, r: 0.50, e: 0xFFA53A, ei: 1.25, glow: 1 },
   glass2:        { c: 0xFFE2B0, r: 0.50, e: 0xFFA53A, ei: 1.25, glow: 1 },
   glass3:        { c: 0xFFE2B0, r: 0.50, e: 0xFFA53A, ei: 1.25, glow: 1 },
+  glass4:        { c: 0xFFE2B0, r: 0.50, e: 0xFFA53A, ei: 0.85, glow: 1 },
 };
 
 const timeU = { value: 0 };
@@ -324,9 +325,9 @@ const ISLAND_R = 29.0;
 const PAGODA = { x: 0, z: 0 };
 const PAGODA_GROUND = 6;
 const BASE_Y = PAGODA_GROUND + 3;          // first storey deck
-const POND = { x: -13, z: 6, r: 6.4, y: 1.65 };
+const POND = { x: -15, z: 7, r: 6.0, y: 1.65 };
 const POND_FLOOR = 0.4;
-const STREAM_Z = 6.2;
+const STREAM_Z = 6.6;
 
 function islandRadius(a) {
   return ISLAND_R + 2.6 * Math.sin(3 * a + 0.6) + 1.8 * Math.cos(5 * a + 1.9) + 1.0 * Math.sin(7 * a);
@@ -336,8 +337,8 @@ function insideIsland(x, z) {
 }
 function streamProfile(x, z) {
   const dz = Math.abs(z - STREAM_Z);
-  if (x > -18 || x < -30 || dz > 5.0) return null;
-  const t = clamp((-x - 19) / 10, 0, 1);
+  if (x > -20.4 || x < -30 || dz > 5.0) return null;
+  const t = clamp((-x - 21.5) / 8.5, 0, 1);
   const fl = 1.45 - 1.35 * t;
   const rim = 3.4 - 2.5 * t;
   return dz < 1.7 ? fl : lerp(fl, rim, clamp((dz - 1.7) / 1.4, 0, 1));
@@ -374,7 +375,7 @@ function buildTerrain() {
       const top = Math.round(landH(x, z));
       const depth = 2 + Math.round(24 * Math.pow(1 - edge, 0.8)) + Math.round(rnd() * 2);
       const inPond = Math.hypot(x - POND.x, z - POND.z) < POND.r + 0.2;
-      const inStream = streamProfile(x, z) !== null && Math.abs(z - STREAM_Z) < 1.6 && x < -19;
+      const inStream = streamProfile(x, z) !== null && Math.abs(z - STREAM_Z) < 1.6 && x < -21;
 
       for (let k = 0; k <= depth; k++) {
         const y = top - k;
@@ -405,43 +406,46 @@ function buildTerrain() {
 
       // crags and broken ledges on the underside, so the rock below the
       // garden reads as a cliff face rather than a smooth cone
-      if (!inPond && !inStream && r > 5) {
+      if (!inPond && !inStream && r > 6 && depth > 3) {
         const n = 1 + (rnd() * 3 | 0);
         for (let i = 0; i < n; i++) {
-          const k = 1 + (rnd() * (depth - 1) | 0);
+          const k = 1 + (rnd() * (depth - 2) | 0);
           const y = top - k;
           if (y < Y0 + 2) continue;
-          const taper = R * (1 - 0.56 * (k / depth));
-          if (r > taper) continue;
-          const ox = (rnd() * 3 | 0) - 1, oz = (rnd() * 3 | 0) - 1;
-          if (!ox && !oz) continue;
-          if (Math.hypot(x + ox, z + oz) > taper) continue;
-          put(x + ox, y, z + oz, rnd() < 0.45 ? 'stone' : 'stoneDark');
-          if (rnd() < 0.35) put(x + ox, y - 1, z + oz, 'stoneDark');
+          const ux = x / r, uz = z / r;
+          for (let d = 1; d <= 2; d++) {
+            if (rnd() < 0.3 * d) continue;
+            const cx2 = Math.round(x + ux * d);
+            const cz2 = Math.round(z + uz * d);
+            if (Math.hypot(cx2, cz2) > islandRadius(Math.atan2(cz2, cx2))) continue;
+            put(cx2, y, cz2, rnd() < 0.5 ? 'stoneDark' : 'stone');
+            if (rnd() < 0.3) put(cx2, y + 1, cz2, 'mossDark');
+          }
         }
       }
 
       if (inStream) {
-        const t = clamp((-x - 19) / 10, 0, 1);
+        const t = clamp((-x - 21.5) / 8.5, 0, 1);
         const surf = Math.round(1.45 - 1.35 * t + 0.8);
         for (let y = top + 1; y <= surf; y++) put(x, y, z, 'water');
       }
     }
   }
 
-  for (let i = 0; i < 170; i++) {
+  for (let i = 0; i < 330; i++) {
     const a = rnd() * Math.PI * 2, rr = 8 + rnd() * 19;
     const x = Math.round(Math.cos(a) * rr), z = Math.round(Math.sin(a) * rr);
     if (!insideIsland(x, z)) continue;
     if (Math.hypot(x - POND.x, z - POND.z) < POND.r + 1.6) continue;
     if (Math.hypot(x, z) < 10.2) continue;
     const top = Math.round(landH(x, z));
-    const s = 1 + (rnd() < 0.35 ? 1 : 0);
+    const s = 1 + (rnd() < 0.5 ? 1 : 0);
     blob(x, top + 1, z, s, 1, s, rnd() < 0.5 ? 'stone' : 'stoneLight',
       (dx, dy) => dy < -1 || (dy < 0 && rnd() < 0.4));
+    if (rnd() < 0.45) put(x, top + 3, z, rnd() < 0.5 ? 'moss' : 'mossDark');
   }
 
-  for (let i = 0; i < 700; i++) {
+  for (let i = 0; i < 4200; i++) {
     const a = rnd() * Math.PI * 2, rr = 9 + rnd() * 18;
     const x = Math.round(Math.cos(a) * rr), z = Math.round(Math.sin(a) * rr);
     if (!insideIsland(x, z)) continue;
@@ -450,23 +454,83 @@ function buildTerrain() {
     if (streamProfile(x, z) !== null) continue;
     const top = Math.round(landH(x, z));
     const r = rnd();
-    if (r < 0.45) {
+    if (r < 0.30) {
+      // low patch of ground cover, a few cells across
+      const key = rnd() < 0.5 ? 'grass' : rnd() < 0.5 ? 'moss' : 'mossDark';
+      const w = 1 + (rnd() * 2 | 0);
+      for (let dz = 0; dz <= w; dz++)
+        for (let dx = 0; dx <= w; dx++)
+          if (rnd() > 0.18) put(x + dx, Math.round(landH(x + dx, z + dz)) + 1, z + dz, key);
+    } else if (r < 0.58) {
       put(x, top + 1, z, 'grass');
-      if (rnd() < 0.4) put(x, top + 2, z, 'bamboo');
-    } else if (r < 0.8) {
+      if (rnd() < 0.45) put(x, top + 2, z, 'bamboo');
+      if (rnd() < 0.22) put(x, top + 3, z, 'bambooLight');
+    } else if (r < 0.86) {
       put(x, top + 1, z, rnd() < 0.5 ? 'moss' : 'mossDark');
     } else {
       put(x, top + 1, z, 'stoneLight');
     }
   }
 
-  // raked gravel court wrapping the pagoda terrace
-  for (let x = -11; x <= 11; x++)
-    for (let z = -11; z <= 11; z++) {
+  // roots and vines trailing off the rim, so the island reads as a fragment
+  // torn out of the ground rather than a disc
+  for (let i = 0; i < 260; i++) {
+    const a = rnd() * Math.PI * 2;
+    const R = islandRadius(a) - 0.4;
+    const x = Math.round(Math.cos(a) * R), z = Math.round(Math.sin(a) * R);
+    if (!insideIsland(x, z)) continue;
+    const top = Math.round(landH(x, z));
+    const len = 3 + (rnd() * 7 | 0);
+    for (let k = 1; k <= len; k++) {
+      const key = k > len - 2 ? (rnd() < 0.5 ? 'willow' : 'bamboo') : 'stoneDark';
+      put(x, top - k, z, key);
+      if (rnd() < 0.25) put(x + (rnd() < 0.5 ? 1 : -1), top - k, z, 'stoneDark');
+    }
+  }
+
+  // moss hummocks: low mounds that break the lawn's silhouette from the side
+  for (let i = 0; i < 620; i++) {
+    const a = rnd() * Math.PI * 2, rr = 10 + rnd() * 16;
+    const x = Math.round(Math.cos(a) * rr), z = Math.round(Math.sin(a) * rr);
+    if (!insideIsland(x, z)) continue;
+    if (Math.hypot(x, z) < 12.2) continue;
+    if (Math.hypot(x - POND.x, z - POND.z) < POND.r + 1.0) continue;
+    if (streamProfile(x, z) !== null) continue;
+    const key = rnd() < 0.55 ? 'moss' : 'mossDark';
+    const w = rnd() < 0.5 ? 1 : 2;
+    const h = 1 + (rnd() * 2 | 0);
+    for (let dz = 0; dz <= w; dz++)
+      for (let dx = 0; dx <= w; dx++) {
+        if (dx === w && dz === w && rnd() < 0.5) continue;
+        for (let k = 1; k <= h; k++) {
+          if (k === h && dx + dz > w) continue;
+          put(x + dx, Math.round(landH(x + dx, z + dz)) + k, z + dz, k === h ? key : 'grass');
+        }
+      }
+  }
+
+  // a pebble-and-moss scatter, which is what keeps the lawn from reading flat
+  for (let i = 0; i < 1600; i++) {
+    const a = rnd() * Math.PI * 2, rr = 9.5 + rnd() * 17;
+    const x = Math.round(Math.cos(a) * rr), z = Math.round(Math.sin(a) * rr);
+    if (!insideIsland(x, z)) continue;
+    if (Math.hypot(x, z) < 9.8) continue;
+    if (Math.hypot(x - POND.x, z - POND.z) < POND.r + 0.6) continue;
+    if (streamProfile(x, z) !== null) continue;
+    const top = Math.round(landH(x, z));
+    const r = rnd();
+    put(x, top + 1, z, r < 0.42 ? 'stone' : r < 0.62 ? 'stoneLight' : r < 0.8 ? 'moss' : 'mossDark');
+  }
+
+  // raked gravel court wrapping the pagoda terrace, painted onto the
+  // ground itself so it follows the terrain instead of floating over it
+  for (let x = -12; x <= 12; x++)
+    for (let z = -12; z <= 12; z++) {
       const rr = Math.hypot(x, z);
-      if (rr > 11 || rr < 7.4) continue;
-      if (Math.abs(Math.abs(x) - Math.abs(z)) < 1.4) continue;
-      put(x, PAGODA_GROUND, z, 'gravel');
+      if (rr > 11.6 || rr < 7.4) continue;
+      if (Math.abs(Math.abs(x) - Math.abs(z)) < 1.5) continue;
+      if (Math.hypot(x - POND.x, z - POND.z) < POND.r + 1.2) continue;
+      paint(x, Math.round(landH(x, z)), z, 'gravel');
     }
 }
 
@@ -477,7 +541,7 @@ function buildPondShore() {
     if (Math.hypot(x - POND.x, z - POND.z) > POND.r - 0.6) continue;
     put(x, 1, z, rnd() < 0.5 ? 'jade' : 'jadeLight');
   }
-  for (let i = 0; i < 90; i++) {
+  for (let i = 0; i < 160; i++) {
     const a = rnd() * Math.PI * 2, rr = POND.r - 0.5 - rnd() * 1.3;
     const x = Math.round(POND.x + Math.cos(a) * rr), z = Math.round(POND.z + Math.sin(a) * rr);
     const base = Math.round(landH(x, z));
@@ -485,10 +549,27 @@ function buildPondShore() {
     for (let k = 0; k < h; k++)
       put(x, base + 1 + k, z, k === h - 1 ? 'bambooLight' : (rnd() < 0.5 ? 'bamboo' : 'willow'));
   }
+  // stepping stones and a stone water basin beside the path
+  for (let i = 0; i < 26; i++) {
+    const t = i / 26;
+    const x = Math.round(lerp(6.4, 5.2, t) + Math.sin(t * 9) * 0.8);
+    const z = Math.round(lerp(15.2, 10.4, t));
+    if (streamProfile(x, z) !== null) continue;
+    put(x, Math.round(landH(x, z)) + 1, z, rnd() < 0.5 ? 'stoneLight' : 'stone');
+  }
+  {
+    const bx = 6.8, bz = 9.0;
+    const by = Math.round(landH(bx, bz));
+    put(bx, by + 1, bz, 'stone');
+    for (const p of [[-1, 0], [1, 0], [0, -1], [0, 1]]) put(bx + p[0], by + 1, bz + p[1], 'stone');
+    put(bx, by + 2, bz, 'water');
+    put(bx, by + 1, bz, 'jadeDark');
+  }
 }
 
 /* ------------------------------------------------------------- the pagoda */
 const FLOOR_HW = [5, 4, 3, 3, 2];
+const FLOOR_EAVE = [6, 6, 5, 4, 4];
 const FLOOR_STEP = 5;
 const doorPanels = [];
 const floorHitBoxes = [];
@@ -519,7 +600,7 @@ function buildPagoda() {
   for (let f = 0; f < 5; f++) {
     const hw = FLOOR_HW[f];
     const fy = BASE_Y + f * FLOOR_STEP;
-    const eave = hw + 2;
+    const eave = FLOOR_EAVE[f];
     const dW = hw >= 4 ? 2 : 1;          // half width of one door leaf
 
     square(cx, cz, hw, fy, 'teak');
@@ -776,7 +857,7 @@ function buildPath() {
 }
 
 function buildBridge() {
-  const bx = -22.5, bz = STREAM_Z, span = 11;
+  const bx = -23.5, bz = STREAM_Z, span = 11;
   for (let i = -span / 2; i <= span / 2; i++) {
     const t = i / (span / 2);
     const y = Math.round(3.0 + 2.5 * (1 - t * t));
@@ -796,7 +877,7 @@ const FENCE_RUNS = [
   [[-22, -6], [-6, -20]],
   [[8, -21], [22, -9]],
   [[21, 6], [14, 19]],
-  [[-19, 16], [-24, 8]],
+  [[-16, 18], [-19, 13]],
 ];
 function buildFence() {
   for (const run of FENCE_RUNS) {
@@ -833,8 +914,7 @@ function buildJizo(x, z, flip) {
 
 const lanterns = [];
 function buildLantern(x, z, interactive) {
-  const id = lanterns.length;
-  const key = 'glass' + (id % 4);
+  const key = interactive === false ? 'glass4' : 'glass' + (lanterns.length % 4);
   const base = baseY(x, z);
   box(x - 1, base, z - 1, 3, 1, 3, 'stoneDark');
   put(x, base + 1, z, 'stone');
@@ -884,7 +964,7 @@ function buildFlowers() {
     const a = rnd() * 6.283, rr = 11 + rnd() * 15;
     const x = Math.round(Math.cos(a) * rr), z = Math.round(Math.sin(a) * rr);
     if (!insideIsland(x, z)) continue;
-    if (Math.hypot(x, z) < 10.6) continue;
+    if (Math.hypot(x, z) < 12.2) continue;
     if (Math.hypot(x - POND.x, z - POND.z) < POND.r + 1.2) continue;
     if (streamProfile(x, z) !== null) continue;
     let near = false;
@@ -947,11 +1027,49 @@ function buildIslands() {
   floatingIsland(-34, 20, 23, 5, 'garden');
   floatingIsland(25, 26, -37, 6, 'maple');
   floatingIsland(-31, 8, -33, 4, 'pine');
-  for (let i = 0; i < 26; i++) {
-    const a = rnd() * 6.283, d = 21 + rnd() * 16;
-    put(Math.round(Math.cos(a) * d), -14 - (rnd() * 13 | 0), Math.round(Math.sin(a) * d),
-      rnd() < 0.5 ? 'stone' : 'stoneDark');
+  floatingIsland(40, 24, 6, 4, 'maple');
+  floatingIsland(-24, 32, -30, 5, 'pine');
+  floatingIsland(14, 33, 28, 4, 'garden');
+  floatingIsland(-42, 6, -8, 4, 'pine');
+}
+
+/* Loose rock drifting under the island. Added after the prune below so it
+   keeps its deliberately disconnected look. */
+function buildDebris() {
+  for (let i = 0; i < 80; i++) {
+    const a = rnd() * 6.283, d = 19 + rnd() * 21;
+    const x = Math.round(Math.cos(a) * d);
+    const y = -10 - (rnd() * 18 | 0);
+    const z = Math.round(Math.sin(a) * d);
+    const key = rnd() < 0.5 ? 'stone' : 'stoneDark';
+    put(x, y, z, key);
+    if (rnd() < 0.8) put(x + (rnd() < 0.5 ? 1 : -1), y, z, key);
+    if (rnd() < 0.6) put(x, y + 1, z, 'mossDark');
+    if (rnd() < 0.45) put(x, y - 1, z, 'stoneDark');
+    if (rnd() < 0.25) put(x + 1, y + 1, z, 'stone');
   }
+}
+
+/* Drops any voxel that ended up with no neighbour at all — a stray cube
+   hanging in mid-air reads as a bug, a deliberate rock does not. */
+function pruneFloating() {
+  const dead = [];
+  for (let y = 0; y < GH; y++) {
+    const wy = y + Y0;
+    for (let z = 0; z < GD; z++) {
+      const wz = z + Z0;
+      for (let x = 0; x < GW; x++) {
+        const i = (y * GD + z) * GW + x;
+        if (!GRID[i]) continue;
+        const wx = x + X0;
+        if (solid(wx + 1, wy, wz) || solid(wx - 1, wy, wz) || solid(wx, wy + 1, wz) ||
+            solid(wx, wy - 1, wz) || solid(wx, wy, wz + 1) || solid(wx, wy, wz - 1)) continue;
+        dead.push(i);
+      }
+    }
+  }
+  for (let i = 0; i < dead.length; i++) GRID[dead[i]] = 0;
+  return dead.length;
 }
 
 /* ------------------------------------------------------------- build it */
@@ -967,10 +1085,12 @@ buildJizo(-4.6, 9.4, true);
 buildJizo(4.4, 8.2, false);
 buildLantern(5.5, 16.5);
 buildLantern(-5.5, 16.5);
-buildLantern(-19.0, 1.5);
+buildLantern(-21.0, 1.5);
 buildLantern(9.5, 12.5);
 buildFlowers();
 buildIslands();
+console.info('[Space Bunny] pruned ' + pruneFloating() + ' adrift voxels');
+buildDebris();
 
 let pagodaVoxels = 0;
 for (let y = PAGODA_GROUND; y < 48; y++)
@@ -1098,6 +1218,7 @@ if (MATS['water']) {
   MATS['water'].depthWrite = false;
   MATS['water'].emissive = new THREE.Color(0x0B2830);
   MATS['water'].emissiveIntensity = 0.35;
+  MATS['water'].needsUpdate = true;   // bumpMap is a shader define
 }
 const pondMesh = new THREE.Mesh(
   new THREE.CircleGeometry(POND.r + 1.0, 64), MATS['water']
@@ -1202,6 +1323,9 @@ birdMesh.instanceColor.needsUpdate = true;
 scene.add(birdMesh);
 
 /* --------------------------------------------------------------- clouds */
+/* the clouds are hand-placed rather than baked from the grid, so their
+   material has to be built here */
+if (!MATS['cloud']) MATS['cloud'] = makeMat('cloud');
 const cloudGroups = [];
 for (let g = 0; g < 3; g++) {
   const cells = [];
@@ -1404,8 +1528,11 @@ function skyState(e) {
 }
 
 /* -------------------------------------------------------------- state */
+/* t = 0 sunrise, 0.25 noon, 0.5 sunset, 0.75 midnight; the cycle runs a
+   full turn every 90 s, so the opening shot lands in the golden hour and
+   the lanterns come up on its own a few seconds later */
 const state = {
-  t: 0.28,
+  t: 0.40,
   playing: true,
   speed: 1 / 90,
   fps: 60,
@@ -1439,6 +1566,7 @@ function updateDay(t) {
   if (MATS['shoji']) MATS['shoji'].emissiveIntensity = 0.30 + lampLevel * 1.9;
   for (const key of ['glass0', 'glass1', 'glass2', 'glass3'])
     if (MATS[key]) MATS[key].emissiveIntensity = 0.5 + lampLevel * 1.5;
+  if (MATS['glass4']) MATS['glass4'].emissiveIntensity = 0.4 + lampLevel * 0.9;
   if (MATS['water']) MATS['water'].emissiveIntensity = 0.25 + lampLevel * 0.5;
   if (MATS['cloud']) MATS['cloud'].emissiveIntensity = 0.14 + (1 - lampLevel) * 0.22;
   if (MATS['gold']) MATS['gold'].emissiveIntensity = 0.18 + lampLevel * 0.5;
