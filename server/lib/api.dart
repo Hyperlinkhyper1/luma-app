@@ -2451,7 +2451,7 @@ class Api {
     final mode = body['model'] is String ? body['model'] as String : 'normal';
     if (mode == 'smartest' && user.planId != 'nova') {
       return errorResponse(
-          403, 'plan_required', 'Pulsar requires a Nova ($5/month) plan.');
+          403, 'plan_required', 'Pulsar requires a Nova (\$5/month) plan.');
     }
     if (aiUsage.tokensUsed(user.id, const Duration(hours: 5)) >= kAiTokens5h) {
       return errorResponse(
