@@ -10,6 +10,7 @@ import 'package:luma/finance/logic/money.dart';
 import 'package:luma/settings/settings_controller.dart';
 import 'package:luma/settings/settings_scope.dart';
 import 'package:luma/theme/luma_theme.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 class _Finance implements FinanceRepository {
   @override
@@ -64,12 +65,34 @@ class _Finance implements FinanceRepository {
 }
 
 void main() {
+  testWidgets('greeting editor follows the Dutch app locale', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('nl'),
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
+        theme: LumaTheme.dark,
+        home: Scaffold(
+          body: HomeGreeting(
+            layout: HomeLayout.defaults('desktop'),
+            onEdit: () {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Samenvatting bewerken'), findsOneWidget);
+    expect(find.text('Alles bij elkaar'), findsOneWidget);
+  });
+
   testWidgets(
     'greeting remains visible with no tiles and custom summary is editable',
     (tester) async {
       var layout = HomeLayout(columns: 12, tiles: []);
       await tester.pumpWidget(
         MaterialApp(
+          localizationsDelegates: L.localizationsDelegates,
+          supportedLocales: L.supportedLocales,
           theme: LumaTheme.dark,
           home: Scaffold(
             body: StatefulBuilder(
@@ -112,6 +135,8 @@ void main() {
   ) async {
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
         theme: LumaTheme.dark,
         home: FinanceScope(
           repository: _Finance(),

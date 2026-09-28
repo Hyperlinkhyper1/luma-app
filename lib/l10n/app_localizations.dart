@@ -583,6 +583,246 @@ abstract class L {
   /// **'Split'**
   String get homeAllocation;
 
+  /// No description provided for @homeSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save your home: {error}'**
+  String homeSaveFailed(String error);
+
+  /// No description provided for @homeAddSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Make room for what matters'**
+  String get homeAddSheetTitle;
+
+  /// No description provided for @homeEditLayout.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit layout'**
+  String get homeEditLayout;
+
+  /// No description provided for @homeEditingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Make yourself at home'**
+  String get homeEditingTitle;
+
+  /// No description provided for @homePhoneLayout.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone layout'**
+  String get homePhoneLayout;
+
+  /// No description provided for @homeDesktopLayout.
+  ///
+  /// In en, this message translates to:
+  /// **'Desktop & laptop layout'**
+  String get homeDesktopLayout;
+
+  /// No description provided for @homeResetDashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset to original dashboard'**
+  String get homeResetDashboard;
+
+  /// No description provided for @homeAddTile.
+  ///
+  /// In en, this message translates to:
+  /// **'Add tile'**
+  String get homeAddTile;
+
+  /// No description provided for @homeSaveLayout.
+  ///
+  /// In en, this message translates to:
+  /// **'Save layout'**
+  String get homeSaveLayout;
+
+  /// No description provided for @homeEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit home'**
+  String get homeEdit;
+
+  /// No description provided for @homeDragHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag a tile by its title. Drag its lower corner to resize. Everything snaps into place; overlapping tiles move down.'**
+  String get homeDragHint;
+
+  /// No description provided for @homeUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get homeUnavailable;
+
+  /// No description provided for @homeInspiration.
+  ///
+  /// In en, this message translates to:
+  /// **'A little inspiration'**
+  String get homeInspiration;
+
+  /// No description provided for @homeEditSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit summary'**
+  String get homeEditSummary;
+
+  /// No description provided for @homeCashBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'Cash balance'**
+  String get homeCashBalance;
+
+  /// No description provided for @homeCustomText.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom text'**
+  String get homeCustomText;
+
+  /// No description provided for @homeSummaryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Greeting summary'**
+  String get homeSummaryTitle;
+
+  /// No description provided for @homeSummaryDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Your greeting always stays at the top. Choose what appears beneath it.'**
+  String get homeSummaryDescription;
+
+  /// No description provided for @homeShowInGreeting.
+  ///
+  /// In en, this message translates to:
+  /// **'Show in greeting'**
+  String get homeShowInGreeting;
+
+  /// No description provided for @homeSummaryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Label'**
+  String get homeSummaryLabel;
+
+  /// No description provided for @homeSummaryLabelHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Today’s focus'**
+  String get homeSummaryLabelHint;
+
+  /// No description provided for @homeSummaryText.
+  ///
+  /// In en, this message translates to:
+  /// **'Text'**
+  String get homeSummaryText;
+
+  /// No description provided for @homeSummaryTextHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Make time for what matters.'**
+  String get homeSummaryTextHint;
+
+  /// No description provided for @homeApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get homeApply;
+
+  /// No description provided for @commonCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get commonCancel;
+
+  /// No description provided for @homeTileShortcut.
+  ///
+  /// In en, this message translates to:
+  /// **'App shortcut'**
+  String get homeTileShortcut;
+
+  /// No description provided for @homeTileRecentActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent activity'**
+  String get homeTileRecentActivity;
+
+  /// No description provided for @homeTileFinanceOverview.
+  ///
+  /// In en, this message translates to:
+  /// **'Finance overview'**
+  String get homeTileFinanceOverview;
+
+  /// No description provided for @homeTilePinnedNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Pinned note'**
+  String get homeTilePinnedNote;
+
+  /// No description provided for @homeTilePluginShortcut.
+  ///
+  /// In en, this message translates to:
+  /// **'Plugin shortcut'**
+  String get homeTilePluginShortcut;
+
+  /// No description provided for @homeTileMinecraftInstance.
+  ///
+  /// In en, this message translates to:
+  /// **'Minecraft instance'**
+  String get homeTileMinecraftInstance;
+
+  /// No description provided for @homeTileErrands.
+  ///
+  /// In en, this message translates to:
+  /// **'Errands'**
+  String get homeTileErrands;
+
+  /// No description provided for @homeTileStockChart.
+  ///
+  /// In en, this message translates to:
+  /// **'Stock chart'**
+  String get homeTileStockChart;
+
+  /// No description provided for @homeTileGithubActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub activity'**
+  String get homeTileGithubActivity;
+
+  /// No description provided for @homeTileGithubIssues.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub issues'**
+  String get homeTileGithubIssues;
+
+  /// No description provided for @homeTileAiUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'AI usage'**
+  String get homeTileAiUsage;
+
+  /// No description provided for @homeTileCalculator.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculator'**
+  String get homeTileCalculator;
+
+  /// No description provided for @homeTileClockDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Clock & date'**
+  String get homeTileClockDate;
+
+  /// No description provided for @homeTileFocusTimer.
+  ///
+  /// In en, this message translates to:
+  /// **'Focus timer'**
+  String get homeTileFocusTimer;
+
+  /// No description provided for @homeTileQuickActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick actions'**
+  String get homeTileQuickActions;
+
   /// No description provided for @pinEnterNew.
   ///
   /// In en, this message translates to:

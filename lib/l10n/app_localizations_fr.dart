@@ -260,6 +260,130 @@ class LFr extends L {
   String get homeAllocation => 'Allocation';
 
   @override
+  String homeSaveFailed(String error) {
+    return 'Could not save your home: $error';
+  }
+
+  @override
+  String get homeAddSheetTitle => 'Make room for what matters';
+
+  @override
+  String get homeEditLayout => 'Edit layout';
+
+  @override
+  String get homeEditingTitle => 'Make yourself at home';
+
+  @override
+  String get homePhoneLayout => 'Phone layout';
+
+  @override
+  String get homeDesktopLayout => 'Desktop & laptop layout';
+
+  @override
+  String get homeResetDashboard => 'Reset to original dashboard';
+
+  @override
+  String get homeAddTile => 'Add tile';
+
+  @override
+  String get homeSaveLayout => 'Save layout';
+
+  @override
+  String get homeEdit => 'Edit home';
+
+  @override
+  String get homeDragHint =>
+      'Drag a tile by its title. Drag its lower corner to resize. Everything snaps into place; overlapping tiles move down.';
+
+  @override
+  String get homeUnavailable => 'Unavailable';
+
+  @override
+  String get homeInspiration => 'A little inspiration';
+
+  @override
+  String get homeEditSummary => 'Edit summary';
+
+  @override
+  String get homeCashBalance => 'Cash balance';
+
+  @override
+  String get homeCustomText => 'Custom text';
+
+  @override
+  String get homeSummaryTitle => 'Greeting summary';
+
+  @override
+  String get homeSummaryDescription =>
+      'Your greeting always stays at the top. Choose what appears beneath it.';
+
+  @override
+  String get homeShowInGreeting => 'Show in greeting';
+
+  @override
+  String get homeSummaryLabel => 'Label';
+
+  @override
+  String get homeSummaryLabelHint => 'Today’s focus';
+
+  @override
+  String get homeSummaryText => 'Text';
+
+  @override
+  String get homeSummaryTextHint => 'Make time for what matters.';
+
+  @override
+  String get homeApply => 'Apply';
+
+  @override
+  String get commonCancel => 'Cancel';
+
+  @override
+  String get homeTileShortcut => 'App shortcut';
+
+  @override
+  String get homeTileRecentActivity => 'Recent activity';
+
+  @override
+  String get homeTileFinanceOverview => 'Finance overview';
+
+  @override
+  String get homeTilePinnedNote => 'Pinned note';
+
+  @override
+  String get homeTilePluginShortcut => 'Plugin shortcut';
+
+  @override
+  String get homeTileMinecraftInstance => 'Minecraft instance';
+
+  @override
+  String get homeTileErrands => 'Errands';
+
+  @override
+  String get homeTileStockChart => 'Stock chart';
+
+  @override
+  String get homeTileGithubActivity => 'GitHub activity';
+
+  @override
+  String get homeTileGithubIssues => 'GitHub issues';
+
+  @override
+  String get homeTileAiUsage => 'AI usage';
+
+  @override
+  String get homeTileCalculator => 'Calculator';
+
+  @override
+  String get homeTileClockDate => 'Clock & date';
+
+  @override
+  String get homeTileFocusTimer => 'Focus timer';
+
+  @override
+  String get homeTileQuickActions => 'Quick actions';
+
+  @override
   String get pinEnterNew => 'Saisissez un nouveau code PIN à 8 chiffres';
 
   @override

@@ -62,7 +62,7 @@ class _HomeGreetingState extends State<HomeGreeting> {
           final needsHoldings = metric == 'investments' || metric == 'netWorth';
           if ((needsTransactions && transactions.hasError) ||
               (needsHoldings && holdings.hasError)) {
-            return _card(_label(context, metric), 'Unavailable');
+            return _card(_label(context, metric), L.of(context).homeUnavailable);
           }
           if ((needsTransactions && !transactions.hasData) ||
               (needsHoldings && !holdings.hasData)) {
@@ -108,13 +108,13 @@ class _HomeGreetingState extends State<HomeGreeting> {
 
   Widget _card(String label, String value) {
     final palette = context.luma;
-    final t = Localizations.of<L>(context, L);
+    final t = L.of(context);
     final now = DateTime.now();
     final greeting = now.hour < 12
-        ? (t?.homeGreetingMorning ?? 'Good morning')
+        ? t.homeGreetingMorning
         : now.hour < 18
-        ? (t?.homeGreetingAfternoon ?? 'Good afternoon')
-        : (t?.homeGreetingEvening ?? 'Good evening');
+        ? t.homeGreetingAfternoon
+        : t.homeGreetingEvening;
     return Container(
       key: const ValueKey('home-greeting'),
       padding: const EdgeInsets.all(24),
@@ -160,7 +160,7 @@ class _HomeGreetingState extends State<HomeGreeting> {
           ),
           const SizedBox(height: 24),
           Text(
-            label.isEmpty ? 'A little inspiration' : label,
+            label.isEmpty ? t.homeInspiration : label,
             style: TextStyle(
               color: palette.textSecondary,
               fontSize: 13,
@@ -185,7 +185,7 @@ class _HomeGreetingState extends State<HomeGreeting> {
               child: OutlinedButton.icon(
                 onPressed: widget.onEdit,
                 icon: const Icon(Icons.edit_outlined, size: 16),
-                label: const Text('Edit summary'),
+                label: Text(t.homeEditSummary),
               ),
             ),
         ],
@@ -195,14 +195,14 @@ class _HomeGreetingState extends State<HomeGreeting> {
 }
 
 String _label(BuildContext context, String metric) {
-  final t = Localizations.of<L>(context, L);
+  final t = L.of(context);
   return switch (metric) {
-    'cash' => 'Cash balance',
-    'investments' => t?.homeInvestments ?? 'Investments',
-    'income' => t?.homeIncomeMonth ?? 'Came in this month',
-    'spending' => t?.homeSpentMonth ?? 'Went out this month',
-    'custom' => 'Custom text',
-    _ => t?.homeNetWorth ?? 'All together',
+    'cash' => t.homeCashBalance,
+    'investments' => t.homeInvestments,
+    'income' => t.homeIncomeMonth,
+    'spending' => t.homeSpentMonth,
+    'custom' => t.homeCustomText,
+    _ => t.homeNetWorth,
   };
 }
 
@@ -232,7 +232,7 @@ class _SummaryDialogState extends State<_SummaryDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Greeting summary'),
+    title: Text(L.of(context).homeSummaryTitle),
     content: SizedBox(
       width: 420,
       child: SingleChildScrollView(
@@ -240,14 +240,14 @@ class _SummaryDialogState extends State<_SummaryDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Your greeting always stays at the top. Choose what appears beneath it.',
+            Text(
+              L.of(context).homeSummaryDescription,
             ),
             const SizedBox(height: 20),
             DropdownButtonFormField<String>(
               initialValue: metric,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Show in greeting'),
+              decoration: InputDecoration(labelText: L.of(context).homeShowInGreeting),
               items: [
                 for (final item in HomeLayout.heroMetrics)
                   DropdownMenuItem(
@@ -262,9 +262,9 @@ class _SummaryDialogState extends State<_SummaryDialog> {
               TextField(
                 controller: label,
                 maxLength: 120,
-                decoration: const InputDecoration(
-                  labelText: 'Label',
-                  hintText: 'Today’s focus',
+                decoration: InputDecoration(
+                  labelText: L.of(context).homeSummaryLabel,
+                  hintText: L.of(context).homeSummaryLabelHint,
                 ),
               ),
               const SizedBox(height: 12),
@@ -272,9 +272,9 @@ class _SummaryDialogState extends State<_SummaryDialog> {
                 controller: text,
                 maxLines: 3,
                 maxLength: 500,
-                decoration: const InputDecoration(
-                  labelText: 'Text',
-                  hintText: 'Make time for what matters.',
+                decoration: InputDecoration(
+                  labelText: L.of(context).homeSummaryText,
+                  hintText: L.of(context).homeSummaryTextHint,
                 ),
               ),
             ],
@@ -285,7 +285,7 @@ class _SummaryDialogState extends State<_SummaryDialog> {
     actions: [
       TextButton(
         onPressed: () => Navigator.pop(context),
-        child: const Text('Cancel'),
+        child: Text(L.of(context).commonCancel),
       ),
       FilledButton(
         onPressed: () => Navigator.pop(
@@ -296,7 +296,7 @@ class _SummaryDialogState extends State<_SummaryDialog> {
             heroText: text.text.trim(),
           ),
         ),
-        child: const Text('Apply'),
+        child: Text(L.of(context).homeApply),
       ),
     ],
   );

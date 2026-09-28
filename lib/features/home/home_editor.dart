@@ -412,7 +412,9 @@ class _HomeGridState extends State<HomeGrid> {
     final definitions = dashboardTileDefinitions.where(
       (definition) => definition.kind == tile.kind,
     );
-    final title = definitions.isEmpty ? tile.kind : definitions.first.title;
+    final title = definitions.isEmpty
+        ? tile.kind
+        : definitions.first.localizedTitle(context);
     final icon = tile.kind == 'shortcut'
         ? switch (tile.config['destination']) {
             5 => Icons.smart_toy_rounded,

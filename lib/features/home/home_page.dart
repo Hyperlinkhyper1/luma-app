@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../theme/luma_theme.dart';
+import '../../l10n/app_localizations.dart';
 import 'dashboard_tiles.dart';
 import 'home_editor.dart';
 import 'home_layout.dart';
@@ -60,7 +61,7 @@ class _HomePageState extends State<HomePage> {
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not save your home: $error')),
+          SnackBar(content: Text(L.of(context).homeSaveFailed(error.toString()))),
         );
       }
     } finally {
@@ -79,10 +80,10 @@ class _HomePageState extends State<HomePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Padding(
+              Padding(
                 padding: EdgeInsets.fromLTRB(24, 0, 24, 12),
                 child: Text(
-                  'Make room for what matters',
+                  L.of(context).homeAddSheetTitle,
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
@@ -96,7 +97,7 @@ class _HomePageState extends State<HomePage> {
                     for (final item in dashboardTileDefinitions)
                       ListTile(
                         leading: Icon(item.icon, color: context.luma.accent),
-                        title: Text(item.title),
+                        title: Text(item.localizedTitle(context)),
                         trailing: const Icon(Icons.add_rounded),
                         onTap: () => Navigator.pop(context, item),
                       ),
@@ -146,7 +147,7 @@ class _HomePageState extends State<HomePage> {
                 actions: [
                   TextButton(
                     onPressed: () => setState(() => _draft = repo.layout),
-                    child: const Text("Edit layout"),
+                    child: Text(L.of(context).homeEditLayout),
                   ),
                 ],
               ),
@@ -202,8 +203,8 @@ class _HomePageState extends State<HomePage> {
                                       children: [
                                         Text(
                                           editing
-                                              ? 'Make yourself at home'
-                                              : 'How things look',
+                                              ? L.of(context).homeEditingTitle
+                                              : L.of(context).homeAtAGlance,
                                           style: Theme.of(context)
                                               .textTheme
                                               .headlineSmall
@@ -216,8 +217,8 @@ class _HomePageState extends State<HomePage> {
                                         if (editing)
                                           Text(
                                             repo.family == 'phone'
-                                                ? 'Phone layout'
-                                                : 'Desktop & laptop layout',
+                                                ? L.of(context).homePhoneLayout
+                                                : L.of(context).homeDesktopLayout,
                                             style: TextStyle(
                                               color: palette.textSecondary,
                                               fontSize: 12,
@@ -242,14 +243,14 @@ class _HomePageState extends State<HomePage> {
                                                         repo.family,
                                                       ),
                                                 ),
-                                          child: const Text(
-                                            'Reset to original dashboard',
+                                          child: Text(
+                                            L.of(context).homeResetDashboard,
                                           ),
                                         ),
                                         OutlinedButton.icon(
                                           onPressed: _saving ? null : _add,
                                           icon: const Icon(Icons.add_rounded),
-                                          label: const Text('Add tile'),
+                                          label: Text(L.of(context).homeAddTile),
                                         ),
                                         TextButton(
                                           onPressed: _saving
@@ -257,7 +258,7 @@ class _HomePageState extends State<HomePage> {
                                               : () => setState(
                                                   () => _draft = null,
                                                 ),
-                                          child: const Text('Cancel'),
+                                          child: Text(L.of(context).commonCancel),
                                         ),
                                         FilledButton.icon(
                                           onPressed: _saving ? null : _save,
@@ -270,7 +271,7 @@ class _HomePageState extends State<HomePage> {
                                                       ),
                                                 )
                                               : const Icon(Icons.check_rounded),
-                                          label: const Text('Save layout'),
+                                          label: Text(L.of(context).homeSaveLayout),
                                         ),
                                       ]
                                     : [
@@ -278,7 +279,7 @@ class _HomePageState extends State<HomePage> {
                                           onPressed: () => setState(
                                             () => _draft = repo.layout,
                                           ),
-                                          tooltip: 'Edit home',
+                                          tooltip: L.of(context).homeEdit,
                                           visualDensity: VisualDensity.compact,
                                           color: palette.textMuted,
                                           icon: const Icon(
@@ -294,7 +295,7 @@ class _HomePageState extends State<HomePage> {
                             Padding(
                               padding: const EdgeInsets.only(top: 12),
                               child: Text(
-                                'Drag a tile by its title. Drag its lower corner to resize. Everything snaps into place; overlapping tiles move down.',
+                                L.of(context).homeDragHint,
                                 style: TextStyle(
                                   color: palette.textSecondary,
                                   fontSize: 12,

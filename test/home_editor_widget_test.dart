@@ -14,6 +14,7 @@ import 'package:luma/features/home/home_page.dart';
 import 'package:luma/features/home/home_repository.dart';
 import 'package:luma/features/home/home_scope.dart';
 import 'package:luma/theme/luma_theme.dart';
+import 'package:luma/l10n/app_localizations.dart';
 import 'package:luma/finance/data/database.dart';
 import 'package:luma/finance/finance_repository.dart';
 import 'package:luma/finance/finance_scope.dart';
@@ -96,6 +97,8 @@ void main() {
       final capture = GlobalKey();
       await tester.pumpWidget(
         MaterialApp(
+          localizationsDelegates: L.localizationsDelegates,
+          supportedLocales: L.supportedLocales,
           theme: previewTheme,
           home: MediaQuery(
             data: MediaQueryData(
@@ -323,6 +326,8 @@ void main() {
     });
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
         theme: LumaTheme.light,
         home: HomeScope(
           repository: repo,

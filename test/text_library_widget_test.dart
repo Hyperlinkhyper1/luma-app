@@ -175,7 +175,7 @@ void main() {
       await settle(tester);
 
       expect(find.text('Biology'), findsWidgets);
-      expect(find.text('Nothing written here yet'), findsOneWidget);
+      expect(find.text('No texts yet'), findsOneWidget);
       final subjects = await tester.runAsync(() => repo.loadLibrary());
       expect(subjects!.subjects.single.name, 'Biology');
       await finish(tester);
