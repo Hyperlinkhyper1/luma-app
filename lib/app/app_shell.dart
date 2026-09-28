@@ -32,6 +32,7 @@ import '../features/plugins/installed/file_viewer/file_viewer_page.dart';
 import '../features/plugins/installed/groceries/groceries_page.dart';
 import '../features/plugins/installed/minecraft_launcher/minecraft_launcher_page.dart';
 import '../features/plugins/installed/mood_journal/mood_journal_page.dart';
+import '../features/plugins/installed/text_library/text_library_page.dart';
 import '../features/plugins/installed/ai_usage/ai_usage_shell.dart';
 import '../features/plugins/installed/steam_tools/steam_tools_shell.dart';
 import '../features/plugins/installed/ai_detector/ai_detector_page.dart';
@@ -749,6 +750,7 @@ class _AppShellState extends State<AppShell> {
     'transport-tracker' => const TransportTrackerPage(),
     'city-planner' => const CityPlannerPage(),
     'mood-journal' => const MoodJournalPage(),
+    'text-library' => const TextLibraryPage(),
     'ai-usage' => const AiUsagePage(),
     'steam-tools' => const SteamToolsPage(),
     'ai-detector' => const AiDetectorPage(),

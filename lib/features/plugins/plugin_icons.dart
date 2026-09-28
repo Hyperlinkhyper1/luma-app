@@ -49,8 +49,6 @@ IconData pluginIconFor(String? name) {
       return Icons.local_grocery_store_rounded;
     case 'speed':
       return Icons.speed_rounded;
-    case 'lightbulb':
-      return Icons.lightbulb_rounded;
     case 'wallet':
       return Icons.wallet_rounded;
     case 'checklist':
@@ -87,8 +85,6 @@ IconData pluginIconFor(String? name) {
       return Icons.flight_rounded;
     case 'draw':
       return Icons.draw_rounded;
-    case 'brush':
-      return Icons.brush_rounded;
     default:
       return Icons.extension_rounded;
   }
