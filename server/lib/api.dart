@@ -8,6 +8,7 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 
 import 'ai_benchmark_store.dart';
+import 'ai_mode_routing.dart';
 import 'ai_model_catalog.dart';
 import 'ai_model_refresh.dart';
 import 'preview_render.dart';
@@ -79,6 +80,7 @@ class ServerConfig {
     required this.publicUrl,
     required this.oauthProviders,
     this.searxngUrl,
+    this.openRouterApiKey,
   });
 
   final int port;
@@ -141,6 +143,26 @@ class ServerConfig {
 
   bool get googleKeyConfigured =>
       googleApiKey != null && googleApiKey!.isNotEmpty;
+
+  /// An OpenRouter key configured once by the operator — a second upstream
+  /// for the "Luma AI" modes next to [googleApiKey]. Which mode runs on
+  /// which upstream and model is picked in the admin dashboard's Assistant
+  /// tab (see [AiModeRoutingStore]). Never sent to clients.
+  final String? openRouterApiKey;
+
+  bool get openRouterKeyConfigured =>
+      openRouterApiKey != null && openRouterApiKey!.isNotEmpty;
+
+  /// The upstreams the Luma AI modes can currently be served by.
+  Set<AiUpstream> get configuredAiUpstreams => {
+        if (googleKeyConfigured) AiUpstream.google,
+        if (openRouterKeyConfigured) AiUpstream.openrouter,
+      };
+
+  String? aiUpstreamKey(AiUpstream upstream) => switch (upstream) {
+        AiUpstream.google => googleApiKey,
+        AiUpstream.openrouter => openRouterApiKey,
+      };
 
   /// An IsThereAnyDeal key configured once by the operator, so individual
   /// users never register for one of their own. Same deal as [mistralApiKey]:
@@ -250,6 +272,7 @@ class ServerConfig {
       mistralApiKey: env['LUMA_MISTRAL_API_KEY'],
       mistralAgentId: env['LUMA_MISTRAL_AGENT_ID'],
       googleApiKey: env['LUMA_GOOGLE_API_KEY'],
+      openRouterApiKey: env['LUMA_OPENROUTER_API_KEY'],
       itadApiKey: env['LUMA_ITAD_API_KEY'],
       groceriesUrl:
           env['LUMA_GROCERIES_URL'] ?? 'https://groceries.luma-app.cc',
@@ -593,6 +616,8 @@ class Api {
       ..get('/admin/groceries/status', _requireAdmin(_adminGroceriesStatus))
       ..post('/admin/ai-models/refresh', _requireAdmin(_adminAiModelsRefresh))
       ..get('/admin/ai-models/status', _requireAdmin(_adminAiModelsStatus))
+      ..post('/admin/ai-routes', _requireAdmin(_adminAiRoutesSave))
+      ..post('/admin/ai-routes/test', _requireAdmin(_adminAiRoutesTest))
       ..post('/admin/benchmark-banners/render',
           _requireAdmin(_adminBannersRender))
       ..post('/admin/benchmark-banners/stop', _requireAdmin(_adminBannersStop))
@@ -2182,7 +2207,9 @@ class Api {
         ((used * 100) / limit).clamp(0, 100).round();
     return jsonResponse(200, {
       'mistralConfigured': config.mistralKeyConfigured,
-      'googleConfigured': config.googleKeyConfigured,
+      // Named for Google because shipped apps read it to show the Luma AI
+      // modes; either upstream can serve them now.
+      'googleConfigured': config.configuredAiUpstreams.isNotEmpty,
       'usage': {
         'fiveHourPct': pct(
             aiUsage.tokensUsed(user.id, const Duration(hours: 5)), kAiTokens5h),
@@ -2196,41 +2223,78 @@ class Api {
     });
   }
 
-  /// The app's user-facing "Luma AI" modes and the Gemini model each maps
-  /// to. Clients only ever send the mode name; the real model names stay
-  /// server-side so they can be upgraded without an app release.
-  ///
-  /// Uses Google's rolling "-latest" aliases, not a pinned version like
-  /// "gemini-2.5-flash" — pinned versions get retired for newer API
-  /// keys/projects (404 "no longer available to new users") even while
-  /// still listed in /v1beta/openai/models. The aliases always resolve to
-  /// whatever Google currently serves for that tier.
-  ///
-  /// Pulsar shares Nebula's Flash model rather than a Pro one — free-tier
-  /// API keys get a hard `limit: 0` quota on every Pro-tier model
-  /// (confirmed directly against the API), so Pro isn't usable without
-  /// billing enabled on the key's project. Pulsar's "smartest" distinction
-  /// instead comes from the client sending `reasoning_effort: "high"`
-  /// (see AiMode.reasoningEffort), which this proxy forwards unchanged —
-  /// it only overrides `model`/`max_tokens` below, everything else in the
-  /// client's request body passes straight through to Google.
-  static const _googleModeModels = {
-    'normal': 'gemini-flash-lite-latest', // Aurora 1.0
-    'smarter': 'gemini-flash-latest', // Nebula 1.0
-    'smartest':
-        'gemini-flash-latest', // Pulsar 1.0 — same model, forced high reasoning effort
-  };
+  /// Which upstream and model each "Luma AI" mode runs on, as picked in the
+  /// admin dashboard's Assistant tab. Clients only ever send the mode name,
+  /// so models can change without an app release.
+  late final AiModeRoutingStore aiModeRoutes =
+      AiModeRoutingStore(config.dataDir);
 
-  /// Proxies a chat-completion request to Google AI Studio's
-  /// OpenAI-compatible endpoint using the operator-configured
-  /// LUMA_GOOGLE_API_KEY — same trust model as [_mistralChatProxy]: the key
-  /// never leaves this server. Each user is token-metered against rolling
+  /// Builds the upstream request body for [route] from the client's body.
+  /// Only `model`, `max_tokens` and reasoning are rewritten; everything else
+  /// (messages, tools) passes straight through. OpenRouter spells reasoning
+  /// as a `reasoning` object rather than OpenAI's `reasoning_effort`.
+  static Map<String, dynamic> _aiUpstreamBody(
+      Map<String, dynamic> body, AiModeRoute route) {
+    final maxTokensRaw = body['max_tokens'];
+    final effort = route.reasoningEffort ?? body['reasoning_effort'];
+    final out = {
+      ...body,
+      'model': route.model,
+      'max_tokens': (maxTokensRaw is int ? maxTokensRaw : 1024).clamp(1, 4096),
+    }
+      ..remove('agent_id')
+      ..remove('reasoning_effort');
+    if (effort is String && effort.isNotEmpty) {
+      if (route.upstream == AiUpstream.openrouter) {
+        out['reasoning'] =
+            effort == 'none' ? {'enabled': false} : {'effort': effort};
+      } else {
+        out['reasoning_effort'] = effort;
+      }
+    }
+    return out;
+  }
+
+  /// Sends one chat-completion body to [route]'s upstream with the
+  /// operator's key for it. Returns the status and the raw response body.
+  Future<(int, String)> _callAiUpstream(
+      AiModeRoute route, Map<String, dynamic> upstreamBody) async {
+    final httpClient = HttpClient();
+    try {
+      final upstreamRequest =
+          await httpClient.postUrl(Uri.parse(route.upstream.endpoint));
+      upstreamRequest.headers.set(HttpHeaders.authorizationHeader,
+          'Bearer ${config.aiUpstreamKey(route.upstream)}');
+      if (route.upstream == AiUpstream.openrouter) {
+        upstreamRequest.headers
+          ..set('HTTP-Referer', config.publicUrl)
+          ..set('X-Title', 'luma');
+      }
+      upstreamRequest.headers.contentType = ContentType.json;
+      upstreamRequest.write(jsonEncode(upstreamBody));
+      final upstreamResponse =
+          await upstreamRequest.close().timeout(const Duration(seconds: 60));
+      final responseBody =
+          await upstreamResponse.transform(utf8.decoder).join();
+      return (upstreamResponse.statusCode, responseBody);
+    } finally {
+      httpClient.close();
+    }
+  }
+
+  /// Proxies a "Luma AI" chat-completion request to whichever upstream
+  /// (Google AI Studio or OpenRouter) and model the operator routed the
+  /// requested mode to — same trust model as [_mistralChatProxy]: the keys
+  /// never leave this server. Each user is token-metered against rolling
   /// 5-hour and weekly budgets ([kAiTokens5h]/[kAiTokensWeek]) using the
-  /// exact `usage.total_tokens` Google reports per call.
+  /// exact `usage.total_tokens` the upstream reports per call.
+  ///
+  /// The path still says "google" because shipped apps call it by that
+  /// name; the mode, not the path, decides the upstream now.
   Future<Response> _googleChatProxy(Request request, StoredUser user) async {
-    if (!config.googleKeyConfigured) {
+    if (config.configuredAiUpstreams.isEmpty) {
       return errorResponse(
-          404, 'not_configured', 'No server-wide Google AI key is configured.');
+          404, 'not_configured', 'No server-wide Luma AI key is configured.');
     }
     Map<String, dynamic> body;
     try {
@@ -2256,44 +2320,129 @@ class Api {
               'over the coming days.');
     }
 
-    final model =
-        _googleModeModels[body['model']] ?? _googleModeModels['normal']!;
-    final maxTokensRaw = body['max_tokens'];
-    final upstreamBody = {
-      ...body,
-      'model': model,
-      'max_tokens': (maxTokensRaw is int ? maxTokensRaw : 1024).clamp(1, 4096),
-    }..remove('agent_id');
+    final mode = body['model'] is String ? body['model'] as String : 'normal';
+    final route = aiModeRoutes.resolve(mode, config.configuredAiUpstreams)!;
 
-    final httpClient = HttpClient();
     try {
-      final upstreamRequest = await httpClient.postUrl(Uri.parse(
-          'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'));
-      upstreamRequest.headers.set(
-          HttpHeaders.authorizationHeader, 'Bearer ${config.googleApiKey}');
-      upstreamRequest.headers.contentType = ContentType.json;
-      upstreamRequest.write(jsonEncode(upstreamBody));
-      final upstreamResponse =
-          await upstreamRequest.close().timeout(const Duration(seconds: 60));
-      final responseBody =
-          await upstreamResponse.transform(utf8.decoder).join();
-      if (upstreamResponse.statusCode == 200) {
+      final (status, responseBody) =
+          await _callAiUpstream(route, _aiUpstreamBody(body, route));
+      if (status == 200) {
         var tokens = 0;
         try {
           final decoded = jsonDecode(responseBody) as Map<String, dynamic>;
           tokens = (decoded['usage']?['total_tokens'] as num?)?.toInt() ?? 0;
         } catch (_) {}
-        // If Google somehow omits usage, charge a conservative flat amount
-        // so metering can't be sidestepped by malformed responses.
+        // If the upstream somehow omits usage, charge a conservative flat
+        // amount so metering can't be sidestepped by malformed responses.
         await aiUsage.recordTokens(user.id, tokens > 0 ? tokens : 500);
       }
-      return Response(upstreamResponse.statusCode,
+      return Response(status,
           body: responseBody, headers: {'Content-Type': 'application/json'});
     } catch (e) {
       return errorResponse(
           502, 'upstream_error', 'Could not reach the AI service.');
-    } finally {
-      httpClient.close();
+    }
+  }
+
+  /// Saves the Assistant tab's mode → upstream/model form. A blank model
+  /// clears that mode back to the defaults.
+  Future<Response> _adminAiRoutesSave(Request request) async {
+    Map<String, String> form = const {};
+    try {
+      form = Uri.splitQueryString(await request.readAsString());
+    } catch (_) {}
+    final routes = <String, AiModeRoute>{};
+    for (final mode in kAiModeNames.keys) {
+      final model = (form['$mode.model'] ?? '').trim();
+      if (model.isEmpty) continue;
+      final upstream = AiUpstream.parse(form['$mode.upstream']);
+      if (upstream == null) {
+        return errorResponse(400, 'bad_request', 'Unknown provider for $mode.');
+      }
+      if (!isValidAiModelId(model)) {
+        return errorResponse(
+            400, 'bad_request', '"$model" is not a valid model id.');
+      }
+      final effort = form['$mode.effort'] ?? '';
+      if (!kAiReasoningEfforts.contains(effort)) {
+        return errorResponse(
+            400, 'bad_request', 'Unknown reasoning effort for $mode.');
+      }
+      routes[mode] = AiModeRoute(upstream, model,
+          reasoningEffort: effort.isEmpty ? null : effort);
+    }
+    await aiModeRoutes.save(routes);
+    await store.logActivity(
+        'ai_routes_changed',
+        'Assistant models: ${[
+          for (final e in kAiModeNames.entries)
+            '${e.value} → ${routes[e.key]?.model ?? 'default'}'
+        ].join(', ')}');
+    return _adminFormResponse(request, '/admin',
+        fragment: 'assistant',
+        json: {
+          'ok': true,
+          'routes': {for (final e in routes.entries) e.key: e.value.toJson()}
+        });
+  }
+
+  /// Sends a one-line prompt through a mode's current route so the operator
+  /// can see a model id actually works before users hit it.
+  Future<Response> _adminAiRoutesTest(Request request) async {
+    Map<String, dynamic> body;
+    try {
+      body = await _readJson(request);
+    } on FormatException {
+      return errorResponse(400, 'bad_request', 'Malformed request.');
+    }
+    final mode = body['mode'];
+    if (mode is! String || !kAiModeNames.containsKey(mode)) {
+      return errorResponse(400, 'bad_request', 'Unknown mode.');
+    }
+    final route = aiModeRoutes.resolve(mode, config.configuredAiUpstreams);
+    if (route == null) {
+      return errorResponse(404, 'not_configured',
+          'Set LUMA_GOOGLE_API_KEY or LUMA_OPENROUTER_API_KEY first.');
+    }
+    final started = DateTime.now();
+    try {
+      final (status, responseBody) = await _callAiUpstream(
+          route,
+          _aiUpstreamBody({
+            'messages': [
+              {'role': 'user', 'content': 'Reply with just the word OK.'}
+            ],
+            'max_tokens': 256,
+          }, route));
+      final ms = DateTime.now().difference(started).inMilliseconds;
+      String? reply;
+      String? error;
+      try {
+        final decoded = jsonDecode(responseBody) as Map<String, dynamic>;
+        reply = decoded['choices']?[0]?['message']?['content'] as String?;
+        final err = decoded['error'];
+        error = err is Map ? err['message']?.toString() : err?.toString();
+      } catch (_) {
+        error = responseBody.length > 300
+            ? '${responseBody.substring(0, 300)}…'
+            : responseBody;
+      }
+      return jsonResponse(200, {
+        'ok': status == 200 && error == null,
+        'status': status,
+        'upstream': route.upstream.label,
+        'model': route.model,
+        'ms': ms,
+        'reply': reply,
+        'error': error,
+      });
+    } catch (e) {
+      return jsonResponse(200, {
+        'ok': false,
+        'upstream': route.upstream.label,
+        'model': route.model,
+        'error': 'Could not reach ${route.upstream.label}: $e',
+      });
     }
   }
 
@@ -8366,6 +8515,7 @@ syncToolbar();
       'admin_verified': 'Admin verified',
       'admin_revoked': 'Admin revoked',
       'plan_granted': 'Plan granted',
+      'ai_routes_changed': 'Assistant models',
       'admin_password_reset': 'Password reset',
       'admin_password_reset_cancelled': 'Password reset cancelled',
       'password_reset_done': 'New password set',
@@ -8513,8 +8663,10 @@ syncToolbar();
         '<button class="tab-btn" data-tab="activity">Activity</button>'
         '<button class="tab-btn" data-tab="plugins">Plugins</button>'
         '<button class="tab-btn" data-tab="metrics">Metrics</button>'
+        '<button class="tab-btn" data-tab="assistant">Assistant</button>'
         '<button class="tab-btn" data-tab="control">Maintenance</button>'
         '</div>'
+        '${_adminAssistantPanel()}'
         '<div class="tab-panel" id="panel-users">'
         '<div class="card table-card">'
         '<table><thead><tr><th>Email</th><th>Status</th><th>Plan</th>'
@@ -8750,6 +8902,7 @@ syncToolbar();
         '<script>$_adminMetricsScript</script>'
         '<script>$_adminGroceriesScript</script>'
         '<script>$_adminAiModelsScript</script>'
+        '<script>$_adminAssistantScript</script>'
         '<script>$_adminBannersScript</script>'
         '<script>${DeployConsole.deployScript}</script>'
         '<script>${UpdateCheckConsole.updateCheckScript}</script>'
@@ -8759,6 +8912,168 @@ syncToolbar();
     return Response(200,
         body: body, headers: {'Content-Type': 'text/html; charset=utf-8'});
   }
+
+  /// The Assistant tab: one row per Luma AI mode choosing the upstream (by
+  /// whose key it is paid for), the model id and an optional reasoning
+  /// override. Model suggestions come from the leaderboard catalogue for
+  /// OpenRouter, whose ids it already uses, and a short list for Google.
+  String _adminAssistantPanel() {
+    final configured = config.configuredAiUpstreams;
+    String esc(String s) => _htmlEscape(s);
+
+    final googleOptions = {
+      ...kDefaultAiModeModels[AiUpstream.google]!.values,
+      'gemini-pro-latest',
+      'gemini-2.5-flash',
+      'gemini-2.5-pro',
+    }.map((m) => '<option value="${esc(m)}">').join();
+    String price(double? p) =>
+        p == null ? '?' : '\$${p.toStringAsFixed(p < 1 ? 2 : 1)}';
+    final openRouterOptions = aiCatalog.models
+        .take(600)
+        .map((m) => '<option value="${esc(m.id)}">${esc(m.name)} · '
+            '${price(m.inputPricePerM)} in / ${price(m.outputPricePerM)} out per M'
+            '</option>')
+        .join();
+
+    final rows = kAiModeNames.entries.map((e) {
+      final mode = e.key;
+      final stored = aiModeRoutes.stored(mode);
+      final live = aiModeRoutes.resolve(mode, configured);
+      final upstream = stored?.upstream ??
+          live?.upstream ??
+          (configured.isEmpty ? AiUpstream.google : configured.first);
+      final upstreamOptions = AiUpstream.values.map((u) {
+        final hasKey = configured.contains(u);
+        return '<option value="${u.name}"${u == upstream ? ' selected' : ''}>'
+            '${esc(u.label)}${hasKey ? '' : ' (no key)'}</option>';
+      }).join();
+      final effortOptions = kAiReasoningEfforts.map((r) {
+        final label = r.isEmpty ? "App's choice" : r;
+        return '<option value="$r"'
+            '${(stored?.reasoningEffort ?? '') == r ? ' selected' : ''}>'
+            '$label</option>';
+      }).join();
+      final String status;
+      if (live == null) {
+        status = '<span class="badge err">no key</span>';
+      } else if (stored != null && stored.upstream != live.upstream) {
+        status = '<span class="badge warn">key missing — using '
+            '${esc(live.upstream.label)} default</span>';
+      } else if (stored == null) {
+        status = '<span class="badge warn">default</span>';
+      } else {
+        status = '<span class="badge ok">custom</span>';
+      }
+      return '<tr>'
+          '<td class="nowrap"><strong>${esc(e.value)}</strong>'
+          '<div class="muted" style="font-size:11px">$mode</div></td>'
+          '<td><select name="$mode.upstream" class="ai-upstream" '
+          'data-mode="$mode">$upstreamOptions</select></td>'
+          '<td><input type="text" name="$mode.model" id="ai-model-$mode" '
+          'list="ai-dl-${upstream.name}" value="${esc(stored?.model ?? '')}" '
+          'placeholder="${esc(live?.model ?? kDefaultAiModeModels[upstream]![mode]!)}" '
+          'maxlength="200" spellcheck="false" autocomplete="off"></td>'
+          '<td><select name="$mode.effort">$effortOptions</select></td>'
+          '<td class="nowrap">$status</td>'
+          '<td class="actions-cell"><button type="button" '
+          'class="btn btn-ghost btn-sm ai-test" data-mode="$mode">Test</button>'
+          '<div class="ai-test-out muted" id="ai-test-$mode"></div></td>'
+          '</tr>';
+    }).join();
+
+    final keyLine = AiUpstream.values.map((u) {
+      final ok = configured.contains(u);
+      final env = u == AiUpstream.google
+          ? 'LUMA_GOOGLE_API_KEY'
+          : 'LUMA_OPENROUTER_API_KEY';
+      return '<span class="badge ${ok ? 'ok' : 'err'}">${esc(u.label)}: '
+          '${ok ? 'key set' : 'no $env'}</span>';
+    }).join(' ');
+
+    return '<div class="tab-panel" id="panel-assistant">'
+        '<style>'
+        '.ai-routes select,.ai-routes input[type=text]{background:#1a1530;'
+        'color:#ece8f7;border:1px solid #2d2645;border-radius:9px;padding:7px 10px;'
+        'font-size:13px;font-family:inherit;outline:none;max-width:100%}'
+        '.ai-routes input[type=text]{width:100%;min-width:220px;'
+        'font-family:ui-monospace,Consolas,monospace;font-size:12.5px}'
+        '.ai-routes select:focus,.ai-routes input:focus{border-color:#8a7ee0}'
+        '.ai-test-out{font-size:11.5px;margin-top:4px;white-space:normal;'
+        'max-width:260px;text-align:right}'
+        '.ai-test-out.ok{color:#7ee08a}.ai-test-out.err{color:#e07e7e}'
+        '</style>'
+        '<div class="card">'
+        '<h2>Assistant models</h2>'
+        '<div class="maint-desc">Pick which provider and model serve each '
+        'Luma AI mode in the Assistant. Changes apply to the next message, '
+        'no app update needed. Leave a model blank to use the default shown '
+        'in grey. Usage limits are the same whichever model you pick, so '
+        'mind the per-token price on OpenRouter.</div>'
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'
+        '$keyLine</div>'
+        '<form method="post" action="/admin/ai-routes" class="ai-routes">'
+        '<div style="overflow-x:auto">'
+        '<table><thead><tr><th>Mode</th><th>Provider</th><th>Model</th>'
+        '<th>Reasoning</th><th>Status</th><th></th></tr></thead>'
+        '<tbody>$rows</tbody></table></div>'
+        '<div class="maint-actions" style="margin:16px 0 0">'
+        '<button type="submit" class="btn btn-primary">Save models</button>'
+        '<span class="muted" style="font-size:12px">Test uses the saved '
+        'settings — save first.</span>'
+        '</div>'
+        '</form>'
+        '<datalist id="ai-dl-google">$googleOptions</datalist>'
+        '<datalist id="ai-dl-openrouter">$openRouterOptions</datalist>'
+        '${aiCatalog.modelCount == 0 ? '<div class="muted" style="font-size:12px;margin-top:10px">No OpenRouter suggestions yet — press "Refresh model data" on the Maintenance tab to load the model list.</div>' : ''}'
+        '</div>'
+        '</div>';
+  }
+
+  /// Assistant tab: swaps a row's model suggestions when its provider
+  /// changes, and runs the per-mode Test button.
+  static const _adminAssistantScript = r'''
+(function () {
+  document.querySelectorAll('.ai-upstream').forEach(function (sel) {
+    sel.addEventListener('change', function () {
+      var input = document.getElementById('ai-model-' + sel.dataset.mode);
+      if (input) input.setAttribute('list', 'ai-dl-' + sel.value);
+    });
+  });
+  document.querySelectorAll('.ai-test').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var mode = btn.dataset.mode;
+      var out = document.getElementById('ai-test-' + mode);
+      btn.disabled = true;
+      out.className = 'ai-test-out muted';
+      out.textContent = 'Testing…';
+      fetch('/admin/ai-routes/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: mode }),
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          var who = (j.upstream || '') + ' · ' + (j.model || '');
+          if (j.ok) {
+            out.className = 'ai-test-out ok';
+            out.textContent = '✓ ' + who + ' — ' + j.ms + ' ms: "' +
+              String(j.reply || '').trim().slice(0, 60) + '"';
+          } else {
+            out.className = 'ai-test-out err';
+            out.textContent = '✗ ' + who + (j.status ? ' (' + j.status + ')' : '') +
+              ': ' + (j.error || (j.message) || 'failed');
+          }
+        })
+        .catch(function (e) {
+          out.className = 'ai-test-out err';
+          out.textContent = '✗ ' + e;
+        })
+        .finally(function () { btn.disabled = false; });
+    });
+  });
+})();
+''';
 
   /// Embedded stylesheet for the admin dashboard. Self-contained (no external
   /// fonts or CDNs), dark-only, built around the app's purple accent.
@@ -8997,6 +9312,7 @@ window.lumaAskReason = function (form, message) {
     activity: document.getElementById('panel-activity'),
     plugins: document.getElementById('panel-plugins'),
     metrics: document.getElementById('panel-metrics'),
+    assistant: document.getElementById('panel-assistant'),
     control: document.getElementById('panel-control'),
   };
   function activate(tab) {
