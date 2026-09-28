@@ -373,16 +373,7 @@
       "version": "1.0.0"
     },
     {
-      "id": "smart-home",
-      "name": "Smart Home",
-      "description": "Pair with an IKEA DIRIGERA hub to control your lamps, then save groups with their own brightness and color as one-tap presets.",
-      "icon": "lightbulb",
-      "category": "Utility",
-      "tags": ["Utility", "Home"],
-      "free": true,
-      "version": "1.0.0"
-    },
-    {
+
       "id": "whiteboard",
       "name": "Whiteboard",
       "description": "An endless sheet to draw on. Pen, highlighter, shapes, arrows, sticky notes and text, with seven inks, one-key tool shortcuts and full undo. Erase whole strokes with a sweep, pan and zoom the sheet, and export any board as a PNG cropped to exactly what you drew.",
@@ -391,30 +382,6 @@
       "tags": ["Productivity", "Utility"],
       "free": true,
       "version": "1.0.0"
-    },
-    {
-      "id": "free-sketch",
-      "name": "Free Sketch",
-      "description": "A full painting studio. 37 pressure-sensitive brushes — pencils, charcoal, inks, oils, watercolours that glaze, markers, airbrushes, smudge and blur — on layers with blend modes, clipping masks and alpha lock. Symmetry, selections, transform, fill, gradients and shapes, and export to PNG, JPEG, Photoshop PSD or OpenRaster.",
-      "icon": "brush",
-      "category": "Creativity",
-      "tags": ["Creativity", "Drawing", "Art"],
-      "free": true,
-      "version": "1.0.0"
-    },
-    {
-      "id": "small-games",
-      "name": "Small Games",
-      "version": "1.1.0",
-      "description": "Play BINGO, Poker, Blackjack, and Patience.",
-      "icon": "sports_esports",
-      "category": "Games",
-      "tags": [
-        "Games",
-        "BINGO",
-        "Card Games"
-      ],
-      "free": true
     }
   ]
 }

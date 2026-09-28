@@ -154,6 +154,9 @@ flutter:
     - assets/airline_tycoon/
     - assets/airline_tycoon/scene/
     - assets/airline_tycoon/scene/vendor/
+    # The Text Library's Minecraft hall. It loads three.js from the airline
+    # scene's vendor folder above rather than shipping a second copy.
+    - assets/text_library/scene/
     - assets/asset_studio/
     - assets/asset_studio/models/
     - assets/asset_studio/thumbs/
