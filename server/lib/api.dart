@@ -2234,6 +2234,59 @@ class Api {
   late final AiModeRoutingStore aiModeRoutes =
       AiModeRoutingStore(config.dataDir);
 
+  List<String>? _googleModelIdsCache;
+  int _googleModelIdsFetchedAtMs = 0;
+  static const _googleModelIdsTtl = Duration(minutes: 15);
+
+  /// The model ids the Assistant tab suggests for Google — everything the
+  /// operator's own key can see in AI Studio's model picker, restricted to
+  /// ones that actually answer chat (`generateContent`), not just the three
+  /// "-latest" aliases this server defaults new modes to. Cached for
+  /// [_googleModelIdsTtl] so opening the dashboard doesn't hit Google every
+  /// time; a failed or slow fetch falls back to the last good list, or an
+  /// empty one on the very first attempt (the "-latest" aliases still show
+  /// up via [kDefaultAiModeModels]).
+  Future<List<String>> _googleModelIdsForSuggestions() async {
+    if (!config.googleKeyConfigured) return const [];
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (_googleModelIdsCache != null &&
+        now - _googleModelIdsFetchedAtMs < _googleModelIdsTtl.inMilliseconds) {
+      return _googleModelIdsCache!;
+    }
+    final httpClient = HttpClient();
+    try {
+      final uri = Uri.parse(
+          'https://generativelanguage.googleapis.com/v1beta/models?key=${config.googleApiKey}&pageSize=1000');
+      final request = await httpClient.getUrl(uri);
+      final response =
+          await request.close().timeout(const Duration(seconds: 6));
+      final body = await response.transform(utf8.decoder).join();
+      if (response.statusCode != 200) return _googleModelIdsCache ?? const [];
+      final decoded = jsonDecode(body);
+      if (decoded is! Map || decoded['models'] is! List) {
+        return _googleModelIdsCache ?? const [];
+      }
+      final ids = <String>[];
+      for (final m in decoded['models'] as List) {
+        if (m is! Map) continue;
+        final methods = m['supportedGenerationMethods'];
+        if (methods is! List || !methods.contains('generateContent')) {
+          continue;
+        }
+        final name = m['name'];
+        if (name is String) ids.add(name.replaceFirst('models/', ''));
+      }
+      ids.sort();
+      _googleModelIdsCache = ids;
+      _googleModelIdsFetchedAtMs = now;
+      return ids;
+    } catch (_) {
+      return _googleModelIdsCache ?? const [];
+    } finally {
+      httpClient.close();
+    }
+  }
+
   /// Builds the upstream request body for [route] from the client's body.
   /// Only `model`, `max_tokens` and reasoning are rewritten; everything else
   /// (messages, tools) passes straight through. OpenRouter spells reasoning
@@ -8363,7 +8416,8 @@ syncToolbar();
 })();
 ''';
 
-  Response _adminDashboard(Request request) {
+  Future<Response> _adminDashboard(Request request) async {
+    final googleModels = await _googleModelIdsForSuggestions();
     final stats = _adminStatsJson();
     // Accounts waiting for approval float to the top: with the default
     // manual approval mode, working through them is the operator's routine
@@ -8696,7 +8750,7 @@ syncToolbar();
         '<button class="tab-btn" data-tab="assistant">Assistant</button>'
         '<button class="tab-btn" data-tab="control">Maintenance</button>'
         '</div>'
-        '${_adminAssistantPanel()}'
+        '${_adminAssistantPanel(googleModels)}'
         '<div class="tab-panel" id="panel-users">'
         '<div class="card table-card">'
         '<table><thead><tr><th>Email</th><th>Status</th><th>Plan</th>'
@@ -8946,17 +9000,18 @@ syncToolbar();
   /// The Assistant tab: one row per Luma AI mode choosing the upstream (by
   /// whose key it is paid for), the model id and an optional reasoning
   /// override. Model suggestions come from the leaderboard catalogue for
-  /// OpenRouter, whose ids it already uses, and a short list for Google and
-  /// Mistral.
-  String _adminAssistantPanel() {
+  /// OpenRouter, whose ids it already uses; from Google's own /v1beta/models
+  /// endpoint for Google (see [_googleModelIdsForSuggestions] — AI Studio
+  /// lists far more than the three "-latest" aliases this server defaults
+  /// to); and a short static list for Mistral, which has no such endpoint
+  /// worth polling.
+  String _adminAssistantPanel(List<String> googleModels) {
     final configured = config.configuredAiUpstreams;
     String esc(String s) => _htmlEscape(s);
 
     final googleOptions = {
       ...kDefaultAiModeModels[AiUpstream.google]!.values,
-      'gemini-pro-latest',
-      'gemini-2.5-flash',
-      'gemini-2.5-pro',
+      ...googleModels,
     }.map((m) => '<option value="${esc(m)}">').join();
     String price(double? p) =>
         p == null ? '?' : '\$${p.toStringAsFixed(p < 1 ? 2 : 1)}';
