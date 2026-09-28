@@ -2448,6 +2448,11 @@ class Api {
     if (body['messages'] is! List) {
       return errorResponse(400, 'bad_request', 'messages is required.');
     }
+    final mode = body['model'] is String ? body['model'] as String : 'normal';
+    if (mode == 'smartest' && user.planId != 'nova') {
+      return errorResponse(
+          403, 'plan_required', 'Pulsar requires a Nova ($5/month) plan.');
+    }
     if (aiUsage.tokensUsed(user.id, const Duration(hours: 5)) >= kAiTokens5h) {
       return errorResponse(
           429,
@@ -2463,7 +2468,6 @@ class Api {
               'over the coming days.');
     }
 
-    final mode = body['model'] is String ? body['model'] as String : 'normal';
     final route = aiModeRoutes.resolve(mode, config.configuredAiUpstreams)!;
 
     try {
@@ -2542,10 +2546,49 @@ class Api {
     if (mode is! String || !kAiModeNames.containsKey(mode)) {
       return errorResponse(400, 'bad_request', 'Unknown mode.');
     }
-    final route = aiModeRoutes.resolve(mode, config.configuredAiUpstreams);
+    AiModeRoute? route;
+    // The dashboard can test the current row before saving it. Older callers
+    // that send only a mode retain the saved-route behavior.
+    if (body.containsKey('upstream') || body.containsKey('model')) {
+      final upstreamValue = body['upstream'];
+      final upstream = AiUpstream.parse(
+          upstreamValue is String ? upstreamValue : null);
+      if (upstream == null) {
+        return errorResponse(400, 'bad_request', 'Choose a valid provider.');
+      }
+      final modelInput = body['model'];
+      if (modelInput is! String) {
+        return errorResponse(400, 'bad_request', 'Model must be text.');
+      }
+      final model = modelInput.trim().isEmpty
+          ? kDefaultAiModeModels[upstream]![mode]!
+          : modelInput.trim();
+      if (!isValidAiModelId(model)) {
+        return errorResponse(400, 'bad_request', 'Enter a valid model ID.');
+      }
+      final effort = body['reasoningEffort'];
+      if (effort != null &&
+          (effort is! String || !kAiReasoningEfforts.contains(effort))) {
+        return errorResponse(
+            400, 'bad_request', 'Choose a valid reasoning effort.');
+      }
+      if (!config.configuredAiUpstreams.contains(upstream)) {
+        return jsonResponse(200, {
+          'ok': false,
+          'upstream': upstream.label,
+          'model': model,
+          'error': 'No API key is configured for ${upstream.label}.',
+        });
+      }
+      route = AiModeRoute(upstream, model,
+          reasoningEffort:
+              effort is String && effort.isNotEmpty ? effort : null);
+    } else {
+      route = aiModeRoutes.resolve(mode, config.configuredAiUpstreams);
+    }
     if (route == null) {
       return errorResponse(404, 'not_configured',
-          'Set LUMA_GOOGLE_API_KEY or LUMA_OPENROUTER_API_KEY first.');
+          'Set an API key for Google AI Studio, OpenRouter, or Mistral first.');
     }
     final started = DateTime.now();
     try {
@@ -9236,8 +9279,8 @@ syncToolbar();
         '<tbody>$rows</tbody></table></div>'
         '<div class="maint-actions" style="margin:16px 0 0">'
         '<button type="submit" class="btn btn-primary">Save models</button>'
-        '<span class="muted" style="font-size:12px">Test uses the saved '
-        'settings — save first.</span>'
+        '<span class="muted" style="font-size:12px">Test checks the current '
+        'provider and model. Save models to apply them to chats.</span>'
         '</div>'
         '</form>'
         '<datalist id="ai-dl-google">$googleOptions</datalist>'
@@ -9389,7 +9432,14 @@ syncToolbar();
       fetch('/admin/ai-routes/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: mode }),
+        body: JSON.stringify({
+          mode: mode,
+          upstream: document.querySelector(
+            '.ai-upstream[data-mode="' + mode + '"]').value,
+          model: document.getElementById('ai-model-' + mode).value,
+          reasoningEffort: document.querySelector(
+            '.ai-routes select[name="' + mode + '.effort"]').value,
+        }),
       })
         .then(function (r) { return r.json(); })
         .then(function (j) {
