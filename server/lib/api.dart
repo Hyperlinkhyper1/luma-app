@@ -2604,14 +2604,52 @@ class Api {
       String? reply;
       String? error;
       try {
-        final decoded = jsonDecode(responseBody) as Map<String, dynamic>;
-        reply = decoded['choices']?[0]?['message']?['content'] as String?;
-        final err = decoded['error'];
-        error = err is Map ? err['message']?.toString() : err?.toString();
+        final rawDecoded = jsonDecode(responseBody);
+        if (rawDecoded is Map) {
+          final decoded = Map<String, dynamic>.from(rawDecoded);
+          reply = decoded['choices']?[0]?['message']?['content'] as String?;
+          if (status != HttpStatus.ok) {
+            final upstreamError = decoded['error'];
+            if (upstreamError is Map) {
+              error = upstreamError['message']?.toString() ??
+                  upstreamError['detail']?.toString();
+            } else if (upstreamError is String) {
+              error = upstreamError;
+            }
+            error ??= decoded['message']?.toString() ??
+                decoded['detail']?.toString();
+            final code = decoded['code'] ??
+                (upstreamError is Map ? upstreamError['code'] : null);
+            final type = decoded['type'] ??
+                (upstreamError is Map ? upstreamError['type'] : null);
+            final metadata = [
+              if (type is String && type.isNotEmpty) type,
+              if (code is String && code.isNotEmpty) code,
+            ].join(' / ');
+            if (metadata.isNotEmpty && error != null) {
+              error = '$error ($metadata)';
+            }
+          }
+        }
       } catch (_) {
-        error = responseBody.length > 300
-            ? '${responseBody.substring(0, 300)}…'
-            : responseBody;
+        if (status != HttpStatus.ok) {
+          error = responseBody.length > 500
+              ? '${responseBody.substring(0, 500)}…'
+              : responseBody;
+        }
+      }
+      if (status != HttpStatus.ok && error == null) {
+        error = switch (status) {
+          HttpStatus.tooManyRequests =>
+            'The provider rate limited this request (HTTP 429).',
+          HttpStatus.unauthorized || HttpStatus.forbidden =>
+            'The provider rejected its API key (HTTP $status).',
+          HttpStatus.notFound =>
+            'The provider could not find this model (HTTP 404).',
+          _ => 'The provider returned HTTP $status without an error message.',
+        };
+      } else if (error != null && error.length > 500) {
+        error = '${error.substring(0, 500)}…';
       }
       return jsonResponse(200, {
         'ok': status == 200 && error == null,
