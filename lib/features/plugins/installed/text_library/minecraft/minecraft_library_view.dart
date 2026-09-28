@@ -1,0 +1,346 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+
+import '../../../../../l10n/app_localizations.dart';
+import '../../../../converter/schematic/textures/texture_downloader.dart';
+import '../../_shared/native_webview.dart';
+import '../../_shared/windows_webview.dart' show windowsAssetPath;
+import '../text_library_models.dart';
+import '../text_library_repository.dart';
+import '../text_library_scope.dart';
+import 'scene_protocol.dart';
+import 'vanilla_assets.dart';
+
+/// The Minecraft library: a three.js hall where every subject is a bookcase.
+///
+/// Like the airport, it runs in a real WebView2 window on Windows and in the
+/// system WebView on Android. Nothing Flutter draws can sit on top of the
+/// Windows window, so every control — the book editor included — lives in
+/// the page, which sends commands back here to be written through the
+/// repository.
+class MinecraftLibraryView extends StatefulWidget {
+  const MinecraftLibraryView({super.key});
+
+  @override
+  State<MinecraftLibraryView> createState() => _MinecraftLibraryViewState();
+}
+
+class _MinecraftLibraryViewState extends State<MinecraftLibraryView>
+    with WidgetsBindingObserver {
+  static const _asset = 'assets/text_library/scene/index.html';
+
+  NativeWebviewController? _windows;
+  InAppWebViewController? _android;
+  StreamSubscription<LibrarySnapshot>? _library;
+  LibrarySnapshot? _latest;
+  late TextLibraryRepository _repository;
+  Timer? _timeout;
+  bool _ready = false;
+  bool _tickerEnabled = true;
+  bool _foreground = true;
+  bool _downloading = false;
+  String? _error;
+  int _generation = 0;
+
+  bool get _showing => _tickerEnabled && _foreground;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _armTimeout();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final repository = TextLibraryScope.of(context);
+    if (_library == null) {
+      _repository = repository;
+      _library = repository.watchLibrary().listen((snapshot) {
+        _latest = snapshot;
+        _sendLibrary();
+      });
+    }
+    final enabled = TickerMode.valuesOf(context).enabled;
+    if (enabled != _tickerEnabled) {
+      _tickerEnabled = enabled;
+      _sendVisibility();
+    }
+  }
+
+  void _armTimeout() {
+    _timeout?.cancel();
+    _timeout = Timer(const Duration(seconds: 25), () {
+      if (!mounted || _ready) return;
+      final t = L.of(context);
+      setState(
+        () => _error = Platform.isWindows
+            ? t.textLibraryMcFailedWindows
+            : t.textLibraryMcFailedAndroid,
+      );
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _foreground =
+        state == AppLifecycleState.resumed ||
+        (Platform.isWindows && state == AppLifecycleState.inactive);
+    _sendVisibility();
+  }
+
+  void _sendVisibility() => _send({'type': 'view', 'visible': _showing});
+
+  void _sendLibrary() {
+    final snapshot = _latest;
+    if (snapshot != null) _send(libraryMessage(snapshot));
+  }
+
+  void _send(Map<String, Object?> message) {
+    if (!_ready) return;
+    final json = jsonEncode(message);
+    final Future<void> delivery;
+    if (_windows != null) {
+      delivery = _windows!.post(json);
+    } else if (_android != null) {
+      delivery = _android!.evaluateJavascript(
+        source: 'window.libraryReceive($json);',
+      );
+    } else {
+      return;
+    }
+    unawaited(
+      delivery.catchError((Object _) {
+        if (mounted) setState(() => _error = L.of(context).textLibraryMcLost);
+      }),
+    );
+  }
+
+  Future<void> _receive(dynamic raw) async {
+    if (!mounted) return;
+    final Map<String, Object?> message;
+    try {
+      final value = raw is String ? jsonDecode(raw) : raw;
+      if (value is! Map) return;
+      message = Map<String, Object?>.from(value);
+    } on FormatException {
+      return;
+    }
+    try {
+      await _handle(message);
+    } catch (error) {
+      final request = message['request'];
+      if (request != null) {
+        _send({'type': 'failed', 'request': request, 'message': '$error'});
+      }
+    }
+  }
+
+  Future<void> _handle(Map<String, Object?> message) async {
+    final repository = _repository;
+    switch (message['type']) {
+      case 'ready':
+        _timeout?.cancel();
+        setState(() {
+          _ready = true;
+          _error = null;
+        });
+        _send({
+          'type': 'init',
+          'strings': sceneStrings(L.of(context)),
+          'reducedMotion': MediaQuery.of(context).disableAnimations,
+        });
+        _sendVisibility();
+        _sendLibrary();
+      case 'error':
+        _fail('${message['message'] ?? ''}');
+      case 'assetsWanted':
+        final paths = (message['paths'] as List? ?? const [])
+            .whereType<String>();
+        final assets = await loadVanillaAssets(paths);
+        _send({
+          'type': 'assets',
+          'source': assets?.label,
+          'files': assets?.files ?? const <String, String>{},
+        });
+      case 'downloadVanilla':
+        await _downloadVanilla(message);
+      case 'createSubject':
+        final id = await repository.createSubject(
+          '${message['name'] ?? ''}',
+          color: _dye(message['color']),
+        );
+        _reply(message, id);
+      case 'renameSubject':
+        final id = _int(message['id']);
+        if (id != null) {
+          await repository.renameSubject(id, '${message['name'] ?? ''}');
+        }
+      case 'saveBook':
+        final subjectId = _int(message['subjectId']);
+        if (subjectId == null) return;
+        final id = await repository.saveText(
+          id: _int(message['id']),
+          subjectId: subjectId,
+          title: '${message['title'] ?? ''}',
+          spine: '${message['spine'] ?? ''}',
+          body: RichDoc.decode(message['body'] as String?),
+          cover: _dye(message['cover']),
+          slot: _int(message['slot']),
+        );
+        _reply(message, id);
+      case 'moveBook':
+        final id = _int(message['id']);
+        final subjectId = _int(message['subjectId']);
+        final slot = _int(message['slot']);
+        if (id != null && subjectId != null && slot != null) {
+          await repository.moveText(id, subjectId: subjectId, slot: slot);
+        }
+      case 'deleteBook':
+        final id = _int(message['id']);
+        if (id != null) await repository.deleteText(id);
+    }
+  }
+
+  Future<void> _downloadVanilla(Map<String, Object?> message) async {
+    if (_downloading) return;
+    _downloading = true;
+    try {
+      await downloadVanillaTextures(
+        onProgress: (progress) => _send({
+          'type': 'download',
+          'stage': progress.stage,
+          'fraction': progress.fraction,
+        }),
+      );
+      _send({'type': 'downloadDone'});
+    } catch (error) {
+      _send({'type': 'downloadFailed', 'message': '$error'});
+    } finally {
+      _downloading = false;
+    }
+  }
+
+  void _reply(Map<String, Object?> message, int id) {
+    final request = message['request'];
+    if (request != null) _send({'type': 'saved', 'request': request, 'id': id});
+  }
+
+  static int? _int(Object? value) => switch (value) {
+    final int i => i,
+    final num n => n.toInt(),
+    final String s => int.tryParse(s),
+    _ => null,
+  };
+
+  static DyeColor? _dye(Object? value) {
+    final index = _int(value);
+    return index == null ? null : DyeColor.at(index);
+  }
+
+  void _fail(String message) {
+    if (!mounted) return;
+    _timeout?.cancel();
+    setState(
+      () =>
+          _error = message.isEmpty ? L.of(context).textLibraryMcLost : message,
+    );
+  }
+
+  void _retry() {
+    _windows = null;
+    _android = null;
+    setState(() {
+      _generation++;
+      _ready = false;
+      _error = null;
+    });
+    _armTimeout();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = L.of(context);
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: Platform.isWindows
+              ? NativeWebview(
+                  key: ValueKey(_generation),
+                  fileUrl: Uri.file(windowsAssetPath(_asset)).toString(),
+                  visible: _error == null,
+                  background: const Color(0xFF1B140E),
+                  onCreated: (controller) => _windows = controller,
+                  onMessage: _receive,
+                  onError: _fail,
+                )
+              : InAppWebView(
+                  key: ValueKey(_generation),
+                  initialFile: _asset,
+                  initialSettings: InAppWebViewSettings(
+                    supportZoom: false,
+                    transparentBackground: true,
+                    mediaPlaybackRequiresUserGesture: false,
+                  ),
+                  onWebViewCreated: (controller) {
+                    _android = controller;
+                    controller.addJavaScriptHandler(
+                      handlerName: 'library',
+                      callback: (args) {
+                        if (args.isNotEmpty) _receive(args.first);
+                        return null;
+                      },
+                    );
+                  },
+                  onReceivedError: (_, request, error) {
+                    if (request.isForMainFrame == true) {
+                      _fail(error.description);
+                    }
+                  },
+                ),
+        ),
+        if (_error != null)
+          Positioned.fill(
+            child: ColoredBox(
+              color: Theme.of(context).colorScheme.surface,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 380),
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.warning_amber_rounded),
+                        const SizedBox(height: 12),
+                        Text(_error!, textAlign: TextAlign.center),
+                        const SizedBox(height: 12),
+                        FilledButton.icon(
+                          onPressed: _retry,
+                          icon: const Icon(Icons.refresh_rounded),
+                          label: Text(t.textLibraryMcRetry),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _timeout?.cancel();
+    unawaited(_library?.cancel());
+    super.dispose();
+  }
+}
