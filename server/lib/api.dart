@@ -2236,13 +2236,13 @@ class Api {
 
   List<String>? _googleModelIdsCache;
   int _googleModelIdsFetchedAtMs = 0;
-  static const _googleModelIdsTtl = Duration(minutes: 15);
+  static const _aiModelSuggestionsTtl = Duration(minutes: 15);
 
   /// The model ids the Assistant tab suggests for Google — everything the
   /// operator's own key can see in AI Studio's model picker, restricted to
   /// ones that actually answer chat (`generateContent`), not just the three
   /// "-latest" aliases this server defaults new modes to. Cached for
-  /// [_googleModelIdsTtl] so opening the dashboard doesn't hit Google every
+  /// [_aiModelSuggestionsTtl] so opening the dashboard doesn't hit Google every
   /// time; a failed or slow fetch falls back to the last good list, or an
   /// empty one on the very first attempt (the "-latest" aliases still show
   /// up via [kDefaultAiModeModels]).
@@ -2250,7 +2250,7 @@ class Api {
     if (!config.googleKeyConfigured) return const [];
     final now = DateTime.now().millisecondsSinceEpoch;
     if (_googleModelIdsCache != null &&
-        now - _googleModelIdsFetchedAtMs < _googleModelIdsTtl.inMilliseconds) {
+        now - _googleModelIdsFetchedAtMs < _aiModelSuggestionsTtl.inMilliseconds) {
       return _googleModelIdsCache!;
     }
     final httpClient = HttpClient();
@@ -2282,6 +2282,60 @@ class Api {
       return ids;
     } catch (_) {
       return _googleModelIdsCache ?? const [];
+    } finally {
+      httpClient.close();
+    }
+  }
+
+  List<String>? _mistralModelIdsCache;
+  int _mistralModelIdsFetchedAtMs = 0;
+
+  /// Same idea as [_googleModelIdsForSuggestions], for Mistral's own
+  /// `/v1/models` — the small hardcoded list this used to fall back to
+  /// (mistral-large-latest, codestral-latest, ...) missed most of what a
+  /// given key can actually see in La Plateforme. Filtered to models whose
+  /// `capabilities.completion_chat` is true where the field is present, so
+  /// embedding/moderation-only models don't clutter the dropdown; older API
+  /// responses without that field are kept rather than dropped.
+  Future<List<String>> _mistralModelIdsForSuggestions() async {
+    if (!config.mistralKeyConfigured) return const [];
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (_mistralModelIdsCache != null &&
+        now - _mistralModelIdsFetchedAtMs < _aiModelSuggestionsTtl.inMilliseconds) {
+      return _mistralModelIdsCache!;
+    }
+    final httpClient = HttpClient();
+    try {
+      final request = await httpClient
+          .getUrl(Uri.parse('https://api.mistral.ai/v1/models'));
+      request.headers.set(
+          HttpHeaders.authorizationHeader, 'Bearer ${config.mistralApiKey}');
+      final response =
+          await request.close().timeout(const Duration(seconds: 6));
+      final body = await response.transform(utf8.decoder).join();
+      if (response.statusCode != 200) return _mistralModelIdsCache ?? const [];
+      final decoded = jsonDecode(body);
+      if (decoded is! Map || decoded['data'] is! List) {
+        return _mistralModelIdsCache ?? const [];
+      }
+      final ids = <String>[];
+      for (final m in decoded['data'] as List) {
+        if (m is! Map) continue;
+        final capabilities = m['capabilities'];
+        if (capabilities is Map &&
+            capabilities.containsKey('completion_chat') &&
+            capabilities['completion_chat'] != true) {
+          continue;
+        }
+        final id = m['id'];
+        if (id is String) ids.add(id);
+      }
+      ids.sort();
+      _mistralModelIdsCache = ids;
+      _mistralModelIdsFetchedAtMs = now;
+      return ids;
+    } catch (_) {
+      return _mistralModelIdsCache ?? const [];
     } finally {
       httpClient.close();
     }
@@ -8418,6 +8472,7 @@ syncToolbar();
 
   Future<Response> _adminDashboard(Request request) async {
     final googleModels = await _googleModelIdsForSuggestions();
+    final mistralModels = await _mistralModelIdsForSuggestions();
     final stats = _adminStatsJson();
     // Accounts waiting for approval float to the top: with the default
     // manual approval mode, working through them is the operator's routine
@@ -8750,7 +8805,7 @@ syncToolbar();
         '<button class="tab-btn" data-tab="assistant">Assistant</button>'
         '<button class="tab-btn" data-tab="control">Maintenance</button>'
         '</div>'
-        '${_adminAssistantPanel(googleModels)}'
+        '${_adminAssistantPanel(googleModels, mistralModels)}'
         '<div class="tab-panel" id="panel-users">'
         '<div class="card table-card">'
         '<table><thead><tr><th>Email</th><th>Status</th><th>Plan</th>'
@@ -9003,9 +9058,10 @@ syncToolbar();
   /// OpenRouter, whose ids it already uses; from Google's own /v1beta/models
   /// endpoint for Google (see [_googleModelIdsForSuggestions] — AI Studio
   /// lists far more than the three "-latest" aliases this server defaults
-  /// to); and a short static list for Mistral, which has no such endpoint
-  /// worth polling.
-  String _adminAssistantPanel(List<String> googleModels) {
+  /// to); and Mistral's own `/v1/models` endpoint. The browse dialog uses
+  /// the same suggestions and the already refreshed leaderboard catalogue.
+  String _adminAssistantPanel(
+      List<String> googleModels, List<String> mistralModels) {
     final configured = config.configuredAiUpstreams;
     String esc(String s) => _htmlEscape(s);
 
@@ -9023,10 +9079,52 @@ syncToolbar();
         .join();
     final mistralOptions = {
       ...kDefaultAiModeModels[AiUpstream.mistral]!.values,
-      'mistral-large-latest',
-      'codestral-latest',
-      'open-mixtral-8x22b',
+      ...mistralModels,
     }.map((m) => '<option value="${esc(m)}">').join();
+    Map<String, Object?> modelStats(AiModel? model, {required bool pricing}) => {
+          if (model != null) 'name': model.name,
+          'intelligence': model?.llmStatsIndex,
+          'tokensPerSecond': model?.speedTokensPerSec,
+          'input': pricing ? model?.inputPricePerM : null,
+          'output': pricing ? model?.outputPricePerM : null,
+          'cacheRead': pricing ? model?.cacheReadPerM : null,
+          'cacheWrite': pricing ? model?.cacheWritePerM : null,
+          'intelligenceSource': model?.sources.contains('artificial-analysis') ?? false,
+        };
+    final catalogById = {for (final model in aiCatalog.models) model.id: model};
+    final pickerModels = <Map<String, Object?>>[
+      for (final model in aiCatalog.models)
+        {
+          'upstream': 'openrouter',
+          'id': model.id,
+          ...modelStats(model, pricing: true),
+        },
+      for (final id in {
+        ...kDefaultAiModeModels[AiUpstream.google]!.values,
+        ...googleModels,
+      })
+        {
+          'upstream': 'google',
+          'id': id,
+          ...modelStats(catalogById['google/$id'], pricing: false),
+        },
+      for (final id in {
+        ...kDefaultAiModeModels[AiUpstream.mistral]!.values,
+        ...mistralModels,
+      })
+        {
+          'upstream': 'mistral',
+          'id': id,
+          ...modelStats(catalogById['mistralai/$id'], pricing: false),
+        },
+    ];
+    // JSON in a script element must not contain a literal closing tag.
+    final pickerJson = jsonEncode(pickerModels).replaceAll('<', r'\u003c');
+    final catalogUpdated = aiCatalog.refreshedAtMs == 0
+        ? 'never refreshed'
+        : DateTime.fromMillisecondsSinceEpoch(aiCatalog.refreshedAtMs,
+                isUtc: true)
+            .toIso8601String();
 
     final rows = kAiModeNames.entries.map((e) {
       final mode = e.key;
@@ -9065,7 +9163,9 @@ syncToolbar();
           '<td><input type="text" name="$mode.model" id="ai-model-$mode" '
           'list="ai-dl-${upstream.name}" value="${esc(stored?.model ?? '')}" '
           'placeholder="${esc(live?.model ?? kDefaultAiModeModels[upstream]![mode]!)}" '
-          'maxlength="200" spellcheck="false" autocomplete="off"></td>'
+          'maxlength="200" spellcheck="false" autocomplete="off">'
+          '<button type="button" class="btn btn-ghost btn-sm ai-browse" '
+          'data-mode="$mode">Browse models</button></td>'
           '<td><select name="$mode.effort">$effortOptions</select></td>'
           '<td class="nowrap">$status</td>'
           '<td class="actions-cell"><button type="button" '
@@ -9096,6 +9196,29 @@ syncToolbar();
         '.ai-test-out{font-size:11.5px;margin-top:4px;white-space:normal;'
         'max-width:260px;text-align:right}'
         '.ai-test-out.ok{color:#7ee08a}.ai-test-out.err{color:#e07e7e}'
+        '.ai-browse{margin-top:6px;white-space:nowrap}'
+        '.ai-picker{background:#151122;color:#ece8f7;border:1px solid #2d2645;'
+        'border-radius:16px;padding:0;width:min(1120px,calc(100vw - 24px));'
+        'max-height:calc(100dvh - 24px);box-shadow:0 24px 64px #0009}'
+        '.ai-picker[open]{display:flex;flex-direction:column}'
+        '.ai-picker::backdrop{background:#080610aa}'
+        '.ai-picker-head,.ai-picker-tools,.ai-picker-foot{padding:14px 20px;'
+        'border-bottom:1px solid #2d2645;display:flex;gap:12px;align-items:center;'
+        'flex-wrap:wrap}'
+        '.ai-picker-head{justify-content:space-between}.ai-picker-head h2{margin:0}'
+        '.ai-picker-tools input{flex:1;min-width:180px;background:#1a1530;color:#ece8f7;'
+        'border:1px solid #4b4268;border-radius:9px;padding:9px 11px;font:inherit}'
+        '.ai-picker-list{overflow:auto;padding:14px 20px;display:grid;'
+        'grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;'
+        'min-height:0;flex:1 1 auto}'
+        '.ai-picker-card{background:#1b172a;border:1px solid #302945;'
+        'border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px}'
+        '.ai-picker-card strong{font-size:14px}.ai-picker-id{overflow-wrap:anywhere;'
+        'font:11px ui-monospace,Consolas,monospace;color:#a9a0c3}'
+        '.ai-picker-stats{display:grid;grid-template-columns:1fr 1fr;gap:5px 9px;'
+        'font-size:11.5px;color:#c5bed9}.ai-picker-stats b{color:#ece8f7}'
+        '.ai-picker-card button{margin-top:auto}.ai-picker-foot{border-top:1px solid #2d2645;'
+        'border-bottom:0;color:#a9a0c3;font-size:11.5px}'
         '</style>'
         '<div class="card">'
         '<h2>Assistant models</h2>'
@@ -9121,6 +9244,25 @@ syncToolbar();
         '<datalist id="ai-dl-openrouter">$openRouterOptions</datalist>'
         '<datalist id="ai-dl-mistral">$mistralOptions</datalist>'
         '${aiCatalog.modelCount == 0 ? '<div class="muted" style="font-size:12px;margin-top:10px">No OpenRouter suggestions yet — press "Refresh model data" on the Maintenance tab to load the model list.</div>' : ''}'
+        '<dialog id="aiPicker" class="ai-picker" aria-labelledby="aiPickerTitle">'
+        '<div class="ai-picker-head"><div><h2 id="aiPickerTitle">Select a model</h2>'
+        '<span id="aiPickerCount" class="muted"></span></div>'
+        '<button id="aiPickerClose" type="button" class="btn btn-ghost btn-sm" '
+        'aria-label="Close model picker">Close</button></div>'
+        '<div class="ai-picker-tools"><input id="aiPickerSearch" type="search" '
+        'placeholder="Search name or model ID" aria-label="Search models" '
+        'autocomplete="off"><label><input id="aiPickerScored" '
+        'type="checkbox"> Rated only</label></div>'
+        '<div id="aiPickerList" class="ai-picker-list"></div>'
+        '<div class="ai-picker-foot">Prices: OpenRouter USD per 1M tokens. '
+        'Intelligence and median output speed: Artificial Analysis when available. '
+        'Tokens/min is estimated from its measured tokens/second, not an API rate limit. '
+        'Intelligence uses the best measured effort. '
+        'Direct Google and Mistral prices are unavailable here. '
+        'Catalog refreshed: ${esc(catalogUpdated)}. '
+        'Selecting a model fills the field; Save models applies it.</div>'
+        '</dialog>'
+        '<script type="application/json" id="aiPickerData">$pickerJson</script>'
         '</div>'
         '</div>';
   }
@@ -9129,6 +9271,108 @@ syncToolbar();
   /// changes, and runs the per-mode Test button.
   static const _adminAssistantScript = r'''
 (function () {
+  const picker = document.getElementById('aiPicker');
+  const data = document.getElementById('aiPickerData');
+  if (picker && data) {
+    document.body.appendChild(picker);
+    const models = JSON.parse(data.textContent);
+    const search = document.getElementById('aiPickerSearch');
+    const scored = document.getElementById('aiPickerScored');
+    const list = document.getElementById('aiPickerList');
+    const count = document.getElementById('aiPickerCount');
+    let activeMode = null;
+    let activeUpstream = null;
+
+    function money(value) {
+      return value == null ? '—' : '$' + Number(value).toFixed(value < 0.1 ? 3 : 2);
+    }
+    function stat(grid, label, value) {
+      const cell = document.createElement('span');
+      cell.textContent = label + ' ';
+      const strong = document.createElement('b');
+      strong.textContent = value;
+      cell.appendChild(strong);
+      grid.appendChild(cell);
+    }
+    function render() {
+      const query = search.value.trim().toLowerCase();
+      const shown = models.filter((m) =>
+        m.upstream === activeUpstream &&
+        (!scored.checked || (m.intelligenceSource && m.intelligence != null)) &&
+        (!query || (m.name || '').toLowerCase().includes(query) ||
+          m.id.toLowerCase().includes(query)));
+      count.textContent = shown.length + ' model' + (shown.length === 1 ? '' : 's') +
+        ' · ' + activeUpstream;
+      list.replaceChildren();
+      if (!shown.length) {
+        const empty = document.createElement('p');
+        empty.className = 'muted';
+        empty.textContent = 'No matching models. You can still type a model ID in the field.';
+        list.appendChild(empty);
+        return;
+      }
+      const fragment = document.createDocumentFragment();
+      shown.forEach((m) => {
+        const card = document.createElement('article');
+        card.className = 'ai-picker-card';
+        const title = document.createElement('strong');
+        title.textContent = m.name || m.id;
+        card.appendChild(title);
+        const id = document.createElement('div');
+        id.className = 'ai-picker-id';
+        id.textContent = m.id;
+        card.appendChild(id);
+        const stats = document.createElement('div');
+        stats.className = 'ai-picker-stats';
+        const hasAa = m.intelligenceSource;
+        stat(stats, 'Intelligence Index', hasAa && m.intelligence != null
+          ? Number(m.intelligence).toFixed(1) : '—');
+        stat(stats, 'Output tokens/min', hasAa && m.tokensPerSecond != null
+          ? Math.round(m.tokensPerSecond * 60).toLocaleString() : '—');
+        stat(stats, 'Input / 1M', money(m.input));
+        stat(stats, 'Output / 1M', money(m.output));
+        stat(stats, 'Cache read / 1M', money(m.cacheRead));
+        stat(stats, 'Cache write / 1M', money(m.cacheWrite));
+        card.appendChild(stats);
+        const select = document.createElement('button');
+        select.type = 'button';
+        select.className = 'btn btn-ghost btn-sm';
+        select.textContent = 'Select model';
+        select.addEventListener('click', () => {
+          const input = document.getElementById('ai-model-' + activeMode);
+          if (input) {
+            input.value = m.id;
+            input.focus();
+          }
+          picker.close();
+        });
+        card.appendChild(select);
+        fragment.appendChild(card);
+      });
+      list.appendChild(fragment);
+    }
+    document.querySelectorAll('.ai-browse').forEach((button) => {
+      button.addEventListener('click', () => {
+        activeMode = button.dataset.mode;
+        activeUpstream = document.querySelector(
+          '.ai-upstream[data-mode="' + activeMode + '"]').value;
+        search.value = '';
+        scored.checked = false;
+        render();
+        picker.showModal();
+        search.focus();
+      });
+    });
+    search.addEventListener('input', render);
+    scored.addEventListener('change', render);
+    document.getElementById('aiPickerClose').addEventListener('click', () => picker.close());
+    picker.addEventListener('mousedown', (event) => {
+      if (event.target !== picker) return;
+      const rect = picker.getBoundingClientRect();
+      if (event.clientX < rect.left || event.clientX > rect.right ||
+          event.clientY < rect.top || event.clientY > rect.bottom) picker.close();
+    });
+  }
   document.querySelectorAll('.ai-upstream').forEach(function (sel) {
     sel.addEventListener('change', function () {
       var input = document.getElementById('ai-model-' + sel.dataset.mode);
