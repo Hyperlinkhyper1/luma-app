@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show LicenseParagraph, LicenseRegistry;
 import 'package:flutter/material.dart';
 
 /// Opens the app's license registry in a layout that keeps the detail pane
