@@ -69,7 +69,6 @@ class ServerConfig {
     required this.approvalMode,
     required this.adminKey,
     required this.mistralApiKey,
-    required this.mistralAgentId,
     required this.googleApiKey,
     required this.itadApiKey,
     required this.groceriesUrl,
@@ -124,15 +123,6 @@ class ServerConfig {
 
   bool get mistralKeyConfigured =>
       mistralApiKey != null && mistralApiKey!.isNotEmpty;
-
-  /// An optional Mistral Agents API agent id ("ag:...") configured by the
-  /// operator alongside [mistralApiKey]. When set, proxied chats that don't
-  /// pick their own agent are routed to this hosted agent instead of the
-  /// plain chat-completions model — see Api._mistralChatProxy.
-  final String? mistralAgentId;
-
-  bool get mistralAgentConfigured =>
-      mistralAgentId != null && mistralAgentId!.isNotEmpty;
 
   /// A Google AI Studio key configured once by the operator, powering the
   /// app's "Luma AI" modes (Aurora/Nebula/Pulsar → Gemini models). Same
@@ -275,7 +265,6 @@ class ServerConfig {
             },
       adminKey: env['LUMA_ADMIN_KEY'],
       mistralApiKey: env['LUMA_MISTRAL_API_KEY'],
-      mistralAgentId: env['LUMA_MISTRAL_AGENT_ID'],
       googleApiKey: env['LUMA_GOOGLE_API_KEY'],
       openRouterApiKey: env['LUMA_OPENROUTER_API_KEY'],
       itadApiKey: env['LUMA_ITAD_API_KEY'],
@@ -3025,15 +3014,13 @@ class Api {
     }
   }
 
-  /// Proxies a chat-completion request to Mistral using the
+  /// Proxies a stateless chat-completion request to Mistral using the
   /// operator-configured LUMA_MISTRAL_API_KEY, so signed-in users can chat
   /// through the shared key without it ever being sent to any client — only
   /// the caller's own bearer token (already required by [_requireAuth])
   /// leaves their device. The request body is forwarded to Mistral almost
-  /// unchanged (same shape [OpenAiCompatibleClient] sends for a direct call:
-  /// `model`/`agent_id`, `messages`, `max_tokens`, `tools`); only
-  /// `max_tokens` is clamped, since callers no longer hold the key that
-  /// would otherwise cap their own spend.
+  /// unchanged except that hosted agent routing is stripped and `max_tokens`
+  /// is clamped. Mistral's hosted Agents API is outside its ZDR coverage.
   Future<Response> _mistralChatProxy(Request request, StoredUser user) async {
     if (!config.mistralKeyConfigured) {
       return errorResponse(404, 'not_configured',
@@ -3068,18 +3055,13 @@ class Api {
     final maxTokensRaw = body['max_tokens'];
     final upstreamBody = {
       ...body,
+      'model': body['model'] is String
+          ? body['model']
+          : 'mistral-small-latest',
       'max_tokens': (maxTokensRaw is int ? maxTokensRaw : 1024).clamp(1, 4096),
     };
-    // When the operator configured a hosted agent (LUMA_MISTRAL_AGENT_ID)
-    // and the caller didn't pick their own, route through that agent. The
-    // agents endpoint derives the model from the agent, so `model` must go.
-    if (upstreamBody['agent_id'] is! String && config.mistralAgentConfigured) {
-      upstreamBody['agent_id'] = config.mistralAgentId;
-      upstreamBody.remove('model');
-    }
-    final url = upstreamBody['agent_id'] is String
-        ? 'https://api.mistral.ai/v1/agents/completions'
-        : 'https://api.mistral.ai/v1/chat/completions';
+    upstreamBody.remove('agent_id');
+    const url = 'https://api.mistral.ai/v1/chat/completions';
 
     try {
       final (status, responseBody) = await _postJsonWithRetry(

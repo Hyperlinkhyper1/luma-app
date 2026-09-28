@@ -14,9 +14,9 @@ class OpenAiCompatibleClient implements AiClient {
     required this.baseUrl,
     required this.defaultModel,
     required this.providerLabel,
-    this.agentsBaseUrl,
     this.maxOutputTokens = 1024,
     this.reasoningEffort,
+    this.disableResponseStorage = false,
     this.viaLumaServer = false,
   });
 
@@ -27,17 +27,17 @@ class OpenAiCompatibleClient implements AiClient {
   final String providerLabel;
   final int maxOutputTokens;
 
-  /// Endpoint for hosted-agent requests (e.g. Mistral's
-  /// `/v1/agents/completions`), if this provider supports them. When null,
-  /// an [agentId] passed to [chat] is ignored.
-  final String? agentsBaseUrl;
-
   /// Sent as `reasoning_effort` ("low"/"medium"/"high") on every request,
   /// for providers/models that support a thinking-effort knob (currently
   /// only Gemini, via [GoogleClient]'s Pulsar mode). Omitted from the
   /// request body entirely when null, so providers that don't recognize
   /// the field never see it.
   final String? reasoningEffort;
+
+  /// Sends the OpenAI Chat Completions `store` flag explicitly. This is a
+  /// request-level storage control; provider-level Zero Data Retention still
+  /// has to be enabled for the API organization.
+  final bool disableResponseStorage;
 
   /// True for the subclasses that route through the luma server's shared-key
   /// proxy ([MistralProxyClient], [GoogleProxyClient]) rather than straight
@@ -55,9 +55,7 @@ class OpenAiCompatibleClient implements AiClient {
     required List<AiToolDefinition> tools,
     required AiToolExecutor executeTool,
     required AiToolMetadata metadataFor,
-    String? agentId,
   }) async {
-    final useAgent = agentId != null && agentsBaseUrl != null;
     final messages = <Map<String, dynamic>>[
       if (systemPrompt.isNotEmpty) {'role': 'system', 'content': systemPrompt},
       for (final t in history) {'role': t.role, 'content': t.text},
@@ -82,7 +80,6 @@ class OpenAiCompatibleClient implements AiClient {
         apiKey,
         messages,
         toolSchemas,
-        useAgent ? agentId : null,
       );
       usage = addAiUsage(usage, _usageFrom(response));
       final choices = response['choices'] as List;
@@ -168,16 +165,15 @@ class OpenAiCompatibleClient implements AiClient {
     String apiKey,
     List<Map<String, dynamic>> messages,
     List<Map<String, dynamic>> tools,
-    String? agentId,
   ) async {
     final body = <String, dynamic>{
-      if (agentId != null) 'agent_id': agentId else 'model': defaultModel,
+      'model': defaultModel,
       'messages': messages,
       'max_tokens': maxOutputTokens,
       if (tools.isNotEmpty) 'tools': tools,
       if (reasoningEffort != null) 'reasoning_effort': reasoningEffort,
+      if (disableResponseStorage) 'store': false,
     };
-    final url = agentId != null ? agentsBaseUrl! : baseUrl;
 
     final client =
         viaLumaServer ? GatedServerClient() : http.Client();
@@ -185,7 +181,7 @@ class OpenAiCompatibleClient implements AiClient {
     try {
       res = await client
           .post(
-            Uri.parse(url),
+            Uri.parse(baseUrl),
             headers: {
               'Authorization': 'Bearer $apiKey',
               'Content-Type': 'application/json',

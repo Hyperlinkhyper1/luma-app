@@ -44,6 +44,12 @@ import 'features/plugins/installed/account_overview/mc_content_repository.dart';
 import 'features/plugins/installed/account_overview/mc_content_scope.dart';
 import 'features/plugins/installed/account_overview/youtube_repository.dart';
 import 'features/plugins/installed/account_overview/youtube_scope.dart';
+import 'features/plugins/installed/account_overview/spotify_repository.dart';
+import 'features/plugins/installed/account_overview/spotify_scope.dart';
+import 'features/plugins/installed/free_sketch/free_sketch_repository.dart';
+import 'features/plugins/installed/free_sketch/free_sketch_scope.dart';
+import 'features/plugins/installed/smart_home/smart_home_repository.dart';
+import 'features/plugins/installed/smart_home/smart_home_scope.dart';
 import 'features/plugins/installed/data_management/data/data_management_database.dart';
 import 'features/plugins/installed/data_management/data_management_repository.dart';
 import 'features/plugins/installed/airline_tycoon/airline_tycoon_repository.dart';
@@ -312,6 +318,10 @@ class _LumaAppState extends State<LumaApp> {
   // that have nothing to do with GitHub's pasted PAT or Minecraft's
   // per-platform keys, so a revoked Google grant can't take either down.
   late final YoutubeRepository _youtubeRepository = YoutubeRepository();
+  late final SpotifyRepository _spotifyRepository = SpotifyRepository();
+  late final FreeSketchRepository _freeSketchRepository =
+      FreeSketchRepository();
+  late final SmartHomeRepository _smartHomeRepository = SmartHomeRepository();
 
   // Informational local-storage usage reporter (no cap) — see
   // StorageGuardService.
@@ -709,6 +719,9 @@ class _LumaAppState extends State<LumaApp> {
     _accountOverviewRepository.dispose();
     _mcContentRepository.dispose();
     _youtubeRepository.dispose();
+    _spotifyRepository.dispose();
+    _freeSketchRepository.dispose();
+    _smartHomeRepository.dispose();
     super.dispose();
   }
 
@@ -841,54 +854,62 @@ class _LumaAppState extends State<LumaApp> {
                                                                                           repository: _mcContentRepository,
                                                                                           child: YoutubeScope(
                                                                                             repository: _youtubeRepository,
-                                                                                            child: WhiteboardScope(
-                                                                                              repository: _whiteboardRepository,
-                                                                                              child: ListenableBuilder(
-                                                                                                listenable: widget.settings,
-                                                                                                builder:
-                                                                                                    (
-                                                                                                      context,
-                                                                                                      _,
-                                                                                                    ) {
-                                                                                                      final s = widget.settings;
-                                                                                                      return MaterialApp(
-                                                                                                        title: 'luma',
-                                                                                                        debugShowCheckedModeBanner: false,
-                                                                                                        theme: LumaTheme.from(
-                                                                                                          Brightness.light,
-                                                                                                          s.accentSeed,
-                                                                                                          s.themeStyle,
-                                                                                                        ),
-                                                                                                        darkTheme: LumaTheme.from(
-                                                                                                          Brightness.dark,
-                                                                                                          s.accentSeed,
-                                                                                                          s.themeStyle,
-                                                                                                        ),
-                                                                                                        themeMode: s.themeMode,
-                                                                                                        locale: localeForLanguage(
-                                                                                                          s.appLanguage,
-                                                                                                        ),
-                                                                                                        supportedLocales: L.supportedLocales,
-                                                                                                        localizationsDelegates: [
-                                                                                                          L.delegate,
-                                                                                                          GlobalMaterialLocalizations.delegate,
-                                                                                                          GlobalWidgetsLocalizations.delegate,
-                                                                                                          GlobalCupertinoLocalizations.delegate,
-                                                                                                        ],
-                                                                                                        home: TextLibraryScope(
-                                                                                                          repository:
-                                                                                                              _textLibraryRepository,
-                                                                                                          child: _BootGate(
-                                                                                                            bootstrap: _bootstrap,
-                                                                                                            accent: LumaTheme.accentFor(
-                                                                                                              Brightness.dark,
-                                                                                                              s.accentSeed,
-                                                                                                              s.themeStyle,
-                                                                                                            ),
-                                                                                                          ),
-                                                                                                        ),
-                                                                                                      );
-                                                                                                    },
+                                                                                            child: SpotifyScope(
+                                                                                              repository: _spotifyRepository,
+                                                                                              child: FreeSketchScope(
+                                                                                                repository: _freeSketchRepository,
+                                                                                                child: SmartHomeScope(
+                                                                                                  repository: _smartHomeRepository,
+                                                                                                  child: WhiteboardScope(
+                                                                                                    repository: _whiteboardRepository,
+                                                                                                    child: ListenableBuilder(
+                                                                                                      listenable: widget.settings,
+                                                                                                      builder:
+                                                                                                          (
+                                                                                                            context,
+                                                                                                            _,
+                                                                                                          ) {
+                                                                                                            final s = widget.settings;
+                                                                                                            return MaterialApp(
+                                                                                                              title: 'luma',
+                                                                                                              debugShowCheckedModeBanner: false,
+                                                                                                              theme: LumaTheme.from(
+                                                                                                                Brightness.light,
+                                                                                                                s.accentSeed,
+                                                                                                                s.themeStyle,
+                                                                                                              ),
+                                                                                                              darkTheme: LumaTheme.from(
+                                                                                                                Brightness.dark,
+                                                                                                                s.accentSeed,
+                                                                                                                s.themeStyle,
+                                                                                                              ),
+                                                                                                              themeMode: s.themeMode,
+                                                                                                              locale: localeForLanguage(
+                                                                                                                s.appLanguage,
+                                                                                                              ),
+                                                                                                              supportedLocales: L.supportedLocales,
+                                                                                                              localizationsDelegates: [
+                                                                                                                L.delegate,
+                                                                                                                GlobalMaterialLocalizations.delegate,
+                                                                                                                GlobalWidgetsLocalizations.delegate,
+                                                                                                                GlobalCupertinoLocalizations.delegate,
+                                                                                                              ],
+                                                                                                              home: TextLibraryScope(
+                                                                                                                repository: _textLibraryRepository,
+                                                                                                                child: _BootGate(
+                                                                                                                  bootstrap: _bootstrap,
+                                                                                                                  accent: LumaTheme.accentFor(
+                                                                                                                    Brightness.dark,
+                                                                                                                    s.accentSeed,
+                                                                                                                    s.themeStyle,
+                                                                                                                  ),
+                                                                                                                ),
+                                                                                                              ),
+                                                                                                            );
+                                                                                                          },
+                                                                                                    ),
+                                                                                                  ),
+                                                                                                ),
                                                                                               ),
                                                                                             ),
                                                                                           ),

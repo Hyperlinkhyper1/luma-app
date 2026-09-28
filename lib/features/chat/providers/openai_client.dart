@@ -8,5 +8,6 @@ class OpenAiClient extends OpenAiCompatibleClient {
           baseUrl: 'https://api.openai.com/v1/chat/completions',
           defaultModel: 'gpt-4o-mini',
           providerLabel: 'OpenAI',
+          disableResponseStorage: true,
         );
 }

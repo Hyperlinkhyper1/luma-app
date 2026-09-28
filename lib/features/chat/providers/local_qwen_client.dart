@@ -139,7 +139,6 @@ class LocalQwenClient implements AiClient {
     required List<AiToolDefinition> tools,
     required AiToolExecutor executeTool,
     required AiToolMetadata metadataFor,
-    String? agentId,
   }) async {
     final path = await _modelPath();
     if (path == null) {

@@ -12,6 +12,5 @@ class MistralClient extends OpenAiCompatibleClient {
           baseUrl: 'https://api.mistral.ai/v1/chat/completions',
           defaultModel: 'mistral-small-latest',
           providerLabel: 'Mistral',
-          agentsBaseUrl: 'https://api.mistral.ai/v1/agents/completions',
         );
 }

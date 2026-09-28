@@ -41,7 +41,6 @@ void main() {
         approvalMode: ApprovalMode.open,
         adminKey: null,
         mistralApiKey: null,
-        mistralAgentId: null,
         googleApiKey: null,
         itadApiKey: itadApiKey,
         groceriesUrl: '',
