@@ -91,6 +91,15 @@ launcher plugin uses, cached to the shared `<app support>/minecraft/versions/
 user's explicit choice, and the fallback is still flat per-block colours.
 Keep it that way: nothing Mojang-owned enters the repo or a build artifact.
 
+The Text Library plugin's Minecraft hall (`assets/text_library/scene/`)
+follows the same rule. The page asks the app for the files it wants;
+`text_library/minecraft/vanilla_assets.dart` reads only textures and font
+definitions out of the user's jar at runtime and hands them over as base64.
+With no jar, the page paints its own look-alike textures (`textures.js`) and
+uses luma's own pixel lettering (`pixelfont.js`), which it turns into a real
+TTF so the book editor can be a plain contenteditable. The page loads
+three.js from `assets/airline_tycoon/scene/vendor/` rather than a copy.
+
 **Platform-specific code** uses the suffix convention: `feature_io.dart` (Windows/Android/native), `feature_stub.dart` (unsupported platforms), `feature_web.dart` (web). The main `feature.dart` file exports the right one via conditional imports.
 
 ## Build, Test, and Development Commands
