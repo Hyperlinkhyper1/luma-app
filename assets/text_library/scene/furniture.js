@@ -501,41 +501,59 @@
     }
   }
 
-  // A spiral stair round a newel post, `flights` of eight steps each
-  // climbing from one floor to the next, with a stepped rail on the open
-  // sides. `S` is the well's corner and centre, `ring` its eight cells.
-  function spiralStair(K, flights, S, ring) {
+  // Closed timber treads wrap twice around the post; the rail follows the
+  // same pitch instead of restarting as a stack of separate fences.
+  function spiralStair(K, flights, S) {
     const last = flights[flights.length - 1];
-    const height = last.base + last.rise * ring.length;
+    const height = last.base + last.height;
     const log = sides('dark_oak_log', 'dark_oak_log_top');
-    box(K, [S.cx + 5 / 16, 0, S.cz + 5 / 16], [S.cx + 11 / 16, height + 1.1, S.cz + 11 / 16], log);
-    box(K, [S.cx + 4.5 / 16, height + 1.1, S.cz + 4.5 / 16], [S.cx + 11.5 / 16, height + 1.25, S.cz + 11.5 / 16], brass);
-    const tread = sides('spruce_planks'), rail = sides('dark_oak_planks');
-    for (const {base, rise} of flights) {
-      ring.forEach(([sx, sz], k) => {
-        const top = base + (k + 1) * rise;
-        const thick = Math.min(0.5, rise);
-        // Treads beside the post reach in to it.
-        const a = [sx, top - thick, sz], c = [sx + 1, top, sz + 1];
-        if (sx === S.cx - 1 && sz === S.cz) c[0] += 5 / 16;
-        if (sx === S.cx + 1 && sz === S.cz) a[0] -= 5 / 16;
-        if (sz === S.cz - 1 && sx === S.cx) c[2] += 5 / 16;
-        if (sz === S.cz + 1 && sx === S.cx) a[2] -= 5 / 16;
-        box(K, a, c, tread, {whole: true});
-        // A baluster and rail along each open outer edge; the east side is
-        // the wall, the first step is the way on and the last the way off.
-        const edges = [];
-        if (sx === S.x0 && k !== 0) edges.push('west');
-        if (sz === S.z0) edges.push('north');
-        if (sz === S.z0 + 2 && k !== ring.length - 1) edges.push('south');
-        for (const edge of edges) {
-          const t = 1.5 / 16;
-          const [x0, z0, x1, z1] = edge === 'west' ? [sx + 0.03, sz, sx + 0.03 + t, sz + 1] : edge === 'north' ? [sx, sz + 0.03, sx + 1, sz + 0.03 + t] : [sx, sz + 0.97 - t, sx + 1, sz + 0.97];
-          const mx = (x0 + x1) / 2, mz = (z0 + z1) / 2;
-          box(K, [mx - t / 2, top, mz - t / 2], [mx + t / 2, top + 0.84, mz + t / 2], rail, {whole: true});
-          box(K, [x0, top + 0.84, z0], [x1, top + 0.96, z1], rail, {whole: true});
-        }
+    box(K, [S.cx + 0.27, 0, S.cz + 0.27], [S.cx + 0.73, height + 1.08, S.cz + 0.73], log);
+    box(K, [S.cx + 0.23, height + 1.08, S.cz + 0.23], [S.cx + 0.77, height + 1.2, S.cz + 0.77], brass);
+    const dark = sides('dark_oak_planks');
+    function face(corners, normal, texture) {
+      const tile = K.atlas.index[texture] || K.atlas.index.oak_planks;
+      const lights = corners.map(p => K.grid.sample(p.map((v, i) => v + normal[i] * 0.15), normal));
+      // Atlas coordinates are pixels, just like block faces on the floor.
+      // Project in world space so the vanilla grain keeps its block scale.
+      const uv = corners.map(p => Math.abs(normal[1]) > 0.5 ? [p[0] * 16, p[2] * 16]
+        : Math.abs(normal[0]) > Math.abs(normal[2]) ? [p[2] * 16, -p[1] * 16] : [p[0] * 16, -p[1] * 16]);
+      K.mb.quad(corners, normal, uv, [tile.cell, tile.frames, tile.frameTime], lights, [1, 1, 1, 1]);
+    }
+    function wedge(corners, bottom, top) {
+      const upper = corners.map(([x, z]) => [x, top, z]);
+      const lower = corners.map(([x, z]) => [x, bottom, z]);
+      face([...upper].reverse(), [0, 1, 0], 'spruce_planks');
+      face(lower, [0, -1, 0], 'dark_oak_planks');
+      corners.forEach((p, i) => {
+        const j = (i + 1) % corners.length, q = corners[j];
+        const dx = q[0] - p[0], dz = q[1] - p[1], len = Math.hypot(dx, dz);
+        face([upper[i], upper[j], lower[j], lower[i]], [dz / len, 0, -dx / len], 'dark_oak_planks');
       });
+    }
+    function rail(a, b) {
+      const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2];
+      const horizontal = Math.hypot(dx, dz), len = Math.hypot(horizontal, dy);
+      const side = [-dz / horizontal * 0.055, 0, dx / horizontal * 0.055];
+      const up = [-dx * dy / (horizontal * len) * 0.065, horizontal / len * 0.065, -dz * dy / (horizontal * len) * 0.065];
+      const crossSection = p => [[-1, 1], [1, 1], [1, -1], [-1, -1]].map(([s, u]) => p.map((v, k) => v + s * side[k] + u * up[k]));
+      const ends = [crossSection(a), crossSection(b)];
+      for (let i = 0; i < 4; i++) {
+        const j = (i + 1) % 4;
+        const normal = (i % 2 ? side : up).map(v => v / (i % 2 ? 0.055 : 0.065) * (i < 2 ? 1 : -1));
+        face([ends[0][i], ends[0][j], ends[1][j], ends[1][i]], normal, 'dark_oak_planks');
+      }
+      face([...ends[0]].reverse(), [-dx / len, -dy / len, -dz / len], 'dark_oak_planks');
+      face(ends[1], [dx / len, dy / len, dz / len], 'dark_oak_planks');
+    }
+    for (const flight of flights) {
+      LibraryStairs.treads(S, flight).forEach(({corners, bottom, top}) => wedge(corners, bottom, top));
+      for (let i = 1; i < flight.count - 1; i++) {
+        const [x, z] = LibraryStairs.point(S, i / flight.count, 1.36, true);
+        const [nx, nz] = LibraryStairs.point(S, (i + 1) / flight.count, 1.36, true);
+        const y = flight.base + i * flight.rise;
+        box(K, [x - 0.035, y, z - 0.035], [x + 0.035, y + 0.93, z + 0.035], dark, {whole: true});
+        rail([x, y + 0.94, z], [nx, y + flight.rise + 0.94, nz]);
+      }
     }
   }
 
