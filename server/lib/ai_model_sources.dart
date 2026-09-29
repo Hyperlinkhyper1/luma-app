@@ -162,22 +162,27 @@ class AiCatalogFetcher {
 
   // ---- OpenRouter ---------------------------------------------------------
 
-  /// Every model OpenRouter lists, minus two kinds of row that would show up
-  /// as duplicates on a leaderboard rather than as separate models:
+  /// Fetches both the complete routing roster and the vendor-filtered
+  /// leaderboard roster. Only the leaderboard excludes these duplicates:
   ///
   /// * `~vendor/model-latest` aliases, which are pointers at whichever model
   ///   is newest rather than models in their own right.
   /// * `:free` / `:batch` / `:thinking` routing variants of a model already
   ///   listed — a $0 free-tier row in particular would sit at the origin of
   ///   the price-vs-performance chart and distort the whole frontier.
-  Future<({List<AiModel> models, AiRefreshSourceResult result})>
-      fetchOpenRouter() async {
+  Future<
+      ({
+        List<AiModel> models,
+        List<AiModel> routingModels,
+        AiRefreshSourceResult result
+      })> fetchOpenRouter() async {
     try {
       final decoded = await _getJson(Uri.parse(kOpenRouterModelsUrl));
       final raw = (decoded is Map<String, dynamic> ? decoded['data'] : null);
       if (raw is! List) {
         return (
           models: <AiModel>[],
+          routingModels: <AiModel>[],
           result: const AiRefreshSourceResult(
             source: 'openrouter',
             ok: false,
@@ -187,8 +192,12 @@ class AiCatalogFetcher {
       }
       final now = DateTime.now().millisecondsSinceEpoch;
       final models = <AiModel>[];
+      final routingModels = <AiModel>[];
       for (final entry in raw) {
         if (entry is! Map<String, dynamic>) continue;
+        final routing =
+            parseOpenRouterModel(entry, nowMs: now, forRouting: true);
+        if (routing != null) routingModels.add(routing);
         final model = parseOpenRouterModel(entry, nowMs: now);
         if (model != null && kAllowedVendors.contains(model.vendor)) {
           models.add(model);
@@ -196,6 +205,7 @@ class AiCatalogFetcher {
       }
       return (
         models: models,
+        routingModels: routingModels,
         result: AiRefreshSourceResult(
           source: 'openrouter',
           ok: true,
@@ -206,6 +216,7 @@ class AiCatalogFetcher {
     } catch (e) {
       return (
         models: <AiModel>[],
+        routingModels: <AiModel>[],
         result: AiRefreshSourceResult(
           source: 'openrouter',
           ok: false,
@@ -429,10 +440,8 @@ class AiCatalogFetcher {
     request.headers.set('Accept', 'application/json, application/xml, */*');
     headers?.forEach(request.headers.set);
     final response = await request.close().timeout(_timeout);
-    final body = await response
-        .transform(utf8.decoder)
-        .join()
-        .timeout(_timeout);
+    final body =
+        await response.transform(utf8.decoder).join().timeout(_timeout);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw HttpException('HTTP ${response.statusCode} from ${url.host}');
     }
@@ -448,14 +457,16 @@ class AiCatalogFetcher {
 /// Top-level so the mapping can be tested directly against captured upstream
 /// JSON — it is where the catalogue's field semantics actually live, and
 /// where an upstream shape change would first show up.
-AiModel? parseOpenRouterModel(Map<String, dynamic> j, {required int nowMs}) {
+AiModel? parseOpenRouterModel(Map<String, dynamic> j,
+    {required int nowMs, bool forRouting = false}) {
   final id = j['id'];
   // `~vendor/model-latest` aliases point at whichever model is newest rather
   // than being models themselves, and `:free` / `:batch` / `:thinking` are
   // routing variants of a model already listed. Both would appear as
   // duplicate rows; a $0 free-tier row would also sit at the origin of the
   // price-vs-performance chart and drag the frontier down to it.
-  if (id is! String || id.startsWith('~') || id.contains(':')) return null;
+  if (id is! String || id.isEmpty) return null;
+  if (!forRouting && (id.startsWith('~') || id.contains(':'))) return null;
   final slash = id.indexOf('/');
   if (slash <= 0) return null;
   final vendor = id.substring(0, slash);
@@ -547,8 +558,9 @@ AiModel? parseOpenRouterModel(Map<String, dynamic> j, {required int nowMs}) {
 /// malformed entry must not cost the whole feed. Exposed for testing.
 List<AiNewsItem> parseFeed(String xml, String source) {
   final items = <AiNewsItem>[];
-  final blocks = RegExp(r'<(item|entry)[\s>][\s\S]*?</\1>', caseSensitive: false)
-      .allMatches(xml);
+  final blocks =
+      RegExp(r'<(item|entry)[\s>][\s\S]*?</\1>', caseSensitive: false)
+          .allMatches(xml);
   for (final block in blocks) {
     final chunk = block.group(0)!;
     final title = _tagText(chunk, 'title');
@@ -589,9 +601,9 @@ List<AiNewsItem> parseAnthropicNews(String html, String source) {
     final time = _tagText(body, 'time');
     final date = time == null ? null : _parseMonthDayYear(time);
     if (date == null) continue;
-    final heading = RegExp(r'<h[1-6]\b[^>]*>([\s\S]*?)</h[1-6]>',
-            caseSensitive: false)
-        .firstMatch(body);
+    final heading =
+        RegExp(r'<h[1-6]\b[^>]*>([\s\S]*?)</h[1-6]>', caseSensitive: false)
+            .firstMatch(body);
     final title = heading != null
         ? _cleanText(heading.group(1)!)
         // The list row: drop the date/category block, and what's left is the
@@ -628,9 +640,9 @@ DateTime? _parseMonthDayYear(String raw) {
 }
 
 String? _tagText(String chunk, String tag) {
-  final match = RegExp('<$tag(?:\\s[^>]*)?>([\\s\\S]*?)</$tag>',
-          caseSensitive: false)
-      .firstMatch(chunk);
+  final match =
+      RegExp('<$tag(?:\\s[^>]*)?>([\\s\\S]*?)</$tag>', caseSensitive: false)
+          .firstMatch(chunk);
   if (match == null) return null;
   return _cleanText(match.group(1) ?? '');
 }
@@ -656,8 +668,18 @@ int _feedDate(String chunk) {
 }
 
 const List<String> _rfc822Months = [
-  'jan', 'feb', 'mar', 'apr', 'may', 'jun',
-  'jul', 'aug', 'sep', 'oct', 'nov', 'dec',
+  'jan',
+  'feb',
+  'mar',
+  'apr',
+  'may',
+  'jun',
+  'jul',
+  'aug',
+  'sep',
+  'oct',
+  'nov',
+  'dec',
 ];
 
 /// Parses the `Tue, 12 Aug 2026 10:00:00 GMT` form RSS still uses, which

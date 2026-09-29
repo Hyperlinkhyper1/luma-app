@@ -1,6 +1,7 @@
 import 'ai_usage_pricing_anthropic.dart';
 import 'ai_usage_pricing_gemini.dart';
 import 'ai_usage_pricing_openai.dart';
+import 'ai_usage_pricing_opencode.dart';
 import 'ai_usage_pricing_rates.dart';
 import 'ai_usage_source.dart';
 
@@ -10,14 +11,54 @@ import 'ai_usage_source.dart';
 /// `-latest` alias or a dated `-2509` snapshot both resolve. Mistral has no
 /// separate cache pricing, so both cache rates are 0.
 const Map<String, AiPricingRates> kMistralPricing = {
-  'mistral-small': AiPricingRates(input: 0.10, output: 0.30, cacheWrite: 0, cacheRead: 0),
-  'mistral-medium': AiPricingRates(input: 0.40, output: 2.00, cacheWrite: 0, cacheRead: 0),
-  'mistral-large': AiPricingRates(input: 0.50, output: 1.50, cacheWrite: 0, cacheRead: 0),
-  'magistral-small': AiPricingRates(input: 0.50, output: 1.50, cacheWrite: 0, cacheRead: 0),
-  'magistral-medium': AiPricingRates(input: 2.00, output: 5.00, cacheWrite: 0, cacheRead: 0),
-  'ministral-8b': AiPricingRates(input: 0.10, output: 0.10, cacheWrite: 0, cacheRead: 0),
-  'ministral-3b': AiPricingRates(input: 0.04, output: 0.04, cacheWrite: 0, cacheRead: 0),
-  'codestral': AiPricingRates(input: 0.30, output: 0.90, cacheWrite: 0, cacheRead: 0),
+  'mistral-small': AiPricingRates(
+    input: 0.10,
+    output: 0.30,
+    cacheWrite: 0,
+    cacheRead: 0,
+  ),
+  'mistral-medium': AiPricingRates(
+    input: 0.40,
+    output: 2.00,
+    cacheWrite: 0,
+    cacheRead: 0,
+  ),
+  'mistral-large': AiPricingRates(
+    input: 0.50,
+    output: 1.50,
+    cacheWrite: 0,
+    cacheRead: 0,
+  ),
+  'magistral-small': AiPricingRates(
+    input: 0.50,
+    output: 1.50,
+    cacheWrite: 0,
+    cacheRead: 0,
+  ),
+  'magistral-medium': AiPricingRates(
+    input: 2.00,
+    output: 5.00,
+    cacheWrite: 0,
+    cacheRead: 0,
+  ),
+  'ministral-8b': AiPricingRates(
+    input: 0.10,
+    output: 0.10,
+    cacheWrite: 0,
+    cacheRead: 0,
+  ),
+  'ministral-3b': AiPricingRates(
+    input: 0.04,
+    output: 0.04,
+    cacheWrite: 0,
+    cacheRead: 0,
+  ),
+  'codestral': AiPricingRates(
+    input: 0.30,
+    output: 0.90,
+    cacheWrite: 0,
+    cacheRead: 0,
+  ),
 };
 
 /// Resolves a Mistral slug, longest key first so `magistral-small` is never
@@ -49,8 +90,9 @@ const Map<String, String> kGeminiLatestAliases = {
 String? geminiDisplayNameForSlug(String slug) {
   var s = slug.toLowerCase().trim();
   if (s.startsWith('models/')) s = s.substring('models/'.length);
-  final match =
-      RegExp(r'^gemini-(?:(\d+(?:\.\d+)?)-)?(pro|flash)(-lite)?').firstMatch(s);
+  final match = RegExp(
+    r'^gemini-(?:(\d+(?:\.\d+)?)-)?(pro|flash)(-lite)?',
+  ).firstMatch(s);
   if (match == null) return null;
   final version = match.group(1);
   final tier = '${match.group(2)}${match.group(3) ?? ''}';
@@ -65,13 +107,35 @@ String? geminiDisplayNameForSlug(String slug) {
 
 /// Pricing for a [AiUsageSource.luma] turn's `"<providerId>/<model>"`.
 /// Anthropic and OpenAI reuse the same tables Claude Code and Codex CLI are
-/// priced with. Null only for a malformed model string or a Gemini release
-/// the Gemini table doesn't know yet.
+/// priced with. A server mode can route to an OpenRouter vendor/model while
+/// the stored outer provider remains `google`. Historical turns without a
+/// reported cost use that vendor's API estimate, as OpenCode turns do.
 AiPricingRates? lumaPricingFor(String? model) {
   if (model == null) return null;
   final split = splitLumaModel(model);
   if (split == null) return null;
-  final (provider, modelId) = split;
+  var (provider, modelId) = split;
+  if (provider == 'local') return opencodeProviderPricingFor('local');
+  final routed = splitOpencodeModel(modelId);
+  if (routed != null) {
+    (provider, modelId) = routed;
+    if (provider.isEmpty || modelId.isEmpty) return null;
+    return switch (provider.toLowerCase()) {
+      'anthropic' =>
+        anthropicPricingFor(modelId) ?? opencodeProviderPricingFor('anthropic'),
+      'openai' =>
+        openAiPricingFor(modelId) ?? opencodeProviderPricingFor('openai'),
+      'google' => switch (geminiDisplayNameForSlug(modelId)) {
+        final name? =>
+          geminiPricingFor(name) ?? opencodeProviderPricingFor('google'),
+        null => opencodeProviderPricingFor('google'),
+      },
+      'mistralai' => mistralPricingFor(modelId),
+      'z-ai' => opencodeProviderPricingFor('zai'),
+      'x-ai' => opencodeProviderPricingFor('xai'),
+      _ => opencodeProviderPricingFor(provider.toLowerCase()),
+    };
+  }
   return switch (provider) {
     'anthropic' => anthropicPricingFor(modelId),
     'openai' => openAiPricingFor(modelId),
@@ -86,5 +150,8 @@ AiPricingRates? lumaPricingFor(String? model) {
 
 /// Splits a luma turn's stored model into provider and model id — the same
 /// `"<provider>/<model>"` shape opencode uses, so it shares that parser.
-(String provider, String modelId)? splitLumaModel(String model) =>
-    splitOpencodeModel(model);
+(String provider, String modelId)? splitLumaModel(String model) {
+  final split = splitOpencodeModel(model);
+  if (split == null || split.$1.isEmpty || split.$2.isEmpty) return null;
+  return split;
+}

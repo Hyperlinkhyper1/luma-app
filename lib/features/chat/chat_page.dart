@@ -1683,12 +1683,15 @@ class _ModelChoice {
       (mode == null || settings.aiMode == mode);
 }
 
-List<_ModelChoice> _lumaModelsFor(SettingsController settings) => [
+List<_ModelChoice> _lumaModelsFor(
+  SettingsController settings,
+  Map<String, String> modeVersions,
+) => [
   for (final mode in AiMode.values.where(
     (mode) => mode.availableForPlan(settings.selectedPlanId),
   ))
     _ModelChoice(
-      'Luma ${mode.displayName}',
+      'Luma ${mode.displayNameFor(modeVersions[mode.name])}',
       AiProviderId.google.name,
       mode.name,
     ),
@@ -1706,17 +1709,45 @@ final List<_ModelChoice> _apiKeyModels = [
 /// luma-branded ones plus an "API key" section for bring-your-own-key
 /// providers. Selecting one flips the provider (and Luma AI mode) in
 /// Settings, which the surrounding chat body already listens to.
-class _ModelSelector extends StatelessWidget {
+class _ModelSelector extends StatefulWidget {
   const _ModelSelector({required this.settings});
   final SettingsController settings;
 
+  @override
+  State<_ModelSelector> createState() => _ModelSelectorState();
+}
+
+class _ModelSelectorState extends State<_ModelSelector> {
+  SyncService? _sync;
+  Map<String, String> modeVersions = const {};
+
+  SettingsController get settings => widget.settings;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final sync = SyncScope.of(context);
+    if (identical(sync, _sync)) return;
+    _sync = sync;
+    _refreshVersions();
+  }
+
+  Future<void> _refreshVersions() async {
+    final sync = _sync;
+    final status = await sync?.aiStatus();
+    if (!mounted || !identical(sync, _sync)) return;
+    setState(() => modeVersions = status?.modeVersions ?? const {});
+  }
+
   _ModelChoice get _active =>
-      [..._lumaModelsFor(settings), ..._apiKeyModels].firstWhere(
+      [..._lumaModelsFor(settings, modeVersions), ..._apiKeyModels].firstWhere(
         (c) => c.isActive(settings),
-        orElse: () => _lumaModelsFor(settings).first,
+        orElse: () => _lumaModelsFor(settings, modeVersions).first,
       );
 
-  Future<void> _openMenu(BuildContext context) async {
+  Future<void> _openMenu() async {
+    await _refreshVersions();
+    if (!mounted) return;
     final luma = context.luma;
     final button = context.findRenderObject()! as RenderBox;
     final overlay =
@@ -1805,7 +1836,7 @@ class _ModelSelector extends StatelessWidget {
       ),
       items: [
         header('Models'),
-        ..._lumaModelsFor(settings).map(item),
+        ..._lumaModelsFor(settings, modeVersions).map(item),
         const PopupMenuDivider(height: 10),
         header('API key'),
         ..._apiKeyModels.map(item),
@@ -1821,7 +1852,7 @@ class _ModelSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     return TextButton(
-      onPressed: () => _openMenu(context),
+      onPressed: _openMenu,
       style: TextButton.styleFrom(
         foregroundColor: luma.textSecondary,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

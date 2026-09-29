@@ -127,7 +127,8 @@ class _AssistantUsageViewState extends State<AssistantUsageView> {
                 (mode) => mode.availableForPlan(plan.id),
               ))
                 _Section(
-                  title: 'Luma ${mode.displayName}',
+                  title:
+                      'Luma ${mode.displayNameFor(status.modeVersions[mode.name])}',
                   child: Column(
                     children: [
                       _UsageRow(
@@ -176,7 +177,10 @@ class _AssistantUsageViewState extends State<AssistantUsageView> {
             _Section(
               title: t.assistantUsageByModel,
               subtitle: t.assistantUsageByModelSubtitle,
-              child: _ModelBreakdown(usage: settings.modelUsage),
+              child: _ModelBreakdown(
+                usage: settings.modelUsage,
+                modeVersions: status?.modeVersions ?? const {},
+              ),
             ),
             _Section(
               title: t.assistantUsageStorage,
@@ -436,9 +440,10 @@ class _StorageRow extends StatelessWidget {
 /// Lifetime messages per model in one outlined card, heaviest first, with a
 /// small "×5" tag on the models that cost more of the budget.
 class _ModelBreakdown extends StatelessWidget {
-  const _ModelBreakdown({required this.usage});
+  const _ModelBreakdown({required this.usage, required this.modeVersions});
 
   final Map<String, int> usage;
+  final Map<String, String> modeVersions;
 
   @override
   Widget build(BuildContext context) {
@@ -464,7 +469,7 @@ class _ModelBreakdown extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      entry.label,
+                      entry.labelFor(modeVersions),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: luma.textPrimary, fontSize: 14),

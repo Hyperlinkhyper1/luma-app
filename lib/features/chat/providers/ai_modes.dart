@@ -4,19 +4,26 @@ import '../../../account/plan.dart';
 /// (Gemini) underneath. The branded names are the product identity — the
 /// user never sees a Gemini model name.
 enum AiMode {
-  normal('Aurora 1.0', 'gemini-flash-lite-latest', null),
-  smarter('Nebula 1.0', 'gemini-flash-latest', null),
-  smartest('Pulsar 1.0', 'gemini-flash-latest', 'high', minPlanId: 'nova');
+  normal('Aurora', 'gemini-flash-lite-latest', null),
+  smarter('Nebula', 'gemini-flash-latest', null),
+  smartest('Pulsar', 'gemini-flash-latest', 'high', minPlanId: 'nova');
 
   const AiMode(
-    this.displayName,
+    this.baseName,
     this.geminiModel,
     this.reasoningEffort, {
     this.minPlanId,
   });
 
   /// What the user sees in the mode picker.
-  final String displayName;
+  final String baseName;
+
+  String get displayName => '$baseName 1.0';
+
+  String displayNameFor(String? version) =>
+      version != null && RegExp(r'^\d+\.[0-9]$').hasMatch(version)
+      ? '$baseName $version'
+      : displayName;
 
   /// The real model, used only when chatting with the user's own Google
   /// key. Server-proxied chats send [name] instead and the server does its
@@ -50,7 +57,5 @@ enum AiMode {
   bool availableForPlan(String? planId) => planAtLeast(planId, minPlanId);
 }
 
-AiMode aiModeById(String id) => AiMode.values.firstWhere(
-      (m) => m.name == id,
-      orElse: () => AiMode.normal,
-    );
+AiMode aiModeById(String id) =>
+    AiMode.values.firstWhere((m) => m.name == id, orElse: () => AiMode.normal);

@@ -190,6 +190,8 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
     'pagoda_step5',
     'pagoda_space_bunny_xhigh',
     'pagoda_sonnet55_xhigh',
+    'pagoda_gpt_sol_61_xhigh',
+    'pagoda_gpt_sol_61_low',
   };
 
   /// Bundled scenes, by benchmark id. These ship in the app rather than on
@@ -199,6 +201,8 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
     'pagoda_step5': 'assets/tests/pagoda_step5.html',
     'pagoda_space_bunny_xhigh': 'assets/tests/pagoda_space_bunny.html',
     'pagoda_sonnet55_xhigh': 'assets/tests/pagoda_sonnet55_xhigh.html',
+    'pagoda_gpt_sol_61_xhigh': 'assets/tests/pagoda_gpt_sol_61_xhigh.html',
+    'pagoda_gpt_sol_61_low': 'assets/tests/pagoda_gpt_sol_61_low.html',
   };
   String? _selectedId;
   bool _bannerView = false;
@@ -267,6 +271,24 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
             description: 'Sonnet 5.5 at extra-high reasoning effort — a '
                 'floating garden island with a waterfall and a five-storey '
                 'pagoda',
+            sizeBytes: 0,
+            sha256: '',
+          ),
+          const AiBenchmark(
+            id: 'pagoda_gpt_sol_61_xhigh',
+            kind: 'pagoda',
+            model: 'GPT Sol 6.1 (Xhigh)',
+            description: 'GPT Sol 6.1 at extra-high reasoning effort — '
+                'spring festival voxel garden with a five-storey pagoda',
+            sizeBytes: 0,
+            sha256: '',
+          ),
+          const AiBenchmark(
+            id: 'pagoda_gpt_sol_61_low',
+            kind: 'pagoda',
+            model: 'GPT Sol 6.1 (Low)',
+            description: 'GPT Sol 6.1 at low reasoning effort — '
+                'spring festival voxel garden with a five-storey pagoda',
             sizeBytes: 0,
             sha256: '',
           ),

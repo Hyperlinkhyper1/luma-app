@@ -1989,8 +1989,9 @@ class _ModelTableHeader extends StatelessWidget {
         const SizedBox(width: 12),
         header(
           'Cost',
-          'Estimated USD cost at this provider\'s API rate — "n/a" if the model isn\'t in the '
-              'local pricing table',
+          'USD cost reported by the provider for Luma calls when available; '
+              'otherwise an estimate at the model or vendor API rate. '
+              '"n/a" means no cost could be resolved.',
           width: 72,
           align: TextAlign.right,
         ),

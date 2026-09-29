@@ -12,6 +12,12 @@ class ModelUsageEntry {
   /// `SettingsController.modelUsage`.
   final String key;
   final String label;
+
+  String labelFor(Map<String, String> modeVersions) {
+    if (!key.startsWith('google:')) return label;
+    final mode = aiModeById(key.substring('google:'.length));
+    return 'Luma ${mode.displayNameFor(modeVersions[mode.name])}';
+  }
 }
 
 const List<ModelUsageEntry> kModelUsageEntries = [
