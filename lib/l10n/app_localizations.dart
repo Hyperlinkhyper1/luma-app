@@ -2278,8 +2278,98 @@ abstract class L {
   /// No description provided for @textLibraryMcWalkHint.
   ///
   /// In en, this message translates to:
-  /// **'WASD or arrow keys to walk · drag to look around · click a bookcase to open it'**
+  /// **'WASD to walk · click to look around · click a bookcase, chair or door to use it · Esc frees the mouse'**
   String get textLibraryMcWalkHint;
+
+  /// No description provided for @textLibraryMcLookHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Click to look around'**
+  String get textLibraryMcLookHint;
+
+  /// No description provided for @textLibraryMcStandHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Shift or Space to stand up'**
+  String get textLibraryMcStandHint;
+
+  /// No description provided for @textLibraryMcStandUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Stand up'**
+  String get textLibraryMcStandUp;
+
+  /// No description provided for @textLibraryMcSit.
+  ///
+  /// In en, this message translates to:
+  /// **'Sit down'**
+  String get textLibraryMcSit;
+
+  /// No description provided for @textLibraryMcOpenDoor.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the door'**
+  String get textLibraryMcOpenDoor;
+
+  /// No description provided for @textLibraryMcCloseDoor.
+  ///
+  /// In en, this message translates to:
+  /// **'Close the door'**
+  String get textLibraryMcCloseDoor;
+
+  /// No description provided for @textLibraryMcSkinCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Skin: {name}'**
+  String textLibraryMcSkinCurrent(String name);
+
+  /// No description provided for @textLibraryMcSkinDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Default skin'**
+  String get textLibraryMcSkinDefault;
+
+  /// No description provided for @textLibraryMcSkinYours.
+  ///
+  /// In en, this message translates to:
+  /// **'your own'**
+  String get textLibraryMcSkinYours;
+
+  /// No description provided for @textLibraryMcSkinImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import skin…'**
+  String get textLibraryMcSkinImport;
+
+  /// No description provided for @textLibraryMcSkinName.
+  ///
+  /// In en, this message translates to:
+  /// **'Minecraft name…'**
+  String get textLibraryMcSkinName;
+
+  /// No description provided for @textLibraryMcSkinNameTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Minecraft username'**
+  String get textLibraryMcSkinNameTitle;
+
+  /// No description provided for @textLibraryMcSkinNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get textLibraryMcSkinNameHint;
+
+  /// No description provided for @textLibraryMcSkinUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Use skin'**
+  String get textLibraryMcSkinUse;
+
+  /// No description provided for @textLibraryMcSkinFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load that skin.'**
+  String get textLibraryMcSkinFailed;
 
   /// No description provided for @textLibraryMcWriteHint.
   ///

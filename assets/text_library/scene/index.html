@@ -19,6 +19,7 @@
     <h1 id="title" class="mc-title"></h1>
     <p id="subtitle" class="mc-text"></p>
   </header>
+  <div id="crosshair" aria-hidden="true" hidden></div>
   <div id="tooltip" class="mc-tooltip" role="tooltip" hidden></div>
   <p id="actionbar" class="mc-text" aria-live="polite"></p>
   <div id="nav">
@@ -46,6 +47,13 @@
     <h2 id="settings-title" class="mc-text"></h2>
     <button id="quality" class="mc-button wide" type="button"></button>
     <button id="time" class="mc-button wide" type="button"></button>
+    <p id="skin-label" class="mc-text dim"></p>
+    <div class="row">
+      <button id="skin-import" class="mc-button" type="button"></button>
+      <button id="skin-name" class="mc-button" type="button"></button>
+    </div>
+    <button id="skin-reset" class="mc-button wide" type="button" hidden></button>
+    <input id="skin-file" type="file" accept="image/png" hidden>
     <p id="texture-source" class="mc-text dim"></p>
     <button id="download" class="mc-button wide" type="button" hidden></button>
     <p id="download-note" class="mc-text dim small" hidden></p>
@@ -119,6 +127,7 @@
 <script src="labels.js"></script>
 <script src="world.js"></script>
 <script src="furniture.js"></script>
+<script src="skin.js"></script>
 <script src="render.js"></script>
 <script src="gui.js"></script>
 <script src="book.js"></script>

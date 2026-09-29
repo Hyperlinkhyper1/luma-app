@@ -535,7 +535,29 @@
       }
     }
   },
-  "textLibraryMcWalkHint": "WASD or arrow keys to walk · drag to look around · click a bookcase to open it",
+  "textLibraryMcWalkHint": "WASD to walk · click to look around · click a bookcase, chair or door to use it · Esc frees the mouse",
+  "textLibraryMcLookHint": "Click to look around",
+  "textLibraryMcStandHint": "Shift or Space to stand up",
+  "textLibraryMcStandUp": "Stand up",
+  "textLibraryMcSit": "Sit down",
+  "textLibraryMcOpenDoor": "Open the door",
+  "textLibraryMcCloseDoor": "Close the door",
+  "textLibraryMcSkinCurrent": "Skin: {name}",
+  "@textLibraryMcSkinCurrent": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryMcSkinDefault": "Default skin",
+  "textLibraryMcSkinYours": "your own",
+  "textLibraryMcSkinImport": "Import skin…",
+  "textLibraryMcSkinName": "Minecraft name…",
+  "textLibraryMcSkinNameTitle": "Your Minecraft username",
+  "textLibraryMcSkinNameHint": "Username",
+  "textLibraryMcSkinUse": "Use skin",
+  "textLibraryMcSkinFailed": "Couldn't load that skin.",
   "textLibraryMcWriteHint": "Write your book here…",
   "textLibraryModeClassic": "Classic",
   "textLibraryModeMinecraft": "Minecraft hall",

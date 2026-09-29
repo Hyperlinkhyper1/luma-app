@@ -333,6 +333,7 @@ void main() {
       expect(result['httpStatus'], 200);
 
       expect(store.usersById.containsKey(userId), isFalse);
+      expect(store.userTraffic.byUser.containsKey(userId), isFalse);
       expect(store.userIdByEmail.containsKey('purge@example.com'), isFalse);
       expect(Directory('${dir.path}/blobs/$userId').existsSync(), isFalse);
       expect((await call('GET', '/api/v1/account', token: token))['httpStatus'],
@@ -363,6 +364,44 @@ void main() {
       expect(denied['httpStatus'], isNot(200));
       expect(store.userIdByEmail.containsKey('safe@example.com'), isTrue);
     });
+  });
+
+  test('admin shows per-user transfer and collection storage', () async {
+    final token = await register('usage@example.com', 'password-1');
+    final put = await handler(Request(
+      'PUT',
+      Uri.parse('http://localhost/api/v1/sync/notes'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'X-Base-Version': '0',
+        'Content-Type': 'application/octet-stream',
+      },
+      body: List.filled(64, 1),
+    ));
+    expect(put.statusCode, 200);
+    final get = await handler(Request(
+      'GET',
+      Uri.parse('http://localhost/api/v1/sync/notes'),
+      headers: {'Authorization': 'Bearer $token'},
+    ));
+    expect(get.statusCode, 200);
+    expect(await get.read().fold<int>(0, (sum, bytes) => sum + bytes.length), 64);
+
+    final users = await call('GET', '/admin/users', admin: true);
+    final usage = (users['users'] as List).single as Map<String, dynamic>;
+    expect(usage['usedBytes'], 64);
+    expect((usage['collections'] as List).single['name'], 'notes');
+    expect((usage['traffic'] as Map)['requests'], 2);
+    expect((usage['traffic'] as Map)['uploadBytes'], 64);
+    expect((usage['traffic'] as Map)['downloadBytes'], greaterThanOrEqualTo(64));
+
+    final dashboard = await handler(Request('GET', Uri.parse('http://localhost/admin'),
+        headers: {'x-admin-key': 'test-admin-key'}));
+    final html = await dashboard.readAsString();
+    expect(html, contains('App transfer'));
+    expect(html, contains('notes'));
+    expect(html, contains('Transfer details'));
+
   });
 
   group('ip bans', () {

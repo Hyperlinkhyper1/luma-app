@@ -19,7 +19,11 @@
     qualityHigh: 'Fancy', settings: 'Settings', emptyHall: 'Click the empty bookcase to build your first subject',
     rename: 'Rename', untitled: 'Untitled', undo: 'Undo', redo: 'Redo',
     time: 'Time', timeCycle: 'Day and night', timeClock: 'My clock', timeDay: 'Always day', timeNight: 'Always night',
-    walkHint: 'WASD or arrow keys to walk · drag to look around · click a bookcase to open it',
+    walkHint: 'WASD to walk · click to look around · click a bookcase, chair or door to use it · Esc frees the mouse',
+    lookHint: 'Click to look around', standHint: 'Shift or Space to stand up', standUp: 'Stand up', sit: 'Sit down',
+    openDoor: 'Open the door', closeDoor: 'Close the door',
+    skinCurrent: 'Skin: {0}', skinDefault: 'Default skin', skinYours: 'your own', skinImport: 'Import skin…', skinName: 'Minecraft name…',
+    skinNameTitle: 'Your Minecraft username', skinNameHint: 'Username', skinUse: 'Use skin', skinFailed: "Couldn't load that skin.",
     writeHint: 'Ctrl+B bold · Ctrl+I italic · Ctrl+U underline · PgUp/PgDn turn pages',
     moveHint: 'Click a slot to put the book there · Esc to cancel', saveFailed: "That didn't save. Try again.",
   };
@@ -58,6 +62,9 @@
       $('settings-done').textContent = gui.t('done');
       $('download').textContent = gui.t('download');
       $('download-note').textContent = gui.t('downloadNote');
+      $('skin-import').textContent = gui.t('skinImport');
+      $('skin-name').textContent = gui.t('skinName');
+      $('skin-reset').textContent = gui.t('skinDefault');
       $('case-prev').setAttribute('aria-label', gui.t('back'));
       for (const b of document.querySelectorAll('[data-cmd]')) {
         const key = {bold: 'bold', italic: 'italic', underline: 'underline', strikeThrough: 'strike', clear: 'clear', undo: 'undo', redo: 'redo'}[b.dataset.cmd];
@@ -175,16 +182,17 @@
 
     // Asks for a bookcase name (and colour). Resolves to {name, color} or
     // null when cancelled.
-    askName({title, value = '', color = 14, okLabel}) {
+    askName({title, value = '', color = 14, okLabel, hint, colors: withColors = true}) {
       return new Promise(resolve => {
         const dialog = $('dialog'), input = $('dialog-input'), form = dialog.querySelector('form');
         $('dialog-title').textContent = title;
         $('dialog-ok').textContent = okLabel || gui.t('build');
         $('dialog-cancel').textContent = gui.t('cancel');
-        input.placeholder = gui.t('nameHint');
+        input.placeholder = hint || gui.t('nameHint');
         input.value = value;
         let chosen = color;
         const colors = $('dialog-colors');
+        colors.hidden = !withColors;
         colors.replaceChildren(...LibraryWorld.DYES.map((c, i) => {
           const b = document.createElement('button');
           b.type = 'button'; b.className = 'swatch'; b.setAttribute('role', 'radio');

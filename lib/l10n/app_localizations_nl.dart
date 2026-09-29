@@ -1207,7 +1207,54 @@ class LNl extends L {
 
   @override
   String get textLibraryMcWalkHint =>
-      'WASD of pijltjestoetsen om te lopen · sleep om rond te kijken · klik op een boekenkast om hem te openen';
+      'WASD om te lopen · klik om rond te kijken · klik op een boekenkast, stoel of deur om hem te gebruiken · Esc laat de muis los';
+
+  @override
+  String get textLibraryMcLookHint => 'Klik om rond te kijken';
+
+  @override
+  String get textLibraryMcStandHint => 'Shift of spatie om op te staan';
+
+  @override
+  String get textLibraryMcStandUp => 'Opstaan';
+
+  @override
+  String get textLibraryMcSit => 'Ga zitten';
+
+  @override
+  String get textLibraryMcOpenDoor => 'Doe de deur open';
+
+  @override
+  String get textLibraryMcCloseDoor => 'Doe de deur dicht';
+
+  @override
+  String textLibraryMcSkinCurrent(String name) {
+    return 'Skin: $name';
+  }
+
+  @override
+  String get textLibraryMcSkinDefault => 'Standaardskin';
+
+  @override
+  String get textLibraryMcSkinYours => 'je eigen';
+
+  @override
+  String get textLibraryMcSkinImport => 'Skin importeren…';
+
+  @override
+  String get textLibraryMcSkinName => 'Minecraft-naam…';
+
+  @override
+  String get textLibraryMcSkinNameTitle => 'Je Minecraft-gebruikersnaam';
+
+  @override
+  String get textLibraryMcSkinNameHint => 'Gebruikersnaam';
+
+  @override
+  String get textLibraryMcSkinUse => 'Skin gebruiken';
+
+  @override
+  String get textLibraryMcSkinFailed => 'Die skin kon niet geladen worden.';
 
   @override
   String get textLibraryMcWriteHint => 'Schrijf je boek hier…';

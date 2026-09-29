@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
@@ -12,6 +13,7 @@ import '../../_shared/windows_webview.dart' show windowsAssetPath;
 import '../text_library_models.dart';
 import '../text_library_repository.dart';
 import '../text_library_scope.dart';
+import 'player_skin.dart';
 import 'scene_protocol.dart';
 import 'vanilla_assets.dart';
 
@@ -157,6 +159,20 @@ class _MinecraftLibraryViewState extends State<MinecraftLibraryView>
         });
         _sendVisibility();
         _sendLibrary();
+        final saved = await loadSavedSkin();
+        if (saved != null) _send(saved.toMessage());
+      case 'pickSkin':
+        await _pickSkin();
+      case 'skinName':
+        final name = '${message['name'] ?? ''}';
+        try {
+          await _useSkin(await fetchSkinByName(name));
+        } catch (_) {
+          _send({'type': 'skin', 'failed': name});
+        }
+      case 'resetSkin':
+        await clearSavedSkin();
+        _send({'type': 'skin', 'data': null});
       case 'error':
         _fail('${message['message'] ?? ''}');
       case 'assetsWanted':
@@ -224,6 +240,38 @@ class _MinecraftLibraryViewState extends State<MinecraftLibraryView>
     } finally {
       _downloading = false;
     }
+  }
+
+  Future<void> _pickSkin() async {
+    final picked = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['png'],
+      withData: true,
+    );
+    final file = picked?.files.singleOrNull;
+    if (file == null) return;
+    final bytes =
+        file.bytes ??
+        (file.path == null ? null : await File(file.path!).readAsBytes());
+    final name = file.name.replaceFirst(
+      RegExp(r'\.png$', caseSensitive: false),
+      '',
+    );
+    final skin = bytes == null ? null : skinFromPng(bytes, label: name);
+    if (skin == null) {
+      _send({'type': 'skin', 'failed': file.name});
+      return;
+    }
+    await _useSkin(skin);
+  }
+
+  Future<void> _useSkin(PlayerSkin skin) async {
+    try {
+      await saveSkin(skin);
+    } catch (_) {
+      // Still wear it for now; it just won't be remembered.
+    }
+    _send(skin.toMessage());
   }
 
   void _reply(Map<String, Object?> message, int id) {

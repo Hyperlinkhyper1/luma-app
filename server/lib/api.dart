@@ -12,6 +12,8 @@ import 'ai_detector_review.dart';
 import 'ai_mode_routing.dart';
 import 'ai_model_catalog.dart';
 import 'ai_model_refresh.dart';
+import 'ai_model_sources.dart';
+import 'ai_price_guard.dart';
 import 'preview_render.dart';
 import 'ai_usage_store.dart';
 import 'chat_store.dart';
@@ -609,8 +611,10 @@ class Api {
       ..get('/admin/ai-models/status', _requireAdmin(_adminAiModelsStatus))
       ..post('/admin/ai-routes', _requireAdmin(_adminAiRoutesSave))
       ..post('/admin/ai-routes/test', _requireAdmin(_adminAiRoutesTest))
+      ..get('/admin/ai-prices', _requireAdmin(_adminAiPrices))
+      ..post('/admin/ai-prices/accept', _requireAdmin(_adminAiPriceAccept))
+      ..post('/admin/ai-prices/guard', _requireAdmin(_adminAiPriceGuard))
       ..post('/admin/ai-detector', _requireAdmin(_adminAiDetectorSave))
-      ..post('/admin/ai-detector/test', _requireAdmin(_adminAiDetectorTest))
       ..post('/admin/benchmark-banners/render',
           _requireAdmin(_adminBannersRender))
       ..post('/admin/benchmark-banners/stop', _requireAdmin(_adminBannersStop))
@@ -849,7 +853,15 @@ class Api {
           await store.saveSessions();
         });
       }
-      return handler(request, user);
+      final response = await handler(request, user);
+      if (store.usersById.containsKey(user.id)) {
+        store.userTraffic.record(
+          user.id,
+          uploadBytes: request.contentLength ?? 0,
+          downloadBytes: response.contentLength ?? 0,
+        );
+      }
+      return response;
     };
   }
 
@@ -2109,7 +2121,9 @@ class Api {
     store.unlinkAllOAuthIdentities(user);
     store.sessionsByTokenHash.removeWhere((_, s) => s.userId == user.id);
     store.collectionsByUser.remove(user.id);
+    store.userTraffic.remove(user.id);
     await store.deleteUserData(user.id);
+    await store.userTraffic.flush();
     await cs2OfflineStore?.deleteForUser(user.id);
     await store.saveUsers();
     await store.saveSessions();
@@ -2240,6 +2254,118 @@ class Api {
   /// so models can change without an app release.
   late final AiModeRoutingStore aiModeRoutes =
       AiModeRoutingStore(config.dataDir);
+
+  /// Per-mode price baseline and the auto-disable switch (see
+  /// [AiPriceGuardStore]).
+  late final AiPriceGuardStore aiPriceGuard =
+      AiPriceGuardStore(config.dataDir);
+
+  Timer? _aiPriceTimer;
+  static const _aiPriceWatchEvery = Duration(minutes: 5);
+
+  /// Re-reads OpenRouter's prices every few minutes and re-checks every mode
+  /// against its accepted price, so a rise switches a model off without
+  /// anyone opening the dashboard.
+  void startAiPriceWatch() {
+    _aiPriceTimer?.cancel();
+    Future<void> tick() async {
+      try {
+        await _refreshAiPrices();
+      } catch (e) {
+        stderr.writeln('[luma] ai price watch failed: $e');
+      }
+    }
+
+    unawaited(tick());
+    _aiPriceTimer = Timer.periodic(_aiPriceWatchEvery, (_) => tick());
+  }
+
+  void stopAiPriceWatch() => _aiPriceTimer?.cancel();
+
+  Future<void> _refreshAiPrices() async {
+    if (aiCatalog.status.running) return;
+    final fetcher = AiCatalogFetcher();
+    try {
+      final fetched = await fetcher.fetchOpenRouter();
+      if (fetched.models.isNotEmpty) {
+        await aiCatalog.updatePrices(fetched.models);
+      }
+    } finally {
+      fetcher.close();
+    }
+    for (final mode in kAiModeNames.keys) {
+      await _evaluateAiPrice(mode);
+    }
+  }
+
+  /// Checks [mode]'s route against its accepted price; true when the mode is
+  /// switched off because the price rose.
+  Future<bool> _evaluateAiPrice(String mode, [AiModeRoute? route]) async {
+    route ??= aiModeRoutes.resolve(mode, config.configuredAiUpstreams);
+    if (route == null) return false;
+    return aiPriceGuard.evaluate(mode, route, priceFor(aiCatalog, route));
+  }
+
+  /// Live prices and guard state for the Assistant tab, one object per mode.
+  Future<Response> _adminAiPrices(Request request) async {
+    final out = <String, dynamic>{};
+    for (final mode in kAiModeNames.keys) {
+      final route = aiModeRoutes.resolve(mode, config.configuredAiUpstreams);
+      if (route == null) continue;
+      final price = priceFor(aiCatalog, route);
+      final disabled = await _evaluateAiPrice(mode, route);
+      final entry = aiPriceGuard.entry(mode);
+      out[mode] = {
+        'model': route.model,
+        'upstream': route.upstream.label,
+        'price': price?.toJson(),
+        'baseline': entry.baseline?.toJson(),
+        'autoDisable': entry.autoDisable,
+        'disabled': disabled,
+        'disabledAtMs': entry.disabledAtMs,
+      };
+    }
+    return jsonResponse(200, {
+      'modes': out,
+      'refreshedAtMs': aiCatalog.refreshedAtMs,
+    });
+  }
+
+  /// Accepts a mode's current price as its new baseline and turns it back on.
+  Future<Response> _adminAiPriceAccept(Request request) async {
+    Map<String, String> form = const {};
+    try {
+      form = Uri.splitQueryString(await request.readAsString());
+    } catch (_) {}
+    final mode = form['mode'] ?? '';
+    if (!kAiModeNames.containsKey(mode)) {
+      return errorResponse(400, 'bad_request', 'Unknown mode.');
+    }
+    final route = aiModeRoutes.resolve(mode, config.configuredAiUpstreams);
+    if (route != null) {
+      await aiPriceGuard.accept(mode, route, priceFor(aiCatalog, route));
+      await store.logActivity('ai_price_accepted',
+          '${kAiModeNames[mode]} re-enabled at the current ${route.model} price');
+    }
+    return jsonResponse(200, {'ok': true});
+  }
+
+  /// Turns a mode's "disable if the price rises" guard on or off.
+  Future<Response> _adminAiPriceGuard(Request request) async {
+    Map<String, String> form = const {};
+    try {
+      form = Uri.splitQueryString(await request.readAsString());
+    } catch (_) {}
+    final mode = form['mode'] ?? '';
+    if (!kAiModeNames.containsKey(mode)) {
+      return errorResponse(400, 'bad_request', 'Unknown mode.');
+    }
+    final on = form['enabled'] == '1';
+    await aiPriceGuard.setAutoDisable(mode, on);
+    await store.logActivity('ai_price_guard',
+        '${kAiModeNames[mode]} price guard ${on ? 'on' : 'off'}');
+    return jsonResponse(200, {'ok': true});
+  }
 
   /// The AI Detector plugin's reviewer model and its instructions, set on
   /// the same Assistant tab.
@@ -2494,6 +2620,10 @@ class Api {
     }
 
     final route = aiModeRoutes.resolve(mode, config.configuredAiUpstreams)!;
+    if (await _evaluateAiPrice(meteredMode, route)) {
+      return errorResponse(503, 'model_disabled',
+          'This assistant mode is paused right now. Try another mode.');
+    }
 
     try {
       final (status, responseBody) =
@@ -2750,7 +2880,7 @@ class Api {
     );
   }
 
-  /// The AI Detector plugin's "Deep check": the operator's chosen model
+  /// The AI Detector plugin's AI review: the operator's chosen model
   /// reviews the user's text and says where and how it reads AI-generated.
   /// Metered against the user's Aurora token budget, like a chat turn.
   Future<Response> _aiDetect(Request request, StoredUser user) async {
@@ -2857,93 +2987,6 @@ class Api {
     return _adminFormResponse(request, '/admin',
         fragment: 'assistant', json: {'ok': true, ...saved.toJson()});
   }
-
-  /// Runs the AI Detector card's current (unsaved) model and instructions
-  /// over a sample text, so the operator sees the verdict users would get.
-  Future<Response> _adminAiDetectorTest(Request request) async {
-    Map<String, dynamic> body;
-    try {
-      body = await _readJson(request);
-    } on FormatException {
-      return errorResponse(400, 'bad_request', 'Malformed request.');
-    }
-    AiModeRoute? route;
-    final modelInput = body['model'];
-    if (modelInput is String && modelInput.trim().isNotEmpty) {
-      final upstreamValue = body['upstream'];
-      final upstream =
-          AiUpstream.parse(upstreamValue is String ? upstreamValue : null);
-      final model = modelInput.trim();
-      if (upstream == null || !isValidAiModelId(model)) {
-        return errorResponse(
-            400, 'bad_request', 'Choose a valid provider and model ID.');
-      }
-      final effort = body['reasoningEffort'];
-      if (!config.configuredAiUpstreams.contains(upstream)) {
-        return jsonResponse(200, {
-          'ok': false,
-          'upstream': upstream.label,
-          'model': model,
-          'error': 'No API key is configured for ${upstream.label}.',
-        });
-      }
-      route = AiModeRoute(upstream, model,
-          reasoningEffort: effort is String &&
-                  effort.isNotEmpty &&
-                  kAiReasoningEfforts.contains(effort)
-              ? effort
-              : null);
-    } else {
-      route = aiModeRoutes.resolve('smarter', config.configuredAiUpstreams);
-    }
-    if (route == null) {
-      return errorResponse(404, 'not_configured',
-          'Set an API key for Google AI Studio, OpenRouter, or Mistral first.');
-    }
-    final instructionsInput = body['instructions'];
-    final instructions =
-        instructionsInput is String && instructionsInput.trim().isNotEmpty
-            ? instructionsInput
-            : kDefaultAiDetectorInstructions;
-    final sampleInput = body['text'];
-    final sample = sampleInput is String && sampleInput.trim().isNotEmpty
-        ? sampleInput.trim()
-        : _aiDetectorSample;
-    if (sample.length > kAiDetectorMaxChars) {
-      return errorResponse(400, 'bad_request', 'The sample text is too long.');
-    }
-    final started = DateTime.now();
-    try {
-      final result = await _runAiDetector(route, instructions, sample);
-      return jsonResponse(200, {
-        'ok': result.verdict != null,
-        'status': result.status,
-        'upstream': route.upstream.label,
-        'model': route.model,
-        'ms': DateTime.now().difference(started).inMilliseconds,
-        'error': result.error,
-        if (result.verdict != null) 'result': result.verdict!.toJson(),
-      });
-    } catch (e) {
-      return jsonResponse(200, {
-        'ok': false,
-        'upstream': route.upstream.label,
-        'model': route.model,
-        'error': 'Could not reach ${route.upstream.label}: $e',
-      });
-    }
-  }
-
-  /// Half a human paragraph, half stock assistant prose — the dashboard's
-  /// default AI Detector test, so a working setup shows both kinds.
-  static const _aiDetectorSample =
-      'Went to the allotment after work, the courgettes have gone mad again '
-      'and Pete from plot 9 still hasn\'t fixed the gate, so I tied it shut '
-      'with baler twine like an idiot. In today\'s fast-paced world, '
-      'gardening offers a unique opportunity to reconnect with nature. It\'s '
-      'important to note that cultivating a garden is not just a hobby — '
-      'it\'s a testament to patience, resilience and growth. Furthermore, '
-      'it fosters a rich tapestry of community connections.';
 
   Response _itadStatus(Request request, StoredUser user) =>
       jsonResponse(200, {'configured': config.itadKeyConfigured});
@@ -5204,6 +5247,10 @@ class Api {
         'createdAtMs': user.createdAtMs,
         'usedBytes': store.usedBytes(user.id),
         'quotaBytes': user.quotaBytes,
+        'traffic': store.userTraffic.byUser[user.id]?.toJson(),
+        'collections': (store.collectionsByUser[user.id]?.values.toList() ?? <CollectionMeta>[])
+          .map((meta) => meta.toJson()).toList()
+          ..sort((a, b) => (b['size'] as int).compareTo(a['size'] as int)),
         'lastLoginAtMs': user.lastLoginAtMs,
       };
 
@@ -8863,6 +8910,23 @@ syncToolbar();
       final statusClass = u.status == 'active' ? 'ok' : 'warn';
       final safeEmail = _htmlEscape(u.email);
       final bannedIps = store.bannedIpsFor(u);
+      final collections = (store.collectionsByUser[u.id]?.values.toList() ??
+          <CollectionMeta>[])
+        ..sort((a, b) => b.size.compareTo(a.size));
+      final storageDetails = collections.isEmpty
+          ? '<div class="usage-empty">No synced collections</div>'
+          : collections.map((meta) =>
+              '<div class="usage-line"><span>${_htmlEscape(meta.name)}</span>'
+              '<strong>${fmtBytes(meta.size)}</strong></div>'
+              '<div class="usage-date">Updated ${fmtDate(meta.updatedAtMs)}</div>')
+              .join();
+      final traffic = store.userTraffic.byUser[u.id];
+      final transferDetails = traffic == null
+          ? '<span class="muted">Tracking starts with the next authenticated request.</span>'
+          : '<div class="usage-line"><span>Uploaded</span><strong>${fmtBytes(traffic.uploadBytes)}</strong></div>'
+              '<div class="usage-line"><span>Downloaded</span><strong>${fmtBytes(traffic.downloadBytes)}</strong></div>'
+              '<div class="usage-line"><span>Requests</span><strong>${traffic.requests}</strong></div>'
+              '<div class="usage-date">Since ${fmtDate(traffic.startedAtMs)}</div>';
 
       /// One row of the Actions menu: a single-button form, so every action
       /// stays an ordinary POST that works without JavaScript.
@@ -8959,6 +9023,13 @@ syncToolbar();
           '<td class="nowrap">'
           '<div class="meter"><div style="width:${pct.toStringAsFixed(0)}%"></div></div>'
           '<span class="muted" style="font-size:12px">${fmtBytes(used)} / ${fmtBytes(u.quotaBytes)} (${pct.toStringAsFixed(0)}%)</span>'
+          '<details class="user-usage"><summary>${collections.length} collection${collections.length == 1 ? '' : 's'} · details</summary>'
+          '<div class="usage-line"><span>Remaining</span><strong>${fmtBytes((u.quotaBytes - used).clamp(0, u.quotaBytes).toInt())}</strong></div>'
+          '$storageDetails</details>'
+          '</td>'
+          '<td class="nowrap">'
+          '<span class="muted">${traffic == null ? '—' : fmtBytes(traffic.uploadBytes + traffic.downloadBytes)}</span>'
+          '<details class="user-usage"><summary>Transfer details</summary>$transferDetails</details>'
           '</td>'
           '<td class="nowrap">${fmtDate(u.createdAtMs)}</td>'
           '<td class="nowrap">${fmtDate(u.lastLoginAtMs)}</td>'
@@ -9157,8 +9228,9 @@ syncToolbar();
         '${_adminAssistantPanel(googleModels, mistralModels)}'
         '<div class="tab-panel" id="panel-users">'
         '<div class="card table-card">'
-        '<table><thead><tr><th>Email</th><th>Status</th><th>Plan</th>'
-        '<th>Storage</th><th>Created</th><th>Last login</th><th></th></tr></thead>'
+        '<table><caption>Storage covers encrypted sync collections and their quota. App transfer estimates known-length authenticated API payloads before compression; streamed bodies, headers, TLS, WebSockets and other device traffic are excluded. Tracking begins after this server update.</caption>'
+        '<thead><tr><th>Email</th><th>Status</th><th>Plan</th>'
+        '<th>Sync storage</th><th>App transfer</th><th>Created</th><th>Last login</th><th></th></tr></thead>'
         '<tbody>$rows</tbody></table>'
         '</div>'
         '$bansCard'
@@ -9515,8 +9587,17 @@ syncToolbar();
           'maxlength="200" spellcheck="false" autocomplete="off">'
           '<button type="button" class="btn btn-ghost btn-sm ai-browse" '
           'data-mode="$mode">Browse models</button></td>'
+          '<td class="ai-price-cell" data-mode="$mode">'
+          '<div class="ai-price" id="ai-price-$mode">Loading…</div>'
+          '<div class="ai-price-note muted" id="ai-price-note-$mode"></div>'
+          '<div class="ai-price-actions">'
+          '<button type="button" class="btn btn-ghost btn-sm ai-guard" '
+          'data-mode="$mode" id="ai-guard-$mode">Guard</button>'
+          '<button type="button" class="btn btn-primary btn-sm ai-accept" '
+          'data-mode="$mode" id="ai-accept-$mode" style="display:none">'
+          'Accept price &amp; re-enable</button></div></td>'
           '<td><select name="$mode.effort">$effortOptions</select></td>'
-          '<td class="nowrap">$status</td>'
+          '<td class="nowrap">$status<div id="ai-paused-$mode"></div></td>'
           '<td class="actions-cell"><button type="button" '
           'class="btn btn-ghost btn-sm ai-test" data-mode="$mode">Test</button>'
           '<div class="ai-test-out muted" id="ai-test-$mode"></div></td>'
@@ -9546,6 +9627,9 @@ syncToolbar();
         'max-width:260px;text-align:right}'
         '.ai-test-out.ok{color:#7ee08a}.ai-test-out.err{color:#e07e7e}'
         '.ai-browse{margin-top:6px;white-space:nowrap}'
+        '.ai-price-cell{min-width:170px}.ai-price{font:13px ui-monospace,Consolas,monospace}'
+        '.ai-price.up{color:#e07e7e}.ai-price-note{font-size:11px;margin-top:2px;white-space:normal}'
+        '.ai-price-actions{display:flex;flex-direction:column;gap:6px;margin-top:8px;align-items:flex-start}'
         '.ai-routes textarea{width:100%;min-height:260px;resize:vertical;'
         'background:#1a1530;color:#ece8f7;border:1px solid #2d2645;'
         'border-radius:9px;padding:10px 12px;outline:none;line-height:1.5;'
@@ -9556,11 +9640,6 @@ syncToolbar();
         '.ai-detector-grid label,.ai-detector-label{display:block;font-size:11px;'
         'letter-spacing:.05em;text-transform:uppercase;color:#8d86a8;margin-bottom:6px}'
         '.ai-detector-grid select{width:100%}'
-        '.ai-detector-out{margin-top:14px;font-size:12.5px;white-space:normal}'
-        '.ai-detector-out.err{color:#e07e7e}'
-        '.ai-detector-out ol{margin:8px 0 0;padding-left:20px}'
-        '.ai-detector-out li{margin-bottom:6px}'
-        '.ai-detector-out q{color:#ece8f7}'
         '.ai-picker{background:#151122;color:#ece8f7;border:1px solid #2d2645;'
         'border-radius:16px;padding:0;width:min(1120px,calc(100vw - 24px));'
         'max-height:calc(100dvh - 24px);box-shadow:0 24px 64px #0009}'
@@ -9590,13 +9669,17 @@ syncToolbar();
         'Luma AI mode in the Assistant. Changes apply to the next message, '
         'no app update needed. Leave a model blank to use the default shown '
         'in grey. Usage limits are the same whichever model you pick, so '
-        'mind the per-token price on OpenRouter and Mistral.</div>'
+        'mind the per-token price on OpenRouter and Mistral. Prices refresh '
+        'live (Google and Mistral use the same model\'s OpenRouter price). '
+        'With Guard on, a mode switches itself off as soon as its price rises '
+        'above the price you last accepted, and stays off until you press '
+        '"Accept price &amp; re-enable", pick another model, or turn Guard off.</div>'
         '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'
         '$keyLine</div>'
         '<form method="post" action="/admin/ai-routes" class="ai-routes">'
         '<div style="overflow-x:auto">'
         '<table><thead><tr><th>Mode</th><th>Provider</th><th>Model</th>'
-        '<th>Reasoning</th><th>Status</th><th></th></tr></thead>'
+        '<th>Price / 1M tokens</th><th>Reasoning</th><th>Status</th><th></th></tr></thead>'
         '<tbody>$rows</tbody></table></div>'
         '<div class="maint-actions" style="margin:16px 0 0">'
         '<button type="submit" class="btn btn-primary">Save models</button>'
@@ -9673,7 +9756,7 @@ syncToolbar();
     return '<div class="card" style="margin-top:18px">'
         '<h2>AI Detector model</h2>'
         '<div class="maint-desc">The model behind the AI Detector plugin\'s '
-        '"Deep check". It reads the user\'s text with the instructions below '
+        'check. It reads the user\'s text with the instructions below '
         'and answers with an overall score plus the exact passages that read '
         'AI-generated, and why. The answer format is added automatically '
         'after your instructions, so you only need to describe how to judge. '
@@ -9707,21 +9790,10 @@ syncToolbar();
         '${esc(saved.effectiveInstructions)}</textarea>'
         '<input type="hidden" name="detector.reset" id="ai-detector-reset" value="0">'
         '<template id="aiDetectorDefault">${esc(kDefaultAiDetectorInstructions)}</template>'
-        '<details style="margin-top:12px"><summary class="muted" '
-        'style="cursor:pointer;font-size:12px">Test text (optional — a mixed '
-        'human/AI sample is used when empty)</summary>'
-        '<textarea id="ai-detector-sample" style="min-height:120px;margin-top:8px" '
-        'maxlength="$kAiDetectorMaxChars" placeholder="${esc(_aiDetectorSample)}">'
-        '</textarea></details>'
         '<div class="maint-actions" style="margin:16px 0 0">'
         '<button type="submit" class="btn btn-primary">Save detector</button>'
-        '<button type="button" class="btn btn-ghost" id="aiDetectorTest">'
-        'Test</button>'
-        '<span class="muted" style="font-size:12px">Test runs the current, '
-        'unsaved model and instructions. Leave the model blank to follow '
-        'Nebula.</span>'
+        '<span class="muted" style="font-size:12px">Leave the model blank to follow Nebula.</span>'
         '</div>'
-        '<div class="ai-detector-out muted" id="aiDetectorOut"></div>'
         '</form>'
         '</div>';
   }
@@ -9877,76 +9949,73 @@ syncToolbar();
         .finally(function () { btn.disabled = false; });
     });
   });
+  function usd(v) {
+    return v == null ? '?' : '$' + Number(v).toFixed(v < 1 ? 3 : 2);
+  }
+  function priceText(p) {
+    return p ? usd(p.input) + ' in / ' + usd(p.output) + ' out' : 'price unknown';
+  }
+  function loadPrices() {
+    fetch('/admin/ai-prices').then(function (r) { return r.json(); }).then(function (j) {
+      Object.keys(j.modes || {}).forEach(function (mode) {
+        var m = j.modes[mode];
+        var el = document.getElementById('ai-price-' + mode);
+        if (!el) return;
+        var risen = m.disabled;
+        el.textContent = priceText(m.price);
+        el.className = 'ai-price' + (risen ? ' up' : '');
+        var note = document.getElementById('ai-price-note-' + mode);
+        note.textContent = m.price
+          ? (risen ? 'was ' + priceText(m.baseline)
+                   : (m.autoDisable ? 'accepted ' + priceText(m.baseline) : 'guard is off'))
+          : 'not in the OpenRouter list, so it cannot be guarded';
+        var guard = document.getElementById('ai-guard-' + mode);
+        guard.textContent = m.autoDisable ? 'Guard: on' : 'Guard: off';
+        guard.dataset.on = m.autoDisable ? '1' : '0';
+        document.getElementById('ai-accept-' + mode).style.display = risen ? '' : 'none';
+        var paused = document.getElementById('ai-paused-' + mode);
+        paused.replaceChildren();
+        if (risen) {
+          var badge = document.createElement('span');
+          badge.className = 'badge err';
+          badge.textContent = 'paused — price rose';
+          paused.appendChild(badge);
+        }
+      });
+    }).catch(function () {});
+  }
+  function priceAction(url, body) {
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body,
+    }).then(loadPrices);
+  }
+  document.querySelectorAll('.ai-guard').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      priceAction('/admin/ai-prices/guard',
+        'mode=' + btn.dataset.mode + '&enabled=' + (btn.dataset.on === '1' ? '0' : '1'));
+    });
+  });
+  document.querySelectorAll('.ai-accept').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      priceAction('/admin/ai-prices/accept', 'mode=' + btn.dataset.mode);
+    });
+  });
+  if (document.querySelector('.ai-price-cell')) {
+    loadPrices();
+    setInterval(function () { if (!document.hidden) loadPrices(); }, 30000);
+  }
   var detectorForm = document.getElementById('aiDetectorForm');
   if (detectorForm) {
     var instructions = document.getElementById('ai-detector-instructions');
     var resetFlag = document.getElementById('ai-detector-reset');
-    var detectorOut = document.getElementById('aiDetectorOut');
     document.getElementById('aiDetectorReset').addEventListener('click', function () {
       instructions.value =
         document.getElementById('aiDetectorDefault').content.textContent.trim();
       resetFlag.value = '1';
     });
     instructions.addEventListener('input', function () { resetFlag.value = '0'; });
-    var testBtn = document.getElementById('aiDetectorTest');
-    testBtn.addEventListener('click', function () {
-      testBtn.disabled = true;
-      detectorOut.className = 'ai-detector-out muted';
-      detectorOut.textContent = 'Reviewing the test text…';
-      fetch('/admin/ai-detector/test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          upstream: document.getElementById('ai-upstream-detector').value,
-          model: document.getElementById('ai-model-detector').value,
-          reasoningEffort: document.getElementById('ai-effort-detector').value,
-          instructions: instructions.value,
-          text: document.getElementById('ai-detector-sample').value,
-        }),
-      })
-        .then(function (r) { return r.json(); })
-        .then(function (j) {
-          var who = (j.upstream || '') + ' · ' + (j.model || '');
-          detectorOut.replaceChildren();
-          if (!j.ok || !j.result) {
-            detectorOut.className = 'ai-detector-out err';
-            detectorOut.textContent = '✗ ' + who +
-              (j.status ? ' (' + j.status + ')' : '') + ': ' +
-              (j.error || j.message || 'failed');
-            return;
-          }
-          var res = j.result;
-          detectorOut.className = 'ai-detector-out';
-          var head = document.createElement('div');
-          var strong = document.createElement('strong');
-          strong.textContent = res.score + '/100 · ' + res.verdict;
-          head.appendChild(strong);
-          head.appendChild(document.createTextNode(
-            '  —  ' + who + ', ' + j.ms + ' ms'));
-          detectorOut.appendChild(head);
-          var summary = document.createElement('div');
-          summary.className = 'muted';
-          summary.textContent = res.summary;
-          detectorOut.appendChild(summary);
-          var list = document.createElement('ol');
-          (res.passages || []).forEach(function (p) {
-            var item = document.createElement('li');
-            var quote = document.createElement('q');
-            quote.textContent = p.quote;
-            item.appendChild(quote);
-            item.appendChild(document.createTextNode(
-              ' — ' + p.likelihood + '% · ' + p.reason +
-              (p.start == null ? ' (quote not found in the text)' : '')));
-            list.appendChild(item);
-          });
-          detectorOut.appendChild(list);
-        })
-        .catch(function (e) {
-          detectorOut.className = 'ai-detector-out err';
-          detectorOut.textContent = '✗ ' + e;
-        })
-        .finally(function () { testBtn.disabled = false; });
-    });
   }
 })();
 ''';
@@ -10024,10 +10093,11 @@ h2{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
 .inbox-actions input[type=text]:focus{border-color:#8a7ee0}
 .empty{color:#8d86a8;font-size:13px;padding:10px 0}
 .card{background:#151122;border:1px solid #241e36;border-radius:14px;padding:20px 22px;margin-bottom:18px}
-.card.table-card{padding:14px 16px}
+.card.table-card{padding:14px 16px;overflow-x:auto}
 .card.table-card h2{padding:6px 6px 0}
 table{border-collapse:collapse;width:100%;font-size:13px}
 th{text-align:left;color:#7f7898;font-weight:600;font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:10px 12px;border-bottom:1px solid #262038;white-space:nowrap}
+caption{caption-side:bottom;text-align:left;color:#8d86a8;font-size:11px;line-height:1.5;padding:12px}
 td{padding:10px 12px;border-bottom:1px solid #1d1830;font-variant-numeric:tabular-nums}
 tbody tr:last-child td{border-bottom:0}
 tbody tr:hover td{background:#181330}
@@ -10039,6 +10109,13 @@ tbody tr:hover td{background:#181330}
 .badge.err{background:rgba(224,126,126,.12);color:#e07e7e}
 .meter{background:#241f38;border-radius:99px;overflow:hidden;width:120px;height:6px;display:inline-block;vertical-align:middle;margin-right:8px}
 .meter>div{background:linear-gradient(90deg,#8a7ee0,#a89bf0);height:100%}
+.user-usage{margin-top:6px;max-width:260px;white-space:normal;color:#b4addc;font-size:11px}
+.user-usage summary{cursor:pointer;color:#a89bf0;white-space:nowrap}
+.user-usage[open]{padding:8px 10px;background:#1d1730;border:1px solid #302746;border-radius:8px}
+.user-usage[open] summary{margin-bottom:8px}
+.usage-line{display:flex;justify-content:space-between;gap:16px;padding:3px 0}
+.usage-line strong{color:#ece8f7;font-weight:600;white-space:nowrap}
+.usage-date,.usage-empty{color:#8d86a8;font-size:10px;padding-bottom:5px}
 .btn{display:inline-flex;align-items:center;justify-content:center;border-radius:9px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid transparent;transition:background .15s,border-color .15s,color .15s}
 .btn-primary{background:#8a7ee0;color:#14111f}
 .btn-primary:hover{background:#9c91ec}

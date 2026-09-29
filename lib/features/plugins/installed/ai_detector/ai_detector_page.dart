@@ -14,11 +14,13 @@ import 'ai_review_api.dart';
 /// The AI Detector plugin: paste text, run a purely statistical style
 /// analysis over it, and get a score plus the list of signals that fired —
 /// each with the exact evidence from the text, and every flagged stretch
-/// painted back onto the source. That part never leaves the device.
+/// painted back onto the source. The statistics never leave the device.
 ///
-/// Once a text is reviewed, an optional "Deep check" sends it to the luma
-/// server, where the model and instructions picked in the admin dashboard
-/// judge where and how it reads AI-generated — see [AiReviewApi].
+/// When signed in to an approved account, Review also sends the text to the
+/// luma server, where the model and instructions picked in the admin
+/// dashboard judge where and how it reads AI-generated — see [AiReviewApi].
+/// That verdict leads the report; the statistics stay as the fallback and as
+/// supporting evidence.
 class AiDetectorPage extends StatefulWidget {
   const AiDetectorPage({super.key});
 
@@ -97,6 +99,7 @@ class _AiDetectorPageState extends State<AiDetectorPage> {
       _error = null;
       _resetDeepCheck();
     });
+    if (SyncScope.maybeOf(context)?.serverReady ?? false) _deepCheck();
   }
 
   void _clear() {
@@ -122,11 +125,7 @@ class _AiDetectorPageState extends State<AiDetectorPage> {
     final sync = SyncScope.maybeOf(context);
     final baseUrl = sync?.serverUrl;
     if (text == null || _aiBusy) return;
-    if (sync == null || !sync.serverReady || baseUrl == null) {
-      setState(() => _aiError =
-          'Sign in to an approved luma account to use the deep check.');
-      return;
-    }
+    if (sync == null || !sync.serverReady || baseUrl == null) return;
     final run = ++_aiRun;
     setState(() {
       _aiBusy = true;
@@ -207,6 +206,8 @@ class _AiDetectorPageState extends State<AiDetectorPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        _deepCheckCard(),
+                        const SizedBox(height: 16),
                         _VerdictCard(report: report),
                         const SizedBox(height: 16),
                         LumaSegmentedTabs(
@@ -225,8 +226,6 @@ class _AiDetectorPageState extends State<AiDetectorPage> {
                           )
                         else
                           _SignalsView(report: report),
-                        const SizedBox(height: 16),
-                        _deepCheckCard(),
                       ],
                     ),
                   ),
@@ -238,8 +237,8 @@ class _AiDetectorPageState extends State<AiDetectorPage> {
                   'writing can look machine-like; edited machine output can '
                   'look human. A named verdict rests on a signature the text '
                   'carries itself, and a signature can be stripped or forged. '
-                  'The review runs on this device; only a deep check sends '
-                  'the text to the luma server, and only when you ask.',
+                  'The statistics run on this device. Signed in, the text is '
+                  'also sent to the luma server for an AI model review.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: luma.textMuted,
@@ -784,9 +783,9 @@ class _GaugePainter extends CustomPainter {
 
 // ---- deep check -------------------------------------------------------------
 
-/// The optional server-side review: offered after the on-device one, run
-/// only on request, and shown as a score, a summary and the passages the
-/// model pointed at — each painted onto the text with its reason.
+/// The server-side model review, started by Review when signed in and shown
+/// as a score, a summary and the passages the model pointed at — each
+/// painted onto the text with its reason.
 class _DeepCheckCard extends StatelessWidget {
   const _DeepCheckCard({
     required this.text,
@@ -826,7 +825,7 @@ class _DeepCheckCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Deep check with luma AI',
+                      'AI model review',
                       style: TextStyle(
                         color: luma.textPrimary,
                         fontSize: 15,
@@ -835,12 +834,14 @@ class _DeepCheckCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      available
-                          ? 'An AI model reads the text and points out where '
-                              'and how it reads AI-generated. Sends the text '
-                              'to the luma server.'
-                          : 'Sign in to an approved luma account to have an '
-                              'AI model review this text.',
+                      !available
+                          ? 'Sign in to an approved luma account to also have '
+                              'an AI model review the text. Below is the '
+                              'on-device analysis.'
+                          : busy
+                              ? 'The AI model is reading the text…'
+                              : 'Where and how the text reads AI-generated, '
+                                  'according to the AI model.',
                       style: TextStyle(
                         color: luma.textMuted,
                         fontSize: 12,
@@ -851,12 +852,18 @@ class _DeepCheckCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              LumaPrimaryButton(
-                label: review == null ? 'Deep check' : 'Run again',
-                icon: Icons.cloud_upload_outlined,
-                loading: busy,
-                onTap: available && !busy ? onRun : null,
-              ),
+              if (busy)
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2.4),
+                )
+              else if (available && error != null)
+                LumaGhostButton(
+                  label: 'Try again',
+                  icon: Icons.refresh_rounded,
+                  onTap: onRun,
+                ),
             ],
           ),
           if (error != null) ...[

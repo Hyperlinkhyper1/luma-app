@@ -561,6 +561,32 @@ class AiModelCatalogStore {
         return added;
       });
 
+  /// Applies only the price changes in [incoming] to models already stored,
+  /// and returns how many changed. Unlike [upsertModels] it leaves the
+  /// catalogue (and so its client-facing etag) alone when no price moved,
+  /// which lets the price watcher poll often.
+  Future<int> updatePrices(Iterable<AiModel> incoming) =>
+      _lock.synchronized(() async {
+        var changed = 0;
+        for (final model in incoming) {
+          final existing = _models[model.id];
+          if (existing == null) continue;
+          if (model.inputPricePerM == null && model.outputPricePerM == null) {
+            continue;
+          }
+          if (existing.inputPricePerM == model.inputPricePerM &&
+              existing.outputPricePerM == model.outputPricePerM) {
+            continue;
+          }
+          _models[model.id] = existing.mergedWith(model);
+          changed++;
+        }
+        if (changed == 0) return 0;
+        _refreshedAtMs = DateTime.now().millisecondsSinceEpoch;
+        await _persist();
+        return changed;
+      });
+
   /// Clears the benchmark columns of every stored model *not* in [rated],
   /// and returns the ids it cleared.
   ///

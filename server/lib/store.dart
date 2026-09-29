@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'activity.dart';
 import 'account_database.dart';
 import 'metrics_history.dart';
+import 'user_traffic.dart';
 import 'util.dart';
 
 /// Storage quota granted by each plan tier, in bytes. Mirrors the
@@ -454,6 +455,7 @@ class Store {
   /// Admin dashboard's "Metrics" graphs history — see MetricsHistory for the
   /// downsampling/persistence scheme. Set during [open].
   late final MetricsHistory metricsHistory;
+  late final UserTrafficStore userTraffic;
 
   /// Random secret used to fabricate stable fake KDF salts for unknown
   /// emails (prevents account enumeration via the params endpoint).
@@ -556,6 +558,7 @@ class Store {
     }
 
     store.metricsHistory = await MetricsHistory.open(path);
+    store.userTraffic = await UserTrafficStore.open(path);
 
     return store;
   }

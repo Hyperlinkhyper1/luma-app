@@ -60,6 +60,8 @@ Future<void> main() async {
       aiBenchmarks,
       cs2OfflineStore: cs2OfflineStore);
 
+  api.startAiPriceWatch();
+
   final server = await shelf_io.serve(
     api.handler,
     InternetAddress.anyIPv4,
@@ -88,12 +90,14 @@ Future<void> main() async {
     stdout.writeln('[luma] shutting down...');
     cs2OfflineScheduler.dispose();
     await server.close();
+    await store.userTraffic.flush();
     exit(0);
   });
   if (!Platform.isWindows) {
     ProcessSignal.sigterm.watch().listen((_) async {
       cs2OfflineScheduler.dispose();
       await server.close();
+      await store.userTraffic.flush();
       exit(0);
     });
   }
