@@ -9,6 +9,12 @@ class LZh extends L {
   LZh([String locale = 'zh']) : super(locale);
 
   @override
+  String get trayOpen => '打开 luma';
+
+  @override
+  String get trayQuit => '退出 luma';
+
+  @override
   String get navHome => '首页';
 
   @override

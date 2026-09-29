@@ -143,6 +143,8 @@ class _AppShellState extends State<AppShell> {
       _channelRegistered = true;
       unawaited(petMainChannel.setMethodCallHandler(_handlePetWindowCall));
     }
+    final t = L.of(context);
+    unawaited(setTrayLabels(open: t.trayOpen, quit: t.trayQuit));
   }
 
   @override

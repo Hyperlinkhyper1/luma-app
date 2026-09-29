@@ -26,6 +26,14 @@
     skinNameTitle: 'Your Minecraft username', skinNameHint: 'Username', skinUse: 'Use skin', skinFailed: "Couldn't load that skin.",
     writeHint: 'Ctrl+B bold · Ctrl+I italic · Ctrl+U underline · PgUp/PgDn turn pages',
     moveHint: 'Click a slot to put the book there · Esc to cancel', saveFailed: "That didn't save. Try again.",
+    videoSettings: 'Video Settings…', videoTitle: 'Video Settings', bloom: 'Bloom: {0}', lightShafts: 'Light Shafts: {0}',
+    brightness: 'Brightness: {0}', brightnessMoody: 'Moody', brightnessBright: 'Bright', shadows: 'Shadows: {0}',
+    shadowsLow: 'Low', shadowsHigh: 'High', shadowsUltra: 'Ultra', depthOfField: 'Depth of Field: {0}', grain: 'Film Grain: {0}',
+    vignette: 'Vignette: {0}', bobbing: 'View Bobbing: {0}', fov: 'FOV: {0}', fovNormal: 'Normal', particles: 'Particles: {0}',
+    particlesAll: 'All', particlesDecreased: 'Decreased', particlesMinimal: 'Minimal', renderScale: 'Resolution: {0}',
+    on: 'ON', off: 'OFF', weather: 'Weather: {0}', weatherClear: 'Clear', weatherRain: 'Rain', weatherStorm: 'Storm',
+    weatherThunder: 'Thunderstorm', weatherCycle: 'Changing', sound: 'Sound: {0}', upstairs: 'Go upstairs', downstairs: 'Go downstairs',
+    shapes: 'Shapes',
   };
 
   const MC_COLORS = [
@@ -60,6 +68,10 @@
       $('settings-open').title = gui.t('settings');
       $('settings-title').textContent = gui.t('settings');
       $('settings-done').textContent = gui.t('done');
+      $('video-open').textContent = gui.t('videoSettings');
+      $('video-title').textContent = gui.t('videoTitle');
+      $('video-done').textContent = gui.t('done');
+      $('shapes').setAttribute('aria-label', gui.t('shapes'));
       $('download').textContent = gui.t('download');
       $('download-note').textContent = gui.t('downloadNote');
       $('skin-import').textContent = gui.t('skinImport');
@@ -221,7 +233,7 @@
     },
 
     isModalOpen() {
-      return !$('dialog').hidden || !$('settings').hidden;
+      return !$('dialog').hidden || !$('settings').hidden || !$('video').hidden;
     },
   };
 

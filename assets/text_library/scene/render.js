@@ -18,6 +18,8 @@
     uniform vec3 fireOrigin;
     uniform vec3 fogColor;
     uniform float fogDensity;
+    uniform float overcast;
+    uniform float flash;
   `;
 
   const BLOCK_VERT = /* glsl */ `
@@ -29,6 +31,9 @@
     attribute float emit;
     attribute vec4 label;
     uniform mat4 shadowMatrix;
+    #ifdef VIEWMODEL
+    uniform mat4 handProjection;
+    #endif
     varying vec2 vUvp;
     flat varying vec3 vTile;
     varying vec3 vLight;
@@ -50,8 +55,10 @@
       vDepth = -view.z;
       gl_Position = projectionMatrix * view;
       #ifdef VIEWMODEL
-      // The hand in first person: squeezed into the very front of the depth
-      // range so it never cuts into a wall, keeping its own ordering.
+      // The hand in first person has its own fixed field of view, as in the
+      // game, and is squeezed into the very front of the depth range so it
+      // never cuts into a wall, keeping its own ordering.
+      gl_Position = handProjection * view;
       gl_Position.z = -gl_Position.w + (gl_Position.z + gl_Position.w) * 0.02;
       #endif
     }
@@ -147,7 +154,8 @@
       // where interpolated light can dip below zero; pow() of that is NaN.
       vec3 level = clamp(vLight, 0.0, 1.0);
       float occlusion = clamp(vAo, 0.0, 1.0);
-      vec3 sky = skyColor * curve(level.x) * skyLevel;
+      // Lightning lights whatever the sky reaches.
+      vec3 sky = (skyColor + vec3(1.1, 1.15, 1.4) * flash) * curve(level.x) * skyLevel;
       vec3 lamp = lampColor * pow(curve(level.y), 1.1) * lampLevel;
       vec3 fire = fireColor * pow(curve(level.z), 0.9) * fireLevel * flicker * (0.6 + 0.4 * fireFall);
       float ndl = max(dot(n, sunDir), 0.0);
@@ -230,29 +238,36 @@
       vec3 d = normalize(vDir);
       float h = clamp(d.y, -0.2, 1.0);
       vec3 col = mix(horizon, zenith, pow(max(h, 0.0), 0.55));
+      // Rain greys the whole sky over and hides the sun.
+      float lum = dot(col, vec3(0.3, 0.59, 0.11));
+      col = mix(col, vec3(lum) * vec3(0.62, 0.66, 0.74), overcast * 0.85);
+      float clear = 1.0 - overcast * 0.9;
       float s = max(dot(d, sunPos), 0.0);
-      col += sunColor * pow(s, 12.0) * 0.35 * (1.0 - night);
+      col += sunColor * pow(s, 12.0) * 0.35 * (1.0 - night) * clear;
       // The game's square sun and moon, on opposite sides of the sky.
       vec2 sq = square(d, sunPos, 0.07);
-      if (max(abs(sq.x), abs(sq.y)) < 1.0) col = mix(col, vec3(4.0, 3.4, 2.2), 1.0 - night * 0.9);
-      else col += vec3(1.0, 0.8, 0.5) * smoothstep(1.9, 1.0, max(abs(sq.x), abs(sq.y))) * 0.4 * (1.0 - night);
+      if (max(abs(sq.x), abs(sq.y)) < 1.0) col = mix(col, vec3(4.0, 3.4, 2.2), (1.0 - night * 0.9) * clear);
+      else col += vec3(1.0, 0.8, 0.5) * smoothstep(1.9, 1.0, max(abs(sq.x), abs(sq.y))) * 0.4 * (1.0 - night) * clear;
       vec2 mq = square(d, -sunPos, 0.055);
       if (max(abs(mq.x), abs(mq.y)) < 1.0) {
         vec2 cell = floor((mq + 1.0) * 2.0);
         float crater = step(0.72, hash(cell + 3.0));
-        col = mix(col, vec3(1.3, 1.35, 1.5) * (1.0 - crater * 0.3), 0.25 + night * 0.75);
+        col = mix(col, vec3(1.3, 1.35, 1.5) * (1.0 - crater * 0.3), (0.25 + night * 0.75) * clear);
       }
       // Blocky clouds on a flat layer, drifting.
       if (d.y > 0.02) {
         vec2 p = d.xz / d.y * 4.0 + vec2(time * 0.08, 0.0);
         vec2 cell = floor(p);
-        float c = step(0.58, hash(cell)) * step(0.3, hash(cell + 7.0));
+        // Heavier weather packs the clouds together and darkens them.
+        float c = step(0.58 - overcast * 0.5, hash(cell)) * step(0.3 - overcast * 0.3, hash(cell + 7.0));
         float fade = smoothstep(0.02, 0.25, d.y);
-        col = mix(col, mix(vec3(1.0), sunColor * 0.4 + horizon * 0.6, 0.25) * (1.0 - night * 0.8), c * fade * 0.85);
+        vec3 cloud = mix(vec3(1.0), sunColor * 0.4 + horizon * 0.6, 0.25) * (1.0 - night * 0.8);
+        cloud = mix(cloud, vec3(lum) * vec3(0.42, 0.45, 0.52), overcast);
+        col = mix(col, cloud, c * fade * (0.85 + overcast * 0.1));
       }
       // Stars at night.
       vec2 sp = floor(d.xz / max(d.y, 0.05) * 60.0);
-      col += night * step(0.9975, hash(sp)) * smoothstep(0.1, 0.4, d.y) * 1.5;
+      col += night * step(0.9975, hash(sp)) * smoothstep(0.1, 0.4, d.y) * 1.5 * (1.0 - overcast);
       // Below the island, a sea of cloud: two blocky layers drifting at
       // different speeds over a deep hazy blue, fading into the horizon.
       if (d.y < 0.0) {
@@ -267,6 +282,8 @@
         below = mix(below, lit, c1 * 0.85);
         col = mix(horizon, below, smoothstep(0.0, 0.14, down));
       }
+      // A lightning flash lights the whole sky.
+      col += vec3(0.75, 0.8, 1.0) * flash * (0.6 + 0.4 * max(d.y, 0.0));
       gl_FragColor = vec4(col, 1.0);
     }
   `;
@@ -276,11 +293,27 @@
     varying vec3 vNormal;
     varying vec3 vWorld;
     uniform vec3 cameraPos;
+    uniform float wet;
+    float h1(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
     void main() {
       vec3 v = normalize(cameraPos - vWorld);
-      float f = pow(1.0 - abs(dot(normalize(vNormal), v)), 3.0);
+      vec3 n = normalize(vNormal);
+      float f = pow(1.0 - abs(dot(n, v)), 3.0);
       vec3 col = mix(skyColor * 0.6 + sunColor * 0.2, vec3(1.0), 0.2);
-      gl_FragColor = vec4(col, 0.05 + f * 0.35);
+      float alpha = 0.05 + f * 0.35;
+      if (wet > 0.01) {
+        // Raindrops beading on the pane and running down it, in the
+        // glass's own pixels.
+        vec2 p = floor(vec2(abs(n.x) > 0.5 ? vWorld.z : vWorld.x, vWorld.y) * 16.0);
+        float column = h1(vec2(p.x, 3.0));
+        float run = fract(p.y / 24.0 + time * (0.25 + column * 0.5) + column * 7.0);
+        float streak = step(0.82, column) * step(run, 0.18);
+        float bead = step(0.975, h1(p + floor(time * 0.3 + column * 5.0)));
+        float drop = max(streak, bead) * wet;
+        col = mix(col, vec3(0.9, 0.95, 1.0) + flash, drop * 0.6);
+        alpha += drop * 0.28 + wet * 0.04;
+      }
+      gl_FragColor = vec4(col + flash * 0.5, alpha);
     }
   `;
   const GLASS_VERT = /* glsl */ `
@@ -470,6 +503,8 @@
       fireOrigin: {value: new T.Vector3()},
       fogColor: {value: new T.Color(0.09, 0.07, 0.055)},
       fogDensity: {value: 0.012},
+      overcast: {value: 0},
+      flash: {value: 0},
       atlas: {value: null},
       atlasSize: {value: new T.Vector2(1, 1)},
       atlasCols: {value: 1},
@@ -483,7 +518,7 @@
 
     function blockMaterial(extra = {}) {
       return new T.ShaderMaterial({
-        uniforms: {...U, opacity: {value: 1}, highlight: {value: new T.Color(0, 0, 0)}},
+        uniforms: {...U, opacity: {value: 1}, highlight: {value: new T.Color(0, 0, 0)}, ...(extra.viewmodel ? {handProjection: {value: new T.Matrix4()}} : {})},
         defines: extra.viewmodel ? {VIEWMODEL: 1} : {},
         vertexShader: BLOCK_VERT,
         fragmentShader: BLOCK_FRAG,
@@ -501,7 +536,7 @@
     });
 
     const glassMaterial = new T.ShaderMaterial({
-      uniforms: {...U, cameraPos: {value: new T.Vector3()}},
+      uniforms: {...U, cameraPos: {value: new T.Vector3()}, wet: {value: 0}},
       vertexShader: GLASS_VERT,
       fragmentShader: GLASS_FRAG,
       transparent: true,
@@ -599,7 +634,7 @@
 
     let sceneRT = null, bloomLevels = [], dofA = null, dofB = null, volumeRT = null, volumeBlur = null;
     let width = 1, height = 1, pixelRatio = 1;
-    const settings = {msaa: 4, bloom: true, volume: true, dof: true, shadowSize: 2048, volumeSteps: 20, scale: 1};
+    const settings = {msaa: 4, bloom: true, volume: true, dof: true, shadowSize: 2048, volumeSteps: 20, scale: 1, bloomThreshold: 1.0, grain: 0.012, vignette: 0.9};
 
     function rt(w, h, opts = {}) {
       return new T.WebGLRenderTarget(Math.max(1, w), Math.max(1, h), {type: T.HalfFloatType, depthBuffer: false, ...opts});
@@ -648,7 +683,7 @@
         bloomLevels.forEach((level, i) => {
           downMat.uniforms.src.value = src;
           downMat.uniforms.texel.value.set(1 / sw, 1 / sh);
-          downMat.uniforms.threshold.value = i === 0 ? 0.9 : 0;
+          downMat.uniforms.threshold.value = i === 0 ? settings.bloomThreshold : 0;
           pass(downMat, level.down);
           src = level.down.texture; sw = level.w; sh = level.h;
         });
@@ -710,6 +745,8 @@
       cu.blurAll.value = settings.dof ? post.blurAll : 0;
       cu.exposure.value = post.exposure;
       cu.fade.value = post.fade;
+      cu.grain.value = settings.grain;
+      cu.vignette.value = settings.vignette;
       cu.texel.value.set(1 / sceneRT.width, 1 / sceneRT.height);
       pass(compositeMat, null);
     }

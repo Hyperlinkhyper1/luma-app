@@ -24,6 +24,25 @@
     eye: 1.9,
   };
   const SLOT_COLS = 18, SLOT_ROWS = 4, SLOTS = SLOT_COLS * SLOT_ROWS;
+
+  // Storeys. The ground floor holds six tall bookcases; past that the hall
+  // gains floors above it under a much lower ceiling, each with six shorter
+  // cases a shelf down.
+  const CASES_PER_FLOOR = 6;
+  const PROFILES = {
+    ground: {height: 7, shelfBottom: 1, shelfTop: 5, caseTop: 5.875, rows: 4, cabinet: true},
+    upper: {height: 4, shelfBottom: 0.25, shelfTop: 3.25, caseTop: 3.875, rows: 3, cabinet: false},
+  };
+  for (const p of Object.values(PROFILES)) p.slots = SLOT_COLS * p.rows;
+  // Where each floor's walking surface is; the block under it is its floor.
+  const floorBase = f => (f === 0 ? 0 : 8 + (f - 1) * 5);
+  const profileOf = f => (f === 0 ? PROFILES.ground : PROFILES.upper);
+  // The block layer that is a floor's ceiling (and the next one's floor).
+  const ceilingOf = f => floorBase(f) + profileOf(f).height;
+  // The spiral stair between floors: a post in the middle of a 3×3 well by
+  // the foyer's east wall, eight steps round it per storey.
+  const STAIR = {x0: 2, z0: 1, cx: 3, cz: 2};
+  const STAIR_RING = [[2, 3], [2, 2], [2, 1], [3, 1], [4, 1], [4, 2], [4, 3], [3, 3]];
   const BOARD = 1.5 / 16;  // shelf board thickness
   const DEPTH = 15 / 16;   // front of a bookcase to its back panel
   const SIDE = 1 / 16;     // outer uprights
@@ -224,6 +243,9 @@
   block('spruce_log_x', {east: 'spruce_log_top', west: 'spruce_log_top', side: 'spruce_log'}, {rotFaces: ['north', 'south', 'up', 'down']});
   block('pumpkin', {top: 'pumpkin_top', bottom: 'pumpkin_top', side: 'pumpkin_side'});
   block('hay', {top: 'hay_block_top', bottom: 'hay_block_top', side: 'hay_block_side'});
+  block('mossy_cobblestone', {all: 'mossy_cobblestone'});
+  // Still water: drawn by hand, its surface a little below the block top.
+  block('water', {all: 'water'}, {custom: true, opaque: false});
   // Autumn: the leaf sheets are grey and every tree takes its own colour.
   // Tints multiply linear light, so they are given in sRGB and converted.
   const srgb = c => c.map(v => Math.pow(v, 2.2));
@@ -276,7 +298,8 @@
       // A built-in bookcase stops a hair short of the wall behind it, so the
       // wall still needs its face there or the gap shows the sky.
       if (neighbour && neighbour.opaque && !neighbour.custom) continue;
-      if (b.cutout && neighbour === b) continue;
+      // Leaves keep the faces between them, as the game's fancy leaves do,
+      // so a crown looks full rather than hollow when seen through.
       const a = [x, y, z], c = [x + 1, y + 1, z + 1];
       const corners = F.c(a, c);
       const lights = [], aos = [];
@@ -533,9 +556,9 @@
   // The hall's own books, for the reading room's shelves: random leather,
   // some leaning, the odd stack lying flat.
   const DECO = [[92, 40, 30], [44, 62, 92], [52, 78, 46], [112, 82, 44], [70, 40, 70], [130, 100, 60], [40, 70, 72], [90, 64, 40], [150, 120, 84]];
-  function fillShelves(K, f, width, seed) {
+  function fillShelves(K, f, width, seed, P = PROFILES.ground) {
     const r = LibraryTextures.rng('shelf' + seed);
-    for (let v = HALL.shelfBottom; v < HALL.shelfTop; v++) {
+    for (let v = P.shelfBottom; v < P.shelfTop; v++) {
       const v0 = v + BOARD;
       let u = SIDE + 0.02;
       while (u < width - SIDE - 0.1) {
@@ -570,38 +593,42 @@
   // fascia with a cornice on top where the name plate goes.
   function builtInCase(K, spec, opts = {}) {
     const f = frame(spec.origin, spec.right, spec.n);
+    const P = spec.profile || PROFILES.ground;
     const width = spec.width;
     const ends = !!opts.ends;
     const wood = {tex: 'spruce_planks'}, trim = {tex: 'dark_oak_planks'};
     const end = ends ? wood : null;
     const ao = c => 1 - 0.58 * Math.pow(Math.min(1, Math.max(0, f.depth(c) / DEPTH)), 0.8);
     const light = opts.light;
-    f.box(K, 0, 0, 0, width, HALL.shelfBottom, DEPTH + 1 / 16, {front: {tex: 'cabinet_door'}, left: end, right: end}, {light});
-    for (let v = HALL.shelfBottom; v < HALL.shelfTop; v++) {
-      const lip = v === HALL.shelfBottom ? 1.5 / 16 : 0;
+    // Tall cases stand on cabinets; the low ones upstairs on a plinth.
+    f.box(K, 0, 0, 0, width, P.shelfBottom, DEPTH + 1 / 16, {front: P.cabinet ? {tex: 'cabinet_door'} : trim, left: end, right: end}, {light});
+    for (let v = P.shelfBottom; v < P.shelfTop; v++) {
+      const first = v === P.shelfBottom;
+      const lip = first && P.cabinet ? 1.5 / 16 : 0;
       f.box(K, 0, v, -lip, width, v + BOARD, DEPTH, {
-        front: v === HALL.shelfBottom ? trim : wood, top: wood, bottom: v === HALL.shelfBottom ? trim : wood, left: end, right: end,
+        front: first ? trim : wood, top: wood, bottom: first ? (P.cabinet ? trim : null) : wood, left: end, right: end,
       }, {ao, light});
       const v0 = v + BOARD, v1 = v + 1;
       f.box(K, 0, v0, 0, SIDE, v1, DEPTH, {front: wood, right: wood, left: end}, {ao, light});
       f.box(K, width - SIDE, v0, 0, width, v1, DEPTH, {front: wood, left: wood, right: end}, {ao, light});
       if (width >= 4) f.box(K, width / 2 - MID, v0, 0, width / 2 + MID, v1, DEPTH, {front: wood, left: wood, right: wood}, {ao, light});
     }
-    f.box(K, 0, HALL.shelfBottom, DEPTH, width, HALL.shelfTop, DEPTH, {front: {tex: 'spruce_planks', tint: [0.7, 0.64, 0.6]}}, {ao: 0.46, light});
-    f.box(K, 0, HALL.shelfTop, 0, width, HALL.caseTop - 0.125, DEPTH, {front: trim, bottom: wood, left: end ? trim : null, right: end ? trim : null}, {ao, light});
-    f.box(K, 0, HALL.caseTop - 0.125, -2 / 16, width, HALL.caseTop, DEPTH, {front: trim, top: trim, bottom: trim, left: end ? trim : null, right: end ? trim : null}, {light});
-    if (opts.fill != null) fillShelves(K, f, width, opts.fill);
+    f.box(K, 0, P.shelfBottom, DEPTH, width, P.shelfTop, DEPTH, {front: {tex: 'spruce_planks', tint: [0.7, 0.64, 0.6]}}, {ao: 0.46, light});
+    f.box(K, 0, P.shelfTop, 0, width, P.caseTop - 0.125, DEPTH, {front: trim, bottom: wood, left: end ? trim : null, right: end ? trim : null}, {ao, light});
+    f.box(K, 0, P.caseTop - 0.125, -2 / 16, width, P.caseTop, DEPTH, {front: trim, top: trim, bottom: trim, left: end ? trim : null, right: end ? trim : null}, {light});
+    if (opts.fill != null) fillShelves(K, f, width, opts.fill, P);
     return f;
   }
 
   // World-space box of one slot's opening, for picking and for books.
   function slotGeometry(caseInfo, slot) {
-    const local = slot % SLOTS;
+    const P = caseInfo.profile || PROFILES.ground;
+    const local = slot % P.slots;
     const row = Math.floor(local / SLOT_COLS), col = local % SLOT_COLS;
     const bay = col < 9 ? 0 : 1;
     const u0 = bay * HALL.caseWidth / 2 + (bay ? MID : SIDE) + (col % 9) * SLOT_W, u1 = u0 + SLOT_W;
     // Rows count down from the top shelf.
-    const vb = HALL.shelfTop - 1 - row;
+    const vb = (caseInfo.y0 || 0) + P.shelfTop - 1 - row;
     const y0 = vb + BOARD, y1 = vb + 1;
     const f = caseInfo.facing;
     const along = f > 0 ? -1 : 1;
@@ -618,25 +645,30 @@
   // ── The hall ───────────────────────────────────────────────────────────
   function layout(subjectCount) {
     const cases = subjectCount + 1; // one empty alcove for "new bookcase"
-    const sections = Math.max(2, Math.ceil(cases / 2));
+    const floors = Math.max(1, Math.ceil(cases / CASES_PER_FLOOR));
+    const perFloor = CASES_PER_FLOOR / 2;
+    const sections = floors > 1 ? perFloor : Math.max(2, Math.ceil(cases / 2));
     const hallEnd = -sections * HALL.section; // z of the last post
-    return {sections, hallStart: HALL.foyer, hallEnd, endWall: hallEnd - HALL.end};
+    const bases = Array.from({length: floors}, (_, f) => floorBase(f));
+    return {sections, floors, bases, top: ceilingOf(floors - 1), hallStart: HALL.foyer, hallEnd, endWall: hallEnd - HALL.end};
   }
 
   function caseSlots(subjectCount) {
     const out = [];
     for (let i = 0; i <= subjectCount; i++) {
-      const section = Math.floor(i / 2);
-      const facing = i % 2 === 0 ? 1 : -1;
+      const floor = Math.floor(i / CASES_PER_FLOOR), j = i % CASES_PER_FLOOR;
+      const section = Math.floor(j / 2);
+      const facing = j % 2 === 0 ? 1 : -1;
+      const base = floorBase(floor), profile = profileOf(floor);
       // Cells -5k-4 … -5k-1, so z ∈ [-5k-4, -5k].
       const z0 = -section * HALL.section - HALL.caseWidth;
       const z1 = z0 + HALL.caseWidth;
       const faceX = facing > 0 ? -HALL.caseFace : HALL.caseFace;
       out.push({
-        index: i, section, facing,
+        index: i, section, facing, floor, profile, slots: profile.slots,
         cellX: facing > 0 ? -HALL.halfWidth : HALL.caseFace,
-        faceX, z0, z1, y0: 0, y1: HALL.caseTop,
-        spec: {origin: [faceX, 0, facing > 0 ? z1 : z0], right: facing > 0 ? [0, 0, -1] : [0, 0, 1], n: [facing, 0, 0], width: HALL.caseWidth},
+        faceX, z0, z1, y0: base, y1: base + profile.caseTop,
+        spec: {origin: [faceX, base, facing > 0 ? z1 : z0], right: facing > 0 ? [0, 0, -1] : [0, 0, 1], n: [facing, 0, 0], width: HALL.caseWidth, profile},
         placeholder: i === subjectCount,
       });
     }
@@ -646,9 +678,10 @@
   function build(T, atlas, canvases, subjects) {
     const L = layout(subjects.length);
     const cases = caseSlots(subjects.length);
-    const W = HALL.halfWidth, H = HALL.height, E = L.endWall, F = L.hallStart;
+    const W = HALL.halfWidth, H = HALL.height, E = L.endWall, F = L.hallStart, TOP = L.top;
+    const R0 = TOP + 1;
     const isle = islandShape(E, F);
-    const grid = new Grid([isle.x0, -26, isle.z0], [isle.x1, 19, isle.z1]);
+    const grid = new Grid([isle.x0, -26, isle.z0], [isle.x1, R0 + W + 11, isle.z1]);
     const K = {mb: new MeshBuilder(), grid, atlas, canvases, candles: [], colliders: []};
     const Fu = window.LibraryFurniture;
     const later = [];
@@ -656,8 +689,15 @@
     const windows = [];
     const seats = [];
     const light = (x, y, z, level) => lampSeeds.push([Math.floor(x), Math.floor(y), Math.floor(z), level]);
-    const solidBox = (x0, z0, x1, z1) => K.colliders.push([Math.min(x0, x1), Math.min(z0, z1), Math.max(x0, x1), Math.max(z0, z1)]);
-    const opening = (x, y, z, axis) => { grid.set(x, y, z, AIR); windows.push({cell: [x, y, z], axis}); };
+    // Colliders stop the walker on one floor only.
+    const solidBox = (x0, z0, x1, z1, floor = 0) => K.colliders.push([Math.min(x0, x1), Math.min(z0, z1), Math.max(x0, x1), Math.max(z0, z1), floor]);
+    // `inward` is the way into the room, for the sill.
+    const opening = (x, y, z, axis, inward) => {
+      grid.set(x, y, z, AIR);
+      windows.push({cell: [x, y, z], axis, inward: inward ?? (axis === 'x' ? (x < 0 ? 1 : -1) : -1)});
+    };
+    const stones = (x, y, z, p = 0.18) => (cellHash(x, y + 40, z) < p ? B.mossy_stone_bricks : B.stone_bricks);
+    const hasStairs = L.floors > 1;
 
     // The island the cottage stands on, then stone footings and a spruce
     // floor.
@@ -665,27 +705,31 @@
     grid.fill([-W - 1, -1, E], [W, -1, F], B.cobblestone);
     grid.fill([-W, -1, E + 1], [W - 1, -1, F - 1], B.spruce_planks);
 
-    // Side walls: a stone plinth, plaster above, a timber rail at y 4.
+    // Side walls: a stone plinth, plaster above, a timber rail at y 4 and a
+    // timber band at every floor above.
     for (let z = E; z <= F; z++) {
       for (const x of [-W - 1, W]) {
-        grid.set(x, 0, z, B.stone_bricks);
-        grid.fill([x, 1, z], [x, H - 1, z], B.plaster);
+        grid.set(x, 0, z, stones(x, 0, z));
+        grid.fill([x, 1, z], [x, TOP - 1, z], B.plaster);
         grid.set(x, 4, z, B.beam_z);
+        for (let f = 1; f < L.floors; f++) grid.set(x, L.bases[f] - 1, z, B.beam_z);
       }
     }
-    // End wall of stone, front wall of plaster with a rail over the door.
-    grid.fill([-W - 1, 0, E], [W, H, E], B.stone_bricks);
+    // End wall of stone, front wall of plaster with a lintel over the door.
+    for (let x = -W - 1; x <= W; x++) for (let y = 0; y <= TOP; y++) grid.set(x, y, E, stones(x, y, E, y < 3 ? 0.24 : 0.08));
     for (let x = -W - 1; x <= W; x++) {
-      grid.set(x, 0, F, B.stone_bricks);
-      grid.fill([x, 1, F], [x, H - 1, F], B.plaster);
+      grid.set(x, 0, F, stones(x, 0, F));
+      grid.fill([x, 1, F], [x, TOP - 1, F], B.plaster);
       grid.set(x, 3, F, B.beam_x);
+      for (let f = 1; f < L.floors; f++) grid.set(x, L.bases[f] - 1, F, B.beam_x);
     }
-    // Plank ceiling, roof over it.
-    grid.fill([-W - 1, H, E], [W, H, F], B.spruce_planks);
-    grid.fill([-W - 1, H + 1, E], [W, H + 1, F], B.dark_oak_planks);
+    // Plank ceilings, each the floor of the storey above; the top one runs
+    // out over the walls under the roof boards.
+    for (let f = 0; f < L.floors - 1; f++) grid.fill([-W, ceilingOf(f), E + 1], [W - 1, ceilingOf(f), F - 1], B.spruce_planks);
+    grid.fill([-W - 1, TOP, E], [W, TOP, F], B.spruce_planks);
+    grid.fill([-W - 1, TOP + 1, E], [W, TOP + 1, F], B.dark_oak_planks);
     // A steep gable of dark oak stairs over it, overhanging a block all
     // round, plastered gables, and the chimney stack at the back.
-    const R0 = H + 1;
     for (let k = 0; k <= W + 1; k++) {
       const y = R0 + k;
       for (let z = E - 1; z <= F + 1; z++) {
@@ -693,41 +737,59 @@
         grid.set(W + 1 - k, y, z, B.stair_w);
         for (let x = -W - 1 + k; x <= W - k; x++) {
           if (z < E || z > F) continue;
-          grid.set(x, y, z, z === E ? B.stone_bricks : z === F ? B.plaster : B.dark_oak_planks);
+          grid.set(x, y, z, z === E ? stones(x, y, z, 0.1) : z === F ? B.plaster : B.dark_oak_planks);
         }
       }
     }
     for (const x of [-2, 1]) for (let y = R0 + 1; y < R0 + 4; y++) grid.set(x, y, F, B.post);
     grid.fill([-2, R0 + 1, F], [1, R0 + 1, F], B.beam_x);
+    // A little attic window in the front gable.
+    for (const x of [-1, 0]) opening(x, R0 + 2, F, 'z');
     const chimney = {x0: -1, x1: 0, z0: E - 1, z1: E, top: R0 + W + 4};
     grid.fill([chimney.x0, R0, chimney.z0], [chimney.x1, chimney.top - 1, chimney.z1], B.stone_bricks);
     grid.set(-1, chimney.top - 2, E - 1, B.mossy_stone_bricks);
+    // A cap on the stack.
+    grid.fill([chimney.x0, chimney.top - 1, chimney.z0], [chimney.x1, chimney.top - 1, chimney.z1], B.cobblestone);
 
     // Timber frame: a post in each wall and between each pair of cases,
-    // tied across the ceiling by a beam.
+    // tied across the ceiling by a beam. Beams stop short of the stair well.
+    const beamEnd = z => (hasStairs && z >= STAIR.z0 && z < STAIR.z0 + 3 ? STAIR.x0 : W);
+    const beam = (y, z) => { for (let x = -W; x < beamEnd(z); x++) grid.set(x, y, z, B.beam_x); };
     for (let k = 0; k <= L.sections; k++) {
       const zp = -k * HALL.section;
-      for (const x of [-W - 1, W]) grid.fill([x, 0, zp], [x, H - 1, zp], B.post);
+      for (const x of [-W - 1, W]) grid.fill([x, 0, zp], [x, TOP - 1, zp], B.post);
       for (const x of [-W, W - 1]) grid.fill([x, 0, zp], [x, 5, zp], B.post);
-      for (let x = -W; x < W; x++) grid.set(x, H - 1, zp, B.beam_x);
+      beam(H - 1, zp);
+      for (let f = 1; f < L.floors; f++) {
+        const b = L.bases[f];
+        for (const x of [-W, W - 1]) grid.fill([x, b, zp], [x, b + 3, zp], B.post);
+        beam(b + 3, zp);
+      }
     }
-    for (const x of [-W - 1, W]) grid.fill([x, 0, F], [x, H - 1, F], B.post);
-    for (const z of [F - 3, E + 4]) for (let x = -W; x < W; x++) grid.set(x, H - 1, z, B.beam_x);
+    for (const x of [-W - 1, W]) grid.fill([x, 0, F], [x, TOP - 1, F], B.post);
+    for (const z of [F - 3, E + 4]) {
+      beam(H - 1, z);
+      for (let f = 1; f < L.floors; f++) beam(L.bases[f] + 3, z);
+    }
 
-    // Each span between posts holds a bookcase with a strip of windows over
-    // it, or, where there is no case, a window seat.
+    // Each span between posts holds a bookcase — with a strip of windows
+    // over it on the ground floor — or, where there is no case, a window
+    // seat.
     const nooks = [];
-    for (let k = 0; k < L.sections; k++) {
-      const zb = -k * HALL.section - 1, za = zb - 3;
-      for (const side of [1, -1]) {
-        const wallX = side > 0 ? -W - 1 : W;
-        const c = cases.find(cs => cs.section === k && cs.facing === side);
-        if (c) {
-          for (let z = za; z <= zb; z++) opening(wallX, 6, z, 'x');
-          if (!c.placeholder) for (let z = c.z0; z < c.z1; z++) for (let y = 0; y <= 5; y++) grid.set(c.cellX, y, z, B.case);
-        } else {
-          for (let z = za + 1; z <= zb - 1; z++) for (const y of [1, 2, 3]) opening(wallX, y, z, 'x');
-          nooks.push({side, za, zb});
+    for (let f = 0; f < L.floors; f++) {
+      const b = L.bases[f];
+      for (let k = 0; k < L.sections; k++) {
+        const zb = -k * HALL.section - 1, za = zb - 3;
+        for (const side of [1, -1]) {
+          const wallX = side > 0 ? -W - 1 : W;
+          const c = cases.find(cs => cs.floor === f && cs.section === k && cs.facing === side);
+          if (c) {
+            if (f === 0) for (let z = za; z <= zb; z++) opening(wallX, 6, z, 'x');
+            if (!c.placeholder) for (let z = c.z0; z < c.z1; z++) for (let y = 0; y < Math.ceil(c.profile.caseTop); y++) grid.set(c.cellX, b + y, z, B.case);
+          } else {
+            for (let z = za + 1; z <= zb - 1; z++) for (const y of f === 0 ? [1, 2, 3] : [1, 2]) opening(wallX, b + y, z, 'x');
+            nooks.push({side, za, zb, floor: f, y: b});
+          }
         }
       }
     }
@@ -748,55 +810,88 @@
       grid.fill([spec.origin[0], 6, fz], [spec.origin[0] + 2, 6, fz], B.plaster);
     }
     for (const x of [-W - 1, W]) for (let z = E + 3; z <= E + 6; z++) for (const y of [1, 2, 3]) opening(x, y, z, 'x');
+    // Upstairs the flue carries on as a narrower breast, with windows in
+    // the gable end and down both sides.
+    for (let f = 1; f < L.floors; f++) {
+      const b = L.bases[f];
+      grid.fill([-1, b, fz], [0, b + 3, fz], B.stone_bricks);
+      for (const x of [-4, -3, 2, 3]) for (const y of [1, 2]) opening(x, b + y, E, 'z', 1);
+      for (const x of [-W - 1, W]) for (let z = E + 3; z <= E + 6; z++) for (const y of [1, 2]) opening(x, b + y, z, 'x');
+      for (const x of [-4, -3, 2, 3]) for (const y of [1, 2]) opening(x, b + y, F, 'z');
+    }
 
-    // Front: a double door with a window either side, windows in the side
-    // walls.
-    for (const x of [-1, 0]) for (const y of [0, 1]) grid.set(x, y, F, AIR);
+    // Front: a tall double door with a window either side, windows in the
+    // side walls.
+    for (const x of [-1, 0]) for (const y of [0, 1, 2]) grid.set(x, y, F, AIR);
     for (const x of [-4, -3, 2, 3]) for (const y of [1, 2, 4, 5]) opening(x, y, F, 'z');
     for (const x of [-W - 1, W]) for (let z = 2; z <= 4; z++) for (const y of [1, 2, 3]) opening(x, y, z, 'x');
 
+    // The spiral stair: its well opened through every ceiling but the top.
+    const flights = [];
+    if (hasStairs) {
+      for (let f = 0; f < L.floors - 1; f++) {
+        for (let x = STAIR.x0; x < STAIR.x0 + 3; x++) for (let z = STAIR.z0; z < STAIR.z0 + 3; z++) grid.set(x, ceilingOf(f), z, AIR);
+        flights.push({from: f, base: L.bases[f], rise: (L.bases[f + 1] - L.bases[f]) / STAIR_RING.length});
+      }
+      solidBox(STAIR.x0, STAIR.z0, STAIR.x0 + 3, STAIR.z0 + 3, 0);
+      later.push(() => Fu.spiralStair(K, flights, STAIR, STAIR_RING, TOP));
+    }
+
     // Outside: a path out to a lookout on the island's edge, trees in their
     // autumn colours, a pumpkin patch, and lanterns to walk home by.
-    const outside = outdoors(K, isle, ground, {W, E, F, light, solidBox, later, seats});
+    const outside = outdoors(K, isle, ground, {W, E, F, TOP, light, solidBox, later, seats});
 
     // ── Lights and furniture ────────────────────────────────────────────
-    // Hanging lanterns down the middle, and one on an arm off every post.
+    // Hanging lanterns down the middle, and one on an arm off every post,
+    // on every floor.
     const lamps = [];
-    for (let k = 0; k < L.sections; k++) lamps.push({cell: [-1, 4, -k * HALL.section - 3], hanging: true});
-    lamps.push({cell: [-1, 4, F - 2], hanging: true});
-    lamps.push({cell: [-1, 4, E + 6], hanging: true});
-    for (let k = 0; k <= L.sections; k++) {
-      lamps.push({cell: [-W + 1, 3, -k * HALL.section], side: 1});
-      lamps.push({cell: [W - 2, 3, -k * HALL.section], side: -1});
+    for (let f = 0; f < L.floors; f++) {
+      const b = L.bases[f], top = ceilingOf(f);
+      const y = f === 0 ? 4 : b + 2.35;
+      for (let k = 0; k < L.sections; k++) lamps.push({cell: [-1, y, -k * HALL.section - 3], hanging: true, top});
+      lamps.push({cell: [-1, y, F - 2], hanging: true, top});
+      lamps.push({cell: [-1, y, E + 6], hanging: true, top});
+      const ay = f === 0 ? 3 : b + 2;
+      for (let k = 0; k <= L.sections; k++) {
+        lamps.push({cell: [-W + 1, ay, -k * HALL.section], side: 1});
+        lamps.push({cell: [W - 2, ay, -k * HALL.section], side: -1});
+      }
     }
     for (const l of lamps) light(...l.cell, 15);
 
     // Something standing at the foot of each post, going round a few kinds.
     const kinds = ['fern', 'stack', 'azalea', 'barrel', 'globe', 'fern', 'stack', 'azalea'];
-    for (let k = 1; k <= L.sections; k++) {
-      for (const side of [1, -1]) {
-        const kind = kinds[(k * 2 + (side > 0 ? 0 : 1)) % kinds.length];
-        const x = side > 0 ? -W + 1 : W - 2, z = -k * HALL.section;
-        const inset = side > 0 ? 0 : 0.3;
-        solidBox(x + inset, z + 0.15, x + 0.7 + inset, z + 0.85);
-        later.push(() => Fu.postDecor(K, kind, [x + (side > 0 ? -0.18 : 0.18), 0, z], side));
+    for (let f = 0; f < L.floors; f++) {
+      const b = L.bases[f];
+      for (let k = 1; k <= L.sections; k++) {
+        for (const side of [1, -1]) {
+          const kind = kinds[(k * 2 + (side > 0 ? 0 : 1) + f * 3) % kinds.length];
+          const x = side > 0 ? -W + 1 : W - 2, z = -k * HALL.section;
+          const inset = side > 0 ? 0 : 0.3;
+          solidBox(x + inset, z + 0.15, x + 0.7 + inset, z + 0.85, f);
+          later.push(() => Fu.postDecor(K, kind, [x + (side > 0 ? -0.18 : 0.18), b, z], side));
+        }
       }
     }
 
     // Somewhere to sit: `pos` is where the sitter's hips rest, `yaw` the
     // way they face (as the walker's yaw), `box` what a click lands on.
-    const benchSeat = (side, x, za, zb) => {
+    const benchSeat = (side, x, za, zb, y = 0) => {
       const x0 = side > 0 ? x : x + 0.25, x1 = side > 0 ? x + 0.75 : x + 1;
-      seats.push({pos: [(x0 + x1) / 2 + side * 0.08, 0.64, (za + zb) / 2], yaw: side > 0 ? -Math.PI / 2 : Math.PI / 2, box: [[x0, 0, za], [x1, 1, zb]], along: [za + 0.45, zb - 0.45]});
+      seats.push({pos: [(x0 + x1) / 2 + side * 0.08, y + 0.64, (za + zb) / 2], yaw: side > 0 ? -Math.PI / 2 : Math.PI / 2, box: [[x0, y, za], [x1, y + 1, zb]], along: [za + 0.45, zb - 0.45]});
+    };
+    const armchairSeat = (cx, cz, yaw, y = 0) => {
+      // The chair faces (sin yaw, -cos yaw); sit a little forward of its back.
+      seats.push({pos: [cx + 0.5 + Math.sin(yaw) * 0.08, y + 10 / 16, cz + 0.5 - Math.cos(yaw) * 0.08], yaw: -yaw, box: [[cx, y, cz], [cx + 1, y + 1.35, cz + 1]]});
     };
 
     // Window seats in the spans without a case.
     for (const nook of nooks) {
       const x = nook.side > 0 ? -W : W - 1;
-      solidBox(x, nook.za, x + 1, nook.zb + 1);
-      later.push(() => Fu.windowSeat(K, nook.side, x, nook.za, nook.zb + 1));
-      benchSeat(nook.side, x, nook.za, nook.zb + 1);
-      light(x, 1, nook.za + 2, 10);
+      solidBox(x, nook.za, x + 1, nook.zb + 1, nook.floor);
+      later.push(() => Fu.windowSeat(K, nook.side, x, nook.za, nook.zb + 1, nook.y));
+      benchSeat(nook.side, x, nook.za, nook.zb + 1, nook.y);
+      light(x, nook.y + 1, nook.za + 2, 10);
     }
 
     // The hearth, mantel and painting.
@@ -816,17 +911,13 @@
     later.push(() => Fu.desk(K, deskO));
     // The desk chair, pulled up to the desk; the reader sits here to write.
     const chairZ = deskZ + 0.98;
-    solidBox(-0.36, chairZ - 0.3, 0.36, chairZ + 0.38);
+    solidBox(-0.4, chairZ - 0.4, 0.4, chairZ + 0.46);
     later.push(() => Fu.deskChair(K, [0, 0, chairZ]));
-    seats.push({pos: [0, Fu.DESK_SEAT, chairZ - 0.04], yaw: 0, box: [[-0.4, 0, chairZ - 0.35], [0.4, 1.3, chairZ + 0.4]], desk: true});
+    seats.push({pos: [0, Fu.DESK_SEAT, chairZ - 0.04], yaw: 0, box: [[-0.45, 0, chairZ - 0.4], [0.45, 1.4, chairZ + 0.48]], desk: true});
     const chairs = [[-3.6, fz + 2.3, 1], [2.6, fz + 2.3, -1]];
     for (const [cx, cz] of chairs) solidBox(cx + 0.05, cz + 0.05, cx + 0.95, cz + 0.95);
     const chairYaw = (cx, cz) => Math.atan2(-(cx + 0.5), -(fz + 0.5 - (cz + 0.5)));
-    for (const [cx, cz] of chairs) {
-      const yaw = chairYaw(cx, cz);
-      // The chair faces (sin yaw, -cos yaw); sit a little forward of its back.
-      seats.push({pos: [cx + 0.5 + Math.sin(yaw) * 0.08, 10 / 16, cz + 0.5 - Math.cos(yaw) * 0.08], yaw: -yaw, box: [[cx, 0, cz], [cx + 1, 1.35, cz + 1]]});
-    }
+    for (const [cx, cz] of chairs) armchairSeat(cx, cz, chairYaw(cx, cz));
     later.push(() => {
       chairs.forEach(([cx, cz], i) => {
         Fu.armchair(K, [cx, 0, cz], chairYaw(cx, cz), 'red_wool');
@@ -862,12 +953,44 @@
     solidBox(1.05, fz + 1, 1.95, fz + 1.7);
     solidBox(-2.2, fz + 1, -1.2, fz + 2.05);
 
+    // Upstairs over the reading room: a snug under the eaves, two
+    // armchairs by the chimney with a table between them.
+    for (let f = 1; f < L.floors; f++) {
+      const b = L.bases[f];
+      const snug = [[-3.9, fz + 2.2, Math.PI / 2], [1.9, fz + 2.2, -Math.PI / 2]];
+      for (const [cx, cz, yaw] of snug) {
+        solidBox(cx + 0.05, cz + 0.05, cx + 0.95, cz + 0.95, f);
+        armchairSeat(cx, cz, yaw, b);
+      }
+      solidBox(-1.35, fz + 2.3, -0.55, fz + 3.1, f);
+      solidBox(-4.3, fz + 0.15, -3.7, fz + 0.75, f);
+      solidBox(2.2, fz + 5.2, 2.9, fz + 5.9, f);
+      light(-1, b + 1, fz + 2, 12); light(-4, b + 1, fz + 1, 14);
+      later.push(() => {
+        snug.forEach(([cx, cz, yaw], i) => {
+          Fu.armchair(K, [cx, b, cz], yaw, i ? 'green_wool' : 'red_wool');
+          Fu.throwBlanket(K, [cx, b, cz], yaw, i ? 'red' : 'rust');
+        });
+        Fu.sideTable(K, [-1.45, b, fz + 2.2], 'tea');
+        Fu.floorLamp(K, [-4.5, b, fz - 0.15]);
+        Fu.globe(K, [2.05, b, fz + 5.05]);
+        Fu.rug(K, -4, fz + 1, 3, fz + 5, f % 2 ? 'red' : 'green', b);
+        Fu.rug(K, -2, 1, 1, 5, 'rust', b);
+        Fu.bookStack(K, [-4.2, b, fz + 4.3], 5, 'snug' + f, 0.4);
+      });
+      // A railing round the stair well, open where the stair comes up.
+      if (hasStairs) later.push(() => Fu.stairRail(K, STAIR, b));
+      light(0, b + 1, 3, 11);
+    }
+
     // The foyer: a clock, a coat stand, a bench, plants by the door.
     solidBox(-W, 1.1, -W + 0.65, 1.9);
     const clockAt = {face: null};
     later.push(() => { clockAt.face = Fu.clock(K, [-W - 0.17, 0, 1]); });
-    solidBox(W - 1, 1.2, W, 1.8);
-    later.push(() => Fu.coatStand(K, [W - 1.4, 0, 1]));
+    // The coat stand makes room for the stair when there is one.
+    const coatZ = hasStairs ? 4.1 : 1;
+    solidBox(W - 1, coatZ + 0.2, W, coatZ + 0.8);
+    later.push(() => Fu.coatStand(K, [W - 1.4, 0, coatZ]));
     for (const x of [-2, 1]) {
       solidBox(x + 0.2, F - 0.8, x + 0.8, F - 0.2);
       later.push(() => Fu.pot(K, [x, 0, F - 1], x < 0 ? 'azalea' : 'fern', true));
@@ -875,11 +998,30 @@
     later.push(() => {
       Fu.rug(K, -2, 1, 2, 5, 'red');
       Fu.hangingPlant(K, [-W + 1, H, F - 1]);
-      Fu.hangingPlant(K, [W - 2, H, F - 1]);
+      if (!hasStairs) Fu.hangingPlant(K, [W - 2, H, F - 1]);
       Fu.hangingPlant(K, [-W + 1, H, E + 7]);
       Fu.hangingPlant(K, [W - 2, H, E + 7]);
     });
     later.push(() => Fu.rug(K, -1, E + 7, 1, 0, 'red'));
+
+    // ── The outside of the house ────────────────────────────────────────
+    // A little roof over the door with a lantern either side, ivy up the
+    // stone end, and a rain barrel at the corner.
+    later.push(() => Fu.porch(K, F));
+    light(-2, 2, F + 1, 13); light(1, 2, F + 1, 13);
+    solidBox(W + 1.1, F - 0.9, W + 1.9, F - 0.1);
+    later.push(() => Fu.barrel(K, [W + 1, 0, F - 1]));
+    later.push(() => {
+      for (let x = -W - 1; x <= W; x++) {
+        if (x >= chimney.x0 - 1 && x <= chimney.x1 + 1) continue;
+        if (!grid.solid(x, 0, E)) continue;
+        const reach = Math.floor(cellHash(x, 71, E) * (Math.abs(x) > 3 ? 6 : 3));
+        for (let y = 0; y < Math.min(reach, TOP); y++) {
+          if (cellHash(x, y + 72, E) < 0.25 || !grid.solid(x, y, E) || grid.get(x, y, E - 1)) continue;
+          addBox(K.mb, grid, atlas, [x, y, E - 1], [0, 0, 15.7], [16, 16, 15.7], {north: {tex: 'vine', double: true}}, {ao: 1});
+        }
+      }
+    });
 
     // ── Light ───────────────────────────────────────────────────────────
     grid.lightSky();
@@ -892,6 +1034,7 @@
       const b = grid.get(x, y, z);
       if (!b) continue;
       if (b === B.path) addPath(mb, grid, atlas, x, y, z);
+      else if (b === B.water) addWater(mb, grid, atlas, x, y, z);
       else if (b.rise) addStair(mb, grid, atlas, x, y, z, b);
       else if (!b.custom) addBlock(mb, grid, atlas, x, y, z, b);
     }
@@ -899,9 +1042,10 @@
     for (const c of cases) if (!c.placeholder) builtInCase(K, c.spec);
     endCases.forEach((spec, i) => builtInCase(K, spec, {fill: i}));
 
-    // Window panes: thin glass in the middle of each opening, a sill below.
+    // Window panes: thin glass in the middle of each opening, a sill below
+    // inside, and painted shutters outside.
     const glass = new MeshBuilder();
-    for (const {cell: [x, y, z], axis} of windows) {
+    for (const {cell: [x, y, z], axis, inward} of windows) {
       const pane = {tex: 'glass'};
       if (axis === 'x') {
         addBox(mb, grid, atlas, [x, y, z], [7, 0, 0], [9, 16, 16], {east: pane, west: pane}, {ao: 1});
@@ -914,13 +1058,16 @@
       if (below && below.opaque) {
         const sill = sides('dark_oak_planks');
         if (axis === 'x') {
-          const inward = x < 0 ? 1 : -1;
           addBox(mb, grid, atlas, [x + inward, y, z], inward > 0 ? [0, 0, 0] : [13, 0, 0], inward > 0 ? [3, 1.5, 16] : [16, 1.5, 16], sill);
-        } else {
+        } else if (inward < 0) {
           addBox(mb, grid, atlas, [x, y, z - 1], [0, 0, 13], [16, 1.5, 16], sill);
+        } else {
+          addBox(mb, grid, atlas, [x, y, z + 1], [0, 0, 0], [16, 1.5, 3], sill);
         }
       }
     }
+    shutters(K, windows, TOP);
+    later.push(() => planters(K, windows));
 
     // Lanterns: hanging on chains, and on iron arms off the posts.
     for (const lamp of lamps) {
@@ -928,7 +1075,7 @@
       if (lamp.hanging) {
         const o = [x + 0.5, y, z];
         lantern(mb, grid, atlas, o, true);
-        chain(mb, grid, atlas, [o[0], y + 13 / 16, o[2]], H - (y + 13 / 16));
+        chain(mb, grid, atlas, [o[0], y + 13 / 16, o[2]], lamp.top - (y + 13 / 16));
       } else {
         // An arm out of the post with a brace under it; the lantern hangs
         // from its end.
@@ -951,15 +1098,116 @@
       desk: {z: deskZ, top: 1, center: [0, 1, deskO[2] + 0.5], chair: seats.find(s => s.desk)},
       fire: [0, 0.6, fz + 0.5],
       seats,
-      door: {z: F, hinges: [[-1, 1], [1, -1]]},
+      door: {z: F, hinges: [[-1, 1], [1, -1]], height: 3},
+      stairs: hasStairs ? {...STAIR, ring: STAIR_RING, flights} : null,
       trees: outside.trees,
+      campfire: outside.campfire,
+      heightmap: heightmap(grid),
       smoke: [(chimney.x0 + chimney.x1 + 1) / 2, chimney.top + 0.1, (chimney.z0 + chimney.z1 + 1) / 2],
       // The hall itself, for the dust and the light shafts; the shadows
       // cover the whole island.
-      bounds: {min: [-W - 1, -1, E], max: [W + 1, H + 2, F + 1]},
+      bounds: {min: [-W - 1, -1, E], max: [W + 1, TOP + 2, F + 1]},
       hall: {x0: -W, x1: W, z0: E + 1, z1: F},
       shadowBounds: {min: [isle.x0 + 2, -4, isle.z0 + 2], max: [isle.x1 - 2, chimney.top + 1, isle.z1 - 2]},
     };
+  }
+
+  // The highest block in each column, for keeping rain off whatever has a
+  // roof over it. Stored as y + 64 per byte; 0 means open sky all the way.
+  function heightmap(grid) {
+    const data = new Uint8Array(grid.sx * grid.sz * 4);
+    for (let z = grid.min[2]; z < grid.max[2]; z++) for (let x = grid.min[0]; x < grid.max[0]; x++) {
+      let top = 0;
+      for (let y = grid.max[1] - 1; y >= grid.min[1]; y--) {
+        if (grid.get(x, y, z)) { top = Math.max(1, Math.min(255, y + 1 + 64)); break; }
+      }
+      const i = ((z - grid.min[2]) * grid.sx + (x - grid.min[0])) * 4;
+      data[i] = top; data[i + 3] = 255;
+    }
+    return {data, x0: grid.min[0], z0: grid.min[2], sx: grid.sx, sz: grid.sz, at(x, z) {
+      const gx = Math.floor(x) - grid.min[0], gz = Math.floor(z) - grid.min[2];
+      if (gx < 0 || gz < 0 || gx >= grid.sx || gz >= grid.sz) return -100;
+      const v = data[(gz * grid.sx + gx) * 4];
+      return v ? v - 64 : -100;
+    }};
+  }
+
+  // Painted shutters either side of each run of windows, on the outside.
+  function shutters(K, windows, top) {
+    const key = w => `${w.axis}|${w.axis === 'x' ? w.cell[0] : w.cell[2]}|${w.cell[1]}`;
+    const runs = new Map();
+    for (const w of windows) {
+      if (w.cell[1] > top) continue;
+      const k = key(w);
+      if (!runs.has(k)) runs.set(k, []);
+      runs.get(k).push(w);
+    }
+    const paint = {tex: 'spruce_planks', tint: [0.2, 0.32, 0.22], rot: 90};
+    const face = sides('spruce_planks', null, null, {tint: [0.2, 0.32, 0.22]});
+    for (const list of runs.values()) {
+      const along = list[0].axis === 'x' ? 2 : 0;
+      const cells = list.map(w => w.cell[along]).sort((a, b) => a - b);
+      const w0 = list[0];
+      const [x, y, z] = w0.cell;
+      const out = w0.axis === 'x' ? (x < 0 ? -1 : 1) : -w0.inward;
+      const plane = w0.axis === 'x' ? (out < 0 ? x : x + 1) : (out < 0 ? z : z + 1);
+      const t = 1.5 / 16;
+      // Split into unbroken runs; each gets a shutter at both ends.
+      let start = cells[0];
+      for (let i = 1; i <= cells.length; i++) {
+        if (i < cells.length && cells[i] === cells[i - 1] + 1) continue;
+        const end = cells[i - 1] + 1;
+        for (const [a0, a1] of [[start - 0.45, start], [end, end + 0.45]]) {
+          const lo = Math.min(plane, plane + out * t), hi = Math.max(plane, plane + out * t);
+          const a = along === 2 ? [lo, y + 0.03, a0] : [a0, y + 0.03, lo];
+          const b = along === 2 ? [hi, y + 0.97, a1] : [a1, y + 0.97, hi];
+          const n = along === 2 ? [out, 0, 0] : [0, 0, out];
+          // The back lies on the wall; leaving it out avoids z-fighting.
+          box(K, a, b, {...face, [dirOf(n)]: paint, [dirOf(n.map(v => -v))]: null}, {whole: true});
+        }
+        if (i < cells.length) start = cells[i];
+      }
+    }
+  }
+
+  // A planter of ferns and flowers under each run of ground-floor windows
+  // in the side walls, on the outside.
+  function planters(K, windows) {
+    const rows = new Map();
+    for (const w of windows) {
+      if (w.axis !== 'x' || w.cell[1] !== 1) continue;
+      const k = w.cell[0];
+      if (!rows.has(k)) rows.set(k, []);
+      rows.get(k).push(w.cell[2]);
+    }
+    for (const [x, zs] of rows) {
+      zs.sort((a, b) => a - b);
+      const out = x < 0 ? -1 : 1;
+      let start = zs[0];
+      for (let i = 1; i <= zs.length; i++) {
+        if (i < zs.length && zs[i] === zs[i - 1] + 1) continue;
+        const end = zs[i - 1] + 1;
+        const plane = out < 0 ? x : x + 1;
+        const f = out > 0 ? frame([plane, 0, end], [0, 0, -1], [1, 0, 0]) : frame([plane, 0, start], [0, 0, 1], [-1, 0, 0]);
+        window.LibraryFurniture.planter(K, f, 0, end - start);
+        if (i < zs.length) start = zs[i];
+      }
+    }
+  }
+
+  // Still water: a surface two pixels under the block top, with sides only
+  // where the water meets air.
+  function addWater(mb, grid, atlas, x, y, z) {
+    // Grey like the game's sheet, coloured here as the biome does; tints
+    // multiply linear light, so this is the sRGB blue converted.
+    const tint = srgb([0.4, 0.58, 0.86]);
+    const open = (dx, dy, dz) => { const n = grid.get(x + dx, y + dy, z + dz); return !n || (!n.opaque && n !== B.water); };
+    const faces = {};
+    if (open(0, 1, 0)) faces.up = {tex: 'water', uv: [0, 0, 16, 16], tint};
+    for (const [dir, d] of [['north', [0, 0, -1]], ['south', [0, 0, 1]], ['west', [-1, 0, 0]], ['east', [1, 0, 0]]]) {
+      if (open(...d)) faces[dir] = {tex: 'water', tint};
+    }
+    addBox(mb, grid, atlas, [x, y, z], [0, 0, 0], [16, 14, 16], faces, {ao: 1});
   }
 
   // ── The island ─────────────────────────────────────────────────────────
@@ -1152,7 +1400,7 @@
     for (const x of [-4, 2]) solidBox(x, F + 1, x + 2, F + 1.34);
     later.push(() => {
       Fu.rug(K, -1, F + 1, 1, F + 2, 'rust');
-      Fu.wreath(K, [0, 2.5, F + 1]);
+      Fu.wreath(K, [0, 4.45, F + 1]);
       for (const x of [-4, 2]) Fu.windowBox(K, x, x + 2, F + 1);
     });
     // Lamp posts down the path, alternating sides.
@@ -1178,9 +1426,147 @@
     }
     take(patch.x1 + 2, patch.z0, patch.x1 + 3, patch.z0 + 1);
 
-    // A woodpile against the east wall.
-    for (let z = -8; z <= -6; z++) for (const y of [0, 1]) grid.set(W + 1, y, z, B.spruce_log_x);
-    grid.set(W + 1, 2, -7, B.spruce_log_x);
+    // A woodpile against the stone end wall, beside the chimney.
+    for (let x = 2; x <= 4; x++) for (const y of [0, 1]) grid.set(x, y, h.E - 1, B.spruce_log_x);
+    grid.set(3, 2, h.E - 1, B.spruce_log_x);
+
+    // A scarecrow keeping watch over the pumpkins.
+    const crow = [patch.x0 + 2, patch.z0 + 3];
+    if (isLand(...crow)) {
+      grid.set(crow[0], 0, crow[1], AIR);
+      solidBox(crow[0] + 0.35, crow[1] + 0.35, crow[0] + 0.65, crow[1] + 0.65);
+      later.push(() => Fu.scarecrow(K, [crow[0], 0, crow[1]]));
+    }
+
+    // ── Things about the island ─────────────────────────────────────────
+    // Somewhere free for a feature `w` × `d` cells with `margin` of open
+    // land round it.
+    const findSpot = (w, d, margin, tries = 400) => {
+      for (let i = 0; i < tries; i++) {
+        const x = isle.x0 + Math.floor(r() * (isle.x1 - isle.x0 - w));
+        const z = isle.z0 + Math.floor(r() * (isle.z1 - isle.z0 - d));
+        let ok = true;
+        for (let dx = -margin; dx < w + margin && ok; dx++) for (let dz = -margin; dz < d + margin; dz++) {
+          const cx = x + dx, cz = z + dz;
+          if (!inland(cx, cz, 1) || taken.has(key(cx, cz)) || grid.get(cx, 0, cz)) { ok = false; break; }
+        }
+        if (ok) return [x, z];
+      }
+      return null;
+    };
+
+    // A pond with lily pads and reeds round its edge.
+    const pond = findSpot(7, 6, 2);
+    if (pond) {
+      const [px, pz] = pond;
+      const cx = px + 3.5, cz = pz + 3;
+      for (let x = px; x < px + 7; x++) for (let z = pz; z < pz + 6; z++) {
+        const e = ((x + 0.5 - cx) / 3.4) ** 2 + ((z + 0.5 - cz) / 2.9) ** 2;
+        if (e < 1 - cellHash(x, 80, z) * 0.3) grid.set(x, -1, z, B.water);
+      }
+      take(px - 1, pz - 1, px + 7, pz + 6);
+      later.push(() => {
+        for (let x = px - 1; x <= px + 7; x++) for (let z = pz - 1; z <= pz + 6; z++) {
+          const h = cellHash(x, 81, z);
+          if (grid.get(x, -1, z) === B.water) {
+            if (h < 0.16) addBox(K.mb, grid, K.atlas, [x, -1, z], [0, 14.3, 0], [16, 14.3, 16], {up: {tex: 'lily_pad', uv: [0, 0, 16, 16], rot: Math.floor(h * 400) % 4 * 90, double: true}}, {ao: 1});
+            continue;
+          }
+          const shore = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dz]) => grid.get(x + dx, -1, z + dz) === B.water);
+          if (!shore || !isLand(x, z) || grid.get(x, 0, z) || h > 0.4) continue;
+          cross(K.mb, grid, K.atlas, [x, 0, z], 'sugar_cane', 1, 0);
+          if (h < 0.2) cross(K.mb, grid, K.atlas, [x, 1, z], 'sugar_cane', 1, 0);
+        }
+      });
+    }
+
+    // An old well: a cobbled ring round a shaft of water under a little
+    // roof, with a bucket on a rope.
+    const well = findSpot(3, 3, 1);
+    if (well) {
+      const [wx, wz] = well;
+      for (let x = wx; x < wx + 3; x++) for (let z = wz; z < wz + 3; z++) {
+        if (x === wx + 1 && z === wz + 1) { grid.set(x, -1, z, B.water); continue; }
+        grid.set(x, 0, z, cellHash(x, 82, z) < 0.4 ? B.mossy_cobblestone : B.cobblestone);
+      }
+      take(wx - 1, wz - 1, wx + 3, wz + 3);
+      solidBox(wx, wz, wx + 3, wz + 3);
+      later.push(() => Fu.wellRoof(K, wx, wz));
+    }
+
+    // A fire ring out in the open with logs to sit on round it.
+    let campfireAt = null;
+    const ring = findSpot(5, 5, 1);
+    if (ring) {
+      const [rx, rz] = ring;
+      const c = [rx + 2, rz + 2];
+      for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) grid.set(c[0] + dx, -1, c[1] + dz, B.path);
+      take(rx, rz, rx + 4, rz + 4);
+      solidBox(c[0] + 0.1, c[1] + 0.1, c[0] + 0.9, c[1] + 0.9);
+      light(c[0], 0, c[1], 14);
+      campfireAt = [c[0] + 0.5, 0.45, c[1] + 0.5];
+      const logs = [[c[0] - 1, rz, 'x'], [c[0] - 1, rz + 4, 'x'], [rx, c[1] - 1, 'z']];
+      for (const [lx, lz, axis] of logs) {
+        const [x1, z1] = axis === 'x' ? [lx + 3, lz + 1] : [lx + 1, lz + 3];
+        solidBox(lx + 0.15, lz + 0.15, x1 - 0.15, z1 - 0.15);
+        const yaw = axis === 'x' ? (lz < c[1] ? Math.PI : 0) : Math.PI / 2;
+        seats.push({pos: [(lx + x1) / 2, 0.55, (lz + z1) / 2], yaw, box: [[lx, 0, lz], [x1, 0.7, z1]], along: axis === 'x' ? [lx + 0.5, x1 - 0.5] : [lz + 0.5, z1 - 0.5], alongX: axis === 'x'});
+      }
+      later.push(() => {
+        campfire(K.mb, grid, K.atlas, [c[0], 0, c[1]]);
+        for (const [lx, lz, axis] of logs) Fu.logSeat(K, [lx, 0, lz], axis);
+      });
+    }
+
+    // Boulders, a fallen log with mushrooms on it, and bushes turning with
+    // the season.
+    const stone = h => (h < 0.35 ? B.mossy_cobblestone : h < 0.7 ? B.cobblestone : B.andesite);
+    for (let i = 0; i < 5; i++) {
+      const at = findSpot(2, 2, 1);
+      if (!at) break;
+      const [bx, bz] = at;
+      grid.set(bx, 0, bz, stone(cellHash(bx, 83, bz)));
+      if (cellHash(bx, 84, bz) < 0.7) grid.set(bx + 1, 0, bz, stone(cellHash(bx + 1, 83, bz)));
+      if (cellHash(bx, 85, bz) < 0.5) grid.set(bx, 0, bz + 1, stone(cellHash(bx, 83, bz + 1)));
+      if (cellHash(bx, 86, bz) < 0.35) grid.set(bx, 1, bz, stone(cellHash(bx, 87, bz)));
+      take(bx, bz, bx + 1, bz + 1);
+    }
+    const fallen = findSpot(3, 1, 1);
+    if (fallen) {
+      for (let i = 0; i < 3; i++) grid.set(fallen[0] + i, 0, fallen[1], B.spruce_log_x);
+      take(fallen[0], fallen[1], fallen[0] + 2, fallen[1]);
+      later.push(() => {
+        cross(K.mb, grid, K.atlas, [fallen[0], 1, fallen[1]], 'brown_mushroom', 0.55, 0);
+        cross(K.mb, grid, K.atlas, [fallen[0] + 2, 1, fallen[1]], 'red_mushroom', 0.5, 0);
+      });
+    }
+    const bushes = ['leaves_amber', 'leaves_red', 'leaves_orange', 'leaves_amber', 'leaves_yellow', 'leaves_red'];
+    for (const name of bushes) {
+      const at = findSpot(1, 1, 1);
+      if (!at) break;
+      grid.set(at[0], 0, at[1], B[name]);
+      if (cellHash(at[0], 88, at[1]) < 0.5) grid.set(at[0] + 1, 0, at[1], B[name]);
+      take(at[0], at[1], at[0] + 1, at[1]);
+    }
+
+    // Patches of the last flowers, and berry bushes.
+    const flowers = [];
+    const kindsOfFlower = ['poppy', 'dandelion', 'cornflower', 'poppy', 'sweet_berry_bush', 'dandelion', 'sweet_berry_bush'];
+    for (const kind of kindsOfFlower) {
+      const at = findSpot(1, 1, 0);
+      if (!at) break;
+      const count = kind === 'sweet_berry_bush' ? 2 : 5;
+      for (let i = 0; i < count * 3 && flowers.filter(f => f[3] === at).length < count; i++) {
+        const x = at[0] + Math.floor(r() * 5) - 2, z = at[1] + Math.floor(r() * 5) - 2;
+        if (!isLand(x, z) || taken.has(key(x, z)) || grid.get(x, 0, z) || grid.get(x, -1, z) !== B.grass) continue;
+        if (flowers.some(f => f[0] === x && f[1] === z)) continue;
+        flowers.push([x, z, kind, at]);
+      }
+    }
+    for (const [x, z] of flowers) taken.add(key(x, z));
+    later.push(() => {
+      for (const [x, z, kind] of flowers) cross(K.mb, grid, K.atlas, [x, 0, z], kind, kind === 'sweet_berry_bush' ? 0.95 : 0.7, 0);
+    });
 
     // Trees, spaced out, never on the path or against the house.
     const trees = [];
@@ -1202,8 +1588,9 @@
     // grass, ferns, mushrooms and the odd dead bush.
     const litter = [], plants = [];
     for (let x = isle.x0; x < isle.x1; x++) for (let z = isle.z0; z < isle.z1; z++) {
-      if (!isLand(x, z) || grid.get(x, 0, z) || grid.get(x, -1, z) === B.path || grid.get(x, -1, z) === B.spruce_planks) continue;
+      if (!isLand(x, z) || grid.get(x, 0, z) || grid.get(x, -1, z) !== B.grass && grid.get(x, -1, z) !== B.coarse_dirt) continue;
       if (x >= -W - 1 && x <= W && z >= h.E && z <= F) continue;
+      if (flowers.some(f => f[0] === x && f[1] === z)) continue;
       const near = trees.find(t => t.kind !== 'spruce' && Math.hypot(t.x - x, t.z - z) < 3.4);
       const roll = cellHash(x, 11, z);
       if (near ? roll < 0.55 : roll < 0.05) {
@@ -1244,7 +1631,7 @@
         }
       }
     });
-    return {trees, deck};
+    return {trees, deck, campfire: campfireAt};
   }
 
   // Small islands drifting in the distance, each with a tree or two: only
@@ -1277,9 +1664,9 @@
   }
 
   window.LibraryWorld = {
-    HALL, SLOTS, SLOT_COLS, SLOT_ROWS, DYES, RECESS, BOARD, DEPTH,
+    HALL, SLOTS, SLOT_COLS, SLOT_ROWS, DYES, RECESS, BOARD, DEPTH, PROFILES, CASES_PER_FLOOR, STAIR, STAIR_RING, floorBase, ceilingOf,
     MeshBuilder, Grid, FACES, B, AIR,
     addBox, box, frame, addBook, addBookAt, bookCenter, bookDims, bookBoxes, builtInCase, coverRgb, coverTint,
-    build, slotGeometry, layout, caseSlots, lantern, chain, candle, cross, sides, all, itemSprite, hash,
+    build, slotGeometry, layout, caseSlots, lantern, chain, candle, cross, campfire, sides, all, itemSprite, hash, uvCorners,
   };
 })();

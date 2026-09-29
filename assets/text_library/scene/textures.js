@@ -100,6 +100,14 @@
     brown_mushroom: 'textures/block/brown_mushroom.png',
     hanging_roots: 'textures/block/hanging_roots.png',
     dead_bush: 'textures/block/dead_bush.png',
+    // The pond, the well and the flowers about the island.
+    water: 'textures/block/water_still.png',
+    mossy_cobblestone: 'textures/block/mossy_cobblestone.png',
+    lily_pad: 'textures/block/lily_pad.png',
+    sugar_cane: 'textures/block/sugar_cane.png',
+    dandelion: 'textures/block/dandelion.png',
+    cornflower: 'textures/block/cornflower.png',
+    sweet_berry_bush: 'textures/block/sweet_berry_bush_stage3.png',
   };
   const pathOf = entry => (typeof entry === 'string' ? entry : entry?.path);
 
@@ -123,6 +131,7 @@
     'textures/block/chain.png',
     'textures/block/campfire_fire.png.mcmeta',
     'textures/block/lantern.png.mcmeta',
+    'textures/block/water_still.png.mcmeta',
     'textures/environment/clouds.png',
     // The default look for the reader's own hand, until they import a skin.
     'textures/entity/player/wide/steve.png',
@@ -639,6 +648,54 @@
     });
   }
 
+  // Still water, grey like the game's so it can take a colour: slow
+  // ripples drifting across, one frame per 16 rows.
+  function water(frames) {
+    const r = rng('water');
+    const noise = Array.from({length: 256}, () => r());
+    return paint(16, 16 * frames, (x, y) => {
+      const f = Math.floor(y / 16), py = y % 16;
+      const t = f / frames * Math.PI * 2;
+      const w = Math.sin(x * 0.8 + t) + Math.sin(py * 0.6 - t * 2 + x * 0.3) + noise[py * 16 + x] * 0.8;
+      const v = w > 1.3 ? 1.12 : w < -0.9 ? 0.86 : 1;
+      return shade([176, 176, 176], v * (0.95 + noise[(py * 16 + x + f * 7) % 256] * 0.08));
+    });
+  }
+
+  function lilyPad() {
+    return paint(16, 16, (x, y) => {
+      const d = Math.hypot(x - 7.5, y - 7.5);
+      if (d > 7 || (x > 7 && Math.abs(y - 7.5) < (x - 7) * 0.35)) return null;
+      return shade([74, 140, 48], d > 6 ? 0.8 : ((x + y) % 5 === 0 ? 0.9 : 1));
+    });
+  }
+
+  function sugarCane() {
+    const r = rng('sugar_cane');
+    return paint(16, 16, (x, y) => {
+      for (const sx of [3, 8, 12]) {
+        if (x === sx || x === sx + 1) return shade([150, 190, 96], (y + sx) % 6 === 0 ? 0.72 : x === sx ? 1.05 : 0.9);
+        if (x === sx + 2 && (y + sx) % 7 === 2) return shade([120, 170, 70], 0.9 + r() * 0.1);
+      }
+      return null;
+    });
+  }
+
+  function berryBush() {
+    const r = rng('berry_bush');
+    return paint(16, 16, (x, y) => {
+      if (y < 3 || Math.abs(x - 7.5) > 7 - (y < 6 ? (6 - y) : 0)) return null;
+      if (r() < 0.12 && y < 13) return shade([176, 30, 40], 0.9 + r() * 0.2);
+      return r() < 0.25 ? null : shade([56, 92, 44], 0.75 + r() * 0.4);
+    });
+  }
+
+  function mossyCobble() {
+    const base = pixels(cobble('mossy_cobblestone', [124, 124, 120]));
+    const r = rng('mossy_cobble');
+    return paint(16, 16, (x, y) => (r() < 0.3 + (y > 9 ? 0.15 : 0) ? shade([82, 106, 46], 0.85 + r() * 0.3) : at(base, x, y)));
+  }
+
   // Textures luma always draws itself, some from a base texture it was
   // given, so they sit with whichever look is in use.
   const pixels = c => c.getContext('2d').getImageData(0, 0, 16, 16).data;
@@ -884,6 +941,13 @@
     brown_mushroom: () => mushroom([150, 108, 76], false),
     hanging_roots: roots,
     dead_bush: deadBush,
+    water: () => water(16),
+    mossy_cobblestone: mossyCobble,
+    lily_pad: lilyPad,
+    sugar_cane: sugarCane,
+    dandelion: () => plant('dandelion', [70, 120, 40], [240, 206, 40]),
+    cornflower: () => plant('cornflower', [60, 110, 40], [80, 110, 220]),
+    sweet_berry_bush: berryBush,
   };
 
   // The season. Grass and ferns are grey in the jar and coloured by the
@@ -895,6 +959,8 @@
     fern: [0.74, 0.62, 0.3],
     short_grass: [0.8, 0.7, 0.38],
     vine: [0.76, 0.34, 0.16],
+    lily_pad: [0.36, 0.62, 0.3],
+    sugar_cane: [0.8, 0.86, 0.56],
   };
 
   // Some sheets are cut down: a painting split into one-block halves, and
@@ -999,6 +1065,7 @@
       index[e.name] = {cell: first, frames: e.frames, cols, frameTime: 1};
     }
     if (index.campfire_fire) index.campfire_fire.frameTime = frameTime(files, LIST.campfire_fire, 2);
+    if (index.water) index.water.frameTime = frameTime(files, LIST.water, 2);
     if (index.lantern && index.lantern.frames > 1) index.lantern.frameTime = frameTime(files, LIST.lantern, 8);
     return {canvas: atlas, index, cols, rows, cell: CELL, pad: PAD};
   }

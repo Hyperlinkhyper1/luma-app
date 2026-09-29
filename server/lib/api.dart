@@ -2699,7 +2699,8 @@ class Api {
       return errorResponse(400, 'bad_request', 'Malformed request.');
     }
     final mode = body['mode'];
-    if (mode is! String || !kAiModeNames.containsKey(mode)) {
+    if (mode is! String ||
+        (!kAiModeNames.containsKey(mode) && mode != 'detector')) {
       return errorResponse(400, 'bad_request', 'Unknown mode.');
     }
     AiModeRoute? route;
@@ -2707,17 +2708,22 @@ class Api {
     // that send only a mode retain the saved-route behavior.
     if (body.containsKey('upstream') || body.containsKey('model')) {
       final upstreamValue = body['upstream'];
-      final upstream = AiUpstream.parse(
+      final selectedUpstream = AiUpstream.parse(
           upstreamValue is String ? upstreamValue : null);
-      if (upstream == null) {
+      if (selectedUpstream == null) {
         return errorResponse(400, 'bad_request', 'Choose a valid provider.');
       }
       final modelInput = body['model'];
       if (modelInput is! String) {
         return errorResponse(400, 'bad_request', 'Model must be text.');
       }
+      final nebulaRoute = mode == 'detector' && modelInput.trim().isEmpty
+          ? aiModeRoutes.resolve('smarter', config.configuredAiUpstreams)
+          : null;
+      final upstream = nebulaRoute?.upstream ?? selectedUpstream;
       final model = modelInput.trim().isEmpty
-          ? kDefaultAiModeModels[upstream]![mode]!
+          ? nebulaRoute?.model ??
+              kDefaultAiModeModels[upstream]![mode == 'detector' ? 'smarter' : mode]!
           : modelInput.trim();
       if (!isValidAiModelId(model)) {
         return errorResponse(400, 'bad_request', 'Enter a valid model ID.');
@@ -2736,11 +2742,14 @@ class Api {
           'error': 'No API key is configured for ${upstream.label}.',
         });
       }
-      route = AiModeRoute(upstream, model,
-          reasoningEffort:
-              effort is String && effort.isNotEmpty ? effort : null);
+      route = nebulaRoute ??
+          AiModeRoute(upstream, model,
+              reasoningEffort:
+                  effort is String && effort.isNotEmpty ? effort : null);
     } else {
-      route = aiModeRoutes.resolve(mode, config.configuredAiUpstreams);
+      route = mode == 'detector'
+          ? _aiDetectorRoute()
+          : aiModeRoutes.resolve(mode, config.configuredAiUpstreams);
     }
     if (route == null) {
       return errorResponse(404, 'not_configured',
@@ -8910,23 +8919,6 @@ syncToolbar();
       final statusClass = u.status == 'active' ? 'ok' : 'warn';
       final safeEmail = _htmlEscape(u.email);
       final bannedIps = store.bannedIpsFor(u);
-      final collections = (store.collectionsByUser[u.id]?.values.toList() ??
-          <CollectionMeta>[])
-        ..sort((a, b) => b.size.compareTo(a.size));
-      final storageDetails = collections.isEmpty
-          ? '<div class="usage-empty">No synced collections</div>'
-          : collections.map((meta) =>
-              '<div class="usage-line"><span>${_htmlEscape(meta.name)}</span>'
-              '<strong>${fmtBytes(meta.size)}</strong></div>'
-              '<div class="usage-date">Updated ${fmtDate(meta.updatedAtMs)}</div>')
-              .join();
-      final traffic = store.userTraffic.byUser[u.id];
-      final transferDetails = traffic == null
-          ? '<span class="muted">Tracking starts with the next authenticated request.</span>'
-          : '<div class="usage-line"><span>Uploaded</span><strong>${fmtBytes(traffic.uploadBytes)}</strong></div>'
-              '<div class="usage-line"><span>Downloaded</span><strong>${fmtBytes(traffic.downloadBytes)}</strong></div>'
-              '<div class="usage-line"><span>Requests</span><strong>${traffic.requests}</strong></div>'
-              '<div class="usage-date">Since ${fmtDate(traffic.startedAtMs)}</div>';
 
       /// One row of the Actions menu: a single-button form, so every action
       /// stays an ordinary POST that works without JavaScript.
@@ -9023,13 +9015,6 @@ syncToolbar();
           '<td class="nowrap">'
           '<div class="meter"><div style="width:${pct.toStringAsFixed(0)}%"></div></div>'
           '<span class="muted" style="font-size:12px">${fmtBytes(used)} / ${fmtBytes(u.quotaBytes)} (${pct.toStringAsFixed(0)}%)</span>'
-          '<details class="user-usage"><summary>${collections.length} collection${collections.length == 1 ? '' : 's'} · details</summary>'
-          '<div class="usage-line"><span>Remaining</span><strong>${fmtBytes((u.quotaBytes - used).clamp(0, u.quotaBytes).toInt())}</strong></div>'
-          '$storageDetails</details>'
-          '</td>'
-          '<td class="nowrap">'
-          '<span class="muted">${traffic == null ? '—' : fmtBytes(traffic.uploadBytes + traffic.downloadBytes)}</span>'
-          '<details class="user-usage"><summary>Transfer details</summary>$transferDetails</details>'
           '</td>'
           '<td class="nowrap">${fmtDate(u.createdAtMs)}</td>'
           '<td class="nowrap">${fmtDate(u.lastLoginAtMs)}</td>'
@@ -9215,6 +9200,7 @@ syncToolbar();
         '</div>'
         '<div class="tabs">'
         '<button class="tab-btn" data-tab="users">Users</button>'
+        '<button class="tab-btn" data-tab="usage">Usage &amp; stats</button>'
         '<button class="tab-btn" data-tab="inbox">Inbox'
         '${pendingDeletions.isEmpty ? '' : '<span class="tab-count">${pendingDeletions.length}</span>'}'
         '</button>'
@@ -9228,13 +9214,13 @@ syncToolbar();
         '${_adminAssistantPanel(googleModels, mistralModels)}'
         '<div class="tab-panel" id="panel-users">'
         '<div class="card table-card">'
-        '<table><caption>Storage covers encrypted sync collections and their quota. App transfer estimates known-length authenticated API payloads before compression; streamed bodies, headers, TLS, WebSockets and other device traffic are excluded. Tracking begins after this server update.</caption>'
-        '<thead><tr><th>Email</th><th>Status</th><th>Plan</th>'
-        '<th>Sync storage</th><th>App transfer</th><th>Created</th><th>Last login</th><th></th></tr></thead>'
+        '<table><thead><tr><th>Email</th><th>Status</th><th>Plan</th>'
+        '<th>Storage</th><th>Created</th><th>Last login</th><th></th></tr></thead>'
         '<tbody>$rows</tbody></table>'
         '</div>'
         '$bansCard'
         '</div>'
+        '$_adminUsagePanel'
         '<div class="tab-panel" id="panel-inbox">'
         '<div class="card">'
         '<h2>Data-deletion requests</h2>'
@@ -9459,6 +9445,7 @@ syncToolbar();
         '</div>'
         '<script>$_adminMenuScript</script>'
         '<script>$_adminTabScript</script>'
+        '<script>$_adminUsageScript</script>'
         '<script>$_adminMetricsScript</script>'
         '<script>$_adminGroceriesScript</script>'
         '<script>$_adminAiModelsScript</script>'
@@ -9777,7 +9764,10 @@ syncToolbar();
         '<div><label for="ai-effort-detector">Reasoning</label>'
         '<select name="detector.effort" id="ai-effort-detector">'
         '$effortOptions</select></div>'
-        '<div><span class="ai-detector-label">Status</span>$status</div>'
+        '<div><span class="ai-detector-label">Status</span>$status'
+        '<div style="margin-top:6px"><button type="button" '
+        'class="btn btn-ghost btn-sm ai-test" data-mode="detector">Test</button>'
+        '<div class="ai-test-out muted" id="ai-test-detector"></div></div></div>'
         '</div>'
         '<div style="display:flex;justify-content:space-between;align-items:center;'
         'gap:8px;margin-bottom:6px"><label class="ai-detector-label" '
@@ -10097,7 +10087,6 @@ h2{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
 .card.table-card h2{padding:6px 6px 0}
 table{border-collapse:collapse;width:100%;font-size:13px}
 th{text-align:left;color:#7f7898;font-weight:600;font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:10px 12px;border-bottom:1px solid #262038;white-space:nowrap}
-caption{caption-side:bottom;text-align:left;color:#8d86a8;font-size:11px;line-height:1.5;padding:12px}
 td{padding:10px 12px;border-bottom:1px solid #1d1830;font-variant-numeric:tabular-nums}
 tbody tr:last-child td{border-bottom:0}
 tbody tr:hover td{background:#181330}
@@ -10109,13 +10098,19 @@ tbody tr:hover td{background:#181330}
 .badge.err{background:rgba(224,126,126,.12);color:#e07e7e}
 .meter{background:#241f38;border-radius:99px;overflow:hidden;width:120px;height:6px;display:inline-block;vertical-align:middle;margin-right:8px}
 .meter>div{background:linear-gradient(90deg,#8a7ee0,#a89bf0);height:100%}
-.user-usage{margin-top:6px;max-width:260px;white-space:normal;color:#b4addc;font-size:11px}
-.user-usage summary{cursor:pointer;color:#a89bf0;white-space:nowrap}
-.user-usage[open]{padding:8px 10px;background:#1d1730;border:1px solid #302746;border-radius:8px}
-.user-usage[open] summary{margin-bottom:8px}
-.usage-line{display:flex;justify-content:space-between;gap:16px;padding:3px 0}
-.usage-line strong{color:#ece8f7;font-weight:600;white-space:nowrap}
-.usage-date,.usage-empty{color:#8d86a8;font-size:10px;padding-bottom:5px}
+.usage-search{display:block;width:100%;box-sizing:border-box;background:#1a1530;color:#ece8f7;border:1px solid #2d2645;border-radius:9px;padding:10px 12px;font:inherit;margin:8px 0 14px}
+.usage-search:focus{outline:2px solid #8a7ee0;outline-offset:2px}
+.usage-picker{display:flex;flex-wrap:wrap;gap:8px;max-height:220px;overflow-y:auto;padding:2px}
+.usage-picker .btn{max-width:100%;overflow-wrap:anywhere;white-space:normal;text-align:left}
+.usage-picker .btn[aria-pressed=true]{background:#8a7ee0;color:#14111f;border-color:#8a7ee0}
+.usage-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+.usage-heading h2{margin:0;overflow-wrap:anywhere}
+.usage-note{color:#9b94b3;font-size:12px;line-height:1.6;margin:10px 0 0}
+#usageCards{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:800px){#usageCards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:420px){#usageCards{grid-template-columns:1fr}}
+.usage-bar{height:5px;max-width:220px;background:#241f38;border-radius:4px;margin-top:5px;overflow:hidden}
+.usage-bar>span{display:block;height:100%;background:#8a7ee0}
 .btn{display:inline-flex;align-items:center;justify-content:center;border-radius:9px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid transparent;transition:background .15s,border-color .15s,color .15s}
 .btn-primary{background:#8a7ee0;color:#14111f}
 .btn-primary:hover{background:#9c91ec}
@@ -10252,7 +10247,196 @@ window.lumaAskReason = function (form, message) {
 })();
 ''';
 
-  /// Tiny vanilla-JS tab switcher for the Users / Products / Metrics panels,
+  static const _adminUsagePanel = '''
+<div class="tab-panel" id="panel-usage">
+  <div class="card">
+    <label for="usageSearch">Search users by email</label>
+    <input id="usageSearch" class="usage-search" type="search" placeholder="Search email…" autocomplete="off">
+    <div id="usagePicker" class="usage-picker" aria-label="Choose a user"></div>
+    <div id="usageSearchEmpty" class="empty" hidden>No matching users.</div>
+  </div>
+  <div class="card">
+    <div class="usage-heading">
+      <h2 id="usageScope">All users</h2>
+      <button id="usageRefresh" type="button" class="btn btn-ghost btn-sm">Refresh</button>
+    </div>
+    <p id="usageStatus" class="usage-note" role="status">Loading usage…</p>
+    <div id="usageCards" class="stats" style="margin-top:16px;margin-bottom:0"></div>
+    <p id="usageAccount" class="usage-note"></p>
+    <p id="usageTracking" class="usage-note"></p>
+  </div>
+  <div class="card table-card">
+    <h2>Storage by collection</h2>
+    <table>
+      <thead><tr><th>Collection</th><th>Storage used</th><th>Share</th><th>Accounts</th><th>Last updated</th></tr></thead>
+      <tbody id="usageCollections"></tbody>
+    </table>
+  </div>
+  <p class="usage-note">Storage covers encrypted sync collections and their plan quota. App transfer estimates authenticated API payloads before compression. Streamed bodies, headers, TLS, WebSockets and other device traffic are excluded.</p>
+  <noscript><p class="empty">Enable JavaScript to search users and view usage.</p></noscript>
+</div>
+''';
+
+  static const _adminUsageScript = r'''
+(function () {
+  const panel = document.getElementById('panel-usage');
+  if (!panel) return;
+  const search = document.getElementById('usageSearch');
+  const picker = document.getElementById('usagePicker');
+  const empty = document.getElementById('usageSearchEmpty');
+  const scope = document.getElementById('usageScope');
+  const status = document.getElementById('usageStatus');
+  const cards = document.getElementById('usageCards');
+  const account = document.getElementById('usageAccount');
+  const tracking = document.getElementById('usageTracking');
+  const collectionsBody = document.getElementById('usageCollections');
+  const refresh = document.getElementById('usageRefresh');
+  let users = [];
+  let selectedEmail = null;
+  let loading = false;
+
+  function node(tag, text, className) {
+    const element = document.createElement(tag);
+    if (text !== undefined) element.textContent = text;
+    if (className) element.className = className;
+    return element;
+  }
+  function bytes(value) {
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let unit = 0;
+    while (value >= 1024 && unit < units.length - 1) {
+      value /= 1024;
+      unit++;
+    }
+    return value.toFixed(value >= 10 || unit === 0 ? 0 : 1) + ' ' + units[unit];
+  }
+  function date(ms) {
+    return ms == null ? '—' : new Date(ms).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+  }
+  function renderPicker() {
+    picker.replaceChildren();
+    function button(label, email) {
+      const element = node('button', label, 'btn btn-ghost btn-sm');
+      element.type = 'button';
+      element.dataset.email = email || '';
+      element.setAttribute('aria-pressed', String(selectedEmail === email));
+      element.addEventListener('click', function () {
+        selectedEmail = selectedEmail === email ? null : email;
+        picker.querySelectorAll('button').forEach(button => {
+          button.setAttribute('aria-pressed', String((button.dataset.email || null) === selectedEmail));
+        });
+        renderStats();
+      });
+      picker.append(element);
+    }
+    button('All users', null);
+    const query = search.value.trim().toLowerCase();
+    const matching = users.filter(user => user.email.toLowerCase().includes(query));
+    matching.forEach(user => button(user.email, user.email));
+    empty.hidden = matching.length > 0 || !query;
+  }
+  function renderStats() {
+    const selected = users.find(user => user.email === selectedEmail);
+    const shown = selected ? [selected] : users;
+    scope.textContent = selected ? selected.email : 'All users';
+    let used = 0, quota = 0, remaining = 0, uploaded = 0, downloaded = 0, requests = 0;
+    let tracked = 0, since = null, collectionCount = 0;
+    const collections = new Map();
+    shown.forEach(user => {
+      used += user.usedBytes;
+      quota += user.quotaBytes;
+      remaining += Math.max(0, user.quotaBytes - user.usedBytes);
+      if (user.traffic) {
+        tracked++;
+        uploaded += user.traffic.uploadBytes;
+        downloaded += user.traffic.downloadBytes;
+        requests += user.traffic.requests;
+        since = since == null ? user.traffic.startedAtMs : Math.min(since, user.traffic.startedAtMs);
+      }
+      (user.collections || []).forEach(collection => {
+        collectionCount++;
+        const item = collections.get(collection.name) || {
+          name: collection.name, size: 0, accounts: 0, updatedAtMs: 0
+        };
+        item.size += collection.size;
+        item.accounts++;
+        item.updatedAtMs = Math.max(item.updatedAtMs, collection.updatedAtMs);
+        collections.set(item.name, item);
+      });
+    });
+    cards.replaceChildren();
+    [
+      ['Storage used', bytes(used)], ['Storage capacity', bytes(quota)],
+      ['Storage remaining', bytes(remaining)], ['Collections', collectionCount.toLocaleString()],
+      ['Uploaded', bytes(uploaded)], ['Downloaded', bytes(downloaded)],
+      ['Total transfer', bytes(uploaded + downloaded)], ['API requests', requests.toLocaleString()]
+    ].forEach(([label, value]) => {
+      const card = node('div', undefined, 'stat');
+      card.append(node('div', value, 'n'), node('div', label, 'l'));
+      cards.append(card);
+    });
+    account.textContent = selected
+      ? 'Plan: ' + selected.planId + ' · Status: ' + selected.status +
+        ' · Created: ' + date(selected.createdAtMs) + ' · Last login: ' + date(selected.lastLoginAtMs)
+      : shown.length + ' accounts · ' + shown.filter(user => user.status === 'active').length + ' approved';
+    tracking.textContent = since == null
+      ? 'Transfer tracking starts with the next authenticated request.'
+      : 'Transfer recorded since ' + date(since) +
+        (selected ? '.' : ' · ' + tracked + ' of ' + shown.length + ' accounts have recorded traffic.');
+    collectionsBody.replaceChildren();
+    const sorted = Array.from(collections.values()).sort((a, b) => b.size - a.size || a.name.localeCompare(b.name));
+    sorted.forEach(collection => {
+      const share = used > 0 ? collection.size / used * 100 : 0;
+      const row = node('tr');
+      const size = node('td', bytes(collection.size));
+      const bar = node('div', undefined, 'usage-bar');
+      const fill = node('span');
+      fill.style.width = Math.min(100, share).toFixed(1) + '%';
+      bar.append(fill);
+      size.append(bar);
+      row.append(node('td', collection.name), size, node('td', share.toFixed(1) + '%'),
+        node('td', collection.accounts.toLocaleString()), node('td', date(collection.updatedAtMs)));
+      collectionsBody.append(row);
+    });
+    if (!sorted.length) {
+      const row = node('tr');
+      const cell = node('td', 'No synced collections.', 'empty');
+      cell.colSpan = 5;
+      row.append(cell);
+      collectionsBody.append(row);
+    }
+  }
+  async function load() {
+    if (loading) return;
+    loading = true;
+    refresh.disabled = true;
+    status.textContent = 'Loading usage…';
+    try {
+      const response = await fetch('/admin/users', { credentials: 'same-origin' });
+      if (!response.ok || response.redirected) throw new Error('Could not load usage. Refresh or sign in again.');
+      const data = await response.json();
+      users = data.users.sort((a, b) => a.email.localeCompare(b.email));
+      if (!users.some(user => user.email === selectedEmail)) selectedEmail = null;
+      renderPicker();
+      renderStats();
+      status.textContent = 'Updated ' + date(Date.now());
+    } catch (error) {
+      status.textContent = error.message || 'Could not load usage. Try refreshing.';
+    } finally {
+      loading = false;
+      refresh.disabled = false;
+    }
+  }
+  search.addEventListener('input', renderPicker);
+  refresh.addEventListener('click', load);
+  load();
+  setInterval(function () {
+    if (panel.classList.contains('active') && !document.hidden) load();
+  }, 30000);
+})();
+''';
+
+  /// Tiny vanilla-JS tab switcher for the admin panels,
   /// keeping the selected tab in the URL hash so it survives a form POST's
   /// redirect back to the page (see _adminSetPlan/_adminVerifyUser).
   static const _adminTabScript = r'''
@@ -10260,6 +10444,7 @@ window.lumaAskReason = function (form, message) {
   const buttons = document.querySelectorAll('.tab-btn');
   const panels = {
     users: document.getElementById('panel-users'),
+    usage: document.getElementById('panel-usage'),
     inbox: document.getElementById('panel-inbox'),
     products: document.getElementById('panel-products'),
     activity: document.getElementById('panel-activity'),

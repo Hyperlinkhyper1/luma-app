@@ -219,6 +219,24 @@
     }));
   }
 
+  // Shapes go in as characters of the pixel font, so they sit in the text,
+  // take the ink colour and bold, and page along with everything else.
+  function buildShapes() {
+    $('shapes').replaceChildren(...PixelFont.SHAPES.map(ch => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'shape'; b.textContent = ch;
+      b.setAttribute('aria-label', ch);
+      b.addEventListener('mousedown', e => e.preventDefault());
+      hoverTip(b, () => gui.t('shapes'));
+      b.onclick = () => {
+        flow.focus();
+        document.execCommand('insertText', false, ch);
+        changed();
+      };
+      return b;
+    }));
+  }
+
   function buildCovers() {
     $('cover-colors').replaceChildren(...LibraryWorld.DYES.map((c, i) => {
       const b = document.createElement('button');
@@ -360,6 +378,7 @@
   addEventListener('resize', () => { if (!$('bookui').hidden && mode === 'edit') requestAnimationFrame(() => { measure(); setPage(page); }); });
 
   buildInk();
+  buildShapes();
 
   window.LibraryBook = {
     // Opens the editor on [book] ({title, spine, cover, body}).

@@ -1,5 +1,7 @@
 {
   "@@locale": "fr",
+  "trayOpen": "Ouvrir luma",
+  "trayQuit": "Quitter luma",
   "navHome": "Accueil",
   "navFileConverter": "Convertisseur de fichiers",
   "navFinance": "Finances",

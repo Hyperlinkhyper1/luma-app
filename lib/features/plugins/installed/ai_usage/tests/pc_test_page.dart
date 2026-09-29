@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
 import '../../../../../theme/luma_theme.dart';
-import '../../_shared/windows_webview.dart';
+import '../../_shared/windows_webview.dart'
+    show WindowsWebview, windowsAssetPath;
 import 'ai_benchmark.dart';
 import 'ai_benchmark_scope.dart';
 import 'model_banner.dart';
@@ -16,8 +17,8 @@ import 'test_view_prefs.dart';
 /// custom loop-glass tower with a staged power-on boot sequence, live
 /// temperature readouts and a stress mode.
 ///
-/// Scenes live on the luma server (see [AiBenchmarkScope]); each downloads on
-/// first open and is cached on disk after that.
+/// Bundled scenes are available immediately. Additional scenes come from
+/// [AiBenchmarkScope], download on first open and stay cached on disk.
 class PcTestPage extends StatefulWidget {
   const PcTestPage({super.key});
 
@@ -26,6 +27,19 @@ class PcTestPage extends StatefulWidget {
 }
 
 class _PcTestPageState extends State<PcTestPage> {
+  static const _bundledBenchmark = AiBenchmark(
+    id: 'pc_gpt61_sol_xhigh',
+    kind: 'pc',
+    model: 'GPT 6.1 Sol (Xhigh)',
+    description:
+        'HELIX 01 — an ivory and aluminum showcase with a custom '
+        'liquid loop, hinged glass, exploded inspection and power/RGB controls.',
+    sizeBytes: 0,
+    sha256: '',
+  );
+  static const _bundledAsset =
+      'assets/ai_usage/pc_tests/gpt61_sol_xhigh/index.html';
+
   String? _selectedId;
   bool _bannerView = false;
   final _searchController = TextEditingController();
@@ -57,7 +71,12 @@ class _PcTestPageState extends State<PcTestPage> {
     return ListenableBuilder(
       listenable: repo,
       builder: (context, _) {
-        final benchmarks = repo.benchmarksOfKind('pc');
+        final benchmarks = [
+          _bundledBenchmark,
+          ...repo
+              .benchmarksOfKind('pc')
+              .where((entry) => entry.id != _bundledBenchmark.id),
+        ];
         final query = _query.trim().toLowerCase();
         final filtered = query.isEmpty
             ? benchmarks
@@ -67,6 +86,9 @@ class _PcTestPageState extends State<PcTestPage> {
               ];
 
         if (_selectedId != null) {
+          if (_selectedId == _bundledBenchmark.id) {
+            return _sceneView(context, _bundledBenchmark);
+          }
           final selected = repo.byId(_selectedId!);
           if (selected == null) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -107,13 +129,9 @@ class _PcTestPageState extends State<PcTestPage> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Nebula Forge — a real-time 3D RGB rig benchmark with a staged '
-              'power-on boot sequence, live temperature readouts and a '
-              'stress mode.',
-              style: TextStyle(
-                color: luma.textSecondary,
-                fontSize: 13,
-              ),
+              'Explore interactive 3D gaming PC builds with power sequences, '
+              'RGB lighting and hardware controls.',
+              style: TextStyle(color: luma.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 20),
             ModelSearchField(
@@ -144,7 +162,7 @@ class _PcTestPageState extends State<PcTestPage> {
               ],
             ),
             const SizedBox(height: 12),
-            if (repo.loading)
+            if (repo.loading && filtered.isEmpty)
               const Center(
                 child: Padding(
                   padding: EdgeInsets.all(32),
@@ -167,9 +185,9 @@ class _PcTestPageState extends State<PcTestPage> {
                 title: 'No entries yet',
                 subtitle: repo.canRefresh
                     ? 'The benchmark list could not be loaded. Try again, or '
-                        'ask the server operator to add scenes.'
+                          'ask the server operator to add scenes.'
                     : 'Benchmarks download from the luma server. Sign in to '
-                        'an approved account to fetch them.',
+                          'an approved account to fetch them.',
                 action: LumaGhostButton(
                   label: repo.refreshing ? 'Refreshing…' : 'Retry',
                   icon: Icons.refresh_rounded,
@@ -221,7 +239,8 @@ class _PcTestPageState extends State<PcTestPage> {
           child: LumaEmptyState(
             icon: Icons.computer_rounded,
             title: 'Not available on this platform',
-            subtitle: 'The PC Test requires a Windows desktop. Mobile and '
+            subtitle:
+                'The PC Test requires a Windows desktop. Mobile and '
                 'Linux support are coming soon.',
           ),
         ),
@@ -239,47 +258,51 @@ class _PcTestPageState extends State<PcTestPage> {
           onPressed: () => setState(() => _selectedId = null),
         ),
       ),
-      body: FutureBuilder<File>(
-        future: repo.sceneFile(benchmark.id),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(
-                    valueColor:
-                        AlwaysStoppedAnimation<Color>(luma.accent),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Downloading ${benchmark.model}…',
-                    style: TextStyle(color: luma.textMuted, fontSize: 13),
-                  ),
-                ],
-              ),
-            );
-          }
-          if (snapshot.hasError || !snapshot.hasData) {
-            return Padding(
-              padding: const EdgeInsets.all(24),
-              child: LumaEmptyState(
-                icon: Icons.cloud_off_rounded,
-                title: 'Could not load ${benchmark.model}',
-                subtitle: '${snapshot.error ?? 'The download failed.'} '
-                    'Scenes are cached after the first download, so a retry '
-                    'is usually all it takes.',
-                action: LumaGhostButton(
-                  label: 'Retry',
-                  icon: Icons.refresh_rounded,
-                  onTap: () => setState(() {}),
-                ),
-              ),
-            );
-          }
-          return _PcSceneWebview(path: snapshot.data!.path);
-        },
-      ),
+      body: benchmark.id == _bundledBenchmark.id
+          ? const _PcSceneWebview(assetPath: _bundledAsset)
+          : FutureBuilder<File>(
+              future: repo.sceneFile(benchmark.id),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            luma.accent,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Downloading ${benchmark.model}…',
+                          style: TextStyle(color: luma.textMuted, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                if (snapshot.hasError || !snapshot.hasData) {
+                  return Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: LumaEmptyState(
+                      icon: Icons.cloud_off_rounded,
+                      title: 'Could not load ${benchmark.model}',
+                      subtitle:
+                          '${snapshot.error ?? 'The download failed.'} '
+                          'Scenes are cached after the first download, so a retry '
+                          'is usually all it takes.',
+                      action: LumaGhostButton(
+                        label: 'Retry',
+                        icon: Icons.refresh_rounded,
+                        onTap: () => setState(() {}),
+                      ),
+                    ),
+                  );
+                }
+                return _PcSceneWebview(path: snapshot.data!.path);
+              },
+            ),
     );
   }
 }
@@ -287,9 +310,11 @@ class _PcTestPageState extends State<PcTestPage> {
 /// The embedded scene, remounted per file so going back and opening another
 /// model never shows the previous scene.
 class _PcSceneWebview extends StatefulWidget {
-  const _PcSceneWebview({required this.path});
+  const _PcSceneWebview({this.path, this.assetPath})
+    : assert((path == null) != (assetPath == null));
 
-  final String path;
+  final String? path;
+  final String? assetPath;
 
   @override
   State<_PcSceneWebview> createState() => _PcSceneWebviewState();
@@ -305,8 +330,12 @@ class _PcSceneWebviewState extends State<_PcSceneWebview> {
       children: [
         Positioned.fill(
           child: WindowsWebview(
-            key: ValueKey(widget.path),
-            fileUrl: Uri.file(widget.path).toString(),
+            key: ValueKey(widget.assetPath ?? widget.path),
+            fileUrl: Uri.file(
+              widget.assetPath == null
+                  ? widget.path!
+                  : windowsAssetPath(widget.assetPath!),
+            ).toString(),
             onLoaded: () {
               if (mounted) setState(() => _loading = false);
             },

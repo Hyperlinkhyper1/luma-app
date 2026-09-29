@@ -103,6 +103,18 @@ abstract class L {
     Locale('zh'),
   ];
 
+  /// No description provided for @trayOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open luma'**
+  String get trayOpen;
+
+  /// No description provided for @trayQuit.
+  ///
+  /// In en, this message translates to:
+  /// **'Quit luma'**
+  String get trayQuit;
+
   /// No description provided for @navHome.
   ///
   /// In en, this message translates to:

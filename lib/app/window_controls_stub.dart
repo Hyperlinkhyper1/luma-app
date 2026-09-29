@@ -27,6 +27,11 @@ Future<void> windowClose() async {}
 
 Future<void> windowShow() async {}
 
+Future<void> setTrayLabels({
+  required String open,
+  required String quit,
+}) async {}
+
 // ---- Pet window ------------------------------------------------------------
 // Without an OS window there is nothing to shrink: the pet is shown as an
 // in-app overlay instead (see LumaPetOverlay).

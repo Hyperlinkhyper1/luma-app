@@ -438,9 +438,12 @@ async function main() {
       id.startsWith('cathedral_') ? 'cathedral' : 'pagoda');
   const sceneExtension = (id) => (kindOf(id) === 'cathedral' ? 'glb' : 'html');
   const sceneFile = (id) => {
+    const ext = sceneExtension(id);
     const candidates = [
-      override && path.join(override, `${id}.${sceneExtension(id)}`),
-      path.join(root, 'scenes', `${id}.${sceneExtension(id)}`),
+      override && path.join(override, `${id}.${ext}`),
+      override && ext === 'html' && path.join(override, id, 'index.html'),
+      path.join(root, 'scenes', `${id}.${ext}`),
+      ext === 'html' && path.join(root, 'scenes', id, 'index.html'),
     ].filter(Boolean);
     return candidates.find((f) => fs.existsSync(f)) ?? null;
   };

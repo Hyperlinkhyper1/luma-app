@@ -1,5 +1,7 @@
 {
   "@@locale": "nl",
+  "trayOpen": "luma openen",
+  "trayQuit": "luma afsluiten",
   "navHome": "Start",
   "navFileConverter": "Bestanden omzetten",
   "navFinance": "Geld",
