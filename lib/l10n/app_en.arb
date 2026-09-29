@@ -462,7 +462,6 @@
   },
   "textLibraryInk": "Ink",
   "textLibraryItalic": "Italic",
-  "textLibraryMcAdvancement": "Advancement",
   "textLibraryMcBooks": "{count} books",
   "@textLibraryMcBooks": {
     "placeholders": {
@@ -484,8 +483,6 @@
   "textLibraryMcEmptySlot": "Empty slot",
   "textLibraryMcFailedAndroid": "Could not open the Minecraft library on Android.",
   "textLibraryMcFailedWindows": "Could not open the Minecraft library on Windows.",
-  "textLibraryMcFirstBook": "Write your first book",
-  "textLibraryMcFirstCase": "Create your first case",
   "textLibraryMcLoading": "Loading Minecraft library…",
   "textLibraryMcLost": "The Minecraft library connection was lost.",
   "textLibraryMcMoveHint": "Move this book to another shelf.",
@@ -505,6 +502,7 @@
   "textLibraryMcQuality": "Render quality",
   "textLibraryMcQualityHigh": "High",
   "textLibraryMcQualityLow": "Low",
+  "textLibraryMcRedo": "Redo",
   "textLibraryMcRetry": "Retry",
   "textLibraryMcSaveFailed": "Could not save the book.",
   "textLibraryMcSettings": "Hall settings",
@@ -522,6 +520,12 @@
   "textLibraryMcSign": "Sign book",
   "textLibraryMcSignAndShelve": "Sign and shelve",
   "textLibraryMcSignTitle": "Sign this book?",
+  "textLibraryMcTime": "Time",
+  "textLibraryMcTimeClock": "My clock",
+  "textLibraryMcTimeCycle": "Day and night",
+  "textLibraryMcTimeDay": "Always day",
+  "textLibraryMcTimeNight": "Always night",
+  "textLibraryMcUndo": "Undo",
   "textLibraryMcUntitled": "Untitled",
   "textLibraryMcVanilla": "Minecraft {version}",
   "@textLibraryMcVanilla": {
@@ -531,6 +535,7 @@
       }
     }
   },
+  "textLibraryMcWalkHint": "WASD or arrow keys to walk · drag to look around · click a bookcase to open it",
   "textLibraryMcWriteHint": "Write your book here…",
   "textLibraryModeClassic": "Classic",
   "textLibraryModeMinecraft": "Minecraft hall",

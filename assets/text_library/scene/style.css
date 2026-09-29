@@ -271,28 +271,69 @@ canvas#view.grab { cursor: grabbing; }
 @keyframes toast-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
 @keyframes toast-out { to { transform: translateX(100%); } }
 
-/* ── Inventory panel (formatting tools) ───────────────────────────────── */
-.mc-inventory {
+/* ── Book tools, Scribble-style ───────────────────────────────────────
+   Formatting tabs clipped to the book's right edge, the sixteen inks in a
+   two-column strip under them, undo and redo out in the left margin. */
+#tools {
+  position: absolute; left: calc(var(--g) * 164px); top: calc(var(--g) * 14px);
+  display: flex; flex-direction: column; gap: calc(var(--g) * 5px);
+}
+#tools .tabs { display: flex; flex-direction: column; gap: var(--px); }
+.tab {
+  width: calc(var(--g) * 15px); height: calc(var(--g) * 14px); padding: 0 0 0 var(--px);
+  font: inherit; font-size: calc(var(--g) * 8px); color: #1a1208; cursor: pointer;
+  background: #efe4c6; border: var(--px) solid #3a2210; border-left: none;
+  box-shadow: inset 0 var(--px) 0 #fffaf0, inset 0 calc(var(--g) * -1px) 0 #c9b88f;
+  outline: none;
+}
+.tab:hover, .tab:focus-visible { background: #fffbea; }
+.tab.on { background: #fffdf4; width: calc(var(--g) * 17px); box-shadow: inset 0 0 0 var(--px) #2b50c8; }
+.palette {
+  display: grid; grid-template-columns: repeat(2, calc(var(--g) * 9px)); gap: var(--px);
+  padding: var(--px); background: #3a2210; margin-left: var(--px);
+}
+.palette .ink {
+  width: calc(var(--g) * 9px); height: calc(var(--g) * 9px); padding: 0; cursor: pointer;
+  border: var(--px) solid #0006; box-shadow: inset var(--px) var(--px) 0 #fff4;
+  outline: none;
+}
+.palette .ink:hover, .palette .ink:focus-visible { border-color: #fff; }
+.palette .ink[aria-checked="true"] { border-color: #fff; box-shadow: 0 0 0 var(--px) #000; }
+#history {
   display: flex; flex-direction: column; gap: calc(var(--g) * 4px);
-  padding: calc(var(--g) * 6px);
-  background: #c6c6c6;
-  border: var(--px) solid #000;
-  box-shadow: inset calc(var(--g) * 2px) calc(var(--g) * 2px) 0 #fff, inset calc(var(--g) * -2px) calc(var(--g) * -2px) 0 #555;
+  padding-top: calc(var(--g) * 16px);
 }
-.mc-inventory .format { display: grid; grid-template-columns: repeat(2, calc(var(--g) * 20px)); gap: calc(var(--g) * 2px); }
-.slots { display: grid; grid-template-columns: repeat(4, calc(var(--g) * 18px)); }
-.slot {
-  width: calc(var(--g) * 18px); height: calc(var(--g) * 18px); padding: 0; cursor: pointer;
-  background: #8b8b8b; border: none;
-  box-shadow: inset var(--px) var(--px) 0 #373737, inset calc(var(--g) * -1px) calc(var(--g) * -1px) 0 #fff;
-  display: grid; place-items: center;
+.mc-icon {
+  width: calc(var(--g) * 14px); height: calc(var(--g) * 12px); padding: 0;
+  background: none; border: none; cursor: pointer; outline: none;
 }
-.slot i { width: calc(var(--g) * 12px); height: calc(var(--g) * 12px); display: block; border: var(--px) solid #0008; }
-.slot:hover, .slot:focus-visible { background: #c5c5c5; outline: none; }
-.slot[aria-checked="true"] { box-shadow: inset 0 0 0 var(--px) #fff, inset 0 0 0 calc(var(--g) * 2px) #000; }
+.mc-icon svg { width: calc(var(--g) * 9px); height: calc(var(--g) * 7px); fill: #fff; filter: drop-shadow(var(--px) var(--px) 0 #3f3f3f); shape-rendering: crispEdges; }
+.mc-icon:hover svg, .mc-icon:focus-visible svg { fill: #ffffa0; }
+
+/* ── Walking pad (touch screens) ─────────────────────────────────────── */
+#move-pad {
+  position: absolute; left: calc(var(--g) * 10px); bottom: calc(var(--g) * 34px);
+  display: grid; grid-template-columns: repeat(3, calc(var(--g) * 20px)); grid-template-rows: repeat(2, calc(var(--g) * 20px));
+  gap: calc(var(--g) * 2px);
+}
+.pad { position: relative; background: #0006; border: var(--px) solid #fff4; padding: 0; touch-action: none; cursor: pointer; }
+.pad.on { background: #fff3; border-color: #fff; }
+.pad.up { grid-column: 2; grid-row: 1; }
+.pad.left { grid-column: 1; grid-row: 2; }
+.pad.down { grid-column: 2; grid-row: 2; }
+.pad.right { grid-column: 3; grid-row: 2; }
+.pad::after {
+  content: ''; position: absolute; inset: 0; margin: auto;
+  width: calc(var(--g) * 6px); height: calc(var(--g) * 6px);
+  border: solid #fff; border-width: 0 calc(var(--g) * 2px) calc(var(--g) * 2px) 0;
+}
+.pad.up::after { transform: translateY(calc(var(--g) * 1px)) rotate(-135deg); }
+.pad.down::after { transform: translateY(calc(var(--g) * -1px)) rotate(45deg); }
+.pad.left::after { transform: translateX(calc(var(--g) * 1px)) rotate(135deg); }
+.pad.right::after { transform: translateX(calc(var(--g) * -1px)) rotate(-45deg); }
 
 /* ── The book ─────────────────────────────────────────────────────────── */
-#book-layout { display: flex; align-items: flex-start; gap: calc(var(--g) * 8px); }
+#book-layout { display: flex; align-items: flex-start; gap: calc(var(--g) * 2px); margin-left: calc(var(--g) * -16px); }
 .mc-book {
   position: relative;
   width: calc(var(--g) * 192px); height: calc(var(--g) * 192px);
@@ -344,12 +385,6 @@ canvas#view.grab { cursor: grabbing; }
 #book-burn { margin-top: calc(var(--g) * 4px); width: calc(var(--g) * 200px); }
 #book-hint { margin-top: calc(var(--g) * 6px); text-align: center; max-width: 92vw; }
 
-@media (max-aspect-ratio: 1/1) {
-  #book-layout { flex-direction: column; align-items: center; }
-  #tools { flex-direction: row; flex-wrap: wrap; justify-content: center; }
-  .mc-inventory .format { grid-template-columns: repeat(4, calc(var(--g) * 20px)); }
-  .slots { grid-template-columns: repeat(8, calc(var(--g) * 18px)); }
-}
 
 #error {
   position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 24px;

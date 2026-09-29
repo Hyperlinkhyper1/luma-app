@@ -2041,12 +2041,6 @@ abstract class L {
   /// **'Italic'**
   String get textLibraryItalic;
 
-  /// No description provided for @textLibraryMcAdvancement.
-  ///
-  /// In en, this message translates to:
-  /// **'Advancement'**
-  String get textLibraryMcAdvancement;
-
   /// No description provided for @textLibraryMcBooks.
   ///
   /// In en, this message translates to:
@@ -2131,18 +2125,6 @@ abstract class L {
   /// **'Could not open the Minecraft library on Windows.'**
   String get textLibraryMcFailedWindows;
 
-  /// No description provided for @textLibraryMcFirstBook.
-  ///
-  /// In en, this message translates to:
-  /// **'Write your first book'**
-  String get textLibraryMcFirstBook;
-
-  /// No description provided for @textLibraryMcFirstCase.
-  ///
-  /// In en, this message translates to:
-  /// **'Create your first case'**
-  String get textLibraryMcFirstCase;
-
   /// No description provided for @textLibraryMcLoading.
   ///
   /// In en, this message translates to:
@@ -2197,6 +2179,12 @@ abstract class L {
   /// **'Low'**
   String get textLibraryMcQualityLow;
 
+  /// No description provided for @textLibraryMcRedo.
+  ///
+  /// In en, this message translates to:
+  /// **'Redo'**
+  String get textLibraryMcRedo;
+
   /// No description provided for @textLibraryMcRetry.
   ///
   /// In en, this message translates to:
@@ -2239,6 +2227,42 @@ abstract class L {
   /// **'Sign this book?'**
   String get textLibraryMcSignTitle;
 
+  /// No description provided for @textLibraryMcTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get textLibraryMcTime;
+
+  /// No description provided for @textLibraryMcTimeClock.
+  ///
+  /// In en, this message translates to:
+  /// **'My clock'**
+  String get textLibraryMcTimeClock;
+
+  /// No description provided for @textLibraryMcTimeCycle.
+  ///
+  /// In en, this message translates to:
+  /// **'Day and night'**
+  String get textLibraryMcTimeCycle;
+
+  /// No description provided for @textLibraryMcTimeDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Always day'**
+  String get textLibraryMcTimeDay;
+
+  /// No description provided for @textLibraryMcTimeNight.
+  ///
+  /// In en, this message translates to:
+  /// **'Always night'**
+  String get textLibraryMcTimeNight;
+
+  /// No description provided for @textLibraryMcUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get textLibraryMcUndo;
+
   /// No description provided for @textLibraryMcUntitled.
   ///
   /// In en, this message translates to:
@@ -2250,6 +2274,12 @@ abstract class L {
   /// In en, this message translates to:
   /// **'Minecraft {version}'**
   String textLibraryMcVanilla(String version);
+
+  /// No description provided for @textLibraryMcWalkHint.
+  ///
+  /// In en, this message translates to:
+  /// **'WASD or arrow keys to walk · drag to look around · click a bookcase to open it'**
+  String get textLibraryMcWalkHint;
 
   /// No description provided for @textLibraryMcWriteHint.
   ///

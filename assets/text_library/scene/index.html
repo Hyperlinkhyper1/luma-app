@@ -32,6 +32,12 @@
     <button id="page-next" class="mc-page forward" type="button" aria-label="Next shelf"></button>
   </div>
   <button id="settings-open" class="mc-button icon" type="button"><span class="gear"></span></button>
+  <div id="move-pad" hidden>
+    <button class="pad up" data-move="fwd:1" type="button" aria-label="Forward"></button>
+    <button class="pad left" data-move="turn:1" type="button" aria-label="Turn left"></button>
+    <button class="pad right" data-move="turn:-1" type="button" aria-label="Turn right"></button>
+    <button class="pad down" data-move="fwd:-1" type="button" aria-label="Back"></button>
+  </div>
   <div id="toasts" aria-live="polite"></div>
 </div>
 
@@ -39,6 +45,7 @@
   <div class="mc-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-title">
     <h2 id="settings-title" class="mc-text"></h2>
     <button id="quality" class="mc-button wide" type="button"></button>
+    <button id="time" class="mc-button wide" type="button"></button>
     <p id="texture-source" class="mc-text dim"></p>
     <button id="download" class="mc-button wide" type="button" hidden></button>
     <p id="download-note" class="mc-text dim small" hidden></p>
@@ -61,6 +68,10 @@
 
 <div id="bookui" class="mc-screen clear" hidden>
   <div id="book-layout">
+    <div id="history">
+      <button class="mc-icon" data-cmd="undo" type="button"><svg viewBox="0 0 9 7" aria-hidden="true"><path d="M3 0h1v1h4v1h1v3H8v1H4V5h4V2H4v1H3V2H2V1h1zM0 1h2v1H1v1H0z"/></svg></button>
+      <button class="mc-icon" data-cmd="redo" type="button"><svg viewBox="0 0 9 7" aria-hidden="true"><path d="M6 0H5v1H1v1H0v3h1v1h4V5H1V2h4v1h1V2h1V1H6zM9 1H7v1h1v1h1z"/></svg></button>
+    </div>
     <div id="book" class="mc-book">
       <p id="book-page" class="mc-ink"></p>
       <div id="book-viewport">
@@ -79,16 +90,16 @@
       <div id="burn-confirm" hidden>
         <p id="burn-text" class="mc-ink center"></p>
       </div>
-    </div>
-    <div id="tools" class="mc-inventory" role="toolbar">
-      <div class="format">
-        <button class="mc-button tool" data-cmd="bold" type="button"><b>B</b></button>
-        <button class="mc-button tool" data-cmd="italic" type="button"><i>I</i></button>
-        <button class="mc-button tool" data-cmd="underline" type="button"><u>U</u></button>
-        <button class="mc-button tool" data-cmd="strikeThrough" type="button"><s>S</s></button>
+      <div id="tools" role="toolbar">
+        <div class="tabs">
+          <button class="tab" data-cmd="bold" type="button"><b>B</b></button>
+          <button class="tab" data-cmd="italic" type="button"><i>I</i></button>
+          <button class="tab" data-cmd="underline" type="button"><u>U</u></button>
+          <button class="tab" data-cmd="strikeThrough" type="button"><s>S</s></button>
+          <button class="tab" data-cmd="clear" type="button">r</button>
+        </div>
+        <div id="ink" class="palette" role="radiogroup"></div>
       </div>
-      <div id="ink" class="slots" role="radiogroup"></div>
-      <button class="mc-button tool wide" data-cmd="clear" type="button">⌫</button>
     </div>
   </div>
   <div id="book-buttons">
