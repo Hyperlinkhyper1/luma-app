@@ -11,7 +11,7 @@
 
   const b = (K, o, from, to, faces, opts = {}) => addBox(K.mb, K.grid, K.atlas, o, from, to, faces, opts);
   const brass = sides('yellow_wool', null, null, {tint: [0.78, 0.56, 0.26]});
-  const LEATHERS = [[0.36, 0.16, 0.12], [0.17, 0.24, 0.36], [0.2, 0.3, 0.18], [0.44, 0.32, 0.17], [0.27, 0.16, 0.27], [0.5, 0.39, 0.24]];
+  const LEATHERS = [[0.24, 0.07, 0.05], [0.07, 0.1, 0.2], [0.09, 0.16, 0.08], [0.3, 0.17, 0.07], [0.14, 0.06, 0.14], [0.36, 0.24, 0.12]];
 
   // Where a point of a turned model lands in the world.
   function toWorld(o, p, yaw, pivot = [8, 8, 8]) {
@@ -114,9 +114,13 @@
       const tint = LEATHERS[Math.floor(r() * LEATHERS.length)];
       const w = 8 + r() * 3, d = 6 + r() * 2, h = 1.4 + r() * 1.2;
       const leather = {tex: 'leather', tint}, pages = {tex: 'pages', ao: 0.92};
-      b(K, o, [8 - w / 2, y, 8 - d / 2], [8 + w / 2, y + h, 8 + d / 2], {
-        up: leather, down: leather, west: {tex: 'spine_deco', tint, uv: [0, 3, 16, 13], rot: 90}, east: pages, north: pages, south: pages,
-      }, {yaw: yaw + (r() - 0.5) * 0.5});
+      const x0 = 8 - w / 2, x1 = 8 + w / 2, z0 = 8 - d / 2, z1 = 8 + d / 2, c = 0.45;
+      const opts = {yaw: yaw + (r() - 0.5) * 0.5};
+      // Covers a touch bigger than the pages, joined by the spine.
+      b(K, o, [x0, y, z0], [x1, y + c, z1], all('leather', {tint}), opts);
+      b(K, o, [x0, y + h - c, z0], [x1, y + h, z1], all('leather', {tint}), opts);
+      b(K, o, [x0, y + c, z0], [x0 + c, y + h - c, z1], {west: {tex: 'spine_deco', tint, uv: [0, 3, 16, 13], rot: 90}, north: leather, south: leather}, opts);
+      b(K, o, [x0 + c, y + c, z0 + 0.35], [x1 - 0.35, y + h - c, z1 - 0.35], {east: pages, north: pages, south: pages}, opts);
       y += h;
     }
     return y / 16;

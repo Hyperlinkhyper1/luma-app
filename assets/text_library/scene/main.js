@@ -74,6 +74,7 @@
       switch (m.type) {
         case 'init':
           gui.setStrings(m.strings);
+          $('time').textContent = timeLabel();
           if (m.reducedMotion) S.reducedMotion = true;
           refreshHud();
           break;
@@ -82,7 +83,19 @@
           if (S.visible) loop.wake();
           break;
         case 'library': onLibrary(m.subjects || []); break;
-        case 'assets': onAssets(m); break;
+        case 'assets':
+          onAssets(m).catch(error => {
+            console.error('Library assets failed', error);
+            if (Object.keys(m.files || {}).length) {
+              onAssets({files: {}}).catch(fallbackError => {
+                console.error('Built-in library assets failed', fallbackError);
+                fail(fallbackError?.message || String(fallbackError));
+              });
+            } else {
+              fail(error?.message || String(error));
+            }
+          });
+          break;
         case 'saved': pending.get(m.request)?.resolve(m.id); pending.delete(m.request); break;
         case 'failed': pending.get(m.request)?.reject(new Error(m.message || 'failed')); pending.delete(m.request); break;
         case 'download': {
@@ -224,7 +237,7 @@
   function makeDeskBook(book) {
     disposeDeskBook();
     const {hw, hh, t} = deskBookSize(book);
-    const tint = W.coverRgb(book.cover ?? 12).map(v => v / 255);
+    const tint = W.coverTint(book.cover ?? 12);
     const desk = S.built.desk;
     const light = S.built.grid.sample([0, desk.top + 0.35, desk.z], [0, 1, 0]);
     const cover = {tex: 'leather', tint};
@@ -640,7 +653,7 @@
     const u0 = (c.spec.width - w) / 2, v0 = W.HALL.shelfTop + (W.HALL.caseTop - 0.125 - W.HALL.shelfTop - h) / 2;
     const plank = {tex: 'dark_oak_planks'};
     const labelUv = [[uv.u0, uv.v0], [uv.u0, uv.v1], [uv.u1, uv.v1], [uv.u1, uv.v0]];
-    f.box(K, u0, v0, -0.6 / 16, u0 + w, v0 + h, 0, {front: {tex: 'solid', labelUv, emit: 0.12}, top: plank, bottom: plank, left: plank, right: plank});
+    f.box(K, u0, v0, -0.6 / 16, u0 + w, v0 + h, 0, {front: {tex: 'solid', labelUv, emit: 0.12}, top: plank, bottom: plank, left: plank, right: plank}, {whole: true});
     const pin = W.sides('yellow_wool', null, null, {tint: [0.8, 0.58, 0.28]});
     for (const u of [u0 + 0.06, u0 + w - 0.12]) f.box(K, u, v0 + h / 2 - 0.03, -0.9 / 16, u + 0.06, v0 + h / 2 + 0.03, -0.6 / 16, {front: pin.north, top: pin.up, bottom: pin.down, left: pin.west, right: pin.east});
   }
@@ -890,7 +903,7 @@
 
   // ── Picking ────────────────────────────────────────────────────────────
   const raycaster = new T.Raycaster();
-  const pointer = {x: 0, y: 0, nx: 0, ny: 0, down: null, dragging: false};
+  const pointer = {x: 0, y: 0, nx: 0, ny: 0, down: null, dragging: false, pinch: null};
 
   function rayAt(x, y) {
     const ndc = new T.Vector2((x / innerWidth) * 2 - 1, -(y / innerHeight) * 2 + 1);
@@ -1293,14 +1306,14 @@
       S.vel = [0, 0];
       return;
     }
-    const held = k => keys.has(k);
+    const down = k => keys.has(k);
     let fwd = pad.fwd, strafe = 0, turn = pad.turn;
-    if (held('KeyW') || held('ArrowUp')) fwd += 1;
-    if (held('KeyS') || held('ArrowDown')) fwd -= 1;
-    if (held('KeyA')) strafe -= 1;
-    if (held('KeyD')) strafe += 1;
-    if (held('ArrowLeft') || held('KeyQ')) turn += 1;
-    if (held('ArrowRight') || held('KeyE')) turn -= 1;
+    if (down('KeyW') || down('ArrowUp')) fwd += 1;
+    if (down('KeyS') || down('ArrowDown')) fwd -= 1;
+    if (down('KeyA')) strafe -= 1;
+    if (down('KeyD')) strafe += 1;
+    if (down('ArrowLeft') || down('KeyQ')) turn += 1;
+    if (down('ArrowRight') || down('KeyE')) turn -= 1;
     S.yaw += turn * dt * 1.9;
     let tx = -Math.sin(S.yaw) * fwd + Math.cos(S.yaw) * strafe;
     let tz = -Math.cos(S.yaw) * fwd - Math.sin(S.yaw) * strafe;
@@ -1312,7 +1325,7 @@
       if (d < 0.06) S.goal = null;
       else { const k = Math.min(1, d * 1.5) / d; tx = dx * k; tz = dz * k; }
     }
-    const speed = held('ShiftLeft') || held('ShiftRight') ? 5 : 3;
+    const speed = down('ShiftLeft') || down('ShiftRight') ? 5 : 3;
     const k = 1 - Math.exp(-dt * 10);
     S.vel[0] += (tx * speed - S.vel[0]) * k;
     S.vel[1] += (tz * speed - S.vel[1]) * k;
@@ -1491,6 +1504,11 @@
     try { localStorage.setItem('library.quality', S.quality); } catch { /* storage blocked */ }
     applyQuality();
   };
+  $('time').onclick = () => {
+    S.timeMode = TIME_MODES[(TIME_MODES.indexOf(S.timeMode) + 1) % TIME_MODES.length];
+    try { localStorage.setItem('library.time', S.timeMode); } catch { /* storage blocked */ }
+    $('time').textContent = timeLabel();
+  };
   $('download').onclick = () => {
     $('download').disabled = true;
     send({type: 'downloadVanilla'});
@@ -1534,36 +1552,104 @@
   }
 
   // ── Time of day ────────────────────────────────────────────────────────
-  // Keyframes by local hour: the hall follows the user's own clock.
+  // The sun crosses the sky over a twenty-minute day, as in the game, and
+  // the moon follows it through the night. The reader can also follow their
+  // own clock, or hold the hall at day or at night.
+  const TIME_MODES = ['cycle', 'clock', 'day', 'night'];
+  const TIME_LABEL = {cycle: 'timeCycle', clock: 'timeClock', day: 'timeDay', night: 'timeNight'};
+  const DAY_SECONDS = 1200;
+
+  // Keyframes by the sun's height (-1 midnight … 1 noon).
   const SKY = [
-    {h: 0, el: 40, sun: [0.18, 0.24, 0.42], sky: [0.05, 0.07, 0.14], zen: [0.01, 0.015, 0.05], hor: [0.04, 0.05, 0.1], lamp: 1.35, skyLevel: 0.9, night: 1, exposure: 1.2},
-    {h: 5.5, el: 4, sun: [0.8, 0.45, 0.35], sky: [0.25, 0.25, 0.35], zen: [0.1, 0.14, 0.3], hor: [0.9, 0.5, 0.35], lamp: 1.1, skyLevel: 1, night: 0.3, exposure: 1.1},
-    {h: 8, el: 28, sun: [1.7, 1.35, 0.95], sky: [0.45, 0.52, 0.65], zen: [0.25, 0.45, 0.8], hor: [0.85, 0.8, 0.72], lamp: 0.85, skyLevel: 1, night: 0, exposure: 1},
-    {h: 14, el: 42, sun: [1.8, 1.5, 1.1], sky: [0.48, 0.56, 0.7], zen: [0.22, 0.44, 0.82], hor: [0.8, 0.82, 0.8], lamp: 0.8, skyLevel: 1, night: 0, exposure: 1},
-    {h: 17.5, el: 22, sun: [2.0, 1.3, 0.7], sky: [0.5, 0.46, 0.48], zen: [0.25, 0.38, 0.7], hor: [1.0, 0.7, 0.45], lamp: 0.95, skyLevel: 1, night: 0, exposure: 1},
-    {h: 19.5, el: 6, sun: [1.8, 0.7, 0.35], sky: [0.35, 0.25, 0.3], zen: [0.12, 0.14, 0.35], hor: [1.0, 0.45, 0.25], lamp: 1.15, skyLevel: 0.9, night: 0.2, exposure: 1.05},
-    {h: 21.5, el: 40, sun: [0.18, 0.24, 0.42], sky: [0.05, 0.07, 0.14], zen: [0.01, 0.015, 0.05], hor: [0.04, 0.05, 0.1], lamp: 1.35, skyLevel: 0.9, night: 1, exposure: 1.2},
-    {h: 24, el: 40, sun: [0.18, 0.24, 0.42], sky: [0.05, 0.07, 0.14], zen: [0.01, 0.015, 0.05], hor: [0.04, 0.05, 0.1], lamp: 1.35, skyLevel: 0.9, night: 1, exposure: 1.2},
+    {e: -1, sun: [0.16, 0.21, 0.36], sky: [0.04, 0.055, 0.11], zen: [0.008, 0.012, 0.04], hor: [0.03, 0.04, 0.08], lamp: 1.35, night: 1, exposure: 1.25},
+    {e: -0.2, sun: [0.14, 0.18, 0.3], sky: [0.05, 0.06, 0.12], zen: [0.012, 0.018, 0.06], hor: [0.06, 0.06, 0.12], lamp: 1.35, night: 1, exposure: 1.25},
+    {e: -0.06, sun: [0.02, 0.02, 0.03], sky: [0.12, 0.1, 0.16], zen: [0.05, 0.06, 0.16], hor: [0.4, 0.2, 0.18], lamp: 1.25, night: 0.7, exposure: 1.15},
+    {e: 0.02, sun: [1.4, 0.55, 0.28], sky: [0.3, 0.24, 0.3], zen: [0.12, 0.15, 0.34], hor: [0.95, 0.46, 0.26], lamp: 1.1, night: 0.2, exposure: 1.08},
+    {e: 0.2, sun: [2.0, 1.28, 0.72], sky: [0.44, 0.44, 0.52], zen: [0.22, 0.36, 0.7], hor: [1.0, 0.74, 0.52], lamp: 0.95, night: 0, exposure: 1.02},
+    {e: 0.55, sun: [1.8, 1.5, 1.1], sky: [0.48, 0.56, 0.7], zen: [0.22, 0.44, 0.82], hor: [0.8, 0.82, 0.8], lamp: 0.82, night: 0, exposure: 1},
+    {e: 1, sun: [1.8, 1.52, 1.14], sky: [0.5, 0.58, 0.72], zen: [0.2, 0.42, 0.82], hor: [0.78, 0.82, 0.82], lamp: 0.8, night: 0, exposure: 1},
   ];
-  function applyTimeOfDay() {
-    const now = new Date();
-    const h = now.getHours() + now.getMinutes() / 60;
+
+  function targetHour() {
+    if (S.timeMode === 'day') return 10.5;
+    if (S.timeMode === 'night') return 22.5;
+    if (S.timeMode === 'clock') {
+      const now = new Date();
+      return now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
+    }
+    return S.hour;
+  }
+
+  let lastLight = new T.Vector3();
+  function stepTime(dt) {
+    if (S.timeMode === 'cycle') S.hour = (S.hour + dt * 24 / DAY_SECONDS) % 24;
+    // Switching modes sweeps the sun round rather than jumping.
+    const goal = targetHour();
+    const diff = ((goal - S.shownHour + 36) % 24) - 12;
+    S.shownHour = Math.abs(diff) < 0.001 ? goal : (S.shownHour + diff * Math.min(1, dt * 2.5) + 24) % 24;
+    applyTimeOfDay(S.shownHour);
+  }
+
+  function applyTimeOfDay(hour) {
+    const t = (hour - 6) / 24 * Math.PI * 2;
+    const sun = new T.Vector3(Math.cos(t), Math.sin(t), -0.32).normalize();
+    const e = sun.y;
     let a = SKY[0], b = SKY[1];
-    for (let i = 0; i < SKY.length - 1; i++) if (h >= SKY[i].h && h <= SKY[i + 1].h) { a = SKY[i]; b = SKY[i + 1]; break; }
-    const k = (h - a.h) / Math.max(0.001, b.h - a.h);
+    for (let i = 0; i < SKY.length - 1; i++) if (e >= SKY[i].e && e <= SKY[i + 1].e) { a = SKY[i]; b = SKY[i + 1]; break; }
+    const k = (e - a.e) / Math.max(1e-4, b.e - a.e);
     const mix = (x, y) => x + (y - x) * k;
     const mix3 = (x, y) => x.map((v, i) => mix(v, y[i]));
-    const el = mix(a.el, b.el) * Math.PI / 180;
-    U.sunDir.value.set(Math.cos(el) * 0.86, Math.sin(el), -Math.cos(el) * 0.5).normalize();
+    // By day the sun lights the hall; by night, the moon opposite it.
+    const light = e > -0.06 ? sun.clone() : sun.clone().negate();
+    if (light.y < 0.04) light.y = 0.04;
+    light.normalize();
+    U.sunDir.value.copy(light);
+    R.skyUniforms.sunPos.value.copy(sun);
     U.sunColor.value.setRGB(...mix3(a.sun, b.sun));
     U.skyColor.value.setRGB(...mix3(a.sky, b.sky));
     U.lampLevel.value = mix(a.lamp, b.lamp);
-    U.skyLevel.value = mix(a.skyLevel, b.skyLevel);
     R.skyUniforms.zenith.value.setRGB(...mix3(a.zen, b.zen));
     R.skyUniforms.horizon.value.setRGB(...mix3(a.hor, b.hor));
     R.skyUniforms.night.value = mix(a.night, b.night);
     S.exposure = mix(a.exposure, b.exposure);
-    shadowDirty = true;
+    // Re-cast the shadows once the light has moved a visible amount.
+    if (lastLight.angleTo(light) > 0.004) { lastLight.copy(light); shadowDirty = true; }
+  }
+
+  function timeLabel() {
+    return `${gui.t('time')}: ${gui.t(TIME_LABEL[S.timeMode])}`;
+  }
+
+  // Hands on the grandfather clock in the foyer, telling the hall's time.
+  const clockHands = {group: null, hour: null, minute: null};
+  function buildClock() {
+    if (clockHands.group) { scene.remove(clockHands.group); clockHands.group.traverse(o => o.geometry?.dispose()); clockHands.group = null; }
+    const face = S.built?.clock?.face;
+    if (!face) return;
+    const mat = new T.MeshBasicMaterial({color: 0x241a12});
+    const hand = (length, width) => {
+      const geo = new T.BoxGeometry(0.004, length, width);
+      geo.translate(0, length / 2 - 0.012, 0);
+      const mesh = new T.Mesh(geo, mat);
+      mesh.userData.noShadow = true;
+      return mesh;
+    };
+    const group = new T.Group();
+    clockHands.hour = hand(face.radius * 0.55, 0.018);
+    clockHands.minute = hand(face.radius * 0.85, 0.012);
+    clockHands.minute.position.x = 0.003;
+    group.add(clockHands.hour, clockHands.minute);
+    group.position.set(face.center[0] + face.normal[0] * 0.006, face.center[1], face.center[2] + face.normal[2] * 0.006);
+    group.userData.noShadow = true;
+    scene.add(group);
+    clockHands.group = group;
+  }
+  function stepClock() {
+    if (!clockHands.group) return;
+    const h = S.shownHour;
+    // Seen from the room (+x), clockwise runs from +y toward -z.
+    clockHands.hour.rotation.x = -(h % 12) / 12 * Math.PI * 2;
+    clockHands.minute.rotation.x = -(h % 1) * Math.PI * 2;
   }
 
   // ── Loop ───────────────────────────────────────────────────────────────
@@ -1576,8 +1662,8 @@
   };
 
   function targetPost() {
-    const p = {focus: 8, aperture: 0.06, blurAll: 0, volumeLevel: 1, bloomLevel: 0.55, exposure: S.exposure || 1};
-    if (S.mode === 'shelf' || S.mode === 'placing') { p.focus = shelfDistance(50); p.aperture = 0.18; }
+    const p = {focus: 8, aperture: 0.06, blurAll: 0, volumeLevel: 0.5, bloomLevel: 0.5, exposure: S.exposure || 1};
+    if (S.mode === 'shelf' || S.mode === 'placing') { p.focus = shelfDistance(50) * S.zoom; p.aperture = 0.16; }
     if (S.mode === 'desk') { p.focus = 1.1; p.aperture = 0.9; }
     if (Book.open) p.blurAll = 0.55;
     if (gui.isModalOpen()) p.blurAll = 0.85;
@@ -1603,6 +1689,9 @@
   function update(dt, time) {
     U.time.value = time;
     U.firePulse.value += (1 - U.firePulse.value) * Math.min(1, dt * 1.5);
+    stepTime(dt);
+    stepClock();
+    stepWalk(dt);
     stepCamera(dt, time);
     stepTweens(dt);
     stepParticles(dt, time);
@@ -1635,11 +1724,10 @@
     $('loading').classList.add('done');
     started = true;
     setMode('overview');
-    // Start a little high by the door and settle to eye height — clear of
-    // the foyer lantern's chain, which hangs over the middle of the hall.
+    // Start a little high inside the door and settle to eye height.
     const start = overviewPose();
-    view.pos.set(0, 3.3, start.pos.z + 0.4);
-    view.target.set(0, 2.4, start.pos.z - 12);
+    view.pos.set(start.pos.x, 3.0, start.pos.z + 0.6);
+    view.target.set(start.pos.x, 2.2, start.pos.z - 12);
     flyTo(overviewPose(), {duration: S.reducedMotion ? 0.2 : 2.2});
   }
 
@@ -1733,8 +1821,8 @@
   // ── Start ──────────────────────────────────────────────────────────────
   gui.rescale();
   applyQuality();
-  applyTimeOfDay();
-  setInterval(applyTimeOfDay, 60000);
+  stepTime(0);
+  $('time').textContent = timeLabel();
   $('loading-bar').style.width = '30%';
 
   async function announce() {

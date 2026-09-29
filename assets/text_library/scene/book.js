@@ -181,6 +181,8 @@
     if (cmd === 'clear') {
       document.execCommand('removeFormat');
       document.execCommand('foreColor', false, '#000000');
+    } else if (cmd === 'undo' || cmd === 'redo') {
+      document.execCommand(cmd);
     } else {
       document.execCommand(cmd, false, value);
     }
@@ -192,6 +194,7 @@
     if (mode !== 'edit') return;
     for (const b of document.querySelectorAll('#tools [data-cmd]')) {
       if (b.dataset.cmd === 'clear') continue;
+      b.classList.remove('on');
       let on = false;
       try { on = document.queryCommandState(b.dataset.cmd); } catch { on = false; }
       b.classList.toggle('on', on);
@@ -205,14 +208,12 @@
   function buildInk() {
     $('ink').replaceChildren(...gui.MC_COLORS.map(([id, hex]) => {
       const b = document.createElement('button');
-      b.type = 'button'; b.className = 'slot'; b.dataset.color = id;
+      b.type = 'button'; b.className = 'ink'; b.dataset.color = id;
       b.setAttribute('role', 'radio');
       b.setAttribute('aria-label', id.replace('_', ' '));
-      b.title = id.replace('_', ' ');
-      const i = document.createElement('i');
-      i.style.background = hex;
-      b.append(i);
+      b.style.background = hex;
       b.addEventListener('mousedown', e => e.preventDefault());
+      hoverTip(b, () => id.replace('_', ' '));
       b.onclick = () => command('foreColor', hex);
       return b;
     }));
@@ -222,7 +223,7 @@
     $('cover-colors').replaceChildren(...LibraryWorld.DYES.map((c, i) => {
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'swatch'; b.setAttribute('role', 'radio');
-      b.style.background = `rgb(${c.join(',')})`;
+      b.style.background = `rgb(${LibraryWorld.coverRgb(i).join(',')})`;
       b.setAttribute('aria-label', `${gui.t('cover')} ${i + 1}`);
       b.onclick = () => { cover = i; markCover(); };
       return b;
@@ -242,6 +243,7 @@
     mode = 'edit';
     $('bookui').hidden = false;
     $('tools').hidden = false;
+    $('history').hidden = false;
     viewport.hidden = false;
     $('sign-screen').hidden = true;
     $('burn-confirm').hidden = true;
@@ -265,6 +267,7 @@
   function showSign(book) {
     mode = 'sign';
     $('tools').hidden = true;
+    $('history').hidden = true;
     viewport.hidden = true;
     $('sign-screen').hidden = false;
     $('burn-confirm').hidden = true;
@@ -315,9 +318,17 @@
   $('book-burn').onclick = showBurn;
   $('book-prev').onclick = () => setPage(page - 1);
   $('book-next').onclick = () => setPage(page + 1);
-  for (const b of document.querySelectorAll('#tools [data-cmd]')) {
+  // The game-style tooltip beside whatever the pointer rests on.
+  function hoverTip(el, text) {
+    el.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') gui.tooltip([text()], e.clientX, e.clientY); });
+    el.addEventListener('pointermove', e => { if (e.pointerType === 'mouse') gui.tooltip([text()], e.clientX, e.clientY); });
+    el.addEventListener('pointerleave', () => gui.tooltip(null));
+  }
+
+  for (const b of document.querySelectorAll('#tools [data-cmd], #history [data-cmd]')) {
     b.addEventListener('mousedown', e => e.preventDefault());
     b.onclick = () => command(b.dataset.cmd);
+    hoverTip(b, () => b.getAttribute('aria-label') || '');
   }
 
   flow.addEventListener('input', changed);
@@ -367,6 +378,7 @@
     backToEditor() { showEditor(); },
     close() {
       clearTimeout(inputTimer);
+      gui.tooltip(null);
       handlers = null;
       $('bookui').hidden = true;
       flow.blur();

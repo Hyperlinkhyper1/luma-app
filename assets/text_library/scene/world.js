@@ -298,7 +298,8 @@
   // per-corner light follows the lamps along long boards. Textures are laid
   // on in world space and repeat per block, so neighbouring boxes line up.
   function box(K, a, b, faces, opts = {}) {
-    const n = [0, 1, 2].map(k => Math.max(1, Math.ceil(b[k] - a[k] - 1e-3)));
+    // A face with its own picture (a label, a painting) stays in one piece.
+    const n = opts.whole ? [1, 1, 1] : [0, 1, 2].map(k => Math.max(1, Math.ceil(b[k] - a[k] - 1e-3)));
     for (let i = 0; i < n[0]; i++) for (let j = 0; j < n[1]; j++) for (let l = 0; l < n[2]; l++) {
       const at = [i, j, l];
       const pa = [0, 1, 2].map(k => a[k] + (b[k] - a[k]) * at[k] / n[k]);
@@ -419,6 +420,9 @@
   const LEATHER = [120, 78, 46];
   const COVERS = DYES.map(c => c.map((v, k) => Math.round((v * 0.62 + LEATHER[k] * 0.38) * 0.86)));
   const coverRgb = i => COVERS[i] || COVERS[12];
+  // The same colour as a tint: tints multiply linear light, so the sRGB
+  // value is converted or the leather comes out pale beside its spine.
+  const coverTint = i => coverRgb(i).map(v => Math.pow(v / 255, 2.2));
 
   function hash(n) {
     let h = (n * 2654435761) >>> 0;
@@ -466,7 +470,7 @@
     const n = [facing, 0, 0], right = facing > 0 ? [0, 0, -1] : [0, 0, 1];
     const origin = [center[0] - right[0] * w / 2 + n[0] * d / 2, center[1] - h / 2, center[2] - right[2] * w / 2];
     const f = frame(origin, right, n);
-    const tint = coverRgb(book.cover != null ? book.cover : 12).map(v => v / 255);
+    const tint = coverTint(book.cover != null ? book.cover : 12);
     const lab = labels && labels.spine(book);
     const spine = lab
       ? {tex: 'solid', labelUv: [[lab.u0, lab.v0], [lab.u0, lab.v1], [lab.u1, lab.v1], [lab.u1, lab.v0]]}
@@ -871,7 +875,7 @@
   window.LibraryWorld = {
     HALL, SLOTS, SLOT_COLS, SLOT_ROWS, DYES, RECESS, BOARD, DEPTH,
     MeshBuilder, Grid, FACES, B, AIR,
-    addBox, box, frame, addBook, addBookAt, bookCenter, bookDims, bookBoxes, builtInCase, coverRgb,
+    addBox, box, frame, addBook, addBookAt, bookCenter, bookDims, bookBoxes, builtInCase, coverRgb, coverTint,
     build, slotGeometry, layout, caseSlots, lantern, chain, candle, cross, sides, all, itemSprite, hash,
   };
 })();

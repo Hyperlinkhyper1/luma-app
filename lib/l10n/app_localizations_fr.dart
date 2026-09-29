@@ -1079,9 +1079,6 @@ class LFr extends L {
   String get textLibraryItalic => 'Italic';
 
   @override
-  String get textLibraryMcAdvancement => 'Advancement';
-
-  @override
   String textLibraryMcBooks(String count) {
     return '$count books';
   }
@@ -1132,12 +1129,6 @@ class LFr extends L {
       'Could not open the Minecraft library on Windows.';
 
   @override
-  String get textLibraryMcFirstBook => 'Write your first book';
-
-  @override
-  String get textLibraryMcFirstCase => 'Create your first case';
-
-  @override
   String get textLibraryMcLoading => 'Loading Minecraft library…';
 
   @override
@@ -1167,6 +1158,9 @@ class LFr extends L {
   String get textLibraryMcQualityLow => 'Low';
 
   @override
+  String get textLibraryMcRedo => 'Redo';
+
+  @override
   String get textLibraryMcRetry => 'Retry';
 
   @override
@@ -1190,12 +1184,34 @@ class LFr extends L {
   String get textLibraryMcSignTitle => 'Sign this book?';
 
   @override
+  String get textLibraryMcTime => 'Time';
+
+  @override
+  String get textLibraryMcTimeClock => 'My clock';
+
+  @override
+  String get textLibraryMcTimeCycle => 'Day and night';
+
+  @override
+  String get textLibraryMcTimeDay => 'Always day';
+
+  @override
+  String get textLibraryMcTimeNight => 'Always night';
+
+  @override
+  String get textLibraryMcUndo => 'Undo';
+
+  @override
   String get textLibraryMcUntitled => 'Untitled';
 
   @override
   String textLibraryMcVanilla(String version) {
     return 'Minecraft $version';
   }
+
+  @override
+  String get textLibraryMcWalkHint =>
+      'WASD or arrow keys to walk · drag to look around · click a bookcase to open it';
 
   @override
   String get textLibraryMcWriteHint => 'Write your book here…';

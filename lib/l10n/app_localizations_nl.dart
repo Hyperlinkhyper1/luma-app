@@ -1073,9 +1073,6 @@ class LNl extends L {
   String get textLibraryItalic => 'Cursief';
 
   @override
-  String get textLibraryMcAdvancement => 'Prestatie';
-
-  @override
   String textLibraryMcBooks(String count) {
     return '$count boeken';
   }
@@ -1126,12 +1123,6 @@ class LNl extends L {
       'De Minecraft-bibliotheek kon niet worden geopend op Windows.';
 
   @override
-  String get textLibraryMcFirstBook => 'Schrijf je eerste boek';
-
-  @override
-  String get textLibraryMcFirstCase => 'Maak je eerste vitrine';
-
-  @override
   String get textLibraryMcLoading => 'Minecraft-bibliotheek laden…';
 
   @override
@@ -1163,6 +1154,9 @@ class LNl extends L {
   String get textLibraryMcQualityLow => 'Laag';
 
   @override
+  String get textLibraryMcRedo => 'Opnieuw';
+
+  @override
   String get textLibraryMcRetry => 'Opnieuw proberen';
 
   @override
@@ -1186,12 +1180,34 @@ class LNl extends L {
   String get textLibraryMcSignTitle => 'Dit boek ondertekenen?';
 
   @override
+  String get textLibraryMcTime => 'Tijd';
+
+  @override
+  String get textLibraryMcTimeClock => 'Mijn klok';
+
+  @override
+  String get textLibraryMcTimeCycle => 'Dag en nacht';
+
+  @override
+  String get textLibraryMcTimeDay => 'Altijd dag';
+
+  @override
+  String get textLibraryMcTimeNight => 'Altijd nacht';
+
+  @override
+  String get textLibraryMcUndo => 'Ongedaan maken';
+
+  @override
   String get textLibraryMcUntitled => 'Zonder titel';
 
   @override
   String textLibraryMcVanilla(String version) {
     return 'Minecraft $version';
   }
+
+  @override
+  String get textLibraryMcWalkHint =>
+      'WASD of pijltjestoetsen om te lopen · sleep om rond te kijken · klik op een boekenkast om hem te openen';
 
   @override
   String get textLibraryMcWriteHint => 'Schrijf je boek hier…';
