@@ -820,7 +820,7 @@
       for (const x of [-4, -3, 2, 3]) for (const y of [1, 2]) opening(x, b + y, F, 'z');
     }
 
-    // Front: a tall double door with a window either side, windows in the
+    // Front: a three-block-high double door with a window either side, windows in the
     // side walls.
     for (const x of [-1, 0]) for (const y of [0, 1, 2]) grid.set(x, y, F, AIR);
     for (const x of [-4, -3, 2, 3]) for (const y of [1, 2, 4, 5]) opening(x, y, F, 'z');

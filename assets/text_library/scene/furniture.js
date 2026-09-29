@@ -469,16 +469,16 @@
 
   // One leaf of the front door, built round its hinge so it can swing:
   // it runs toward +x from the hinge, or toward -x when `flip`ped. The
-  // door is three blocks tall, its two halves each a block and a half.
+  // door is three blocks tall, with square door textures and a wood panel above.
   function doorLeaf(K, flip, light) {
     const x = flip ? -1 : 0;
-    for (const [i, tex] of [[0, 'spruce_door_bottom'], [1, 'spruce_door_top']]) {
+    for (const [i, tex] of [[0, 'spruce_door_bottom'], [1, 'spruce_door_top'], [2, 'spruce_planks']]) {
       const out = flip ? [16, 0, 0, 16] : [0, 0, 16, 16], inn = flip ? [0, 0, 16, 16] : [16, 0, 0, 16];
       const faces = {north: {tex, uv: out}, south: {tex, uv: inn}, east: {tex, uv: [0, 0, 3, 16]}, west: {tex, uv: [0, 0, 3, 16]}};
-      if (i === 1) faces.up = {tex: 'spruce_planks', uv: [0, 0, 16, 3]};
-      b(K, [x, i * 1.5, 0], [0, 0, 0], [16, 24, 3], faces, {light, ao: 1});
+      if (i === 2) faces.up = {tex: 'spruce_planks', uv: [0, 0, 16, 3]};
+      b(K, [x, i, 0], [0, 0, 0], [16, 16, 3], faces, {light, ao: 1});
     }
-    for (const [z0, z1] of [[-1, 0], [3, 4]]) b(K, [x, 0, 0], flip ? [1.5, 21, z0] : [13.5, 21, z0], flip ? [2.5, 26, z1] : [14.5, 26, z1], brass, {light, ao: 1});
+    for (const [z0, z1] of [[-1, 0], [3, 4]]) b(K, [x, 0, 0], flip ? [1.5, 14, z0] : [13.5, 14, z0], flip ? [2.5, 19, z1] : [14.5, 19, z1], brass, {light, ao: 1});
   }
 
   // A little roof over the front door on two brackets, with a lantern
