@@ -998,6 +998,13 @@
   const view = {pos: new T.Vector3(0, 2.35, 5.2), target: new T.Vector3(0, 1.8, 0), fov: 55};
   let flight = null;
   const easeInOut = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  // Only ease at the landings; keep an even walking pace around the post.
+  function stairProgress(t) {
+    if (t > 0.9) return 1 - stairProgress(1 - t);
+    if (t >= 0.1) return (t - 0.05) / 0.9;
+    const u = t / 0.1;
+    return 0.1 * (u * u * u - 0.5 * u * u * u * u) / 0.9;
+  }
 
   // Standing in the hall, with a slight bob while walking.
   function overviewPose() {
@@ -1075,14 +1082,25 @@
     let bob = 0;
     if (flight) {
       flight.t = Math.min(1, flight.t + dt / flight.d);
-      const e = easeInOut(flight.t);
-      view.pos.lerpVectors(flight.from.pos, flight.to.pos, e);
-      view.target.lerpVectors(flight.from.target, flight.to.target, e);
-      view.fov = flight.from.fov + (flight.to.fov - flight.from.fov) * e;
-      // A little rise mid-walk, and the game's view bobbing while moving.
-      const arc = Math.sin(flight.t * Math.PI);
-      view.pos.y += arc * Math.min(0.35, flight.dist * 0.03);
-      if (!S.reducedMotion && V.bobbing) bob = arc * Math.min(1, flight.dist * 0.2);
+      const e = flight.sample ? stairProgress(flight.t) : easeInOut(flight.t);
+      if (flight.sample) {
+        const pose = flight.sample(e);
+        S.stride += view.pos.distanceTo(pose.pos);
+        view.pos.copy(pose.pos);
+        view.target.copy(pose.target);
+        view.fov = pose.fov;
+        S.yaw = pose.yaw;
+        S.pitch = 0;
+        S.vel = [1.8, 0];
+      } else {
+        view.pos.lerpVectors(flight.from.pos, flight.to.pos, e);
+        view.target.lerpVectors(flight.from.target, flight.to.target, e);
+        view.fov = flight.from.fov + (flight.to.fov - flight.from.fov) * e;
+        // A little rise mid-walk, and the game's view bobbing while moving.
+        const arc = Math.sin(flight.t * Math.PI);
+        view.pos.y += arc * Math.min(0.35, flight.dist * 0.03);
+        if (!S.reducedMotion && V.bobbing) bob = arc * Math.min(1, flight.dist * 0.2);
+      }
       if (flight.t >= 1) { const done = flight.resolve; flight = null; done(); }
     } else {
       const target = baseModePose();
@@ -1148,6 +1166,11 @@
 
   // ── Modes ──────────────────────────────────────────────────────────────
   function setMode(mode) {
+    if (S.mode === 'climbing' && mode !== 'climbing' && flight?.sample) {
+      const done = flight.resolve;
+      flight = null;
+      done();
+    }
     // Menus and bookcases need the cursor back; walking takes it again if
     // it was captured before.
     if (look.locked && !looking(mode)) { look.resume = true; document.exitPointerLock(); }
@@ -1768,37 +1791,38 @@
     return false;
   }
 
-  // Up or down the spiral stair: round the newel a step at a time, then
-  // off onto the landing.
+  // A single continuous walk along the actual spiral, with a level gaze.
   async function climb(dir) {
     const st = S.built?.stairs, bases = S.built?.layout.bases;
     const to = S.floor + dir;
-    if (!st || to < 0 || to >= bases.length) return;
-    const flight = st.flights[Math.min(S.floor, to)];
-    const rise = flight.rise;
-    let path = [
-      [st.x0 - 0.5, flight.base, st.z0 + 2.5],
-      ...st.ring.map(([x, z], k) => [x + 0.5, flight.base + (k + 1) * rise, z + 0.5]),
-      [st.cx + 0.5, flight.base + st.ring.length * rise, st.z0 + 3.5],
-    ];
-    if (dir < 0) path = path.reverse();
+    if (!st || S.mode === 'climbing' || ![-1, 1].includes(dir) || to < 0 || to >= bases.length) return;
+    const stairFlight = st.flights[Math.min(S.floor, to)];
+    const route = t => LibraryStairs.route(st, stairFlight, dir > 0 ? t : 1 - t);
+    const sample = t => {
+      const p = route(t), a = route(Math.max(0, t - 0.002)), b = route(Math.min(1, t + 0.002));
+      const yaw = Math.atan2(-(b[0] - a[0]), -(b[2] - a[2]));
+      const pos = new T.Vector3(p[0], p[1] + W.HALL.eye, p[2]);
+      return {pos, target: pos.clone().add(new T.Vector3(-Math.sin(yaw) * 4, 0, -Math.cos(yaw) * 4)), fov: walkFov(), yaw};
+    };
     S.goal = null;
     S.vel = [0, 0];
     setMode('climbing');
-    let yaw = S.yaw;
-    for (let i = 0; i < path.length; i++) {
-      const p = path[i], q = i ? path[i - 1] : [view.pos.x, 0, view.pos.z];
-      if (Math.hypot(p[0] - q[0], p[2] - q[2]) > 0.05) yaw = Math.atan2(-(p[0] - q[0]), -(p[2] - q[2]));
-      const pos = new T.Vector3(p[0], p[1] + W.HALL.eye, p[2]);
-      const look = new T.Vector3(-Math.sin(yaw), dir > 0 ? 0.3 : -0.35, -Math.cos(yaw));
-      await flyTo({pos, target: pos.clone().addScaledVector(look, 4), fov: walkFov()}, {duration: S.reducedMotion ? 0.05 : i === 0 ? 0.45 : 0.19});
-      S.stride += 0.6;
+    if (S.reducedMotion) {
+      await flyTo(sample(1), {duration: 0.25});
+    } else {
+      const entry = sample(0);
+      await flyTo(entry, {duration: Math.max(0.4, Math.min(1.8, view.pos.distanceTo(entry.pos) / 2.5))});
       if (S.mode !== 'climbing') return;
+      await new Promise(resolve => {
+        flight = {sample, t: 0, d: Math.max(7.5, stairFlight.height * 0.95), resolve};
+      });
     }
-    const end = path[path.length - 1];
+    if (S.mode !== 'climbing') return;
+    const end = route(1);
     S.floor = to;
     S.px = end[0]; S.pz = end[2];
-    S.yaw = yaw; S.pitch = 0;
+    S.yaw = sample(1).yaw; S.pitch = 0;
+    S.vel = [0, 0];
     setMode('overview');
     rebuildA11y();
   }

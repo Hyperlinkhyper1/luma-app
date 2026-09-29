@@ -40,9 +40,8 @@
   // The block layer that is a floor's ceiling (and the next one's floor).
   const ceilingOf = f => floorBase(f) + profileOf(f).height;
   // The spiral stair between floors: a post in the middle of a 3×3 well by
-  // the foyer's east wall, eight steps round it per storey.
+  // the foyer's east wall, two turns of sixteen shallow treads per storey.
   const STAIR = {x0: 2, z0: 1, cx: 3, cz: 2};
-  const STAIR_RING = [[2, 3], [2, 2], [2, 1], [3, 1], [4, 1], [4, 2], [4, 3], [3, 3]];
   const BOARD = 1.5 / 16;  // shelf board thickness
   const DEPTH = 15 / 16;   // front of a bookcase to its back panel
   const SIDE = 1 / 16;     // outer uprights
@@ -831,10 +830,10 @@
     if (hasStairs) {
       for (let f = 0; f < L.floors - 1; f++) {
         for (let x = STAIR.x0; x < STAIR.x0 + 3; x++) for (let z = STAIR.z0; z < STAIR.z0 + 3; z++) grid.set(x, ceilingOf(f), z, AIR);
-        flights.push({from: f, base: L.bases[f], rise: (L.bases[f + 1] - L.bases[f]) / STAIR_RING.length});
+        flights.push({from: f, ...LibraryStairs.describe(STAIR, L.bases[f], L.bases[f + 1] - L.bases[f])});
       }
       solidBox(STAIR.x0, STAIR.z0, STAIR.x0 + 3, STAIR.z0 + 3, 0);
-      later.push(() => Fu.spiralStair(K, flights, STAIR, STAIR_RING, TOP));
+      later.push(() => Fu.spiralStair(K, flights, STAIR));
     }
 
     // Outside: a path out to a lookout on the island's edge, trees in their
@@ -1099,7 +1098,7 @@
       fire: [0, 0.6, fz + 0.5],
       seats,
       door: {z: F, hinges: [[-1, 1], [1, -1]], height: 3},
-      stairs: hasStairs ? {...STAIR, ring: STAIR_RING, flights} : null,
+      stairs: hasStairs ? {...STAIR, flights} : null,
       trees: outside.trees,
       campfire: outside.campfire,
       heightmap: heightmap(grid),
@@ -1664,7 +1663,7 @@
   }
 
   window.LibraryWorld = {
-    HALL, SLOTS, SLOT_COLS, SLOT_ROWS, DYES, RECESS, BOARD, DEPTH, PROFILES, CASES_PER_FLOOR, STAIR, STAIR_RING, floorBase, ceilingOf,
+    HALL, SLOTS, SLOT_COLS, SLOT_ROWS, DYES, RECESS, BOARD, DEPTH, PROFILES, CASES_PER_FLOOR, STAIR, floorBase, ceilingOf,
     MeshBuilder, Grid, FACES, B, AIR,
     addBox, box, frame, addBook, addBookAt, bookCenter, bookDims, bookBoxes, builtInCase, coverRgb, coverTint,
     build, slotGeometry, layout, caseSlots, lantern, chain, candle, cross, campfire, sides, all, itemSprite, hash, uvCorners,
