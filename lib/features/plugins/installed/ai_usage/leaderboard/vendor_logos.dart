@@ -118,6 +118,8 @@ class _VendorMarkPainter extends CustomPainter {
         _seed(canvas);
       case 'hy4':
         _hunyuan(canvas);
+      case 'spacebunny':
+        _spaceBunny(canvas);
       default:
         _fallback(canvas);
     }
@@ -225,6 +227,25 @@ void _seed(Canvas c) {
   c.drawRRect(_rr(7, 17, 5, 8, 1.5), _fill(const Color(0xFF29B6D1)));
   c.drawRRect(_rr(14, 12, 5, 13, 1.5), _fill(const Color(0xFF1685D5)));
   c.drawRRect(_rr(21, 7, 5, 18, 1.5), _fill(const Color(0xFF3455DB)));
+}
+
+/// Space Bunny: a long-eared head over its brand gradient, drawn rather
+/// than lettered so the mark reads at 32 px.
+void _spaceBunny(Canvas c) {
+  const violet = Color(0xFF7C5CFF);
+  const teal = Color(0xFF2DD4BF);
+  c.drawOval(const Rect.fromLTWH(7.5, 4, 4.6, 15), _fill(violet));
+  c.drawOval(const Rect.fromLTWH(19.9, 4, 4.6, 15), _fill(teal));
+  c.drawOval(const Rect.fromLTWH(8.8, 5.4, 2, 11),
+      _fill(const Color(0xFF1A1330).withValues(alpha: 0.55)));
+  c.drawOval(const Rect.fromLTWH(21.2, 5.4, 2, 11),
+      _fill(const Color(0xFF0B2B2A).withValues(alpha: 0.55)));
+  c.drawOval(const Rect.fromLTWH(6, 17, 20, 13), _fill(violet));
+  c.drawCircle(const Offset(12.6, 22), 2.1, _fill(const Color(0xFFEDE9FE)));
+  c.drawCircle(const Offset(19.4, 22), 2.1, _fill(const Color(0xFFCCFBF1)));
+  c.drawCircle(const Offset(13.2, 22.4), 1.05, _fill(const Color(0xFF1A1330)));
+  c.drawCircle(const Offset(18.8, 22.4), 1.05, _fill(const Color(0xFF0B2B2A)));
+  c.drawRRect(_rr(14.6, 24.6, 2.8, 1.8, 0.9), _fill(teal));
 }
 
 /// Tencent Hunyuan's blue interlocking-loop emblem.

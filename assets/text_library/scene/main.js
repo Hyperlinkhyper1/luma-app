@@ -119,7 +119,11 @@
     pages: new Map(),
     hidden: new Set(),
     editing: null,
-    walkZ: 5.2, yaw: 0, pitch: -0.06, pan: 0,
+    // Where the reader stands and looks while walking the hall.
+    px: 0, pz: 4.2, yaw: 0, pitch: 0.02, vel: [0, 0], stride: 0, goal: null,
+    // The bookcase view: sideways pan, height pan and zoom.
+    pan: 0, panY: 0, zoom: 1,
+    timeMode: 'cycle', hour: 12, shownHour: 12,
     visible: true,
     reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
     quality: 'fancy',
@@ -130,6 +134,11 @@
     assetsReady: false,
   };
   try { S.quality = localStorage.getItem('library.quality') || (/Android/.test(navigator.userAgent) ? 'fast' : 'fancy'); } catch { /* storage blocked */ }
+  try { S.timeMode = localStorage.getItem('library.time') || 'cycle'; } catch { /* storage blocked */ }
+  {
+    const now = new Date();
+    S.hour = S.shownHour = now.getHours() + now.getMinutes() / 60;
+  }
 
   // ── Renderer ───────────────────────────────────────────────────────────
   let R;
@@ -161,8 +170,6 @@
 
   // ── Scene objects ──────────────────────────────────────────────────────
   let worldMesh = null, glassMesh = null, dynMesh = null, ghostMesh = null;
-  // The book and quill that lies on the desk while a book is being written.
-  let deskItem = null;
   let shadowDirty = true;
 
   const outline = new T.LineSegments(
@@ -183,26 +190,111 @@
   const held = {mesh: null, book: null, from: null};
   function makeHeld(book) {
     if (held.mesh) { scene.remove(held.mesh); held.mesh.geometry.dispose(); }
-    if (deskItem) deskItem.visible = false;
     const mb = new W.MeshBuilder();
-    const g = {z0: -0.125, z1: 0.125, y0: 0, y1: 0.375, faceX: 0, facing: 1};
-    W.addBook(mb, S.built.grid, atlas, g, book, labels, [0, 0, 0], {light: [0.55, 0.85, 0.2]});
+    W.addBookAt(mb, S.built.grid, atlas, book, labels, [0, 0, 0], 1, {light: [0.55, 0.85, 0.2]});
     labels.flush();
-    const geo = mb.geometry(T);
-    geo.translate(0.19, -0.17, 0);
-    held.mesh = new T.Mesh(geo, heldMat);
+    held.mesh = new T.Mesh(mb.geometry(T), heldMat);
     held.mesh.userData.noShadow = true;
     held.book = book;
     scene.add(held.mesh);
     return held.mesh;
   }
   function dropHeld() {
-    if (deskItem) deskItem.visible = false;
+    hideDeskBook();
     if (!held.mesh) return;
     scene.remove(held.mesh);
     held.mesh.geometry.dispose();
     held.mesh = null;
     held.book = null;
+  }
+
+  // ── The open book on the desk ──────────────────────────────────────────
+  // While a book is being written it lies open on the desk: two halves
+  // hinged at the spine, each a cover board with a block of pages on it.
+  // Closed, the left half folds onto the right and matches the carried
+  // book laid flat, so one can be swapped for the other.
+  const DESK_SCALE = 0.62;
+  const deskBook = {group: null, left: null, right: null, open: 0, target: 0, dims: null};
+
+  function deskBookSize(book) {
+    const d = W.bookDims(book);
+    return {hw: d.d * DESK_SCALE, hh: d.h * DESK_SCALE / 2, t: Math.max(0.03, d.w * DESK_SCALE / 2)};
+  }
+
+  function makeDeskBook(book) {
+    disposeDeskBook();
+    const {hw, hh, t} = deskBookSize(book);
+    const tint = W.coverRgb(book.cover ?? 12).map(v => v / 255);
+    const desk = S.built.desk;
+    const light = S.built.grid.sample([0, desk.top + 0.35, desk.z], [0, 1, 0]);
+    const cover = {tex: 'leather', tint};
+    const pages = {tex: 'pages', ao: 0.9};
+    const half = sign => {
+      const mb = new W.MeshBuilder();
+      const K = {mb, grid: S.built.grid, atlas, light};
+      const x0 = sign > 0 ? 0 : -hw, x1 = sign > 0 ? hw : 0;
+      const yb = sign > 0 ? 0 : -t;
+      const board = 0.014;
+      W.box(K, [x0, yb, -hh], [x1, yb + board, hh], {up: cover, down: cover, north: cover, south: cover, east: cover, west: cover});
+      const inset = 0.012;
+      const px0 = sign > 0 ? 0.004 : -hw + inset, px1 = sign > 0 ? hw - inset : -0.004;
+      const outer = sign > 0 ? 'east' : 'west';
+      W.box(K, [px0, yb + board, -hh + inset], [px1, yb + t, hh - inset], {
+        up: {tex: 'book_page', uv: sign > 0 ? [0, 0, 16, 16] : [16, 0, 0, 16]}, north: pages, south: pages, [outer]: pages,
+      });
+      if (sign > 0) W.box(K, [hw * 0.3, yb + t, hh - inset - 0.02], [hw * 0.3 + 0.028, yb + t + 0.002, hh + 0.07], W.all('red_wool'));
+      const mesh = new T.Mesh(mb.geometry(T), heldMat);
+      mesh.userData.noShadow = true;
+      return mesh;
+    };
+    const group = new T.Group();
+    const right = half(1);
+    const hinge = new T.Group();
+    hinge.position.y = t;
+    hinge.add(half(-1));
+    group.add(right, hinge);
+    group.position.set(0, desk.top + 0.002, desk.z + 0.02);
+    group.visible = false;
+    scene.add(group);
+    Object.assign(deskBook, {group, left: hinge, right, open: 0, target: 0, dims: {hw, hh, t}});
+    poseDeskBook();
+  }
+
+  function disposeDeskBook() {
+    if (!deskBook.group) return;
+    scene.remove(deskBook.group);
+    deskBook.group.traverse(o => o.geometry?.dispose());
+    deskBook.group = null;
+  }
+
+  function poseDeskBook() {
+    if (!deskBook.group) return;
+    const e = easeInOut(deskBook.open);
+    deskBook.left.rotation.z = -Math.PI + 0.02 + (Math.PI - 0.1) * e;
+    deskBook.right.rotation.z = 0.08 * e;
+  }
+
+  // Swaps the carried book for the open one on the desk, and back.
+  function showDeskBook(book) {
+    makeDeskBook(book);
+    deskBook.group.visible = true;
+    deskBook.target = 1;
+    if (held.mesh) held.mesh.visible = false;
+  }
+
+  function hideDeskBook() {
+    if (deskBook.group) deskBook.group.visible = false;
+    deskBook.target = 0;
+  }
+
+  // Closes the book on the desk, then hands back the carried one.
+  async function closeDeskBook() {
+    if (deskBook.group?.visible) {
+      deskBook.target = 0;
+      await new Promise(r => setTimeout(r, S.reducedMotion ? 0 : 320));
+    }
+    hideDeskBook();
+    if (held.mesh) held.mesh.visible = true;
   }
 
   // ── Particles ──────────────────────────────────────────────────────────
@@ -431,7 +523,7 @@
     U.atlasSize.value.set(next.canvas.width, next.canvas.height);
     U.atlasCols.value = next.cols;
     paintGlyphs(files);
-    if (!labels) labels = LibraryLabels.create(T, W.DYES);
+    if (!labels) labels = LibraryLabels.create(T, W.DYES.map((_, i) => W.coverRgb(i)), W.DYES);
     if (font) labels.invalidate();
     U.labels.value = labels.texture;
     S.assetsReady = true;
@@ -492,14 +584,6 @@
     glassMesh.renderOrder = 2;
     scene.add(worldMesh, glassMesh);
     S.built = built;
-    if (deskItem) { scene.remove(deskItem); deskItem.geometry.dispose(); }
-    const itemMb = new W.MeshBuilder();
-    const size = 0.8;
-    W.itemSprite(itemMb, built.grid, atlas, canvases.writable_book, 'writable_book', [-size / 2, built.desk.top, built.desk.z - size / 2], size, -0.12);
-    deskItem = new T.Mesh(itemMb.geometry(T), heldMat);
-    deskItem.visible = S.mode === 'desk' && !held.mesh?.visible;
-    deskItem.userData.noShadow = true;
-    scene.add(deskItem);
     U.fireOrigin.value.set(...built.fire);
     const b = built.bounds;
     R.post.box = {min: [b.min[0] + 1, 0, b.min[2] + 0.5], max: [b.max[0] - 1, 7, b.max[2] - 0.5]};
@@ -509,7 +593,8 @@
       if (idx < 0 && (S.mode === 'shelf' || S.mode === 'placing')) toOverview();
       S.caseIndex = idx;
     }
-    S.walkZ = Math.min(S.walkZ, built.layout.hallStart - 0.8);
+    if (blocked(S.px, S.pz)) { S.px = 0; S.pz = built.layout.hallStart - 1.8; }
+    buildClock();
     rebuildDynamic();
     if (particles.dust.items.length === 0) seedDust();
     rebuildA11y();
@@ -544,26 +629,20 @@
 
   const labelBook = book => ({...book, spine: book.spine || book.title});
 
-  // A dark oak sign standing on the bookcase with the subject's name.
+  // The subject's name on a plate set into the bookcase's fascia, with a
+  // brass pin at each end.
   function addSign(mb, c, subject) {
     const uv = labels.sign(subject);
     if (!uv) return;
-    const f = c.facing;
-    const w = 2.4, h = w / 4;
-    const zc = (c.z0 + c.z1) / 2;
-    const x = c.faceX - f * 0.32;
-    const labelUv = f > 0
-      ? [[uv.u0, uv.v0], [uv.u0, uv.v1], [uv.u1, uv.v1], [uv.u1, uv.v0]]
-      : [[uv.u0, uv.v0], [uv.u0, uv.v1], [uv.u1, uv.v1], [uv.u1, uv.v0]];
-    const origin = [Math.min(x, x - f * 0.1), c.y1 + 0.03, zc - w / 2];
+    const f = W.frame(c.spec.origin, c.spec.right, c.spec.n);
+    const K = {mb, grid: S.built.grid, atlas};
+    const w = 2.3, h = w / 4;
+    const u0 = (c.spec.width - w) / 2, v0 = W.HALL.shelfTop + (W.HALL.caseTop - 0.125 - W.HALL.shelfTop - h) / 2;
     const plank = {tex: 'dark_oak_planks'};
-    const faces = {north: plank, south: plank, up: plank, down: plank, east: plank, west: plank};
-    faces[f > 0 ? 'east' : 'west'] = {tex: 'solid', labelUv, emit: 0.18};
-    W.addBox(mb, S.built.grid, atlas, origin, [0, 0, 0], [1.6, h * 16, w * 16], faces, {away: [f, 0, 0]});
-    // Two posts it stands on.
-    for (const dz of [0.35, w - 0.45]) {
-      W.addBox(mb, S.built.grid, atlas, [origin[0], c.y1, zc - w / 2 + dz], [0, 0, 0], [1.6, 0.6, 1.6], W.sides('dark_oak_planks'));
-    }
+    const labelUv = [[uv.u0, uv.v0], [uv.u0, uv.v1], [uv.u1, uv.v1], [uv.u1, uv.v0]];
+    f.box(K, u0, v0, -0.6 / 16, u0 + w, v0 + h, 0, {front: {tex: 'solid', labelUv, emit: 0.12}, top: plank, bottom: plank, left: plank, right: plank});
+    const pin = W.sides('yellow_wool', null, null, {tint: [0.8, 0.58, 0.28]});
+    for (const u of [u0 + 0.06, u0 + w - 0.12]) f.box(K, u, v0 + h / 2 - 0.03, -0.9 / 16, u + 0.06, v0 + h / 2 + 0.03, -0.6 / 16, {front: pin.north, top: pin.up, bottom: pin.down, left: pin.west, right: pin.east});
   }
 
   // The empty alcove: a translucent bookcase where the next one will go.
@@ -574,11 +653,7 @@
     const c = S.built.placeholder;
     if (!c) return;
     const mb = new W.MeshBuilder();
-    const faces = W.all('chiseled_bookshelf_side');
-    faces[c.facing > 0 ? 'east' : 'west'] = {tex: 'chiseled_bookshelf_empty'};
-    for (let z = c.z0; z < c.z1; z++) for (let y = 0; y < 3; y++) {
-      W.addBox(mb, S.built.grid, atlas, [c.cellX, y, z], [0, 0, 0], [16, 16, 16], faces, {light: [0.6, 0.7, 0.1]});
-    }
+    W.builtInCase({mb, grid: S.built.grid, atlas}, c.spec, {ends: true, light: [0.6, 0.7, 0.1]});
     ghostMesh = new T.Mesh(mb.geometry(T), ghostMat);
     ghostMesh.userData.noShadow = true;
     ghostMesh.renderOrder = 3;
@@ -589,9 +664,9 @@
     const geo = itemMb.geometry(T);
     geo.rotateX(Math.PI / 2);
     floatingItem = new T.Mesh(geo, heldMat);
-    floatingItem.position.set(c.faceX + c.facing * 0.45, 1.45, (c.z0 + c.z1) / 2);
+    floatingItem.position.set(c.faceX + c.facing * 0.55, 2.2, (c.z0 + c.z1) / 2);
     floatingItem.userData.noShadow = true;
-    floatingItem.userData.baseY = 1.45;
+    floatingItem.userData.baseY = 2.2;
     scene.add(floatingItem);
   }
 
@@ -616,8 +691,8 @@
       if (idx >= 0) {
         S.pendingSubject = null;
         const c = S.built.cases[idx];
-        for (let y = 0; y < 3; y++) for (let z = c.z0; z < c.z1; z++) {
-          setTimeout(() => poof([c.faceX - c.facing * 0.5, y + 0.5, z + 0.5], 4, 0.4), y * 140 + (z - c.z0) * 50);
+        for (let y = 0; y < 6; y++) for (let z = c.z0; z < c.z1; z++) {
+          setTimeout(() => poof([c.faceX - c.facing * 0.5, y + 0.5, z + 0.5], 3, 0.4), y * 110 + (z - c.z0) * 50);
         }
         toShelf(idx);
       }
@@ -629,27 +704,39 @@
   let flight = null;
   const easeInOut = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
+  // Standing in the hall, with a slight bob while walking.
   function overviewPose() {
-    const pos = new T.Vector3(0, 2.3, S.walkZ);
+    const bob = S.reducedMotion ? 0 : Math.sin(S.stride * 5.2) * 0.035 * Math.min(1, Math.hypot(...S.vel) / 2);
+    const pos = new T.Vector3(S.px, W.HALL.eye + Math.abs(bob), S.pz);
     const dir = new T.Vector3(-Math.sin(S.yaw) * Math.cos(S.pitch), Math.sin(S.pitch), -Math.cos(S.yaw) * Math.cos(S.pitch));
     // Phones held upright see little of the hall's width; widen the view.
-    const fov = innerWidth < innerHeight ? 72 : 60;
+    const fov = innerWidth < innerHeight ? 74 : 66;
     return {pos, target: pos.clone().addScaledVector(dir, 6), fov};
   }
 
+  const SHELF_CENTER = 3.3;
   function shelfDistance(fov) {
     const v = Math.tan((fov * Math.PI / 180) / 2);
     const aspect = innerWidth / Math.max(1, innerHeight);
-    // Room for the whole case and the sign standing on it.
-    return Math.min(7.2, Math.max(1.98 / v, 2.3 / (v * aspect)));
+    // Room for the whole case, cabinets to name plate.
+    return Math.min(7.4, Math.max(2.75 / v, 2.3 / (v * aspect)));
   }
 
   function shelfPose(i) {
     const c = S.built.cases[i];
     const fov = 50;
-    const d = shelfDistance(fov);
+    const d = shelfDistance(fov) * S.zoom;
+    const cy = SHELF_CENTER + S.panY;
     const zc = (c.z0 + c.z1) / 2 + S.pan;
-    return {pos: new T.Vector3(c.faceX + c.facing * d, 1.85, zc), target: new T.Vector3(c.faceX, 1.8, zc), fov};
+    return {pos: new T.Vector3(c.faceX + c.facing * d, cy - 0.3 * S.zoom, zc), target: new T.Vector3(c.faceX, cy, zc), fov};
+  }
+
+  // How far the bookcase view may pan at the current zoom.
+  function clampShelfView() {
+    const slack = 1 - S.zoom;
+    const across = 0.9 + slack * 1.6;
+    S.pan = Math.max(-across, Math.min(across, S.pan));
+    S.panY = Math.max(-2.2 * slack, Math.min(2.2 * slack, S.panY));
   }
 
   function deskPose() {
@@ -683,7 +770,8 @@
     } else {
       const target = baseModePose();
       if (target) {
-        const k = 1 - Math.exp(-dt * 6);
+        // Walking follows the feet closely; the other views glide.
+        const k = 1 - Math.exp(-dt * (S.mode === 'overview' ? 16 : 6));
         view.pos.lerp(target.pos, k);
         view.target.lerp(target.target, k);
         view.fov += (target.fov - view.fov) * k;
@@ -700,7 +788,7 @@
     const look = view.target.clone();
     look.y += Math.sin(time * 0.7) * 0.012 * sway;
     look.x += Math.sin(time * 0.43) * 0.01 * sway;
-    if (S.mode === 'overview' || S.mode === 'shelf' || S.mode === 'placing') {
+    if (S.mode === 'shelf' || S.mode === 'placing') {
       const right = new T.Vector3().subVectors(look, camera.position).cross(camera.up).normalize();
       look.addScaledVector(right, pointer.nx * 0.12 * sway);
       look.y -= pointer.ny * 0.07 * sway;
@@ -726,10 +814,22 @@
     rebuildA11y();
   }
 
+  // Back on your feet, a couple of steps back from the case you were at.
   function toOverview() {
+    const c = currentCase();
+    if (c && S.mode !== 'overview') {
+      const x = c.faceX + c.facing * 2.2, z = (c.z0 + c.z1) / 2 + S.pan;
+      if (!blocked(x, z)) {
+        S.px = x; S.pz = z;
+        S.yaw = c.facing * Math.PI / 2;
+        S.pitch = 0.12;
+      }
+    }
     setMode('overview');
     S.caseSubject = null;
     S.caseIndex = -1;
+    S.vel = [0, 0];
+    S.goal = null;
     return flyTo(overviewPose());
   }
 
@@ -738,7 +838,7 @@
     if (!c || !c.subject) return Promise.resolve();
     S.caseIndex = i;
     S.caseSubject = c.subject.id;
-    S.pan = 0;
+    S.pan = 0; S.panY = 0; S.zoom = 1;
     setMode(placing ? 'placing' : 'shelf');
     return flyTo(shelfPose(i));
   }
@@ -782,8 +882,10 @@
     const others = S.built ? S.built.cases.filter(cs => cs.subject).length : 0;
     $('case-prev').hidden = $('case-next').hidden = !((inCase && others > 1) || (S.mode === 'overview' && S.built));
     const empty = S.subjects.length === 0 && S.mode === 'overview';
-    gui.actionbar(S.mode === 'placing' ? gui.t('moveHint') : empty ? gui.t('emptyHall') : '');
+    const walkHint = S.mode === 'overview' && !S.walked;
+    gui.actionbar(S.mode === 'placing' ? gui.t('moveHint') : empty ? gui.t('emptyHall') : walkHint ? gui.t('walkHint') : '');
     $('settings-open').hidden = S.mode === 'desk';
+    $('move-pad').hidden = !(S.mode === 'overview' && S.touch);
   }
 
   // ── Picking ────────────────────────────────────────────────────────────
@@ -811,7 +913,7 @@
 
   function caseBox(c) {
     const x0 = c.faceX - c.facing * 1, x1 = c.faceX + c.facing * 0.05;
-    return [[Math.min(x0, x1), 0, c.z0], [Math.max(x0, x1), 3.65, c.z1]];
+    return [[Math.min(x0, x1), 0, c.z0], [Math.max(x0, x1), W.HALL.caseTop, c.z1]];
   }
 
   function pickCase(ray) {
@@ -886,8 +988,22 @@
     }
   }
 
+  // Clicking the floor walks there.
+  function walkToward(x, y) {
+    const ray = rayAt(x, y);
+    if (ray.direction.y > -0.02) return;
+    const t = -ray.origin.y / ray.direction.y;
+    const p = ray.origin.clone().addScaledVector(ray.direction, t);
+    if (t > 30 || blocked(p.x, p.z)) return;
+    S.goal = [p.x, p.z];
+    poof([p.x, 0.08, p.z], 3, 0.06);
+  }
+
   async function click() {
-    if (!hover) return;
+    if (!hover) {
+      if (S.mode === 'overview' && S.built && !flight) walkToward(pointer.x, pointer.y);
+      return;
+    }
     const h = hover;
     setHover(null);
     if (h.kind === 'case') {
@@ -908,8 +1024,7 @@
     try {
       const id = await request({type: 'createSubject', name: result.name, color: result.color});
       S.pendingSubject = id;
-      poof([c.faceX - c.facing * 0.5, 1.5, (c.z0 + c.z1) / 2], 16, 1.2);
-      achievement('case', gui.t('firstCase'));
+      poof([c.faceX - c.facing * 0.5, 2.5, (c.z0 + c.z1) / 2], 16, 1.2);
       const idx = S.built.cases.findIndex(cs => cs.subject && cs.subject.id === id);
       if (idx >= 0) { S.pendingSubject = null; toShelf(idx); }
     } catch {
@@ -918,56 +1033,57 @@
   }
 
   // Pulls a book out of its slot (or conjures a blank one) and carries it
-  // to the desk.
+  // to the desk, where it opens.
   async function openSlot(slot, g, book) {
     const c = currentCase();
     S.editing = book
       ? {id: book.id, subjectId: c.subject.id, slot: book.slot, title: book.title, spineRaw: book.spine || '', cover: book.cover ?? 12, body: book.body || '', isNew: false}
       : {id: null, subjectId: c.subject.id, slot, title: '', spineRaw: '', cover: 12, body: '', isNew: true};
     if (book) { S.hidden.add(book.id); rebuildDynamic(); }
-    const mesh = makeHeld(labelBook({...S.editing, spine: S.editing.spineRaw, title: S.editing.title}));
-    const start = slotTransform(g, book ? 0 : 0.02);
+    const shown = editingBook();
+    const mesh = makeHeld(shown);
+    const start = slotTransform(g, shown, book ? 0 : -0.3);
     applyTransform(mesh, start);
     held.from = {g};
     setMode('desk');
     if (!book) poof(start.pos.toArray(), 5, 0.1);
-    const out = {pos: start.pos.clone().add(new T.Vector3(g.facing * 0.35, 0.05, 0)), quat: start.quat.clone(), scale: 1};
-    await tween(mesh, out, 0.25);
-    const fly = tween(mesh, deskTransform(), S.reducedMotion ? 0.3 : 1.25, 0.5);
+    const out = {pos: start.pos.clone().add(new T.Vector3(g.facing * 0.55, 0.05, 0)), quat: start.quat.clone(), scale: 1};
+    await tween(mesh, out, 0.3);
+    const fly = tween(mesh, deskTransform(shown), S.reducedMotion ? 0.3 : 1.25, 0.5);
     await Promise.all([flyTo(deskPose()), fly]);
     if (S.mode !== 'desk') return;
-    // It lands as the game's book and quill.
-    showDeskItem(true);
-    poof([0, S.built.desk.top + 0.1, S.built.desk.z], 4, 0.15);
+    showDeskBook(shown);
     Book.openEditor(S.editing, editorHandlers);
   }
 
-  function slotTransform(g, extra = 0) {
+  // The book being edited, as the scene draws it.
+  const editingBook = () => labelBook({...S.editing, spine: S.editing.spineRaw, title: S.editing.title});
+
+  // A book standing in its slot, pulled `out` blocks toward the room.
+  function slotTransform(g, book, out = 0) {
     const quat = new T.Quaternion().setFromAxisAngle(new T.Vector3(0, 1, 0), g.facing > 0 ? 0 : Math.PI);
-    // The held mesh is offset so its origin is the book's centre.
-    const pos = new T.Vector3(g.faceX - g.facing * (0.19 - 0.03 - extra), g.y0 + 0.17, (g.z0 + g.z1) / 2);
+    const p = W.bookCenter(g, book).pos;
+    const pos = new T.Vector3(p[0] + g.facing * out, p[1], p[2]);
     return {pos, quat, scale: 1};
   }
 
-  function deskTransform() {
-    const z = S.built.desk.z;
-    const quat = new T.Quaternion().setFromEuler(new T.Euler(-Math.PI / 2, 0, Math.PI / 2, 'YXZ'));
-    return {pos: new T.Vector3(0, 1.0 + 0.14, z), quat, scale: 1.25};
-  }
-
-  // Swaps between the carried book and the item lying on the desk.
-  function showDeskItem(on) {
-    if (deskItem) deskItem.visible = on;
-    if (held.mesh) held.mesh.visible = !on;
+  // Lying flat and closed on the desk, exactly where the open book's
+  // closed halves are.
+  function deskTransform(book) {
+    const desk = S.built.desk;
+    const {hw, t} = deskBookSize(book);
+    const quat = new T.Quaternion().setFromAxisAngle(new T.Vector3(0, 0, 1), Math.PI)
+      .multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(1, 0, 0), -Math.PI / 2));
+    return {pos: new T.Vector3(hw / 2, desk.top + 0.002 + t, desk.z + 0.02), quat, scale: DESK_SCALE};
   }
 
   function handTransform() {
     const q = camera.quaternion.clone();
     // Keep the hand inside narrow (portrait) views too.
     const halfWidth = 0.75 * Math.tan((camera.fov * Math.PI / 180) / 2) * camera.aspect;
-    const pos = new T.Vector3(Math.min(0.36, halfWidth * 0.62), -0.3, -0.75).applyQuaternion(q).add(camera.position);
+    const pos = new T.Vector3(Math.min(0.36, halfWidth * 0.62), -0.28, -0.75).applyQuaternion(q).add(camera.position);
     const tilt = new T.Quaternion().setFromEuler(new T.Euler(0.15, -0.5 + Math.sin(performance.now() / 700) * 0.03, 0.1));
-    return {pos, quat: q.multiply(tilt).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0, 1, 0), Math.PI / 2)), scale: 1};
+    return {pos, quat: q.multiply(tilt).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0, 1, 0), Math.PI / 2)), scale: 0.5};
   }
 
   function applyTransform(mesh, tr) {
@@ -995,6 +1111,12 @@
       if (tw.t >= 1) { tweens.delete(tw); tw.resolve(); }
     }
     if (S.mode === 'placing' && held.mesh && ![...tweens].some(t => t.mesh === held.mesh)) applyTransform(held.mesh, handTransform());
+    // The desk book opens and closes on its hinge.
+    if (deskBook.group && deskBook.open !== deskBook.target) {
+      const step = dt * (S.reducedMotion ? 20 : 3.2);
+      deskBook.open = deskBook.target > deskBook.open ? Math.min(deskBook.target, deskBook.open + step) : Math.max(deskBook.target, deskBook.open - step);
+      poseDeskBook();
+    }
   }
 
   async function saveEditing(body, extra = {}) {
@@ -1012,6 +1134,17 @@
 
   const isBlank = body => !Book.plainText(body).trim();
 
+  // A new book that was never written in vanishes instead of being shelved.
+  async function discardBlank(e) {
+    await closeDeskBook();
+    if (e.id != null) send({type: 'deleteBook', id: e.id});
+    if (held.mesh) poof(held.mesh.position.toArray(), 8, 0.15);
+    dropHeld();
+    if (e.id != null) S.hidden.delete(e.id);
+    S.editing = null;
+    return backToShelf();
+  }
+
   const editorHandlers = {
     get canBurn() { return !!S.editing && (S.editing.id != null || !S.editing.isNew); },
     onInput(body) {
@@ -1023,22 +1156,9 @@
     async onDone(body) {
       const e = S.editing;
       Book.close();
-      if (e.isNew && isBlank(body) && e.id == null) {
-        poof(held.mesh.position.toArray(), 8, 0.15);
-        dropHeld();
-        S.editing = null;
-        return backToShelf();
-      }
-      if (e.isNew && isBlank(body) && e.id != null) {
-        send({type: 'deleteBook', id: e.id});
-        poof(held.mesh.position.toArray(), 8, 0.15);
-        dropHeld();
-        S.hidden.delete(e.id);
-        S.editing = null;
-        return backToShelf();
-      }
+      if (e.isNew && isBlank(body)) return discardBlank(e);
       try { await saveEditing(body); } catch { gui.toast(gui.t('saveFailed'), e.title || ''); }
-      achievement('book', gui.t('firstBook'));
+      await closeDeskBook();
       await returnToSlot();
     },
     async onSign(body) {
@@ -1053,9 +1173,10 @@
         await saveEditing(e.body, {title: title || e.title, spineRaw: spine, cover});
       } catch { gui.toast(gui.t('saveFailed'), title); return; }
       Book.close();
-      achievement('book', gui.t('firstBook'));
-      makeHeld(labelBook({...e, spine: e.spineRaw, title: e.title}));
-      applyTransform(held.mesh, deskTransform());
+      await closeDeskBook();
+      const shown = editingBook();
+      makeHeld(shown);
+      applyTransform(held.mesh, deskTransform(shown));
       const idx = S.built.cases.findIndex(c => c.subject && c.subject.id === e.subjectId);
       tween(held.mesh, () => handTransform(), S.reducedMotion ? 0.2 : 1.3);
       await toShelf(idx >= 0 ? idx : S.caseIndex, {placing: true});
@@ -1064,9 +1185,9 @@
     async onBurn() {
       const e = S.editing;
       Book.close();
-      showDeskItem(false);
+      await closeDeskBook();
       const f = S.built.fire;
-      await tween(held.mesh, {pos: new T.Vector3(f[0], f[1] + 0.2, f[2] + 0.3), quat: new T.Quaternion().setFromEuler(new T.Euler(1.2, 0.4, 0.3)), scale: 1}, S.reducedMotion ? 0.2 : 0.9, 0.7);
+      await tween(held.mesh, {pos: new T.Vector3(f[0], f[1] + 0.2, f[2] + 0.3), quat: new T.Quaternion().setFromEuler(new T.Euler(1.2, 0.4, 0.3)), scale: 0.8}, S.reducedMotion ? 0.2 : 0.9, 0.7);
       burst([f[0], f[1], f[2] + 0.2], 45);
       poof([f[0], f[1] + 0.4, f[2] + 0.3], 10, 0.2);
       U.firePulse.value = 1.8;
@@ -1085,18 +1206,21 @@
     return idx >= 0 ? toShelf(idx) : toOverview();
   }
 
-  // Flies the carried book back into the slot it came from.
+  // Flies the carried book back into the slot it came from: off the desk,
+  // or out of your hand when a move is cancelled.
   async function returnToSlot() {
     const e = S.editing;
     const idx = S.built.cases.findIndex(c => c.subject && c.subject.id === e.subjectId);
     if (idx < 0) { dropHeld(); S.editing = null; return toOverview(); }
     const c = S.built.cases[idx];
     const g = W.slotGeometry(c, e.slot);
-    makeHeld(labelBook({...e, spine: e.spineRaw, title: e.title}));
-    applyTransform(held.mesh, deskTransform());
+    const shown = editingBook();
+    const from = S.mode === 'placing' ? handTransform() : deskTransform(shown);
+    makeHeld(shown);
+    applyTransform(held.mesh, from);
     const cam = toShelf(idx);
-    await tween(held.mesh, slotTransform(g, 0.35), S.reducedMotion ? 0.3 : 1.3, 0.4);
-    await tween(held.mesh, slotTransform(g), 0.22);
+    await tween(held.mesh, slotTransform(g, shown, 0.45), S.reducedMotion ? 0.3 : 1.3, 0.4);
+    await tween(held.mesh, slotTransform(g, shown), 0.24);
     await cam;
     finishPlacing(e.id);
   }
@@ -1106,8 +1230,9 @@
     const c = currentCase();
     if (!e || !held.mesh || !c) return;
     const target = {id: e.id, subjectId: c.subject.id, slot};
-    await tween(held.mesh, slotTransform(g, 0.35), S.reducedMotion ? 0.2 : 0.55, 0.12);
-    await tween(held.mesh, slotTransform(g), 0.2);
+    const shown = editingBook();
+    await tween(held.mesh, slotTransform(g, shown, 0.45), S.reducedMotion ? 0.2 : 0.55, 0.12);
+    await tween(held.mesh, slotTransform(g, shown), 0.2);
     send({type: 'moveBook', ...target});
     e.subjectId = target.subjectId;
     e.slot = slot;
@@ -1141,21 +1266,83 @@
     returnToSlot();
   }
 
-  function achievement(key, title) {
-    try {
-      if (localStorage.getItem('library.adv.' + key)) return;
-      localStorage.setItem('library.adv.' + key, '1');
-    } catch {
+  // ── Walking ────────────────────────────────────────────────────────────
+  // WASD or the arrow keys walk, drag looks around, the wheel steps forward
+  // and back, a click on the floor walks there. Walls, bookcases and
+  // furniture stop you.
+  const BODY = 0.26;
+  function blocked(x, z) {
+    const b = S.built;
+    if (!b) return false;
+    const w = b.walk;
+    if (x < w.minX || x > w.maxX || z < w.minZ || z > w.maxZ) return true;
+    for (const [dx, dz] of [[-BODY, -BODY], [BODY, -BODY], [-BODY, BODY], [BODY, BODY]]) {
+      const cx = Math.floor(x + dx), cz = Math.floor(z + dz);
+      if (b.grid.solid(cx, 0, cz) || b.grid.solid(cx, 1, cz)) return true;
+    }
+    for (const [x0, z0, x1, z1] of b.colliders) {
+      if (x > x0 - BODY && x < x1 + BODY && z > z0 - BODY && z < z1 + BODY) return true;
+    }
+    return false;
+  }
+
+  const keys = new Set();
+  const pad = {fwd: 0, turn: 0};
+  function stepWalk(dt) {
+    if (S.mode !== 'overview' || flight || !S.built || Book.open || gui.isModalOpen()) {
+      S.vel = [0, 0];
       return;
     }
-    const icon = canvases?.writable_book?.toDataURL();
-    gui.toast(gui.t('advancement'), title, icon);
+    const held = k => keys.has(k);
+    let fwd = pad.fwd, strafe = 0, turn = pad.turn;
+    if (held('KeyW') || held('ArrowUp')) fwd += 1;
+    if (held('KeyS') || held('ArrowDown')) fwd -= 1;
+    if (held('KeyA')) strafe -= 1;
+    if (held('KeyD')) strafe += 1;
+    if (held('ArrowLeft') || held('KeyQ')) turn += 1;
+    if (held('ArrowRight') || held('KeyE')) turn -= 1;
+    S.yaw += turn * dt * 1.9;
+    let tx = -Math.sin(S.yaw) * fwd + Math.cos(S.yaw) * strafe;
+    let tz = -Math.cos(S.yaw) * fwd - Math.sin(S.yaw) * strafe;
+    const len = Math.hypot(tx, tz);
+    if (len > 1) { tx /= len; tz /= len; }
+    if (len > 0 || turn) { S.goal = null; noteWalked(); }
+    else if (S.goal) {
+      const dx = S.goal[0] - S.px, dz = S.goal[1] - S.pz, d = Math.hypot(dx, dz);
+      if (d < 0.06) S.goal = null;
+      else { const k = Math.min(1, d * 1.5) / d; tx = dx * k; tz = dz * k; }
+    }
+    const speed = held('ShiftLeft') || held('ShiftRight') ? 5 : 3;
+    const k = 1 - Math.exp(-dt * 10);
+    S.vel[0] += (tx * speed - S.vel[0]) * k;
+    S.vel[1] += (tz * speed - S.vel[1]) * k;
+    const mx = S.vel[0] * dt, mz = S.vel[1] * dt;
+    if (!blocked(S.px + mx, S.pz)) S.px += mx; else { S.vel[0] = 0; if (S.goal) S.goal = null; }
+    if (!blocked(S.px, S.pz + mz)) S.pz += mz; else { S.vel[1] = 0; if (S.goal) S.goal = null; }
+    S.stride += Math.hypot(S.vel[0], S.vel[1]) * dt;
+  }
+
+  // The walking hint stays until the reader has walked a little.
+  function noteWalked() {
+    if (S.walked) return;
+    S.walked = true;
+    refreshHud();
   }
 
   // ── Input ──────────────────────────────────────────────────────────────
+  const touches = new Map();
   canvas.addEventListener('pointerdown', e => {
     if (e.button !== 0) return;
-    pointer.down = {x: e.clientX, y: e.clientY, yaw: S.yaw, pitch: S.pitch, walk: S.walkZ, pan: S.pan};
+    if (e.pointerType === 'touch' && !S.touch) { S.touch = true; refreshHud(); }
+    touches.set(e.pointerId, {x: e.clientX, y: e.clientY});
+    if (touches.size === 2) {
+      // A second finger starts a pinch; the drag it interrupted is dropped.
+      const [a, b] = [...touches.values()];
+      pointer.pinch = {d: Math.hypot(a.x - b.x, a.y - b.y), zoom: S.zoom};
+      pointer.dragging = true;
+      return;
+    }
+    pointer.down = {x: e.clientX, y: e.clientY, yaw: S.yaw, pitch: S.pitch, pan: S.pan, panY: S.panY};
     pointer.dragging = false;
     canvas.setPointerCapture(e.pointerId);
   });
@@ -1163,56 +1350,116 @@
     pointer.x = e.clientX; pointer.y = e.clientY;
     pointer.nx = (e.clientX / innerWidth) * 2 - 1;
     pointer.ny = (e.clientY / innerHeight) * 2 - 1;
+    if (touches.has(e.pointerId)) touches.set(e.pointerId, {x: e.clientX, y: e.clientY});
+    if (pointer.pinch && touches.size >= 2) {
+      const [a, b] = [...touches.values()];
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (S.mode === 'shelf' || S.mode === 'placing') {
+        S.zoom = Math.max(0.35, Math.min(1, pointer.pinch.zoom * pointer.pinch.d / Math.max(1, d)));
+        clampShelfView();
+      }
+      return;
+    }
     const d = pointer.down;
     if (d) {
       const dx = e.clientX - d.x, dy = e.clientY - d.y;
       if (!pointer.dragging && Math.hypot(dx, dy) > 6) { pointer.dragging = true; canvas.classList.add('grab'); setHover(null); }
       if (pointer.dragging) {
         if (S.mode === 'overview') {
-          S.yaw = Math.max(-1.3, Math.min(1.3, d.yaw + dx * 0.004));
-          S.pitch = Math.max(-0.6, Math.min(0.5, d.pitch + dy * 0.003));
+          S.yaw = d.yaw + dx * 0.0045;
+          S.pitch = Math.max(-1.1, Math.min(0.95, d.pitch + dy * 0.0035));
+          if (Math.hypot(dx, dy) > 40) noteWalked();
         } else if (S.mode === 'shelf' || S.mode === 'placing') {
           const c = currentCase();
-          if (c) S.pan = Math.max(-1.6, Math.min(1.6, d.pan + dx * 0.004 * c.facing));
+          const scale = 0.004 * (0.4 + S.zoom * 0.6);
+          if (c) S.pan = d.pan + dx * scale * c.facing;
+          S.panY = d.panY + dy * scale;
+          clampShelfView();
         }
         return;
       }
     }
     updateHover();
   });
-  canvas.addEventListener('pointerup', e => {
+  const release = e => {
+    touches.delete(e.pointerId);
+    if (pointer.pinch) {
+      if (touches.size < 2) pointer.pinch = null;
+      if (touches.size === 0) { pointer.down = null; pointer.dragging = false; }
+      return;
+    }
     const wasDrag = pointer.dragging;
+    const wasDown = !!pointer.down;
     pointer.down = null;
     pointer.dragging = false;
     canvas.classList.remove('grab');
-    if (!wasDrag) {
+    if (!wasDrag && wasDown && e.type === 'pointerup') {
       pointer.x = e.clientX; pointer.y = e.clientY;
       updateHover();
       click();
     }
-  });
+  };
+  canvas.addEventListener('pointerup', release);
+  canvas.addEventListener('pointercancel', release);
   canvas.addEventListener('pointerleave', () => { if (!pointer.down) setHover(null); });
   canvas.addEventListener('wheel', e => {
-    if (S.mode !== 'overview' || !S.built) return;
-    e.preventDefault();
-    S.walkZ = Math.max(S.built.layout.endWall + 7, Math.min(S.built.layout.hallStart - 0.8, S.walkZ + e.deltaY * 0.01));
+    if (!S.built) return;
+    if (S.mode === 'overview') {
+      e.preventDefault();
+      if (flight) return;
+      // A notch of the wheel is a step forward or back.
+      const step = -Math.sign(e.deltaY) * Math.min(0.6, Math.abs(e.deltaY) * 0.004);
+      const x = S.px - Math.sin(S.yaw) * step, z = S.pz - Math.cos(S.yaw) * step;
+      if (!blocked(x, S.pz)) S.px = x;
+      if (!blocked(S.px, z)) S.pz = z;
+      S.goal = null;
+      noteWalked();
+    } else if (S.mode === 'shelf' || S.mode === 'placing') {
+      e.preventDefault();
+      S.zoom = Math.max(0.35, Math.min(1, S.zoom * (1 + e.deltaY * 0.0012)));
+      clampShelfView();
+    }
   }, {passive: false});
 
+  const typing = () => {
+    const el = document.activeElement;
+    return el && (el.isContentEditable || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA');
+  };
   addEventListener('keydown', e => {
-    if (Book.open || gui.isModalOpen() || !S.built) return;
+    if (Book.open || gui.isModalOpen() || !S.built || typing()) return;
     if (e.key === 'Escape') {
       if (S.mode === 'placing') cancelPlacing();
       else if (S.mode === 'shelf') toOverview();
     } else if (S.mode === 'shelf' || S.mode === 'placing') {
       if (e.key === 'ArrowLeft') toShelf(neighbour(-1), {placing: S.mode === 'placing'});
       if (e.key === 'ArrowRight') toShelf(neighbour(1), {placing: S.mode === 'placing'});
+      if (e.key === '+' || e.key === '=') { S.zoom = Math.max(0.35, S.zoom * 0.85); clampShelfView(); }
+      if (e.key === '-') { S.zoom = Math.min(1, S.zoom / 0.85); clampShelfView(); }
     } else if (S.mode === 'overview') {
-      const step = {ArrowUp: -1, w: -1, W: -1, ArrowDown: 1, s: 1, S: 1}[e.key];
-      if (step) S.walkZ = Math.max(S.built.layout.endWall + 7, Math.min(S.built.layout.hallStart - 0.8, S.walkZ + step * 1.2));
-      if (e.key === 'ArrowLeft' || e.key === 'a') S.yaw = Math.min(1.3, S.yaw + 0.15);
-      if (e.key === 'ArrowRight' || e.key === 'd') S.yaw = Math.max(-1.3, S.yaw - 0.15);
+      if (/^(Key[WASDQE]|Arrow(Up|Down|Left|Right)|Shift(Left|Right))$/.test(e.code)) {
+        keys.add(e.code);
+        e.preventDefault();
+      }
     }
   });
+  addEventListener('keyup', e => keys.delete(e.code));
+  addEventListener('blur', () => keys.clear());
+
+  // The on-screen pad for touch screens: hold an arrow to walk or turn.
+  for (const b of document.querySelectorAll('#move-pad [data-move]')) {
+    const [axis, value] = b.dataset.move.split(':');
+    const stop = () => { pad[axis] = 0; b.classList.remove('on'); };
+    b.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      b.setPointerCapture(e.pointerId);
+      pad[axis] = Number(value);
+      b.classList.add('on');
+      noteWalked();
+    });
+    b.addEventListener('pointerup', stop);
+    b.addEventListener('pointercancel', stop);
+    b.addEventListener('lostpointercapture', stop);
+  }
 
   $('back').onclick = () => (S.mode === 'placing' ? cancelPlacing() : toOverview());
   // From the hall the arrows walk straight to the first or last bookcase.

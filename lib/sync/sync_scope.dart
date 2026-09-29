@@ -14,6 +14,11 @@ class SyncScope extends InheritedWidget {
     return scope!.service;
   }
 
+  /// Like [of], but null where no scope is above [context] — for widgets
+  /// that also run standalone, such as in widget tests.
+  static SyncService? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<SyncScope>()?.service;
+
   @override
   bool updateShouldNotify(SyncScope oldWidget) => service != oldWidget.service;
 }

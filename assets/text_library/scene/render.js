@@ -61,7 +61,11 @@
       float cell = t.x;
       if (t.y > 1.5) cell += mod(floor(time * 20.0 / max(t.z, 1.0)), t.y);
       vec2 xy = vec2(mod(cell, atlasCols), floor(cell / atlasCols));
-      vec2 uv = (xy * 32.0 + 8.0 + clamp(p, 0.02, 15.98)) / atlasSize;
+      // Faces longer than a block repeat the texture, as the game's do.
+      vec2 wrapped = p - 16.0 * floor(p / 16.0 - 1e-4);
+      vec2 inside = step(vec2(0.0), p) * step(p, vec2(16.0));
+      vec2 q = mix(wrapped, p, inside);
+      vec2 uv = (xy * 32.0 + 8.0 + clamp(q, 0.02, 15.98)) / atlasSize;
       return textureGrad(atlas, uv, dFdx(p) / atlasSize, dFdy(p) / atlasSize);
     }
   `;
@@ -144,10 +148,12 @@
 
       if (vEmit > 0.0) {
         // Emissive faces are lit fully; their brightest texels glow past 1.0
-        // so the bloom picks them up.
+        // so the bloom picks them up. Only open flame (emit above 1.5)
+        // flickers; lanterns and lampshades burn steady.
         float lum = dot(albedo, vec3(0.299, 0.587, 0.114));
         float glow = smoothstep(0.35, 0.85, lum);
-        color = max(color, albedo * 0.95) + albedo * glow * vEmit * 2.6 * (0.9 + 0.1 * flicker);
+        float wobble = vEmit > 1.5 ? 0.9 + 0.1 * flicker : 1.0;
+        color = max(color, albedo * 0.95) + albedo * glow * vEmit * 2.2 * wobble;
       }
       color += highlight * 0.35;
 
@@ -196,14 +202,34 @@
     uniform vec3 zenith;
     uniform vec3 horizon;
     uniform float night;
+    uniform vec3 sunPos;
     varying vec3 vDir;
     float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+    // Where d lands on a square of half-size [size] facing along [axis]:
+    // x, y in -1..1 inside it, or a value past 1 outside.
+    vec2 square(vec3 d, vec3 axis, float size) {
+      float a = dot(d, axis);
+      if (a <= 0.0) return vec2(9.0);
+      vec3 t1 = normalize(cross(axis, vec3(0.0, 0.0, 1.0)));
+      vec3 t2 = cross(t1, axis);
+      return vec2(dot(d, t1), dot(d, t2)) / a / size;
+    }
     void main() {
       vec3 d = normalize(vDir);
       float h = clamp(d.y, -0.2, 1.0);
       vec3 col = mix(horizon, zenith, pow(max(h, 0.0), 0.55));
-      float s = max(dot(d, sunDir), 0.0);
-      col += sunColor * (pow(s, 900.0) * 30.0 + pow(s, 12.0) * 0.35);
+      float s = max(dot(d, sunPos), 0.0);
+      col += sunColor * pow(s, 12.0) * 0.35 * (1.0 - night);
+      // The game's square sun and moon, on opposite sides of the sky.
+      vec2 sq = square(d, sunPos, 0.07);
+      if (max(abs(sq.x), abs(sq.y)) < 1.0) col = mix(col, vec3(4.0, 3.4, 2.2), 1.0 - night * 0.9);
+      else col += vec3(1.0, 0.8, 0.5) * smoothstep(1.9, 1.0, max(abs(sq.x), abs(sq.y))) * 0.4 * (1.0 - night);
+      vec2 mq = square(d, -sunPos, 0.055);
+      if (max(abs(mq.x), abs(mq.y)) < 1.0) {
+        vec2 cell = floor((mq + 1.0) * 2.0);
+        float crater = step(0.72, hash(cell + 3.0));
+        col = mix(col, vec3(1.3, 1.35, 1.5) * (1.0 - crater * 0.3), 0.25 + night * 0.75);
+      }
       // Blocky clouds on a flat layer, drifting.
       if (d.y > 0.02) {
         vec2 p = d.xz / d.y * 4.0 + vec2(time * 0.08, 0.0);
@@ -458,7 +484,7 @@
     const scene = new T.Scene();
     const camera = new T.PerspectiveCamera(55, 1, 0.05, 200);
 
-    const skyUniforms = {...U, zenith: {value: new T.Color(0.25, 0.42, 0.72)}, horizon: {value: new T.Color(0.95, 0.72, 0.5)}, night: {value: 0}};
+    const skyUniforms = {...U, zenith: {value: new T.Color(0.25, 0.42, 0.72)}, horizon: {value: new T.Color(0.95, 0.72, 0.5)}, night: {value: 0}, sunPos: {value: new T.Vector3(0.7, 0.55, -0.35).normalize()}};
     const sky = new T.Mesh(new T.BoxGeometry(100, 100, 100), new T.ShaderMaterial({
       uniforms: skyUniforms, vertexShader: SKY_VERT, fragmentShader: SKY_FRAG, side: T.BackSide, depthWrite: false,
     }));

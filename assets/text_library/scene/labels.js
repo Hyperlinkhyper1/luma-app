@@ -2,17 +2,19 @@
 // bookcase and the spine of every book, drawn pixel-exact with the library
 // font and uploaded as a single texture.
 //
-// Room for 64 signs and 798 spines; anything past that gets a plain board or
-// a blank spine rather than failing.
+// Room for 64 signs and 1360 spines; anything past that gets a plain board
+// or a blank spine rather than failing.
 (() => {
   'use strict';
 
   const SIZE = 2048;
   const SIGN_W = 256, SIGN_H = 64, SIGN_COLS = SIZE / SIGN_W, SIGN_ROWS = 8;
-  const SPINE_W = 48, SPINE_H = 80, SPINE_TOP = SIGN_H * SIGN_ROWS;
+  const SPINE_W = 24, SPINE_H = 96, SPINE_TOP = SIGN_H * SIGN_ROWS;
   const SPINE_COLS = Math.floor(SIZE / SPINE_W), SPINE_ROWS = Math.floor((SIZE - SPINE_TOP) / SPINE_H);
 
-  function create(T, dyes) {
+  // [covers] are the leather colours books are bound in, by cover index;
+  // [dyes] the plain colours subjects are marked with.
+  function create(T, covers, dyes) {
     const canvas = document.createElement('canvas');
     canvas.width = SIZE; canvas.height = SIZE;
     const ctx = canvas.getContext('2d');
@@ -30,6 +32,7 @@
     const freeSpines = [], freeSigns = [];
     let nextSpine = 0, nextSign = 0;
 
+    const leather = i => covers[i] || covers[12];
     const rgb = i => dyes[i] || dyes[12];
     const css = (c, f = 1) => `rgb(${Math.round(c[0] * f)},${Math.round(c[1] * f)},${Math.round(c[2] * f)})`;
 
@@ -38,39 +41,41 @@
     }
 
     function drawSpine(x, y, book) {
-      const c = rgb(book.cover);
-      const dark = (c[0] + c[1] + c[2]) < 200;
+      const c = leather(book.cover);
       // Leather in chunky texels so it sits with the blocks around it.
       const r = LibraryTextures.rng('spine' + book.id);
-      for (let ty = 0; ty < SPINE_H; ty += 4) {
-        for (let tx = 0; tx < SPINE_W; tx += 4) {
+      for (let ty = 0; ty < SPINE_H; ty += 3) {
+        for (let tx = 0; tx < SPINE_W; tx += 3) {
           ctx.fillStyle = css(c, 0.84 + r() * 0.16);
-          ctx.fillRect(x + tx, y + ty, 4, 4);
+          ctx.fillRect(x + tx, y + ty, 3, 3);
         }
       }
-      ctx.fillStyle = css(c, 0.6);
-      ctx.fillRect(x, y, 3, SPINE_H);
-      ctx.fillRect(x + SPINE_W - 3, y, 3, SPINE_H);
-      // Gilt bands near both ends.
-      for (const by of [6, SPINE_H - 10]) {
-        ctx.fillStyle = '#e8b43a';
-        ctx.fillRect(x + 3, y + by, SPINE_W - 6, 2);
-        ctx.fillStyle = '#8a5a14';
-        ctx.fillRect(x + 3, y + by + 2, SPINE_W - 6, 1);
+      // Rounded edges, darker where the spine turns into the covers.
+      ctx.fillStyle = css(c, 0.55);
+      ctx.fillRect(x, y, 2, SPINE_H);
+      ctx.fillRect(x + SPINE_W - 2, y, 2, SPINE_H);
+      ctx.fillStyle = css(c, 1.12);
+      ctx.fillRect(x + 5, y, 2, SPINE_H);
+      // Raised gilt bands near both ends.
+      for (const by of [5, 10, SPINE_H - 13, SPINE_H - 8]) {
+        ctx.fillStyle = '#e2ad3c';
+        ctx.fillRect(x + 2, y + by, SPINE_W - 4, 2);
+        ctx.fillStyle = '#7d5214';
+        ctx.fillRect(x + 2, y + by + 2, SPINE_W - 4, 1);
       }
       // The label, reading top to bottom as on a real spine.
       const text = (book.spine || book.title || '').trim();
       if (!text) return;
-      const span = SPINE_H - 26;
-      const ink = dark ? '#f6e7b0' : '#fff6d8';
+      const span = SPINE_H - 32;
+      const ink = '#f6e2a6';
       const shadow = css(c, 0.35);
       let lines = [text], scale = 2;
       if (PixelFont.measure(text) * 2 > span) {
         scale = 1;
-        if (PixelFont.measure(text) > span) lines = wrap(text, span);
+        if (PixelFont.measure(text) > span) lines = wrap(text, span, 2);
       }
       const tmp = document.createElement('canvas');
-      tmp.width = span; tmp.height = SPINE_W - 6;
+      tmp.width = span; tmp.height = SPINE_W - 4;
       const t = tmp.getContext('2d');
       const lineH = 9 * scale + 1;
       const blockH = lines.length * lineH;
@@ -79,22 +84,22 @@
         PixelFont.draw(t, line, Math.floor((span - w) / 2), Math.floor((tmp.height - blockH) / 2) + i * lineH, {scale, color: ink, shadow});
       });
       ctx.save();
-      ctx.translate(x + 3 + tmp.height, y + 13);
+      ctx.translate(x + 2 + tmp.height, y + 16);
       ctx.rotate(Math.PI / 2);
       ctx.drawImage(tmp, 0, 0);
       ctx.restore();
     }
 
-    function wrap(text, width) {
+    function wrap(text, width, max) {
       const words = text.split(/\s+/);
       const lines = [''];
       for (const word of words) {
         const trial = lines[lines.length - 1] ? lines[lines.length - 1] + ' ' + word : word;
         if (PixelFont.measure(trial) <= width) lines[lines.length - 1] = trial;
-        else if (lines.length < 3) lines.push(word);
+        else if (lines.length < max) lines.push(word);
         else break;
       }
-      return lines.map(line => fit(line, width)).slice(0, 3);
+      return lines.map(line => fit(line, width)).slice(0, max);
     }
 
     function fit(text, width) {

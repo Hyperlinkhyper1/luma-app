@@ -140,6 +140,8 @@ flutter:
     - assets/images/
     - assets/pagoda_gpt6_luna_low.html
     - assets/tests/pagoda_step5.html
+    - assets/tests/pagoda_space_bunny.html
+    - assets/tests/pagoda_sonnet55_xhigh.html
     - assets/images/vendors/
     - assets/space_colony/
     - assets/ai_usage/engine_tests/

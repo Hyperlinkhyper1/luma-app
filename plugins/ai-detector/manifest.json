@@ -2,7 +2,7 @@
   "id": "ai-detector",
   "name": "AI Detector",
   "version": "1.0.0",
-  "description": "Paste some text, see if it reads like a person wrote it or not. Just maths, no AI, and nothing leaves your device.",
+  "description": "Paste some text, see if it reads like a person wrote it or not. On-device maths, plus an optional AI deep check that shows where and how it reads AI-generated.",
   "icon": "fact_check",
   "category": "Utility"
 }

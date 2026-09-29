@@ -24,6 +24,7 @@ const Map<String, Color> kVendorColors = {
   'mistralai': Color(0xFFEAB308),
   'nvidia': Color(0xFF84CC16),
   'minimax': Color(0xFFF43F5E),
+  'spacebunny': Color(0xFF7C5CFF),
 };
 
 /// Fallback for a vendor key the map doesn't know about — should only ever

@@ -61,7 +61,24 @@
     feather: 'textures/item/feather.png',
     ink_sac: 'textures/item/ink_sac.png',
     iron_bars: 'textures/block/iron_bars.png',
+    calcite: 'textures/block/calcite.png',
+    stripped_dark_oak_log: 'textures/block/stripped_dark_oak_log.png',
+    stripped_dark_oak_log_top: 'textures/block/stripped_dark_oak_log_top.png',
+    green_wool: 'textures/block/green_wool.png',
+    blue_wool: 'textures/block/blue_wool.png',
+    light_gray_wool: 'textures/block/light_gray_wool.png',
+    yellow_wool: 'textures/block/yellow_wool.png',
+    terracotta: 'textures/block/terracotta.png',
+    spruce_door_top: 'textures/block/spruce_door_top.png',
+    spruce_door_bottom: 'textures/block/spruce_door_bottom.png',
+    ladder: 'textures/block/ladder.png',
+    vine: 'textures/block/vine.png',
+    flowering_azalea_leaves: 'textures/block/flowering_azalea_leaves.png',
+    painting_left: {path: 'textures/painting/sunset.png', crop: [0, 0, 0.5, 1]},
+    painting_right: {path: 'textures/painting/sunset.png', crop: [0.5, 0, 0.5, 1]},
+    painting_small: 'textures/painting/plant.png',
   };
+  const pathOf = entry => (typeof entry === 'string' ? entry : entry?.path);
 
   // Files the page asks the host for beyond the atlas textures.
   const EXTRA = [
@@ -422,6 +439,165 @@
     return paint(16, 16, () => [255, 255, 255, 255]);
   }
 
+  // Lime plaster, faintly mottled.
+  function plaster(name) {
+    const r = rng(name);
+    return paint(16, 16, () => shade([222, 218, 206], 0.93 + r() * 0.07));
+  }
+
+  function door(top) {
+    const wood = planks('door', SPRUCE).getContext('2d').getImageData(0, 0, 16, 16).data;
+    return paint(16, 16, (x, y) => {
+      const o = (y * 16 + x) * 4;
+      const c = [wood[o], wood[o + 1], wood[o + 2], 255];
+      if (top && y >= 3 && y <= 8 && x >= 3 && x <= 12) {
+        if (x === 7 || x === 8 || y === 5 || y === 6) return shade(c, 0.7);
+        return [180, 210, 220, 90];
+      }
+      if (x <= 1 || x >= 14 || (top ? y <= 1 : y >= 14)) return shade(c, 0.78);
+      if (!top && x === 12 && y === 1) return [196, 160, 70, 255];
+      return c;
+    });
+  }
+
+  function ladder() {
+    const r = rng('ladder');
+    return paint(16, 16, (x, y) => {
+      if (x === 2 || x === 3 || x === 12 || x === 13) return shade(SPRUCE.concat(255), x % 2 ? 0.8 : 1);
+      if ((y % 4 === 1 || y % 4 === 2) && x > 3 && x < 12) return shade(SPRUCE.concat(255), (y % 4 === 1 ? 1.1 : 0.85) * (0.95 + r() * 0.1));
+      return null;
+    });
+  }
+
+  function vine() {
+    const r = rng('vine');
+    return paint(16, 16, (x, y) => {
+      const stem = Math.abs(x - (6 + Math.round(Math.sin(y * 0.6) * 3))) < 1;
+      if (stem) return shade([60, 96, 38], 0.9);
+      return r() < 0.3 ? shade([72, 116, 40], 0.75 + r() * 0.4) : null;
+    });
+  }
+
+  function landscape(side) {
+    const r = rng('painting' + side);
+    return paint(16, 16, (x, y) => {
+      const gx = x + side * 16;
+      if (y === 0 || y === 15 || (side === 0 && x === 0) || (side === 1 && x === 15)) return [92, 62, 34, 255];
+      const hill = 10 + Math.round(Math.sin(gx * 0.25) * 2 + Math.sin(gx * 0.11 + 1) * 1.5);
+      if (y > hill) return shade([86, 118, 52], 0.85 + r() * 0.2);
+      if (side === 1 && (x - 6) ** 2 + (y - 5) ** 2 < 6) return [250, 204, 110, 255];
+      return shade(y < 5 ? [120, 150, 196] : [214, 170, 132], 0.95 + r() * 0.08);
+    });
+  }
+
+  // Textures luma always draws itself, some from a base texture it was
+  // given, so they sit with whichever look is in use.
+  const pixels = c => c.getContext('2d').getImageData(0, 0, 16, 16).data;
+  const at = (d, x, y) => { const o = (y * 16 + x) * 4; return [d[o], d[o + 1], d[o + 2], 255]; };
+
+  function cabinetDoor(base) {
+    const d = pixels(base);
+    return paint(16, 16, (x, y) => {
+      const c = at(d, x, y);
+      if (x === 0 || x === 15) return shade(c, 0.55);
+      if (y === 0) return shade(c, 1.15);
+      if (y === 15) return shade(c, 0.5);
+      const inPanel = x >= 3 && x <= 12 && y >= 3 && y <= 12;
+      if (x === 2 && y >= 2 && y <= 13 || y === 2 && x >= 2 && x <= 13) return shade(c, 0.7);
+      if (x === 13 && y >= 2 && y <= 13 || y === 13 && x >= 2 && x <= 13) return shade(c, 1.2);
+      if ((x === 7 || x === 8) && y === 7) return [210, 172, 84, 255];
+      return shade(c, inPanel ? 0.9 : 1);
+    });
+  }
+
+  // A woven runner: a diamond lattice in madder red with cream and brown.
+  function rug(name, ground, line, accent) {
+    const r = rng(name);
+    return paint(16, 16, (x, y) => {
+      const dx = Math.abs(((x + 8) % 16) - 7.5), dy = Math.abs(((y + 8) % 16) - 7.5);
+      const d = dx + dy;
+      let c = ground;
+      if (Math.abs(d - 7) < 1) c = line;
+      else if (d < 2.5) c = accent;
+      else if (Math.abs(d - 4.5) < 0.6) c = shade(ground, 0.8);
+      return shade(c, 0.9 + r() * 0.12);
+    });
+  }
+
+  function rugBorder(name, ground, line) {
+    const r = rng(name);
+    return paint(16, 16, (x, y) => {
+      const c = y === 2 || y === 13 ? line : (y + x) % 4 === 0 && y > 4 && y < 11 ? line : ground;
+      return shade(c, 0.9 + r() * 0.12);
+    });
+  }
+
+  // An open page seen from above: ruled with lines of pale ink.
+  function bookPage() {
+    const r = rng('page');
+    return paint(16, 16, (x, y) => {
+      let c = [240, 230, 204, 255];
+      if (x === 0 || x === 15) c = [210, 196, 162, 255];
+      else if (y % 2 === 1 && y > 1 && y < 15 && x > 1 && x < 14) {
+        const end = 13 - Math.floor(rng('line' + y)() * 6);
+        if (x <= end && r() < 0.85) c = [150, 140, 128, 255];
+      }
+      return shade(c, 0.97 + r() * 0.04);
+    });
+  }
+
+  // Blank leather for the shelves' own books, tinted per book.
+  function spineDeco() {
+    const r = rng('spine_deco');
+    return paint(16, 16, (x, y) => {
+      if (y === 2 || y === 13) return [236, 196, 110, 255];
+      if (y === 5 && x > 4 && x < 11) return [220, 190, 120, 255];
+      const f = x === 0 || x === 15 ? 0.7 : 0.86 + r() * 0.12;
+      return [clamp(230 * f), clamp(230 * f), clamp(230 * f), 255];
+    });
+  }
+
+  function globe() {
+    const r = rng('globe');
+    const land = (x, y) => Math.sin(x * 0.9) + Math.cos(y * 1.3 + x * 0.4) + Math.sin((x + y) * 0.7) > 0.9;
+    return paint(16, 16, (x, y) => (land(x, y) ? shade([96, 140, 64], 0.85 + r() * 0.2) : shade([58, 104, 166], 0.9 + r() * 0.15)));
+  }
+
+  function clockFace() {
+    return paint(16, 16, (x, y) => {
+      const d = Math.hypot(x - 7.5, y - 7.5);
+      if (d > 7.6) return [60, 40, 22, 255];
+      if (d > 6.8) return [196, 160, 70, 255];
+      const a = Math.atan2(y - 7.5, x - 7.5);
+      const tick = Math.abs(((a / (Math.PI / 6)) % 1 + 1) % 1 - 0.5) > 0.4;
+      if (d > 5.2 && tick) return [50, 40, 34, 255];
+      return [238, 228, 200, 255];
+    });
+  }
+
+  function lampshade() {
+    const r = rng('shade');
+    return paint(16, 16, (x, y) => shade([236, 206, 150], (y % 4 === 0 ? 0.86 : 1) * (0.94 + r() * 0.08)));
+  }
+
+  function teacup() {
+    return paint(16, 16, (x, y) => (y < 3 ? [240, 240, 236, 255] : y < 5 ? [70, 104, 160, 255] : [236, 236, 230, 255]));
+  }
+
+  const DERIVED = {
+    cabinet_door: c => cabinetDoor(c.spruce_planks),
+    rug_red: () => rug('rug_red', [138, 38, 32, 255], [226, 206, 160, 255], [60, 44, 34, 255]),
+    rug_red_border: () => rugBorder('rug_red_b', [70, 40, 28, 255], [210, 170, 90, 255]),
+    rug_green: () => rug('rug_green', [58, 86, 52, 255], [214, 196, 150, 255], [140, 48, 36, 255]),
+    rug_green_border: () => rugBorder('rug_green_b', [40, 52, 34, 255], [200, 170, 100, 255]),
+    book_page: bookPage,
+    spine_deco: spineDeco,
+    globe,
+    clock_face: clockFace,
+    lampshade,
+    teacup,
+  };
+
   const PAINTERS = {
     leather,
     pages,
@@ -478,6 +654,22 @@
     feather,
     ink_sac: inkSac,
     iron_bars: ironBars,
+    calcite: () => plaster('calcite'),
+    stripped_dark_oak_log: () => logSide('stripped_dark_oak_log', [96, 70, 44], 0.85),
+    stripped_dark_oak_log_top: () => logTop('stripped_dark_oak_top', [96, 70, 44], [104, 78, 50]),
+    green_wool: () => wool('green_wool', [84, 109, 27]),
+    blue_wool: () => wool('blue_wool', [53, 57, 157]),
+    light_gray_wool: () => wool('light_gray_wool', [142, 142, 134]),
+    yellow_wool: () => wool('yellow_wool', [248, 197, 39]),
+    terracotta: () => wool('terracotta', [152, 94, 67]),
+    spruce_door_top: () => door(true),
+    spruce_door_bottom: () => door(false),
+    ladder,
+    vine,
+    flowering_azalea_leaves: () => leaves('flowering_azalea', [110, 132, 50]),
+    painting_left: () => landscape(0),
+    painting_right: () => landscape(1),
+    painting_small: () => plant('painting_small', [70, 110, 50], [196, 90, 150]),
   };
 
   // Vanilla sprites whose look depends on tint: leaves and grass are grey in
@@ -487,13 +679,21 @@
     spruce_leaves: [0.38, 0.6, 0.38],
     grass_block_top: [0.55, 0.74, 0.35],
     fern: [0.5, 0.72, 0.3],
+    vine: [0.42, 0.66, 0.26],
   };
 
-  function tinted(image, tint) {
+  // Some sheets are cut down: a painting split into one-block halves, and
+  // the lantern held on its first frame so its glow stays steady.
+  const CROP = {lantern: [0, 0, 1, 1 / 3]};
+
+  function tinted(image, tint, crop) {
     const canvas = document.createElement('canvas');
-    canvas.width = image.width; canvas.height = image.height;
+    const [fx, fy, fw, fh] = crop || [0, 0, 1, 1];
+    const sx = Math.round(image.width * fx), sy = Math.round(image.height * fy);
+    const sw = Math.round(image.width * fw), sh = Math.round(image.height * fh);
+    canvas.width = sw; canvas.height = sh;
     const ctx = canvas.getContext('2d');
-    ctx.drawImage(image, 0, 0);
+    ctx.drawImage(image, sx, sy, sw, sh, 0, 0, sw, sh);
     if (!tint) return canvas;
     const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
     for (let i = 0; i < data.data.length; i += 4) {
@@ -518,19 +718,20 @@
     const out = {};
     const vanilla = {};
     for (const name of Object.keys(PAINTERS)) {
-      const path = LIST[name];
+      const path = pathOf(LIST[name]);
       let path2 = path;
       if (name === 'chain' && !files[path] && files['textures/block/chain.png']) path2 = 'textures/block/chain.png';
       if (path2 && files[path2]) {
         const image = await loadImage('data:image/png;base64,' + files[path2]);
         if (image && image.width >= 16) {
-          out[name] = tinted(image, TINT[name]);
+          out[name] = tinted(image, TINT[name], LIST[name]?.crop || CROP[name]);
           vanilla[name] = true;
           continue;
         }
       }
       out[name] = PAINTERS[name]();
     }
+    for (const [name, make] of Object.entries(DERIVED)) out[name] = make(out);
     return {canvases: out, vanilla};
   }
 
@@ -588,7 +789,7 @@
   }
 
   window.LibraryTextures = {
-    wanted: () => [...new Set([...Object.values(LIST), ...EXTRA])],
+    wanted: () => [...new Set([...Object.values(LIST).map(pathOf), ...EXTRA])],
     resolve,
     buildAtlas,
     paint,
