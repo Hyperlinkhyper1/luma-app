@@ -38,6 +38,7 @@ class PagodaTestPage extends StatefulWidget {
 /// model name as its own vendor.
 String? pagodaVendorKey(String model) {
   final m = model.toLowerCase();
+  if (m.contains('space bunny')) return 'spacebunny';
   if (m.contains('step 5') || m.contains('stepfun')) return 'stepfun';
   if (m.contains('mistral')) return 'mistralai';
   if (m.contains('nemotron')) return 'nvidia';
@@ -73,6 +74,8 @@ String? pagodaVendorKey(String model) {
 String pagodaVendorName(String model) {
   final m = model;
   switch (pagodaVendorKey(model)) {
+    case 'spacebunny':
+      return 'Space Bunny';
     case 'stepfun':
       return 'StepFun';
     case 'anthropic':
@@ -122,6 +125,9 @@ String pagodaVendorName(String model) {
 /// constant. Mistral returns three colors (yellow/orange/red blocks).
 List<Color> pagodaBrandStops(String model) {
   final m = model.toLowerCase();
+  if (m.contains('space bunny')) {
+    return const [Color(0xFF7C5CFF), Color(0xFF2DD4BF)];
+  }
   if (m.contains('step 5') || m.contains('stepfun')) {
     return [vendorColor('stepfun')];
   }
@@ -179,7 +185,21 @@ List<Color> pagodaBrandStops(String model) {
 }
 
 class _PagodaTestPageState extends State<PagodaTestPage> {
-  static const _nativeModelIds = {'pagoda_gpt6_luna_low', 'pagoda_step5'};
+  static const _nativeModelIds = {
+    'pagoda_gpt6_luna_low',
+    'pagoda_step5',
+    'pagoda_space_bunny_xhigh',
+    'pagoda_sonnet55_xhigh',
+  };
+
+  /// Bundled scenes, by benchmark id. These ship in the app rather than on
+  /// the luma server, so they are opened straight off disk.
+  static const _nativeAssetPaths = <String, String>{
+    'pagoda_gpt6_luna_low': 'assets/pagoda_gpt6_luna_low.html',
+    'pagoda_step5': 'assets/tests/pagoda_step5.html',
+    'pagoda_space_bunny_xhigh': 'assets/tests/pagoda_space_bunny.html',
+    'pagoda_sonnet55_xhigh': 'assets/tests/pagoda_sonnet55_xhigh.html',
+  };
   String? _selectedId;
   bool _bannerView = false;
   final _searchController = TextEditingController();
@@ -228,6 +248,25 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
             kind: 'pagoda',
             model: 'GPT 6 Luna (Low)',
             description: 'Independent voxel garden benchmark',
+            sizeBytes: 0,
+            sha256: '',
+          ),
+          const AiBenchmark(
+            id: 'pagoda_space_bunny_xhigh',
+            kind: 'pagoda',
+            model: 'Space Bunny (Xhigh)',
+            description: 'Independent voxel garden benchmark — flying island, '
+                'sky waterfalls and a five-storey pagoda',
+            sizeBytes: 0,
+            sha256: '',
+          ),
+          const AiBenchmark(
+            id: 'pagoda_sonnet55_xhigh',
+            kind: 'pagoda',
+            model: 'Sonnet 5.5 (Xhigh)',
+            description: 'Sonnet 5.5 at extra-high reasoning effort — a '
+                'floating garden island with a waterfall and a five-storey '
+                'pagoda',
             sizeBytes: 0,
             sha256: '',
           ),
@@ -423,9 +462,8 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
       body: _nativeModelIds.contains(benchmark.id)
           ? _SceneWebview(
               path: windowsAssetPath(
-                benchmark.id == 'pagoda_step5'
-                    ? 'assets/tests/pagoda_step5.html'
-                    : 'assets/pagoda_gpt6_luna_low.html',
+                _nativeAssetPaths[benchmark.id] ??
+                    'assets/tests/pagoda_space_bunny.html',
               ),
             )
           : FutureBuilder<File>(

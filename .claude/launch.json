@@ -81,6 +81,15 @@
       ],
       "port": 8127,
       "autoPort": true
+    },
+    {
+      "name": "text-library-scene",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "-e",
+        "const h=require('http'),f=require('fs'),p=require('path'),os=require('os');const d=p.resolve('assets');const mc=process.env.MC_DIR||p.join(os.tmpdir(),'luma-mc');const T={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.png':'image/png'};h.createServer((q,s)=>{let u=decodeURIComponent(q.url.split('?')[0]);if(u==='/')u='/text_library/scene/index.html';let root=d;if(u.startsWith('/mc/')){root=mc;u=u.slice(3)}const fp=p.join(root,u);if(!fp.startsWith(root)){s.writeHead(403);return s.end()}f.readFile(fp,(e,b)=>{if(e){s.writeHead(404);return s.end('not found')}s.writeHead(200,{'Cache-Control':'no-store','Content-Type':T[p.extname(fp)]||'application/octet-stream'});s.end(b)})}).listen(8128,()=>console.log('text library scene on 8128'))"
+      ],
+      "port": 8128
     }
   ]
 }

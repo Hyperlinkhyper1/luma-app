@@ -6,13 +6,19 @@ import 'package:flutter/services.dart';
 import '../../../../app/widgets.dart';
 import '../../../../settings/settings_controller.dart';
 import '../../../../settings/settings_scope.dart';
+import '../../../../sync/sync_scope.dart';
 import '../../../../theme/luma_theme.dart';
 import 'ai_detector_engine.dart';
+import 'ai_review_api.dart';
 
 /// The AI Detector plugin: paste text, run a purely statistical style
 /// analysis over it, and get a score plus the list of signals that fired —
 /// each with the exact evidence from the text, and every flagged stretch
-/// painted back onto the source. Nothing leaves the device.
+/// painted back onto the source. That part never leaves the device.
+///
+/// Once a text is reviewed, an optional "Deep check" sends it to the luma
+/// server, where the model and instructions picked in the admin dashboard
+/// judge where and how it reads AI-generated — see [AiReviewApi].
 class AiDetectorPage extends StatefulWidget {
   const AiDetectorPage({super.key});
 
@@ -29,6 +35,14 @@ class _AiDetectorPageState extends State<AiDetectorPage> {
   String? _error;
   int _tab = 0;
   int _words = 0;
+
+  AiReview? _aiReview;
+  String? _aiError;
+  bool _aiBusy = false;
+
+  /// Bumped whenever the reviewed text changes, so a deep check that comes
+  /// back after a new Review or Clear is dropped instead of shown.
+  int _aiRun = 0;
 
   @override
   void initState() {
@@ -81,6 +95,7 @@ class _AiDetectorPageState extends State<AiDetectorPage> {
       _report = AiDetectorEngine.analyze(text);
       _tab = 0;
       _error = null;
+      _resetDeepCheck();
     });
   }
 
@@ -91,10 +106,65 @@ class _AiDetectorPageState extends State<AiDetectorPage> {
       _analysed = null;
       _error = null;
       _tab = 0;
+      _resetDeepCheck();
+    });
+  }
+
+  void _resetDeepCheck() {
+    _aiRun++;
+    _aiReview = null;
+    _aiError = null;
+    _aiBusy = false;
+  }
+
+  Future<void> _deepCheck() async {
+    final text = _analysed;
+    final sync = SyncScope.maybeOf(context);
+    final baseUrl = sync?.serverUrl;
+    if (text == null || _aiBusy) return;
+    if (sync == null || !sync.serverReady || baseUrl == null) {
+      setState(() => _aiError =
+          'Sign in to an approved luma account to use the deep check.');
+      return;
+    }
+    final run = ++_aiRun;
+    setState(() {
+      _aiBusy = true;
+      _aiError = null;
+    });
+    final api = AiReviewApi(baseUrl, token: sync.authToken);
+    AiReview? review;
+    String? error;
+    try {
+      review = await api.review(text);
+    } on AiReviewException catch (e) {
+      error = e.message;
+    } finally {
+      api.close();
+    }
+    if (!mounted || run != _aiRun) return;
+    setState(() {
+      _aiBusy = false;
+      _aiReview = review;
+      _aiError = error;
     });
   }
 
   static int _countWords(String text) => RegExp(r'\S+').allMatches(text).length;
+
+  Widget _deepCheckCard() {
+    final sync = SyncScope.maybeOf(context);
+    Widget card() => _DeepCheckCard(
+          text: _analysed!,
+          available: sync?.serverReady ?? false,
+          busy: _aiBusy,
+          review: _aiReview,
+          error: _aiError,
+          onRun: _deepCheck,
+        );
+    if (sync == null) return card();
+    return ListenableBuilder(listenable: sync, builder: (_, _) => card());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -155,6 +225,8 @@ class _AiDetectorPageState extends State<AiDetectorPage> {
                           )
                         else
                           _SignalsView(report: report),
+                        const SizedBox(height: 16),
+                        _deepCheckCard(),
                       ],
                     ),
                   ),
@@ -166,7 +238,8 @@ class _AiDetectorPageState extends State<AiDetectorPage> {
                   'writing can look machine-like; edited machine output can '
                   'look human. A named verdict rests on a signature the text '
                   'carries itself, and a signature can be stripped or forged. '
-                  'Your text never leaves this device.',
+                  'The review runs on this device; only a deep check sends '
+                  'the text to the luma server, and only when you ask.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: luma.textMuted,
@@ -707,6 +780,290 @@ class _GaugePainter extends CustomPainter {
   @override
   bool shouldRepaint(_GaugePainter old) =>
       old.score != score || old.color != color || old.track != track;
+}
+
+// ---- deep check -------------------------------------------------------------
+
+/// The optional server-side review: offered after the on-device one, run
+/// only on request, and shown as a score, a summary and the passages the
+/// model pointed at — each painted onto the text with its reason.
+class _DeepCheckCard extends StatelessWidget {
+  const _DeepCheckCard({
+    required this.text,
+    required this.available,
+    required this.busy,
+    required this.review,
+    required this.error,
+    required this.onRun,
+  });
+
+  final String text;
+  final bool available;
+  final bool busy;
+  final AiReview? review;
+  final String? error;
+  final VoidCallback onRun;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final review = this.review;
+    return LumaCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              LumaIconBadge(
+                icon: Icons.psychology_alt_rounded,
+                color: luma.accent,
+                size: 38,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Deep check with luma AI',
+                      style: TextStyle(
+                        color: luma.textPrimary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      available
+                          ? 'An AI model reads the text and points out where '
+                              'and how it reads AI-generated. Sends the text '
+                              'to the luma server.'
+                          : 'Sign in to an approved luma account to have an '
+                              'AI model review this text.',
+                      style: TextStyle(
+                        color: luma.textMuted,
+                        fontSize: 12,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              LumaPrimaryButton(
+                label: review == null ? 'Deep check' : 'Run again',
+                icon: Icons.cloud_upload_outlined,
+                loading: busy,
+                onTap: available && !busy ? onRun : null,
+              ),
+            ],
+          ),
+          if (error != null) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(Icons.error_outline_rounded, size: 15, color: luma.danger),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    error!,
+                    style: TextStyle(color: luma.danger, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          if (review != null) ...[
+            const SizedBox(height: 16),
+            _DeepCheckResult(text: text, review: review),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+Color _likelihoodColor(BuildContext context, int likelihood) {
+  final luma = context.luma;
+  if (likelihood < 38) return luma.success;
+  if (likelihood < 58) return luma.warning;
+  return luma.danger;
+}
+
+class _DeepCheckResult extends StatelessWidget {
+  const _DeepCheckResult({required this.text, required this.review});
+
+  final String text;
+  final AiReview review;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final color = _likelihoodColor(context, review.score);
+    final located = review.passages
+        .where((p) => p.located && p.end! <= text.length)
+        .toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${review.score}',
+              style: TextStyle(
+                color: color,
+                fontSize: 34,
+                fontWeight: FontWeight.w700,
+                height: 1,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    review.verdict,
+                    style: TextStyle(
+                      color: luma.textPrimary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  if (review.summary.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      review.summary,
+                      style: TextStyle(
+                        color: luma.textSecondary,
+                        fontSize: 12.5,
+                        height: 1.45,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+        if (located.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: luma.background,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: luma.border),
+            ),
+            child: SelectableText.rich(
+              TextSpan(
+                children: _spans(context, located),
+                style: TextStyle(
+                  color: luma.textSecondary,
+                  fontSize: 13.5,
+                  height: 1.7,
+                ),
+              ),
+            ),
+          ),
+        ],
+        for (final (i, p) in review.passages.indexed) ...[
+          SizedBox(height: i == 0 ? 14 : 10),
+          _PassageTile(passage: p),
+        ],
+      ],
+    );
+  }
+
+  List<TextSpan> _spans(BuildContext context, List<AiReviewPassage> passages) {
+    final luma = context.luma;
+    final spans = <TextSpan>[];
+    var cursor = 0;
+    for (final p in passages) {
+      final start = math.max(p.start!, cursor);
+      if (start >= p.end!) continue;
+      if (start > cursor) {
+        spans.add(TextSpan(text: text.substring(cursor, start)));
+      }
+      final color = _likelihoodColor(context, p.likelihood);
+      spans.add(TextSpan(
+        text: text.substring(start, p.end!),
+        style: TextStyle(
+          color: luma.textPrimary,
+          backgroundColor: color.withValues(alpha: 0.2),
+          decoration: TextDecoration.underline,
+          decorationColor: color,
+        ),
+        semanticsLabel:
+            '${p.likelihood}% AI-likely: ${text.substring(start, p.end!)}',
+      ));
+      cursor = p.end!;
+    }
+    if (cursor < text.length) spans.add(TextSpan(text: text.substring(cursor)));
+    return spans;
+  }
+}
+
+class _PassageTile extends StatelessWidget {
+  const _PassageTile({required this.passage});
+
+  final AiReviewPassage passage;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final color = _likelihoodColor(context, passage.likelihood);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: luma.background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.45)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  '“${passage.quote}”',
+                  style: TextStyle(
+                    color: luma.textPrimary,
+                    fontSize: 12.5,
+                    fontStyle: FontStyle.italic,
+                    height: 1.45,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              _Chip(
+                icon: Icons.smart_toy_outlined,
+                label: '${passage.likelihood}%',
+                color: color,
+              ),
+            ],
+          ),
+          if (passage.reason.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              passage.reason,
+              style: TextStyle(
+                color: luma.textSecondary,
+                fontSize: 12,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
 
 // ---- highlights -------------------------------------------------------------

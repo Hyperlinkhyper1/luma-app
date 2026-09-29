@@ -8,6 +8,7 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 
 import 'ai_benchmark_store.dart';
+import 'ai_detector_review.dart';
 import 'ai_mode_routing.dart';
 import 'ai_model_catalog.dart';
 import 'ai_model_refresh.dart';
@@ -500,6 +501,7 @@ class Api {
       ..post('/api/v1/ai/mistral/chat', _requireAuth(_mistralChatProxy))
       ..post('/api/v1/ai/google/chat', _requireAuth(_googleChatProxy))
       ..post('/api/v1/ai/web-search', _requireAuth(_webSearch))
+      ..post('/api/v1/ai/detect', _requireAuth(_aiDetect))
       ..get('/api/v1/steam/itad/status', _requireAuth(_itadStatus))
       ..get('/api/v1/steam/itad/lookup', _requireAuth(_itadLookupProxy))
       ..get('/api/v1/steam/itad/history', _requireAuth(_itadHistoryProxy))
@@ -607,6 +609,8 @@ class Api {
       ..get('/admin/ai-models/status', _requireAdmin(_adminAiModelsStatus))
       ..post('/admin/ai-routes', _requireAdmin(_adminAiRoutesSave))
       ..post('/admin/ai-routes/test', _requireAdmin(_adminAiRoutesTest))
+      ..post('/admin/ai-detector', _requireAdmin(_adminAiDetectorSave))
+      ..post('/admin/ai-detector/test', _requireAdmin(_adminAiDetectorTest))
       ..post('/admin/benchmark-banners/render',
           _requireAdmin(_adminBannersRender))
       ..post('/admin/benchmark-banners/stop', _requireAdmin(_adminBannersStop))
@@ -749,7 +753,8 @@ class Api {
     if (path.startsWith('api/v1/auth/') && !path.endsWith('/logout')) {
       return ('a', _authLimiter);
     }
-    if (path.startsWith('api/v1/ai/') && path.endsWith('/chat')) {
+    if (path.startsWith('api/v1/ai/') &&
+        (path.endsWith('/chat') || path == 'api/v1/ai/detect')) {
       return ('ai', _aiChatLimiter);
     }
     if (path == 'api/v1/ai/web-search') {
@@ -2236,6 +2241,20 @@ class Api {
   late final AiModeRoutingStore aiModeRoutes =
       AiModeRoutingStore(config.dataDir);
 
+  /// The AI Detector plugin's reviewer model and its instructions, set on
+  /// the same Assistant tab.
+  late final AiDetectorConfigStore aiDetectorConfig =
+      AiDetectorConfigStore(config.dataDir);
+
+  /// The route the AI Detector is served by: the operator's pick when its
+  /// provider still has a key, otherwise whatever Nebula runs on.
+  AiModeRoute? _aiDetectorRoute() {
+    final configured = config.configuredAiUpstreams;
+    final chosen = aiDetectorConfig.config.route;
+    if (chosen != null && configured.contains(chosen.upstream)) return chosen;
+    return aiModeRoutes.resolve('smarter', configured);
+  }
+
   List<String>? _googleModelIdsCache;
   int _googleModelIdsFetchedAtMs = 0;
   static const _aiModelSuggestionsTtl = Duration(minutes: 15);
@@ -2676,6 +2695,255 @@ class Api {
       });
     }
   }
+
+  /// Sends [text] to [route] under the detector [instructions]. Returns the
+  /// upstream status, the parsed verdict (null when the reply was unusable),
+  /// an error message for the operator, and the tokens the call cost.
+  Future<
+      ({
+        int status,
+        AiDetectorVerdict? verdict,
+        String? error,
+        int tokens
+      })> _runAiDetector(
+      AiModeRoute route, String instructions, String text) async {
+    final (status, responseBody) = await _callAiUpstream(
+        route,
+        _aiUpstreamBody({
+          'messages': aiDetectorMessages(instructions, text),
+          'max_tokens': 3000,
+          'temperature': 0.2,
+        }, route));
+    var tokens = 0;
+    String? content;
+    String? error;
+    try {
+      final decoded = jsonDecode(responseBody);
+      if (decoded is Map) {
+        tokens = (decoded['usage']?['total_tokens'] as num?)?.toInt() ?? 0;
+        content = decoded['choices']?[0]?['message']?['content'] as String?;
+        final upstreamError = decoded['error'];
+        if (upstreamError is Map) {
+          error = upstreamError['message']?.toString();
+        } else if (upstreamError is String) {
+          error = upstreamError;
+        }
+      }
+    } catch (_) {}
+    if (status != HttpStatus.ok) {
+      return (
+        status: status,
+        verdict: null,
+        error: error ?? 'The provider returned HTTP $status.',
+        tokens: tokens,
+      );
+    }
+    final verdict =
+        content == null ? null : parseAiDetectorReply(content, text);
+    return (
+      status: status,
+      verdict: verdict,
+      error: verdict == null
+          ? 'The model did not answer in the expected JSON shape.'
+          : null,
+      tokens: tokens,
+    );
+  }
+
+  /// The AI Detector plugin's "Deep check": the operator's chosen model
+  /// reviews the user's text and says where and how it reads AI-generated.
+  /// Metered against the user's Aurora token budget, like a chat turn.
+  Future<Response> _aiDetect(Request request, StoredUser user) async {
+    final route = _aiDetectorRoute();
+    if (route == null) {
+      return errorResponse(
+          404, 'not_configured', 'No server-wide Luma AI key is configured.');
+    }
+    Map<String, dynamic> body;
+    try {
+      body = await _readJson(request);
+    } on FormatException {
+      return errorResponse(400, 'bad_request', 'Malformed request.');
+    }
+    final raw = body['text'];
+    final text = raw is String ? raw.trim() : '';
+    if (text.isEmpty) {
+      return errorResponse(400, 'bad_request', 'text is required.');
+    }
+    if (text.length > kAiDetectorMaxChars) {
+      return errorResponse(400, 'too_long',
+          'That text is too long for a deep check — keep it under about 3,000 words.');
+    }
+    const meteredMode = 'normal';
+    final budget = aiTokenBudget(user.planId, meteredMode);
+    if (aiUsage.tokensUsed(user.id, const Duration(hours: 5),
+                mode: meteredMode) >=
+            budget.fiveHour ||
+        aiUsage.tokensUsed(user.id, const Duration(days: 7),
+                mode: meteredMode) >=
+            budget.weekly) {
+      return errorResponse(
+          429,
+          'usage_limit',
+          "You've hit your Luma AI usage limit for now — it frees up again "
+              'over time.');
+    }
+    try {
+      final result = await _runAiDetector(
+          route, aiDetectorConfig.config.effectiveInstructions, text);
+      if (result.status == HttpStatus.ok) {
+        await aiUsage.recordTokens(
+            user.id, result.tokens > 0 ? result.tokens : 1500,
+            mode: meteredMode);
+      }
+      final verdict = result.verdict;
+      if (verdict == null) {
+        return errorResponse(502, 'upstream_error',
+            'The AI review did not come back in a usable form. Try again.');
+      }
+      return jsonResponse(200, verdict.toJson());
+    } catch (_) {
+      return errorResponse(
+          502, 'upstream_error', 'Could not reach the AI service.');
+    }
+  }
+
+  /// Saves the Assistant tab's AI Detector card. A blank model falls back
+  /// to Nebula's route; blank or "reset" instructions fall back to the
+  /// built-in ones.
+  Future<Response> _adminAiDetectorSave(Request request) async {
+    Map<String, String> form = const {};
+    try {
+      form = Uri.splitQueryString(await request.readAsString());
+    } catch (_) {}
+    AiModeRoute? route;
+    final model = (form['detector.model'] ?? '').trim();
+    if (model.isNotEmpty) {
+      final upstream = AiUpstream.parse(form['detector.upstream']);
+      if (upstream == null) {
+        return errorResponse(
+            400, 'bad_request', 'Unknown provider for the AI Detector.');
+      }
+      if (!isValidAiModelId(model)) {
+        return errorResponse(
+            400, 'bad_request', '"$model" is not a valid model id.');
+      }
+      final effort = form['detector.effort'] ?? '';
+      if (!kAiReasoningEfforts.contains(effort)) {
+        return errorResponse(400, 'bad_request',
+            'Unknown reasoning effort for the AI Detector.');
+      }
+      route = AiModeRoute(upstream, model,
+          reasoningEffort: effort.isEmpty ? null : effort);
+    }
+    var instructions = (form['detector.instructions'] ?? '')
+        .replaceAll('\r\n', '\n')
+        .trim();
+    if (instructions.length > kAiDetectorMaxInstructionChars) {
+      return errorResponse(400, 'bad_request',
+          'Instructions are limited to $kAiDetectorMaxInstructionChars characters.');
+    }
+    if (form['detector.reset'] == '1' ||
+        instructions == kDefaultAiDetectorInstructions.trim()) {
+      instructions = '';
+    }
+    final saved = AiDetectorConfig(
+        route: route, instructions: instructions.isEmpty ? null : instructions);
+    await aiDetectorConfig.save(saved);
+    await store.logActivity(
+        'ai_routes_changed',
+        'AI Detector model → ${route?.model ?? 'Nebula default'}, '
+            '${saved.instructions == null ? 'default' : 'custom'} instructions');
+    return _adminFormResponse(request, '/admin',
+        fragment: 'assistant', json: {'ok': true, ...saved.toJson()});
+  }
+
+  /// Runs the AI Detector card's current (unsaved) model and instructions
+  /// over a sample text, so the operator sees the verdict users would get.
+  Future<Response> _adminAiDetectorTest(Request request) async {
+    Map<String, dynamic> body;
+    try {
+      body = await _readJson(request);
+    } on FormatException {
+      return errorResponse(400, 'bad_request', 'Malformed request.');
+    }
+    AiModeRoute? route;
+    final modelInput = body['model'];
+    if (modelInput is String && modelInput.trim().isNotEmpty) {
+      final upstreamValue = body['upstream'];
+      final upstream =
+          AiUpstream.parse(upstreamValue is String ? upstreamValue : null);
+      final model = modelInput.trim();
+      if (upstream == null || !isValidAiModelId(model)) {
+        return errorResponse(
+            400, 'bad_request', 'Choose a valid provider and model ID.');
+      }
+      final effort = body['reasoningEffort'];
+      if (!config.configuredAiUpstreams.contains(upstream)) {
+        return jsonResponse(200, {
+          'ok': false,
+          'upstream': upstream.label,
+          'model': model,
+          'error': 'No API key is configured for ${upstream.label}.',
+        });
+      }
+      route = AiModeRoute(upstream, model,
+          reasoningEffort: effort is String &&
+                  effort.isNotEmpty &&
+                  kAiReasoningEfforts.contains(effort)
+              ? effort
+              : null);
+    } else {
+      route = aiModeRoutes.resolve('smarter', config.configuredAiUpstreams);
+    }
+    if (route == null) {
+      return errorResponse(404, 'not_configured',
+          'Set an API key for Google AI Studio, OpenRouter, or Mistral first.');
+    }
+    final instructionsInput = body['instructions'];
+    final instructions =
+        instructionsInput is String && instructionsInput.trim().isNotEmpty
+            ? instructionsInput
+            : kDefaultAiDetectorInstructions;
+    final sampleInput = body['text'];
+    final sample = sampleInput is String && sampleInput.trim().isNotEmpty
+        ? sampleInput.trim()
+        : _aiDetectorSample;
+    if (sample.length > kAiDetectorMaxChars) {
+      return errorResponse(400, 'bad_request', 'The sample text is too long.');
+    }
+    final started = DateTime.now();
+    try {
+      final result = await _runAiDetector(route, instructions, sample);
+      return jsonResponse(200, {
+        'ok': result.verdict != null,
+        'status': result.status,
+        'upstream': route.upstream.label,
+        'model': route.model,
+        'ms': DateTime.now().difference(started).inMilliseconds,
+        'error': result.error,
+        if (result.verdict != null) 'result': result.verdict!.toJson(),
+      });
+    } catch (e) {
+      return jsonResponse(200, {
+        'ok': false,
+        'upstream': route.upstream.label,
+        'model': route.model,
+        'error': 'Could not reach ${route.upstream.label}: $e',
+      });
+    }
+  }
+
+  /// Half a human paragraph, half stock assistant prose — the dashboard's
+  /// default AI Detector test, so a working setup shows both kinds.
+  static const _aiDetectorSample =
+      'Went to the allotment after work, the courgettes have gone mad again '
+      'and Pete from plot 9 still hasn\'t fixed the gate, so I tied it shut '
+      'with baler twine like an idiot. In today\'s fast-paced world, '
+      'gardening offers a unique opportunity to reconnect with nature. It\'s '
+      'important to note that cultivating a garden is not just a hobby — '
+      'it\'s a testament to patience, resilience and growth. Furthermore, '
+      'it fosters a rich tapestry of community connections.';
 
   Response _itadStatus(Request request, StoredUser user) =>
       jsonResponse(200, {'configured': config.itadKeyConfigured});
@@ -9278,6 +9546,21 @@ syncToolbar();
         'max-width:260px;text-align:right}'
         '.ai-test-out.ok{color:#7ee08a}.ai-test-out.err{color:#e07e7e}'
         '.ai-browse{margin-top:6px;white-space:nowrap}'
+        '.ai-routes textarea{width:100%;min-height:260px;resize:vertical;'
+        'background:#1a1530;color:#ece8f7;border:1px solid #2d2645;'
+        'border-radius:9px;padding:10px 12px;outline:none;line-height:1.5;'
+        'font:12.5px/1.5 ui-monospace,Consolas,monospace}'
+        '.ai-routes textarea:focus{border-color:#8a7ee0}'
+        '.ai-detector-grid{display:grid;grid-template-columns:repeat(auto-fit,'
+        'minmax(230px,1fr));gap:12px;margin-bottom:14px;align-items:start}'
+        '.ai-detector-grid label,.ai-detector-label{display:block;font-size:11px;'
+        'letter-spacing:.05em;text-transform:uppercase;color:#8d86a8;margin-bottom:6px}'
+        '.ai-detector-grid select{width:100%}'
+        '.ai-detector-out{margin-top:14px;font-size:12.5px;white-space:normal}'
+        '.ai-detector-out.err{color:#e07e7e}'
+        '.ai-detector-out ol{margin:8px 0 0;padding-left:20px}'
+        '.ai-detector-out li{margin-bottom:6px}'
+        '.ai-detector-out q{color:#ece8f7}'
         '.ai-picker{background:#151122;color:#ece8f7;border:1px solid #2d2645;'
         'border-radius:16px;padding:0;width:min(1120px,calc(100vw - 24px));'
         'max-height:calc(100dvh - 24px);box-shadow:0 24px 64px #0009}'
@@ -9345,6 +9628,101 @@ syncToolbar();
         '</dialog>'
         '<script type="application/json" id="aiPickerData">$pickerJson</script>'
         '</div>'
+        '${_adminAiDetectorCard(configured)}'
+        '</div>';
+  }
+
+  /// The Assistant tab's AI Detector card: which model the AI Detector
+  /// plugin's deep check runs on, and the instructions it judges by. Its
+  /// fields use the `detector` mode name so the model browser and the
+  /// provider → suggestions swap work on it unchanged.
+  String _adminAiDetectorCard(Set<AiUpstream> configured) {
+    String esc(String s) => _htmlEscape(s).replaceAll('"', '&quot;');
+    final saved = aiDetectorConfig.config;
+    final stored = saved.route;
+    final live = _aiDetectorRoute();
+    final upstream = stored?.upstream ??
+        live?.upstream ??
+        (configured.isEmpty ? AiUpstream.google : configured.first);
+    final upstreamOptions = AiUpstream.values.map((u) {
+      final hasKey = configured.contains(u);
+      return '<option value="${u.name}"${u == upstream ? ' selected' : ''}>'
+          '${esc(u.label)}${hasKey ? '' : ' (no key)'}</option>';
+    }).join();
+    final effortOptions = kAiReasoningEfforts.map((r) {
+      final label = r.isEmpty ? "Model's default" : r;
+      return '<option value="$r"'
+          '${(stored?.reasoningEffort ?? '') == r ? ' selected' : ''}>'
+          '$label</option>';
+    }).join();
+    final String status;
+    if (live == null) {
+      status = '<span class="badge err">no key</span>';
+    } else if (stored != null && stored.upstream != live.upstream) {
+      status = '<span class="badge warn">key missing — using Nebula\'s '
+          '${esc(live.model)}</span>';
+    } else if (stored == null) {
+      status = '<span class="badge warn">same as Nebula · '
+          '${esc(live.model)}</span>';
+    } else {
+      status = '<span class="badge ok">custom</span>';
+    }
+    final instructionsBadge = saved.instructions == null
+        ? '<span class="badge warn">built-in</span>'
+        : '<span class="badge ok">custom</span>';
+    return '<div class="card" style="margin-top:18px">'
+        '<h2>AI Detector model</h2>'
+        '<div class="maint-desc">The model behind the AI Detector plugin\'s '
+        '"Deep check". It reads the user\'s text with the instructions below '
+        'and answers with an overall score plus the exact passages that read '
+        'AI-generated, and why. The answer format is added automatically '
+        'after your instructions, so you only need to describe how to judge. '
+        'Each check counts against the user\'s Aurora usage limit.</div>'
+        '<form method="post" action="/admin/ai-detector" class="ai-routes" '
+        'id="aiDetectorForm">'
+        '<div class="ai-detector-grid">'
+        '<div><label for="ai-upstream-detector">Provider</label>'
+        '<select name="detector.upstream" id="ai-upstream-detector" '
+        'class="ai-upstream" data-mode="detector">$upstreamOptions</select></div>'
+        '<div><label for="ai-model-detector">Model</label>'
+        '<input type="text" name="detector.model" id="ai-model-detector" '
+        'list="ai-dl-${upstream.name}" value="${esc(stored?.model ?? '')}" '
+        'placeholder="${esc(live?.model ?? 'same as Nebula')}" maxlength="200" '
+        'spellcheck="false" autocomplete="off">'
+        '<button type="button" class="btn btn-ghost btn-sm ai-browse" '
+        'data-mode="detector">Browse models</button></div>'
+        '<div><label for="ai-effort-detector">Reasoning</label>'
+        '<select name="detector.effort" id="ai-effort-detector">'
+        '$effortOptions</select></div>'
+        '<div><span class="ai-detector-label">Status</span>$status</div>'
+        '</div>'
+        '<div style="display:flex;justify-content:space-between;align-items:center;'
+        'gap:8px;margin-bottom:6px"><label class="ai-detector-label" '
+        'for="ai-detector-instructions" style="margin:0">Instructions '
+        '$instructionsBadge</label>'
+        '<button type="button" class="btn btn-ghost btn-sm" '
+        'id="aiDetectorReset">Restore built-in</button></div>'
+        '<textarea name="detector.instructions" id="ai-detector-instructions" '
+        'maxlength="$kAiDetectorMaxInstructionChars" spellcheck="false">'
+        '${esc(saved.effectiveInstructions)}</textarea>'
+        '<input type="hidden" name="detector.reset" id="ai-detector-reset" value="0">'
+        '<template id="aiDetectorDefault">${esc(kDefaultAiDetectorInstructions)}</template>'
+        '<details style="margin-top:12px"><summary class="muted" '
+        'style="cursor:pointer;font-size:12px">Test text (optional — a mixed '
+        'human/AI sample is used when empty)</summary>'
+        '<textarea id="ai-detector-sample" style="min-height:120px;margin-top:8px" '
+        'maxlength="$kAiDetectorMaxChars" placeholder="${esc(_aiDetectorSample)}">'
+        '</textarea></details>'
+        '<div class="maint-actions" style="margin:16px 0 0">'
+        '<button type="submit" class="btn btn-primary">Save detector</button>'
+        '<button type="button" class="btn btn-ghost" id="aiDetectorTest">'
+        'Test</button>'
+        '<span class="muted" style="font-size:12px">Test runs the current, '
+        'unsaved model and instructions. Leave the model blank to follow '
+        'Nebula.</span>'
+        '</div>'
+        '<div class="ai-detector-out muted" id="aiDetectorOut"></div>'
+        '</form>'
         '</div>';
   }
 
@@ -9499,6 +9877,77 @@ syncToolbar();
         .finally(function () { btn.disabled = false; });
     });
   });
+  var detectorForm = document.getElementById('aiDetectorForm');
+  if (detectorForm) {
+    var instructions = document.getElementById('ai-detector-instructions');
+    var resetFlag = document.getElementById('ai-detector-reset');
+    var detectorOut = document.getElementById('aiDetectorOut');
+    document.getElementById('aiDetectorReset').addEventListener('click', function () {
+      instructions.value =
+        document.getElementById('aiDetectorDefault').content.textContent.trim();
+      resetFlag.value = '1';
+    });
+    instructions.addEventListener('input', function () { resetFlag.value = '0'; });
+    var testBtn = document.getElementById('aiDetectorTest');
+    testBtn.addEventListener('click', function () {
+      testBtn.disabled = true;
+      detectorOut.className = 'ai-detector-out muted';
+      detectorOut.textContent = 'Reviewing the test text…';
+      fetch('/admin/ai-detector/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          upstream: document.getElementById('ai-upstream-detector').value,
+          model: document.getElementById('ai-model-detector').value,
+          reasoningEffort: document.getElementById('ai-effort-detector').value,
+          instructions: instructions.value,
+          text: document.getElementById('ai-detector-sample').value,
+        }),
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          var who = (j.upstream || '') + ' · ' + (j.model || '');
+          detectorOut.replaceChildren();
+          if (!j.ok || !j.result) {
+            detectorOut.className = 'ai-detector-out err';
+            detectorOut.textContent = '✗ ' + who +
+              (j.status ? ' (' + j.status + ')' : '') + ': ' +
+              (j.error || j.message || 'failed');
+            return;
+          }
+          var res = j.result;
+          detectorOut.className = 'ai-detector-out';
+          var head = document.createElement('div');
+          var strong = document.createElement('strong');
+          strong.textContent = res.score + '/100 · ' + res.verdict;
+          head.appendChild(strong);
+          head.appendChild(document.createTextNode(
+            '  —  ' + who + ', ' + j.ms + ' ms'));
+          detectorOut.appendChild(head);
+          var summary = document.createElement('div');
+          summary.className = 'muted';
+          summary.textContent = res.summary;
+          detectorOut.appendChild(summary);
+          var list = document.createElement('ol');
+          (res.passages || []).forEach(function (p) {
+            var item = document.createElement('li');
+            var quote = document.createElement('q');
+            quote.textContent = p.quote;
+            item.appendChild(quote);
+            item.appendChild(document.createTextNode(
+              ' — ' + p.likelihood + '% · ' + p.reason +
+              (p.start == null ? ' (quote not found in the text)' : '')));
+            list.appendChild(item);
+          });
+          detectorOut.appendChild(list);
+        })
+        .catch(function (e) {
+          detectorOut.className = 'ai-detector-out err';
+          detectorOut.textContent = '✗ ' + e;
+        })
+        .finally(function () { testBtn.disabled = false; });
+    });
+  }
 })();
 ''';
 
