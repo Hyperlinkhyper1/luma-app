@@ -9,6 +9,12 @@ class LNl extends L {
   LNl([String locale = 'nl']) : super(locale);
 
   @override
+  String get trayOpen => 'luma openen';
+
+  @override
+  String get trayQuit => 'luma afsluiten';
+
+  @override
   String get navHome => 'Start';
 
   @override

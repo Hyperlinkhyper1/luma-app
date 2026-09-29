@@ -9,6 +9,12 @@ class LFr extends L {
   LFr([String locale = 'fr']) : super(locale);
 
   @override
+  String get trayOpen => 'Ouvrir luma';
+
+  @override
+  String get trayQuit => 'Quitter luma';
+
+  @override
   String get navHome => 'Accueil';
 
   @override

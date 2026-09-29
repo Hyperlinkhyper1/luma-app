@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -104,6 +105,27 @@ Future<void> windowShow() async {
   if (!hasCustomTitleBar) return;
   await windowManager.show();
   await windowManager.focus();
+}
+
+const MethodChannel _trayChannel = MethodChannel('luma/tray');
+
+/// Hands the notification-area icon's menu its labels in the app's language.
+/// The icon itself lives in the Windows runner (`tray_icon.cpp`), which is
+/// how a closed — hidden, still-running — luma can be reopened or quit.
+Future<void> setTrayLabels({
+  required String open,
+  required String quit,
+}) async {
+  if (defaultTargetPlatform != TargetPlatform.windows) return;
+  try {
+    await _trayChannel.invokeMethod<void>('setLabels', {
+      'tooltip': 'luma',
+      'open': open,
+      'quit': quit,
+    });
+  } on MissingPluginException {
+    // Engines without the runner's tray, such as widget tests.
+  }
 }
 
 // ---- Pet window ------------------------------------------------------------

@@ -9,6 +9,12 @@ class LEs extends L {
   LEs([String locale = 'es']) : super(locale);
 
   @override
+  String get trayOpen => 'Abrir luma';
+
+  @override
+  String get trayQuit => 'Salir de luma';
+
+  @override
   String get navHome => 'Inicio';
 
   @override

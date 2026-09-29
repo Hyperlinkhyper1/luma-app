@@ -75,12 +75,15 @@
         case 'init':
           gui.setStrings(m.strings);
           $('time').textContent = timeLabel();
+          $('weather').textContent = weatherLabel();
+          $('sound-label').textContent = soundLabel();
+          refreshVideo();
           if (m.reducedMotion) S.reducedMotion = true;
           refreshHud();
           break;
         case 'view':
           S.visible = m.visible !== false;
-          if (S.visible) loop.wake();
+          if (S.visible) { loop.wake(); weather.audio.resume(); } else weather.audio.pause();
           break;
         case 'library': onLibrary(m.subjects || []); break;
         case 'assets':
@@ -142,7 +145,7 @@
     hidden: new Set(),
     editing: null,
     // Where the reader stands and looks while walking the hall.
-    px: 0, pz: 4.2, yaw: 0, pitch: 0.02, vel: [0, 0], stride: 0, goal: null,
+    px: 0, pz: 4.2, yaw: 0, pitch: 0.02, vel: [0, 0], stride: 0, goal: null, floor: 0,
     // The bookcase view: sideways pan, height pan and zoom.
     pan: 0, panY: 0, zoom: 1,
     timeMode: 'cycle', hour: 12, shownHour: 12,
@@ -166,6 +169,8 @@
   let R;
   try { R = LibraryRender.create(T, canvas); } catch (e) { fail(e.message); return; }
   const {scene, camera, U} = R;
+  const weather = LibraryWeather.create(T, R);
+  weather.reducedFlash = S.reducedMotion;
   const blockMat = R.blockMaterial();
   const dynMat = R.blockMaterial();
   const heldMat = R.blockMaterial();
@@ -180,15 +185,37 @@
     fancy: {msaa: 4, bloom: true, volume: true, dof: true, shadowSize: 2048, volumeSteps: 20, scale: 1},
     fast: {msaa: 0, bloom: true, volume: false, dof: false, shadowSize: 1024, volumeSteps: 0, scale: 1},
   };
+  // The reader's video settings, over the Fancy/Fast preset. They are a
+  // per-viewer convenience, so they live in this browser only.
+  const VIDEO_DEFAULTS = {bloom: 30, shafts: 40, brightness: 50, shadows: 'high', dof: true, grain: true, vignette: true, bobbing: true, fov: 70, particles: 'all', scale: 100};
+  const V = {...VIDEO_DEFAULTS};
+  try { Object.assign(V, JSON.parse(localStorage.getItem('library.video') || '{}')); } catch { /* storage blocked */ }
+  const saveVideo = () => { try { localStorage.setItem('library.video', JSON.stringify(V)); } catch { /* storage blocked */ } };
+  const SHADOW_SIZES = {low: 1024, high: 2048, ultra: 4096};
+  const PARTICLE_SCALE = {all: 1, decreased: 0.5, minimal: 0.15};
   function pixelRatio() { return S.quality === 'fancy' ? Math.min(devicePixelRatio || 1, 2) : Math.min(devicePixelRatio || 1, 1); }
   function applyQuality() {
-    Object.assign(R.settings, QUALITY[S.quality]);
+    const q = QUALITY[S.quality];
+    const shadows = SHADOW_SIZES[V.shadows] || 2048;
+    Object.assign(R.settings, q, {
+      bloom: q.bloom && V.bloom > 0,
+      volume: q.volume && V.shafts > 0,
+      dof: q.dof && V.dof,
+      shadowSize: S.quality === 'fancy' ? shadows : Math.min(1024, shadows),
+      scale: Math.max(0.5, Math.min(1, V.scale / 100)),
+      grain: V.grain ? 0.012 : 0,
+      vignette: V.vignette ? 0.9 : 0,
+      bloomThreshold: 1.0,
+    });
     R.applySettings({});
     R.resize(innerWidth, innerHeight, pixelRatio());
     shadowDirty = true;
-    $('quality').textContent = `${gui.t('quality')}: ${gui.t(S.quality === 'fancy' ? 'qualityHigh' : 'qualityLow')}`;
-    particles.dust.mesh.visible = S.quality === 'fancy';
+    particles.dust.mesh.visible = S.quality === 'fancy' && V.particles !== 'minimal';
+    weather.particleScale = PARTICLE_SCALE[V.particles] ?? 1;
+    refreshVideo();
   }
+  // Brightness as the game's slider has it: moody at 0, bright at 100.
+  const brightness = () => 0.72 + V.brightness / 100 * 0.56;
 
   // ── Scene objects ──────────────────────────────────────────────────────
   let worldMesh = null, glassMesh = null, dynMesh = null, ghostMesh = null;
@@ -347,7 +374,9 @@
   // The right arm in the corner of the view, as in the game: it bobs as
   // you walk, swings when you use something, and holds the book you carry.
   const handMat = R.blockMaterial({viewmodel: true});
-  const hand = {root: new T.Group(), arm: null, swing: 1, light: [1, 0, 0], lightAt: 0};
+  // The hand is drawn with the game's own fixed field of view.
+  const handCam = new T.PerspectiveCamera(70, 1, 0.05, 10);
+  const hand = {root: new T.Group(), arm: null, swing: 1, light: [1, 0, 0], lightAt: 0, lagYaw: 0, lagPitch: 0, slim: false};
   hand.root.userData.noShadow = true;
   scene.add(hand.root);
   function buildHand() {
@@ -355,11 +384,37 @@
     if (hand.arm) { hand.root.remove(hand.arm); hand.arm.traverse(o => o.geometry?.dispose()); }
     const a = LibrarySkin.arm(T, S.built.grid, atlas, skin.current.slim, handMat, hand.light);
     hand.arm = a.pivot;
-    hand.arm.rotation.order = 'YXZ';
+    hand.arm.matrixAutoUpdate = false;
+    hand.slim = !!skin.current.slim;
     hand.root.add(hand.arm);
   }
   function swingArm() { hand.swing = 0; }
-  const handShown = () => !!hand.arm && (S.mode === 'overview' || S.mode === 'seated' || S.mode === 'placing') && !Book.open;
+  const handShown = () => !!hand.arm && (S.mode === 'overview' || S.mode === 'seated' || S.mode === 'placing' || S.mode === 'climbing') && !Book.open;
+
+  // The game's first-person arm, transform for transform: where the empty
+  // main hand is put (ItemInHandRenderer.renderPlayerArm), then the arm's
+  // pivot on the player model. `swing` runs 0 to 1 through a swing.
+  const DEG = Math.PI / 180;
+  const tmp = new T.Matrix4();
+  function armMatrix(m, swing, equip, slim) {
+    const f1 = Math.sqrt(swing);
+    const f2 = -0.3 * Math.sin(f1 * Math.PI), f3 = 0.4 * Math.sin(f1 * Math.PI * 2), f4 = -0.4 * Math.sin(swing * Math.PI);
+    const f5 = Math.sin(swing * swing * Math.PI), f6 = Math.sin(f1 * Math.PI);
+    m.multiply(tmp.makeTranslation(f2 + 0.64, f3 - 0.6 - equip * 0.6, f4 - 0.72));
+    m.multiply(tmp.makeRotationY(45 * DEG));
+    m.multiply(tmp.makeRotationY(f6 * 70 * DEG));
+    m.multiply(tmp.makeRotationZ(f5 * -20 * DEG));
+    m.multiply(tmp.makeTranslation(-1, 3.6, 3.5));
+    m.multiply(tmp.makeRotationZ(120 * DEG));
+    m.multiply(tmp.makeRotationX(200 * DEG));
+    m.multiply(tmp.makeRotationY(-135 * DEG));
+    m.multiply(tmp.makeTranslation(5.6, 0, 0));
+    // The arm's pivot on the model, then from this page's model space (y
+    // up, facing +z) into the game's (y down, facing -z).
+    m.multiply(tmp.makeTranslation(-5 / 16, (slim ? 2.5 : 2) / 16, 0));
+    m.multiply(tmp.makeRotationX(Math.PI));
+    return m;
+  }
   function stepHand(dt, time) {
     hand.root.visible = handShown();
     if (!hand.root.visible) return;
@@ -371,17 +426,27 @@
       const l = S.built.grid.sample([camera.position.x, camera.position.y - 0.4, camera.position.z], [0, 1, 0]);
       LibrarySkin.relight(hand.arm, l);
     }
-    hand.swing = Math.min(1, hand.swing + dt / 0.28);
-    const s = Math.sin(hand.swing * Math.PI);
-    const moving = Math.min(1, Math.hypot(...S.vel) / 2.5) * (S.reducedMotion ? 0 : 1);
-    const bobX = Math.sin(S.stride * 2.6) * 0.035 * moving, bobY = -Math.abs(Math.cos(S.stride * 2.6)) * 0.03 * moving;
-    const breathe = S.reducedMotion ? 0 : Math.sin(time * 1.3) * 0.006;
-    const holding = S.mode === 'placing';
-    // Shoulder low at the right edge, the arm reaching forward and in.
-    const halfWidth = Math.tan((camera.fov * Math.PI / 180) / 2) * camera.aspect;
-    const side = Math.min(0.58, 0.62 * halfWidth);
-    hand.arm.position.set(side + bobX - s * 0.12, -0.66 + bobY + breathe + (holding ? 0.06 : 0) + s * 0.1, -0.5 - s * 0.16);
-    hand.arm.rotation.set(2.3 + s * 0.5 + (holding ? -0.25 : 0), 0.78 + s * 0.3, 0.42);
+    hand.swing = Math.min(1, hand.swing + dt / 0.3);
+    const swing = hand.swing < 1 ? hand.swing : 0;
+    // The arm trails the view a little as the head turns, as in the game.
+    const k = 1 - Math.exp(-dt * 10);
+    hand.lagYaw += (S.yaw - hand.lagYaw) * k;
+    hand.lagPitch += (S.pitch - hand.lagPitch) * k;
+    if (Math.abs(S.yaw - hand.lagYaw) > 1) hand.lagYaw = S.yaw;
+    // View bobbing, applied to the hand as the game does.
+    const moving = Math.min(1, Math.hypot(...S.vel) / 3) * (S.reducedMotion || !V.bobbing ? 0 : 1);
+    const phase = S.stride * 1.6 * Math.PI, bob = 0.09 * moving;
+    const m = hand.arm.matrix.identity();
+    m.multiply(tmp.makeTranslation(Math.sin(phase) * bob * 0.5, -Math.abs(Math.cos(phase) * bob), 0));
+    m.multiply(tmp.makeRotationZ(Math.sin(phase) * bob * 3 * DEG));
+    m.multiply(tmp.makeRotationX(Math.abs(Math.cos(phase - 0.2) * bob) * 5 * DEG));
+    m.multiply(tmp.makeRotationX(-(S.pitch - hand.lagPitch) * 0.1));
+    m.multiply(tmp.makeRotationY(-(S.yaw - hand.lagYaw) * 0.1));
+    armMatrix(m, swing, S.mode === 'placing' ? 0.1 : 0, hand.slim);
+    hand.arm.matrixWorldNeedsUpdate = true;
+    handCam.aspect = camera.aspect;
+    handCam.updateProjectionMatrix();
+    handMat.uniforms.handProjection.value.copy(handCam.projectionMatrix);
   }
 
   // Where the carried book sits: in the arm's hand.
@@ -553,7 +618,8 @@
     glyphs: new Particles(60, {shape: 2, additive: false, glyphs: glyphTexture}),
     poof: new Particles(160, {additive: false}),
     leaves: new Particles(220, {shape: 3, additive: false}),
-    smoke: new Particles(70, {additive: false}),
+    smoke: new Particles(110, {additive: false}),
+    splash: new Particles(260, {additive: false}),
   };
   // How much daylight there is, 0 at night to 1 by day, for things lit only
   // by the sky.
@@ -563,7 +629,7 @@
   function seedDust() {
     const b = S.built.bounds;
     particles.dust.clear();
-    for (let i = 0; i < particles.dust.max; i++) {
+    for (let i = 0; i < particles.dust.max * (PARTICLE_SCALE[V.particles] ?? 1); i++) {
       particles.dust.add({p: [rand(-4.5, 4.5), rand(0.3, 6.5), rand(b.min[2] + 1, b.max[2] - 1)], v: [rand(-0.02, 0.02), rand(-0.01, 0.015), rand(-0.02, 0.02)], c: [1, 0.86, 0.62, 0.35], s: rand(0.012, 0.03), t: rand(0, 100)});
     }
   }
@@ -584,6 +650,9 @@
   function stepParticles(dt, time) {
     const built = S.built;
     if (!built) return;
+    const pScale = weather.particleScale;
+    // The wind pushes leaves, smoke and rain splashes along with it.
+    const wx = Math.cos(weather.windAngle) * weather.wind * 2.5, wz = Math.sin(weather.windAngle) * weather.wind * 2.5;
     particles.dust.step(dt, p => {
       p.t += dt;
       p.p[0] += (p.v[0] + Math.sin(p.t * 0.3) * 0.01) * dt;
@@ -647,7 +716,7 @@
     // Autumn: leaves come loose from the trees and flutter down.
     const day = daylight();
     const falling = built.trees.filter(t => t.kind !== 'spruce');
-    if (falling.length && Math.random() < dt * 7) {
+    if (falling.length && Math.random() < dt * 7 * (1 + weather.wind * 2) * pScale) {
       const t = falling[Math.floor(Math.random() * falling.length)];
       const f = 0.65 + Math.random() * 0.35;
       particles.leaves.add({
@@ -658,9 +727,9 @@
     particles.leaves.step(dt, p => {
       p.age += dt;
       if (p.p[1] < 0.03 || p.age > 16) return false;
-      p.p[0] += (p.v[0] + Math.sin(p.age * 2.1 + p.ph) * 0.35) * dt;
+      p.p[0] += (p.v[0] + Math.sin(p.age * 2.1 + p.ph) * 0.35 + wx) * dt;
       p.p[1] += p.v[1] * dt;
-      p.p[2] += (p.v[2] + Math.cos(p.age * 1.7 + p.ph) * 0.25) * dt;
+      p.p[2] += (p.v[2] + Math.cos(p.age * 1.7 + p.ph) * 0.25 + wz) * dt;
       for (let k = 0; k < 3; k++) p.c[k] = p.tint[k] * (0.2 + day * 0.9);
       p.c[3] = Math.min(1, (16 - p.age) / 2);
       return true;
@@ -671,14 +740,44 @@
       const g = rand(0.35, 0.5);
       particles.smoke.add({p: [s[0] + rand(-0.3, 0.3), s[1], s[2] + rand(-0.3, 0.3)], v: [rand(0.05, 0.25), rand(0.5, 0.8), rand(-0.1, 0.1)], c: [g, g, g, 0.5], g0: g, s: rand(0.35, 0.5), life: rand(4, 6.5), age: 0});
     }
+    // And from the fire ring out on the island.
+    if (built.campfire && Math.random() < dt * 2 * pScale) {
+      const s = built.campfire;
+      const g = rand(0.35, 0.5);
+      particles.smoke.add({p: [s[0] + rand(-0.15, 0.15), s[1] + 0.4, s[2] + rand(-0.15, 0.15)], v: [rand(-0.05, 0.05), rand(0.4, 0.6), rand(-0.05, 0.05)], c: [g, g, g, 0.4], g0: g, s: rand(0.18, 0.28), life: rand(3, 5), age: 0});
+    }
+    if (built.campfire && Math.random() < dt * 5 * pScale) {
+      const f = built.campfire;
+      particles.embers.add({p: [f[0] + rand(-0.25, 0.25), f[1], f[2] + rand(-0.25, 0.25)], v: [rand(-0.1, 0.1), rand(0.5, 1), rand(-0.1, 0.1)], c: [2.6, 1.1, 0.3, 1], s: rand(0.015, 0.03), life: rand(0.8, 1.8), age: 0});
+    }
     particles.smoke.step(dt, p => {
       p.age += dt;
       if (p.age > p.life) return false;
       for (let k = 0; k < 3; k++) p.p[k] += p.v[k] * dt;
+      p.p[0] += wx * 0.4 * dt; p.p[2] += wz * 0.4 * dt;
       p.v[1] *= 0.995;
       p.s += dt * 0.28;
       for (let k = 0; k < 3; k++) p.c[k] = p.g0 * (0.25 + day * 0.9);
       p.c[3] = 0.45 * Math.min(1, p.age * 2) * (1 - p.age / p.life);
+      return true;
+    });
+    // Rain splashing where it lands round the reader.
+    let n = weather.rain * 110 * dt * pScale;
+    while (n > 0 && built.heightmap) {
+      if (n < 1 && Math.random() > n) break;
+      n--;
+      const x = camera.position.x + rand(-8, 8), z = camera.position.z + rand(-8, 8);
+      const h = built.heightmap.at(x, z);
+      if (h < -50) continue;
+      const c = 0.2 + day * 0.6;
+      particles.splash.add({p: [x, h + 0.03, z], v: [rand(-0.4, 0.4) + wx * 0.2, rand(0.7, 1.2), rand(-0.4, 0.4) + wz * 0.2], c: [c, c * 1.05, c * 1.2, 0.7], s: rand(0.025, 0.045), life: rand(0.18, 0.32), age: 0});
+    }
+    particles.splash.step(dt, p => {
+      p.age += dt;
+      if (p.age > p.life) return false;
+      p.v[1] -= 7 * dt;
+      for (let k = 0; k < 3; k++) p.p[k] += p.v[k] * dt;
+      p.c[3] = 0.7 * (1 - p.age / p.life);
       return true;
     });
   }
@@ -770,9 +869,11 @@
     glassMesh.renderOrder = 2;
     scene.add(worldMesh, glassMesh);
     S.built = built;
+    weather.setWorld(built);
     U.fireOrigin.value.set(...built.fire);
     const b = built.bounds;
-    R.post.box = {min: [b.min[0] + 1, 0, b.min[2] + 0.5], max: [b.max[0] - 1, 7, b.max[2] - 0.5]};
+    R.post.box = {min: [b.min[0] + 1, 0, b.min[2] + 0.5], max: [b.max[0] - 1, built.layout.top, b.max[2] - 0.5]};
+    if (S.floor >= built.layout.floors) S.floor = 0;
     shadowDirty = true;
     if (S.caseSubject != null) {
       const idx = built.cases.findIndex(c => c.subject && c.subject.id === S.caseSubject);
@@ -801,7 +902,7 @@
       for (const book of c.subject.books) {
         bookIds.add(book.id);
         if (S.hidden.has(book.id)) continue;
-        if (Math.floor(book.slot / W.SLOTS) !== c.page) continue;
+        if (Math.floor(book.slot / c.slots) !== c.page) continue;
         W.addBook(mb, built.grid, atlas, W.slotGeometry(c, book.slot), labelBook(book), labels);
       }
       addSign(mb, c, c.subject);
@@ -825,8 +926,12 @@
     if (!uv) return;
     const f = W.frame(c.spec.origin, c.spec.right, c.spec.n);
     const K = {mb, grid: S.built.grid, atlas};
-    const w = 2.3, h = w / 4;
-    const u0 = (c.spec.width - w) / 2, v0 = W.HALL.shelfTop + (W.HALL.caseTop - 0.125 - W.HALL.shelfTop - h) / 2;
+    // The plate fills the fascia, which is shallower on the low cases
+    // upstairs.
+    const P = c.profile || W.PROFILES.ground;
+    const fascia = P.caseTop - 0.125 - P.shelfTop;
+    const w = Math.min(2.3, fascia * 0.92 * 4), h = w / 4;
+    const u0 = (c.spec.width - w) / 2, v0 = P.shelfTop + (fascia - h) / 2;
     const plank = {tex: 'dark_oak_planks'};
     const labelUv = [[uv.u0, uv.v0], [uv.u0, uv.v1], [uv.u1, uv.v1], [uv.u1, uv.v0]];
     f.box(K, u0, v0, -0.6 / 16, u0 + w, v0 + h, 0, {front: {tex: 'solid', labelUv, emit: 0.12}, top: plank, bottom: plank, left: plank, right: plank}, {whole: true});
@@ -853,9 +958,10 @@
     const geo = itemMb.geometry(T);
     geo.rotateX(Math.PI / 2);
     floatingItem = new T.Mesh(geo, heldMat);
-    floatingItem.position.set(c.faceX + c.facing * 0.55, 2.2, (c.z0 + c.z1) / 2);
+    const floatY = c.y0 + (c.floor ? 1.8 : 2.2);
+    floatingItem.position.set(c.faceX + c.facing * 0.55, floatY, (c.z0 + c.z1) / 2);
     floatingItem.userData.noShadow = true;
-    floatingItem.userData.baseY = 2.2;
+    floatingItem.userData.baseY = floatY;
     scene.add(floatingItem);
   }
 
@@ -880,8 +986,8 @@
       if (idx >= 0) {
         S.pendingSubject = null;
         const c = S.built.cases[idx];
-        for (let y = 0; y < 6; y++) for (let z = c.z0; z < c.z1; z++) {
-          setTimeout(() => poof([c.faceX - c.facing * 0.5, y + 0.5, z + 0.5], 3, 0.4), y * 110 + (z - c.z0) * 50);
+        for (let y = 0; y < Math.ceil(c.profile.caseTop); y++) for (let z = c.z0; z < c.z1; z++) {
+          setTimeout(() => poof([c.faceX - c.facing * 0.5, c.y0 + y + 0.5, z + 0.5], 3, 0.4), y * 110 + (z - c.z0) * 50);
         }
         toShelf(idx);
       }
@@ -895,27 +1001,34 @@
 
   // Standing in the hall, with a slight bob while walking.
   function overviewPose() {
-    const bob = S.reducedMotion ? 0 : Math.sin(S.stride * 5.2) * 0.035 * Math.min(1, Math.hypot(...S.vel) / 2);
-    const pos = new T.Vector3(S.px, W.HALL.eye + Math.abs(bob), S.pz);
+    const bob = S.reducedMotion || !V.bobbing ? 0 : Math.sin(S.stride * 5.2) * 0.035 * Math.min(1, Math.hypot(...S.vel) / 2);
+    const pos = new T.Vector3(S.px, floorY() + W.HALL.eye + Math.abs(bob), S.pz);
     const dir = new T.Vector3(-Math.sin(S.yaw) * Math.cos(S.pitch), Math.sin(S.pitch), -Math.cos(S.yaw) * Math.cos(S.pitch));
-    // Phones held upright see little of the hall's width; widen the view.
-    const fov = innerWidth < innerHeight ? 74 : 66;
-    return {pos, target: pos.clone().addScaledVector(dir, 6), fov};
+    return {pos, target: pos.clone().addScaledVector(dir, 6), fov: walkFov()};
   }
+  // Where the floor the reader is on lies.
+  const floorY = () => S.built?.layout.bases[S.floor] || 0;
+  // The field of view setting; phones held upright see little of the
+  // hall's width, so it is widened for them.
+  const walkFov = () => V.fov + (innerWidth < innerHeight ? 8 : 0);
 
   const SHELF_CENTER = 3.3;
-  function shelfDistance(fov) {
+  // Half the height the bookcase view has to take in: the tall cases
+  // downstairs, or the low ones under the eaves.
+  const caseHalf = c => (c && c.floor ? 2.05 : 2.75);
+  function shelfDistance(fov, half = 2.75) {
     const v = Math.tan((fov * Math.PI / 180) / 2);
     const aspect = innerWidth / Math.max(1, innerHeight);
     // Room for the whole case, cabinets to name plate.
-    return Math.min(7.4, Math.max(2.75 / v, 2.3 / (v * aspect)));
+    return Math.min(7.4, Math.max(half / v, 2.3 / (v * aspect)));
   }
 
   function shelfPose(i) {
     const c = S.built.cases[i];
     const fov = 50;
-    const d = shelfDistance(fov) * S.zoom;
-    const cy = SHELF_CENTER + S.panY;
+    const d = shelfDistance(fov, caseHalf(c)) * S.zoom;
+    const P = c.profile || W.PROFILES.ground;
+    const cy = c.y0 + (c.floor ? (P.shelfBottom + P.caseTop) / 2 + 0.1 : SHELF_CENTER) + S.panY;
     const zc = (c.z0 + c.z1) / 2 + S.pan;
     return {pos: new T.Vector3(c.faceX + c.facing * d, cy - 0.3 * S.zoom, zc), target: new T.Vector3(c.faceX, cy, zc), fov};
   }
@@ -924,8 +1037,9 @@
   function clampShelfView() {
     const slack = 1 - S.zoom;
     const across = 0.9 + slack * 1.6;
+    const tall = currentCase()?.floor ? 1.4 : 2.2;
     S.pan = Math.max(-across, Math.min(across, S.pan));
-    S.panY = Math.max(-2.2 * slack, Math.min(2.2 * slack, S.panY));
+    S.panY = Math.max(-tall * slack, Math.min(tall * slack, S.panY));
   }
 
   // Writing is watched from behind the chair, off to the right: you see
@@ -944,7 +1058,7 @@
     const seat = S.seat;
     const dir = new T.Vector3(-Math.sin(S.yaw) * Math.cos(S.pitch), Math.sin(S.pitch), -Math.cos(S.yaw) * Math.cos(S.pitch));
     const pos = new T.Vector3(seat.pos[0], seat.pos[1] + 1.1, seat.pos[2]);
-    return {pos, target: pos.clone().addScaledVector(dir, 6), fov: innerWidth < innerHeight ? 74 : 66};
+    return {pos, target: pos.clone().addScaledVector(dir, 6), fov: walkFov()};
   }
 
   function flyTo(pose, {duration} = {}) {
@@ -968,7 +1082,7 @@
       // A little rise mid-walk, and the game's view bobbing while moving.
       const arc = Math.sin(flight.t * Math.PI);
       view.pos.y += arc * Math.min(0.35, flight.dist * 0.03);
-      if (!S.reducedMotion) bob = arc * Math.min(1, flight.dist * 0.2);
+      if (!S.reducedMotion && V.bobbing) bob = arc * Math.min(1, flight.dist * 0.2);
       if (flight.t >= 1) { const done = flight.resolve; flight = null; done(); }
     } else {
       const target = baseModePose();
@@ -1016,7 +1130,7 @@
   // head without any button held, a crosshair marks what you would use,
   // and Esc lets go. Touch screens drag to look instead.
   const look = {locked: false, resume: false};
-  const looking = mode => mode === 'overview' || mode === 'seated';
+  const looking = mode => mode === 'overview' || mode === 'seated' || mode === 'climbing';
   function lockPointer() {
     if (S.touch || !canvas.requestPointerLock || look.locked) return;
     try {
@@ -1048,7 +1162,8 @@
     const c = currentCase();
     if (c && S.mode !== 'overview') {
       const x = c.faceX + c.facing * 2.2, z = (c.z0 + c.z1) / 2 + S.pan;
-      if (!blocked(x, z)) {
+      if (!blocked(x, z, c.floor)) {
+        S.floor = c.floor;
         S.px = x; S.pz = z;
         S.yaw = c.facing * Math.PI / 2;
         S.pitch = 0.12;
@@ -1117,8 +1232,8 @@
 
   function pageCount(c) {
     const max = c.subject.books.reduce((m, b) => Math.max(m, b.slot), -1);
-    const pages = Math.max(1, Math.floor(max / W.SLOTS) + 1);
-    const lastFull = c.subject.books.filter(b => Math.floor(b.slot / W.SLOTS) === pages - 1).length >= W.SLOTS;
+    const pages = Math.max(1, Math.floor(max / c.slots) + 1);
+    const lastFull = c.subject.books.filter(b => Math.floor(b.slot / c.slots) === pages - 1).length >= c.slots;
     return pages + (lastFull ? 1 : 0);
   }
 
@@ -1141,7 +1256,8 @@
     $('back').hidden = !(inCase || seated);
     $('back').textContent = gui.t(S.mode === 'placing' ? 'cancel' : seated ? 'standUp' : 'back');
     const others = S.built ? S.built.cases.filter(cs => cs.subject).length : 0;
-    $('case-prev').hidden = $('case-next').hidden = !((inCase && others > 1) || (S.mode === 'overview' && S.built));
+    // The arrows step between bookcases, so they only show at one.
+    $('case-prev').hidden = $('case-next').hidden = !(inCase && others > 1);
     const empty = S.subjects.length === 0 && S.mode === 'overview';
     let hint = '';
     if (S.mode === 'placing') hint = gui.t('moveHint');
@@ -1180,7 +1296,7 @@
 
   function caseBox(c) {
     const x0 = c.faceX - c.facing * 1, x1 = c.faceX + c.facing * 0.05;
-    return [[Math.min(x0, x1), 0, c.z0], [Math.max(x0, x1), W.HALL.caseTop, c.z1]];
+    return [[Math.min(x0, x1), c.y0, c.z0], [Math.max(x0, x1), c.y1, c.z1]];
   }
 
   function pickCase(ray) {
@@ -1199,11 +1315,11 @@
     const t = (c.faceX - ray.origin.x) / d;
     if (t < 0) return null;
     const p = ray.origin.clone().addScaledVector(ray.direction, t);
-    for (let local = 0; local < W.SLOTS; local++) {
+    for (let local = 0; local < c.slots; local++) {
       const g = W.slotGeometry(c, local);
       const pad = 0.5 / 16;
       if (p.y >= g.y0 - pad && p.y <= g.y1 + pad && p.z >= g.z0 - pad && p.z <= g.z1 + pad) {
-        const slot = c.page * W.SLOTS + local;
+        const slot = c.page * c.slots + local;
         return {slot, g, book: c.subject.books.find(b => b.slot === slot && !S.hidden.has(b.id)) || null};
       }
     }
@@ -1235,22 +1351,40 @@
   // What the reader is pointing at while walking or sitting: a bookcase
   // anywhere in sight, or a seat or the door within arm's reach.
   const REACH = 4.5;
+  // Bookcases can be picked from further off, but not from across the hall.
+  const CASE_REACH = 6.5;
   function doorBox() {
     const z = S.built.door.z;
-    return [[-1, 0, z - (door.open > 0.5 ? 1 : 0.1)], [1, 2, z + 0.3]];
+    return [[-1, 0, z - (door.open > 0.5 ? 1 : 0.1)], [1, S.built.door.height || 2, z + 0.3]];
+  }
+  // What a click on the stair well does from this floor: up from the steps,
+  // down from the opening.
+  function stairBoxes() {
+    const st = S.built?.stairs;
+    if (!st) return [];
+    const bases = S.built.layout.bases, b = bases[S.floor];
+    const up = S.floor < bases.length - 1, down = S.floor > 0;
+    const out = [];
+    if (up) out.push({dir: 1, box: [[st.x0, b + (down ? 0.35 : 0), st.z0], [st.x0 + 3, b + 2.6, st.z0 + 3]]});
+    if (down) out.push({dir: -1, box: [[st.x0, b - 1, st.z0], [st.x0 + 3, b + (up ? 0.35 : 2.6), st.z0 + 3]]});
+    return out;
   }
   function pickWorld(ray) {
     const wall = wallDistance(ray) + 0.05;
     let best = null;
     const consider = (t, h) => { if (t != null && t <= wall && (!best || t < best.t)) best = {...h, t}; };
     const c = pickCase(ray);
-    if (c) consider(c.t, {kind: 'case', i: c.i});
+    if (c && c.t <= CASE_REACH) consider(c.t, {kind: 'case', i: c.i});
+    for (const s of stairBoxes()) {
+      const t = boxHit(ray, ...s.box);
+      if (t != null && t < REACH) consider(t, {kind: 'stairs', dir: s.dir, box: s.box});
+    }
     S.built.seats.forEach((seat, i) => {
       if (S.seat && S.seat.box === seat.box) return;
       const t = boxHit(ray, ...seat.box);
       if (t != null && t < REACH) consider(t, {kind: 'seat', i, at: ray.at(t, new T.Vector3()).toArray()});
     });
-    const t = boxHit(ray, ...doorBox());
+    const t = S.floor === 0 ? boxHit(ray, ...doorBox()) : null;
     if (t != null && t < REACH) consider(t, {kind: 'door'});
     return best;
   }
@@ -1295,11 +1429,23 @@
     } else if (h.kind === 'door') {
       outlineBox(doorBox());
       gui.tooltip([gui.t(door.target ? 'closeDoor' : 'openDoor')], x, y);
+    } else if (h.kind === 'stairs') {
+      outlineBox(h.box);
+      gui.tooltip([gui.t(h.dir > 0 ? 'upstairs' : 'downstairs')], x, y);
     } else {
       const g = h.g;
-      slotHi.position.set(g.faceX + g.facing * 0.004, (g.y0 + g.y1) / 2, (g.z0 + g.z1) / 2);
+      // Over a book the highlight covers just its spine; over an empty
+      // slot, the gap it would fill.
+      if (h.book && S.mode !== 'placing') {
+        const {w, h: bh, back} = W.bookDims(h.book);
+        const center = W.bookCenter(g, h.book).pos;
+        slotHi.position.set(g.faceX - g.facing * (back - 0.004), center[1], center[2]);
+        slotHi.scale.set(w + 0.01, bh + 0.01, 1);
+      } else {
+        slotHi.position.set(g.faceX + g.facing * 0.004, (g.y0 + g.y1) / 2 - 0.04, (g.z0 + g.z1) / 2);
+        slotHi.scale.set((g.z1 - g.z0) * 0.86, (g.y1 - g.y0) * 0.78, 1);
+      }
       slotHi.rotation.set(0, g.facing > 0 ? Math.PI / 2 : -Math.PI / 2, 0);
-      slotHi.scale.set(g.z1 - g.z0, g.y1 - g.y0, 1);
       slotHi.visible = true;
       if (S.mode === 'placing') gui.tooltip(null);
       else if (h.book) {
@@ -1313,7 +1459,7 @@
   function walkToward(x, y) {
     const ray = rayAt(x, y);
     if (ray.direction.y > -0.02) return;
-    const t = -ray.origin.y / ray.direction.y;
+    const t = (floorY() - ray.origin.y) / ray.direction.y;
     const p = ray.origin.clone().addScaledVector(ray.direction, t);
     if (t > 30 || blocked(p.x, p.z)) return;
     S.goal = [p.x, p.z];
@@ -1321,6 +1467,7 @@
   }
 
   async function click() {
+    if (S.mode === 'climbing') return;
     if (look.locked || S.mode === 'overview') swingArm();
     if (!hover) {
       if (S.mode === 'overview' && S.built && !flight && !look.locked) walkToward(pointer.x, pointer.y);
@@ -1336,6 +1483,8 @@
       await sit(S.built.seats[h.i], h.at);
     } else if (h.kind === 'door') {
       toggleDoor();
+    } else if (h.kind === 'stairs') {
+      await climb(h.dir);
     } else if (h.kind === 'slot') {
       if (S.mode === 'placing') await placeHeld(h.slot, h.g);
       else openSlot(h.slot, h.g, h.book);
@@ -1599,20 +1748,59 @@
   // forward and back. Walls, bookcases, furniture and a shut door stop you,
   // and so does the island's edge: there has to be ground underfoot.
   const BODY = 0.26;
-  function blocked(x, z) {
+  // Whether the reader can't stand at (x, z) on `floor`: there must be
+  // floor underfoot and nothing in the way at body height.
+  function blocked(x, z, floor = S.floor) {
     const b = S.built;
     if (!b) return false;
+    const y = b.layout.bases[floor] || 0;
     for (const [dx, dz] of [[-BODY, -BODY], [BODY, -BODY], [-BODY, BODY], [BODY, BODY]]) {
       const cx = Math.floor(x + dx), cz = Math.floor(z + dz);
-      if (!b.grid.solid(cx, -1, cz)) return true;
-      if (b.grid.solid(cx, 0, cz) || b.grid.solid(cx, 1, cz)) return true;
+      if (!b.grid.solid(cx, y - 1, cz)) return true;
+      if (b.grid.solid(cx, y, cz) || b.grid.solid(cx, y + 1, cz)) return true;
     }
-    for (const list of [b.colliders, door.colliders]) {
-      for (const [x0, z0, x1, z1] of list) {
+    for (const list of [b.colliders, floor === 0 ? door.colliders : []]) {
+      for (const [x0, z0, x1, z1, f] of list) {
+        if ((f || 0) !== floor) continue;
         if (x > x0 - BODY && x < x1 + BODY && z > z0 - BODY && z < z1 + BODY) return true;
       }
     }
     return false;
+  }
+
+  // Up or down the spiral stair: round the newel a step at a time, then
+  // off onto the landing.
+  async function climb(dir) {
+    const st = S.built?.stairs, bases = S.built?.layout.bases;
+    const to = S.floor + dir;
+    if (!st || to < 0 || to >= bases.length) return;
+    const flight = st.flights[Math.min(S.floor, to)];
+    const rise = flight.rise;
+    let path = [
+      [st.x0 - 0.5, flight.base, st.z0 + 2.5],
+      ...st.ring.map(([x, z], k) => [x + 0.5, flight.base + (k + 1) * rise, z + 0.5]),
+      [st.cx + 0.5, flight.base + st.ring.length * rise, st.z0 + 3.5],
+    ];
+    if (dir < 0) path = path.reverse();
+    S.goal = null;
+    S.vel = [0, 0];
+    setMode('climbing');
+    let yaw = S.yaw;
+    for (let i = 0; i < path.length; i++) {
+      const p = path[i], q = i ? path[i - 1] : [view.pos.x, 0, view.pos.z];
+      if (Math.hypot(p[0] - q[0], p[2] - q[2]) > 0.05) yaw = Math.atan2(-(p[0] - q[0]), -(p[2] - q[2]));
+      const pos = new T.Vector3(p[0], p[1] + W.HALL.eye, p[2]);
+      const look = new T.Vector3(-Math.sin(yaw), dir > 0 ? 0.3 : -0.35, -Math.cos(yaw));
+      await flyTo({pos, target: pos.clone().addScaledVector(look, 4), fov: walkFov()}, {duration: S.reducedMotion ? 0.05 : i === 0 ? 0.45 : 0.19});
+      S.stride += 0.6;
+      if (S.mode !== 'climbing') return;
+    }
+    const end = path[path.length - 1];
+    S.floor = to;
+    S.px = end[0]; S.pz = end[2];
+    S.yaw = yaw; S.pitch = 0;
+    setMode('overview');
+    rebuildA11y();
   }
 
   // ── The front door ─────────────────────────────────────────────────────
@@ -1869,14 +2057,95 @@
   };
   $('page-prev').onclick = () => turnShelf(-1);
   $('page-next').onclick = () => turnShelf(1);
-  $('settings-open').onclick = () => { $('settings').hidden = false; $('quality').focus(); };
+  $('settings-open').onclick = () => { $('settings').hidden = false; $('video-open').focus(); };
   $('settings-done').onclick = () => { $('settings').hidden = true; };
   $('settings').addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); $('settings').hidden = true; } });
-  $('quality').onclick = () => {
-    S.quality = S.quality === 'fancy' ? 'fast' : 'fancy';
-    try { localStorage.setItem('library.quality', S.quality); } catch { /* storage blocked */ }
-    applyQuality();
+  $('video-open').onclick = () => { $('settings').hidden = true; $('video').hidden = false; $('video-options').querySelector('button, input')?.focus(); };
+  const closeVideo = () => { $('video').hidden = true; $('settings').hidden = false; $('video-open').focus(); };
+  $('video-done').onclick = closeVideo;
+  $('video').addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); closeVideo(); } });
+
+  // The video settings screen: buttons that cycle through values and
+  // sliders, two columns, as the game lays them out.
+  const onOff = v => gui.t(v ? 'on' : 'off');
+  const VIDEO_OPTIONS = [
+    {key: 'quality', kind: 'cycle', values: ['fancy', 'fast'], get: () => S.quality, set: v => { S.quality = v; try { localStorage.setItem('library.quality', v); } catch { /* storage blocked */ } }, label: v => `${gui.t('quality')}: ${gui.t(v === 'fancy' ? 'qualityHigh' : 'qualityLow')}`},
+    {key: 'shadows', kind: 'cycle', values: ['low', 'high', 'ultra'], label: v => gui.t('shadows', gui.t('shadows' + v[0].toUpperCase() + v.slice(1)))},
+    {key: 'bloom', kind: 'slider', min: 0, max: 100, step: 5, label: v => gui.t('bloom', v ? v + '%' : gui.t('off'))},
+    {key: 'shafts', kind: 'slider', min: 0, max: 100, step: 5, label: v => gui.t('lightShafts', v ? v + '%' : gui.t('off'))},
+    {key: 'brightness', kind: 'slider', min: 0, max: 100, step: 5, label: v => gui.t('brightness', v === 0 ? gui.t('brightnessMoody') : v === 100 ? gui.t('brightnessBright') : v + '%')},
+    {key: 'fov', kind: 'slider', min: 50, max: 110, step: 1, label: v => gui.t('fov', v === 70 ? gui.t('fovNormal') : v)},
+    {key: 'scale', kind: 'slider', min: 50, max: 100, step: 5, live: false, label: v => gui.t('renderScale', v + '%')},
+    {key: 'particles', kind: 'cycle', values: ['all', 'decreased', 'minimal'], label: v => gui.t('particles', gui.t('particles' + v[0].toUpperCase() + v.slice(1)))},
+    {key: 'dof', kind: 'toggle', label: v => gui.t('depthOfField', onOff(v))},
+    {key: 'bobbing', kind: 'toggle', label: v => gui.t('bobbing', onOff(v))},
+    {key: 'grain', kind: 'toggle', label: v => gui.t('grain', onOff(v))},
+    {key: 'vignette', kind: 'toggle', label: v => gui.t('vignette', onOff(v))},
+  ];
+  const videoControls = new Map();
+  function buildVideo() {
+    const box = $('video-options');
+    for (const o of VIDEO_OPTIONS) {
+      const get = o.get || (() => V[o.key]);
+      const set = o.set || (v => { V[o.key] = v; saveVideo(); });
+      if (o.kind === 'slider') {
+        const wrap = document.createElement('label');
+        wrap.className = 'mc-slider';
+        const input = document.createElement('input');
+        input.type = 'range'; input.min = o.min; input.max = o.max; input.step = o.step;
+        const text = document.createElement('span');
+        wrap.append(input, text);
+        input.addEventListener('input', () => {
+          set(Number(input.value));
+          text.textContent = o.label(Number(input.value));
+          if (o.live !== false) applyLive();
+        });
+        input.addEventListener('change', () => applyQuality());
+        box.append(wrap);
+        videoControls.set(o.key, () => { input.value = get(); text.textContent = o.label(get()); input.setAttribute('aria-valuetext', text.textContent); });
+      } else {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'mc-button' + (gui.sprites['--btn'] ? ' sprite' : '');
+        if (o.key === 'quality') b.id = 'quality';
+        b.onclick = () => {
+          const v = get();
+          set(o.kind === 'toggle' ? !v : o.values[(o.values.indexOf(v) + 1) % o.values.length]);
+          applyQuality();
+        };
+        box.append(b);
+        videoControls.set(o.key, () => { b.textContent = o.label(get()); });
+      }
+    }
+  }
+  function refreshVideo() { for (const update of videoControls.values()) update(); }
+  // Sliders that only change the look of the next frame don't rebuild
+  // anything while being dragged.
+  function applyLive() {
+    R.settings.bloom = QUALITY[S.quality].bloom && V.bloom > 0;
+    R.settings.volume = QUALITY[S.quality].volume && V.shafts > 0;
+  }
+
+  // Weather, and how loud it is.
+  const WEATHER_LABEL = {clear: 'weatherClear', rain: 'weatherRain', storm: 'weatherStorm', thunder: 'weatherThunder', cycle: 'weatherCycle'};
+  let weatherMode = 'cycle', soundLevel = 70;
+  try { weatherMode = localStorage.getItem('library.weather') || 'cycle'; } catch { /* storage blocked */ }
+  try { soundLevel = Number(localStorage.getItem('library.sound') ?? 70); } catch { /* storage blocked */ }
+  if (!Number.isFinite(soundLevel)) soundLevel = 70;
+  const weatherLabel = () => gui.t('weather', gui.t(WEATHER_LABEL[weatherMode] || 'weatherClear'));
+  const soundLabel = () => gui.t('sound', soundLevel ? soundLevel + '%' : gui.t('off'));
+  $('weather').onclick = () => {
+    const modes = LibraryWeather.MODES;
+    weatherMode = modes[(modes.indexOf(weatherMode) + 1) % modes.length];
+    try { localStorage.setItem('library.weather', weatherMode); } catch { /* storage blocked */ }
+    weather.setMode(weatherMode);
+    $('weather').textContent = weatherLabel();
   };
+  $('sound').addEventListener('input', () => {
+    soundLevel = Number($('sound').value);
+    try { localStorage.setItem('library.sound', String(soundLevel)); } catch { /* storage blocked */ }
+    weather.audio.setVolume(soundLevel / 100);
+    $('sound-label').textContent = soundLabel();
+  });
   $('time').onclick = () => {
     S.timeMode = TIME_MODES[(TIME_MODES.indexOf(S.timeMode) + 1) % TIME_MODES.length];
     try { localStorage.setItem('library.time', S.timeMode); } catch { /* storage blocked */ }
@@ -1929,13 +2198,14 @@
         if (c.subject) add(`${c.subject.name} — ${gui.t('books', c.subject.books.length)}`, () => toShelf(i));
         else add(gui.t('newCase'), () => newCase());
       });
+      for (const s of stairBoxes()) add(gui.t(s.dir > 0 ? 'upstairs' : 'downstairs'), () => climb(s.dir));
       add(gui.t(door.target ? 'closeDoor' : 'openDoor'), () => { toggleDoor(); rebuildA11y(); });
     } else if (S.mode === 'shelf') {
       const c = currentCase();
       add(gui.t('back'), () => toOverview());
       if (c && c.subject) {
         for (const book of c.subject.books) {
-          if (Math.floor(book.slot / W.SLOTS) !== c.page) continue;
+          if (Math.floor(book.slot / c.slots) !== c.page) continue;
           add(book.title, () => openSlot(book.slot, W.slotGeometry(c, book.slot), book));
         }
         const free = firstFree(c);
@@ -1947,7 +2217,7 @@
 
   function firstFree(c) {
     const taken = new Set(c.subject.books.map(b => b.slot));
-    let s = c.page * W.SLOTS;
+    let s = c.page * c.slots;
     while (taken.has(s)) s++;
     return s;
   }
@@ -2016,7 +2286,8 @@
     // Distance fades into the horizon's haze, so far islands sit in the sky.
     U.fogColor.value.setRGB(...mix3(a.hor, b.hor).map(v => v * 0.72));
     R.skyUniforms.night.value = mix(a.night, b.night);
-    S.exposure = mix(a.exposure, b.exposure);
+    // Cloud and rain dim and grey all of it.
+    S.exposure = weather.grade(U, R.skyUniforms, mix(a.exposure, b.exposure));
     // Re-cast the shadows once the light has moved a visible amount.
     if (lastLight.angleTo(light) > 0.004) { lastLight.copy(light); shadowDirty = true; }
   }
@@ -2067,8 +2338,15 @@
   };
 
   function targetPost() {
-    const p = {focus: 8, aperture: 0.06, blurAll: 0, volumeLevel: 0.5, bloomLevel: 0.5, exposure: S.exposure || 1};
-    if (S.mode === 'shelf' || S.mode === 'placing') { p.focus = shelfDistance(50) * S.zoom; p.aperture = 0.16; }
+    // Rain softens the light shafts away and lets the lamps bloom a little
+    // more in the wet gloom.
+    const p = {
+      focus: 8, aperture: 0.06, blurAll: 0,
+      volumeLevel: V.shafts / 100 * (1 - weather.rain * 0.85),
+      bloomLevel: V.bloom / 100 * 0.9 * (1 + weather.rain * 0.5),
+      exposure: (S.exposure || 1) * brightness(),
+    };
+    if (S.mode === 'shelf' || S.mode === 'placing') { p.focus = shelfDistance(50, caseHalf(currentCase())) * S.zoom; p.aperture = 0.16; }
     // At the desk the reader in the chair stays in focus, and the room
     // behind the open book is only softened, so you can see yourself write.
     if (S.mode === 'desk') { p.focus = 2.6; p.aperture = 0.22; }
@@ -2096,6 +2374,11 @@
   function update(dt, time) {
     U.time.value = time;
     U.firePulse.value += (1 - U.firePulse.value) * Math.min(1, dt * 1.5);
+    if (S.built) {
+      const h = S.built.hall, p = camera.position;
+      const under = p.x > h.x0 - 1 && p.x < h.x1 + 1 && p.z > h.z0 - 1 && p.z < h.z1 + 1 && p.y < S.built.layout.top + 1;
+      weather.step(dt, camera, under);
+    }
     stepTime(dt);
     stepClock();
     stepWalk(dt);
@@ -2136,7 +2419,9 @@
     gui.rescale();
     R.resize(innerWidth, innerHeight, pixelRatio());
   });
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) loop.wake(); });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) { loop.wake(); if (S.visible) weather.audio.resume(); } else weather.audio.pause();
+  });
 
   function finishLoading() {
     if (S.mode !== 'loading') return;
@@ -2241,7 +2526,13 @@
 
   // ── Start ──────────────────────────────────────────────────────────────
   gui.rescale();
+  buildVideo();
   applyQuality();
+  weather.setMode(weatherMode);
+  weather.audio.setVolume(soundLevel / 100);
+  $('sound').value = soundLevel;
+  $('weather').textContent = weatherLabel();
+  $('sound-label').textContent = soundLabel();
   stepTime(0);
   $('time').textContent = timeLabel();
   $('loading-bar').style.width = '30%';
@@ -2262,7 +2553,7 @@
 
   // Hooks for driving the page from a browser console or a test harness.
   window.__library = {
-    S, R, W, view, hand, sitter, door,
+    S, R, W, V, view, hand, sitter, door, weather, climb,
     get hover() { return hover; },
     // Steps the simulation without waiting on the display.
     advance(seconds) {

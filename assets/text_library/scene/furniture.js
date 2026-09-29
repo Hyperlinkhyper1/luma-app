@@ -40,22 +40,22 @@
 
   // A cushioned bench under a window, against the wall on `side` (+1 the
   // -x wall, -1 the +x wall), from za to zb.
-  function windowSeat(K, side, x, za, zb) {
+  function windowSeat(K, side, x, za, zb, y = 0) {
     const x0 = side > 0 ? x : x + 0.25, x1 = side > 0 ? x + 0.75 : x + 1;
     const front = side > 0 ? 'east' : 'west';
-    box(K, [x0, 0, za], [x1, 0.45, zb], {[front]: {tex: 'cabinet_door'}, north: {tex: 'spruce_planks'}, south: {tex: 'spruce_planks'}});
-    box(K, [x0 - (side > 0 ? 0 : 0.04), 0.45, za], [x1 + (side > 0 ? 0.04 : 0), 0.5, zb], sides('dark_oak_planks'));
-    box(K, [x0 + 0.03, 0.5, za + 0.05], [x1 - 0.03, 0.64, zb - 0.05], sides('white_wool', null, null, {tint: [0.94, 0.88, 0.76]}));
+    box(K, [x0, y, za], [x1, y + 0.45, zb], {[front]: {tex: 'cabinet_door'}, north: {tex: 'spruce_planks'}, south: {tex: 'spruce_planks'}});
+    box(K, [x0 - (side > 0 ? 0 : 0.04), y + 0.45, za], [x1 + (side > 0 ? 0.04 : 0), y + 0.5, zb], sides('dark_oak_planks'));
+    box(K, [x0 + 0.03, y + 0.5, za + 0.05], [x1 - 0.03, y + 0.64, zb - 0.05], sides('white_wool', null, null, {tint: [0.94, 0.88, 0.76]}));
     const wall = side > 0 ? x0 : x1;
     const pillows = [['red_wool', za + 0.12], ['green_wool', za + 0.62], ['blue_wool', zb - 0.62]];
     for (const [tex, z] of pillows) {
       const a = side > 0 ? wall + 0.03 : wall - 0.2, c = side > 0 ? wall + 0.2 : wall - 0.03;
-      box(K, [a, 0.64, z], [c, 1.02, z + 0.46], sides(tex, null, null, {tint: [0.9, 0.9, 0.9]}));
+      box(K, [a, y + 0.64, z], [c, y + 1.02, z + 0.46], sides(tex, null, null, {tint: [0.9, 0.9, 0.9]}));
     }
     // A folded blanket at the far end, and a candle on the sill.
-    box(K, [x0 + 0.1, 0.64, zb - 0.55], [x1 - 0.1, 0.72, zb - 0.1], {up: {tex: 'rug_red'}, north: {tex: 'rug_red_border'}, south: {tex: 'rug_red_border'}, east: {tex: 'rug_red_border'}, west: {tex: 'rug_red_border'}});
+    box(K, [x0 + 0.1, y + 0.64, zb - 0.55], [x1 - 0.1, y + 0.72, zb - 0.1], {up: {tex: 'rug_red'}, north: {tex: 'rug_red_border'}, south: {tex: 'rug_red_border'}, east: {tex: 'rug_red_border'}, west: {tex: 'rug_red_border'}});
     const zc = Math.floor((za + zb) / 2);
-    K.candles.push(candle(K.mb, K.grid, K.atlas, [side > 0 ? x : x, 1 + 1.5 / 16, zc], side > 0 ? -6.5 : 6.5, 0, 5));
+    K.candles.push(candle(K.mb, K.grid, K.atlas, [x, y + 1 + 1.5 / 16, zc], side > 0 ? -6.5 : 6.5, 0, 5));
   }
 
   // ── Tables ─────────────────────────────────────────────────────────────
@@ -302,18 +302,37 @@
   // ── Autumn and comfort ─────────────────────────────────────────────────
   const srgb = c => c.map(v => Math.pow(v, 2.2));
 
-  // The desk chair: spindle back, seat at DESK_SEAT, pulled up facing -z.
-  // `o` is the middle of its seat on the floor.
-  const DESK_SEAT = 7 / 16;
+  // The desk chair: an upholstered study chair with padded arms and a
+  // buttoned back, its seat at DESK_SEAT, pulled up facing -z. `o` is the
+  // middle of its seat on the floor.
+  //
+  // No two boxes share a face pointing the same way, so nothing flickers
+  // where parts meet.
+  const DESK_SEAT = 8 / 16;
   function deskChair(K, o) {
     const at = [o[0] - 0.5, o[1], o[2] - 0.5];
-    const wood = sides('spruce_planks'), dark = sides('dark_oak_planks');
-    for (const [x, z] of [[2.5, 2.5], [12, 2.5], [2.5, 12], [12, 12]]) b(K, at, [x, 0, z], [x + 1.5, 5.5, z + 1.5], wood);
-    b(K, at, [2, 5.5, 2], [14, 7, 14], dark);
-    b(K, at, [2.5, 7, 2.5], [13.5, 7.6, 12], sides('red_wool', null, null, {tint: [0.8, 0.8, 0.8]}));
-    for (const x of [2.5, 12]) b(K, at, [x, 7, 12.5], [x + 1.5, 21, 14], wood);
-    b(K, at, [2.5, 19, 12.5], [13.5, 21.5, 14], dark);
-    for (const x of [5.5, 7.5, 9.5]) b(K, at, [x, 7, 13], [x + 1, 19, 13.6], wood);
+    const dark = sides('dark_oak_planks');
+    const velvet = sides('red_wool', null, null, {tint: [0.78, 0.7, 0.7]});
+    const deep = sides('red_wool', null, null, {tint: [0.5, 0.42, 0.42]});
+    // Turned legs and the seat frame.
+    for (const [x, z] of [[2, 2], [12.5, 2], [2, 12.5], [12.5, 12.5]]) b(K, at, [x, 0, z], [x + 1.5, 4, z + 1.5], dark);
+    b(K, at, [1.5, 4, 1.5], [14.5, 5.5, 14.5], dark);
+    // A deep seat cushion with a rolled front edge.
+    b(K, at, [2, 5.5, 1.8], [14, 8, 13], velvet);
+    b(K, at, [2.3, 5.4, 1.1], [13.7, 7.6, 1.8], {north: velvet.north, up: velvet.up, down: velvet.down, east: velvet.east, west: velvet.west});
+    // Back posts under a curved crest rail.
+    for (const x of [1.5, 12.5]) b(K, at, [x, 5.5, 13], [x + 2, 22, 15], dark);
+    b(K, at, [1.5, 22, 12.5], [14.5, 24, 15], dark);
+    b(K, at, [3, 24, 13], [13, 25, 14.5], dark);
+    // The padded back, buttoned, with a plaid cushion in the small of it.
+    b(K, at, [3.5, 7.5, 12], [12.5, 22, 14.5], velvet);
+    for (const [x, y] of [[5.5, 18], [10.5, 18], [8, 15], [5.5, 12], [10.5, 12]]) b(K, at, [x - 0.5, y - 0.5, 11.8], [x + 0.5, y + 0.5, 12], {north: deep.north});
+    b(K, at, [5, 8, 10.4], [11, 13, 12], {north: {tex: 'carpet_green_center', uv: [3, 3, 13, 11]}, up: {tex: 'carpet_green_center'}, east: {tex: 'carpet_green_edge'}, west: {tex: 'carpet_green_edge'}});
+    // Padded arms on short supports.
+    for (const [p0, p1, a0, a1] of [[0.5, 2, 0, 2.5], [14, 15.5, 13.5, 16]]) {
+      b(K, at, [p0, 5.5, 3], [p1, 11, 4.5], dark);
+      b(K, at, [a0, 11, 2.5], [a1, 12.5, 13], velvet);
+    }
   }
 
   // A knitted throw over an armchair's back, falling down behind it.
@@ -449,21 +468,159 @@
   }
 
   // One leaf of the front door, built round its hinge so it can swing:
-  // it runs toward +x from the hinge, or toward -x when `flip`ped.
+  // it runs toward +x from the hinge, or toward -x when `flip`ped. The
+  // door is three blocks tall, its two halves each a block and a half.
   function doorLeaf(K, flip, light) {
     const x = flip ? -1 : 0;
-    for (const [y, tex] of [[0, 'spruce_door_bottom'], [1, 'spruce_door_top']]) {
+    for (const [i, tex] of [[0, 'spruce_door_bottom'], [1, 'spruce_door_top']]) {
       const out = flip ? [16, 0, 0, 16] : [0, 0, 16, 16], inn = flip ? [0, 0, 16, 16] : [16, 0, 0, 16];
       const faces = {north: {tex, uv: out}, south: {tex, uv: inn}, east: {tex, uv: [0, 0, 3, 16]}, west: {tex, uv: [0, 0, 3, 16]}};
-      if (y === 1) faces.up = {tex: 'spruce_planks', uv: [0, 0, 16, 3]};
-      b(K, [x, y, 0], [0, 0, 0], [16, 16, 3], faces, {light, ao: 1});
+      if (i === 1) faces.up = {tex: 'spruce_planks', uv: [0, 0, 16, 3]};
+      b(K, [x, i * 1.5, 0], [0, 0, 0], [16, 24, 3], faces, {light, ao: 1});
     }
-    for (const [z0, z1] of [[-1, 0], [3, 4]]) b(K, [x, 0, 0], flip ? [1.5, 14, z0] : [13.5, 14, z0], flip ? [2.5, 18, z1] : [14.5, 18, z1], brass, {light, ao: 1});
+    for (const [z0, z1] of [[-1, 0], [3, 4]]) b(K, [x, 0, 0], flip ? [1.5, 21, z0] : [13.5, 21, z0], flip ? [2.5, 26, z1] : [14.5, 26, z1], brass, {light, ao: 1});
+  }
+
+  // A little roof over the front door on two brackets, with a lantern
+  // hanging at each end. `F` is the front wall; its face is at F + 1.
+  function porch(K, F) {
+    const z = F + 1;
+    const dark = sides('dark_oak_planks'), pale = sides('spruce_planks');
+    for (const x of [-1.95, 1.75]) {
+      box(K, [x, 2.45, z], [x + 0.2, 3.0, z + 0.2], dark);
+      box(K, [x, 2.8, z + 0.2], [x + 0.2, 3.0, z + 1.1], dark);
+    }
+    box(K, [-2.3, 3.0, z], [2.3, 3.18, z + 1.35], dark);
+    box(K, [-2.1, 3.18, z], [2.1, 3.36, z + 0.95], pale);
+    box(K, [-1.9, 3.36, z], [1.9, 3.54, z + 0.55], dark);
+    box(K, [-2.3, 2.92, z + 1.35], [2.3, 3.18, z + 1.45], pale);
+    for (const x of [-1.75, 1.75]) {
+      const o = [x - 0.5, 2.1, z + 0.45];
+      window.LibraryWorld.lantern(K.mb, K.grid, K.atlas, o, true);
+      chain(K.mb, K.grid, K.atlas, [o[0], o[1] + 13 / 16, o[2]], 3.0 - (o[1] + 13 / 16));
+    }
+  }
+
+  // A spiral stair round a newel post, `flights` of eight steps each
+  // climbing from one floor to the next, with a stepped rail on the open
+  // sides. `S` is the well's corner and centre, `ring` its eight cells.
+  function spiralStair(K, flights, S, ring) {
+    const last = flights[flights.length - 1];
+    const height = last.base + last.rise * ring.length;
+    const log = sides('dark_oak_log', 'dark_oak_log_top');
+    box(K, [S.cx + 5 / 16, 0, S.cz + 5 / 16], [S.cx + 11 / 16, height + 1.1, S.cz + 11 / 16], log);
+    box(K, [S.cx + 4.5 / 16, height + 1.1, S.cz + 4.5 / 16], [S.cx + 11.5 / 16, height + 1.25, S.cz + 11.5 / 16], brass);
+    const tread = sides('spruce_planks'), rail = sides('dark_oak_planks');
+    for (const {base, rise} of flights) {
+      ring.forEach(([sx, sz], k) => {
+        const top = base + (k + 1) * rise;
+        const thick = Math.min(0.5, rise);
+        // Treads beside the post reach in to it.
+        const a = [sx, top - thick, sz], c = [sx + 1, top, sz + 1];
+        if (sx === S.cx - 1 && sz === S.cz) c[0] += 5 / 16;
+        if (sx === S.cx + 1 && sz === S.cz) a[0] -= 5 / 16;
+        if (sz === S.cz - 1 && sx === S.cx) c[2] += 5 / 16;
+        if (sz === S.cz + 1 && sx === S.cx) a[2] -= 5 / 16;
+        box(K, a, c, tread, {whole: true});
+        // A baluster and rail along each open outer edge; the east side is
+        // the wall, the first step is the way on and the last the way off.
+        const edges = [];
+        if (sx === S.x0 && k !== 0) edges.push('west');
+        if (sz === S.z0) edges.push('north');
+        if (sz === S.z0 + 2 && k !== ring.length - 1) edges.push('south');
+        for (const edge of edges) {
+          const t = 1.5 / 16;
+          const [x0, z0, x1, z1] = edge === 'west' ? [sx + 0.03, sz, sx + 0.03 + t, sz + 1] : edge === 'north' ? [sx, sz + 0.03, sx + 1, sz + 0.03 + t] : [sx, sz + 0.97 - t, sx + 1, sz + 0.97];
+          const mx = (x0 + x1) / 2, mz = (z0 + z1) / 2;
+          box(K, [mx - t / 2, top, mz - t / 2], [mx + t / 2, top + 0.84, mz + t / 2], rail, {whole: true});
+          box(K, [x0, top + 0.84, z0], [x1, top + 0.96, z1], rail, {whole: true});
+        }
+      });
+    }
+  }
+
+  // The railing round the stair well on an upper floor, open to the
+  // south where the stair comes up.
+  function stairRail(K, S, y) {
+    const wood = sides('spruce_planks'), dark = sides('dark_oak_planks');
+    const x0 = S.x0, z0 = S.z0, x1 = S.x0 + 3, z1 = S.z0 + 3;
+    const t = 2 / 16;
+    const runs = [
+      [[x0 - t - 0.02, z0 - t - 0.02], [x0 - 0.02, z1 + t + 0.02]],
+      [[x0 - 0.02, z0 - t - 0.02], [x1, z0 - 0.02]],
+      [[x0 - 0.02, z1 + 0.02], [x0 + 1, z1 + t + 0.02]],
+      [[x0 + 2, z1 + 0.02], [x1, z1 + t + 0.02]],
+    ];
+    for (const [[ax, az], [cx, cz]] of runs) {
+      box(K, [ax, y + 0.86, az], [cx, y + 1.0, cz], dark);
+      box(K, [ax + 0.02, y + 0.42, az + 0.02], [cx - 0.02, y + 0.5, cz - 0.02], wood);
+      // Balusters every half block along the run.
+      const along = cx - ax > cz - az ? 0 : 2;
+      const len = along === 0 ? cx - ax : cz - az;
+      for (let s = 0.1; s < len; s += 0.5) {
+        const px = along === 0 ? ax + s : (ax + cx) / 2, pz = along === 2 ? az + s : (az + cz) / 2;
+        box(K, [px - 0.035, y, pz - 0.035], [px + 0.035, y + 0.86, pz + 0.035], wood, {whole: true});
+      }
+    }
+  }
+
+  // A windlass and a pitched roof over the well at (wx, wz), with a bucket
+  // on its rope.
+  function wellRoof(K, wx, wz) {
+    const log = sides('spruce_log', 'spruce_log_top'), dark = sides('dark_oak_planks');
+    for (const x of [wx + 0.05, wx + 2.75]) box(K, [x, 1, wz + 1.4], [x + 0.2, 3.0, wz + 1.6], log);
+    box(K, [wx + 0.25, 2.3, wz + 1.44], [wx + 2.75, 2.44, wz + 1.56], {north: {tex: 'spruce_log'}, south: {tex: 'spruce_log'}, up: {tex: 'spruce_log', rot: 90}, down: {tex: 'spruce_log', rot: 90}});
+    chain(K.mb, K.grid, K.atlas, [wx + 1, 1.5, wz + 1], 0.8);
+    const iron = sides('light_gray_wool', null, null, {tint: [0.6, 0.6, 0.66]});
+    box(K, [wx + 1.36, 1.05, wz + 1.36], [wx + 1.64, 1.5, wz + 1.64], iron, {whole: true});
+    box(K, [wx - 0.2, 3.0, wz + 0.55], [wx + 3.2, 3.2, wz + 2.45], dark);
+    box(K, [wx - 0.2, 3.2, wz + 0.85], [wx + 3.2, 3.4, wz + 2.15], dark);
+    box(K, [wx - 0.2, 3.4, wz + 1.2], [wx + 3.2, 3.6, wz + 1.8], sides('spruce_planks'));
+  }
+
+  // A scarecrow on a pole: a sack body, straw hands, a carved pumpkin head
+  // looking east over the path, and a battered hat.
+  function scarecrow(K, o) {
+    const [x, y, z] = o;
+    const pole = sides('spruce_log', 'spruce_log_top');
+    box(K, [x + 0.44, y, z + 0.44], [x + 0.56, y + 1.9, z + 0.56], pole);
+    box(K, [x - 0.1, y + 1.35, z + 0.45], [x + 1.1, y + 1.46, z + 0.55], sides('spruce_planks'));
+    box(K, [x + 0.25, y + 0.85, z + 0.33], [x + 0.75, y + 1.5, z + 0.67], sides('brown_wool', null, null, {tint: [0.95, 0.82, 0.62]}));
+    const straw = sides('hay_block_side', 'hay_block_top');
+    for (const [a, c] of [[-0.2, -0.1], [1.1, 1.2]]) box(K, [x + a, y + 1.2, z + 0.4], [x + c, y + 1.42, z + 0.6], straw, {whole: true});
+    box(K, [x + 0.3, y + 0.6, z + 0.38], [x + 0.7, y + 0.85, z + 0.62], straw, {whole: true});
+    const skin = {tex: 'pumpkin_side', uv: [0, 0, 16, 16]};
+    box(K, [x + 0.2, y + 1.5, z + 0.2], [x + 0.8, y + 2.05, z + 0.8], {north: skin, south: skin, west: skin, east: {tex: 'carved_pumpkin', uv: [0, 0, 16, 16]}, up: {tex: 'pumpkin_top', uv: [0, 0, 16, 16]}}, {whole: true});
+    const hat = sides('brown_wool', null, null, {tint: [0.42, 0.34, 0.28]});
+    box(K, [x + 0.1, y + 2.05, z + 0.1], [x + 0.9, y + 2.1, z + 0.9], hat, {whole: true});
+    box(K, [x + 0.3, y + 2.1, z + 0.3], [x + 0.7, y + 2.36, z + 0.7], hat, {whole: true});
+  }
+
+  // A split log laid on its side as a bench, three blocks along `axis`.
+  function logSeat(K, o, axis) {
+    const [x, y, z] = o;
+    const end = {tex: 'spruce_log_top'}, bark = {tex: 'spruce_log', rot: axis === 'x' ? 90 : 0};
+    if (axis === 'x') box(K, [x, y, z + 0.2], [x + 3, y + 0.55, z + 0.8], {east: end, west: end, north: bark, south: bark, up: bark});
+    else box(K, [x + 0.2, y, z], [x + 0.8, y + 0.55, z + 3], {north: end, south: end, east: bark, west: bark, up: bark});
+  }
+
+  // A planter of ferns and flowers under a window on the outside of a
+  // wall, along frame `f` from u0 to u1.
+  function planter(K, f, u0, u1) {
+    const wood = {tex: 'spruce_planks'};
+    f.box(K, u0 + 0.05, 0.62, -0.34, u1 - 0.05, 0.98, 0, {front: wood, top: wood, bottom: wood, left: wood, right: wood});
+    f.box(K, u0 + 0.1, 0.98, -0.3, u1 - 0.1, 1.0, -0.04, {top: {tex: 'coarse_dirt'}});
+    for (let u = u0; u < u1; u++) {
+      const p = f.p(u + 0.5, 1, -0.17);
+      cross(K.mb, K.grid, K.atlas, [p[0] - 0.5, p[1], p[2] - 0.5], u % 2 ? 'poppy' : 'fern', 0.55, 0);
+    }
+    for (const u of [u0 + 0.25, u1 - 0.35]) f.box(K, u, 0.42, -0.3, u + 0.1, 0.62, 0, {front: wood, left: wood, right: wood, bottom: wood});
   }
 
   window.LibraryFurniture = {
     armchair, windowSeat, desk, sideTable, teacup, bookStack, globe, floorLamp, pot, barrel, stool, postDecor,
     coatStand, clock, hangingPlant, rug, ladder, mantel,
     DESK_SEAT, deskChair, throwBlanket, cat, logPile, pumpkin, fence, bench, lantern, lampPost, doorLeaf, garland, wreath, windowBox,
+    porch, spiralStair, stairRail, wellRoof, scarecrow, logSeat, planter,
   };
 })();

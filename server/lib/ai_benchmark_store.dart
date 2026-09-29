@@ -317,11 +317,19 @@ class AiBenchmarkStore {
           id.startsWith('cathedral_'));
 
   Future<File?> _sceneFile(String id) async {
-    final override = File('$_dir/$id.${_extOf(id)}');
+    final ext = _extOf(id);
+    final override = File('$_dir/$id.$ext');
     if (await override.exists()) return override;
-    final seed =
-        _seedDir == null ? null : File('$_seedDir/scenes/$id.${_extOf(id)}');
+    if (ext == 'html') {
+      final overrideIndex = File('$_dir/$id/index.html');
+      if (await overrideIndex.exists()) return overrideIndex;
+    }
+    final seed = _seedDir == null ? null : File('$_seedDir/scenes/$id.$ext');
     if (seed != null && await seed.exists()) return seed;
+    if (_seedDir != null && ext == 'html') {
+      final seedIndex = File('$_seedDir/scenes/$id/index.html');
+      if (await seedIndex.exists()) return seedIndex;
+    }
     return null;
   }
 
@@ -342,6 +350,17 @@ class AiBenchmarkStore {
     for (final dir in dirs) {
       if (!await dir.exists()) continue;
       await for (final entity in dir.list()) {
+        if (entity is Directory) {
+          final id = entity.uri.pathSegments
+              .where((segment) => segment.isNotEmpty)
+              .last;
+          if (_validId(id) &&
+              _extOf(id) == 'html' &&
+              await File('${entity.path}/index.html').exists()) {
+            ids.add(id);
+          }
+          continue;
+        }
         if (entity is! File) continue;
         final base = entity.uri.pathSegments.last;
         final dot = base.lastIndexOf('.');

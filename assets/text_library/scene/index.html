@@ -45,8 +45,10 @@
 <div id="settings" class="mc-screen" hidden>
   <div class="mc-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-title">
     <h2 id="settings-title" class="mc-text"></h2>
-    <button id="quality" class="mc-button wide" type="button"></button>
+    <button id="video-open" class="mc-button wide" type="button"></button>
     <button id="time" class="mc-button wide" type="button"></button>
+    <button id="weather" class="mc-button wide" type="button"></button>
+    <label class="mc-slider wide"><input id="sound" type="range" min="0" max="100" step="5"><span id="sound-label"></span></label>
     <p id="skin-label" class="mc-text dim"></p>
     <div class="row">
       <button id="skin-import" class="mc-button" type="button"></button>
@@ -59,6 +61,14 @@
     <p id="download-note" class="mc-text dim small" hidden></p>
     <div class="mc-progress" id="download-progress" hidden><i></i></div>
     <button id="settings-done" class="mc-button wide" type="button"></button>
+  </div>
+</div>
+
+<div id="video" class="mc-screen" hidden>
+  <div class="mc-dialog" role="dialog" aria-modal="true" aria-labelledby="video-title">
+    <h2 id="video-title" class="mc-text"></h2>
+    <div id="video-options" class="options"></div>
+    <button id="video-done" class="mc-button wide" type="button"></button>
   </div>
 </div>
 
@@ -79,6 +89,7 @@
     <div id="history">
       <button class="mc-icon" data-cmd="undo" type="button"><svg viewBox="0 0 9 7" aria-hidden="true"><path d="M3 0h1v1h4v1h1v3H8v1H4V5h4V2H4v1H3V2H2V1h1zM0 1h2v1H1v1H0z"/></svg></button>
       <button class="mc-icon" data-cmd="redo" type="button"><svg viewBox="0 0 9 7" aria-hidden="true"><path d="M6 0H5v1H1v1H0v3h1v1h4V5H1V2h4v1h1V2h1V1H6zM9 1H7v1h1v1h1z"/></svg></button>
+      <div id="shapes" class="shapes" role="group"></div>
     </div>
     <div id="book" class="mc-book">
       <p id="book-page" class="mc-ink"></p>
@@ -129,6 +140,7 @@
 <script src="furniture.js"></script>
 <script src="skin.js"></script>
 <script src="render.js"></script>
+<script src="weather.js"></script>
 <script src="gui.js"></script>
 <script src="book.js"></script>
 <script src="main.js"></script>

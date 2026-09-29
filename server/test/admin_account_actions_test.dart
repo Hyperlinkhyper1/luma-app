@@ -113,6 +113,30 @@ void main() {
     };
   }
 
+  test('detector model test accepts unsaved and default selections', () async {
+    for (final model in ['test-model', '']) {
+      final result = await call('POST', '/admin/ai-routes/test', admin: true,
+          json: {
+            'mode': 'detector',
+            'upstream': 'google',
+            'model': model,
+            'reasoningEffort': 'medium',
+          });
+      expect(result['httpStatus'], 200);
+      expect(result['ok'], false);
+      expect(result['model'], model.isEmpty ? 'gemini-flash-latest' : model);
+      expect(result['error'], contains('No API key'));
+    }
+
+    final saved = await call('POST', '/admin/ai-routes/test',
+        admin: true, json: {'mode': 'detector'});
+    expect(saved['httpStatus'], 404);
+
+    final unauthorized = await call('POST', '/admin/ai-routes/test',
+        json: {'mode': 'detector'});
+    expect(unauthorized['httpStatus'], 401);
+  });
+
   /// Registers an account (approval mode is `open`, so this signs straight in)
   /// and returns its session token.
   Future<String> register(String email, String password) async {
@@ -399,9 +423,14 @@ void main() {
         headers: {'x-admin-key': 'test-admin-key'}));
     final html = await dashboard.readAsString();
     expect(html, contains('App transfer'));
-    expect(html, contains('notes'));
-    expect(html, contains('Transfer details'));
-
+    expect(html, contains('data-tab="usage"'));
+    expect(html, contains('id="usageSearch"'));
+    expect(html, contains('id="usagePicker"'));
+    expect(html, contains('Storage by collection'));
+    final usersPanel = html.split('id="panel-users"').last
+        .split('id="panel-usage"').first;
+    expect(usersPanel, isNot(contains('App transfer')));
+    expect(usersPanel, isNot(contains('user-usage')));
   });
 
   group('ip bans', () {

@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "native_webview.h"
+#include "tray_icon.h"
 #include "win32_window.h"
 
 // A window that does nothing but host a Flutter view.
@@ -32,6 +33,12 @@ class FlutterWindow : public Win32Window {
 
   // Real WebView2 windows for pages too heavy for a captured texture.
   std::unique_ptr<NativeWebviewManager> native_webviews_;
+
+  // The notification-area icon that reopens or quits a hidden luma.
+  std::unique_ptr<TrayIcon> tray_icon_;
+
+  // Posted by a second luma.exe that found this one already running.
+  UINT show_window_message_ = 0;
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_

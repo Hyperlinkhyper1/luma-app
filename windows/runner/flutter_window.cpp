@@ -38,6 +38,9 @@ bool FlutterWindow::OnCreate() {
   native_webviews_ = std::make_unique<NativeWebviewManager>(
       flutter_controller_->engine()->messenger(), GetHandle(),
       flutter_controller_->view()->GetNativeWindow());
+  tray_icon_ = std::make_unique<TrayIcon>(
+      flutter_controller_->engine()->messenger(), GetHandle());
+  show_window_message_ = ::RegisterWindowMessageW(kShowWindowMessageName);
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
     this->Show();
@@ -52,6 +55,7 @@ bool FlutterWindow::OnCreate() {
 }
 
 void FlutterWindow::OnDestroy() {
+  tray_icon_ = nullptr;
   native_webviews_ = nullptr;
   if (flutter_controller_) {
     flutter_controller_ = nullptr;
@@ -64,6 +68,18 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
+  if (show_window_message_ != 0 && message == show_window_message_) {
+    ShowAndFocusWindow(hwnd);
+    return 0;
+  }
+  if (message == kQuitAppMessage) {
+    Destroy();
+    return 0;
+  }
+  if (tray_icon_ && tray_icon_->HandleMessage(message, wparam, lparam)) {
+    return 0;
+  }
+
   // Give Flutter, including plugins, an opportunity to handle window messages.
   if (flutter_controller_) {
     std::optional<LRESULT> result =

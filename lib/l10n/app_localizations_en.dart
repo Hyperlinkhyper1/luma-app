@@ -9,6 +9,12 @@ class LEn extends L {
   LEn([String locale = 'en']) : super(locale);
 
   @override
+  String get trayOpen => 'Open luma';
+
+  @override
+  String get trayQuit => 'Quit luma';
+
+  @override
   String get navHome => 'Home';
 
   @override

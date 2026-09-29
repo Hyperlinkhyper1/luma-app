@@ -145,6 +145,8 @@ flutter:
     - assets/images/vendors/
     - assets/space_colony/
     - assets/ai_usage/engine_tests/
+    - server/benchmarks/scenes/engine_gpt61_sol_xhigh/index.html
+    - assets/ai_usage/pc_tests/gpt61_sol_xhigh/index.html
     - assets/city_planner/
     - assets/subway_builder/
     - assets/subway_builder/vendor/

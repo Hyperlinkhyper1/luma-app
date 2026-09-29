@@ -1,5 +1,7 @@
 {
   "@@locale": "zh",
+  "trayOpen": "打开 luma",
+  "trayQuit": "退出 luma",
   "navHome": "首页",
   "navFileConverter": "文件转换器",
   "navFinance": "财务",
