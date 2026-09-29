@@ -26,9 +26,9 @@ enum AiUpstream {
 
 /// The app's three modes, keyed by the id the client sends as `model`.
 const kAiModeNames = {
-  'normal': 'Aurora 1.0',
-  'smarter': 'Nebula 1.0',
-  'smartest': 'Pulsar 1.0',
+  'normal': 'Aurora',
+  'smarter': 'Nebula',
+  'smartest': 'Pulsar',
 };
 
 /// Reasoning-effort overrides the dashboard offers. An empty string means
@@ -108,12 +108,21 @@ class AiModeRoutingStore {
 
   final File _file;
   final Map<String, AiModeRoute> _routes = {};
+  final Map<String, int> _versions = {};
+  final AsyncLock _lock = AsyncLock();
 
   void _load() {
     try {
       if (!_file.existsSync()) return;
       final decoded = jsonDecode(_file.readAsStringSync());
       if (decoded is! Map) return;
+      final versions = decoded['_versions'];
+      if (versions is Map) {
+        for (final mode in kAiModeNames.keys) {
+          final version = versions[mode];
+          if (version is int && version >= 10) _versions[mode] = version;
+        }
+      }
       decoded.forEach((mode, raw) {
         final route = AiModeRoute.fromJson(raw);
         if (mode is String && kAiModeNames.containsKey(mode) && route != null) {
@@ -128,6 +137,18 @@ class AiModeRoutingStore {
   /// The operator's stored choice for [mode], if any — whether or not its
   /// upstream currently has a key.
   AiModeRoute? stored(String mode) => _routes[mode];
+
+  /// Integer tenths avoid rounding errors and carry 1.9 over to 2.0.
+  String version(String mode) {
+    final tenths = _versions[mode] ?? 10;
+    return '${tenths ~/ 10}.${tenths % 10}';
+  }
+
+  String displayName(String mode) => '${kAiModeNames[mode]} ${version(mode)}';
+
+  Map<String, String> get versions => {
+        for (final mode in kAiModeNames.keys) mode: version(mode),
+      };
 
   /// The route [mode] is actually served by, given which upstreams have a
   /// key. A stored choice whose key has since been removed falls back to the
@@ -144,11 +165,29 @@ class AiModeRoutingStore {
     return null;
   }
 
-  Future<void> save(Map<String, AiModeRoute> routes) async {
-    _routes
-      ..clear()
-      ..addAll(routes);
-    await atomicWriteString(_file.path,
-        jsonEncode({for (final e in _routes.entries) e.key: e.value.toJson()}));
-  }
+  Future<void> save(Map<String, AiModeRoute> routes) =>
+      _lock.synchronized(() async {
+        final nextVersions = Map<String, int>.of(_versions);
+        for (final mode in kAiModeNames.keys) {
+          final before = _routes[mode];
+          final after = routes[mode];
+          if (before?.upstream != after?.upstream ||
+              before?.model != after?.model ||
+              before?.reasoningEffort != after?.reasoningEffort) {
+            nextVersions[mode] = (nextVersions[mode] ?? 10) + 1;
+          }
+        }
+        await atomicWriteString(
+            _file.path,
+            jsonEncode({
+              for (final e in routes.entries) e.key: e.value.toJson(),
+              '_versions': nextVersions,
+            }));
+        _routes
+          ..clear()
+          ..addAll(routes);
+        _versions
+          ..clear()
+          ..addAll(nextVersions);
+      });
 }

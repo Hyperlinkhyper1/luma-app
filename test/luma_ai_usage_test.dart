@@ -14,15 +14,17 @@ import 'package:luma/features/plugins/installed/ai_usage/ai_usage_source.dart';
 import 'package:luma/features/plugins/installed/ai_usage/ai_usage_stats.dart';
 import 'package:luma/features/plugins/installed/ai_usage/data/ai_usage_database.dart';
 
-Future<AiChatResult> _chat(AiClient client, {List<AiToolDefinition> tools = const []}) =>
-    client.chat(
-      apiKey: 'key',
-      history: const [AiTurn(role: 'user', text: 'Hi')],
-      systemPrompt: '',
-      tools: tools,
-      executeTool: (_, _) async => const {'ok': true},
-      metadataFor: (_, _) => null,
-    );
+Future<AiChatResult> _chat(
+  AiClient client, {
+  List<AiToolDefinition> tools = const [],
+}) => client.chat(
+  apiKey: 'key',
+  history: const [AiTurn(role: 'user', text: 'Hi')],
+  systemPrompt: '',
+  tools: tools,
+  executeTool: (_, _) async => const {'ok': true},
+  metadataFor: (_, _) => null,
+);
 
 const _tool = AiToolDefinition(
   name: 'ping',
@@ -32,6 +34,47 @@ const _tool = AiToolDefinition(
 
 void main() {
   group('client usage', () {
+    test('reported costs preserve zero and reject unusable values', () async {
+      for (final cost in [0, 0.25, -1, '0.25', null]) {
+        final mock = MockClient(
+          (_) async => http.Response(
+            jsonEncode({
+              'model': 'qwen/qwen3.5-plus',
+              'choices': [
+                {
+                  'message': {'role': 'assistant', 'content': 'Hi'},
+                },
+              ],
+              'usage': {
+                'prompt_tokens': 100,
+                'completion_tokens': 20,
+                'cost': cost,
+              },
+            }),
+            200,
+          ),
+        );
+        final result = await http.runWithClient(
+          () => _chat(OpenAiClient()),
+          () => mock,
+        );
+        expect(
+          result.usage!.reportedCost,
+          cost is num && cost >= 0 ? cost.toDouble() : null,
+        );
+      }
+    });
+
+    test('a partial reported cost never stands in for the whole tool loop', () {
+      const priced = AiTokenUsage(
+        model: 'qwen/qwen3.5-plus',
+        reportedCost: 0.25,
+      );
+      const unpriced = AiTokenUsage(model: 'qwen/qwen3.5-plus');
+      expect((priced + unpriced).reportedCost, isNull);
+      expect((unpriced + priced).reportedCost, isNull);
+    });
+
     test('OpenAI-shape usage splits cached input and sums tool hops', () async {
       var call = 0;
       final mock = MockClient((request) async {
@@ -96,49 +139,64 @@ void main() {
               },
             }),
             200,
-          ));
+          ),
+        );
 
-      final result = await http.runWithClient(() => _chat(OpenAiClient()), () => mock);
+        final result = await http.runWithClient(
+          () => _chat(OpenAiClient()),
+          () => mock,
+        );
 
-      expect(result.usage!.outputTokens, 55);
-      expect(result.usage!.totalTokens, 65);
-    });
+        expect(result.usage!.outputTokens, 55);
+        expect(result.usage!.totalTokens, 65);
+      },
+    );
 
     test('a response without usage reports none', () async {
-      final mock = MockClient((_) async => http.Response(
-            jsonEncode({
-              'choices': [
-                {
-                  'message': {'role': 'assistant', 'content': 'Hi'},
-                },
-              ],
-            }),
-            200,
-          ));
+      final mock = MockClient(
+        (_) async => http.Response(
+          jsonEncode({
+            'choices': [
+              {
+                'message': {'role': 'assistant', 'content': 'Hi'},
+              },
+            ],
+          }),
+          200,
+        ),
+      );
 
-      final result = await http.runWithClient(() => _chat(OpenAiClient()), () => mock);
+      final result = await http.runWithClient(
+        () => _chat(OpenAiClient()),
+        () => mock,
+      );
 
       expect(result.usage, isNull);
     });
 
     test('Anthropic usage keeps cache reads and writes apart', () async {
-      final mock = MockClient((_) async => http.Response(
-            jsonEncode({
-              'model': 'claude-3-5-haiku-20241022',
-              'content': [
-                {'type': 'text', 'text': 'Hi'},
-              ],
-              'usage': {
-                'input_tokens': 12,
-                'output_tokens': 7,
-                'cache_read_input_tokens': 3,
-                'cache_creation_input_tokens': 4,
-              },
-            }),
-            200,
-          ));
+      final mock = MockClient(
+        (_) async => http.Response(
+          jsonEncode({
+            'model': 'claude-3-5-haiku-20241022',
+            'content': [
+              {'type': 'text', 'text': 'Hi'},
+            ],
+            'usage': {
+              'input_tokens': 12,
+              'output_tokens': 7,
+              'cache_read_input_tokens': 3,
+              'cache_creation_input_tokens': 4,
+            },
+          }),
+          200,
+        ),
+      );
 
-      final result = await http.runWithClient(() => _chat(AnthropicClient()), () => mock);
+      final result = await http.runWithClient(
+        () => _chat(AnthropicClient()),
+        () => mock,
+      );
 
       final usage = result.usage!;
       expect(usage.model, 'claude-3-5-haiku-20241022');
@@ -158,36 +216,105 @@ void main() {
         'google/gemini-flash-lite-latest',
         'google/gemini-flash-latest',
       ]) {
-        expect(isBillableModel(AiUsageSource.luma, model), isTrue, reason: model);
+        expect(
+          isBillableModel(AiUsageSource.luma, model),
+          isTrue,
+          reason: model,
+        );
       }
     });
 
     test('gpt-4o-mini prices at its own rate, not the flagship fallback', () {
-      expect(pricingFor(AiUsageSource.luma, 'openai/gpt-4o-mini-2024-07-18')!.input, 0.15);
+      expect(
+        pricingFor(AiUsageSource.luma, 'openai/gpt-4o-mini-2024-07-18')!.input,
+        0.15,
+      );
     });
 
     test('Gemini slugs map onto the Gemini table', () {
-      expect(geminiDisplayNameForSlug('gemini-3.5-flash-lite'), 'Gemini 3.5 Flash-Lite');
-      expect(geminiDisplayNameForSlug('models/gemini-3.1-pro-preview'), 'Gemini 3.1 Pro');
-      expect(geminiDisplayNameForSlug('gemini-flash-latest'), 'Gemini 3.5 Flash');
+      expect(
+        geminiDisplayNameForSlug('gemini-3.5-flash-lite'),
+        'Gemini 3.5 Flash-Lite',
+      );
+      expect(
+        geminiDisplayNameForSlug('models/gemini-3.1-pro-preview'),
+        'Gemini 3.1 Pro',
+      );
+      expect(
+        geminiDisplayNameForSlug('gemini-flash-latest'),
+        'Gemini 3.5 Flash',
+      );
       expect(geminiDisplayNameForSlug('gpt-4o'), isNull);
     });
 
     test('an unknown Mistral model prices as Mistral Small', () {
-      expect(mistralPricingFor('some-agent-model'), kMistralPricing['mistral-small']);
-      expect(mistralPricingFor('magistral-small-2509'), kMistralPricing['magistral-small']);
+      expect(
+        mistralPricingFor('some-agent-model'),
+        kMistralPricing['mistral-small'],
+      );
+      expect(
+        mistralPricingFor('magistral-small-2509'),
+        kMistralPricing['magistral-small'],
+      );
     });
 
     test('a model with no provider prefix is not billable', () {
       expect(isBillableModel(AiUsageSource.luma, 'gpt-4o-mini'), isFalse);
     });
 
+    test('malformed model ids remain unpriced', () {
+      for (final model in [
+        '',
+        '/gpt-4o-mini',
+        'google/',
+        'google//model',
+        'google/z-ai/',
+      ]) {
+        expect(pricingFor(AiUsageSource.luma, model), isNull, reason: model);
+      }
+    });
+
+    test('on-device Qwen has a known zero API cost', () {
+      const model = 'local/Qwen3.5-0.8B (on-device)';
+      expect(isBillableModel(AiUsageSource.luma, model), isTrue);
+      expect(costForTurn(AiUsageSource.luma, model, 100, 20, 0, 0), 0);
+    });
+
+    test('a routed model uses its own vendor rate', () {
+      expect(
+        pricingFor(AiUsageSource.luma, 'google/openai/gpt-4o-mini')!.input,
+        0.15,
+      );
+      expect(
+        pricingFor(
+          AiUsageSource.luma,
+          'google/anthropic/claude-sonnet-4-6',
+        )!.input,
+        3,
+      );
+      expect(
+        pricingFor(AiUsageSource.luma, 'google/google/gemini-3.5-flash')!.input,
+        1.5,
+      );
+    });
+
     test('display names and companies follow the provider', () {
-      expect(displayName(AiUsageSource.luma, 'openai/gpt-4o-mini'), 'Luma · GPT 4o mini');
-      expect(displayName(AiUsageSource.luma, 'anthropic/claude-3-5-haiku-20241022'),
-          'Luma · Haiku 3.5');
-      expect(companyForModel(AiUsageSource.luma, 'google/gemini-flash-latest'), 'Google');
-      expect(companyForModel(AiUsageSource.luma, 'mistral/mistral-small-latest'), 'Mistral');
+      expect(
+        displayName(AiUsageSource.luma, 'openai/gpt-4o-mini'),
+        'Luma · GPT 4o mini',
+      );
+      expect(
+        displayName(AiUsageSource.luma, 'anthropic/claude-3-5-haiku-20241022'),
+        'Luma · Haiku 3.5',
+      );
+      expect(
+        companyForModel(AiUsageSource.luma, 'google/gemini-flash-latest'),
+        'Google',
+      );
+      expect(
+        companyForModel(AiUsageSource.luma, 'mistral/mistral-small-latest'),
+        'Mistral',
+      );
     });
   });
 
@@ -201,6 +328,106 @@ void main() {
     });
 
     tearDown(() => db.close());
+
+    test('a reported zero wins over the Luma model estimate', () async {
+      await repo.recordLumaCall(
+        providerId: 'google',
+        usage: const AiTokenUsage(
+          model: 'openai/gpt-4o-mini',
+          inputTokens: 1000000,
+          reportedCost: 0,
+        ),
+        feature: 'Assistant',
+      );
+      final row = (await db.select(db.aiUsageTurns).get()).single;
+      expect(rowHasKnownCost(row), isTrue);
+      expect(costForRow(row), 0);
+      expect(totals([row]).hasUnbillable, isFalse);
+    });
+
+    test(
+      'OpenRouter response cost survives tool hops and persistence',
+      () async {
+        for (final model in ['z-ai/glm-5.3-flash', 'openai/gpt-4o-mini']) {
+          var call = 0;
+          final mock = MockClient((_) async {
+            call++;
+            return http.Response(
+              jsonEncode({
+                'model': model,
+                'choices': [
+                  {
+                    'message': call == 1
+                        ? {
+                            'role': 'assistant',
+                            'content': null,
+                            'tool_calls': [
+                              {
+                                'id': 't1',
+                                'type': 'function',
+                                'function': {'name': 'ping', 'arguments': '{}'},
+                              },
+                            ],
+                          }
+                        : {'role': 'assistant', 'content': 'Done'},
+                  },
+                ],
+                'usage': {
+                  'prompt_tokens': 100,
+                  'completion_tokens': 20,
+                  'total_tokens': 120,
+                  'cost': call == 1 ? 0.12 : 0.03,
+                },
+              }),
+              200,
+            );
+          });
+          final result = await http.runWithClient(
+            () => _chat(OpenAiClient(), tools: const [_tool]),
+            () => mock,
+          );
+          await repo.recordLumaCall(
+            providerId: 'google',
+            usage: result.usage!,
+            feature: 'Assistant',
+          );
+        }
+        final rows = await db.select(db.aiUsageTurns).get();
+        for (final row in rows) {
+          expect(row.reportedCost, closeTo(0.15, 1e-9));
+          expect(rowHasKnownCost(row), isTrue);
+          expect(costForRow(row), closeTo(0.15, 1e-9));
+        }
+        expect(totals(rows).cost, closeTo(0.30, 1e-9));
+        expect(totals(rows).hasUnbillable, isFalse);
+      },
+    );
+
+    test('OpenRouter models routed through Luma retain a known cost', () async {
+      for (final model in [
+        'z-ai/glm-5.3-flash',
+        'qwen/qwen3.5-plus',
+        'anthropic/claude-sonnet-4-6',
+        'openai/gpt-4o-mini',
+      ]) {
+        await repo.recordLumaCall(
+          providerId: 'google',
+          usage: AiTokenUsage(
+            model: model,
+            inputTokens: 1000000,
+            outputTokens: 1000000,
+          ),
+          feature: 'Assistant',
+        );
+      }
+      final rows = await db.select(db.aiUsageTurns).get();
+      for (final row in rows) {
+        expect(rowHasKnownCost(row), isTrue, reason: row.model);
+        expect(costForRow(row), greaterThan(0), reason: row.model);
+      }
+      expect(totals(rows).hasUnbillable, isFalse);
+      expect(aggregateByModel(rows).every((model) => model.billable), isTrue);
+    });
 
     test('stores a priced, dated turn and opens the page', () async {
       expect(repo.anyDirFound, isNull);
@@ -234,7 +461,10 @@ void main() {
     test("strips Gemini's models/ prefix", () async {
       await repo.recordLumaCall(
         providerId: 'google',
-        usage: const AiTokenUsage(model: 'models/gemini-flash-latest', inputTokens: 5),
+        usage: const AiTokenUsage(
+          model: 'models/gemini-flash-latest',
+          inputTokens: 5,
+        ),
         feature: 'Mind Map',
       );
 

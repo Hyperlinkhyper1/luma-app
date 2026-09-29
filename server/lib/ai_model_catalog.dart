@@ -33,7 +33,8 @@ class AiEffortProfile {
   Map<String, dynamic> toJson() => {
         'effort': effort,
         if (intelligenceIndex != null) 'intelligenceIndex': intelligenceIndex,
-        if (medianOutputTokens != null) 'medianOutputTokens': medianOutputTokens,
+        if (medianOutputTokens != null)
+          'medianOutputTokens': medianOutputTokens,
       };
 }
 
@@ -475,6 +476,8 @@ class AiModelCatalogStore {
 
   final File _file;
   final Map<String, AiModel> _models;
+  Map<String, AiModel>? _routingModels;
+  int routingRefreshedAtMs = 0;
   List<AiNewsItem> _news;
   int _refreshedAtMs;
   String _etag = '';
@@ -487,11 +490,22 @@ class AiModelCatalogStore {
     final models = <String, AiModel>{};
     var news = <AiNewsItem>[];
     var refreshedAtMs = 0;
+    Map<String, AiModel>? routingModels;
+    var routingRefreshedAtMs = 0;
     if (await file.exists()) {
       try {
         final decoded = jsonDecode(await file.readAsString());
         if (decoded is Map<String, dynamic>) {
           refreshedAtMs = (decoded['refreshedAtMs'] as num?)?.toInt() ?? 0;
+          routingRefreshedAtMs =
+              (decoded['routingRefreshedAtMs'] as num?)?.toInt() ?? 0;
+          if (decoded['routingModels'] is List) {
+            routingModels = {
+              for (final raw in decoded['routingModels'] as List)
+                if (raw is Map<String, dynamic>)
+                  raw['id'] as String: AiModel.fromJson(raw),
+            };
+          }
           for (final m in (decoded['models'] as List? ?? const [])) {
             if (m is Map<String, dynamic>) {
               final model = AiModel.fromJson(m);
@@ -508,7 +522,9 @@ class AiModelCatalogStore {
         // next admin refresh rebuilds it from the upstreams.
       }
     }
-    return AiModelCatalogStore._(file, models, news, refreshedAtMs);
+    return AiModelCatalogStore._(file, models, news, refreshedAtMs)
+      .._routingModels = routingModels
+      ..routingRefreshedAtMs = routingRefreshedAtMs;
   }
 
   /// Every model, best-rated first, with unrated models after the rated ones
@@ -539,6 +555,13 @@ class AiModelCatalogStore {
 
   AiModel? byId(String id) => _models[id];
 
+  /// The complete OpenRouter roster for Assistant routing, independent of
+  /// the leaderboard's vendor and variant filters. Older caches fall back
+  /// to the leaderboard until the first successful price refresh.
+  List<AiModel> get routingModels =>
+      (_routingModels ?? _models).values.toList();
+  AiModel? routingModelById(String id) => (_routingModels ?? _models)[id];
+
   /// Folds [incoming] into the catalogue, returning the ids that weren't
   /// present before. Models that vanish upstream are kept — a provider
   /// dropping a model from its list shouldn't erase it from the leaderboard
@@ -561,14 +584,18 @@ class AiModelCatalogStore {
         return added;
       });
 
-  /// Applies only the price changes in [incoming] to models already stored,
-  /// and returns how many changed. Unlike [upsertModels] it leaves the
-  /// catalogue (and so its client-facing etag) alone when no price moved,
-  /// which lets the price watcher poll often.
+  /// Saves a complete, successful routing snapshot and applies price changes
+  /// to existing leaderboard rows. Empty snapshots leave the last good data
+  /// intact. Returns the number of changed leaderboard prices; the public
+  /// etag stays unchanged when only routing data moves.
   Future<int> updatePrices(Iterable<AiModel> incoming) =>
       _lock.synchronized(() async {
         var changed = 0;
-        for (final model in incoming) {
+        final snapshot = incoming.toList();
+        if (snapshot.isEmpty) return 0;
+        _routingModels = {for (final model in snapshot) model.id: model};
+        routingRefreshedAtMs = DateTime.now().millisecondsSinceEpoch;
+        for (final model in snapshot) {
           final existing = _models[model.id];
           if (existing == null) continue;
           if (model.inputPricePerM == null && model.outputPricePerM == null) {
@@ -581,8 +608,8 @@ class AiModelCatalogStore {
           _models[model.id] = existing.mergedWith(model);
           changed++;
         }
-        if (changed == 0) return 0;
-        _refreshedAtMs = DateTime.now().millisecondsSinceEpoch;
+        if (changed != 0)
+          _refreshedAtMs = DateTime.now().millisecondsSinceEpoch;
         await _persist();
         return changed;
       });
@@ -659,7 +686,16 @@ class AiModelCatalogStore {
       };
 
   Future<void> _persist() async {
-    await atomicWriteString(_file.path, jsonEncode(toJson()));
+    await atomicWriteString(
+        _file.path,
+        jsonEncode({
+          ...toJson(),
+          'routingRefreshedAtMs': routingRefreshedAtMs,
+          if (_routingModels != null)
+            'routingModels': [
+              for (final model in _routingModels!.values) model.toJson()
+            ],
+        }));
     _recomputeEtag();
   }
 

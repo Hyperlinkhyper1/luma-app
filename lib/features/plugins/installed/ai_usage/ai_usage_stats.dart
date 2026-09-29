@@ -16,7 +16,10 @@ enum AiUsageRangePreset {
 
 /// Resolves [preset] to a `[start, end)` local-time window anchored at [now].
 /// A null start means unbounded (used for [AiUsageRangePreset.all]).
-(DateTime?, DateTime) resolveAiUsageRange(AiUsageRangePreset preset, DateTime now) {
+(DateTime?, DateTime) resolveAiUsageRange(
+  AiUsageRangePreset preset,
+  DateTime now,
+) {
   final todayStart = DateTime(now.year, now.month, now.day);
   switch (preset) {
     case AiUsageRangePreset.today:
@@ -221,15 +224,27 @@ bool rowHasKnownCost(AiUsageTurn t) =>
 
 /// This turn's cost in USD, or 0 when neither source of truth applies.
 ///
-/// This app's own pricing table wins where it has the model, so the same
+/// Luma replies use the provider's reported cost when available, including
+/// OpenRouter models reached through the server's configurable mode routes.
+/// Other sources retain their API-equivalent estimates.
+/// This app's own pricing table wins for those sources where it has the model, so the same
 /// model costs the same whether it was run through Claude Code/Codex or
 /// through opencode. The tool's own figure is the fallback, which is what
 /// covers every provider outside the anthropic/openai tables — MiniMax,
 /// OpenRouter, opencode's gateway and so on.
 double costForRow(AiUsageTurn t) {
+  if (t.source == AiUsageSource.luma && t.reportedCost != null) {
+    return t.reportedCost!;
+  }
   if (isBillableModel(t.source, t.model)) {
-    return costForTurn(t.source, t.model, t.inputTokens, t.outputTokens,
-        t.cacheReadTokens, t.cacheCreationTokens);
+    return costForTurn(
+      t.source,
+      t.model,
+      t.inputTokens,
+      t.outputTokens,
+      t.cacheReadTokens,
+      t.cacheCreationTokens,
+    );
   }
   return t.reportedCost ?? 0;
 }
@@ -344,7 +359,8 @@ class ProviderUsageTotal {
 /// where a single tool fans out across providers, so "which provider did my
 /// spend actually go to" is a question the other three can't even ask.
 List<ProviderUsageTotal> aggregateOpencodeByProvider(
-    Iterable<AiUsageTurn> turns) {
+  Iterable<AiUsageTurn> turns,
+) {
   String providerOf(AiUsageTurn t) {
     final provider = splitOpencodeModel(t.model)?.$1.trim() ?? '';
     return provider.isEmpty ? kUnknownProvider : provider;
@@ -411,7 +427,8 @@ class ModelEffortUsageTotal {
 /// descending token count. Powers the effort-level breakdown at the bottom
 /// of the Usage tab.
 List<ModelEffortUsageTotal> aggregateByModelAndEffort(
-    Iterable<AiUsageTurn> turns) {
+  Iterable<AiUsageTurn> turns,
+) {
   final totals = [
     for (final e in _bucketBy(
       turns,
@@ -445,12 +462,26 @@ List<AiDayUsageBucket> aggregateByDay(Iterable<AiUsageTurn> turns) {
   for (final t in turns) {
     final local = t.timestamp.toLocal();
     final day = DateTime(local.year, local.month, local.day);
-    inputByDay.update(day, (v) => v + t.inputTokens, ifAbsent: () => t.inputTokens);
-    outputByDay.update(day, (v) => v + t.outputTokens, ifAbsent: () => t.outputTokens);
-    cacheReadByDay.update(day, (v) => v + t.cacheReadTokens,
-        ifAbsent: () => t.cacheReadTokens);
-    cacheCreationByDay.update(day, (v) => v + t.cacheCreationTokens,
-        ifAbsent: () => t.cacheCreationTokens);
+    inputByDay.update(
+      day,
+      (v) => v + t.inputTokens,
+      ifAbsent: () => t.inputTokens,
+    );
+    outputByDay.update(
+      day,
+      (v) => v + t.outputTokens,
+      ifAbsent: () => t.outputTokens,
+    );
+    cacheReadByDay.update(
+      day,
+      (v) => v + t.cacheReadTokens,
+      ifAbsent: () => t.cacheReadTokens,
+    );
+    cacheCreationByDay.update(
+      day,
+      (v) => v + t.cacheCreationTokens,
+      ifAbsent: () => t.cacheCreationTokens,
+    );
     final cost = costForRow(t);
     costByDay.update(day, (v) => v + cost, ifAbsent: () => cost);
   }
@@ -488,10 +519,7 @@ List<ProjectUsageTotal> aggregateByProject(Iterable<AiUsageTurn> turns) {
         sessionCount: entry.value.map((t) => t.sessionId).toSet().length,
         inputTokens: entry.value.fold(0, (a, t) => a + t.inputTokens),
         outputTokens: entry.value.fold(0, (a, t) => a + t.outputTokens),
-        cost: entry.value.fold(
-          0.0,
-          (a, t) => a + costForRow(t),
-        ),
+        cost: entry.value.fold(0.0, (a, t) => a + costForRow(t)),
       ),
   ];
   totals.sort((a, b) => b.totalTokens.compareTo(a.totalTokens));
@@ -514,12 +542,13 @@ List<SessionUsageTotal> aggregateBySession(Iterable<AiUsageTurn> turns) {
         source: entry.key.$1,
         project: entry.value.first.project,
         turnCount: entry.value.length,
-        start: entry.value.map((t) => t.timestamp).reduce((a, b) => a.isBefore(b) ? a : b),
-        end: entry.value.map((t) => t.timestamp).reduce((a, b) => a.isAfter(b) ? a : b),
-        cost: entry.value.fold(
-          0.0,
-          (a, t) => a + costForRow(t),
-        ),
+        start: entry.value
+            .map((t) => t.timestamp)
+            .reduce((a, b) => a.isBefore(b) ? a : b),
+        end: entry.value
+            .map((t) => t.timestamp)
+            .reduce((a, b) => a.isAfter(b) ? a : b),
+        cost: entry.value.fold(0.0, (a, t) => a + costForRow(t)),
       ),
   ];
   sessions.sort((a, b) => b.cost.compareTo(a.cost));
@@ -554,7 +583,11 @@ List<SessionUsageTotal> aggregateBySession(Iterable<AiUsageTurn> turns) {
       bestStart = curStart;
     }
   }
-  return (days: bestLen, start: sorted[bestStart], end: sorted[bestStart + bestLen - 1]);
+  return (
+    days: bestLen,
+    start: sorted[bestStart],
+    end: sorted[bestStart + bestLen - 1],
+  );
 }
 
 /// Averages [turns] by local hour-of-day (0-23, always all 24 returned,
@@ -791,7 +824,9 @@ void sortProjectTotals(List<ProjectUsageTotal> totals, AiUsageSortMetric sort) {
 
 /// Sorts provider rows in place by [sort].
 void sortProviderTotals(
-    List<ProviderUsageTotal> totals, AiUsageSortMetric sort) {
+  List<ProviderUsageTotal> totals,
+  AiUsageSortMetric sort,
+) {
   switch (sort) {
     case AiUsageSortMetric.tokens:
       totals.sort((a, b) => b.totalTokens.compareTo(a.totalTokens));

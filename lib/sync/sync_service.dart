@@ -1703,6 +1703,7 @@ class AiServerStatus {
     required this.webSearchUsed,
     required this.webSearchLimit,
     this.modes = const {},
+    this.modeVersions = const {},
   });
 
   /// Whether the operator configured a shared Luma Support (Mistral) key.
@@ -1725,6 +1726,7 @@ class AiServerStatus {
   final int webSearchUsed;
   final int webSearchLimit;
   final Map<String, AiModeUsage> modes;
+  final Map<String, String> modeVersions;
 
   AiModeUsage usageFor(String mode) =>
       modes[mode] ??
@@ -1745,6 +1747,12 @@ class AiServerStatus {
       supportLimit: intOf(usage['supportLimit'], 15),
       webSearchUsed: intOf(usage['webSearchUsed']),
       webSearchLimit: intOf(usage['webSearchLimit']),
+      modeVersions: {
+        if (json['modeVersions'] case final Map rawVersions)
+          for (final entry in rawVersions.entries)
+            if (entry.key is String && entry.value is String)
+              entry.key as String: entry.value as String,
+      },
       modes: {
         if (usage['modes'] case final Map rawModes)
           for (final entry in rawModes.entries)

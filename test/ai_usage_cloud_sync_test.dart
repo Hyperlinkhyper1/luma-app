@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/features/plugins/installed/ai_usage/ai_usage_cloud_sync.dart';
 import 'package:luma/features/plugins/installed/ai_usage/ai_usage_source.dart';
+import 'package:luma/features/plugins/installed/ai_usage/ai_usage_stats.dart';
 import 'package:luma/features/plugins/installed/ai_usage/data/ai_usage_database.dart';
 
 /// An in-memory stand-in for the sync server's per-user object store, shared
@@ -37,7 +38,11 @@ class _FakeStore implements AiUsageCloudStore {
       server.objects[name];
 
   @override
-  Future<int> put(String name, Object payload, {required int baseVersion}) async {
+  Future<int> put(
+    String name,
+    Object payload, {
+    required int baseVersion,
+  }) async {
     final current = server.objects[name]?.version ?? 0;
     if (current != baseVersion) throw StateError('conflict');
     server.puts++;
@@ -77,11 +82,8 @@ class _Device {
         ),
       );
 
-  Future<int> totalInput() async =>
-      (await db.select(db.aiUsageTurns).get()).fold<int>(
-        0,
-        (sum, t) => sum + t.inputTokens,
-      );
+  Future<int> totalInput() async => (await db.select(db.aiUsageTurns).get())
+      .fold<int>(0, (sum, t) => sum + t.inputTokens);
 }
 
 void main() {
@@ -112,6 +114,27 @@ void main() {
     await laptop.db.close();
     await desktop.db.close();
     if (await root.exists()) await root.delete(recursive: true);
+  });
+
+  test('Luma routed model cost survives a sync to another device', () async {
+    await laptop.db
+        .into(laptop.db.aiUsageTurns)
+        .insert(
+          AiUsageTurnsCompanion.insert(
+            sessionId: 'luma:chat:1',
+            timestamp: DateTime.utc(2026, 9, 30),
+            model: 'google/openai/gpt-4o-mini',
+            source: AiUsageSource.luma,
+            inputTokens: const Value(1000000),
+            reportedCost: const Value(0.27),
+          ),
+        );
+    await laptop.sync.syncOnOpen();
+    await desktop.sync.syncOnOpen();
+    final row = (await desktop.db.select(desktop.db.aiUsageTurns).get()).single;
+    expect(row.reportedCost, 0.27);
+    expect(costForRow(row), 0.27);
+    expect(totals([row]).hasUnbillable, isFalse);
   });
 
   test('sums usage across devices without re-uploading pulled turns', () async {
@@ -148,7 +171,10 @@ void main() {
     expect(turn.project, 'luma');
     expect(turn.effort, AiEffort.high);
     expect(turn.outputTokens, 7);
-    expect(turn.timestamp.isAtSameMomentAs(DateTime.utc(2026, 9, 1, 12)), isTrue);
+    expect(
+      turn.timestamp.isAtSameMomentAs(DateTime.utc(2026, 9, 1, 12)),
+      isTrue,
+    );
   });
 
   test('closing only uploads when something new was scanned', () async {
@@ -178,7 +204,10 @@ void main() {
     await laptop.sync.syncOnOpen();
 
     expect(await laptop.totalInput(), 10);
-    expect(await laptop.db.select(laptop.db.aiUsageRemoteDevices).get(), isEmpty);
+    expect(
+      await laptop.db.select(laptop.db.aiUsageRemoteDevices).get(),
+      isEmpty,
+    );
   });
 
   test('nothing is sent while sync is unavailable', () async {

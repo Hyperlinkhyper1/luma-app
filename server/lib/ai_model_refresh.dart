@@ -45,6 +45,9 @@ Future<AiRefreshStatus> refreshAiCatalog(
   try {
     final openRouter = await client.fetchOpenRouter();
     results.add(openRouter.result);
+    if (openRouter.result.ok && openRouter.routingModels.isNotEmpty) {
+      await store.updatePrices(openRouter.routingModels);
+    }
     if (openRouter.models.isNotEmpty) {
       added.addAll(await store.upsertModels(openRouter.models));
 

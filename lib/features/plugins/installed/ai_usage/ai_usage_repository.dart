@@ -132,8 +132,13 @@ class AiUsageRepository extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final (claudeResult, codexResult, antigravityResult, opencodeResult, freebuffResult) =
-          await (
+      final (
+        claudeResult,
+        codexResult,
+        antigravityResult,
+        opencodeResult,
+        freebuffResult,
+      ) = await (
         _claudeScanner.scan(_db),
         _codexScanner.scan(_db),
         _antigravityScanner.scan(_db),
@@ -198,6 +203,7 @@ class AiUsageRepository extends ChangeNotifier {
               messageId: Value('luma:${timestamp.microsecondsSinceEpoch}'),
               project: Value(feature),
               source: AiUsageSource.luma,
+              reportedCost: Value(usage.reportedCost),
             ),
           );
     } catch (error) {
@@ -226,9 +232,11 @@ class AiUsageRepository extends ChangeNotifier {
       query.where((t) => t.timestamp.isSmallerThanValue(endUtc));
     } else {
       final startUtc = start.toUtc();
-      query.where((t) =>
-          t.timestamp.isBiggerOrEqualValue(startUtc) &
-          t.timestamp.isSmallerThanValue(endUtc));
+      query.where(
+        (t) =>
+            t.timestamp.isBiggerOrEqualValue(startUtc) &
+            t.timestamp.isSmallerThanValue(endUtc),
+      );
     }
     return query.watch();
   }

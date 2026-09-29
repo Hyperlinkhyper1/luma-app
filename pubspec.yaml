@@ -142,6 +142,8 @@ flutter:
     - assets/tests/pagoda_step5.html
     - assets/tests/pagoda_space_bunny.html
     - assets/tests/pagoda_sonnet55_xhigh.html
+    - assets/tests/pagoda_gpt_sol_61_xhigh.html
+    - assets/tests/pagoda_gpt_sol_61_low.html
     - assets/images/vendors/
     - assets/space_colony/
     - assets/ai_usage/engine_tests/

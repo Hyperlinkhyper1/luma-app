@@ -42,13 +42,13 @@ AiModel? catalogModelFor(AiModelCatalogStore catalog, AiModeRoute route) {
     AiUpstream.google => 'google/',
     AiUpstream.mistral => 'mistralai/',
   };
-  final exact = catalog.byId('$vendorPrefix$id');
+  final exact = catalog.routingModelById('$vendorPrefix$id');
   if (exact != null) return exact;
   if (route.upstream == AiUpstream.openrouter) return null;
   if (!id.endsWith('-latest')) return null;
   final stem = '$vendorPrefix${id.substring(0, id.length - '-latest'.length)}';
   AiModel? best;
-  for (final m in catalog.models) {
+  for (final m in catalog.routingModels) {
     if (!m.id.startsWith(stem)) continue;
     if (m.inputPricePerM == null && m.outputPricePerM == null) continue;
     if (best == null || (m.releasedAtMs ?? 0) > (best.releasedAtMs ?? 0)) {

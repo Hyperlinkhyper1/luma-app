@@ -2237,6 +2237,7 @@ class Api {
       // Named for Google because shipped apps read it to show the Luma AI
       // modes; either upstream can serve them now.
       'googleConfigured': config.configuredAiUpstreams.isNotEmpty,
+      'modeVersions': aiModeRoutes.versions,
       'usage': {
         'fiveHourPct': modes['normal']!['fiveHourPct'],
         'weeklyPct': modes['normal']!['weeklyPct'],
@@ -2287,8 +2288,8 @@ class Api {
     final fetcher = AiCatalogFetcher();
     try {
       final fetched = await fetcher.fetchOpenRouter();
-      if (fetched.models.isNotEmpty) {
-        await aiCatalog.updatePrices(fetched.models);
+      if (fetched.result.ok && fetched.routingModels.isNotEmpty) {
+        await aiCatalog.updatePrices(fetched.routingModels);
       }
     } finally {
       fetcher.close();
@@ -2318,6 +2319,11 @@ class Api {
       out[mode] = {
         'model': route.model,
         'upstream': route.upstream.label,
+        'upstreamId': route.upstream.name,
+        'defaultModels': {
+          for (final upstream in kDefaultAiModeModels.entries)
+            upstream.key.name: upstream.value[mode],
+        },
         'price': price?.toJson(),
         'baseline': entry.baseline?.toJson(),
         'autoDisable': entry.autoDisable,
@@ -2327,7 +2333,7 @@ class Api {
     }
     return jsonResponse(200, {
       'modes': out,
-      'refreshedAtMs': aiCatalog.refreshedAtMs,
+      'refreshedAtMs': aiCatalog.routingRefreshedAtMs,
     });
   }
 
@@ -2345,7 +2351,7 @@ class Api {
     if (route != null) {
       await aiPriceGuard.accept(mode, route, priceFor(aiCatalog, route));
       await store.logActivity('ai_price_accepted',
-          '${kAiModeNames[mode]} re-enabled at the current ${route.model} price');
+          '${aiModeRoutes.displayName(mode)} re-enabled at the current ${route.model} price');
     }
     return jsonResponse(200, {'ok': true});
   }
@@ -2363,7 +2369,7 @@ class Api {
     final on = form['enabled'] == '1';
     await aiPriceGuard.setAutoDisable(mode, on);
     await store.logActivity('ai_price_guard',
-        '${kAiModeNames[mode]} price guard ${on ? 'on' : 'off'}');
+        '${aiModeRoutes.displayName(mode)} price guard ${on ? 'on' : 'off'}');
     return jsonResponse(200, {'ok': true});
   }
 
@@ -2679,13 +2685,14 @@ class Api {
         'ai_routes_changed',
         'Assistant models: ${[
           for (final e in kAiModeNames.entries)
-            '${e.value} → ${routes[e.key]?.model ?? 'default'}'
+            '${aiModeRoutes.displayName(e.key)} → ${routes[e.key]?.model ?? 'default'}'
         ].join(', ')}');
     return _adminFormResponse(request, '/admin',
         fragment: 'assistant',
         json: {
           'ok': true,
-          'routes': {for (final e in routes.entries) e.key: e.value.toJson()}
+          'routes': {for (final e in routes.entries) e.key: e.value.toJson()},
+          'modeVersions': aiModeRoutes.versions,
         });
   }
 
@@ -9478,9 +9485,8 @@ syncToolbar();
       ...googleModels,
     }.map((m) => '<option value="${esc(m)}">').join();
     String price(double? p) =>
-        p == null ? '?' : '\$${p.toStringAsFixed(p < 1 ? 2 : 1)}';
-    final openRouterOptions = aiCatalog.models
-        .take(600)
+        p == null ? '?' : '\$${p < 1 ? double.parse(p.toStringAsFixed(6)) : p.toStringAsFixed(2)}';
+    final openRouterOptions = aiCatalog.routingModels
         .map((m) => '<option value="${esc(m.id)}">${esc(m.name)} · '
             '${price(m.inputPricePerM)} in / ${price(m.outputPricePerM)} out per M'
             '</option>')
@@ -9501,11 +9507,15 @@ syncToolbar();
         };
     final catalogById = {for (final model in aiCatalog.models) model.id: model};
     final pickerModels = <Map<String, Object?>>[
-      for (final model in aiCatalog.models)
+      for (final model in aiCatalog.routingModels)
         {
           'upstream': 'openrouter',
           'id': model.id,
-          ...modelStats(model, pricing: true),
+          ...modelStats(catalogById[model.id] ?? model, pricing: false),
+          'input': model.inputPricePerM,
+          'output': model.outputPricePerM,
+          'cacheRead': model.cacheReadPerM,
+          'cacheWrite': model.cacheWritePerM,
         },
       for (final id in {
         ...kDefaultAiModeModels[AiUpstream.google]!.values,
@@ -9528,9 +9538,9 @@ syncToolbar();
     ];
     // JSON in a script element must not contain a literal closing tag.
     final pickerJson = jsonEncode(pickerModels).replaceAll('<', r'\u003c');
-    final catalogUpdated = aiCatalog.refreshedAtMs == 0
+    final catalogUpdated = aiCatalog.routingRefreshedAtMs == 0
         ? 'never refreshed'
-        : DateTime.fromMillisecondsSinceEpoch(aiCatalog.refreshedAtMs,
+        : DateTime.fromMillisecondsSinceEpoch(aiCatalog.routingRefreshedAtMs,
                 isUtc: true)
             .toIso8601String();
 
@@ -9564,7 +9574,7 @@ syncToolbar();
         status = '<span class="badge ok">custom</span>';
       }
       return '<tr>'
-          '<td class="nowrap"><strong>${esc(e.value)}</strong>'
+          '<td class="nowrap"><strong>${esc(aiModeRoutes.displayName(mode))}</strong>'
           '<div class="muted" style="font-size:11px">$mode</div></td>'
           '<td><select name="$mode.upstream" class="ai-upstream" '
           'data-mode="$mode">$upstreamOptions</select></td>'
@@ -9655,7 +9665,9 @@ syncToolbar();
         '<div class="maint-desc">Pick which provider and model serve each '
         'Luma AI mode in the Assistant. Changes apply to the next message, '
         'no app update needed. Leave a model blank to use the default shown '
-        'in grey. Usage limits are the same whichever model you pick, so '
+        'in grey. Each saved provider, model or reasoning change advances that mode\'s '
+        'version by 0.1 (1.9 becomes 2.0). '
+        'Usage limits are the same whichever model you pick, so '
         'mind the per-token price on OpenRouter and Mistral. Prices refresh '
         'live (Google and Mistral use the same model\'s OpenRouter price). '
         'With Guard on, a mode switches itself off as soon as its price rises '
@@ -9677,7 +9689,7 @@ syncToolbar();
         '<datalist id="ai-dl-google">$googleOptions</datalist>'
         '<datalist id="ai-dl-openrouter">$openRouterOptions</datalist>'
         '<datalist id="ai-dl-mistral">$mistralOptions</datalist>'
-        '${aiCatalog.modelCount == 0 ? '<div class="muted" style="font-size:12px;margin-top:10px">No OpenRouter suggestions yet — press "Refresh model data" on the Maintenance tab to load the model list.</div>' : ''}'
+        '${aiCatalog.routingModels.isEmpty ? '<div class="muted" style="font-size:12px;margin-top:10px">No OpenRouter suggestions yet — press "Refresh model data" on the Maintenance tab to load the model list.</div>' : ''}'
         '<dialog id="aiPicker" class="ai-picker" aria-labelledby="aiPickerTitle">'
         '<div class="ai-picker-head"><div><h2 id="aiPickerTitle">Select a model</h2>'
         '<span id="aiPickerCount" class="muted"></span></div>'
@@ -9794,9 +9806,9 @@ syncToolbar();
 (function () {
   const picker = document.getElementById('aiPicker');
   const data = document.getElementById('aiPickerData');
+  const models = data ? JSON.parse(data.textContent) : [];
   if (picker && data) {
     document.body.appendChild(picker);
-    const models = JSON.parse(data.textContent);
     const search = document.getElementById('aiPickerSearch');
     const scored = document.getElementById('aiPickerScored');
     const list = document.getElementById('aiPickerList');
@@ -9863,6 +9875,7 @@ syncToolbar();
           const input = document.getElementById('ai-model-' + activeMode);
           if (input) {
             input.value = m.id;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
             input.focus();
           }
           picker.close();
@@ -9940,17 +9953,41 @@ syncToolbar();
     });
   });
   function usd(v) {
-    return v == null ? '?' : '$' + Number(v).toFixed(v < 1 ? 3 : 2);
+    return v == null ? '?' : '$' + (v < 1
+      ? Number(Number(v).toFixed(6)).toString() : Number(v).toFixed(2));
   }
   function priceText(p) {
     return p ? usd(p.input) + ' in / ' + usd(p.output) + ' out' : 'price unknown';
   }
   function loadPrices() {
     fetch('/admin/ai-prices').then(function (r) { return r.json(); }).then(function (j) {
+      lastPrices = j;
+      renderPrices(j);
+    }).catch(function () {});
+  }
+  var lastPrices;
+  function renderPrices(j) {
       Object.keys(j.modes || {}).forEach(function (mode) {
         var m = j.modes[mode];
         var el = document.getElementById('ai-price-' + mode);
         if (!el) return;
+        var input = document.getElementById('ai-model-' + mode);
+        var upstream = document.querySelector('.ai-upstream[data-mode="' + mode + '"]');
+        var modelId = input.value.trim() || m.defaultModels[upstream.value];
+        var draft = modelId !== m.model || upstream.value !== m.upstreamId;
+        var guard = document.getElementById('ai-guard-' + mode);
+        guard.disabled = draft;
+        if (draft) {
+          var candidate = models.find(function (model) {
+            return model.upstream === upstream.value && model.id === modelId;
+          });
+          el.textContent = priceText(candidate && (candidate.input != null || candidate.output != null) ? candidate : null);
+          el.className = 'ai-price';
+          document.getElementById('ai-price-note-' + mode).textContent = 'Save routes to apply this model and its price guard.';
+          document.getElementById('ai-accept-' + mode).style.display = 'none';
+          document.getElementById('ai-paused-' + mode).replaceChildren();
+          return;
+        }
         var risen = m.disabled;
         el.textContent = priceText(m.price);
         el.className = 'ai-price' + (risen ? ' up' : '');
@@ -9959,7 +9996,6 @@ syncToolbar();
           ? (risen ? 'was ' + priceText(m.baseline)
                    : (m.autoDisable ? 'accepted ' + priceText(m.baseline) : 'guard is off'))
           : 'not in the OpenRouter list, so it cannot be guarded';
-        var guard = document.getElementById('ai-guard-' + mode);
         guard.textContent = m.autoDisable ? 'Guard: on' : 'Guard: off';
         guard.dataset.on = m.autoDisable ? '1' : '0';
         document.getElementById('ai-accept-' + mode).style.display = risen ? '' : 'none';
@@ -9972,8 +10008,12 @@ syncToolbar();
           paused.appendChild(badge);
         }
       });
-    }).catch(function () {});
   }
+  document.querySelectorAll('.ai-upstream, .ai-routes input[name$=".model"]').forEach(function (input) {
+    input.addEventListener(input.classList.contains('ai-upstream') ? 'change' : 'input', function () {
+      if (lastPrices) renderPrices(lastPrices);
+    });
+  });
   function priceAction(url, body) {
     return fetch(url, {
       method: 'POST',

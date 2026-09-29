@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:crypto/crypto.dart' as c;
 import 'package:luma_sync_server/ai_benchmark_store.dart';
 import 'package:luma_sync_server/ai_model_catalog.dart';
+import 'package:luma_sync_server/ai_mode_routing.dart';
 import 'package:luma_sync_server/ai_usage_store.dart';
 import 'package:luma_sync_server/api.dart';
 import 'package:luma_sync_server/chat_store.dart';
@@ -155,6 +156,39 @@ void main() {
         'email': email,
         'authKey': base64Encode(authKeyFor(password)),
       });
+
+  test('dashboard model changes publish persistent versions to the app',
+      () async {
+    final token = await register('versions@example.com', 'test-password');
+    final initial = await call('GET', '/api/v1/ai/status', token: token);
+    expect(initial['modeVersions'],
+        {'normal': '1.0', 'smarter': '1.0', 'smartest': '1.0'});
+    for (var revision = 1; revision <= 10; revision++) {
+      final saved = await call('POST', '/admin/ai-routes',
+          admin: true,
+          form: 'normal.upstream=google&normal.model=model-$revision');
+      expect(saved['httpStatus'], 200);
+    }
+    final status = await call('GET', '/api/v1/ai/status', token: token);
+    expect(status['modeVersions'],
+        {'normal': '2.0', 'smarter': '1.0', 'smartest': '1.0'});
+    final dashboard = await handler(Request(
+        'GET', Uri.parse('http://localhost/admin'),
+        headers: {'x-admin-key': 'test-admin-key'}));
+    expect(await dashboard.readAsString(), contains('Aurora 2.0'));
+    final reloaded = AiModeRoutingStore(dir.path);
+    expect(reloaded.version('normal'), '2.0');
+    final invalid = await call('POST', '/admin/ai-routes',
+        admin: true, form: 'normal.upstream=google&normal.model=invalid+model');
+    expect(invalid['httpStatus'], 400);
+    final unauthorized = await call('POST', '/admin/ai-routes',
+        form: 'normal.upstream=google&normal.model=model-11');
+    expect(unauthorized['httpStatus'], 401);
+    final unchanged = await call('POST', '/admin/ai-routes',
+        admin: true, form: 'normal.upstream=google&normal.model=model-10');
+    expect(unchanged['httpStatus'], 200);
+    expect(AiModeRoutingStore(dir.path).version('normal'), '2.0');
+  });
 
   group('admin password reset', () {
     test('kills the old password but keeps the session that can re-encrypt',

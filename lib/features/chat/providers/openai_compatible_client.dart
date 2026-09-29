@@ -76,11 +76,7 @@ class OpenAiCompatibleClient implements AiClient {
     String? metadataJson;
     AiTokenUsage? usage;
     while (true) {
-      final response = await _send(
-        apiKey,
-        messages,
-        toolSchemas,
-      );
+      final response = await _send(apiKey, messages, toolSchemas);
       usage = addAiUsage(usage, _usageFrom(response));
       final choices = response['choices'] as List;
       final message = (choices.first as Map<String, dynamic>)['message']
@@ -193,23 +189,29 @@ class OpenAiCompatibleClient implements AiClient {
       throw AiAuthError(e.message);
     } catch (e) {
       throw AiNetworkError(
-          "Couldn't reach $providerLabel — check your connection.\n($e)");
+        "Couldn't reach $providerLabel — check your connection.\n($e)",
+      );
     } finally {
       client.close();
     }
 
     if (res.statusCode == 401) {
-      throw AiAuthError('$providerLabel rejected the API key. Check it in Settings.');
+      throw AiAuthError(
+        '$providerLabel rejected the API key. Check it in Settings.',
+      );
     }
     if (res.statusCode == 429) {
       // Surface the server's own wording when it explains the limit (e.g.
       // the sync server's usage budgets) instead of a generic message.
-      throw AiRateLimitError(_messageFromBody(res.body) ??
-          'Too many requests — try again shortly.');
+      throw AiRateLimitError(
+        _messageFromBody(res.body) ?? 'Too many requests — try again shortly.',
+      );
     }
     if (res.statusCode != 200) {
-      throw AiApiError(_messageFromBody(res.body) ??
-          '$providerLabel returned an error (${res.statusCode}).');
+      throw AiApiError(
+        _messageFromBody(res.body) ??
+            '$providerLabel returned an error (${res.statusCode}).',
+      );
     }
 
     return jsonDecode(res.body) as Map<String, dynamic>;
@@ -235,11 +237,15 @@ class OpenAiCompatibleClient implements AiClient {
     final cached = details is Map ? count(details['cached_tokens']) : 0;
     if (total > prompt + completion) completion = total - prompt;
     final model = response['model'];
+    final cost = usage['cost'];
     return AiTokenUsage(
       model: model is String && model.isNotEmpty ? model : defaultModel,
       inputTokens: (prompt - cached).clamp(0, prompt),
       outputTokens: completion,
       cacheReadTokens: cached.clamp(0, prompt),
+      reportedCost: cost is num && cost.isFinite && cost >= 0
+          ? cost.toDouble()
+          : null,
     );
   }
 }

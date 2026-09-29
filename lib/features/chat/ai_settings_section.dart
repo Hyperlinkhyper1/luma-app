@@ -4,6 +4,7 @@ import '../../app/widgets.dart';
 import '../../settings/settings_controller.dart';
 import '../../settings/settings_scope.dart';
 import '../../sync/sync_scope.dart';
+import '../../sync/sync_service.dart';
 import '../../theme/luma_theme.dart';
 import '../plugins/installed/ai_usage/ai_usage_scope.dart';
 import 'ai_key_store.dart';
@@ -208,9 +209,29 @@ class _LocalModelBodyState extends State<_LocalModelBody> {
 
 /// Which model has been used the most, across every provider — a simple
 /// lifetime successful-message count for each model.
-class _ModelUsageSection extends StatelessWidget {
+class _ModelUsageSection extends StatefulWidget {
   const _ModelUsageSection({required this.usage});
   final Map<String, int> usage;
+
+  @override
+  State<_ModelUsageSection> createState() => _ModelUsageSectionState();
+}
+
+class _ModelUsageSectionState extends State<_ModelUsageSection> {
+  SyncService? _sync;
+  Map<String, String> _modeVersions = const {};
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final sync = SyncScope.of(context);
+    if (identical(sync, _sync)) return;
+    _sync = sync;
+    sync.aiStatus().then((status) {
+      if (!mounted || !identical(sync, _sync)) return;
+      setState(() => _modeVersions = status?.modeVersions ?? const {});
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -218,7 +239,7 @@ class _ModelUsageSection extends StatelessWidget {
 
     final rows =
         kModelUsageEntries
-            .map((e) => (entry: e, count: usage[e.key] ?? 0))
+            .map((e) => (entry: e, count: widget.usage[e.key] ?? 0))
             .where((r) => r.count > 0)
             .toList()
           ..sort((a, b) => b.count.compareTo(a.count));
@@ -265,7 +286,7 @@ class _ModelUsageSection extends StatelessWidget {
               children: [
                 for (final r in rows) ...[
                   _UsageRow(
-                    label: r.entry.label,
+                    label: r.entry.labelFor(_modeVersions),
                     count: r.count,
                     fraction: r.count / maxScore,
                     top: r == rows.first,

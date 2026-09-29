@@ -34,10 +34,8 @@ typedef AiToolExecutor = Future<Map<String, dynamic>> Function(
 
 /// Given a tool name + its result, returns optional render metadata (e.g.
 /// `{"qrUrl": "..."}`) to attach to the final assistant message.
-typedef AiToolMetadata = String? Function(
-  String name,
-  Map<String, dynamic> result,
-);
+typedef AiToolMetadata =
+    String? Function(String name, Map<String, dynamic> result);
 
 /// The assistant's finished reply for one user turn, after any tool calls
 /// the model requested have been resolved.
@@ -66,6 +64,7 @@ class AiTokenUsage {
     this.cacheReadTokens = 0,
     this.cacheWriteTokens = 0,
     this.requests = 1,
+    this.reportedCost,
   });
 
   /// The model that actually answered — the provider's own `model` field
@@ -79,19 +78,26 @@ class AiTokenUsage {
   /// How many API requests went into this reply (one per tool hop).
   final int requests;
 
+  /// USD cost returned by the provider, including routing and cache charges.
+  /// Null when no complete cost was reported for this reply.
+  final double? reportedCost;
+
   int get totalTokens =>
       inputTokens + outputTokens + cacheReadTokens + cacheWriteTokens;
 
   /// Adds [other]'s counts to this one's, keeping [other]'s model — the
   /// last request of a tool loop is the one that produced the reply.
   AiTokenUsage operator +(AiTokenUsage other) => AiTokenUsage(
-        model: other.model,
-        inputTokens: inputTokens + other.inputTokens,
-        outputTokens: outputTokens + other.outputTokens,
-        cacheReadTokens: cacheReadTokens + other.cacheReadTokens,
-        cacheWriteTokens: cacheWriteTokens + other.cacheWriteTokens,
-        requests: requests + other.requests,
-      );
+    model: other.model,
+    inputTokens: inputTokens + other.inputTokens,
+    outputTokens: outputTokens + other.outputTokens,
+    cacheReadTokens: cacheReadTokens + other.cacheReadTokens,
+    cacheWriteTokens: cacheWriteTokens + other.cacheWriteTokens,
+    requests: requests + other.requests,
+    reportedCost: reportedCost == null || other.reportedCost == null
+        ? null
+        : reportedCost! + other.reportedCost!,
+  );
 }
 
 /// Sums two optional usages, where either side may be missing.
