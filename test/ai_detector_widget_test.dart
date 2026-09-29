@@ -132,18 +132,15 @@ void main() {
       expect(find.textContaining('of 25 words'), findsOneWidget);
     });
 
-    testWidgets('the deep check stays off without an approved account',
+    testWidgets('the model review falls back to statistics when signed out',
         (tester) async {
       await _review(tester, _plain);
-      expect(find.text('Deep check with luma AI'), findsOneWidget);
+      expect(find.text('AI model review'), findsOneWidget);
       expect(find.textContaining('Sign in to an approved luma account'),
           findsOneWidget);
-      await tester.ensureVisible(find.text('Deep check'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Deep check'));
-      await tester.pumpAndSettle();
-      // Nothing was attempted, so no result or error appeared.
-      expect(find.text('Run again'), findsNothing);
+      // The on-device verdict is still there.
+      expect(find.text('AI-likelihood'), findsOneWidget);
+      expect(find.text('Try again'), findsNothing);
       expect(tester.takeException(), isNull);
     });
   });

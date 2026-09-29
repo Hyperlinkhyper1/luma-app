@@ -114,6 +114,15 @@
           $('download').disabled = false;
           $('texture-source').textContent = gui.t('downloadFailed');
           break;
+        // The reader's own skin, kept by the app; null goes back to the
+        // default.
+        case 'skin':
+          // A lookup or file that didn't work leaves the current skin on.
+          if (m.failed) { gui.toast(gui.t('skinFailed'), typeof m.failed === 'string' ? m.failed : ''); break; }
+          skin.imported = m.data ? {data: m.data, model: m.model || null} : null;
+          skin.label = m.data ? m.label || null : null;
+          if (S.assetsReady) applySkin();
+          break;
       }
     } catch (e) {
       console.error(e);
@@ -183,7 +192,7 @@
 
   // ── Scene objects ──────────────────────────────────────────────────────
   let worldMesh = null, glassMesh = null, dynMesh = null, ghostMesh = null;
-  let shadowDirty = true;
+  let shadowDirty = true, shadowInside = true;
 
   const outline = new T.LineSegments(
     new T.EdgesGeometry(new T.BoxGeometry(1, 1, 1)),
@@ -310,6 +319,121 @@
     if (held.mesh) held.mesh.visible = true;
   }
 
+  // ── The reader ─────────────────────────────────────────────────────────
+  // Their skin: one they imported (kept by the app), else Steve from their
+  // own Minecraft jar, else luma's painted default.
+  const skin = {imported: null, label: null, vanilla: null, current: null, texture: null};
+  async function applySkin() {
+    let next = null;
+    if (skin.imported) next = await LibrarySkin.load(skin.imported.data);
+    if (next && skin.imported.model) next.slim = skin.imported.model === 'slim';
+    if (!next && skin.vanilla) next = await LibrarySkin.load(skin.vanilla);
+    if (!next) next = LibrarySkin.painted();
+    skin.current = next;
+    skin.texture?.dispose();
+    const tex = new T.CanvasTexture(next.canvas);
+    tex.flipY = false;
+    tex.magFilter = T.NearestFilter;
+    tex.minFilter = T.NearestFilter;
+    tex.generateMipmaps = false;
+    tex.colorSpace = T.SRGBColorSpace;
+    skin.texture = tex;
+    U.skin.value = tex;
+    buildHand();
+    buildSitter();
+    refreshSkinLabel();
+  }
+
+  // The right arm in the corner of the view, as in the game: it bobs as
+  // you walk, swings when you use something, and holds the book you carry.
+  const handMat = R.blockMaterial({viewmodel: true});
+  const hand = {root: new T.Group(), arm: null, swing: 1, light: [1, 0, 0], lightAt: 0};
+  hand.root.userData.noShadow = true;
+  scene.add(hand.root);
+  function buildHand() {
+    if (!S.built || !skin.current) return;
+    if (hand.arm) { hand.root.remove(hand.arm); hand.arm.traverse(o => o.geometry?.dispose()); }
+    const a = LibrarySkin.arm(T, S.built.grid, atlas, skin.current.slim, handMat, hand.light);
+    hand.arm = a.pivot;
+    hand.arm.rotation.order = 'YXZ';
+    hand.root.add(hand.arm);
+  }
+  function swingArm() { hand.swing = 0; }
+  const handShown = () => !!hand.arm && (S.mode === 'overview' || S.mode === 'seated' || S.mode === 'placing') && !Book.open;
+  function stepHand(dt, time) {
+    hand.root.visible = handShown();
+    if (!hand.root.visible) return;
+    hand.root.position.copy(camera.position);
+    hand.root.quaternion.copy(camera.quaternion);
+    // The arm takes the light where the reader stands.
+    if (time - hand.lightAt > 0.25) {
+      hand.lightAt = time;
+      const l = S.built.grid.sample([camera.position.x, camera.position.y - 0.4, camera.position.z], [0, 1, 0]);
+      LibrarySkin.relight(hand.arm, l);
+    }
+    hand.swing = Math.min(1, hand.swing + dt / 0.28);
+    const s = Math.sin(hand.swing * Math.PI);
+    const moving = Math.min(1, Math.hypot(...S.vel) / 2.5) * (S.reducedMotion ? 0 : 1);
+    const bobX = Math.sin(S.stride * 2.6) * 0.035 * moving, bobY = -Math.abs(Math.cos(S.stride * 2.6)) * 0.03 * moving;
+    const breathe = S.reducedMotion ? 0 : Math.sin(time * 1.3) * 0.006;
+    const holding = S.mode === 'placing';
+    // Shoulder low at the right edge, the arm reaching forward and in.
+    const halfWidth = Math.tan((camera.fov * Math.PI / 180) / 2) * camera.aspect;
+    const side = Math.min(0.58, 0.62 * halfWidth);
+    hand.arm.position.set(side + bobX - s * 0.12, -0.66 + bobY + breathe + (holding ? 0.06 : 0) + s * 0.1, -0.5 - s * 0.16);
+    hand.arm.rotation.set(2.3 + s * 0.5 + (holding ? -0.25 : 0), 0.78 + s * 0.3, 0.42);
+  }
+
+  // Where the carried book sits: in the arm's hand.
+  function handTransform() {
+    if (!hand.arm) {
+      const q = camera.quaternion.clone();
+      return {pos: new T.Vector3(0.3, -0.28, -0.75).applyQuaternion(q).add(camera.position), quat: q, scale: 0.5};
+    }
+    hand.root.position.copy(camera.position);
+    hand.root.quaternion.copy(camera.quaternion);
+    hand.root.updateMatrixWorld(true);
+    const pos = new T.Vector3(-1 / 16, -11 / 16, -0.5 / 16).applyMatrix4(hand.arm.matrixWorld);
+    const q = camera.quaternion.clone();
+    const tilt = new T.Quaternion().setFromEuler(new T.Euler(0.2, -0.6, 0.15));
+    return {pos, quat: q.multiply(tilt).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0, 1, 0), Math.PI / 2)), scale: 0.5};
+  }
+
+  // The reader themself, sitting at the desk while a book is open on it.
+  const sitter = {group: null, limbs: null, typing: -10};
+  function buildSitter() {
+    if (sitter.group) { scene.remove(sitter.group); sitter.group.traverse(o => o.geometry?.dispose()); sitter.group = null; }
+    const chair = S.built?.desk?.chair;
+    if (!chair || !skin.current) return;
+    const light = S.built.grid.sample([chair.pos[0], chair.pos[1] + 0.8, chair.pos[2]], [0, 1, 0]);
+    const p = LibrarySkin.player(T, S.built.grid, atlas, skin.current.slim, blockMat, light);
+    const hips = 12 / 16 * p.group.scale.x;
+    p.group.position.set(chair.pos[0], chair.pos[1] - hips + 0.02, chair.pos[2]);
+    p.group.rotation.y = chair.yaw + Math.PI;
+    for (const limb of Object.values(p.limbs)) limb.rotation.order = 'YXZ';
+    p.limbs.rightLeg.rotation.set(-Math.PI / 2, 0.1, 0);
+    p.limbs.leftLeg.rotation.set(-Math.PI / 2, -0.1, 0);
+    p.group.visible = false;
+    scene.add(p.group);
+    Object.assign(sitter, p);
+  }
+  function stepSitter(time) {
+    if (!sitter.group) return;
+    const shown = S.mode === 'desk';
+    if (sitter.group.visible !== shown) { sitter.group.visible = shown; shadowDirty = true; }
+    if (!shown) return;
+    const L = sitter.limbs;
+    const typing = time - sitter.typing < 0.8 && !S.reducedMotion;
+    const w = typing ? Math.sin(time * 16) : 0;
+    L.rightArm.rotation.set(-1.18 + w * 0.05, 0.42 + w * 0.06, 0);
+    L.leftArm.rotation.set(-1.08, -0.38, 0);
+    const idle = S.reducedMotion ? 0 : Math.sin(time * 0.9) * 0.03;
+    L.head.rotation.set(0.42 + idle + (typing ? 0.04 : 0), (typing ? Math.sin(time * 3) * 0.05 : 0) + 0.06, 0);
+  }
+  // Typing in the book moves the writing hand.
+  document.addEventListener('input', () => { sitter.typing = performance.now() / 1000; });
+  document.addEventListener('keydown', () => { if (Book.open) sitter.typing = performance.now() / 1000; });
+
   // ── Particles ──────────────────────────────────────────────────────────
   const PARTICLE_VERT = /* glsl */ `
     attribute vec4 color;
@@ -345,7 +469,12 @@
     void main() {
       vec2 p = gl_PointCoord;
       float a;
-      if (shape > 1.5) {
+      if (shape > 2.5) {
+        // A falling leaf: a small square, the way the game's particles are.
+        vec2 q = abs(p - 0.5);
+        if (max(q.x, q.y) > 0.3) discard;
+        a = 1.0;
+      } else if (shape > 1.5) {
         vec2 cell = vec2(mod(vGlyph, 8.0), floor(vGlyph / 8.0));
         a = texture2D(glyphs, (cell + p) / 8.0).a;
         if (a < 0.5) discard;
@@ -423,7 +552,12 @@
     flames: new Particles(24, {shape: 1}),
     glyphs: new Particles(60, {shape: 2, additive: false, glyphs: glyphTexture}),
     poof: new Particles(160, {additive: false}),
+    leaves: new Particles(220, {shape: 3, additive: false}),
+    smoke: new Particles(70, {additive: false}),
   };
+  // How much daylight there is, 0 at night to 1 by day, for things lit only
+  // by the sky.
+  const daylight = () => 1 - R.skyUniforms.night.value * 0.85;
   const rand = (a, b) => a + Math.random() * (b - a);
 
   function seedDust() {
@@ -510,6 +644,43 @@
       p.c[3] = 0.8 * (1 - p.age / p.life);
       return true;
     });
+    // Autumn: leaves come loose from the trees and flutter down.
+    const day = daylight();
+    const falling = built.trees.filter(t => t.kind !== 'spruce');
+    if (falling.length && Math.random() < dt * 7) {
+      const t = falling[Math.floor(Math.random() * falling.length)];
+      const f = 0.65 + Math.random() * 0.35;
+      particles.leaves.add({
+        p: [t.x + 0.5 + rand(-t.spread, t.spread), t.top - rand(0, 1.5), t.z + 0.5 + rand(-t.spread, t.spread)],
+        v: [rand(-0.25, 0.35), -rand(0.35, 0.6), rand(-0.2, 0.3)], tint: t.tint.map(c => c * f), s: rand(0.06, 0.09), ph: rand(0, 6.28), age: 0, c: [0, 0, 0, 1],
+      });
+    }
+    particles.leaves.step(dt, p => {
+      p.age += dt;
+      if (p.p[1] < 0.03 || p.age > 16) return false;
+      p.p[0] += (p.v[0] + Math.sin(p.age * 2.1 + p.ph) * 0.35) * dt;
+      p.p[1] += p.v[1] * dt;
+      p.p[2] += (p.v[2] + Math.cos(p.age * 1.7 + p.ph) * 0.25) * dt;
+      for (let k = 0; k < 3; k++) p.c[k] = p.tint[k] * (0.2 + day * 0.9);
+      p.c[3] = Math.min(1, (16 - p.age) / 2);
+      return true;
+    });
+    // Wood smoke curling up from the chimney.
+    if (Math.random() < dt * 3.5) {
+      const s = built.smoke;
+      const g = rand(0.35, 0.5);
+      particles.smoke.add({p: [s[0] + rand(-0.3, 0.3), s[1], s[2] + rand(-0.3, 0.3)], v: [rand(0.05, 0.25), rand(0.5, 0.8), rand(-0.1, 0.1)], c: [g, g, g, 0.5], g0: g, s: rand(0.35, 0.5), life: rand(4, 6.5), age: 0});
+    }
+    particles.smoke.step(dt, p => {
+      p.age += dt;
+      if (p.age > p.life) return false;
+      for (let k = 0; k < 3; k++) p.p[k] += p.v[k] * dt;
+      p.v[1] *= 0.995;
+      p.s += dt * 0.28;
+      for (let k = 0; k < 3; k++) p.c[k] = p.g0 * (0.25 + day * 0.9);
+      p.c[3] = 0.45 * Math.min(1, p.age * 2) * (1 - p.age / p.life);
+      return true;
+    });
   }
 
   // ── Assets ─────────────────────────────────────────────────────────────
@@ -544,7 +715,9 @@
     $('download').hidden = S.vanilla;
     $('download-note').hidden = S.vanilla;
     $('download').disabled = false;
+    skin.vanilla = files['textures/entity/player/wide/steve.png'] || null;
     rebuildWorld();
+    await applySkin();
     finishLoading();
   }
 
@@ -607,6 +780,9 @@
       S.caseIndex = idx;
     }
     if (blocked(S.px, S.pz)) { S.px = 0; S.pz = built.layout.hallStart - 1.8; }
+    buildDoor();
+    buildHand();
+    buildSitter();
     buildClock();
     rebuildDynamic();
     if (particles.dust.items.length === 0) seedDust();
@@ -752,9 +928,23 @@
     S.panY = Math.max(-2.2 * slack, Math.min(2.2 * slack, S.panY));
   }
 
+  // Writing is watched from behind the chair, off to the right: you see
+  // yourself at the desk in the left of the view, clear of the open book
+  // in the middle of the screen.
   function deskPose() {
-    const z = S.built.desk.z;
-    return {pos: new T.Vector3(0, 1.72, z + 1.05), target: new T.Vector3(0, 0.98, z + 0.05), fov: 55};
+    const desk = S.built.desk, chair = desk.chair;
+    const z = chair ? chair.pos[2] : desk.z + 1;
+    // Upright phones have no room beside the book; look over the shoulder.
+    if (innerWidth < innerHeight) return {pos: new T.Vector3(0.9, 2.3, z + 1.6), target: new T.Vector3(0, 0.95, desk.z + 0.1), fov: 60};
+    return {pos: new T.Vector3(1.9, 2.15, z + 1.5), target: new T.Vector3(0.6, 0.95, desk.z - 0.2), fov: 50};
+  }
+
+  // Sitting: eyes a head above the seat, looking wherever the reader turns.
+  function seatedPose() {
+    const seat = S.seat;
+    const dir = new T.Vector3(-Math.sin(S.yaw) * Math.cos(S.pitch), Math.sin(S.pitch), -Math.cos(S.yaw) * Math.cos(S.pitch));
+    const pos = new T.Vector3(seat.pos[0], seat.pos[1] + 1.1, seat.pos[2]);
+    return {pos, target: pos.clone().addScaledVector(dir, 6), fov: innerWidth < innerHeight ? 74 : 66};
   }
 
   function flyTo(pose, {duration} = {}) {
@@ -783,8 +973,8 @@
     } else {
       const target = baseModePose();
       if (target) {
-        // Walking follows the feet closely; the other views glide.
-        const k = 1 - Math.exp(-dt * (S.mode === 'overview' ? 16 : 6));
+        // Walking and sitting follow the head closely; the other views glide.
+        const k = 1 - Math.exp(-dt * (S.mode === 'overview' || S.mode === 'seated' ? 16 : 6));
         view.pos.lerp(target.pos, k);
         view.target.lerp(target.target, k);
         view.fov += (target.fov - view.fov) * k;
@@ -815,13 +1005,39 @@
   function baseModePose() {
     if (!S.built) return null;
     if (S.mode === 'overview') return overviewPose();
+    if (S.mode === 'seated' && S.seat) return seatedPose();
     if ((S.mode === 'shelf' || S.mode === 'placing') && S.caseIndex >= 0) return shelfPose(S.caseIndex);
     if (S.mode === 'desk') return deskPose();
     return null;
   }
 
+  // ── Looking around ─────────────────────────────────────────────────────
+  // As in the game, a click captures the mouse: after that it turns your
+  // head without any button held, a crosshair marks what you would use,
+  // and Esc lets go. Touch screens drag to look instead.
+  const look = {locked: false, resume: false};
+  const looking = mode => mode === 'overview' || mode === 'seated';
+  function lockPointer() {
+    if (S.touch || !canvas.requestPointerLock || look.locked) return;
+    try {
+      const p = canvas.requestPointerLock();
+      if (p && p.catch) p.catch(() => {});
+    } catch { /* not allowed right now; the next click tries again */ }
+  }
+  document.addEventListener('pointerlockchange', () => {
+    look.locked = document.pointerLockElement === canvas;
+    $('crosshair').hidden = !look.locked;
+    if (!look.locked) { setHover(null); keys.clear(); }
+    refreshHud();
+  });
+  document.addEventListener('pointerlockerror', () => { look.locked = false; });
+
   // ── Modes ──────────────────────────────────────────────────────────────
   function setMode(mode) {
+    // Menus and bookcases need the cursor back; walking takes it again if
+    // it was captured before.
+    if (look.locked && !looking(mode)) { look.resume = true; document.exitPointerLock(); }
+    if (looking(mode) && look.resume) { look.resume = false; lockPointer(); }
     S.mode = mode;
     refreshHud();
     rebuildA11y();
@@ -838,12 +1054,43 @@
         S.pitch = 0.12;
       }
     }
+    S.seat = null;
     setMode('overview');
     S.caseSubject = null;
     S.caseIndex = -1;
     S.vel = [0, 0];
     S.goal = null;
     return flyTo(overviewPose());
+  }
+
+  // Sits down on `seat`; on a bench, at the spot that was clicked.
+  function sit(seat, at) {
+    const pos = seat.pos.slice();
+    if (seat.along && at) {
+      const k = seat.alongX ? 0 : 2;
+      pos[k] = Math.max(seat.along[0], Math.min(seat.along[1], at[k]));
+    }
+    S.stand = [S.px, S.pz];
+    S.seat = {...seat, pos};
+    S.yaw = seat.yaw;
+    S.pitch = seat.desk ? -0.35 : -0.05;
+    S.vel = [0, 0];
+    S.goal = null;
+    setMode('seated');
+    return flyTo(seatedPose(), {duration: S.reducedMotion ? 0.2 : 0.6});
+  }
+
+  // Gets up again, a step in front of the seat if there is room.
+  function standUp() {
+    const seat = S.seat;
+    if (!seat) return setMode('overview');
+    const fx = -Math.sin(seat.yaw), fz = -Math.cos(seat.yaw);
+    const front = [seat.pos[0] + fx * 0.75, seat.pos[2] + fz * 0.75];
+    if (!blocked(...front)) { S.px = front[0]; S.pz = front[1]; }
+    else if (S.stand) { S.px = S.stand[0]; S.pz = S.stand[1]; }
+    S.seat = null;
+    setMode('overview');
+    return flyTo(overviewPose(), {duration: S.reducedMotion ? 0.2 : 0.45});
   }
 
   function toShelf(i, {placing = false} = {}) {
@@ -890,15 +1137,22 @@
       gui.heading(null);
       $('shelf-pages').hidden = true;
     }
-    $('back').hidden = !(inCase);
-    $('back').textContent = gui.t(S.mode === 'placing' ? 'cancel' : 'back');
+    const seated = S.mode === 'seated';
+    $('back').hidden = !(inCase || seated);
+    $('back').textContent = gui.t(S.mode === 'placing' ? 'cancel' : seated ? 'standUp' : 'back');
     const others = S.built ? S.built.cases.filter(cs => cs.subject).length : 0;
     $('case-prev').hidden = $('case-next').hidden = !((inCase && others > 1) || (S.mode === 'overview' && S.built));
     const empty = S.subjects.length === 0 && S.mode === 'overview';
-    const walkHint = S.mode === 'overview' && !S.walked;
-    gui.actionbar(S.mode === 'placing' ? gui.t('moveHint') : empty ? gui.t('emptyHall') : walkHint ? gui.t('walkHint') : '');
+    let hint = '';
+    if (S.mode === 'placing') hint = gui.t('moveHint');
+    else if (seated) hint = S.touch ? '' : gui.t('standHint');
+    else if (empty) hint = gui.t('emptyHall');
+    else if (S.mode === 'overview' && !S.walked) hint = gui.t('walkHint');
+    else if (S.mode === 'overview' && !look.locked && !S.touch) hint = gui.t('lookHint');
+    gui.actionbar(hint);
     $('settings-open').hidden = S.mode === 'desk';
     $('move-pad').hidden = !(S.mode === 'overview' && S.touch);
+    $('crosshair').hidden = !(look.locked && looking(S.mode));
   }
 
   // ── Picking ────────────────────────────────────────────────────────────
@@ -956,13 +1210,58 @@
     return null;
   }
 
+  // How far along the ray the first wall is: bookcases and furniture behind
+  // a wall can't be clicked through it. Walks the grid a cell at a time;
+  // bookcases themselves don't count, their fronts are what you click.
+  function wallDistance(ray, max = 80) {
+    const g = S.built.grid, o = ray.origin, d = ray.direction;
+    const cell = [Math.floor(o.x), Math.floor(o.y), Math.floor(o.z)];
+    const dir = [d.x, d.y, d.z], at = [o.x, o.y, o.z];
+    const step = dir.map(Math.sign);
+    const delta = dir.map(v => (v ? Math.abs(1 / v) : Infinity));
+    const next = dir.map((v, k) => (v > 0 ? (cell[k] + 1 - at[k]) / v : v < 0 ? (at[k] - cell[k]) / -v : Infinity));
+    let t = 0;
+    while (t < max) {
+      const b = g.get(cell[0], cell[1], cell[2]);
+      if (b && b.opaque && !b.custom) return t;
+      const k = next[0] < next[1] ? (next[0] < next[2] ? 0 : 2) : next[1] < next[2] ? 1 : 2;
+      t = next[k];
+      cell[k] += step[k];
+      next[k] += delta[k];
+    }
+    return Infinity;
+  }
+
+  // What the reader is pointing at while walking or sitting: a bookcase
+  // anywhere in sight, or a seat or the door within arm's reach.
+  const REACH = 4.5;
+  function doorBox() {
+    const z = S.built.door.z;
+    return [[-1, 0, z - (door.open > 0.5 ? 1 : 0.1)], [1, 2, z + 0.3]];
+  }
+  function pickWorld(ray) {
+    const wall = wallDistance(ray) + 0.05;
+    let best = null;
+    const consider = (t, h) => { if (t != null && t <= wall && (!best || t < best.t)) best = {...h, t}; };
+    const c = pickCase(ray);
+    if (c) consider(c.t, {kind: 'case', i: c.i});
+    S.built.seats.forEach((seat, i) => {
+      if (S.seat && S.seat.box === seat.box) return;
+      const t = boxHit(ray, ...seat.box);
+      if (t != null && t < REACH) consider(t, {kind: 'seat', i, at: ray.at(t, new T.Vector3()).toArray()});
+    });
+    const t = boxHit(ray, ...doorBox());
+    if (t != null && t < REACH) consider(t, {kind: 'door'});
+    return best;
+  }
+
   let hover = null;
   function updateHover() {
-    if (!S.built || pointer.dragging || Book.open || gui.isModalOpen()) { setHover(null); return; }
-    const ray = rayAt(pointer.x, pointer.y);
-    if (S.mode === 'overview') {
-      const hit = pickCase(ray);
-      setHover(hit ? {kind: 'case', i: hit.i} : null);
+    if (!S.built || pointer.dragging || Book.open || gui.isModalOpen() || flight) { setHover(null); return; }
+    const [x, y] = look.locked ? [innerWidth / 2, innerHeight / 2] : [pointer.x, pointer.y];
+    const ray = rayAt(x, y);
+    if (looking(S.mode)) {
+      setHover(pickWorld(ray), x, y);
     } else if (S.mode === 'shelf' || S.mode === 'placing') {
       const c = currentCase();
       const slot = c ? pickSlot(ray, c) : null;
@@ -974,7 +1273,13 @@
     } else setHover(null);
   }
 
-  function setHover(h) {
+  function outlineBox([min, max]) {
+    outline.position.set((min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2);
+    outline.scale.set(max[0] - min[0] + 0.01, max[1] - min[1] + 0.01, max[2] - min[2] + 0.01);
+    outline.visible = true;
+  }
+
+  function setHover(h, x = pointer.x, y = pointer.y) {
     hover = h;
     outline.visible = false;
     slotHi.visible = false;
@@ -982,11 +1287,14 @@
     if (!h) { gui.tooltip(null); return; }
     if (h.kind === 'case') {
       const c = S.built.cases[h.i];
-      const [min, max] = caseBox(c);
-      outline.position.set((min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2);
-      outline.scale.set(max[0] - min[0] + 0.01, max[1] - min[1] + 0.01, max[2] - min[2] + 0.01);
-      outline.visible = true;
-      gui.tooltip(c.subject ? [c.subject.name, gui.t('books', c.subject.books.length)] : [gui.t('newCase')], pointer.x, pointer.y);
+      outlineBox(caseBox(c));
+      gui.tooltip(c.subject ? [c.subject.name, gui.t('books', c.subject.books.length)] : [gui.t('newCase')], x, y);
+    } else if (h.kind === 'seat') {
+      outlineBox(S.built.seats[h.i].box);
+      gui.tooltip([gui.t('sit')], x, y);
+    } else if (h.kind === 'door') {
+      outlineBox(doorBox());
+      gui.tooltip([gui.t(door.target ? 'closeDoor' : 'openDoor')], x, y);
     } else {
       const g = h.g;
       slotHi.position.set(g.faceX + g.facing * 0.004, (g.y0 + g.y1) / 2, (g.z0 + g.z1) / 2);
@@ -1013,8 +1321,9 @@
   }
 
   async function click() {
+    if (look.locked || S.mode === 'overview') swingArm();
     if (!hover) {
-      if (S.mode === 'overview' && S.built && !flight) walkToward(pointer.x, pointer.y);
+      if (S.mode === 'overview' && S.built && !flight && !look.locked) walkToward(pointer.x, pointer.y);
       return;
     }
     const h = hover;
@@ -1023,6 +1332,10 @@
       const c = S.built.cases[h.i];
       if (c.placeholder) await newCase();
       else await toShelf(h.i, {placing: S.mode === 'placing'});
+    } else if (h.kind === 'seat') {
+      await sit(S.built.seats[h.i], h.at);
+    } else if (h.kind === 'door') {
+      toggleDoor();
     } else if (h.kind === 'slot') {
       if (S.mode === 'placing') await placeHeld(h.slot, h.g);
       else openSlot(h.slot, h.g, h.book);
@@ -1030,10 +1343,21 @@
   }
 
   // ── Flows ──────────────────────────────────────────────────────────────
+  // Lets go of the mouse for a dialog; walking takes it back afterwards.
+  function freeMouse() {
+    if (!look.locked) return;
+    look.resume = true;
+    document.exitPointerLock();
+  }
+
   async function newCase() {
     const c = S.built.placeholder;
+    freeMouse();
     const result = await gui.askName({title: gui.t('newCaseTitle'), color: [14, 11, 13, 1, 10, 9][S.subjects.length % 6]});
-    if (!result) return;
+    if (!result) {
+      if (look.resume && looking(S.mode)) { look.resume = false; lockPointer(); }
+      return;
+    }
     try {
       const id = await request({type: 'createSubject', name: result.name, color: result.color});
       S.pendingSubject = id;
@@ -1088,15 +1412,6 @@
     const quat = new T.Quaternion().setFromAxisAngle(new T.Vector3(0, 0, 1), Math.PI)
       .multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(1, 0, 0), -Math.PI / 2));
     return {pos: new T.Vector3(hw / 2, desk.top + 0.002 + t, desk.z + 0.02), quat, scale: DESK_SCALE};
-  }
-
-  function handTransform() {
-    const q = camera.quaternion.clone();
-    // Keep the hand inside narrow (portrait) views too.
-    const halfWidth = 0.75 * Math.tan((camera.fov * Math.PI / 180) / 2) * camera.aspect;
-    const pos = new T.Vector3(Math.min(0.36, halfWidth * 0.62), -0.28, -0.75).applyQuaternion(q).add(camera.position);
-    const tilt = new T.Quaternion().setFromEuler(new T.Euler(0.15, -0.5 + Math.sin(performance.now() / 700) * 0.03, 0.1));
-    return {pos, quat: q.multiply(tilt).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0, 1, 0), Math.PI / 2)), scale: 0.5};
   }
 
   function applyTransform(mesh, tr) {
@@ -1280,23 +1595,62 @@
   }
 
   // ── Walking ────────────────────────────────────────────────────────────
-  // WASD or the arrow keys walk, drag looks around, the wheel steps forward
-  // and back, a click on the floor walks there. Walls, bookcases and
-  // furniture stop you.
+  // WASD or the arrow keys walk, the mouse looks around, the wheel steps
+  // forward and back. Walls, bookcases, furniture and a shut door stop you,
+  // and so does the island's edge: there has to be ground underfoot.
   const BODY = 0.26;
   function blocked(x, z) {
     const b = S.built;
     if (!b) return false;
-    const w = b.walk;
-    if (x < w.minX || x > w.maxX || z < w.minZ || z > w.maxZ) return true;
     for (const [dx, dz] of [[-BODY, -BODY], [BODY, -BODY], [-BODY, BODY], [BODY, BODY]]) {
       const cx = Math.floor(x + dx), cz = Math.floor(z + dz);
+      if (!b.grid.solid(cx, -1, cz)) return true;
       if (b.grid.solid(cx, 0, cz) || b.grid.solid(cx, 1, cz)) return true;
     }
-    for (const [x0, z0, x1, z1] of b.colliders) {
-      if (x > x0 - BODY && x < x1 + BODY && z > z0 - BODY && z < z1 + BODY) return true;
+    for (const list of [b.colliders, door.colliders]) {
+      for (const [x0, z0, x1, z1] of list) {
+        if (x > x0 - BODY && x < x1 + BODY && z > z0 - BODY && z < z1 + BODY) return true;
+      }
     }
     return false;
+  }
+
+  // ── The front door ─────────────────────────────────────────────────────
+  // Two leaves swinging inward on their hinges; a shut door is a wall.
+  const door = {leaves: [], open: 0, target: 0, colliders: []};
+  function buildDoor() {
+    for (const leaf of door.leaves) { scene.remove(leaf); leaf.geometry.dispose(); }
+    door.leaves = [];
+    const d = S.built.door;
+    const light = S.built.grid.sample([0, 1, d.z - 0.5], [0, 0, -1]);
+    for (const [hx, dir] of d.hinges) {
+      const mb = new W.MeshBuilder();
+      LibraryFurniture.doorLeaf({mb, grid: S.built.grid, atlas}, dir < 0, light);
+      const mesh = new T.Mesh(mb.geometry(T), blockMat);
+      mesh.position.set(hx, 0, d.z);
+      mesh.userData.swing = dir;
+      scene.add(mesh);
+      door.leaves.push(mesh);
+    }
+    poseDoor();
+  }
+  function poseDoor() {
+    const e = easeInOut(door.open);
+    for (const leaf of door.leaves) leaf.rotation.y = leaf.userData.swing * e * Math.PI / 2;
+    const z = S.built.door.z;
+    // Shut, the doorway is closed; open, each leaf lies along the wall.
+    door.colliders = door.open < 0.5 ? [[-1, z, 1, z + 0.2]] : [[-1, z - 1, -0.8, z], [0.8, z - 1, 1, z]];
+    shadowDirty = true;
+  }
+  function toggleDoor() {
+    door.target = door.target ? 0 : 1;
+    swingArm();
+  }
+  function stepDoor(dt) {
+    if (door.open === door.target || !door.leaves.length) return;
+    const step = dt * (S.reducedMotion ? 10 : 2.4);
+    door.open = door.target > door.open ? Math.min(door.target, door.open + step) : Math.max(door.target, door.open - step);
+    poseDoor();
   }
 
   const keys = new Set();
@@ -1355,11 +1709,21 @@
       pointer.dragging = true;
       return;
     }
-    pointer.down = {x: e.clientX, y: e.clientY, yaw: S.yaw, pitch: S.pitch, pan: S.pan, panY: S.panY};
+    pointer.down = {x: e.clientX, y: e.clientY, yaw: S.yaw, pitch: S.pitch, pan: S.pan, panY: S.panY, wasLocked: look.locked};
     pointer.dragging = false;
-    canvas.setPointerCapture(e.pointerId);
+    // The first click while walking captures the mouse, as in the game.
+    if (e.pointerType === 'mouse' && !look.locked && looking(S.mode) && !flight) lockPointer();
+    if (!look.locked) canvas.setPointerCapture(e.pointerId);
   });
   canvas.addEventListener('pointermove', e => {
+    if (look.locked) {
+      // Captured: the mouse turns the head, no button needed.
+      const sens = 0.0026;
+      S.yaw -= (e.movementX || 0) * sens;
+      S.pitch = Math.max(-1.45, Math.min(1.45, S.pitch - (e.movementY || 0) * sens));
+      if (Math.abs(e.movementX) + Math.abs(e.movementY) > 2) noteWalked();
+      return;
+    }
     pointer.x = e.clientX; pointer.y = e.clientY;
     pointer.nx = (e.clientX / innerWidth) * 2 - 1;
     pointer.ny = (e.clientY / innerHeight) * 2 - 1;
@@ -1378,7 +1742,7 @@
       const dx = e.clientX - d.x, dy = e.clientY - d.y;
       if (!pointer.dragging && Math.hypot(dx, dy) > 6) { pointer.dragging = true; canvas.classList.add('grab'); setHover(null); }
       if (pointer.dragging) {
-        if (S.mode === 'overview') {
+        if (looking(S.mode)) {
           S.yaw = d.yaw + dx * 0.0045;
           S.pitch = Math.max(-1.1, Math.min(0.95, d.pitch + dy * 0.0035));
           if (Math.hypot(dx, dy) > 40) noteWalked();
@@ -1402,12 +1766,14 @@
       return;
     }
     const wasDrag = pointer.dragging;
-    const wasDown = !!pointer.down;
+    const down = pointer.down;
     pointer.down = null;
     pointer.dragging = false;
     canvas.classList.remove('grab');
-    if (!wasDrag && wasDown && e.type === 'pointerup') {
-      pointer.x = e.clientX; pointer.y = e.clientY;
+    if (!wasDrag && down && e.type === 'pointerup') {
+      // The click that captured the mouse only captures it.
+      if (look.locked && !down.wasLocked) return;
+      if (!look.locked) { pointer.x = e.clientX; pointer.y = e.clientY; }
       updateHover();
       click();
     }
@@ -1443,6 +1809,13 @@
     if (e.key === 'Escape') {
       if (S.mode === 'placing') cancelPlacing();
       else if (S.mode === 'shelf') toOverview();
+      else if (S.mode === 'seated') standUp();
+    } else if (S.mode === 'seated') {
+      // Sneak, jump or walk to get up, as when dismounting in the game.
+      if (/^(Key[WASD]|Arrow(Up|Down)|Shift(Left|Right)|Space)$/.test(e.code) && !flight) {
+        e.preventDefault();
+        standUp();
+      }
     } else if (S.mode === 'shelf' || S.mode === 'placing') {
       if (e.key === 'ArrowLeft') toShelf(neighbour(-1), {placing: S.mode === 'placing'});
       if (e.key === 'ArrowRight') toShelf(neighbour(1), {placing: S.mode === 'placing'});
@@ -1474,7 +1847,7 @@
     b.addEventListener('lostpointercapture', stop);
   }
 
-  $('back').onclick = () => (S.mode === 'placing' ? cancelPlacing() : toOverview());
+  $('back').onclick = () => (S.mode === 'placing' ? cancelPlacing() : S.mode === 'seated' ? standUp() : toOverview());
   // From the hall the arrows walk straight to the first or last bookcase.
   const stepCase = step => {
     if (S.mode === 'overview') {
@@ -1514,6 +1887,33 @@
     send({type: 'downloadVanilla'});
   };
 
+  // Skins: the app picks the file (or looks the name up with Mojang) and
+  // keeps it, then hands it back as a `skin` message.
+  function refreshSkinLabel() {
+    const name = skin.imported ? skin.label || gui.t('skinYours') : skin.vanilla ? 'Steve' : 'luma';
+    $('skin-label').textContent = gui.t('skinCurrent', name);
+    $('skin-reset').hidden = !skin.imported;
+  }
+  $('skin-import').onclick = () => {
+    if (demo) $('skin-file').click();
+    else send({type: 'pickSkin'});
+  };
+  $('skin-file').onchange = () => {
+    const file = $('skin-file').files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => receive({type: 'skin', data: String(reader.result).split(',')[1], label: file.name.replace(/\.png$/i, '')});
+    reader.readAsDataURL(file);
+    $('skin-file').value = '';
+  };
+  $('skin-name').onclick = async () => {
+    $('settings').hidden = true;
+    const result = await gui.askName({title: gui.t('skinNameTitle'), hint: gui.t('skinNameHint'), okLabel: gui.t('skinUse'), colors: false});
+    $('settings').hidden = false;
+    if (result) send({type: 'skinName', name: result.name});
+  };
+  $('skin-reset').onclick = () => send({type: 'resetSkin'});
+
   // A plain list of what is on screen, for keyboards and screen readers.
   function rebuildA11y() {
     const nav = $('a11y');
@@ -1529,6 +1929,7 @@
         if (c.subject) add(`${c.subject.name} — ${gui.t('books', c.subject.books.length)}`, () => toShelf(i));
         else add(gui.t('newCase'), () => newCase());
       });
+      add(gui.t(door.target ? 'closeDoor' : 'openDoor'), () => { toggleDoor(); rebuildA11y(); });
     } else if (S.mode === 'shelf') {
       const c = currentCase();
       add(gui.t('back'), () => toOverview());
@@ -1559,15 +1960,16 @@
   const TIME_LABEL = {cycle: 'timeCycle', clock: 'timeClock', day: 'timeDay', night: 'timeNight'};
   const DAY_SECONDS = 1200;
 
-  // Keyframes by the sun's height (-1 midnight … 1 noon).
+  // Keyframes by the sun's height (-1 midnight … 1 noon). It is autumn:
+  // the light stays golden all day and the evenings come in amber.
   const SKY = [
     {e: -1, sun: [0.16, 0.21, 0.36], sky: [0.04, 0.055, 0.11], zen: [0.008, 0.012, 0.04], hor: [0.03, 0.04, 0.08], lamp: 1.35, night: 1, exposure: 1.25},
     {e: -0.2, sun: [0.14, 0.18, 0.3], sky: [0.05, 0.06, 0.12], zen: [0.012, 0.018, 0.06], hor: [0.06, 0.06, 0.12], lamp: 1.35, night: 1, exposure: 1.25},
-    {e: -0.06, sun: [0.02, 0.02, 0.03], sky: [0.12, 0.1, 0.16], zen: [0.05, 0.06, 0.16], hor: [0.4, 0.2, 0.18], lamp: 1.25, night: 0.7, exposure: 1.15},
-    {e: 0.02, sun: [1.4, 0.55, 0.28], sky: [0.3, 0.24, 0.3], zen: [0.12, 0.15, 0.34], hor: [0.95, 0.46, 0.26], lamp: 1.1, night: 0.2, exposure: 1.08},
-    {e: 0.2, sun: [2.0, 1.28, 0.72], sky: [0.44, 0.44, 0.52], zen: [0.22, 0.36, 0.7], hor: [1.0, 0.74, 0.52], lamp: 0.95, night: 0, exposure: 1.02},
-    {e: 0.55, sun: [1.8, 1.5, 1.1], sky: [0.48, 0.56, 0.7], zen: [0.22, 0.44, 0.82], hor: [0.8, 0.82, 0.8], lamp: 0.82, night: 0, exposure: 1},
-    {e: 1, sun: [1.8, 1.52, 1.14], sky: [0.5, 0.58, 0.72], zen: [0.2, 0.42, 0.82], hor: [0.78, 0.82, 0.82], lamp: 0.8, night: 0, exposure: 1},
+    {e: -0.06, sun: [0.02, 0.02, 0.03], sky: [0.12, 0.1, 0.16], zen: [0.05, 0.06, 0.16], hor: [0.42, 0.2, 0.16], lamp: 1.25, night: 0.7, exposure: 1.15},
+    {e: 0.02, sun: [1.5, 0.52, 0.22], sky: [0.3, 0.22, 0.26], zen: [0.12, 0.14, 0.32], hor: [1.0, 0.42, 0.2], lamp: 1.1, night: 0.2, exposure: 1.08},
+    {e: 0.2, sun: [2.1, 1.22, 0.6], sky: [0.44, 0.42, 0.48], zen: [0.2, 0.32, 0.66], hor: [1.0, 0.64, 0.4], lamp: 0.95, night: 0, exposure: 1.02},
+    {e: 0.55, sun: [1.95, 1.42, 0.9], sky: [0.46, 0.5, 0.62], zen: [0.18, 0.36, 0.76], hor: [0.9, 0.74, 0.56], lamp: 0.85, night: 0, exposure: 1},
+    {e: 1, sun: [1.9, 1.48, 1.0], sky: [0.48, 0.53, 0.66], zen: [0.17, 0.36, 0.78], hor: [0.86, 0.76, 0.62], lamp: 0.82, night: 0, exposure: 1},
   ];
 
   function targetHour() {
@@ -1592,7 +1994,8 @@
 
   function applyTimeOfDay(hour) {
     const t = (hour - 6) / 24 * Math.PI * 2;
-    const sun = new T.Vector3(Math.cos(t), Math.sin(t), -0.32).normalize();
+    // An autumn sun runs low across the south of the sky.
+    const sun = new T.Vector3(Math.cos(t), Math.sin(t) * 0.8, -0.5).normalize();
     const e = sun.y;
     let a = SKY[0], b = SKY[1];
     for (let i = 0; i < SKY.length - 1; i++) if (e >= SKY[i].e && e <= SKY[i + 1].e) { a = SKY[i]; b = SKY[i + 1]; break; }
@@ -1610,6 +2013,8 @@
     U.lampLevel.value = mix(a.lamp, b.lamp);
     R.skyUniforms.zenith.value.setRGB(...mix3(a.zen, b.zen));
     R.skyUniforms.horizon.value.setRGB(...mix3(a.hor, b.hor));
+    // Distance fades into the horizon's haze, so far islands sit in the sky.
+    U.fogColor.value.setRGB(...mix3(a.hor, b.hor).map(v => v * 0.72));
     R.skyUniforms.night.value = mix(a.night, b.night);
     S.exposure = mix(a.exposure, b.exposure);
     // Re-cast the shadows once the light has moved a visible amount.
@@ -1664,8 +2069,10 @@
   function targetPost() {
     const p = {focus: 8, aperture: 0.06, blurAll: 0, volumeLevel: 0.5, bloomLevel: 0.5, exposure: S.exposure || 1};
     if (S.mode === 'shelf' || S.mode === 'placing') { p.focus = shelfDistance(50) * S.zoom; p.aperture = 0.16; }
-    if (S.mode === 'desk') { p.focus = 1.1; p.aperture = 0.9; }
-    if (Book.open) p.blurAll = 0.55;
+    // At the desk the reader in the chair stays in focus, and the room
+    // behind the open book is only softened, so you can see yourself write.
+    if (S.mode === 'desk') { p.focus = 2.6; p.aperture = 0.22; }
+    if (Book.open) p.blurAll = S.mode === 'desk' ? 0.22 : 0.55;
     if (gui.isModalOpen()) p.blurAll = 0.85;
     return p;
   }
@@ -1692,9 +2099,13 @@
     stepTime(dt);
     stepClock();
     stepWalk(dt);
+    stepDoor(dt);
     stepCamera(dt, time);
     stepTweens(dt);
+    stepHand(dt, time);
+    stepSitter(time);
     stepParticles(dt, time);
+    if (look.locked || S.mode === 'seated') updateHover();
     ghostMat.uniforms.opacity.value = 0.42 + 0.14 * Math.sin(time * 2.4);
     if (floatingItem) {
       floatingItem.rotation.y = time * 1.2;
@@ -1707,8 +2118,16 @@
     R.glassMaterial.uniforms.cameraPos.value.copy(camera.position);
     const pxScale = (R.renderer.domElement.height * 0.5) / Math.tan((camera.fov * Math.PI / 180) / 2);
     for (const p of Object.values(particles)) p.uniforms.pxScale.value = pxScale;
+    // Indoors the shadow map is fitted to the hall, so the light through
+    // the windows stays crisp; outdoors it covers the whole island.
+    if (S.built) {
+      const h = S.built.hall, p = camera.position;
+      const inside = p.x > h.x0 - 1 && p.x < h.x1 + 1 && p.z > h.z0 - 1 && p.z < h.z1 + 1;
+      if (inside !== shadowInside) { shadowInside = inside; shadowDirty = true; }
+    }
     if (shadowDirty && S.built) {
-      R.renderShadow(S.built.bounds);
+      const b = S.built.bounds;
+      R.renderShadow(shadowInside ? {min: [b.min[0] - 2, b.min[1], b.min[2] - 1], max: [b.max[0] + 2, b.max[1], b.max[2] + 1]} : S.built.shadowBounds);
       shadowDirty = false;
     }
   }
@@ -1813,6 +2232,8 @@
           }
           case 'deleteBook': { const [s, b] = findBook(m.id); if (s) s.books.splice(s.books.indexOf(b), 1); snapshot(); break; }
           case 'downloadVanilla': emit({type: 'downloadFailed', message: 'Preview only'}); break;
+          case 'skinName': emit({type: 'skin', data: null, failed: m.name}); break;
+          case 'resetSkin': emit({type: 'skin', data: null}); break;
         }
       },
     };
@@ -1841,7 +2262,7 @@
 
   // Hooks for driving the page from a browser console or a test harness.
   window.__library = {
-    S, R, W,
+    S, R, W, view, hand, sitter, door,
     get hover() { return hover; },
     // Steps the simulation without waiting on the display.
     advance(seconds) {

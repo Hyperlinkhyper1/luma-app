@@ -77,6 +77,29 @@
     painting_left: {path: 'textures/painting/sunset.png', crop: [0, 0, 0.5, 1]},
     painting_right: {path: 'textures/painting/sunset.png', crop: [0.5, 0, 0.5, 1]},
     painting_small: 'textures/painting/plant.png',
+    // The island and the autumn outside.
+    stone: 'textures/block/stone.png',
+    andesite: 'textures/block/andesite.png',
+    coal_ore: 'textures/block/coal_ore.png',
+    coarse_dirt: 'textures/block/coarse_dirt.png',
+    grass_block_side_overlay: 'textures/block/grass_block_side_overlay.png',
+    dirt_path_top: 'textures/block/dirt_path_top.png',
+    dirt_path_side: 'textures/block/dirt_path_side.png',
+    leaf_litter: 'textures/block/leaf_litter.png',
+    birch_log: 'textures/block/birch_log.png',
+    birch_log_top: 'textures/block/birch_log_top.png',
+    birch_leaves: 'textures/block/birch_leaves.png',
+    pumpkin_side: 'textures/block/pumpkin_side.png',
+    pumpkin_top: 'textures/block/pumpkin_top.png',
+    carved_pumpkin: 'textures/block/carved_pumpkin.png',
+    jack_o_lantern: 'textures/block/jack_o_lantern.png',
+    hay_block_side: 'textures/block/hay_block_side.png',
+    hay_block_top: 'textures/block/hay_block_top.png',
+    short_grass: 'textures/block/short_grass.png',
+    red_mushroom: 'textures/block/red_mushroom.png',
+    brown_mushroom: 'textures/block/brown_mushroom.png',
+    hanging_roots: 'textures/block/hanging_roots.png',
+    dead_bush: 'textures/block/dead_bush.png',
   };
   const pathOf = entry => (typeof entry === 'string' ? entry : entry?.path);
 
@@ -101,6 +124,8 @@
     'textures/block/campfire_fire.png.mcmeta',
     'textures/block/lantern.png.mcmeta',
     'textures/environment/clouds.png',
+    // The default look for the reader's own hand, until they import a skin.
+    'textures/entity/player/wide/steve.png',
   ];
   for (let i = 0; i < 26; i++) EXTRA.push(`textures/particle/sga_${String.fromCharCode(97 + i)}.png`);
 
@@ -347,7 +372,7 @@
 
   function grassTop(name) {
     const r = rng(name);
-    return paint(16, 16, (x, y) => shade([112, 160, 64], 0.8 + r() * 0.3));
+    return paint(16, 16, (x, y) => shade([150, 136, 70], 0.8 + r() * 0.3));
   }
 
   function flowerPot() {
@@ -473,8 +498,8 @@
     const r = rng('vine');
     return paint(16, 16, (x, y) => {
       const stem = Math.abs(x - (6 + Math.round(Math.sin(y * 0.6) * 3))) < 1;
-      if (stem) return shade([60, 96, 38], 0.9);
-      return r() < 0.3 ? shade([72, 116, 40], 0.75 + r() * 0.4) : null;
+      if (stem) return shade([112, 52, 30], 0.9);
+      return r() < 0.3 ? shade([150, 60, 32], 0.75 + r() * 0.4) : null;
     });
   }
 
@@ -487,6 +512,130 @@
       if (y > hill) return shade([86, 118, 52], 0.85 + r() * 0.2);
       if (side === 1 && (x - 6) ** 2 + (y - 5) ** 2 < 6) return [250, 204, 110, 255];
       return shade(y < 5 ? [120, 150, 196] : [214, 170, 132], 0.95 + r() * 0.08);
+    });
+  }
+
+  // ── The island ─────────────────────────────────────────────────────────
+  function speckled(name, base, spots) {
+    const r = rng(name);
+    return paint(16, 16, () => {
+      const roll = r();
+      for (const [p, c] of spots) if (roll < p) return shade(c, 0.9 + r() * 0.2);
+      return shade(base, 0.9 + r() * 0.14);
+    });
+  }
+
+  function ore(name, fleck) {
+    const r = rng(name);
+    const stone = pixels(PAINTERS.stone());
+    const blobs = Array.from({length: 4}, () => [2 + r() * 12, 2 + r() * 12]);
+    return paint(16, 16, (x, y) => {
+      const near = blobs.some(([bx, by]) => Math.abs(x - bx) + Math.abs(y - by) < 1.8);
+      return near && r() < 0.8 ? shade(fleck, 0.8 + r() * 0.4) : at(stone, x, y);
+    });
+  }
+
+  // The grass fringe down a block's side, grey so it can take the season's
+  // colour like the game's biome tint.
+  function grassOverlay() {
+    const r = rng('grass_overlay');
+    const drip = Array.from({length: 16}, () => 2 + Math.floor(r() * 3) + (r() < 0.25 ? 2 : 0));
+    return paint(16, 16, (x, y) => (y < drip[x] ? shade([170, 170, 170], 0.85 + r() * 0.3) : null));
+  }
+
+  function pathTop() { return speckled('path_top', [150, 122, 74], [[0.12, [120, 96, 58]], [0.2, [170, 142, 92]]]); }
+  function pathSide() {
+    const r = rng('path_side');
+    const dirt = pixels(PAINTERS.dirt());
+    return paint(16, 16, (x, y) => (y === 0 ? null : y < 3 ? shade([150, 122, 74], 0.9 + r() * 0.15) : at(dirt, x, y)));
+  }
+
+  // A scatter of fallen leaves, grey so each patch takes its own colour.
+  function leafLitter() {
+    const r = rng('leaf_litter');
+    const leaves = Array.from({length: 12}, () => [Math.floor(r() * 15), Math.floor(r() * 15), 0.75 + r() * 0.4]);
+    return paint(16, 16, (x, y) => {
+      for (const [lx, ly, f] of leaves) if ((x === lx || x === lx + 1) && (y === ly || (y === ly + 1 && x === lx))) return shade([190, 190, 190], f);
+      return null;
+    });
+  }
+
+  function birchLog() {
+    const r = rng('birch');
+    const marks = Array.from({length: 7}, () => [Math.floor(r() * 16), Math.floor(r() * 16), 1 + Math.floor(r() * 4)]);
+    return paint(16, 16, (x, y) => {
+      for (const [mx, my, w] of marks) if (y === my && x >= mx && x < mx + w) return shade([42, 40, 36], 0.9 + r() * 0.2);
+      return shade([216, 214, 204], 0.9 + r() * 0.12);
+    });
+  }
+
+  function pumpkin(face) {
+    const r = rng('pumpkin' + face);
+    return paint(16, 16, (x, y) => {
+      if (face === 'top') {
+        const d = Math.max(Math.abs(x - 7.5), Math.abs(y - 7.5));
+        if (d < 1.6) return shade([92, 70, 30], 0.9 + r() * 0.2);
+        return shade([214, 124, 26], (Math.floor(d) % 3 === 0 ? 0.82 : 1) * (0.92 + r() * 0.1));
+      }
+      const ridge = x % 4 === 0 ? 0.8 : x % 4 === 2 ? 1.08 : 1;
+      let c = shade([214, 124, 26], ridge * (0.92 + r() * 0.1));
+      if (face === 'carved' || face === 'lit') {
+        const eye = (y >= 4 && y <= 6) && ((x >= 3 && x <= 5) || (x >= 10 && x <= 12));
+        const mouth = (y === 10 && x >= 3 && x <= 12) || (y === 11 && x >= 4 && x <= 11 && x % 3 !== 0);
+        if (eye || mouth) c = face === 'lit' ? shade([255, 214, 90], 0.95 + r() * 0.1) : [44, 26, 10, 255];
+      }
+      return c;
+    });
+  }
+
+  function hay(top) {
+    const r = rng('hay' + top);
+    return paint(16, 16, (x, y) => {
+      if (top) return shade([196, 160, 44], ((x + y * 3) % 5 === 0 ? 0.78 : 1) * (0.9 + r() * 0.15));
+      if (y === 3 || y === 12) return shade([128, 40, 26], 0.9 + r() * 0.15);
+      return shade([204, 168, 48], (x % 3 === 0 ? 0.84 : 1) * (0.9 + r() * 0.12));
+    });
+  }
+
+  function tuft(name, color, blades) {
+    const r = rng(name);
+    const stems = Array.from({length: blades}, () => [1 + Math.floor(r() * 14), 4 + Math.floor(r() * 9), r() < 0.5 ? -1 : 1]);
+    return paint(16, 16, (x, y) => {
+      for (const [sx, top, lean] of stems) {
+        if (y < top) continue;
+        const bend = Math.round((15 - y) / 5) * lean;
+        if (x === sx + bend) return shade(color, 0.75 + (15 - y) * 0.03);
+      }
+      return null;
+    });
+  }
+
+  function mushroom(cap, spots) {
+    return paint(16, 16, (x, y) => {
+      if (y >= 10 && x >= 7 && x <= 8) return [214, 206, 186, 255];
+      if (y >= 5 && y < 10 && Math.abs(x - 7.5) < (y - 3) * 0.9) {
+        if (spots && ((x + y) % 4 === 0) && y < 8) return [240, 236, 226, 255];
+        return shade(cap, y === 9 ? 0.75 : 1);
+      }
+      return null;
+    });
+  }
+
+  function roots() {
+    const r = rng('roots');
+    const strands = Array.from({length: 7}, () => [1 + Math.floor(r() * 14), 6 + Math.floor(r() * 10)]);
+    return paint(16, 16, (x, y) => {
+      for (const [sx, len] of strands) if (y < len && x === sx + Math.round(Math.sin(y * 0.7 + sx) * 0.8)) return shade([120, 86, 58], 0.8 + r() * 0.3);
+      return null;
+    });
+  }
+
+  function deadBush() {
+    const r = rng('dead_bush');
+    return paint(16, 16, (x, y) => {
+      const trunk = x === 8 && y > 9;
+      const twig = (y > 3 && y < 12) && (Math.abs(x - 8 - (11 - y) * 0.9) < 0.6 || Math.abs(x - 8 + (11 - y) * 0.7) < 0.6);
+      return trunk || twig ? shade([134, 96, 50], 0.8 + r() * 0.3) : null;
     });
   }
 
@@ -523,6 +672,36 @@
       return shade(c, 0.9 + r() * 0.12);
     });
   }
+
+  // Carpet tiles, one block each, so a rug always lines up with the floor:
+  // a centre tile with one diamond, an edge tile with the border along its
+  // top, and a corner tile with it along the top and left. The rug turns
+  // edge and corner tiles to face outward; the diamond is symmetric, so
+  // the lattice runs on unbroken from tile to tile.
+  function rugTile(name, kind, c) {
+    const r = rng(name + kind);
+    return paint(16, 16, (x, y) => {
+      const band = kind === 'center' ? 99 : kind === 'edge' ? y : Math.min(x, y);
+      const along = kind === 'corner' ? (x < y ? y : x) : x;
+      let col;
+      if (band === 0) col = c.dark;
+      else if (band < 4) col = (along + band) % 4 === 0 ? c.line : c.border;
+      else if (band === 4) col = c.line;
+      else {
+        const d = Math.abs(x - 7.5) + Math.abs(y - 7.5);
+        if (Math.abs(d - 7) < 0.6) col = c.line;
+        else if (d < 2.2) col = c.accent;
+        else if (Math.abs(d - 4.2) < 0.6) col = shade(c.ground, 0.78);
+        else col = c.ground;
+      }
+      return shade(col, 0.92 + r() * 0.1);
+    });
+  }
+  const RUGS = {
+    red: {ground: [140, 40, 32, 255], line: [226, 204, 156, 255], accent: [62, 44, 34, 255], border: [84, 44, 30, 255], dark: [46, 28, 20, 255]},
+    green: {ground: [60, 88, 52, 255], line: [214, 194, 146, 255], accent: [150, 58, 38, 255], border: [44, 58, 36, 255], dark: [30, 36, 24, 255]},
+    rust: {ground: [168, 88, 38, 255], line: [236, 208, 150, 255], accent: [96, 44, 30, 255], border: [110, 56, 30, 255], dark: [58, 32, 20, 255]},
+  };
 
   function rugBorder(name, ground, line) {
     const r = rng(name);
@@ -584,12 +763,25 @@
     return paint(16, 16, (x, y) => (y < 3 ? [240, 240, 236, 255] : y < 5 ? [70, 104, 160, 255] : [236, 236, 230, 255]));
   }
 
+  // A grass block's side: dirt with the fringe laid over it in the season's
+  // colour, as the game tints its overlay by biome.
+  function grassSide(dirt, overlay) {
+    const d = pixels(dirt), o = overlay.getContext('2d').getImageData(0, 0, 16, 16).data;
+    return paint(16, 16, (x, y) => {
+      const i = (y * 16 + x) * 4;
+      if (o[i + 3] < 128) return at(d, x, y);
+      return [clamp(o[i] * GRASS[0]), clamp(o[i + 1] * GRASS[1]), clamp(o[i + 2] * GRASS[2]), 255];
+    });
+  }
+
   const DERIVED = {
     cabinet_door: c => cabinetDoor(c.spruce_planks),
+    grass_side: c => grassSide(c.dirt, c.grass_block_side_overlay),
     rug_red: () => rug('rug_red', [138, 38, 32, 255], [226, 206, 160, 255], [60, 44, 34, 255]),
     rug_red_border: () => rugBorder('rug_red_b', [70, 40, 28, 255], [210, 170, 90, 255]),
     rug_green: () => rug('rug_green', [58, 86, 52, 255], [214, 196, 150, 255], [140, 48, 36, 255]),
     rug_green_border: () => rugBorder('rug_green_b', [40, 52, 34, 255], [200, 170, 100, 255]),
+    ...Object.fromEntries(Object.entries(RUGS).flatMap(([name, c]) => ['center', 'edge', 'corner'].map(kind => [`carpet_${name}_${kind}`, () => rugTile('carpet_' + name, kind, c)]))),
     book_page: bookPage,
     spine_deco: spineDeco,
     globe,
@@ -634,13 +826,14 @@
     campfire_log: () => campfireLog('campfire_log', false),
     campfire_log_lit: () => campfireLog('campfire_log_lit', true),
     campfire_fire: () => fire('campfire_fire', 16),
-    oak_leaves: () => leaves('oak_leaves', [72, 116, 40]),
-    spruce_leaves: () => leaves('spruce_leaves', [58, 90, 58]),
+    oak_leaves: () => leaves('oak_leaves', [150, 150, 150]),
+    spruce_leaves: () => leaves('spruce_leaves', [140, 140, 140]),
+    birch_leaves: () => leaves('birch_leaves', [156, 156, 156]),
     azalea_leaves: () => leaves('azalea', [96, 126, 44]),
     grass_block_top: () => grassTop('grass'),
     dirt: () => wool('dirt', [134, 96, 67]),
     flower_pot: flowerPot,
-    fern: () => plant('fern', [80, 124, 56]),
+    fern: () => plant('fern', [146, 124, 58]),
     poppy: () => plant('poppy', [60, 110, 40], [200, 40, 30]),
     lectern_top: () => lectern('top'),
     lectern_sides: () => lectern('sides'),
@@ -670,16 +863,38 @@
     painting_left: () => landscape(0),
     painting_right: () => landscape(1),
     painting_small: () => plant('painting_small', [70, 110, 50], [196, 90, 150]),
+    stone: () => speckled('stone', [124, 124, 124], [[0.08, [100, 100, 100]], [0.14, [142, 142, 142]]]),
+    andesite: () => speckled('andesite', [134, 136, 134], [[0.12, [104, 106, 104]], [0.24, [160, 162, 160]]]),
+    coal_ore: () => ore('coal_ore', [36, 36, 36]),
+    coarse_dirt: () => speckled('coarse_dirt', [120, 86, 60], [[0.1, [84, 60, 42]], [0.16, [150, 140, 128]]]),
+    grass_block_side_overlay: grassOverlay,
+    dirt_path_top: pathTop,
+    dirt_path_side: pathSide,
+    leaf_litter: leafLitter,
+    birch_log: birchLog,
+    birch_log_top: () => logTop('birch_log_top', [216, 214, 204], [196, 170, 118]),
+    pumpkin_side: () => pumpkin('side'),
+    pumpkin_top: () => pumpkin('top'),
+    carved_pumpkin: () => pumpkin('carved'),
+    jack_o_lantern: () => pumpkin('lit'),
+    hay_block_side: () => hay(false),
+    hay_block_top: () => hay(true),
+    short_grass: () => tuft('short_grass', [160, 138, 72], 9),
+    red_mushroom: () => mushroom([196, 36, 30], true),
+    brown_mushroom: () => mushroom([150, 108, 76], false),
+    hanging_roots: roots,
+    dead_bush: deadBush,
   };
 
-  // Vanilla sprites whose look depends on tint: leaves and grass are grey in
-  // the jar and coloured by the biome in game.
+  // The season. Grass and ferns are grey in the jar and coloured by the
+  // biome in game; here they take autumn's gold, and the vines turn red.
+  // Tree leaves stay grey in the atlas and get a colour per tree instead.
+  const GRASS = [0.78, 0.7, 0.36];
   const TINT = {
-    oak_leaves: [0.47, 0.72, 0.28],
-    spruce_leaves: [0.38, 0.6, 0.38],
-    grass_block_top: [0.55, 0.74, 0.35],
-    fern: [0.5, 0.72, 0.3],
-    vine: [0.42, 0.66, 0.26],
+    grass_block_top: GRASS,
+    fern: [0.74, 0.62, 0.3],
+    short_grass: [0.8, 0.7, 0.38],
+    vine: [0.76, 0.34, 0.16],
   };
 
   // Some sheets are cut down: a painting split into one-block halves, and

@@ -52,7 +52,8 @@
         this.ao.push(aos[i]);
         this.tint.push(...tint);
         this.emit.push(emit);
-        if (opts.labelUv) this.label.push(opts.labelUv[i][0], opts.labelUv[i][1], 1, 0);
+        // Kind 1 samples the label sheet, kind 2 the reader's skin.
+        if (opts.labelUv) this.label.push(opts.labelUv[i][0], opts.labelUv[i][1], opts.labelKind || 1, 0);
         else this.label.push(...label);
       }
       // Flip the diagonal where it avoids the classic AO seam artefact.
@@ -161,6 +162,11 @@
             if (this.solid(x, y, z)) break;
             seeds.push([x, y, z, 15]);
           }
+          // The island floats: open sky lies under it too.
+          for (let y = this.min[1]; y < this.max[1]; y++) {
+            if (this.solid(x, y, z)) break;
+            seeds.push([x, y, z, 15]);
+          }
         }
       }
       this.propagate('sky', seeds);
@@ -208,15 +214,41 @@
   block('cobblestone', {all: 'cobblestone'});
   block('smooth_stone', {all: 'smooth_stone'});
   block('dirt', {all: 'dirt'});
-  block('grass', {top: 'grass_block_top', bottom: 'dirt', side: 'dirt'});
+  block('grass', {top: 'grass_block_top', bottom: 'dirt', side: 'grass_side'});
+  block('stone', {all: 'stone'});
+  block('andesite', {all: 'andesite'});
+  block('coal_ore', {all: 'coal_ore'});
+  block('coarse_dirt', {all: 'coarse_dirt'});
+  block('birch_log', {top: 'birch_log_top', bottom: 'birch_log_top', side: 'birch_log'});
+  block('spruce_log', {top: 'spruce_log_top', bottom: 'spruce_log_top', side: 'spruce_log'});
+  block('spruce_log_x', {east: 'spruce_log_top', west: 'spruce_log_top', side: 'spruce_log'}, {rotFaces: ['north', 'south', 'up', 'down']});
+  block('pumpkin', {top: 'pumpkin_top', bottom: 'pumpkin_top', side: 'pumpkin_side'});
+  block('hay', {top: 'hay_block_top', bottom: 'hay_block_top', side: 'hay_block_side'});
+  // Autumn: the leaf sheets are grey and every tree takes its own colour.
+  // Tints multiply linear light, so they are given in sRGB and converted.
+  const srgb = c => c.map(v => Math.pow(v, 2.2));
+  const FOLIAGE = {
+    orange: srgb([0.95, 0.54, 0.16]), red: srgb([0.84, 0.24, 0.12]), yellow: srgb([0.96, 0.8, 0.24]),
+    spruce: srgb([0.4, 0.54, 0.36]), amber: srgb([0.9, 0.66, 0.2]),
+  };
+  for (const [name, tint] of Object.entries(FOLIAGE)) {
+    block('leaves_' + name, {all: name === 'yellow' ? 'birch_leaves' : name === 'spruce' ? 'spruce_leaves' : 'oak_leaves'}, {opaque: false, cutout: true, tint});
+  }
+  // Drawn by hand: a path sits a pixel low, stairs make the roof, and a
+  // jack o'lantern's face glows.
+  block('path', {top: 'dirt_path_top', bottom: 'dirt', side: 'dirt_path_side'}, {custom: true});
+  block('stair_e', {all: 'dark_oak_planks'}, {custom: true, rise: 1});
+  block('stair_w', {all: 'dark_oak_planks'}, {custom: true, rise: -1});
+  for (const dir of ['north', 'south', 'east', 'west']) {
+    block('jack_' + dir, {[dir]: 'jack_o_lantern', top: 'pumpkin_top', bottom: 'pumpkin_top', side: 'pumpkin_side'}, {emit: {[dir]: 1}});
+    block('carved_' + dir, {[dir]: 'carved_pumpkin', top: 'pumpkin_top', bottom: 'pumpkin_top', side: 'pumpkin_side'});
+  }
   // Warm lime plaster between the timbers.
   block('plaster', {all: 'calcite'}, {tint: [1.0, 0.95, 0.86]});
   block('post', {top: 'dark_oak_log_top', bottom: 'dark_oak_log_top', side: 'dark_oak_log'});
   block('beam_x', {east: 'dark_oak_log_top', west: 'dark_oak_log_top', side: 'dark_oak_log'}, {rotFaces: ['north', 'south', 'up', 'down']});
   block('beam_z', {north: 'dark_oak_log_top', south: 'dark_oak_log_top', side: 'dark_oak_log'}, {rotFaces: ['east', 'west']});
   block('oak_log', {top: 'spruce_log_top', bottom: 'spruce_log_top', side: 'oak_log'});
-  block('leaves', {all: 'oak_leaves'}, {opaque: false, cutout: true});
-  block('spruce_leaves', {all: 'spruce_leaves'}, {opaque: false, cutout: true});
   // Built-in bookcases: solid for light, drawn by builtInCase.
   block('case', {all: 'spruce_planks'}, {custom: true});
 
@@ -224,8 +256,9 @@
     const f = b.faces;
     if (f[dir]) return f[dir];
     if (f.all) return f.all;
-    if (dir === 'up') return f.top;
-    if (dir === 'down') return f.bottom;
+    // A beam names only its end grain; its other four faces are all bark.
+    if (dir === 'up') return f.top || f.side;
+    if (dir === 'down') return f.bottom || f.top || f.side;
     return f.side;
   }
 
@@ -240,7 +273,9 @@
       const F = FACES[dir];
       const [nx, ny, nz] = F.n;
       const neighbour = grid.get(x + nx, y + ny, z + nz);
-      if (neighbour && neighbour.opaque) continue;
+      // A built-in bookcase stops a hair short of the wall behind it, so the
+      // wall still needs its face there or the gap shows the sky.
+      if (neighbour && neighbour.opaque && !neighbour.custom) continue;
       if (b.cutout && neighbour === b) continue;
       const a = [x, y, z], c = [x + 1, y + 1, z + 1];
       const corners = F.c(a, c);
@@ -262,7 +297,7 @@
         lights.push([sum[0] / n, sum[1] / n, sum[2] / n]);
       }
       const uv = uvCorners([0, 0, 16, 16], b.rotFaces && b.rotFaces.includes(dir) ? 90 : 0);
-      mb.quad(corners, F.n, uv, tileOf(atlas, faceTexture(b, dir)), lights, aos, {tint: b.tint});
+      mb.quad(corners, F.n, uv, tileOf(atlas, faceTexture(b, dir)), lights, aos, {tint: b.tint, emit: b.emit ? b.emit[dir] || 0 : 0});
     }
   }
 
@@ -289,7 +324,7 @@
       const aos = corners.map(c => (face.ao != null ? face.ao : opts.ao != null ? (typeof opts.ao === 'function' ? opts.ao(c) : opts.ao) : 1));
       mb.quad(corners, normal, uv, tileOf(atlas, face.tex), lights, aos, {
         tint: face.tint || opts.tint, emit: face.emit != null ? face.emit : opts.emit || 0,
-        doubleSided: face.double || opts.doubleSided, labelUv: face.labelUv,
+        doubleSided: face.double || opts.doubleSided, labelUv: face.labelUv, labelKind: face.labelKind,
       });
     }
   }
@@ -447,20 +482,27 @@
 
   // A closed book standing up in frame `f`: spine toward the room between
   // u0 and u1, standing on v0, `d` deep starting `w0` behind the front.
+  //
+  // Every board is closed on all sides it can be seen from — the inner
+  // faces of the covers too, which show above the page block — and the
+  // leather is fitted to each face rather than tiled in world space, so no
+  // stray seams run across a cover.
   function bookBoxes(K, f, u0, u1, v0, h, w0, d, tint, spine, opts = {}) {
     const width = u1 - u0;
-    const c = Math.min(0.4 / 16, width * 0.18);
-    const s = 0.4 / 16;
+    const c = Math.min(0.5 / 16, width * 0.2);
+    const s = 0.5 / 16;
     const top = v0 + h;
     const light = opts.light || K.grid.sample(f.p((u0 + u1) / 2, v0 + h / 2, -0.3), f.n);
-    const o = {light, emit: opts.emit || 0};
-    const leather = {tex: 'leather', tint};
-    const edge = {tex: 'leather', tint, ao: 0.82};
-    const pages = {tex: 'pages', ao: 0.9};
-    f.box(K, u0, v0, w0, u1, top, w0 + s, {front: spine, top: edge, bottom: edge, left: edge, right: edge}, o);
-    f.box(K, u0, v0, w0 + s, u0 + c, top, w0 + d, {left: leather, top: edge, back: edge, bottom: edge}, o);
-    f.box(K, u1 - c, v0, w0 + s, u1, top, w0 + d, {right: leather, top: edge, back: edge, bottom: edge}, o);
-    f.box(K, u0 + c, v0 + 0.3 / 16, w0 + s, u1 - c, top - 0.5 / 16, w0 + d - 0.4 / 16, {top: pages, back: {...pages, ao: 0.6}}, o);
+    const o = {light, emit: opts.emit || 0, whole: true};
+    const leather = {tex: 'leather', tint, uv: [1, 1, 15, 15]};
+    const edge = {tex: 'leather', tint, ao: 0.82, uv: [2, 2, 4, 14]};
+    const inner = {tex: 'leather', tint, ao: 0.62, uv: [2, 2, 4, 14]};
+    const pages = {tex: 'pages', ao: 0.92, uv: [0, 0, 16, 16]};
+    const sunk = 0.35 / 16;
+    f.box(K, u0, v0, w0, u1, top, w0 + s, {front: spine, top: edge, bottom: edge, left: edge, right: edge, back: inner}, o);
+    f.box(K, u0, v0, w0 + s, u0 + c, top, w0 + d, {left: leather, right: inner, top: edge, back: edge, bottom: edge}, o);
+    f.box(K, u1 - c, v0, w0 + s, u1, top, w0 + d, {right: leather, left: inner, top: edge, back: edge, bottom: edge}, o);
+    f.box(K, u0 + c, v0, w0 + s, u1 - c, top - sunk, w0 + d - sunk, {top: pages, back: {...pages, ao: 0.7}}, o);
   }
 
   // One of the user's books, centred on `center` with its spine facing
@@ -605,20 +647,21 @@
     const L = layout(subjects.length);
     const cases = caseSlots(subjects.length);
     const W = HALL.halfWidth, H = HALL.height, E = L.endWall, F = L.hallStart;
-    const minZ = E - 3, maxZ = F + 5;
-    const grid = new Grid([-14, -3, minZ], [14, 13, maxZ]);
+    const isle = islandShape(E, F);
+    const grid = new Grid([isle.x0, -26, isle.z0], [isle.x1, 19, isle.z1]);
     const K = {mb: new MeshBuilder(), grid, atlas, canvases, candles: [], colliders: []};
     const Fu = window.LibraryFurniture;
     const later = [];
     const lampSeeds = [];
     const windows = [];
+    const seats = [];
     const light = (x, y, z, level) => lampSeeds.push([Math.floor(x), Math.floor(y), Math.floor(z), level]);
     const solidBox = (x0, z0, x1, z1) => K.colliders.push([Math.min(x0, x1), Math.min(z0, z1), Math.max(x0, x1), Math.max(z0, z1)]);
     const opening = (x, y, z, axis) => { grid.set(x, y, z, AIR); windows.push({cell: [x, y, z], axis}); };
 
-    // Ground outside, stone footings, a spruce floor.
-    grid.fill([-14, -3, minZ], [13, -2, maxZ - 1], B.dirt);
-    grid.fill([-14, -1, minZ], [13, -1, maxZ - 1], B.grass);
+    // The island the cottage stands on, then stone footings and a spruce
+    // floor.
+    const ground = island(grid, isle);
     grid.fill([-W - 1, -1, E], [W, -1, F], B.cobblestone);
     grid.fill([-W, -1, E + 1], [W - 1, -1, F - 1], B.spruce_planks);
 
@@ -640,6 +683,25 @@
     // Plank ceiling, roof over it.
     grid.fill([-W - 1, H, E], [W, H, F], B.spruce_planks);
     grid.fill([-W - 1, H + 1, E], [W, H + 1, F], B.dark_oak_planks);
+    // A steep gable of dark oak stairs over it, overhanging a block all
+    // round, plastered gables, and the chimney stack at the back.
+    const R0 = H + 1;
+    for (let k = 0; k <= W + 1; k++) {
+      const y = R0 + k;
+      for (let z = E - 1; z <= F + 1; z++) {
+        grid.set(-W - 2 + k, y, z, B.stair_e);
+        grid.set(W + 1 - k, y, z, B.stair_w);
+        for (let x = -W - 1 + k; x <= W - k; x++) {
+          if (z < E || z > F) continue;
+          grid.set(x, y, z, z === E ? B.stone_bricks : z === F ? B.plaster : B.dark_oak_planks);
+        }
+      }
+    }
+    for (const x of [-2, 1]) for (let y = R0 + 1; y < R0 + 4; y++) grid.set(x, y, F, B.post);
+    grid.fill([-2, R0 + 1, F], [1, R0 + 1, F], B.beam_x);
+    const chimney = {x0: -1, x1: 0, z0: E - 1, z1: E, top: R0 + W + 4};
+    grid.fill([chimney.x0, R0, chimney.z0], [chimney.x1, chimney.top - 1, chimney.z1], B.stone_bricks);
+    grid.set(-1, chimney.top - 2, E - 1, B.mossy_stone_bricks);
 
     // Timber frame: a post in each wall and between each pair of cases,
     // tied across the ceiling by a beam.
@@ -690,24 +752,12 @@
     // Front: a double door with a window either side, windows in the side
     // walls.
     for (const x of [-1, 0]) for (const y of [0, 1]) grid.set(x, y, F, AIR);
-    for (const x of [-4, -3, 2, 3]) for (const y of [1, 2]) opening(x, y, F, 'z');
+    for (const x of [-4, -3, 2, 3]) for (const y of [1, 2, 4, 5]) opening(x, y, F, 'z');
     for (const x of [-W - 1, W]) for (let z = 2; z <= 4; z++) for (const y of [1, 2, 3]) opening(x, y, z, 'x');
 
-    // Trees outside the windows.
-    for (let k = -1; k <= L.sections + 2; k++) {
-      for (const side of [-1, 1]) {
-        const tz = -k * HALL.section - 2 + (side > 0 ? 1 : -1);
-        const tx = side * (W + 4 + (k % 2));
-        if (tz < minZ + 2 || tz > maxZ - 3) continue;
-        for (let y = 0; y < 5; y++) grid.set(tx, y, tz, B.oak_log);
-        for (let dx = -2; dx <= 2; dx++) for (let dz = -2; dz <= 2; dz++) for (let dy = 3; dy <= 6; dy++) {
-          const r = Math.abs(dx) + Math.abs(dz) + Math.max(0, dy - 5) * 2;
-          if (r > 3 || (dx === 0 && dz === 0 && dy < 5)) continue;
-          if (Math.abs(tx + dx) <= W) continue;
-          if (!grid.get(tx + dx, dy, tz + dz)) grid.set(tx + dx, dy, tz + dz, (tx + tz) % 3 ? B.leaves : B.spruce_leaves);
-        }
-      }
-    }
+    // Outside: a path out to a lookout on the island's edge, trees in their
+    // autumn colours, a pumpkin patch, and lanterns to walk home by.
+    const outside = outdoors(K, isle, ground, {W, E, F, light, solidBox, later, seats});
 
     // ── Lights and furniture ────────────────────────────────────────────
     // Hanging lanterns down the middle, and one on an arm off every post.
@@ -733,11 +783,19 @@
       }
     }
 
+    // Somewhere to sit: `pos` is where the sitter's hips rest, `yaw` the
+    // way they face (as the walker's yaw), `box` what a click lands on.
+    const benchSeat = (side, x, za, zb) => {
+      const x0 = side > 0 ? x : x + 0.25, x1 = side > 0 ? x + 0.75 : x + 1;
+      seats.push({pos: [(x0 + x1) / 2 + side * 0.08, 0.64, (za + zb) / 2], yaw: side > 0 ? -Math.PI / 2 : Math.PI / 2, box: [[x0, 0, za], [x1, 1, zb]], along: [za + 0.45, zb - 0.45]});
+    };
+
     // Window seats in the spans without a case.
     for (const nook of nooks) {
       const x = nook.side > 0 ? -W : W - 1;
       solidBox(x, nook.za, x + 1, nook.zb + 1);
       later.push(() => Fu.windowSeat(K, nook.side, x, nook.za, nook.zb + 1));
+      benchSeat(nook.side, x, nook.za, nook.zb + 1);
       light(x, 1, nook.za + 2, 10);
     }
 
@@ -754,13 +812,26 @@
     const deskZ = E + 4.5;
     const deskO = [-1, 0, Math.floor(deskZ)];
     solidBox(-1, deskO[2], 1, deskO[2] + 1);
-    solidBox(-0.4, deskZ + 0.4, 0.4, deskZ + 1.2);
     light(-1, 1, deskO[2], 12); light(0, 1, deskO[2], 12);
     later.push(() => Fu.desk(K, deskO));
+    // The desk chair, pulled up to the desk; the reader sits here to write.
+    const chairZ = deskZ + 0.98;
+    solidBox(-0.36, chairZ - 0.3, 0.36, chairZ + 0.38);
+    later.push(() => Fu.deskChair(K, [0, 0, chairZ]));
+    seats.push({pos: [0, Fu.DESK_SEAT, chairZ - 0.04], yaw: 0, box: [[-0.4, 0, chairZ - 0.35], [0.4, 1.3, chairZ + 0.4]], desk: true});
     const chairs = [[-3.6, fz + 2.3, 1], [2.6, fz + 2.3, -1]];
     for (const [cx, cz] of chairs) solidBox(cx + 0.05, cz + 0.05, cx + 0.95, cz + 0.95);
+    const chairYaw = (cx, cz) => Math.atan2(-(cx + 0.5), -(fz + 0.5 - (cz + 0.5)));
+    for (const [cx, cz] of chairs) {
+      const yaw = chairYaw(cx, cz);
+      // The chair faces (sin yaw, -cos yaw); sit a little forward of its back.
+      seats.push({pos: [cx + 0.5 + Math.sin(yaw) * 0.08, 10 / 16, cz + 0.5 - Math.cos(yaw) * 0.08], yaw: -yaw, box: [[cx, 0, cz], [cx + 1, 1.35, cz + 1]]});
+    }
     later.push(() => {
-      for (const [cx, cz] of chairs) Fu.armchair(K, [cx, 0, cz], Math.atan2(-(cx + 0.5), -(fz + 0.5 - (cz + 0.5))), 'red_wool');
+      chairs.forEach(([cx, cz], i) => {
+        Fu.armchair(K, [cx, 0, cz], chairYaw(cx, cz), 'red_wool');
+        Fu.throwBlanket(K, [cx, 0, cz], chairYaw(cx, cz), i ? 'rust' : 'green');
+      });
     });
     solidBox(-2.55, fz + 3.6, -1.75, fz + 4.4);
     light(-2.2, 1, fz + 4, 11);
@@ -774,12 +845,22 @@
       const x = side > 0 ? -W : W - 1;
       solidBox(x, E + 3, x + 1, E + 7);
       later.push(() => Fu.windowSeat(K, side, x, E + 3, E + 7));
+      benchSeat(side, x, E + 3, E + 7);
       light(x, 1, E + 5, 10);
     }
+    // A cat asleep at the end of the east window seat.
+    later.push(() => Fu.cat(K, [W - 0.62, 0.64, E + 6.35], Math.PI * 0.6));
     later.push(() => {
-      Fu.rug(K, -4, fz + 1.4, 4, fz + 5.2, 'rug_green', 'rug_green_border');
+      Fu.rug(K, -4, fz + 1, 4, fz + 5, 'green');
       Fu.ladder(K, endCases[0], 2.1);
+      // Firewood stacked by the hearth, and the season on the mantel.
+      Fu.garland(K, -2, 2, 1.92, fz + 1.34);
+      Fu.logPile(K, [1.05, 0, fz + 1.02]);
+      Fu.pumpkin(K, [-1.55, 0, fz + 1.4], 0.62, false);
+      Fu.pumpkin(K, [-1.95, 0, fz + 1.8], 0.4, false);
     });
+    solidBox(1.05, fz + 1, 1.95, fz + 1.7);
+    solidBox(-2.2, fz + 1, -1.2, fz + 2.05);
 
     // The foyer: a clock, a coat stand, a bench, plants by the door.
     solidBox(-W, 1.1, -W + 0.65, 1.9);
@@ -792,14 +873,13 @@
       later.push(() => Fu.pot(K, [x, 0, F - 1], x < 0 ? 'azalea' : 'fern', true));
     }
     later.push(() => {
-      Fu.door(K, -1, F);
-      Fu.rug(K, -2, 1.5, 2, 5.4, 'rug_red', 'rug_red_border');
+      Fu.rug(K, -2, 1, 2, 5, 'red');
       Fu.hangingPlant(K, [-W + 1, H, F - 1]);
       Fu.hangingPlant(K, [W - 2, H, F - 1]);
       Fu.hangingPlant(K, [-W + 1, H, E + 7]);
       Fu.hangingPlant(K, [W - 2, H, E + 7]);
     });
-    later.push(() => Fu.rug(K, -1, E + 6.3, 1, 1.4, 'rug_red', 'rug_red_border'));
+    later.push(() => Fu.rug(K, -1, E + 7, 1, 0, 'red'));
 
     // ── Light ───────────────────────────────────────────────────────────
     grid.lightSky();
@@ -810,9 +890,12 @@
     const mb = K.mb;
     for (let z = grid.min[2]; z < grid.max[2]; z++) for (let y = grid.min[1]; y < grid.max[1]; y++) for (let x = grid.min[0]; x < grid.max[0]; x++) {
       const b = grid.get(x, y, z);
-      if (!b || b.custom) continue;
-      addBlock(mb, grid, atlas, x, y, z, b);
+      if (!b) continue;
+      if (b === B.path) addPath(mb, grid, atlas, x, y, z);
+      else if (b.rise) addStair(mb, grid, atlas, x, y, z, b);
+      else if (!b.custom) addBlock(mb, grid, atlas, x, y, z, b);
     }
+    distantIslands(mb, atlas, isle);
     for (const c of cases) if (!c.placeholder) builtInCase(K, c.spec);
     endCases.forEach((spec, i) => builtInCase(K, spec, {fill: i}));
 
@@ -865,11 +948,332 @@
     return {
       grid, layout: L, cases, placeholder: cases.find(c => c.placeholder), lamps, fires, candles: K.candles,
       geometry: world, glass: glassGeo, colliders: K.colliders, clock: clockAt,
-      desk: {z: deskZ, top: 1, center: [0, 1, deskO[2] + 0.5]},
+      desk: {z: deskZ, top: 1, center: [0, 1, deskO[2] + 0.5], chair: seats.find(s => s.desk)},
       fire: [0, 0.6, fz + 0.5],
+      seats,
+      door: {z: F, hinges: [[-1, 1], [1, -1]]},
+      trees: outside.trees,
+      smoke: [(chimney.x0 + chimney.x1 + 1) / 2, chimney.top + 0.1, (chimney.z0 + chimney.z1 + 1) / 2],
+      // The hall itself, for the dust and the light shafts; the shadows
+      // cover the whole island.
       bounds: {min: [-W - 1, -1, E], max: [W + 1, H + 2, F + 1]},
-      walk: {minX: -W + 0.3, maxX: W - 0.3, minZ: E + 1.3, maxZ: F - 0.3},
+      hall: {x0: -W, x1: W, z0: E + 1, z1: F},
+      shadowBounds: {min: [isle.x0 + 2, -4, isle.z0 + 2], max: [isle.x1 - 2, chimney.top + 1, isle.z1 - 2]},
     };
+  }
+
+  // ── The island ─────────────────────────────────────────────────────────
+  // An oval of land a little longer than the hall, its outline rippled so
+  // it reads as rock rather than a drawn shape. The front yard is deeper
+  // than the back, for the path out to the lookout.
+  function islandShape(E, F) {
+    const cz = (E + F) / 2 + 4;
+    const rx = 17, rz = (F - E) / 2 + 13;
+    const r = LibraryTextures.rng('island');
+    const ph = [r() * 6.28, r() * 6.28, r() * 6.28];
+    // How far out a cell's centre lies: land below 1.
+    const edge = (x, z) => {
+      const dx = (x + 0.5) / rx, dz = (z + 0.5 - cz) / rz;
+      const a = Math.atan2(dz, dx);
+      const wobble = 1 + 0.07 * Math.sin(a * 3 + ph[0]) + 0.05 * Math.sin(a * 5 + ph[1]) + 0.03 * Math.sin(a * 8 + ph[2]);
+      return Math.hypot(dx, dz) / wobble;
+    };
+    return {
+      cz, rx, rz, edge,
+      x0: -Math.ceil(rx * 1.15) - 2, x1: Math.ceil(rx * 1.15) + 2,
+      z0: Math.floor(cz - rz * 1.15) - 2, z1: Math.ceil(cz + rz * 1.15) + 2,
+    };
+  }
+
+  const cellHash = (x, y, z) => hash(((x * 73856093) ^ (y * 19349663) ^ (z * 83492791)) >>> 0);
+
+  // Grass on top, a few layers of dirt, then stone narrowing to a ragged
+  // point underneath, deepest in the middle. Returns each column's bottom.
+  function island(grid, isle) {
+    const bottoms = new Map();
+    for (let x = isle.x0; x < isle.x1; x++) for (let z = isle.z0; z < isle.z1; z++) {
+      const e = isle.edge(x, z);
+      if (e >= 1) continue;
+      const n = cellHash(x, 0, z);
+      const spike = cellHash(x, 1, z) < 0.1 ? 2 + Math.floor(cellHash(x, 2, z) * 4) : 0;
+      const depth = 3 + Math.round((1 - e * e) * 17 * (0.85 + n * 0.3)) + spike;
+      const bottom = -1 - depth;
+      bottoms.set(x + ',' + z, bottom);
+      for (let y = bottom; y <= -1; y++) {
+        let b;
+        if (y === -1) b = B.grass;
+        else if (y >= -3 - (n < 0.3 ? 1 : 0)) b = e > 0.88 && n < 0.45 ? B.coarse_dirt : B.dirt;
+        else {
+          const h = cellHash(x, y, z);
+          b = h < 0.035 ? B.coal_ore : Math.sin(x * 0.45 + y * 0.7) + Math.cos(z * 0.5 - y * 0.35) > 1.25 ? B.andesite : B.stone;
+        }
+        grid.set(x, y, z, b);
+      }
+    }
+    return {bottoms};
+  }
+
+  // A path block: a pixel lower than the grass beside it, as in the game.
+  function addPath(mb, grid, atlas, x, y, z) {
+    const open = (dx, dy, dz) => { const n = grid.get(x + dx, y + dy, z + dz); return !n || !n.opaque; };
+    const side = {tex: 'dirt_path_side', uv: [0, 1, 16, 16]};
+    const faces = {up: {tex: 'dirt_path_top', uv: [0, 0, 16, 16]}};
+    if (open(0, 0, -1)) faces.north = side;
+    if (open(0, 0, 1)) faces.south = side;
+    if (open(-1, 0, 0)) faces.west = side;
+    if (open(1, 0, 0)) faces.east = side;
+    if (open(0, -1, 0)) faces.down = {tex: 'dirt'};
+    addBox(mb, grid, atlas, [x, y, z], [0, 0, 0], [16, 15, 16], faces);
+  }
+
+  // A roof stair climbing toward +x (rise 1) or -x (rise -1): a slab with
+  // a step on its high side. Faces against solid blocks or the same stair
+  // running on are left out.
+  function addStair(mb, grid, atlas, x, y, z, b) {
+    const up = b.rise > 0;
+    const open = (dx, dy, dz) => {
+      const n = grid.get(x + dx, y + dy, z + dz);
+      return !n || (!n.opaque || n.custom) && n !== b;
+    };
+    const wood = {tex: 'dark_oak_planks'};
+    const lowSide = up ? 'west' : 'east', highSide = up ? 'east' : 'west';
+    const lo = up ? [0, 8] : [8, 16], hi = up ? [8, 16] : [0, 8];
+    const ends = {};
+    if (open(0, 0, -1)) ends.north = wood;
+    if (open(0, 0, 1)) ends.south = wood;
+    const low = {...ends, up: wood};
+    if (open(up ? -1 : 1, 0, 0)) low[lowSide] = wood;
+    if (open(0, -1, 0)) low.down = wood;
+    addBox(mb, grid, atlas, [x, y, z], [lo[0], 0, 0], [lo[1], 8, 16], low);
+    const foot = {...ends};
+    if (open(0, -1, 0)) foot.down = wood;
+    if (open(up ? 1 : -1, 0, 0)) foot[highSide] = wood;
+    addBox(mb, grid, atlas, [x, y, z], [hi[0], 0, 0], [hi[1], 8, 16], foot);
+    const step = {...ends, [lowSide]: wood};
+    if (open(0, 1, 0)) step.up = wood;
+    if (open(up ? 1 : -1, 0, 0)) step[highSide] = wood;
+    addBox(mb, grid, atlas, [x, y, z], [hi[0], 8, 0], [hi[1], 16, 16], step);
+  }
+
+  // A tree of the season at (x, z): an oak in orange or red, a yellow birch
+  // or a dark spruce. Leaves only fill air, so trees never cut into things.
+  function tree(grid, x, z, kind, r, base = 0) {
+    const put = (px, py, pz, blk) => { if (!grid.get(px, py + base, pz)) grid.set(px, py + base, pz, blk); };
+    const log = (py, blk) => grid.set(x, py + base, z, blk);
+    if (kind === 'spruce') {
+      const t = 6 + Math.floor(r() * 2);
+      for (let y = 0; y < t; y++) log(y, B.spruce_log);
+      for (let y = 2; y <= t; y++) {
+        const rad = y >= t - 1 ? 1 : (t - y) % 2 === 0 ? 1 : 2;
+        for (let dx = -rad; dx <= rad; dx++) for (let dz = -rad; dz <= rad; dz++) {
+          if (Math.abs(dx) + Math.abs(dz) > rad + (rad > 1 ? 1 : 0)) continue;
+          put(x + dx, y, z + dz, B.leaves_spruce);
+        }
+      }
+      put(x, t + 1, z, B.leaves_spruce);
+      return {top: t + 1, spread: 2};
+    }
+    const birch = kind === 'yellow';
+    // Some oaks grow big and round: a wider, taller crown.
+    const big = !birch && r() < 0.4;
+    const t = (birch ? 5 : big ? 5 : 4) + Math.floor(r() * 2);
+    const leaves = B['leaves_' + kind];
+    for (let y = 0; y < t; y++) log(y, birch ? B.birch_log : B.oak_log);
+    // Big crowns are rounded: narrow at the bottom and top, widest in the
+    // middle, each layer a disc rather than a square.
+    const bigRad = [2, 3, 3, 2, 1];
+    for (let y = t - (big ? 4 : 3); y <= t; y++) {
+      const rad = big ? bigRad[y - (t - 4)] : y >= t - 1 ? 1 : 2;
+      for (let dx = -rad; dx <= rad; dx++) for (let dz = -rad; dz <= rad; dz++) {
+        if (big && dx * dx + dz * dz > rad * rad + (rad > 2 ? 0 : 1)) continue;
+        const corner = Math.abs(dx) === rad && Math.abs(dz) === rad;
+        if (corner && (y === t || r() < 0.55)) continue;
+        put(x + dx, y, z + dz, leaves);
+      }
+    }
+    if (big) put(x, t + 1, z, leaves);
+    return {top: t, spread: big ? 3 : 2};
+  }
+
+  function outdoors(K, isle, ground, h) {
+    const {grid} = K;
+    const {W, F, light, solidBox, later, seats} = h;
+    const Fu = window.LibraryFurniture;
+    const r = LibraryTextures.rng('outdoors');
+    const key = (x, z) => x + ',' + z;
+    const taken = new Set();
+    const take = (x0, z0, x1, z1) => { for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) taken.add(key(x, z)); };
+    const isLand = (x, z) => grid.solid(x, -1, z);
+    // Land with at least `m` blocks of it all round.
+    const inland = (x, z, m) => {
+      for (let dx = -m; dx <= m; dx++) for (let dz = -m; dz <= m; dz++) if (!isLand(x + dx, z + dz)) return false;
+      return true;
+    };
+    const free = (x, z) => isLand(x, z) && !taken.has(key(x, z)) && !grid.get(x, 0, z);
+    take(-W - 4, h.E - 4, W + 3, F + 3);
+
+    // The lookout: a spruce deck at the front edge, railed, with a bench
+    // facing out over the drop and a lantern at each front corner.
+    let zEdge = F + 4;
+    while (isLand(0, zEdge + 1) && isLand(-3, zEdge + 1) && isLand(2, zEdge + 1)) zEdge++;
+    const deck = {x0: -3, x1: 2, z0: zEdge - 3, z1: zEdge};
+    for (let x = deck.x0; x <= deck.x1; x++) for (let z = deck.z0; z <= deck.z1; z++) grid.set(x, -1, z, B.spruce_planks);
+    take(deck.x0 - 1, deck.z0 - 1, deck.x1 + 1, deck.z1 + 1);
+    const rail = [];
+    for (let z = deck.z0 + 1; z <= deck.z1; z++) rail.push([deck.x0, z]);
+    for (let x = deck.x0 + 1; x < deck.x1; x++) rail.push([x, deck.z1]);
+    for (let z = deck.z1; z > deck.z0; z--) rail.push([deck.x1, z]);
+    for (const [x, z] of rail) solidBox(x + 0.3, z + 0.3, x + 0.7, z + 0.7);
+    for (let i = 1; i < rail.length; i++) {
+      const [ax, az] = rail[i - 1], [bx, bz] = rail[i];
+      solidBox(Math.min(ax, bx) + 0.4, Math.min(az, bz) + 0.4, Math.max(ax, bx) + 0.6, Math.max(az, bz) + 0.6);
+    }
+    const benchZ = deck.z1 - 1;
+    solidBox(-1, benchZ + 0.15, 1, benchZ + 0.85);
+    seats.push({pos: [0, 0.5, benchZ + 0.42], yaw: Math.PI, box: [[-1, 0, benchZ + 0.1], [1, 1, benchZ + 0.9]], along: [-0.55, 0.55], alongX: true});
+    for (const x of [deck.x0, deck.x1]) light(x, 1, deck.z1, 14);
+    later.push(() => {
+      Fu.fence(K, rail);
+      Fu.bench(K, [-1, 0, benchZ], 2);
+      for (const x of [deck.x0, deck.x1]) Fu.lantern(K, [x, 1, deck.z1]);
+    });
+
+    // The path from the door to the deck, worn a little wider here and
+    // there, a mat at the door and a jack o'lantern either side of it.
+    for (let z = F + 2; z < deck.z0; z++) {
+      for (const x of [-1, 0]) grid.set(x, -1, z, B.path);
+      if (cellHash(-2, 5, z) < 0.3) grid.set(-2, -1, z, B.path);
+      if (cellHash(1, 5, z) < 0.3) grid.set(1, -1, z, B.path);
+    }
+    take(-3, F + 1, 2, deck.z0);
+    grid.set(-2, 0, F + 1, B.jack_south);
+    grid.set(1, 0, F + 1, B.jack_south);
+    light(-2, 0, F + 1, 15); light(1, 0, F + 1, 15);
+    for (const x of [-4, 2]) solidBox(x, F + 1, x + 2, F + 1.34);
+    later.push(() => {
+      Fu.rug(K, -1, F + 1, 1, F + 2, 'rust');
+      Fu.wreath(K, [0, 2.5, F + 1]);
+      for (const x of [-4, 2]) Fu.windowBox(K, x, x + 2, F + 1);
+    });
+    // Lamp posts down the path, alternating sides.
+    for (let z = F + 5, i = 0; z < deck.z0 - 1; z += 5, i++) {
+      const x = i % 2 ? 1.5 : -2.5;
+      solidBox(x + 0.3, z + 0.3, x + 0.7, z + 0.7);
+      light(x, 1, z, 14);
+      later.push(() => Fu.lampPost(K, [x, 0, z]));
+    }
+
+    // A pumpkin patch in the front yard with hay bales beside it.
+    const patch = {x0: -W - 8, x1: -W - 3, z0: F + 3, z1: F + 8};
+    for (let x = patch.x0; x <= patch.x1; x++) for (let z = patch.z0; z <= patch.z1; z++) {
+      if (!inland(x, z, 1)) continue;
+      grid.set(x, -1, z, B.coarse_dirt);
+      const roll = cellHash(x, 7, z);
+      if (roll < 0.3) grid.set(x, 0, z, B.pumpkin);
+      else if (roll < 0.36) grid.set(x, 0, z, B['carved_' + ['north', 'south', 'east', 'west'][Math.floor(roll * 100) % 4]]);
+    }
+    take(patch.x0 - 1, patch.z0 - 1, patch.x1 + 1, patch.z1 + 1);
+    for (const [x, y, z] of [[patch.x1 + 2, 0, patch.z0], [patch.x1 + 2, 0, patch.z0 + 1], [patch.x1 + 2, 1, patch.z0]]) {
+      if (isLand(x, z)) grid.set(x, y, z, B.hay);
+    }
+    take(patch.x1 + 2, patch.z0, patch.x1 + 3, patch.z0 + 1);
+
+    // A woodpile against the east wall.
+    for (let z = -8; z <= -6; z++) for (const y of [0, 1]) grid.set(W + 1, y, z, B.spruce_log_x);
+    grid.set(W + 1, 2, -7, B.spruce_log_x);
+
+    // Trees, spaced out, never on the path or against the house.
+    const trees = [];
+    const kinds = ['orange', 'orange', 'red', 'yellow', 'yellow', 'amber', 'red', 'spruce'];
+    for (let attempt = 0; attempt < 900 && trees.length < 26; attempt++) {
+      const x = isle.x0 + Math.floor(r() * (isle.x1 - isle.x0));
+      const z = isle.z0 + Math.floor(r() * (isle.z1 - isle.z0));
+      if (!inland(x, z, 2)) continue;
+      let clear = true;
+      for (let dx = -2; dx <= 2 && clear; dx++) for (let dz = -2; dz <= 2; dz++) if (taken.has(key(x + dx, z + dz))) { clear = false; break; }
+      if (!clear || trees.some(t => Math.hypot(t.x - x, t.z - z) < 4)) continue;
+      const kind = kinds[Math.floor(r() * kinds.length)];
+      const t = tree(grid, x, z, kind, r);
+      trees.push({x, z, kind, ...t, tint: FOLIAGE[kind]});
+      take(x - 1, z - 1, x + 1, z + 1);
+    }
+
+    // Fallen leaves under the trees and a scatter of them everywhere;
+    // grass, ferns, mushrooms and the odd dead bush.
+    const litter = [], plants = [];
+    for (let x = isle.x0; x < isle.x1; x++) for (let z = isle.z0; z < isle.z1; z++) {
+      if (!isLand(x, z) || grid.get(x, 0, z) || grid.get(x, -1, z) === B.path || grid.get(x, -1, z) === B.spruce_planks) continue;
+      if (x >= -W - 1 && x <= W && z >= h.E && z <= F) continue;
+      const near = trees.find(t => t.kind !== 'spruce' && Math.hypot(t.x - x, t.z - z) < 3.4);
+      const roll = cellHash(x, 11, z);
+      if (near ? roll < 0.55 : roll < 0.05) {
+        const t = near ? near.tint : FOLIAGE[['orange', 'red', 'yellow'][Math.floor(cellHash(x, 12, z) * 3)]];
+        litter.push([x, z, t, Math.floor(cellHash(x, 13, z) * 4) * 90]);
+      }
+      if (taken.has(key(x, z)) && !near) continue;
+      const p = cellHash(x, 14, z);
+      if (p < 0.07) plants.push([x, z, 'short_grass']);
+      else if (p < 0.085) plants.push([x, z, 'fern']);
+      else if (p < 0.092) plants.push([x, z, 'dead_bush']);
+      else if (p < 0.1 && near) plants.push([x, z, p < 0.096 ? 'red_mushroom' : 'brown_mushroom']);
+    }
+
+    later.push(() => {
+      for (const [x, z, tint, rot] of litter) {
+        addBox(K.mb, grid, K.atlas, [x, 0, z], [0, 0, 0], [16, 0.35, 16], {up: {tex: 'leaf_litter', tint, uv: [0, 0, 16, 16], rot}}, {ao: 1});
+      }
+      for (const [x, z, tex] of plants) {
+        const small = tex.endsWith('mushroom');
+        cross(K.mb, grid, K.atlas, [x, 0, z], tex, small ? 0.55 : 0.85 + cellHash(x, 15, z) * 0.2, 0);
+      }
+      // Roots hang from the island's underside, and red creeper trails
+      // down its sides.
+      for (const [k, bottom] of ground.bottoms) {
+        const [x, z] = k.split(',').map(Number);
+        if (cellHash(x, 16, z) < 0.22) cross(K.mb, grid, K.atlas, [x, bottom - 1, z], 'hanging_roots', 1, 0);
+        for (const [dx, dz, dir] of [[1, 0, 'east'], [-1, 0, 'west'], [0, 1, 'south'], [0, -1, 'north']]) {
+          if (isLand(x + dx, z + dz) || cellHash(x * 3 + dx, 17, z * 3 + dz) > 0.32) continue;
+          const len = 2 + Math.floor(cellHash(x + dx, 18, z + dz) * 4);
+          const vine = {tex: 'vine', double: true};
+          for (let i = 0; i < len; i++) {
+            const y = -1 - i;
+            if (!grid.solid(x, y, z)) break;
+            const f = {east: [16.2, 0, 0, 16.2, 16, 16], west: [-0.2, 0, 0, -0.2, 16, 16], south: [0, 0, 16.2, 16, 16, 16.2], north: [0, 0, -0.2, 16, 16, -0.2]}[dir];
+            addBox(K.mb, grid, K.atlas, [x, y, z], f.slice(0, 3), f.slice(3), {[dir]: vine}, {ao: 1});
+          }
+        }
+      }
+    });
+    return {trees, deck};
+  }
+
+  // Small islands drifting in the distance, each with a tree or two: only
+  // to be looked at, so each has its own little grid for light.
+  function distantIslands(mb, atlas, isle) {
+    const spots = [
+      {c: [-46, 5, isle.cz - 14], r: 6, kind: 'orange'},
+      {c: [42, -5, isle.cz + 8], r: 5, kind: 'yellow'},
+      {c: [-10, -12, isle.z1 + 30], r: 7, kind: 'red'},
+      {c: [28, 11, isle.z0 - 30], r: 4, kind: 'spruce'},
+      {c: [-30, -20, isle.z0 - 12], r: 3, kind: null},
+    ];
+    for (const [i, s] of spots.entries()) {
+      const [cx, top, cz] = s.c;
+      const g = new Grid([cx - s.r - 3, top - s.r * 2 - 4, cz - s.r - 3], [cx + s.r + 4, top + 12, cz + s.r + 4]);
+      const rr = LibraryTextures.rng('far' + i);
+      for (let x = cx - s.r; x <= cx + s.r; x++) for (let z = cz - s.r; z <= cz + s.r; z++) {
+        const e = Math.hypot(x - cx, z - cz) / (s.r + 0.5 * Math.sin(Math.atan2(z - cz, x - cx) * 3 + i));
+        if (e >= 1) continue;
+        const depth = 2 + Math.round((1 - e * e) * s.r * 1.6 + rr() * 2);
+        for (let y = top - depth; y <= top; y++) g.set(x, y, z, y === top ? B.grass : y > top - 3 ? B.dirt : B.stone);
+      }
+      if (s.kind) tree(g, cx, cz, s.kind, rr, top + 1);
+      g.lightSky();
+      for (let z = g.min[2]; z < g.max[2]; z++) for (let y = g.min[1]; y < g.max[1]; y++) for (let x = g.min[0]; x < g.max[0]; x++) {
+        const b = g.get(x, y, z);
+        if (b) addBlock(mb, g, atlas, x, y, z, b);
+      }
+    }
   }
 
   window.LibraryWorld = {

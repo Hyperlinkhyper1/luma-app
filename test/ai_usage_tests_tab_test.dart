@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:luma/features/plugins/installed/ai_usage/ai_usage_shell.dart';
@@ -90,6 +91,21 @@ void main() {
       expect(find.text('No benchmarks yet'), findsNothing);
     },
   );
+
+  testWidgets('GPT 6.1 Sol engine is bundled and listed without a server', (
+    tester,
+  ) async {
+    final scene = await rootBundle.loadString(
+      'assets/ai_usage/engine_tests/gpt_6_1_sol_low.html',
+    );
+    expect(scene, contains('GPT 6.1 Sol (Low)'));
+    expect(scene, contains('window.engineDebug'));
+
+    await tester.pumpWidget(_app());
+    await tester.tap(find.widgetWithText(LumaHeroTile, 'Engine Test'));
+    await tester.pumpAndSettle();
+    expect(find.text('GPT 6.1 Sol (Low)'), findsOneWidget);
+  });
 
   test('the wash goes opaque exactly at the bottom third', () {
     expect(HeroTileWash.solidStart, closeTo(2 / 3, 1e-9));

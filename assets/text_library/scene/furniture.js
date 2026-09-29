@@ -227,18 +227,6 @@
     return {center: toWorld(o, [8, 32, 3.35], yaw), normal: [1, 0, 0], radius: 4 / 16};
   }
 
-  // The front door: two spruce leaves meeting in the middle.
-  function door(K, x, z) {
-    for (const [dx, flip] of [[0, false], [1, true]]) {
-      for (const [y, tex] of [[0, 'spruce_door_bottom'], [1, 'spruce_door_top']]) {
-        const uv = flip ? [16, 0, 0, 16] : [0, 0, 16, 16];
-        const face = {tex, uv};
-        b(K, [x + dx, y, z], [0, 0, 0], [16, 16, 3], {north: face, south: {tex, uv: flip ? [0, 0, 16, 16] : [16, 0, 0, 16]}, east: {tex, uv: [0, 0, 3, 16]}, west: {tex, uv: [0, 0, 3, 16]}});
-      }
-      b(K, [x + dx, 0, z], flip ? [1.5, 14, -1] : [13.5, 14, -1], flip ? [2.5, 18, 0] : [14.5, 18, 0], brass);
-    }
-  }
-
   function hangingPlant(K, o) {
     const [x, top, z] = o;
     chain(K.mb, K.grid, K.atlas, [x, top - 0.8, z], 0.8);
@@ -250,19 +238,30 @@
     cross(K.mb, K.grid, K.atlas, at, 'fern', 0.55, 4);
   }
 
-  // A woven rug with a border, lying on the floor from (x0, z0) to (x1, z1).
-  function rug(K, x0, z0, x1, z1, tex, border) {
-    const t = 1, bw = 3;
-    const X0 = x0 * 16, X1 = x1 * 16, Z0 = z0 * 16, Z1 = z1 * 16;
-    box(K, [x0 + bw / 16, 0, z0 + bw / 16], [x1 - bw / 16, t / 16, z1 - bw / 16], {up: {tex}});
-    const lenX = X1 - X0, lenZ = Z1 - Z0;
-    const along = (l, flip) => ({tex: border, uv: flip ? [0, 0, 16, l] : [0, 0, l, 16], rot: flip ? 90 : 0});
-    const edge = {tex: border, uv: [0, 0, 16, 2]};
-    const add = (a, c, up) => addBox(K.mb, K.grid, K.atlas, [0, 0, 0], a, c, {up, north: edge, south: edge, east: edge, west: edge});
-    add([X0, 0, Z0], [X1, t * 1.25, Z0 + bw], along(lenX));
-    add([X0, 0, Z1 - bw], [X1, t * 1.25, Z1], along(lenX));
-    add([X0, 0, Z0 + bw], [X0 + bw, t * 1.25, Z1 - bw], along(lenZ - bw * 2, true));
-    add([X1 - bw, 0, Z0 + bw], [X1, t * 1.25, Z1 - bw], along(lenZ - bw * 2, true));
+  // A patterned carpet laid block by block over whole cells from (x0, z0)
+  // to (x1, z1), like carpet placed in the game: one pixel thick, a centre
+  // tile inside and border tiles turned to face outward round the edge.
+  function rug(K, x0, z0, x1, z1, style, y = 0) {
+    const t = 1;
+    const side = {tex: `carpet_${style}_center`, uv: [0, 0, 16, 1]};
+    for (let x = x0; x < x1; x++) for (let z = z0; z < z1; z++) {
+      const n = z === z0, s = z === z1 - 1, w = x === x0, e = x === x1 - 1;
+      const edges = n + s + w + e;
+      let kind = 'center', rot = 0;
+      if (edges >= 2) {
+        kind = 'corner';
+        rot = n && w ? 0 : n && e ? 90 : s && e ? 180 : 270;
+      } else if (edges === 1) {
+        kind = 'edge';
+        rot = n ? 0 : e ? 90 : s ? 180 : 270;
+      }
+      const faces = {up: {tex: `carpet_${style}_${kind}`, uv: [0, 0, 16, 16], rot}};
+      if (n) faces.north = side;
+      if (s) faces.south = side;
+      if (w) faces.west = side;
+      if (e) faces.east = side;
+      addBox(K.mb, K.grid, K.atlas, [x, y, z], [0, 0, 0], [16, t, 16], faces, {ao: 1});
+    }
   }
 
   // A library ladder on a brass rail along the top of a bookcase.
@@ -300,8 +299,171 @@
     box(K, [1, 3.1, face], [1.1, 4.1, p[1]], fr);
   }
 
+  // ── Autumn and comfort ─────────────────────────────────────────────────
+  const srgb = c => c.map(v => Math.pow(v, 2.2));
+
+  // The desk chair: spindle back, seat at DESK_SEAT, pulled up facing -z.
+  // `o` is the middle of its seat on the floor.
+  const DESK_SEAT = 7 / 16;
+  function deskChair(K, o) {
+    const at = [o[0] - 0.5, o[1], o[2] - 0.5];
+    const wood = sides('spruce_planks'), dark = sides('dark_oak_planks');
+    for (const [x, z] of [[2.5, 2.5], [12, 2.5], [2.5, 12], [12, 12]]) b(K, at, [x, 0, z], [x + 1.5, 5.5, z + 1.5], wood);
+    b(K, at, [2, 5.5, 2], [14, 7, 14], dark);
+    b(K, at, [2.5, 7, 2.5], [13.5, 7.6, 12], sides('red_wool', null, null, {tint: [0.8, 0.8, 0.8]}));
+    for (const x of [2.5, 12]) b(K, at, [x, 7, 12.5], [x + 1.5, 21, 14], wood);
+    b(K, at, [2.5, 19, 12.5], [13.5, 21.5, 14], dark);
+    for (const x of [5.5, 7.5, 9.5]) b(K, at, [x, 7, 13], [x + 1, 19, 13.6], wood);
+  }
+
+  // A knitted throw over an armchair's back, falling down behind it.
+  function throwBlanket(K, o, yaw, style) {
+    const knit = all(`carpet_${style}_center`, {uv: [0, 0, 16, 16]});
+    const edge = all(`carpet_${style}_edge`, {uv: [0, 0, 16, 16]});
+    const opts = {yaw};
+    b(K, o, [2, 21.5, 12.6], [10, 22.4, 16.4], knit, opts);
+    b(K, o, [2, 11, 16.4], [10, 22.4, 17], edge, opts);
+    b(K, o, [2, 16, 12.2], [10, 22.4, 12.6], knit, opts);
+  }
+
+  // A ginger cat curled up asleep, tail round its paws.
+  function cat(K, o, yaw) {
+    const at = [o[0] - 0.5, o[1], o[2] - 0.5];
+    const fur = sides('white_wool', null, null, {tint: srgb([0.93, 0.56, 0.26])});
+    const dark = sides('white_wool', null, null, {tint: srgb([0.7, 0.36, 0.14])});
+    const pale = sides('white_wool', null, null, {tint: srgb([0.98, 0.9, 0.8])});
+    const opts = {yaw};
+    b(K, at, [4.5, 0, 4], [11.5, 3.5, 12], fur, opts);
+    b(K, at, [5, 3.5, 5], [11, 4.2, 11.5], fur, opts);
+    for (const z of [6, 8.5]) b(K, at, [4.4, 1.2, z], [11.6, 4.3, z + 1], dark, opts);
+    b(K, at, [3.5, 0, 9.5], [7.5, 3.5, 13.5], fur, opts);
+    b(K, at, [3.8, 0, 12.3], [7.2, 1.6, 13.7], pale, opts);
+    b(K, at, [4, 3.5, 10], [5, 4.6, 11], fur, opts);
+    b(K, at, [6, 3.5, 10], [7, 4.6, 11], fur, opts);
+    b(K, at, [3.9, 1.8, 13.5], [7.1, 2.1, 13.55], sides('solid', null, null, {tint: [0.05, 0.03, 0.02]}), opts);
+    for (const [x, z] of [[11.5, 11], [10.5, 12.5], [8.5, 13], [7.5, 13]]) b(K, at, [x - 1, 0, z - 1], [x, 1.2, z], fur, opts);
+  }
+
+  // Split logs stacked in a pyramid, end grain out.
+  function logPile(K, o) {
+    const log = {north: {tex: 'spruce_log_top', uv: [0, 0, 16, 16]}, south: {tex: 'spruce_log_top', uv: [0, 0, 16, 16]}, east: {tex: 'spruce_log'}, west: {tex: 'spruce_log'}, up: {tex: 'spruce_log'}, down: {tex: 'spruce_log'}};
+    const d = 4.4;
+    for (let row = 0; row < 3; row++) {
+      for (let i = 0; i < 3 - row; i++) {
+        const x = 1 + row * d / 2 + i * d;
+        b(K, o, [x, row * (d - 0.3), 1 + row], [x + d, row * (d - 0.3) + d, 11 - row * 0.5], log);
+      }
+    }
+  }
+
+  // A pumpkin `size` blocks across, centred on `c` on the floor.
+  function pumpkin(K, c, size, lit) {
+    const s = size * 16, at = [c[0] - 0.5, c[1], c[2] - 0.5];
+    const lo = 8 - s / 2, hi = 8 + s / 2;
+    const face = lit ? {tex: 'jack_o_lantern', uv: [0, 0, 16, 16], emit: 1} : {tex: 'pumpkin_side', uv: [0, 0, 16, 16]};
+    const side = {tex: 'pumpkin_side', uv: [0, 0, 16, 16]};
+    b(K, at, [lo, 0, lo], [hi, s * 0.85, hi], {south: face, north: side, east: side, west: side, up: {tex: 'pumpkin_top', uv: [0, 0, 16, 16]}});
+    b(K, at, [7.3, s * 0.85, 7.3], [8.7, s * 0.85 + 1.6, 8.7], sides('spruce_log', null, null, {tint: srgb([0.62, 0.7, 0.4])}));
+  }
+
+  const AUTUMN = [[0.95, 0.54, 0.16], [0.84, 0.26, 0.12], [0.96, 0.8, 0.24], [0.72, 0.4, 0.14]].map(srgb);
+
+  // A garland of autumn leaves swagging along a shelf's front edge, from x0
+  // to x1 at height y, hung at z.
+  function garland(K, x0, x1, y, z) {
+    const n = Math.round((x1 - x0) * 5);
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      const x = x0 + (x1 - x0) * t;
+      const sag = Math.sin(t * Math.PI * 3) ** 2 * 0.1;
+      const leaf = all('oak_leaves', {tint: AUTUMN[i % AUTUMN.length], uv: [2, 2, 10, 10]});
+      box(K, [x - 0.06, y - sag - 0.07, z], [x + 0.06, y - sag + 0.05, z + 0.08], leaf);
+      if (i % 4 === 2) box(K, [x - 0.025, y - sag - 0.1, z + 0.06], [x + 0.025, y - sag - 0.05, z + 0.1], sides('red_wool'));
+    }
+  }
+
+  // A wreath of autumn leaves with berries, hung flat on a wall facing +z.
+  function wreath(K, c) {
+    const R = 0.26;
+    for (let i = 0; i < 14; i++) {
+      const a = i / 14 * Math.PI * 2;
+      const x = c[0] + Math.cos(a) * R, y = c[1] + Math.sin(a) * R;
+      const leaf = all('oak_leaves', {tint: AUTUMN[i % AUTUMN.length], uv: [3, 3, 11, 11]});
+      box(K, [x - 0.08, y - 0.08, c[2]], [x + 0.08, y + 0.08, c[2] + 0.07], leaf);
+      if (i % 3 === 0) box(K, [x - 0.03, y - 0.03, c[2] + 0.07], [x + 0.03, y + 0.03, c[2] + 0.11], sides('red_wool'));
+    }
+    const bow = sides('red_wool', null, null, {tint: [0.8, 0.8, 0.8]});
+    box(K, [c[0] - 0.12, c[1] - R - 0.06, c[2] + 0.06], [c[0] + 0.12, c[1] - R + 0.04, c[2] + 0.12], bow);
+    box(K, [c[0] - 0.04, c[1] - R - 0.2, c[2] + 0.07], [c[0] + 0.04, c[1] - R - 0.02, c[2] + 0.1], bow);
+  }
+
+  // A planter under a window on the outside of a wall facing +z, from x0
+  // to x1, with autumn ferns and a little pumpkin.
+  function windowBox(K, x0, x1, z) {
+    const wood = sides('spruce_planks');
+    box(K, [x0 + 0.05, 0.62, z], [x1 - 0.05, 0.98, z + 0.34], wood);
+    box(K, [x0 + 0.1, 0.98, z + 0.04], [x1 - 0.1, 1.0, z + 0.3], {up: {tex: 'coarse_dirt'}});
+    for (let x = x0; x < x1; x++) cross(K.mb, K.grid, K.atlas, [x, 1, z - 0.33], 'fern', 0.55, 0);
+    pumpkin(K, [(x0 + x1) / 2 + 0.25, 1, z + 0.17], 0.25, false);
+    for (const x of [x0 + 0.25, x1 - 0.35]) box(K, [x, 0.42, z], [x + 0.1, 0.62, z + 0.3], sides('dark_oak_planks'));
+  }
+
+  // A spruce fence along consecutive cells: a post in each, rails between.
+  function fence(K, cells) {
+    const wood = sides('spruce_planks');
+    cells.forEach(([x, z], i) => {
+      box(K, [x + 6 / 16, 0, z + 6 / 16], [x + 10 / 16, 1, z + 10 / 16], wood);
+      if (!i) return;
+      const [px, pz] = cells[i - 1];
+      const a = [Math.min(x, px) + 0.5, Math.min(z, pz) + 0.5], c = [Math.max(x, px) + 0.5, Math.max(z, pz) + 0.5];
+      for (const [y0, y1] of [[6, 9], [12, 15]]) {
+        box(K, [a[0] - (x === px ? 1 / 16 : 0), y0 / 16, a[1] - (z === pz ? 1 / 16 : 0)], [c[0] + (x === px ? 1 / 16 : 0), y1 / 16, c[1] + (z === pz ? 1 / 16 : 0)], wood);
+      }
+    });
+  }
+
+  // A garden bench `len` blocks long along x from `o`, back to -z.
+  function bench(K, o, len) {
+    const [x0, , z] = o;
+    const wood = sides('spruce_planks'), dark = sides('dark_oak_planks');
+    box(K, [x0 + 0.05, 6.5 / 16, z + 0.12], [x0 + len - 0.05, 8 / 16, z + 0.88], wood);
+    for (const x of [x0 + 0.12, x0 + len - 0.26]) {
+      box(K, [x, 0, z + 0.2], [x + 0.14, 6.5 / 16, z + 0.34], dark);
+      box(K, [x, 0, z + 0.7], [x + 0.14, 6.5 / 16, z + 0.84], dark);
+      box(K, [x, 8 / 16, z + 0.12], [x + 0.14, 1.15, z + 0.24], dark);
+    }
+    for (const y of [11, 15]) box(K, [x0 + 0.05, y / 16, z + 0.12], [x0 + len - 0.05, (y + 2.5) / 16, z + 0.22], wood);
+  }
+
+  function lantern(K, cell) {
+    window.LibraryWorld.lantern(K.mb, K.grid, K.atlas, cell, false);
+  }
+
+  // A lamp post with a lantern standing on its cap.
+  function lampPost(K, o) {
+    const dark = sides('dark_oak_planks');
+    b(K, o, [5, 0, 5], [11, 3, 11], sides('cobblestone'));
+    b(K, o, [6.5, 3, 6.5], [9.5, 22, 9.5], dark);
+    b(K, o, [5, 22, 5], [11, 23, 11], dark);
+    window.LibraryWorld.lantern(K.mb, K.grid, K.atlas, [o[0], o[1] + 23 / 16, o[2]], false);
+  }
+
+  // One leaf of the front door, built round its hinge so it can swing:
+  // it runs toward +x from the hinge, or toward -x when `flip`ped.
+  function doorLeaf(K, flip, light) {
+    const x = flip ? -1 : 0;
+    for (const [y, tex] of [[0, 'spruce_door_bottom'], [1, 'spruce_door_top']]) {
+      const out = flip ? [16, 0, 0, 16] : [0, 0, 16, 16], inn = flip ? [0, 0, 16, 16] : [16, 0, 0, 16];
+      const faces = {north: {tex, uv: out}, south: {tex, uv: inn}, east: {tex, uv: [0, 0, 3, 16]}, west: {tex, uv: [0, 0, 3, 16]}};
+      if (y === 1) faces.up = {tex: 'spruce_planks', uv: [0, 0, 16, 3]};
+      b(K, [x, y, 0], [0, 0, 0], [16, 16, 3], faces, {light, ao: 1});
+    }
+    for (const [z0, z1] of [[-1, 0], [3, 4]]) b(K, [x, 0, 0], flip ? [1.5, 14, z0] : [13.5, 14, z0], flip ? [2.5, 18, z1] : [14.5, 18, z1], brass, {light, ao: 1});
+  }
+
   window.LibraryFurniture = {
     armchair, windowSeat, desk, sideTable, teacup, bookStack, globe, floorLamp, pot, barrel, stool, postDecor,
-    coatStand, clock, door, hangingPlant, rug, ladder, mantel,
+    coatStand, clock, hangingPlant, rug, ladder, mantel,
+    DESK_SEAT, deskChair, throwBlanket, cat, logPile, pumpkin, fence, bench, lantern, lampPost, doorLeaf, garland, wreath, windowBox,
   };
 })();

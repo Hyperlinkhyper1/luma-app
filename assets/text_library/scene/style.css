@@ -113,6 +113,17 @@ canvas#view.grab { cursor: grabbing; }
 #actionbar.hidden { opacity: 0; }
 #nav { position: absolute; left: calc(var(--g) * 8px); bottom: calc(var(--g) * 8px); display: flex; gap: calc(var(--g) * 4px); }
 #settings-open { position: absolute; right: calc(var(--g) * 8px); top: calc(var(--g) * 8px); }
+/* The game's crosshair: a plus that inverts whatever is behind it. */
+#crosshair {
+  position: absolute; left: 50%; top: 50%;
+  width: calc(var(--g) * 9px); height: calc(var(--g) * 9px);
+  transform: translate(-50%, -50%);
+  pointer-events: none !important;
+  mix-blend-mode: difference;
+  background:
+    linear-gradient(#fff, #fff) center / var(--px) 100% no-repeat,
+    linear-gradient(#fff, #fff) center / 100% var(--px) no-repeat;
+}
 #toasts { position: absolute; right: 0; top: calc(var(--g) * 36px); display: flex; flex-direction: column; gap: calc(var(--g) * 2px); pointer-events: none !important; }
 #shelf-pages {
   position: absolute; left: 50%; bottom: calc(var(--g) * 8px); transform: translateX(-50%);

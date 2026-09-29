@@ -49,6 +49,11 @@
       vec4 view = viewMatrix * world;
       vDepth = -view.z;
       gl_Position = projectionMatrix * view;
+      #ifdef VIEWMODEL
+      // The hand in first person: squeezed into the very front of the depth
+      // range so it never cuts into a wall, keeping its own ordering.
+      gl_Position.z = -gl_Position.w + (gl_Position.z + gl_Position.w) * 0.02;
+      #endif
     }
   `;
 
@@ -57,6 +62,7 @@
     uniform vec2 atlasSize;
     uniform float atlasCols;
     uniform sampler2D labels;
+    uniform sampler2D skin;
     vec4 atlasSample(vec2 p, vec3 t) {
       float cell = t.x;
       if (t.y > 1.5) cell += mod(floor(time * 20.0 / max(t.z, 1.0)), t.y);
@@ -114,7 +120,12 @@
     void main() {
       vec4 tex;
       vec3 albedo;
-      if (vLabel.z > 0.5) {
+      if (vLabel.z > 1.5) {
+        // The reader's skin; its outer layer has see-through pixels.
+        tex = texture2D(skin, vLabel.xy);
+        if (tex.a < 0.5) discard;
+        albedo = tex.rgb;
+      } else if (vLabel.z > 0.5) {
         tex = texture2D(labels, vLabel.xy);
         albedo = tex.rgb;
         tex.a = 1.0;
@@ -171,6 +182,7 @@
     varying vec4 vLabel;
     void main() {
       if (vLabel.z < 0.5 && atlasSample(vUvp, vTile).a < 0.5) discard;
+      if (vLabel.z > 1.5 && texture2D(skin, vLabel.xy).a < 0.5) discard;
       gl_FragColor = vec4(1.0);
     }
   `;
@@ -241,6 +253,20 @@
       // Stars at night.
       vec2 sp = floor(d.xz / max(d.y, 0.05) * 60.0);
       col += night * step(0.9975, hash(sp)) * smoothstep(0.1, 0.4, d.y) * 1.5;
+      // Below the island, a sea of cloud: two blocky layers drifting at
+      // different speeds over a deep hazy blue, fading into the horizon.
+      if (d.y < 0.0) {
+        float down = -d.y;
+        vec3 deep = mix(horizon, zenith, 0.7) * 0.5;
+        vec3 lit = (sunColor * 0.3 + horizon * 0.5) * (1.0 - night * 0.86);
+        vec2 p1 = d.xz / max(down, 0.015) * 3.2 + vec2(time * 0.05, time * 0.02);
+        vec2 p2 = d.xz / max(down, 0.015) * 7.0 + vec2(-time * 0.03, time * 0.05);
+        float c1 = step(0.56, hash(floor(p1) + 11.0));
+        float c2 = step(0.7, hash(floor(p2) + 23.0));
+        vec3 below = mix(deep, lit * 0.75, c2 * 0.5);
+        below = mix(below, lit, c1 * 0.85);
+        col = mix(horizon, below, smoothstep(0.0, 0.14, down));
+      }
       gl_FragColor = vec4(col, 1.0);
     }
   `;
@@ -443,11 +469,12 @@
       firePulse: {value: 1},
       fireOrigin: {value: new T.Vector3()},
       fogColor: {value: new T.Color(0.09, 0.07, 0.055)},
-      fogDensity: {value: 0.018},
+      fogDensity: {value: 0.012},
       atlas: {value: null},
       atlasSize: {value: new T.Vector2(1, 1)},
       atlasCols: {value: 1},
       labels: {value: null},
+      skin: {value: null},
       shadowMap: {value: null},
       shadowMatrix: {value: new T.Matrix4()},
       shadowTexel: {value: 1 / 2048},
@@ -457,6 +484,7 @@
     function blockMaterial(extra = {}) {
       return new T.ShaderMaterial({
         uniforms: {...U, opacity: {value: 1}, highlight: {value: new T.Color(0, 0, 0)}},
+        defines: extra.viewmodel ? {VIEWMODEL: 1} : {},
         vertexShader: BLOCK_VERT,
         fragmentShader: BLOCK_FRAG,
         side: extra.side || T.FrontSide,

@@ -1211,7 +1211,54 @@ class LFr extends L {
 
   @override
   String get textLibraryMcWalkHint =>
-      'WASD or arrow keys to walk · drag to look around · click a bookcase to open it';
+      'WASD to walk · click to look around · click a bookcase, chair or door to use it · Esc frees the mouse';
+
+  @override
+  String get textLibraryMcLookHint => 'Click to look around';
+
+  @override
+  String get textLibraryMcStandHint => 'Shift or Space to stand up';
+
+  @override
+  String get textLibraryMcStandUp => 'Stand up';
+
+  @override
+  String get textLibraryMcSit => 'Sit down';
+
+  @override
+  String get textLibraryMcOpenDoor => 'Open the door';
+
+  @override
+  String get textLibraryMcCloseDoor => 'Close the door';
+
+  @override
+  String textLibraryMcSkinCurrent(String name) {
+    return 'Skin: $name';
+  }
+
+  @override
+  String get textLibraryMcSkinDefault => 'Default skin';
+
+  @override
+  String get textLibraryMcSkinYours => 'your own';
+
+  @override
+  String get textLibraryMcSkinImport => 'Import skin…';
+
+  @override
+  String get textLibraryMcSkinName => 'Minecraft name…';
+
+  @override
+  String get textLibraryMcSkinNameTitle => 'Your Minecraft username';
+
+  @override
+  String get textLibraryMcSkinNameHint => 'Username';
+
+  @override
+  String get textLibraryMcSkinUse => 'Use skin';
+
+  @override
+  String get textLibraryMcSkinFailed => 'Couldn\'t load that skin.';
 
   @override
   String get textLibraryMcWriteHint => 'Write your book here…';
