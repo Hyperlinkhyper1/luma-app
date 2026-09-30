@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#e9e7df">
+  <title>MONO / 75 - An interactive keyboard study</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    :root { color-scheme: light; --paper:#e9e7df; --ink:#202b29; --muted:#6c7671; --accent:#be7355; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; background:var(--paper); color:var(--ink); font-family:Arial,Helvetica,sans-serif; -webkit-font-smoothing:antialiased; }
+    button { font:inherit; cursor:pointer; }
+    .page { max-width:1600px; margin:auto; padding:0 38px 30px; }
+    header { height:78px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #c9ccc4; gap:20px; }
+    .wordmark { display:flex; align-items:center; gap:12px; text-decoration:none; color:var(--ink); font-size:15px; font-weight:900; letter-spacing:-.06em; white-space:nowrap; }
+    .mark { width:28px; height:28px; border:2px solid var(--ink); display:grid; place-items:center; font-size:18px; line-height:1; letter-spacing:-.15em; padding-right:3px; }
+    .top-note { font-size:10px; font-weight:700; letter-spacing:.2em; text-transform:uppercase; color:#77807b; }
+    .controls { display:flex; gap:9px; align-items:center; }
+    .control { background:transparent; border:1px solid #b9beb5; color:var(--ink); min-height:37px; padding:0 15px; display:flex; align-items:center; justify-content:center; gap:9px; font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; transition:background .2s,color .2s,border-color .2s,transform .2s; }
+    .control:hover { background:var(--ink); color:#f4f2ea; border-color:var(--ink); transform:translateY(-2px); }
+    .control:focus-visible, .keycap:focus-visible { outline:3px solid #d88260; outline-offset:3px; }
+    .control svg { width:15px; height:15px; flex:none; }
+    .intro { display:flex; align-items:end; justify-content:space-between; gap:40px; padding:44px 0 30px; }
+    .eyebrow { color:var(--accent); font-size:10px; font-weight:900; letter-spacing:.25em; text-transform:uppercase; margin:0 0 13px; }
+    h1 { font-size:clamp(58px,8.6vw,130px); letter-spacing:-.105em; line-height:.78; margin:0 0 3px -7px; font-weight:900; white-space:nowrap; }
+    h1 span { font-weight:300; color:var(--accent); letter-spacing:-.14em; margin:0 .06em 0 .02em; }
+    .intro-copy { max-width:290px; margin:0 6px 3px 0; font-size:14px; line-height:1.55; color:#626d68; }
+    .studio { position:relative; height:clamp(410px,54vw,610px); overflow:hidden; background:#253330; isolation:isolate; }
+    .studio:before { content:""; position:absolute; inset:0; background:radial-gradient(ellipse 67% 65% at 51% 52%,#43544b 0%,#303e38 48%,#23312d 100%); }
+    .studio:after { content:""; position:absolute; inset:0; opacity:.22; pointer-events:none; background-image:linear-gradient(#9aaca01c 1px,transparent 1px),linear-gradient(90deg,#9aaca01c 1px,transparent 1px); background-size:42px 42px; mask-image:linear-gradient(to bottom,transparent 5%,black 55%,transparent 100%); }
+    .studio-glow { position:absolute; width:950px; height:440px; border-radius:50%; left:50%; top:59%; transform:translate(-50%,-50%); background:#a2b9a0; filter:blur(110px); opacity:.12; }
+    .scene { position:absolute; inset:0; perspective:1300px; z-index:1; }
+    .keyboard { width:910px; height:370px; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) scale(var(--scale,1)) rotateX(17deg) rotateZ(-7deg); transform-style:preserve-3d; filter:drop-shadow(0 32px 24px #0e1b18a8); }
+    .case { position:absolute; inset:0; border-radius:20px; background:linear-gradient(145deg,#71817a 0%,#34443e 10%,#1d2926 75%,#111b19 100%); border:6px solid #65756d; box-shadow:inset 0 3px 0 #a3afa1,inset 0 -13px 0 #15211e,0 13px 0 #17241f,0 21px 0 #0c1714,0 24px 30px #07110e9e; }
+    .case:before { content:""; position:absolute; inset:7px; border:1px solid #9bafa265; border-radius:10px; pointer-events:none; }
+    .layer { position:absolute; transition:transform 880ms cubic-bezier(.18,.72,.15,1),opacity 700ms ease; opacity:0; transform:translateY(-210px) scale(1.025); }
+    .layer.settled { opacity:1; transform:translateY(0) scale(1); }
+    .pcb { inset:13px; border-radius:9px; background:#26443d; border:3px solid #588171; box-shadow:0 3px 0 #112822,inset 0 0 0 3px #1a3830; overflow:hidden; }
+    .pcb svg { width:100%; height:100%; display:block; opacity:.75; }
+    .pcb .chip { position:absolute; width:39px; height:15px; background:#142b27; border:2px solid #82978a; top:4px; left:45%; box-shadow:75px 0 0 #142b27,76px 0 0 1px #82978a; }
+    .foam { inset:17px; border-radius:9px; background:#a6a69a; border:2px solid #d1d0bb; box-shadow:0 4px 0 #686b60; opacity:0; overflow:hidden; }
+    .foam.settled { opacity:1; }
+    .foam:before { content:""; position:absolute; inset:0; background:repeating-linear-gradient(130deg,#ffffff13 0 3px,transparent 3px 8px); pointer-events:none; }
+    .plate { inset:22px; border-radius:8px; background:linear-gradient(140deg,#53635d,#273630 75%); border:2px solid #809087; box-shadow:inset 0 2px 1px #9eaba0,0 5px 0 #14231f,0 8px 8px #0b1a1680; overflow:hidden; }
+    .cutout { position:absolute; border-radius:5px; background:#152620; border:2px solid #1a2925; box-shadow:inset 0 2px 5px #08110f,inset 0 -1px 0 #80988a; }
+    .foam .cutout { background:#3c5b4f; border-color:#999d8b; box-shadow:inset 0 2px 4px #536055; }
+    .hardware { position:absolute; width:6px; height:6px; border-radius:50%; background:#a2aa94; box-shadow:inset 0 0 0 2px #46574d; z-index:2; }
+    .switches, .caps { position:absolute; inset:0; pointer-events:none; }
+    .switch { position:absolute; height:34px; width:34px; border-radius:4px; background:linear-gradient(145deg,#e3c59b,#b5895a); border:3px solid #684e3c; box-shadow:0 4px 0 #533c30,0 7px 6px #081713a8,inset 0 1px 0 #fff0cc; opacity:0; transform:translateY(-125px) scale(.84); transition:transform 420ms cubic-bezier(.18,.8,.25,1.15),opacity 210ms ease; }
+    .switch.installed { opacity:1; transform:translateY(0) scale(1); }
+    .switch:after { content:""; position:absolute; width:14px; height:14px; left:7px; top:7px; background:linear-gradient(135deg,#cf7d5e,#9c4d3c); border:2px solid #673a32; border-radius:2px; box-shadow:0 1px 2px #472d26; }
+    .switch:before { content:""; position:absolute; width:5px; height:20px; left:12px; top:4px; background:#f2b48c; z-index:1; clip-path:polygon(0 0,100% 0,100% 37%,100% 63%,100% 100%,0 100%); opacity:.7; }
+    .keycap { position:absolute; pointer-events:auto; border:0; padding:0; margin:0; background:none; color:inherit; opacity:0; transform:translateY(-145px) scale(.91); transition:transform 460ms cubic-bezier(.18,.8,.25,1.12),opacity 220ms ease; -webkit-tap-highlight-color:transparent; }
+    .keycap.installed { opacity:1; transform:translateY(0) scale(1); }
+    .keycap.pressed, .keycap.installed.pressed { transform:translateY(5px) scale(.985); }
+    .cap-face { display:flex; align-items:flex-start; justify-content:flex-start; width:100%; height:100%; padding:9px 8px; border-radius:6px 6px 7px 7px; background:linear-gradient(145deg,#f6f2e7 0%,#e6e2d6 68%,#d0cbbc 100%); border:1px solid #fffaf0; box-shadow:inset 0 1px 0 #fff, inset 0 -2px 1px #c5c0b3,0 4px 0 #a5a398,0 7px 0 #6b756e,0 9px 8px #09171388; color:#33413c; font-size:11px; line-height:1; font-weight:700; letter-spacing:-.01em; text-align:left; text-transform:none; user-select:none; white-space:nowrap; }
+    .keycap.pressed .cap-face { box-shadow:inset 0 1px 2px #d1cabd,0 1px 0 #a5a398,0 2px 0 #6b756e,0 3px 5px #09171388; background:#dcd8cb; }
+    .keycap.mod .cap-face { background:linear-gradient(145deg,#7c8a80,#5b6b62 80%,#4b5c54); border-color:#a1aea2; box-shadow:inset 0 1px 0 #afbaab,inset 0 -2px 1px #43544b,0 4px 0 #384a40,0 7px 0 #25382f,0 9px 8px #09171388; color:#f5f1e5; }
+    .keycap.mod.pressed .cap-face { background:#57665d; box-shadow:inset 0 1px 2px #34463d,0 1px 0 #384a40,0 2px 0 #25382f; }
+    .keycap.accent .cap-face { background:linear-gradient(145deg,#d99473,#bc7156 80%,#a45d47); border-color:#ebaa89; box-shadow:inset 0 1px 0 #f3b995,inset 0 -2px 1px #994f3e,0 4px 0 #8b4b3a,0 7px 0 #493c33,0 9px 8px #09171388; color:#fff8ec; }
+    .keycap.accent.pressed .cap-face { background:#ae654e; box-shadow:inset 0 1px 2px #8f4c3b,0 1px 0 #8b4b3a,0 2px 0 #493c33; }
+    .keycap.space .cap-face { justify-content:center; align-items:flex-end; padding-bottom:8px; font-size:8px; letter-spacing:.28em; color:#9b9b8f; }
+    .keycap.small .cap-face { font-size:9px; padding:9px 6px; }
+    .keycap .cap-face:after { content:""; position:absolute; top:4px; right:5px; width:2px; height:2px; border-radius:50%; background:currentColor; opacity:.2; }
+    .underbar { padding-top:17px; display:flex; align-items:center; gap:20px; }
+    .progress-track { flex:1; height:1px; background:#bdc2b8; position:relative; }
+    .progress-fill { height:2px; width:0; background:var(--accent); position:absolute; left:0; top:-1px; transition:width .25s linear; }
+    .status { min-width:180px; font-size:10px; text-transform:uppercase; font-weight:800; letter-spacing:.18em; color:#475750; }
+    .instruction { font-size:11px; line-height:1.5; color:#7b857e; text-align:right; }
+    .instruction strong { color:#3b4b43; font-weight:700; }
+    .detail { display:flex; justify-content:space-between; align-items:start; gap:24px; border-top:1px solid #c9ccc4; margin-top:48px; padding-top:18px; }
+    .detail p { margin:0; font-size:11px; line-height:1.6; color:#77817b; }
+    .detail p:first-child { font-weight:800; color:var(--ink); letter-spacing:.14em; text-transform:uppercase; }
+    @media(max-width:750px) {
+      .page { padding:0 18px 22px; }
+      header { height:68px; }
+      .top-note { display:none; }
+      .control { padding:0 10px; min-height:35px; font-size:10px; }
+      .intro { display:block; padding:35px 0 24px; }
+      h1 { font-size:clamp(54px,13vw,95px); margin-left:-4px; }
+      .intro-copy { margin:20px 0 0; font-size:13px; }
+      .studio { height:clamp(370px,90vw,490px); }
+      .underbar { flex-wrap:wrap; gap:13px; }
+      .status { min-width:150px; }
+      .progress-track { order:3; flex-basis:100%; }
+      .instruction { margin-left:auto; }
+      .detail { margin-top:38px; }
+      .detail p:last-child { max-width:190px; text-align:right; }
+    }
+    @media(max-width:420px) { .wordmark { font-size:13px; } .control { font-size:0; width:35px; padding:0; } .control svg { width:16px; height:16px; } .studio { height:350px; } .instruction { max-width:150px; } }
+    @media(prefers-reduced-motion:reduce) { *,*:before,*:after { scroll-behavior:auto!important; transition-duration:.01ms!important; animation-duration:.01ms!important; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <a class="wordmark" href="#top" aria-label="MONO 75, back to top"><span class="mark" aria-hidden="true">M</span> MONO / 75</a>
+      <span class="top-note">An interactive object study</span>
+      <div class="controls">
+        <button class="control" id="replay" type="button" aria-label="Replay assembly" title="Replay assembly"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11a9 9 0 1 1 2.6 7.4M3 4v7h7"/></svg><span>Replay build</span></button>
+        <button class="control" id="mute" type="button" aria-label="Mute sound" aria-pressed="false" title="Mute sound"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path class="sound-waves" d="M15 9a4 4 0 0 1 0 6m3-9a8 8 0 0 1 0 12"/></svg><span>Sound on</span></button>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="intro" aria-labelledby="hero-title">
+        <div><p class="eyebrow">Anatomy of a keystroke / No. 01</p><h1 id="hero-title">MONO<span>/</span>75</h1></div>
+        <p class="intro-copy">A keyboard built one layer at a time. Watch the details come together, then make it your own to type on.</p>
+      </section>
+
+      <section class="studio" aria-label="Interactive animated mechanical keyboard">
+        <div class="studio-glow" aria-hidden="true"></div>
+        <div class="scene">
+          <div class="keyboard" id="keyboard">
+            <div class="case" aria-hidden="true"></div>
+            <div class="layer pcb" id="pcb" aria-hidden="true"><svg id="circuit" viewBox="0 0 880 338" preserveAspectRatio="none"></svg><div class="chip"></div></div>
+            <div class="layer foam" id="foam" aria-hidden="true"></div>
+            <div class="layer plate" id="plate" aria-hidden="true"></div>
+            <div class="switches" id="switches" aria-hidden="true"></div>
+            <div class="caps" id="caps" aria-label="Keyboard keys"></div>
+          </div>
+        </div>
+      </section>
+      <div class="underbar">
+        <span class="status" id="status" role="status" aria-live="polite">Preparing the build</span>
+        <div class="progress-track" role="progressbar" aria-label="Assembly progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress"><div class="progress-fill" id="progress-fill"></div></div>
+        <span class="instruction" id="hint">Once built, <strong>click a key or type</strong> to hear it.</span>
+      </div>
+      <div class="detail"><p>Designed to be felt.</p><p>PCB / acoustic foam / aluminum plate / tactile switches / sculpted keycaps</p></div>
+    </main>
+  </div>
+
+  <script>
+    (() => {
+      const unit = 50, rowStep = 51, left = 30, top = 31;
+      const rows = [
+        [["Esc",1,"Escape","accent"], ["F1",1,"F1"], ["F2",1,"F2"], ["F3",1,"F3"], ["F4",1,"F4"], ["F5",1,"F5"], ["F6",1,"F6"], ["F7",1,"F7"], ["F8",1,"F8"], ["F9",1,"F9"], ["F10",1,"F10"], ["F11",1,"F11"], ["F12",1,"F12"], ["Del",1,"Delete","mod"]],
+        [["~",1,"Backquote"],["1",1,"Digit1"],["2",1,"Digit2"],["3",1,"Digit3"],["4",1,"Digit4"],["5",1,"Digit5"],["6",1,"Digit6"],["7",1,"Digit7"],["8",1,"Digit8"],["9",1,"Digit9"],["0",1,"Digit0"],["-",1,"Minus"],["=",1,"Equal"],["Backspace",2,"Backspace","mod"],["Home",1,"Home","mod"]],
+        [["Tab",1.5,"Tab","mod"],..."QWERTYUIOP".split("").map(k=>[k,1,"Key"+k]),["[",1,"BracketLeft"],["]",1,"BracketRight"],["\\",1.5,"Backslash"],["PgUp",1,"PageUp","mod"]],
+        [["Caps",1.75,"CapsLock","mod"],..."ASDFGHJKL".split("").map(k=>[k,1,"Key"+k]),[";",1,"Semicolon"],["'",1,"Quote"],["Enter",2.25,"Enter","accent"],["End",1,"End","mod"]],
+        [["Shift",2.25,"ShiftLeft","mod"],..."ZXCVBNM".split("").map(k=>[k,1,"Key"+k]),[",",1,"Comma"],[".",1,"Period"],["/",1,"Slash"],["Shift",2.75,"ShiftRight","mod"],["Up",1,"ArrowUp","mod"]],
+        [["Ctrl",1.25,"ControlLeft","mod"],["Win",1.25,"MetaLeft","mod"],["Alt",1.25,"AltLeft","mod"],["SPACE",6.25,"Space","space"],["Alt",1.25,"AltRight","mod"],["Fn",1.25,"Fn","mod"],["Ctrl",1.25,"ControlRight","mod"],["Left",1,"ArrowLeft","mod"],["Down",1,"ArrowDown","mod"],["Right",1,"ArrowRight","mod"]]
+      ];
+      const keys = [];
+      rows.forEach((row, r) => {
+        let x = 0;
+        row.forEach((item, i) => {
+          if (r === 0 && i === 1) x += .5;
+          if (r === 0 && [5,9,13].includes(i)) x += .25;
+          if (r > 0 && r < 5 && i === row.length - 1) x = 15.5;
+          if (r === 5 && i === 7) x = 14;
+          keys.push({ label:item[0], w:item[1], code:item[2], style:item[3] || "", x:left+x*unit, y:top+r*rowStep, row:r });
+          x += item[1];
+        });
+      });
+      const ordered = [...keys].sort((a,b) => a.x-b.x || a.y-b.y);
+      const $ = id => document.getElementById(id);
+      const pcb = $("pcb"), foam = $("foam"), plate = $("plate"), switches = $("switches"), caps = $("caps");
+      const circuit = $("circuit");
+      // A few etched buses and a pad per switch make the exposed PCB a real layer of the object.
+      const traces = ['<g fill="none" stroke="#78aa8d" stroke-width="1.1" opacity=".56">'];
+      for(let r=0;r<6;r++) {
+        const y=top+r*rowStep-13;
+        traces.push(`<path d="M 15 ${y+25} H 858 M 15 ${y+30} H 858"/>`);
+      }
+      keys.forEach((k,i) => {
+        const x=k.x-13+k.w*unit/2, y=k.y-13+23;
+        traces.push(`<path d="M ${x} ${y} V ${y+12} h ${i%2 ? 12 : -12}"/>`);
+      });
+      traces.push('</g><g fill="#b7b384" opacity=".85">');
+      keys.forEach(k => { const x=k.x-13+k.w*unit/2, y=k.y-13+22; traces.push(`<circle cx="${x}" cy="${y}" r="5"/><circle cx="${x+12}" cy="${y+12}" r="2"/>`); });
+      traces.push('</g>'); circuit.innerHTML=traces.join('');
+
+      keys.forEach((k,index) => {
+        const width=k.w*unit-4;
+        [[foam,17],[plate,22]].forEach(([parent,inset]) => {
+          const hole=document.createElement('div'); hole.className='cutout';
+          hole.style.cssText=`left:${k.x-inset+2}px;top:${k.y-inset+2}px;width:${width-4}px;height:42px;`;
+          parent.appendChild(hole);
+        });
+        const sw=document.createElement('div'); sw.className='switch';
+        sw.style.cssText=`left:${k.x+(width-34)/2}px;top:${k.y+5}px;`;
+        switches.appendChild(sw); k.switchEl=sw;
+        const cap=document.createElement('button'); cap.type='button'; cap.className=`keycap ${k.style} ${k.label.length>5 && k.style!=='space' ? 'small':''}`;
+        cap.style.cssText=`left:${k.x}px;top:${k.y}px;width:${width}px;height:43px;`;
+        cap.innerHTML=`<span class="cap-face">${k.label}</span>`;
+        cap.setAttribute('aria-label',k.label==='SPACE'?'Space':k.label);
+        cap.tabIndex=-1;
+        cap.addEventListener('click',()=>press(k));
+        caps.appendChild(cap); k.capEl=cap;
+      });
+      [[34,35],[870,35],[34,332],[870,332]].forEach(([x,y])=>{
+        const screw=document.createElement('span'); screw.className='hardware'; screw.style.cssText=`left:${x-22}px;top:${y-22}px;`; plate.appendChild(screw);
+      });
+
+      const board=$('keyboard'), stage=document.querySelector('.studio');
+      function sizeBoard() {
+        const scale=Math.min(1.12,(stage.clientWidth-34)/1030,(stage.clientHeight-28)/480);
+        board.style.setProperty('--scale',Math.max(.25,scale));
+      }
+      new ResizeObserver(sizeBoard).observe(stage); sizeBoard();
+
+      let generation=0, timers=[], complete=false, muted=false, audio=null, noise=null, audioUnlocked=false;
+      const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+      const setStatus=text=>{$('status').textContent=text;};
+      const progress=n=>{ const value=Math.round(n/(3+keys.length*2)*100); $('progress-fill').style.width=value+'%'; $('progress').setAttribute('aria-valuenow',value); };
+      function later(fn,ms,token) { const timer=setTimeout(()=>{if(token===generation) fn();},ms); timers.push(timer); }
+      function finish() {
+        complete=true; keys.forEach(k=>k.capEl.tabIndex=0);
+        setStatus('Ready to type / 100%'); progress(3+keys.length*2);
+        $('hint').innerHTML=audioUnlocked?'Click a key or <strong>type on your keyboard.</strong>':'Click a key or <strong>type to enable sound.</strong>';
+      }
+      function assemble() {
+        generation++; const token=generation; timers.forEach(clearTimeout); timers=[]; complete=false;
+        [pcb,foam,plate].forEach(el=>el.classList.remove('settled'));
+        keys.forEach(k=>{k.switchEl.classList.remove('installed');k.capEl.classList.remove('installed','pressed');k.capEl.tabIndex=-1;});
+        setStatus('01 / Circuit board'); progress(0);
+        $('hint').innerHTML='Once built, <strong>click a key or type</strong> to hear it.';
+        if(reduced.matches) {
+          [pcb,foam,plate].forEach(el=>el.classList.add('settled'));
+          keys.forEach(k=>{k.switchEl.classList.add('installed');k.capEl.classList.add('installed');});
+          finish(); return;
+        }
+        // Force the reset to paint before the first piece moves in on replay.
+        requestAnimationFrame(()=>requestAnimationFrame(()=>{
+          if(token!==generation) return;
+          pcb.classList.add('settled'); progress(1);
+          later(()=>{setStatus('02 / Acoustic foam');foam.classList.add('settled');progress(2);},1000,token);
+          later(()=>{setStatus('03 / Aluminum plate');plate.classList.add('settled');progress(3);},1950,token);
+          const switchStart=3000, interval=43;
+          later(()=>setStatus('04 / Installing switches'),switchStart,token);
+          ordered.forEach((k,i)=>later(()=>{k.switchEl.classList.add('installed');progress(4+i);},switchStart+i*interval,token));
+          const capStart=switchStart+ordered.length*interval+400;
+          later(()=>setStatus('05 / Setting keycaps'),capStart,token);
+          ordered.forEach((k,i)=>later(()=>{k.capEl.classList.add('installed');progress(3+keys.length+i+1);},capStart+i*interval,token));
+          later(finish,capStart+ordered.length*interval+520,token);
+        }));
+      }
+
+      function unlockAudio() {
+        if(muted) return;
+        try {
+          if(!audio) {
+            audio=new (window.AudioContext||window.webkitAudioContext)();
+            noise=audio.createBuffer(1,Math.floor(audio.sampleRate*.11),audio.sampleRate);
+            const data=noise.getChannelData(0);
+            for(let i=0;i<data.length;i++) data[i]=Math.random()*2-1;
+          }
+          if(audio.state==='suspended') audio.resume();
+          audioUnlocked=true;
+          if(complete) $('hint').innerHTML='Click a key or <strong>type on your keyboard.</strong>';
+        } catch(e) { $('hint').textContent='Audio is unavailable in this browser; the keys still work.'; }
+      }
+      function soundFor(k) {
+        if(muted) return;
+        unlockAudio(); if(!audio || !noise) return;
+        const now=audio.currentTime;
+        const kind=k.code==='Space'?'space':k.code==='Enter'?'enter':k.code==='Backspace'?'backspace':k.style==='mod'?'mod':'letter';
+        const settings={letter:[1900,.055,125,.12],mod:[1150,.07,105,.15],enter:[1350,.095,82,.18],backspace:[2200,.06,155,.14],space:[680,.13,65,.24]}[kind];
+        const source=audio.createBufferSource(); source.buffer=noise;
+        const filter=audio.createBiquadFilter(); filter.type='bandpass'; filter.frequency.value=settings[0]; filter.Q.value=.7;
+        const gain=audio.createGain(); gain.gain.setValueAtTime(.0001,now); gain.gain.exponentialRampToValueAtTime(settings[3],now+.004); gain.gain.exponentialRampToValueAtTime(.0001,now+settings[1]);
+        source.connect(filter).connect(gain).connect(audio.destination); source.start(now); source.stop(now+settings[1]+.005);
+        const osc=audio.createOscillator(), body=audio.createGain(); osc.type='triangle';
+        osc.frequency.setValueAtTime(settings[2],now); osc.frequency.exponentialRampToValueAtTime(settings[2]*.58,now+.075);
+        body.gain.setValueAtTime(.0001,now);body.gain.exponentialRampToValueAtTime(kind==='space'?.11:.035,now+.008);body.gain.exponentialRampToValueAtTime(.0001,now+settings[1]*1.6);
+        osc.connect(body).connect(audio.destination);osc.start(now);osc.stop(now+settings[1]*1.6+.01);
+      }
+      function press(k) {
+        if(!complete) return;
+        k.capEl.classList.remove('pressed'); void k.capEl.offsetWidth;
+        k.capEl.classList.add('pressed'); clearTimeout(k.releaseTimer);
+        k.releaseTimer=setTimeout(()=>k.capEl.classList.remove('pressed'),145);
+        soundFor(k);
+      }
+      document.addEventListener('keydown',e=>{
+        if(e.repeat || e.altKey && e.code!=='AltLeft' && e.code!=='AltRight') return;
+        const k=keys.find(item=>item.code===e.code);
+        if(!k || !complete) return;
+        if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Tab'].includes(e.code)) e.preventDefault();
+        press(k);
+      });
+      $('replay').addEventListener('click',assemble);
+      $('mute').addEventListener('click',()=>{
+        muted=!muted; const button=$('mute'); button.setAttribute('aria-pressed',String(muted)); button.setAttribute('aria-label',muted?'Unmute sound':'Mute sound'); button.title=muted?'Unmute sound':'Mute sound';
+        button.querySelector('span').textContent=muted?'Sound off':'Sound on'; button.querySelector('.sound-waves').style.display=muted?'none':'';
+        if(!muted) unlockAudio();
+        if(complete) $('hint').innerHTML=muted?'Sound is muted. <strong>Tap sound to turn it on.</strong>':audioUnlocked?'Click a key or <strong>type on your keyboard.</strong>':'Click a key or <strong>type to enable sound.</strong>';
+      });
+      assemble();
+    })();
+  </script>
+</body>
+</html>
