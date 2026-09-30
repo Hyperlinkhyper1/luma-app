@@ -14,6 +14,7 @@ import '../features/home/home_page.dart';
 import '../features/notes/notes_page.dart';
 import '../features/passwords/passwords_page.dart';
 import '../features/plugins/installed/data_management/data_management_page.dart';
+import '../features/plugins/installed/audio_tools/audio_tools_page.dart';
 import '../features/plugins/installed/auto_clicker/auto_clicker_page.dart';
 import '../features/plugins/installed/auto_clicker/auto_clicker_repository.dart';
 import '../features/plugins/installed/auto_clicker/auto_clicker_scope.dart';
@@ -763,6 +764,7 @@ class _AppShellState extends State<AppShell> {
     'free-sketch' => const FreeSketchPage(),
     'machine-learning' => const MachineLearningPage(),
     'auto-clicker' => const AutoClickerPage(),
+    'audio-tools' => const AudioToolsPage(),
     'usage' => const UsagePage(),
     'wifi-speed-test' => const WifiSpeedTestPage(),
     'smart-home' => const SmartHomePage(),

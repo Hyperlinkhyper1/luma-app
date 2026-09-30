@@ -328,13 +328,15 @@ class DeletionRequest {
   final String id;
 
   /// The account the request was filed for. Stays on the record after an
-  /// accepted request wiped the account, so the Inbox keeps its history.
+  /// accepted request wiped the account, so the Inbox keeps its history —
+  /// but [Store.forgetUser] replaces [email] and clears [reason] then.
   final String userId;
-  final String email;
+  String email;
 
-  /// Why the user wants their data gone, in their own words. Free text —
-  /// always escape it before rendering.
-  final String reason;
+  /// Why the user wants their data gone, in their own words. Optional, since
+  /// nobody has to justify erasure. Free text — always escape it before
+  /// rendering.
+  String reason;
 
   final int createdAtMs;
 
@@ -710,6 +712,41 @@ class Store {
   Future<void> deleteUserData(String userId) async {
     final dir = Directory('$rootPath/blobs/$userId');
     if (await dir.exists()) await dir.delete(recursive: true);
+  }
+
+  /// Placeholder that replaces a deleted account's email wherever a record
+  /// of it has to survive (the activity feed, the deletion-request Inbox).
+  static const deletedAccountLabel = 'a deleted account';
+
+  /// Scrubs a deleted account's email out of the history the server keeps
+  /// for itself: activity messages mentioning it are rewritten, and its
+  /// deletion requests keep their status but lose the email and reason.
+  Future<void> forgetUser(String userId, String email) async {
+    final lowerEmail = email.toLowerCase();
+    var activityChanged = false;
+    for (var i = 0; i < activity.length; i++) {
+      final event = activity[i];
+      final lower = event.message.toLowerCase();
+      if (!lower.contains(lowerEmail)) continue;
+      activity[i] = ActivityEvent(
+        type: event.type,
+        message: event.message.replaceAll(
+            RegExp(RegExp.escape(email), caseSensitive: false),
+            deletedAccountLabel),
+        createdAtMs: event.createdAtMs,
+      );
+      activityChanged = true;
+    }
+    if (activityChanged) await saveActivity();
+
+    var requestsChanged = false;
+    for (final r in deletionRequestsById.values) {
+      if (r.userId != userId) continue;
+      r.email = deletedAccountLabel;
+      r.reason = '';
+      requestsChanged = true;
+    }
+    if (requestsChanged) await saveDeletionRequests();
   }
 
   // ---- Queries -----------------------------------------------------------

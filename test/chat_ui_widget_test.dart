@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import 'package:luma/features/chat/providers/ai_client.dart';
 import 'package:luma/features/chat/widgets/chat_bubble.dart';
 import 'package:luma/features/chat/widgets/chat_input_bar.dart';
 import 'package:luma/features/chat/widgets/chat_markdown.dart';
+import 'package:luma/features/chat/widgets/chat_message_list.dart';
 import 'package:luma/features/chat/widgets/chat_moon.dart';
 import 'package:luma/features/chat/widgets/chat_usage_meter.dart';
 import 'package:luma/l10n/app_localizations.dart';
@@ -282,4 +284,52 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.byType(ChatMoon), findsNWidgets(2));
   });
+
+  testWidgets(
+    'a streamed reply replaces the moon as it is written, then steps aside',
+    (tester) async {
+      ChatMessageRecord message(int id, String role, String content) =>
+          ChatMessageRecord(
+            id: id,
+            conversationId: 1,
+            role: role,
+            content: content,
+            createdAt: DateTime(2026),
+          );
+      final messages = StreamController<List<ChatMessageRecord>>();
+      final draft = ValueNotifier('');
+      addTearDown(messages.close);
+      addTearDown(draft.dispose);
+
+      await tester.pumpWidget(
+        _host(
+          ChatMessageList(
+            stream: messages.stream,
+            onOpenQrPlugin: () {},
+            thinking: true,
+            draft: draft,
+          ),
+        ),
+      );
+      messages.add([message(1, 'user', 'hi')]);
+      await tester.pump();
+      expect(find.byType(ChatMoon), findsOneWidget);
+
+      draft.value = 'Hello the';
+      await tester.pump();
+      expect(find.byType(ChatMoon), findsNothing);
+      expect(find.textContaining('Hello the', findRichText: true), findsOne);
+
+      draft.value = 'Hello there';
+      await tester.pump();
+      expect(find.textContaining('Hello there', findRichText: true), findsOne);
+
+      messages.add([
+        message(1, 'user', 'hi'),
+        message(2, 'assistant', 'Hello there'),
+      ]);
+      await tester.pump();
+      expect(find.textContaining('Hello there', findRichText: true), findsOne);
+    },
+  );
 }

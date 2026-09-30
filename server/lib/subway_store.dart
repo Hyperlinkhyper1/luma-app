@@ -136,6 +136,26 @@ class SubwayStore {
     if (await file.exists()) await file.delete();
     await saveRooms();
   }
+
+  /// Removes a deleted account from co-op play: rooms it owns are deleted
+  /// with their saved state, and it is dropped from every other room's
+  /// member list and clock lease.
+  Future<void> deleteUser(String userId) async {
+    for (final room in roomsByCode.values.toList()) {
+      if (room.ownerId == userId) {
+        roomsByCode.remove(room.code);
+        final file = File(_stateFile(room.code));
+        if (await file.exists()) await file.delete();
+        continue;
+      }
+      room.memberIds.remove(userId);
+      if (room.clockHolderId == userId) {
+        room.clockHolderId = null;
+        room.clockLeaseExpiresAtMs = null;
+      }
+    }
+    await saveRooms();
+  }
 }
 
 /// Short-lived, single-use tickets that authorize one WebSocket upgrade.

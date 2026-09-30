@@ -1,0 +1,10 @@
+{
+  "id": "audio-tools",
+  "name": "Audio Tools",
+  "version": "1.0.0",
+  "description": "Change how your mic sounds in Discord, OBS or any game with a live equalizer.",
+  "icon": "graphic_eq",
+  "category": "Utility",
+  "details": "Audio Tools runs your microphone through a nine-band parametric equalizer in real time. Drag the points on the curve to shape your voice, scroll over one to make it wider or narrower, or start from a preset: Clear, Deep, Radio, Telephone, Megaphone, Through a wall or Tiny.\n\nPick where the result goes. Send it to a virtual cable such as the free VB-CABLE and it shows up as a microphone in Discord, OBS, Teams or a game — a voice changer. Windows can't add a new microphone without a driver, so the cable does that part; luma finds it and walks you through the Discord settings.\n\nTurn on Hear myself to listen along on your headset, flip Bypass to compare with your untouched voice, and let it start with luma so it's ready for every call. Windows only.",
+  "screenshots": []
+}

@@ -351,4 +351,35 @@ class FamilyStore {
     invitesById.removeWhere((_, i) => i.familyId == familyId);
     sharedEventsByFamilyId.remove(familyId);
   }
+
+  /// Removes everything tied to a deleted account and persists the result.
+  /// A family the user owns goes entirely, the same as the owner deleting
+  /// it; in a family they only belong to, their membership and the events
+  /// they shared are dropped and they vanish from other events' audiences.
+  /// Invites they sent or were sent (by lowercased [email]) go too.
+  Future<void> deleteUser(String userId, String email) async {
+    final lowerEmail = email.toLowerCase();
+    for (final family in familiesById.values
+        .where((f) => f.ownerUserId == userId)
+        .toList()) {
+      deleteFamilyData(family.id);
+    }
+    final familyId = familyIdByUserId.remove(userId);
+    if (familyId != null) {
+      membersByFamilyId[familyId]?.remove(userId);
+    }
+    for (final events in sharedEventsByFamilyId.values) {
+      events.removeWhere((_, e) => e.authorUserId == userId);
+      for (final e in events.values) {
+        e.visibleMemberUserIds =
+            e.visibleMemberUserIds.where((id) => id != userId).toList();
+      }
+    }
+    invitesById.removeWhere((_, i) =>
+        i.invitedByUserId == userId || i.inviteeEmail == lowerEmail);
+    await saveFamilies();
+    await saveMembers();
+    await saveInvites();
+    await saveEvents();
+  }
 }

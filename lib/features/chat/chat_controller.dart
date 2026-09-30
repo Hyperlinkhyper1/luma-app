@@ -80,6 +80,17 @@ class ChatController extends ChangeNotifier {
   bool _sending = false;
   bool get isSending => _sending;
 
+  /// The reply being written for the message in flight, for providers that
+  /// stream it; empty otherwise. Cleared once the finished reply is saved.
+  /// A separate notifier so only the draft rebuilds on every token.
+  final ValueNotifier<String> draftReply = ValueNotifier('');
+
+  @override
+  void dispose() {
+    draftReply.dispose();
+    super.dispose();
+  }
+
   /// Sends [userText] in [conversationId]. Persists the user message
   /// immediately, then the assistant's reply (or an inline error message) —
   /// the UI should be watching `ChatRepository.watchMessages` and needs no
@@ -154,6 +165,7 @@ class ChatController extends ChangeNotifier {
           return _tools.execute(name, input);
         },
         metadataFor: AiToolRegistry.metadataFor,
+        onText: (text) => draftReply.value = text,
       );
 
       await _repository.addMessage(
@@ -184,6 +196,7 @@ class ChatController extends ChangeNotifier {
       );
     } finally {
       _sending = false;
+      draftReply.value = '';
       notifyListeners();
     }
   }

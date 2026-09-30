@@ -2100,17 +2100,19 @@ class Api {
       return errorResponse(401, 'invalid_credentials', 'Wrong password.');
     }
     return store.lock.synchronized(() async {
-      final email = user.email;
       await _tearDownAccount(user);
       await store.logActivity(
-          'account_deleted', '$email deleted their account');
+          'account_deleted', 'An account was deleted by its owner');
       return jsonResponse(200, {'ok': true});
     });
   }
 
   /// Removes [user] and everything the server holds for it: identity, OAuth
-  /// links, sessions, collection metadata and blobs on disk. Caller holds
-  /// [Store.lock] and logs whatever activity line fits the reason.
+  /// links, sessions, collection metadata and blobs on disk, family, chat,
+  /// public recipes and reviews, co-op rooms, AI usage and traffic history,
+  /// and the email wherever the server's own history mentions it. Caller
+  /// holds [Store.lock] and logs whatever activity line fits the reason —
+  /// without the email, which this has just scrubbed.
   ///
   /// Shared by the self-service delete ([_deleteAccount]) and by the operator
   /// accepting a deletion request from the Inbox
@@ -2125,6 +2127,12 @@ class Api {
     await store.deleteUserData(user.id);
     await store.userTraffic.flush();
     await cs2OfflineStore?.deleteForUser(user.id);
+    await familyStore.deleteUser(user.id, user.email);
+    await chatStore.deleteUser(user.id, user.email);
+    await recipeStore.deleteUser(user.id);
+    await subwayStore.deleteUser(user.id);
+    await aiUsage.deleteUser(user.id);
+    await store.forgetUser(user.id, user.email);
     await store.saveUsers();
     await store.saveSessions();
     await store.saveCollections();
@@ -2145,15 +2153,12 @@ class Api {
 
   /// Files a request to have every trace of this account deleted from the
   /// server. Deliberately does *not* delete anything — it lands in the admin
-  /// dashboard's Inbox, where the operator accepts or declines it.
+  /// dashboard's Inbox, where the operator accepts or declines it. The reason
+  /// is optional: nobody has to justify asking for their data to be erased.
   Future<Response> _requestAccountDeletion(
       Request request, StoredUser user) async {
     final body = await _readJson(request);
     final reason = (body['reason'] as String? ?? '').trim();
-    if (reason.isEmpty) {
-      return errorResponse(400, 'bad_request',
-          'Tell the operator why you want your data deleted.');
-    }
     if (reason.length > 2000) {
       return errorResponse(
           400, 'reason_too_long', 'Keep the reason under 2000 characters.');
@@ -5709,7 +5714,7 @@ class Api {
       await _tearDownAccount(user);
       if (touchedRequests) await store.saveDeletionRequests();
       await store.logActivity(
-          'admin_account_deleted', '$email was deleted by an admin');
+          'admin_account_deleted', 'An account was deleted by an admin');
       return _adminFormResponse(request, '/admin');
     });
   }
@@ -5896,8 +5901,8 @@ class Api {
       final user = store.usersById[req.userId];
       if (user != null) await _tearDownAccount(user);
       await store.saveDeletionRequests();
-      await store.logActivity('deletion_accepted',
-          '${req.email}\'s account data was deleted on request');
+      await store.logActivity(
+          'deletion_accepted', 'An account was deleted on request');
       return _adminFormResponse(request, '/admin', fragment: 'inbox');
     });
   }

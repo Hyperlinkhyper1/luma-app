@@ -135,10 +135,16 @@ class AiApiError extends AiError {
   AiApiError(super.message);
 }
 
+/// Receives the reply written so far, each time it grows.
+typedef AiTextProgress = void Function(String textSoFar);
+
 /// A chat completion provider — Anthropic, OpenAI, Mistral, etc. Each
 /// implementation owns its own wire format and tool-call loop internally;
 /// callers only see plain text in, plain text (+ optional tool metadata) out.
 abstract class AiClient {
+  /// [onText] is called with the partial reply while it is generated, by
+  /// clients that can stream it; the others ignore it and only return the
+  /// finished reply.
   Future<AiChatResult> chat({
     required String apiKey,
     required List<AiTurn> history,
@@ -146,5 +152,6 @@ abstract class AiClient {
     required List<AiToolDefinition> tools,
     required AiToolExecutor executeTool,
     required AiToolMetadata metadataFor,
+    AiTextProgress? onText,
   });
 }

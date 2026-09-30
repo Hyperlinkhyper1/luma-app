@@ -37,6 +37,8 @@ IconData pluginIconFor(String? name) {
       return Icons.directions_subway_rounded;
     case 'location_city':
       return Icons.location_city_rounded;
+    case 'graphic_eq':
+      return Icons.graphic_eq_rounded;
     case 'ads_click':
       return Icons.ads_click_rounded;
     case 'insights':
