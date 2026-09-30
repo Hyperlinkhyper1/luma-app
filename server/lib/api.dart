@@ -2319,9 +2319,41 @@ class Api {
     } finally {
       fetcher.close();
     }
-    for (final mode in kAiModeNames.keys) {
+    for (final mode in kAiGuardedSelectors) {
       await _evaluateAiPrice(mode, fetch: true);
     }
+  }
+
+  /// The route a guarded selector is served by right now.
+  AiModeRoute? _guardedRoute(String mode) => switch (mode) {
+        'detector' => _aiDetectorRoute(),
+        'picture' => aiImageConfig.resolve(config.configuredAiUpstreams),
+        _ => aiModeRoutes.resolve(mode, config.configuredAiUpstreams),
+      };
+
+  String _guardedLabel(String mode) => switch (mode) {
+        'detector' => 'AI Detector',
+        'picture' => 'Picture model',
+        _ => aiModeRoutes.displayName(mode),
+      };
+
+  /// Adds `provider.max_price` to an OpenRouter request body for [mode], so
+  /// OpenRouter itself refuses every provider above the accepted price.
+  /// Returns the cap it applied, or null when there is none.
+  AiPrice? _applyAiMaxPrice(
+      String mode, AiModeRoute route, Map<String, dynamic> upstreamBody) {
+    if (route.upstream != AiUpstream.openrouter) return null;
+    final maxPrice = aiPriceGuard.maxPrice(mode, route);
+    if (maxPrice == null) return null;
+    final provider = upstreamBody['provider'];
+    upstreamBody['provider'] = {
+      if (provider is Map) ...provider,
+      'max_price': {
+        if (maxPrice.input != null) 'prompt': maxPrice.input! * 1.000001,
+        if (maxPrice.output != null) 'completion': maxPrice.output! * 1.000001,
+      },
+    };
+    return maxPrice;
   }
 
   final Map<String, ({int atMs, List<AiEndpointPrice> endpoints})>
@@ -2360,7 +2392,7 @@ class Api {
   /// by their catalogue list price.
   Future<bool> _evaluateAiPrice(String mode,
       {AiModeRoute? route, bool fetch = false, bool force = false}) async {
-    route ??= aiModeRoutes.resolve(mode, config.configuredAiUpstreams);
+    route ??= _guardedRoute(mode);
     if (route == null) return false;
     if (route.upstream == AiUpstream.openrouter) {
       final endpoints = await _openRouterEndpoints(route.model,
@@ -2387,25 +2419,26 @@ class Api {
       }
     } catch (_) {}
     if (provider == null) return;
-    AiEndpointPrice? served(List<AiEndpointPrice>? list) {
-      for (final e in list ?? const <AiEndpointPrice>[]) {
-        if (e.provider == provider) return e;
-      }
-      return null;
-    }
+    // One provider can list several endpoints (tiers) at different prices;
+    // always matching its cheapest keeps the charged price comparable
+    // from one request to the next.
+    AiEndpointPrice? served(List<AiEndpointPrice>? list) => cheapestEndpoint([
+          for (final e in list ?? const <AiEndpointPrice>[])
+            if (e.provider == provider) e,
+        ]);
 
     final endpoint = served(await _openRouterEndpoints(route.model)) ??
         served(await _openRouterEndpoints(route.model, force: true));
     if (endpoint == null) return;
     await aiPriceGuard.recordPaid(
-        mode, route, provider, AiPrice(endpoint.input, endpoint.output));
+        mode, route, provider, AiPrice.ofEndpoint(endpoint));
   }
 
   /// Live prices and guard state for the Assistant tab, one object per mode.
   Future<Response> _adminAiPrices(Request request) async {
     final out = <String, dynamic>{};
-    for (final mode in kAiModeNames.keys) {
-      final route = aiModeRoutes.resolve(mode, config.configuredAiUpstreams);
+    for (final mode in kAiGuardedSelectors) {
+      final route = _guardedRoute(mode);
       if (route == null) continue;
       final disabled =
           await _evaluateAiPrice(mode, route: route, fetch: true);
@@ -2417,9 +2450,20 @@ class Api {
         'model': route.model,
         'upstream': route.upstream.label,
         'upstreamId': route.upstream.name,
-        'defaultModels': {
-          for (final upstream in kDefaultAiModeModels.entries)
-            upstream.key.name: upstream.value[mode],
+        'defaultModels': switch (mode) {
+          'picture' => {
+              for (final e in kDefaultAiImageModels.entries) e.key.name: e.value,
+            },
+          'detector' => {
+              for (final upstream in AiUpstream.values)
+                upstream.name: aiModeRoutes
+                    .resolve('smarter', config.configuredAiUpstreams)
+                    ?.model,
+            },
+          _ => {
+              for (final upstream in kDefaultAiModeModels.entries)
+                upstream.key.name: upstream.value[mode],
+            },
         },
         'price': price?.toJson(),
         'baseline': entry.baseline?.toJson(),
@@ -2445,10 +2489,10 @@ class Api {
       form = Uri.splitQueryString(await request.readAsString());
     } catch (_) {}
     final mode = form['mode'] ?? '';
-    if (!kAiModeNames.containsKey(mode)) {
+    if (!kAiGuardedSelectors.contains(mode)) {
       return errorResponse(400, 'bad_request', 'Unknown mode.');
     }
-    final route = aiModeRoutes.resolve(mode, config.configuredAiUpstreams);
+    final route = _guardedRoute(mode);
     if (route != null) {
       await _evaluateAiPrice(mode, route: route, fetch: true, force: true);
       final entry = aiPriceGuard.entry(mode);
@@ -2459,7 +2503,7 @@ class Api {
         await aiPriceGuard.accept(mode, route, priceFor(aiCatalog, route));
       }
       await store.logActivity('ai_price_accepted',
-          '${aiModeRoutes.displayName(mode)} re-enabled at the current ${route.model} price');
+          '${_guardedLabel(mode)} re-enabled at the current ${route.model} price');
     }
     return jsonResponse(200, {'ok': true});
   }
@@ -2471,13 +2515,13 @@ class Api {
       form = Uri.splitQueryString(await request.readAsString());
     } catch (_) {}
     final mode = form['mode'] ?? '';
-    if (!kAiModeNames.containsKey(mode)) {
+    if (!kAiGuardedSelectors.contains(mode)) {
       return errorResponse(400, 'bad_request', 'Unknown mode.');
     }
     final on = form['enabled'] == '1';
     await aiPriceGuard.setAutoDisable(mode, on);
     await store.logActivity('ai_price_guard',
-        '${aiModeRoutes.displayName(mode)} price guard ${on ? 'on' : 'off'}');
+        '${_guardedLabel(mode)} price guard ${on ? 'on' : 'off'}');
     return jsonResponse(200, {'ok': true});
   }
 
@@ -2739,17 +2783,7 @@ class Api {
     if (await _evaluateAiPrice(meteredMode, route: route)) return paused();
 
     final upstreamBody = _aiUpstreamBody(body, route);
-    final maxPrice = aiPriceGuard.maxPrice(meteredMode, route);
-    if (maxPrice != null) {
-      final provider = upstreamBody['provider'];
-      upstreamBody['provider'] = {
-        if (provider is Map) ...provider,
-        'max_price': {
-          if (maxPrice.input != null) 'prompt': maxPrice.input! * 1.000001,
-          if (maxPrice.output != null) 'completion': maxPrice.output! * 1.000001,
-        },
-      };
-    }
+    final maxPrice = _applyAiMaxPrice(meteredMode, route, upstreamBody);
 
     try {
       final (status, responseBody) =
@@ -2836,6 +2870,7 @@ class Api {
       return errorResponse(400, 'bad_request', 'Malformed request.');
     }
     final mode = body['mode'];
+    if (mode == 'picture') return _adminAiImageTest(body);
     if (mode is! String ||
         (!kAiModeNames.containsKey(mode) && mode != 'detector')) {
       return errorResponse(400, 'bad_request', 'Unknown mode.');
@@ -2982,14 +3017,18 @@ class Api {
         String? error,
         int tokens
       })> _runAiDetector(
-      AiModeRoute route, String instructions, String text) async {
-    final (status, responseBody) = await _callAiUpstream(
-        route,
-        _aiUpstreamBody({
-          'messages': aiDetectorMessages(instructions, text),
-          'max_tokens': 3000,
-          'temperature': 0.2,
-        }, route));
+      AiModeRoute route, String instructions, String text,
+      {bool guarded = false}) async {
+    final upstreamBody = _aiUpstreamBody({
+      'messages': aiDetectorMessages(instructions, text),
+      'max_tokens': 3000,
+      'temperature': 0.2,
+    }, route);
+    if (guarded) _applyAiMaxPrice('detector', route, upstreamBody);
+    final (status, responseBody) = await _callAiUpstream(route, upstreamBody);
+    if (guarded && status == HttpStatus.ok) {
+      await _recordAiPaid('detector', route, responseBody);
+    }
     var tokens = 0;
     String? content;
     String? error;
@@ -3064,9 +3103,14 @@ class Api {
           "You've hit your Luma AI usage limit for now — it frees up again "
               'over time.');
     }
+    if (await _evaluateAiPrice('detector', route: route)) {
+      return errorResponse(503, 'model_disabled',
+          'The AI check is paused right now. Try again later.');
+    }
     try {
       final result = await _runAiDetector(
-          route, aiDetectorConfig.config.effectiveInstructions, text);
+          route, aiDetectorConfig.config.effectiveInstructions, text,
+          guarded: true);
       if (result.status == HttpStatus.ok) {
         await aiUsage.recordTokens(
             user.id, result.tokens > 0 ? result.tokens : 1500,
@@ -3190,6 +3234,13 @@ class Api {
               'now — it frees up again over the next few hours.');
     }
 
+    if (await _evaluateAiPrice('picture', route: route)) {
+      return errorResponse(503, 'model_disabled',
+          'Picture mode is paused right now. Try again later.');
+    }
+    final imageBody = aiImageRequestBody(route, prompt);
+    final maxPrice = _applyAiMaxPrice('picture', route, imageBody);
+
     try {
       final (status, responseBody) = await _postJsonWithRetry(
         aiImageEndpoint(route.upstream),
@@ -3201,9 +3252,19 @@ class Api {
             'X-Title': 'luma',
           },
         },
-        jsonEncode(aiImageRequestBody(route, prompt)),
+        jsonEncode(imageBody),
         timeout: const Duration(seconds: 120),
       );
+      if (status != HttpStatus.ok &&
+          maxPrice != null &&
+          await _evaluateAiPrice('picture',
+              route: route, fetch: true, force: true)) {
+        return errorResponse(503, 'model_disabled',
+            'Picture mode is paused right now. Try again later.');
+      }
+      if (status == HttpStatus.ok) {
+        await _recordAiPaid('picture', route, responseBody);
+      }
       if (status != HttpStatus.ok) {
         stderr.writeln('[luma] picture model ${route.model} answered $status');
         return errorResponse(502, 'upstream_error',
@@ -3225,6 +3286,96 @@ class Api {
     } catch (_) {
       return errorResponse(
           502, 'upstream_error', 'Could not reach the picture model.');
+    }
+  }
+
+  /// The picture card's Test button: draws one small picture with the
+  /// provider and model currently in the form (saved or not), so the
+  /// operator sees the model really returns an image before users try it.
+  Future<Response> _adminAiImageTest(Map<String, dynamic> body) async {
+    AiModeRoute? route;
+    if (body.containsKey('upstream') || body.containsKey('model')) {
+      final upstreamValue = body['upstream'];
+      final upstream =
+          AiUpstream.parse(upstreamValue is String ? upstreamValue : null);
+      if (upstream == null || !kAiImageUpstreams.contains(upstream)) {
+        return errorResponse(
+            400, 'bad_request', 'Pick Google AI Studio or OpenRouter.');
+      }
+      final modelInput = body['model'];
+      final model = modelInput is String && modelInput.trim().isNotEmpty
+          ? modelInput.trim()
+          : kDefaultAiImageModels[upstream]!;
+      if (!isValidAiModelId(model)) {
+        return errorResponse(400, 'bad_request', 'Enter a valid model ID.');
+      }
+      if (!config.configuredAiUpstreams.contains(upstream)) {
+        return jsonResponse(200, {
+          'ok': false,
+          'upstream': upstream.label,
+          'model': model,
+          'error': 'No API key is configured for ${upstream.label}.',
+        });
+      }
+      route = AiModeRoute(upstream, model);
+    } else {
+      route = aiImageConfig.resolve(config.configuredAiUpstreams);
+    }
+    if (route == null) {
+      return errorResponse(404, 'not_configured',
+          'Set an API key for Google AI Studio or OpenRouter first.');
+    }
+    final started = DateTime.now();
+    try {
+      final (status, responseBody) = await _postJsonWithRetry(
+        aiImageEndpoint(route.upstream),
+        {
+          HttpHeaders.authorizationHeader:
+              'Bearer ${config.aiUpstreamKey(route.upstream)}',
+          if (route.upstream == AiUpstream.openrouter) ...{
+            'HTTP-Referer': config.publicUrl,
+            'X-Title': 'luma',
+          },
+        },
+        jsonEncode(aiImageRequestBody(route,
+            'A small flat icon of a purple crescent moon on a plain background.')),
+        timeout: const Duration(seconds: 120),
+      );
+      final ms = DateTime.now().difference(started).inMilliseconds;
+      final image = status == HttpStatus.ok
+          ? parseAiImageResponse(responseBody)
+          : null;
+      String? error;
+      if (status != HttpStatus.ok) {
+        try {
+          final decoded = jsonDecode(responseBody);
+          final upstreamError = decoded is Map ? decoded['error'] : null;
+          error = upstreamError is Map
+              ? upstreamError['message']?.toString()
+              : upstreamError?.toString();
+        } catch (_) {}
+        error ??= 'The provider returned HTTP $status.';
+        if (error.length > 500) error = '${error.substring(0, 500)}…';
+      } else if (image == null) {
+        error = 'The model answered without a picture. It may not be able '
+            'to output images.';
+      }
+      return jsonResponse(200, {
+        'ok': image != null,
+        'status': status,
+        'upstream': route.upstream.label,
+        'model': route.model,
+        'ms': ms,
+        if (image != null) 'image': 'data:${image.mimeType};base64,${image.base64}',
+        'error': error,
+      });
+    } catch (e) {
+      return jsonResponse(200, {
+        'ok': false,
+        'upstream': route.upstream.label,
+        'model': route.model,
+        'error': 'Could not reach ${route.upstream.label}: $e',
+      });
     }
   }
 
@@ -9938,15 +10089,7 @@ syncToolbar();
           'maxlength="200" spellcheck="false" autocomplete="off">'
           '<button type="button" class="btn btn-ghost btn-sm ai-browse" '
           'data-mode="$mode">Browse models</button></td>'
-          '<td class="ai-price-cell" data-mode="$mode">'
-          '<div class="ai-price" id="ai-price-$mode">Loading…</div>'
-          '<div class="ai-price-note muted" id="ai-price-note-$mode"></div>'
-          '<div class="ai-price-actions">'
-          '<button type="button" class="btn btn-ghost btn-sm ai-guard" '
-          'data-mode="$mode" id="ai-guard-$mode">Guard</button>'
-          '<button type="button" class="btn btn-primary btn-sm ai-accept" '
-          'data-mode="$mode" id="ai-accept-$mode" style="display:none">'
-          'Accept price &amp; re-enable</button></div></td>'
+          '<td class="ai-price-cell" data-mode="$mode">${_aiPriceBlock(mode)}</td>'
           '<td><select name="$mode.effort">$effortOptions</select></td>'
           '<td class="nowrap">$status<div id="ai-paused-$mode"></div></td>'
           '<td class="actions-cell"><button type="button" '
@@ -9976,6 +10119,8 @@ syncToolbar();
         '.ai-routes select:focus,.ai-routes input:focus{border-color:#8a7ee0}'
         '.ai-test-out{font-size:11.5px;margin-top:4px;white-space:normal;'
         'max-width:260px;text-align:right}'
+        '.ai-test-img{display:block;width:96px;height:96px;object-fit:cover;'
+        'border-radius:8px;margin-top:6px;border:1px solid #2d2645}'
         '.ai-test-out.ok{color:#7ee08a}.ai-test-out.err{color:#e07e7e}'
         '.ai-browse{margin-top:6px;white-space:nowrap}'
         '.ai-price-cell{min-width:170px}.ai-price{font:13px ui-monospace,Consolas,monospace}'
@@ -10073,6 +10218,18 @@ syncToolbar();
   /// plugin's deep check runs on, and the instructions it judges by. Its
   /// fields use the `detector` mode name so the model browser and the
   /// provider → suggestions swap work on it unchanged.
+  /// The live price, Guard toggle and re-enable button every model selector
+  /// on the Assistant tab shares; filled in by the tab's price poller.
+  static String _aiPriceBlock(String mode) =>
+      '<div class="ai-price" id="ai-price-$mode">Loading…</div>'
+      '<div class="ai-price-note muted" id="ai-price-note-$mode"></div>'
+      '<div class="ai-price-actions">'
+      '<button type="button" class="btn btn-ghost btn-sm ai-guard" '
+      'data-mode="$mode" id="ai-guard-$mode">Guard</button>'
+      '<button type="button" class="btn btn-primary btn-sm ai-accept" '
+      'data-mode="$mode" id="ai-accept-$mode" style="display:none">'
+      'Accept price &amp; re-enable</button></div>';
+
   String _adminAiDetectorCard(Set<AiUpstream> configured) {
     String esc(String s) => _htmlEscape(s).replaceAll('"', '&quot;');
     final saved = aiDetectorConfig.config;
@@ -10134,7 +10291,11 @@ syncToolbar();
         '<div><span class="ai-detector-label">Status</span>$status'
         '<div style="margin-top:6px"><button type="button" '
         'class="btn btn-ghost btn-sm ai-test" data-mode="detector">Test</button>'
-        '<div class="ai-test-out muted" id="ai-test-detector"></div></div></div>'
+        '<div class="ai-test-out muted" id="ai-test-detector"></div></div>'
+        '<div id="ai-paused-detector"></div></div>'
+        '<div class="ai-price-cell" data-mode="detector">'
+        '<span class="ai-detector-label">Price / 1M tokens</span>'
+        '${_aiPriceBlock('detector')}</div>'
         '</div>'
         '<div style="display:flex;justify-content:space-between;align-items:center;'
         'gap:8px;margin-bottom:6px"><label class="ai-detector-label" '
@@ -10205,7 +10366,14 @@ syncToolbar();
         'maxlength="200" spellcheck="false" autocomplete="off">'
         '<button type="button" class="btn btn-ghost btn-sm ai-browse" '
         'data-mode="picture">Browse models</button></div>'
-        '<div><span class="ai-detector-label">Status</span>$status</div>'
+        '<div><span class="ai-detector-label">Status</span>$status'
+        '<div style="margin-top:6px"><button type="button" '
+        'class="btn btn-ghost btn-sm ai-test" data-mode="picture">Test</button>'
+        '<div class="ai-test-out muted" id="ai-test-picture"></div></div>'
+        '<div id="ai-paused-picture"></div></div>'
+        '<div class="ai-price-cell" data-mode="picture">'
+        '<span class="ai-detector-label">Price / 1M tokens</span>'
+        '${_aiPriceBlock('picture')}</div>'
         '</div>'
         '<div class="maint-actions" style="margin:16px 0 0">'
         '<button type="submit" class="btn btn-primary">Save picture model</button>'
@@ -10332,6 +10500,8 @@ syncToolbar();
     btn.addEventListener('click', function () {
       var mode = btn.dataset.mode;
       var out = document.getElementById('ai-test-' + mode);
+      var effortSelect = document.querySelector(
+        '.ai-routes select[name="' + mode + '.effort"]');
       btn.disabled = true;
       out.className = 'ai-test-out muted';
       out.textContent = 'Testing…';
@@ -10343,14 +10513,21 @@ syncToolbar();
           upstream: document.querySelector(
             '.ai-upstream[data-mode="' + mode + '"]').value,
           model: document.getElementById('ai-model-' + mode).value,
-          reasoningEffort: document.querySelector(
-            '.ai-routes select[name="' + mode + '.effort"]').value,
+          reasoningEffort: effortSelect ? effortSelect.value : undefined,
         }),
       })
         .then(function (r) { return r.json(); })
         .then(function (j) {
           var who = (j.upstream || '') + ' · ' + (j.model || '');
-          if (j.ok) {
+          if (j.ok && j.image) {
+            out.className = 'ai-test-out ok';
+            out.textContent = '✓ ' + who + ' — drew a picture in ' + j.ms + ' ms';
+            var img = document.createElement('img');
+            img.src = j.image;
+            img.alt = 'Test picture';
+            img.className = 'ai-test-img';
+            out.appendChild(img);
+          } else if (j.ok) {
             out.className = 'ai-test-out ok';
             out.textContent = '✓ ' + who + ' — ' + j.ms + ' ms: "' +
               String(j.reply || '').trim().slice(0, 60) + '"';
@@ -10372,7 +10549,8 @@ syncToolbar();
       ? Number(Number(v).toFixed(6)).toString() : Number(v).toFixed(2));
   }
   function priceText(p) {
-    return p ? usd(p.input) + ' in / ' + usd(p.output) + ' out' : 'price unknown';
+    return p ? usd(p.input) + ' in / ' + usd(p.output) + ' out' +
+      (p.image != null ? ' / ' + usd(p.image) + ' image out' : '') : 'price unknown';
   }
   function loadPrices() {
     fetch('/admin/ai-prices').then(function (r) { return r.json(); }).then(function (j) {

@@ -136,6 +136,37 @@ void main() {
     });
   });
 
+  test('the detector and picture selectors are guarded and persisted',
+      () async {
+    const picture =
+        AiModeRoute(AiUpstream.openrouter, 'google/gemini-2.5-flash-image');
+    final guard = AiPriceGuardStore(dir.path);
+    await guard.recordPaid(
+        'picture', picture, 'Google', const AiPrice(0.3, 2.5));
+    await guard.recordPaid('detector', route, 'DeepInfra',
+        const AiPrice(0.075, 0.25));
+    expect(
+        await guard.evaluateEndpoints('picture', picture,
+            [const AiEndpointPrice('Google', 0.3, 30)]),
+        isTrue);
+    final reopened = AiPriceGuardStore(dir.path);
+    expect(reopened.isDisabled('picture'), isTrue);
+    expect(reopened.maxPrice('detector', route)!.input, 0.075);
+    expect(kAiGuardedSelectors, containsAll(['detector', 'picture']));
+  });
+
+  test('a picture model pauses when only its image price rises', () async {
+    const picture =
+        AiModeRoute(AiUpstream.openrouter, 'google/gemini-2.5-flash-image');
+    final guard = AiPriceGuardStore(dir.path);
+    const before = AiEndpointPrice('Google', 0.3, 2.5, imageOutput: 30);
+    await guard.recordPaid('picture', picture, 'Google', AiPrice.ofEndpoint(before));
+    expect(await guard.evaluateEndpoints('picture', picture, [before]), isFalse);
+    const after = AiEndpointPrice('Google', 0.3, 2.5, imageOutput: 45);
+    expect(await guard.evaluateEndpoints('picture', picture, [after]), isTrue);
+    expect(AiPriceGuardStore(dir.path).entry('picture').baseline!.image, 30);
+  });
+
   test('first sighting sets the baseline and does not disable', () async {
     final guard = AiPriceGuardStore(dir.path);
     expect(await guard.evaluate('smartest', route, const AiPrice(0.1, 0.3)),

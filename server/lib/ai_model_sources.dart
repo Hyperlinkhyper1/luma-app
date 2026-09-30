@@ -837,11 +837,14 @@ String? _trimDescription(String? raw) {
 /// after any discount.
 class AiEndpointPrice {
   const AiEndpointPrice(this.provider, this.input, this.output,
-      {this.discount = 0, this.up = true});
+      {this.imageOutput, this.discount = 0, this.up = true});
 
   final String provider;
   final double input;
   final double output;
+
+  /// Price per 1M generated image tokens, for models that draw.
+  final double? imageOutput;
   final double discount;
 
   /// False when OpenRouter reports the endpoint as down.
@@ -858,6 +861,7 @@ List<AiEndpointPrice> parseOpenRouterEndpoints(Object? decoded) {
         if (_perMillion(_map(e['pricing'])['prompt']) case final input?)
           if (_perMillion(_map(e['pricing'])['completion']) case final output?)
             AiEndpointPrice(e['provider_name'] as String, input, output,
+                imageOutput: _perMillion(_map(e['pricing'])['image_output']),
                 discount: _num(_map(e['pricing'])['discount']) ?? 0,
                 up: _num(e['status']) == null || _num(e['status'])! >= 0),
   ];

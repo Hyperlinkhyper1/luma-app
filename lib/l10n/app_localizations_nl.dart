@@ -1234,6 +1234,12 @@ class LNl extends L {
   String get textLibraryMcCloseDoor => 'Doe de deur dicht';
 
   @override
+  String get textLibraryMcOpenDrawer => 'Trek de la open';
+
+  @override
+  String get textLibraryMcCloseDrawer => 'Doe de la dicht';
+
+  @override
   String get textLibraryMcShapes => 'Vormen';
 
   @override

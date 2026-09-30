@@ -8,30 +8,40 @@ import 'util.dart';
 
 /// Per-million-token price of the model behind a mode, in USD.
 class AiPrice {
-  const AiPrice(this.input, this.output);
+  const AiPrice(this.input, this.output, [this.image]);
+
+  AiPrice.ofEndpoint(AiEndpointPrice e) : this(e.input, e.output, e.imageOutput);
 
   final double? input;
   final double? output;
 
-  bool get known => input != null || output != null;
+  /// Per 1M generated image tokens — what a picture model mostly bills on.
+  final double? image;
 
-  /// True when either side costs more than [base] (ignoring float noise).
+  bool get known => input != null || output != null || image != null;
+
+  /// True when any side costs more than [base] (ignoring float noise).
   bool risesAbove(AiPrice base) =>
-      _higher(input, base.input) || _higher(output, base.output);
+      _higher(input, base.input) ||
+      _higher(output, base.output) ||
+      _higher(image, base.image);
 
   static bool _higher(double? now, double? before) =>
       now != null && before != null && now > before * 1.000001 + 1e-12;
 
   /// Whether an OpenRouter endpoint charges no more than this on either side.
   bool admits(AiEndpointPrice e) =>
-      !_higher(e.input, input) && !_higher(e.output, output);
+      !_higher(e.input, input) &&
+      !_higher(e.output, output) &&
+      !_higher(e.imageOutput, image);
 
-  Map<String, dynamic> toJson() => {'input': input, 'output': output};
+  Map<String, dynamic> toJson() =>
+      {'input': input, 'output': output, if (image != null) 'image': image};
 
   static AiPrice? fromJson(Object? raw) {
     if (raw is! Map) return null;
     final price = AiPrice((raw['input'] as num?)?.toDouble(),
-        (raw['output'] as num?)?.toDouble());
+        (raw['output'] as num?)?.toDouble(), (raw['image'] as num?)?.toDouble());
     return price.known ? price : null;
   }
 }
@@ -69,6 +79,11 @@ AiPrice? priceFor(AiModelCatalogStore catalog, AiModeRoute route) {
   final price = AiPrice(model.inputPricePerM, model.outputPricePerM);
   return price.known ? price : null;
 }
+
+/// Every model selector on the Assistant tab the price guard watches: the
+/// three chat modes, the AI Detector and the picture model.
+final kAiGuardedSelectors =
+    List<String>.unmodifiable([...kAiModeNames.keys, 'detector', 'picture']);
 
 /// The cheapest endpoint OpenRouter currently reports as up.
 AiEndpointPrice? cheapestEndpoint(List<AiEndpointPrice> endpoints) {
@@ -155,7 +170,8 @@ class AiPriceGuardEntry {
 /// last accepted. It stays off until the operator accepts the new price,
 /// picks another model, or turns the guard off. Kept in `ai_price_guard.json`.
 class AiPriceGuardStore {
-  AiPriceGuardStore(String dataDir) : _file = File('$dataDir/ai_price_guard.json') {
+  AiPriceGuardStore(String dataDir)
+      : _file = File('$dataDir/ai_price_guard.json') {
     _load();
   }
 
@@ -168,7 +184,7 @@ class AiPriceGuardStore {
       final decoded = jsonDecode(_file.readAsStringSync());
       if (decoded is! Map) return;
       decoded.forEach((mode, raw) {
-        if (mode is String && kAiModeNames.containsKey(mode)) {
+        if (mode is String && kAiGuardedSelectors.contains(mode)) {
           _entries[mode] = AiPriceGuardEntry.fromJson(raw);
         }
       });
@@ -177,8 +193,7 @@ class AiPriceGuardStore {
     }
   }
 
-  AiPriceGuardEntry entry(String mode) =>
-      _entries[mode] ?? AiPriceGuardEntry();
+  AiPriceGuardEntry entry(String mode) => _entries[mode] ?? AiPriceGuardEntry();
 
   bool isDisabled(String mode) => _entries[mode]?.disabled ?? false;
 
@@ -232,7 +247,7 @@ class AiPriceGuardStore {
     final cheapest = cheapestEndpoint(endpoints);
     if (cheapest != null) {
       e
-        ..latest = AiPrice(cheapest.input, cheapest.output)
+        ..latest = AiPrice.ofEndpoint(cheapest)
         ..cheapestProvider = cheapest.provider;
       final base = e.baseline;
       if (e.autoDisable &&
@@ -249,8 +264,8 @@ class AiPriceGuardStore {
   /// Records what the provider that served a request charged for it. The
   /// first charged price becomes the baseline; a later one above it switches
   /// the mode off.
-  Future<bool> recordPaid(String mode, AiModeRoute route, String provider,
-      AiPrice price) async {
+  Future<bool> recordPaid(
+      String mode, AiModeRoute route, String provider, AiPrice price) async {
     final e = _entryFor(mode, route, 'endpoints');
     e
       ..paid = price

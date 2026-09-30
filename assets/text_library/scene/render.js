@@ -180,7 +180,8 @@
       color += highlight * 0.35;
 
       float fog = 1.0 - exp(-vDepth * fogDensity);
-      color = mix(color, fogColor, fog * 0.55);
+      // Rain thickens the air: the far trees and islands grey out.
+      color = mix(color, fogColor, fog * (0.55 + 0.35 * overcast));
       gl_FragColor = vec4(color, opacity);
     }
   `;
@@ -285,6 +286,9 @@
         below = mix(below, lit, c1 * 0.85);
         col = mix(horizon, below, smoothstep(0.0, 0.14, down));
       }
+      // In rain the haze swallows the horizon and hangs over the whole sky.
+      float haze = mix(0.35, 0.9, 1.0 - smoothstep(0.0, 0.5, abs(d.y)));
+      col = mix(col, fogColor, overcast * haze);
       // A lightning flash lights the whole sky.
       col += vec3(0.75, 0.8, 1.0) * flash * (0.6 + 0.4 * max(d.y, 0.0));
       gl_FragColor = vec4(col, 1.0);

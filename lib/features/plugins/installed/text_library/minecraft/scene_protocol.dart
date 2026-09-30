@@ -87,6 +87,8 @@ Map<String, String> sceneStrings(L t) => {
   'sit': t.textLibraryMcSit,
   'openDoor': t.textLibraryMcOpenDoor,
   'closeDoor': t.textLibraryMcCloseDoor,
+  'openDrawer': t.textLibraryMcOpenDrawer,
+  'closeDrawer': t.textLibraryMcCloseDrawer,
   'shapes': t.textLibraryMcShapes,
   'shapeCircle': t.textLibraryMcShapeCircle,
   'shapeSquare': t.textLibraryMcShapeSquare,

@@ -544,6 +544,8 @@
   "textLibraryMcSit": "Sit down",
   "textLibraryMcOpenDoor": "Open the door",
   "textLibraryMcCloseDoor": "Close the door",
+  "textLibraryMcOpenDrawer": "Open the drawer",
+  "textLibraryMcCloseDrawer": "Close the drawer",
   "textLibraryMcShapes": "Shapes",
   "textLibraryMcShapeCircle": "Circle",
   "textLibraryMcShapeSquare": "Square",

@@ -1234,6 +1234,12 @@ class LEs extends L {
   String get textLibraryMcCloseDoor => 'Close the door';
 
   @override
+  String get textLibraryMcOpenDrawer => 'Open the drawer';
+
+  @override
+  String get textLibraryMcCloseDrawer => 'Close the drawer';
+
+  @override
   String get textLibraryMcShapes => 'Shapes';
 
   @override

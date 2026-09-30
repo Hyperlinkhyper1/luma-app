@@ -21,7 +21,7 @@
     time: 'Time', timeCycle: 'Day and night', timeClock: 'My clock', timeDay: 'Always day', timeNight: 'Always night',
     walkHint: 'WASD to walk · click to look around · click a bookcase, chair or door to use it · Esc frees the mouse',
     lookHint: 'Click to look around', standHint: 'Shift or Space to stand up', standUp: 'Stand up', sit: 'Sit down',
-    openDoor: 'Open the door', closeDoor: 'Close the door',
+    openDoor: 'Open the door', closeDoor: 'Close the door', openDrawer: 'Open the drawer', closeDrawer: 'Close the drawer',
     skinCurrent: 'Skin: {0}', skinDefault: 'Default skin', skinYours: 'your own', skinImport: 'Import skin…', skinName: 'Minecraft name…',
     skinNameTitle: 'Your Minecraft username', skinNameHint: 'Username', skinUse: 'Use skin', skinFailed: "Couldn't load that skin.",
     writeHint: 'Ctrl+B bold · Ctrl+I italic · Ctrl+U underline · PgUp/PgDn turn pages',

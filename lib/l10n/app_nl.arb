@@ -402,6 +402,8 @@
   "textLibraryMcSit": "Ga zitten",
   "textLibraryMcOpenDoor": "Doe de deur open",
   "textLibraryMcCloseDoor": "Doe de deur dicht",
+  "textLibraryMcOpenDrawer": "Trek de la open",
+  "textLibraryMcCloseDrawer": "Doe de la dicht",
   "textLibraryMcShapes": "Vormen",
   "textLibraryMcShapeCircle": "Cirkel",
   "textLibraryMcShapeSquare": "Vierkant",

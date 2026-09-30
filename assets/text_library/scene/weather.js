@@ -49,7 +49,9 @@
       vec3 head = vec3(xz.x, y, xz.y);
       vec3 p = head - dir * corner.y * dropLength;
       vec3 side = normalize(cross(dir, cameraPosition - head));
-      p += side * corner.x * width;
+      // Thicker with distance, so far drops stay a pixel or two wide rather
+      // than thinning away to nothing.
+      p += side * corner.x * width * max(1.0, distance(head, cameraPosition) * 0.15);
       vWorld = p;
       vFade = (1.0 - smoothstep(radius * 0.55, radius, length(xz - center.xz))) * (1.0 - corner.y * 0.65);
       gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0);
@@ -424,7 +426,7 @@
   // ── Weather ────────────────────────────────────────────────────────────
   function create(T, R) {
     const U = R.U;
-    const DROPS = 5200;
+    const DROPS = 7000;
     const seeds = new Float32Array(DROPS * 4 * 4), corners = new Float32Array(DROPS * 4 * 2);
     const index = new Uint32Array(DROPS * 6);
     for (let i = 0; i < DROPS; i++) {
@@ -443,11 +445,13 @@
     geo.setIndex(new T.Uint32BufferAttribute(index, 1));
     const rainU = {
       center: {value: new T.Vector3()}, time: U.time, radius: {value: 16}, span: {value: 26}, amount: {value: 0},
-      fallSpeed: {value: 16}, dropLength: {value: 0.9}, width: {value: 0.012}, wind: {value: new T.Vector2()},
+      fallSpeed: {value: 16}, dropLength: {value: 0.9}, width: {value: 0.01}, wind: {value: new T.Vector2()},
       heightMap: {value: null}, hmBox: {value: new T.Vector4(0, 0, 1, 1)}, rainColor: {value: new T.Color(0.6, 0.66, 0.78)}, opacity: {value: 0.4},
     };
     const rain = new T.Mesh(geo, new T.ShaderMaterial({
-      uniforms: rainU, vertexShader: RAIN_VERT, fragmentShader: RAIN_FRAG, transparent: true, depthWrite: false,
+      // Double-sided: each streak is turned to the camera, but its winding
+      // faces away, so back-face culling would drop every one of them.
+      uniforms: rainU, vertexShader: RAIN_VERT, fragmentShader: RAIN_FRAG, transparent: true, depthWrite: false, side: T.DoubleSide,
     }));
     rain.frustumCulled = false;
     rain.renderOrder = 4;
@@ -607,7 +611,7 @@
     // day: the sun and sky dim and grey, the air thickens.
     W.grade = (U, sky, exposure) => {
       const w = Math.min(1, W.rain * 1.1);
-      U.fogDensity.value = 0.012 + 0.03 * w;
+      U.fogDensity.value = 0.012 + 0.07 * w;
       if (w <= 0) return exposure;
       const grey = c => { const l = c.r * 0.3 + c.g * 0.59 + c.b * 0.11; c.r += (l * 0.9 - c.r) * w * 0.7; c.g += (l * 0.95 - c.g) * w * 0.7; c.b += (l * 1.08 - c.b) * w * 0.7; };
       U.sunColor.value.multiplyScalar(1 - 0.85 * w);

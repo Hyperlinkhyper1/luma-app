@@ -2329,6 +2329,18 @@ abstract class L {
   /// **'Close the door'**
   String get textLibraryMcCloseDoor;
 
+  /// No description provided for @textLibraryMcOpenDrawer.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the drawer'**
+  String get textLibraryMcOpenDrawer;
+
+  /// No description provided for @textLibraryMcCloseDrawer.
+  ///
+  /// In en, this message translates to:
+  /// **'Close the drawer'**
+  String get textLibraryMcCloseDrawer;
+
   /// No description provided for @textLibraryMcShapes.
   ///
   /// In en, this message translates to:

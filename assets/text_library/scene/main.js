@@ -919,12 +919,13 @@
       subjectIds.add(c.subject.id);
       for (const book of c.subject.books) {
         bookIds.add(book.id);
-        if (S.hidden.has(book.id)) continue;
+        if (S.hidden.has(book.id) || W.isDrawerSlot(book.slot)) continue;
         if (Math.floor(book.slot / c.slots) !== c.page) continue;
         W.addBook(mb, built.grid, atlas, W.slotGeometry(c, book.slot), labelBook(book), labels);
       }
       addSign(mb, c, c.subject);
     });
+    buildDrawers();
     if (built.placeholder) addSign(mb, built.placeholder, {id: 'new', name: '+ ' + gui.t('newCase'), color: 5});
     labels.retain(bookIds, new Set([...subjectIds, 'new']));
     labels.flush();
@@ -1039,10 +1040,10 @@
   // hall's width, so it is widened for them.
   const walkFov = () => V.fov + (innerWidth < innerHeight ? 8 : 0);
 
-  const SHELF_CENTER = 3.3;
+  const SHELF_CENTER = 3.0;
   // Half the height the bookcase view has to take in: the tall cases
   // downstairs, or the low ones under the eaves.
-  const caseHalf = c => (c && c.floor ? 2.05 : 2.75);
+  const caseHalf = c => (c && c.floor ? 2.05 : 3.0);
   function shelfDistance(fov, half = 2.75) {
     const v = Math.tan((fov * Math.PI / 180) / 2);
     const aspect = innerWidth / Math.max(1, innerHeight);
@@ -1057,6 +1058,14 @@
     const P = c.profile || W.PROFILES.ground;
     const cy = c.y0 + (c.floor ? (P.shelfBottom + P.caseTop) / 2 + 0.1 : SHELF_CENTER) + S.panY;
     const zc = (c.z0 + c.z1) / 2 + S.pan;
+    // With a drawer out, look down into it instead.
+    const open = c.subject ? Array.from({length: W.drawerCount(c)}, (_, k) => k).filter(k => drawerState(c, k).target === 1) : [];
+    if (open.length) {
+      const along = c.facing > 0 ? -1 : 1, zStart = c.facing > 0 ? c.z1 : c.z0;
+      const zd = zStart + along * (open.reduce((a, k) => a + k, 0) / open.length + 0.5);
+      const z = zc + (zd - zc) * 0.6;
+      return {pos: new T.Vector3(c.faceX + c.facing * 1.7, c.y0 + 2.35, z), target: new T.Vector3(c.faceX + c.facing * 0.4, c.y0 + 0.35, z), fov};
+    }
     return {pos: new T.Vector3(c.faceX + c.facing * d, cy - 0.3 * S.zoom, zc), target: new T.Vector3(c.faceX, cy, zc), fov};
   }
 
@@ -1213,6 +1222,7 @@
       }
     }
     S.seat = null;
+    closeDrawers();
     setMode('overview');
     S.caseSubject = null;
     S.caseIndex = -1;
@@ -1256,6 +1266,7 @@
     if (!c || !c.subject) return Promise.resolve();
     S.caseIndex = i;
     S.caseSubject = c.subject.id;
+    closeDrawers(c);
     S.pan = 0; S.panY = 0; S.zoom = 1;
     setMode(placing ? 'placing' : 'shelf');
     return flyTo(shelfPose(i));
@@ -1274,9 +1285,10 @@
   function currentCase() { return S.built?.cases[S.caseIndex] || null; }
 
   function pageCount(c) {
-    const max = c.subject.books.reduce((m, b) => Math.max(m, b.slot), -1);
+    const shelved = c.subject.books.filter(b => !W.isDrawerSlot(b.slot));
+    const max = shelved.reduce((m, b) => Math.max(m, b.slot), -1);
     const pages = Math.max(1, Math.floor(max / c.slots) + 1);
-    const lastFull = c.subject.books.filter(b => Math.floor(b.slot / c.slots) === pages - 1).length >= c.slots;
+    const lastFull = shelved.filter(b => Math.floor(b.slot / c.slots) === pages - 1).length >= c.slots;
     return pages + (lastFull ? 1 : 0);
   }
 
@@ -1430,7 +1442,13 @@
     let best = null;
     const consider = (t, h) => { if (t != null && t <= wall && (!best || t < best.t)) best = {...h, t}; };
     const c = pickCase(ray);
-    if (c && c.t <= CASE_REACH) consider(c.t, {kind: 'case', i: c.i});
+    if (c && c.t <= CASE_REACH) {
+      consider(c.t, {kind: 'case', i: c.i});
+      // The case's box stands a hair proud of its drawers; a drawer under
+      // the crosshair wins over the case around it.
+      const dr = pickDrawer(ray, S.built.cases[c.i]);
+      if (dr && dr.kind === 'drawer' && dr.t < REACH) consider(Math.min(dr.t, c.t) - 1e-3, dr);
+    }
     for (const s of stairBoxes()) {
       const t = boxHit(ray, ...s.box);
       if (t != null && t < REACH) consider(t, {kind: 'stairs', dir: s.dir, box: s.box});
@@ -1454,8 +1472,10 @@
       setHover(pickWorld(ray), x, y);
     } else if (S.mode === 'shelf' || S.mode === 'placing') {
       const c = currentCase();
-      const slot = c ? pickSlot(ray, c) : null;
-      if (slot) setHover({kind: 'slot', ...slot});
+      const inDrawer = pickDrawer(ray, c);
+      const slot = inDrawer || (c ? pickSlot(ray, c) : null);
+      if (inDrawer && inDrawer.kind === 'drawer') setHover(inDrawer);
+      else if (slot) setHover({kind: 'slot', ...slot});
       else {
         const hit = pickCase(ray);
         setHover(hit && hit.i !== S.caseIndex ? {kind: 'case', i: hit.i} : null);
@@ -1485,6 +1505,10 @@
     } else if (h.kind === 'door') {
       outlineBox(doorBox());
       gui.tooltip([gui.t(door.target ? 'closeDoor' : 'openDoor')], x, y);
+    } else if (h.kind === 'drawer') {
+      outlineBox(h.box);
+      const inside = h.c.subject.books.filter(b => W.isDrawerSlot(b.slot) && W.drawerOf(b.slot) === h.d).length;
+      gui.tooltip([gui.t(drawerState(h.c, h.d).target ? 'closeDrawer' : 'openDrawer'), {text: gui.t('books', inside), cls: 'sub'}], x, y);
     } else if (h.kind === 'stairs') {
       outlineBox(h.box);
       gui.tooltip([gui.t(h.dir > 0 ? 'upstairs' : 'downstairs')], x, y);
@@ -1537,6 +1561,13 @@
       await sit(S.built.seats[h.i], h.at);
     } else if (h.kind === 'door') {
       toggleDoor();
+    } else if (h.kind === 'drawer') {
+      if (S.mode === 'shelf' || S.mode === 'placing') toggleDrawer(h.c, h.d);
+      else {
+        const i = S.built.cases.indexOf(h.c);
+        setDrawer(h.c, h.d, true);
+        if (i >= 0) await toShelf(i);
+      }
     } else if (h.kind === 'stairs') {
       await climb(h.dir);
     } else if (h.kind === 'slot') {
@@ -1587,7 +1618,8 @@
     held.from = {g};
     setMode('desk');
     if (!book) poof(start.pos.toArray(), 5, 0.1);
-    const out = {pos: start.pos.clone().add(new T.Vector3(g.facing * 0.55, 0.05, 0)), quat: start.quat.clone(), scale: 1};
+    const lift = g.drawer != null ? new T.Vector3(g.facing * 0.1, 0.8, 0) : new T.Vector3(g.facing * 0.55, 0.05, 0);
+    const out = {pos: start.pos.clone().add(lift), quat: start.quat.clone(), scale: 1};
     await tween(mesh, out, 0.3);
     const fly = tween(mesh, deskTransform(shown), S.reducedMotion ? 0.3 : 1.25, 0.5);
     await Promise.all([flyTo(deskPose()), fly]);
@@ -1603,7 +1635,10 @@
   function slotTransform(g, book, out = 0) {
     const quat = new T.Quaternion().setFromAxisAngle(new T.Vector3(0, 1, 0), g.facing > 0 ? 0 : Math.PI);
     const p = W.bookCenter(g, book).pos;
-    const pos = new T.Vector3(p[0] + g.facing * out, p[1], p[2]);
+    // Out of a drawer a book comes up rather than toward the room.
+    const pos = g.drawer != null
+      ? new T.Vector3(p[0], p[1] + Math.max(0, out) * 1.8, p[2])
+      : new T.Vector3(p[0] + g.facing * out, p[1], p[2]);
     return {pos, quat, scale: 1};
   }
 
@@ -1748,7 +1783,8 @@
     const idx = S.built.cases.findIndex(c => c.subject && c.subject.id === e.subjectId);
     if (idx < 0) { dropHeld(); S.editing = null; return toOverview(); }
     const c = S.built.cases[idx];
-    const g = W.slotGeometry(c, e.slot);
+    if (W.isDrawerSlot(e.slot)) setDrawer(c, W.drawerOf(e.slot), true);
+    const g = slotGeo(c, e.slot);
     const shown = editingBook();
     const from = S.mode === 'placing' ? handTransform() : deskTransform(shown);
     makeHeld(shown);
@@ -1900,6 +1936,96 @@
 
   // ── The front door ─────────────────────────────────────────────────────
   // Two leaves swinging inward on their hinges; a shut door is a wall.
+  // ── Drawers ────────────────────────────────────────────────────────────
+  // A tall case's drawers slide out to hold more books. Each is its own
+  // mesh, drawer and books together, built shut and moved out whole.
+  // State is kept by subject so it survives the hall being rebuilt.
+  const drawers = {state: new Map(), meshes: []};
+  const drawerKey = (c, d) => c.subject.id + ':' + d;
+  function drawerState(c, d) {
+    const key = drawerKey(c, d);
+    if (!drawers.state.has(key)) drawers.state.set(key, {open: 0, target: 0});
+    return drawers.state.get(key);
+  }
+  // How far drawer d is out now, or once it has finished moving.
+  function drawerPull(c, d, settled = false) {
+    const st = c.subject && drawers.state.get(drawerKey(c, d));
+    if (!st) return 0;
+    const e = settled ? st.target : st.open * st.open * (3 - 2 * st.open);
+    return e * W.DRAWER_PULL;
+  }
+  const drawerOpen = (c, d) => { const st = c.subject && drawers.state.get(drawerKey(c, d)); return !!st && st.target === 1 && st.open > 0.95; };
+  // A slot's geometry, with a drawer slot where its drawer is heading.
+  const slotGeo = (c, slot) => W.slotGeometry(c, slot, W.isDrawerSlot(slot) ? drawerPull(c, W.drawerOf(slot), true) : 0);
+  const setDrawer = (c, d, open) => { drawerState(c, d).target = open ? 1 : 0; };
+  function toggleDrawer(c, d) {
+    const st = drawerState(c, d);
+    st.target = st.target ? 0 : 1;
+    rebuildA11y();
+  }
+  // Shuts every drawer, except those of case `keep`.
+  function closeDrawers(keep = null) {
+    const prefix = keep && keep.subject ? keep.subject.id + ':' : null;
+    for (const [key, st] of drawers.state) if (!prefix || !key.startsWith(prefix)) st.target = 0;
+  }
+  function buildDrawers() {
+    for (const m of drawers.meshes) { scene.remove(m); m.geometry.dispose(); }
+    drawers.meshes = [];
+    const built = S.built;
+    built.cases.forEach(c => {
+      if (!c.subject) return;
+      for (let d = 0; d < W.drawerCount(c); d++) {
+        const mb = new W.MeshBuilder();
+        W.drawer({mb, grid: built.grid, atlas}, c, d);
+        for (const book of c.subject.books) {
+          if (S.hidden.has(book.id) || !W.isDrawerSlot(book.slot) || W.drawerOf(book.slot) !== d) continue;
+          W.addBook(mb, built.grid, atlas, W.slotGeometry(c, book.slot), labelBook(book), labels);
+        }
+        const mesh = new T.Mesh(mb.geometry(T), dynMat);
+        mesh.userData.drawer = {c, d};
+        drawers.meshes.push(mesh);
+        scene.add(mesh);
+      }
+    });
+    poseDrawers();
+  }
+  function poseDrawers() {
+    for (const m of drawers.meshes) {
+      const {c, d} = m.userData.drawer;
+      m.position.set(c.facing * drawerPull(c, d), 0, 0);
+    }
+  }
+  function stepDrawers(dt) {
+    let moved = false;
+    const step = dt * (S.reducedMotion ? 10 : 3.2);
+    for (const st of drawers.state.values()) {
+      if (st.open === st.target) continue;
+      st.open = st.target > st.open ? Math.min(st.target, st.open + step) : Math.max(st.target, st.open - step);
+      moved = true;
+    }
+    if (moved) { poseDrawers(); shadowDirty = true; }
+  }
+  // What the ray meets among case c's drawers: a book or a gap in an open
+  // drawer, or a drawer's front.
+  function pickDrawer(ray, c) {
+    if (!c || !c.subject) return null;
+    let best = null;
+    const consider = (t, h) => { if (t != null && (!best || t < best.t)) best = {...h, t}; };
+    for (let d = 0; d < W.drawerCount(c); d++) {
+      const box = W.drawerBox(c, d, drawerPull(c, d));
+      consider(boxHit(ray, ...box), {kind: 'drawer', c, d, box});
+      if (!drawerOpen(c, d)) continue;
+      for (let i = 0; i < W.DRAWER_SLOTS; i++) {
+        const slot = W.drawerSlot(d, i);
+        const g = slotGeo(c, slot);
+        const rear = g.faceX - g.facing * 0.82;
+        consider(boxHit(ray, [Math.min(g.faceX, rear), g.y0, g.z0], [Math.max(g.faceX, rear), g.y1, g.z1]),
+          {kind: 'slot', slot, g, book: c.subject.books.find(b => b.slot === slot && !S.hidden.has(b.id)) || null});
+      }
+    }
+    return best;
+  }
+
   const door = {leaves: [], open: 0, target: 0, colliders: []};
   function buildDoor() {
     for (const leaf of door.leaves) { scene.remove(leaf); leaf.geometry.dispose(); }
@@ -2305,6 +2431,14 @@
         }
         const free = firstFree(c);
         add(gui.t('emptySlot'), () => openSlot(free, W.slotGeometry(c, free), null));
+        for (let d = 0; d < W.drawerCount(c); d++) {
+          const open = drawerState(c, d).target === 1;
+          add(`${gui.t(open ? 'closeDrawer' : 'openDrawer')} ${d + 1}`, () => toggleDrawer(c, d));
+          if (!open) continue;
+          for (const book of c.subject.books) {
+            if (W.isDrawerSlot(book.slot) && W.drawerOf(book.slot) === d) add(book.title, () => openSlot(book.slot, slotGeo(c, book.slot), book));
+          }
+        }
       }
     }
     nav.replaceChildren(...buttons);
@@ -2478,6 +2612,7 @@
     stepClock();
     stepWalk(dt);
     stepDoor(dt);
+    stepDrawers(dt);
     stepCamera(dt, time);
     stepTweens(dt);
     stepHand(dt, time);
