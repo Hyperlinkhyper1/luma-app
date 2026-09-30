@@ -1598,7 +1598,7 @@ class LNl extends L {
 
   @override
   String audioToolsSystemBody(String mic) {
-    return 'luma kan de EQ op $mic zelf zetten, zodat Discord, OBS en games hem horen zonder extra software. Windows vraagt één keer om beheerdersrechten en het geluid valt een seconde weg tijdens het omschakelen.';
+    return 'luma kan de EQ op $mic zelf zetten, zodat Discord, OBS en games hem horen zonder extra software. Windows vraagt één keer om beheerdersrechten. Het geluid valt een paar seconden weg terwijl luma omschakelt en controleert of de microfoon nog werkt, en zo niet, dan zet luma alles meteen terug.';
   }
 
   @override
@@ -1649,6 +1649,14 @@ class LNl extends L {
   @override
   String get audioToolsSystemNoDevice =>
       'Die microfoon is nu niet aangesloten.';
+
+  @override
+  String get audioToolsSystemIncompatible =>
+      'Windows wil de EQ van luma niet op deze microfoon draaien, dus luma heeft alles precies teruggezet. De microfoon werkt gewoon. Je kunt de EQ binnen luma blijven gebruiken.';
+
+  @override
+  String get audioToolsSystemMicSilent =>
+      'luma kon niet opnemen van deze microfoon om hem te testen, dus er is niets veranderd. Sluit apps die hem misschien voor zichzelf houden en controleer of Windows apps de microfoon laat gebruiken.';
 
   @override
   String get audioToolsSystemMissing =>

@@ -356,8 +356,27 @@ void TestComObject(const wchar_t* config_path) {
   rt->APOProcess(1, &ppin, 1, &ppout);
   Check(cout.u32BufferFlags == BUFFER_SILENT, "passes silence through as silence");
 
+  std::wstring alive(config_path);
+  alive = alive.substr(0, alive.find_last_of(L'\\') + 1) + L"alive.bin";
+  Sleep(400);
+  {
+    uint64_t counted = 0;
+    HANDLE f = CreateFileW(alive.c_str(), GENERIC_READ,
+                           FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                           nullptr, OPEN_EXISTING, 0, nullptr);
+    DWORD read = 0;
+    const bool ok = f != INVALID_HANDLE_VALUE &&
+                    ReadFile(f, &counted, sizeof counted, &read, nullptr) &&
+                    read == sizeof counted;
+    if (f != INVALID_HANDLE_VALUE) CloseHandle(f);
+    std::printf("      heartbeat: %llu frames\n", counted);
+    Check(ok && counted >= 4 * 100 * frames,
+          "writes alive.bin with the frames it processed");
+  }
+
   Check(SUCCEEDED(cfg->UnlockForProcess()), "UnlockForProcess");
   Check(cfg->UnlockForProcess() == APOERR_ALREADY_UNLOCKED, "second unlock is refused");
+  DeleteFileW(alive.c_str());
 
   sfx->Release();
   cfg->Release();

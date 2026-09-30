@@ -1597,7 +1597,7 @@ class LEs extends L {
 
   @override
   String audioToolsSystemBody(String mic) {
-    return 'luma can put the EQ on $mic itself, so Discord, OBS and games hear it with no extra software. Windows asks for admin permission once, and sound drops out for a second while it switches over.';
+    return 'luma can put the EQ on $mic itself, so Discord, OBS and games hear it with no extra software. Windows asks for admin permission once. Sound drops out for a few seconds while luma switches over and checks the mic still works, and if it doesn\'t, luma puts it straight back.';
   }
 
   @override
@@ -1648,6 +1648,14 @@ class LEs extends L {
   @override
   String get audioToolsSystemNoDevice =>
       'That microphone isn\'t connected right now.';
+
+  @override
+  String get audioToolsSystemIncompatible =>
+      'Windows won\'t run luma\'s EQ on this mic, so luma put it back exactly as it was. It still works normally. You can keep using the EQ inside luma.';
+
+  @override
+  String get audioToolsSystemMicSilent =>
+      'luma couldn\'t record from this mic to test it, so nothing changed. Close apps that might have it to themselves and check Windows lets apps use the microphone.';
 
   @override
   String get audioToolsSystemMissing =>

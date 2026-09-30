@@ -710,6 +710,8 @@ class _SystemEqCard extends StatelessWidget {
               SystemEqResult.restartNeeded => t.audioToolsSystemRestart,
               SystemEqResult.cancelled => t.audioToolsSystemCancelled,
               SystemEqResult.noDevice => t.audioToolsSystemNoDevice,
+              SystemEqResult.incompatible => t.audioToolsSystemIncompatible,
+              SystemEqResult.micNotRecording => t.audioToolsSystemMicSilent,
               SystemEqResult.missing => t.audioToolsSystemMissing,
               SystemEqResult.failed ||
               SystemEqResult.ok => t.audioToolsSystemFailed,

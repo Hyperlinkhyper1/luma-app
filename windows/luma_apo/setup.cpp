@@ -2,6 +2,7 @@
 // microphone. The only luma code that runs elevated.
 //
 //   luma_apo_setup.exe status               JSON on stdout, never elevates
+//   luma_apo_setup.exe check <deviceId>     record 1.5 s, JSON on stdout
 //   luma_apo_setup.exe install <deviceId>   UAC prompt, then attach to that mic
 //   luma_apo_setup.exe uninstall <deviceId> UAC prompt, then restore that mic
 //   luma_apo_setup.exe uninstall-all        restore every mic, remove the APO
@@ -12,17 +13,29 @@
 // Install copies the DLL out of the per-user app folder into Program Files,
 // because audiodg must never load code an unelevated user can overwrite.
 // Every endpoint value it changes is backed up first under HKLM\SOFTWARE\
-// luma\AudioApo and put back exactly on uninstall. The endpoint keys belong
+// luma\AudioApo and put back exactly on uninstall.
+//
+// Windows gives no error when a mic refuses a third-party effect: the mic
+// just goes silent, or the effect is quietly skipped. So install never
+// trusts the registry write. It records from the mic before touching
+// anything, then after each attempt checks the mic still delivers sound and
+// that the APO's alive.bin counter moved. A slot that fails is restored on
+// the spot and the next is tried; if none works the mic is left exactly as
+// it was and the exit code says so. The endpoint keys belong
 // to the audio services and only grant Administrators SetValue, so writes
 // there go through SeRestorePrivilege (REG_OPTION_BACKUP_RESTORE).
 
 #include <windows.h>
 
 #include <aclapi.h>
+#include <audioclient.h>
+#include <mmdeviceapi.h>
 #include <sddl.h>
 #include <shellapi.h>
 #include <shlobj.h>
 
+#include <cstdint>
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -38,6 +51,8 @@ enum ExitCode : int {
   kFilesMissing = 4,
   kRestartNeeded = 5,
   kNoSuchDevice = 6,
+  kIncompatible = 7,
+  kMicNotRecording = 8,
 };
 
 constexpr wchar_t kCaptureRoot[] =
@@ -48,19 +63,43 @@ constexpr wchar_t kApoRoot[] =
     L"SOFTWARE\\Classes\\AudioEngine\\AudioProcessingObjects";
 constexpr wchar_t kClsidRoot[] = L"SOFTWARE\\Classes\\CLSID";
 
-// PKEY_FX_Association, PKEY_CompositeFX_EndpointEffectClsid,
-// PKEY_EFX_ProcessingModes_Supported_For_Streaming and
+// PKEY_FX_Association, the CompositeFX and legacy stream/mode/endpoint
+// effect CLSIDs, the matching *_ProcessingModes_Supported_For_Streaming and
 // PKEY_AudioEndpoint_Disable_SysFx, as FxProperties value names.
 constexpr wchar_t kAssociation[] = L"{d04e05a6-594b-4fb6-a80d-01af5eed7d1d},0";
+constexpr wchar_t kLegacySfx[] = L"{d04e05a6-594b-4fb6-a80d-01af5eed7d1d},5";
+constexpr wchar_t kLegacyMfx[] = L"{d04e05a6-594b-4fb6-a80d-01af5eed7d1d},6";
 constexpr wchar_t kLegacyEfx[] = L"{d04e05a6-594b-4fb6-a80d-01af5eed7d1d},7";
+constexpr wchar_t kCompositeSfx[] = L"{d04e05a6-594b-4fb6-a80d-01af5eed7d1d},13";
+constexpr wchar_t kCompositeMfx[] = L"{d04e05a6-594b-4fb6-a80d-01af5eed7d1d},14";
 constexpr wchar_t kCompositeEfx[] = L"{d04e05a6-594b-4fb6-a80d-01af5eed7d1d},15";
+constexpr wchar_t kSfxModes[] = L"{d3993a3f-99c2-4402-b5ec-a92a0367664b},5";
+constexpr wchar_t kMfxModes[] = L"{d3993a3f-99c2-4402-b5ec-a92a0367664b},6";
 constexpr wchar_t kEfxModes[] = L"{d3993a3f-99c2-4402-b5ec-a92a0367664b},7";
 constexpr wchar_t kDisableSysFx[] = L"{1da5d803-d492-4edd-8c23-e0c0ffee7f0e},5";
-constexpr const wchar_t* kTouched[] = {kAssociation, kCompositeEfx, kEfxModes,
-                                       kDisableSysFx};
+constexpr const wchar_t* kTouched[] = {
+    kAssociation, kCompositeSfx, kCompositeMfx, kCompositeEfx,
+    kSfxModes,    kMfxModes,     kEfxModes,     kDisableSysFx};
+
+// Where in the mic's effect chain luma can sit, in the order tried. The
+// endpoint slot runs once for every app; the stream and mode slots are the
+// fallbacks for mics whose endpoint slot Windows won't combine with luma.
+struct Slot {
+  const wchar_t* name;
+  const wchar_t* composite;
+  const wchar_t* legacy;
+  const wchar_t* modes;
+};
+constexpr Slot kSlots[] = {
+    {L"endpoint", kCompositeEfx, kLegacyEfx, kEfxModes},
+    {L"stream", kCompositeSfx, kLegacySfx, kSfxModes},
+    {L"mode", kCompositeMfx, kLegacyMfx, kMfxModes},
+};
 
 constexpr wchar_t kAnyNodeType[] = L"{00000000-0000-0000-0000-000000000000}";
 constexpr wchar_t kDefaultMode[] = L"{C18E2F7E-933D-4965-B7D1-1EEF228D2AF3}";
+constexpr wchar_t kCommunicationsMode[] =
+    L"{98951333-B9CD-48B1-A0A3-FF40682D73F7}";
 
 constexpr wchar_t kAbsentValue[] = L"__absent";
 constexpr wchar_t kDeviceIdValue[] = L"__deviceId";
@@ -439,10 +478,133 @@ std::wstring InstalledDllPath() {
 }
 
 // ---------------------------------------------------------------------------
+// Checking the mic still works.
+
+std::wstring HeartbeatPath() { return ConfigDirectory() + L"\\alive.bin"; }
+
+uint64_t HeartbeatFrames() {
+  std::vector<BYTE> data;
+  uint64_t frames = 0;
+  if (ReadFileBytes(HeartbeatPath(), &data) && data.size() == sizeof frames) {
+    std::memcpy(&frames, data.data(), sizeof frames);
+  }
+  return frames;
+}
+
+struct Recording {
+  bool opened = false;
+  uint64_t frames = 0;
+  uint32_t rate = 0;
+  // Any sample that wasn't exactly zero. A real mic always has some noise
+  // floor, so a stream of pure digital silence means the path is broken.
+  bool sound = false;
+
+  // At least a quarter of the time's worth of frames: a stalled graph
+  // delivers nothing, a live one delivers all of it.
+  bool flowing() const {
+    return rate != 0 && frames >= uint64_t(rate) * kRecordMs / 1000 / 4;
+  }
+
+  static constexpr DWORD kRecordMs = 1500;
+};
+
+template <typename T>
+void SafeRelease(T*& p) {
+  if (p) p->Release();
+  p = nullptr;
+}
+
+// Records from the mic the way any app would, in shared mode at its own mix
+// format.
+Recording Record(const std::wstring& device_id) {
+  Recording r;
+  IMMDeviceEnumerator* enumerator = nullptr;
+  IMMDevice* device = nullptr;
+  IAudioClient* client = nullptr;
+  IAudioCaptureClient* capture = nullptr;
+  WAVEFORMATEX* format = nullptr;
+  r.opened =
+      SUCCEEDED(CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr,
+                                 CLSCTX_ALL, IID_PPV_ARGS(&enumerator))) &&
+      SUCCEEDED(enumerator->GetDevice(device_id.c_str(), &device)) &&
+      SUCCEEDED(device->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr,
+                                 reinterpret_cast<void**>(&client))) &&
+      SUCCEEDED(client->GetMixFormat(&format)) &&
+      SUCCEEDED(client->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, 2000000, 0,
+                                   format, nullptr)) &&
+      SUCCEEDED(client->GetService(IID_PPV_ARGS(&capture))) &&
+      SUCCEEDED(client->Start());
+  if (r.opened) {
+    r.rate = format->nSamplesPerSec;
+    const size_t frame_bytes = format->nBlockAlign;
+    const ULONGLONG end = GetTickCount64() + Recording::kRecordMs;
+    bool failed = false;
+    while (!failed && GetTickCount64() < end) {
+      Sleep(10);
+      for (;;) {
+        UINT32 packet = 0;
+        if (FAILED(capture->GetNextPacketSize(&packet))) {
+          failed = true;
+          break;
+        }
+        if (packet == 0) break;
+        BYTE* data = nullptr;
+        UINT32 frames = 0;
+        DWORD flags = 0;
+        if (FAILED(capture->GetBuffer(&data, &frames, &flags, nullptr,
+                                      nullptr))) {
+          failed = true;
+          break;
+        }
+        r.frames += frames;
+        if (!r.sound && !(flags & AUDCLNT_BUFFERFLAGS_SILENT) && data) {
+          const size_t bytes = size_t(frames) * frame_bytes;
+          for (size_t i = 0; i < bytes && !r.sound; i++) r.sound = data[i] != 0;
+        }
+        capture->ReleaseBuffer(frames);
+      }
+    }
+    client->Stop();
+  }
+  SafeRelease(capture);
+  SafeRelease(client);
+  SafeRelease(device);
+  SafeRelease(enumerator);
+  CoTaskMemFree(format);
+  return r;
+}
+
+// Right after the audio service starts, the endpoint can take a few seconds
+// to come back; keep trying until it opens.
+Recording RecordWhenReady(const std::wstring& device_id) {
+  Recording r;
+  for (int attempt = 0; attempt < 12; attempt++) {
+    r = Record(device_id);
+    if (r.opened && r.flowing()) return r;
+    Sleep(500);
+  }
+  return r;
+}
+
+// The mic records like it did before, and it did so through luma's APO.
+bool StillWorks(const std::wstring& device_id, const Recording& before) {
+  const Recording after = RecordWhenReady(device_id);
+  if (!after.opened || !after.flowing()) return false;
+  if (before.sound && !after.sound) return false;
+  // The APO writes its counter every ~300 ms; give it a moment to land.
+  for (int i = 0; i < 10; i++) {
+    if (HeartbeatFrames() > 0) return true;
+    Sleep(100);
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------------------
 // Install.
 
 // Protected DACL: SYSTEM and Administrators full, Users modify (luma writes
-// the curve unelevated), LOCAL SERVICE read (audiodg runs as it).
+// the curve unelevated), LOCAL SERVICE modify (audiodg runs as it and
+// writes alive.bin).
 bool PrepareConfigDirectory() {
   const std::wstring luma = KnownFolder(FOLDERID_ProgramData) + L"\\luma";
   const std::wstring dir = ConfigDirectory();
@@ -451,7 +613,7 @@ bool PrepareConfigDirectory() {
   PSECURITY_DESCRIPTOR sd = nullptr;
   if (!ConvertStringSecurityDescriptorToSecurityDescriptorW(
           L"D:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;0x1301bf;;;BU)"
-          L"(A;OICI;FRFX;;;LS)",
+          L"(A;OICI;0x1301bf;;;LS)",
           SDDL_REVISION_1, &sd, nullptr)) {
     return false;
   }
@@ -540,7 +702,8 @@ bool BackUpEndpoint(HKEY fx, const std::wstring& guid,
          WriteString(backup.get(), kDeviceIdValue, device_id);
 }
 
-bool AttachToEndpoint(const std::wstring& guid, const std::wstring& device_id) {
+bool AttachToEndpoint(const std::wstring& guid, const std::wstring& device_id,
+                      const Slot& slot) {
   const std::wstring endpoint = kCaptureRoot + guid;
   if (!KeyExists(endpoint)) return false;
   Key fx = OpenPrivileged(endpoint + L"\\FxProperties", true);
@@ -553,9 +716,9 @@ bool AttachToEndpoint(const std::wstring& guid, const std::wstring& device_id) {
   // cancellation...) and add luma last, so the EQ shapes the cleaned voice.
   std::vector<std::wstring> chain;
   RawValue v;
-  if (ReadRaw(fx.get(), kCompositeEfx, &v)) {
+  if (ReadRaw(fx.get(), slot.composite, &v)) {
     chain = ParseMultiString(v);
-  } else if (ReadRaw(fx.get(), kLegacyEfx, &v)) {
+  } else if (ReadRaw(fx.get(), slot.legacy, &v)) {
     chain = ParseMultiString(v);
   }
   std::vector<std::wstring> next;
@@ -563,7 +726,7 @@ bool AttachToEndpoint(const std::wstring& guid, const std::wstring& device_id) {
     if (IsGuid(id) && !SameGuid(id, ours)) next.push_back(id);
   }
   next.push_back(ours);
-  if (!WriteMultiString(fx.get(), kCompositeEfx, next)) return false;
+  if (!WriteMultiString(fx.get(), slot.composite, next)) return false;
 
   RawValue association;
   if (!ReadRaw(fx.get(), kAssociation, &association) &&
@@ -571,14 +734,23 @@ bool AttachToEndpoint(const std::wstring& guid, const std::wstring& device_id) {
     return false;
   }
 
+  // Discord records in the communications category, which Windows runs in
+  // its own processing mode. When luma creates the list it claims both, so
+  // the call hears the EQ too; an existing list is only extended with the
+  // default mode, to leave the driver's own effects as they were.
   std::vector<std::wstring> modes;
   RawValue m;
-  if (ReadRaw(fx.get(), kEfxModes, &m)) modes = ParseMultiString(m);
-  bool has_default = false;
-  for (const auto& mode : modes) has_default |= SameGuid(mode, kDefaultMode);
-  if (!has_default) {
-    modes.push_back(kDefaultMode);
-    if (!WriteMultiString(fx.get(), kEfxModes, modes)) return false;
+  if (ReadRaw(fx.get(), slot.modes, &m)) {
+    modes = ParseMultiString(m);
+    bool has_default = false;
+    for (const auto& mode : modes) has_default |= SameGuid(mode, kDefaultMode);
+    if (!has_default) {
+      modes.push_back(kDefaultMode);
+      if (!WriteMultiString(fx.get(), slot.modes, modes)) return false;
+    }
+  } else if (!WriteMultiString(fx.get(), slot.modes,
+                               {kDefaultMode, kCommunicationsMode})) {
+    return false;
   }
 
   RawValue disabled;
@@ -614,16 +786,17 @@ bool DetachFromEndpoint(const std::wstring& guid) {
       }
     }
   } else if (fx) {
-    RawValue v;
-    if (ReadRaw(fx.get(), kCompositeEfx, &v)) {
+    for (const Slot& slot : kSlots) {
+      RawValue v;
+      if (!ReadRaw(fx.get(), slot.composite, &v)) continue;
       std::vector<std::wstring> kept;
       for (const auto& id : ParseMultiString(v)) {
         if (!SameGuid(id, luma_apo::kVoiceEqClsidString)) kept.push_back(id);
       }
       if (kept.empty()) {
-        RegDeleteValueW(fx.get(), kCompositeEfx);
+        RegDeleteValueW(fx.get(), slot.composite);
       } else {
-        WriteMultiString(fx.get(), kCompositeEfx, kept);
+        WriteMultiString(fx.get(), slot.composite, kept);
       }
     }
   }
@@ -680,6 +853,17 @@ int Status() {
   return kOk;
 }
 
+// The same recording install relies on, for diagnosing a mic by hand.
+int Check(const std::wstring& device_id) {
+  const Recording r = Record(device_id);
+  Print(L"{\"opened\":" + std::wstring(r.opened ? L"true" : L"false") +
+        L",\"flowing\":" + (r.flowing() ? L"true" : L"false") +
+        L",\"sound\":" + (r.sound ? L"true" : L"false") +
+        L",\"frames\":" + std::to_wstring(r.frames) +
+        L",\"rate\":" + std::to_wstring(r.rate) + L"}");
+  return kOk;
+}
+
 int Install(const std::wstring& device_id) {
   std::wstring guid;
   if (!EndpointGuid(device_id, &guid)) return kUsage;
@@ -689,25 +873,53 @@ int Install(const std::wstring& device_id) {
   }
   if (!KeyExists(kCaptureRoot + guid)) return kNoSuchDevice;
 
+  // Without a working mic to compare against, a silent result afterwards
+  // would prove nothing, so don't touch it at all.
+  const Recording before = RecordWhenReady(device_id);
+  if (!before.opened || !before.flowing()) {
+    Log(L"install skipped for " + guid + L": the mic isn't recording");
+    return kMicNotRecording;
+  }
+
+  // An audio service that won't restart means the change can't be tested,
+  // and an untested change is how a mic ends up silent.
   AudioService audio;
-  audio.Stop();
+  if (!audio.Stop()) {
+    audio.Start();
+    Log(L"install skipped for " + guid + L": audio service would not stop");
+    return kFailed;
+  }
   std::wstring dll_path;
   bool ok = PrepareConfigDirectory() && CopyDll(&dll_path);
   if (ok) {
     Key root = OpenPrivileged(kLumaRoot, true);
     ok = root && WriteString(root.get(), L"DllPath", dll_path) &&
-         RegisterApo(dll_path) && AttachToEndpoint(guid, device_id);
+         RegisterApo(dll_path);
   }
-  if (!ok) {
-    Log(L"install failed for " + guid + L", rolling back");
+
+  bool working = false;
+  for (const Slot& slot : kSlots) {
+    if (!ok) break;
+    DeleteFileW(HeartbeatPath().c_str());
+    ok = AttachToEndpoint(guid, device_id, slot);
+    const bool started = audio.Start();
+    if (ok && started && StillWorks(device_id, before)) {
+      Log(L"installed on " + guid + L" (" + slot.name + L" slot)");
+      working = true;
+      break;
+    }
+    Log(L"the " + std::wstring(slot.name) + L" slot didn't work on " + guid +
+        L", restoring it");
+    ok = ok && started && audio.Stop();
+    DetachFromEndpoint(guid);
+  }
+  if (!working) {
     DetachFromEndpoint(guid);
     RemoveApoIfUnused();
-  } else {
-    Log(L"installed on " + guid);
+    audio.Start();
+    return ok ? kIncompatible : kFailed;
   }
-  const bool restarted = audio.Start();
-  if (!ok) return kFailed;
-  return restarted && audio.stopped() ? kOk : kRestartNeeded;
+  return kOk;
 }
 
 int Uninstall(const std::wstring* device_id) {
@@ -736,6 +948,7 @@ int Run(const std::vector<std::wstring>& args) {
   if (args.size() < 2) return kUsage;
   const std::wstring& command = args[1];
   if (command == L"status") return Status();
+  if (command == L"check") return args.size() == 3 ? Check(args[2]) : kUsage;
 
   const bool needs_device = command == L"install" || command == L"uninstall";
   if (needs_device ? args.size() != 3

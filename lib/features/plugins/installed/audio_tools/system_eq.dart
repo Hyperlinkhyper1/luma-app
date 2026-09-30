@@ -47,7 +47,9 @@ enum SystemEqResult {
   cancelled,
   failed,
   missing,
-  noDevice;
+  noDevice,
+  incompatible,
+  micNotRecording;
 
   static SystemEqResult fromExitCode(int code) => switch (code) {
     0 => ok,
@@ -55,6 +57,8 @@ enum SystemEqResult {
     4 => missing,
     5 => restartNeeded,
     6 => noDevice,
+    7 => incompatible,
+    8 => micNotRecording,
     _ => failed,
   };
 

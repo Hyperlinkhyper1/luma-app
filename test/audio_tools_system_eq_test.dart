@@ -131,6 +131,8 @@ void main() {
     expect(SystemEqResult.fromExitCode(3), SystemEqResult.cancelled);
     expect(SystemEqResult.fromExitCode(5), SystemEqResult.restartNeeded);
     expect(SystemEqResult.fromExitCode(6), SystemEqResult.noDevice);
+    expect(SystemEqResult.fromExitCode(7), SystemEqResult.incompatible);
+    expect(SystemEqResult.fromExitCode(8), SystemEqResult.micNotRecording);
     expect(SystemEqResult.fromExitCode(-1), SystemEqResult.failed);
     final s = SystemEqStatus.fromJson({
       'installed': true,

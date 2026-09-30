@@ -2986,7 +2986,7 @@ abstract class L {
   /// No description provided for @audioToolsSystemBody.
   ///
   /// In en, this message translates to:
-  /// **'luma can put the EQ on {mic} itself, so Discord, OBS and games hear it with no extra software. Windows asks for admin permission once, and sound drops out for a second while it switches over.'**
+  /// **'luma can put the EQ on {mic} itself, so Discord, OBS and games hear it with no extra software. Windows asks for admin permission once. Sound drops out for a few seconds while luma switches over and checks the mic still works, and if it doesn\'t, luma puts it straight back.'**
   String audioToolsSystemBody(String mic);
 
   /// No description provided for @audioToolsSystemEnable.
@@ -3066,6 +3066,18 @@ abstract class L {
   /// In en, this message translates to:
   /// **'That microphone isn\'t connected right now.'**
   String get audioToolsSystemNoDevice;
+
+  /// No description provided for @audioToolsSystemIncompatible.
+  ///
+  /// In en, this message translates to:
+  /// **'Windows won\'t run luma\'s EQ on this mic, so luma put it back exactly as it was. It still works normally. You can keep using the EQ inside luma.'**
+  String get audioToolsSystemIncompatible;
+
+  /// No description provided for @audioToolsSystemMicSilent.
+  ///
+  /// In en, this message translates to:
+  /// **'luma couldn\'t record from this mic to test it, so nothing changed. Close apps that might have it to themselves and check Windows lets apps use the microphone.'**
+  String get audioToolsSystemMicSilent;
 
   /// No description provided for @audioToolsSystemMissing.
   ///

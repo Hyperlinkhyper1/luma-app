@@ -7,6 +7,10 @@
 // eq.bin under %ProgramData%\luma\apo, written by the unelevated app and
 // hot-reloaded here by a watcher thread; the real-time thread only ever
 // picks up a finished snapshot through a sequence lock.
+//
+// The same watcher also writes alive.bin next to eq.bin: a count of frames
+// processed, which is how the installer proves Windows really runs the EQ
+// on the mic before it leaves it attached.
 
 #include <windows.h>
 
@@ -14,7 +18,9 @@
 #include <shlobj.h>
 
 #include <atomic>
+#include <cstdint>
 #include <cstring>
+#include <cwchar>
 #include <new>
 
 #include "apo_ids.h"
@@ -32,6 +38,10 @@ namespace {
 
 std::atomic<long> g_objects{0};
 std::atomic<long> g_locks{0};
+
+// Frames every instance in this audiodg has processed; only ever bumped on
+// the real-time thread and read by the watcher.
+std::atomic<uint64_t> g_frames{0};
 
 // {00000003-0000-0010-8000-00aa00389b71}
 constexpr GUID kSubtypeIeeeFloat = {
@@ -69,6 +79,8 @@ class SharedConfig {
     AcquireSRWLockExclusive(&lock_);
     if (users_++ == 0) {
       if (!ConfigPath(path_, MAX_PATH)) path_[0] = 0;
+      HeartbeatPath(path_, alive_path_, MAX_PATH);
+      written_frames_ = ~0ull;
       has_stamp_ = false;
       Poll();
       stop_ = CreateEventW(nullptr, TRUE, FALSE, nullptr);
@@ -109,10 +121,42 @@ class SharedConfig {
  private:
   static DWORD WINAPI Watch(LPVOID param) {
     auto* self = static_cast<SharedConfig*>(param);
-    while (WaitForSingleObject(self->stop_, 100) == WAIT_TIMEOUT) {
+    for (unsigned tick = 0;
+         WaitForSingleObject(self->stop_, 100) == WAIT_TIMEOUT; tick++) {
       self->Poll();
+      if (tick % 3 == 0) self->Beat();
     }
+    self->Beat();
     return 0;
+  }
+
+  static void HeartbeatPath(const wchar_t* config, wchar_t* out,
+                            size_t capacity) {
+    out[0] = 0;
+    const wchar_t* slash = wcsrchr(config, L'\\');
+    if (slash == nullptr) return;
+    const size_t dir = size_t(slash - config) + 1;
+    if (dir + 10 > capacity) return;
+    wcsncpy_s(out, capacity, config, dir);
+    wcscat_s(out, capacity, L"alive.bin");
+  }
+
+  // Off the real-time thread, and only when the count moved, so an idle mic
+  // costs no disk writes.
+  void Beat() {
+    if (alive_path_[0] == 0) return;
+    const uint64_t frames = g_frames.load(std::memory_order_relaxed);
+    if (frames == written_frames_) return;
+    HANDLE file = CreateFileW(alive_path_, GENERIC_WRITE,
+                              FILE_SHARE_READ | FILE_SHARE_DELETE, nullptr,
+                              CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (file == INVALID_HANDLE_VALUE) return;
+    DWORD written = 0;
+    if (WriteFile(file, &frames, sizeof frames, &written, nullptr) &&
+        written == sizeof frames) {
+      written_frames_ = frames;
+    }
+    CloseHandle(file);
   }
 
   void Poll() {
@@ -160,6 +204,8 @@ class SharedConfig {
   HANDLE thread_ = nullptr;
   HANDLE stop_ = nullptr;
   wchar_t path_[MAX_PATH] = {};
+  wchar_t alive_path_[MAX_PATH] = {};
+  uint64_t written_frames_ = ~0ull;
   bool has_stamp_ = false;
   FILETIME stamp_ = {};
   DWORD stamp_size_ = 0;
@@ -352,6 +398,7 @@ class VoiceEq final : public IAudioProcessingObject,
     if (src == nullptr || dst == nullptr) return;
 
     const UINT32 frames = src->u32ValidFrameCount;
+    g_frames.fetch_add(frames, std::memory_order_relaxed);
     auto* input = reinterpret_cast<float*>(src->pBuffer);
     auto* output = reinterpret_cast<float*>(dst->pBuffer);
     const size_t bytes = size_t(frames) * channels_ * sizeof(float);
