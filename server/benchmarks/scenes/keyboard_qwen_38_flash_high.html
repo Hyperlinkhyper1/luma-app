@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ORBIS 65 — Exploded Assembly</title>
+<style>
+/* ============================== tokens ============================== */
+:root{
+  --bg0:#070c14; --bg1:#0e1725; --bg2:#152336;
+  --ink:#e9eff7; --ink2:#a5b6c9; --ink3:#6b7f97;
+  --line:rgba(150,185,220,.14);
+  --cop:#dd8b45; --cop2:#f4b877; --steel:#8fb0cd; --ok:#63d3a8;
+  --mono:ui-monospace,"SFMono-Regular","Cascadia Mono","Roboto Mono",Menlo,Consolas,monospace;
+  --disp:"Futura","Century Gothic","Avenir Next","Trebuchet MS","Optima",ui-sans-serif,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  min-height:100vh;color:var(--ink);font-family:var(--mono);font-size:13px;
+  background:
+    radial-gradient(120% 95% at 88% -12%, rgba(221,139,69,.14) 0%, rgba(221,139,69,0) 55%),
+    radial-gradient(95% 75% at 4% 106%, rgba(78,140,190,.17) 0%, rgba(78,140,190,0) 60%),
+    linear-gradient(178deg,var(--bg2) 0%,var(--bg1) 36%,var(--bg0) 100%);
+  background-attachment:fixed;-webkit-font-smoothing:antialiased;overflow-x:hidden;
+}
+body::before{
+  content:"";position:fixed;inset:-2px;pointer-events:none;z-index:0;
+  background-image:
+    linear-gradient(to right,rgba(150,190,230,.055) 1px,transparent 1px),
+    linear-gradient(to bottom,rgba(150,190,230,.055) 1px,transparent 1px),
+    linear-gradient(to right,rgba(150,190,230,.026) 1px,transparent 1px),
+    linear-gradient(to bottom,rgba(150,190,230,.026) 1px,transparent 1px);
+  background-size:120px 120px,120px 120px,24px 24px,24px 24px;
+  -webkit-mask-image:radial-gradient(115% 92% at 50% 36%,#000 22%,transparent 88%);
+  mask-image:radial-gradient(115% 92% at 50% 36%,#000 22%,transparent 88%);
+}
+body::after{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
+  background:radial-gradient(125% 112% at 50% 44%,rgba(0,0,0,0) 44%,rgba(0,0,0,.55) 100%);
+}
+.dust{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.dust i{position:absolute;left:var(--x);top:var(--y);width:var(--s);height:var(--s);border-radius:50%;
+  background:rgba(214,232,255,.55);opacity:0;animation:drift var(--t) linear var(--dl) infinite}
+@keyframes drift{0%{opacity:0;transform:translate3d(0,24px,0) scale(.6)}14%{opacity:.5}70%{opacity:.26}
+  100%{opacity:0;transform:translate3d(40px,-200px,0) scale(1.1)}}
+
+/* ============================== shell ============================== */
+.app{position:relative;z-index:2;max-width:1540px;margin:0 auto;padding:16px clamp(11px,2.1vw,30px) 24px}
+.ruler{height:13px;margin-bottom:12px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  background-image:repeating-linear-gradient(90deg,rgba(150,190,230,.30) 0 1px,transparent 1px 14px),
+  repeating-linear-gradient(90deg,rgba(221,139,69,.55) 0 1px,transparent 1px 70px);
+  background-size:100% 4px,100% 9px;background-repeat:repeat-x;opacity:.55}
+header.bar{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between;margin-bottom:14px}
+.brand{display:flex;gap:14px;align-items:flex-end;min-width:0}
+.mark{width:46px;height:46px;flex:none;border:1px solid var(--line);border-radius:7px;position:relative;overflow:hidden;
+  background:linear-gradient(150deg,#1b2c40,#0b1420)}
+.mark svg{position:absolute;inset:0;width:100%;height:100%}
+.mark::after{content:"";position:absolute;inset:auto 0 -55% 0;height:110%;opacity:.55;
+  background:radial-gradient(50% 60% at 50% 100%,var(--cop),transparent 70%)}
+.eyebrow{font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--ink3);margin-bottom:7px}
+h1{font-family:var(--disp);margin:0;line-height:.84;letter-spacing:.012em;font-size:clamp(27px,3.7vw,46px);font-weight:700}
+h1 em{font-style:normal;color:var(--cop)}
+.sub{font-size:11.5px;color:var(--ink2);margin-top:7px;letter-spacing:.035em}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:9px 13px;cursor:pointer;font-family:var(--mono);
+  font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink);background:linear-gradient(180deg,#18283c,#101b29);
+  border:1px solid var(--line);border-radius:5px;transition:transform .16s cubic-bezier(.2,.9,.3,1),box-shadow .2s,border-color .2s,background .2s}
+.btn svg{width:14px;height:14px;flex:none}
+.btn:hover{transform:translateY(-2px);border-color:rgba(221,139,69,.55);box-shadow:0 6px 18px -8px #000,0 0 0 3px rgba(221,139,69,.08)}
+.btn:active{transform:translateY(0) scale(.985)}
+.btn.prim{background:linear-gradient(180deg,var(--cop2),#c9762f);color:#22130a;border-color:#e79f57;font-weight:700}
+.btn.prim:hover{box-shadow:0 8px 26px -10px rgba(244,184,119,.7)}
+.btn[aria-pressed="true"]{border-color:rgba(99,211,168,.5);color:#bff3de}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 322px;gap:16px;align-items:start}
+@media (max-width:1080px){.grid{grid-template-columns:minmax(0,1fr)}}
+.card{background:linear-gradient(178deg,rgba(19,31,46,.95),rgba(8,14,23,.95));border:1px solid var(--line);border-radius:9px;position:relative}
+.card::before{content:"";position:absolute;left:0;right:0;top:0;height:1px;border-radius:9px 9px 0 0;
+  background:linear-gradient(90deg,transparent,rgba(221,139,69,.75),rgba(143,176,205,.35),transparent)}
+
+/* ============================== stage ============================== */
+.stagewrap{padding:13px 13px 0;overflow:hidden}
+.stagebar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:2px 3px 11px;
+  border-bottom:1px dashed rgba(150,190,230,.18)}
+.stat{display:flex;align-items:center;gap:9px;font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--ink2)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--cop);box-shadow:0 0 0 4px rgba(221,139,69,.14);animation:pulse 1.9s ease-in-out infinite}
+.dot.live{background:var(--ok);box-shadow:0 0 0 4px rgba(99,211,168,.15)}
+@keyframes pulse{50%{opacity:.3}}
+#scene{display:block;width:100%;height:auto;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+#world{transform-origin:390px 0px;transition:transform 1.3s cubic-bezier(.34,.68,.2,1);
+  transform:translate(110px,434px) scale(.5)}
+.lay{transition:transform 1.05s cubic-bezier(.22,.92,.24,1),opacity .5s ease}
+.lcase{transition:transform 1.15s cubic-bezier(.28,.86,.22,1),opacity .5s ease}
+.kin{transition:transform .42s cubic-bezier(.18,.92,.24,1),opacity .28s ease}
+.cap{transition:transform .085s cubic-bezier(.3,.8,.4,1);cursor:pointer}
+.cap.down{transform:translate(0,7.5px)}
+.cap.down .cpt,.cap.down .csheen,.cap.down .cwall{filter:brightness(.76)}
+.cap:hover .cpt{filter:brightness(1.2)}
+.cap:hover .csheen{filter:brightness(1.28)}
+.cap:hover .cwall{filter:brightness(1.12)}
+.guides{transition:opacity .6s ease}
+.lbl{transition:opacity .55s ease}
+text{font-family:var(--disp);dominant-baseline:middle}
+.klg{fill:var(--leg)}
+.klg2{fill:var(--leg2)}
+.hint{position:absolute;right:22px;top:62px;max-width:280px;padding:9px 12px;border-radius:6px;font-size:11px;line-height:1.5;
+  letter-spacing:.02em;color:#101a12;background:linear-gradient(180deg,var(--cop2),#d3813c);border-left:3px solid #4d2c12;
+  box-shadow:0 12px 30px -14px #000;transition:opacity .5s,transform .5s}
+.hint b{font-weight:700}
+.hint.gone{opacity:0;transform:translateY(-10px);pointer-events:none}
+@media (max-width:660px){.hint{position:static;max-width:none;margin-top:10px}}
+
+/* ============================== hud ============================== */
+.hud{display:flex;gap:1px;margin:8px -13px 0;background:rgba(150,190,230,.12);border-top:1px solid var(--line);
+  border-radius:0 0 9px 9px;overflow:hidden}
+.hud .c{flex:1 1 0;min-width:0;background:#0a1119;padding:9px 12px 11px}
+.hud .k{font-size:9px;letter-spacing:.19em;text-transform:uppercase;color:var(--ink3)}
+.hud .v{font-family:var(--disp);font-size:20px;font-weight:700;letter-spacing:.02em;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hud .v.big{font-size:25px;color:var(--cop2)}
+.hud .v.sm{font-size:12.5px;padding-top:7px;font-family:var(--mono);letter-spacing:.06em}
+.chips{display:flex;gap:4px;margin-top:6px;height:17px;overflow:hidden}
+.chips span{font-size:9.5px;padding:2px 5px;border-radius:3px;background:#16273a;color:var(--steel);
+  border:1px solid rgba(150,190,230,.18);animation:pop .3s cubic-bezier(.2,1.5,.4,1)}
+@keyframes pop{from{opacity:0;transform:translateY(7px) scale(.82)}}
+
+/* ============================== side ============================== */
+aside{display:flex;flex-direction:column;gap:15px}
+.sec{padding:14px}
+.sech{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:11px}
+.sect{font-family:var(--disp);font-size:13px;font-weight:700;letter-spacing:.19em;text-transform:uppercase}
+.secn{font-size:9px;letter-spacing:.16em;color:var(--ink3);text-transform:uppercase}
+.steps{list-style:none;margin:0;padding:0}
+.steps li{display:flex;gap:10px;align-items:flex-start;padding:7px 9px;border-radius:5px;position:relative;border:1px solid transparent;
+  opacity:.4;transition:background .35s,border-color .35s,transform .35s,opacity .35s}
+.steps li .no{font-family:var(--disp);font-size:11px;font-weight:700;color:var(--ink3);letter-spacing:.1em;min-width:15px;padding-top:1px}
+.steps li .nm{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700}
+.steps li .mt{font-size:9.5px;color:var(--ink3);letter-spacing:.03em;margin-top:2px}
+.steps li::after{content:"";position:absolute;left:9px;right:9px;bottom:0;height:1px;background:var(--cop);transform:scaleX(0);transform-origin:left;transition:transform .5s}
+.steps li.done{opacity:.78}
+.steps li.done::after{transform:scaleX(1);background:rgba(99,211,168,.55)}
+.steps li.on{opacity:1;background:rgba(221,139,69,.1);border-color:rgba(221,139,69,.32);transform:translateX(3px)}
+.steps li.on .no,.steps li.on .nm{color:var(--cop2)}
+.prog{height:3px;background:rgba(150,190,230,.12);border-radius:2px;overflow:hidden;margin:12px 0 1px}
+.prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--cop),var(--cop2));box-shadow:0 0 10px rgba(244,184,119,.65);transition:width .45s ease}
+.seg{display:flex;flex-wrap:wrap;gap:4px}
+.seg button{flex:1 1 auto;font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;padding:7px 6px;
+  border-radius:4px;cursor:pointer;color:var(--ink2);background:#0f1b28;border:1px solid var(--line);transition:all .18s}
+.seg button:hover{color:var(--ink);border-color:rgba(221,139,69,.45);transform:translateY(-1px)}
+.seg button[aria-pressed="true"]{background:linear-gradient(180deg,#2b3f58,#1b2b3e);color:#fff;border-color:rgba(143,176,205,.6)}
+.seg.cw button[aria-pressed="true"]{border-color:var(--cop);color:var(--cop2)}
+.row{display:flex;align-items:center;gap:10px;margin-top:11px}
+.row label{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink3);flex:none}
+input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:20px;background:transparent;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;
+  background:linear-gradient(90deg,#8ec5ff,#c6a2ff,#ffb0d8,#ff9d76,#ffe88a,#8ec5ff)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:#fff;border:2px solid #0d1522;margin-top:-5px;box-shadow:0 0 0 2px rgba(255,255,255,.3)}
+input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:linear-gradient(90deg,#8ec5ff,#c6a2ff,#ffb0d8,#ff9d76,#ffe88a,#8ec5ff)}
+input[type=range]::-moz-range-thumb{width:13px;height:13px;border:2px solid #0d1522;border-radius:50%;background:#fff}
+.specs{margin:0;display:grid;grid-template-columns:auto 1fr;gap:0 14px;font-size:10.5px}
+.specs dt{color:var(--ink3);letter-spacing:.12em;text-transform:uppercase;padding:5px 0;border-top:1px solid rgba(150,190,230,.1)}
+.specs dd{margin:0;padding:5px 0;text-align:right;letter-spacing:.02em;border-top:1px solid rgba(150,190,230,.1)}
+.specs dt:first-of-type,.specs dd:first-of-type{border-top:0}
+.legendbar{display:flex;flex-wrap:wrap;gap:5px 12px;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-top:12px}
+.legendbar b{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px;border:1px solid rgba(255,255,255,.22)}
+.note{margin:0;font-size:10.5px;line-height:1.75;color:var(--ink2)}
+footer{margin-top:18px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:9.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink3);border-top:1px solid var(--line);padding-top:11px}
+kbd{font-family:var(--mono);font-size:9px;background:#18283a;border:1px solid var(--line);border-bottom-width:2px;border-radius:3px;padding:1px 5px;color:var(--ink2)}
+@media (prefers-reduced-motion:reduce){
+  .dust i{animation:none;opacity:.18}
+  .dot{animation:none}
+  #world,.lay,.lcase,.kin,.cap,.prog i{transition-duration:.001s!important}
+}
+
+/* ============================== colourways ============================== */
+#scene{--capA:#39434f;--capAt:#48545f;--capM:#2a323c;--capMt:#353f4a;--capX:#c9762f;--capXt:#e0904a;
+  --leg:#eaf0f7;--leg2:rgba(234,240,247,.5);--plate:#c3ccd6;--plate2:#a6b1bd;--pcb:#1d5a49;--pcb2:#143f33;
+  --pad:#c9a24b;--foam:#79d6c6;--swb:#1a2b40;--swt:#d3dae1;--stem:#e08b3d;--caseO:#3d495a;--caseI:#1b232d}
+#scene[data-cw="panda"]{--capA:#14181d;--capAt:#1f252c;--capM:#eceff3;--capMt:#f8fafc;--capX:#cdd5dd;--capXt:#e3e9f0;
+  --leg:#0d1217;--leg2:rgba(13,18,23,.42);--plate:#d6dbe1;--plate2:#b4bcc5;--pcb:#17191c;--pcb2:#0e1012;
+  --foam:#e7eaf0;--swb:#20252b;--swt:#eaeef2;--stem:#44505c;--caseO:#e9ecf0;--caseI:#2a3037}
+#scene[data-cw="arctic"]{--capA:#b4cad2;--capAt:#c9dde3;--capM:#53656d;--capMt:#61747d;--capX:#2c9c8a;--capXt:#39b7a1;
+  --leg:#10202a;--leg2:rgba(16,32,42,.5);--plate:#8fa2ab;--plate2:#74868f;--pcb:#134e46;--pcb2:#0c3932;
+  --foam:#a6dcf0;--swb:#243239;--swt:#bac9d0;--stem:#2fae99;--caseO:#8499a2;--caseI:#212b30}
+</style>
+</head>
+<body>
+<div class="dust" id="dust" aria-hidden="true"></div>
+<div class="app">
+  <div class="ruler" aria-hidden="true"></div>
+  <header class="bar">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">
+        <svg viewBox="0 0 46 46" fill="none"><g stroke="#dd8b45" stroke-width="1.4" stroke-linejoin="round">
+          <path d="M9 29 23 22 37 29 23 36Z" fill="rgba(221,139,69,.2)"/>
+          <path d="M9 22 23 15 37 22 23 29Z" opacity=".7"/>
+          <path d="M9 15 23 8 37 15 23 22Z" opacity=".4"/></g></svg>
+      </div>
+      <div>
+        <div class="eyebrow">Orbital&nbsp;Labs · build sheet 04</div>
+        <h1>ORBIS <em>65</em></h1>
+        <div class="sub">Exploded assembly, built layer by layer — gasket-mount 65% · 66 keys · rotary encoder</div>
+      </div>
+    </div>
+    <div class="controls">
+      <button class="btn prim" id="replay" title="Replay the assembly animation (acts as skip while building)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M20.5 11.5a8.5 8.5 0 1 0-2.6 6.4"/><path d="M20.5 4v7.5H13"/></svg>
+        <span id="replayTxt">Replay build</span></button>
+      <button class="btn" id="mute" aria-pressed="false" title="Mute or unmute switch audio">
+        <span id="icoSound" style="display:inline-flex"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h3l4.5-3.5v13L7 15H4z"/><path d="M16 8.6a4.6 4.6 0 0 1 0 6.8"/><path d="M18.8 5.6a9 9 0 0 1 0 12.8"/></svg></span>
+        <span id="muteTxt">Sound on</span></button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <section class="card stagewrap" style="position:relative">
+      <div class="stagebar">
+        <div class="stat"><span class="dot" id="statDot"></span><span id="statTxt">Assembling · not interactive yet</span></div>
+        <div class="stat" style="color:var(--ink3)"><span>Scale 1:1</span><span>·</span><span>Proj 22°/52°</span><span>·</span><span id="phaseTxt">Stage 01</span></div>
+      </div>
+      <svg id="scene" viewBox="0 0 1000 720" data-cw="copper" role="img"
+        aria-label="Isometric exploded assembly of the ORBIS 65 mechanical keyboard. Once assembled, click keys to type."></svg>
+      <div class="hint" id="hint"><b>Audio unlocks on your first click.</b> Click the board — or just start typing on your own keyboard.</div>
+      <div class="hud">
+        <div class="c"><div class="k">Last stroke</div><div class="v big" id="hKey">—</div></div>
+        <div class="c"><div class="k">Event code</div><div class="v sm" id="hCode">—</div></div>
+        <div class="c"><div class="k">Voice</div><div class="v sm" id="hKind">—</div></div>
+        <div class="c"><div class="k">Strokes</div><div class="v" id="hCount">0</div></div>
+        <div class="c" style="flex:1.3 1 0"><div class="k">Recent</div><div class="chips" id="hChips"></div></div>
+      </div>
+    </section>
+
+    <aside>
+      <div class="card sec">
+        <div class="sech"><div class="sect">Assembly sequence</div><div class="secn" id="stepPct">0%</div></div>
+        <ol class="steps" id="steps"></ol>
+        <div class="prog"><i id="progFill"></i></div>
+      </div>
+
+      <div class="card sec">
+        <div class="sech"><div class="sect">Lighting</div><div class="secn" id="rgbTxt">Wave</div></div>
+        <div class="seg" id="rgbSeg" role="group" aria-label="RGB lighting mode">
+          <button data-mode="off" aria-pressed="false">Off</button>
+          <button data-mode="wave" aria-pressed="true">Wave</button>
+          <button data-mode="breathe" aria-pressed="false">Breathe</button>
+          <button data-mode="reactive" aria-pressed="false">Reactive</button>
+          <button data-mode="sweep" aria-pressed="false">Sweep</button>
+        </div>
+        <div class="row"><label for="hue">Hue</label><input id="hue" type="range" min="0" max="359" value="26" aria-label="Base hue"></div>
+        <div class="row"><label for="bri">Level</label><input id="bri" type="range" min="0" max="100" value="72" aria-label="Lighting intensity"></div>
+      </div>
+
+      <div class="card sec">
+        <div class="sech"><div class="sect">Colorway</div><div class="secn" id="cwTxt">Copper</div></div>
+        <div class="seg cw" id="cwSeg" role="group" aria-label="Colorway">
+          <button data-cw="copper" aria-pressed="true">Copper&nbsp;Graphite</button>
+          <button data-cw="panda" aria-pressed="false">Panda</button>
+          <button data-cw="arctic" aria-pressed="false">Arctic&nbsp;Teal</button>
+        </div>
+      </div>
+
+      <div class="card sec">
+        <div class="sech"><div class="sect">Materials</div><div class="secn">Stack</div></div>
+        <dl class="specs">
+          <dt>Layout</dt><dd>65% · 66K + encoder</dd>
+          <dt>Case</dt><dd>CNC aluminium 6063</dd>
+          <dt>Mount</dt><dd>Gasket · 1.9 mm poron</dd>
+          <dt>Plate</dt><dd>Aluminium 1.5 mm</dd>
+          <dt>PCB</dt><dd>1.6 mm · hot-swap</dd>
+          <dt>Switch</dt><dd>Linear 45 g · POM</dd>
+          <dt>Keycaps</dt><dd>PBT dye-sub · MB149</dd>
+          <dt>Angle</dt><dd>6.5° typing</dd>
+        </dl>
+        <div class="legendbar">
+          <span><b style="background:#39434f"></b>Alphas</span><span><b style="background:#2a323c"></b>Mods</span>
+          <span><b style="background:#c9762f"></b>Accent</span><span><b style="background:#c3ccd6"></b>Plate</span>
+          <span><b style="background:#1d5a49"></b>PCB</span><span><b style="background:#79d6c6"></b>Foam</span>
+        </div>
+      </div>
+
+      <div class="card sec">
+        <div class="sech"><div class="sect">Input</div><div class="secn">Live</div></div>
+        <p class="note">Click any key, or type on your own keyboard — every group has its own voice.
+        Drag or scroll the <span style="color:var(--cop2)">brass encoder</span> for master volume;
+        double-click resets it. <kbd>Shift</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd> works too.</p>
+        <div class="row" style="justify-content:space-between">
+          <label>Encoder</label><span style="font-family:var(--disp);font-size:18px;font-weight:700" id="knobVal">72%</span>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <footer>
+    <span>Orbital Labs · ORBIS 65 · rev 1.4 · hot-swap</span>
+    <span>SVG parallel projection · audio synthesised live in the browser</span>
+  </footer>
+</div>
+
+<script>
+"use strict";
+/* ==================================================================
+   1 · PROJECTION — board space (x right · y toward back · z up) → screen
+   ================================================================== */
+const TH=22*Math.PI/180, AL=52*Math.PI/180;
+const CT=Math.cos(TH), ST=Math.sin(TH), CA=Math.cos(AL), SA=Math.sin(AL);
+const UX=CT, UY=ST*SA, VX=ST, VY=-CT*SA;
+const PX=(x,y)=>x*UX+y*VX;
+const PY=(x,y,z)=>(x*ST-y*CT)*SA - z*CA;
+const N=v=>Math.round(v*100)/100;
+const POLY=a=>a.map(p=>N(p[0])+","+N(p[1])).join(" ");
+/* One shared face transform per height z: local (a,b) maps to board (a, RY−b) at height z.
+   b grows toward the viewer, so text drawn normally reads correctly (top of glyphs at the back). */
+const FACE_M=`matrix(${N(UX)} ${N(UY)} ${N(-VX)} ${N(-VY)}`;
+/* wall at constant y: local (a,b) → board (a, y, z0−b) */
+const WALL_M=`matrix(${N(UX)} ${N(UY)} 0 ${N(CA)}`;
+
+/* ==================================================================
+   2 · STACK + LAYOUT
+   ================================================================== */
+const U=46, ROWS=5, BR=3.6;
+const PCB0=30,PCB1=34, FO0=34,FO1=39, PL0=39,PL1=43.5, SW0=43.5,SW1=70, CAP1=90;
+const CSET=68, BWALL=3.6;
+const BW=16.25*U, BD=ROWS*U;
+const BX0=-BR, BX1=BW+BR, BY0=-BR, BY1=BD+BR;
+const LY=y=>BY1-y;                                       /* board y → face-local y */
+const faceG=z=>FACE_M+` ${N(PX(0,BY1))} ${N(PY(0,BY1,z))})`;
+const wallG=(y,z0)=>WALL_M+` ${N(PX(0,y))} ${N(PY(0,y,z0))})`;
+const rectP=(x0,x1,y0,y1)=>`M${N(x0)} ${N(LY(y1))}H${N(x1)}V${N(LY(y0))}H${N(x0)}Z`;
+const ringP=(x0,x1,y0,y1,ix0,ix1,iy0,iy1)=>rectP(x0,x1,y0,y1)+" "+rectP(ix0,ix1,iy0,iy1);
+const circleP=(x,y,r)=>`M${N(x)} ${N(LY(y))}m${N(-r)} 0a${N(r)} ${N(r)} 0 1 0 ${N(2*r)} 0a${N(r)} ${N(r)} 0 1 0 ${N(-2*r)} 0`;
+const fw=(x0,x1,y,z0,z1)=>POLY([[PX(x0,y),PY(x0,y,z0)],[PX(x1,y),PY(x1,y,z0)],[PX(x1,y),PY(x1,y,z1)],[PX(x0,y),PY(x0,y,z1)]]);
+const rw=(x,y0,y1,z0,z1)=>POLY([[PX(x,y1),PY(x,y1,z0)],[PX(x,y1),PY(x,y1,z1)],[PX(x,y0),PY(x,y0,z1)],[PX(x,y0),PY(x,y0,z0)]]);
+
+const K=(code,legend,sub,w,kind,atX)=>({code,legend,sub:sub||"",w,kind,atX:atX===undefined?null:atX});
+const NUMS=[["Digit1","1","!"],["Digit2","2","@"],["Digit3","3","#"],["Digit4","4","$"],["Digit5","5","%"],
+            ["Digit6","6","^"],["Digit7","7","&"],["Digit8","8","*"],["Digit9","9","("],["Digit0","0",")"]];
+const L1="QWERTYUIOP".split(""), L2="ASDFGHJKL".split(""), L3="ZXCVBNM".split("");
+const ROWDEF=[
+ [K("Backquote","`","~",1,"acc"),...NUMS.map(n=>K(n[0],n[1],n[2],1,"num")),K("Minus","-","_",1,"sym"),
+  K("Equal","=","+",1,"sym"),K("Backspace","⌫","",2,"bs"),K(null,"ENCODER","",1,"knob",15.25)],
+ [K("Tab","⇥","",1.5,"tab"),...L1.map(l=>K("Key"+l,l,"",1,"alpha")),K("BracketLeft","[","{",1,"sym"),
+  K("BracketRight","]","}",1,"sym"),K("Backslash","\\","|",1.5,"sym"),K("Delete","DEL","",1,"nav",15.25)],
+ [K("CapsLock","CAPS","",1.75,"caps"),...L2.map(l=>K("Key"+l,l,"",1,"alpha")),K("Semicolon",";",":",1,"sym"),
+  K("Quote","'",'"',1,"sym"),K("Enter","⏎","",2.25,"enter"),K("PageUp","PG▲","",1,"nav",15.25)],
+ [K("ShiftLeft","⇧ SHIFT","",2.25,"mod"),...L3.map(l=>K("Key"+l,l,"",1,"alpha")),K("Comma","<",",",1,"sym"),
+  K("Period",".",">",1,"sym"),K("Slash","/","?",1,"sym"),K("ShiftRight","SHIFT ⇧","",1.75,"mod"),
+  K("ArrowUp","↑","",1,"arrow"),K("PageDown","PG▼","",1,"nav",15.25)],
+ [K("ControlLeft","CTRL","",1.25,"mod"),K("MetaLeft","GUI","",1.25,"mod"),K("AltLeft","ALT","",1.25,"mod"),
+  K("Space","","",7,"space"),K("AltRight","ALT","",1.25,"mod"),K("FnLeft","FN","",1.25,"mod"),
+  K("ArrowLeft","←","",1,"arrow"),K("ArrowDown","↓","",1,"arrow"),K("ArrowRight","→","",1,"arrow",15.25)]
+];
+const keys=[], byCode=new Map(); let knob=null;
+ROWDEF.forEach((row,r)=>{
+  let x=0;
+  row.forEach(d=>{
+    if(typeof d.atX==="number") x=d.atX*U;
+    const w=d.w*U, y0=(ROWS-1-r)*U, y1=y0+U;
+    const o=Object.assign({},d,{i:keys.length,r,x0:x,x1:x+w,y0,y1,w,h:U,cx:x+w/2,cy:y0+U/2});
+    if(d.kind==="knob") knob=o; else {keys.push(o); if(d.code) byCode.set(d.code,o);}
+    x+=w;
+  });
+});
+const isWide=k=>k.w>U*1.3;
+const MODK=["mod","tab","caps","fn","nav","arrow","bs","enter"];
+const capVar=k=>k.kind==="acc"?"capX":(MODK.indexOf(k.kind)>=0?"capM":"capA");
+const capName=k=>k.legend||k.code;
+
+/* ==================================================================
+   3 · SCENE BUILD
+   ================================================================== */
+const scene=document.getElementById("scene");
+const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+
+function defs(){return `<defs>
+ <linearGradient id="sheen" x1="0" y1="0" x2=".55" y2="1">
+   <stop offset="0" stop-color="#fff" stop-opacity=".3"/><stop offset=".48" stop-color="#fff" stop-opacity=".04"/>
+   <stop offset="1" stop-color="#000" stop-opacity=".16"/></linearGradient>
+ <linearGradient id="plateG" x1="0" y1="0" x2=".28" y2="1">
+   <stop offset="0" stop-color="#fff" stop-opacity=".26"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/>
+   <stop offset="1" stop-color="#000" stop-opacity=".2"/></linearGradient>
+ <linearGradient id="foamG" x1="0" y1="0" x2=".4" y2="1">
+   <stop offset="0" stop-color="#fff" stop-opacity=".34"/><stop offset="1" stop-color="#000" stop-opacity=".12"/></linearGradient>
+ <linearGradient id="sideShade" x1="0" y1="0" x2="0" y2="1">
+   <stop offset="0" stop-color="#000" stop-opacity=".08"/><stop offset="1" stop-color="#000" stop-opacity=".46"/></linearGradient>
+ <filter id="blurL" x="-70%" y="-180%" width="240%" height="460%"><feGaussianBlur stdDeviation="26"/></filter>
+</defs>`;}
+
+let lblI=0;
+function label(txt,bx,by,bz,color,len){
+  const raw=(len===undefined)?62+(lblI++)*44:(lblI++,len), sg=raw<0?-1:1, L=Math.abs(raw);
+  const sx=PX(bx,by), sy=PY(bx,by,bz), ex=sx+sg*L, ey=sy+(L-70)*.34*sg;
+  return `<g class="lbl">
+   <line x1="${N(sx+sg*13)}" y1="${N(sy)}" x2="${N(ex)}" y2="${N(ey)}" stroke="${color}" stroke-width="1" stroke-opacity=".7"/>
+   <circle cx="${N(sx+sg*13)}" cy="${N(sy)}" r="2.3" fill="${color}"/>
+   <text class="legend" x="${N(ex+sg*6)}" y="${N(ey-1)}" font-size="12.5" text-anchor="${sg>0?"end":"start"}" letter-spacing="2.4" fill="${color}">${esc(txt)}</text></g>`;
+}
+
+function pcbLayer(){
+  const z=PCB1, x0=BX0+2.5,x1=BX1-2.5,y0=BY0+2.5,y1=BY1-2.5;
+  let holes="",sil="",tr="",led="",mh="";
+  keys.forEach(k=>{
+    const m=6.6;
+    holes+=rectP(k.x0+m,k.x1-m,k.y0+m,k.y1-m)+" ";
+    sil+=`M${N(k.x0+m-2.6)} ${N(LY(k.y1-m))}h9M${N(k.x0+m-2.6)} ${N(LY(k.y1-m))}v-9`
+       + `M${N(k.x1-m+2.6)} ${N(LY(k.y0+m))}h-9M${N(k.x1-m+2.6)} ${N(LY(k.y0+m))}v9`;
+    led+=`<circle cx="${N(k.cx)}" cy="${N(LY(k.cy-4))}" r="4.6" fill="#0b1713" stroke="#3d6d5c" stroke-width="1"/>
+          <circle cx="${N(k.cx)}" cy="${N(LY(k.cy-4))}" r="2.1" fill="#f2e9c8" fill-opacity=".8"/>`;
+  });
+  for(let i=0;i<32;i++){
+    const by=y0+10+((i*37)%(y1-y0-20)), bx=x0+10+((i*67)%(x1-x0-140));
+    tr+=`M${N(bx)} ${N(LY(by))}H${N(bx+32)}V${N(LY(by-11))}H${N(bx+54)} `;
+  }
+  [[x0+8,y0+8],[x1-8,y0+8],[x1-8,y1-8],[x0+8,y1-8],[BW/2-118,y1-9],[BW/2+118,y1-9]]
+    .forEach(c=>{mh+=circleP(c[0],c[1],4.6)+" ";});
+  return `<g class="lay" id="l-pcb">
+    <polygon points="${fw(x0,x1,y0,PCB0,z)}" fill="var(--pcb2)"/>
+    <polygon class="cwall" points="${rw(x1,y0,y1,PCB0,z)}" fill="#000" opacity=".45"/>
+    <g transform="${faceG(z)}">
+      <rect x="${N(x0)}" y="${N(LY(y1))}" width="${N(x1-x0)}" height="${N(y1-y0)}" fill="var(--pcb)"/>
+      <path d="${tr}" fill="none" stroke="#2f8067" stroke-width="3" stroke-opacity=".8"/>
+      <path d="${tr}" fill="none" stroke="var(--pad)" stroke-width="1" stroke-opacity=".4"/>
+      <path d="${holes}" fill="#081713" fill-opacity=".92"/>
+      <path d="${sil}" fill="none" stroke="#8fd6bd" stroke-width="1.5" stroke-opacity=".45"/>
+      ${led}
+      <path d="${mh}" fill="#07100d" stroke="var(--pad)" stroke-width="1.6"/>
+      <g transform="translate(${N(BW/2-17)} ${N(LY(y1+4))})">
+        <rect x="0" y="0" width="34" height="16" rx="5" fill="#0a1512" stroke="#9fb3c6" stroke-opacity=".45"/>
+        <rect x="4.5" y="4" width="25" height="8" rx="4" fill="#1e2b33"/></g>
+      <g transform="translate(${N(x0+34)} ${N(LY(y0+58))})">
+        <rect x="0" y="0" width="60" height="44" rx="3" fill="#121f1a" stroke="#4e6c60" stroke-opacity=".6"/>
+        <rect x="9" y="9" width="42" height="26" rx="2" fill="#1d2c26"/>
+        <text class="legend" x="30" y="22" font-size="10.5" text-anchor="middle" fill="#82b9a4" letter-spacing="1.2">ARM-M4</text>
+        ${[0,1,2,3,4,5,6].map(i=>`<rect x="-5" y="${5.5+i*5.6}" width="5" height="2.8" fill="var(--pad)"/><rect x="60" y="${5.5+i*5.6}" width="5" height="2.8" fill="var(--pad)"/>`).join("")}
+      </g>
+      <text class="legend" x="${N(x0+118)}" y="${N(LY(y0+42))}" font-size="11" fill="#9fe0c8" fill-opacity=".85" letter-spacing="3.2">ORBIS 65 · REV1.4 · 1.6 mm FR-4</text>
+      <text class="legend" x="${N(x0+118)}" y="${N(LY(y0+26))}" font-size="9" fill="#7ec1a8" fill-opacity=".6" letter-spacing="2.4">HOT-SWAP · DIODES · 2-LAYER</text>
+      <g transform="translate(${N(x1-56)} ${N(LY(y1-16))})">
+        ${[0,1,2].map(i=>`<circle cx="${i*15}" cy="0" r="4.4" fill="#0a1713" stroke="var(--pad)" stroke-width="1.4"/>`).join("")}
+        <text class="legend" x="15" y="15" font-size="8.5" text-anchor="middle" fill="#9fe0c8" fill-opacity=".6" letter-spacing="1.6">RST</text></g>
+    </g>
+    ${label("01 · PCB 1.6 mm",x0,y1,z,"#8fd6bd")}
+  </g>`;
+}
+
+function foamLayer(){
+  const z=FO1,x0=BX0+3,x1=BX1-3,y0=BY0+3,y1=BY1-3;
+  let holes="";
+  keys.forEach(k=>{const m=2.4;holes+=rectP(k.x0+m,k.x1-m,k.y0+m,k.y1-m)+" ";});
+  holes+=rectP(knob.cx-25,knob.cx+25,knob.y0+3,knob.y1-3);
+  return `<g class="lay" id="l-foam">
+    <polygon points="${fw(x0,x1,y0,FO0,z)}" fill="#4d9c90"/>
+    <polygon class="cwall" points="${rw(x1,y0,y1,FO0,z)}" fill="#3a7e73"/>
+    <g transform="${faceG(z)}">
+      <rect x="${N(x0)}" y="${N(LY(y1))}" width="${N(x1-x0)}" height="${N(y1-y0)}" rx="5" fill="var(--foam)" fill-opacity=".93"/>
+      <rect x="${N(x0)}" y="${N(LY(y1))}" width="${N(x1-x0)}" height="${N(y1-y0)}" rx="5" fill="url(#foamG)"/>
+      <path d="${holes}" fill="#0b201d" fill-opacity=".5"/>
+      <text class="legend" x="${N((x0+x1)/2)}" y="${N(LY(y0+12))}" font-size="10" text-anchor="middle" fill="#0a201d" fill-opacity=".6" letter-spacing="3">SOUND-DAMPENING FOAM · 2.4 mm PORON</text>
+    </g>
+    ${label("02 · FOAM 2.4 mm",x0,y1,z,"#a9ecdf")}
+  </g>`;
+}
+
+function plateLayer(){
+  const z=PL1,x0=BX0+3,x1=BX1-3,y0=BY0+3,y1=BY1-3;
+  let holes="";
+  keys.forEach(k=>{
+    const m=4.6;
+    holes+=rectP(k.x0+m,k.x1-m,k.y0+m,k.y1-m)+" ";
+    if(isWide(k)) holes+=rectP(k.cx-25,k.cx-12,k.cy-4.6,k.cy+4.6)+" "+rectP(k.cx+12,k.cx+25,k.cy-4.6,k.cy+4.6)+" ";
+  });
+  holes+=rectP(knob.cx-24,knob.cx+24,knob.y0+4,knob.y1-4);
+  let mh="";[[x0+9,y0+9],[x1-9,y0+9],[x1-9,y1-9],[x0+9,y1-9],[BW/2-118,y1-9],[BW/2+118,y1-9]]
+    .forEach(c=>{mh+=circleP(c[0],c[1],5.8)+" ";});
+  let led="";
+  keys.forEach(k=>{led+=`<ellipse class="glow" data-led="${k.i}" cx="${N(k.cx)}" cy="${N(LY(k.cy-3))}" rx="15" ry="10.5" fill="#0ff"/>`;});
+  return `<g class="lay" id="l-plate">
+    <polygon points="${fw(x0,x1,y0,PL0,z)}" fill="var(--plate2)"/>
+    <polygon class="cwall" points="${rw(x1,y0,y1,PL0,z)}" fill="#7d8996"/>
+    <g transform="${faceG(z)}">
+      <rect x="${N(x0)}" y="${N(LY(y1))}" width="${N(x1-x0)}" height="${N(y1-y0)}" fill="var(--plate)"/>
+      <rect x="${N(x0)}" y="${N(LY(y1))}" width="${N(x1-x0)}" height="${N(y1-y0)}" fill="url(#plateG)"/>
+      <path d="${holes}" fill="#0a1017" fill-opacity=".66" fill-rule="evenodd"/>
+      <path d="${holes}" fill="none" stroke="#fff" stroke-opacity=".22" fill-rule="evenodd"/>
+      <path d="${mh}" fill="#0a1017" fill-opacity=".5" stroke="#fff" stroke-opacity=".3" fill-rule="evenodd"/>
+      <text class="legend" x="${N(x0+16)}" y="${N(LY(y0+12))}" font-size="9.5" fill="#28323d" fill-opacity=".9" letter-spacing="2.6">ALUMINIUM PLATE · 1.5 mm · FRICTION FIT</text>
+    </g>
+    <g class="glowgrp" transform="${faceG(z+0.9)}" style="pointer-events:none">${led}</g>
+    ${label("03 · PLATE 1.5 mm",x0,y1,z,"#dbe6f2")}
+  </g>`;
+}
+
+function switchLayer(){
+  let out=`<g class="lay" id="l-sw">`;
+  keys.forEach(k=>{
+    const m=6.5,x0=k.x0+m,x1=k.x1-m,y0=k.y0+m,y1=k.y1-m,bw=x1-x0,bh=y1-y0;
+    const lx=x0, ly=LY(y1);
+    let stab="";
+    if(isWide(k)){
+      stab=`<rect x="${N(x0+bw/2-27)}" y="${N(ly+bh/2-4)}" width="13" height="8.5" rx="1.6" fill="#22282f" stroke="#66788a" stroke-opacity=".55"/>
+            <rect x="${N(x0+bw/2+14)}" y="${N(ly+bh/2-4)}" width="13" height="8.5" rx="1.6" fill="#22282f" stroke="#66788a" stroke-opacity=".55"/>
+            <path d="M${N(x0+bw/2-20)} ${N(ly+bh/2+4.5)}V${N(ly+bh/2+11)}H${N(x0+bw/2+20)}V${N(ly+bh/2+4.5)}" fill="none" stroke="#b9c6d3" stroke-opacity=".6" stroke-width="2"/>`;
+    }
+    out+=`<g class="kin" data-sw="${k.i}">
+      <polygon class="cwall" points="${fw(x0,x1,y0,SW0,SW1)}" fill="var(--swb)"/>
+      <polygon class="cwall" points="${rw(x1,y0,y1,SW0,SW1)}" fill="var(--swb)" style="filter:brightness(.58)"/>
+      <polygon points="${fw(x0,x1,y0,SW1-7,SW1)}" fill="#fff" fill-opacity=".05"/>
+      <g transform="${faceG(SW1)}">
+        <rect x="${N(lx)}" y="${N(ly)}" width="${N(bw)}" height="${N(bh)}" rx="2" fill="var(--swt)"/>
+        <rect x="${N(lx+bw/2-8)}" y="${N(ly+bh/2-8)}" width="16" height="16" rx="2" fill="#141a22"/>
+        <path d="M${N(lx+bw/2-9.6)} ${N(ly+bh/2-3.4)}h19.2v6.8h-19.2zM${N(lx+bw/2-3.4)} ${N(ly+bh/2-9.6)}h6.8v19.2h-6.8z" fill="var(--stem)"/>
+        ${stab}
+      </g></g>`;
+  });
+  return out+label("05 · 66 SWITCHES",BX0,BY1,SW1,"#cfe0f0")+`</g>`;
+}
+
+function capLayer(){
+  let out=`<g class="lay" id="l-cap">`;
+  keys.forEach(k=>{
+    const ins=k.kind==="space"?3.6:3.1;
+    const x0=k.x0+1.7,x1=k.x1-1.7,y0=k.y0+1.7,y1=k.y1-1.7,w=x1-x0,h=y1-y0;
+    const lx=x0, ly=LY(y1), v=capVar(k);
+    const big=k.w>U*2.4, fs=big?14:(k.w<U*1.3?19:17.5);
+    const legend=k.kind==="space"?"":k.legend;
+    const sub=k.sub?`<text class="klg klg2" x="${N(lx+w/2)}" y="${N(ly+9)}" font-size="9" text-anchor="middle">${esc(k.sub)}</text>`:"";
+    const main=legend?`<text class="klg" x="${N(lx+w/2)}" y="${N(ly+h-(k.sub?11:12))}" font-size="${fs}" text-anchor="middle" style="paint-order:stroke" stroke="#000" stroke-opacity=".16" stroke-width=".7">${esc(legend)}</text>`:"";
+    const spc=k.kind==="space"?`<text class="klg klg2" x="${N(lx+w/2)}" y="${N(ly+h/2+1)}" font-size="10" text-anchor="middle" letter-spacing="6">ORBIS</text>`:"";
+    out+=`<g class="kin" data-cap="${k.i}"><g class="cap" data-i="${k.i}" data-code="${k.code||""}" tabindex="-1" role="button" aria-label="${esc(capName(k))} key">
+      <polygon class="cwall" points="${fw(x0,x1,y0,SW1,CAP1)}" fill="var(--${v})"/>
+      <polygon class="cwall" points="${fw(x0,x1,y0,SW1,CAP1)}" fill="url(#sideShade)"/>
+      <polygon class="cwall" points="${rw(x1,y0,y1,SW1,CAP1)}" fill="var(--${v})"/>
+      <polygon class="cwall" points="${rw(x1,y0,y1,SW1,CAP1)}" fill="#000" opacity=".52"/>
+      <g transform="${faceG(CAP1)}">
+        <rect class="cpt" x="${N(lx)}" y="${N(ly)}" width="${N(w)}" height="${N(h)}" rx="3" fill="var(--${v})"/>
+        <rect class="csheen" x="${N(lx+ins)}" y="${N(ly+ins)}" width="${N(w-2*ins)}" height="${N(h-2*ins)}" rx="2.6" fill="var(--${v}t)"/>
+        <rect class="csheen" x="${N(lx+ins)}" y="${N(ly+ins)}" width="${N(w-2*ins)}" height="${N(h-2*ins)}" rx="2.6" fill="url(#sheen)"/>
+        ${sub}${main}${spc}
+      </g></g></g>`;
+  });
+  return out+label("06 · 66 KEYCAPS",BX0,BY1,CAP1,"#f4b877")+`</g>`;
+}
+
+function caseInner(){
+  const z=CSET,x0=BX0,x1=BX1,y0=BY0,y1=BY1,ix0=x0+BWALL,ix1=x1-BWALL,iy0=y0+BWALL,iy1=y1-BWALL;
+  return `<g class="lay lcase" id="l-case">
+    <g transform="${faceG(0.6)}">
+      <rect x="${N(ix0)}" y="${N(LY(iy1))}" width="${N(ix1-ix0)}" height="${N(iy1-iy0)}" fill="var(--caseI)"/>
+      <rect x="${N(ix0)}" y="${N(LY(iy1))}" width="${N(ix1-ix0)}" height="${N(iy1-iy0)}" fill="#000" fill-opacity=".28"/></g>
+    <polygon points="${fw(ix0,ix1,iy1,PCB0,z)}" fill="var(--caseI)"/>
+    <polygon points="${fw(ix0,ix1,iy1,PCB0,z)}" fill="#000" opacity=".42"/>
+    <polygon points="${rw(ix0,iy0,iy1,PCB0,z)}" fill="var(--caseI)"/>
+    <polygon points="${rw(ix0,iy0,iy1,PCB0,z)}" fill="#000" opacity=".18"/>
+    <g transform="${faceG(z)}">
+      <path d="${ringP(x0,x1,y0,y1,ix0,ix1,iy0,iy1)}" fill="var(--caseO)" fill-rule="evenodd"/>
+      <path d="${rectP(x0,x1,y0,y1)}" fill="none" stroke="#fff" stroke-opacity=".18"/>
+      <path d="${rectP(ix0,ix1,iy0,iy1)}" fill="none" stroke="#000" stroke-opacity=".4"/>
+      <text class="legend" x="${N((ix0+ix1)/2)}" y="${N(LY(iy0+BWALL/2+.6))}" font-size="7.5" text-anchor="middle" fill="#b6c8d8" fill-opacity=".6" letter-spacing="2">GASKET MOUNT SLOTS · 6063 ALUMINIUM</text>
+      ${[[ix0+BWALL/2,(iy0+iy1)/2],[ix1-BWALL/2,(iy0+iy1)/2]].map(c=>`<path d="${circleP(c[0],c[1],1.6)}" fill="#0a1017" fill-opacity=".6"/>`).join("")}
+    </g>
+    ${label("04 · CASE 28 mm",x0,y1,z,"#c8d6e6",54)}
+  </g>`;
+}
+function caseFront(){
+  const z=CSET,x0=BX0,x1=BX1,y0=BY0,y1=BY1;
+  return `<g class="lay lcase" id="l-casefront">
+    <polygon class="cwall" points="${fw(x0,x1,y0,0,z)}" fill="var(--caseO)"/>
+    <polygon class="cwall" points="${fw(x0,x1,y0,0,z)}" fill="url(#sideShade)"/>
+    <polygon class="cwall" points="${rw(x1,y0,y1,0,z)}" fill="var(--caseO)"/>
+    <polygon class="cwall" points="${rw(x1,y0,y1,0,z)}" fill="#000" opacity=".5"/>
+    <polygon points="${fw(x0,x1,y0,z-5.5,z)}" fill="#fff" opacity=".2"/>
+    <polygon points="${rw(x1,y0,y1,z-5.5,z)}" fill="#fff" opacity=".1"/>
+    <polygon points="${fw(x0,x1,y0,0,6.5)}" fill="#000" opacity=".5"/>
+    <g transform="${wallG(y0,z)}">
+      <text class="legend" x="${N(x0+18)}" y="14" font-size="14" letter-spacing="5.2" fill="#d3e0ee" fill-opacity=".6">ORBIS 65</text>
+      <g transform="translate(${N(x1-84)} 14)">
+        <rect x="0" y="-3.5" width="7" height="7" rx="1.2" fill="var(--ok)" opacity=".85"/>
+        <rect x="11" y="-3.5" width="7" height="7" rx="1.2" fill="var(--cop)" opacity=".7"/>
+        <rect x="22" y="-3.5" width="7" height="7" rx="1.2" fill="#000" opacity=".4"/>
+        <text class="legend" x="56" y="0" font-size="8.5" text-anchor="end" letter-spacing="2" fill="#b6c8d8" fill-opacity=".65">LINK</text>
+      </g>
+      <text class="legend" x="${N((x0+x1)/2)}" y="${N(z-8)}" font-size="8" text-anchor="middle" fill="#000" fill-opacity=".38" letter-spacing="3">MK II</text>
+    </g>
+    <ellipse cx="${N(PX(x0+42,y0))}" cy="${N(PY(x0+42,y0,0)+7)}" rx="14" ry="5.5" fill="#000" opacity=".55"/>
+    <ellipse cx="${N(PX(x1-42,y0))}" cy="${N(PY(x1-42,y0,0)+7)}" rx="14" ry="5.5" fill="#000" opacity=".55"/>
+  </g>`;
+}
+
+function knobLayer(){
+  const cx=knob.cx, cy=knob.cy, r=27, ry=r*.72, z=CSET+17;
+  const lx=cx-r, ly=LY(cy+ry);
+  let seg="";
+  for(let i=0;i<28;i++){const a=i/28*Math.PI*2,r1=r-7.5,r2=r-1.6;
+    seg+=`M${N(cx+Math.cos(a)*r1)} ${N(LY(cy)+Math.sin(a)*r1)}L${N(cx+Math.cos(a)*r2)} ${N(LY(cy)+Math.sin(a)*r2)}`;}
+  const KX=cx, KY=LY(cy);
+  return `<g class="lay" id="l-knob" style="pointer-events:none">
+    <g transform="${faceG(CSET)}">
+      <rect x="${N(lx)}" y="${N(ly)}" width="${N(2*r)}" height="${N(2*ry)}" rx="8" fill="#000" fill-opacity=".55"/></g>
+    <polygon class="cwall" points="${fw(cx-r,cx+r,cy-ry,PL1,z)}" fill="#c6ccd4"/>
+    <polygon class="cwall" points="${fw(cx-r,cx+r,cy-ry,PL1,z)}" fill="url(#sideShade)"/>
+    <polygon class="cwall" points="${rw(cx+r,cy-ry,cy+ry,PL1,z)}" fill="#d5dbe3"/>
+    <polygon class="cwall" points="${rw(cx+r,cy-ry,cy+ry,PL1,z)}" fill="#000" opacity=".52"/>
+    <g transform="${faceG(z)}">
+      <g id="knobSpin" transform="rotate(-135 ${N(KX)} ${N(KY)})">
+        <circle cx="${N(cx)}" cy="${N(LY(cy))}" r="${r}" fill="#ccd2da"/>
+        <circle cx="${N(cx)}" cy="${N(LY(cy))}" r="${N(r-2.6)}" fill="#9ba5b0"/>
+        <path d="${seg}" stroke="#eef3f8" stroke-opacity=".5" stroke-width="1.7" fill="none"/>
+        <circle cx="${N(cx)}" cy="${N(LY(cy))}" r="${N(r-11)}" fill="#dee4ea"/>
+        <circle cx="${N(cx)}" cy="${N(LY(cy))}" r="${N(r-11.6)}" fill="none" stroke="#6e7b89" stroke-opacity=".6"/>
+        <circle cx="${N(cx)}" cy="${N(LY(cy)-(r-14))}" r="3.6" fill="var(--cop)"/>
+      </g>
+      <circle id="knobHit" cx="${N(cx)}" cy="${N(LY(cy))}" r="${N(r+9)}" fill="transparent" style="cursor:grab;pointer-events:all"/>
+    </g>
+    <g id="knobDial" transform="translate(${N(PX(cx,cy,z)+116)} ${N(PY(cx,cy,z))})" style="pointer-events:none">
+      ${[0,1,2,3,4,5,6,7,8,9,10].map(i=>{const a=(-225+i/10*270)*Math.PI/180;
+        return `<line x1="${N(Math.cos(a)*21)}" y1="${N(Math.sin(a)*21)}" x2="${N(Math.cos(a)*25.5)}" y2="${N(Math.sin(a)*25.5)}" stroke="#9fb3c6" stroke-opacity=".45" stroke-width="1.6"/>`;}).join("")}
+      <path id="knobArc" d="" fill="none" stroke="var(--cop)" stroke-width="3.2" stroke-linecap="round"/>
+      <text class="legend" x="0" y="38" font-size="9" text-anchor="middle" letter-spacing="2.6" fill="#8fa4bb">VOLUME</text>
+    </g>
+    ${label("07 · BRASS ENCODER",cx,cy+ry,z,"#f4b877",-126)}
+  </g>`;
+}
+
+function guidesSVG(){
+  let s="";
+  [[BX0,BY0],[BX0,BY1],[BX1,BY1]].forEach(c=>{
+    const X=PX(c[0],c[1]), Y=PY(c[0],c[1],CSET);
+    s+=`<line x1="${N(X)}" y1="${N(Y+34)}" x2="${N(X)}" y2="${N(Y-640)}" stroke="#8fb0cd" stroke-opacity=".34" stroke-width="1" stroke-dasharray="3 8"/>`;});
+  [[PCB1,"pcb"],[FO1,"foam"],[PL1,"plate"],[SW1,"sw"],[CAP1,"cap"]].forEach(t=>{
+    const X=PX(BX0,BY0), Y=PY(BX0,BY0,t[0])+DY(t[1]);
+    s+=`<line x1="${N(X-15)}" y1="${N(Y)}" x2="${N(X+9)}" y2="${N(Y)}" stroke="#dd8b45" stroke-opacity=".6" stroke-width="1.5"/>`;});
+  return s;
+}
+
+const DY=k=>-N({pcb:350,foam:465,plate:585,sw:735,cap:900}[k]*CA);
+
+scene.innerHTML = defs()+`<g id="world">
+  <ellipse id="ug" cx="${N(PX(BW/2,0))}" cy="${N(PY(BW/2,0,0)+40)}" rx="300" ry="62" fill="#dd8b45" opacity=".16" filter="url(#blurL)"/>
+  <ellipse cx="${N(PX(BW/2,0)+6)}" cy="${N(PY(BW/2,0,0)+22)}" rx="292" ry="46" fill="#000" opacity=".5" filter="url(#blurL)"/>
+  <g id="guides" class="guides" opacity="0">${guidesSVG()}</g>`
+  + caseInner() + pcbLayer() + foamLayer() + plateLayer() + switchLayer() + capLayer() + knobLayer() + caseFront()
+  + `</g>`;
+/* Presentation attributes are not guaranteed to evaluate var(); lift them into inline CSS
+   so custom properties (and live colourway switching) always resolve. */
+scene.querySelectorAll("[fill],[stroke]").forEach(el=>{
+  ["fill","stroke"].forEach(a=>{
+    const v=el.getAttribute(a);
+    if(v&&v.indexOf("var(")>=0){el.style[a]=v;el.removeAttribute(a);}
+  });
+});
+
+/* ==================================================================
+   4 · ASSEMBLY TIMELINE
+   ================================================================== */
+const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
+const world=$("#world"), guideEl=$("#guides"), ugEl=$("#ug");
+const LAY={case:[$("#l-case"),$("#l-casefront")],pcb:[$("#l-pcb")],foam:[$("#l-foam")],
+           plate:[$("#l-plate")],sw:[$("#l-sw")],cap:[$("#l-cap")],knob:[$("#l-knob")]};
+const swKeys=$$("[data-sw]"), capKeys=$$("[data-cap]");
+const installed=new Array(keys.length).fill(false);
+const reduce=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const STEPS=[
+ {id:"pcb",  no:"01",nm:"PCB &amp; traces",    mt:"1.6 mm FR-4 · hot-swap pads",hold:220},
+ {id:"foam", no:"02",nm:"Dampening foam",      mt:"2.4 mm poron · die-cut",      hold:180},
+ {id:"plate",no:"03",nm:"Aluminium plate",     mt:"1.5 mm · friction fit",       hold:180},
+ {id:"case", no:"04",nm:"Aluminium case",      mt:"6063 CNC · gasket slots",     hold:260},
+ {id:"sw",   no:"05",nm:"66 switches",         mt:"linear 45 g · POM stem",      hold:100},
+ {id:"cap",  no:"06",nm:"66 keycaps + encoder",mt:"PBT dye-sub · MB149",         hold:100}
+];
+$("#steps").innerHTML=STEPS.map(s=>`<li data-s="${s.id}"><span class="no">${s.no}</span>
+  <span><span class="nm">${s.nm}</span><span class="mt" style="display:block">${s.mt}</span></span></li>`).join("");
+const stepLis={};$$(".steps li").forEach(li=>stepLis[li.dataset.s]=li);
+
+let building=false, ready=false, runId=0;
+const progFill=$("#progFill"), stepPct=$("#stepPct"), phaseTxt=$("#phaseTxt");
+function setT(el,tr,op,instant){
+  if(instant){el.style.transition="none";el.style.transform=tr;el.style.opacity=op;
+    el.getBoundingClientRect();el.style.transition="";}
+  else{el.style.transform=tr;el.style.opacity=op;}
+}
+function cam(sc,ty){world.style.transform=`translate(110px,${N(330+ty)}px) scale(${sc})`;}
+function stepState(id,on,done){const li=stepLis[id];if(!li)return;li.classList.toggle("on",!!on);li.classList.toggle("done",!!done);}
+function setProgress(p){progFill.style.width=(p*100).toFixed(1)+"%";stepPct.textContent=Math.round(p*100)+"%";}
+function setPhase(txt){
+  const st=$("#statTxt"), dot=$("#statDot");
+  if(txt){st.textContent=txt;dot.classList.remove("live");return;}
+  dot.classList.add("live");
+  st.textContent="Interactive · "+(audio.ready?(audio.muted?"audio muted — unmute to hear":"click a key or just type"):"click anywhere to enable sound");
+  phaseTxt.textContent="Ready · 66 keys live";
+}
+function wait(ms,tok){return new Promise(res=>setTimeout(()=>res(tok===runId),ms));}
+
+function resetScene(instant){
+  ready=false; installed.fill(false);
+  Object.keys(LAY).forEach(k=>LAY[k].forEach(el=>{
+    if(k==="case") setT(el,"translate(-1060px,-24px)","0",instant);
+    else if(k==="knob") setT(el,`translate(-140px,${DY("cap")}px)`,"0",instant);
+    else setT(el,`translate(0,${DY(k)}px)`,"1",instant);
+  }));
+  swKeys.forEach(el=>setT(el,"translate(0,-118px)","0",instant));
+  capKeys.forEach(el=>setT(el,"translate(0,-150px)","0",instant));
+  $$(".lbl").forEach(el=>el.style.opacity="1");
+  guideEl.style.opacity="1";
+  STEPS.forEach(s=>stepState(s.id,false,false));
+  setProgress(0);
+  cam(reduce?1:.5,reduce?0:104);
+}
+function finishAll(){
+  runId++; building=false; ready=true; installed.fill(true);
+  Object.keys(LAY).forEach(k=>LAY[k].forEach(el=>setT(el,"none","1",true)));
+  swKeys.forEach(el=>setT(el,"none","1",true));
+  capKeys.forEach(el=>setT(el,"none","1",true));
+  $$(".lbl").forEach(el=>el.style.opacity="0");
+  guideEl.style.opacity="0";
+  STEPS.forEach(s=>stepState(s.id,false,true));
+  setProgress(1); cam(1,0); setPhase();
+  $("#replayTxt").textContent="Replay build";
+}
+async function assemble(){
+  runId++; const tok=runId; building=true; ready=false;
+  $("#replayTxt").textContent="Skip to end";
+  setPhase("Assembling · not interactive yet");
+  $$(".cap").forEach(c=>c.classList.remove("down"));
+  if(reduce){
+    resetScene(true);
+    await new Promise(r=>setTimeout(r,40));
+    finishAll(); return;
+  }
+  resetScene(true);
+  if(!await wait(90,tok))return;
+  resetScene(false);
+  if(!await wait(620,tok))return;
+  for(let s=0;s<STEPS.length;s++){
+    const st=STEPS[s];
+    if(!await wait(0,tok))return;
+    stepState(st.id,true,false);
+    phaseTxt.textContent="Stage "+st.no;
+    if(st.id==="case"){
+      LAY.case.forEach(el=>setT(el,"none","1"));
+      sfx.land(72,.5);
+      if(!await wait(1180,tok))return;
+      fadeLabels("case"); cam(.74,40);
+    }else if(st.id==="sw"||st.id==="cap"){
+      LAY[st.id].forEach(el=>setT(el,"none","1"));
+      if(st.id==="cap"){ LAY.knob.forEach(el=>setT(el,"none","1")); if(!await wait(360,tok))return; fadeLabels("knob"); }
+      const list=st.id==="sw"?swKeys:capKeys, stg=st.id==="sw"?19:21;
+      for(let i=0;i<list.length;i++){
+        list[i].style.transform="none"; list[i].style.opacity="1";
+        if(st.id==="cap") installed[i]=true;
+        if(i%2===0) sfx.tick(st.id==="sw"?2450:1650,.045);
+        if(!await wait(stg,tok))return;
+      }
+      fadeLabels(st.id);
+      if(st.id==="sw"){ cam(.9,14); if(!await wait(260,tok))return; }
+      else { cam(1,0); if(!await wait(260,tok))return; }
+    }else{
+      LAY[st.id].forEach(el=>setT(el,"none","1"));
+      sfx.land(st.id==="pcb"?150:205,.42);
+      if(!await wait(1020+st.hold,tok))return;
+      fadeLabels(st.id);
+    }
+    stepState(st.id,false,true);
+    setProgress((s+1)/STEPS.length);
+  }
+  $$(".lbl").forEach(el=>el.style.opacity="0");
+  guideEl.style.opacity="0";
+  cam(1,0);
+  if(!await wait(620,tok))return;
+  building=false; ready=true; installed.fill(true); setPhase();
+  $("#replayTxt").textContent="Replay build";
+  setProgress(1);
+}
+
+/* ==================================================================
+   5 · WEB AUDIO — synthesised switch voices (no files)
+   ================================================================== */
+const audio={ctx:null,master:null,verb:null,noise:null,ready:false,muted:false};
+const sfx={
+  init(){
+    if(audio.ctx)return;
+    const AC=window.AudioContext||window.webkitAudioContext; if(!AC)return;
+    const ctx=new AC();
+    const master=ctx.createGain(); master.gain.value=audio.muted?0:vol;
+    const comp=ctx.createDynamicsCompressor();
+    comp.threshold.value=-14;comp.knee.value=22;comp.ratio.value=5;comp.attack.value=.003;comp.release.value=.14;
+    master.connect(comp); comp.connect(ctx.destination);
+    const conv=ctx.createConvolver(); conv.buffer=sfx.ir(ctx,.4,3.1);
+    const vg=ctx.createGain(); vg.gain.value=.5;
+    conv.connect(vg); vg.connect(master);
+    const len=Math.floor(ctx.sampleRate*1.2), nb=ctx.createBuffer(1,len,ctx.sampleRate), nd=nb.getChannelData(0);
+    for(let i=0;i<len;i++) nd[i]=Math.random()*2-1;
+    audio.ctx=ctx; audio.master=master; audio.verb=vg; audio.noise=nb; audio.ready=true;
+    if(ctx.state==="suspended") ctx.resume();
+  },
+  ir(ctx,len,decay){
+    const n=Math.floor(ctx.sampleRate*len), b=ctx.createBuffer(2,n,ctx.sampleRate);
+    for(let c=0;c<2;c++){const d=b.getChannelData(c);
+      for(let i=0;i<n;i++){const t=i/n; d[i]=(Math.random()*2-1)*Math.pow(1-t,decay)*(1-t*.2);}}
+    return b;
+  },
+  tone(t0,o){
+    const ctx=audio.ctx, osc=ctx.createOscillator(), g=ctx.createGain();
+    const p=Object.assign({f:520,f2:0,type:"triangle",dur:.06,g:.3,send:.22},o);
+    osc.type=p.type; osc.frequency.setValueAtTime(p.f,t0);
+    if(p.f2) osc.frequency.exponentialRampToValueAtTime(Math.max(20,p.f2),t0+p.dur);
+    g.gain.setValueAtTime(.0001,t0);
+    g.gain.exponentialRampToValueAtTime(Math.max(.0002,p.g),t0+.004);
+    g.gain.exponentialRampToValueAtTime(.0001,t0+p.dur);
+    osc.connect(g); g.connect(audio.master);
+    if(p.send>0){const s=ctx.createGain();s.gain.value=p.send;g.connect(s);s.connect(audio.verb);}
+    osc.start(t0); osc.stop(t0+p.dur+.06);
+  },
+  burst(t0,o){
+    const ctx=audio.ctx, src=ctx.createBufferSource(); src.buffer=audio.noise; src.loop=true;
+    src.playbackRate.value=.8+Math.random()*.5;
+    const p=Object.assign({f:2600,q:1.1,dur:.022,g:.26,type:"bandpass",send:.28},o);
+    const flt=ctx.createBiquadFilter(); flt.type=p.type; flt.frequency.setValueAtTime(p.f,t0); flt.Q.value=p.q;
+    const g=ctx.createGain();
+    g.gain.setValueAtTime(.0001,t0);
+    g.gain.exponentialRampToValueAtTime(Math.max(.0002,p.g),t0+.0016);
+    g.gain.exponentialRampToValueAtTime(.0001,t0+p.dur);
+    src.connect(flt); flt.connect(g); g.connect(audio.master);
+    const s=ctx.createGain(); s.gain.value=p.send; g.connect(s); s.connect(audio.verb);
+    src.start(t0,Math.random()*.5); src.stop(t0+p.dur+.04);
+  },
+  VOICES:{
+    alpha:{n:2750,ng:.26,bf:560,bg:.28,d:.055,up:1150},
+    num:  {n:3300,ng:.23,bf:680,bg:.25,d:.05, up:1250},
+    sym:  {n:3050,ng:.22,bf:620,bg:.22,d:.046,up:1200},
+    acc:  {n:3100,ng:.27,bf:600,bg:.3, d:.06, up:1300},
+    tab:  {n:1900,ng:.24,bf:420,bg:.26,d:.07, up:980},
+    caps: {n:1700,ng:.28,bf:360,bg:.32,d:.1,  up:900, ex:520},
+    bs:   {n:2100,ng:.3, bf:300,bg:.3, d:.09, up:820, ex:1450},
+    enter:{n:3600,ng:.34,bf:255,bg:.38,d:.105,up:760, low:132},
+    space:{n:1250,ng:.4, bf:150,bg:.44,d:.17, up:520, low:78, lp:900},
+    mod:  {n:1600,ng:.27,bf:330,bg:.3, d:.075,up:860},
+    fn:   {n:2300,ng:.22,bf:470,bg:.22,d:.05, up:1000},
+    arrow:{n:2500,ng:.24,bf:500,bg:.26,d:.06, up:1050},
+    nav:  {n:2900,ng:.22,bf:540,bg:.24,d:.055,up:1120}
+  },
+  press(kind){
+    if(!audio.ready||audio.muted)return;
+    const t=audio.ctx.currentTime+.001, p=this.VOICES[kind]||this.VOICES.alpha;
+    this.burst(t,{f:p.n,q:1.15,dur:p.d*.55,g:p.ng,send:.24});
+    this.tone(t,{f:p.bf,f2:p.bf*.68,type:"triangle",dur:p.d,g:p.bg});
+    this.tone(t+.002,{f:p.bf*.42,f2:p.bf*.3,type:"sine",dur:Math.min(.11,p.d*1.6),g:p.bg*.75,send:.1});
+    if(p.low)  this.tone(t,{f:p.low,f2:p.low*.7,type:"sine",dur:p.d*1.5,g:.36,send:.32});
+    if(p.lp)   this.burst(t,{f:p.lp,q:.8,dur:.09,g:.2,type:"lowpass",send:.32});
+    if(p.ex)   this.tone(t+p.d*.9,{f:p.ex,f2:p.ex*.86,type:"sine",dur:.05,g:.09,send:.5});
+    this.burst(t+p.d*1.3,{f:p.up,q:2.2,dur:.014,g:p.ng*.42,send:.4});
+  },
+  release(){
+    if(!audio.ready||audio.muted)return;
+    const t=audio.ctx.currentTime+.001;
+    this.burst(t,{f:3300+Math.random()*900,q:2.4,dur:.011,g:.09,send:.34});
+    this.tone(t,{f:820,f2:640,type:"sine",dur:.03,g:.055,send:.2});
+  },
+  knobTick(dir){
+    if(!audio.ready||audio.muted)return;
+    const t=audio.ctx.currentTime+.001;
+    this.burst(t,{f:2200+Math.random()*1600,q:3.6,dur:.009,g:.15+Math.random()*.05,send:.26});
+    this.tone(t,{f:dir>0?1500:1150,f2:dir>0?1100:880,type:"sine",dur:.02,g:.05,send:.16});
+  },
+  land(f,g){
+    if(!audio.ready||audio.muted)return;
+    const t=audio.ctx.currentTime+.001;
+    this.tone(t,{f:f*.45,f2:f*.24,type:"sine",dur:.19,g:g,send:.45});
+    this.tone(t,{f:f,f2:f*.7,type:"triangle",dur:.08,g:g*.4,send:.3});
+    this.burst(t,{f:900,q:.7,dur:.07,g:g*.35,type:"lowpass",send:.3});
+  },
+  tick(f,g){
+    if(!audio.ready||audio.muted)return;
+    const t=audio.ctx.currentTime+.001;
+    this.burst(t,{f:f+Math.random()*500,q:2.4,dur:.013,g:g,send:.24});
+  }
+};
+let vol=.72, unlocked=false;
+function unlock(){
+  if(unlocked)return; unlocked=true;
+  sfx.init();
+  const h=$("#hint");
+  h.innerHTML="<b>Sound is live.</b> Click a key, type, or drag the encoder knob.";
+  setTimeout(()=>h.classList.add("gone"),2800);
+  setPhase();
+}
+["pointerdown","keydown","touchstart"].forEach(ev=>document.addEventListener(ev,unlock,{capture:true,passive:true}));
+
+/* ==================================================================
+   6 · INTERACTION
+   ================================================================== */
+const capById=[]; $$(".cap").forEach(el=>capById[+el.dataset.i]=el);
+const hKey=$("#hKey"),hCode=$("#hCode"),hKind=$("#hKind"),hCount=$("#hCount"),hChips=$("#hChips");
+let strokes=0;
+function updateHud(k){
+  hKey.textContent=capName(k); hCode.textContent=k.code||"—"; hKind.textContent=k.kind;
+  if(k.code){
+    strokes++; hCount.textContent=strokes;
+    const c=document.createElement("span"); c.textContent=capName(k);
+    hChips.appendChild(c); while(hChips.children.length>6) hChips.removeChild(hChips.firstChild);
+  }
+}
+const lit=new Map();
+function lightUp(i){ lit.set(i,performance.now()); }
+function fadeLabels(id){
+  const gs=LAY[id]||[];
+  gs.forEach(g=>{const l=g.querySelector?g.querySelector(":scope > .lbl"):null;if(l)l.style.opacity="0";});
+}
+function press(i,hold){
+  const k=keys[i], el=capById[i];
+  if(!k||!el||!installed[i])return;
+  el.classList.remove("down"); void el.getBoundingClientRect(); el.classList.add("down");
+  sfx.press(k.kind);
+  if(ledMode==="reactive") lightUp(i);
+  updateHud(k);
+  if(hold)return;
+  setTimeout(()=>{el.classList.remove("down"); sfx.release();},92+Math.random()*36);
+}
+scene.addEventListener("pointerdown",e=>{
+  const el=e.target.closest?e.target.closest(".cap"):null;
+  if(!el)return;
+  e.preventDefault();
+  const i=+el.dataset.i;
+  press(i,true);
+  const up=()=>{el.classList.remove("down"); if(installed[i]) sfx.release();
+    window.removeEventListener("pointerup",up); window.removeEventListener("pointercancel",up);};
+  window.addEventListener("pointerup",up); window.addEventListener("pointercancel",up);
+});
+scene.addEventListener("pointerover",e=>{
+  const el=e.target.closest?e.target.closest(".cap"):null;
+  if(!el)return; const k=keys[+el.dataset.i];
+  if(k){hKey.textContent=capName(k);hCode.textContent=k.code||"—";hKind.textContent=k.kind;}
+});
+const PHYS={"OSLeft":"MetaLeft","OSRight":"MetaRight","ContextMenu":"FnLeft"};
+window.addEventListener("keydown",e=>{
+  if(e.target&&/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;
+  if(e.shiftKey&&(e.key==="ArrowUp"||e.key==="ArrowDown")){e.preventDefault();nudge(e.key==="ArrowUp"?3:-3);return;}
+  const code=PHYS[e.code]||e.code;
+  const k=byCode.get(code); if(!k)return;
+  e.preventDefault();
+  if(e.repeat)return;
+  press(k.i,false);
+});
+
+/* ==================================================================
+   7 · RGB
+   ================================================================== */
+let ledMode="wave", hue=26, bri=.72, rafId=0;
+const leds=$$(".glow"), KX0=PX(BW/2,0);
+function lightReset(){leds.forEach(l=>{l.setAttribute("opacity","0");});}
+function applyLed(){
+  if(ledMode==="off"){lightReset();ugEl.setAttribute("opacity",".04");rafId=0;return;}
+  const now=performance.now();
+  if(ledMode!=="reactive") lit.clear();
+  for(let i=0;i<leds.length;i++){
+    const el=leds[i], idx=+el.dataset.led, k=keys[idx]||keys[0];
+    let h=hue,o=.85;
+    if(ledMode==="wave"){h=(hue+idx*6.2+now*.052)%360;o=(.55+.35*Math.sin(now/900+idx*.4))*bri+.05;}
+    else if(ledMode==="breathe"){const b=.5+.5*Math.sin(now/640+idx*.05);h=(hue+idx*1.2)%360;o=(.12+.85*b)*bri;}
+    else if(ledMode==="sweep"){
+      const band=KX0-400+((now*.17)%800), d=Math.abs(PX(k.cx,k.cy)-band);
+      const v=Math.exp(-(d*d)/(2*72*72)); o=(.06+.94*v)*bri; h=(hue+d*.4)%360;}
+    else if(ledMode==="reactive"){
+      const t0=lit.get(idx); let v=.04;
+      if(t0!==undefined){const age=(now-t0)/700; v=age<1.15?1.05-age:lit.delete(idx)&&0;}
+      o=Math.max(.03,v)*bri; h=(hue+idx*2.6)%360;}
+    el.style.fill=`hsl(${h.toFixed(1)} 88% 56%)`;
+    el.setAttribute("opacity",Math.max(0,Math.min(1,o)).toFixed(3));
+  }
+  ugEl.setAttribute("fill",`hsl(${((hue+now*.052)%360).toFixed(1)},82%,58%)`);
+  ugEl.setAttribute("opacity",(0.05+0.18*bri).toFixed(3));
+  rafId=requestAnimationFrame(applyLed);
+}
+function startLed(){
+  cancelAnimationFrame(rafId);
+  if(ledMode==="off"){lightReset();ugEl.setAttribute("opacity",".04");return;}
+  if(reduce){
+    leds.forEach((l,i)=>{l.style.fill=`hsl(${(hue+i*6.2)%360} 88% 56%)`;l.setAttribute("opacity",(0.55*bri).toFixed(2));});
+    ugEl.setAttribute("fill",`hsl(${hue},82%,58%)`); ugEl.setAttribute("opacity",(0.05+0.18*bri).toFixed(3)); return;}
+  rafId=requestAnimationFrame(applyLed);
+}
+$$("#rgbSeg button").forEach(b=>b.addEventListener("click",()=>{
+  $$("#rgbSeg button").forEach(o=>o.setAttribute("aria-pressed",String(o===b)));
+  ledMode=b.dataset.mode; $("#rgbTxt").textContent=b.textContent.trim().replace(/^\w/,c=>c.toUpperCase());
+  startLed(); b.blur();
+}));
+$("#hue").addEventListener("input",e=>{hue=+e.target.value;startLed();});
+$("#bri").addEventListener("input",e=>{bri=+e.target.value/100;startLed();});
+
+/* ==================================================================
+   8 · ROTARY ENCODER → master volume
+   ================================================================== */
+const knobSpin=$("#knobSpin"), knobArc=$("#knobArc"), knobVal=$("#knobVal");
+const kBoard={x:knob.cx,y:knob.cy};
+const KCX=N(kBoard.x), KCY=N(LY(kBoard.y));
+function setVol(v){
+  vol=Math.max(0,Math.min(1,v));
+  knobVal.textContent=Math.round(vol*100)+"%";
+  knobSpin.setAttribute("transform",`rotate(${N(-135+vol*270)} ${KCX} ${KCY})`);
+  const a0=-225, swp=vol*270, a1=a0+swp, R=27.5, rd=d=>d*Math.PI/180;
+  knobArc.setAttribute("d", vol>.015
+    ? `M${N(Math.cos(rd(a0))*R)} ${N(Math.sin(rd(a0))*R)}A${R} ${R} 0 ${swp>180?1:0} 1 ${N(Math.cos(rd(a1))*R)} ${N(Math.sin(rd(a1))*R)}` : "");
+  if(audio.ctx) audio.master.gain.value=audio.muted?0:vol;
+}
+let lastTick=0;
+function nudge(d){
+  const before=vol; setVol(vol+d/100);
+  const now=performance.now();
+  if(now-lastTick>32&&Math.abs(vol-before)>0.0001){lastTick=now;sfx.knobTick(d>0?1:-1);}
+}
+(function knobEvents(){
+  const hit=$("#knobHit"); if(!hit)return;
+  let drag=false,y0=0,v0=0;
+  hit.style.pointerEvents="all";
+  hit.addEventListener("pointerdown",e=>{drag=true;y0=e.clientY;v0=vol;
+    try{hit.setPointerCapture(e.pointerId);}catch(_){}
+    hit.style.cursor="grabbing";e.preventDefault();});
+  hit.addEventListener("pointermove",e=>{
+    if(!drag)return;
+    const nv=Math.max(0,Math.min(1,v0+(y0-e.clientY)/165));
+    if(Math.abs(nv-vol)>=.012) nudge(nv>vol?1:-1); else setVol(nv);
+  });
+  const stop=()=>{drag=false;hit.style.cursor="grab";};
+  hit.addEventListener("pointerup",stop); hit.addEventListener("pointercancel",stop);
+  hit.addEventListener("wheel",e=>{e.preventDefault();nudge(e.deltaY<0?2:-2);},{passive:false});
+  hit.addEventListener("dblclick",()=>{setVol(.72);sfx.knobTick(1);});
+})();
+setVol(.72);
+
+/* ==================================================================
+   9 · CONTROLS
+   ================================================================== */
+$("#replay").addEventListener("click",e=>{
+  e.currentTarget.blur();
+  if(building){finishAll();return;}
+  assemble();
+});
+$("#mute").addEventListener("click",e=>{
+  const b=e.currentTarget;
+  audio.muted=!audio.muted;
+  b.setAttribute("aria-pressed",String(audio.muted));
+  $("#muteTxt").textContent=audio.muted?"Sound off":"Sound on";
+  $("#icoSound").innerHTML=audio.muted
+   ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h3l4.5-3.5v13L7 15H4z"/><path d="M16.5 9.5l5 5M21.5 9.5l-5 5"/></svg>'
+   : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h3l4.5-3.5v13L7 15H4z"/><path d="M16 8.6a4.6 4.6 0 0 1 0 6.8"/><path d="M18.8 5.6a9 9 0 0 1 0 12.8"/></svg>';
+  if(audio.ctx) audio.master.gain.value=audio.muted?0:vol;
+  setPhase(); b.blur();
+});
+const CWN={copper:"Copper",panda:"Panda",arctic:"Arctic Teal"};
+$$("#cwSeg button").forEach(b=>b.addEventListener("click",()=>{
+  $$("#cwSeg button").forEach(o=>o.setAttribute("aria-pressed",String(o===b)));
+  scene.dataset.cw=b.dataset.cw; $("#cwTxt").textContent=CWN[b.dataset.cw]; b.blur();
+}));
+
+/* ==================================================================
+   10 · AMBIENT + BOOT
+   ================================================================== */
+(function dust(){
+  let s="";
+  for(let i=0;i<22;i++){
+    s+=`<i style="--x:${(i*4.6+((i*97)%23)).toFixed(1)}%;--y:${(30+((i*53)%68)).toFixed(1)}%;--s:${(1.2+(i%4)*.85).toFixed(1)}px;--t:${(13+(i%7)*3.4).toFixed(1)}s;--dl:${(-(i%9)*1.9).toFixed(1)}s"></i>`;
+  }
+  $("#dust").innerHTML=s;
+})();
+startLed();
+assemble();
+</script>
+</body>
+</html>
