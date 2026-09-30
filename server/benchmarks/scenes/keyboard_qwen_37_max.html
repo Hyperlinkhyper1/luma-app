@@ -1,0 +1,1087 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Forge 65 — Mechanical Keyboard Showcase</title>
+<style>
+  :root{
+    --u: 44px;                 /* key unit */
+    --gap: 5px;                /* inter-key gap */
+    --slot: calc(var(--u) + var(--gap));
+    --case-w: calc(15 * var(--slot) + 44px);
+    --case-h: calc(5 * var(--slot) + 44px + 30px);
+    --pad: 22px;
+
+    --case-1:#3b3f46;
+    --case-2:#24272c;
+    --case-edge:#1a1c20;
+    --pcb-1:#1b3a2a;
+    --pcb-2:#0f2318;
+    --foam:#efe6d2;
+    --plate-1:#2a2d33;
+    --plate-2:#16181c;
+    --cap-top-1:#efe7d4;
+    --cap-top-2:#d9cfb6;
+    --cap-side-1:#b7ad92;
+    --cap-side-2:#8e8468;
+    --cap-accent-top-1:#2e3238;
+    --cap-accent-top-2:#1a1d22;
+    --cap-accent-side-1:#14161a;
+    --cap-accent-side-2:#0a0c0f;
+    --stem:#3ad0c2;
+    --switch-housing:#15181c;
+    --legend:#1c1e22;
+    --legend-accent:#efe7d4;
+
+    --knob-1:#d8d8da;
+    --knob-2:#7d7f84;
+    --knob-ring:#111317;
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color:#e8e9ec;
+    background:
+      radial-gradient(1200px 700px at 50% -10%, #2a2f38 0%, #14161a 45%, #0a0b0e 100%);
+    overflow-x:hidden;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:28px 16px 40px;
+  }
+
+  /* subtle grid floor */
+  body::before{
+    content:"";
+    position:fixed; inset:0;
+    background:
+      linear-gradient(transparent 95%, rgba(255,255,255,0.025) 95%) 0 0/40px 40px,
+      linear-gradient(90deg, transparent 95%, rgba(255,255,255,0.025) 95%) 0 0/40px 40px;
+    mask-image: radial-gradient(ellipse at 50% 70%, black 30%, transparent 75%);
+    pointer-events:none;
+    z-index:0;
+  }
+
+  header{
+    position:relative; z-index:2;
+    width:min(1100px,100%);
+    display:flex; align-items:flex-end; justify-content:space-between;
+    gap:16px; flex-wrap:wrap;
+    margin-bottom: 18px;
+  }
+  .brand{
+    display:flex; align-items:center; gap:14px;
+  }
+  .logo{
+    width:42px;height:42px;border-radius:10px;
+    background:
+      linear-gradient(135deg,#3ad0c2,#1f7a72);
+    box-shadow: 0 6px 20px rgba(58,208,194,.25), inset 0 1px 0 rgba(255,255,255,.3);
+    display:grid; place-items:center;
+    font-weight:800; color:#0a0c0f;
+  }
+  .title{
+    margin:0; font-size:22px; letter-spacing:.02em; font-weight:700;
+  }
+  .subtitle{
+    margin:0; font-size:13px; color:#9aa0aa;
+  }
+
+  .controls{
+    display:flex; gap:10px; flex-wrap:wrap;
+  }
+  .btn{
+    appearance:none; border:1px solid rgba(255,255,255,.08);
+    background: linear-gradient(180deg,#2a2e35,#1c1f24);
+    color:#e8e9ec; padding:10px 14px; border-radius:10px;
+    font-size:13px; font-weight:600; letter-spacing:.02em;
+    display:inline-flex; align-items:center; gap:8px;
+    cursor:pointer;
+    transition: transform .15s ease, border-color .15s ease, background .15s ease;
+    box-shadow: 0 1px 0 rgba(255,255,255,.04) inset, 0 6px 16px rgba(0,0,0,.35);
+  }
+  .btn:hover{ border-color:rgba(255,255,255,.18); transform: translateY(-1px); }
+  .btn:active{ transform: translateY(0); }
+  .btn .dot{
+    width:8px;height:8px;border-radius:50%; background:#3ad0c2;
+    box-shadow: 0 0 10px #3ad0c2;
+  }
+  .btn.off .dot{ background:#5a606a; box-shadow:none; }
+
+  /* Audio hint */
+  .hint{
+    position:fixed; bottom:18px; left:50%; transform:translateX(-50%);
+    background:rgba(20,22,26,.9);
+    border:1px solid rgba(255,255,255,.08);
+    padding:10px 14px; border-radius:999px; font-size:12px; color:#cfd2d8;
+    z-index:10; opacity:0; pointer-events:none; transition: opacity .25s ease;
+  }
+  .hint.show{ opacity:1; }
+
+  /* ===================== STAGE ===================== */
+  .stage-wrap{
+    position:relative; z-index:1;
+    width:100%;
+    display:flex; justify-content:center; align-items:center;
+    padding: 40px 0 20px;
+  }
+  .stage{
+    perspective: 1600px;
+    perspective-origin: 50% 30%;
+    transform: scale(var(--stage-scale,1));
+    transform-origin: top center;
+  }
+  .keyboard{
+    position:relative;
+    width: var(--case-w);
+    height: var(--case-h);
+    transform-style: preserve-3d;
+    transform: rotateX(22deg) rotateZ(-2deg);
+    transition: transform .9s cubic-bezier(.2,.7,.2,1);
+    filter: drop-shadow(0 40px 40px rgba(0,0,0,.55));
+  }
+  .keyboard.settled{ transform: rotateX(14deg) rotateZ(-2deg); }
+
+  /* Layers — all absolutely stacked inside the keyboard */
+  .layer{
+    position:absolute; inset:0;
+    transform-style: preserve-3d;
+    will-change: transform, opacity;
+  }
+
+  /* ===================== CASE ===================== */
+  .case{
+    /* bottom tray */
+    left:0; right:0; top:15px; bottom:0;
+    border-radius:18px;
+    background:
+      linear-gradient(180deg, var(--case-1) 0%, var(--case-2) 65%, #14161a 100%);
+    border:1px solid #0d0f12;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.12),
+      inset 0 -8px 22px rgba(0,0,0,.5),
+      0 18px 30px rgba(0,0,0,.5);
+    transform: translateZ(-4px);
+  }
+  .case::before{
+    /* inner well */
+    content:"";
+    position:absolute;
+    left: var(--pad); right: var(--pad); top: var(--pad); bottom: calc(var(--pad) + 8px);
+    border-radius: 10px;
+    background: #0c0e11;
+    box-shadow: inset 0 2px 8px rgba(0,0,0,.8), inset 0 -1px 0 rgba(255,255,255,.04);
+  }
+  .case::after{
+    /* usb-c notch */
+    content:"";
+    position:absolute;
+    left:50%; top:-2px; transform:translateX(-50%);
+    width: 46px; height: 10px; border-radius: 6px 6px 2px 2px;
+    background: linear-gradient(180deg,#0a0c0f,#1a1d22);
+    border:1px solid #000; border-top:none;
+  }
+  .case-badge{
+    position:absolute; right: 18px; bottom: 10px;
+    font-size:10px; letter-spacing:.25em; color:rgba(255,255,255,.25);
+    font-weight:700;
+  }
+
+  /* RGB underglow strip along the case bottom */
+  .underglow{
+    position:absolute; left:8%; right:8%; bottom:-4px; height:6px;
+    border-radius:6px;
+    background: linear-gradient(90deg,
+      #ff4d6d, #ffb347, #ffe066, #3ad0c2, #6aa9ff, #b07bff, #ff4d6d);
+    background-size: 300% 100%;
+    filter: blur(6px);
+    opacity: .0;
+    transition: opacity .4s ease;
+    animation: rgbshift 8s linear infinite;
+  }
+  .rgb-on .underglow{ opacity:.75; }
+  @keyframes rgbshift { 0%{background-position:0% 0} 100%{background-position:300% 0} }
+
+  /* ===================== PCB ===================== */
+  .pcb{
+    left: var(--pad); right: var(--pad);
+    top: calc(var(--pad) + 15px);
+    height: calc(5 * var(--slot) + 4px);
+    border-radius: 8px;
+    background:
+      radial-gradient(circle at 10% 30%, rgba(255,255,255,.06), transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(255,255,255,.05), transparent 40%),
+      linear-gradient(135deg, var(--pcb-1), var(--pcb-2));
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.04), inset 0 -2px 6px rgba(0,0,0,.5);
+    transform: translateZ(1px);
+    overflow:hidden;
+  }
+  /* traces */
+  .pcb::before, .pcb::after{
+    content:""; position:absolute; inset:0;
+    background-image:
+      linear-gradient(90deg, rgba(212,175,90,.25) 1px, transparent 1px),
+      linear-gradient(0deg, rgba(212,175,90,.18) 1px, transparent 1px);
+    background-size: 48px 48px, 48px 48px;
+    mix-blend-mode: screen;
+    opacity:.6;
+  }
+  .pcb::after{
+    background-image:
+      linear-gradient(45deg, transparent 49.5%, rgba(212,175,90,.2) 49.5% 50.5%, transparent 50.5%),
+      linear-gradient(-45deg, transparent 49.5%, rgba(212,175,90,.15) 49.5% 50.5%, transparent 50.5%);
+    background-size: 36px 36px;
+  }
+  .pcb-pads{
+    position:absolute; inset:0; pointer-events:none;
+  }
+  .pcb-pad{
+    position:absolute; width:8px; height:8px; border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, #f6d97a, #b8892c 70%, #6b4f18);
+    box-shadow: 0 0 4px rgba(255,200,80,.3);
+  }
+  .pcb-chip{
+    position:absolute; left:50%; top:50%;
+    width:60px; height:22px; transform:translate(-50%,-50%);
+    background: linear-gradient(180deg,#1a1c20,#0a0b0d);
+    border-radius:3px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 0 0 1px #000;
+  }
+  .pcb-chip::after{
+    content:"FORGE"; position:absolute; inset:0; display:grid; place-items:center;
+    font-size:8px; letter-spacing:.2em; color:rgba(255,255,255,.4); font-weight:700;
+  }
+
+  /* ===================== FOAM ===================== */
+  .foam{
+    left: var(--pad); right: var(--pad);
+    top: calc(var(--pad) + 15px);
+    height: calc(5 * var(--slot) + 4px);
+    border-radius: 6px;
+    background:
+      radial-gradient(circle at 20% 30%, #fff 0.5px, transparent 1px) 0 0/6px 6px,
+      radial-gradient(circle at 70% 60%, #fff 0.5px, transparent 1px) 3px 3px/6px 6px,
+      linear-gradient(180deg, var(--foam), #d8cfba);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.5), inset 0 -2px 4px rgba(0,0,0,.15);
+    transform: translateZ(3px);
+    opacity:.95;
+  }
+
+  /* ===================== PLATE ===================== */
+  .plate{
+    left: var(--pad); right: var(--pad);
+    top: calc(var(--pad) + 15px);
+    height: calc(5 * var(--slot) + 4px);
+    border-radius: 6px;
+    background:
+      linear-gradient(180deg, var(--plate-1) 0%, var(--plate-2) 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.08),
+      inset 0 -1px 0 rgba(0,0,0,.6),
+      0 1px 0 rgba(255,255,255,.03);
+    transform: translateZ(5px);
+    overflow:hidden;
+  }
+  .plate-cutouts{
+    position:absolute; inset:0; pointer-events:none;
+  }
+  .plate-cut{
+    position:absolute;
+    background: #07090b;
+    border-radius: 2px;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,.9), inset 0 -1px 0 rgba(255,255,255,.04);
+  }
+
+  /* ===================== SWITCHES ===================== */
+  .switches, .keycaps{ position:absolute; inset:0; pointer-events:none; }
+  .switch{
+    position:absolute;
+    width: var(--u);
+    height: var(--u);
+    transform-style: preserve-3d;
+    transform: translateZ(7px);
+    opacity:0;
+  }
+  .switch .housing{
+    position:absolute; inset:3px;
+    background: linear-gradient(180deg, #2a2d33 0%, var(--switch-housing) 100%);
+    border-radius: 3px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.08), inset 0 -1px 0 rgba(0,0,0,.7);
+  }
+  .switch .stem{
+    position:absolute; left:50%; top:50%;
+    width: 14px; height: 14px; transform: translate(-50%,-50%);
+    background: linear-gradient(135deg, #6af0e3, var(--stem) 60%, #1f8a80);
+    border-radius:2px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 1px 2px rgba(0,0,0,.6);
+  }
+  .switch .stem::before, .switch .stem::after{
+    content:""; position:absolute; background:#0c3330; border-radius:1px;
+  }
+  .switch .stem::before{ /* horizontal bar of cross */
+    left:1px; right:1px; top:50%; height:2px; transform: translateY(-50%);
+  }
+  .switch .stem::after{ /* vertical bar of cross */
+    top:1px; bottom:1px; left:50%; width:2px; transform: translateX(-50%);
+  }
+  .switch.installed{ opacity:1; animation: switchDrop .35s cubic-bezier(.3,1.4,.5,1) both; }
+  @keyframes switchDrop{
+    0%   { transform: translateZ(90px) translateY(-30px); opacity:0; }
+    60%  { transform: translateZ(10px) translateY(2px); opacity:1; }
+    100% { transform: translateZ(7px)  translateY(0); opacity:1; }
+  }
+
+  /* ===================== KEYCAPS ===================== */
+  .keycap{
+    position:absolute;
+    width: var(--u);
+    height: var(--u);
+    transform-style: preserve-3d;
+    transform: translateZ(14px);
+    cursor:pointer;
+    opacity:0;
+    transition: transform .08s ease;
+    pointer-events:auto;
+  }
+  .keycap .top{
+    position:absolute;
+    left:2px; right:2px; top:2px; bottom:6px;
+    background: linear-gradient(180deg, var(--cap-top-1) 0%, var(--cap-top-2) 100%);
+    border-radius: 6px 6px 8px 8px;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.7),
+      inset 0 -3px 6px rgba(0,0,0,.15),
+      0 1px 0 rgba(255,255,255,.08);
+    display:flex; align-items:center; justify-content:center;
+    color: var(--legend);
+    font-size: 12px; font-weight: 700;
+    text-align:center;
+    line-height:1.1;
+    letter-spacing:.01em;
+    user-select:none;
+  }
+  .keycap .top .sub{
+    position:absolute; left:0; right:0; top:4px;
+    font-size:9px; font-weight:600; opacity:.75;
+  }
+  .keycap .skirt{
+    position:absolute;
+    left:0; right:0; top: calc(var(--u) - 12px); height:10px;
+    background: linear-gradient(180deg, var(--cap-side-1) 0%, var(--cap-side-2) 100%);
+    border-radius: 0 0 8px 8px;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.08),
+      inset 0 -2px 4px rgba(0,0,0,.45),
+      0 2px 0 rgba(0,0,0,.25);
+    transform: translateZ(-3px) rotateX(-60deg);
+    transform-origin: top center;
+  }
+  .keycap.accent .top{
+    background: linear-gradient(180deg, var(--cap-accent-top-1), var(--cap-accent-top-2));
+    color: var(--legend-accent);
+  }
+  .keycap.accent .skirt{
+    background: linear-gradient(180deg, var(--cap-accent-side-1), var(--cap-accent-side-2));
+  }
+
+  .keycap:hover .top{ filter: brightness(1.05); }
+  .keycap.pressed{ transform: translateZ(11px); }
+  .keycap.pressed .top{
+    filter: brightness(.92);
+    box-shadow:
+      inset 0 2px 3px rgba(0,0,0,.25),
+      inset 0 -1px 0 rgba(255,255,255,.05);
+  }
+  .keycap.installed{ opacity:1; animation: capDrop .32s cubic-bezier(.3,1.3,.5,1) both; }
+  @keyframes capDrop{
+    0%   { transform: translateZ(140px) translateY(-20px); opacity:0; }
+    65%  { transform: translateZ(16px)  translateY(1px); opacity:1; }
+    100% { transform: translateZ(14px)  translateY(0); opacity:1; }
+  }
+
+  /* Wide keys handled via width override via inline style */
+
+  /* ===================== KNOB ===================== */
+  .knob-wrap{
+    position:absolute;
+    right: calc(var(--pad) + 4px);
+    top: -6px;
+    width: 56px; height: 56px;
+    transform-style: preserve-3d;
+    transform: translateZ(18px);
+    opacity:0;
+    pointer-events:auto;
+    cursor:pointer;
+  }
+  .knob-wrap.installed{ opacity:1; animation: capDrop .5s cubic-bezier(.3,1.3,.5,1) both; }
+  .knob-base{
+    position:absolute; inset:0;
+    border-radius:50%;
+    background: radial-gradient(circle at 50% 50%, #0a0b0d 0%, #05060a 70%);
+    box-shadow: inset 0 2px 6px rgba(0,0,0,.9), 0 2px 0 rgba(255,255,255,.03);
+  }
+  .knob{
+    position:absolute; inset:4px;
+    border-radius:50%;
+    background:
+      repeating-conic-gradient(from 0deg, rgba(0,0,0,.25) 0deg 6deg, rgba(255,255,255,.08) 6deg 12deg),
+      conic-gradient(from 220deg, var(--knob-1), #4a4c50, var(--knob-2), var(--knob-1));
+    box-shadow:
+      inset 0 2px 4px rgba(255,255,255,.35),
+      inset 0 -3px 6px rgba(0,0,0,.5),
+      0 3px 8px rgba(0,0,0,.6);
+    transition: transform .2s cubic-bezier(.3,1.4,.5,1);
+  }
+  .knob::after{
+    content:"";
+    position:absolute; left:50%; top:8%;
+    width:3px; height:22%;
+    background: linear-gradient(180deg,#0a0b0d,#2a2d33);
+    border-radius:2px;
+    transform: translateX(-50%);
+    box-shadow: 0 0 0 1px rgba(255,255,255,.12);
+  }
+  .knob-wrap:active .knob{ transform: rotate(20deg) scale(.98); }
+
+  /* ===================== ASSEMBLY (initial states) ===================== */
+  /* Each layer begins offset above and animates in. */
+  .layer.case-layer{ transform: translateZ(-40px) translateY(80px); opacity:0; }
+  .layer.pcb-layer{  transform: translateZ(120px) translateY(-60px); opacity:0; }
+  .layer.foam-layer{ transform: translateZ(160px) translateY(-60px); opacity:0; }
+  .layer.plate-layer{transform: translateZ(200px) translateY(-60px); opacity:0; }
+
+  .assembling .case-layer{ animation: layerIn .9s cubic-bezier(.2,.7,.2,1) .1s both; }
+  .assembling .pcb-layer { animation: layerIn .7s cubic-bezier(.2,.7,.2,1) .7s both; }
+  .assembling .foam-layer{ animation: layerIn .6s cubic-bezier(.2,.7,.2,1) 1.15s both; }
+  .assembling .plate-layer{animation: layerIn .6s cubic-bezier(.2,.7,.2,1) 1.55s both; }
+  /* Knob installs via JS adding .installed at ~2s (matches the knobStart timing). */
+
+  @keyframes layerIn{
+    0%   { transform: translateZ(var(--z0, 120px)) translateY(-60px); opacity:0; }
+    60%  { opacity:1; }
+    100% { transform: translateZ(var(--z1, 0px))   translateY(0);     opacity:1; }
+  }
+
+  .assembling .case-layer { --z0:-40px; --z1:-4px; }
+  .assembling .pcb-layer  { --z0: 120px; --z1: 1px; }
+  .assembling .foam-layer { --z0: 160px; --z1: 3px; }
+  .assembling .plate-layer{ --z0: 200px; --z1: 5px; }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce){
+    .keyboard, .keycap, .switch, .knob-wrap, .layer, .btn, .hint{ transition:none !important; animation-duration:.001s !important; }
+    .keycap, .switch, .knob-wrap { opacity:1 !important; }
+    .layer{ transform:none !important; opacity:1 !important; }
+    .keyboard{ transform: rotateX(14deg) rotateZ(-2deg); }
+  }
+
+  /* Footer */
+  footer{
+    position:relative; z-index:2;
+    width:min(1100px,100%);
+    margin-top: 10px;
+    display:flex; justify-content:space-between; align-items:center; gap:16px;
+    color:#8a90a0; font-size:12px; flex-wrap:wrap;
+  }
+  .legend{
+    display:flex; gap:14px; flex-wrap:wrap;
+  }
+  .legend span{
+    display:inline-flex; align-items:center; gap:6px;
+  }
+  .legend i{
+    display:inline-block; width:10px; height:10px; border-radius:3px;
+    background: linear-gradient(180deg, var(--cap-top-1), var(--cap-top-2));
+    box-shadow: 0 1px 0 rgba(0,0,0,.3);
+  }
+  .legend i.a{ background: linear-gradient(180deg, var(--cap-accent-top-1), var(--cap-accent-top-2)); }
+  .legend i.s{ background: linear-gradient(135deg,#6af0e3, var(--stem)); }
+
+  /* Responsive */
+  @media (max-width: 900px){
+    .title{ font-size:18px; }
+    .subtitle{ font-size:12px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo">F</div>
+    <div>
+      <h1 class="title">Forge 65 · Mechanical Keyboard</h1>
+      <p class="subtitle">65% hot-swap · cream PBT · aluminum case · rotary encoder</p>
+    </div>
+  </div>
+  <div class="controls">
+    <button class="btn" id="replayBtn" title="Replay assembly animation">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+      Replay
+    </button>
+    <button class="btn" id="rgbBtn" title="Toggle RGB underglow">
+      <span class="dot"></span> RGB
+    </button>
+    <button class="btn" id="muteBtn" title="Toggle sound">
+      <span class="dot"></span> Sound
+    </button>
+  </div>
+</header>
+
+<div class="stage-wrap">
+  <div class="stage" id="stage">
+    <div class="keyboard" id="keyboard">
+      <div class="layer case-layer case"></div>
+      <div class="layer pcb-layer">
+        <div class="pcb">
+          <div class="pcb-pads" id="pcbPads"></div>
+          <div class="pcb-chip"></div>
+        </div>
+      </div>
+      <div class="layer foam-layer">
+        <div class="foam"></div>
+      </div>
+      <div class="layer plate-layer">
+        <div class="plate">
+          <div class="plate-cutouts" id="plateCutouts"></div>
+        </div>
+      </div>
+      <div class="layer">
+        <div class="switches" id="switches"></div>
+        <div class="keycaps" id="keycaps"></div>
+        <div class="knob-wrap" id="knob" title="Click the knob to toggle RGB">
+          <div class="knob-base"></div>
+          <div class="knob"></div>
+        </div>
+      </div>
+      <div class="underglow"></div>
+      <div class="case-badge">FORGE · MK I</div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="legend">
+    <span><i></i> PBT keycap</span>
+    <span><i class="a"></i> Modifier</span>
+    <span><i class="s"></i> MX-style stem</span>
+  </div>
+  <div>Click a key, or press one on your physical keyboard. Turn the knob to toggle RGB.</div>
+</footer>
+
+<div class="hint" id="hint">🔊 Click any key (or press one) to enable sound</div>
+
+<script>
+/* =====================================================================
+   KEY LAYOUT — 65% with arrow cluster
+   w = width in units. accent = darker keycap style. sound = sound group.
+===================================================================== */
+const ROWS = [
+  [
+    {code:'Escape',   label:'esc',          w:1,    sound:'mod'},
+    {code:'Digit1',   label:'1',            w:1,    sound:'num'},
+    {code:'Digit2',   label:'2',            w:1,    sound:'num'},
+    {code:'Digit3',   label:'3',            w:1,    sound:'num'},
+    {code:'Digit4',   label:'4',            w:1,    sound:'num'},
+    {code:'Digit5',   label:'5',            w:1,    sound:'num'},
+    {code:'Digit6',   label:'6',            w:1,    sound:'num'},
+    {code:'Digit7',   label:'7',            w:1,    sound:'num'},
+    {code:'Digit8',   label:'8',            w:1,    sound:'num'},
+    {code:'Digit9',   label:'9',            w:1,    sound:'num'},
+    {code:'Digit0',   label:'0',            w:1,    sound:'num'},
+    {code:'Minus',    label:'-',            w:1,    sound:'num'},
+    {code:'Equal',    label:'=',            w:1,    sound:'num'},
+    {code:'Backspace',label:'⌫',            w:2,    sound:'enter', accent:true},
+    {code:'Home',     label:'home',         w:1,    sound:'mod',   accent:true},
+  ],
+  [
+    {code:'Tab',      label:'Tab',          w:1.5,  sound:'mod',   accent:true},
+    {code:'KeyQ',     label:'Q',            w:1,    sound:'letter'},
+    {code:'KeyW',     label:'W',            w:1,    sound:'letter'},
+    {code:'KeyE',     label:'E',            w:1,    sound:'letter'},
+    {code:'KeyR',     label:'R',            w:1,    sound:'letter'},
+    {code:'KeyT',     label:'T',            w:1,    sound:'letter'},
+    {code:'KeyY',     label:'Y',            w:1,    sound:'letter'},
+    {code:'KeyU',     label:'U',            w:1,    sound:'letter'},
+    {code:'KeyI',     label:'I',            w:1,    sound:'letter'},
+    {code:'KeyO',     label:'O',            w:1,    sound:'letter'},
+    {code:'KeyP',     label:'P',            w:1,    sound:'letter'},
+    {code:'BracketLeft',  label:'[',        w:1,    sound:'num'},
+    {code:'BracketRight', label:']',        w:1,    sound:'num'},
+    {code:'Backslash',    label:'\\',       w:1.5,  sound:'num'},
+    {code:'PageUp',   label:'pg up',        w:1,    sound:'mod',   accent:true},
+  ],
+  [
+    {code:'CapsLock', label:'Caps',         w:1.75, sound:'mod',   accent:true},
+    {code:'KeyA',     label:'A',            w:1,    sound:'letter'},
+    {code:'KeyS',     label:'S',            w:1,    sound:'letter'},
+    {code:'KeyD',     label:'D',            w:1,    sound:'letter'},
+    {code:'KeyF',     label:'F',            w:1,    sound:'letter'},
+    {code:'KeyG',     label:'G',            w:1,    sound:'letter'},
+    {code:'KeyH',     label:'H',            w:1,    sound:'letter'},
+    {code:'KeyJ',     label:'J',            w:1,    sound:'letter'},
+    {code:'KeyK',     label:'K',            w:1,    sound:'letter'},
+    {code:'KeyL',     label:'L',            w:1,    sound:'letter'},
+    {code:'Semicolon',label:';',            w:1,    sound:'num'},
+    {code:'Quote',    label:"'",            w:1,    sound:'num'},
+    {code:'Enter',    label:'Enter',        w:2.25, sound:'enter', accent:true},
+    {code:'PageDown', label:'pg dn',        w:1,    sound:'mod',   accent:true},
+  ],
+  [
+    {code:'ShiftLeft',label:'Shift',        w:2.25, sound:'mod',   accent:true},
+    {code:'KeyZ',     label:'Z',            w:1,    sound:'letter'},
+    {code:'KeyX',     label:'X',            w:1,    sound:'letter'},
+    {code:'KeyC',     label:'C',            w:1,    sound:'letter'},
+    {code:'KeyV',     label:'V',            w:1,    sound:'letter'},
+    {code:'KeyB',     label:'B',            w:1,    sound:'letter'},
+    {code:'KeyN',     label:'N',            w:1,    sound:'letter'},
+    {code:'KeyM',     label:'M',            w:1,    sound:'letter'},
+    {code:'Comma',    label:',',            w:1,    sound:'num'},
+    {code:'Period',   label:'.',            w:1,    sound:'num'},
+    {code:'Slash',    label:'/',            w:1,    sound:'num'},
+    {code:'ShiftRight',label:'Shift',       w:1.75, sound:'mod',   accent:true},
+    {code:'ArrowUp',  label:'▲',            w:1,    sound:'mod',   accent:true},
+    {code:'End',      label:'end',          w:1,    sound:'mod',   accent:true},
+  ],
+  [
+    {code:'ControlLeft', label:'Ctrl',      w:1.25, sound:'mod',   accent:true},
+    {code:'MetaLeft',    label:'Win',       w:1.25, sound:'mod',   accent:true},
+    {code:'AltLeft',     label:'Alt',       w:1.25, sound:'mod',   accent:true},
+    {code:'Space',       label:'',          w:6.25, sound:'space', accent:false},
+    {code:'AltRight',    label:'Alt',       w:1,    sound:'mod',   accent:true},
+    {code:'Fn',          label:'Fn',        w:1,    sound:'mod',   accent:true, virtual:true},
+    {code:'ControlRight',label:'Ctrl',      w:1,    sound:'mod',   accent:true},
+    {code:'ArrowLeft',   label:'◀',         w:1,    sound:'mod',   accent:true},
+    {code:'ArrowDown',   label:'▼',         w:1,    sound:'mod',   accent:true},
+    {code:'ArrowRight',  label:'▶',         w:1,    sound:'mod',   accent:true},
+  ],
+];
+
+/* =================== DOM BUILD =================== */
+const unit = 44;         // matches CSS --u
+const gap  = 5;          // matches CSS --gap
+const slot = unit + gap;
+const pad  = 22;         // matches CSS --pad
+const rowTopOffset = 15; // case top inset to key area (matches CSS top: pad+15)
+
+const switchesEl = document.getElementById('switches');
+const keycapsEl  = document.getElementById('keycaps');
+const plateCutoutsEl = document.getElementById('plateCutouts');
+const pcbPadsEl  = document.getElementById('pcbPads');
+
+// Build each row
+const allKeys = []; // flat list with {el, switchEl, row, col, code, sound, x, y}
+ROWS.forEach((row, ri) => {
+  let xCursor = 0;
+  row.forEach((k, ci) => {
+    const wUnits = k.w;
+    const w = wUnits * unit + (wUnits - 1) * gap; // total width of keycap
+    const x = pad + xCursor * slot;                // position within keyboard
+    const y = pad + rowTopOffset + ri * slot;
+
+    // Plate cutout (one per switch slot, width = wUnits)
+    const cut = document.createElement('div');
+    cut.className = 'plate-cut';
+    cut.style.left = (xCursor * slot) + 'px';
+    cut.style.top  = (ri * slot) + 'px';
+    cut.style.width = w + 'px';
+    cut.style.height = unit + 'px';
+    plateCutoutsEl.appendChild(cut);
+
+    // Switch
+    const sw = document.createElement('div');
+    sw.className = 'switch';
+    sw.style.left = x + 'px';
+    sw.style.top  = y + 'px';
+    sw.style.width = unit + 'px';
+    sw.style.height = unit + 'px';
+    sw.innerHTML = '<div class="housing"></div><div class="stem"></div>';
+    switchesEl.appendChild(sw);
+
+    // Keycap
+    const cap = document.createElement('div');
+    cap.className = 'keycap' + (k.accent ? ' accent' : '');
+    cap.style.left = x + 'px';
+    cap.style.top  = y + 'px';
+    cap.style.width = w + 'px';
+    cap.style.height = unit + 'px';
+    cap.dataset.code = k.code;
+    cap.dataset.sound = k.sound;
+    // top face (inset), skirt
+    const top = document.createElement('div');
+    top.className = 'top';
+    top.style.left = '2px';
+    top.style.right = '2px';
+    top.textContent = k.label;
+    const skirt = document.createElement('div');
+    skirt.className = 'skirt';
+    cap.appendChild(top);
+    cap.appendChild(skirt);
+    keycapsEl.appendChild(cap);
+
+    // PCB pad (center of each switch)
+    const padEl = document.createElement('div');
+    padEl.className = 'pcb-pad';
+    padEl.style.left = (x + unit/2 - 4) + 'px';
+    padEl.style.top  = (y + unit/2 - 4) + 'px';
+    pcbPadsEl.appendChild(padEl);
+
+    allKeys.push({
+      code: k.code,
+      sound: k.sound,
+      capEl: cap,
+      switchEl: sw,
+      index: allKeys.length,
+    });
+
+    xCursor += wUnits;
+  });
+});
+
+// A few extra PCB pads / traces for realism
+for (let i = 0; i < 14; i++){
+  const p = document.createElement('div');
+  p.className = 'pcb-pad';
+  p.style.left = (20 + Math.random()*680) + 'px';
+  p.style.top  = (10 + Math.random()*220) + 'px';
+  p.style.opacity = 0.6;
+  pcbPadsEl.appendChild(p);
+}
+
+/* =================== ASSEMBLY ORCHESTRATOR =================== */
+const keyboardEl = document.getElementById('keyboard');
+const stageEl    = document.getElementById('stage');
+const knobEl     = document.getElementById('knob');
+
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function getLayerEndTimes(){
+  // Matches CSS animation delays + durations for layers
+  return {
+    caseEnd:  prefersReducedMotion ? 50  : 100 + 900,    // .1s + .9s
+    pcbEnd:   prefersReducedMotion ? 60  : 700 + 700,    // .7s + .7s
+    foamEnd:  prefersReducedMotion ? 70  : 1150 + 600,   // 1.15 + .6
+    plateEnd: prefersReducedMotion ? 80  : 1550 + 600,   // 1.55 + .6
+    knobStart:prefersReducedMotion ? 90  : 2200,         // after plate settles (~2.15s)
+  };
+}
+
+let assemblyGeneration = 0;
+function runAssembly(){
+  const gen = ++assemblyGeneration;
+  // Reset
+  keyboardEl.classList.remove('settled');
+  keyboardEl.classList.remove('assembling');
+  // Force reflow to restart animations
+  void keyboardEl.offsetWidth;
+
+  // Hide switches & keycaps & knob until their turn
+  allKeys.forEach(k => {
+    k.switchEl.classList.remove('installed');
+    k.capEl.classList.remove('installed');
+    k.switchEl.style.opacity = 0;
+    k.capEl.style.opacity = 0;
+  });
+  knobEl.classList.remove('installed');
+
+  // Start layer animations
+  keyboardEl.classList.add('assembling');
+
+  const t = getLayerEndTimes();
+
+  // Install switches one by one after plate settles
+  const switchDelay = prefersReducedMotion ? 12 : 55;
+  const switchStart = t.plateEnd + (prefersReducedMotion ? 10 : 200);
+  allKeys.forEach((k, i) => {
+    setTimeout(() => {
+      if (gen !== assemblyGeneration) return;
+      k.switchEl.style.opacity = '';
+      k.switchEl.classList.add('installed');
+      playInstallSound('switch');
+    }, switchStart + i * switchDelay);
+  });
+
+  // Install keycaps after switches done
+  const capDelay = prefersReducedMotion ? 10 : 42;
+  const capStart = switchStart + allKeys.length * switchDelay + (prefersReducedMotion ? 10 : 160);
+  allKeys.forEach((k, i) => {
+    setTimeout(() => {
+      if (gen !== assemblyGeneration) return;
+      k.capEl.style.opacity = '';
+      k.capEl.classList.add('installed');
+      playInstallSound('cap');
+    }, capStart + i * capDelay);
+  });
+
+  // Install the knob after the plate settles
+  setTimeout(() => {
+    if (gen !== assemblyGeneration) return;
+    knobEl.classList.add('installed');
+    playInstallSound('knob');
+  }, t.knobStart);
+
+  // Settle the keyboard at the end (only if this generation is still current)
+  const totalEnd = capStart + allKeys.length * capDelay + (prefersReducedMotion ? 10 : 300);
+  setTimeout(() => {
+    if (gen !== assemblyGeneration) return;
+    keyboardEl.classList.add('settled');
+  }, totalEnd);
+}
+
+/* =================== SOUND ENGINE =================== */
+let audioCtx = null;
+let muted = false;
+let audioUnlocked = false;
+
+function ensureAudio(){
+  if (!audioCtx){
+    try{
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }catch(e){ return null; }
+  }
+  if (audioCtx.state === 'suspended'){
+    audioCtx.resume();
+  }
+  return audioCtx;
+}
+
+function unlockAudio(){
+  if (audioUnlocked) return;
+  const ctx = ensureAudio();
+  if (!ctx) return;
+  // Play a silent buffer to unlock on some browsers
+  const buf = ctx.createBuffer(1, 1, 22050);
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.connect(ctx.destination);
+  src.start();
+  audioUnlocked = true;
+  hideHint();
+}
+
+// Noise buffer cache
+let noiseBuffer = null;
+function getNoiseBuffer(ctx){
+  if (noiseBuffer) return noiseBuffer;
+  const size = Math.floor(0.15 * ctx.sampleRate);
+  noiseBuffer = ctx.createBuffer(1, size, ctx.sampleRate);
+  const d = noiseBuffer.getChannelData(0);
+  for (let i = 0; i < size; i++) d[i] = Math.random() * 2 - 1;
+  return noiseBuffer;
+}
+
+/*
+  Sound profiles per group. Each profile:
+    freq     : pitched click frequency
+    oscType  : 'triangle' | 'sine'
+    oscGain  : peak gain of pitched oscillator
+    decay    : pitched oscillator decay (seconds)
+    noiseGain: peak gain of noise burst
+    noiseQ   : bandpass Q for noise
+    noiseFreq: bandpass center freq for noise
+    noiseDecay: noise burst decay (seconds)
+*/
+const PROFILES = {
+  letter: { freq: 210, oscType:'triangle', oscGain:.22, decay:.07, noiseGain:.22, noiseQ:1.2, noiseFreq:2400, noiseDecay:.045 },
+  num:    { freq: 240, oscType:'triangle', oscGain:.20, decay:.06, noiseGain:.22, noiseQ:1.3, noiseFreq:2600, noiseDecay:.04  },
+  mod:    { freq: 175, oscType:'triangle', oscGain:.24, decay:.08, noiseGain:.25, noiseQ:1.0, noiseFreq:2100, noiseDecay:.05  },
+  enter:  { freq: 140, oscType:'triangle', oscGain:.28, decay:.10, noiseGain:.28, noiseQ:.9,  noiseFreq:1800, noiseDecay:.07  },
+  space:  { freq:  85, oscType:'sine',     oscGain:.34, decay:.15, noiseGain:.22, noiseQ:.7,  noiseFreq:1200, noiseDecay:.11  },
+  switch: { freq: 320, oscType:'square',   oscGain:.06, decay:.03, noiseGain:.10, noiseQ:2.0, noiseFreq:3200, noiseDecay:.025 },
+  cap:    { freq: 420, oscType:'triangle', oscGain:.05, decay:.03, noiseGain:.12, noiseQ:2.2, noiseFreq:3800, noiseDecay:.02  },
+  knob:   { freq: 1200,oscType:'square',   oscGain:.08, decay:.015,noiseGain:.06, noiseQ:3.0, noiseFreq:4200, noiseDecay:.012 },
+};
+
+function playProfile(profile){
+  if (muted) return;
+  const ctx = ensureAudio();
+  if (!ctx) return;
+  const p = PROFILES[profile] || PROFILES.letter;
+  const t = ctx.currentTime;
+
+  // --- pitched click ---
+  const osc = ctx.createOscillator();
+  osc.type = p.oscType;
+  osc.frequency.setValueAtTime(p.freq, t);
+  osc.frequency.exponentialRampToValueAtTime(Math.max(40, p.freq * 0.55), t + p.decay);
+  const og = ctx.createGain();
+  og.gain.setValueAtTime(0.0001, t);
+  og.gain.exponentialRampToValueAtTime(p.oscGain, t + 0.003);
+  og.gain.exponentialRampToValueAtTime(0.0001, t + p.decay);
+  osc.connect(og).connect(ctx.destination);
+  osc.start(t);
+  osc.stop(t + p.decay + 0.02);
+
+  // --- noise burst (the "thock" body) ---
+  const noise = ctx.createBufferSource();
+  noise.buffer = getNoiseBuffer(ctx);
+  const nf = ctx.createBiquadFilter();
+  nf.type = 'bandpass';
+  nf.frequency.value = p.noiseFreq;
+  nf.Q.value = p.noiseQ;
+  const ng = ctx.createGain();
+  ng.gain.setValueAtTime(0.0001, t);
+  ng.gain.exponentialRampToValueAtTime(p.noiseGain, t + 0.002);
+  ng.gain.exponentialRampToValueAtTime(0.0001, t + p.noiseDecay);
+  noise.connect(nf).connect(ng).connect(ctx.destination);
+  noise.start(t);
+  noise.stop(t + p.noiseDecay + 0.02);
+
+  // --- subtle low resonance for heavier keys ---
+  if (profile === 'space' || profile === 'enter'){
+    const sub = ctx.createOscillator();
+    sub.type = 'sine';
+    sub.frequency.value = profile === 'space' ? 55 : 80;
+    const sg = ctx.createGain();
+    sg.gain.setValueAtTime(0.0001, t);
+    sg.gain.exponentialRampToValueAtTime(profile === 'space' ? 0.22 : 0.14, t + 0.005);
+    sg.gain.exponentialRampToValueAtTime(0.0001, t + (profile === 'space' ? 0.18 : 0.12));
+    sub.connect(sg).connect(ctx.destination);
+    sub.start(t);
+    sub.stop(t + 0.2);
+  }
+}
+
+function playKeySound(soundGroup){ playProfile(soundGroup); }
+function playInstallSound(kind){ playProfile(kind); }
+
+/* =================== KEY INTERACTION =================== */
+const keyByCode = new Map();
+allKeys.forEach(k => keyByCode.set(k.code, k));
+
+function pressKey(keyInfo){
+  if (!keyInfo) return;
+  unlockAudio();
+  const cap = keyInfo.capEl;
+  cap.classList.add('pressed');
+  playKeySound(keyInfo.sound);
+  clearTimeout(cap._pressTimer);
+  cap._pressTimer = setTimeout(() => cap.classList.remove('pressed'), 120);
+}
+
+// Click handler (delegated)
+keycapsEl.addEventListener('pointerdown', (e) => {
+  const cap = e.target.closest('.keycap');
+  if (!cap) return;
+  const code = cap.dataset.code;
+  const k = keyByCode.get(code);
+  pressKey(k);
+});
+
+// Physical keyboard
+window.addEventListener('keydown', (e) => {
+  // Don't intercept if user is typing into an input (none here, but be safe)
+  if (e.repeat) {
+    // still show visual but don't spam audio too much
+    const k = keyByCode.get(e.code);
+    if (k){
+      k.capEl.classList.add('pressed');
+      clearTimeout(k.capEl._pressTimer);
+      k.capEl._pressTimer = setTimeout(() => k.capEl.classList.remove('pressed'), 120);
+    }
+    return;
+  }
+  const k = keyByCode.get(e.code);
+  if (k){
+    // Don't hijack browser shortcuts (Ctrl/Cmd/Alt combos, F-keys, etc.)
+    const isModifierHeld = e.ctrlKey || e.metaKey || e.altKey;
+    const isFunctionKey  = /^F\d+$/.test(e.key);
+    if (!isModifierHeld && !isFunctionKey) e.preventDefault();
+    pressKey(k);
+  }
+});
+window.addEventListener('keyup', (e) => {
+  const k = keyByCode.get(e.code);
+  if (k){
+    k.capEl.classList.remove('pressed');
+    clearTimeout(k.capEl._pressTimer);
+  }
+});
+
+// Knob: click to toggle RGB, wheel to "rotate"
+let knobRotation = 0;
+knobEl.addEventListener('click', () => {
+  toggleRGB();
+  playProfile('knob');
+});
+knobEl.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  unlockAudio();
+  knobRotation += (e.deltaY > 0 ? 20 : -20);
+  knobEl.querySelector('.knob').style.transform = `rotate(${knobRotation}deg)`;
+  playProfile('knob');
+}, { passive: false });
+
+/* =================== CONTROLS =================== */
+const replayBtn = document.getElementById('replayBtn');
+const muteBtn   = document.getElementById('muteBtn');
+const rgbBtn    = document.getElementById('rgbBtn');
+const hintEl    = document.getElementById('hint');
+
+replayBtn.addEventListener('click', () => {
+  unlockAudio();
+  runAssembly();
+});
+
+muteBtn.addEventListener('click', () => {
+  unlockAudio();
+  muted = !muted;
+  muteBtn.classList.toggle('off', muted);
+  muteBtn.querySelector('.dot').style.background = muted ? '#5a606a' : '#3ad0c2';
+  muteBtn.querySelector('.dot').style.boxShadow  = muted ? 'none' : '0 0 10px #3ad0c2';
+});
+
+function toggleRGB(){
+  keyboardEl.classList.toggle('rgb-on');
+  const on = keyboardEl.classList.contains('rgb-on');
+  rgbBtn.classList.toggle('off', !on);
+}
+rgbBtn.addEventListener('click', () => { unlockAudio(); toggleRGB(); });
+
+/* =================== HINT =================== */
+function showHint(){ hintEl.classList.add('show'); }
+function hideHint(){ hintEl.classList.remove('show'); }
+
+// First-interaction unlock
+function onFirstInteract(){
+  unlockAudio();
+  window.removeEventListener('pointerdown', onFirstInteract);
+  window.removeEventListener('keydown', onFirstInteract);
+}
+window.addEventListener('pointerdown', onFirstInteract);
+window.addEventListener('keydown', onFirstInteract);
+
+// If audio isn't unlocked after a few seconds, show a hint
+setTimeout(() => {
+  if (!audioUnlocked) showHint();
+}, 3000);
+
+/* =================== RESPONSIVE SCALE =================== */
+function updateScale(){
+  const caseW = 15 * slot + 44; // matches CSS --case-w computed
+  const available = window.innerWidth - 32;
+  const s = Math.min(1, available / caseW);
+  stageEl.style.setProperty('--stage-scale', s.toFixed(4));
+}
+updateScale();
+window.addEventListener('resize', updateScale);
+
+/* =================== KICKOFF =================== */
+// Start RGB on by default after the assembly finishes
+setTimeout(() => keyboardEl.classList.add('rgb-on'), 8500);
+
+// Run the coordinated assembly sequence once the page is ready
+if (document.readyState === 'complete'){
+  runAssembly();
+} else {
+  window.addEventListener('load', runAssembly);
+}
+
+</script>
+</body>
+</html>
