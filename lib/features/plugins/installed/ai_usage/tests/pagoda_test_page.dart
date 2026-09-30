@@ -277,8 +277,8 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
           const AiBenchmark(
             id: 'pagoda_gpt_sol_61_xhigh',
             kind: 'pagoda',
-            model: 'GPT Sol 6.1 (Xhigh)',
-            description: 'GPT Sol 6.1 at extra-high reasoning effort — '
+            model: 'GPT 6.1 Sol (Xhigh)',
+            description: 'GPT 6.1 Sol at extra-high reasoning effort — '
                 'spring festival voxel garden with a five-storey pagoda',
             sizeBytes: 0,
             sha256: '',
@@ -286,8 +286,8 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
           const AiBenchmark(
             id: 'pagoda_gpt_sol_61_low',
             kind: 'pagoda',
-            model: 'GPT Sol 6.1 (Low)',
-            description: 'GPT Sol 6.1 at low reasoning effort — '
+            model: 'GPT 6.1 Sol (Low)',
+            description: 'GPT 6.1 Sol at low reasoning effort — '
                 'spring festival voxel garden with a five-storey pagoda',
             sizeBytes: 0,
             sha256: '',

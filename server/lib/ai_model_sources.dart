@@ -226,6 +226,15 @@ class AiCatalogFetcher {
     }
   }
 
+  /// Every provider endpoint OpenRouter can route [modelId] to, with the
+  /// price it actually charges there. Provider discounts only show up here:
+  /// the `/models` list price stays put when a discount starts or ends.
+  Future<List<AiEndpointPrice>> fetchOpenRouterEndpoints(String modelId) async {
+    final decoded = await _getJson(
+        Uri.parse('https://openrouter.ai/api/v1/models/$modelId/endpoints'));
+    return parseOpenRouterEndpoints(decoded);
+  }
+
   // ---- Artificial Analysis ------------------------------------------------
 
   /// Overlays Artificial Analysis' indices, speed figures and per-effort
@@ -824,6 +833,36 @@ String? _trimDescription(String? raw) {
 /// works in USD per million. A `"0"` means genuinely free, `"-1"` means the
 /// model isn't priced through OpenRouter at all — the latter becomes null so
 /// it shows as "–" instead of a negative price.
+/// One provider OpenRouter serves a model through, priced per 1M tokens
+/// after any discount.
+class AiEndpointPrice {
+  const AiEndpointPrice(this.provider, this.input, this.output,
+      {this.discount = 0, this.up = true});
+
+  final String provider;
+  final double input;
+  final double output;
+  final double discount;
+
+  /// False when OpenRouter reports the endpoint as down.
+  final bool up;
+}
+
+List<AiEndpointPrice> parseOpenRouterEndpoints(Object? decoded) {
+  final data = decoded is Map ? decoded['data'] : null;
+  final endpoints = data is Map ? data['endpoints'] : null;
+  if (endpoints is! List) return const [];
+  return [
+    for (final e in endpoints)
+      if (e is Map && e['provider_name'] is String)
+        if (_perMillion(_map(e['pricing'])['prompt']) case final input?)
+          if (_perMillion(_map(e['pricing'])['completion']) case final output?)
+            AiEndpointPrice(e['provider_name'] as String, input, output,
+                discount: _num(_map(e['pricing'])['discount']) ?? 0,
+                up: _num(e['status']) == null || _num(e['status'])! >= 0),
+  ];
+}
+
 double? _perMillion(Object? raw) {
   final value = raw is num ? raw.toDouble() : double.tryParse('$raw');
   if (value == null || value < 0) return null;

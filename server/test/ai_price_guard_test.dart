@@ -65,6 +65,77 @@ void main() {
     expect(parseOpenRouterModel({'id': free.model}, nowMs: 1), isNull);
   });
 
+  group('openrouter provider discounts', () {
+    const deepInfra = AiEndpointPrice('DeepInfra', 0.075, 0.25, discount: 0.5);
+    const fireworks = AiEndpointPrice('Fireworks', 0.15, 0.5);
+
+    test('parses endpoint prices from the endpoints API', () {
+      final parsed = parseOpenRouterEndpoints({
+        'data': {
+          'endpoints': [
+            {
+              'provider_name': 'DeepInfra',
+              'status': 0,
+              'pricing': {
+                'prompt': '0.000000075',
+                'completion': '0.00000025',
+                'discount': 0.5
+              },
+            },
+            {
+              'provider_name': 'Down',
+              'status': -2,
+              'pricing': {'prompt': '0.00000001', 'completion': '0.00000001'},
+            },
+          ]
+        }
+      });
+      expect(parsed.first.input, closeTo(0.075, 1e-9));
+      expect(parsed.first.discount, 0.5);
+      expect(parsed.last.up, isFalse);
+      expect(cheapestEndpoint(parsed)!.provider, 'DeepInfra');
+    });
+
+    test('the discount ending pauses the mode though the list price stays',
+        () async {
+      final guard = AiPriceGuardStore(dir.path);
+      expect(await guard.recordPaid('smartest', route, 'DeepInfra',
+              const AiPrice(0.075, 0.25)),
+          isFalse);
+      expect(guard.maxPrice('smartest', route)!.input, 0.075);
+      expect(
+          await guard.evaluateEndpoints('smartest', route, [deepInfra, fireworks]),
+          isFalse);
+      const ended = AiEndpointPrice('DeepInfra', 0.15, 0.5);
+      expect(await guard.evaluateEndpoints('smartest', route, [ended, fireworks]),
+          isTrue);
+      expect(AiPriceGuardStore(dir.path).isDisabled('smartest'), isTrue);
+    });
+
+    test('being served by a pricier provider pauses the mode', () async {
+      final guard = AiPriceGuardStore(dir.path);
+      await guard.recordPaid(
+          'smartest', route, 'DeepInfra', const AiPrice(0.075, 0.25));
+      expect(await guard.recordPaid(
+              'smartest', route, 'Fireworks', const AiPrice(0.15, 0.5)),
+          isTrue);
+    });
+
+    test('an old list-price baseline is dropped for the endpoint one',
+        () async {
+      final guard = AiPriceGuardStore(dir.path);
+      await guard.evaluate('smartest', route, const AiPrice(0.15, 0.5));
+      await guard.evaluateEndpoints('smartest', route, [deepInfra, fireworks]);
+      expect(guard.entry('smartest').baseline, isNull);
+      expect(guard.maxPrice('smartest', route), isNull);
+      await guard.setAutoDisable('smartest', false);
+      await guard.recordPaid(
+          'smartest', route, 'DeepInfra', const AiPrice(0.075, 0.25));
+      expect(guard.maxPrice('smartest', route), isNull,
+          reason: 'no price cap is sent while the guard is off');
+    });
+  });
+
   test('first sighting sets the baseline and does not disable', () async {
     final guard = AiPriceGuardStore(dir.path);
     expect(await guard.evaluate('smartest', route, const AiPrice(0.1, 0.3)),
